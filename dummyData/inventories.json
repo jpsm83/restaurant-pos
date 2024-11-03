@@ -1,0 +1,159 @@
+{
+    "_id": "66ddae0d8232e0d81f4062ab",
+    "setFinalCount": false,
+    "inventoryGoods": [
+        {
+            "supplierGoodId": "667bfac8d28a7ee19d9be448",
+            "monthlyCounts": [
+                {
+                    "currentCountQuantity": 40,
+                    "quantityNeeded": 20,
+                    "countedByEmployeeId": "66e92e066a5cfcc2a707696b",
+                    "deviationPercent": 60,
+                    "_id": "6713ae25fb3b6d8972f8406f",
+                    "countedDate": "2024-10-19T13:03:33.797Z"
+                },
+                {
+                    "currentCountQuantity": 35,
+                    "quantityNeeded": 25,
+                    "countedByEmployeeId": "66e92e066a5cfcc2a707696b",
+                    "deviationPercent": 12.5,
+                    "_id": "6713ae2cfb3b6d8972f84081",
+                    "countedDate": "2024-10-19T13:03:40.511Z"
+                },
+                {
+                    "currentCountQuantity": 30,
+                    "quantityNeeded": 30,
+                    "countedByEmployeeId": "66e92e066a5cfcc2a707696b",
+                    "deviationPercent": 14.285714285714285,
+                    "_id": "6713ae30fb3b6d8972f84094",
+                    "countedDate": "2024-10-19T13:03:44.487Z"
+                },
+                {
+                    "currentCountQuantity": 40,
+                    "quantityNeeded": 20,
+                    "countedByEmployeeId": "66e92e066a5cfcc2a707696b",
+                    "deviationPercent": 100,
+                    "comments": "commentsUpdated",
+                    "reedited": {
+                        "reeditedByEmployeeId": "66e92e066a5cfcc2a707696b",
+                        "date": "2024-10-19T13:23:11.823Z",
+                        "reason": "no reason",
+                        "originalValues": {
+                            "currentCountQuantity": 30,
+                            "deviationPercent": 0,
+                            "dynamicSystemCount": 30
+                        }
+                    },
+                    "_id": "6713b14ffb3b6d8972f840e7",
+                    "countedDate": "2024-10-19T13:23:11.824Z"
+                },
+                {
+                    "currentCountQuantity": 25,
+                    "quantityNeeded": 35,
+                    "countedByEmployeeId": "66e92e066a5cfcc2a707696b",
+                    "deviationPercent": 37.5,
+                    "lastCount": false,
+                    "_id": "6714973a43e91b4ef06a3aa2",
+                    "countedDate": "2024-10-20T05:38:02.410Z"
+                },
+                {
+                    "currentCountQuantity": 35,
+                    "quantityNeeded": 25,
+                    "countedByEmployeeId": "66e92e066a5cfcc2a707696b",
+                    "deviationPercent": -40,
+                    "lastCount": true,
+                    "_id": "6714975b43e91b4ef06a3aa7",
+                    "countedDate": "2024-10-20T05:38:35.061Z"
+                }
+            ],
+            "averageDeviationPercent": 30.71428571428571,
+            "dynamicSystemCount": 35,
+            "_id": "66ddae0d8232e0d81f4062ad"
+        },
+        {
+            "supplierGoodId": "667bfac8d28a7ee19d9be445",
+            "monthlyCounts": [],
+            "averageDeviationPercent": 0,
+            "dynamicSystemCount": 0,
+            "_id": "66ddae0d8232e0d81f4062ae"
+        },
+        {
+            "supplierGoodId": "667bfac8d28a7ee19d9be447",
+            "monthlyCounts": [],
+            "averageDeviationPercent": 0,
+            "dynamicSystemCount": 0,
+            "_id": "66ddae0d8232e0d81f4062af"
+        },
+        {
+            "supplierGoodId": "667bfac8d28a7ee19d9be44d",
+            "monthlyCounts": [],
+            "averageDeviationPercent": 0,
+            "dynamicSystemCount": 0,
+            "_id": "66ddae0d8232e0d81f4062b0"
+        },
+        {
+            "supplierGoodId": "667bfac8d28a7ee19d9be449",
+            "monthlyCounts": [],
+            "averageDeviationPercent": 0,
+            "dynamicSystemCount": 0,
+            "_id": "66ddae0d8232e0d81f4062b1"
+        },
+        {
+            "supplierGoodId": "667bfac8d28a7ee19d9be44c",
+            "monthlyCounts": [],
+            "averageDeviationPercent": 0,
+            "dynamicSystemCount": 0,
+            "_id": "66ddae0d8232e0d81f4062b2"
+        },
+        {
+            "supplierGoodId": "667bfac8d28a7ee19d9be44e",
+            "monthlyCounts": [],
+            "averageDeviationPercent": 0,
+            "dynamicSystemCount": 0,
+            "_id": "66ddae0d8232e0d81f4062b3"
+        },
+        {
+            "supplierGoodId": "667bfac8d28a7ee19d9be446",
+            "monthlyCounts": [],
+            "averageDeviationPercent": 0,
+            "dynamicSystemCount": 0,
+            "_id": "66ddae0d8232e0d81f4062b5"
+        },
+        {
+            "supplierGoodId": "667bfac8d28a7ee19d9be44a",
+            "monthlyCounts": [],
+            "averageDeviationPercent": 0,
+            "dynamicSystemCount": 0,
+            "_id": "66ddae0d8232e0d81f4062b6"
+        },
+        {
+            "supplierGoodId": "667bfac8d28a7ee19d9be44b",
+            "monthlyCounts": [],
+            "averageDeviationPercent": 0,
+            "dynamicSystemCount": 0,
+            "_id": "66ddae0d8232e0d81f4062b7"
+        },
+        {
+            "supplierGoodId": "66cb6e9b2761a8a89da9ecf3",
+            "monthlyCounts": [],
+            "averageDeviationPercent": 0,
+            "dynamicSystemCount": 0,
+            "_id": "66ddae0d8232e0d81f4062b8"
+        },
+        {
+            "supplierGoodId": "66ddad5d8232e0d81f40629c",
+            "monthlyCounts": [],
+            "averageDeviationPercent": 0,
+            "dynamicSystemCount": 0,
+            "_id": "66ddae0d8232e0d81f4062b9"
+        },
+        {
+            "supplierGoodId": "670251034487868185f5a5db",
+            "monthlyCounts": [],
+            "averageDeviationPercent": 0,
+            "dynamicSystemCount": 0,
+            "_id": "67025c8249feb51353972d8d"
+        }
+    ]
+}

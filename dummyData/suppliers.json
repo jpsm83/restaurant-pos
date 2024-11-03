@@ -1,0 +1,37 @@
+[
+    {
+        "_id": "6674414e36e26dff0dc4ee8f",
+        "tradeName": "supplier1tradeName",
+        "legalName": "supplier1legalName",
+        "email": "supplier1@supplier1.com",
+        "phoneNumber": "supplier1phoneNumber",
+        "taxNumber": "supplier1taxNumber",
+        "currentlyInUse": true,
+        "business": "6673fed98c45d0a0ca5f34c1",
+        "createdAt": "2024-06-20T14:48:46.380Z",
+        "updatedAt": "2024-08-28T17:12:08.274Z",
+        "__v": 0
+    },
+    {
+        "_id": "66744585be48364ae423dca4",
+        "tradeName": "supplier2tradeName",
+        "legalName": "supplier2legalName",
+        "email": "supplier2@supplier2.com",
+        "phoneNumber": "supplier2phoneNumber",
+        "taxNumber": "supplier2taxNumber",
+        "currentlyInUse": true,
+        "business": "6673fef88c45d0a0ca5f34c5",
+        "createdAt": "2024-06-20T15:06:45.033Z",
+        "updatedAt": "2024-06-20T15:12:30.942Z",
+        "__v": 0,
+        "address": {
+            "country": "supplier1country",
+            "state": "supplier1state",
+            "city": "supplier1city",
+            "street": "supplier1street",
+            "buildingNumber": "supplier1buildingNumber",
+            "postCode": "supplier1postcode",
+            "_id": "667446debe48364ae423dcbd"
+        }
+    }
+]
