@@ -16,7 +16,7 @@ import Employee from "@/app/lib/models/employee";
 // @desc    Get all schedules
 // @route   GET /schedules
 // @access  Public
-export const GET = async (req: Request) => {
+export const GET = async () => {
   try {
     // connect before first call to DB
     await connectDb();

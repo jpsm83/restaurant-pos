@@ -43,7 +43,7 @@ export const GET = async (
     const endDate = searchParams.get("endDate");
 
     // Build query based on the presence of startDate and endDate
-    let query: {
+    const query: {
       supplierId: Types.ObjectId;
       purchaseDate?: {
         $gte: Date;
@@ -69,7 +69,7 @@ export const GET = async (
         $lte: new Date(endDate),
       };
     }
-    
+
     // connect before first call to DB
     await connectDb();
 
@@ -81,7 +81,8 @@ export const GET = async (
       })
       .populate({
         path: "purchaseInventoryItems.supplierGoodId",
-        select: "name mainCategory subCategory measurementUnit pricePerMeasurementUnit",
+        select:
+          "name mainCategory subCategory measurementUnit pricePerMeasurementUnit",
         model: SupplierGood,
       })
       .lean();

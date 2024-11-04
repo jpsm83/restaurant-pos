@@ -47,7 +47,7 @@ export const PATCH = async (
   session.startTransaction();
 
   try {
-    const purchaseItem: IPurchase | null = await Purchase.findOne(
+    const purchaseItem = (await Purchase.findOne(
       {
         _id: purchaseId,
         "purchaseInventoryItems._id": purchaseInventoryItemsId,
@@ -56,7 +56,7 @@ export const PATCH = async (
         businessId: 1,
         "purchaseInventoryItems.$": 1, // Only retrieve the matching inventory item
       }
-    ).lean();
+    ).lean()) as unknown as IPurchase | null;
 
     if (!purchaseItem) {
       await session.abortTransaction();

@@ -1,4 +1,4 @@
-import mongoose, { Types } from "mongoose";
+import { Types } from "mongoose";
 import { NextResponse } from "next/server";
 
 // imported utils
@@ -95,7 +95,7 @@ export const PATCH = async (
     }
 
     // get the supplier good object with all the counts
-    const supplierGoodObject: any = inventory.inventoryGoods.find(
+    const supplierGoodObject = inventory.inventoryGoods.find(
       (good) => good.supplierGoodId.toString() === supplierGoodId.toString()
     );
 
@@ -108,7 +108,7 @@ export const PATCH = async (
 
     // get the especific current count object
     const currentCountObject = supplierGoodObject.monthlyCounts.find(
-      (count: any) => count._id.toString() === countId.toString()
+      (count) => count._id && count._id.toString() === countId.toString()
     );
 
     if (!currentCountObject) {
@@ -134,7 +134,7 @@ export const PATCH = async (
     if (currentCountObject.deviationPercent !== 100) {
       previewDynamicSystemCount =
         currentCountObject.currentCountQuantity /
-        (1 - currentCountObject.deviationPercent / 100);
+        (1 - (currentCountObject.deviationPercent ?? 0) / 100);
     }
 
     // Prepare the new inventory count object
@@ -154,24 +154,24 @@ export const PATCH = async (
         reason, // You might want to pass this in the request as well
         originalValues: {
           currentCountQuantity: currentCountObject.currentCountQuantity,
-          deviationPercent: currentCountObject.deviationPercent,
+          deviationPercent: currentCountObject.deviationPercent ?? 0,
           dynamicSystemCount: previewDynamicSystemCount,
         },
       },
     };
 
     // calculate the new average deviation percent
-    let totalDeviationPercent =
+    const totalDeviationPercent =
       supplierGoodObject.monthlyCounts.reduce(
-        (acc: number, count: { deviationPercent: number }) =>
-          acc + (count.deviationPercent || 0),
+        (acc: number, count: IInventoryCount) =>
+          acc + (count.deviationPercent ?? 0),
         0
       ) -
-      currentCountObject.deviationPercent +
+      (currentCountObject.deviationPercent ?? 0) +
       (updateInventoryCount.deviationPercent ?? 0);
 
     const monthlyCountsWithDeviation = supplierGoodObject.monthlyCounts.filter(
-      (count: { deviationPercent: number }) => count.deviationPercent !== 0
+      (count: IInventoryCount) => (count.deviationPercent ?? 0) !== 0
     ).length;
 
     const averageDeviationPercentCalculation =

@@ -4,7 +4,7 @@ const isScheduleOverlapping = (
   newEndTime: Date,
   existTimeRangeArr: { startTime: Date; endTime: Date }[]
 ) => {
-  let overlap = existTimeRangeArr.some((schedule) => {
+  const overlap = existTimeRangeArr.some((schedule) => {
     return (
       (newStartTime <= schedule.endTime &&
         newStartTime >= schedule.startTime) ||

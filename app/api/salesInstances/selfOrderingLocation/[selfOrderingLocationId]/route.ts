@@ -138,7 +138,7 @@ export const POST = async (
       // check customer exists
       Customer.findById(openedByCustomerId)
         .select("customerName")
-        .lean() as Promise<ICustomer>,
+        .lean() as unknown as Promise<ICustomer>,
 
       // check if dailySalesReport exists
       DailySalesReport.findOne({
@@ -146,7 +146,7 @@ export const POST = async (
         businessId,
       })
         .select("dailyReferenceNumber")
-        .lean() as Promise<IDailySalesReport>,
+        .lean() as unknown as Promise<IDailySalesReport>,
     ]);
 
     if (!customer) {
@@ -184,7 +184,7 @@ export const POST = async (
 
     // create a salesInstance
     // we use a outside function to create the salesInstance because this function is used in other places
-    const salesInstance: any = await createSalesInstance(newSalesInstanceObj, session);
+    const salesInstance = await createSalesInstance(newSalesInstanceObj, session) as ISalesInstance | string;
 
     if (typeof salesInstance === "string") {
       await session.abortTransaction();
@@ -196,7 +196,7 @@ export const POST = async (
 
     // create orders
     // inventory will be updated in this function
-    const createdOrders: any = await createOrders(
+    const createdOrders = await createOrders(
       dailyReferenceNumber,
       ordersArr,
       undefined,
@@ -214,9 +214,18 @@ export const POST = async (
       });
     }
 
-    let createdOrdersIds = createdOrders.map(
-      (order: { _id: Types.ObjectId }) => order._id
-    );
+    let createdOrdersIds: Types.ObjectId[] = [];
+    if (Array.isArray(createdOrders)) {
+      createdOrdersIds = createdOrders.map(
+        (order: { _id: Types.ObjectId }) => order._id
+      );
+    } else {
+      await session.abortTransaction();
+      return new NextResponse(JSON.stringify({ message: createdOrders }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
 
     // pay the order
     // function closeOrders will automaticaly close the salesInstance once all OPEN orders are closed
@@ -234,12 +243,12 @@ export const POST = async (
       });
     }
 
-    let soldGoods: IGoodsReduced[] = [];
+    const soldGoods: IGoodsReduced[] = [];
 
     // Assuming ordersArr is an array of orders
     ordersArr.forEach((order) => {
       order.businessGoodsIds.forEach((goodId) => {
-        let existingGood = soldGoods.find(
+        const existingGood = soldGoods.find(
           (good) => good.businessGoodId === goodId
         );
 

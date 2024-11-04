@@ -66,11 +66,11 @@ export const PATCH = async (
 
   try {
     // check if the schedule exists
-    const schedule: ISchedule | null = await Schedule.findById(scheduleId)
+    const schedule = (await Schedule.findById(scheduleId)
       .select(
         "employeesSchedules.employeeId employeesSchedules.vacation employeesSchedules.timeRange"
       )
-      .lean();
+      .lean()) as unknown as ISchedule | null;
 
     if (!schedule) {
       await session.abortTransaction();
@@ -131,11 +131,9 @@ export const PATCH = async (
       }
     }
 
-    const employeeEmployee: IEmployee | null = await Employee.findById(
-      employeeId
-    )
+    const employeeEmployee = (await Employee.findById(employeeId)
       .select("salary.grossSalary salary.payFrequency")
-      .lean();
+      .lean()) as unknown as IEmployee | null;
 
     if (!employeeEmployee) {
       await session.abortTransaction();

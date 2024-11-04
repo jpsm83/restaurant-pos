@@ -139,9 +139,9 @@ export const PATCH = async (
     await connectDb();
 
     // fetch the printer with the given ID
-    const printer: IPrinter | null = await Printer.findById(printerId)
+    const printer = (await Printer.findById(printerId)
       .select("businessId")
-      .lean();
+      .lean()) as unknown as IPrinter | null;
     if (!printer) {
       return new NextResponse(
         JSON.stringify({ message: "Printer not found!" }),
@@ -150,7 +150,7 @@ export const PATCH = async (
     }
 
     // combine duplicate printer check and employeesAllowedToPrintDataIds check into a single query
-    const conflictingPrinter: IPrinter | null = await Printer.findOne({
+    const conflictingPrinter = (await Printer.findOne({
       _id: { $ne: printerId },
       businessId: printer.businessId,
       $or: [
@@ -162,7 +162,7 @@ export const PATCH = async (
           },
         },
       ],
-    }).lean();
+    }).lean()) as unknown as IPrinter | null;
 
     if (conflictingPrinter) {
       const message =

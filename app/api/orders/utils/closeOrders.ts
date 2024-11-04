@@ -23,13 +23,13 @@ export const closeOrders = async (
     await connectDb();
 
     // Fetch orders to be closed
-    const orders: IOrder[] | null = await Order.find({
+    const orders = (await Order.find({
       _id: { $in: ordersIdsArr },
       billingStatus: "Open",
     })
       .select("salesInstanceId billingStatus orderNetPrice")
       .session(session)
-      .lean();
+      .lean()) as unknown as IOrder[] | null;
 
     if (!orders || orders.length !== ordersIdsArr.length) {
       return "No open orders found!";
@@ -56,7 +56,7 @@ export const closeOrders = async (
     // Process each order in a single loop
     const bulkUpdateOrders = orders.map((order, index) => {
       let remainingOrderNetPrice = order.orderNetPrice;
-      const orderPaymentMethods = [];
+      const orderPaymentMethods: IPaymentMethod[] = [];
 
       for (const payment of paymentMethodArr) {
         if (payment.methodSalesTotal <= 0) continue;
@@ -109,7 +109,7 @@ export const closeOrders = async (
     }
 
     // Fetch sales instance associated with the first order
-    const salesInstance: ISalesInstance | null = await SalesInstance.findById(
+    const salesInstance = (await SalesInstance.findById(
       orders[0].salesInstanceId
     )
       .select("responsibleById salesGroup")
@@ -119,7 +119,7 @@ export const closeOrders = async (
         model: Order,
       })
       .session(session) // Use the same session
-      .lean();
+      .lean()) as unknown as ISalesInstance | null;
 
     if (!salesInstance) {
       return "SalesInstance not found!";
@@ -127,7 +127,9 @@ export const closeOrders = async (
 
     // Check if all orders in the sales instance are paid
     const allOrdersPaid = salesInstance?.salesGroup?.every((group) =>
-      group.ordersIds.every((order: any) => order.billingStatus === "Paid")
+      group.ordersIds.every(
+        (order: Partial<IOrder>) => order.billingStatus === "Paid"
+      )
     );
 
     // if they are all payed, close the sales instance

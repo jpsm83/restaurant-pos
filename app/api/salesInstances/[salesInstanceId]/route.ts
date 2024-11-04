@@ -5,7 +5,6 @@ import mongoose, { Types } from "mongoose";
 import connectDb from "@/app/lib/utils/connectDb";
 import { handleApiError } from "@/app/lib/utils/handleApiError";
 import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
-import { addEmployeeToDailySalesReport } from "../../dailySalesReports/utils/";
 import { cancelOrders } from "../../orders/utils/cancelOrders";
 import { addDiscountToOrders } from "../../orders/utils/addDiscountToOrders";
 import { changeOrdersBillingStatus } from "../../orders/utils/changeOrdersBillingStatus";
@@ -13,6 +12,7 @@ import { changeOrdersStatus } from "../../orders/utils/changeOrdersStatus";
 import { validatePaymentMethodArray } from "../../orders/utils/validatePaymentMethodArray";
 import { closeOrders } from "../../orders/utils/closeOrders";
 import { transferOrdersBetweenSalesInstances } from "../../orders/utils/transferOrdersBetweenSalesInstances";
+import { addEmployeeToDailySalesReport } from "../../dailySalesReports/utils/addEmployeeToDailySalesReport";
 
 // import interfaces
 import { IPaymentMethod } from "@/app/lib/interface/IPaymentMethod";
@@ -158,12 +158,10 @@ export const PATCH = async (
 
   try {
     // get the salesInstance
-    const salesInstance = await SalesInstance.findById(
-      salesInstanceId
-    )
+    const salesInstance = (await SalesInstance.findById(salesInstanceId)
       .select("openedByEmployeeId businessId salesInstanceStatus salesGroup")
       .session(session)
-      .lean() as ISalesInstance | null;
+      .lean()) as unknown as ISalesInstance | null;
 
     if (!salesInstance) {
       await session.abortTransaction();
@@ -352,43 +350,44 @@ export const PATCH = async (
     const updatedSalesInstanceObj: Partial<ISalesInstance> = {};
 
     if (guests) updatedSalesInstanceObj.guests = guests;
-    if (salesInstanceStatus) updatedSalesInstanceObj.salesInstanceStatus = salesInstanceStatus;
+    if (salesInstanceStatus)
+      updatedSalesInstanceObj.salesInstanceStatus = salesInstanceStatus;
     if (clientName) updatedSalesInstanceObj.clientName = clientName;
     if (responsibleById)
       updatedSalesInstanceObj.responsibleById = responsibleById;
 
-    // // if salesInstance is transferred to another employee, and that is the first salesInstance from the new employee, update the dailySalesReport to create a new employeeDailySalesReport for the new employee
-    // if (
-    //   responsibleById &&
-    //   responsibleById !== salesInstance?.openedByEmployeeId
-    // ) {
-    //   // check if employee exists in the dailySalesReport
-    //   if (
-    //     !(await DailySalesReport.exists({
-    //       isDailyReportOpen: true,
-    //       business: salesInstance?.businessId,
-    //       "employeesDailySalesReport.employeeId": responsibleById,
-    //     }))
-    //   ) {
-    //     const addEmployeeToDailySalesReportResult =
-    //       await addEmployeeToDailySalesReport(
-    //         responsibleById,
-    //         salesInstance.businessId,
-    //         session
-    //       );
+    // if salesInstance is transferred to another employee, and that is the first salesInstance from the new employee, update the dailySalesReport to create a new employeeDailySalesReport for the new employee
+    if (
+      responsibleById &&
+      responsibleById != salesInstance?.openedByEmployeeId
+    ) {
+      const dailySalesReport = await DailySalesReport.exists({
+        isDailyReportOpen: true,
+        businessId: salesInstance?.businessId,
+        "employeesDailySalesReport.employeeId": responsibleById,
+      });
 
-    //     if (addEmployeeToDailySalesReportResult !== true) {
-    //       await session.abortTransaction();
-    //       return new NextResponse(
-    //         JSON.stringify({ message: addEmployeeToDailySalesReportResult }),
-    //         {
-    //           status: 400,
-    //           headers: { "Content-Type": "application/json" },
-    //         }
-    //       );
-    //     }
-    //   }
-    // }
+      // check if employee exists in the dailySalesReport
+      if (!dailySalesReport) {
+        const addEmployeeToDailySalesReportResult =
+          await addEmployeeToDailySalesReport(
+            responsibleById,
+            salesInstance.businessId,
+            session
+          );
+
+        if (addEmployeeToDailySalesReportResult !== true) {
+          await session.abortTransaction();
+          return new NextResponse(
+            JSON.stringify({ message: addEmployeeToDailySalesReportResult }),
+            {
+              status: 400,
+              headers: { "Content-Type": "application/json" },
+            }
+          );
+        }
+      }
+    }
 
     // The order controller would handle the creation of orders and updating the relevant salesInstance's order array. The salesInstance controller would then only be responsible for reading and managing salesInstance data, not order data. This separation of concerns makes the code easier to maintain and understand.
 

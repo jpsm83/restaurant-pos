@@ -96,9 +96,9 @@ export const PATCH = async (
     await connectDb();
 
     // check if the supplier good exists
-    const supplierGood: ISupplierGood | null = await SupplierGood.findById(
+    const supplierGood = (await SupplierGood.findById(
       supplierGoodId
-    ).lean();
+    ).lean()) as unknown as ISupplierGood | null;
 
     if (!supplierGood) {
       return new NextResponse(
@@ -125,7 +125,7 @@ export const PATCH = async (
     }
 
     // create a new supplier good object
-    let updateSupplierGood: Partial<ISupplierGood> = {};
+    const updateSupplierGood: Partial<ISupplierGood> = {};
 
     if (name) updateSupplierGood.name = name;
     if (keyword) updateSupplierGood.keyword = keyword;
@@ -239,11 +239,9 @@ export const DELETE = async (
     await connectDb();
 
     // Attempt to find the supplier good and check if it's in use
-    const supplierGood: ISupplierGood | null = await SupplierGood.findById(
-      supplierGoodId
-    )
+    const supplierGood = (await SupplierGood.findById(supplierGoodId)
       .select("businessId")
-      .lean();
+      .lean()) as unknown as ISupplierGood | null;
 
     if (!supplierGood) {
       return new NextResponse(

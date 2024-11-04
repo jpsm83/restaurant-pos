@@ -21,7 +21,7 @@ import BusinessGood from "@/app/lib/models/businessGood";
 // @desc    Get all promotion
 // @route   GET /promotions
 // @access  Private
-export const GET = async (req: Request) => {
+export const GET = async () => {
   try {
     // connect before first call to DB
     await connectDb();

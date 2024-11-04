@@ -18,7 +18,7 @@ import SupplierGood from "@/app/lib/models/supplierGood";
 // @desc    Get all businessId goods
 // @route   GET /businessGoods
 // @access  Private
-export const GET = async (req: Request) => {
+export const GET = async () => {
   try {
     // connect before first call to DB
     await connectDb();
@@ -144,7 +144,7 @@ export const POST = async (req: Request) => {
     }
 
     // create a businessId good object
-    let newBusinessGood: IBusinessGood = {
+    const newBusinessGood: IBusinessGood = {
       name,
       keyword,
       mainCategory,

@@ -16,7 +16,7 @@ import Supplier from "@/app/lib/models/supplier";
 // @desc    Get all supplier goods
 // @route   GET /supplierGoods
 // @access  Private
-export const GET = async (req: Request) => {
+export const GET = async () => {
   try {
     // connect before first call to DB
     await connectDb();

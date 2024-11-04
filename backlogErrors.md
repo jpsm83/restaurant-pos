@@ -5,9 +5,10 @@ customer - DONE
 
 
 
-dailySalesReports 
+dailySalesReports
 - review the whole code
 - probaly a better approach is to add user sales report when tables are closed
+- addEmployeeToDailySalesReport tested and working
 
 
 
@@ -18,9 +19,7 @@ suppliers - DONE
 supplierGoods - DONE
 businessGoods - DONE
 promotions - DONE
-
-orders - last test / from transferOrdersBetweenSalesInstances PATCH route
-
+orders - DONE
 purchases - DONE
 inventories - DONE
 notifications - DONE

@@ -69,7 +69,7 @@ export const PATCH = async (
     ]);
 
     if (!supplierGood || !inventory) {
-      let message = !supplierGood
+      const message = !supplierGood
         ? "Supplier good not found!"
         : "Inventory not found!";
       return new NextResponse(JSON.stringify({ message: message }), {
@@ -114,7 +114,7 @@ export const PATCH = async (
     };
 
     // calculate the average deviation percent
-    let totalDeviationPercent = inventoryGood.monthlyCounts.reduce(
+    const totalDeviationPercent = inventoryGood.monthlyCounts.reduce(
       (acc, count) => acc + (count.deviationPercent || 0),
       0
     );

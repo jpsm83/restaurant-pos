@@ -1,4 +1,4 @@
-import { IPersonalDetails } from "@/app/lib/interface/IEmployee";
+import { IPersonalDetails } from "../interface/IPersonalDetails";
 
 export const personalDetailsValidation = (
   personalDetails: IPersonalDetails

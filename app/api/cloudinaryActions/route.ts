@@ -26,7 +26,7 @@ export async function POST(req: Request) {
     const employeeId = data.get("employeeId") || null; // subfolder = "employees"
     const purchaseId = data.get("purchaseId") || null; // subfolder = "purchases"
 
-    let documentModelResult: any = await documentModelExists(
+    const documentModelResult = await documentModelExists(
       businessId,
       businessGoodId,
       supplierGoodId,
@@ -72,7 +72,7 @@ export async function POST(req: Request) {
       folder: folder, // Optional: specify a folder in Cloudinary
     });
 
-    let updateModelResponse = await updateDbModels(
+    const updateModelResponse = await updateDbModels(
       documentModelResult.name,
       documentModelResult.id,
       response.secure_url
@@ -140,7 +140,7 @@ export async function DELETE(req: Request) {
       );
     }
 
-    let documentModelResult: any = await documentModelExists(
+    const documentModelResult = await documentModelExists(
       businessId,
       businessGoodId,
       supplierGoodId,
@@ -168,7 +168,7 @@ export async function DELETE(req: Request) {
       );
     }
 
-    let updateModelResponse = await updateDbModels(
+    const updateModelResponse = await updateDbModels(
       documentModelResult.name,
       documentModelResult.id
     );

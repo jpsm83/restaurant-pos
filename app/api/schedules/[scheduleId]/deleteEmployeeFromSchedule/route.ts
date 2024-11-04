@@ -46,12 +46,12 @@ export const PATCH = async (
     await connectDb();
 
     // check if the schedule exists
-    const schedule: ISchedule | null = await Schedule.findById({
+    const schedule = (await Schedule.findById({
       _id: scheduleId,
       employeeSchedules: { $elemMatch: { employeeId: employeeId } },
     })
       .select("_id employeeSchedules")
-      .lean();
+      .lean()) as unknown as ISchedule | null;
 
     if (!schedule) {
       return new NextResponse(
@@ -73,7 +73,7 @@ export const PATCH = async (
       );
     }
 
-    let scheduleToDelete = schedule.employeesSchedules.find(
+    const scheduleToDelete = schedule.employeesSchedules.find(
       (schedule) => schedule._id == employeeScheduleId
     );
 

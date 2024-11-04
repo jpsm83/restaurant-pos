@@ -29,7 +29,7 @@ export const transferOrdersBetweenSalesInstances = async (
         "_id salesGroup salesPointId guests salesInstanceStatus businessId"
       )
       .session(session)
-      .lean()) as ISalesInstance | null;
+      .lean()) as unknown as ISalesInstance | null;
 
     if (!targetSalesInstance) {
       return "Target SalesInstance not found or is closed!";

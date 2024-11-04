@@ -16,7 +16,15 @@ const documentModelExists = async (
   purchaseId: FormDataEntryValue | null
 ) => {
   // Create a mapping between model names and actual models
-  const modelMap: { [key: string]: any } = {
+  const modelMap: {
+    [key: string]:
+      | typeof Business
+      | typeof BusinessGood
+      | typeof SupplierGood
+      | typeof Supplier
+      | typeof Employee
+      | typeof Purchase;
+  } = {
     Business,
     BusinessGood,
     SupplierGood,
@@ -25,7 +33,7 @@ const documentModelExists = async (
     Purchase,
   };
 
-  let documentModel = {
+  const documentModel = {
     restaurantSubfolder: "",
     name: "Business",
     id: businessId,
@@ -55,7 +63,7 @@ const documentModelExists = async (
     documentModel.id = employeeId;
   }
 
-  if(purchaseId) {
+  if (purchaseId) {
     documentModel.restaurantSubfolder = "purchases";
     documentModel.name = "Purchase";
     documentModel.id = purchaseId;

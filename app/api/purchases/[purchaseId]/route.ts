@@ -202,9 +202,9 @@ export const DELETE = async (
 
   try {
     // get the purchase to get its businessId and supplierGoodId
-    const purchase: IPurchase | null = await Purchase.findById(purchaseId)
+    const purchase = (await Purchase.findById(purchaseId)
       .select("businessId purchaseInventoryItems")
-      .lean();
+      .lean()) as unknown as IPurchase | null;
 
     if (!purchase) {
       await session.abortTransaction();

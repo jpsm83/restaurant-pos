@@ -166,11 +166,11 @@ export const PATCH = async (
     }
 
     // check for duplicates employeeName, email, taxNumber and idNumber with same business ID
-    const duplicateEmployee: IEmployee | null = await Employee.findOne({
+    const duplicateEmployee = (await Employee.findOne({
       _id: { $ne: employeeId },
       businessId: employee.businessId,
       $or: [{ employeeName }, { email }, { taxNumber }, { idNumber }],
-    }).lean();
+    }).lean()) as IEmployee | null;
 
     if (duplicateEmployee) {
       await session.abortTransaction();
@@ -276,7 +276,6 @@ export const PATCH = async (
         }),
         { status: 200, headers: { "Content-Type": "application/json" } }
       );
-
     }
 
     // Commit the transaction if both operations succeed

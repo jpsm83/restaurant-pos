@@ -160,9 +160,9 @@ export const PATCH = async (
     await connectDb();
 
     // check if the promotion exists
-    const promotion: IPromotion | null = await Promotion.findById(promotionId)
+    const promotion = (await Promotion.findById(promotionId)
       .select("businessId")
-      .lean();
+      .lean()) as unknown as IPromotion | null;
 
     if (!promotion) {
       return new NextResponse(
@@ -203,10 +203,7 @@ export const PATCH = async (
     if (description) updatedPromotion.description = description;
 
     // save the updated promotion
-    await Promotion.updateOne(
-      { _id: promotionId},
-      { $set: updatedPromotion },
-    );
+    await Promotion.updateOne({ _id: promotionId }, { $set: updatedPromotion });
 
     return new NextResponse(
       JSON.stringify({

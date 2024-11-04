@@ -43,7 +43,7 @@ export const GET = async (
     const endDate = searchParams.get("endDate");
 
     // Build query based on the presence of startDate and endDate
-    let query: {
+    const query: {
       purchasedByEmployeeId: Types.ObjectId;
       purchaseDate?: {
         $gte: Date;

@@ -24,12 +24,12 @@ export const ordersArrValidation = (ordersArr: Partial<IOrder>[]) => {
   )
     return "BusinessGoodsIds must be an array of Ids!";
 
-// Validate ids
-const businessGoodsIds: any = ordersArr.flatMap((order) => order.businessGoodsIds);
+  // Validate ids
+  const businessGoodsIds = ordersArr.flatMap((order) => order.businessGoodsIds);
 
-if(isObjectIdValid(businessGoodsIds) !== true) {
-  return "Invalid businessGoodsIds!";
-};
+  if (isObjectIdValid(businessGoodsIds) !== true) {
+    return "Invalid businessGoodsIds!";
+  }
 
   const validKeys = [
     "orderGrossPrice",

@@ -127,11 +127,9 @@ export const PATCH = async (
     await connectDb();
 
     // check if the business good exists
-    const businessGood: IBusinessGood | null = await BusinessGood.findById(
-      businessGoodId
-    )
+    const businessGood = (await BusinessGood.findById(businessGoodId)
       .select("businessId")
-      .lean();
+      .lean()) as IBusinessGood | null;
 
     if (!businessGood) {
       return new NextResponse(

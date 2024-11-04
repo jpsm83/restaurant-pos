@@ -135,7 +135,7 @@ export const POST = async (req: Request) => {
         businessId,
       })
         .select("dailyReferenceNumber")
-        .lean() as Promise<IDailySalesReport | null>,
+        .lean() as unknown as Promise<IDailySalesReport | null>,
     ]);
 
     // check salesPointId exists

@@ -35,7 +35,7 @@ export const validatePaymentMethodArray = (paymentMethod: IPaymentMethod[]) => {
     return "Payment method has to be an array!";
   }
 
-  for (let payment of paymentMethod) {
+  for (const payment of paymentMethod) {
     if (
       !payment.paymentMethodType ||
       !payment.methodBranch ||

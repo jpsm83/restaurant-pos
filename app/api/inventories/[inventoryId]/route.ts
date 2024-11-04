@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import mongoose, { Types } from "mongoose";
-import moment from "moment";
+import { Types } from "mongoose";
 
 // imported utils
 import connectDb from "@/app/lib/utils/connectDb";

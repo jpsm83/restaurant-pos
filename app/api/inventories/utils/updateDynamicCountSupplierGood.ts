@@ -45,7 +45,7 @@ export const updateDynamicCountSupplierGood = async (
     }
 
     // Collect all required ingredients from business goods and setMenus
-    let allIngredientsRequired: {
+    const allIngredientsRequired: {
       ingredientId: Types.ObjectId;
       requiredQuantity: number;
       measurementUnit: string;
@@ -53,24 +53,44 @@ export const updateDynamicCountSupplierGood = async (
 
     businessGoodsIngredients.forEach((businessGood) => {
       if (businessGood.ingredients) {
-        businessGood.ingredients.forEach((ing: any) => {
-          allIngredientsRequired.push({
-            ingredientId: ing.supplierGoodId,
-            requiredQuantity: ing.requiredQuantity,
-            measurementUnit: ing.measurementUnit,
-          });
-        });
-      }
-      if (businessGood.setMenuIds) {
-        businessGood.setMenuIds.forEach((setMenuItem: any) => {
-          setMenuItem.ingredients.forEach((ing: any) => {
+        businessGood.ingredients.forEach(
+          (ing: {
+            supplierGoodId: Types.ObjectId;
+            requiredQuantity: number;
+            measurementUnit: string;
+          }) => {
             allIngredientsRequired.push({
               ingredientId: ing.supplierGoodId,
               requiredQuantity: ing.requiredQuantity,
               measurementUnit: ing.measurementUnit,
             });
-          });
-        });
+          }
+        );
+      }
+      if (businessGood.setMenuIds) {
+        businessGood.setMenuIds.forEach(
+          (setMenuItem: {
+            ingredients: {
+              supplierGoodId: Types.ObjectId;
+              requiredQuantity: number;
+              measurementUnit: string;
+            }[];
+          }) => {
+            setMenuItem.ingredients.forEach(
+              (ing: {
+                supplierGoodId: Types.ObjectId;
+                requiredQuantity: number;
+                measurementUnit: string;
+              }) => {
+                allIngredientsRequired.push({
+                  ingredientId: ing.supplierGoodId,
+                  requiredQuantity: ing.requiredQuantity,
+                  measurementUnit: ing.measurementUnit,
+                });
+              }
+            );
+          }
+        );
       }
     });
 
@@ -125,7 +145,7 @@ export const updateDynamicCountSupplierGood = async (
 
     // Map supplierGoodId to measurementUnit and dynamicSystemCount
     const supplierGoodUnitsMap = inventoryItems[0].supplierGoods.reduce(
-      (map: any, good: any) => {
+      (map, good) => {
         map[good._id.toString()] = good.measurementUnit;
         return map;
       },
@@ -133,7 +153,7 @@ export const updateDynamicCountSupplierGood = async (
     );
 
     const inventoryMap = inventoryItems[0].inventoryGoods.reduce(
-      (map: any, invItem: any) => {
+      (map, invItem) => {
         map[invItem.supplierGoodId.toString()] = invItem;
         return map;
       },
@@ -141,15 +161,14 @@ export const updateDynamicCountSupplierGood = async (
     );
 
     // Perform bulk update to modify dynamic counts
-    const bulkOperations: any = allIngredientsRequired
+    const bulkOperations = allIngredientsRequired
       .map((ingredientObj) => {
         const inventoryItem =
           inventoryMap[ingredientObj.ingredientId.toString()];
         const supplierGoodUnit =
           supplierGoodUnitsMap[ingredientObj.ingredientId.toString()];
 
-        if (!inventoryItem || !supplierGoodUnit)
-          return "InventoryItem or supplierGoodUnit not found!";
+        if (!inventoryItem || !supplierGoodUnit) return null;
 
         let quantityChange = ingredientObj.requiredQuantity;
         if (ingredientObj.measurementUnit !== supplierGoodUnit) {
@@ -173,7 +192,7 @@ export const updateDynamicCountSupplierGood = async (
           },
         };
       })
-      .filter(Boolean); // Remove null values
+      .filter((operation) => operation !== null); // Remove null values
 
     // Execute bulk update
     if (bulkOperations.length > 0) {

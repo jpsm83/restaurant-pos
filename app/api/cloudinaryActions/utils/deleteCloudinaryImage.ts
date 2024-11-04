@@ -19,7 +19,7 @@ const deleteCloudinaryImage = async (imageUrl: string) => {
     // Extract cloudinaryPublicId using regex
     // example of a publicId
     // "restaurant-pos/6673fed98c45d0a0ca5f34c1/salesInstanceQrCodes/66c9d6afc45a1547f9ab893b"
-    let cloudinaryPublicId = imageUrl.match(/restaurant-pos\/[^.]+/);
+    const cloudinaryPublicId = imageUrl.match(/restaurant-pos\/[^.]+/);
 
     const deletionResponse = await cloudinary.uploader.destroy(
       cloudinaryPublicId?.[0] ?? "",

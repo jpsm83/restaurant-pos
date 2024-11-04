@@ -106,9 +106,9 @@ export const PATCH = async (
     await connectDb();
 
     // check if supplier exists
-    const supplier: ISupplier | null = await Supplier.findById(supplierId)
+    const supplier = (await Supplier.findById(supplierId)
       .select("businessId")
-      .lean();
+      .lean()) as unknown as ISupplier | null;
 
     if (!supplier) {
       return new NextResponse(

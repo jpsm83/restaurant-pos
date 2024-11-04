@@ -34,7 +34,7 @@ export const GET = async (req: Request) => {
     const endDate = searchParams.get("endDate");
 
     // Build the query object
-    const query: any = {};
+    const query: { purchaseDate?: { $gte: Date; $lte: Date } } = {};
 
     if (startDate && endDate) {
       if (startDate > endDate) {
@@ -177,7 +177,7 @@ export const POST = async (req: Request) => {
     // one time purcahse are not updated on inventory because supplier goods does not exists
     //it supose to be used on very rare ocasions or never
     // best approach is to create a supplier and goods before the purchase and set the supplier good to the business good ingredients that apply
-    let createOneTimePurchaseSupplierResult = await oneTimePurchaseSupplier(
+    const createOneTimePurchaseSupplierResult = await oneTimePurchaseSupplier(
       businessId
     );
 
@@ -197,7 +197,7 @@ export const POST = async (req: Request) => {
     }
     newSupplierId = createOneTimePurchaseSupplierResult;
 
-    newPurchaseInventoryItems.forEach((item: any) => {
+    newPurchaseInventoryItems.forEach((item: IPurchaseItem) => {
       item.supplierGoodId = newSupplierId;
     });
   }

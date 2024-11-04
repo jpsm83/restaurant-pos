@@ -9,7 +9,15 @@ import Employee from "@/app/lib/models/employee";
 import Purchase from "@/app/lib/models/purchase";
 
 // Create a mapping between model names and actual models
-const modelMap: { [key: string]: any } = {
+const modelMap: {
+  [key: string]:
+    | typeof Business
+    | typeof BusinessGood
+    | typeof SupplierGood
+    | typeof Supplier
+    | typeof Employee
+    | typeof Purchase;
+} = {
   Business,
   BusinessGood,
   Purchase,

@@ -1,4 +1,4 @@
-import mongoose, { ClientSession, Types } from "mongoose";
+import { ClientSession, Types } from "mongoose";
 
 // imported utils
 import connectDb from "@/app/lib/utils/connectDb";
@@ -58,11 +58,9 @@ export const createOrders = async (
   try {
     if (employeeId) {
       // Check if salesInstanceId exists and is open and get the dailySalesReport reference number
-      const salesInstance: ISalesInstance | null = await SalesInstance.findById(
-        salesInstanceId
-      )
+      const salesInstance = (await SalesInstance.findById(salesInstanceId)
         .select("status")
-        .lean();
+        .lean()) as unknown as ISalesInstance | null;
 
       if (!salesInstance || salesInstance.salesInstanceStatus === "Closed") {
         return "SalesInstance not found or closed!";
@@ -109,7 +107,7 @@ export const createOrders = async (
 
     // update the dynamic count of the supplier goods ingredients
     // dynamicSystemCount have to decrease because the ingredients are being used
-    let updateDynamicCountSupplierGoodResult: any =
+    const updateDynamicCountSupplierGoodResult =
       await updateDynamicCountSupplierGood(businessGoodsIds, "remove", session);
 
     if (updateDynamicCountSupplierGoodResult !== true) {

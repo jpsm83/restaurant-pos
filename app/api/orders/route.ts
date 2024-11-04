@@ -163,7 +163,7 @@ export const POST = async (req: Request) => {
     );
   }
 
-  let objectIds: any[] = ordersArr.flatMap((order) => order.businessGoodsIds);
+  const objectIds = ordersArr.flatMap((order) => order.businessGoodsIds);
   objectIds.push(businessId, salesInstanceId, employeeId);
 
   // validate ids

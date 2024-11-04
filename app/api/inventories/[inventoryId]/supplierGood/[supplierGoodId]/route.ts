@@ -44,7 +44,7 @@ export const GET = async (
   const monthDateParams = searchParams.get("monthDate");
 
   // Initialize startDate and endDate
-  let startDate = monthDateParams ? new Date(monthDateParams) : null;
+  const startDate = monthDateParams ? new Date(monthDateParams) : null;
   let endDate = monthDateParams ? new Date(monthDateParams) : null;
 
   // Set startDate to the first day of the month if provided
@@ -60,7 +60,7 @@ export const GET = async (
   }
 
   // Build query based on the presence of startDate and endDate
-  let query: {
+  const query: {
     _id: Types.ObjectId;
     "inventoryGoods.supplierGoodId": Types.ObjectId;
     createdAt?: {

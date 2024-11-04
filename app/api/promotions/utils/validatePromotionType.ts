@@ -1,4 +1,13 @@
-export const validatePromotionType = (promotionType: { [key: string]: any }) => {
+type PromotionType = {
+  fixedPrice?: number;
+  discountPercent?: number;
+  twoForOne?: boolean;
+  threeForTwo?: boolean;
+  secondHalfPrice?: boolean;
+  fullComplimentary?: boolean;
+};
+
+export const validatePromotionType = (promotionType: PromotionType) => {
   if (!promotionType || typeof promotionType !== "object") {
     return "Promotion type is a required object!";
   }

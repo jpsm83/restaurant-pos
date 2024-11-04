@@ -287,9 +287,9 @@ export const DELETE = async (
       "restaurant-pos/"
     );
 
-    let subfoldersArr: string[] = [];
+    const subfoldersArr: string[] = [];
 
-    cloudinaryFolder.folders.forEach((folder: any) =>
+    cloudinaryFolder.folders.forEach((folder: { name: string }) =>
       subfoldersArr.push(folder.name)
     );
 
@@ -299,7 +299,9 @@ export const DELETE = async (
       } catch (error) {
         await session.abortTransaction();
         return new NextResponse(
-          JSON.stringify({ message: "Cloudinary folder deletion failed!" }),
+          JSON.stringify({
+            message: "Cloudinary folder deletion failed! " + error,
+          }),
           { status: 500, headers: { "Content-Type": "application/json" } }
         );
       }

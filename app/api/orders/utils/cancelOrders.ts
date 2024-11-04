@@ -82,6 +82,9 @@ export const cancelOrders = async (
       return "Cancel order failed, salesInstance not updated!";
     }
 
+    if (salesInstance2.modifiedCount !== 1) {
+    }
+
     if (order.deletedCount !== ordersIdsArr.length) {
       return "Cancel order failed, some orders were not deleted!";
     }

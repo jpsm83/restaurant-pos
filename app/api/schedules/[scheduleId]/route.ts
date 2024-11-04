@@ -139,9 +139,9 @@ export const DELETE = async (
     await connectDb();
 
     // check if schedule date is before the current date
-    const schedule: ISchedule | null = await Schedule.findById(
+    const schedule = (await Schedule.findById(
       scheduleId
-    ).lean();
+    ).lean()) as unknown as ISchedule | null;
     if (!schedule) {
       return new NextResponse(
         JSON.stringify({ message: "Schedule not found!" }),

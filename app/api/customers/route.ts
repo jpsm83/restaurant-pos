@@ -18,7 +18,7 @@ import Business from "@/app/lib/models/business";
 // @desc    Get all customers
 // @route   GET /customers
 // @access  Private
-export const GET = async (req: Request) => {
+export const GET = async () => {
   try {
     // connect before first call to DB
     await connectDb();
@@ -126,7 +126,7 @@ export const POST = async (req: Request) => {
     ]);
 
     if (duplicateCustomer || !businessExists) {
-      let message = duplicateCustomer
+      const message = duplicateCustomer
         ? "Customer with customerName, email or idNumber already exists!"
         : "Business does not exists!";
       return new NextResponse(

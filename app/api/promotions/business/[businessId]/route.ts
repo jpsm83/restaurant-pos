@@ -45,7 +45,7 @@ export const GET = async (
     const endDate = searchParams.get("endDate");
 
     // Build query based on the presence of startDate and endDate
-    let query: {
+    const query: {
       businessId: Types.ObjectId;
       "promotionPeriod.start"?: { $gte: Date };
       "promotionPeriod.end"?: { $lte: Date };
@@ -71,12 +71,12 @@ export const GET = async (
     await connectDb();
 
     const promotion = await Promotion.find(query)
-    .populate({
-      path: "businessGoodsToApplyIds",
-      select: "name",
-      model: BusinessGood,
-    })
-    .lean();
+      .populate({
+        path: "businessGoodsToApplyIds",
+        select: "name",
+        model: BusinessGood,
+      })
+      .lean();
 
     return !promotion.length
       ? new NextResponse(JSON.stringify({ message: "No promotion found!" }), {

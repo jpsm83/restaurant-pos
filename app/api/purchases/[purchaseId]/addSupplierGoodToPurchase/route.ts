@@ -46,7 +46,7 @@ export const PATCH = async (
   session.startTransaction();
 
   try {
-    const updatePurchase: IPurchase | null = await Purchase.findOneAndUpdate(
+    const updatePurchase = (await Purchase.findOneAndUpdate(
       { _id: purchaseId },
       {
         $push: {
@@ -59,7 +59,7 @@ export const PATCH = async (
         $inc: { totalAmount: purchasePrice },
       },
       { new: true, session }
-    ).lean();
+    ).lean()) as unknown as IPurchase | null;
 
     if (!updatePurchase) {
       await session.abortTransaction();

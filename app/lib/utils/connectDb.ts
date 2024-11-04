@@ -21,7 +21,7 @@ const connectDb = async () => {
       bufferCommands: true,
     });
     console.log("Connection established");
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error: ", error);
     throw new Error("Error: ", error);
   }

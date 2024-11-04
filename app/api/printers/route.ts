@@ -17,7 +17,7 @@ import SalesPoint from "@/app/lib/models/salesPoint";
 // @desc    Get all printers
 // @route   GET /printers
 // @access  Private
-export const GET = async (req: Request) => {
+export const GET = async () => {
   try {
     // connect before first call to DB
     await connectDb();

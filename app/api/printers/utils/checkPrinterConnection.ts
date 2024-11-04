@@ -1,6 +1,9 @@
 import * as net from "net";
 
-export const checkPrinterConnection = (ipAddress: string, port: number): Promise<boolean> => {
+export const checkPrinterConnection = (
+  ipAddress: string,
+  port: number
+): Promise<boolean> => {
   return new Promise((resolve, reject) => {
     // Check if ipAddress and port are valid
     if (!ipAddress || !port) {
@@ -17,6 +20,7 @@ export const checkPrinterConnection = (ipAddress: string, port: number): Promise
     });
 
     client.on("error", (err) => {
+      console.log(err);
       client.destroy();
       resolve(false); // Printer is not connected
     });

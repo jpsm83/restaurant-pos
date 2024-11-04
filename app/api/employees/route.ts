@@ -20,7 +20,7 @@ import Business from "@/app/lib/models/business";
 // @desc    Get all employees
 // @route   GET /employees
 // @access  Private
-export const GET = async (req: Request) => {
+export const GET = async () => {
   try {
     // connect before first call to DB
     await connectDb();
@@ -151,7 +151,7 @@ export const POST = async (req: Request) => {
     ]);
 
     if (duplicateEmployee || !businessExists) {
-      let message = duplicateEmployee
+      const message = duplicateEmployee
         ? "Employee with employeeName, email or idNumber already exists!"
         : "Business does not exists!";
       return new NextResponse(
