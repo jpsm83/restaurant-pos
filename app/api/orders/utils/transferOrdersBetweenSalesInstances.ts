@@ -21,14 +21,15 @@ export const transferOrdersBetweenSalesInstances = async (
     await connectDb();
 
     // Step 1: Verify the target sales instance is open and get its data
-    const targetSalesInstance: ISalesInstance | null =
-      await SalesInstance.findOne({
-        _id: toSalesInstanceId,
-        salesInstanceStatus: { $ne: "Closed" },
-      })
-        .select("_id salesGroup")
-        .session(session)
-        .lean();
+    const targetSalesInstance = (await SalesInstance.findOne({
+      _id: toSalesInstanceId,
+      salesInstanceStatus: { $ne: "Closed" },
+    })
+      .select(
+        "_id salesGroup salesPointId guests salesInstanceStatus businessId"
+      )
+      .session(session)
+      .lean()) as ISalesInstance | null;
 
     if (!targetSalesInstance) {
       return "Target SalesInstance not found or is closed!";
@@ -51,9 +52,8 @@ export const transferOrdersBetweenSalesInstances = async (
     // Fetch the original salesInstance
     const originalSalesInstance = await SalesInstance.findOne({
       _id: orders[0].salesInstanceId,
-      "salesGroup.ordersIds": { $in: ordersIdsArr },
     })
-      .select("salesGroup")
+      // .select("salesGroup")
       .session(session);
 
     if (!originalSalesInstance) {
@@ -69,50 +69,45 @@ export const transferOrdersBetweenSalesInstances = async (
     }));
 
     // Step 5: Execute all database operations in parallel
-    const [orderBulk, salesInstanceUpdate1, salesInstanceUpdate2, moveOrders] =
-      await Promise.all([
-        // Bulk update orders' salesInstanceId
-        Order.bulkWrite(bulkUpdateOrders, { session }),
+    const [orderBulk, salesInstanceUpdate1] = await Promise.all([
+      Order.bulkWrite(bulkUpdateOrders, { session }),
 
-        // Remove orders from the original sales group
-        SalesInstance.updateOne(
-          { _id: originalSalesInstance._id },
-          { $pull: { "salesGroup.$[].ordersIds": { $in: ordersIdsArr } } },
-          { session }
-        ),
+      // Remove orders from the original sales group
+      SalesInstance.updateOne(
+        { _id: originalSalesInstance._id },
+        { $pull: { "salesGroup.$[].ordersIds": { $in: ordersIdsArr } } },
+        { session }
+      ),
+    ]);
 
-        // Remove empty salesGroup objects if any ordersIds array becomes empty
-        SalesInstance.updateOne(
-          { _id: originalSalesInstance._id },
-          { $pull: { salesGroup: { ordersIds: { $size: 0 } } } },
-          { session }
-        ),
-
-        // Add orders to the target sales instance's salesGroup
-        moveOrdersToTargetSalesInstance(
-          targetSalesInstance,
-          ordersIdsArr,
-          originalSalesInstance.salesGroup,
-          session
-        ),
-      ]);
-
-    // check if bulk update was successful
     if (orderBulk.modifiedCount !== ordersIdsArr.length) {
       return "OrderBulk failed!";
     }
 
-    // check if salesInstanceUpdate1 was successful
     if (salesInstanceUpdate1.modifiedCount !== 1) {
+      console.log("salesInstanceUpdate1 did not modify any documents.");
       return "SalesInstanceUpdate1 failed!";
     }
 
-    // check if salesInstanceUpdate2 was successful
-    if (salesInstanceUpdate2.modifiedCount !== 1) {
-      return "SalesInstanceUpdate2 failed!";
+    // Now remove empty sales groups
+    const salesInstanceUpdate2 = await SalesInstance.updateMany(
+      { _id: originalSalesInstance._id },
+      { $pull: { salesGroup: { ordersIds: { $size: 0 } } } },
+      { session }
+    );
+
+    if (salesInstanceUpdate2.modifiedCount === 0) {
+      console.log("No empty sales groups were removed.");
     }
 
-    // check if moveOrders was successful
+    // Add orders to the target sales instance's salesGroup
+    const moveOrders = await moveOrdersToTargetSalesInstance(
+      targetSalesInstance,
+      ordersIdsArr,
+      originalSalesInstance.salesGroup,
+      session
+    );
+
     if (moveOrders !== true) {
       return moveOrders;
     }
@@ -127,29 +122,42 @@ export const transferOrdersBetweenSalesInstances = async (
 const moveOrdersToTargetSalesInstance = async (
   targetSalesInstance: ISalesInstance,
   ordersIdsArr: Types.ObjectId[],
-  originalSalesGroups: any[],
+  originalSalesGroups: {
+    orderCode: string;
+    createdAt: Date;
+    ordersIds: Types.ObjectId[];
+  }[],
   session: ClientSession
 ) => {
-  // Iterate through the original sales groups to match order codes and transfer
-  for (const group of originalSalesGroups) {
-    const { orderCode, createdAt } = group;
+  // Iterate through the orders to move them to the correct salesGroup
+  for (const orderId of ordersIdsArr) {
+    // Find the original sales group that contains the orderId
+    const orderGroup = originalSalesGroups.find(
+      (group) => group.ordersIds && group.ordersIds.includes(orderId) // Ensure ordersIds is defined
+    );
+
+    if (!orderGroup) {
+      continue; // Skip if no matching orderGroup found for the orderId
+    }
+
+    const { orderCode, createdAt } = orderGroup;
 
     // Check if target salesInstance already has a matching salesGroup by orderCode
-    const existingGroup =
-      targetSalesInstance.salesGroup &&
-      targetSalesInstance.salesGroup.find((g) => g.orderCode === orderCode);
+    const existingGroup = targetSalesInstance.salesGroup?.find(
+      (g) => g.orderCode === orderCode
+    );
 
     if (existingGroup) {
-      // Add orders to the existing salesGroup
+      // Add the orderId to the existing salesGroup
       const updatedSalesInstance = await SalesInstance.updateOne(
         { _id: targetSalesInstance._id, "salesGroup.orderCode": orderCode },
-        { $addToSet: { "salesGroup.$.ordersIds": { $each: ordersIdsArr } } },
+        { $addToSet: { "salesGroup.$.ordersIds": orderId } },
         { session }
       );
 
       if (updatedSalesInstance.modifiedCount !== 1) {
         await session.abortTransaction();
-        return "Failed to add orders to existing salesGroup!";
+        return "Failed to add order to existing salesGroup!";
       }
     } else {
       // Add a new salesGroup if no matching group by orderCode
@@ -159,18 +167,20 @@ const moveOrdersToTargetSalesInstance = async (
           $push: {
             salesGroup: {
               orderCode,
-              ordersIds: ordersIdsArr,
+              ordersIds: [orderId], // Push the individual orderId as an array
               createdAt,
             },
           },
         },
         { session }
       );
+
       if (updatedSalesInstance.modifiedCount !== 1) {
         await session.abortTransaction();
-        return "Failed to add orders to new salesGroup!";
+        return "Failed to add new salesGroup with order!";
       }
     }
   }
+
   return true;
 };

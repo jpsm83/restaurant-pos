@@ -70,6 +70,6 @@ export const createSalesInstance = async (
 
     return newSalesInstance;
   } catch (error) {
-    return "Create sales instance failed!";
+    return "Create sales instance failed! " + error;
   }
 };

@@ -24,7 +24,7 @@ export const addEmployeeToDailySalesReport = async (
         $addToSet: { employeesDailySalesReport: { employeeId } }, // Avoid duplicates
       },
       { new: true, lean: true } // Return the updated document
-    );
+    ).session(session);
 
     // If no daily sales report found
     if (!updatedDailySalesReport) {

@@ -3,9 +3,6 @@ import { NextResponse } from "next/server";
 // import utils
 import connectDb from "@/app/lib/utils/connectDb";
 import { handleApiError } from "@/app/lib/utils/handleApiError";
-import { addEmployeeToDailySalesReport } from "./utils/addEmployeeToDailySalesReport";
-import { createDailySalesReport } from "./utils/createDailySalesReport";
-import { updateEmployeesDailySalesReport } from "./utils/updateEmployeeDailySalesReport";
 
 // import models
 import Employee from "@/app/lib/models/employee";
@@ -15,7 +12,7 @@ import Customer from "@/app/lib/models/customer";
 // @desc    Get all daily reports
 // @route   GET /dailySalesReports
 // @access  Private
-export const GET = async (req: Request) => {
+export const GET = async () => {
   try {
     // connect before first call to DB
     await connectDb();

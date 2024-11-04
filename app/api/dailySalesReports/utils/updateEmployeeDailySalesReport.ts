@@ -72,7 +72,7 @@ export const updateEmployeesDailySalesReport = async (
           .lean();
 
         // Initialize employee sales report object
-        let employeeGoodsReport: {
+        const employeeGoodsReport: {
           goodsSold: IGoodsReduced[];
           goodsVoid: IGoodsReduced[];
           goodsInvited: IGoodsReduced[];
@@ -82,7 +82,7 @@ export const updateEmployeesDailySalesReport = async (
           goodsInvited: [],
         };
 
-        let employeeDailySalesReportObj: IEmployeeDailySalesReport = {
+        const employeeDailySalesReportObj: IEmployeeDailySalesReport = {
           employeeId: employeeId,
           hasOpenSalesInstances: false,
           employeePaymentMethods: [] as IPaymentMethod[],

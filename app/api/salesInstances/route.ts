@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import mongoose, { Types } from "mongoose";
 
 // import utils
 import connectDb from "@/app/lib/utils/connectDb";
@@ -13,18 +12,19 @@ import { IDailySalesReport } from "@/app/lib/interface/IDailySalesReport";
 import { ISalesInstance } from "@/app/lib/interface/ISalesInstance";
 
 // imported models
-import DailySalesReport from "@/app/lib/models/dailySalesReport";
 import Employee from "@/app/lib/models/employee";
 import BusinessGood from "@/app/lib/models/businessGood";
 import Order from "@/app/lib/models/order";
 import SalesInstance from "@/app/lib/models/salesInstance";
 import SalesPoint from "@/app/lib/models/salesPoint";
 import Customer from "@/app/lib/models/customer";
+import mongoose from "mongoose";
+import DailySalesReport from "@/app/lib/models/dailySalesReport";
 
 // @desc    Get all salesInstances
 // @route   GET /salesInstances
 // @access  Private
-export const GET = async (req: Request) => {
+export const GET = async () => {
   try {
     // connect before first call to DB
     await connectDb();
@@ -135,7 +135,7 @@ export const POST = async (req: Request) => {
         businessId,
       })
         .select("dailyReferenceNumber")
-        .lean() as Promise<IDailySalesReport>,
+        .lean() as Promise<IDailySalesReport | null>,
     ]);
 
     // check salesPointId exists
