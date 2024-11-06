@@ -170,7 +170,7 @@ export const PATCH = async (
       _id: { $ne: employeeId },
       businessId: employee.businessId,
       $or: [{ employeeName }, { email }, { taxNumber }, { idNumber }],
-    }).lean()) as IEmployee | null;
+    }).lean()) as unknown as IEmployee | null;
 
     if (duplicateEmployee) {
       await session.abortTransaction();

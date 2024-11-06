@@ -86,7 +86,7 @@ export const POST = async (req: Request) => {
         }
       );
     }
-
+    
     // check address validation
     if (address) {
       const validAddress = addressValidation(address);

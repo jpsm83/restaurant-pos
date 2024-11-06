@@ -1,6 +1,8 @@
+"use client";
+
 import { useUser, ClerkLoaded, UserButton, SignInButton } from "@clerk/nextjs";
 import Link from "next/link";
-import { HomeIcon } from "@radix-ui/react-icons";
+import { Bell, ListCollapse, Building2, UsersRound, Share2, Soup, MapPin, ClipboardMinus, ChefHat, FileDigit, Printer, Monitor, LayoutList, CalendarCheck2, ShoppingCart, CircleDollarSign, Utensils, Coffee, BookOpenText, CalendarDays, Sun, SquareChartGantt } from "lucide-react";
 import {
   Menubar,
   MenubarContent,
@@ -14,8 +16,6 @@ import {
 function Header() {
   const { user } = useUser();
 
-  console.log(user);
-
   return (
     <header className="bg-yellow-400">
       <div className="flex justify-between align-middle p-3">
@@ -28,12 +28,12 @@ function Header() {
           <div className="flex gap-5">
             {user ? (
               <div className="flex items-center space-x-5">
-                <Link href="/">
-                  <HomeIcon className="h-4 w-4" />
+                <Link href="/notifications">
+                  <Bell className="h-4 w-4" />
                 </Link>
                 <UserButton />
                 <div className="hidden sm:block text-xs">
-                  <p className="text-yellow-800">Welcome Back</p>
+                  <p className="text-yellow-800">{user.primaryEmailAddress.emailAddress}</p>
                   <p className="font-bold text-gray-800">{user.fullName}</p>
                 </div>
               </div>
@@ -45,43 +45,99 @@ function Header() {
       </div>
       <Menubar>
         <MenubarMenu>
-          <MenubarTrigger>Business
-          </MenubarTrigger>
+          <MenubarTrigger className="flex items-center gap-2"><Building2 className="h-4 w-4" />Business</MenubarTrigger>
           <MenubarContent>
-            <MenubarItem><Link href="/businessDetails">Details</Link></MenubarItem>
-            <MenubarItem>Metrics</MenubarItem>
-          </MenubarContent>
-        </MenubarMenu>
-        <MenubarMenu>
-          <MenubarTrigger>Employees</MenubarTrigger>
-          <MenubarContent>
-            <MenubarItem>All</MenubarItem>
+            <MenubarItem>
+            <Link href="/business-details" className="flex items-center gap-2"><ListCollapse className="h-4 w-4" />Details</Link>
+            </MenubarItem>
             <MenubarSeparator />
-            <MenubarItem>Front</MenubarItem>
-            <MenubarItem>Back</MenubarItem>
-            <MenubarItem>Admin</MenubarItem>
+            <MenubarItem>
+              <Link href="/default-metrics" className="flex items-center gap-2"><FileDigit className="h-4 w-4" />Default Metrics</Link>
+            </MenubarItem>
+            <MenubarItem>
+              <Link href="/sales-points" className="flex items-center gap-2"><MapPin className="h-4 w-4" />Sales Points</Link>
+            </MenubarItem>
+            <MenubarItem>
+              <Link href="/printers" className="flex items-center gap-2"><Printer className="h-4 w-4" />Printers</Link>
+            </MenubarItem>
+            <MenubarItem>
+              <Link href="/screens" className="flex items-center gap-2"><Monitor className="h-4 w-4" />Screens</Link>
+            </MenubarItem>
           </MenubarContent>
         </MenubarMenu>
+
         <MenubarMenu>
-          <MenubarTrigger>Example1</MenubarTrigger>
+          <MenubarTrigger className="flex items-center gap-2"><ChefHat className="h-4 w-4" />Employees</MenubarTrigger>
+          <MenubarContent>
+            <MenubarItem>
+              <Link href="/employees-list" className="flex items-center gap-2"><LayoutList className="h-4 w-4" />List</Link>
+            </MenubarItem>
+            <MenubarItem>
+              <Link href="/schedules" className="flex items-center gap-2"><CalendarCheck2 className="h-4 w-4" />Schedules</Link>
+            </MenubarItem>
+          </MenubarContent>
         </MenubarMenu>
+
         <MenubarMenu>
-          <MenubarTrigger>Example2</MenubarTrigger>
+          <MenubarTrigger className="flex items-center gap-2"><Share2 className="h-4 w-4" />Suppliers</MenubarTrigger>
+          <MenubarContent>
+            <MenubarItem>
+              <Link href="/suppliers-list" className="flex items-center gap-2"><LayoutList className="h-4 w-4" />List</Link>
+            </MenubarItem>
+            <MenubarItem>
+              <Link href="/purchases" className="flex items-center gap-2"><ShoppingCart className="h-4 w-4" />Purchases</Link>
+            </MenubarItem>
+          </MenubarContent>
         </MenubarMenu>
+
         <MenubarMenu>
-          <MenubarTrigger>Example3</MenubarTrigger>
+          <MenubarTrigger className="flex items-center gap-2"><Soup className="h-4 w-4" />Sales Products</MenubarTrigger>
+          <MenubarContent>
+            <MenubarItem>
+              <Link href="/sales-products-list" className="flex items-center gap-2"><LayoutList className="h-4 w-4" />List</Link>
+            </MenubarItem>
+            <MenubarItem>
+              <Link href="/promotions" className="flex items-center gap-2"><CircleDollarSign className="h-4 w-4" />Promotions</Link>
+            </MenubarItem>
+          </MenubarContent>
         </MenubarMenu>
+
         <MenubarMenu>
-          <MenubarTrigger>Example4</MenubarTrigger>
+          <MenubarTrigger className="flex items-center gap-2"><MapPin className="h-4 w-4" />Floor</MenubarTrigger>
+          <MenubarContent>
+            <MenubarItem>
+              <Link href="/sales-instances" className="flex items-center gap-2"><Utensils className="h-4 w-4" />Sales Instances</Link>
+            </MenubarItem>
+            <MenubarItem>
+              <Link href="/orders" className="flex items-center gap-2"><Coffee className="h-4 w-4" />Orders</Link>
+            </MenubarItem>
+            <MenubarSeparator />
+            <MenubarItem>
+              <Link href="/reservations" className="flex items-center gap-2"><BookOpenText className="h-4 w-4" />Reservations</Link>
+            </MenubarItem>
+          </MenubarContent>
         </MenubarMenu>
+
         <MenubarMenu>
-          <MenubarTrigger>Example5</MenubarTrigger>
+          <MenubarTrigger className="flex items-center gap-2"><ClipboardMinus className="h-4 w-4" />Reports</MenubarTrigger>
+          <MenubarContent>
+            <MenubarItem>
+              <Link href="/daily-reports" className="flex items-center gap-2"><Sun className="h-4 w-4" />Daily Reports</Link>
+            </MenubarItem>
+            <MenubarItem>
+              <Link href="/monthly-reports" className="flex items-center gap-2"><CalendarDays className="h-4 w-4" />Monthly Reports</Link>
+            </MenubarItem>
+            <MenubarSeparator />
+            <MenubarItem>
+              <Link href="/inventory" className="flex items-center gap-2"><SquareChartGantt className="h-4 w-4" />Inventory</Link>
+            </MenubarItem>
+          </MenubarContent>
         </MenubarMenu>
+
         <MenubarMenu>
-          <MenubarTrigger>Example6</MenubarTrigger>
-        </MenubarMenu>
-        <MenubarMenu>
-          <MenubarTrigger>Example7</MenubarTrigger>
+          <MenubarTrigger>
+            <Link href="/customers" className="flex items-center gap-2"><UsersRound className="h-4 w-4" />Customers</Link>
+          </MenubarTrigger>
         </MenubarMenu>
       </Menubar>
     </header>
