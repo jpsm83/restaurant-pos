@@ -1,49 +1,57 @@
 import { NextResponse } from "next/server";
-
-// imported utils
-import connectDb from "@/app/lib/utils/connectDb";
-import { handleApiError } from "@/app/lib/utils/handleApiError";
-
-// imported models
 import Employee from "@/app/lib/models/employee";
+import { handleApiError } from "@/app/lib/utils/handleApiError";
+import connectDb from "@/app/lib/utils/connectDb";
 
-// @desc   Get employee by bussiness ID
-// @route  GET /employees/email/:email
+// @desc   Get employee by email
+// @route  GET /api/employees/email/:email
 // @access Private
 export const GET = async (
   req: Request,
-  context: {
-    params: { email: string };
-  }
+  context: { params: { email: string } }
 ) => {
   try {
     const email = context.params.email;
 
-    // validate the email
+    // Validate the email
+    if (!email) {
+      return new NextResponse(
+        JSON.stringify({
+          message: "Email parameter is required!",
+        }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
 
-    // connect before first call to DB
+    // Connect to the database
     await connectDb();
 
-    const employees = await Employee.find({ email: email })
+    // Find the employee by email
+    const employee = await Employee.findOne({ email })
       .select("-password")
       .lean();
 
-    return !employees.length
-      ? new NextResponse(
-          JSON.stringify({
-            message: "No employee found with this email!",
-          }),
-          {
-            status: 404,
-            headers: { "Content-Type": "application/json" },
-          }
-        )
-      : new NextResponse(JSON.stringify(employees), {
-          status: 200,
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
+    if (!employee) {
+      return new NextResponse(
+        JSON.stringify({
+          message: "No employee found with this email!",
+        }),
+        {
+          status: 404,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    return new NextResponse(JSON.stringify(employee), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
   } catch (error) {
     return handleApiError("Get employee by email failed!", error);
   }
