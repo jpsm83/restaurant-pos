@@ -1,10 +1,12 @@
-"use client";
-
+import { useUserStore } from "@/app/store/store";
 import Image from "next/image";
 import { useEffect, useState } from "react";
+import { BusinessNavigation } from "./BusinessNavigation";
 
-export const BusinessContainer = ({ businessId }) => {
+export const BusinessContainer = () => {
   const [businessData, setBusinessData] = useState(null);
+
+  const businessId = useUserStore((state) => state.businessId);
 
   useEffect(() => {
     const fetchBusiness = async () => {
@@ -36,13 +38,16 @@ export const BusinessContainer = ({ businessId }) => {
   }, [businessId]);
 
   return (
-    <div className="flex items-center justify-center h-screen">
+    <div>
+      <BusinessNavigation />
+      <div className="min-h-[calc(100vh-104px)] flex justify-center items-center">
       <Image
-        src={businessData?.imageUrl || "/hrc.png"}
+        src={businessData?.imageUrl || "/imperium.png"}
         width={500}
         height={500}
         alt="Picture of the author"
       />
+    </div>
     </div>
   );
 };

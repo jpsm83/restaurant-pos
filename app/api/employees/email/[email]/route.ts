@@ -6,12 +6,9 @@ import connectDb from "@/app/lib/utils/connectDb";
 // @desc   Get employee by email
 // @route  GET /api/employees/email/:email
 // @access Private
-export const GET = async (
-  req: Request,
-  context: { params: { email: string } }
-) => {
+export const GET = async (req: Request, context: { params: { email: string } }) => {
   try {
-    const email = context.params.email;
+    const { email } = await context.params;
 
     // Validate the email
     if (!email) {

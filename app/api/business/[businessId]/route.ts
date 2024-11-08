@@ -43,7 +43,7 @@ export const GET = async (
   }
 ) => {
   try {
-    const businessId = context.params.businessId;
+    const { businessId } = await context.params;
 
     if (!businessId || isObjectIdValid([businessId]) !== true) {
       return new NextResponse(

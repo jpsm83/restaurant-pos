@@ -17,7 +17,7 @@ const emailRegex = /^[\w-]+(\.[\w-]+)*@([\w-]+\.)+[a-zA-Z]{2,7}$/;
 // @desc    Get all businesses
 // @route   GET /business
 // @access  Private
-export const GET = async () => {
+export const GET = async (req: Request) => {
   try {
     // connect before first call to DB
     await connectDb();

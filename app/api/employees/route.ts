@@ -20,7 +20,7 @@ import Business from "@/app/lib/models/business";
 // @desc    Get all employees
 // @route   GET /employees
 // @access  Private
-export const GET = async () => {
+export const GET = async (req: Request) => {
   try {
     // connect before first call to DB
     await connectDb();
