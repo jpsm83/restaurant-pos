@@ -33,3 +33,5 @@ cloudinaryActions
 - transform cloudinaryActions route to be a function to be used in all the creations that could have images
 - when a salesInstance is created by client using qrCode, update the qrLastScanned of the salesPoint
 - add collor themes for the types of businessGoods (or photo)
+
+- model employee been update with new properties values, check the "email", "password", "terminatedDate" and "businessId"

@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { handleApiError } from "./handleApiError";
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
@@ -23,7 +24,7 @@ const connectDb = async () => {
     console.log("Connection established");
   } catch (error) {
     console.error("Error: ", error);
-    throw new Error("Error: ", error);
+    handleApiError("Error: ", error);
   }
 };
 

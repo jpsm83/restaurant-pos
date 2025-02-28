@@ -6,7 +6,6 @@ import connectDb from "@/app/lib/utils/connectDb";
 
 // imported interfaces
 import { IEmployee } from "@/app/lib/interface/IEmployee";
-import { personalDetailsValidation } from "../../lib/utils/personalDetailsValidation";
 import { addressValidation } from "@/app/lib/utils/addressValidation";
 import { handleApiError } from "@/app/lib/utils/handleApiError";
 import { calculateVacationProportional } from "./utils/calculateVacationProportional";
@@ -16,6 +15,7 @@ import Employee from "@/app/lib/models/employee";
 import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
 import salaryValidation from "./utils/salaryValidation";
 import Business from "@/app/lib/models/business";
+import { personalDetailsValidation } from "@/app/lib/utils/personalDetailsValidation";
 
 // @desc    Get all employees
 // @route   GET /employees

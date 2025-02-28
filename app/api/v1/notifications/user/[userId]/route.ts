@@ -36,9 +36,11 @@ export const GET = async (
     // connect before first call to DB
     await connectDb();
 
-    const notifications = await Notification.find({
-      recipientsId: employeeId,
-    })
+    const notifications = await Notification.find(
+      { recipientsId: employeeId },
+      null,
+      { lean: true }
+    )
       .populate({
         path: "employeesRecipientsIds",
         select: "employeeName",
@@ -48,8 +50,7 @@ export const GET = async (
         path: "customersRecipientsIds",
         select: "customerName",
         model: Customer,
-      })
-      .lean();
+      });
 
     return !notifications.length
       ? new NextResponse(
