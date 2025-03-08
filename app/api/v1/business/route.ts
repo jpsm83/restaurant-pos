@@ -37,7 +37,7 @@ export const GET = async (req: Request) => {
           },
         });
   } catch (error) {
-    return handleApiError("Get all business failed!", error);
+    return handleApiError("Get all business failed!", error as string);
   }
 };
 
@@ -141,6 +141,6 @@ export const POST = async (req: Request) => {
       { status: 201, headers: { "Content-Type": "application/json" } }
     );
   } catch (error) {
-    return handleApiError("Create business failed!", error);
+    return handleApiError("Create business failed!", error as string);
   }
 };

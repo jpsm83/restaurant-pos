@@ -1,46 +1,7 @@
 import Link from "next/link";
-import { useEffect } from "react";
-import { useUserStore } from "@/app/store/store";
 import { HeaderDrawer } from "./HeaderDrawer";
 
 function Header() {
-  const { user } = useUser();
-
-  const setUserData = useUserStore((state) => state.setUserData);
-  const resetUserData = useUserStore((state) => state.resetUserData);
-
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const response = await fetch(
-          `http://localhost:3000/api/employees/email/${user.primaryEmailAddress.emailAddress}`,
-          {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = await response.json();
-
-        setUserData(data.employeeName, data.businessId); // Update the Zustand store
-      } catch (error) {
-        console.error("Error fetching user:", error);
-      }
-    };
-
-    if (user) {
-      fetchUser();
-    } else {
-      resetUserData(); // Reset the Zustand store when the user logs out
-    }
-  }, [user, setUserData, resetUserData]);
-
   const trainningColumns = [
     {
       columnTitle: "Metrics",
