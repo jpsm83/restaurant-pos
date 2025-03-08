@@ -1,15 +1,6 @@
-import {
-  useUser,
-  ClerkLoaded,
-  UserButton,
-  SignInButton,
-  SignUpButton,
-} from "@clerk/nextjs";
 import Link from "next/link";
-import { Bell } from "lucide-react";
 import { useEffect } from "react";
 import { useUserStore } from "@/app/store/store";
-import { Button } from "./ui/button";
 import { HeaderDrawer } from "./HeaderDrawer";
 
 function Header() {
@@ -134,31 +125,7 @@ function Header() {
           columns={aboutColumns}
         />
       </div>
-      <ClerkLoaded>
-        <div className="flex gap-5 mr-3 items-center">
-          {user ? (
-            <div className="flex items-center space-x-5">
-              <Link href="/notifications">
-                <Bell className="h-4 w-4" />
-              </Link>
-              <UserButton />
-              <div className="hidden sm:block text-xs">
-                <p className="text-yellow-800">
-                  {user.primaryEmailAddress.emailAddress}
-                </p>
-                <p className="font-bold text-gray-800">{user.fullName}</p>
-              </div>
-            </div>
-          ) : (
-            <div className="flex gap-8 mr-5">
-              <Button asChild>
-                <SignUpButton mode="modal">Register</SignUpButton>
-              </Button>
-              <SignInButton mode="modal">Login</SignInButton>
-            </div>
-          )}
-        </div>
-      </ClerkLoaded>
+      <h1 className="text-2xl font-bold">used to be clerk</h1>
     </header>
   );
 }

@@ -3,7 +3,7 @@ import { IAddress } from "./IAddress";
 import { IPersonalDetails } from "./IPersonalDetails";
 
 export interface ICustomerOrders {
-  orderId: Types.ObjectId[];
+  readonly orderId: Types.ObjectId[];
   saleDate: Date;
   paymentToken: string;
   paymentMethodId: string;

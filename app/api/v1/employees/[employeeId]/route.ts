@@ -4,7 +4,7 @@ import mongoose, { Types } from "mongoose";
 
 // imported utils
 import connectDb from "@/app/lib/utils/connectDb";
-import { personalDetailsValidation } from "../../../lib/utils/personalDetailsValidation";
+import { personalDetailsValidation } from "../../../../lib/utils/personalDetailsValidation";
 import { addressValidation } from "@/app/lib/utils/addressValidation";
 import { handleApiError } from "@/app/lib/utils/handleApiError";
 import { calculateVacationProportional } from "../utils/calculateVacationProportional";

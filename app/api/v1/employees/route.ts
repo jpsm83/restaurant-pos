@@ -6,7 +6,7 @@ import connectDb from "@/app/lib/utils/connectDb";
 
 // imported interfaces
 import { IEmployee } from "@/app/lib/interface/IEmployee";
-import { personalDetailsValidation } from "../../lib/utils/personalDetailsValidation";
+import { personalDetailsValidation } from "../../../lib/utils/personalDetailsValidation";
 import { addressValidation } from "@/app/lib/utils/addressValidation";
 import { handleApiError } from "@/app/lib/utils/handleApiError";
 import { calculateVacationProportional } from "./utils/calculateVacationProportional";

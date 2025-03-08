@@ -5,11 +5,11 @@ import mongoose, { Types } from "mongoose";
 import connectDb from "@/app/lib/utils/connectDb";
 import { handleApiError } from "@/app/lib/utils/handleApiError";
 import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
-import { createDailySalesReport } from "@/app/api/dailySalesReports/utils/createDailySalesReport";
+import { createDailySalesReport } from "@/app/api/v1/dailySalesReports/utils/createDailySalesReport";
 import { createSalesInstance } from "../../utils/createSalesInstance";
-import { ordersArrValidation } from "@/app/api/orders/utils/validateOrdersArr";
-import { createOrders } from "@/app/api/orders/utils/createOrders";
-import { closeOrders } from "@/app/api/orders/utils/closeOrders";
+import { ordersArrValidation } from "@/app/api/v1/orders/utils/validateOrdersArr";
+import { createOrders } from "@/app/api/v1/orders/utils/createOrders";
+import { closeOrders } from "@/app/api/v1/orders/utils/closeOrders";
 
 // import interfaces
 import {
@@ -24,7 +24,7 @@ import { IPaymentMethod } from "@/app/lib/interface/IPaymentMethod";
 // imported models
 import DailySalesReport from "@/app/lib/models/dailySalesReport";
 import Customer from "@/app/lib/models/customer";
-import { validatePaymentMethodArray } from "@/app/api/orders/utils/validatePaymentMethodArray";
+import { validatePaymentMethodArray } from "@/app/api/v1/orders/utils/validatePaymentMethodArray";
 
 // first create a empty salesInstance, then update it with the salesGroup.ordersIds
 // @desc    Create new salesInstances
