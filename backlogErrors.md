@@ -35,3 +35,4 @@ cloudinaryActions
 - add collor themes for the types of businessGoods (or photo)
 
 - model employee been update with new properties values, check the "email", "password", "terminatedDate" and "businessId"
+- readyonly on interfaces - check ICustomer
