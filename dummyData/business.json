@@ -4,6 +4,7 @@
         "tradeName": "updated",
         "legalName": "testing",
         "email": "business1@business1.com",
+        "password": "business1password",
         "phoneNumber": "business1phoneNumber",
         "taxNumber": "business1taxNumber",
         "currencyTrade": "business1currencyTrade",

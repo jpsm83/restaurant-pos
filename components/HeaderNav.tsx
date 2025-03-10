@@ -1,7 +1,24 @@
+"use client"
+
 import Link from "next/link";
 import { HeaderDrawer } from "./HeaderDrawer";
+import { Bell } from "lucide-react";
+import { Button } from "./ui/button";
+import { signOut, signIn, useSession } from "next-auth/react"; // signIn, signOut, useSession, getSession, getCsrfToken, getProviders
+import { redirect } from "next/navigation";
 
-function Header() {
+function HeaderNav() {
+    // that is how you can use the session object on the client component  (check app/admin/page.tsx for how to get session object on the client component)
+    const { data: session, status } = useSession({
+      required: false,
+      onUnauthenticated() {
+        redirect("/");
+      },
+    });
+  
+    if (status === "loading") {
+      return <div>Loading...</div>;
+    }
   const trainningColumns = [
     {
       columnTitle: "Metrics",
@@ -86,9 +103,28 @@ function Header() {
           columns={aboutColumns}
         />
       </div>
-      <h1 className="text-2xl font-bold">used to be clerk</h1>
+
+      <div className="flex gap-5 mr-3 items-center">
+        {session ? (
+          <div className="flex items-center space-x-5">
+            <Link href="/notifications">
+              <Bell className="h-4 w-4" />
+            </Link>
+            <div className="hidden sm:block text-xs">
+              <p className="text-yellow-800">{session.user?.name}</p>
+              <p className="font-bold text-gray-800">{session.user?.name}</p>
+            </div>
+            <Button onClick={() => signOut()}>Logout</Button>
+          </div>
+        ) : (
+          <div className="flex gap-8 mr-5">
+            <Button>Register</Button>
+            <Button onClick={() => signIn()}>Login</Button>
+          </div>
+        )}
+      </div>
     </header>
   );
 }
 
-export default Header;
+export default HeaderNav;

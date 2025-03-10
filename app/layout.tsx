@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { UserProvider } from "@auth0/nextjs-auth0/client";
+import HeaderNav from "@/components/HeaderNav";
+import AuthProviders from "@/context/AuthProvider"; // this provider will wrap all the aplication given children access to the session
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -17,8 +18,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={inter.className}>
-        <UserProvider>{children}</UserProvider>
+      <body className={`${inter.className} flex flex-col min-h-screen`}>
+        <AuthProviders>
+          <nav className="h-16 shadow-md">
+            <HeaderNav />
+          </nav>
+          {children}
+        </AuthProviders>
       </body>
     </html>
   );
