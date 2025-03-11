@@ -62,11 +62,11 @@ export const PATCH = async (
 
     // customer can mark notification as deleted but never delete it for data integrity
     const updatedCustomer = await Customer.updateOne(
-      { _id: customerId, "notifications.notificationId": notificationId },
+      { _id: customerId, "personalDetails.notifications._id": notificationId },
       {
         $set: {
-          "notifications.$.deletedFlag": true,
-          "notifications.$.readFlag": true,
+          "personalDetails.notifications.$.deletedFlag": true,
+          "personalDetails.notifications.$.readFlag": true,
         },
       },
       { session }
@@ -96,7 +96,7 @@ export const PATCH = async (
     await session.abortTransaction();
     return handleApiError(
       "Update notification read flag from customer failed!",
-      error
+      error as string
     );
   } finally {
     session.endSession();

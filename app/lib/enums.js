@@ -85,6 +85,7 @@ export const subscription = ["Free", "Basic", "Premium", "Enterprise"];
 export const idTypes = ["National ID", "Passport", "Driving License"];
 
 export const employeeRoles = [
+  "Owner",
   "General Manager",
   "Manager",
   "Assistant Manager",

@@ -1,25 +1,32 @@
 import { Types } from "mongoose";
-import { IAddress } from "./IAddress";
+// import { IAddress } from "./IAddress";
 import { IPersonalDetails } from "./IPersonalDetails";
 
-export interface ICustomerOrders {
-  readonly orderId: Types.ObjectId[];
-  saleDate: Date;
-  paymentToken: string;
-  paymentMethodId: string;
-}
+// export interface ICustomerOrders {
+//   readonly orderId: Types.ObjectId[];
+//   saleDate: Date;
+//   paymentToken: string;
+//   paymentMethodId: string;
+// }
+
+// export interface ICustomer { // customerUser insted
+//   customerName: string;
+//   email: string;
+//   password: string;
+//   idType: string;
+//   idNumber: string;
+//   personalDetails: IPersonalDetails;
+//   address?: IAddress;
+//   imageUrl?: string;
+
+//   deviceToken?: string;
+//   notifications?: { notificationId: Types.ObjectId; readFlag: boolean }[];
+//   customerOrders?: ICustomerOrders[];
+//   readonly businessId: Types.ObjectId;
+// }
 
 export interface ICustomer {
-  customerName: string;
-  email: string;
-  password: string;
-  idType: string;
-  idNumber: string;
+  // customerUser insted
   personalDetails: IPersonalDetails;
-  businessId: Types.ObjectId;
-  deviceToken?: string;
-  address?: IAddress;
-  imageUrl?: string;
-  customerOrders?: ICustomerOrders[];
-  notifications?: { notificationId: Types.ObjectId; readFlag: boolean }[];
+  selfOrders: Types.ObjectId[];
 }

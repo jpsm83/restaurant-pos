@@ -8,25 +8,29 @@ export interface ISalary {
   netSalary: number;
 }
 
-export interface IEmployee {
-  employeeName: string;
+export interface IEmployee { // workeruser insted
+  employeeName: string; // change to username
   email: string;
   password: string;
   idType: string;
   idNumber: string;
-  allEmployeeRoles: string[];
   personalDetails: IPersonalDetails;
+  businessId: Types.ObjectId; // DELETE change to business
+  deviceToken?: string;
+  address?: IAddress;
+  imageUrl?: string;
+
+  allEmployeeRoles: string[]; // DELETE change to roles
+
+  businessAndRoles: { businessId: Types.ObjectId; roles: string[] }[];// added, change on code
+
   taxNumber: string;
   joinDate: Date;
   active: boolean;
   onDuty: boolean;
   vacationDaysPerYear?: number;
   vacationDaysLeft: number;
-  businessId: Types.ObjectId;
-  deviceToken?: string;
   currentShiftRole?: string;
-  address?: IAddress;
-  imageUrl?: string;
   contractHoursWeek?: number; // in milliseconds
   salary?: ISalary;
   terminatedDate?: Date;

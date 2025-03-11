@@ -3,17 +3,46 @@ import { hash } from "bcrypt";
 
 // imported utils
 import connectDb from "@/app/lib/utils/connectDb";
+import objDefaultValidation from "@/app/lib/utils/objDefaultValidation";
+import { handleApiError } from "@/app/lib/utils/handleApiError";
 
 // imported interfaces
-import { ICustomer } from "@/app/lib/interface/ICustomer";
-import { addressValidation } from "@/app/lib/utils/addressValidation";
-import { handleApiError } from "@/app/lib/utils/handleApiError";
+import { IPersonalDetails } from "@/app/lib/interface/IPersonalDetails";
 
 // imported models
 import Customer from "@/app/lib/models/customer";
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
-import { personalDetailsValidation } from "@/app/lib/utils/personalDetailsValidation";
-import Business from "@/app/lib/models/business";
+
+const reqPersonalDetailsFields = [
+  "username",
+  "email",
+  "password",
+  "idType",
+  "idNumber",
+  "firstName",
+  "lastName",
+  "address",
+];
+
+const nonReqPersonalDetailsFields = [
+  "imageUrl",
+  "nationality",
+  "gender",
+  "birthDate",
+  "phoneNumber",
+  "deviceToken",
+  "notifications",
+];
+
+const reqAddressFields = [
+  "country",
+  "state",
+  "city",
+  "street",
+  "buildingNumber",
+  "postCode",
+];
+
+const nonReqAddressFields = ["region", "additionalDetails", "coordinates"];
 
 // @desc    Get all customers
 // @route   GET /customers
@@ -23,7 +52,10 @@ export const GET = async () => {
     // connect before first call to DB
     await connectDb();
 
-    const customers = await Customer.find().select("-password").lean();
+    const customers = await Customer.find(
+      {},
+      { "personalDetails.password": 0 }
+    ).lean();
 
     return !customers?.length
       ? new NextResponse(JSON.stringify({ message: "No customers found" }), {
@@ -37,7 +69,7 @@ export const GET = async () => {
           },
         });
   } catch (error) {
-    return handleApiError("Get all customers failed!", error);
+    return handleApiError("Get all customers failed!", error as string);
   }
 };
 
@@ -47,63 +79,48 @@ export const GET = async () => {
 export const POST = async (req: Request) => {
   try {
     const {
-      customerName,
-      email,
-      password,
-      idType,
-      idNumber,
       personalDetails,
-      businessId,
-      address,
-    } = (await req.json()) as ICustomer;
+    }: {
+      personalDetails: IPersonalDetails;
+    } = await req.json();
 
     // check required fields
-    if (
-      !customerName ||
-      !email ||
-      !password ||
-      !idType ||
-      !idNumber ||
-      !personalDetails ||
-      !businessId
-    ) {
+    if (!personalDetails) {
       return new NextResponse(
         JSON.stringify({
-          message:
-            "CustomerName, email, password, personalDetails and businessId are required fields!",
+          message: "PersonalDetails is required fields!",
         }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
 
-    // validate businessId
-    if (!isObjectIdValid([businessId])) {
+    // validate personalDetails
+    const personalDetailsValidationResult = objDefaultValidation(
+      personalDetails,
+      reqPersonalDetailsFields,
+      nonReqPersonalDetailsFields
+    );
+
+    if (personalDetailsValidationResult !== true) {
       return new NextResponse(
-        JSON.stringify({ message: "Business ID is not valid!" }),
+        JSON.stringify({ message: personalDetailsValidationResult }),
         {
           status: 400,
           headers: { "Content-Type": "application/json" },
         }
       );
     }
-    
-    // check address validation
-    if (address) {
-      const validAddress = addressValidation(address);
-      if (validAddress !== true) {
-        return new NextResponse(JSON.stringify({ message: validAddress }), {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        });
-      }
-    }
 
-    // check personalDetails validation
-    const checkPersonalDetailsValidation =
-      personalDetailsValidation(personalDetails);
-    if (checkPersonalDetailsValidation !== true) {
+    // validate address
+    const addressValidationResult = objDefaultValidation(
+      personalDetails.address,
+      reqAddressFields,
+      nonReqAddressFields
+    );
+
+    if (addressValidationResult !== true) {
       return new NextResponse(
-        JSON.stringify({ message: checkPersonalDetailsValidation }),
+        JSON.stringify({ message: addressValidationResult }),
         {
           status: 400,
           headers: { "Content-Type": "application/json" },
@@ -114,24 +131,19 @@ export const POST = async (req: Request) => {
     // connect before first call to DB
     await connectDb();
 
-    const [duplicateCustomer, businessExists] = await Promise.all([
-      // check for duplicates customerName, email, taxNumber and idNumber with same businessId ID
-      Customer.exists({
-        businessId,
-        $or: [{ customerName }, { email }, { idNumber }],
-      }),
+    // check for duplicates username, email, taxNumber and idNumber
+    const duplicateCustomer = await Customer.exists({
+      $or: [
+        { "personalDetails.username": personalDetails.username },
+        { "personalDetails.email": personalDetails.email },
+        { "personalDetails.idNumber": personalDetails.idNumber },
+      ],
+    });
 
-      // check if business exists
-      Business.exists({ _id: businessId }),
-    ]);
-
-    if (duplicateCustomer || !businessExists) {
-      const message = duplicateCustomer
-        ? "Customer with customerName, email or idNumber already exists!"
-        : "Business does not exists!";
+    if (duplicateCustomer) {
       return new NextResponse(
         JSON.stringify({
-          message: message,
+          message: "Customer with username, email or idNumber already exists!",
         }),
         {
           status: 409,
@@ -141,21 +153,15 @@ export const POST = async (req: Request) => {
     }
 
     // Hash password asynchronously
-    const hashedPassword = await hash(password, 10);
+    const hashedPassword = await hash(personalDetails.password, 10);
 
-    // Create the customer object
     const newCustomer = {
-      customerName,
-      email,
-      password: hashedPassword,
-      idType,
-      idNumber,
-      personalDetails, // object
-      businessId,
-      address: address || undefined, // object
+      personalDetails: {
+        ...personalDetails,
+        password: hashedPassword,
+      },
     };
 
-    // create customer
     await Customer.create(newCustomer);
 
     return new NextResponse(
@@ -168,6 +174,6 @@ export const POST = async (req: Request) => {
       }
     );
   } catch (error) {
-    return handleApiError("Create customer failed!", error);
+    return handleApiError("Create customer failed!", error as string);
   }
 };

@@ -1,6 +1,6 @@
 import { Types } from "mongoose";
 
-const isObjectIdValid = (ids: Types.ObjectId[]) => {
+const isObjectIdValid = (ids: string[] | Types.ObjectId[]) => {
   if (!ids || ids.length === 0) {
     return false;
   }

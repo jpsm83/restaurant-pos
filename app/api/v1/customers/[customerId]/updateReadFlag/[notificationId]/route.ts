@@ -58,9 +58,9 @@ export const PATCH = async (
     const updatedCustomer = await Customer.findOneAndUpdate(
       {
         _id: customerId,
-        "notifications.notificationId": notificationId,
+        "personalDetails.notifications._id": notificationId,
       },
-      { $set: { "notifications.$.readFlag": true } },
+      { $set: { "personalDetails.notifications.$.readFlag": true } },
       { new: true, lean: true }
     );
 
@@ -84,7 +84,7 @@ export const PATCH = async (
   } catch (error) {
     return handleApiError(
       "Update notification read flag from customer failed!",
-      error
+      error as string
     );
   }
 };

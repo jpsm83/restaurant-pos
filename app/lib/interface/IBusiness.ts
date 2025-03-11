@@ -1,3 +1,4 @@
+import { Types } from "mongoose";
 import { IAddress } from "./IAddress";
 
 export interface IMetrics {
@@ -15,6 +16,7 @@ export interface IMetrics {
 }
 
 export interface IBusiness {
+  _id?: Types.ObjectId; // added, change on code
   tradeName: string;
   legalName: string;
   imageUrl?: string;

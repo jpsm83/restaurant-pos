@@ -4,16 +4,48 @@ import { Types } from "mongoose";
 
 // imported utils
 import connectDb from "@/app/lib/utils/connectDb";
-import { addressValidation } from "@/app/lib/utils/addressValidation";
 import { handleApiError } from "@/app/lib/utils/handleApiError";
+import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
+import objDefaultValidation from "@/app/lib/utils/objDefaultValidation";
 
 // imported interfaces
-import { ICustomer } from "@/app/lib/interface/ICustomer";
+import { IPersonalDetails } from "@/app/lib/interface/IPersonalDetails";
 
 // imported models
 import Customer from "@/app/lib/models/customer";
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
-import { personalDetailsValidation } from "@/app/lib/utils/personalDetailsValidation";
+import { ICustomer } from "@/app/lib/interface/ICustomer";
+
+const reqPersonalDetailsFields = [
+  "username",
+  "email",
+  "password",
+  "idType",
+  "idNumber",
+  "firstName",
+  "lastName",
+  "address",
+];
+
+const nonReqPersonalDetailsFields = [
+  "imageUrl",
+  "nationality",
+  "gender",
+  "birthDate",
+  "phoneNumber",
+  "deviceToken",
+  "notifications",
+];
+
+const reqAddressFields = [
+  "country",
+  "state",
+  "city",
+  "street",
+  "buildingNumber",
+  "postCode",
+];
+
+const nonReqAddressFields = ["region", "additionalDetails", "coordinates"];
 
 // @desc    Get customer by ID
 // @route   GET /customers/:customerId
@@ -38,9 +70,9 @@ export const GET = async (
     // connect before first call to DB
     await connectDb();
 
-    const customer = await Customer.findById(customerId)
-      .select("-password")
-      .lean();
+    const customer = await Customer.findById(customerId, {
+      "personalDetails.password": 0,
+    }).lean();
 
     return !customer
       ? new NextResponse(JSON.stringify({ message: "Customer not found!" }), {
@@ -54,7 +86,7 @@ export const GET = async (
           },
         });
   } catch (error) {
-    return handleApiError("Get customer by its id failed!", error);
+    return handleApiError("Get customer by its id failed!", error as string);
   }
 };
 
@@ -69,14 +101,20 @@ export const PATCH = async (
   try {
     const customerId = context.params.customerId;
     const {
-      customerName,
-      email,
-      password,
-      idType,
-      idNumber,
       personalDetails,
-      address,
-    } = (await req.json()) as ICustomer;
+    }: {
+      personalDetails: IPersonalDetails;
+    } = await req.json();
+
+    // check required fields
+    if (!personalDetails) {
+      return new NextResponse(
+        JSON.stringify({
+          message: "PersonalDetails is required fields!",
+        }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
 
     // validate customerId
     if (!isObjectIdValid([customerId])) {
@@ -89,34 +127,40 @@ export const PATCH = async (
       );
     }
 
-    // prepare update object
-    const updateCustomerObj: Partial<ICustomer> = {};
+    // validate personalDetails
+    const personalDetailsValidationResult = objDefaultValidation(
+      personalDetails,
+      reqPersonalDetailsFields,
+      nonReqPersonalDetailsFields
+    );
 
-    // add address fields
-    if (address) {
-      const validAddress = addressValidation(address);
-      if (validAddress !== true) {
-        return new NextResponse(JSON.stringify({ message: validAddress }), {
+    if (personalDetailsValidationResult !== true) {
+      return new NextResponse(
+        JSON.stringify({ message: personalDetailsValidationResult }),
+        {
           status: 400,
           headers: { "Content-Type": "application/json" },
-        });
-      }
-      updateCustomerObj.address = address;
+        }
+      );
     }
 
-        // check personalDetails validation
-        if (personalDetails) {
-          const checkPersonalDetailsValidation =
-            personalDetailsValidation(personalDetails);
-          if (checkPersonalDetailsValidation !== true) {
-            return new NextResponse(
-              JSON.stringify({ message: checkPersonalDetailsValidation }),
-              { status: 400, headers: { "Content-Type": "application/json" } }
-            );
-          }
-          updateCustomerObj.personalDetails = personalDetails;
+    // validate address
+    const addressValidationResult = objDefaultValidation(
+      personalDetails.address,
+      reqAddressFields,
+      nonReqAddressFields
+    );
+
+    if (addressValidationResult !== true) {
+      return new NextResponse(
+        JSON.stringify({ message: addressValidationResult }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
         }
-    
+      );
+    }
+
     // connect before first call to DB
     await connectDb();
 
@@ -132,18 +176,20 @@ export const PATCH = async (
       );
     }
 
-    // check for duplicates customerName, email, taxNumber and idNumber with same business ID
+    // check for duplicates username, email, taxNumber and idNumber
     const duplicateCustomer = await Customer.exists({
       _id: { $ne: customerId },
-      businessId: customer.businessId,
-      $or: [{ customerName }, { email }, { idNumber }],
+      $or: [
+        { "personalDetails.username": personalDetails.username },
+        { "personalDetails.email": personalDetails.email },
+        { "personalDetails.idNumber": personalDetails.idNumber },
+      ],
     });
 
     if (duplicateCustomer) {
       return new NextResponse(
         JSON.stringify({
-          message:
-            "Customer with customerName, email or idNumber already exists!",
+          message: "Customer with username, email or idNumber already exists!",
         }),
         {
           status: 409,
@@ -152,22 +198,36 @@ export const PATCH = async (
       );
     }
 
-    // Hash password asynchronously only if it is provided
-    if (password) {
-      updateCustomerObj.password = await hash(password, 10);
+    const updateCustomerObj: Partial<ICustomer> = {};
+
+    // Iterate through all keys in personalDetails
+    Object.keys(personalDetails).forEach((key) => {
+      // Check if the key exists in customer.personalDetails and if the value has changed
+      if (personalDetails[key] !== customer.personalDetails[key] && key !== "address") {
+        updateCustomerObj[`personalDetails.${key}`] = personalDetails[key];
+      }
+    
+      // Handle nested "address" object
+      if (key === "address" && personalDetails.address) {
+        Object.keys(personalDetails.address).forEach((addressKey) => {
+          // Check if the address field has changed or is new
+          if (personalDetails.address[addressKey] !== customer.personalDetails.address[addressKey]) {
+            updateCustomerObj[`personalDetails.address.${addressKey}`] = personalDetails.address[addressKey];
+          }
+        });
+      }
+    });
+    
+    // If password is updated, hash it and add to the update object
+    if (personalDetails.password) {
+      updateCustomerObj["personalDetails.password"] = await hash(personalDetails.password, 10);
     }
-
-    // Populate the update object with other provided fields
-    if (customerName) updateCustomerObj.customerName = customerName;
-    if (email) updateCustomerObj.email = email;
-    if (idType) updateCustomerObj.idType = idType;
-    if (idNumber) updateCustomerObj.idNumber = idNumber;
-    if (personalDetails) updateCustomerObj.personalDetails = personalDetails;
-
-    // update the customer
-    const updatedCustomer = await Customer.updateOne(
+    
+    // Update customer with only changed fields
+    const updatedCustomer = await Customer.findOneAndUpdate(
       { _id: customerId },
-      { $set: updateCustomerObj }
+      { $set: updateCustomerObj },
+      { new: true } // Returns the updated document
     );
 
     // Check if the purchase was found and updated
@@ -183,17 +243,16 @@ export const PATCH = async (
 
     return new NextResponse(
       JSON.stringify({
-        message: `Customer ${updateCustomerObj.customerName} updated successfully!`,
+        message: `Customer updated successfully!`,
       }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
   } catch (error) {
-    return handleApiError("Update customer failed!", error);
+    return handleApiError("Update customer failed!", error as string);
   }
 };
 
 // delete an customer shouldnt be allowed for data integrity, historical purposes and analytics
-// the only case where an customer should be deleted is if the business itself is deleted
 // If you delete a customer from the database and there are other documents that have a relationship with that customer, those related documents may still reference the deleted customer. This can lead to issues such as orphaned records, broken references, and potential errors when querying or processing those related documents.
 // @desc    Delete customer
 // @route   DELETE /customers/:customerId
@@ -242,6 +301,6 @@ export const DELETE = async (
       }
     );
   } catch (error) {
-    return handleApiError("Delete customer failed!", error);
+    return handleApiError("Delete customer failed!", error as string);
   }
 };
