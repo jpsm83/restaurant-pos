@@ -34,9 +34,9 @@ export const GET = async (
     // connect before first call to DB
     await connectDb();
 
-    const employees = await Employee.find({ businessId: businessId })
-      .select("-password")
-      .lean();
+    const employees = await Employee.find(businessId, {
+      "personalDetails.password": 0,
+    }).lean();
 
     return !employees.length
       ? new NextResponse(
@@ -55,6 +55,9 @@ export const GET = async (
           },
         });
   } catch (error) {
-    return handleApiError("Get employees by business id failed!", error);
+    return handleApiError(
+      "Get employees by business id failed!",
+      error as string
+    );
   }
 };

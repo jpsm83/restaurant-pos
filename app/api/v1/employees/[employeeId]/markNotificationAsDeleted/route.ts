@@ -61,19 +61,22 @@ export const PATCH = async (
     }
 
     // employee can mark notification as deleted but never delete it for data integrity
-    const updateEmployee = await Employee.updateOne(
-      { _id: employeeId, "notifications.notificationId": notificationId },
+    const updateEmployee = await Employee.findOneAndUpdate(
+      {
+        _id: employeeId,
+        "personalDetails.notifications.notificationId": notificationId,
+      },
       {
         $set: {
-          "notifications.$.deletedFlag": true,
-          "notifications.$.readFlag": true,
+          "personalDetails.notifications.$.deletedFlag": true,
+          "personalDetails.notifications.$.readFlag": true,
         },
       },
-      { session }
+      { new: true, session }
     );
 
     // Check if the updates were successful
-    if (updateEmployee.modifiedCount === 0) {
+    if (!updateEmployee) {
       await session.abortTransaction();
       return new NextResponse(
         JSON.stringify({ message: "Employee not found!" }),
@@ -96,7 +99,7 @@ export const PATCH = async (
     await session.abortTransaction();
     return handleApiError(
       "Update notification read flag from employee failed!",
-      error
+      error as string
     );
   } finally {
     session.endSession();

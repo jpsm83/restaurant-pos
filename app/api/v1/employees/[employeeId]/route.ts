@@ -4,8 +4,6 @@ import mongoose, { Types } from "mongoose";
 
 // imported utils
 import connectDb from "@/app/lib/utils/connectDb";
-import { personalDetailsValidation } from "../../../../lib/utils/personalDetailsValidation";
-import { addressValidation } from "@/app/lib/utils/addressValidation";
 import { handleApiError } from "@/app/lib/utils/handleApiError";
 import { calculateVacationProportional } from "../utils/calculateVacationProportional";
 
@@ -15,8 +13,42 @@ import { IEmployee } from "@/app/lib/interface/IEmployee";
 // imported models
 import Employee from "@/app/lib/models/employee";
 import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
-import salaryValidation from "../utils/salaryValidation";
 import Printer from "@/app/lib/models/printer";
+import objDefaultValidation from "@/app/lib/utils/objDefaultValidation";
+
+const reqPersonalDetailsFields = [
+  "username",
+  "email",
+  "password",
+  "idType",
+  "idNumber",
+  "firstName",
+  "lastName",
+  "address",
+];
+
+const nonReqPersonalDetailsFields = [
+  "imageUrl",
+  "nationality",
+  "gender",
+  "birthDate",
+  "phoneNumber",
+  "deviceToken",
+  "notifications",
+];
+
+const reqAddressFields = [
+  "country",
+  "state",
+  "city",
+  "street",
+  "buildingNumber",
+  "postCode",
+];
+
+const nonReqAddressFields = ["region", "additionalDetails", "coordinates"];
+
+const reqSalaryFields = ["payFrequency", "grossSalary", "netSalary"];
 
 // @desc    Get employee by ID
 // @route   GET /employees/:employeeId
@@ -28,7 +60,7 @@ export const GET = async (
   try {
     const employeeId = context.params.employeeId;
 
-    if (isObjectIdValid([employeeId]) !== true) {
+    if (!isObjectIdValid([employeeId])) {
       return new NextResponse(
         JSON.stringify({ message: "Invalid employee ID!" }),
         {
@@ -41,9 +73,9 @@ export const GET = async (
     // connect before first call to DB
     await connectDb();
 
-    const employee = await Employee.findById(employeeId)
-      .select("-password")
-      .lean();
+    const employee = await Employee.findById(employeeId, {
+      "personalDetails.password": 0,
+    }).lean();
 
     return !employee
       ? new NextResponse(JSON.stringify({ message: "Employee not found!" }), {
@@ -57,7 +89,7 @@ export const GET = async (
           },
         });
   } catch (error) {
-    return handleApiError("Get employee by its id failed!", error);
+    return handleApiError("Get employee by its id failed!", error as string);
   }
 };
 
@@ -71,30 +103,49 @@ export const PATCH = async (
 ) => {
   const employeeId = context.params.employeeId;
   const {
-    employeeName,
-    email,
-    password,
-    idType,
-    idNumber,
-    allEmployeeRoles,
     personalDetails,
+    allEmployeeRoles,
     taxNumber,
     joinDate,
     active,
     onDuty,
     vacationDaysPerYear,
     currentShiftRole,
-    address,
-    contractHoursWeek, // in milliseconds
+    contractHoursWeek,
     salary,
     terminatedDate,
     comments,
   } = (await req.json()) as IEmployee;
 
-  // validate employeeId
-  if (isObjectIdValid([employeeId]) !== true) {
+  // check required fields
+  if (
+    !personalDetails ||
+    !allEmployeeRoles ||
+    !taxNumber ||
+    !joinDate ||
+    active === undefined ||
+    onDuty === undefined ||
+    !vacationDaysPerYear
+  ) {
     return new NextResponse(
-      JSON.stringify({ message: "Employee ID is not valid!" }),
+      JSON.stringify({
+        message:
+          "PersonalDetails, allEmployeeRoles, taxNumber, joinDate, active, onDuty and vacationDaysPerYea are required fields!",
+      }),
+      { status: 400, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  // validate personalDetails
+  const personalDetailsValidationResult = objDefaultValidation(
+    personalDetails,
+    reqPersonalDetailsFields,
+    nonReqPersonalDetailsFields
+  );
+
+  if (personalDetailsValidationResult !== true) {
+    return new NextResponse(
+      JSON.stringify({ message: personalDetailsValidationResult }),
       {
         status: 400,
         headers: { "Content-Type": "application/json" },
@@ -102,47 +153,41 @@ export const PATCH = async (
     );
   }
 
-  // prepare update object
-  const updateEmployeeObj: Partial<IEmployee> = {};
+  // validate address
+  const addressValidationResult = objDefaultValidation(
+    personalDetails.address,
+    reqAddressFields,
+    nonReqAddressFields
+  );
 
-  // add address fields
-  if (address) {
-    const validAddress = addressValidation(address);
-    if (validAddress !== true) {
-      return new NextResponse(JSON.stringify({ message: validAddress }), {
+  if (addressValidationResult !== true) {
+    return new NextResponse(
+      JSON.stringify({ message: addressValidationResult }),
+      {
         status: 400,
         headers: { "Content-Type": "application/json" },
-      });
-    }
-    updateEmployeeObj.address = address;
+      }
+    );
   }
 
-  // check personalDetails validation
-  if (personalDetails) {
-    const checkPersonalDetailsValidation =
-      personalDetailsValidation(personalDetails);
-    if (checkPersonalDetailsValidation !== true) {
-      return new NextResponse(
-        JSON.stringify({ message: checkPersonalDetailsValidation }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
-      );
-    }
-    updateEmployeeObj.personalDetails = personalDetails;
-  }
-
+  // validate salary
   if (salary) {
-    const salaryValidationResult = salaryValidation(salary);
+    const salaryValidationResult = objDefaultValidation(
+      salary,
+      reqSalaryFields,
+      []
+    );
+
     if (salaryValidationResult !== true) {
       return new NextResponse(
         JSON.stringify({ message: salaryValidationResult }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }
       );
     }
-    updateEmployeeObj.salary = salary;
   }
-
-  // connect before first call to DB
-  await connectDb();
 
   // Start a session to handle transactions
   // with session if any error occurs, the transaction will be aborted
@@ -151,6 +196,9 @@ export const PATCH = async (
   session.startTransaction();
 
   try {
+    // connect before first call to DB
+    await connectDb();
+
     // check if employee exists
     const employee = await Employee.findById(employeeId);
 
@@ -169,7 +217,11 @@ export const PATCH = async (
     const duplicateEmployee = (await Employee.findOne({
       _id: { $ne: employeeId },
       businessId: employee.businessId,
-      $or: [{ employeeName }, { email }, { taxNumber }, { idNumber }],
+      $or: [
+        { "personalDetails.username": personalDetails.username },
+        { "personalDetails.email": personalDetails.email },
+        { "personalDetails.idNumber": personalDetails.idNumber },
+      ],
     }).lean()) as unknown as IEmployee | null;
 
     if (duplicateEmployee) {
@@ -184,52 +236,71 @@ export const PATCH = async (
       });
     }
 
-    // Hash password asynchronously only if it is provided
-    if (password) {
-      updateEmployeeObj.password = await hash(password, 10);
+    const updateEmployeeObj: Partial<IEmployee> = {};
+
+    if (allEmployeeRoles) updateEmployeeObj.allEmployeeRoles = allEmployeeRoles;
+    if (taxNumber) updateEmployeeObj.taxNumber = taxNumber;
+    if (joinDate) updateEmployeeObj.joinDate = joinDate;
+    if (vacationDaysPerYear)
+      updateEmployeeObj.vacationDaysPerYear = vacationDaysPerYear;
+    if (currentShiftRole) updateEmployeeObj.currentShiftRole = currentShiftRole;
+    if (contractHoursWeek)
+      updateEmployeeObj.contractHoursWeek = contractHoursWeek;
+    if (salary) updateEmployeeObj.salary = salary;
+    if (terminatedDate) updateEmployeeObj.terminatedDate = terminatedDate;
+    if (comments) updateEmployeeObj.comments = comments;
+
+    // Iterate through all keys in personalDetails
+    Object.keys(personalDetails).forEach((key) => {
+      // Check if the key exists in employee.personalDetails and if the value has changed
+      if (
+        personalDetails[key] !== employee.personalDetails[key] &&
+        key !== "address" &&
+        key !== "contractHoursWeek"
+      ) {
+        updateEmployeeObj[`personalDetails.${key}`] = personalDetails[key];
+      }
+
+      // Handle nested "address" object
+      if (key === "address" && personalDetails.address) {
+        Object.keys(personalDetails.address).forEach((addressKey) => {
+          // Check if the address field has changed or is new
+          if (
+            personalDetails.address[addressKey] !==
+            employee.personalDetails.address[addressKey]
+          ) {
+            updateEmployeeObj[`personalDetails.address.${addressKey}`] =
+              personalDetails.address[addressKey];
+          }
+        });
+      }
+    });
+
+    // If password is updated, hash it and add to the update object
+    if (personalDetails.password) {
+      updateEmployeeObj["personalDetails.password"] = await hash(
+        personalDetails.password,
+        10
+      );
     }
 
     // Calculate vacationDaysLeft if relevant fields are updated
-    if (vacationDaysPerYear || joinDate) {
+    if (
+      vacationDaysPerYear !== employee.vacationDaysPerYear ||
+      joinDate !== employee.joinDate
+    ) {
       updateEmployeeObj.vacationDaysLeft = calculateVacationProportional(
         new Date(joinDate || employee.joinDate),
         vacationDaysPerYear || employee.vacationDaysPerYear
       );
     }
 
-    // convert hours to milliseconds
-    // employee might input the contract hours per week as a whole hour number on the front of the application and them it will be converted to milliseconds
-    let contractHoursWeekMls;
-    if (contractHoursWeek) {
-      contractHoursWeekMls = contractHoursWeek * 3600000;
-    }
-
-    // Populate the update object with other provided fields
-    if (employeeName) updateEmployeeObj.employeeName = employeeName;
-    if (email) updateEmployeeObj.email = email;
-    if (idType) updateEmployeeObj.idType = idType;
-    if (idNumber) updateEmployeeObj.idNumber = idNumber;
-    if (allEmployeeRoles) updateEmployeeObj.allEmployeeRoles = allEmployeeRoles;
-    if (taxNumber) updateEmployeeObj.taxNumber = taxNumber;
-    if (joinDate) updateEmployeeObj.joinDate = joinDate;
-    if (active !== undefined) updateEmployeeObj.active = active;
-    if (onDuty !== undefined) updateEmployeeObj.onDuty = onDuty;
-    if (vacationDaysPerYear)
-      updateEmployeeObj.vacationDaysPerYear = vacationDaysPerYear;
-    if (currentShiftRole) updateEmployeeObj.currentShiftRole = currentShiftRole;
-    if (contractHoursWeek)
-      updateEmployeeObj.contractHoursWeek = contractHoursWeekMls; // in milliseconds
-    if (terminatedDate) updateEmployeeObj.terminatedDate = terminatedDate;
-    if (comments) updateEmployeeObj.comments = comments;
-
     const [updatedEmployee, updatePrinter] = await Promise.all([
       // update the employee
-      Employee.updateOne(
+      Employee.findOneAndUpdate(
         { _id: employeeId },
         { $set: updateEmployeeObj },
-        {
-          session,
-        }
+        { new: true, session }
       ),
 
       // after updating employee, if employee id not active, delete printer related data
@@ -283,13 +354,13 @@ export const PATCH = async (
 
     return new NextResponse(
       JSON.stringify({
-        message: `Employee ${updateEmployeeObj.employeeName} updated successfully!`,
+        message: `Employee updated successfully!`,
       }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
   } catch (error) {
     await session.abortTransaction();
-    return handleApiError("Update employee failed!", error);
+    return handleApiError("Update employee failed!", error as string);
   } finally {
     session.endSession();
   }
@@ -345,6 +416,6 @@ export const DELETE = async (
       }
     );
   } catch (error) {
-    return handleApiError("Delete employee failed!", error);
+    return handleApiError("Delete employee failed!", error as string);
   }
 };

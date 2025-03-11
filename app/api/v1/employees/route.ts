@@ -6,16 +6,47 @@ import connectDb from "@/app/lib/utils/connectDb";
 
 // imported interfaces
 import { IEmployee } from "@/app/lib/interface/IEmployee";
-import { personalDetailsValidation } from "../../../lib/utils/personalDetailsValidation";
-import { addressValidation } from "@/app/lib/utils/addressValidation";
 import { handleApiError } from "@/app/lib/utils/handleApiError";
-import { calculateVacationProportional } from "./utils/calculateVacationProportional";
 
 // imported models
 import Employee from "@/app/lib/models/employee";
 import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
-import salaryValidation from "./utils/salaryValidation";
 import Business from "@/app/lib/models/business";
+import objDefaultValidation from "@/app/lib/utils/objDefaultValidation";
+
+const reqPersonalDetailsFields = [
+  "username",
+  "email",
+  "password",
+  "idType",
+  "idNumber",
+  "firstName",
+  "lastName",
+  "address",
+];
+
+const nonReqPersonalDetailsFields = [
+  "imageUrl",
+  "nationality",
+  "gender",
+  "birthDate",
+  "phoneNumber",
+  "deviceToken",
+  "notifications",
+];
+
+const reqAddressFields = [
+  "country",
+  "state",
+  "city",
+  "street",
+  "buildingNumber",
+  "postCode",
+];
+
+const nonReqAddressFields = ["region", "additionalDetails", "coordinates"];
+
+const reqSalaryFields = ["payFrequency", "grossSalary", "netSalary"];
 
 // @desc    Get all employees
 // @route   GET /employees
@@ -25,7 +56,10 @@ export const GET = async (req: Request) => {
     // connect before first call to DB
     await connectDb();
 
-    const employees = await Employee.find().select("-password").lean();
+    const employees = await Employee.find(
+      {},
+      { "personalDetails.password": 0 }
+    ).lean();
 
     return !employees?.length
       ? new NextResponse(JSON.stringify({ message: "No employees found" }), {
@@ -39,7 +73,7 @@ export const GET = async (req: Request) => {
           },
         });
   } catch (error) {
-    return handleApiError("Get all employees failed!", error);
+    return handleApiError("Get all employees failed!", error as string);
   }
 };
 
@@ -49,20 +83,14 @@ export const GET = async (req: Request) => {
 export const POST = async (req: Request) => {
   try {
     const {
-      employeeName,
-      email,
-      password,
-      idType,
-      idNumber,
-      allEmployeeRoles,
       personalDetails,
+      allEmployeeRoles,
       taxNumber,
       joinDate,
       active,
       onDuty,
       vacationDaysPerYear,
       businessId,
-      address,
       contractHoursWeek, // in milliseconds
       salary,
       comments,
@@ -70,21 +98,19 @@ export const POST = async (req: Request) => {
 
     // check required fields
     if (
-      !employeeName ||
-      !email ||
-      !password ||
-      !idType ||
-      !idNumber ||
-      !allEmployeeRoles ||
       !personalDetails ||
+      !allEmployeeRoles ||
       !taxNumber ||
       !joinDate ||
+      active === undefined ||
+      onDuty === undefined ||
+      !vacationDaysPerYear ||
       !businessId
     ) {
       return new NextResponse(
         JSON.stringify({
           message:
-            "EmployeeName, email, password, idType, idNumber, allEmployeeRoles, personalDetails, taxNumber, joinDate and businessId are required fields!",
+            "PersonalDetails, allEmployeeRoles, taxNumber, joinDate, active, onDuty, vacationDaysPerYear and businessId are required fields!",
         }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
@@ -101,23 +127,16 @@ export const POST = async (req: Request) => {
       );
     }
 
-    // check address validation
-    if (address) {
-      const validAddress = addressValidation(address);
-      if (validAddress !== true) {
-        return new NextResponse(JSON.stringify({ message: validAddress }), {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        });
-      }
-    }
+    // validate personalDetails
+    const personalDetailsValidationResult = objDefaultValidation(
+      personalDetails,
+      reqPersonalDetailsFields,
+      nonReqPersonalDetailsFields
+    );
 
-    // check personalDetails validation
-    const checkPersonalDetailsValidation =
-      personalDetailsValidation(personalDetails);
-    if (checkPersonalDetailsValidation !== true) {
+    if (personalDetailsValidationResult !== true) {
       return new NextResponse(
-        JSON.stringify({ message: checkPersonalDetailsValidation }),
+        JSON.stringify({ message: personalDetailsValidationResult }),
         {
           status: 400,
           headers: { "Content-Type": "application/json" },
@@ -125,16 +144,41 @@ export const POST = async (req: Request) => {
       );
     }
 
-    //if salary, validate fields
-    if (salary) {
-      const salaryValidationResult = salaryValidation(salary);
-      if (salaryValidationResult !== true) {
-        return new NextResponse(
-          JSON.stringify({ message: salaryValidationResult }),
-          { status: 400, headers: { "Content-Type": "application/json" } }
-        );
-      }
+    // validate address
+    const addressValidationResult = objDefaultValidation(
+      personalDetails.address,
+      reqAddressFields,
+      nonReqAddressFields
+    );
+
+    if (addressValidationResult !== true) {
+      return new NextResponse(
+        JSON.stringify({ message: addressValidationResult }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
     }
+
+    // validate salary
+    if(salary) {
+    const salaryValidationResult = objDefaultValidation(
+      salary,
+      reqSalaryFields,
+      []
+    );
+
+    if (salaryValidationResult !== true) {
+      return new NextResponse(
+        JSON.stringify({ message: salaryValidationResult }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
+  }
 
     // connect before first call to DB
     await connectDb();
@@ -143,7 +187,9 @@ export const POST = async (req: Request) => {
       // check for duplicates employeeName, email, taxNumber and idNumber with same businessId ID
       Employee.exists({
         businessId,
-        $or: [{ employeeName }, { email }, { idNumber }],
+        $or: [{ "personalDetails.username": personalDetails.username },
+          { "personalDetails.email": personalDetails.email },
+          { "personalDetails.idNumber": personalDetails.idNumber },],
       }),
 
       // check if business exists
@@ -152,7 +198,7 @@ export const POST = async (req: Request) => {
 
     if (duplicateEmployee || !businessExists) {
       const message = duplicateEmployee
-        ? "Employee with employeeName, email or idNumber already exists!"
+        ? "Employee with username, email or idNumber already exists!"
         : "Business does not exists!";
       return new NextResponse(
         JSON.stringify({
@@ -166,39 +212,28 @@ export const POST = async (req: Request) => {
     }
 
     // Hash password asynchronously
-    const hashedPassword = await hash(password, 10);
+    const hashedPassword = await hash(personalDetails.password, 10);
 
-    // Calculate vacation days if provided
-    const vacationDaysLeft = vacationDaysPerYear
-      ? calculateVacationProportional(new Date(joinDate), vacationDaysPerYear)
-      : 0;
-
-    // convert hours to milliseconds
-    // employee might input the contract hours per week as a whole hour number on the front of the application and them it will be converted to milliseconds
-    let contractHoursWeekMls;
-    if (contractHoursWeek) {
-      contractHoursWeekMls = contractHoursWeek * 3600000;
-    }
+    const personalDetailsObj = {
+      personalDetails: {
+        ...personalDetails,
+        password: hashedPassword,
+      },
+    };
 
     // Create the employee object
     const newEmployee = {
-      employeeName,
-      email,
-      password: hashedPassword,
-      idType,
-      idNumber,
-      allEmployeeRoles, // array
-      personalDetails, // object
+      personalDetails: personalDetailsObj,
+      allEmployeeRoles,
       taxNumber,
       joinDate,
       active,
       onDuty,
-      vacationDaysPerYear: vacationDaysPerYear || 0,
-      vacationDaysLeft,
+      vacationDaysPerYear: vacationDaysPerYear,
+      vacationDaysLeft: vacationDaysPerYear,
       businessId,
-      address: address || undefined, // object
-      contractHoursWeek: contractHoursWeekMls || undefined, // in milliseconds
-      salary: salary || undefined, // object
+      contractHoursWeek: contractHoursWeek || undefined,
+      salary: salary || undefined,
       comments: comments || undefined,
     };
 
@@ -207,7 +242,7 @@ export const POST = async (req: Request) => {
 
     return new NextResponse(
       JSON.stringify({
-        message: `New employee ${employeeName} created successfully!`,
+        message: `New employee created successfully!`,
       }),
       {
         status: 201,
@@ -215,6 +250,6 @@ export const POST = async (req: Request) => {
       }
     );
   } catch (error) {
-    return handleApiError("Create employee failed!", error);
+    return handleApiError("Create employee failed!", error as string);
   }
 };

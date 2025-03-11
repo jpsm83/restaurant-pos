@@ -4,17 +4,36 @@ import { addressSchema } from "./address";
 
 export const personalDetailsSchema = new Schema({
   // required fields
-  username: { type: String, required: true, unique: true }, // username for the customer
-  email: { type: String, required: true, unique: true }, // email
-  password: { type: String, required: true }, // password for the customer
+  username: { type: String, required: [true, "Username is required!"] }, // username for the customer
+  email: {
+    type: String,
+    required: [true, "Email is required!"],
+    unique: true,
+    match: [
+      /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+      "Please enter a valid email address!",
+    ],
+    trim: true,
+    lowecase: true,
+  }, // email
+  password: {
+    type: String,
+    required: [true, "Password is required!"],
+    match: [
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/,
+      "Password must be 8 characters long and contain lowercase, uppercase, symbol and number!",
+    ],
+    minLength: 8,
+  }, // password for the employee
   idType: {
     type: String,
     enum: idTypes,
+    required: [true, "Id type is required!"],
   }, // type of ID used by the customer
-  idNumber: { type: String }, // ID number of the customer
-  address: addressSchema, // address of the customer
-  firstName: { type: String, required: true }, // first name
-  lastName: { type: String, required: true }, // last name
+  idNumber: { type: String, required: [true, "Id number is required!"] }, // ID number of the customer
+  address: { type: addressSchema, required: [true, "Address is required!"] }, // address of the customer
+  firstName: { type: String, required: [true, "First name is required!"] }, // first name
+  lastName: { type: String, required: [true, "Last name is required!"] }, // last name
   // optional fields
   imageUrl: { type: String }, // photo of the customer
   nationality: { type: String, required: true }, // country of birth

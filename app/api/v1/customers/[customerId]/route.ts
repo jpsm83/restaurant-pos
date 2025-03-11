@@ -98,7 +98,6 @@ export const PATCH = async (
   req: Request,
   context: { params: { customerId: Types.ObjectId } }
 ) => {
-  try {
     const customerId = context.params.customerId;
     const {
       personalDetails,
@@ -161,9 +160,10 @@ export const PATCH = async (
       );
     }
 
+    try {
     // connect before first call to DB
     await connectDb();
-
+    
     // check if customer exists
     const customer = await Customer.findById(customerId);
     if (!customer) {
