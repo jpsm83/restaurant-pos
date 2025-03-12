@@ -7,13 +7,29 @@ const customerSchema = new Schema(
     personalDetails: { type: personalDetailsSchema, required: true }, // personal details of the customer
 
     // optional fields
-    selfOrders: [
-      {
-        type: Schema.Types.ObjectId,
-        ref: "Order",
-      },
-    ],
-  }, // self orders made by the customer
+    selfOrders: {
+      type: [
+        {
+          type: Schema.Types.ObjectId,
+          ref: "Order",
+        },
+      ],
+      default: undefined,
+    }, // self orders made by the customer
+    notifications: {
+      type: [
+        {
+          notificationId: {
+            type: Schema.Types.ObjectId,
+            ref: "Notification",
+          },
+          readFlag: { type: Boolean, default: false },
+          deletedFlag: { type: Boolean, default: false },
+        },
+      ],
+      default: undefined,
+    }, // if the customer wants to receive notifications
+  },
   { timestamps: true }
 );
 

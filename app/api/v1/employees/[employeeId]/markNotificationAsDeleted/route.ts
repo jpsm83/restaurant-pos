@@ -64,15 +64,15 @@ export const PATCH = async (
     const updateEmployee = await Employee.findOneAndUpdate(
       {
         _id: employeeId,
-        "personalDetails.notifications.notificationId": notificationId,
+        "notifications.notificationId": notificationId,
       },
       {
         $set: {
-          "personalDetails.notifications.$.deletedFlag": true,
-          "personalDetails.notifications.$.readFlag": true,
+          "notifications.$.deletedFlag": true,
+          "notifications.$.readFlag": true,
         },
       },
-      { new: true, session }
+      { new: true, lean: true, session }
     );
 
     // Check if the updates were successful

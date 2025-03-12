@@ -296,14 +296,14 @@ export const PATCH = async (
     }
 
     const [updatedEmployee, updatePrinter] = await Promise.all([
-      // update the employee
+      // Update the employee
       Employee.findOneAndUpdate(
         { _id: employeeId },
         { $set: updateEmployeeObj },
-        { new: true, session }
+        { new: true, lean: true, session }
       ),
-
-      // after updating employee, if employee id not active, delete printer related data
+    
+      // If employee is not active, remove them from printers
       active === false
         ? Printer.updateMany(
             {
@@ -311,7 +311,7 @@ export const PATCH = async (
               $or: [
                 { employeesAllowedToPrintDataIds: employeeId },
                 {
-                  "configurationSetupToPrintOrders.excludeEmployeeIds":
+                  "configurationSetupToPrintOrders.excludeemployeeIds": // <-- Fix here
                     employeeId,
                 },
               ],
@@ -319,7 +319,7 @@ export const PATCH = async (
             {
               $pull: {
                 employeesAllowedToPrintDataIds: employeeId,
-                "configurationSetupToPrintOrders.excludeEmployeeIds":
+                "configurationSetupToPrintOrders.$[].excludeemployeeIds": // <-- Fix here
                   employeeId,
               },
             },
@@ -327,9 +327,9 @@ export const PATCH = async (
           )
         : Promise.resolve(null), // If active is true, resolve with null
     ]);
-
+    
     // Handle the results if needed
-    if (updatedEmployee.modifiedCount === 0) {
+    if (!updatedEmployee) {
       await session.abortTransaction();
       return new NextResponse(
         JSON.stringify({

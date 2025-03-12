@@ -58,11 +58,12 @@ export const PATCH = async (
     const updatedCustomer = await Customer.findOneAndUpdate(
       {
         _id: customerId,
-        "personalDetails.notifications.notificationId": notificationId,
+        "notifications.notificationId": notificationId,
       },
-      { $set: { "personalDetails.notifications.$.readFlag": true } },
+      { $set: { "notifications.$.readFlag": true } },
       { new: true, lean: true }
     );
+    
 
     // Check if the purchase was found and updated
     if (!updatedCustomer) {

@@ -14,17 +14,12 @@ export const personalDetailsSchema = new Schema({
       "Please enter a valid email address!",
     ],
     trim: true,
-    lowecase: true,
+    lowercase: true,
   }, // email
   password: {
     type: String,
     required: [true, "Password is required!"],
-    match: [
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/,
-      "Password must be 8 characters long and contain lowercase, uppercase, symbol and number!",
-    ],
-    minLength: 8,
-  }, // password for the employee
+  },
   idType: {
     type: String,
     enum: idTypes,
@@ -41,17 +36,4 @@ export const personalDetailsSchema = new Schema({
   birthDate: { type: Date, required: true }, // date of birth
   phoneNumber: { type: String, required: true }, // phone number
   deviceToken: { type: String }, // token for push notifications with Firebase Cloud Messaging
-  notifications: {
-    type: [
-      {
-        notificationId: {
-          type: Schema.Types.ObjectId,
-          ref: "Notification",
-        },
-        readFlag: { type: Boolean, default: false },
-        deletedFlag: { type: Boolean, default: false },
-      },
-    ],
-    default: undefined,
-  }, // if the customer wants to receive notifications
 });

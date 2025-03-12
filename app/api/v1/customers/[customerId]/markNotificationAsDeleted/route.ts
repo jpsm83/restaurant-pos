@@ -62,14 +62,14 @@ export const PATCH = async (
 
     // customer can mark notification as deleted but never delete it for data integrity
     const updatedCustomer = await Customer.findOneAndUpdate(
-      { _id: customerId, "personalDetails.notifications.notificationId": notificationId },
+      { _id: customerId, "notifications.notificationId": notificationId },
       {
         $set: {
-          "personalDetails.notifications.$.deletedFlag": true,
-          "personalDetails.notifications.$.readFlag": true,
+          "notifications.$.deletedFlag": true,
+          "notifications.$.readFlag": true,
         },
       },
-      { new: true, session }
+      { new: true, lean: true, session }
     );
 
     // Check if the updates were successful

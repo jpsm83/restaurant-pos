@@ -58,7 +58,7 @@ export const PATCH = async (
     const updatedEmployee = await Employee.findOneAndUpdate(
       {
         _id: employeeId,
-        "personalDetails.notifications.notificationId": notificationId,
+        "notifications.notificationId": notificationId,
       },
       { $set: { "notifications.$.readFlag": true } },
       { new: true, lean: true }

@@ -231,7 +231,7 @@ export const PATCH = async (
     );
 
     // Check if the purchase was found and updated
-    if (updatedCustomer.modifiedCount === 0) {
+    if (!updatedCustomer) {
       return new NextResponse(
         JSON.stringify({ message: "Customer not found!" }),
         {

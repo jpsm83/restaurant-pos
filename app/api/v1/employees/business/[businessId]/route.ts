@@ -10,7 +10,7 @@ import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
 import Employee from "@/app/lib/models/employee";
 
 // @desc   Get employee by bussiness ID
-// @route  GET /employees/business/:businessId
+// @route  GET /employees/v1/business/:businessId
 // @access Private
 export const GET = async (
   req: Request,
@@ -34,7 +34,7 @@ export const GET = async (
     // connect before first call to DB
     await connectDb();
 
-    const employees = await Employee.find(businessId, {
+    const employees = await Employee.find({businessId}, {
       "personalDetails.password": 0,
     }).lean();
 

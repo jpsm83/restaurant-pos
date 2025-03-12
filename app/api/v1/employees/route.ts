@@ -162,23 +162,23 @@ export const POST = async (req: Request) => {
     }
 
     // validate salary
-    if(salary) {
-    const salaryValidationResult = objDefaultValidation(
-      salary,
-      reqSalaryFields,
-      []
-    );
-
-    if (salaryValidationResult !== true) {
-      return new NextResponse(
-        JSON.stringify({ message: salaryValidationResult }),
-        {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        }
+    if (salary) {
+      const salaryValidationResult = objDefaultValidation(
+        salary,
+        reqSalaryFields,
+        []
       );
+
+      if (salaryValidationResult !== true) {
+        return new NextResponse(
+          JSON.stringify({ message: salaryValidationResult }),
+          {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+      }
     }
-  }
 
     // connect before first call to DB
     await connectDb();
@@ -187,9 +187,12 @@ export const POST = async (req: Request) => {
       // check for duplicates employeeName, email, taxNumber and idNumber with same businessId ID
       Employee.exists({
         businessId,
-        $or: [{ "personalDetails.username": personalDetails.username },
+        $or: [
+          { "personalDetails.username": personalDetails.username },
           { "personalDetails.email": personalDetails.email },
-          { "personalDetails.idNumber": personalDetails.idNumber },],
+          { "personalDetails.idNumber": personalDetails.idNumber },
+          { taxNumber: taxNumber },
+        ],
       }),
 
       // check if business exists
@@ -198,7 +201,7 @@ export const POST = async (req: Request) => {
 
     if (duplicateEmployee || !businessExists) {
       const message = duplicateEmployee
-        ? "Employee with username, email or idNumber already exists!"
+        ? "Employee with username, email, taxnumber or idNumber already exists!"
         : "Business does not exists!";
       return new NextResponse(
         JSON.stringify({
@@ -215,10 +218,8 @@ export const POST = async (req: Request) => {
     const hashedPassword = await hash(personalDetails.password, 10);
 
     const personalDetailsObj = {
-      personalDetails: {
         ...personalDetails,
         password: hashedPassword,
-      },
     };
 
     // Create the employee object

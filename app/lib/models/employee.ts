@@ -41,14 +41,17 @@ const employeeSchema = new Schema(
       required: [true, "On Duty is required!"],
       default: false,
     }, // if the employee is on duty, shift working right now
-    vacationDaysPerYear: { type: Number, required: [true, "Vacations days per year is required!"] }, // days of holidays per year
+    vacationDaysPerYear: {
+      type: Number,
+      required: [true, "Vacations days per year is required!"],
+    }, // days of holidays per year
     businessId: {
       type: Schema.Types.ObjectId,
       ref: "Business",
       required: [true, "Business id is required!"],
       index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
     }, // business where the employee works
-    
+
     // optional fields
     vacationDaysLeft: { type: Number }, // days of holidays left
     deviceToken: { type: String }, // token for push notifications with Firebase Cloud Messaging
@@ -71,6 +74,19 @@ const employeeSchema = new Schema(
       },
     }, // date when the employee left the business
     comments: { type: String }, // comments about the employee
+    notifications: {
+      type: [
+        {
+          notificationId: {
+            type: Schema.Types.ObjectId,
+            ref: "Notification",
+          },
+          readFlag: { type: Boolean, default: false },
+          deletedFlag: { type: Boolean, default: false },
+        },
+      ],
+      default: undefined,
+    }, // if the customer wants to receive notifications
   },
   { timestamps: true }
 );

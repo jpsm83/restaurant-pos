@@ -18,6 +18,20 @@ const objDefaultValidation = (
     if (reqFields.includes(key) && !obj[key]) {
       return `${key} must have a value!`;
     }
+    if (key === "password") {
+      const regex =
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+      if (!regex.test(obj[key])) {
+        return "Password must be at least 8 characters long and contain a lowercase letter, an uppercase letter, a symbol, and a number!";
+      }
+    }
+
+    if (key === "email") {
+      const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      if (!regex.test(obj[key])) {
+        return "Please enter a valid email address!";
+      }
+    }
   }
 
   // Check for missing required fields
