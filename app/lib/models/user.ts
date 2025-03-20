@@ -1,15 +1,22 @@
 import { Schema, model, models } from "mongoose";
 import { personalDetailsSchema } from "./personalDetails";
 
-const customerSchema = new Schema(
+const userSchema = new Schema(
   {
     // required fields
     personalDetails: {
       type: personalDetailsSchema,
-      required: [true, "Personal details is required!"],
-    }, // personal details of the customer
+      required: [true, "Personal details are required!"],
+    }, // personal details of the user
 
+    // we distinguish between user-client or user-employee by checking if the employeeDetails exists, if so, check if "onDuty" is true"
     // optional fields
+    employeeDetails: {
+        type: Schema.Types.ObjectId,
+        ref: "Employee",
+      default: undefined,
+      index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
+    }, // employee details of the user if he has an employee role
     selfOrders: {
       type: [
         {
@@ -19,7 +26,7 @@ const customerSchema = new Schema(
         },
       ],
       default: undefined,
-    }, // self orders made by the customer
+    }, // self orders made by the user if you are logged as Client
     notifications: {
       type: [
         {
@@ -33,10 +40,13 @@ const customerSchema = new Schema(
         },
       ],
       default: undefined,
-    }, // if the customer wants to receive notifications
+    }, // notifications received by the user
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    trim: true,
+  }
 );
 
-const Customer = models.Customer || model("Customer", customerSchema);
-export default Customer;
+const User = models.User || model("User", userSchema);
+export default User;

@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { hash } from "bcrypt";
 import mongoose, { Types } from "mongoose";
 
 // imported utils
@@ -15,38 +14,6 @@ import Employee from "@/app/lib/models/employee";
 import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
 import Printer from "@/app/lib/models/printer";
 import objDefaultValidation from "@/app/lib/utils/objDefaultValidation";
-
-const reqPersonalDetailsFields = [
-  "username",
-  "email",
-  "password",
-  "idType",
-  "idNumber",
-  "firstName",
-  "lastName",
-  "address",
-];
-
-const nonReqPersonalDetailsFields = [
-  "imageUrl",
-  "nationality",
-  "gender",
-  "birthDate",
-  "phoneNumber",
-  "deviceToken",
-  "notifications",
-];
-
-const reqAddressFields = [
-  "country",
-  "state",
-  "city",
-  "street",
-  "buildingNumber",
-  "postCode",
-];
-
-const nonReqAddressFields = ["region", "additionalDetails", "coordinates"];
 
 const reqSalaryFields = ["payFrequency", "grossSalary", "netSalary"];
 
@@ -73,9 +40,7 @@ export const GET = async (
     // connect before first call to DB
     await connectDb();
 
-    const employee = await Employee.findById(employeeId, {
-      "personalDetails.password": 0,
-    }).lean();
+    const employee = await Employee.findById(employeeId).lean();
 
     return !employee
       ? new NextResponse(JSON.stringify({ message: "Employee not found!" }), {
@@ -103,7 +68,6 @@ export const PATCH = async (
 ) => {
   const employeeId = context.params.employeeId;
   const {
-    personalDetails,
     allEmployeeRoles,
     taxNumber,
     joinDate,
@@ -119,7 +83,6 @@ export const PATCH = async (
 
   // check required fields
   if (
-    !personalDetails ||
     !allEmployeeRoles ||
     !taxNumber ||
     !joinDate ||
@@ -133,40 +96,6 @@ export const PATCH = async (
           "PersonalDetails, allEmployeeRoles, taxNumber, joinDate, active, onDuty and vacationDaysPerYea are required fields!",
       }),
       { status: 400, headers: { "Content-Type": "application/json" } }
-    );
-  }
-
-  // validate personalDetails
-  const personalDetailsValidationResult = objDefaultValidation(
-    personalDetails,
-    reqPersonalDetailsFields,
-    nonReqPersonalDetailsFields
-  );
-
-  if (personalDetailsValidationResult !== true) {
-    return new NextResponse(
-      JSON.stringify({ message: personalDetailsValidationResult }),
-      {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      }
-    );
-  }
-
-  // validate address
-  const addressValidationResult = objDefaultValidation(
-    personalDetails.address,
-    reqAddressFields,
-    nonReqAddressFields
-  );
-
-  if (addressValidationResult !== true) {
-    return new NextResponse(
-      JSON.stringify({ message: addressValidationResult }),
-      {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      }
     );
   }
 
@@ -213,29 +142,6 @@ export const PATCH = async (
       );
     }
 
-    // check for duplicates employeeName, email, taxNumber and idNumber with same business ID
-    const duplicateEmployee = (await Employee.findOne({
-      _id: { $ne: employeeId },
-      businessId: employee.businessId,
-      $or: [
-        { "personalDetails.username": personalDetails.username },
-        { "personalDetails.email": personalDetails.email },
-        { "personalDetails.idNumber": personalDetails.idNumber },
-      ],
-    }).lean()) as unknown as IEmployee | null;
-
-    if (duplicateEmployee) {
-      await session.abortTransaction();
-      const message = duplicateEmployee.active
-        ? "EmployeeName, email, taxNumber, or idNumber already exists and employee is active!"
-        : "EmployeeName, email, taxNumber, or idNumber already exists in an inactive employee!";
-
-      return new NextResponse(JSON.stringify({ message }), {
-        status: 409,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-
     const updateEmployeeObj: Partial<IEmployee> = {};
 
     if (allEmployeeRoles) updateEmployeeObj.allEmployeeRoles = allEmployeeRoles;
@@ -249,40 +155,6 @@ export const PATCH = async (
     if (salary) updateEmployeeObj.salary = salary;
     if (terminatedDate) updateEmployeeObj.terminatedDate = terminatedDate;
     if (comments) updateEmployeeObj.comments = comments;
-
-    // Iterate through all keys in personalDetails
-    Object.keys(personalDetails).forEach((key) => {
-      // Check if the key exists in employee.personalDetails and if the value has changed
-      if (
-        personalDetails[key] !== employee.personalDetails[key] &&
-        key !== "address" &&
-        key !== "contractHoursWeek"
-      ) {
-        updateEmployeeObj[`personalDetails.${key}`] = personalDetails[key];
-      }
-
-      // Handle nested "address" object
-      if (key === "address" && personalDetails.address) {
-        Object.keys(personalDetails.address).forEach((addressKey) => {
-          // Check if the address field has changed or is new
-          if (
-            personalDetails.address[addressKey] !==
-            employee.personalDetails.address[addressKey]
-          ) {
-            updateEmployeeObj[`personalDetails.address.${addressKey}`] =
-              personalDetails.address[addressKey];
-          }
-        });
-      }
-    });
-
-    // If password is updated, hash it and add to the update object
-    if (personalDetails.password) {
-      updateEmployeeObj["personalDetails.password"] = await hash(
-        personalDetails.password,
-        10
-      );
-    }
 
     // Calculate vacationDaysLeft if relevant fields are updated
     if (
@@ -302,7 +174,7 @@ export const PATCH = async (
         { $set: updateEmployeeObj },
         { new: true, lean: true, session }
       ),
-    
+
       // If employee is not active, remove them from printers
       active === false
         ? Printer.updateMany(
@@ -311,7 +183,8 @@ export const PATCH = async (
               $or: [
                 { employeesAllowedToPrintDataIds: employeeId },
                 {
-                  "configurationSetupToPrintOrders.excludeemployeeIds": // <-- Fix here
+                  // <-- Fix here
+                  "configurationSetupToPrintOrders.excludeemployeeIds":
                     employeeId,
                 },
               ],
@@ -319,7 +192,8 @@ export const PATCH = async (
             {
               $pull: {
                 employeesAllowedToPrintDataIds: employeeId,
-                "configurationSetupToPrintOrders.$[].excludeemployeeIds": // <-- Fix here
+                // <-- Fix here
+                "configurationSetupToPrintOrders.$[].excludeemployeeIds":
                   employeeId,
               },
             },
@@ -327,7 +201,7 @@ export const PATCH = async (
           )
         : Promise.resolve(null), // If active is true, resolve with null
     ]);
-    
+
     // Handle the results if needed
     if (!updatedEmployee) {
       await session.abortTransaction();

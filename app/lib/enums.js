@@ -84,7 +84,7 @@ export const subscription = ["Free", "Basic", "Premium", "Enterprise"];
 
 export const idTypes = ["National ID", "Passport", "Driving License"];
 
-export const employeeRoles = [
+export const userRoles = [
   "Owner",
   "General Manager",
   "Manager",
@@ -107,7 +107,7 @@ export const employeeRoles = [
   "Host",
   "Runner",
   "Supervisor",
-  "Client",
+  "Entertainer",
   "Other",
 ];
 

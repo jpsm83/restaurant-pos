@@ -28,8 +28,7 @@
             "nationality": "employee1Nationality",
             "gender": "Man",
             "birthDate": "2014-10-10T14:48:00.000Z",
-            "phoneNumber": "employee1PhoneNumber",
-            "deviceToken": "deviceToken1"
+            "phoneNumber": "employee1PhoneNumber"
         },
         "allEmployeeRoles": [
             "Manager",
@@ -76,8 +75,7 @@
             "nationality": "employee2Nationality",
             "gender": "Man",
             "birthDate": "2014-10-10T14:48:00.000Z",
-            "phoneNumber": "employee2PhoneNumber",
-            "deviceToken": "deviceToken1"
+            "phoneNumber": "employee2PhoneNumber"
         },
         "allEmployeeRoles": [
             "Manager",

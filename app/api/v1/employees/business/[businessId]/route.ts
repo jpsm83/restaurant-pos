@@ -34,9 +34,7 @@ export const GET = async (
     // connect before first call to DB
     await connectDb();
 
-    const employees = await Employee.find({businessId}, {
-      "personalDetails.password": 0,
-    }).lean();
+    const employees = await Employee.find({ businessId }).lean();
 
     return !employees.length
       ? new NextResponse(

@@ -10,7 +10,7 @@ import { handleApiError } from "@/app/lib/utils/handleApiError";
 import { IPersonalDetails } from "@/app/lib/interface/IPersonalDetails";
 
 // imported models
-import Customer from "@/app/lib/models/customer";
+import User from "@/app/lib/models/user";
 
 const reqPersonalDetailsFields = [
   "username",
@@ -29,8 +29,6 @@ const nonReqPersonalDetailsFields = [
   "gender",
   "birthDate",
   "phoneNumber",
-  "deviceToken",
-  "notifications",
 ];
 
 const reqAddressFields = [
@@ -52,7 +50,7 @@ export const GET = async () => {
     // connect before first call to DB
     await connectDb();
 
-    const customers = await Customer.find(
+    const customers = await User.find(
       {},
       { "personalDetails.password": 0 }
     ).lean();
@@ -73,7 +71,7 @@ export const GET = async () => {
   }
 };
 
-// @desc    Create new customer
+// @desc    Create new user
 // @route   POST /customers
 // @access  Private
 export const POST = async (req: Request) => {
@@ -132,7 +130,7 @@ export const POST = async (req: Request) => {
     await connectDb();
 
     // check for duplicates username, email, taxNumber and idNumber
-    const duplicateCustomer = await Customer.exists({
+    const duplicateCustomer = await User.exists({
       $or: [
         { "personalDetails.username": personalDetails.username },
         { "personalDetails.email": personalDetails.email },
@@ -143,7 +141,7 @@ export const POST = async (req: Request) => {
     if (duplicateCustomer) {
       return new NextResponse(
         JSON.stringify({
-          message: "Customer with username, email or idNumber already exists!",
+          message: "User with username, email or idNumber already exists!",
         }),
         {
           status: 409,
@@ -162,11 +160,11 @@ export const POST = async (req: Request) => {
       },
     };
 
-    await Customer.create(newCustomer);
+    await User.create(newCustomer);
 
     return new NextResponse(
       JSON.stringify({
-        message: `New customer created successfully`,
+        message: `New user created successfully`,
       }),
       {
         status: 201,
@@ -174,6 +172,6 @@ export const POST = async (req: Request) => {
       }
     );
   } catch (error) {
-    return handleApiError("Create customer failed!", error as string);
+    return handleApiError("Create user failed!", error as string);
   }
 };

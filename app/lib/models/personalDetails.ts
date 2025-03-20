@@ -35,7 +35,6 @@ export const personalDetailsSchema = new Schema(
     gender: { type: String, enum: ["Man", "Woman", "Other"], required: true }, // gender
     birthDate: { type: Date, required: true }, // date of birth
     phoneNumber: { type: String, required: true }, // phone number
-    deviceToken: { type: String }, // token for push notifications with Firebase Cloud Messaging
   },
   {
     timestamps: true,

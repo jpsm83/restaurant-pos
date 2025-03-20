@@ -12,8 +12,8 @@ import objDefaultValidation from "@/app/lib/utils/objDefaultValidation";
 import { IPersonalDetails } from "@/app/lib/interface/IPersonalDetails";
 
 // imported models
-import Customer from "@/app/lib/models/customer";
-import { ICustomer } from "@/app/lib/interface/ICustomer";
+import User from "@/app/lib/models/user";
+import { IUser } from "@/app/lib/interface/IUser";
 
 const reqPersonalDetailsFields = [
   "username",
@@ -32,8 +32,6 @@ const nonReqPersonalDetailsFields = [
   "gender",
   "birthDate",
   "phoneNumber",
-  "deviceToken",
-  "notifications",
 ];
 
 const reqAddressFields = [
@@ -47,7 +45,7 @@ const reqAddressFields = [
 
 const nonReqAddressFields = ["region", "additionalDetails", "coordinates"];
 
-// @desc    Get customer by ID
+// @desc    Get user by ID
 // @route   GET /customers/:customerId
 // @access  Private
 export const GET = async (
@@ -59,7 +57,7 @@ export const GET = async (
 
     if (!isObjectIdValid([customerId])) {
       return new NextResponse(
-        JSON.stringify({ message: "Invalid customer ID!" }),
+        JSON.stringify({ message: "Invalid user ID!" }),
         {
           status: 400,
           headers: { "Content-Type": "application/json" },
@@ -70,28 +68,28 @@ export const GET = async (
     // connect before first call to DB
     await connectDb();
 
-    const customer = await Customer.findById(customerId, {
+    const user = await User.findById(customerId, {
       "personalDetails.password": 0,
     }).lean();
 
-    return !customer
-      ? new NextResponse(JSON.stringify({ message: "Customer not found!" }), {
+    return !user
+      ? new NextResponse(JSON.stringify({ message: "User not found!" }), {
           status: 404,
           headers: { "Content-Type": "application/json" },
         })
-      : new NextResponse(JSON.stringify(customer), {
+      : new NextResponse(JSON.stringify(user), {
           status: 200,
           headers: {
             "Content-Type": "application/json",
           },
         });
   } catch (error) {
-    return handleApiError("Get customer by its id failed!", error as string);
+    return handleApiError("Get user by its id failed!", error as string);
   }
 };
 
-// customer DO NOT UPDATE notifications, only readFlag
-// @desc    Update customer
+// user DO NOT UPDATE notifications, only readFlag
+// @desc    Update user
 // @route   PATCH /customers/:customerId
 // @access  Private
 export const PATCH = async (
@@ -118,7 +116,7 @@ export const PATCH = async (
     // validate customerId
     if (!isObjectIdValid([customerId])) {
       return new NextResponse(
-        JSON.stringify({ message: "Customer ID is not valid!" }),
+        JSON.stringify({ message: "User ID is not valid!" }),
         {
           status: 400,
           headers: { "Content-Type": "application/json" },
@@ -164,11 +162,11 @@ export const PATCH = async (
     // connect before first call to DB
     await connectDb();
     
-    // check if customer exists
-    const customer = await Customer.findById(customerId);
-    if (!customer) {
+    // check if user exists
+    const user = await User.findById(customerId);
+    if (!user) {
       return new NextResponse(
-        JSON.stringify({ message: "Customer not found!" }),
+        JSON.stringify({ message: "User not found!" }),
         {
           status: 404,
           headers: { "Content-Type": "application/json" },
@@ -177,7 +175,7 @@ export const PATCH = async (
     }
 
     // check for duplicates username, email, taxNumber and idNumber
-    const duplicateCustomer = await Customer.exists({
+    const duplicateCustomer = await User.exists({
       _id: { $ne: customerId },
       $or: [
         { "personalDetails.username": personalDetails.username },
@@ -189,7 +187,7 @@ export const PATCH = async (
     if (duplicateCustomer) {
       return new NextResponse(
         JSON.stringify({
-          message: "Customer with username, email or idNumber already exists!",
+          message: "User with username, email or idNumber already exists!",
         }),
         {
           status: 409,
@@ -198,12 +196,12 @@ export const PATCH = async (
       );
     }
 
-    const updateCustomerObj: Partial<ICustomer> = {};
+    const updateCustomerObj: Partial<IUser> = {};
 
     // Iterate through all keys in personalDetails
     Object.keys(personalDetails).forEach((key) => {
-      // Check if the key exists in customer.personalDetails and if the value has changed
-      if (personalDetails[key] !== customer.personalDetails[key] && key !== "address") {
+      // Check if the key exists in user.personalDetails and if the value has changed
+      if (personalDetails[key] !== user.personalDetails[key] && key !== "address") {
         updateCustomerObj[`personalDetails.${key}`] = personalDetails[key];
       }
     
@@ -211,7 +209,7 @@ export const PATCH = async (
       if (key === "address" && personalDetails.address) {
         Object.keys(personalDetails.address).forEach((addressKey) => {
           // Check if the address field has changed or is new
-          if (personalDetails.address[addressKey] !== customer.personalDetails.address[addressKey]) {
+          if (personalDetails.address[addressKey] !== user.personalDetails.address[addressKey]) {
             updateCustomerObj[`personalDetails.address.${addressKey}`] = personalDetails.address[addressKey];
           }
         });
@@ -223,8 +221,8 @@ export const PATCH = async (
       updateCustomerObj["personalDetails.password"] = await hash(personalDetails.password, 10);
     }
     
-    // Update customer with only changed fields
-    const updatedCustomer = await Customer.findOneAndUpdate(
+    // Update user with only changed fields
+    const updatedCustomer = await User.findOneAndUpdate(
       { _id: customerId },
       { $set: updateCustomerObj },
       { new: true } // Returns the updated document
@@ -233,7 +231,7 @@ export const PATCH = async (
     // Check if the purchase was found and updated
     if (!updatedCustomer) {
       return new NextResponse(
-        JSON.stringify({ message: "Customer not found!" }),
+        JSON.stringify({ message: "User not found!" }),
         {
           status: 404,
           headers: { "Content-Type": "application/json" },
@@ -243,18 +241,18 @@ export const PATCH = async (
 
     return new NextResponse(
       JSON.stringify({
-        message: `Customer updated successfully!`,
+        message: `User updated successfully!`,
       }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
   } catch (error) {
-    return handleApiError("Update customer failed!", error as string);
+    return handleApiError("Update user failed!", error as string);
   }
 };
 
-// delete an customer shouldnt be allowed for data integrity, historical purposes and analytics
-// If you delete a customer from the database and there are other documents that have a relationship with that customer, those related documents may still reference the deleted customer. This can lead to issues such as orphaned records, broken references, and potential errors when querying or processing those related documents.
-// @desc    Delete customer
+// delete an user shouldnt be allowed for data integrity, historical purposes and analytics
+// If you delete a user from the database and there are other documents that have a relationship with that user, those related documents may still reference the deleted user. This can lead to issues such as orphaned records, broken references, and potential errors when querying or processing those related documents.
+// @desc    Delete user
 // @route   DELETE /customers/:customerId
 // @access  Private
 export const DELETE = async (
@@ -267,7 +265,7 @@ export const DELETE = async (
     // check if the customerId is a valid ObjectId
     if (!isObjectIdValid([customerId])) {
       return new NextResponse(
-        JSON.stringify({ message: "Invalid customer ID!" }),
+        JSON.stringify({ message: "Invalid user ID!" }),
         {
           status: 400,
           headers: { "Content-Type": "application/json" },
@@ -278,12 +276,12 @@ export const DELETE = async (
     // connect before first call to DB
     await connectDb();
 
-    // Delete the customer
-    const result = await Customer.deleteOne({ _id: customerId });
+    // Delete the user
+    const result = await User.deleteOne({ _id: customerId });
 
     if (result.deletedCount === 0) {
       return new NextResponse(
-        JSON.stringify({ message: "Customer not found!" }),
+        JSON.stringify({ message: "User not found!" }),
         {
           status: 404,
           headers: { "Content-Type": "application/json" },
@@ -293,7 +291,7 @@ export const DELETE = async (
 
     return new NextResponse(
       JSON.stringify({
-        message: `Customer id ${customerId} deleted successfully`,
+        message: `User id ${customerId} deleted successfully`,
       }),
       {
         status: 200,
@@ -301,6 +299,6 @@ export const DELETE = async (
       }
     );
   } catch (error) {
-    return handleApiError("Delete customer failed!", error as string);
+    return handleApiError("Delete user failed!", error as string);
   }
 };

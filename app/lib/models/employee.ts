@@ -1,6 +1,6 @@
 import { Schema, model, models } from "mongoose";
-import { employeeRoles } from "../enums.js";
-import { personalDetailsSchema } from "./personalDetails";
+import { userRoles } from "../enums.js";
+// import { personalDetailsSchema } from "./personalDetails";
 
 const salarySchema = new Schema(
   {
@@ -23,14 +23,14 @@ const salarySchema = new Schema(
 
 const employeeSchema = new Schema(
   {
-    personalDetails: {
-      type: personalDetailsSchema,
-      required: [true, "Personal details is required!"],
-    }, // personal details of the employee
+    // personalDetails: {
+    //   type: personalDetailsSchema,
+    //   required: [true, "Personal details is required!"],
+    // }, // personal details of the employee
     allEmployeeRoles: [
       {
         type: String,
-        enum: employeeRoles,
+        enum: userRoles,
         required: [true, "Employee role is required!"],
       },
     ], // all roles of the employee, can be multiple
@@ -58,11 +58,16 @@ const employeeSchema = new Schema(
       required: [true, "Business id is required!"],
       index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
     }, // business where the employee works
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: [true, "User id is required!"],
+      index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
+    }, // business where the employee works
 
     // optional fields
     vacationDaysLeft: { type: Number }, // days of holidays left
-    deviceToken: { type: String }, // token for push notifications with Firebase Cloud Messaging
-    currentShiftRole: { type: String, enum: employeeRoles }, // current shift role of the employee
+    currentShiftRole: { type: String, enum: userRoles }, // current shift role of the employee
 
     // *** IMPORTANTE ***
     // employee might input the contract hours per week as a whole hour number on the front of the application and them it will be converted to milliseconds
@@ -80,20 +85,21 @@ const employeeSchema = new Schema(
         message: "Terminate date must be after join date!",
       },
     }, // date when the employee left the business
+    documentsUrl: { type: [String] }, // photo of the employee documents as id, contract, tax, etc
     comments: { type: String }, // comments about the employee
-    notifications: {
-      type: [
-        {
-          notificationId: {
-            type: Schema.Types.ObjectId,
-            ref: "Notification",
-          },
-          readFlag: { type: Boolean, default: false },
-          deletedFlag: { type: Boolean, default: false },
-        },
-      ],
-      default: undefined,
-    }, // if the customer wants to receive notifications
+    // notifications: {
+    //   type: [
+    //     {
+    //       notificationId: {
+    //         type: Schema.Types.ObjectId,
+    //         ref: "Notification",
+    //       },
+    //       readFlag: { type: Boolean, default: false },
+    //       deletedFlag: { type: Boolean, default: false },
+    //     },
+    //   ],
+    //   default: undefined,
+    // }, // if the customer wants to receive notifications
   },
   {
     timestamps: true,

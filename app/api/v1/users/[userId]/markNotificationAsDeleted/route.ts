@@ -7,29 +7,29 @@ import { handleApiError } from "@/app/lib/utils/handleApiError";
 import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
 
 // imported models
-import Employee from "@/app/lib/models/employee";
+import User from "@/app/lib/models/user";
 import Notification from "@/app/lib/models/notification";
 
-// @desc    Create new employees
-// @route   PATCH /employees/:employeeId/markNotificationAsDeleted
+// @desc    Create new customers
+// @route   PATCH /customers/:customerId/markNotificationAsDeleted
 // @access  Private
 export const PATCH = async (
   req: Request,
   context: {
-    params: { employeeId: Types.ObjectId };
+    params: { customerId: Types.ObjectId };
   }
 ) => {
-  // delete notification relation from employee.notifications
-  const employeeId = context.params.employeeId;
+  // delete notification relation from user.notifications
+  const customerId = context.params.customerId;
 
   const { notificationId } = (await req.json()) as {
     notificationId: Types.ObjectId;
   };
 
-  // validate employeeId
-  if (!isObjectIdValid([employeeId, notificationId])) {
+  // validate customerId
+  if (!isObjectIdValid([customerId, notificationId])) {
     return new NextResponse(
-      JSON.stringify({ message: "Employee or notification ID is not valid!" }),
+      JSON.stringify({ message: "User or notification ID is not valid!" }),
       {
         status: 400,
         headers: { "Content-Type": "application/json" },
@@ -60,12 +60,9 @@ export const PATCH = async (
       );
     }
 
-    // employee can mark notification as deleted but never delete it for data integrity
-    const updateEmployee = await Employee.findOneAndUpdate(
-      {
-        _id: employeeId,
-        "notifications.notificationId": notificationId,
-      },
+    // user can mark notification as deleted but never delete it for data integrity
+    const updatedCustomer = await User.findOneAndUpdate(
+      { _id: customerId, "notifications.notificationId": notificationId },
       {
         $set: {
           "notifications.$.deletedFlag": true,
@@ -76,10 +73,10 @@ export const PATCH = async (
     );
 
     // Check if the updates were successful
-    if (!updateEmployee) {
+    if (!updatedCustomer) {
       await session.abortTransaction();
       return new NextResponse(
-        JSON.stringify({ message: "Employee not found!" }),
+        JSON.stringify({ message: "User not found!" }),
         {
           status: 404,
           headers: { "Content-Type": "application/json" },
@@ -91,14 +88,14 @@ export const PATCH = async (
 
     return new NextResponse(
       JSON.stringify({
-        message: `Employee notification mark as deleted successfully!`,
+        message: `User notification mark as deleted successfully!`,
       }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
   } catch (error) {
     await session.abortTransaction();
     return handleApiError(
-      "Update notification read flag from employee failed!",
+      "Update notification read flag from user failed!",
       error as string
     );
   } finally {

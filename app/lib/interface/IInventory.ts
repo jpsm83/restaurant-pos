@@ -1,5 +1,16 @@
 import { Types } from "mongoose";
 
+export interface IReedited {
+  reeditedByEmployeeId: Types.ObjectId;
+  date: Date;
+  reason: string;
+  originalValues: {
+    currentCountQuantity: number;
+    dynamicSystemCount: number;
+    deviationPercent: number;
+  };
+}
+
 export interface IInventoryCount {
   _id?: Types.ObjectId;
   countedDate?: Date;
@@ -9,16 +20,7 @@ export interface IInventoryCount {
   countedByEmployeeId: Types.ObjectId;
   lastCount?: boolean;
   comments?: string;
-  reedited?: {
-    reeditedByEmployeeId: Types.ObjectId;
-    date: Date;
-    reason: string;
-    originalValues: {
-      currentCountQuantity: number;
-      dynamicSystemCount: number;
-      deviationPercent: number;
-    };
-  };
+  reedited?: IReedited;
 }
 
 export interface IInventoryGood {

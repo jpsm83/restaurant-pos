@@ -1,50 +1,18 @@
 import { NextResponse } from "next/server";
-import { hash } from "bcrypt";
 
 // imported utils
 import connectDb from "@/app/lib/utils/connectDb";
+import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
+import objDefaultValidation from "@/app/lib/utils/objDefaultValidation";
+import { handleApiError } from "@/app/lib/utils/handleApiError";
 
 // imported interfaces
 import { IEmployee } from "@/app/lib/interface/IEmployee";
-import { handleApiError } from "@/app/lib/utils/handleApiError";
+import { IUser } from "@/app/lib/interface/IUser";
 
 // imported models
 import Employee from "@/app/lib/models/employee";
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
-import Business from "@/app/lib/models/business";
-import objDefaultValidation from "@/app/lib/utils/objDefaultValidation";
-
-const reqPersonalDetailsFields = [
-  "username",
-  "email",
-  "password",
-  "idType",
-  "idNumber",
-  "firstName",
-  "lastName",
-  "address",
-];
-
-const nonReqPersonalDetailsFields = [
-  "imageUrl",
-  "nationality",
-  "gender",
-  "birthDate",
-  "phoneNumber",
-  "deviceToken",
-  "notifications",
-];
-
-const reqAddressFields = [
-  "country",
-  "state",
-  "city",
-  "street",
-  "buildingNumber",
-  "postCode",
-];
-
-const nonReqAddressFields = ["region", "additionalDetails", "coordinates"];
+import User from "@/app/lib/models/user";
 
 const reqSalaryFields = ["payFrequency", "grossSalary", "netSalary"];
 
@@ -56,10 +24,7 @@ export const GET = async (req: Request) => {
     // connect before first call to DB
     await connectDb();
 
-    const employees = await Employee.find(
-      {},
-      { "personalDetails.password": 0 }
-    ).lean();
+    const employees = await Employee.find().lean();
 
     return !employees?.length
       ? new NextResponse(JSON.stringify({ message: "No employees found" }), {
@@ -83,7 +48,6 @@ export const GET = async (req: Request) => {
 export const POST = async (req: Request) => {
   try {
     const {
-      personalDetails,
       allEmployeeRoles,
       taxNumber,
       joinDate,
@@ -94,23 +58,24 @@ export const POST = async (req: Request) => {
       contractHoursWeek, // in milliseconds
       salary,
       comments,
-    } = (await req.json()) as IEmployee;
+      userEmail, // user email is used to check the user existence
+    } = (await req.json()) as IEmployee & { userEmail: string };
 
     // check required fields
     if (
-      !personalDetails ||
       !allEmployeeRoles ||
       !taxNumber ||
       !joinDate ||
       active === undefined ||
       onDuty === undefined ||
       !vacationDaysPerYear ||
-      !businessId
+      !businessId ||
+      !userEmail
     ) {
       return new NextResponse(
         JSON.stringify({
           message:
-            "PersonalDetails, allEmployeeRoles, taxNumber, joinDate, active, onDuty, vacationDaysPerYear and businessId are required fields!",
+            "PersonalDetails, allEmployeeRoles, taxNumber, joinDate, active, onDuty, vacationDaysPerYear, businessId and userEmail are required fields!",
         }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
@@ -120,40 +85,6 @@ export const POST = async (req: Request) => {
     if (isObjectIdValid([businessId]) !== true) {
       return new NextResponse(
         JSON.stringify({ message: "Business ID is not valid!" }),
-        {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // validate personalDetails
-    const personalDetailsValidationResult = objDefaultValidation(
-      personalDetails,
-      reqPersonalDetailsFields,
-      nonReqPersonalDetailsFields
-    );
-
-    if (personalDetailsValidationResult !== true) {
-      return new NextResponse(
-        JSON.stringify({ message: personalDetailsValidationResult }),
-        {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // validate address
-    const addressValidationResult = objDefaultValidation(
-      personalDetails.address,
-      reqAddressFields,
-      nonReqAddressFields
-    );
-
-    if (addressValidationResult !== true) {
-      return new NextResponse(
-        JSON.stringify({ message: addressValidationResult }),
         {
           status: 400,
           headers: { "Content-Type": "application/json" },
@@ -183,29 +114,15 @@ export const POST = async (req: Request) => {
     // connect before first call to DB
     await connectDb();
 
-    const [duplicateEmployee, businessExists] = await Promise.all([
-      // check for duplicates employeeName, email, taxNumber and idNumber with same businessId ID
-      Employee.exists({
-        businessId,
-        $or: [
-          { "personalDetails.username": personalDetails.username },
-          { "personalDetails.email": personalDetails.email },
-          { "personalDetails.idNumber": personalDetails.idNumber },
-          { taxNumber: taxNumber },
-        ],
-      }),
+    // check if user exist
+    const user = await User.findOne({ "personalDetails.email": userEmail })
+    .select("_id")
+    .lean<IUser | null>(); // Explicitly type the result as IUser or null
 
-      // check if business exists
-      Business.exists({ _id: businessId }),
-    ]);
-
-    if (duplicateEmployee || !businessExists) {
-      const message = duplicateEmployee
-        ? "Employee with username, email, taxnumber or idNumber already exists!"
-        : "Business does not exists!";
+    if (!user) {
       return new NextResponse(
         JSON.stringify({
-          message: message,
+          message: "User does not exist!",
         }),
         {
           status: 409,
@@ -213,18 +130,23 @@ export const POST = async (req: Request) => {
         }
       );
     }
+    
+      const employeeAlreadyExists = await Employee.exists({ businessId: businessId, userId: user._id });
 
-    // Hash password asynchronously
-    const hashedPassword = await hash(personalDetails.password, 10);
-
-    const personalDetailsObj = {
-        ...personalDetails,
-        password: hashedPassword,
-    };
+      if(employeeAlreadyExists){
+        return new NextResponse(
+          JSON.stringify({
+            message: "User is already an employee!",
+          }),
+          {
+            status: 409,
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+      }
 
     // Create the employee object
     const newEmployee = {
-      personalDetails: personalDetailsObj,
       allEmployeeRoles,
       taxNumber,
       joinDate,
@@ -233,6 +155,7 @@ export const POST = async (req: Request) => {
       vacationDaysPerYear: vacationDaysPerYear,
       vacationDaysLeft: vacationDaysPerYear,
       businessId,
+      userId: user._id,
       contractHoursWeek: contractHoursWeek || undefined,
       salary: salary || undefined,
       comments: comments || undefined,

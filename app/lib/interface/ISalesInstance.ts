@@ -1,5 +1,10 @@
 import { Types } from "mongoose";
 
+export interface ISalesGroup {
+  orderCode: string;
+  ordersIds: Types.ObjectId[];
+}
+
 export interface ISalesInstance {
   _id?: Types.ObjectId;
   dailyReferenceNumber?: number;
@@ -11,9 +16,6 @@ export interface ISalesInstance {
   responsibleById?: Types.ObjectId;
   businessId: Types.ObjectId;
   clientName?: string;
-  salesGroup?: {
-    orderCode: string;
-    ordersIds: Types.ObjectId[];
-  }[];
+  salesGroup?: ISalesGroup[];
   closedById?: Types.ObjectId;
 }

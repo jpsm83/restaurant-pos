@@ -77,7 +77,10 @@ const businessGoodSchema = new Schema(
     imageUrl: { type: String }, // photo of the business good
     deliveryTime: { type: Number }, // maximun time to deliver the business good to client in minutes
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    trim: true,
+  }
 );
 
 const BusinessGood =

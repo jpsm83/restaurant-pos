@@ -7,7 +7,7 @@ import { handleApiError } from "@/app/lib/utils/handleApiError";
 import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
 
 // imported models
-import Customer from "@/app/lib/models/customer";
+import User from "@/app/lib/models/user";
 import Notification from "@/app/lib/models/notification";
 
 // @desc    Create new customers
@@ -19,7 +19,7 @@ export const PATCH = async (
     params: { customerId: Types.ObjectId; notificationId: Types.ObjectId };
   }
 ) => {
-  // update notification readFlag from customer
+  // update notification readFlag from user
   try {
     const { customerId, notificationId } = context.params;
 
@@ -27,7 +27,7 @@ export const PATCH = async (
     if (!isObjectIdValid([customerId, notificationId])) {
       return new NextResponse(
         JSON.stringify({
-          message: "Customer or notification ID is not valid!",
+          message: "User or notification ID is not valid!",
         }),
         {
           status: 400,
@@ -55,7 +55,7 @@ export const PATCH = async (
     }
 
     // Update the readFlag for the specific notification
-    const updatedCustomer = await Customer.findOneAndUpdate(
+    const updatedCustomer = await User.findOneAndUpdate(
       {
         _id: customerId,
         "notifications.notificationId": notificationId,
@@ -68,7 +68,7 @@ export const PATCH = async (
     // Check if the purchase was found and updated
     if (!updatedCustomer) {
       return new NextResponse(
-        JSON.stringify({ message: "Customer notification not updated!" }),
+        JSON.stringify({ message: "User notification not updated!" }),
         {
           status: 404,
           headers: { "Content-Type": "application/json" },
@@ -78,13 +78,13 @@ export const PATCH = async (
 
     return new NextResponse(
       JSON.stringify({
-        message: `Customer notification updated successfully!`,
+        message: `User notification updated successfully!`,
       }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
   } catch (error) {
     return handleApiError(
-      "Update notification read flag from customer failed!",
+      "Update notification read flag from user failed!",
       error as string
     );
   }

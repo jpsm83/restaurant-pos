@@ -28,7 +28,6 @@
             "gender": "Man",
             "birthDate": "2014-10-10T14:48:00.000Z",
             "phoneNumber": "customer1PhoneNumber",
-            "deviceToken": "deviceToken1",
             "_id": "67d01d7f873e4b6b1225a8a1"
         },
         "selfOrders": [],
@@ -75,7 +74,6 @@
             "gender": "Man",
             "birthDate": "2014-10-10T14:48:00.000Z",
             "phoneNumber": "customer2PhoneNumber",
-            "deviceToken": "deviceToken2",
             "_id": "67d01db5873e4b6b1225a8a6"
         },
         "selfOrders": [],

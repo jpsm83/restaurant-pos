@@ -46,7 +46,7 @@ export const GET = async () => {
           headers: { "Content-Type": "application/json" },
         });
   } catch (error) {
-    return handleApiError("Get all businessId goods failed!", error);
+    return handleApiError("Get all businessId goods failed!", error as string);
   }
 };
 
@@ -267,7 +267,7 @@ export const POST = async (req: Request) => {
       }
     );
   } catch (error) {
-    return handleApiError("Create businessId good failed!", error);
+    return handleApiError("Create businessId good failed!", error as string);
   }
 };
 

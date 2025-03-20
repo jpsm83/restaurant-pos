@@ -1,5 +1,4 @@
 import { Types } from "mongoose";
-import { IPersonalDetails } from "./IPersonalDetails";
 
 export interface ISalary {
   payFrequency: string;
@@ -8,7 +7,6 @@ export interface ISalary {
 }
 
 export interface IEmployee {
-  personalDetails: IPersonalDetails;
   allEmployeeRoles: string[];
   taxNumber: string;
   joinDate: Date;
@@ -16,11 +14,12 @@ export interface IEmployee {
   onDuty: boolean;
   vacationDaysPerYear: number;
   businessId: Types.ObjectId;
+  userId: Types.ObjectId;
   vacationDaysLeft?: number;
-  deviceToken?: string;
   currentShiftRole?: string;
   contractHoursWeek?: number; // in milliseconds
   salary?: ISalary;
   terminatedDate?: Date;
+  documentsUrl?: string;
   comments?: string;
 }

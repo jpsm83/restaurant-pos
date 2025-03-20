@@ -1,13 +1,15 @@
 import { Types } from "mongoose";
 
+export interface ITimeRange {
+  startTime: Date;
+  endTime: Date;
+}
+
 export interface IEmployeeSchedule {
   _id: Types.ObjectId;
   employeeId: Types.ObjectId;
   role: string;
-  timeRange: {
-    startTime: Date;
-    endTime: Date;
-  };
+  timeRange: ITimeRange;
   vacation: boolean;
   shiftHours: number;
   employeeCost: number;
