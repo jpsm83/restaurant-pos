@@ -27,18 +27,24 @@ import { paymentMethods } from "../enums.js";
 // ];
 
 // Define the generic payment method schema
-export const paymentMethod = new Schema({
-  paymentMethodType: {
-    type: String,
-    required: true,
-    enum: paymentMethods, // Add more types as needed
+export const paymentMethod = new Schema(
+  {
+    paymentMethodType: {
+      type: String,
+      required: [true, "Payment method type is required!"],
+      enum: paymentMethods, // Add more types as needed
+    },
+    methodBranch: {
+      type: String,
+      required: [true, "Method branch is required!"],
+    }, // Branch/type of the payment method (e.g., card branch, crypto type, etc.)
+    methodSalesTotal: {
+      type: Number,
+      required: [true, "Method sales total is required!"],
+    }, // Sum of sales for this payment method
   },
-  methodBranch: {
-    type: String,
-    required: true,
-  }, // Branch/type of the payment method (e.g., card branch, crypto type, etc.)
-  methodSalesTotal: {
-    type: Number,
-    required: true,
-  }, // Sum of sales for this payment method
-});
+  {
+    timestamps: true,
+    trim: true,
+  }
+);

@@ -1,58 +1,69 @@
 import { Schema, model, models } from "mongoose";
 
-const employeesScheduledSchema = new Schema({
-  employeeId: {
-    type: Schema.Types.ObjectId,
-    ref: "Employee",
-    required: true,
-  }, // employee scheduled
-  role: { type: String, required: true }, // role of the employee in the shift
-  timeRange: {
-    startTime: { type: Date, required: true }, // start time of the shift
-    endTime: { type: Date, required: true }, // end time of the shift
-  }, // time range of the shift
-  vacation: { type: Boolean, default: false, required: true }, // if the employee is on vacation
+const employeesScheduledSchema = new Schema(
+  {
+    employeeId: {
+      type: Schema.Types.ObjectId,
+      ref: "Employee",
+      required: [true, "Employee id is required!"],
+      index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
+    }, // employee scheduled
+    role: { type: String, required: [true, "Role is required!"] }, // role of the employee in the shift
+    timeRange: {
+      startTime: {
+        type: Date,
+        required: [true, "Time range start time is required!"],
+      }, // start time of the shift
+      endTime: {
+        type: Date,
+        required: [true, "Time range end time is required!"],
+      }, // end time of the shift
+    }, // time range of the shift
+    vacation: { type: Boolean, default: false }, // if the employee is on vacation
 
-  // not required from the front end
-  // calculated in the back end
-  shiftHours: {
-    type: Number,
-    required: true,
-  }, // quantity of shift hours worked , startTime - endTime
-  employeeCost: {
-    type: Number,
-    required: true,
-  }, // cost of the employee for the shift, employee.grossMonthlySalary / employee.contractHoursMonth * shiftHours - calculated in the front end
-});
+    // not required from the front end
+    // calculated in the back end
+    shiftHours: {
+      type: Number,
+      required: [true, "Shift hours is required!"],
+    }, // quantity of shift hours worked , startTime - endTime
+    employeeCost: {
+      type: Number,
+      required: [true, "Employee cost is required!"],
+    }, // cost of the employee for the shift, employee.grossMonthlySalary / employee.contractHoursMonth * shiftHours - calculated in the front end
+  },
+  {
+    timestamps: true,
+    trim: true,
+  }
+);
 
 const scheduleSchema = new Schema(
   {
     // required fields
     date: {
       type: Date,
-      required: true,
+      required: [true, "Date is required!"],
     }, // date of the schedule without time
-    weekNumber: { type: Number, required: true }, // week number of the year
-    employeesSchedules: [employeesScheduledSchema],
+    weekNumber: { type: Number, required: [true, "Week number is required!"] }, // week number of the year
+    employeesSchedules: {
+      type: [employeesScheduledSchema],
+      default: undefined,
+    }, // employees scheduled for the day
     totalEmployeesScheduled: {
       type: Number,
-      required: true,
-      default: 0,
     }, // total employees scheduled
     totalEmployeesVacation: {
       type: Number,
-      required: true,
-      default: 0,
     }, // total employees on vacation
     totalDayEmployeesCost: {
       type: Number,
-      required: true,
-      default: 0,
     }, // sun of all employeeCost / scheduled and on vacation - REQUIERED FOR ANALYTICS
     businessId: {
       type: Schema.Types.ObjectId,
       ref: "Business",
-      required: true,
+      required: [true, "Business id is required!"],
+      index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
     }, // business where the schedule is created
 
     // non reaquired fields
@@ -62,6 +73,7 @@ const scheduleSchema = new Schema(
   },
   {
     timestamps: true,
+    trim: true,
   }
 );
 

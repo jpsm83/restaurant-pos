@@ -4,7 +4,10 @@ import { personalDetailsSchema } from "./personalDetails";
 const customerSchema = new Schema(
   {
     // required fields
-    personalDetails: { type: personalDetailsSchema, required: true }, // personal details of the customer
+    personalDetails: {
+      type: personalDetailsSchema,
+      required: [true, "Personal details is required!"],
+    }, // personal details of the customer
 
     // optional fields
     selfOrders: {
@@ -12,6 +15,7 @@ const customerSchema = new Schema(
         {
           type: Schema.Types.ObjectId,
           ref: "Order",
+          index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
         },
       ],
       default: undefined,
@@ -22,6 +26,7 @@ const customerSchema = new Schema(
           notificationId: {
             type: Schema.Types.ObjectId,
             ref: "Notification",
+            index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
           },
           readFlag: { type: Boolean, default: false },
           deletedFlag: { type: Boolean, default: false },

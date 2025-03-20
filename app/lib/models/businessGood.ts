@@ -4,17 +4,28 @@ import { mainCategories, measurementUnit, allergens } from "../enums.js";
 const businessGoodSchema = new Schema(
   {
     // required fields
-    name: { type: String, required: true }, // name of the business good
-    keyword: { type: String, required: true }, // keyword for search "burger", "sides", "beer"
-    mainCategory: { type: String, enum: mainCategories, required: true }, // principal category of the business good
-    subCategory: { type: String, required: true }, // secondary category of the business good
-    onMenu: { type: Boolean, required: true, default: true }, // if the business good is on the menu right now
-    available: { type: Boolean, required: true, default: true }, // if the business good is available for sale
-    sellingPrice: { type: Number, required: true }, // price for customers
+    name: { type: String, required: [true, "Name is required!"] }, // name of the business good
+    keyword: { type: String, required: [true, "Keyword is required!"] }, // keyword for search "burger", "sides", "beer"
+    mainCategory: {
+      type: String,
+      enum: mainCategories,
+      required: [true, "Main category is required!"],
+    }, // principal category of the business good
+    subCategory: {
+      type: String,
+      required: [true, "Sub category is required!"],
+    }, // secondary category of the business good
+    onMenu: { type: Boolean, default: true }, // if the business good is on the menu right now
+    available: { type: Boolean, default: true }, // if the business good is available for sale
+    sellingPrice: {
+      type: Number,
+      required: [true, "Selling price is required!"],
+    }, // price for customers
     businessId: {
       type: Schema.Types.ObjectId,
       ref: "Business",
-      required: true,
+      required: [true, "Business id is required!"],
+      index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
     },
 
     // BUSINESSGOOD CAN HAVE A INGREDIENTS ARRAY OR SETMENU ARRAY - IT CANNOT BE BOTH
@@ -25,14 +36,18 @@ const businessGoodSchema = new Schema(
           supplierGoodId: {
             type: Schema.Types.ObjectId,
             ref: "SupplierGood",
-            required: true,
+            required: [true, "Supplier good id is required!"],
+            index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
           }, // Supplier good used as an ingredient - e.g., ground meat (id)
           measurementUnit: {
             type: String,
             enum: measurementUnit,
-            required: true,
+            required: [true, "Measurement unit is required!"],
           }, // Unit used for measurement - e.g., (grams) of ground meat - REQUIRED FOR ANALYTICS
-          requiredQuantity: { type: Number, required: true }, // Quantity needed to prepare the business good - e.g., (250) grams of ground meat
+          requiredQuantity: {
+            type: Number,
+            required: [true, "Required quantity is required!"],
+          }, // Quantity needed to prepare the business good - e.g., (250) grams of ground meat
           costOfRequiredQuantity: { type: Number }, // Cost price of the required quantity to prepare the business good
           // Before the calculation, make sure the ingredient.measurementUnit is the same as the measurementUnit
           // If not, convert the measurementUnit to the ingredient.measurementUnit
@@ -42,14 +57,17 @@ const businessGoodSchema = new Schema(
       ],
       default: undefined,
     },
-
     // set menu is a group of business goods that are sold together in a single cheaper price
     setMenuIds: {
-      type: [Schema.Types.ObjectId],
-      ref: "BusinessGood",
+      type: [
+        {
+          type: Schema.Types.ObjectId,
+          ref: "BusinessGood",
+          index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
+        },
+      ],
       default: undefined,
     }, // all business goods that are part of the set menu
-
     // optional fields
     costPrice: { type: Number }, // sun of all ingredients.costOfRequiredQuantity
     grossProfitMarginDesired: { type: Number }, // desired gross profit margin - should show employee a list of most used gross profit margins depending of the dish

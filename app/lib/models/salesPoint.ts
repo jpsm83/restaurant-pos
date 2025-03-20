@@ -2,7 +2,10 @@ import { Schema, model, models } from "mongoose";
 
 const SalesPointSchema = new Schema(
   {
-    salesPointName: { type: String, required: true }, // name of the location sale reference - ex: 101
+    salesPointName: {
+      type: String,
+      required: [true, "Sales point name is required!"],
+    }, // name of the location sale reference - ex: 101
     salesPointType: { type: String }, // table, room, bar, seat, etc - ex: Table101
     selfOrdering: { type: Boolean, default: false }, // manager decision if location can order by itself using QR code
     qrCode: { type: String }, // auto created QR code for the location
@@ -11,11 +14,13 @@ const SalesPointSchema = new Schema(
     businessId: {
       type: Schema.Types.ObjectId,
       ref: "Business",
-      required: true,
+      required: [true, "Business id is required!"],
+      index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
     }, // business that owns the printer
   },
   {
     timestamps: true,
+    trim: true,
   }
 );
 

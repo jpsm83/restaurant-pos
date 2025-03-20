@@ -72,7 +72,7 @@ export const GET = async (
           headers: { "Content-Type": "application/json" },
         });
   } catch (error) {
-    return handleApiError("Get business by its id failed!", error);
+    return handleApiError("Get business by its id failed!", error as string);
   }
 };
 
@@ -204,7 +204,7 @@ export const PATCH = async (
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
   } catch (error) {
-    return handleApiError("Update business failed!", error);
+    return handleApiError("Update business failed!", error as string);
   }
 };
 
@@ -316,7 +316,7 @@ export const DELETE = async (
     );
   } catch (error) {
     await session.abortTransaction();
-    return handleApiError("Delete business failed!", error);
+    return handleApiError("Delete business failed!", error as string);
   } finally {
     session.endSession();
   }

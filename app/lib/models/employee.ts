@@ -2,15 +2,24 @@ import { Schema, model, models } from "mongoose";
 import { employeeRoles } from "../enums.js";
 import { personalDetailsSchema } from "./personalDetails";
 
-const salarySchema = new Schema({
-  payFrequency: {
-    type: String,
-    enum: ["Hourly", "Daily", "Weekly", "Monthly"],
-    required: [true, "Pay frequency is required!"],
-  }, // frequency of the payment
-  grossSalary: { type: Number, required: [true, "Gross salary is required!"] }, // hourly employee salary before taxes
-  netSalary: { type: Number, required: [true, "Net salary is required!"] }, // net employee salary after taxes
-});
+const salarySchema = new Schema(
+  {
+    payFrequency: {
+      type: String,
+      enum: ["Hourly", "Daily", "Weekly", "Monthly"],
+      required: [true, "Pay frequency is required!"],
+    }, // frequency of the payment
+    grossSalary: {
+      type: Number,
+      required: [true, "Gross salary is required!"],
+    }, // hourly employee salary before taxes
+    netSalary: { type: Number, required: [true, "Net salary is required!"] }, // net employee salary after taxes
+  },
+  {
+    timestamps: true,
+    trim: true,
+  }
+);
 
 const employeeSchema = new Schema(
   {
@@ -33,12 +42,10 @@ const employeeSchema = new Schema(
     joinDate: { type: Date, required: [true, "Join date is required!"] }, // date when the employee joined the business
     active: {
       type: Boolean,
-      required: [true, "Active is required!"],
       default: true,
     }, // if the employee is active, could be a sesonality worker
     onDuty: {
       type: Boolean,
-      required: [true, "On Duty is required!"],
       default: false,
     }, // if the employee is on duty, shift working right now
     vacationDaysPerYear: {
@@ -88,7 +95,10 @@ const employeeSchema = new Schema(
       default: undefined,
     }, // if the customer wants to receive notifications
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    trim: true,
+  }
 );
 
 const Employee = models.Employee || model("Employee", employeeSchema);

@@ -4,12 +4,13 @@ import { goodsReducedSchema } from "./dailySalesReport";
 
 const monthlyBusinessReportSchema = new Schema(
   {
-    isReportOpen: { type: Boolean, required: true, default: true },
+    isReportOpen: { type: Boolean, default: true },
     // Indicates if the monthly report is still open for edits. When true, employees can still add sales. When false, the report is locked for further edits, and all calculations are final.
     businessId: {
       type: Schema.Types.ObjectId,
       ref: "Business",
-      required: true,
+      required: [true, "Business id is required!"],
+      index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
     },
     // Reference to the business associated with this monthly report.
     financialSummary: {
@@ -66,11 +67,11 @@ const monthlyBusinessReportSchema = new Schema(
       },
       // Percentages reflecting the proportion of each cost category relative to total operating costs.
     },
-    goodsSold: [goodsReducedSchema],
+    goodsSold: { type: [goodsReducedSchema], default: undefined },
     // Array containing details of all goods sold during the month.
-    goodsVoided: [goodsReducedSchema],
+    goodsVoided: { type: [goodsReducedSchema], default: undefined },
     // Array containing details of all goods voided during the month.
-    goodsComplimentary: [goodsReducedSchema],
+    goodsComplimentary: { type: [goodsReducedSchema], default: undefined },
     // Array containing details of all goods provided as complimentary (invited) during the month.
     supplierWasteAnalysis: {
       veryLowImpactWastePercentage: { type: Number },
@@ -89,13 +90,14 @@ const monthlyBusinessReportSchema = new Schema(
     // Total number of customers served during the month.
     averageSpendingPerCustomer: { type: Number },
     // Average amount each customer spent, calculated as (totalNetRevenue / totalCustomersServed).
-    paymentMethods: [paymentMethod],
+    paymentMethods: { type: [paymentMethod], default: undefined },
     // Array of all payment methods used during the month along with their respective sales totals.
     posSystemCommission: { type: Number },
     // Commission charged by the POS system used for processing payments.
   },
   {
     timestamps: true,
+    trim: true,
   }
 );
 

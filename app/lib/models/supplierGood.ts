@@ -11,20 +11,29 @@ import {
 const supplierGoodSchema = new Schema(
   {
     // required fields
-    name: { type: String, required: true }, // name of the good "King Authur all purpose flour"
-    keyword: { type: String, required: true }, // keyword of the good "flour"
-    mainCategory: { type: String, enum: mainCategories, required: true }, // principal category of the business good
-    subCategory: { type: String, required: true }, // secondary category of the business good
-    currentlyInUse: { type: Boolean, required: true, default: true }, // if the good is currently in use base on the business goods
+    name: { type: String, required: [true, "Name is required!"] }, // name of the good "King Authur all purpose flour"
+    keyword: { type: String, required: [true, "keyword is required!"] }, // keyword of the good "flour"
+    mainCategory: {
+      type: String,
+      enum: mainCategories,
+      required: [true, "Main category is required!"],
+    }, // principal category of the business good
+    subCategory: {
+      type: String,
+      required: [true, "Sub category is required!"],
+    }, // secondary category of the business good
+    currentlyInUse: { type: Boolean, default: true }, // if the good is currently in use base on the business goods
     supplierId: {
       type: Schema.Types.ObjectId,
       ref: "Supplier",
-      required: true,
+      required: [true, "Supplier id is required!"],
+      index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
     }, // supplier of the good - it is required upon creation but it can be updated to undefined if supplier is deleted
     businessId: {
       type: Schema.Types.ObjectId,
       ref: "Business",
-      required: true,
+      required: [true, "Business id is required!"],
+      index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
     }, // business that deals with the supplier
 
     // optional fields
@@ -70,6 +79,7 @@ const supplierGoodSchema = new Schema(
   },
   {
     timestamps: true,
+    trim: true,
   }
 );
 

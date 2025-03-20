@@ -17,10 +17,10 @@ export interface ISchedule {
   _id: Types.ObjectId;
   date: Date;
   weekNumber: number;
-  employeesSchedules: IEmployeeSchedule[];
-  totalEmployeesScheduled: number;
-  totalEmployeesVacation: number;
-  totalDayEmployeesCost: number;
+  employeesSchedules?: IEmployeeSchedule[];
+  totalEmployeesScheduled?: number;
+  totalEmployeesVacation?: number;
+  totalDayEmployeesCost?: number;
   businessId: Types.ObjectId;
   comments?: string;
 }
