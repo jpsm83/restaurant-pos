@@ -35,7 +35,7 @@ export const generateQrCode = async (businessId: Types.ObjectId) => {
     // Generate QR code as a data URL
     // this is the api url where the qrcode will redirect
     const qrCodeDataUrl = await QRCode.toDataURL(
-      `http://localhost:3000/api/salesInstances/selfOrderingLocationId/${randomUniqueId}`
+      `http://localhost:3000/api/v1/salesInstances/selfOrderingLocationId/${randomUniqueId}`
     );
 
     // Prepare the data for Cloudinary upload
@@ -50,7 +50,7 @@ export const generateQrCode = async (businessId: Types.ObjectId) => {
       upload_preset: uploadPreset,
       public_id: randomUniqueId, // use the ID as the public ID
       // businessId is used as a folder name
-      folder: `restaurant-pos/${businessId}/salesLocationQrCodes`, // specify a folder in Cloudinary
+      folder: `restaurant-pos/business/${businessId}/salesLocationQrCodes`, // specify a folder in Cloudinary
     });
 
     // Return the Cloudinary URL

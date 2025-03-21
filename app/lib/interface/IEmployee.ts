@@ -20,6 +20,6 @@ export interface IEmployee {
   contractHoursWeek?: number; // in milliseconds
   salary?: ISalary;
   terminatedDate?: Date;
-  documentsUrl?: string;
+  documentsUrl?: string[];
   comments?: string;
 }

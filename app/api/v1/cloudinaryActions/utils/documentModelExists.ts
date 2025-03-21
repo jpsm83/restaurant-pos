@@ -2,75 +2,90 @@ import connectDb from "@/app/lib/utils/connectDb";
 
 import Business from "@/app/lib/models/business";
 import BusinessGood from "@/app/lib/models/businessGood";
-import SupplierGood from "@/app/lib/models/supplierGood";
-import Supplier from "@/app/lib/models/supplier";
 import Employee from "@/app/lib/models/employee";
 import Purchase from "@/app/lib/models/purchase";
+import SupplierGood from "@/app/lib/models/supplierGood";
+import Supplier from "@/app/lib/models/supplier";
+// import User from "@/app/lib/models/user";
+
+interface IDocumentModel {
+  restaurantSubfolder: string | null;
+  name: string | null;
+  id: string | null;
+};
 
 const documentModelExists = async (
   businessId: FormDataEntryValue | null,
   businessGoodId: FormDataEntryValue | null,
+  employeeId: FormDataEntryValue | null,
+  purchaseId: FormDataEntryValue | null,
   supplierGoodId: FormDataEntryValue | null,
   supplierId: FormDataEntryValue | null,
-  employeeId: FormDataEntryValue | null,
-  purchaseId: FormDataEntryValue | null
+  // userId: FormDataEntryValue | null
 ) => {
   // Create a mapping between model names and actual models
   const modelMap: {
     [key: string]:
       | typeof Business
       | typeof BusinessGood
+      | typeof Employee
+      | typeof Purchase
       | typeof SupplierGood
       | typeof Supplier
-      | typeof Employee
-      | typeof Purchase;
+      // | typeof User
   } = {
     Business,
     BusinessGood,
-    SupplierGood,
-    Supplier,
     Employee,
     Purchase,
+    SupplierGood,
+    Supplier,
+    // User,
   };
 
-  const documentModel = {
-    restaurantSubfolder: "",
+  const documentModel: IDocumentModel = {
+    restaurantSubfolder: null,
     name: "Business",
-    id: businessId,
+    id: typeof businessId === "string" ? businessId : null,
   };
 
   if (businessGoodId) {
     documentModel.restaurantSubfolder = "businessGoods";
     documentModel.name = "BusinessGood";
-    documentModel.id = businessGoodId;
-  }
-
-  if (supplierGoodId) {
-    documentModel.restaurantSubfolder = "supplierGoods";
-    documentModel.name = "SupplierGood";
-    documentModel.id = supplierGoodId;
-  }
-
-  if (supplierId) {
-    documentModel.restaurantSubfolder = "suppliers";
-    documentModel.name = "Supplier";
-    documentModel.id = supplierId;
+    documentModel.id = businessGoodId as string;
   }
 
   if (employeeId) {
     documentModel.restaurantSubfolder = "employees";
     documentModel.name = "Employee";
-    documentModel.id = employeeId;
+    documentModel.id = employeeId as string;
   }
 
   if (purchaseId) {
     documentModel.restaurantSubfolder = "purchases";
     documentModel.name = "Purchase";
-    documentModel.id = purchaseId;
+    documentModel.id = purchaseId as string;
   }
 
+  if (supplierGoodId) {
+    documentModel.restaurantSubfolder = "supplierGoods";
+    documentModel.name = "SupplierGood";
+    documentModel.id = supplierGoodId as string;
+  }
+
+  if (supplierId) {
+    documentModel.restaurantSubfolder = "suppliers";
+    documentModel.name = "Supplier";
+    documentModel.id = supplierId as string;
+  }
+
+
   // Retrieve the actual model based on the string input
-  const model = modelMap[documentModel.name];
+  const model = modelMap[documentModel.name as string];
+
+  if(documentModel.name === "") {
+    return "Document model is required!";
+  }
 
   // connect before first call to DB
   await connectDb();
@@ -81,7 +96,7 @@ const documentModelExists = async (
   if (documentExists) {
     return documentModel;
   } else {
-    return `${documentModel.name} with id ${documentModel.id} does not exists!`;
+    return "Document model does not exists!";
   }
 };
 

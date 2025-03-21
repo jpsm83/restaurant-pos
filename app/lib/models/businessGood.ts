@@ -74,7 +74,7 @@ const businessGoodSchema = new Schema(
     suggestedSellingPrice: { type: Number }, // costPrice / (1 - grossProfitMarginDesired as decimal (65% = 0.65))
     description: { type: String }, // description of the business good
     allergens: { type: [String], enum: allergens, default: undefined }, // allergens of the business good - have to follow the allergens from the supplier goods and add more if needed
-    imageUrl: { type: String }, // photo of the business good
+    imageUrl: { type: [String] }, // multiple photo of the business good
     deliveryTime: { type: Number }, // maximun time to deliver the business good to client in minutes
   },
   {

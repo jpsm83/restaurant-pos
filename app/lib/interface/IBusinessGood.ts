@@ -23,6 +23,6 @@ export interface IBusinessGood {
   suggestedSellingPrice?: number;
   description?: string;
   allergens?: string[];
-  imageUrl?: string;
+  imageUrl?: string[];
   deliveryTime?: number;
 }

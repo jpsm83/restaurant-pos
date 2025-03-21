@@ -41,8 +41,8 @@ const supplierGoodSchema = new Schema(
     allergens: { type: [String], enum: allergens, default: undefined }, // allergens of the good
     budgetImpact: { type: String, enum: budgetImpact }, // how relevant is the good on the business budget
     imageUrl: {
-      type: String,
-    }, // photo of the good
+      type: [String],
+    }, // multiple photos of the good
     inventorySchedule: { type: String, enum: inventorySchedule }, // daily, weekly, monthly
 
     // analytics fields
