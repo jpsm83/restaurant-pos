@@ -6,7 +6,7 @@ import mongoose from "mongoose";
 import connectDb from "@/lib/db/connectDb";
 import { handleApiError } from "@/lib/db/handleApiError";
 import objDefaultValidation from "@/lib/utils/objDefaultValidation";
-import uploadSingleImage from "@/lib/cloudinary/uploadSingleImage";
+import uploadFiles from "@/lib/cloudinary/uploadFiles";
 
 // imported interface
 import { IBusiness } from "@/lib/interface/IBusiness";
@@ -75,7 +75,7 @@ export const POST = async (req: Request) => {
     const address = JSON.parse(formData.get("address") as string);
     const currencyTrade = formData.get("currencyTrade") as string;
     const contactPerson = formData.get("contactPerson") as string | undefined;
-    const imageFile = formData.get("imageUrl") as File | undefined; // Get image file
+    const files = formData.getAll("imageUrl").filter((entry): entry is File => entry instanceof File); // Get all files
 
     // check required fields
     if (
@@ -147,19 +147,21 @@ export const POST = async (req: Request) => {
 
     let imageUrl: string | undefined;
 
-    if (imageFile) {
+    if (files) {
       const folder = `/business/${businessId}`;
 
-      const cloudinaryUploadResponse = await uploadSingleImage({
+      const cloudinaryUploadResponse = await uploadFiles({
         folder,
-        imageFile,
+        filesArr: files,
+        onlyImages: true
       });
 
       if (
-        !cloudinaryUploadResponse ||
-        !cloudinaryUploadResponse.includes("https://")
+        typeof cloudinaryUploadResponse === "string" ||
+        cloudinaryUploadResponse.length === 0 || 
+        !cloudinaryUploadResponse.every((str) => str.includes("https://"))
       ) {
-        return new NextResponse(
+                return new NextResponse(
           JSON.stringify({
             message: `Error uploading image: ${cloudinaryUploadResponse}`,
           }),
@@ -167,7 +169,7 @@ export const POST = async (req: Request) => {
         );
       }
 
-      imageUrl = cloudinaryUploadResponse;
+      imageUrl = cloudinaryUploadResponse[0];
     }
 
     // create business object with required fields

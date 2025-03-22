@@ -9,7 +9,7 @@ import { handleApiError } from "@/lib/db/handleApiError";
 import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 import objDefaultValidation from "@/lib/utils/objDefaultValidation";
 import deleteSingleImage from "@/lib/cloudinary/deleteSingleImage";
-import uploadSingleImage from "@/lib/cloudinary/uploadSingleImage";
+import uploadFiles from "@/lib/cloudinary/uploadFiles";
 
 // import interfaces
 import {
@@ -36,6 +36,15 @@ import Inventory from "@/lib/db/models/inventory";
 import Purchase from "@/lib/db/models/purchase";
 import SalesPoint from "@/lib/db/models/salesPoint";
 import MonthlyBusinessReport from "@/lib/db/models/monthlyBusinessReport";
+import User from "@/lib/db/models/user";
+
+// Cloudinary ENV variables
+cloudinary.config({
+  cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+  secure: true,
+});
 
 const emailRegex = /^[\w-]+(\.[\w-]+)*@([\w-]+\.)+[a-zA-Z]{2,7}$/;
 
@@ -149,7 +158,9 @@ export const PATCH = async (
       ? JSON.parse(formData.get("metrics") as string)
       : undefined;
     const contactPerson = formData.get("contactPerson") as string | undefined;
-    const imageFile = formData.get("imageUrl") as File | undefined; // Get image file
+    const files = formData
+      .getAll("imageUrl")
+      .filter((entry): entry is File => entry instanceof File); // Get all files
 
     // check email format
     if (!emailRegex.test(email)) {
@@ -314,7 +325,7 @@ export const PATCH = async (
         updateBusinessObj.metrics = updatedMetrics;
     }
 
-    if (imageFile) {
+    if (files) {
       // first delete the existing image if it exists
       const deleteSingleImageResult: string | boolean = await deleteSingleImage(
         business?.imageUrl || ""
@@ -331,14 +342,16 @@ export const PATCH = async (
       const folder = `/business/${businessId}`;
 
       // upload new image
-      const cloudinaryUploadResponse = await uploadSingleImage({
+      const cloudinaryUploadResponse = await uploadFiles({
         folder,
-        imageFile,
+        filesArr: files,
+        onlyImages: true,
       });
 
       if (
-        !cloudinaryUploadResponse ||
-        !cloudinaryUploadResponse.includes("https://")
+        typeof cloudinaryUploadResponse === "string" ||
+        cloudinaryUploadResponse.length === 0 ||
+        !cloudinaryUploadResponse.every((str) => str.includes("https://"))
       ) {
         return new NextResponse(
           JSON.stringify({
@@ -348,7 +361,7 @@ export const PATCH = async (
         );
       }
 
-      updateBusinessObj.imageUrl = cloudinaryUploadResponse;
+      updateBusinessObj.imageUrl = cloudinaryUploadResponse[0];
     }
 
     // Password hash only if password is provided
@@ -387,111 +400,77 @@ export const PATCH = async (
 // @access  Private
 export const DELETE = async (
   req: Request,
-  context: {
-    params: { businessId: Types.ObjectId };
-  }
+  context: { params: { businessId: Types.ObjectId } }
 ) => {
-  // Cloudinary ENV variables
-  cloudinary.config({
-    cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
-    secure: true,
-  });
+  const { businessId } = context.params;
 
-  const businessId = context.params.businessId;
-
-  // validate businessId
-  if (isObjectIdValid([businessId]) !== true) {
+  // Validate businessId
+  if (!isObjectIdValid([businessId])) {
     return new NextResponse(
       JSON.stringify({ message: "Invalid businessId!" }),
-      {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      }
+      { status: 400, headers: { "Content-Type": "application/json" } }
     );
   }
 
-  // connect before first call to DB
+  // Connect to DB
   await connectDb();
 
-  // Start a session to handle transactions
-  // with session if any error occurs, the transaction will be aborted
-  // session is created outside of the try block to be able to abort it in the catch/finally block
+  // Start MongoDB session for transaction
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
-    // delete business and check if it exists
-    const result = await Business.deleteOne({ _id: businessId }, { session });
-
-    if (result.deletedCount === 0) {
-      await session.abortTransaction();
-      return new NextResponse(
-        JSON.stringify({
-          message: "Business not found or atomic deletation failed!",
-        }),
-        {
-          status: 404,
-          headers: { "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // Delete related data in parallel and the Cloudinary folder
+    // Delete business and related data in parallel
     await Promise.all([
-      BusinessGood.deleteMany({ businessId: businessId }, { session }),
-      DailySalesReport.deleteMany({ businessId: businessId }, { session }),
-      Inventory.deleteMany({ businessId: businessId }, { session }),
-      MonthlyBusinessReport.deleteMany({ businessId: businessId }, { session }),
-      Notification.deleteMany({ businessId: businessId }, { session }),
-      Order.deleteMany({ businessId: businessId }, { session }),
-      Printer.deleteMany({ businessId: businessId }, { session }),
-      Promotion.deleteMany({ businessId: businessId }, { session }),
-      Purchase.deleteMany({ businessId: businessId }, { session }),
-      SalesInstance.deleteMany({ businessId: businessId }, { session }),
-      SalesPoint.deleteMany({ businessId: businessId }, { session }),
-      Schedule.deleteMany({ businessId: businessId }, { session }),
-      SupplierGood.deleteMany({ businessId: businessId }, { session }),
-      Supplier.deleteMany({ businessId: businessId }, { session }),
-      Employee.deleteMany({ businessId: businessId }, { session }),
+      Business.deleteOne({ _id: businessId }, { session }),
+      BusinessGood.deleteMany({ businessId }, { session }),
+      DailySalesReport.deleteMany({ businessId }, { session }),
+      Employee.deleteMany({ businessId }, { session }),
+      Inventory.deleteMany({ businessId }, { session }),
+      MonthlyBusinessReport.deleteMany({ businessId }, { session }),
+      Notification.deleteMany({ businessId }, { session }),
+      Order.deleteMany({ businessId }, { session }),
+      Printer.deleteMany({ businessId }, { session }),
+      Promotion.deleteMany({ businessId }, { session }),
+      Purchase.deleteMany({ businessId }, { session }),
+      // Reservation.deleteMany({ businessId }, { session }), TO BE CREATED
+      SalesInstance.deleteMany({ businessId }, { session }),
+      SalesPoint.deleteMany({ businessId }, { session }),
+      Schedule.deleteMany({ businessId }, { session }),
+      SupplierGood.deleteMany({ businessId }, { session }),
+      Supplier.deleteMany({ businessId }, { session }),
+      User.deleteMany({ businessId }, { session }),
     ]);
 
-    const cloudinaryFolder = await cloudinary.api.sub_folders(
-      "restaurant-pos/"
-    );
-
-    const subfoldersArr: string[] = [];
-
-    cloudinaryFolder.folders.forEach((folder: { name: string }) =>
-      subfoldersArr.push(folder.name)
-    );
-
-    if (subfoldersArr.includes(businessId.toString())) {
-      try {
-        await cloudinary.api.delete_folder(`restaurant-pos/${businessId}/`);
-      } catch (error) {
-        await session.abortTransaction();
-        return new NextResponse(
-          JSON.stringify({
-            message: "Cloudinary folder deletion failed! " + error,
-          }),
-          { status: 500, headers: { "Content-Type": "application/json" } }
-        );
-      }
-    }
-
-    // commit the transaction
+    // Commit the database transaction FIRST
     await session.commitTransaction();
+    session.endSession();
+
+    // **Cloudinary Cleanup (Separate from DB Transaction)**
+    try {
+      const folderPath = `restaurant-pos/business/${businessId}`;
+
+      // **Step 1: Delete all files in the folder and subfolders**
+      await cloudinary.api.delete_resources_by_prefix(folderPath);
+
+      // **Step 2: Delete the empty folder (and all subfolders)**
+      await cloudinary.api.delete_folder(folderPath);
+    } catch (error) {
+      console.error("Cloudinary cleanup failed:", error);
+      // Do NOT abort transaction, log error instead
+    }
 
     return new NextResponse(
       JSON.stringify({ message: "Business deleted successfully" }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
   } catch (error) {
+    // Abort MongoDB transaction if any DB error occurs
     await session.abortTransaction();
+    session.endSession();
     return handleApiError("Delete business failed!", error as string);
   } finally {
+    // Close the session
     session.endSession();
   }
 };
