@@ -30,7 +30,7 @@ const supplierSchema = new Schema(
     }, // business that is buying from the suplier
 
     // optional fields
-    address: addressSchema, // Address of the suplier
+    address: { type: addressSchema, required: [true, "Address is required!"] }, // Address of the company
     contactPerson: { type: String }, // Contact person of the suplier
   },
   {

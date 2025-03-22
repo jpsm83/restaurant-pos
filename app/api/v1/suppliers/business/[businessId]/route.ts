@@ -47,6 +47,9 @@ export const GET = async (
           },
         });
   } catch (error) {
-    return handleApiError("Get suppliers by business id failed!", error);
+    return handleApiError(
+      "Get suppliers by business id failed!",
+      error as string
+    );
   }
 };

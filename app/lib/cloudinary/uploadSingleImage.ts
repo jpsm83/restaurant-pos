@@ -8,7 +8,13 @@ cloudinary.config({
   secure: true,
 });
 
-export default async function uploadSingleImage({ folder, imageFile }) {
+export default async function uploadSingleImage({
+  folder,
+  imageFile,
+}: {
+  folder: string;
+  imageFile: File;
+}) {
   const uploadPreset = "restaurant-pos";
 
   if (imageFile instanceof File) {
@@ -35,7 +41,7 @@ export default async function uploadSingleImage({ folder, imageFile }) {
 
       return response.secure_url;
     } catch (error) {
-      return `Error uploading image: ${
+      return `Error trying to upload image: ${
         error instanceof Error ? error.message : "Unknown error"
       }`;
     }

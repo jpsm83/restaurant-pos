@@ -10,7 +10,7 @@ export interface ISupplier {
   taxNumber: string;
   currentlyInUse: boolean;
   businessId: Types.ObjectId;
-  address?: IAddress;
+  address: IAddress;
   contactPerson?: string;
   imageUrl?: string;
 }

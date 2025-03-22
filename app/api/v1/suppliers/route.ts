@@ -44,7 +44,7 @@ export const GET = async () => {
 // supplier goods can be added later on update
 export const POST = async (req: Request) => {
   try {
-    // Parse form data instead of JSON
+    // Parse FORM DATA instead of JSON because we might have an image file
     const formData = await req.formData();
 
     // Extract fields from formData
@@ -69,12 +69,13 @@ export const POST = async (req: Request) => {
       !phoneNumber ||
       !taxNumber ||
       currentlyInUse === undefined ||
+      !address ||
       !businessId
     ) {
       return new NextResponse(
         JSON.stringify({
           message:
-            "TradeName, legalName, email, phoneNumber, taxNumber, currentlyInUse and businessId are required!",
+            "TradeName, legalName, email, phoneNumber, taxNumber, currentlyInUse, address and businessId are required!",
         }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
@@ -92,7 +93,6 @@ export const POST = async (req: Request) => {
     }
 
     // validate address fields
-    if (address) {
       const validAddress = addressValidation(address);
       if (validAddress !== true) {
         return new NextResponse(JSON.stringify({ message: validAddress }), {
@@ -100,7 +100,6 @@ export const POST = async (req: Request) => {
           headers: { "Content-Type": "application/json" },
         });
       }
-    }
 
     // validate the reserve string "One Time Purchase" for tradeName, legalName, phoneNumber and taxNumber
     if (

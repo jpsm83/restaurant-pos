@@ -3,7 +3,6 @@ import { Types } from "mongoose";
 
 // imported utils
 import connectDb from "@/app/lib/utils/connectDb";
-import { addressValidation } from "@/app/lib/utils/addressValidation";
 import { handleApiError } from "@/app/lib/utils/handleApiError";
 import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
 
@@ -14,6 +13,20 @@ import { ISupplier } from "@/app/lib/interface/ISupplier";
 import Supplier from "@/app/lib/models/supplier";
 import SupplierGood from "@/app/lib/models/supplierGood";
 import BusinessGood from "@/app/lib/models/businessGood";
+import objDefaultValidation from "@/app/lib/utils/objDefaultValidation";
+import deleteSingleImage from "@/app/lib/cloudinary/deleteSingleImage";
+import uploadSingleImage from "@/app/lib/cloudinary/uploadSingleImage";
+
+const reqAddressFields = [
+  "country",
+  "state",
+  "city",
+  "street",
+  "buildingNumber",
+  "postCode",
+];
+
+const nonReqAddressFields = ["region", "additionalDetails", "coordinates"];
 
 // @desc    Get supplier by ID
 // @route   GET /supplier/:supplierId
@@ -52,7 +65,7 @@ export const GET = async (
           },
         });
   } catch (error) {
-    return handleApiError("Get supplier by its id failed!", error);
+    return handleApiError("Get supplier by its id failed!", error as string);
   }
 };
 
@@ -64,7 +77,7 @@ export const PATCH = async (
   context: { params: { supplierId: Types.ObjectId } }
 ) => {
   try {
-    const supplierId = context.params.supplierId;
+    const { supplierId } = context.params;
 
     if (isObjectIdValid([supplierId]) !== true) {
       return new NextResponse(
@@ -76,30 +89,39 @@ export const PATCH = async (
       );
     }
 
-    const {
-      tradeName,
-      legalName,
-      email,
-      phoneNumber,
-      taxNumber,
-      currentlyInUse,
-      address,
-      contactPerson,
-    } = (await req.json()) as ISupplier;
+    // Parse FORM DATA instead of JSON because we might have an image file
+    const formData = await req.formData();
+
+    // Extract fields from formData
+    const tradeName = formData.get("tradeName") as string;
+    const legalName = formData.get("legalName") as string;
+    const email = formData.get("email") as string;
+    const phoneNumber = formData.get("phoneNumber") as string;
+    const taxNumber = formData.get("taxNumber") as string;
+    const currentlyInUse = formData.get("currentlyInUse") === "true"; // Convert string to boolean
+    const address = formData.get("address")
+      ? JSON.parse(formData.get("address") as string)
+      : undefined;
+    const contactPerson = formData.get("contactPerson") as string | undefined;
+    const imageFile = formData.get("imageUrl") as File | null; // Get image file
 
     // prepare update object
-    const supplerObj: Partial<ISupplier> = {};
 
-    // add address fields
-    if (address) {
-      const validAddress = addressValidation(address);
-      if (validAddress !== true) {
-        return new NextResponse(JSON.stringify({ message: validAddress }), {
+    // validate address
+    const addressValidationResult = objDefaultValidation(
+      address,
+      reqAddressFields,
+      nonReqAddressFields
+    );
+
+    if (addressValidationResult !== true) {
+      return new NextResponse(
+        JSON.stringify({ message: addressValidationResult }),
+        {
           status: 400,
           headers: { "Content-Type": "application/json" },
-        });
-      }
-      supplerObj.address = address;
+        }
+      );
     }
 
     // connect before first call to DB
@@ -107,7 +129,7 @@ export const PATCH = async (
 
     // check if supplier exists
     const supplier = (await Supplier.findById(supplierId)
-      .select("businessId")
+      .select("businessId imageUrl address")
       .lean()) as unknown as ISupplier | null;
 
     if (!supplier) {
@@ -133,17 +155,72 @@ export const PATCH = async (
       );
     }
 
-    // populate supplier goods
-    if (tradeName) supplerObj.tradeName = tradeName;
-    if (legalName) supplerObj.legalName = legalName;
-    if (email) supplerObj.email = email;
-    if (phoneNumber) supplerObj.phoneNumber = phoneNumber;
-    if (taxNumber) supplerObj.taxNumber = taxNumber;
-    if (currentlyInUse) supplerObj.currentlyInUse = currentlyInUse;
-    if (contactPerson) supplerObj.contactPerson = contactPerson;
+    // Prepare fields for update if they are provided
+    // WE DONT NEED TO COMPARE IF THE VALUE IS THE SAME AS THE CURRENT ONE
+    // UPDATEONE WILL ONLY UPDATE THE FIELDS THAT ARE DIFFERENT
+    const supplierObj: ISupplier = {
+      tradeName: tradeName,
+      legalName: legalName,
+      phoneNumber: phoneNumber,
+      taxNumber: taxNumber,
+      currentlyInUse: currentlyInUse,
+      businessId: supplier.businessId,
+      email: email || undefined,
+      contactPerson: contactPerson || undefined,
+      imageUrl: supplier.imageUrl || undefined,
+      address: {
+        country: address.country,
+        state: address.state,
+        city: address.city,
+        street: address.street,
+        buildingNumber: address.buildingNumber,
+        postCode: address.postCode,
+        region: address.region || undefined,
+        additionalDetails: address.additionalDetails || undefined,
+        coordinates: address.coordinates || undefined,
+      },
+    };
+
+    if (imageFile) {
+      // first delete the existing image if it exists
+      const deleteSingleImageResult: string | boolean = await deleteSingleImage(
+        supplier?.imageUrl || ""
+      );
+
+      // check if deleteSingleImage failed
+      if (deleteSingleImageResult !== true) {
+        return new NextResponse(
+          JSON.stringify({ message: deleteSingleImageResult }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      const folder = `/business/${supplier?.businessId}/suppliers/${supplierId}`;
+
+      // upload new image
+      const cloudinaryUploadResponse = await uploadSingleImage({
+        folder,
+        imageFile,
+      });
+
+      if (
+        !cloudinaryUploadResponse ||
+        !cloudinaryUploadResponse.includes("https://")
+      ) {
+        return new NextResponse(
+          JSON.stringify({
+            message: `Error uploading image: ${cloudinaryUploadResponse}`,
+          }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      supplierObj.imageUrl = cloudinaryUploadResponse;
+    }
 
     // Save the updated supplier
-    await Supplier.updateOne({ _id: supplierId }, supplerObj);
+    // UPDATEONE WILL ONLY UPDATE THE FIELDS THAT ARE DIFFERENT
+    await Supplier.updateOne({ _id: supplierId }, supplierObj);
 
     return new NextResponse(
       JSON.stringify({
@@ -155,7 +232,7 @@ export const PATCH = async (
       }
     );
   } catch (error) {
-    return handleApiError("Update supplier failed!", error);
+    return handleApiError("Update supplier failed!", error as string);
   }
 };
 
@@ -195,8 +272,9 @@ export const DELETE = async (
     const supplierGoodIds = await SupplierGood.find({
       supplierId: supplierId,
     }).distinct("_id");
+
     const isInUse = await BusinessGood.exists({
-      "ingredients.supplierGood": { $in: supplierGoodIds },
+      "ingredients.supplierGoodId": { $in: supplierGoodIds },
     });
 
     if (isInUse) {
@@ -205,6 +283,22 @@ export const DELETE = async (
           message: "Supplier is in use in some business goods!",
         }),
         { status: 409, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    const supplier = (await Supplier.findById(supplierId)
+      .select("imageUrl")
+      .lean()) as { imageUrl?: string } | null;
+
+    const deleteSingleImageResult: string | boolean = await deleteSingleImage(
+      supplier?.imageUrl || ""
+    );
+
+    // check if deleteSingleImage failed
+    if (deleteSingleImageResult !== true) {
+      return new NextResponse(
+        JSON.stringify({ message: deleteSingleImageResult }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
 
@@ -228,6 +322,6 @@ export const DELETE = async (
       }
     );
   } catch (error) {
-    return handleApiError("Delete supplier failed!", error);
+    return handleApiError("Delete supplier failed!", error as string);
   }
 };

@@ -3,7 +3,7 @@ import connectDb from "@/app/lib/utils/connectDb";
 // import models
 import Supplier from "@/app/lib/models/supplier";
 import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
-import { Types } from "mongoose";
+import mongoose, { Types } from "mongoose";
 
 // this function will create a supplier for one time purchase to be used as default supplier
 const oneTimePurchaseSupplier = async (businessId: Types.ObjectId) => {
@@ -27,7 +27,7 @@ const oneTimePurchaseSupplier = async (businessId: Types.ObjectId) => {
     }
 
     // create default supplier id
-    const defaultSupplierId = new Types.ObjectId();
+    const defaultSupplierId = new mongoose.Types.ObjectId();
 
     // create supplier object with required fields
     const newSupplierObj = {
@@ -38,6 +38,14 @@ const oneTimePurchaseSupplier = async (businessId: Types.ObjectId) => {
       taxNumber: "One Time Purchase",
       currentlyInUse: true,
       businessId: businessId,
+      address: {
+        country: "One Time Purchase",
+        state: "One Time Purchase",
+        city: "One Time Purchase",
+        street: "One Time Purchase",
+        buildingNumber: "One Time Purchase",
+        postCode: "One Time Purchase",
+      },
     };
 
     // create new supplier
