@@ -1,21 +1,21 @@
 import { Types } from "mongoose";
 
 // imported utils
-import connectDb from "@/app/lib/utils/connectDb";
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
+import connectDb from "@/lib/db/connectDb";
+import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 
 // imported interfaces
 import {
   IGoodsReduced,
   IEmployeeDailySalesReport,
-} from "@/app/lib/interface/IDailySalesReport";
-import { IPaymentMethod } from "@/app/lib/interface/IPaymentMethod";
+} from "@/lib/interface/IDailySalesReport";
+import { IPaymentMethod } from "@/lib/interface/IPaymentMethod";
 
 // import models
-import Order from "@/app/lib/models/order";
-import DailySalesReport from "@/app/lib/models/dailySalesReport";
-import BusinessGood from "@/app/lib/models/businessGood";
-import SalesInstance from "@/app/lib/models/salesInstance";
+import Order from "@/lib/db/models/order";
+import DailySalesReport from "@/lib/db/models/dailySalesReport";
+import BusinessGood from "@/lib/db/models/businessGood";
+import SalesInstance from "@/lib/db/models/salesInstance";
 
 // this function will update individual employee daily sales report
 // it will be fired individualy when the employee closes his daily sales report for the day or if he just want to see the report at current time

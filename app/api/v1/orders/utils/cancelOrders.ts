@@ -1,12 +1,12 @@
 import { ClientSession, Types } from "mongoose";
 
 // imported utils
-import connectDb from "@/app/lib/utils/connectDb";
+import connectDb from "@/lib/db/connectDb";
 import { updateDynamicCountSupplierGood } from "../../inventories/utils/updateDynamicCountSupplierGood";
 
 // imported models
-import Order from "@/app/lib/models/order";
-import SalesInstance from "@/app/lib/models/salesInstance";
+import Order from "@/lib/db/models/order";
+import SalesInstance from "@/lib/db/models/salesInstance";
 
 // ********** IMPORTANT **********
 // This function will be call on the PATCH salesInstance route where you get all the orders

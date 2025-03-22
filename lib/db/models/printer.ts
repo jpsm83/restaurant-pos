@@ -1,5 +1,5 @@
 import { Schema, model, models } from "mongoose";
-import { mainCategories, printerStatus } from "../enums";
+import { mainCategories, printerStatus } from "../../enums";
 
 const configurationSetupToPrintOrdersSchema = new Schema(
   {

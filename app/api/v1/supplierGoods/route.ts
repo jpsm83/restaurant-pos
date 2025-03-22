@@ -1,17 +1,17 @@
 import { NextResponse } from "next/server";
-import connectDb from "@/app/lib/utils/connectDb";
+import connectDb from "@/lib/db/connectDb";
 
 // import utils
-import { handleApiError } from "@/app/lib/utils/handleApiError";
+import { handleApiError } from "@/lib/db/handleApiError";
 import addSupplierGoodToInventory from "../inventories/utils/addSupplierGoodToInventory";
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
+import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 
 // imported interfaces
-import { ISupplierGood } from "@/app/lib/interface/ISupplierGood";
+import { ISupplierGood } from "@/lib/interface/ISupplierGood";
 
 // import models
-import SupplierGood from "@/app/lib/models/supplierGood";
-import Supplier from "@/app/lib/models/supplier";
+import SupplierGood from "@/lib/db/models/supplierGood";
+import Supplier from "@/lib/db/models/supplier";
 
 // @desc    Get all supplier goods
 // @route   GET /supplierGoods

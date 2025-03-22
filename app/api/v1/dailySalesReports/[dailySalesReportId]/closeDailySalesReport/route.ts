@@ -1,17 +1,17 @@
 import { Types } from "mongoose";
 
 // imported utils
-import connectDb from "@/app/lib/utils/connectDb";
-import { handleApiError } from "@/app/lib/utils/handleApiError";
+import connectDb from "@/lib/db/connectDb";
+import { handleApiError } from "@/lib/db/handleApiError";
 
 // imported models
-import DailySalesReport from "@/app/lib/models/dailySalesReport";
-import Employee from "@/app/lib/models/employee";
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
+import DailySalesReport from "@/lib/db/models/dailySalesReport";
+import Employee from "@/lib/db/models/employee";
+import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 import { NextResponse } from "next/server";
-import Order from "@/app/lib/models/order";
-import { IEmployee } from "@/app/lib/interface/IEmployee";
-import { IDailySalesReport } from "@/app/lib/interface/IDailySalesReport";
+import Order from "@/lib/db/models/order";
+import { IEmployee } from "@/lib/interface/IEmployee";
+import { IDailySalesReport } from "@/lib/interface/IDailySalesReport";
 
 // this is called by mananger or admin after the calculateBusinessDailySalesReport been executed
 // the purpose of this function is to close the daily sales report

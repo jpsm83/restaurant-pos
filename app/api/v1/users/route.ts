@@ -2,15 +2,15 @@ import { NextResponse } from "next/server";
 import { hash } from "bcrypt";
 
 // imported utils
-import connectDb from "@/app/lib/utils/connectDb";
-import objDefaultValidation from "@/app/lib/utils/objDefaultValidation";
-import { handleApiError } from "@/app/lib/utils/handleApiError";
+import connectDb from "@/lib/db/connectDb";
+import objDefaultValidation from "@/lib/utils/objDefaultValidation";
+import { handleApiError } from "@/lib/db/handleApiError";
 
 // imported interfaces
-import { IPersonalDetails } from "@/app/lib/interface/IPersonalDetails";
+import { IPersonalDetails } from "@/lib/interface/IPersonalDetails";
 
 // imported models
-import User from "@/app/lib/models/user";
+import User from "@/lib/db/models/user";
 
 const reqPersonalDetailsFields = [
   "username",

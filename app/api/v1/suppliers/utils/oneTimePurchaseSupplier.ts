@@ -1,8 +1,8 @@
-import connectDb from "@/app/lib/utils/connectDb";
+import connectDb from "@/lib/db/connectDb";
 
 // import models
-import Supplier from "@/app/lib/models/supplier";
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
+import Supplier from "@/lib/db/models/supplier";
+import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 import mongoose, { Types } from "mongoose";
 
 // this function will create a supplier for one time purchase to be used as default supplier

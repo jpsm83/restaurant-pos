@@ -1,5 +1,5 @@
 import { Schema, model, models } from "mongoose";
-import { notificationTypes } from "../enums.js";
+import { notificationTypes } from "../../enums.js";
 
 const notificationSchema = new Schema(
   {

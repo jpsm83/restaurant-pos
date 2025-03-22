@@ -1,16 +1,16 @@
 import { ClientSession, Types } from "mongoose";
 
 // imported utils
-import connectDb from "@/app/lib/utils/connectDb";
+import connectDb from "@/lib/db/connectDb";
 
 // imported interfaces
-import { IOrder } from "@/app/lib/interface/IOrder";
-import { ISalesInstance } from "@/app/lib/interface/ISalesInstance";
-import { IPaymentMethod } from "@/app/lib/interface/IPaymentMethod";
+import { IOrder } from "@/lib/interface/IOrder";
+import { ISalesInstance } from "@/lib/interface/ISalesInstance";
+import { IPaymentMethod } from "@/lib/interface/IPaymentMethod";
 
 // imported models
-import Order from "@/app/lib/models/order";
-import SalesInstance from "@/app/lib/models/salesInstance";
+import Order from "@/lib/db/models/order";
+import SalesInstance from "@/lib/db/models/salesInstance";
 
 // close multiple orders at the same time
 export const closeOrders = async (

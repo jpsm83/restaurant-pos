@@ -1,4 +1,4 @@
-import { IAddress } from "@/app/lib/interface/IAddress";
+import { IAddress } from "@/lib/interface/IAddress";
 
 // helper function to validate address object
 export const addressValidation = (address: IAddress) => {

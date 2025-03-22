@@ -1,17 +1,17 @@
 import { ClientSession, Types } from "mongoose";
 
 // imported utils
-import connectDb from "@/app/lib/utils/connectDb";
-import { handleApiError } from "@/app/lib/utils/handleApiError";
+import connectDb from "@/lib/db/connectDb";
+import { handleApiError } from "@/lib/db/handleApiError";
 import { updateDynamicCountSupplierGood } from "../../inventories/utils/updateDynamicCountSupplierGood";
 
 // imported interfaces
-import { IOrder } from "@/app/lib/interface/IOrder";
-import { ISalesInstance } from "@/app/lib/interface/ISalesInstance";
+import { IOrder } from "@/lib/interface/IOrder";
+import { ISalesInstance } from "@/lib/interface/ISalesInstance";
 
 // imported models
-import Order from "@/app/lib/models/order";
-import SalesInstance from "@/app/lib/models/salesInstance";
+import Order from "@/lib/db/models/order";
+import SalesInstance from "@/lib/db/models/salesInstance";
 
 // *** IMPORTANT *** PROMOTIONS PRICE SHOULD BE CALCUATED ON THE FRONT END SO PRICE CAN BE SEEN REAL TIME
 

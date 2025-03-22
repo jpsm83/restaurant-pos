@@ -1,11 +1,11 @@
-import connectDb from "@/app/lib/utils/connectDb";
+import connectDb from "@/lib/db/connectDb";
 
-import Business from "@/app/lib/models/business";
-import BusinessGood from "@/app/lib/models/businessGood";
-import Employee from "@/app/lib/models/employee";
-import Purchase from "@/app/lib/models/purchase";
-import SupplierGood from "@/app/lib/models/supplierGood";
-import Supplier from "@/app/lib/models/supplier";
+import Business from "@/lib/db/models/business";
+import BusinessGood from "@/lib/db/models/businessGood";
+import Employee from "@/lib/db/models/employee";
+import Purchase from "@/lib/db/models/purchase";
+import SupplierGood from "@/lib/db/models/supplierGood";
+import Supplier from "@/lib/db/models/supplier";
 // import User from "@/app/lib/models/user";
 
 interface IDocumentModel {

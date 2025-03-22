@@ -2,18 +2,18 @@ import { NextResponse } from "next/server";
 import mongoose, { Types } from "mongoose";
 
 // imported utils
-import connectDb from "@/app/lib/utils/connectDb";
-import { handleApiError } from "@/app/lib/utils/handleApiError";
+import connectDb from "@/lib/db/connectDb";
+import { handleApiError } from "@/lib/db/handleApiError";
 import { calculateVacationProportional } from "../utils/calculateVacationProportional";
 
 // imported interfaces
-import { IEmployee } from "@/app/lib/interface/IEmployee";
+import { IEmployee } from "@/lib/interface/IEmployee";
 
 // imported models
-import Employee from "@/app/lib/models/employee";
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
-import Printer from "@/app/lib/models/printer";
-import objDefaultValidation from "@/app/lib/utils/objDefaultValidation";
+import Employee from "@/lib/db/models/employee";
+import isObjectIdValid from "@/lib/utils/isObjectIdValid";
+import Printer from "@/lib/db/models/printer";
+import objDefaultValidation from "@/lib/utils/objDefaultValidation";
 
 const reqSalaryFields = ["payFrequency", "grossSalary", "netSalary"];
 

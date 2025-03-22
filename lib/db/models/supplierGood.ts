@@ -6,7 +6,7 @@ import {
   allergens,
   budgetImpact,
   inventorySchedule,
-} from "../enums.js";
+} from "../../enums.js";
 
 const supplierGoodSchema = new Schema(
   {

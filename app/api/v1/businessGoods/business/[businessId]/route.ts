@@ -2,13 +2,13 @@ import { NextResponse } from "next/server";
 import { Types } from "mongoose";
 
 // imported utils
-import connectDb from "@/app/lib/utils/connectDb";
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
-import { handleApiError } from "@/app/lib/utils/handleApiError";
+import connectDb from "@/lib/db/connectDb";
+import isObjectIdValid from "@/lib/utils/isObjectIdValid";
+import { handleApiError } from "@/lib/db/handleApiError";
 
 // imported models
-import BusinessGood from "@/app/lib/models/businessGood";
-import SupplierGood from "@/app/lib/models/supplierGood";
+import BusinessGood from "@/lib/db/models/businessGood";
+import SupplierGood from "@/lib/db/models/supplierGood";
 
 // @desc    Get business goods by business ID
 // @route   GET /businessGoods/business/:businessId

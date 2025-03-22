@@ -2,19 +2,19 @@ import { NextResponse } from "next/server";
 import { Types } from "mongoose";
 
 // imported utils
-import connectDb from "@/app/lib/utils/connectDb";
-import { handleApiError } from "@/app/lib/utils/handleApiError";
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
+import connectDb from "@/lib/db/connectDb";
+import { handleApiError } from "@/lib/db/handleApiError";
+import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 import { updateEmployeesDailySalesReport } from "../../utils/updateEmployeeDailySalesReport";
 
 // imported interfaces
 import {
   IDailySalesReport,
   IEmployeeDailySalesReport,
-} from "@/app/lib/interface/IDailySalesReport";
+} from "@/lib/interface/IDailySalesReport";
 
 // imported models
-import DailySalesReport from "@/app/lib/models/dailySalesReport";
+import DailySalesReport from "@/lib/db/models/dailySalesReport";
 
 // @desc    Calculate the employee daily sales report
 // @route   PATCH /dailySalesReports/:dailySalesReportId/calculateEmployeesDailySalesReport

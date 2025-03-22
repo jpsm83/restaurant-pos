@@ -1,14 +1,14 @@
-import connectDb from "@/app/lib/utils/connectDb";
+import connectDb from "@/lib/db/connectDb";
 import { NextResponse } from "next/server";
 import { Types } from "mongoose";
 
 // imported utils
-import { handleApiError } from "@/app/lib/utils/handleApiError";
+import { handleApiError } from "@/lib/db/handleApiError";
 
 // imported models
-import Schedule from "@/app/lib/models/schedule";
-import Employee from "@/app/lib/models/employee";
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
+import Schedule from "@/lib/db/models/schedule";
+import Employee from "@/lib/db/models/employee";
+import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 
 // @desc    Get all schedules by business ID
 // @route   GET /schedules/business/:businessId

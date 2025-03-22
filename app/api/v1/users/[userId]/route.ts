@@ -3,17 +3,17 @@ import { hash } from "bcrypt";
 import { Types } from "mongoose";
 
 // imported utils
-import connectDb from "@/app/lib/utils/connectDb";
-import { handleApiError } from "@/app/lib/utils/handleApiError";
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
-import objDefaultValidation from "@/app/lib/utils/objDefaultValidation";
+import connectDb from "@/lib/db/connectDb";
+import { handleApiError } from "@/lib/db/handleApiError";
+import isObjectIdValid from "@/lib/utils/isObjectIdValid";
+import objDefaultValidation from "@/lib/utils/objDefaultValidation";
 
 // imported interfaces
-import { IPersonalDetails } from "@/app/lib/interface/IPersonalDetails";
+import { IPersonalDetails } from "@/lib/interface/IPersonalDetails";
 
 // imported models
-import User from "@/app/lib/models/user";
-import { IUser } from "@/app/lib/interface/IUser";
+import User from "@/lib/db/models/user";
+import { IUser } from "@/lib/interface/IUser";
 
 const reqPersonalDetailsFields = [
   "username",

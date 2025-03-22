@@ -1,13 +1,13 @@
-import connectDb from "@/app/lib/utils/connectDb";
+import connectDb from "@/lib/db/connectDb";
 
 // imported models
-import Business from "@/app/lib/models/business";
-import Supplier from "@/app/lib/models/supplier";
-import Employee from "@/app/lib/models/employee";
-import BusinessGood from "@/app/lib/models/businessGood";
-import SupplierGood from "@/app/lib/models/supplierGood";
-import Purchase from "@/app/lib/models/purchase";
-import User from "@/app/lib/models/user";
+import Business from "@/lib/db/models/business";
+import Supplier from "@/lib/db/models/supplier";
+import Employee from "@/lib/db/models/employee";
+import BusinessGood from "@/lib/db/models/businessGood";
+import SupplierGood from "@/lib/db/models/supplierGood";
+import Purchase from "@/lib/db/models/purchase";
+import User from "@/lib/db/models/user";
 
 // Create a mapping between model names and actual models
 const modelMap: {

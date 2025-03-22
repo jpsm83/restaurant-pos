@@ -1,15 +1,15 @@
 import { NextResponse } from "next/server";
 
 // imported utils
-import connectDb from "@/app/lib/utils/connectDb";
-import { handleApiError } from "@/app/lib/utils/handleApiError";
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
+import connectDb from "@/lib/db/connectDb";
+import { handleApiError } from "@/lib/db/handleApiError";
+import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 
 // imported intefaces
-import { ISalesPoint } from "@/app/lib/interface/ISalesPoint";
+import { ISalesPoint } from "@/lib/interface/ISalesPoint";
 
 // imported models
-import SalesPoint from "@/app/lib/models/salesPoint";
+import SalesPoint from "@/lib/db/models/salesPoint";
 import { Types } from "mongoose";
 import deleteCloudinaryImage from "../../cloudinaryActions/utils/deleteCloudinaryImage";
 

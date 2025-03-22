@@ -1,22 +1,24 @@
 import { Types } from "mongoose";
 import { IAddress } from "./IAddress";
 
+export interface IsupplierGoodWastePercentage {
+  veryLowBudgetImpact: number;
+  lowBudgetImpact: number;
+  mediumBudgetImpact: number;
+  hightBudgetImpact: number;
+  veryHightBudgetImpact: number;
+}
+
 export interface IMetrics {
   foodCostPercentage: number;
   beverageCostPercentage: number;
   laborCostPercentage: number;
   fixedCostPercentage: number;
-  supplierGoodWastePercentage: {
-    veryLowBudgetImpact: number;
-    lowBudgetImpact: number;
-    mediumBudgetImpact: number;
-    hightBudgetImpact: number;
-    veryHightBudgetImpact: number;
-  };
+  supplierGoodWastePercentage: IsupplierGoodWastePercentage;
 }
 
 export interface IBusiness {
-  _id?: Types.ObjectId; // added, change on code
+  _id?: Types.ObjectId;
   tradeName: string;
   legalName: string;
   imageUrl?: string;

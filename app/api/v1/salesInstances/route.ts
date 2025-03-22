@@ -1,25 +1,25 @@
 import { NextResponse } from "next/server";
 
 // import utils
-import connectDb from "@/app/lib/utils/connectDb";
+import connectDb from "@/lib/db/connectDb";
 import { createDailySalesReport } from "../dailySalesReports/utils/createDailySalesReport";
-import { handleApiError } from "@/app/lib/utils/handleApiError";
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
+import { handleApiError } from "@/lib/db/handleApiError";
+import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 import { createSalesInstance } from "./utils/createSalesInstance";
 
 // import interfaces
-import { IDailySalesReport } from "@/app/lib/interface/IDailySalesReport";
-import { ISalesInstance } from "@/app/lib/interface/ISalesInstance";
+import { IDailySalesReport } from "@/lib/interface/IDailySalesReport";
+import { ISalesInstance } from "@/lib/interface/ISalesInstance";
 
 // imported models
-import Employee from "@/app/lib/models/employee";
-import BusinessGood from "@/app/lib/models/businessGood";
-import Order from "@/app/lib/models/order";
-import SalesInstance from "@/app/lib/models/salesInstance";
-import SalesPoint from "@/app/lib/models/salesPoint";
+import Employee from "@/lib/db/models/employee";
+import BusinessGood from "@/lib/db/models/businessGood";
+import Order from "@/lib/db/models/order";
+import SalesInstance from "@/lib/db/models/salesInstance";
+import SalesPoint from "@/lib/db/models/salesPoint";
 import Customer from "@/app/lib/models/customer";
 import mongoose from "mongoose";
-import DailySalesReport from "@/app/lib/models/dailySalesReport";
+import DailySalesReport from "@/lib/db/models/dailySalesReport";
 
 // @desc    Get all salesInstances
 // @route   GET /salesInstances

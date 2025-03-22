@@ -1,5 +1,5 @@
 import { Schema, model, models } from "mongoose";
-import { weekDays } from "../enums";
+import { weekDays } from "../../enums";
 
 const promotionSchema = new Schema(
   {

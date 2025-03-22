@@ -1,14 +1,14 @@
 import { ClientSession, Types } from "mongoose";
 
 // imported utils
-import connectDb from "@/app/lib/utils/connectDb";
+import connectDb from "@/lib/db/connectDb";
 
 // imported interfaces
-import { ISalesInstance } from "@/app/lib/interface/ISalesInstance";
+import { ISalesInstance } from "@/lib/interface/ISalesInstance";
 
 // imported models
-import Order from "@/app/lib/models/order";
-import SalesInstance from "@/app/lib/models/salesInstance";
+import Order from "@/lib/db/models/order";
+import SalesInstance from "@/lib/db/models/salesInstance";
 
 // employee can transfer orders between only the salesInstances that are not closed and resposibleById belongs to hin
 export const transferOrdersBetweenSalesInstances = async (

@@ -2,14 +2,14 @@ import { NextResponse } from "next/server";
 import { Types } from "mongoose";
 
 // imported utils
-import connectDb from "@/app/lib/utils/connectDb";
-import { handleApiError } from "@/app/lib/utils/handleApiError";
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
+import connectDb from "@/lib/db/connectDb";
+import { handleApiError } from "@/lib/db/handleApiError";
+import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 
 // imported models
-import Inventory from "@/app/lib/models/inventory";
-import SupplierGood from "@/app/lib/models/supplierGood";
-import Supplier from "@/app/lib/models/supplier";
+import Inventory from "@/lib/db/models/inventory";
+import SupplierGood from "@/lib/db/models/supplierGood";
+import Supplier from "@/lib/db/models/supplier";
 
 // @desc    Get inventories by ID
 // @route   GET /inventories/:inventoryId

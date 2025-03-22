@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 
 // import utils
-import connectDb from "@/app/lib/utils/connectDb";
-import { handleApiError } from "@/app/lib/utils/handleApiError";
+import connectDb from "@/lib/db/connectDb";
+import { handleApiError } from "@/lib/db/handleApiError";
 
 // import models
-import Employee from "@/app/lib/models/employee";
-import DailySalesReport from "@/app/lib/models/dailySalesReport";
+import Employee from "@/lib/db/models/employee";
+import DailySalesReport from "@/lib/db/models/dailySalesReport";
 import Customer from "@/app/lib/models/customer";
 
 // @desc    Get all daily reports

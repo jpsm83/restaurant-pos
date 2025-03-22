@@ -2,21 +2,21 @@ import { NextResponse } from "next/server";
 import mongoose, { Types } from "mongoose";
 
 // imported utils
-import connectDb from "@/app/lib/utils/connectDb";
-import { handleApiError } from "@/app/lib/utils/handleApiError";
+import connectDb from "@/lib/db/connectDb";
+import { handleApiError } from "@/lib/db/handleApiError";
 import { validateIngredients } from "../utils/validateIngredients";
 import { calculateIngredientsCostPriceAndAllergies } from "../utils/calculateIngredientsCostPriceAndAllergies";
 import { calculateSetMenuCostPriceAndAllergies } from "../utils/calculateSetMenuCostPriceAndAllergies";
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
+import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 
 // imported interfaces
-import { IBusinessGood } from "@/app/lib/interface/IBusinessGood";
+import { IBusinessGood } from "@/lib/interface/IBusinessGood";
 
 // imported models
-import BusinessGood from "@/app/lib/models/businessGood";
-import Promotion from "@/app/lib/models/promotion";
-import Order from "@/app/lib/models/order";
-import SupplierGood from "@/app/lib/models/supplierGood";
+import BusinessGood from "@/lib/db/models/businessGood";
+import Promotion from "@/lib/db/models/promotion";
+import Order from "@/lib/db/models/order";
+import SupplierGood from "@/lib/db/models/supplierGood";
 
 // @desc    Get business good by ID
 // @route   GET /businessGoods/:businessGoodId

@@ -2,13 +2,13 @@ import { NextResponse } from "next/server";
 import { Types } from "mongoose";
 
 // imported utils
-import connectDb from "@/app/lib/utils/connectDb";
-import { handleApiError } from "@/app/lib/utils/handleApiError";
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
+import connectDb from "@/lib/db/connectDb";
+import { handleApiError } from "@/lib/db/handleApiError";
+import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 
 // imported models
-import Promotion from "@/app/lib/models/promotion";
-import BusinessGood from "@/app/lib/models/businessGood";
+import Promotion from "@/lib/db/models/promotion";
+import BusinessGood from "@/lib/db/models/businessGood";
 
 // when bill is printed, check if orders have a promotion base on their order time
 // if they have a promotion, apply it to the order updating its price and promotionApplied field

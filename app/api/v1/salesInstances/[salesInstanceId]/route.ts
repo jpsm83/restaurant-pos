@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 import mongoose, { Types } from "mongoose";
 
 // import utils
-import connectDb from "@/app/lib/utils/connectDb";
-import { handleApiError } from "@/app/lib/utils/handleApiError";
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
+import connectDb from "@/lib/db/connectDb";
+import { handleApiError } from "@/lib/db/handleApiError";
+import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 import { cancelOrders } from "../../orders/utils/cancelOrders";
 import { addDiscountToOrders } from "../../orders/utils/addDiscountToOrders";
 import { changeOrdersBillingStatus } from "../../orders/utils/changeOrdersBillingStatus";
@@ -15,16 +15,16 @@ import { transferOrdersBetweenSalesInstances } from "../../orders/utils/transfer
 import { addEmployeeToDailySalesReport } from "../../dailySalesReports/utils/addEmployeeToDailySalesReport";
 
 // import interfaces
-import { IPaymentMethod } from "@/app/lib/interface/IPaymentMethod";
-import { ISalesInstance } from "@/app/lib/interface/ISalesInstance";
+import { IPaymentMethod } from "@/lib/interface/IPaymentMethod";
+import { ISalesInstance } from "@/lib/interface/ISalesInstance";
 
 // import models
-import DailySalesReport from "@/app/lib/models/dailySalesReport";
-import Employee from "@/app/lib/models/employee";
-import BusinessGood from "@/app/lib/models/businessGood";
-import Order from "@/app/lib/models/order";
-import SalesInstance from "@/app/lib/models/salesInstance";
-import SalesPoint from "@/app/lib/models/salesPoint";
+import DailySalesReport from "@/lib/db/models/dailySalesReport";
+import Employee from "@/lib/db/models/employee";
+import BusinessGood from "@/lib/db/models/businessGood";
+import Order from "@/lib/db/models/order";
+import SalesInstance from "@/lib/db/models/salesInstance";
+import SalesPoint from "@/lib/db/models/salesPoint";
 import Customer from "@/app/lib/models/customer";
 
 // @desc    Get salesInstances by ID

@@ -1,5 +1,5 @@
 import { Schema, model, models } from "mongoose";
-import { allergens, billingStatus, orderStatus } from "../enums.js";
+import { allergens, billingStatus, orderStatus } from "../../enums.js";
 import { paymentMethod } from "./paymentMethod.js";
 
 const orderSchema = new Schema(

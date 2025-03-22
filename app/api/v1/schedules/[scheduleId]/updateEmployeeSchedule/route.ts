@@ -2,21 +2,21 @@ import mongoose, { Types } from "mongoose";
 import { NextResponse } from "next/server";
 
 // imported utils
-import connectDb from "@/app/lib/utils/connectDb";
-import { handleApiError } from "@/app/lib/utils/handleApiError";
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
+import connectDb from "@/lib/db/connectDb";
+import { handleApiError } from "@/lib/db/handleApiError";
+import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 import { employeesValidation } from "../../utils/employeesValidation";
 import isScheduleOverlapping from "../../utils/isScheduleOverlapping";
 import getWeekdaysInMonth from "../../utils/getWeekDaysInMonth";
 import calculateEmployeeCost from "../../utils/calculateEmployeeCost";
 
 // imported interfaces
-import { IEmployee } from "@/app/lib/interface/IEmployee";
-import { IEmployeeSchedule, ISchedule } from "@/app/lib/interface/ISchedule";
+import { IEmployee } from "@/lib/interface/IEmployee";
+import { IEmployeeSchedule, ISchedule } from "@/lib/interface/ISchedule";
 
 // imported models
-import Schedule from "@/app/lib/models/schedule";
-import Employee from "@/app/lib/models/employee";
+import Schedule from "@/lib/db/models/schedule";
+import Employee from "@/lib/db/models/employee";
 
 // @desc    Create new schedules
 // @route   PATCH /schedules/:schedulesId/updateEmployeeSchedule

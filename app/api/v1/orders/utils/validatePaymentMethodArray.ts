@@ -1,10 +1,10 @@
-import { IPaymentMethod } from "@/app/lib/interface/IPaymentMethod";
+import { IPaymentMethod } from "@/lib/interface/IPaymentMethod";
 import {
   paymentMethods,
   cardTypes,
   cryptoTypes,
   otherPaymentTypes,
-} from "@/app/lib/enums";
+} from "@/lib/enums";
 
 export const validatePaymentMethodArray = (paymentMethod: IPaymentMethod[]) => {
   // example of a payment method object

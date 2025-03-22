@@ -1,6 +1,6 @@
 import { Schema, model, models } from "mongoose";
 import { addressSchema } from "./address";
-import { subscription } from "../enums.js";
+import { subscription } from "../../enums.js";
 
 const metricsSchema = new Schema({
   foodCostPercentage: { type: Number, default: 30 }, // Food cost percentage acceptable - 28-35% of sales average

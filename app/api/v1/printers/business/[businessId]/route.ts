@@ -2,14 +2,14 @@ import { Types } from "mongoose";
 import { NextResponse } from "next/server";
 
 // imported utils
-import connectDb from "@/app/lib/utils/connectDb";
-import { handleApiError } from "@/app/lib/utils/handleApiError";
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
+import connectDb from "@/lib/db/connectDb";
+import { handleApiError } from "@/lib/db/handleApiError";
+import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 
 // imported models
-import Printer from "@/app/lib/models/printer";
-import Employee from "@/app/lib/models/employee";
-import SalesPoint from "@/app/lib/models/salesPoint";
+import Printer from "@/lib/db/models/printer";
+import Employee from "@/lib/db/models/employee";
+import SalesPoint from "@/lib/db/models/salesPoint";
 
 // @desc    Get printers by businessId ID
 // @route   GET /printers/businessId/:businessId

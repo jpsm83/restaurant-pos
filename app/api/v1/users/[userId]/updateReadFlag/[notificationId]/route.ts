@@ -2,13 +2,13 @@ import { Types } from "mongoose";
 import { NextResponse } from "next/server";
 
 // imported utils
-import connectDb from "@/app/lib/utils/connectDb";
-import { handleApiError } from "@/app/lib/utils/handleApiError";
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
+import connectDb from "@/lib/db/connectDb";
+import { handleApiError } from "@/lib/db/handleApiError";
+import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 
 // imported models
-import User from "@/app/lib/models/user";
-import Notification from "@/app/lib/models/notification";
+import User from "@/lib/db/models/user";
+import Notification from "@/lib/db/models/notification";
 
 // @desc    Create new customers
 // @route   PATCH /customers/:customerId/updateReadFlag/:notificationId

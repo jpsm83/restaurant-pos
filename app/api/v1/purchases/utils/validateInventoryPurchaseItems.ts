@@ -1,8 +1,8 @@
 // imported interfaces
-import { IPurchaseItem } from "@/app/lib/interface/IPurchase";
+import { IPurchaseItem } from "@/lib/interface/IPurchase";
 
 // imported utils
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
+import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 
 export const validateInventoryPurchaseItems = (
   purchaseInventoryItems: IPurchaseItem[],

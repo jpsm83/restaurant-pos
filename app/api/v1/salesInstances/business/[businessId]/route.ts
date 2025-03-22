@@ -2,16 +2,16 @@ import { NextResponse } from "next/server";
 import { Types } from "mongoose";
 
 // import utils
-import connectDb from "@/app/lib/utils/connectDb";
-import { handleApiError } from "@/app/lib/utils/handleApiError";
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
+import connectDb from "@/lib/db/connectDb";
+import { handleApiError } from "@/lib/db/handleApiError";
+import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 
 // import models
-import SalesInstance from "@/app/lib/models/salesInstance";
-import Order from "@/app/lib/models/order";
-import BusinessGood from "@/app/lib/models/businessGood";
-import Employee from "@/app/lib/models/employee";
-import SalesPoint from "@/app/lib/models/salesPoint";
+import SalesInstance from "@/lib/db/models/salesInstance";
+import Order from "@/lib/db/models/order";
+import BusinessGood from "@/lib/db/models/businessGood";
+import Employee from "@/lib/db/models/employee";
+import SalesPoint from "@/lib/db/models/salesPoint";
 import Customer from "@/app/lib/models/customer";
 
 // @desc   Get salesInstances by bussiness ID

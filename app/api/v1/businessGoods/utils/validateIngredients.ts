@@ -1,5 +1,5 @@
 // imported interfaces
-import { IIngredients } from "@/app/lib/interface/IBusinessGood";
+import { IIngredients } from "@/lib/interface/IBusinessGood";
 
 export const validateIngredients = (ingredientsArray: IIngredients[]) => {
   // check if the ingredientsArray is an array

@@ -1,9 +1,9 @@
-import Business from "@/app/lib/models/business";
+import Business from "@/lib/db/models/business";
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GitHubProvider from "next-auth/providers/github";
 import bcrypt from "bcrypt";
-import connectDb from "@/app/lib/utils/connectDb";
+import connectDb from "@/lib/db/connectDb";
 
 // Define an interface for the credentials
 interface Credentials {

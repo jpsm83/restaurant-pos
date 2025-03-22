@@ -1,5 +1,5 @@
-import DailySalesReport from "@/app/lib/models/dailySalesReport";
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
+import DailySalesReport from "@/lib/db/models/dailySalesReport";
+import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 import { ClientSession, Types } from "mongoose";
 
 // add employee to daily sales report

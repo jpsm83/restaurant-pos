@@ -1,24 +1,24 @@
-import connectDb from "@/app/lib/utils/connectDb";
+import connectDb from "@/lib/db/connectDb";
 import { Types } from "mongoose";
 import { NextResponse } from "next/server";
 
 // imported utils
-import { handleApiError } from "@/app/lib/utils/handleApiError";
+import { handleApiError } from "@/lib/db/handleApiError";
 import { updateEmployeesDailySalesReport } from "../../utils/updateEmployeeDailySalesReport";
 
 // imported interfaces
 import {
   IGoodsReduced,
   IEmployeeDailySalesReport,
-} from "@/app/lib/interface/IDailySalesReport";
-import { IEmployee } from "@/app/lib/interface/IEmployee";
+} from "@/lib/interface/IDailySalesReport";
+import { IEmployee } from "@/lib/interface/IEmployee";
 
 // imported models
-import DailySalesReport from "@/app/lib/models/dailySalesReport";
-import Employee from "@/app/lib/models/employee";
-import Business from "@/app/lib/models/business";
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
-import { IPaymentMethod } from "@/app/lib/interface/IPaymentMethod";
+import DailySalesReport from "@/lib/db/models/dailySalesReport";
+import Employee from "@/lib/db/models/employee";
+import Business from "@/lib/db/models/business";
+import isObjectIdValid from "@/lib/utils/isObjectIdValid";
+import { IPaymentMethod } from "@/lib/interface/IPaymentMethod";
 
 // @desc    Calculate the business daily sales report
 // @route   PATCH /dailySalesReports/:dailySalesReportId/calculateBusinessDailySalesReport

@@ -4,34 +4,67 @@ import mongoose, { Types } from "mongoose";
 import { v2 as cloudinary } from "cloudinary";
 
 // import utils
-import connectDb from "@/app/lib/utils/connectDb";
-import { handleApiError } from "@/app/lib/utils/handleApiError";
-import { addressValidation } from "@/app/lib/utils/addressValidation";
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
+import connectDb from "@/lib/db/connectDb";
+import { handleApiError } from "@/lib/db/handleApiError";
+import isObjectIdValid from "@/lib/utils/isObjectIdValid";
+import objDefaultValidation from "@/lib/utils/objDefaultValidation";
+import deleteSingleImage from "@/lib/cloudinary/deleteSingleImage";
+import uploadSingleImage from "@/lib/cloudinary/uploadSingleImage";
 
 // import interfaces
-import { IBusiness } from "@/app/lib/interface/IBusiness";
+import {
+  IBusiness,
+  IMetrics,
+  IsupplierGoodWastePercentage,
+} from "@/lib/interface/IBusiness";
+import { IAddress } from "@/lib/interface/IAddress";
 
 // imported models
-import Business from "@/app/lib/models/business";
-import DailySalesReport from "@/app/lib/models/dailySalesReport";
-import Notification from "@/app/lib/models/notification";
-import Order from "@/app/lib/models/order";
-import Printer from "@/app/lib/models/printer";
-import Promotion from "@/app/lib/models/promotion";
-import Schedule from "@/app/lib/models/schedule";
-import Supplier from "@/app/lib/models/supplier";
-import SalesInstance from "@/app/lib/models/salesInstance";
-import Employee from "@/app/lib/models/employee";
-import BusinessGood from "@/app/lib/models/businessGood";
-import SupplierGood from "@/app/lib/models/supplierGood";
-import Inventory from "@/app/lib/models/inventory";
-import Purchase from "@/app/lib/models/purchase";
-import validateBusinessMetrics from "../utils/validateBusinessMetrics";
-import SalesPoint from "@/app/lib/models/salesPoint";
-import MonthlyBusinessReport from "@/app/lib/models/monthlyBusinessReport";
+import Business from "@/lib/db/models/business";
+import DailySalesReport from "@/lib/db/models/dailySalesReport";
+import Notification from "@/lib/db/models/notification";
+import Order from "@/lib/db/models/order";
+import Printer from "@/lib/db/models/printer";
+import Promotion from "@/lib/db/models/promotion";
+import Schedule from "@/lib/db/models/schedule";
+import Supplier from "@/lib/db/models/supplier";
+import SalesInstance from "@/lib/db/models/salesInstance";
+import Employee from "@/lib/db/models/employee";
+import BusinessGood from "@/lib/db/models/businessGood";
+import SupplierGood from "@/lib/db/models/supplierGood";
+import Inventory from "@/lib/db/models/inventory";
+import Purchase from "@/lib/db/models/purchase";
+import SalesPoint from "@/lib/db/models/salesPoint";
+import MonthlyBusinessReport from "@/lib/db/models/monthlyBusinessReport";
 
 const emailRegex = /^[\w-]+(\.[\w-]+)*@([\w-]+\.)+[a-zA-Z]{2,7}$/;
+
+const reqAddressFields = [
+  "country",
+  "state",
+  "city",
+  "street",
+  "buildingNumber",
+  "postCode",
+];
+
+const nonReqAddressFields = ["region", "additionalDetails", "coordinates"];
+
+const reqMetrics = [
+  "foodCostPercentage",
+  "beverageCostPercentage",
+  "laborCostPercentage",
+  "fixedCostPercentage",
+  "supplierGoodWastePercentage",
+];
+
+const reqSupplierGoodWastePercentage = [
+  "veryLowBudgetImpact",
+  "lowBudgetImpact",
+  "mediumBudgetImpact",
+  "hightBudgetImpact",
+  "veryHightBudgetImpact",
+];
 
 // @desc    Get business by businessId
 // @route   GET /business/:businessId
@@ -86,20 +119,7 @@ export const PATCH = async (
   }
 ) => {
   try {
-    const businessId = context.params.businessId;
-    const {
-      tradeName,
-      legalName,
-      email,
-      password,
-      phoneNumber,
-      taxNumber,
-      currencyTrade,
-      subscription,
-      address,
-      metrics,
-      contactPerson,
-    } = (await req.json()) as IBusiness;
+    const { businessId } = context.params;
 
     // validate businessId
     if (!businessId || isObjectIdValid([businessId]) !== true) {
@@ -112,21 +132,84 @@ export const PATCH = async (
       );
     }
 
+    // Parse FORM DATA instead of JSON because we might have an image file
+    const formData = await req.formData();
+
+    // Extract fields from formData
+    const tradeName = formData.get("tradeName") as string;
+    const legalName = formData.get("legalName") as string;
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
+    const phoneNumber = formData.get("phoneNumber") as string;
+    const taxNumber = formData.get("taxNumber") as string;
+    const currencyTrade = formData.get("currencyTrade") as string;
+    const subscription = formData.get("subscription") as string;
+    const address = JSON.parse(formData.get("address") as string);
+    const metrics = formData.get("metrics")
+      ? JSON.parse(formData.get("metrics") as string)
+      : undefined;
+    const contactPerson = formData.get("contactPerson") as string | undefined;
+    const imageFile = formData.get("imageUrl") as File | undefined; // Get image file
+
     // check email format
-    if (email && !emailRegex.test(email)) {
+    if (!emailRegex.test(email)) {
       return new NextResponse(
         JSON.stringify({ message: "Invalid email format!" }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
 
-    // validate the metrics
+    // validate address
+    const addressValidationResult = objDefaultValidation(
+      address,
+      reqAddressFields,
+      nonReqAddressFields
+    );
+
+    if (addressValidationResult !== true) {
+      return new NextResponse(
+        JSON.stringify({ message: addressValidationResult }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // validate metrics if exists
     if (metrics) {
-      const validateBusinessMetricsResult = validateBusinessMetrics(metrics);
-      if (validateBusinessMetricsResult !== true) {
+      const metricsValidationResult = objDefaultValidation(
+        metrics,
+        reqMetrics,
+        []
+      );
+
+      if (metricsValidationResult !== true) {
         return new NextResponse(
-          JSON.stringify({ message: validateBusinessMetricsResult }),
-          { status: 400, headers: { "Content-Type": "application/json" } }
+          JSON.stringify({ message: metricsValidationResult }),
+          {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      // validate reqSupplierGoodWastePercentage
+      const supplierGoodWastePercentageValidationResult = objDefaultValidation(
+        metrics.supplierGoodWastePercentage,
+        reqSupplierGoodWastePercentage,
+        []
+      );
+
+      if (supplierGoodWastePercentageValidationResult !== true) {
+        return new NextResponse(
+          JSON.stringify({
+            message: supplierGoodWastePercentageValidationResult,
+          }),
+          {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          }
         );
       }
     }
@@ -135,10 +218,10 @@ export const PATCH = async (
     await connectDb();
 
     // check for duplicate legalName, email or taxNumber
-    const duplicateBusiness = await Business.findOne({
+    const duplicateBusiness = await Business.exists({
       _id: { $ne: businessId },
       $or: [{ legalName }, { email }, { taxNumber }],
-    }).lean();
+    });
 
     if (duplicateBusiness) {
       return new NextResponse(
@@ -149,37 +232,128 @@ export const PATCH = async (
       );
     }
 
+    // get the business
+    const business = (await Business.findById(
+      businessId
+    ).lean()) as IBusiness | null;
+
+    if (!business) {
+      return new NextResponse(
+        JSON.stringify({ message: "Business not found!" }),
+        {
+          status: 404,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
+
     // Prepare updated fields only if they exist (partial update)
     const updateBusinessObj: Partial<IBusiness> = {};
 
-    if (tradeName) updateBusinessObj.tradeName = tradeName;
-    if (legalName) updateBusinessObj.legalName = legalName;
-    if (email) updateBusinessObj.email = email;
-    if (phoneNumber) updateBusinessObj.phoneNumber = phoneNumber;
-    if (taxNumber) updateBusinessObj.taxNumber = taxNumber;
-    if (currencyTrade) updateBusinessObj.currencyTrade = currencyTrade;
-    if (subscription) updateBusinessObj.subscription = subscription;
-    if (contactPerson) updateBusinessObj.contactPerson = contactPerson;
-    if (metrics) updateBusinessObj.metrics = metrics;
+    if (tradeName !== business?.tradeName)
+      updateBusinessObj.tradeName = tradeName;
+    if (legalName !== business?.legalName)
+      updateBusinessObj.legalName = legalName;
+    if (email !== business?.email) updateBusinessObj.email = email;
+    if (phoneNumber !== business?.phoneNumber)
+      updateBusinessObj.phoneNumber = phoneNumber;
+    if (taxNumber !== business?.taxNumber)
+      updateBusinessObj.taxNumber = taxNumber;
+    if (currencyTrade !== business?.currencyTrade)
+      updateBusinessObj.currencyTrade = currencyTrade;
+    if (subscription !== business?.subscription)
+      updateBusinessObj.subscription = subscription;
+    if (contactPerson && contactPerson !== business?.contactPerson)
+      updateBusinessObj.contactPerson = contactPerson;
+
+    // Handle address updates dynamically
+    const updatedAddress: Partial<IAddress> = {};
+    for (const [key, value] of Object.entries(address)) {
+      if (value !== business.address?.[key as keyof typeof address]) {
+        updatedAddress[key as keyof typeof address] = value;
+      }
+    }
+    if (Object.keys(updatedAddress).length > 0)
+      //@ts-ignore
+      updateBusinessObj.address = updatedAddress;
+
+    if (metrics) {
+      const updatedMetrics: Partial<IMetrics> = {};
+      const updatedSupplierGoodWastePercentage: Partial<IsupplierGoodWastePercentage> =
+        {};
+      // Handle metrics updates dynamically
+      for (const [key, value] of Object.entries(metrics)) {
+        if (key !== "supplierGoodWastePercentage") {
+          if (value !== business?.metrics?.[key as keyof typeof metrics]) {
+            updatedMetrics[key as keyof typeof metrics] = value;
+          }
+        } else {
+          // Handle metrics.supplierGoodWastePercentage updates dynamically
+          for (const [key, value] of Object.entries(
+            metrics.supplierGoodWastePercentage
+          )) {
+            if (
+              value !==
+              business?.metrics?.supplierGoodWastePercentage?.[
+                key as keyof typeof metrics.supplierGoodWastePercentage
+              ]
+            ) {
+              updatedSupplierGoodWastePercentage[
+                key as keyof typeof metrics.supplierGoodWastePercentage
+              ] = value;
+            }
+          }
+        }
+      }
+      if (Object.keys(updatedSupplierGoodWastePercentage).length > 0)
+        //@ts-ignore
+        updatedMetrics.supplierGoodWastePercentage =
+          updatedSupplierGoodWastePercentage;
+      if (Object.keys(updatedMetrics).length > 0)
+        //@ts-ignore
+        updateBusinessObj.metrics = updatedMetrics;
+    }
+
+    if (imageFile) {
+      // first delete the existing image if it exists
+      const deleteSingleImageResult: string | boolean = await deleteSingleImage(
+        business?.imageUrl || ""
+      );
+
+      // check if deleteSingleImage failed
+      if (deleteSingleImageResult !== true) {
+        return new NextResponse(
+          JSON.stringify({ message: deleteSingleImageResult }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      const folder = `/business/${businessId}`;
+
+      // upload new image
+      const cloudinaryUploadResponse = await uploadSingleImage({
+        folder,
+        imageFile,
+      });
+
+      if (
+        !cloudinaryUploadResponse ||
+        !cloudinaryUploadResponse.includes("https://")
+      ) {
+        return new NextResponse(
+          JSON.stringify({
+            message: `Error uploading image: ${cloudinaryUploadResponse}`,
+          }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      updateBusinessObj.imageUrl = cloudinaryUploadResponse;
+    }
 
     // Password hash only if password is provided
     if (password) {
       updateBusinessObj.password = await hash(password, 10);
-    }
-
-    // Handle address updates with validation
-    if (address) {
-      // validate the updated address
-      const validAddress = addressValidation(address);
-
-      if (validAddress !== true) {
-        return new NextResponse(JSON.stringify({ message: validAddress }), {
-          status: 404,
-          headers: { "Content-Type": "application/json" },
-        });
-      }
-
-      updateBusinessObj.address = address;
     }
 
     // Perform update using $set to modify only specified fields

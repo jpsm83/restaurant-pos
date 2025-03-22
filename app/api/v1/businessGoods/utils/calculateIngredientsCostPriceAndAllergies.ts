@@ -1,11 +1,11 @@
 import convert, { Unit } from "convert-units";
 
 // imported interfaces
-import { ISupplierGood } from "@/app/lib/interface/ISupplierGood";
-import { IIngredients } from "@/app/lib/interface/IBusinessGood";
+import { ISupplierGood } from "@/lib/interface/ISupplierGood";
+import { IIngredients } from "@/lib/interface/IBusinessGood";
 
 // imported models
-import SupplierGood from "@/app/lib/models/supplierGood";
+import SupplierGood from "@/lib/db/models/supplierGood";
 
 export const calculateIngredientsCostPriceAndAllergies = async (
   ingredients: IIngredients[]

@@ -1,18 +1,18 @@
 import { NextResponse } from "next/server";
 
 // imported utils
-import connectDb from "@/app/lib/utils/connectDb";
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
-import objDefaultValidation from "@/app/lib/utils/objDefaultValidation";
-import { handleApiError } from "@/app/lib/utils/handleApiError";
+import connectDb from "@/lib/db/connectDb";
+import isObjectIdValid from "@/lib/utils/isObjectIdValid";
+import objDefaultValidation from "@/lib/utils/objDefaultValidation";
+import { handleApiError } from "@/lib/db/handleApiError";
 
 // imported interfaces
-import { IEmployee } from "@/app/lib/interface/IEmployee";
-import { IUser } from "@/app/lib/interface/IUser";
+import { IEmployee } from "@/lib/interface/IEmployee";
+import { IUser } from "@/lib/interface/IUser";
 
 // imported models
-import Employee from "@/app/lib/models/employee";
-import User from "@/app/lib/models/user";
+import Employee from "@/lib/db/models/employee";
+import User from "@/lib/db/models/user";
 
 const reqSalaryFields = ["payFrequency", "grossSalary", "netSalary"];
 

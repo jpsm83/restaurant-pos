@@ -2,16 +2,16 @@ import { NextResponse } from "next/server";
 import mongoose, { Types } from "mongoose";
 
 // imported utils
-import connectDb from "@/app/lib/utils/connectDb";
-import { handleApiError } from "@/app/lib/utils/handleApiError";
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
+import connectDb from "@/lib/db/connectDb";
+import { handleApiError } from "@/lib/db/handleApiError";
+import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 
 // imported interfaces
-import { INotification } from "@/app/lib/interface/INotification";
+import { INotification } from "@/lib/interface/INotification";
 
 // imported models
-import Notification from "@/app/lib/models/notification";
-import Employee from "@/app/lib/models/employee";
+import Notification from "@/lib/db/models/notification";
+import Employee from "@/lib/db/models/employee";
 import Customer from "@/app/lib/models/customer";
 
 // @desc    Get notification by ID

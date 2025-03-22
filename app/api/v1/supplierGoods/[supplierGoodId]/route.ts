@@ -1,20 +1,20 @@
 import { NextResponse } from "next/server";
-import connectDb from "@/app/lib/utils/connectDb";
+import connectDb from "@/lib/db/connectDb";
 import { Types } from "mongoose";
 
 // imported utils
-import { handleApiError } from "@/app/lib/utils/handleApiError";
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
+import { handleApiError } from "@/lib/db/handleApiError";
+import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 
 // imported interfaces
-import { ISupplierGood } from "@/app/lib/interface/ISupplierGood";
+import { ISupplierGood } from "@/lib/interface/ISupplierGood";
 
 // imported models
-import SupplierGood from "@/app/lib/models/supplierGood";
-import BusinessGood from "@/app/lib/models/businessGood";
-import Supplier from "@/app/lib/models/supplier";
+import SupplierGood from "@/lib/db/models/supplierGood";
+import BusinessGood from "@/lib/db/models/businessGood";
+import Supplier from "@/lib/db/models/supplier";
 import addSupplierGoodToInventory from "../../inventories/utils/addSupplierGoodToInventory";
-import Inventory from "@/app/lib/models/inventory";
+import Inventory from "@/lib/db/models/inventory";
 import moment from "moment";
 
 // @desc    Get supplier good by ID

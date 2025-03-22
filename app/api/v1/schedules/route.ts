@@ -1,17 +1,17 @@
-import connectDb from "@/app/lib/utils/connectDb";
+import connectDb from "@/lib/db/connectDb";
 import { NextResponse } from "next/server";
 
 // imported interfaces
-import { ISchedule } from "@/app/lib/interface/ISchedule";
+import { ISchedule } from "@/lib/interface/ISchedule";
 
 // import utils
-import { handleApiError } from "@/app/lib/utils/handleApiError";
+import { handleApiError } from "@/lib/db/handleApiError";
 import { getWeekNumber } from "./utils/getWeekNumber";
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
+import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 
 // imported models
-import Schedule from "@/app/lib/models/schedule";
-import Employee from "@/app/lib/models/employee";
+import Schedule from "@/lib/db/models/schedule";
+import Employee from "@/lib/db/models/employee";
 
 // @desc    Get all schedules
 // @route   GET /schedules

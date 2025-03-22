@@ -2,12 +2,12 @@ import { Types } from "mongoose";
 import { NextResponse } from "next/server";
 
 //imported utils
-import connectDb from "@/app/lib/utils/connectDb";
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
-import { handleApiError } from "@/app/lib/utils/handleApiError";
+import connectDb from "@/lib/db/connectDb";
+import isObjectIdValid from "@/lib/utils/isObjectIdValid";
+import { handleApiError } from "@/lib/db/handleApiError";
 
 // imported models
-import Printer from "@/app/lib/models/printer";
+import Printer from "@/lib/db/models/printer";
 
 // this route will delete individual configurationSetupToPrintOrders references from the printer
 // @desc    Delete sales location

@@ -1,4 +1,4 @@
-import { IMetrics } from "@/app/lib/interface/IBusiness";
+import { IMetrics } from "@/lib/interface/IBusiness";
 
 const validateBusinessMetrics = (metrics: IMetrics) => {
   // check metrics is an object

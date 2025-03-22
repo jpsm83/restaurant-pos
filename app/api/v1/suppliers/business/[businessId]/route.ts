@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import connectDb from "@/app/lib/utils/connectDb";
+import connectDb from "@/lib/db/connectDb";
 import { Types } from "mongoose";
 
 // import models
-import Supplier from "@/app/lib/models/supplier";
-import { handleApiError } from "@/app/lib/utils/handleApiError";
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
+import Supplier from "@/lib/db/models/supplier";
+import { handleApiError } from "@/lib/db/handleApiError";
+import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 
 // @desc   Get supplier by business ID
 // @route  GET /supplier/business/:businessId

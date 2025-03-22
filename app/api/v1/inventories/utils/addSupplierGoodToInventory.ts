@@ -1,11 +1,11 @@
 import { Types } from "mongoose";
 
 // imported utils
-import connectDb from "@/app/lib/utils/connectDb";
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
+import connectDb from "@/lib/db/connectDb";
+import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 
 // imported models
-import Inventory from "@/app/lib/models/inventory";
+import Inventory from "@/lib/db/models/inventory";
 
 // if a new supplierGood is added to the system, it will be added to the inventoryGoods array of the inventory
 // for separation of concerns, this function will be created in the inventory utils to be used on the supplierGood route

@@ -2,20 +2,20 @@ import mongoose, { Types } from "mongoose";
 import { NextResponse } from "next/server";
 
 // imported utils
-import connectDb from "@/app/lib/utils/connectDb";
-import { handleApiError } from "@/app/lib/utils/handleApiError";
+import connectDb from "@/lib/db/connectDb";
+import { handleApiError } from "@/lib/db/handleApiError";
 import { validateInventoryPurchaseItems } from "./utils/validateInventoryPurchaseItems";
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
+import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 import oneTimePurchaseSupplier from "../suppliers/utils/oneTimePurchaseSupplier";
 
 // imported interfaces
-import { IPurchase, IPurchaseItem } from "@/app/lib/interface/IPurchase";
+import { IPurchase, IPurchaseItem } from "@/lib/interface/IPurchase";
 
 // imported models
-import Inventory from "@/app/lib/models/inventory";
-import SupplierGood from "@/app/lib/models/supplierGood";
-import Supplier from "@/app/lib/models/supplier";
-import Purchase from "@/app/lib/models/purchase";
+import Inventory from "@/lib/db/models/inventory";
+import SupplierGood from "@/lib/db/models/supplierGood";
+import Supplier from "@/lib/db/models/supplier";
+import Purchase from "@/lib/db/models/purchase";
 
 // *** This is all the supplier goods that are purchased in a single purchase ***
 // Also there is the option of one time purchase, where the employee can add a new supplier and the goods in the same form without the need to create a supplier first

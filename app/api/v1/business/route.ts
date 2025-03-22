@@ -1,18 +1,31 @@
 import { NextResponse } from "next/server";
 import { hash } from "bcrypt";
+import mongoose from "mongoose";
 
 // imported utils
-import connectDb from "@/app/lib/utils/connectDb";
-import { handleApiError } from "@/app/lib/utils/handleApiError";
-import { addressValidation } from "@/app/lib/utils/addressValidation";
+import connectDb from "@/lib/db/connectDb";
+import { handleApiError } from "@/lib/db/handleApiError";
+import objDefaultValidation from "@/lib/utils/objDefaultValidation";
+import uploadSingleImage from "@/lib/cloudinary/uploadSingleImage";
 
 // imported interface
-import { IBusiness } from "@/app/lib/interface/IBusiness";
+import { IBusiness } from "@/lib/interface/IBusiness";
 
 // imported models
-import Business from "@/app/lib/models/business";
+import Business from "@/lib/db/models/business";
 
 const emailRegex = /^[\w-]+(\.[\w-]+)*@([\w-]+\.)+[a-zA-Z]{2,7}$/;
+
+const reqAddressFields = [
+  "country",
+  "state",
+  "city",
+  "street",
+  "buildingNumber",
+  "postCode",
+];
+
+const nonReqAddressFields = ["region", "additionalDetails", "coordinates"];
 
 // @desc    Get all businesses
 // @route   GET /business
@@ -48,18 +61,21 @@ export const POST = async (req: Request) => {
   // metrics is created upon updating the business
   // imageUrl are create or delete using cloudinaryActions routes
   try {
-    const {
-      tradeName,
-      legalName,
-      email,
-      password,
-      phoneNumber,
-      taxNumber,
-      subscription,
-      address,
-      currencyTrade,
-      contactPerson,
-    } = (await req.json()) as IBusiness;
+    // Parse FORM DATA instead of JSON because we might have an image file
+    const formData = await req.formData();
+
+    // Extract fields from formData
+    const tradeName = formData.get("tradeName") as string;
+    const legalName = formData.get("legalName") as string;
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
+    const phoneNumber = formData.get("phoneNumber") as string;
+    const taxNumber = formData.get("taxNumber") as string;
+    const subscription = formData.get("subscription") as string;
+    const address = JSON.parse(formData.get("address") as string);
+    const currencyTrade = formData.get("currencyTrade") as string;
+    const contactPerson = formData.get("contactPerson") as string | undefined;
+    const imageFile = formData.get("imageUrl") as File | undefined; // Get image file
 
     // check required fields
     if (
@@ -90,22 +106,30 @@ export const POST = async (req: Request) => {
       );
     }
 
-    // Validate address
-    const validAddress = addressValidation(address);
-    if (validAddress !== true) {
-      return new NextResponse(JSON.stringify({ message: validAddress }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
+    // validate address
+    const addressValidationResult = objDefaultValidation(
+      address,
+      reqAddressFields,
+      nonReqAddressFields
+    );
+
+    if (addressValidationResult !== true) {
+      return new NextResponse(
+        JSON.stringify({ message: addressValidationResult }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
     }
 
     // connect before first call to DB
     await connectDb();
 
     // check for duplicate legalName, email or taxNumber
-    const duplicateBusiness = await Business.findOne({
+    const duplicateBusiness = await Business.exists({
       $or: [{ legalName }, { email }, { taxNumber }],
-    }).lean();
+    });
 
     if (duplicateBusiness) {
       return new NextResponse(
@@ -119,17 +143,46 @@ export const POST = async (req: Request) => {
     // hash password
     const hashedPassword = await hash(password, 10);
 
+    const businessId = new mongoose.Types.ObjectId();
+
+    let imageUrl: string | undefined;
+
+    if (imageFile) {
+      const folder = `/business/${businessId}`;
+
+      const cloudinaryUploadResponse = await uploadSingleImage({
+        folder,
+        imageFile,
+      });
+
+      if (
+        !cloudinaryUploadResponse ||
+        !cloudinaryUploadResponse.includes("https://")
+      ) {
+        return new NextResponse(
+          JSON.stringify({
+            message: `Error uploading image: ${cloudinaryUploadResponse}`,
+          }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      imageUrl = cloudinaryUploadResponse;
+    }
+
     // create business object with required fields
-    const newBusiness = {
-      tradeName,
-      legalName,
-      email,
+    const newBusiness: IBusiness = {
+      _id: businessId,
+      tradeName: tradeName,
+      legalName: legalName,
+      imageUrl: imageUrl || undefined,
+      email: email,
       password: hashedPassword,
-      phoneNumber,
-      taxNumber,
-      currencyTrade,
-      subscription,
-      address,
+      phoneNumber: phoneNumber,
+      taxNumber: taxNumber,
+      currencyTrade: currencyTrade,
+      subscription: subscription,
+      address: address,
       contactPerson: contactPerson || undefined,
     };
 

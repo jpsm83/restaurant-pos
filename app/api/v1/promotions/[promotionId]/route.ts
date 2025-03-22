@@ -2,19 +2,19 @@ import { NextResponse } from "next/server";
 import { Types } from "mongoose";
 
 // import utils
-import connectDb from "@/app/lib/utils/connectDb";
+import connectDb from "@/lib/db/connectDb";
 import { validateDateAndTime } from "../utils/validateDateAndTime";
 import { validateDaysOfTheWeek } from "../utils/validateDaysOfTheWeek";
-import { handleApiError } from "@/app/lib/utils/handleApiError";
+import { handleApiError } from "@/lib/db/handleApiError";
 import { validatePromotionType } from "../utils/validatePromotionType";
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
+import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 
 // imported interfaces
-import { IPromotion } from "@/app/lib/interface/IPromotion";
+import { IPromotion } from "@/lib/interface/IPromotion";
 
 // imported models
-import Promotion from "@/app/lib/models/promotion";
-import BusinessGood from "@/app/lib/models/businessGood";
+import Promotion from "@/lib/db/models/promotion";
+import BusinessGood from "@/lib/db/models/businessGood";
 
 // when bill is printed, check if orders have a promotion base on their order time
 // if they have a promotion, apply it to the order updating its price and promotionApplied field

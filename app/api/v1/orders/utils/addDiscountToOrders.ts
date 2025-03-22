@@ -1,10 +1,10 @@
 import { Types, ClientSession } from "mongoose";
 
 // imported utils
-import connectDb from "@/app/lib/utils/connectDb";
+import connectDb from "@/lib/db/connectDb";
 
 // imported models
-import Order from "@/app/lib/models/order";
+import Order from "@/lib/db/models/order";
 
 // ********** IMPORTANT **********
 // This function will be call on the PATCH salesInstance route where you get all the orders

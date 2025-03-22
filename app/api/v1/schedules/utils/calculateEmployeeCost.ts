@@ -1,4 +1,4 @@
-import { ISalary } from "@/app/lib/interface/IEmployee";
+import { ISalary } from "@/lib/interface/IEmployee";
 
 // Function to calculate employee cost
 const calculateEmployeeCost = (

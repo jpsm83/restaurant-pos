@@ -2,16 +2,16 @@ import { NextResponse } from "next/server";
 import mongoose, { Types } from "mongoose";
 
 // imported utils
-import connectDb from "@/app/lib/utils/connectDb";
-import { handleApiError } from "@/app/lib/utils/handleApiError";
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
+import connectDb from "@/lib/db/connectDb";
+import { handleApiError } from "@/lib/db/handleApiError";
+import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 
 // imported interfaces
-import { IPurchase } from "@/app/lib/interface/IPurchase";
+import { IPurchase } from "@/lib/interface/IPurchase";
 
 // imported models
-import Purchase from "@/app/lib/models/purchase";
-import Inventory from "@/app/lib/models/inventory";
+import Purchase from "@/lib/db/models/purchase";
+import Inventory from "@/lib/db/models/inventory";
 
 // this route is to delete a supplierGood from the purchase that already exists
 // @desc    Delete supplierGood from purchase by ID

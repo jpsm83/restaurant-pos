@@ -2,13 +2,13 @@ import convert, { Unit } from "convert-units";
 import { ClientSession, Types } from "mongoose";
 
 // imported utils
-import connectDb from "@/app/lib/utils/connectDb";
+import connectDb from "@/lib/db/connectDb";
 
 // imported interfaces
-import BusinessGood from "@/app/lib/models/businessGood";
+import BusinessGood from "@/lib/db/models/businessGood";
 
 // imported models
-import Inventory from "@/app/lib/models/inventory";
+import Inventory from "@/lib/db/models/inventory";
 
 // every time an order is created or cancel, we MUST update the supplier goods
 // check all the ingredients of the business goods array of the order

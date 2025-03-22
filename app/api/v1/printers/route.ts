@@ -1,18 +1,18 @@
 import { NextResponse } from "next/server";
 
 // imported interfaces
-import { IPrinter } from "@/app/lib/interface/IPrinter";
+import { IPrinter } from "@/lib/interface/IPrinter";
 
 // imported utils
-import connectDb from "@/app/lib/utils/connectDb";
+import connectDb from "@/lib/db/connectDb";
 import { checkPrinterConnection } from "./utils/checkPrinterConnection";
-import { handleApiError } from "@/app/lib/utils/handleApiError";
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
+import { handleApiError } from "@/lib/db/handleApiError";
+import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 
 // import employee model
-import Employee from "@/app/lib/models/employee";
-import Printer from "@/app/lib/models/printer";
-import SalesPoint from "@/app/lib/models/salesPoint";
+import Employee from "@/lib/db/models/employee";
+import Printer from "@/lib/db/models/printer";
+import SalesPoint from "@/lib/db/models/salesPoint";
 
 // @desc    Get all printers
 // @route   GET /printers

@@ -1,5 +1,5 @@
-import { IOrder } from "@/app/lib/interface/IOrder";
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
+import { IOrder } from "@/lib/interface/IOrder";
+import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 import { Types } from "mongoose";
 
 // helper function to validate orders array

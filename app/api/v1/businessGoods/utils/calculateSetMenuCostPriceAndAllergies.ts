@@ -1,10 +1,10 @@
 import { Types } from "mongoose";
 
 // imported utils
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
+import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 
 // imported models
-import BusinessGood from "@/app/lib/models/businessGood";
+import BusinessGood from "@/lib/db/models/businessGood";
 
 // helper function to set setMenu
 export const calculateSetMenuCostPriceAndAllergies = async (

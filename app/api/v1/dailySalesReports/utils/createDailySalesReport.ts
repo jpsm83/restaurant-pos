@@ -1,14 +1,14 @@
 import { ClientSession, Types } from "mongoose";
 
 // imported utils
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
+import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 
 // imported models
-import DailySalesReport from "@/app/lib/models/dailySalesReport";
+import DailySalesReport from "@/lib/db/models/dailySalesReport";
 
 // imported interfaces
-import { IDailySalesReport } from "@/app/lib/interface/IDailySalesReport";
-import connectDb from "@/app/lib/utils/connectDb";
+import { IDailySalesReport } from "@/lib/interface/IDailySalesReport";
+import connectDb from "@/lib/db/connectDb";
 
 // this function will create daily report if not exists
 // it will be imported to be used on the salesInstance route

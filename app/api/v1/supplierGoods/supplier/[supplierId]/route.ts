@@ -2,12 +2,12 @@ import { NextResponse } from "next/server";
 import { Types } from "mongoose";
 
 // imported utils
-import connectDb from "@/app/lib/utils/connectDb";
-import { handleApiError } from "@/app/lib/utils/handleApiError";
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
+import connectDb from "@/lib/db/connectDb";
+import { handleApiError } from "@/lib/db/handleApiError";
+import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 
 // import models
-import SupplierGood from "@/app/lib/models/supplierGood";
+import SupplierGood from "@/lib/db/models/supplierGood";
 
 // @desc    Get supplier goods by supplier ID
 // @route   GET /supplierGoods/supplier/:supplierId

@@ -1,15 +1,26 @@
 import { NextResponse } from "next/server";
+import mongoose from "mongoose";
 
 // imported utils
-import connectDb from "@/app/lib/utils/connectDb";
-import { addressValidation } from "@/app/lib/utils/addressValidation";
-import { handleApiError } from "@/app/lib/utils/handleApiError";
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
+import connectDb from "@/lib/db/connectDb";
+import { handleApiError } from "@/lib/db/handleApiError";
+import isObjectIdValid from "@/lib/utils/isObjectIdValid";
+import uploadSingleImage from "@/lib/cloudinary/uploadSingleImage";
+import objDefaultValidation from "@/lib/utils/objDefaultValidation";
 
 // imported models
-import Supplier from "@/app/lib/models/supplier";
-import mongoose from "mongoose";
-import uploadSingleImage from "@/app/lib/cloudinary/uploadSingleImage";
+import Supplier from "@/lib/db/models/supplier";
+
+const reqAddressFields = [
+  "country",
+  "state",
+  "city",
+  "street",
+  "buildingNumber",
+  "postCode",
+];
+
+const nonReqAddressFields = ["region", "additionalDetails", "coordinates"];
 
 // @desc    Get all suppliers
 // @route   GET /supplier
@@ -59,7 +70,7 @@ export const POST = async (req: Request) => {
       ? JSON.parse(formData.get("address") as string)
       : undefined;
     const contactPerson = formData.get("contactPerson") as string | undefined;
-    const imageFile = formData.get("imageUrl") as File | null; // Get image file
+    const imageFile = formData.get("imageUrl") as File | undefined; // Get image file
 
     // check required fields
     if (
@@ -92,14 +103,22 @@ export const POST = async (req: Request) => {
       );
     }
 
-    // validate address fields
-      const validAddress = addressValidation(address);
-      if (validAddress !== true) {
-        return new NextResponse(JSON.stringify({ message: validAddress }), {
+    // validate address
+    const addressValidationResult = objDefaultValidation(
+      address,
+      reqAddressFields,
+      nonReqAddressFields
+    );
+
+    if (addressValidationResult !== true) {
+      return new NextResponse(
+        JSON.stringify({ message: addressValidationResult }),
+        {
           status: 400,
           headers: { "Content-Type": "application/json" },
-        });
-      }
+        }
+      );
+    }
 
     // validate the reserve string "One Time Purchase" for tradeName, legalName, phoneNumber and taxNumber
     if (

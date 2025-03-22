@@ -1,15 +1,15 @@
 import { ClientSession } from "mongoose";
 
 // imported utils
-import connectDb from "@/app/lib/utils/connectDb";
+import connectDb from "@/lib/db/connectDb";
 import { addEmployeeToDailySalesReport } from "../../dailySalesReports/utils/addEmployeeToDailySalesReport";
 
 // imported interfaces
-import { ISalesInstance } from "@/app/lib/interface/ISalesInstance";
+import { ISalesInstance } from "@/lib/interface/ISalesInstance";
 
 // imported models
-import DailySalesReport from "@/app/lib/models/dailySalesReport";
-import SalesInstance from "@/app/lib/models/salesInstance";
+import DailySalesReport from "@/lib/db/models/dailySalesReport";
+import SalesInstance from "@/lib/db/models/salesInstance";
 
 export const createSalesInstance = async (
   newSalesInstanceObj: ISalesInstance,

@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 import mongoose, { Types } from "mongoose";
 
 // import utils
-import connectDb from "@/app/lib/utils/connectDb";
-import { handleApiError } from "@/app/lib/utils/handleApiError";
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
+import connectDb from "@/lib/db/connectDb";
+import { handleApiError } from "@/lib/db/handleApiError";
+import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 import { createDailySalesReport } from "@/app/api/v1/dailySalesReports/utils/createDailySalesReport";
 import { createSalesInstance } from "../../utils/createSalesInstance";
 import { ordersArrValidation } from "@/app/api/v1/orders/utils/validateOrdersArr";
@@ -15,14 +15,14 @@ import { closeOrders } from "@/app/api/v1/orders/utils/closeOrders";
 import {
   IDailySalesReport,
   IGoodsReduced,
-} from "@/app/lib/interface/IDailySalesReport";
-import { ISalesInstance } from "@/app/lib/interface/ISalesInstance";
-import { IOrder } from "@/app/lib/interface/IOrder";
+} from "@/lib/interface/IDailySalesReport";
+import { ISalesInstance } from "@/lib/interface/ISalesInstance";
+import { IOrder } from "@/lib/interface/IOrder";
 import { ICustomer } from "@/app/lib/interface/ICustomer";
-import { IPaymentMethod } from "@/app/lib/interface/IPaymentMethod";
+import { IPaymentMethod } from "@/lib/interface/IPaymentMethod";
 
 // imported models
-import DailySalesReport from "@/app/lib/models/dailySalesReport";
+import DailySalesReport from "@/lib/db/models/dailySalesReport";
 import Customer from "@/app/lib/models/customer";
 import { validatePaymentMethodArray } from "@/app/api/v1/orders/utils/validatePaymentMethodArray";
 

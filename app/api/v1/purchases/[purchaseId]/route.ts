@@ -2,16 +2,16 @@ import mongoose, { Types } from "mongoose";
 import { NextResponse } from "next/server";
 
 // imported utils
-import connectDb from "@/app/lib/utils/connectDb";
-import { handleApiError } from "@/app/lib/utils/handleApiError";
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
+import connectDb from "@/lib/db/connectDb";
+import { handleApiError } from "@/lib/db/handleApiError";
+import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 
 // imported models
-import Purchase from "@/app/lib/models/purchase";
-import Supplier from "@/app/lib/models/supplier";
-import SupplierGood from "@/app/lib/models/supplierGood";
-import { IPurchase } from "@/app/lib/interface/IPurchase";
-import Inventory from "@/app/lib/models/inventory";
+import Purchase from "@/lib/db/models/purchase";
+import Supplier from "@/lib/db/models/supplier";
+import SupplierGood from "@/lib/db/models/supplierGood";
+import { IPurchase } from "@/lib/interface/IPurchase";
+import Inventory from "@/lib/db/models/inventory";
 
 // @desc    GET purchase by ID
 // @route   GET /purchases/:purchaseId?startDate=<date>&endDate=<date>

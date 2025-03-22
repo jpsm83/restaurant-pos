@@ -2,21 +2,21 @@ import { NextResponse } from "next/server";
 import mongoose, { Types } from "mongoose";
 
 // imported utils
-import connectDb from "@/app/lib/utils/connectDb";
-import { handleApiError } from "@/app/lib/utils/handleApiError";
-import isObjectIdValid from "@/app/lib/utils/isObjectIdValid";
+import connectDb from "@/lib/db/connectDb";
+import { handleApiError } from "@/lib/db/handleApiError";
+import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 import { ordersArrValidation } from "./utils/validateOrdersArr";
 import { createOrders } from "./utils/createOrders";
 
 // imported interfaces
-import { IOrder } from "@/app/lib/interface/IOrder";
+import { IOrder } from "@/lib/interface/IOrder";
 
 // imported models
-import Order from "@/app/lib/models/order";
-import SalesInstance from "@/app/lib/models/salesInstance";
-import Employee from "@/app/lib/models/employee";
-import BusinessGood from "@/app/lib/models/businessGood";
-import SalesPoint from "@/app/lib/models/salesPoint";
+import Order from "@/lib/db/models/order";
+import SalesInstance from "@/lib/db/models/salesInstance";
+import Employee from "@/lib/db/models/employee";
+import BusinessGood from "@/lib/db/models/businessGood";
+import SalesPoint from "@/lib/db/models/salesPoint";
 import Customer from "@/app/lib/models/customer";
 
 // @desc    Get all orders

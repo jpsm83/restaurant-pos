@@ -1,5 +1,5 @@
 import { Schema } from "mongoose";
-import { idTypes } from "../enums";
+import { idTypes } from "../../enums";
 import { addressSchema } from "./address";
 
 export const personalDetailsSchema = new Schema(

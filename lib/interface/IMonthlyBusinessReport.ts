@@ -1,6 +1,6 @@
 import { Types } from "mongoose";
 import { IPaymentMethod } from "./IPaymentMethod";
-import { goodsReducedSchema } from "../models/dailySalesReport";
+import { goodsReducedSchema } from "../db/models/dailySalesReport";
 
 export interface IFinancialPercentages {
   salesPaymentCompletionPercentage: number; // Percentage of sales paid during the month
