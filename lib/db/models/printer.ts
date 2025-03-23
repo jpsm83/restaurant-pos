@@ -1,11 +1,11 @@
 import { Schema, model, models } from "mongoose";
-import { mainCategories, printerStatus } from "../../enums";
+import { mainCategoriesEnums, printerStatusEnums } from "@/lib/enums";
 
 const configurationSetupToPrintOrdersSchema = new Schema(
   {
     mainCategory: {
       type: String,
-      enum: mainCategories,
+      enum: mainCategoriesEnums,
       required: [true, "Main category is required!"],
     }, // this will dictate what the printer will print as main category
     subCategories: {
@@ -40,7 +40,7 @@ const printerSchema = new Schema(
     description: { type: String }, // description of the printer
     printerStatus: {
       type: String,
-      enum: printerStatus,
+      enum: printerStatusEnums,
       default: "Offline",
     }, // enhanced printer status
     ipAddress: {

@@ -8,7 +8,9 @@ cloudinary.config({
   secure: true,
 });
 
-export default async function deleteFilesCloudinary(imageUrl: string | undefined) {
+export default async function deleteFilesCloudinary(
+  imageUrl: string | undefined
+): Promise<boolean | string> {
   try {
     // example of a cloudinary image url
     // "https://res.cloudinary.com/jpsm83/image/upload/v1742636639/restaurant-pos/business/66e169a709901431386c97cb/suppliers/67de865e17261dbaf2ec3ee3/dexnymwfq0bivflousfl.png"

@@ -1,5 +1,5 @@
 import { Schema, model, models } from "mongoose";
-import { personalDetailsSchema } from "./personalDetails";
+import { personalDetailsSchema } from "@/lib/db/models/personalDetails";
 
 const userSchema = new Schema(
   {

@@ -2,27 +2,59 @@ import convert, { Unit } from "convert-units";
 
 // imported interfaces
 import { ISupplierGood } from "@/lib/interface/ISupplierGood";
-import { IIngredients } from "@/lib/interface/IBusinessGood";
+import { IIngredient } from "@/lib/interface/IBusinessGood";
 
 // imported models
 import SupplierGood from "@/lib/db/models/supplierGood";
+import objDefaultValidation from "@/lib/utils/objDefaultValidation";
+import { Types } from "mongoose";
 
+const reqIngredientsFields = [
+  "supplierGoodId",
+  "measurementUnit",
+  "requiredQuantity",
+];
+
+const nonReqIngredientsFields = ["costOfRequiredQuantity"];
+
+// this function calculates the cost price of the ingredients
+// and checks if the ingredients have allergens
+// it returns an array of objects with the following fields:
+// supplierGoodId, measurementUnit, requiredQuantity, costOfRequiredQuantity, allergens
 export const calculateIngredientsCostPriceAndAllergies = async (
-  ingredients: IIngredients[]
+  ingredients: IIngredient[]
 ) => {
   try {
-    const newIngredientsArray = [];
+    const newIngredientsArray: {
+      supplierGoodId: Types.ObjectId;
+      measurementUnit: string;
+      requiredQuantity: number;
+      costOfRequiredQuantity: number;
+      allergens: string[] | undefined;
+    }[] = [];
 
     for (const ingredient of ingredients) {
-      const supplierGood = await SupplierGood.findOne({
+      // validate address
+      const ingredientValidationResult = objDefaultValidation(
+        ingredient,
+        reqIngredientsFields,
+        nonReqIngredientsFields
+      );
+
+      if (ingredientValidationResult !== true) {
+        return ingredientValidationResult;
+      }
+
+      const supplierGood = (await SupplierGood.findOne({
         _id: ingredient.supplierGoodId,
       })
         .select("measurementUnit pricePerMeasurementUnit allergens")
-        .lean() as ISupplierGood | null;
+        .lean()) as ISupplierGood | null;
 
       if (!supplierGood) {
         return "Supplier good not found!";
       }
+
       const ingredientObj = {
         supplierGoodId: ingredient.supplierGoodId,
         measurementUnit: ingredient.measurementUnit,
@@ -44,7 +76,7 @@ export const calculateIngredientsCostPriceAndAllergies = async (
           }
         } else {
           const convertedQuantity = convert(ingredient.requiredQuantity)
-            .from(ingredient.measurementUnit)
+            .from(ingredient.measurementUnit as Unit)
             .to(supplierGood?.measurementUnit as Unit);
           ingredientObj.costOfRequiredQuantity =
             (supplierGood?.pricePerMeasurementUnit ?? 0) * convertedQuantity;

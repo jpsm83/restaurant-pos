@@ -1,11 +1,11 @@
 import { Schema, model, models } from "mongoose";
 import {
-  mainCategories,
-  purchaseUnit,
-  measurementUnit,
-  allergens,
-  budgetImpact,
-  inventorySchedule,
+  mainCategoriesEnums,
+  purchaseUnitEnums,
+  measurementUnitEnums,
+  allergensEnums,
+  budgetImpactEnums,
+  inventoryScheduleEnums,
 } from "@/lib/enums";
 
 const supplierGoodSchema = new Schema(
@@ -15,7 +15,7 @@ const supplierGoodSchema = new Schema(
     keyword: { type: String, required: [true, "keyword is required!"] }, // keyword of the good "flour"
     mainCategory: {
       type: String,
-      enum: mainCategories,
+      enum: mainCategoriesEnums,
       required: [true, "Main category is required!"],
     }, // principal category of the business good
     subCategory: {
@@ -38,12 +38,12 @@ const supplierGoodSchema = new Schema(
 
     // optional fields
     description: { type: String }, // description of the good
-    allergens: { type: [String], enum: allergens, default: undefined }, // allergens of the good
-    budgetImpact: { type: String, enum: budgetImpact }, // how relevant is the good on the business budget
+    allergens: { type: [String], enum: allergensEnums, default: undefined }, // allergens of the good
+    budgetImpact: { type: String, enum: budgetImpactEnums }, // how relevant is the good on the business budget
     imageUrl: {
       type: [String],
     }, // multiple photos of the good
-    inventorySchedule: { type: String, enum: inventorySchedule }, // daily, weekly, monthly
+    inventorySchedule: { type: String, enum: inventoryScheduleEnums }, // daily, weekly, monthly
 
     // analytics fields
     minimumQuantityRequired: { type: Number }, // limit quantity required for a day work
@@ -55,11 +55,11 @@ const supplierGoodSchema = new Schema(
 
     purchaseUnit: {
       type: String,
-      enum: purchaseUnit,
+      enum: purchaseUnitEnums,
     }, // unit in which the good is sold - block of cheese, bag of bread, milk gallon, unit
     measurementUnit: {
       type: String,
-      enum: measurementUnit,
+      enum: measurementUnitEnums,
     }, // unit used for conversion, measurement on how to good is bought - kilogram, liter, unit
     quantityInMeasurementUnit: { type: Number }, // quantity of the good in measurementUnit - ex: 10kg, 1L, 5 units
     totalPurchasePrice: { type: Number }, // price of purchaseUnit

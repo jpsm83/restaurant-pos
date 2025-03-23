@@ -1,6 +1,5 @@
 import { Schema, model, models } from "mongoose";
-import { userRoles } from "@/lib/enums";
-// import { personalDetailsSchema } from "./personalDetails";
+import { userRolesEnums } from "@/lib/enums";
 
 const salarySchema = new Schema(
   {
@@ -23,14 +22,10 @@ const salarySchema = new Schema(
 
 const employeeSchema = new Schema(
   {
-    // personalDetails: {
-    //   type: personalDetailsSchema,
-    //   required: [true, "Personal details is required!"],
-    // }, // personal details of the employee
     allEmployeeRoles: [
       {
         type: String,
-        enum: userRoles,
+        enum: userRolesEnums,
         required: [true, "Employee role is required!"],
       },
     ], // all roles of the employee, can be multiple
@@ -67,7 +62,7 @@ const employeeSchema = new Schema(
 
     // optional fields
     vacationDaysLeft: { type: Number }, // days of holidays left
-    currentShiftRole: { type: String, enum: userRoles }, // current shift role of the employee
+    currentShiftRole: { type: String, enum: userRolesEnums }, // current shift role of the employee
 
     // *** IMPORTANTE ***
     // employee might input the contract hours per week as a whole hour number on the front of the application and them it will be converted to milliseconds
@@ -87,19 +82,6 @@ const employeeSchema = new Schema(
     }, // date when the employee left the business
     documentsUrl: { type: [String] }, // photo of the employee documents as id, contract, tax, etc
     comments: { type: String }, // comments about the employee
-    // notifications: {
-    //   type: [
-    //     {
-    //       notificationId: {
-    //         type: Schema.Types.ObjectId,
-    //         ref: "Notification",
-    //       },
-    //       readFlag: { type: Boolean, default: false },
-    //       deletedFlag: { type: Boolean, default: false },
-    //     },
-    //   ],
-    //   default: undefined,
-    // }, // if the customer wants to receive notifications
   },
   {
     timestamps: true,

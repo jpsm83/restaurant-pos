@@ -1,5 +1,5 @@
 import { Schema, model, models } from "mongoose";
-import { weekDays } from "../../enums";
+import { weekDaysEnums } from "@/lib/enums";
 
 const promotionSchema = new Schema(
   {
@@ -20,7 +20,7 @@ const promotionSchema = new Schema(
     }, // object with the range of the promotion
     weekDays: {
       type: [String],
-      enum: weekDays,
+      enum: weekDaysEnums,
       required: [true, "Week days are required!"],
     }, // days of the week when the promotion applies
     activePromotion: { type: Boolean, default: true }, // if the promotion is active or not

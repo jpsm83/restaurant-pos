@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { hash } from "bcrypt";
 import mongoose, { Types } from "mongoose";
-import { v2 as cloudinary } from "cloudinary";
 
 // import utils
 import connectDb from "@/lib/db/connectDb";
@@ -10,6 +9,7 @@ import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 import objDefaultValidation from "@/lib/utils/objDefaultValidation";
 import deleteFilesCloudinary from "@/lib/cloudinary/deleteFilesCloudinary";
 import uploadFilesCloudinary from "@/lib/cloudinary/uploadFilesCloudinary";
+import deleteFolderCloudinary from "@/lib/cloudinary/deleteFolderCloudinary";
 
 // import interfaces
 import {
@@ -39,15 +39,7 @@ import MonthlyBusinessReport from "@/lib/db/models/monthlyBusinessReport";
 import User from "@/lib/db/models/user";
 
 // imported enums
-import { subscription as subscriptionEnums, currenctyTypes } from "@/lib/enums";
-
-// Cloudinary ENV variables
-cloudinary.config({
-  cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-  secure: true,
-});
+import { subscriptionEnums, currenctyEnums } from "@/lib/enums";
 
 const emailRegex = /^[\w-]+(\.[\w-]+)*@([\w-]+\.)+[a-zA-Z]{2,7}$/;
 
@@ -250,14 +242,14 @@ export const PATCH = async (
       );
     }
 
-        // check if currencyTrade is valid
-        if(!currenctyTypes.includes(currencyTrade)) {
-          return new NextResponse(
-            JSON.stringify({ message: "Invalid currencyTrade!" }),
-            { status: 400, headers: { "Content-Type": "application/json" } }
-          );
-        }
-    
+    // check if currencyTrade is valid
+    if (!currenctyEnums.includes(currencyTrade)) {
+      return new NextResponse(
+        JSON.stringify({ message: "Invalid currencyTrade!" }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     // connect before first call to DB
     await connectDb();
 
@@ -294,6 +286,7 @@ export const PATCH = async (
     // Prepare updated fields only if they exist (partial update)
     const updateBusinessObj: Partial<IBusiness> = {};
 
+    // required fields
     if (tradeName !== business?.tradeName)
       updateBusinessObj.tradeName = tradeName;
     if (legalName !== business?.legalName)
@@ -381,10 +374,9 @@ export const PATCH = async (
         );
       }
 
-       // if new image been created, them delete the old one
-       const deleteFilesCloudinaryResult: string | boolean = await deleteFilesCloudinary(
-        business?.imageUrl || ""
-      );
+      // if new image been created, them delete the old one
+      const deleteFilesCloudinaryResult: string | boolean =
+        await deleteFilesCloudinary(business?.imageUrl || "");
 
       // check if deleteFilesCloudinary failed
       if (deleteFilesCloudinaryResult !== true) {
@@ -412,7 +404,7 @@ export const PATCH = async (
     // If business not found after update
     if (!updatedBusiness) {
       return new NextResponse(
-        JSON.stringify({ message: "Business not found!" }),
+        JSON.stringify({ message: "Business to update not found!" }),
         { status: 404, headers: { "Content-Type": "application/json" } }
       );
     }
@@ -479,18 +471,18 @@ export const DELETE = async (
     await session.commitTransaction();
     session.endSession();
 
-    // **Cloudinary Cleanup (Separate from DB Transaction)**
-    try {
-      const folderPath = `restaurant-pos/business/${businessId}`;
+    // cloudinary folder path
+    const folderPath = `restaurant-pos/business/${businessId}`;
 
-      // **Step 1: Delete all files in the folder and subfolders**
-      await cloudinary.api.delete_resources_by_prefix(folderPath);
+    // Delete business folder in cloudinary
+    const deleteFolderCloudinaryResult: string | boolean =
+      await deleteFolderCloudinary(folderPath);
 
-      // **Step 2: Delete the empty folder (and all subfolders)**
-      await cloudinary.api.delete_folder(folderPath);
-    } catch (error) {
-      console.error("Cloudinary cleanup failed:", error);
-      // Do NOT abort transaction, log error instead
+    if (deleteFolderCloudinaryResult !== true) {
+      return new NextResponse(
+        JSON.stringify({ message: deleteFolderCloudinaryResult }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
     }
 
     return new NextResponse(

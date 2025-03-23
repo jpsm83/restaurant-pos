@@ -16,7 +16,7 @@ export default async function uploadFilesCloudinary({
   folder: string;
   filesArr: File[];
   onlyImages?: boolean;
-}) {
+}): Promise<string | string[]> {
   const uploadPreset = "restaurant-pos";
 
   // Validate file types

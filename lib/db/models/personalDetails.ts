@@ -1,6 +1,6 @@
 import { Schema } from "mongoose";
-import { idTypes } from "../../enums";
-import { addressSchema } from "./address";
+import { idEnums } from "@/lib/enums";
+import { addressSchema } from "@/lib/db/models/address";
 
 export const personalDetailsSchema = new Schema(
   {
@@ -22,7 +22,7 @@ export const personalDetailsSchema = new Schema(
     },
     idType: {
       type: String,
-      enum: idTypes,
+      enum: idEnums,
       required: [true, "Id type is required!"],
     }, // type of ID used by the customer
     idNumber: { type: String, required: [true, "Id number is required!"] }, // ID number of the customer

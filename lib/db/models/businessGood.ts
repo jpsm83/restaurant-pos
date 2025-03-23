@@ -1,5 +1,5 @@
 import { Schema, model, models } from "mongoose";
-import { mainCategories, measurementUnit, allergens } from "@/lib/enums";
+import { mainCategoriesEnums, measurementUnitEnums, allergensEnums } from "@/lib/enums";
 
 const businessGoodSchema = new Schema(
   {
@@ -8,12 +8,11 @@ const businessGoodSchema = new Schema(
     keyword: { type: String, required: [true, "Keyword is required!"] }, // keyword for search "burger", "sides", "beer"
     mainCategory: {
       type: String,
-      enum: mainCategories,
+      enum: mainCategoriesEnums,
       required: [true, "Main category is required!"],
     }, // principal category of the business good
     subCategory: {
       type: String,
-      required: [true, "Sub category is required!"],
     }, // secondary category of the business good
     onMenu: { type: Boolean, default: true }, // if the business good is on the menu right now
     available: { type: Boolean, default: true }, // if the business good is available for sale
@@ -28,7 +27,9 @@ const businessGoodSchema = new Schema(
       index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
     },
 
-    // BUSINESSGOOD CAN HAVE A INGREDIENTS ARRAY OR SETMENU ARRAY - IT CANNOT BE BOTH
+    // BUSINESSGOOD CAN HAVE A INGREDIENTS ARRAY OR SETMENU ARRAY
+    // IT CANNOT BE BOTH
+    // AND IT CAN BE NONE
     // ingredients is an array of objects that contains the supplierGood and the quantity needed to build a businessGood
     ingredients: {
       type: [
@@ -41,7 +42,7 @@ const businessGoodSchema = new Schema(
           }, // Supplier good used as an ingredient - e.g., ground meat (id)
           measurementUnit: {
             type: String,
-            enum: measurementUnit,
+            enum: measurementUnitEnums,
             required: [true, "Measurement unit is required!"],
           }, // Unit used for measurement - e.g., (grams) of ground meat - REQUIRED FOR ANALYTICS
           requiredQuantity: {
@@ -71,9 +72,9 @@ const businessGoodSchema = new Schema(
     // optional fields
     costPrice: { type: Number }, // sun of all ingredients.costOfRequiredQuantity
     grossProfitMarginDesired: { type: Number }, // desired gross profit margin - should show employee a list of most used gross profit margins depending of the dish
-    suggestedSellingPrice: { type: Number }, // costPrice / (1 - grossProfitMarginDesired as decimal (65% = 0.65))
+    suggestedSellingPrice: { type: Number }, // costPrice * (1 + grossProfitMarginDesired / 100)
     description: { type: String }, // description of the business good
-    allergens: { type: [String], enum: allergens, default: undefined }, // allergens of the business good - have to follow the allergens from the supplier goods and add more if needed
+    allergens: { type: [String], enum: allergensEnums , default: undefined }, // allergens of the business good - have to follow the allergens from the supplier goods and add more if needed
     imageUrl: { type: [String] }, // multiple photo of the business good
     deliveryTime: { type: Number }, // maximun time to deliver the business good to client in minutes
   },

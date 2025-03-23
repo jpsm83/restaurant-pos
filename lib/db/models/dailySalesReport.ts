@@ -1,5 +1,5 @@
 import { Schema, model, models } from "mongoose";
-import { paymentMethod } from "./paymentMethod";
+import { paymentMethod } from "@/lib/db/models/paymentMethod";
 
 export const goodsReducedSchema = new Schema(
   {

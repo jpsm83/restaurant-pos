@@ -1,6 +1,6 @@
 import { Schema, model, models } from "mongoose";
-import { addressSchema } from "./address";
-import { subscription } from "@/lib/enums";
+import { addressSchema } from "@/lib/db/models/address";
+import { subscriptionEnums } from "@/lib/enums";
 
 const metricsSchema = new Schema({
   foodCostPercentage: { type: Number, default: 30 }, // Food cost percentage acceptable - 28-35% of sales average
@@ -43,7 +43,7 @@ const businessSchema = new Schema(
     }, // currency of the price
     subscription: {
       type: String,
-      enum: subscription,
+      enum: subscriptionEnums,
       default: "Free",
     }, // Subscription plan for the company
     address: { type: addressSchema, required: [true, "Address is required!"] }, // Address of the company

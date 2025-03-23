@@ -1,8 +1,8 @@
 import { Types } from "mongoose";
 
-export interface IIngredients {
+export interface IIngredient {
   supplierGoodId: Types.ObjectId;
-  measurementUnit: convert.Unit;
+  measurementUnit: string; // convert.Unit
   requiredQuantity: number;
   costOfRequiredQuantity?: number;
 }
@@ -15,9 +15,9 @@ export interface IBusinessGood {
   onMenu: boolean;
   available: boolean;
   sellingPrice: number;
-  businessId?: Types.ObjectId;
-  ingredients?: IIngredients[];
-  setMenuIds?: Types.ObjectId[];
+  businessId: Types.ObjectId | string;
+  ingredients?: IIngredient[];
+  setMenuIds?: Types.ObjectId[] | string[];
   costPrice?: number;
   grossProfitMarginDesired?: number;
   suggestedSellingPrice?: number;

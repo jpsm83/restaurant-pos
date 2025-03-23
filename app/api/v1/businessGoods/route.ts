@@ -1,19 +1,27 @@
 import { NextResponse } from "next/server";
+import mongoose from "mongoose";
 
 // imported utils
 import connectDb from "@/lib/db/connectDb";
 import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 import { handleApiError } from "@/lib/db/handleApiError";
-import { validateIngredients } from "./utils/validateIngredients";
 import { calculateIngredientsCostPriceAndAllergies } from "./utils/calculateIngredientsCostPriceAndAllergies";
 import { calculateSetMenuCostPriceAndAllergies } from "./utils/calculateSetMenuCostPriceAndAllergies";
+import uploadFilesCloudinary from "@/lib/cloudinary/uploadFilesCloudinary";
 
 // imported interfaces
-import { IBusinessGood } from "@/lib/interface/IBusinessGood";
+import { IBusinessGood, IIngredient } from "@/lib/interface/IBusinessGood";
 
 // imported models
 import BusinessGood from "@/lib/db/models/businessGood";
 import SupplierGood from "@/lib/db/models/supplierGood";
+
+// imported enums
+import {
+  mainCategoriesEnums,
+  allergensEnums,
+  measurementUnitEnums,
+} from "@/lib/enums";
 
 // @desc    Get all businessId goods
 // @route   GET /businessGoods
@@ -55,28 +63,46 @@ export const GET = async () => {
 // @access  Private
 export const POST = async (req: Request) => {
   try {
-    const {
-      name,
-      keyword,
-      mainCategory,
-      subCategory,
-      onMenu,
-      available,
-      sellingPrice,
-      businessId,
-      ingredients,
-      setMenuIds,
-      grossProfitMarginDesired,
-      description,
-      deliveryTime,
-    } = (await req.json()) as IBusinessGood;
+    // Parse FORM DATA instead of JSON because we might have an image file
+    const formData = await req.formData();
+
+    // Extract required fields
+    const name = formData.get("name") as string;
+    const keyword = formData.get("keyword") as string;
+    const mainCategory = formData.get("mainCategory") as string;
+    const onMenu = formData.get("onMenu") === "true";
+    const available = formData.get("available") === "true";
+    const sellingPrice = Number(formData.get("sellingPrice")) as number;
+    const businessId = formData.get("businessId") as string;
+
+    // Extract optional fields
+    const subCategory = formData.get("subCategory") as string | undefined;
+    const ingredients = formData.get("ingredients")
+      ? (JSON.parse(formData.get("ingredients") as string) as IIngredient[])
+      : undefined;
+    const setMenuIds = formData.get("setMenuIds")
+      ? (JSON.parse(formData.get("setMenuIds") as string) as string[])
+      : [];
+    const grossProfitMarginDesired = formData.get("grossProfitMarginDesired")
+      ? Number(formData.get("grossProfitMarginDesired"))
+      : undefined;
+    const description = formData.get("description") as string | undefined;
+    const allergens = formData.get("allergens")
+      ? (JSON.parse(formData.get("allergens") as string) as string[])
+      : [];
+    const deliveryTime = formData.get("deliveryTime")
+      ? Number(formData.get("deliveryTime"))
+      : undefined;
+
+    const files = formData
+      .getAll("imageUrl")
+      .filter((entry): entry is File => entry instanceof File); // Get all files
 
     // check required fields
     if (
       !name ||
       !keyword ||
       !mainCategory ||
-      !subCategory ||
       onMenu === undefined ||
       available === undefined ||
       !sellingPrice ||
@@ -85,7 +111,7 @@ export const POST = async (req: Request) => {
       return new NextResponse(
         JSON.stringify({
           message:
-            "Name, keyword, mainCategory, subcategory, onMenu, available, sellingPrice and businessId are required!",
+            "Name, keyword, mainCategory, onMenu, available, sellingPrice and businessId are required!",
         }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
@@ -102,17 +128,7 @@ export const POST = async (req: Request) => {
       );
     }
 
-    // At least one of the two fields should be present (ingredients or setMenuIds), but not both
-    if (!ingredients && !setMenuIds) {
-      return new NextResponse(
-        JSON.stringify({
-          message:
-            "At least one of ingredients or setMenuIds must be assigned!",
-        }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
-      );
-    }
-
+    // ingredients and setMenuIds cannot be assigned at the same time
     if (ingredients && setMenuIds) {
       return new NextResponse(
         JSON.stringify({
@@ -120,6 +136,38 @@ export const POST = async (req: Request) => {
         }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
+    }
+
+    // check if main category is valid
+    if (!mainCategoriesEnums.includes(mainCategory)) {
+      return new NextResponse(
+        JSON.stringify({ message: "Invalid main category!" }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // check if allergens are valid
+    if (allergens.length > 0) {
+      for (const allergen of allergens) {
+        if (!allergensEnums.includes(allergen)) {
+          return new NextResponse(
+            JSON.stringify({ message: "Invalid allergen!" }),
+            { status: 400, headers: { "Content-Type": "application/json" } }
+          );
+        }
+      }
+    }
+
+    // check if measurementUnit is valid
+    if (ingredients) {
+      for (const ingredient of ingredients) {
+        if (!measurementUnitEnums.includes(ingredient.measurementUnit)) {
+          return new NextResponse(
+            JSON.stringify({ message: "Invalid measurement unit!" }),
+            { status: 400, headers: { "Content-Type": "application/json" } }
+          );
+        }
+      }
     }
 
     // connect before first call to DB
@@ -143,32 +191,56 @@ export const POST = async (req: Request) => {
       );
     }
 
+    const businessGoodId = new mongoose.Types.ObjectId();
+
     // create a businessId good object
     const newBusinessGood: IBusinessGood = {
       name,
       keyword,
       mainCategory,
-      subCategory,
       onMenu,
       available,
       sellingPrice,
       businessId,
-      description: description || undefined,
+      subCategory,
+      setMenuIds: setMenuIds || undefined,
       grossProfitMarginDesired: grossProfitMarginDesired || undefined,
+      description: description || undefined,
       deliveryTime: deliveryTime || undefined,
     };
 
-    // validate ingredients if they exist and calculate the cost price and allergens
-    if (ingredients) {
-      const validateIngredientsResult = validateIngredients(ingredients);
-      if (validateIngredientsResult !== true) {
+    // upload image
+    if (files && files.length > 0) {
+      const folder = `/business/${businessId}/businessGoods/${businessGoodId}`;
+
+      const cloudinaryUploadResponse = await uploadFilesCloudinary({
+        folder,
+        filesArr: files,
+        onlyImages: true,
+      });
+
+      if (
+        typeof cloudinaryUploadResponse === "string" ||
+        cloudinaryUploadResponse.length === 0 ||
+        !cloudinaryUploadResponse.every((str) => str.includes("https://"))
+      ) {
         return new NextResponse(
-          JSON.stringify({ message: validateIngredientsResult }),
+          JSON.stringify({
+            message: `Error uploading image: ${cloudinaryUploadResponse}`,
+          }),
           { status: 400, headers: { "Content-Type": "application/json" } }
         );
       }
+
+      newBusinessGood.imageUrl = cloudinaryUploadResponse;
+    }
+
+    // validate ingredients if they exist and calculate the cost price and allergens
+    if (ingredients) {
+      // this calcutation return an array of objects with the cost price and allergens
       const calculateIngredientsCostPriceAndAllergiesResult =
         await calculateIngredientsCostPriceAndAllergies(ingredients);
+
       if (typeof calculateIngredientsCostPriceAndAllergiesResult !== "object") {
         return new NextResponse(
           JSON.stringify({
@@ -179,47 +251,60 @@ export const POST = async (req: Request) => {
             headers: { "Content-Type": "application/json" },
           }
         );
-      } else {
-        newBusinessGood.ingredients =
-          calculateIngredientsCostPriceAndAllergiesResult.map((ing) => {
-            return {
-              supplierGoodId: ing.supplierGoodId,
-              measurementUnit: ing.measurementUnit,
-              requiredQuantity: ing.requiredQuantity ?? 0,
-              costOfRequiredQuantity: ing.costOfRequiredQuantity,
-            };
-          });
-        newBusinessGood.setMenuIds = undefined;
-        newBusinessGood.costPrice = parseFloat(
-          calculateIngredientsCostPriceAndAllergiesResult
-            .reduce((acc, curr) => acc + curr.costOfRequiredQuantity, 0)
-            .toFixed(2)
-        );
-        const reducedAllergens =
-          calculateIngredientsCostPriceAndAllergiesResult.reduce(
-            (acc: string[], curr) => {
-              if (curr.allergens) {
-                curr.allergens.forEach((allergen) => {
-                  if (!acc.includes(allergen)) {
-                    acc.push(allergen);
-                  }
-                });
-              }
-              return acc;
-            },
-            []
-          );
-        newBusinessGood.allergens =
-          reducedAllergens && reducedAllergens.length > 0
-            ? reducedAllergens
-            : undefined;
       }
+
+      // add the ingredients array to the new businessId good
+      newBusinessGood.ingredients =
+        calculateIngredientsCostPriceAndAllergiesResult.map((ing) => {
+          return {
+            supplierGoodId: ing.supplierGoodId,
+            measurementUnit: ing.measurementUnit,
+            requiredQuantity: ing.requiredQuantity ?? 0,
+            costOfRequiredQuantity: ing.costOfRequiredQuantity,
+          };
+        });
+
+      // if there is ingredients, setMenuIds should be undefined
+      newBusinessGood.setMenuIds = undefined;
+
+      // calculate the cost price of all ingredients
+      newBusinessGood.costPrice = parseFloat(
+        calculateIngredientsCostPriceAndAllergiesResult
+          .reduce((acc, curr) => acc + curr.costOfRequiredQuantity, 0)
+          .toFixed(2)
+      );
+
+      // create an array of allergens
+      const reducedAllergens =
+        calculateIngredientsCostPriceAndAllergiesResult.reduce(
+          (acc: string[], curr) => {
+            if (curr.allergens) {
+              curr.allergens.forEach((allergen) => {
+                if (!acc.includes(allergen)) {
+                  acc.push(allergen);
+                }
+              });
+            }
+            return acc;
+          },
+          []
+        );
+
+      const allergensArr = [...allergens];
+      allergensArr.push(
+        ...reducedAllergens.filter((item) => !allergensArr.includes(item))
+      );
+
+      newBusinessGood.allergens =
+        allergensArr.length > 0 ? allergensArr : undefined;
     }
 
     // calculate the cost price and allergens for the setMenuIds if they exist
     if (setMenuIds) {
+      // this calcutation return an object with the cost price and allergens
       const calculateSetMenuCostPriceAndAllergiesResult =
         await calculateSetMenuCostPriceAndAllergies(setMenuIds);
+
       if (typeof calculateSetMenuCostPriceAndAllergiesResult !== "object") {
         return new NextResponse(
           JSON.stringify({
@@ -230,26 +315,30 @@ export const POST = async (req: Request) => {
             headers: { "Content-Type": "application/json" },
           }
         );
-      } else {
-        newBusinessGood.ingredients = undefined;
-        newBusinessGood.setMenuIds = setMenuIds;
-        newBusinessGood.costPrice = parseFloat(
-          calculateSetMenuCostPriceAndAllergiesResult.costPrice.toFixed(2)
-        );
-        newBusinessGood.allergens =
-          calculateSetMenuCostPriceAndAllergiesResult.allergens &&
-          calculateSetMenuCostPriceAndAllergiesResult.allergens.length > 0
-            ? calculateSetMenuCostPriceAndAllergiesResult.allergens
-            : undefined;
       }
+
+      // if there is setMenuIds, ingredients should be undefined
+      newBusinessGood.ingredients = undefined;
+
+      // calculate the sum of all cost prices
+      newBusinessGood.costPrice = parseFloat(
+        calculateSetMenuCostPriceAndAllergiesResult.costPrice.toFixed(2)
+      );
+
+      // add the allergens to the new businessId good
+      newBusinessGood.allergens =
+        calculateSetMenuCostPriceAndAllergiesResult.allergens &&
+        calculateSetMenuCostPriceAndAllergiesResult.allergens.length > 0
+          ? calculateSetMenuCostPriceAndAllergiesResult.allergens
+          : undefined;
     }
 
     // calculate suggestedSellingPrice
     if (newBusinessGood.costPrice && grossProfitMarginDesired) {
       newBusinessGood.suggestedSellingPrice = parseFloat(
         (
-          (newBusinessGood.costPrice ?? 0) /
-          (1 - (grossProfitMarginDesired ?? 0) / 100)
+          newBusinessGood.costPrice *
+          (1 + grossProfitMarginDesired / 100)
         ).toFixed(2)
       );
     }
@@ -271,69 +360,65 @@ export const POST = async (req: Request) => {
   }
 };
 
+// // ========================= TESTING =========================
+// // calculateIngredientsCostPriceAndAllergies
+// // calculateSetMenuCostPriceAndAllergies
+// // ===========================================================
 // export const POST = async (req: Request) => {
 //   try {
-//     const ingredientsArr: any = [
+//     const ingredientsArr: { supplierGoodId: mongoose.Types.ObjectId, measurementUnit: string, requiredQuantity: number }[] = [
 //       {
-//         ingredient: "667bfac8d28a7ee19d9be443",
+//         supplierGoodId: new mongoose.Types.ObjectId("667bfac8d28a7ee19d9be443"),
 //         measurementUnit: "unit",
 //         requiredQuantity: 1,
 //       },
 //       {
-//         ingredient: "667bfac8d28a7ee19d9be444",
+//         supplierGoodId: new mongoose.Types.ObjectId("667bfac8d28a7ee19d9be444"),
 //         measurementUnit: "g",
 //         requiredQuantity: 0.5,
 //       },
 //       {
-//         ingredient: "667bfac8d28a7ee19d9be445",
+//         supplierGoodId: new mongoose.Types.ObjectId("667bfac8d28a7ee19d9be445"),
 //         measurementUnit: "unit",
 //         requiredQuantity: 1,
 //       },
 //       {
-//         ingredient: "667bfac8d28a7ee19d9be446",
+//         supplierGoodId: new mongoose.Types.ObjectId("667bfac8d28a7ee19d9be446"),
 //         measurementUnit: "g",
 //         requiredQuantity: 20,
 //       },
 //       {
-//         ingredient: "667bfac8d28a7ee19d9be447",
+//         supplierGoodId: new mongoose.Types.ObjectId("667bfac8d28a7ee19d9be447"),
 //         measurementUnit: "g",
 //         requiredQuantity: 10,
 //       },
 //       {
-//         ingredient: "667bfac8d28a7ee19d9be44c",
+//         supplierGoodId: new mongoose.Types.ObjectId("667bfac8d28a7ee19d9be44c"),
 //         measurementUnit: "g",
 //         requiredQuantity: 15,
 //       },
 //     ];
 
-//     // cheeseburger - fries
-//     const setMenuArr = ["667bfc0c5d50be40f0c7b065", "667bfddd5d50be40f0c7b079"];
+//     // // cheeseburger - fries
+//     // const setMenuArr = ["667bfc0c5d50be40f0c7b065", "667bfddd5d50be40f0c7b079"];
 
 //     await connectDb();
 
-//     // // @ts-ignore
-//     // const ingredients = await calculateIngredientsCostPriceAndAllergies(
-//     //   ingredientsArr
-//     // );
-//     // return new NextResponse(JSON.stringify(ingredients), {
-//     //   status: 201,
-//     //   headers: { "Content-Type": "application/json" },
-//     // });
-
-//     // @ts-ignore
-//     const setMenuIds = await calculateSetMenuCostPriceAndAllergies(setMenuArr);
-//     return new NextResponse(JSON.stringify(setMenuIds), {
+//     const ingredients = await calculateIngredientsCostPriceAndAllergies(
+//       ingredientsArr
+//     );
+//     return new NextResponse(JSON.stringify(ingredients), {
 //       status: 201,
 //       headers: { "Content-Type": "application/json" },
 //     });
 
-//     // // @ts-ignore
-//     // const validate = validateIngredients(ingredientsArr);
-//     // return new NextResponse(JSON.stringify(validate), {
+//     // const setMenuIds = await calculateSetMenuCostPriceAndAllergies(setMenuArr);
+//     // return new NextResponse(JSON.stringify(setMenuIds), {
 //     //   status: 201,
 //     //   headers: { "Content-Type": "application/json" },
 //     // });
+
 //   } catch (error) {
-//     return handleApiError("Create schedule failed!", error);
+//     return handleApiError("Create schedule failed!", error as string);
 //   }
 // };

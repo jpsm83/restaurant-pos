@@ -15,7 +15,7 @@ import { IBusiness } from "@/lib/interface/IBusiness";
 import Business from "@/lib/db/models/business";
 
 // imported enums
-import { subscription as subscriptionEnums, currenctyTypes } from "@/lib/enums";
+import { subscriptionEnums, currenctyEnums } from "@/lib/enums";
 
 const emailRegex = /^[\w-]+(\.[\w-]+)*@([\w-]+\.)+[a-zA-Z]{2,7}$/;
 
@@ -148,7 +148,7 @@ export const POST = async (req: Request) => {
     };
 
     // check if currencyTrade is valid
-    if(!currenctyTypes.includes(currencyTrade)) {
+    if(!currenctyEnums.includes(currencyTrade)) {
       return new NextResponse(
         JSON.stringify({ message: "Invalid currencyTrade!" }),
         { status: 400, headers: { "Content-Type": "application/json" } }

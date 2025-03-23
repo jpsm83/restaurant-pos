@@ -1,6 +1,5 @@
 import { Schema } from "mongoose";
-
-import { paymentMethods } from "@/lib/enums";
+import { paymentMethodsEnums } from "@/lib/enums";
 
 // example of a payment method object
 // paymentMethod = [
@@ -32,7 +31,7 @@ export const paymentMethod = new Schema(
     paymentMethodType: {
       type: String,
       required: [true, "Payment method type is required!"],
-      enum: paymentMethods, // Add more types as needed
+      enum: paymentMethodsEnums, // Add more types as needed
     },
     methodBranch: {
       type: String,

@@ -1,5 +1,5 @@
 import { Schema, model, models } from "mongoose";
-import { notificationTypes } from "@/lib/enums";
+import { notificationEnums } from "@/lib/enums";
 
 const notificationSchema = new Schema(
   {
@@ -7,7 +7,7 @@ const notificationSchema = new Schema(
     notificationType: {
       type: String,
       required: [true, "NotificationType is required!"],
-      enum: notificationTypes,
+      enum: notificationEnums,
     }, // Type of notification "warning", "emergency", "info"
     message: { type: String, required: [true, "Message is required!"] }, // notification message
     employeesRecipientsIds: {

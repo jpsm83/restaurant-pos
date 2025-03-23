@@ -8,7 +8,7 @@ import BusinessGood from "@/lib/db/models/businessGood";
 
 // helper function to set setMenu
 export const calculateSetMenuCostPriceAndAllergies = async (
-  setMenuIds: Types.ObjectId[]
+  setMenuIds: Types.ObjectId[] | string[]
 ) => {
   try {
     if (Array.isArray(setMenuIds) && setMenuIds.length === 0) {
@@ -16,7 +16,7 @@ export const calculateSetMenuCostPriceAndAllergies = async (
     }
 
     // validate setMenu array of ids
-    if (!setMenuIds.every((id) => isObjectIdValid([id]) === true)) {
+    if (!setMenuIds.every((id) => isObjectIdValid([id as string]) === true)) {
       return "Invalid setMenuIds!";
     }
 
