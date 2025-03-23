@@ -7,15 +7,16 @@ export interface IPurchaseItem {
 }
 
 export interface IPurchase {
-  title?: string;
+  _id?: Types.ObjectId | string;
   supplierId: Types.ObjectId;
-  imageUrl?: string;
   purchaseDate: Date;
   businessId: Types.ObjectId;
   purchasedByEmployeeId: Types.ObjectId;
-  purchaseInventoryItems?: IPurchaseItem[];
-  oneTimePurchase?: object;
   totalAmount: number;
   receiptId: string;
+  title?: string;
+  documentsUrl?: string[];
+  purchaseInventoryItems?: IPurchaseItem[];
+  oneTimePurchase?: object;
   comment?: string;
 }

@@ -30,16 +30,18 @@ cloudinaryActions
 
 - add upload cloudinary to all POST and PATH of documents that have imageUrl or documentsUrl
     - BUSINESS - single image - DONE
-    - PURCHASES - single image
-    - SALES POINT - single image
-    - SUPPLIER - single image
+    - SUPPLIER - single image - ready for test
     - USER - single image
     - BUSINESSGOOD - mulitple image - DONE
     - SUPPLIERGOOD - mulitple image
     - EMPLOYEE - mulitple documents
-    
+    - PURCHASES - mulitple documents
+
     - FOLLOW THE BUSINESS ROUTES ALREADY UPDATED
     - test all again
+
+- REVIEW ALL THE LOGIC OF SALES INSTANCES AND SALES POINT
+- them review the cloudinary upload of sales point
 
 - review all functions that need session as parameter
 - daily saler report have to be tested once we got all the models tested and with data

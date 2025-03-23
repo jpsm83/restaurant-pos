@@ -6,11 +6,9 @@ const supplierSchema = new Schema(
     // required fields
     tradeName: { type: String, required: [true, "Trade name is required!"] }, // Suplier company Name for the public
     legalName: { type: String, required: [true, "Legal name is required!"] }, // Legal Name of the suplier company
-    imageUrl: { type: String }, // Logo of the suplier company
     email: {
       type: String,
       required: [true, "Email is required!"],
-      unique: true,
     }, // Email of the suplier
     phoneNumber: {
       type: String,
@@ -21,16 +19,17 @@ const supplierSchema = new Schema(
       required: [true, "Tax number is required!"],
       unique: true,
     }, // Tax number of the suplier
-    currentlyInUse: { type: Boolean, default: true }, // currenctly dealing with the suplier
     businessId: {
       type: Schema.Types.ObjectId,
       ref: "Business",
       required: [true, "Business id is required!"],
       index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
     }, // business that is buying from the suplier
+    address: { type: addressSchema, required: [true, "Address is required!"] }, // Address of the company
+    currentlyInUse: { type: Boolean, default: true }, // currenctly dealing with the suplier
 
     // optional fields
-    address: { type: addressSchema, required: [true, "Address is required!"] }, // Address of the company
+    imageUrl: { type: String }, // Logo of the suplier company
     contactPerson: { type: String }, // Contact person of the suplier
   },
   {

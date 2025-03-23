@@ -84,7 +84,7 @@ export const GET = async (req: Request) => {
           },
         });
   } catch (error) {
-    return handleApiError("Get all purchases failed!", error);
+    return handleApiError("Get all purchases failed!", error as string);
   }
 };
 
@@ -97,13 +97,14 @@ export const GET = async (req: Request) => {
 // @access  Private
 export const POST = async (req: Request) => {
   const {
-    title,
     supplierId,
     purchaseDate,
     businessId,
     purchasedByEmployeeId,
-    purchaseInventoryItems,
     receiptId,
+
+    title,
+    purchaseInventoryItems,
     comment,
   } = (await req.json()) as IPurchase;
 

@@ -37,7 +37,7 @@ export const GET = async () => {
           },
         });
   } catch (error) {
-    return handleApiError("Get all salesPoints failed!", error);
+    return handleApiError("Get all salesPoints failed!", error as string);
   }
 };
 
@@ -105,8 +105,9 @@ export const POST = async (req: Request) => {
     // create salesPoint
     const salesPointCreated = await SalesPoint.create(newSalesPoint);
 
-    // Generate QR code after successful update
+    // Generate QR code after successful create
     const qrCode = await generateQrCode(businessId);
+
     if (!qrCode || qrCode.includes("Failed")) {
       // if QR code generation fails, remove the newly created sales location
       await SalesPoint.deleteOne({ _id: salesPointCreated._id });
@@ -128,6 +129,6 @@ export const POST = async (req: Request) => {
       { status: 201 }
     );
   } catch (error) {
-    return handleApiError("Sales location creation failed!", error);
+    return handleApiError("Sales location creation failed!", error as string);
   }
 };

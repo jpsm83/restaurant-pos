@@ -160,6 +160,27 @@ export const PATCH = async (
       .getAll("imageUrl")
       .filter((entry): entry is File => entry instanceof File); // Get all files
 
+          // check required fields
+          if (
+            !tradeName ||
+            !legalName ||
+            !email ||
+            !password ||
+            !phoneNumber ||
+            !taxNumber ||
+            !subscription ||
+            !address ||
+            !currencyTrade
+          ) {
+            return new NextResponse(
+              JSON.stringify({
+                message:
+                  "TradeName, legalName, email, password, phoneNumber, taxNumber, subscription, currencyTrade and address are required!",
+              }),
+              { status: 400, headers: { "Content-Type": "application/json" } }
+            );
+          }
+      
     // check email format
     if (!emailRegex.test(email)) {
       return new NextResponse(

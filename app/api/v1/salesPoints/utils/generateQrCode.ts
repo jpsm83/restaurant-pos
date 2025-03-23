@@ -10,7 +10,7 @@ cloudinary.config({
   secure: true,
 });
 
-export const generateQrCode = async (businessId: Types.ObjectId) => {
+export const generateQrCode = async (businessId: Types.ObjectId | string) => {
   try {
     // generate randomUniqueId
     const randomUniqueId = new Types.ObjectId().toString();
@@ -34,6 +34,9 @@ export const generateQrCode = async (businessId: Types.ObjectId) => {
 
     // Generate QR code as a data URL
     // this is the api url where the qrcode will redirect
+    // THIS QR CODE WILL BE STATIC AND WILL BE USED FOR SCANIING BY EMPLOYEES OR CUSTOMERS
+    // WHEN THE QR CODE IS SCANNED, THE EMPLOYEE OR CUSTOMER WILL START THE ORDERING PROCESS
+    // SALESINSTANCE WILL START THE SALE PROCESS
     const qrCodeDataUrl = await QRCode.toDataURL(
       `http://localhost:3000/api/v1/salesInstances/selfOrderingLocationId/${randomUniqueId}`
     );

@@ -5,11 +5,16 @@ import mongoose from "mongoose";
 import connectDb from "@/lib/db/connectDb";
 import { handleApiError } from "@/lib/db/handleApiError";
 import isObjectIdValid from "@/lib/utils/isObjectIdValid";
-import uploadSingleImage from "@/lib/cloudinary/uploadSingleImage";
 import objDefaultValidation from "@/lib/utils/objDefaultValidation";
+import uploadFilesCloudinary from "@/lib/cloudinary/uploadFilesCloudinary";
 
 // imported models
 import Supplier from "@/lib/db/models/supplier";
+
+// imported interface
+import { ISupplier } from "@/lib/interface/ISupplier";
+
+const emailRegex = /^[\w-]+(\.[\w-]+)*@([\w-]+\.)+[a-zA-Z]{2,7}$/;
 
 const reqAddressFields = [
   "country",
@@ -64,13 +69,13 @@ export const POST = async (req: Request) => {
     const email = formData.get("email") as string;
     const phoneNumber = formData.get("phoneNumber") as string;
     const taxNumber = formData.get("taxNumber") as string;
-    const currentlyInUse = formData.get("currentlyInUse") === "true"; // Convert string to boolean
     const businessId = formData.get("businessId") as string;
-    const address = formData.get("address")
-      ? JSON.parse(formData.get("address") as string)
-      : undefined;
+    const address = JSON.parse(formData.get("address") as string);
+    const currentlyInUse = formData.get("currentlyInUse") === "true"; // Convert string to boolean
     const contactPerson = formData.get("contactPerson") as string | undefined;
-    const imageFile = formData.get("imageUrl") as File | undefined; // Get image file
+    const files = formData
+      .getAll("imageUrl")
+      .filter((entry): entry is File => entry instanceof File); // Get all files
 
     // check required fields
     if (
@@ -103,6 +108,14 @@ export const POST = async (req: Request) => {
       );
     }
 
+    // check email format
+    if (!emailRegex.test(email)) {
+      return new NextResponse(
+        JSON.stringify({ message: "Invalid email format!" }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     // validate address
     const addressValidationResult = objDefaultValidation(
       address,
@@ -120,7 +133,8 @@ export const POST = async (req: Request) => {
       );
     }
 
-    // validate the reserve string "One Time Purchase" for tradeName, legalName, phoneNumber and taxNumber
+    // validate the RESERVE STRING "One Time Purchase" for tradeName, legalName, phoneNumber and taxNumber
+    // THIS IS A DEFAULT STRING FOR ONE TIME PURCHASES - EMERGENCY PURCHASES FROM NON-REGISTERED SUPPLIERS
     if (
       tradeName === "One Time Purchase" ||
       legalName === "One Time Purchase" ||
@@ -156,33 +170,8 @@ export const POST = async (req: Request) => {
 
     const supplierId = new mongoose.Types.ObjectId();
 
-    let imageUrl: string | undefined;
-
-    if (imageFile) {
-      const folder = `/business/${businessId}/suppliers/${supplierId}`;
-
-      const cloudinaryUploadResponse = await uploadSingleImage({
-        folder,
-        imageFile,
-      });
-
-      if (
-        !cloudinaryUploadResponse ||
-        !cloudinaryUploadResponse.includes("https://")
-      ) {
-        return new NextResponse(
-          JSON.stringify({
-            message: `Error uploading image: ${cloudinaryUploadResponse}`,
-          }),
-          { status: 400, headers: { "Content-Type": "application/json" } }
-        );
-      }
-
-      imageUrl = cloudinaryUploadResponse;
-    }
-
     // create supplier object with required fields
-    const newSupplier = {
+    const newSupplier: ISupplier = {
       _id: supplierId, // Assign the generated ID
       tradeName,
       legalName,
@@ -193,8 +182,32 @@ export const POST = async (req: Request) => {
       businessId,
       address,
       contactPerson: contactPerson || undefined,
-      imageUrl: imageUrl || undefined,
     };
+
+    if (files && files.length > 0) {
+      const folder = `/business/${businessId}/suppliers/${supplierId}`;
+
+      const cloudinaryUploadResponse = await uploadFilesCloudinary({
+        folder,
+        filesArr: [files[0]], // only one image
+        onlyImages: true,
+      });
+
+      if (
+        typeof cloudinaryUploadResponse === "string" ||
+        cloudinaryUploadResponse.length === 0 ||
+        !cloudinaryUploadResponse.every((str) => str.includes("https://"))
+      ) {
+        return new NextResponse(
+          JSON.stringify({
+            message: `Error uploading image: ${cloudinaryUploadResponse}`,
+          }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      newSupplier.imageUrl = cloudinaryUploadResponse[0];
+    }
 
     // create new supplier
     await Supplier.create(newSupplier);

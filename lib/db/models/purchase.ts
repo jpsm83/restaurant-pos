@@ -35,14 +35,13 @@ const purchaseItemInventorySchema = new Schema(
 
 const purchaseSchema = new Schema(
   {
-    title: { type: String }, // Title of the purchase
+    // required fields
     supplierId: {
       type: Schema.Types.ObjectId,
       ref: "Supplier",
       required: [true, "Supplier id is required!"],
       index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
     }, // Supplier from whom the goods are purchased
-    imageUrl: { type: String }, // Photo of the receipt
     purchaseDate: {
       type: Date,
       required: [true, "Purchase date is required!"],
@@ -59,16 +58,20 @@ const purchaseSchema = new Schema(
       required: [true, "Purchase by employee id is required!"],
       index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
     }, // Employee who made the purchase
-    purchaseInventoryItems: {
-      type: [purchaseItemInventorySchema],
-      default: undefined,
-    }, // Array of goods in this purchase
-    oneTimePurchase: { type: Boolean, default: false }, // If the purchase is a one time purchase
     totalAmount: {
       type: Number,
       required: [true, "Total amount is required!"],
     }, // Total price of the purchase
     receiptId: { type: String, required: [true, "Receipt id is required!"] }, // supplier receipt identification from supplier - if not available, system will generate one
+
+    // non-required fields
+    title: { type: String }, // Title of the purchase
+    documentsUrl: { type: [String] }, // Documents of the receipt, photo, pdf, etc
+    purchaseInventoryItems: {
+      type: [purchaseItemInventorySchema],
+      default: undefined,
+    }, // Array of goods in this purchase
+    oneTimePurchase: { type: Boolean, default: false }, // If the purchase is a one time purchase
     comment: { type: String }, // Comment on the purchase
   },
   {

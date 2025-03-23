@@ -484,7 +484,7 @@ export const DELETE = async (
       );
     }
 
-    const [DeletedBusinessGood] = await Promise.all([
+    const [deletedBusinessGood] = await Promise.all([
       // delete the business good
       // findOneAndDelete returns the deleted document
       BusinessGood.findOneAndDelete({ _id: businessGoodId }, { session }),
@@ -496,7 +496,7 @@ export const DELETE = async (
       ),
     ]);
 
-    if (!DeletedBusinessGood) {
+    if (!deletedBusinessGood) {
       await session.abortTransaction();
       return new NextResponse(
         JSON.stringify({ message: "Business good not found!" }),
@@ -507,7 +507,7 @@ export const DELETE = async (
     await session.commitTransaction();
 
     // cloudinary folder path
-    const folderPath = `/business/${DeletedBusinessGood?.businessId}/businessGoods/${businessGoodId}`;
+    const folderPath = `/business/${deletedBusinessGood?.businessId}/businessGoods/${businessGoodId}`;
 
     // Delete business folder in cloudinary
     const deleteFolderCloudinaryResult: string | boolean =

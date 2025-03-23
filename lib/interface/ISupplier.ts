@@ -2,15 +2,15 @@ import { Types } from "mongoose";
 import { IAddress } from "./IAddress";
 
 export interface ISupplier {
-  _id?: Types.ObjectId;
+  _id?: Types.ObjectId | string;
   tradeName: string;
   legalName: string;
-  email?: string;
+  email: string;
   phoneNumber: string;
   taxNumber: string;
-  currentlyInUse: boolean;
-  businessId: Types.ObjectId;
+  businessId: Types.ObjectId | string;
   address: IAddress;
-  contactPerson?: string;
+  currentlyInUse: boolean;
   imageUrl?: string;
+  contactPerson?: string;
 }

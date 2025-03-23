@@ -6,16 +6,20 @@ import connectDb from "@/lib/db/connectDb";
 import { handleApiError } from "@/lib/db/handleApiError";
 import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 import objDefaultValidation from "@/lib/utils/objDefaultValidation";
-import deleteSingleImage from "@/lib/cloudinary/deleteFilesCloudinary";
-import uploadSingleImage from "@/lib/cloudinary/uploadSingleImage";
+import uploadFilesCloudinary from "@/lib/cloudinary/uploadFilesCloudinary";
+import deleteFilesCloudinary from "@/lib/cloudinary/deleteFilesCloudinary";
+import deleteFolderCloudinary from "@/lib/cloudinary/deleteFolderCloudinary";
 
 // imported interface
 import { ISupplier } from "@/lib/interface/ISupplier";
+import { IAddress } from "@/lib/interface/IAddress";
 
 // imported models
 import Supplier from "@/lib/db/models/supplier";
 import SupplierGood from "@/lib/db/models/supplierGood";
 import BusinessGood from "@/lib/db/models/businessGood";
+
+const emailRegex = /^[\w-]+(\.[\w-]+)*@([\w-]+\.)+[a-zA-Z]{2,7}$/;
 
 const reqAddressFields = [
   "country",
@@ -98,14 +102,39 @@ export const PATCH = async (
     const email = formData.get("email") as string;
     const phoneNumber = formData.get("phoneNumber") as string;
     const taxNumber = formData.get("taxNumber") as string;
+    const address = JSON.parse(formData.get("address") as string);
     const currentlyInUse = formData.get("currentlyInUse") === "true"; // Convert string to boolean
-    const address = formData.get("address")
-      ? JSON.parse(formData.get("address") as string)
-      : undefined;
     const contactPerson = formData.get("contactPerson") as string | undefined;
-    const imageFile = formData.get("imageUrl") as File | undefined; // Get image file
+    const files = formData
+      .getAll("imageUrl")
+      .filter((entry): entry is File => entry instanceof File); // Get all files
 
-    // prepare update object
+    // check required fields
+    if (
+      !tradeName ||
+      !legalName ||
+      !email ||
+      !phoneNumber ||
+      !taxNumber ||
+      currentlyInUse === undefined ||
+      !address
+    ) {
+      return new NextResponse(
+        JSON.stringify({
+          message:
+            "TradeName, legalName, email, phoneNumber, taxNumber, currentlyInUse, address and businessId are required!",
+        }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // check email format
+    if (!emailRegex.test(email)) {
+      return new NextResponse(
+        JSON.stringify({ message: "Invalid email format!" }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
 
     // validate address
     const addressValidationResult = objDefaultValidation(
@@ -155,57 +184,48 @@ export const PATCH = async (
       );
     }
 
-    // Prepare fields for update if they are provided
-    // WE DONT NEED TO COMPARE IF THE VALUE IS THE SAME AS THE CURRENT ONE
-    // UPDATEONE WILL ONLY UPDATE THE FIELDS THAT ARE DIFFERENT
-    const supplierObj: ISupplier = {
-      tradeName: tradeName,
-      legalName: legalName,
-      phoneNumber: phoneNumber,
-      taxNumber: taxNumber,
-      currentlyInUse: currentlyInUse,
-      businessId: supplier.businessId,
-      email: email || undefined,
-      contactPerson: contactPerson || undefined,
-      imageUrl: supplier.imageUrl || undefined,
-      address: {
-        country: address.country,
-        state: address.state,
-        city: address.city,
-        street: address.street,
-        buildingNumber: address.buildingNumber,
-        postCode: address.postCode,
-        region: address.region || undefined,
-        additionalDetails: address.additionalDetails || undefined,
-        coordinates: address.coordinates || undefined,
-      },
-    };
+    // Prepare updated fields only if they exist (partial update)
+    const updateSupplierObj: Partial<ISupplier> = {};
 
-    if (imageFile) {
-      // first delete the existing image if it exists
-      const deleteSingleImageResult: string | boolean = await deleteSingleImage(
-        supplier?.imageUrl || ""
-      );
+    if (tradeName && supplier.tradeName !== tradeName)
+      updateSupplierObj.tradeName = tradeName;
+    if (legalName && supplier.legalName !== legalName)
+      updateSupplierObj.legalName = legalName;
+    if (email && supplier.email !== email) updateSupplierObj.email = email;
+    if (phoneNumber && supplier.phoneNumber !== phoneNumber)
+      updateSupplierObj.phoneNumber = phoneNumber;
+    if (taxNumber && supplier.taxNumber !== taxNumber)
+      updateSupplierObj.taxNumber = taxNumber;
+    if (currentlyInUse && supplier.currentlyInUse !== currentlyInUse)
+      updateSupplierObj.currentlyInUse = currentlyInUse;
+    if (contactPerson && supplier.contactPerson !== contactPerson)
+      updateSupplierObj.contactPerson = contactPerson;
 
-      // check if deleteSingleImage failed
-      if (deleteSingleImageResult !== true) {
-        return new NextResponse(
-          JSON.stringify({ message: deleteSingleImageResult }),
-          { status: 400, headers: { "Content-Type": "application/json" } }
-        );
+    // Handle address updates dynamically
+    const updatedAddress: Partial<IAddress> = {};
+    for (const [key, value] of Object.entries(address)) {
+      if (value !== supplier.address?.[key as keyof typeof address]) {
+        updatedAddress[key as keyof typeof address] = value;
       }
+    }
+    if (Object.keys(updatedAddress).length > 0)
+      //@ts-ignore
+      updateSupplierObj.address = updatedAddress;
 
-      const folder = `/business/${supplier?.businessId}/suppliers/${supplierId}`;
+    if (files && files.length > 0) {
+      const folder = `/business/${supplier.businessId}/suppliers/${supplierId}`;
 
-      // upload new image
-      const cloudinaryUploadResponse = await uploadSingleImage({
+      // first upload new image
+      const cloudinaryUploadResponse = await uploadFilesCloudinary({
         folder,
-        imageFile,
+        filesArr: [files[0]], // only one image
+        onlyImages: true,
       });
 
       if (
-        !cloudinaryUploadResponse ||
-        !cloudinaryUploadResponse.includes("https://")
+        typeof cloudinaryUploadResponse === "string" ||
+        cloudinaryUploadResponse.length === 0 ||
+        !cloudinaryUploadResponse.every((str) => str.includes("https://"))
       ) {
         return new NextResponse(
           JSON.stringify({
@@ -215,12 +235,35 @@ export const PATCH = async (
         );
       }
 
-      supplierObj.imageUrl = cloudinaryUploadResponse;
+      // if new image been created, them delete the old one
+      const deleteFilesCloudinaryResult: string | boolean =
+        await deleteFilesCloudinary(supplier?.imageUrl || "");
+
+      // check if deleteFilesCloudinary failed
+      if (deleteFilesCloudinaryResult !== true) {
+        return new NextResponse(
+          JSON.stringify({ message: deleteFilesCloudinaryResult }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      updateSupplierObj.imageUrl = cloudinaryUploadResponse[0];
     }
 
-    // Save the updated supplier
-    // UPDATEONE WILL ONLY UPDATE THE FIELDS THAT ARE DIFFERENT
-    await Supplier.updateOne({ _id: supplierId }, supplierObj);
+    // Perform update using $set to modify only specified fields
+    const updatedSupplier = await Supplier.findByIdAndUpdate(
+      supplierId,
+      { $set: updateSupplierObj },
+      { new: true, lean: true }
+    );
+
+    // If business not found after update
+    if (!updatedSupplier) {
+      return new NextResponse(
+        JSON.stringify({ message: "Business to update not found!" }),
+        { status: 404, headers: { "Content-Type": "application/json" } }
+      );
+    }
 
     return new NextResponse(
       JSON.stringify({
@@ -248,7 +291,7 @@ export const DELETE = async (
   context: { params: { supplierId: Types.ObjectId } }
 ) => {
   try {
-    const supplierId = context.params.supplierId;
+    const { supplierId } = context.params;
 
     // validate supplierId
     if (!isObjectIdValid([supplierId])) {
@@ -273,42 +316,45 @@ export const DELETE = async (
       supplierId: supplierId,
     }).distinct("_id");
 
-    const isInUse = await BusinessGood.exists({
-      "ingredients.supplierGoodId": { $in: supplierGoodIds },
-    });
+    if (supplierGoodIds.length > 0) {
+      const isInUse = await BusinessGood.exists({
+        "ingredients.supplierGoodId": { $in: supplierGoodIds },
+      });
 
-    if (isInUse) {
-      return new NextResponse(
-        JSON.stringify({
-          message: "Supplier is in use in some business goods!",
-        }),
-        { status: 409, headers: { "Content-Type": "application/json" } }
-      );
-    }
-
-    const supplier = (await Supplier.findById(supplierId)
-      .select("imageUrl")
-      .lean()) as { imageUrl?: string } | null;
-
-    const deleteSingleImageResult: string | boolean = await deleteSingleImage(
-      supplier?.imageUrl || ""
-    );
-
-    // check if deleteSingleImage failed
-    if (deleteSingleImageResult !== true) {
-      return new NextResponse(
-        JSON.stringify({ message: deleteSingleImageResult }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
-      );
+      if (isInUse) {
+        return new NextResponse(
+          JSON.stringify({
+            message: "Supplier is in use in some business goods!",
+          }),
+          { status: 409, headers: { "Content-Type": "application/json" } }
+        );
+      }
     }
 
     // delete the supplier
-    const result = await Supplier.deleteOne({ _id: supplierId });
+    // findOneAndDelete returns the deleted document
+    const deletedSupplier = await Supplier.findOneAndDelete({
+      _id: supplierId,
+    });
 
-    if (result.deletedCount === 0) {
+    if (!deletedSupplier) {
       return new NextResponse(
-        JSON.stringify({ message: "Supplier not found!" }),
+        JSON.stringify({ message: "Business good not found!" }),
         { status: 404, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // cloudinary folder path
+    const folderPath = `/business/${deletedSupplier?.businessId}/suppliers/${supplierId}`;
+
+    // Delete business folder in cloudinary
+    const deleteFolderCloudinaryResult: string | boolean =
+      await deleteFolderCloudinary(folderPath);
+
+    if (deleteFolderCloudinaryResult !== true) {
+      return new NextResponse(
+        JSON.stringify({ message: deleteFolderCloudinaryResult }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
 

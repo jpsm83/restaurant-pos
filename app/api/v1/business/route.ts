@@ -19,7 +19,8 @@ import { subscriptionEnums, currenctyEnums } from "@/lib/enums";
 
 const emailRegex = /^[\w-]+(\.[\w-]+)*@([\w-]+\.)+[a-zA-Z]{2,7}$/;
 
-const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+const passwordRegex =
+  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
 const reqAddressFields = [
   "country",
@@ -80,7 +81,9 @@ export const POST = async (req: Request) => {
     const address = JSON.parse(formData.get("address") as string);
     const currencyTrade = formData.get("currencyTrade") as string;
     const contactPerson = formData.get("contactPerson") as string | undefined;
-    const files = formData.getAll("imageUrl").filter((entry): entry is File => entry instanceof File); // Get all files
+    const files = formData
+      .getAll("imageUrl")
+      .filter((entry): entry is File => entry instanceof File); // Get all files
 
     // check required fields
     if (
@@ -140,15 +143,15 @@ export const POST = async (req: Request) => {
     }
 
     // check if subscription is valid
-    if(!subscriptionEnums.includes(subscription)) {
+    if (!subscriptionEnums.includes(subscription)) {
       return new NextResponse(
         JSON.stringify({ message: "Invalid subscription!" }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
-    };
+    }
 
     // check if currencyTrade is valid
-    if(!currenctyEnums.includes(currencyTrade)) {
+    if (!currenctyEnums.includes(currencyTrade)) {
       return new NextResponse(
         JSON.stringify({ message: "Invalid currencyTrade!" }),
         { status: 400, headers: { "Content-Type": "application/json" } }
@@ -177,39 +180,11 @@ export const POST = async (req: Request) => {
 
     const businessId = new mongoose.Types.ObjectId();
 
-    let imageUrl: string | undefined;
-
-    if (files && files.length > 0) {
-      const folder = `/business/${businessId}`;
-
-      const cloudinaryUploadResponse = await uploadFilesCloudinary({
-        folder,
-        filesArr: [files[0]], // only one image
-        onlyImages: true
-      });
-
-      if (
-        typeof cloudinaryUploadResponse === "string" ||
-        cloudinaryUploadResponse.length === 0 || 
-        !cloudinaryUploadResponse.every((str) => str.includes("https://"))
-      ) {
-                return new NextResponse(
-          JSON.stringify({
-            message: `Error uploading image: ${cloudinaryUploadResponse}`,
-          }),
-          { status: 400, headers: { "Content-Type": "application/json" } }
-        );
-      }
-
-      imageUrl = cloudinaryUploadResponse[0];
-    }
-
     // create business object with required fields
     const newBusiness: IBusiness = {
       _id: businessId,
       tradeName: tradeName,
       legalName: legalName,
-      imageUrl: imageUrl || undefined,
       email: email,
       password: hashedPassword,
       phoneNumber: phoneNumber,
@@ -219,6 +194,31 @@ export const POST = async (req: Request) => {
       address: address,
       contactPerson: contactPerson || undefined,
     };
+
+    if (files && files.length > 0) {
+      const folder = `/business/${businessId}`;
+
+      const cloudinaryUploadResponse = await uploadFilesCloudinary({
+        folder,
+        filesArr: [files[0]], // only one image
+        onlyImages: true,
+      });
+
+      if (
+        typeof cloudinaryUploadResponse === "string" ||
+        cloudinaryUploadResponse.length === 0 ||
+        !cloudinaryUploadResponse.every((str) => str.includes("https://"))
+      ) {
+        return new NextResponse(
+          JSON.stringify({
+            message: `Error uploading image: ${cloudinaryUploadResponse}`,
+          }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      newBusiness.imageUrl = cloudinaryUploadResponse[0];
+    }
 
     // Create new business
     await Business.create(newBusiness);
