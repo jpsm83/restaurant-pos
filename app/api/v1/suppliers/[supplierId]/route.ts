@@ -6,7 +6,7 @@ import connectDb from "@/lib/db/connectDb";
 import { handleApiError } from "@/lib/db/handleApiError";
 import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 import objDefaultValidation from "@/lib/utils/objDefaultValidation";
-import deleteSingleImage from "@/lib/cloudinary/deleteSingleImage";
+import deleteSingleImage from "@/lib/cloudinary/deleteFilesCloudinary";
 import uploadSingleImage from "@/lib/cloudinary/uploadSingleImage";
 
 // imported interface

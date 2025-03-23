@@ -1,5 +1,5 @@
 import { Schema, model, models } from "mongoose";
-import { mainCategories, measurementUnit, allergens } from "../../enums.js";
+import { mainCategories, measurementUnit, allergens } from "@/lib/enums";
 
 const businessGoodSchema = new Schema(
   {

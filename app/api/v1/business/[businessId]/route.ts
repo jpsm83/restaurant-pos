@@ -8,8 +8,8 @@ import connectDb from "@/lib/db/connectDb";
 import { handleApiError } from "@/lib/db/handleApiError";
 import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 import objDefaultValidation from "@/lib/utils/objDefaultValidation";
-import deleteSingleImage from "@/lib/cloudinary/deleteSingleImage";
-import uploadFiles from "@/lib/cloudinary/uploadFiles";
+import deleteFilesCloudinary from "@/lib/cloudinary/deleteFilesCloudinary";
+import uploadFilesCloudinary from "@/lib/cloudinary/uploadFilesCloudinary";
 
 // import interfaces
 import {
@@ -38,6 +38,9 @@ import SalesPoint from "@/lib/db/models/salesPoint";
 import MonthlyBusinessReport from "@/lib/db/models/monthlyBusinessReport";
 import User from "@/lib/db/models/user";
 
+// imported enums
+import { subscription as subscriptionEnums, currenctyTypes } from "@/lib/enums";
+
 // Cloudinary ENV variables
 cloudinary.config({
   cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
@@ -47,6 +50,9 @@ cloudinary.config({
 });
 
 const emailRegex = /^[\w-]+(\.[\w-]+)*@([\w-]+\.)+[a-zA-Z]{2,7}$/;
+
+const passwordRegex =
+  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
 const reqAddressFields = [
   "country",
@@ -148,7 +154,6 @@ export const PATCH = async (
     const tradeName = formData.get("tradeName") as string;
     const legalName = formData.get("legalName") as string;
     const email = formData.get("email") as string;
-    const password = formData.get("password") as string;
     const phoneNumber = formData.get("phoneNumber") as string;
     const taxNumber = formData.get("taxNumber") as string;
     const currencyTrade = formData.get("currencyTrade") as string;
@@ -157,6 +162,7 @@ export const PATCH = async (
     const metrics = formData.get("metrics")
       ? JSON.parse(formData.get("metrics") as string)
       : undefined;
+    const password = formData.get("password") as string | undefined;
     const contactPerson = formData.get("contactPerson") as string | undefined;
     const files = formData
       .getAll("imageUrl")
@@ -166,6 +172,17 @@ export const PATCH = async (
     if (!emailRegex.test(email)) {
       return new NextResponse(
         JSON.stringify({ message: "Invalid email format!" }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // check password format if exists
+    if (password && !passwordRegex.test(password)) {
+      return new NextResponse(
+        JSON.stringify({
+          message:
+            "Password must contain at least 8 characters, one uppercase, one lowercase, one number and one special character!",
+        }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
@@ -225,6 +242,22 @@ export const PATCH = async (
       }
     }
 
+    // check if subscription is valid
+    if (!subscriptionEnums.includes(subscription)) {
+      return new NextResponse(
+        JSON.stringify({ message: "Invalid subscription!" }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+        // check if currencyTrade is valid
+        if(!currenctyTypes.includes(currencyTrade)) {
+          return new NextResponse(
+            JSON.stringify({ message: "Invalid currencyTrade!" }),
+            { status: 400, headers: { "Content-Type": "application/json" } }
+          );
+        }
+    
     // connect before first call to DB
     await connectDb();
 
@@ -325,26 +358,13 @@ export const PATCH = async (
         updateBusinessObj.metrics = updatedMetrics;
     }
 
-    if (files) {
-      // first delete the existing image if it exists
-      const deleteSingleImageResult: string | boolean = await deleteSingleImage(
-        business?.imageUrl || ""
-      );
-
-      // check if deleteSingleImage failed
-      if (deleteSingleImageResult !== true) {
-        return new NextResponse(
-          JSON.stringify({ message: deleteSingleImageResult }),
-          { status: 400, headers: { "Content-Type": "application/json" } }
-        );
-      }
-
+    if (files && files.length > 0) {
       const folder = `/business/${businessId}`;
 
-      // upload new image
-      const cloudinaryUploadResponse = await uploadFiles({
+      // first upload new image
+      const cloudinaryUploadResponse = await uploadFilesCloudinary({
         folder,
-        filesArr: files,
+        filesArr: [files[0]], // only one image
         onlyImages: true,
       });
 
@@ -357,6 +377,19 @@ export const PATCH = async (
           JSON.stringify({
             message: `Error uploading image: ${cloudinaryUploadResponse}`,
           }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+       // if new image been created, them delete the old one
+       const deleteFilesCloudinaryResult: string | boolean = await deleteFilesCloudinary(
+        business?.imageUrl || ""
+      );
+
+      // check if deleteFilesCloudinary failed
+      if (deleteFilesCloudinaryResult !== true) {
+        return new NextResponse(
+          JSON.stringify({ message: deleteFilesCloudinaryResult }),
           { status: 400, headers: { "Content-Type": "application/json" } }
         );
       }
@@ -467,7 +500,6 @@ export const DELETE = async (
   } catch (error) {
     // Abort MongoDB transaction if any DB error occurs
     await session.abortTransaction();
-    session.endSession();
     return handleApiError("Delete business failed!", error as string);
   } finally {
     // Close the session

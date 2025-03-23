@@ -1,6 +1,6 @@
 import { Schema, model, models } from "mongoose";
 import { addressSchema } from "./address";
-import { subscription } from "../../enums.js";
+import { subscription } from "@/lib/enums";
 
 const metricsSchema = new Schema({
   foodCostPercentage: { type: Number, default: 30 }, // Food cost percentage acceptable - 28-35% of sales average
@@ -24,7 +24,10 @@ const businessSchema = new Schema(
     legalName: { type: String, required: [true, "Legal name is required!"] }, // Legal Name of the company, not unique because could happens of same name bussines in different countries
     imageUrl: { type: String }, // Logo of the company as url link to cloudinary
     email: { type: String, required: [true, "Email is required!"] }, // Email of the company, not unique because could happens of one office managing multiple companies
-    password: { type: String, required: [true, "Password is required!"] }, // Password of the company pos account
+    password: {
+      type: String,
+      required: [true, "Password is required!"],
+    },
     phoneNumber: {
       type: String,
       required: [true, "Phone number is required!"],

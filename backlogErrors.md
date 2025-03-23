@@ -30,8 +30,8 @@ cloudinaryActions
 
 - add upload cloudinary to all POST and PATH of documents that have imageUrl or documentsUrl
     - BUSINESS - single image - DONE
-    - test business REST
-        - if fine, delete uploadSingleImages
+    - test business REST - DONE
+        - if fine, delete uploadSingleImages - DONE
     - BUSINESSGOOD - mulitple image
     - EMPLOYEE - mulitple documents
     - PURCHASES - single image

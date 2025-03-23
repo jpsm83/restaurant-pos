@@ -1,5 +1,5 @@
 import { Schema, model, models } from "mongoose";
-import { userRoles } from "../../enums.js";
+import { userRoles } from "@/lib/enums";
 // import { personalDetailsSchema } from "./personalDetails";
 
 const salarySchema = new Schema(

@@ -1,5 +1,5 @@
 import { Schema, model, models } from "mongoose";
-import { salesInstanceStatus } from "../../enums.js";
+import { salesInstanceStatus } from "@/lib/enums";
 
 const salesInstanceSchema = new Schema(
   {

@@ -8,7 +8,7 @@ cloudinary.config({
   secure: true,
 });
 
-export default async function uploadFiles({
+export default async function uploadFilesCloudinary({
   folder,
   filesArr,
   onlyImages,

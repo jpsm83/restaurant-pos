@@ -6,7 +6,7 @@ import mongoose from "mongoose";
 import connectDb from "@/lib/db/connectDb";
 import { handleApiError } from "@/lib/db/handleApiError";
 import objDefaultValidation from "@/lib/utils/objDefaultValidation";
-import uploadFiles from "@/lib/cloudinary/uploadFiles";
+import uploadFilesCloudinary from "@/lib/cloudinary/uploadFilesCloudinary";
 
 // imported interface
 import { IBusiness } from "@/lib/interface/IBusiness";
@@ -14,7 +14,12 @@ import { IBusiness } from "@/lib/interface/IBusiness";
 // imported models
 import Business from "@/lib/db/models/business";
 
+// imported enums
+import { subscription as subscriptionEnums, currenctyTypes } from "@/lib/enums";
+
 const emailRegex = /^[\w-]+(\.[\w-]+)*@([\w-]+\.)+[a-zA-Z]{2,7}$/;
+
+const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
 const reqAddressFields = [
   "country",
@@ -106,6 +111,17 @@ export const POST = async (req: Request) => {
       );
     }
 
+    // check password format
+    if (!passwordRegex.test(password)) {
+      return new NextResponse(
+        JSON.stringify({
+          message:
+            "Password must contain at least 8 characters, one uppercase, one lowercase, one number and one special character!",
+        }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     // validate address
     const addressValidationResult = objDefaultValidation(
       address,
@@ -120,6 +136,22 @@ export const POST = async (req: Request) => {
           status: 400,
           headers: { "Content-Type": "application/json" },
         }
+      );
+    }
+
+    // check if subscription is valid
+    if(!subscriptionEnums.includes(subscription)) {
+      return new NextResponse(
+        JSON.stringify({ message: "Invalid subscription!" }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    };
+
+    // check if currencyTrade is valid
+    if(!currenctyTypes.includes(currencyTrade)) {
+      return new NextResponse(
+        JSON.stringify({ message: "Invalid currencyTrade!" }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
 
@@ -147,12 +179,12 @@ export const POST = async (req: Request) => {
 
     let imageUrl: string | undefined;
 
-    if (files) {
+    if (files && files.length > 0) {
       const folder = `/business/${businessId}`;
 
-      const cloudinaryUploadResponse = await uploadFiles({
+      const cloudinaryUploadResponse = await uploadFilesCloudinary({
         folder,
-        filesArr: files,
+        filesArr: [files[0]], // only one image
         onlyImages: true
       });
 

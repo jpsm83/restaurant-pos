@@ -1,6 +1,6 @@
 import { Schema } from "mongoose";
 
-import { paymentMethods } from "../../enums.js";
+import { paymentMethods } from "@/lib/enums";
 
 // example of a payment method object
 // paymentMethod = [
