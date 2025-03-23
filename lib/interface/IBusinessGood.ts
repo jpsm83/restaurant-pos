@@ -8,6 +8,7 @@ export interface IIngredient {
 }
 
 export interface IBusinessGood {
+  _id?: Types.ObjectId | string;
   name: string;
   keyword: string;
   mainCategory: string;
@@ -23,6 +24,6 @@ export interface IBusinessGood {
   suggestedSellingPrice?: number;
   description?: string;
   allergens?: string[];
-  imageUrl?: string[];
+  imagesUrl?: string[];
   deliveryTime?: number;
 }

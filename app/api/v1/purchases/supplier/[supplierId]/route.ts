@@ -99,6 +99,6 @@ export const GET = async (
           },
         });
   } catch (error) {
-    return handleApiError("Get purchase by id failed!", error);
+    return handleApiError("Get purchase by id failed!", error as string);
   }
 };

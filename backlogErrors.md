@@ -30,13 +30,14 @@ cloudinaryActions
 
 - add upload cloudinary to all POST and PATH of documents that have imageUrl or documentsUrl
     - BUSINESS - single image - DONE
-    - BUSINESSGOOD - mulitple image - READY FOR TESTING
-    - EMPLOYEE - mulitple documents
     - PURCHASES - single image
     - SALES POINT - single image
-    - SUPPLIERGOOD - mulitple image
     - SUPPLIER - single image
     - USER - single image
+    - BUSINESSGOOD - mulitple image - DONE
+    - SUPPLIERGOOD - mulitple image
+    - EMPLOYEE - mulitple documents
+    
     - FOLLOW THE BUSINESS ROUTES ALREADY UPDATED
     - test all again
 

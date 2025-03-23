@@ -95,7 +95,7 @@ export const POST = async (req: Request) => {
       : undefined;
 
     const files = formData
-      .getAll("imageUrl")
+      .getAll("imagesUrl")
       .filter((entry): entry is File => entry instanceof File); // Get all files
 
     // check required fields
@@ -129,7 +129,7 @@ export const POST = async (req: Request) => {
     }
 
     // ingredients and setMenuIds cannot be assigned at the same time
-    if (ingredients && setMenuIds) {
+    if (ingredients && ingredients?.length > 0 && setMenuIds?.length > 0) {
       return new NextResponse(
         JSON.stringify({
           message: "Only one of ingredients or setMenuIds can be assigned!",
@@ -195,6 +195,7 @@ export const POST = async (req: Request) => {
 
     // create a businessId good object
     const newBusinessGood: IBusinessGood = {
+      _id: businessGoodId,
       name,
       keyword,
       mainCategory,
@@ -202,7 +203,7 @@ export const POST = async (req: Request) => {
       available,
       sellingPrice,
       businessId,
-      subCategory,
+      subCategory: subCategory || undefined,
       setMenuIds: setMenuIds || undefined,
       grossProfitMarginDesired: grossProfitMarginDesired || undefined,
       description: description || undefined,
@@ -232,11 +233,11 @@ export const POST = async (req: Request) => {
         );
       }
 
-      newBusinessGood.imageUrl = cloudinaryUploadResponse;
+      newBusinessGood.imagesUrl = cloudinaryUploadResponse;
     }
 
     // validate ingredients if they exist and calculate the cost price and allergens
-    if (ingredients) {
+    if (ingredients && ingredients.length > 0) {
       // this calcutation return an array of objects with the cost price and allergens
       const calculateIngredientsCostPriceAndAllergiesResult =
         await calculateIngredientsCostPriceAndAllergies(ingredients);
@@ -300,7 +301,7 @@ export const POST = async (req: Request) => {
     }
 
     // calculate the cost price and allergens for the setMenuIds if they exist
-    if (setMenuIds) {
+    if (setMenuIds && setMenuIds.length > 0) {
       // this calcutation return an object with the cost price and allergens
       const calculateSetMenuCostPriceAndAllergiesResult =
         await calculateSetMenuCostPriceAndAllergies(setMenuIds);
@@ -319,6 +320,9 @@ export const POST = async (req: Request) => {
 
       // if there is setMenuIds, ingredients should be undefined
       newBusinessGood.ingredients = undefined;
+
+      // add the setMenuIds array to the new businessId good
+      newBusinessGood.setMenuIds = setMenuIds;
 
       // calculate the sum of all cost prices
       newBusinessGood.costPrice = parseFloat(
