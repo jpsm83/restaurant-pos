@@ -10,11 +10,13 @@ cloudinary.config({
 
 export default async function deleteFolderCloudinary(folderPath: string): Promise<boolean | string> {
   try {
+    const uploadPreset = "restaurant-pos";
+
     // **Step 1: Delete all files in the folder and subfolders**
-    await cloudinary.api.delete_resources_by_prefix(folderPath);
+    await cloudinary.api.delete_resources_by_prefix(uploadPreset+folderPath);
 
     // **Step 2: Delete the empty folder (and all subfolders)**
-    await cloudinary.api.delete_folder(folderPath);
+    await cloudinary.api.delete_folder(uploadPreset+folderPath);
 
     return true;
   } catch (error: unknown) {

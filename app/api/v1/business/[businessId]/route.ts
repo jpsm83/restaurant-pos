@@ -163,7 +163,6 @@ export const PATCH = async (
       !tradeName ||
       !legalName ||
       !email ||
-      !password ||
       !phoneNumber ||
       !taxNumber ||
       !subscription ||
@@ -173,7 +172,7 @@ export const PATCH = async (
       return new NextResponse(
         JSON.stringify({
           message:
-            "TradeName, legalName, email, password, phoneNumber, taxNumber, subscription, currencyTrade and address are required!",
+            "TradeName, legalName, email, phoneNumber, taxNumber, subscription, currencyTrade and address are required!",
         }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
@@ -491,7 +490,7 @@ export const DELETE = async (
     session.endSession();
 
     // cloudinary folder path
-    const folderPath = `restaurant-pos/business/${businessId}`;
+    const folderPath = `business/${businessId}`;
 
     // Delete business folder in cloudinary
     const deleteFolderCloudinaryResult: string | boolean =

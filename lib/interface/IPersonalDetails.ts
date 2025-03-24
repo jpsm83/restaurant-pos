@@ -12,6 +12,6 @@ export interface IPersonalDetails {
   imageUrl?: string;
   nationality?: string;
   gender?: string;
-  birthDate?: Date;
+  birthDate?: Date | string;
   phoneNumber: string;
 }

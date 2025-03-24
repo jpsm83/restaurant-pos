@@ -7,32 +7,16 @@ import connectDb from "@/lib/db/connectDb";
 import { handleApiError } from "@/lib/db/handleApiError";
 import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 import objDefaultValidation from "@/lib/utils/objDefaultValidation";
+import uploadFilesCloudinary from "@/lib/cloudinary/uploadFilesCloudinary";
+import deleteFilesCloudinary from "@/lib/cloudinary/deleteFilesCloudinary";
 
 // imported interfaces
-import { IPersonalDetails } from "@/lib/interface/IPersonalDetails";
+import { IUser } from "@/lib/interface/IUser";
 
 // imported models
 import User from "@/lib/db/models/user";
-import { IUser } from "@/lib/interface/IUser";
-
-const reqPersonalDetailsFields = [
-  "username",
-  "email",
-  "password",
-  "idType",
-  "idNumber",
-  "firstName",
-  "lastName",
-  "address",
-];
-
-const nonReqPersonalDetailsFields = [
-  "imageUrl",
-  "nationality",
-  "gender",
-  "birthDate",
-  "phoneNumber",
-];
+import deleteFolderCloudinary from "@/lib/cloudinary/deleteFolderCloudinary";
+import { IEmployee } from "@/lib/interface/IEmployee";
 
 const reqAddressFields = [
   "country",
@@ -46,29 +30,26 @@ const reqAddressFields = [
 const nonReqAddressFields = ["region", "additionalDetails", "coordinates"];
 
 // @desc    Get user by ID
-// @route   GET /customers/:customerId
+// @route   GET /customers/:userId
 // @access  Private
 export const GET = async (
   req: Request,
-  context: { params: { customerId: Types.ObjectId } }
+  context: { params: { userId: Types.ObjectId } }
 ) => {
   try {
-    const customerId = context.params.customerId;
+    const userId = context.params.userId;
 
-    if (!isObjectIdValid([customerId])) {
-      return new NextResponse(
-        JSON.stringify({ message: "Invalid user ID!" }),
-        {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        }
-      );
+    if (!isObjectIdValid([userId])) {
+      return new NextResponse(JSON.stringify({ message: "Invalid user ID!" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     // connect before first call to DB
     await connectDb();
 
-    const user = await User.findById(customerId, {
+    const user = await User.findById(userId, {
       "personalDetails.password": 0,
     }).lean();
 
@@ -90,97 +71,103 @@ export const GET = async (
 
 // user DO NOT UPDATE notifications, only readFlag
 // @desc    Update user
-// @route   PATCH /customers/:customerId
+// @route   PATCH /customers/:userId
 // @access  Private
 export const PATCH = async (
   req: Request,
-  context: { params: { customerId: Types.ObjectId } }
+  context: { params: { userId: Types.ObjectId } }
 ) => {
-    const customerId = context.params.customerId;
-    const {
-      personalDetails,
-    }: {
-      personalDetails: IPersonalDetails;
-    } = await req.json();
+  const { userId } = context.params;
 
-    // check required fields
-    if (!personalDetails) {
-      return new NextResponse(
-        JSON.stringify({
-          message: "PersonalDetails is required fields!",
-        }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
-      );
-    }
-
-    // validate customerId
-    if (!isObjectIdValid([customerId])) {
-      return new NextResponse(
-        JSON.stringify({ message: "User ID is not valid!" }),
-        {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // validate personalDetails
-    const personalDetailsValidationResult = objDefaultValidation(
-      personalDetails,
-      reqPersonalDetailsFields,
-      nonReqPersonalDetailsFields
+  // validate userId
+  if (!isObjectIdValid([userId])) {
+    return new NextResponse(
+      JSON.stringify({ message: "User ID is not valid!" }),
+      {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      }
     );
+  }
 
-    if (personalDetailsValidationResult !== true) {
-      return new NextResponse(
-        JSON.stringify({ message: personalDetailsValidationResult }),
-        {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        }
-      );
-    }
+  // Parse FORM DATA instead of JSON because we might have an image file
+  const formData = await req.formData();
 
-    // validate address
-    const addressValidationResult = objDefaultValidation(
-      personalDetails.address,
-      reqAddressFields,
-      nonReqAddressFields
+  // Extract fields from formData
+  const username = formData.get("username") as string;
+  const email = formData.get("email") as string;
+  const password = formData.get("password") as string | undefined;
+  const idType = formData.get("idType") as string;
+  const idNumber = formData.get("idNumber") as string;
+  const address = JSON.parse(formData.get("address") as string);
+  const firstName = formData.get("firstName") as string; // Convert string to boolean
+  const lastName = formData.get("lastName") as string;
+  const nationality = formData.get("nationality") as string;
+  const gender = formData.get("gender") as string;
+  const birthDate = formData.get("birthDate") as string;
+  const phoneNumber = formData.get("phoneNumber") as string;
+  const imageUrl = formData.get("imageUrl") as File | undefined;
+
+  // check required fields
+  if (
+    !username ||
+    !email ||
+    !idType ||
+    !idNumber ||
+    !address ||
+    !firstName ||
+    !lastName ||
+    !nationality ||
+    !gender ||
+    !birthDate ||
+    !phoneNumber
+  ) {
+    return new NextResponse(
+      JSON.stringify({
+        message:
+          "Username, email, idType, idNumber, address, firstName, lastName, nationality, gender, birthDate, phoneNumber are required!",
+      }),
+      { status: 400, headers: { "Content-Type": "application/json" } }
     );
+  }
+  // validate address
+  const addressValidationResult = objDefaultValidation(
+    address,
+    reqAddressFields,
+    nonReqAddressFields
+  );
 
-    if (addressValidationResult !== true) {
-      return new NextResponse(
-        JSON.stringify({ message: addressValidationResult }),
-        {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        }
-      );
-    }
+  if (addressValidationResult !== true) {
+    return new NextResponse(
+      JSON.stringify({ message: addressValidationResult }),
+      {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+  }
 
-    try {
+  try {
     // connect before first call to DB
     await connectDb();
-    
+
     // check if user exists
-    const user = await User.findById(customerId);
+    const user = await User.findById(userId);
+
     if (!user) {
-      return new NextResponse(
-        JSON.stringify({ message: "User not found!" }),
-        {
-          status: 404,
-          headers: { "Content-Type": "application/json" },
-        }
-      );
+      return new NextResponse(JSON.stringify({ message: "User not found!" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     // check for duplicates username, email, taxNumber and idNumber
     const duplicateCustomer = await User.exists({
-      _id: { $ne: customerId },
+      _id: { $ne: userId },
       $or: [
-        { "personalDetails.username": personalDetails.username },
-        { "personalDetails.email": personalDetails.email },
-        { "personalDetails.idNumber": personalDetails.idNumber },
+        { "personalDetails.username": username },
+        { "personalDetails.email": email },
+        { "personalDetails.idNumber": idNumber },
       ],
     });
 
@@ -196,47 +183,111 @@ export const PATCH = async (
       );
     }
 
-    const updateCustomerObj: Partial<IUser> = {};
+    // Prepare updated fields only if they exist (partial update)
+    const updateUserObj: Partial<IUser> = {};
 
-    // Iterate through all keys in personalDetails
-    Object.keys(personalDetails).forEach((key) => {
-      // Check if the key exists in user.personalDetails and if the value has changed
-      if (personalDetails[key] !== user.personalDetails[key] && key !== "address") {
-        updateCustomerObj[`personalDetails.${key}`] = personalDetails[key];
-      }
-    
-      // Handle nested "address" object
-      if (key === "address" && personalDetails.address) {
-        Object.keys(personalDetails.address).forEach((addressKey) => {
-          // Check if the address field has changed or is new
-          if (personalDetails.address[addressKey] !== user.personalDetails.address[addressKey]) {
-            updateCustomerObj[`personalDetails.address.${addressKey}`] = personalDetails.address[addressKey];
-          }
-        });
-      }
-    });
-    
-    // If password is updated, hash it and add to the update object
-    if (personalDetails.password) {
-      updateCustomerObj["personalDetails.password"] = await hash(personalDetails.password, 10);
+    if (username && username !== user.personalDetails.username) {
+      updateUserObj["personalDetails.username"] = username;
     }
-    
+    if (email && email !== user.personalDetails.email) {
+      updateUserObj["personalDetails.email"] = email;
+    }
+    if (idType && idType !== user.personalDetails.idType) {
+      updateUserObj["personalDetails.idType"] = idType;
+    }
+    if (idNumber && idNumber !== user.personalDetails.idNumber) {
+      updateUserObj["personalDetails.idNumber"] = idNumber;
+    }
+    if (firstName && firstName !== user.personalDetails.firstName) {
+      updateUserObj["personalDetails.firstName"] = firstName;
+    }
+    if (lastName && lastName !== user.personalDetails.lastName) {
+      updateUserObj["personalDetails.lastName"] = lastName;
+    }
+    if (nationality && nationality !== user.personalDetails.nationality) {
+      updateUserObj["personalDetails.nationality"] = nationality;
+    }
+    if (gender && gender !== user.personalDetails.gender) {
+      updateUserObj["personalDetails.gender"] = gender;
+    }
+    if (
+      birthDate &&
+      birthDate !== user.personalDetails.birthDate.toISOString()
+    ) {
+      updateUserObj["personalDetails.birthDate"] = birthDate;
+    }
+    if (phoneNumber && phoneNumber !== user.personalDetails.phoneNumber) {
+      updateUserObj["personalDetails.phoneNumber"] = phoneNumber;
+    }
+
+    // Handle address updates
+    if (address) {
+      Object.keys(address).forEach((key) => {
+        if (address[key] !== user.personalDetails.address[key]) {
+          updateUserObj[`personalDetails.address.${key}`] = address[key];
+        }
+      });
+    }
+
+    // If password is updated, hash it and add to the update object
+    if (password) {
+      updateUserObj["personalDetails.password"] = await hash(
+        updateUserObj.personalDetails!.password,
+        10
+      );
+    }
+
+    if (imageUrl && imageUrl instanceof File && imageUrl.size > 0) {
+      const folder = `/users/${userId}`;
+
+      // first upload new image
+      const cloudinaryUploadResponse = await uploadFilesCloudinary({
+        folder,
+        filesArr: [imageUrl], // only one image
+        onlyImages: true,
+      });
+
+      if (
+        typeof cloudinaryUploadResponse === "string" ||
+        cloudinaryUploadResponse.length === 0 ||
+        !cloudinaryUploadResponse.every((str) => str.includes("https://"))
+      ) {
+        return new NextResponse(
+          JSON.stringify({
+            message: `Error uploading image: ${cloudinaryUploadResponse}`,
+          }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      // if new image been created, then delete the old one
+      const deleteFilesCloudinaryResult: string | boolean =
+        await deleteFilesCloudinary(user?.personalDetails.imageUrl || "");
+
+      // check if deleteFilesCloudinary failed
+      if (deleteFilesCloudinaryResult !== true) {
+        return new NextResponse(
+          JSON.stringify({ message: deleteFilesCloudinaryResult }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      updateUserObj["personalDetails.imageUrl"] = cloudinaryUploadResponse[0];
+    }
+
     // Update user with only changed fields
-    const updatedCustomer = await User.findOneAndUpdate(
-      { _id: customerId },
-      { $set: updateCustomerObj },
-      { new: true } // Returns the updated document
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { $set: updateUserObj },
+      { new: true, lean: true } // Returns the updated document
     );
 
     // Check if the purchase was found and updated
-    if (!updatedCustomer) {
-      return new NextResponse(
-        JSON.stringify({ message: "User not found!" }),
-        {
-          status: 404,
-          headers: { "Content-Type": "application/json" },
-        }
-      );
+    if (!updatedUser) {
+      return new NextResponse(JSON.stringify({ message: "User not found!" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     return new NextResponse(
@@ -253,45 +304,69 @@ export const PATCH = async (
 // delete an user shouldnt be allowed for data integrity, historical purposes and analytics
 // If you delete a user from the database and there are other documents that have a relationship with that user, those related documents may still reference the deleted user. This can lead to issues such as orphaned records, broken references, and potential errors when querying or processing those related documents.
 // @desc    Delete user
-// @route   DELETE /customers/:customerId
+// @route   DELETE /customers/:userId
 // @access  Private
 export const DELETE = async (
   req: Request,
-  context: { params: { customerId: Types.ObjectId } }
+  context: { params: { userId: Types.ObjectId } }
 ) => {
   try {
-    const customerId = context.params.customerId;
+    const { userId } = context.params;
 
-    // check if the customerId is a valid ObjectId
-    if (!isObjectIdValid([customerId])) {
-      return new NextResponse(
-        JSON.stringify({ message: "Invalid user ID!" }),
-        {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        }
-      );
+    // check if the userId is a valid ObjectId
+    if (!isObjectIdValid([userId])) {
+      return new NextResponse(JSON.stringify({ message: "Invalid user ID!" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     // connect before first call to DB
     await connectDb();
 
-    // Delete the user
-    const result = await User.deleteOne({ _id: customerId });
+    const user = (await User.findOne({ _id: userId })
+      .select("employeeDetails")
+      .lean()) as { employeeDetails: IEmployee } | null;
 
-    if (result.deletedCount === 0) {
+    if (user?.employeeDetails) {
       return new NextResponse(
-        JSON.stringify({ message: "User not found!" }),
-        {
-          status: 404,
-          headers: { "Content-Type": "application/json" },
-        }
+        JSON.stringify({
+          message: "User cannot be deleted because he/she is employeed!",
+        }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // delete the user
+    // findOneAndDelete returns the deleted document
+    const deletedUser = await User.findOneAndDelete({
+      _id: userId,
+    });
+
+    if (!deletedUser) {
+      return new NextResponse(JSON.stringify({ message: "User not found!" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // cloudinary folder path
+    const folderPath = `/users/${userId}`;
+
+    // Delete user folder in cloudinary
+    const deleteFolderCloudinaryResult: string | boolean =
+      await deleteFolderCloudinary(folderPath);
+
+    if (deleteFolderCloudinaryResult !== true) {
+      return new NextResponse(
+        JSON.stringify({ message: deleteFolderCloudinaryResult }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
 
     return new NextResponse(
       JSON.stringify({
-        message: `User id ${customerId} deleted successfully`,
+        message: `User deleted successfully`,
       }),
       {
         status: 200,

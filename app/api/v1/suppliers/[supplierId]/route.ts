@@ -201,6 +201,7 @@ export const PATCH = async (
 
     // Handle address updates dynamically
     const updatedAddress: Partial<IAddress> = {};
+    
     for (const [key, value] of Object.entries(address)) {
       if (value !== supplier.address?.[key as keyof typeof address]) {
         updatedAddress[key as keyof typeof address] = value;

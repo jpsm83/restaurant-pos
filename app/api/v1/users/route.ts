@@ -1,35 +1,18 @@
 import { NextResponse } from "next/server";
 import { hash } from "bcrypt";
+import mongoose from "mongoose";
 
 // imported utils
 import connectDb from "@/lib/db/connectDb";
 import objDefaultValidation from "@/lib/utils/objDefaultValidation";
 import { handleApiError } from "@/lib/db/handleApiError";
-
-// imported interfaces
-import { IPersonalDetails } from "@/lib/interface/IPersonalDetails";
+import uploadFilesCloudinary from "@/lib/cloudinary/uploadFilesCloudinary";
 
 // imported models
 import User from "@/lib/db/models/user";
 
-const reqPersonalDetailsFields = [
-  "username",
-  "email",
-  "password",
-  "idType",
-  "idNumber",
-  "firstName",
-  "lastName",
-  "address",
-];
-
-const nonReqPersonalDetailsFields = [
-  "imageUrl",
-  "nationality",
-  "gender",
-  "birthDate",
-  "phoneNumber",
-];
+// imported interface
+import { IUser } from "@/lib/interface/IUser";
 
 const reqAddressFields = [
   "country",
@@ -42,76 +25,86 @@ const reqAddressFields = [
 
 const nonReqAddressFields = ["region", "additionalDetails", "coordinates"];
 
-// @desc    Get all customers
-// @route   GET /customers
+// @desc    Get all users
+// @route   GET /users
 // @access  Private
 export const GET = async () => {
   try {
     // connect before first call to DB
     await connectDb();
 
-    const customers = await User.find(
+    const users = await User.find(
       {},
       { "personalDetails.password": 0 }
     ).lean();
 
-    return !customers?.length
-      ? new NextResponse(JSON.stringify({ message: "No customers found" }), {
+    return !users?.length
+      ? new NextResponse(JSON.stringify({ message: "No users found" }), {
           status: 404,
           headers: { "Content-Type": "application/json" },
         })
-      : new NextResponse(JSON.stringify(customers), {
+      : new NextResponse(JSON.stringify(users), {
           status: 200,
           headers: {
             "Content-Type": "application/json",
           },
         });
   } catch (error) {
-    return handleApiError("Get all customers failed!", error as string);
+    return handleApiError("Get all users failed!", error as string);
   }
 };
 
 // @desc    Create new user
-// @route   POST /customers
+// @route   POST /user
 // @access  Private
 export const POST = async (req: Request) => {
   try {
-    const {
-      personalDetails,
-    }: {
-      personalDetails: IPersonalDetails;
-    } = await req.json();
+    // Parse FORM DATA instead of JSON because we might have an image file
+    const formData = await req.formData();
+
+    // Extract fields from formData
+    const username = formData.get("username") as string;
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
+    const idType = formData.get("idType") as string;
+
+    const idNumber = formData.get("idNumber") as string;
+    const address = JSON.parse(formData.get("address") as string);
+    const firstName = formData.get("firstName") as string; // Convert string to boolean
+    const lastName = formData.get("lastName") as string;
+    const nationality = formData.get("nationality") as string;
+    const gender = formData.get("gender") as string;
+    const birthDate = formData.get("birthDate") as string;
+    const phoneNumber = formData.get("phoneNumber") as string;
+    const imageUrl = formData.get("imageUrl") as File | undefined;
 
     // check required fields
-    if (!personalDetails) {
+    if (
+      !username ||
+      !email ||
+      !password ||
+      !idType ||
+      !idNumber ||
+      !address ||
+      !firstName ||
+      !lastName ||
+      !nationality ||
+      !gender ||
+      !birthDate ||
+      !phoneNumber
+    ) {
       return new NextResponse(
         JSON.stringify({
-          message: "PersonalDetails is required fields!",
+          message:
+            "Username, email, password, idType, idNumber, address, firstName, lastName, nationality, gender, birthDate, phoneNumber are required!",
         }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
 
-    // validate personalDetails
-    const personalDetailsValidationResult = objDefaultValidation(
-      personalDetails,
-      reqPersonalDetailsFields,
-      nonReqPersonalDetailsFields
-    );
-
-    if (personalDetailsValidationResult !== true) {
-      return new NextResponse(
-        JSON.stringify({ message: personalDetailsValidationResult }),
-        {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        }
-      );
-    }
-
     // validate address
     const addressValidationResult = objDefaultValidation(
-      personalDetails.address,
+      address,
       reqAddressFields,
       nonReqAddressFields
     );
@@ -130,15 +123,15 @@ export const POST = async (req: Request) => {
     await connectDb();
 
     // check for duplicates username, email, taxNumber and idNumber
-    const duplicateCustomer = await User.exists({
+    const duplicateUser = await User.exists({
       $or: [
-        { "personalDetails.username": personalDetails.username },
-        { "personalDetails.email": personalDetails.email },
-        { "personalDetails.idNumber": personalDetails.idNumber },
+        { "personalDetails.username": username },
+        { "personalDetails.email": email },
+        { "personalDetails.idNumber": idNumber },
       ],
     });
 
-    if (duplicateCustomer) {
+    if (duplicateUser) {
       return new NextResponse(
         JSON.stringify({
           message: "User with username, email or idNumber already exists!",
@@ -151,16 +144,55 @@ export const POST = async (req: Request) => {
     }
 
     // Hash password asynchronously
-    const hashedPassword = await hash(personalDetails.password, 10);
+    const hashedPassword = await hash(password, 10);
 
-    const newCustomer = {
+    const userId = new mongoose.Types.ObjectId();
+
+    const newUser: IUser = {
+      _id: userId,
       personalDetails: {
-        ...personalDetails,
+        username,
+        email,
         password: hashedPassword,
+        idType,
+        idNumber,
+        address,
+        firstName,
+        lastName,
+        nationality,
+        gender,
+        birthDate,
+        phoneNumber,
       },
     };
 
-    await User.create(newCustomer);
+    // upload image to cloudinary
+    if (imageUrl && imageUrl instanceof File && imageUrl.size > 0) {
+      const folder = `/users/${userId}`;
+
+      const cloudinaryUploadResponse = await uploadFilesCloudinary({
+        folder,
+        filesArr: [imageUrl], // only one image
+        onlyImages: true,
+      });
+
+      if (
+        typeof cloudinaryUploadResponse === "string" ||
+        cloudinaryUploadResponse.length === 0 ||
+        !cloudinaryUploadResponse.every((str) => str.includes("https://"))
+      ) {
+        return new NextResponse(
+          JSON.stringify({
+            message: `Error uploading image: ${cloudinaryUploadResponse}`,
+          }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      newUser.personalDetails.imageUrl = cloudinaryUploadResponse[0];
+    }
+
+    await User.create(newUser);
 
     return new NextResponse(
       JSON.stringify({

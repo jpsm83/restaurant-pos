@@ -31,10 +31,10 @@ cloudinaryActions
 - add upload cloudinary to all POST and PATH of documents that have imageUrl or documentsUrl
     - BUSINESS - single image - DONE
     - SUPPLIER - single image - DONE
-    - USER - single image
+    - USER - single image - DONE
     - BUSINESSGOOD - mulitple image - DONE
     - SUPPLIERGOOD - mulitple image
-    - EMPLOYEE - mulitple documents
+    - EMPLOYEE - mulitple documents - when delete employee, also delete employeeDetails from the user
     - PURCHASES - mulitple documents
 
     - FOLLOW THE BUSINESS ROUTES ALREADY UPDATED
