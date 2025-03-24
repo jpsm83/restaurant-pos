@@ -5,14 +5,15 @@ export interface ISupplierGood {
   name: string;
   keyword: string;
   mainCategory: string;
+  supplierId: Types.ObjectId | string;
+  businessId: Types.ObjectId | string;
+  
+  currentlyInUse?: boolean;
   subCategory?: string;
-  currentlyInUse: boolean;
-  supplierId: Types.ObjectId;
-  businessId?: Types.ObjectId;
   description?: string;
   allergens?: string[];
   budgetImpact?: string;
-  imageUrl?: string[];
+  imagesUrl?: string[];
   inventorySchedule?: string;
   minimumQuantityRequired?: number;
   parLevel?: number;

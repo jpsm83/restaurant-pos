@@ -18,11 +18,6 @@ const supplierGoodSchema = new Schema(
       enum: mainCategoriesEnums,
       required: [true, "Main category is required!"],
     }, // principal category of the business good
-    subCategory: {
-      type: String,
-      required: [true, "Sub category is required!"],
-    }, // secondary category of the business good
-    currentlyInUse: { type: Boolean, default: true }, // if the good is currently in use base on the business goods
     supplierId: {
       type: Schema.Types.ObjectId,
       ref: "Supplier",
@@ -35,13 +30,18 @@ const supplierGoodSchema = new Schema(
       required: [true, "Business id is required!"],
       index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
     }, // business that deals with the supplier
-
+    
     // optional fields
+    currentlyInUse: { type: Boolean, default: true }, // if the good is currently in use base on the business goods
+    subCategory: {
+      type: String,
+    }, // secondary category of the business good
     description: { type: String }, // description of the good
     allergens: { type: [String], enum: allergensEnums, default: undefined }, // allergens of the good
     budgetImpact: { type: String, enum: budgetImpactEnums }, // how relevant is the good on the business budget
-    imageUrl: {
+    imagesUrl: {
       type: [String],
+      default: undefined,
     }, // multiple photos of the good
     inventorySchedule: { type: String, enum: inventoryScheduleEnums }, // daily, weekly, monthly
 

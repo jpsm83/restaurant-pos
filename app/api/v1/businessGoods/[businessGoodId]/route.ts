@@ -398,10 +398,10 @@ export const PATCH = async (
         ).toFixed(2)
       );
     }
-    console.log(updatedBusinessGoodObj);
+
     // update the business good
     const updateBusinessGood = await BusinessGood.findByIdAndUpdate(
-      { _id: businessGoodId },
+      businessGoodId,
       { $set: updatedBusinessGoodObj },
       { new: true, lean: true }
     );
@@ -504,8 +504,6 @@ export const DELETE = async (
       );
     }
 
-    await session.commitTransaction();
-
     // cloudinary folder path
     const folderPath = `/business/${deletedBusinessGood?.businessId}/businessGoods/${businessGoodId}`;
 
@@ -514,11 +512,14 @@ export const DELETE = async (
       await deleteFolderCloudinary(folderPath);
 
     if (deleteFolderCloudinaryResult !== true) {
+      await session.abortTransaction();
       return new NextResponse(
         JSON.stringify({ message: deleteFolderCloudinaryResult }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
+
+    await session.commitTransaction();
 
     return new NextResponse(
       JSON.stringify({

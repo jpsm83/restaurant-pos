@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import connectDb from "@/lib/db/connectDb";
+import mongoose from "mongoose";
 
 // import utils
 import { handleApiError } from "@/lib/db/handleApiError";
-import addSupplierGoodToInventory from "../inventories/utils/addSupplierGoodToInventory";
 import isObjectIdValid from "@/lib/utils/isObjectIdValid";
+import uploadFilesCloudinary from "@/lib/cloudinary/uploadFilesCloudinary";
+import addSupplierGoodToInventory from "../inventories/utils/addSupplierGoodToInventory";
 
 // imported interfaces
 import { ISupplierGood } from "@/lib/interface/ISupplierGood";
@@ -12,6 +14,9 @@ import { ISupplierGood } from "@/lib/interface/ISupplierGood";
 // import models
 import SupplierGood from "@/lib/db/models/supplierGood";
 import Supplier from "@/lib/db/models/supplier";
+
+// import enums
+import { allergensEnums, mainCategoriesEnums } from "@/lib/enums";
 
 // @desc    Get all supplier goods
 // @route   GET /supplierGoods
@@ -35,7 +40,7 @@ export const GET = async () => {
           headers: { "Content-Type": "application/json" },
         });
   } catch (error) {
-    return handleApiError("Get all supplier goods failed!", error);
+    return handleApiError("Get all supplier goods failed!", error as string);
   }
 };
 
@@ -44,40 +49,51 @@ export const GET = async () => {
 // @access  Private
 export const POST = async (req: Request) => {
   try {
-    const {
-      name,
-      keyword,
-      mainCategory,
-      subCategory,
-      currentlyInUse,
-      supplierId,
-      businessId,
-      description,
-      allergens,
-      budgetImpact,
-      inventorySchedule,
-      minimumQuantityRequired,
-      parLevel,
-      purchaseUnit,
-      measurementUnit,
-      quantityInMeasurementUnit,
-      totalPurchasePrice,
-    } = (await req.json()) as ISupplierGood;
+    // Parse FORM DATA instead of JSON because we might have an image file
+    const formData = await req.formData();
+
+    // Extract required fields
+    const name = formData.get("name") as string;
+    const keyword = formData.get("keyword") as string;
+    const mainCategory = formData.get("mainCategory") as string;
+    const supplierId = formData.get("supplierId") as string;
+    const businessId = formData.get("businessId") as string;
+
+    // Extract optional fields
+    const subCategory = formData.get("subCategory") as string | undefined;
+    const description = formData.get("description") as string | undefined;
+    const allergens = formData.get("allergens")
+      ? (JSON.parse(formData.get("allergens") as string) as string[])
+      : [];
+    const budgetImpact = formData.get("budgetImpact") as string | undefined;
+    const inventorySchedule = formData.get("inventorySchedule") as
+      | string
+      | undefined;
+    const minimumQuantityRequired = Number(
+      formData.get("minimumQuantityRequired")
+    ) as number | undefined;
+    const parLevel = Number(formData.get("parLevel")) as number | undefined;
+    const purchaseUnit = formData.get("purchaseUnit") as string | undefined;
+    const measurementUnit = formData.get("measurementUnit") as
+      | string
+      | undefined;
+    const quantityInMeasurementUnit = Number(
+      formData.get("quantityInMeasurementUnit")
+    ) as number | undefined;
+    const totalPurchasePrice = Number(formData.get("totalPurchasePrice")) as
+      | number
+      | undefined;
+
+    const files = formData
+      .getAll("imagesUrl")
+      .filter((entry): entry is File => entry instanceof File); // Get all files
 
     // check required fields
-    if (
-      !name ||
-      !keyword ||
-      !mainCategory ||
-      !subCategory ||
-      currentlyInUse === undefined ||
-      !supplierId ||
-      !businessId
-    ) {
+    if (!name || !keyword || !mainCategory || !supplierId || !businessId) {
       return new NextResponse(
         JSON.stringify({
           message:
-            "Name, keyword, mainCategory, subCategory, currentlyInUse, supplierId and businessId are required!",
+            "Name, keyword, mainCategory, supplierId and businessId are required!",
         }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
@@ -94,82 +110,145 @@ export const POST = async (req: Request) => {
       );
     }
 
+    // check if main category is valid
+    if (!mainCategoriesEnums.includes(mainCategory)) {
+      return new NextResponse(
+        JSON.stringify({ message: "Invalid main category!" }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // check if allergens are valid
+    if (allergens.length > 0) {
+      for (const allergen of allergens) {
+        if (!allergensEnums.includes(allergen)) {
+          return new NextResponse(
+            JSON.stringify({ message: "Invalid allergen!" }),
+            { status: 400, headers: { "Content-Type": "application/json" } }
+          );
+        }
+      }
+    }
+
     // connect before first call to DB
     await connectDb();
 
-    // check if the supplier good already exists
-    const duplicateSupplierGood = await SupplierGood.exists({
-      businessId,
-      supplierId,
-      name,
-    });
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-    if (duplicateSupplierGood) {
-      return new NextResponse(
-        JSON.stringify({
-          message: `${name} already exists on supplier goods!`,
-        }),
+    try {
+      // check if the supplier good already exists
+      const duplicateSupplierGood = await SupplierGood.exists({
+        businessId,
+        supplierId,
+        name,
+      });
+
+      if (duplicateSupplierGood) {
+        await session.abortTransaction();
+        return new NextResponse(
+          JSON.stringify({
+            message: `${name} already exists on supplier goods!`,
+          }),
+          {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      const supplierGoodId = new mongoose.Types.ObjectId();
+
+      // Create a supplier good object with required fields
+      const newSupplierGoodObj: ISupplierGood = {
+        _id: supplierGoodId,
+        name,
+        keyword,
+        mainCategory,
+        currentlyInUse: true,
+        supplierId,
+        businessId,
+        subCategory: subCategory || undefined,
+        description: description || undefined,
+        allergens: allergens || undefined,
+        budgetImpact: budgetImpact || undefined,
+        inventorySchedule: inventorySchedule || undefined,
+        minimumQuantityRequired: minimumQuantityRequired || undefined,
+        parLevel: parLevel || undefined,
+        purchaseUnit: purchaseUnit || undefined,
+        measurementUnit: measurementUnit || undefined,
+        quantityInMeasurementUnit: quantityInMeasurementUnit || undefined,
+        totalPurchasePrice: totalPurchasePrice || undefined,
+        // Calculate price per unit only if both price and quantity are provided
+        pricePerMeasurementUnit:
+          totalPurchasePrice && quantityInMeasurementUnit
+            ? totalPurchasePrice / quantityInMeasurementUnit
+            : undefined,
+      };
+
+      // upload image
+      if (files && files.length > 0) {
+        const folder = `/business/${businessId}/suppliersGoods/${supplierGoodId}`;
+
+        const cloudinaryUploadResponse = await uploadFilesCloudinary({
+          folder,
+          filesArr: files,
+          onlyImages: true,
+        });
+
+        if (
+          typeof cloudinaryUploadResponse === "string" ||
+          cloudinaryUploadResponse.length === 0 ||
+          !cloudinaryUploadResponse.every((str) => str.includes("https://"))
+        ) {
+          await session.abortTransaction();
+          return new NextResponse(
+            JSON.stringify({
+              message: `Error uploading image: ${cloudinaryUploadResponse}`,
+            }),
+            { status: 400, headers: { "Content-Type": "application/json" } }
+          );
+        }
+
+        newSupplierGoodObj.imagesUrl = cloudinaryUploadResponse;
+      }
+
+      // create a new supplier good
+      // WHEN USING SESSION TO CREATE, YOU MUST PASS AN ARRAY OF OBJECTS
+      const [newSupplierGood] = await SupplierGood.create(
+        [newSupplierGoodObj],
         {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
+          session,
         }
       );
-    }
 
-    // Create a supplier good object with required fields
-    const newSupplierGood: ISupplierGood = {
-      name,
-      keyword,
-      mainCategory,
-      subCategory,
-      currentlyInUse,
-      supplierId,
-      businessId,
-      description: description || undefined,
-      allergens: allergens || undefined,
-      budgetImpact: budgetImpact || undefined,
-      inventorySchedule: inventorySchedule || undefined,
-      minimumQuantityRequired: minimumQuantityRequired || undefined,
-      parLevel: parLevel || undefined,
-      purchaseUnit: purchaseUnit || undefined,
-      measurementUnit: measurementUnit || undefined,
-      quantityInMeasurementUnit: quantityInMeasurementUnit || undefined,
-      totalPurchasePrice: totalPurchasePrice || undefined,
-      // Calculate price per unit only if both price and quantity are provided
-      pricePerMeasurementUnit:
-        totalPurchasePrice && quantityInMeasurementUnit
-          ? totalPurchasePrice / quantityInMeasurementUnit
-          : undefined,
-    };
+      if (!newSupplierGood) {
+        await session.abortTransaction();
+        return new NextResponse(
+          JSON.stringify({
+            message: "Supplier good creation failed!",
+          }),
+          {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+      }
 
-    // create a new supplier good
-    const newSupplierGoodResponse = await SupplierGood.create(newSupplierGood);
-
-    if (!newSupplierGoodResponse) {
-      return new NextResponse(
-        JSON.stringify({
-          message: "Supplier good creation failed!",
-        }),
-        {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // *** IMPORTANT ***
-    // when supplier good is created and it is currently in use, it will be added to the inventory
-    if (currentlyInUse === true) {
+      // *** IMPORTANT ***
+      // when supplier good is created and it is currently in use, it will be added to the inventory
       const addSupplierGoodToInventoryResult = await addSupplierGoodToInventory(
-        newSupplierGoodResponse._id,
-        businessId
+        supplierGoodId,
+        businessId,
+        session
       );
 
       if (addSupplierGoodToInventoryResult !== true) {
+        await session.abortTransaction();
         return new NextResponse(
           JSON.stringify({
             message:
-              "Supplier good created but fail to add to inventory! Error: " +
+              "Add supplier good to inventory failed! Error: " +
               addSupplierGoodToInventoryResult,
           }),
           {
@@ -178,19 +257,26 @@ export const POST = async (req: Request) => {
           }
         );
       }
-    }
 
-    // confirm supplier good was created
-    return new NextResponse(
-      JSON.stringify({
-        message: `Supplier good ${name} created successfully!`,
-      }),
-      {
-        status: 201,
-        headers: { "Content-Type": "application/json" },
-      }
-    );
+      await session.commitTransaction();
+
+      // confirm supplier good was created
+      return new NextResponse(
+        JSON.stringify({
+          message: `Supplier good created successfully!`,
+        }),
+        {
+          status: 201,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    } catch (error) {
+      await session.abortTransaction();
+      return handleApiError("Create supplier good failed!", error as string);
+    } finally {
+      session.endSession();
+    }
   } catch (error) {
-    return handleApiError("Create supplier good failed!", error);
+    return handleApiError("Create supplier good failed!", error as string);
   }
 };

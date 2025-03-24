@@ -7,9 +7,9 @@ import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 // imported models
 import Inventory from "@/lib/db/models/inventory";
 
-// if a new supplierGood is added to the system, it will be added to the inventoryGoods array of the inventory
+// if a supplierGood is removed from the system, it will be removed from the inventoryGoods array of the inventory
 // for separation of concerns, this function will be created in the inventory utils to be used on the supplierGood route
-const addSupplierGoodToInventory = async (
+const deleteSupplierGoodFromInventory = async (
   supplierGoodId: Types.ObjectId | string,
   businessId: Types.ObjectId | string,
   session: ClientSession
@@ -23,20 +23,16 @@ const addSupplierGoodToInventory = async (
     // connect before first call to DB
     await connectDb();
 
-    // update the inventory with the new supplierGood
-    // updateOne DOES NOT return an object
-    // use findOneAndUpdate to return the updated object
+    // update the inventory by removing the supplierGood
     const updateInventory = await Inventory.findOneAndUpdate(
       {
         businessId: businessId,
         setFinalCount: false,
       },
       {
-        $push: {
+        $pull: {
           inventoryGoods: {
             supplierGoodId: supplierGoodId,
-            monthlyCounts: [],
-            dynamicSystemCount: 0,
           },
         },
       },
@@ -50,8 +46,8 @@ const addSupplierGoodToInventory = async (
 
     return true;
   } catch (error) {
-    return "Something went wrong with addSupplierGoodToInventory: " + error;
+    return "Something went wrong with deleteSupplierGoodFromInventory: " + error;
   }
 };
 
-export default addSupplierGoodToInventory;
+export default deleteSupplierGoodFromInventory;

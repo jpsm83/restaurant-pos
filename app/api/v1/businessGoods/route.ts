@@ -211,7 +211,7 @@ export const POST = async (req: Request) => {
     };
 
     // upload image
-    if (files && files.length > 0) {
+    if (files?.every((file) => file instanceof File && file.size > 0)) {
       const folder = `/business/${businessId}/businessGoods/${businessGoodId}`;
 
       const cloudinaryUploadResponse = await uploadFilesCloudinary({

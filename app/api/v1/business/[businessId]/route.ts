@@ -487,7 +487,6 @@ export const DELETE = async (
 
     // Commit the database transaction FIRST
     await session.commitTransaction();
-    session.endSession();
 
     // cloudinary folder path
     const folderPath = `business/${businessId}`;

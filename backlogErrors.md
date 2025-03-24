@@ -33,7 +33,7 @@ cloudinaryActions
     - SUPPLIER - single image - DONE
     - USER - single image - DONE
     - BUSINESSGOOD - mulitple image - DONE
-    - SUPPLIERGOOD - mulitple image
+    - SUPPLIERGOOD - mulitple image - DONE
     - EMPLOYEE - mulitple documents - when delete employee, also delete employeeDetails from the user
     - PURCHASES - mulitple documents
 

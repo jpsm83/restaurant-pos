@@ -15,7 +15,7 @@ import BusinessGood from "@/lib/db/models/businessGood";
 import SalesInstance from "@/lib/db/models/salesInstance";
 import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 import SalesPoint from "@/lib/db/models/salesPoint";
-import Customer from "@/app/lib/models/customer";
+import User from "@/lib/db/models/user";
 
 // @desc    Get order by ID
 // @route   GET /orders/:orderId
@@ -60,9 +60,9 @@ export const GET = async (
         model: Employee,
       })
       .populate({
-        path: "customerId",
+        path: "userId",
         select: "employeeName allEmployeeRoles currentShiftRole",
-        model: Customer,
+        model: User,
       })
       .populate({
         path: "businessGoodsIds",
@@ -82,7 +82,7 @@ export const GET = async (
           headers: { "Content-Type": "application/json" },
         });
   } catch (error) {
-    return handleApiError("Get order by its id failed!", error);
+    return handleApiError("Get order by its id failed!", error as string);
   }
 };
 
@@ -96,12 +96,12 @@ export const DELETE = async (
   req: Request,
   context: { params: { orderId: Types.ObjectId } }
 ) => {
-    // connect before first call to DB
-    await connectDb();
+  // connect before first call to DB
+  await connectDb();
 
-    const session = await mongoose.startSession();
-    session.startTransaction();
-  
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     const orderId = context.params.orderId;
 
@@ -110,20 +110,22 @@ export const DELETE = async (
 
     if (cancelOrdersResult !== true) {
       await session.abortTransaction();
-      return new NextResponse(
-        JSON.stringify({ message: cancelOrdersResult }),
-        {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        }
-      );
+      return new NextResponse(JSON.stringify({ message: cancelOrdersResult }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
     }
+
+    await session.commitTransaction();
 
     return new NextResponse(
       JSON.stringify({ message: "Order deleted successfully!" }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
   } catch (error) {
-    return handleApiError("Delete order failed!", error);
+    await session.abortTransaction();
+    return handleApiError("Delete order failed!", error as string);
+  } finally {
+    session.endSession();
   }
 };
