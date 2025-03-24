@@ -73,9 +73,7 @@ export const POST = async (req: Request) => {
     const address = JSON.parse(formData.get("address") as string);
     const currentlyInUse = formData.get("currentlyInUse") === "true"; // Convert string to boolean
     const contactPerson = formData.get("contactPerson") as string | undefined;
-    const files = formData
-      .getAll("imageUrl")
-      .filter((entry): entry is File => entry instanceof File); // Get all files
+    const imageUrl = formData.get("imageUrl") as File | undefined;
 
     // check required fields
     if (
@@ -184,12 +182,13 @@ export const POST = async (req: Request) => {
       contactPerson: contactPerson || undefined,
     };
 
-    if (files && files.length > 0) {
+    // upload image to cloudinary
+    if (imageUrl && imageUrl instanceof File && imageUrl.size > 0) {
       const folder = `/business/${businessId}/suppliers/${supplierId}`;
 
       const cloudinaryUploadResponse = await uploadFilesCloudinary({
         folder,
-        filesArr: [files[0]], // only one image
+        filesArr: [imageUrl], // only one image
         onlyImages: true,
       });
 

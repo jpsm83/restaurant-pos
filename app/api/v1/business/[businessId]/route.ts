@@ -156,31 +156,29 @@ export const PATCH = async (
       : undefined;
     const password = formData.get("password") as string | undefined;
     const contactPerson = formData.get("contactPerson") as string | undefined;
-    const files = formData
-      .getAll("imageUrl")
-      .filter((entry): entry is File => entry instanceof File); // Get all files
+    const imageUrl = formData.get("imageUrl") as File | undefined;
 
-          // check required fields
-          if (
-            !tradeName ||
-            !legalName ||
-            !email ||
-            !password ||
-            !phoneNumber ||
-            !taxNumber ||
-            !subscription ||
-            !address ||
-            !currencyTrade
-          ) {
-            return new NextResponse(
-              JSON.stringify({
-                message:
-                  "TradeName, legalName, email, password, phoneNumber, taxNumber, subscription, currencyTrade and address are required!",
-              }),
-              { status: 400, headers: { "Content-Type": "application/json" } }
-            );
-          }
-      
+    // check required fields
+    if (
+      !tradeName ||
+      !legalName ||
+      !email ||
+      !password ||
+      !phoneNumber ||
+      !taxNumber ||
+      !subscription ||
+      !address ||
+      !currencyTrade
+    ) {
+      return new NextResponse(
+        JSON.stringify({
+          message:
+            "TradeName, legalName, email, password, phoneNumber, taxNumber, subscription, currencyTrade and address are required!",
+        }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     // check email format
     if (!emailRegex.test(email)) {
       return new NextResponse(
@@ -372,13 +370,13 @@ export const PATCH = async (
         updateBusinessObj.metrics = updatedMetrics;
     }
 
-    if (files && files.length > 0) {
+    if (imageUrl && imageUrl instanceof File && imageUrl.size > 0) {
       const folder = `/business/${businessId}`;
 
       // first upload new image
       const cloudinaryUploadResponse = await uploadFilesCloudinary({
         folder,
-        filesArr: [files[0]], // only one image
+        filesArr: [imageUrl], // only one image
         onlyImages: true,
       });
 
