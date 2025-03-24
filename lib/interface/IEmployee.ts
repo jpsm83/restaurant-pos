@@ -7,19 +7,20 @@ export interface ISalary {
 }
 
 export interface IEmployee {
+  _id?: Types.ObjectId | string;
   allEmployeeRoles: string[];
   taxNumber: string;
   joinDate: Date;
-  active: boolean;
-  onDuty: boolean;
   vacationDaysPerYear: number;
-  businessId: Types.ObjectId;
-  userId: Types.ObjectId;
+  businessId: Types.ObjectId | string;
+  userId: Types.ObjectId | string;
+  active?: boolean;
+  onDuty?: boolean;
   vacationDaysLeft?: number;
   currentShiftRole?: string;
   contractHoursWeek?: number; // in milliseconds
   salary?: ISalary;
   terminatedDate?: Date;
-  documentsUrl?: string[];
   comments?: string;
+  documentsUrl?: string[];
 }

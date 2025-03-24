@@ -34,11 +34,8 @@ cloudinaryActions
     - USER - single image - DONE
     - BUSINESSGOOD - mulitple image - DONE
     - SUPPLIERGOOD - mulitple image - DONE
-    - EMPLOYEE - mulitple documents - when delete employee, also delete employeeDetails from the user
+    - EMPLOYEE - mulitple documents - DONE
     - PURCHASES - mulitple documents
-
-    - FOLLOW THE BUSINESS ROUTES ALREADY UPDATED
-    - test all again
 
 - REVIEW ALL THE LOGIC OF SALES INSTANCES AND SALES POINT
 - them review the cloudinary upload of sales point

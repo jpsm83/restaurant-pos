@@ -1,11 +1,11 @@
 import { Schema, model, models } from "mongoose";
-import { userRolesEnums } from "@/lib/enums";
+import { userRolesEnums, employeePayFrequencyEnums } from "@/lib/enums";
 
 const salarySchema = new Schema(
   {
     payFrequency: {
       type: String,
-      enum: ["Hourly", "Daily", "Weekly", "Monthly"],
+      enum: employeePayFrequencyEnums,
       required: [true, "Pay frequency is required!"],
     }, // frequency of the payment
     grossSalary: {
@@ -80,7 +80,7 @@ const employeeSchema = new Schema(
         message: "Terminate date must be after join date!",
       },
     }, // date when the employee left the business
-    documentsUrl: { type: [String] }, // photo of the employee documents as id, contract, tax, etc
+    documentsUrl: { type: [String], default: undefined }, // photo of the employee documents as id, contract, tax, etc
     comments: { type: String }, // comments about the employee
   },
   {

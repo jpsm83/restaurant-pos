@@ -211,6 +211,14 @@ export const PATCH = async (
       );
     }
 
+    // max file quantity is 3
+    if (files && files.length + (businessGood?.imagesUrl?.length || 0) > 3) {
+      return new NextResponse(
+        JSON.stringify({ message: "Max file quantity is 3!" }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     // check for duplicate names
     const duplicateBusinessGood = await BusinessGood.exists({
       _id: { $ne: businessGoodId },
@@ -260,7 +268,10 @@ export const PATCH = async (
       updatedBusinessGoodObj.deliveryTime = deliveryTime;
 
     // upload image if it exists
-    if (files && files.length > 0) {
+    if (
+      files?.every((file) => file instanceof File && file.size > 0) &&
+      files.length > 0
+    ) {
       const folder = `/business/${businessGood?.businessId}/businessGoods/${businessGoodId}`;
 
       const cloudinaryUploadResponse = await uploadFilesCloudinary({

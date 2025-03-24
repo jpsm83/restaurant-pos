@@ -171,6 +171,15 @@ export const PATCH = async (
         );
       }
 
+      // max file quantity is 3
+      if (files && files.length + (supplierGood?.imagesUrl?.length || 0) > 3) {
+        await session.abortTransaction();
+        return new NextResponse(
+          JSON.stringify({ message: "Max file quantity is 3!" }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
       // check for duplicates supplier good name
       const duplicateSupplierGood = await SupplierGood.exists({
         _id: { $ne: supplierGoodId },
@@ -244,7 +253,10 @@ export const PATCH = async (
           (totalPurchasePrice ?? 0) / (quantityInMeasurementUnit ?? 0);
 
       // upload image
-      if (files?.every((file) => file instanceof File && file.size > 0)) {
+      if (
+        files?.every((file) => file instanceof File && file.size > 0) &&
+        files.length > 0
+      ) {
         const folder = `/business/${supplierGood.businessId}/suppliersGoods/${supplierGoodId}`;
 
         const cloudinaryUploadResponse = await uploadFilesCloudinary({

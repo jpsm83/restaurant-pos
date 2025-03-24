@@ -110,6 +110,14 @@ export const POST = async (req: Request) => {
       );
     }
 
+    // max file quantity is 3
+    if (files && files.length > 3) {
+      return new NextResponse(
+        JSON.stringify({ message: "Max file quantity is 3!" }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     // check if main category is valid
     if (!mainCategoriesEnums.includes(mainCategory)) {
       return new NextResponse(
@@ -187,7 +195,10 @@ export const POST = async (req: Request) => {
       };
 
       // upload image
-      if (files && files.length > 0) {
+      if (
+        files?.every((file) => file instanceof File && file.size > 0) &&
+        files.length > 0
+      ) {
         const folder = `/business/${businessId}/suppliersGoods/${supplierGoodId}`;
 
         const cloudinaryUploadResponse = await uploadFilesCloudinary({

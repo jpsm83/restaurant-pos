@@ -128,6 +128,14 @@ export const POST = async (req: Request) => {
       );
     }
 
+    // max file quantity is 3
+    if (files && files.length > 3) {
+      return new NextResponse(
+        JSON.stringify({ message: "Max file quantity is 3!" }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     // ingredients and setMenuIds cannot be assigned at the same time
     if (ingredients && ingredients?.length > 0 && setMenuIds?.length > 0) {
       return new NextResponse(
@@ -211,7 +219,10 @@ export const POST = async (req: Request) => {
     };
 
     // upload image
-    if (files?.every((file) => file instanceof File && file.size > 0)) {
+    if (
+      files?.every((file) => file instanceof File && file.size > 0) &&
+      files.length > 0
+    ) {
       const folder = `/business/${businessId}/businessGoods/${businessGoodId}`;
 
       const cloudinaryUploadResponse = await uploadFilesCloudinary({
@@ -352,7 +363,7 @@ export const POST = async (req: Request) => {
 
     return new NextResponse(
       JSON.stringify({
-        message: `BusinessId good ${name} created successfully!`,
+        message: `BusinessId good created successfully!`,
       }),
       {
         status: 201,

@@ -17,6 +17,7 @@ import { IUser } from "@/lib/interface/IUser";
 import User from "@/lib/db/models/user";
 import deleteFolderCloudinary from "@/lib/cloudinary/deleteFolderCloudinary";
 import { IEmployee } from "@/lib/interface/IEmployee";
+import Employee from "@/lib/db/models/employee";
 
 const reqAddressFields = [
   "country",
@@ -324,11 +325,11 @@ export const DELETE = async (
     // connect before first call to DB
     await connectDb();
 
-    const user = (await User.findOne({ _id: userId })
-      .select("employeeDetails")
-      .lean()) as { employeeDetails: IEmployee } | null;
+    // if user is employeed, then it cannot be deleted
+    const employee = (await Employee.findOne({ userId: userId }).select("terminatedDate").lean()) as IEmployee | null;
+      
 
-    if (user?.employeeDetails) {
+    if (employee?.terminatedDate) {
       return new NextResponse(
         JSON.stringify({
           message: "User cannot be deleted because he/she is employeed!",
