@@ -1,16 +1,25 @@
+/**
+ * objDefaultValidation — Generic object validator with required/optional fields
+ *
+ * Validates arbitrary objects against a whitelist of required and optional
+ * keys, and applies built-in rules for "password" (strength) and "email"
+ * (format). Used for signup, profile updates, and other dynamic payloads.
+ * Necessary to enforce schema and security (e.g. strong passwords) without
+ * duplicating validation logic across endpoints.
+ */
+
 const objDefaultValidation = (
   obj: object,
   reqFields: string[],
   nonReqFields: string[]
 ) => {
-  // check obj is an object
   if (typeof obj !== "object" || obj === null) {
     return "Object must be a non-null object!";
   }
 
+  /** Only these keys are allowed; anything else is invalid. */
   const allFields = new Set([...reqFields, ...nonReqFields]);
 
-  // Check for any invalid keys and validate each parameter
   for (const key of Object.keys(obj)) {
     if (!allFields.has(key)) {
       return `Invalid key: ${key}`;
@@ -18,6 +27,7 @@ const objDefaultValidation = (
     if (reqFields.includes(key) && !obj[key]) {
       return `${key} must have a value!`;
     }
+    /** If present, password must meet strength rules (length + lower, upper, digit, symbol). */
     if (key === "password") {
       const regex =
         /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
@@ -26,6 +36,7 @@ const objDefaultValidation = (
       }
     }
 
+    /** If present, email must match a basic email pattern. */
     if (key === "email") {
       const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
       if (!regex.test(obj[key])) {
@@ -34,7 +45,7 @@ const objDefaultValidation = (
     }
   }
 
-  // Check for missing required fields
+  /** Every required field must exist on the object (value check done above). */
   for (const key of reqFields) {
     if (!(key in obj)) {
       return `Missing key: ${key}`;
