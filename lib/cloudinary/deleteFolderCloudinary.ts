@@ -1,6 +1,14 @@
+/**
+ * deleteFolderCloudinary — Remove a Cloudinary folder and all its assets
+ *
+ * Deletes every resource under the given path (by prefix), then removes the
+ * folder itself. Used when cleaning up after deleted entities (e.g. business
+ * or category) so Cloudinary storage and CDN stay in sync with app data.
+ * Necessary to avoid orphaned files and unnecessary storage cost.
+ */
+
 import { v2 as cloudinary } from "cloudinary";
 
-// Cloudinary ENV variables
 cloudinary.config({
   cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME as string,
   api_key: process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY as string,
@@ -8,15 +16,18 @@ cloudinary.config({
   secure: true,
 });
 
+/**
+ * Deletes all resources under restaurant-pos{folderPath}, then the folder.
+ * Returns true on success, false on error (and logs to console).
+ */
 export default async function deleteFolderCloudinary(folderPath: string): Promise<boolean | string> {
   try {
     const uploadPreset = "restaurant-pos";
 
-    // **Step 1: Delete all files in the folder and subfolders**
-    await cloudinary.api.delete_resources_by_prefix(uploadPreset+folderPath);
+    /** Must delete assets first; delete_folder only removes empty folder structure. */
+    await cloudinary.api.delete_resources_by_prefix(uploadPreset + folderPath);
 
-    // **Step 2: Delete the empty folder (and all subfolders)**
-    await cloudinary.api.delete_folder(uploadPreset+folderPath);
+    await cloudinary.api.delete_folder(uploadPreset + folderPath);
 
     return true;
   } catch (error: unknown) {

@@ -1,6 +1,14 @@
+/**
+ * deleteFilesCloudinary — Delete a single Cloudinary image by its URL
+ *
+ * Derives the Cloudinary public_id from a stored secure URL and calls
+ * destroy so the asset is removed from Cloudinary. Used when replacing
+ * or removing a single image (e.g. profile picture, menu item). Necessary
+ * to keep Cloudinary in sync and avoid orphaned files when DB records change.
+ */
+
 import { v2 as cloudinary } from "cloudinary";
 
-// Cloudinary ENV variables
 cloudinary.config({
   cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
   api_key: process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY,
@@ -8,16 +16,17 @@ cloudinary.config({
   secure: true,
 });
 
+/**
+ * Deletes the image in Cloudinary that corresponds to imageUrl. If imageUrl
+ * is undefined, returns true without calling the API. Public ID is parsed
+ * from the URL path (restaurant-pos/... up to but not including extension).
+ */
 export default async function deleteFilesCloudinary(
   imageUrl: string | undefined
 ): Promise<boolean | string> {
   try {
-    // example of a cloudinary image url
-    // "https://res.cloudinary.com/jpsm83/image/upload/v1742636639/restaurant-pos/business/66e169a709901431386c97cb/suppliers/67de865e17261dbaf2ec3ee3/dexnymwfq0bivflousfl.png"
     if (imageUrl) {
-      // Extract cloudinaryPublicId using regex
-      // example of a publicId
-      // "restaurant-pos/business/66e169a709901431386c97cb/suppliers/67de865e17261dbaf2ec3ee3/dexnymwfq0bivflousfl.png"
+      /** URL path segment after /upload/... is the public_id (no file extension in ID). */
       const cloudinaryPublicId = imageUrl.match(/restaurant-pos\/[^.]+/);
 
       const deletionResponse = await cloudinary.uploader.destroy(

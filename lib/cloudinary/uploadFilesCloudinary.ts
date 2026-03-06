@@ -1,6 +1,15 @@
+/**
+ * uploadFilesCloudinary — Upload files to Cloudinary and return URLs
+ *
+ * Accepts File[] and uploads them under a project folder, optionally
+ * restricting to images. Returns an array of secure URLs or an error
+ * string. Centralizes Cloudinary config, preset, and folder naming so
+ * uploads are consistent and cache/CDN-friendly. Necessary for menu
+ * images, avatars, and any user-uploaded assets.
+ */
+
 import { v2 as cloudinary } from "cloudinary";
 
-// Cloudinary ENV variables
 cloudinary.config({
   cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
   api_key: process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY,
@@ -8,6 +17,11 @@ cloudinary.config({
   secure: true,
 });
 
+/**
+ * Uploads one or more files to Cloudinary. Uses upload_preset "restaurant-pos"
+ * and places files under restaurant-pos{folder}. When onlyImages is true,
+ * rejects non-image types and returns an error string.
+ */
 export default async function uploadFilesCloudinary({
   folder,
   filesArr,
@@ -17,10 +31,8 @@ export default async function uploadFilesCloudinary({
   filesArr: File[];
   onlyImages?: boolean;
 }): Promise<string | string[]> {
-  
   const uploadPreset = "restaurant-pos";
 
-  // Validate file types
   if (onlyImages) {
     for (const file of filesArr) {
       if (!(file instanceof File) || !file.type.startsWith("image/")) {
@@ -30,15 +42,13 @@ export default async function uploadFilesCloudinary({
   }
 
   try {
-    // Convert files to data URIs
     const uploadPromises = filesArr.map(async (file) => {
       const arrayBuffer = await file.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
 
-      // Create a data URI
+      /** Data URI required by Cloudinary uploader.upload from server. */
       const dataUri = `data:${file.type};base64,${buffer.toString("base64")}`;
 
-      // Upload to Cloudinary
       const response = await cloudinary.uploader.upload(dataUri, {
         invalidate: true,
         upload_preset: uploadPreset,
@@ -49,7 +59,6 @@ export default async function uploadFilesCloudinary({
       return response.secure_url;
     });
 
-    // Wait for all files to upload
     const uploadedUrls = await Promise.all(uploadPromises);
 
     return uploadedUrls;

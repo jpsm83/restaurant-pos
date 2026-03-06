@@ -1,12 +1,14 @@
-// ===============================================================
-// THIS CODE BEEN CREATED BUT NEVER USED IN THE PROJECT
-// ===============================================================
-// keep for reference and maibe future use
-// ===============================================================
+/**
+ * moveFilesBetweenFolders — Move all Cloudinary assets from one folder to another
+ *
+ * Lists resources under the source folder (with project prefix), then renames
+ * each so it lives under the target folder. Useful for reorganizing assets
+ * (e.g. moving a business folder after rename). Not currently used in the
+ * project; kept for reference and potential future use.
+ */
 
 import { v2 as cloudinary } from "cloudinary";
 
-// Cloudinary ENV variables
 cloudinary.config({
   cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
   api_key: process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY,
@@ -14,6 +16,10 @@ cloudinary.config({
   secure: true,
 });
 
+/**
+ * Moves all files from oldFolder to newFolder under the restaurant-pos prefix.
+ * Returns array of new secure URLs or an error string. Max 500 resources per call.
+ */
 export async function moveFilesBetweenFolders({
   oldFolder,
   newFolder,
@@ -22,17 +28,15 @@ export async function moveFilesBetweenFolders({
   newFolder: string;
 }): Promise<string | string[]> {
   try {
-    // Define upload preset (Project identifier)
     const uploadPreset = "restaurant-pos";
 
-    // Cloudinary expects full folder path, including project prefix
+    /** Cloudinary API expects full path including preset/prefix. */
     const fullOldFolder = `${uploadPreset}/${oldFolder}`;
     const fullNewFolder = `${uploadPreset}/${newFolder}`;
 
-    // List all files in the old folder
     const { resources } = await cloudinary.api.resources({
       type: "upload",
-      prefix: fullOldFolder, // ✅ Now includes project prefix
+      prefix: fullOldFolder,
       max_results: 500,
     });
 
@@ -40,7 +44,7 @@ export async function moveFilesBetweenFolders({
       return `No files found in the folder: ${oldFolder}`;
     }
 
-    // Move each file to the new folder
+    /** rename() effectively moves the asset by changing its public_id path. */
     const movePromises = resources.map(async (file: { public_id: string }) => {
       const newPublicId = file.public_id.replace(fullOldFolder, fullNewFolder);
       const response = await cloudinary.uploader.rename(
@@ -50,7 +54,6 @@ export async function moveFilesBetweenFolders({
       return response.secure_url;
     });
 
-    // Wait for all files to move
     const movedFiles = await Promise.all(movePromises);
 
     return movedFiles;
