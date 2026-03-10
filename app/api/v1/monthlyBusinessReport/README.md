@@ -2,7 +2,7 @@
 
 This folder is intended to contain the **REST API and logic for the Monthly Business Report entity**: one **month-level** report per business that aggregates sales, costs (food, beverage, labor, fixed, extra), supplier waste by budget impact, payment methods, and POS commission. The monthly report is the **business-level analytics layer** that sits above **Daily Sales Reports**: it is updated (e.g. daily) from closed daily reports and other sources (purchases, schedules, fixed costs) and **closes at the end of the month**, similar to **Inventory**. It ties **Business** (metrics and targets), **Daily Sales Reports**, **Orders**, **Purchases**, **Schedules** (labor), **Inventories** (waste), and **Supplier goods** (waste by budget impact) into a single view for profitability, break-even, and KPI tracking.
 
-**Current state:** The **model** and **interface** for Monthly Business Report exist in `lib/db/models/monthlyBusinessReport.ts` and `lib/interface/IMonthlyBusinessReport.ts`, and **Business DELETE** cascades to `MonthlyBusinessReport.deleteMany({ businessId })`. This folder currently contains only **toDo.md** (planned behavior and formulas). **No API routes are implemented yet.** This README describes the purpose, data model, intended flow, and how the domain will interact with the rest of the app so it can be used as context for implementing the API and related logic.
+**Current state:** The **model** and **interface** include `monthReference` (first day of month) and live in `lib/db/models/monthlyBusinessReport.ts` and `lib/interface/IMonthlyBusinessReport.ts`. **Business DELETE** cascades to `MonthlyBusinessReport.deleteMany({ businessId })`. The **API and aggregation are implemented**: root and business routes (GET), get/update by report ID, close-monthly-report (PATCH), and utils `createMonthlyBusinessReport` and `aggregateDailyReportsIntoMonthly`. The monthly report is **refreshed automatically** after each **calculateBusinessDailySalesReport** (daily trigger). **toDo.md** remains for additional formulas and future metrics.
 
 This document follows the same structure as `app/api/v1/business/README.md` for consistency.
 
@@ -25,45 +25,48 @@ So: **Monthly Business Report is the month-level hub for business KPIs, costs, a
 
 ---
 
-## 2. File structure (current and intended)
+## 2. File structure
 
 **Current:**
 
 ```
 app/api/v1/monthlyBusinessReport/
 ├── README.md                    # This file — context for flow, patterns, and app integration
-└── toDo.md                      # Planned behavior, formulas, and metrics (daily update, close EOM)
+├── toDo.md                      # Additional formulas and metrics (break-even, waste %, etc.)
+├── route.ts                     # GET all monthly reports (optional ?businessId=&startMonth=&endMonth=)
+├── business/
+│   └── [businessId]/
+│       └── route.ts             # GET monthly reports for business (?startMonth=&endMonth= YYYY-MM)
+├── [monthlyReportId]/
+│   ├── route.ts                 # GET one report; PATCH fixed/extra costs when isReportOpen
+│   └── closeMonthlyReport/
+│       └── route.ts             # PATCH — close report (body: employeeId), role check, no open daily reports in month
+└── utils/
+    ├── createMonthlyBusinessReport.ts   # Find or create open report for current month; close previous in transaction
+    └── aggregateDailyReportsIntoMonthly.ts  # Aggregate calculated daily reports + Schedules labour; called after calculateBusinessDailySalesReport
 ```
 
-- **Model and interface** live in **lib**: `lib/db/models/monthlyBusinessReport.ts`, `lib/interface/IMonthlyBusinessReport.ts`.
-
-**Intended (for implementation):**
-
-- **route.ts** (root): GET all monthly reports (optional filter by businessId or date); POST might be **internal only** (create when new month starts, similar to Inventory POST).
-- **business/[businessId]/route.ts**: GET monthly reports for a business (optional ?startMonth=&endMonth= or similar).
-- **[monthlyReportId]/route.ts**: GET one by ID; PATCH might be restricted (e.g. only when isReportOpen); DELETE discouraged (cascade only via business delete).
-- **utils/**: e.g. `createMonthlyBusinessReport(businessId, session)` (create report for current month, close previous), `aggregateDailyReportsIntoMonthly(dailyReportsOrReference, monthlyReportId)` or similar to roll daily data into the monthly report. Logic to compute costBreakdown (labor from Schedules, fixed/extra from manual or future entities), supplierWasteAnalysis from Inventory/BusinessGood/SupplierGood data, and financial percentages.
-
-No routes exist yet; the sections below describe the **data model**, **intended** request/response and integration, and **patterns** to follow when implementing.
+- **Model and interface** live in **lib**: `lib/db/models/monthlyBusinessReport.ts` (includes `monthReference`), `lib/interface/IMonthlyBusinessReport.ts`.
+- **Creation:** No public POST. The open report for the current month is created internally by `createMonthlyBusinessReport` when `aggregateDailyReportsIntoMonthly` runs (e.g. after the first daily calculate of the month).
 
 ---
 
-## 3. Route reference (intended)
+## 3. Route reference
 
-| Method | Path | Description (planned) |
-|--------|------|------------------------|
-| GET | `/api/v1/monthlyBusinessReport` | Return monthly reports (e.g. all or filter by query). 404 if none. |
-| GET | `/api/v1/monthlyBusinessReport/business/:businessId` | Return monthly reports for business. Optional date/month range. 404 if none. |
+| Method | Path | Description |
+|--------|------|--------------|
+| GET | `/api/v1/monthlyBusinessReport` | Return monthly reports. Optional query: `?businessId=`, `?startMonth=YYYY-MM`, `?endMonth=YYYY-MM`. 404 if none. |
+| GET | `/api/v1/monthlyBusinessReport/business/:businessId` | Return monthly reports for business. Optional `?startMonth=`, `?endMonth=` (YYYY-MM). 404 if none. |
 | GET | `/api/v1/monthlyBusinessReport/:monthlyReportId` | Return one report by ID. 404 if not found. |
-| POST | `/api/v1/monthlyBusinessReport` | **Internal/triggered:** Create monthly report for business (e.g. first day of month or when daily report is calculated and no current month report exists). Body: e.g. `{ businessId }`. |
-| PATCH | `/api/v1/monthlyBusinessReport/:monthlyReportId` | Optional: update report (e.g. costBreakdown totals, fixed/extra costs) while isReportOpen. Or separate PATCH for “recalculate from daily reports.” |
-| PATCH | `/api/v1/monthlyBusinessReport/:monthlyReportId/closeMonthlyReport` | Set isReportOpen: false (e.g. last day of month). Role check similar to daily report close. |
+| PATCH | `/api/v1/monthlyBusinessReport/:monthlyReportId` | When isReportOpen: update totalFixedOperatingCost and/or totalExtraCost (manual entry). Recomputes totalOperatingCost and costPercentages. Returns updated report. Or separate PATCH for “recalculate from daily reports.” |
+| PATCH | `/api/v1/monthlyBusinessReport/:monthlyReportId/closeMonthlyReport` | Set isReportOpen: false. Body: `{ employeeId }`. Same role check as daily report close. 400 if any daily report for that month is still open. |
 
-DELETE is not intended for normal use; reports are removed only when the **Business** is deleted (cascade in `app/api/v1/business/[businessId]/route.ts`).
+- **Creation:** The open report for the current month is created internally by `createMonthlyBusinessReport` when `aggregateDailyReportsIntoMonthly(businessId)` runs (triggered after **calculateBusinessDailySalesReport**). No public POST.
+- DELETE is not used in normal flow; reports are removed only when **Business** is deleted (cascade in `app/api/v1/business/[businessId]/route.ts`).
 
 ---
 
-## 4. Request/response patterns (intended)
+## 4. Request/response patterns
 
 - **DB:** `connectDb()` before first query. Use `MonthlyBusinessReport.find()` or `findById()` with optional `.populate("businessId", "tradeName ...")` if needed.
 - **Validation:** Validate `businessId`, `monthlyReportId` with `isObjectIdValid(...)`.
@@ -103,11 +106,11 @@ DELETE is not intended for normal use; reports are removed only when the **Busin
 
 - **Schedules** store shifts and labour cost per business. **totalLaborCost** for the month can be summed from schedules for that month (or from a derived labour-cost view). This feeds **costBreakdown** and **labor cost percentage** (labor / total sales), to be compared with Business.metrics.laborCostPercentage.
 
-### 5.7 Summary flow (intended)
+### 5.7 Summary flow (implemented)
 
-- **Start of month (or trigger):** Create new monthly report for business (isReportOpen: true); close previous month’s report (isReportOpen: false). Same pattern as Inventory.
-- **After daily report is calculated:** Recompute/open monthly report and **aggregate** that day’s daily report into the monthly totals (sales, COGS, tips, goods, payment methods, POS commission). Optionally refresh cost breakdown (labor from schedules, etc.) and supplierWasteAnalysis from inventory/waste data.
-- **End of month:** Close monthly report (isReportOpen: false). Final snapshot for reporting and comparison with Business.metrics.
+- **Start of month (or first aggregation):** When `aggregateDailyReportsIntoMonthly(businessId)` runs, `createMonthlyBusinessReport` finds or creates the open report for the current month (isReportOpen: true) and closes the previous month’s report (isReportOpen: false) in the same transaction. Same pattern as Inventory.
+- **After daily report is calculated:** The **calculateBusinessDailySalesReport** route calls `aggregateDailyReportsIntoMonthly(dailySalesReport.businessId)` after updating the daily report. Aggregation re-sums all **calculated** daily reports for that month (dailyNetPaidAmount present), merges payment methods and goods by businessGoodId, sums labour from Schedules, preserves manual fixed/extra costs, and sets supplierWasteAnalysis (Phase 1: zeroed). The PATCH response is not failed if aggregation throws (errors are logged).
+- **End of month:** Manager calls PATCH **closeMonthlyReport** with employeeId. Validates no open daily reports in that month; sets isReportOpen: false. Final snapshot for reporting and comparison with Business.metrics.
 
 ---
 
@@ -144,7 +147,7 @@ DELETE is not intended for normal use; reports are removed only when the **Busin
 
 ## 8. Data model summary (for context)
 
-- **MonthlyBusinessReport:** businessId, isReportOpen, financialSummary, costBreakdown, goodsSold, goodsVoided, goodsComplimentary, supplierWasteAnalysis, totalCustomersServed, averageSpendingPerCustomer, paymentMethods, posSystemCommission.
+- **MonthlyBusinessReport:** businessId, **monthReference** (Date, first day of month at 00:00:00; required, indexed; unique with businessId), isReportOpen, financialSummary, costBreakdown, goodsSold, goodsVoided, goodsComplimentary, supplierWasteAnalysis, totalCustomersServed, averageSpendingPerCustomer, paymentMethods, posSystemCommission.
 - **financialSummary:** totalSalesForMonth, totalCostOfGoodsSold, totalNetRevenue, totalGrossProfit, totalVoidSales, totalInvitedSales, totalTips; **financialPercentages:** salesPaymentCompletionPercentage, profitMarginPercentage, voidSalesPercentage, invitedSalesPercentage, tipsToCostOfGoodsPercentage.
 - **costBreakdown:** totalFoodCost, totalBeverageCost, totalLaborCost, totalFixedOperatingCost, totalExtraCost, totalOperatingCost; **costPercentages:** foodCostRatio, beverageCostRatio, laborCostRatio, fixedCostRatio.
 - **supplierWasteAnalysis:** veryLowImpactWastePercentage, lowImpactWastePercentage, mediumImpactWastePercentage, highImpactWastePercentage, veryHighImpactWastePercentage (align with SupplierGood budgetImpact and Business.metrics.supplierGoodWastePercentage).

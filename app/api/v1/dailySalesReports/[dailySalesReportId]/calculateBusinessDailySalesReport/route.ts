@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 // imported utils
 import { handleApiError } from "@/lib/db/handleApiError";
 import { updateEmployeesDailySalesReport } from "../../utils/updateEmployeeDailySalesReport";
+import { aggregateDailyReportsIntoMonthly } from "@/app/api/v1/monthlyBusinessReport/utils/aggregateDailyReportsIntoMonthly";
 
 // imported interfaces
 import {
@@ -49,11 +50,9 @@ export const PATCH = async (
     await connectDb();
 
     // check if the employee is "General Manager", "Manager", "Assistant Manager", "MoD" or "Admin"
-    const employeeRoleOnDuty: IEmployee | null = await Employee.findById(
-      employeeId
-    )
+    const employeeRoleOnDuty = (await Employee.findById(employeeId)
       .select("currentShiftRole onDuty")
-      .lean();
+      .lean()) as IEmployee | null;
 
     const allowedRoles = [
       "General Manager",
@@ -77,7 +76,7 @@ export const PATCH = async (
     }
 
     // get the daily report to update
-    const dailySalesReport: any = await DailySalesReport.findOne({
+    const dailySalesReport = await DailySalesReport.findOne({
       _id: dailySalesReportId,
     })
       .select(
@@ -89,7 +88,12 @@ export const PATCH = async (
         model: Employee,
       })
       .populate({ path: "businessId", select: "subscription", model: Business })
-      .lean();
+      .lean() as {
+      _id: Types.ObjectId;
+      dailyReferenceNumber: number;
+      businessId: { _id: Types.ObjectId; subscription?: string } | Types.ObjectId;
+      employeesDailySalesReport: { employeeId: { _id: Types.ObjectId } }[];
+    } | null;
 
     // check if daily report exists
     if (!dailySalesReport) {
@@ -100,7 +104,7 @@ export const PATCH = async (
     }
 
     const employeeIds = dailySalesReport.employeesDailySalesReport.map(
-      (employee: any) => employee.employeeId._id
+      (emp: { employeeId: { _id: Types.ObjectId } }) => emp.employeeId._id
     );
 
     // Call the function to update the daily sales reports for the employees
@@ -128,7 +132,7 @@ export const PATCH = async (
     }
 
     // business goods sales report
-    let businessGoodsReport: {
+    const businessGoodsReport: {
       goodsSold: IGoodsReduced[];
       goodsVoid: IGoodsReduced[];
       goodsInvited: IGoodsReduced[];
@@ -139,7 +143,7 @@ export const PATCH = async (
     };
 
     // prepare dailySalesReportObj to update the daily report
-    let dailySalesReportObj = {
+    const dailySalesReportObj = {
       businessPaymentMethods: [] as IPaymentMethod[],
       dailyTotalSalesBeforeAdjustments: 0,
       dailyNetPaidAmount: 0,
@@ -199,16 +203,24 @@ export const PATCH = async (
             employeeReport.totalCustomersServed ?? 0;
 
           // Update goodsSold, goodsVoid, and goodsInvited for the business
-          const updateGoodsArray = (array: any[], businessGood: any) => {
+          const updateGoodsArray = (
+            array: IGoodsReduced[],
+            businessGood: IGoodsReduced
+          ) => {
             const existingGood = array.find(
-              (item: any) => item.businessGoodId === businessGood.businessGoodId
+              (item) =>
+                (item.businessGoodId as Types.ObjectId)?.toString() ===
+                (businessGood.businessGoodId as Types.ObjectId)?.toString()
             );
 
             if (existingGood) {
               // If the item already exists, update the quantity, totalPrice, and totalCostPrice
               existingGood.quantity += businessGood.quantity ?? 1;
-              existingGood.totalPrice += businessGood.totalPrice ?? 0;
-              existingGood.totalCostPrice += businessGood.totalCostPrice ?? 0;
+              existingGood.totalPrice =
+                (existingGood.totalPrice ?? 0) + (businessGood.totalPrice ?? 0);
+              existingGood.totalCostPrice =
+                (existingGood.totalCostPrice ?? 0) +
+                (businessGood.totalCostPrice ?? 0);
             } else {
               // If it doesn't exist, create a new entry, including businessGoodId
               array.push({
@@ -222,7 +234,7 @@ export const PATCH = async (
 
           // Populate and reduce all the goods sold
           if (employeeReport.soldGoods && employeeReport.soldGoods.length > 0) {
-            employeeReport.soldGoods.forEach((businessGood: any) => {
+            employeeReport.soldGoods.forEach((businessGood: IGoodsReduced) => {
               updateGoodsArray(businessGoodsReport.goodsSold, businessGood);
             });
           }
@@ -232,7 +244,7 @@ export const PATCH = async (
             employeeReport.voidedGoods &&
             employeeReport.voidedGoods.length > 0
           ) {
-            employeeReport.voidedGoods.forEach((businessGood: any) => {
+            employeeReport.voidedGoods.forEach((businessGood: IGoodsReduced) => {
               updateGoodsArray(businessGoodsReport.goodsVoid, businessGood);
             });
           }
@@ -242,7 +254,7 @@ export const PATCH = async (
             employeeReport.invitedGoods &&
             employeeReport.invitedGoods.length > 0
           ) {
-            employeeReport.invitedGoods.forEach((businessGood: any) => {
+            employeeReport.invitedGoods.forEach((businessGood: IGoodsReduced) => {
               updateGoodsArray(businessGoodsReport.goodsInvited, businessGood);
             });
           }
@@ -277,8 +289,15 @@ export const PATCH = async (
       );
 
     let comissionPercentage = 0;
+    const businessIdPayload = dailySalesReport.businessId;
+    const subscription =
+      typeof businessIdPayload === "object" &&
+      businessIdPayload !== null &&
+      "subscription" in businessIdPayload
+        ? (businessIdPayload as { subscription?: string }).subscription
+        : undefined;
 
-    switch (dailySalesReport.businessId.subscription) {
+    switch (subscription) {
       case "Free":
         comissionPercentage = 0;
         break;
@@ -307,11 +326,30 @@ export const PATCH = async (
       dailySalesReportObj
     );
 
+    // Refresh monthly business report (do not fail the PATCH if this fails)
+    const businessId =
+      typeof dailySalesReport.businessId === "object" &&
+      dailySalesReport.businessId !== null &&
+      "_id" in dailySalesReport.businessId
+        ? (dailySalesReport.businessId as { _id: Types.ObjectId })._id
+        : (dailySalesReport.businessId as Types.ObjectId);
+    try {
+      await aggregateDailyReportsIntoMonthly(businessId);
+    } catch (aggregationError) {
+      console.error(
+        "Monthly report aggregation failed after daily calculate:",
+        aggregationError
+      );
+    }
+
     return new NextResponse(
       JSON.stringify({ message: "Daily sales report updated" }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
   } catch (error) {
-    return handleApiError("Failed to update daily sales report! ", error);
+    return handleApiError(
+      "Failed to update daily sales report! ",
+      error instanceof Error ? error.message : String(error)
+    );
   }
 };

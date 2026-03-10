@@ -36,7 +36,7 @@ Everything is designed to work **in live time**, where the POS state (open table
 
 This section summarizes **what the app can do** and **what solution it offers** to bars and restaurants, based on the subsystems documented in the READMEs below.
 
-**The product is a full-stack, multi-tenant POS and operations platform** that lets a restaurant or bar run day-to-day service, manage its menu and supply chain, track stock and costs, and see daily and (planned) monthly performance — all from one place, with one business identity per location.
+**The product is a full-stack, multi-tenant POS and operations platform** that lets a restaurant or bar run day-to-day service, manage its menu and supply chain, track stock and costs, and see daily and monthly performance — all from one place, with one business identity per location.
 
 ### Service and sales
 
@@ -55,18 +55,18 @@ This section summarizes **what the app can do** and **what solution it offers** 
 
 - **Suppliers and catalog** — Register **suppliers** (vendors) per business. For each supplier, define **supplier goods** (products): name, category, measurement unit, price, budget impact, optional images. Supplier goods are the **ingredients** in business goods and the **lines** on purchases and inventory.
 - **Purchases (incoming stock)** — Record **purchases** (one per receipt): supplier, date, employee, and **lines** (supplier good, quantity, price). Each line **increases** inventory. Add, edit, or remove lines (inventory stays in sync). **One-time purchase** flow exists for ad-hoc buys when no supplier good is set up.
-- **Waste and targets** — Business can set **metrics**: target **food/labor/fixed cost** percentages and **supplier good waste** by budget impact. Inventory and (planned) **monthly business report** tie actual performance to these targets (e.g. waste % by impact level).
+- **Waste and targets** — Business can set **metrics**: target **food/labor/fixed cost** percentages and **supplier good waste** by budget impact. Inventory and **monthly business report** tie actual performance to these targets (e.g. waste % by impact level).
 
 ### People and operations
 
 - **Employees** — **Employees** per business: name, role, documents, optional link to a **user** account. **Current shift role** and **on duty** drive who can close daily reports or perform manager actions. Employees are attached to sales instances (opened by / responsible for) and to daily reports (who served, tips, goods sold/void/invited).
-- **Schedules** — **Schedules** provide **day-level** shift planning: which employees work when, **labour cost**, vacation, overlap validation. Labour cost feeds (or will feed) **monthly business report** cost breakdown.
+- **Schedules** — **Schedules** provide **day-level** shift planning: which employees work when, **labour cost**, vacation, overlap validation. Labour cost feeds **monthly business report** cost breakdown.
 - **Users and notifications** — **Users** are app identities (e.g. linked to an employee). **Notifications** are business-scoped messages/events; users have an inbox with read/deleted state so the business can push alerts, promotions, or operational messages.
 
 ### Reporting and analytics
 
 - **Daily sales report** — Created automatically when the **first sales instance of the day** is opened. Tracks **per-employee** totals (sales, tips, cost of goods, payment methods, goods sold/void/invited) and **business** totals. **Calculate** runs off **sales instances** and **orders** (by responsible employee and daily reference). **Close** the day (manager/admin, no open orders) to lock the report. Self-ordering sales are recorded in a separate section.
-- **Monthly business report (planned)** — One report per **month** per business: **financial summary** (sales, COGS, net revenue, gross profit, void/invited, tips, percentages), **cost breakdown** (food, beverage, labour, fixed, extra), **goods sold/voided/complimentary**, **supplier waste by budget impact**, **payment methods**, **POS commission**. Intended to **update daily** from closed/calculated daily reports and **close at end of month**, with comparison to business **metrics** (food cost %, labour cost %, waste targets) for break-even and KPI tracking.
+- **Monthly business report** — One report per **month** per business: **financial summary** (sales, COGS, net revenue, gross profit, void/invited, tips, percentages), **cost breakdown** (food, beverage, labour, fixed, extra), **goods sold/voided/complimentary**, **supplier waste by budget impact**, **payment methods**, **POS commission**. **Updates daily** after the business daily sales report is calculated (trigger from calculateBusinessDailySalesReport) and **closes at end of month** (PATCH closeMonthlyReport). Comparison to business **metrics** (food cost %, labour cost %, waste targets) for break-even and KPI tracking.
 
 ### Why it matters for bars and restaurants
 
@@ -116,7 +116,7 @@ At the moment, there are **18 READMEs** in the app. This list will grow over tim
   - `app/api/v1/orders/README.md`
 - **Daily sales reports (day-level report per business, created by first sales instance, employee/business totals, calculate and close flow)**  
   - `app/api/v1/dailySalesReports/README.md`
-- **Monthly business reports (month-level KPIs per business, aggregate from daily reports, cost and supplier waste, break-even; API to be implemented)**  
+- **Monthly business reports (month-level KPIs per business, aggregate from daily reports, cost and supplier waste, break-even; API implemented)**  
   - `app/api/v1/monthlyBusinessReport/README.md`
 - **Notifications (business-scoped events/messages, recipients inbox linking, read/deleted flags, transactional updates)**  
   - `app/api/v1/notifications/README.md`

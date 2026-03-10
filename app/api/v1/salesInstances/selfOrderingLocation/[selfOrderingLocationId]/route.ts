@@ -10,6 +10,7 @@ import { createSalesInstance } from "../../utils/createSalesInstance";
 import { ordersArrValidation } from "@/app/api/v1/orders/utils/validateOrdersArr";
 import { createOrders } from "@/app/api/v1/orders/utils/createOrders";
 import { closeOrders } from "@/app/api/v1/orders/utils/closeOrders";
+import { checkLowStockAndNotify } from "@/app/api/v1/inventories/utils/checkLowStockAndNotify";
 
 // import interfaces
 import {
@@ -108,6 +109,8 @@ export const POST = async (
     );
   }
 
+  const customerId: Types.ObjectId = openedByCustomerId!;
+
   // validate ordersArr
   const ordersArrValidationResult = ordersArrValidation(ordersArr);
   if (ordersArrValidationResult !== true) {
@@ -136,7 +139,7 @@ export const POST = async (
     // all db calls in one promise
     const [customer, dailySalesReport] = await Promise.all([
       // check customer exists
-      Customer.findById(openedByCustomerId)
+      Customer.findById(customerId)
         .select("customerName")
         .lean() as unknown as Promise<ICustomer>,
 
@@ -177,7 +180,7 @@ export const POST = async (
       salesPointId: selfOrderingLocationId,
       guests: 1,
       salesInstanceStatus: "Occupied",
-      openedByCustomerId,
+      openedByCustomerId: customerId,
       businessId,
       clientName: customer?.customerName,
     };
@@ -200,8 +203,8 @@ export const POST = async (
       dailyReferenceNumber,
       ordersArr,
       undefined,
-      openedByCustomerId,
-      salesInstance._id,
+      customerId,
+      salesInstance._id as Types.ObjectId,
       businessId,
       session
     );
@@ -287,7 +290,7 @@ export const POST = async (
       {
         $push: {
           selfOrderingSalesReport: {
-            customerId: openedByCustomerId,
+            customerId,
             customerPaymentMethod: paymentMethodArr,
             totalSalesBeforeAdjustments,
             totalNetPaidAmount,
@@ -309,13 +312,18 @@ export const POST = async (
 
     await session.commitTransaction();
 
+    checkLowStockAndNotify(businessId).catch(() => {});
+
     return new NextResponse(
       JSON.stringify({ message: "Customer self ordering created" }),
       { status: 201, headers: { "Content-Type": "application/json" } }
     );
   } catch (error) {
     await session.abortTransaction();
-    return handleApiError("Create salesInstance failed!", error);
+    return handleApiError(
+      "Create salesInstance failed!",
+      error instanceof Error ? error.message : String(error)
+    );
   } finally {
     session.endSession();
   }

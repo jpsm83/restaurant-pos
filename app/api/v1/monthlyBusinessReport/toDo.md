@@ -1,9 +1,8 @@
-- create a monthly report that updates daily after daily sales report is calculate (not dynamic)
-this will be the metrics from the whole business
-it supose to close every last day of the month
-same logic as inventory
+**Implemented (see README and routes):** Monthly report that updates daily after daily sales report is calculated (trigger from calculateBusinessDailySalesReport); closes at end of month (PATCH closeMonthlyReport); same lifecycle pattern as inventory. API: GET list/by business/by ID, PATCH fixed/extra costs, PATCH close. Labour from Schedules; fixed/extra from manual PATCH.
 
-- create a monthly business report (rent, mortgage, utility bill, employee costs, purchases, other costs, sales - calculation as minimun to break even)
+**Remaining / future (formulas and metrics):**
+
+- create a monthly business report (rent, mortgage, utility bill, employee costs, purchases, other costs, sales - calculation as minimum to break even)
 
 Daily Sales Target:
 You can define a minimum daily sales target that covers your expenses (break-even point) and then aim for higher targets based on historical data.

@@ -26,6 +26,11 @@ const purchaseItemInventorySchema = new Schema(
       required: [true, "Purchase price is required!"],
     }, // this is calculate on the FRONT before be saved on DB supplierGood.pricePerMeasurementUnit * quantityPurchased for employee confirmation
     // ex: 10kg * 2€ = 20€ - if the receipt says 25€, the employee should be able to edit the supplierGood.pricePerMeasurementUnit **** IMPORTANT for the analytics
+
+    // audit fields for edit (manager-only edits with reason)
+    lastEditByEmployeeId: { type: Schema.Types.ObjectId, ref: "Employee" },
+    lastEditReason: { type: String },
+    lastEditDate: { type: Date },
   },
   {
     timestamps: true,

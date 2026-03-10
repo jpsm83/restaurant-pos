@@ -49,6 +49,7 @@ export interface ISupplierWasteAnalysis {
 export interface IMonthlyBusinessReport {
   isReportOpen: boolean; // Indicates if the report is open for edits
   businessId: Types.ObjectId; // Business reference
+  monthReference: Date; // First day of the month at 00:00:00 for scoping and matching daily reports
   financialSummary: IFinancialSummary; // Financial summary for the month
   costBreakdown: ICostBreakdown; // Breakdown of various costs
   goodsSold: (typeof goodsReducedSchema)[]; // Goods sold during the month

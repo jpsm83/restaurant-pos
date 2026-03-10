@@ -202,7 +202,7 @@ This document describes **how the app works from a user perspective**, from init
 - **Editing purchase details**
   - Users can:
     - Add more lines if the receipt is incomplete.
-    - Edit quantities or prices if there were mistakes.
+    - **Edit** quantities or prices if there were mistakes — **manager-only** (same roles as closing the daily report); the editor must be **on duty** and provide a **reason**. The system records who edited, when, and the reason on the line for audit.
     - Remove lines that were added in error.
   - The system keeps inventory in sync:
     - Adding a line **increments** stock for that supplier good.
@@ -237,18 +237,21 @@ This document describes **how the app works from a user perspective**, from init
   - Inventory staff performs **physical counts** periodically or at month end:
     - For each supplier good, they record the **actual quantity on hand**.
     - The system logs who counted, when, and any **deviation** between system count and physical count.
-  - Staff can re‑edit counts if necessary:
-    - Each re‑edit is tracked, and deviations are updated.
+  - **Re‑editing** a count is restricted to **managers or supervisors on duty**; the request must include who is authorizing the re‑edit and a **reason**. Each re‑edit is tracked (who, when, reason, original values), and deviations are updated.
   - These deviations feed into:
     - **Waste analysis** (linked to budget impact levels).
     - Preparation for monthly reporting and KPIs.
 
 - **Closing the monthly inventory**
   - Once counts and corrections are complete:
-    - Manager **closes** the inventory for that month.
+    - A **manager** (same roles as closing the daily report) **closes** the inventory for that month. The system **automatically creates the next period’s inventory** in the same action, so the next month is ready for counts and stock updates.
   - From this point:
     - Stock levels become the baseline for the next period.
     - Deviations and waste metrics are ready to flow into monthly reporting and **supplier‑waste analysis** (by budget‑impact level).
+
+- **Low‑stock alerts and variance report**
+  - After orders are created, the system may check the open inventory for items **below par or minimum** and send a **Warning** notification to **managers on duty** listing those items (low‑stock alert).
+  - Managers can view a **variance report** for a month: **theoretical usage** (from orders/recipes) vs **actual usage** (opening stock + purchases − closing stock) per supplier good, for analytics and loss control.
 
 ---
 
@@ -285,9 +288,9 @@ This document describes **how the app works from a user perspective**, from init
 
 ## 7. Monthly business reporting and KPIs (manager / owner)
 
-- **Planned monthly business report**
-  - For each business and month, the system aims to maintain a **Monthly business report**:
-    - Aggregates data from all **closed daily sales reports** in the month (sales, COGS, tips, goods sold/voided/complimentary, payment methods, POS commission).
+- **Monthly business report**
+  - For each business and month, the system maintains a **Monthly business report**:
+    - Aggregates data from all **calculated** daily sales reports in the month (sales, COGS, tips, goods sold/voided/complimentary, payment methods, POS commission). The report is refreshed automatically after each **calculate business daily sales report**.
     - Combines this with **inventory** (deviations and waste by supplier‑good budget impact), **purchasing** data, and **labour cost** from **Schedules**.
   - The monthly report is designed to show:
     - **Financial summary**:
@@ -312,8 +315,8 @@ This document describes **how the app works from a user perspective**, from init
     - Whether the business is at or near **break‑even**.
 
 - **Closing the month**
-  - At the end of the month, managers can **close** the monthly business report (when implemented):
-    - After inventories are closed and all daily reports are finalized.
+  - At the end of the month, managers can **close** the monthly business report (PATCH closeMonthlyReport):
+    - After inventories are closed and all daily reports for that month are closed (no open daily reports in the month).
   - Once closed, it becomes the reference for:
     - Strategic decisions (price changes, promotions, staffing adjustments).
     - Historical comparisons across months.

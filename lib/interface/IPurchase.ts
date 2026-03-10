@@ -4,6 +4,9 @@ export interface IPurchaseItem {
   supplierGoodId: Types.ObjectId;
   quantityPurchased: number;
   purchasePrice: number;
+  lastEditByEmployeeId?: Types.ObjectId;
+  lastEditReason?: string;
+  lastEditDate?: Date;
 }
 
 export interface IPurchase {

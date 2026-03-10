@@ -13,6 +13,12 @@ const monthlyBusinessReportSchema = new Schema(
       index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
     },
     // Reference to the business associated with this monthly report.
+    monthReference: {
+      type: Date,
+      required: [true, "Month reference is required!"],
+      index: true,
+    },
+    // First day of the month at 00:00:00 (e.g. new Date(year, month - 1, 1)). Used to scope "current month" and match daily reports by month.
     financialSummary: {
       totalSalesForMonth: { type: Number },
       // Total amount of all sales, including voided and invited orders.
@@ -99,6 +105,11 @@ const monthlyBusinessReportSchema = new Schema(
     timestamps: true,
     trim: true,
   }
+);
+
+monthlyBusinessReportSchema.index(
+  { businessId: 1, monthReference: 1 },
+  { unique: true }
 );
 
 const MonthlyBusinessReport =

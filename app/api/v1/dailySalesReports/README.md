@@ -165,6 +165,8 @@ All responses are JSON. Errors use `handleApiError` (500) or explicit `NextRespo
 - Every daily report has **businessId**. Reports are queried by business for list/filter (e.g. by date range).
 - **calculateBusinessDailySalesReport** uses the business’s **subscription** (Free, Basic, Premium, Enterprise) to compute **dailyPosSystemCommission** (percentage of dailyTotalSalesBeforeAdjustments). So the report ties day-level revenue to the business’s plan.
 
+- After a successful **calculateBusinessDailySalesReport** update, the route calls **aggregateDailyReportsIntoMonthly(businessId)** to refresh the current month's **Monthly Business Report**; aggregation errors are logged and do not fail the PATCH response.
+
 ### 7.4 Employees (who is on the report and role checks)
 
 - **Employees** are added to the report when they open or become responsible for a sales instance. Their **currentShiftRole** and **onDuty** are used in **closeDailySalesReport** and **calculateBusinessDailySalesReport** to allow only Manager/Admin/MoD/etc. to close or run business-level calculation.

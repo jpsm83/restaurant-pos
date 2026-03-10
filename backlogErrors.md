@@ -14,6 +14,20 @@
 
 - 3.1 Self‑ordering via home - use can self order from his home too for delivery, in that case user can login as normal customer, choose the restaurante and the same menu and flow as the "Self‑ordering via QR" would happens, the only difference is there was no table delivery but insted a address from the user. 
 
+- 3.2 Modifying orders during service - only staff with admin or superviser level can cancel or void orders, and void orders must be with a descriptio as waste, mistake, refund or any other reason but must be especify.
+
+- 4 Recording purchases - The system supose to **increases** the actual current **Inventory** `dynamicSystemCount` for that supplier good by the purchased quantity (in the good’s measurement unit).
+
+- 4 Editing purchase details - edit purchase can be done only by managers and must add the reason on the update of that register as it is done on the inventory physical count with re‑edit data for tracking
+
+- 5 Physical counts and corrections - only managers and supervisers can re-edit a inventory
+
+- 5 Re‑editing - i am not ver clear what is "Waste analysis" and KPIs
+
+- 5 must review the file app/api/v1/monthlyBusinessReport/toDo.md
+
+- 9 During service - Waiters, bartender or users can open tables and order at the bar/restaurante. the bar/restaurante supose to have its open times defined on the business model so users can order food from home only whem the business is open
+
 ======================================================================
 
 business - DONE

@@ -7,6 +7,7 @@ import { handleApiError } from "@/lib/db/handleApiError";
 import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 import { ordersArrValidation } from "./utils/validateOrdersArr";
 import { createOrders } from "./utils/createOrders";
+import { checkLowStockAndNotify } from "@/app/api/v1/inventories/utils/checkLowStockAndNotify";
 
 // imported interfaces
 import { IOrder } from "@/lib/interface/IOrder";
@@ -66,7 +67,10 @@ export const GET = async () => {
           headers: { "Content-Type": "application/json" },
         });
   } catch (error) {
-    return handleApiError("Get all orders failed!", error);
+    return handleApiError(
+      "Get all orders failed!",
+      error instanceof Error ? error.message : String(error)
+    );
   }
 };
 
@@ -163,7 +167,9 @@ export const POST = async (req: Request) => {
     );
   }
 
-  const objectIds = ordersArr.flatMap((order) => order.businessGoodsIds);
+  const objectIds: Types.ObjectId[] = ordersArr.flatMap(
+    (order) => order.businessGoodsIds ?? []
+  );
   objectIds.push(businessId, salesInstanceId, employeeId);
 
   // validate ids
@@ -217,13 +223,18 @@ export const POST = async (req: Request) => {
 
     await session.commitTransaction();
 
+    checkLowStockAndNotify(businessId).catch(() => {});
+
     return new NextResponse(JSON.stringify({ message: "Order created" }), {
       status: 201,
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
     await session.abortTransaction();
-    return handleApiError("Create order failed!", error);
+    return handleApiError(
+      "Create order failed!",
+      error instanceof Error ? error.message : String(error)
+    );
   } finally {
     session.endSession();
   }

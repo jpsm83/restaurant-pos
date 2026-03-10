@@ -1,19 +1,24 @@
 import { NextResponse } from "next/server";
 import mongoose, { Types } from "mongoose";
 
-// imported utils
 import connectDb from "@/lib/db/connectDb";
 import { handleApiError } from "@/lib/db/handleApiError";
 import isObjectIdValid from "@/lib/utils/isObjectIdValid";
-
-// imported interfaces
 import { IPurchase } from "@/lib/interface/IPurchase";
-
-// imported models
+import { IEmployee } from "@/lib/interface/IEmployee";
 import Purchase from "@/lib/db/models/purchase";
 import Inventory from "@/lib/db/models/inventory";
+import Employee from "@/lib/db/models/employee";
 
-// this route is to edit a supplierGood from the purchase that already exists
+const ALLOWED_EDIT_ROLES = [
+  "General Manager",
+  "Manager",
+  "Assistant Manager",
+  "MoD",
+  "Admin",
+];
+
+// Edit supplier good line on a purchase (manager-only, with reason)
 // @desc    Edit supplierGood from purchase by ID
 // @route   PATCH /purchases/:purchaseId/editSupplierGoodFromPurchase
 // @access  Private
@@ -23,24 +28,62 @@ export const PATCH = async (
 ) => {
   const purchaseId = context.params.purchaseId;
 
-  const { purchaseInventoryItemsId, newQuantityPurchased, newPurchasePrice } =
-    await req.json();
+  const {
+    purchaseInventoryItemsId,
+    newQuantityPurchased,
+    newPurchasePrice,
+    editedByEmployeeId,
+    reason,
+  } = (await req.json()) as {
+    purchaseInventoryItemsId: Types.ObjectId;
+    newQuantityPurchased: number;
+    newPurchasePrice: number;
+    editedByEmployeeId: Types.ObjectId;
+    reason: string;
+  };
 
-  // check if the purchaseId is a valid ObjectId
-  if (isObjectIdValid([purchaseId, purchaseInventoryItemsId]) !== true) {
+  if (
+    !editedByEmployeeId ||
+    !reason ||
+    typeof reason !== "string" ||
+    reason.trim() === ""
+  ) {
     return new NextResponse(
-      JSON.stringify({ message: "Purchase or supplier ID not valid!" }),
-      {
-        status: 400,
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
+      JSON.stringify({
+        message: "editedByEmployeeId and reason (non-empty) are required!",
+      }),
+      { status: 400, headers: { "Content-Type": "application/json" } }
     );
   }
 
-  // connect before first call to DB
+  if (
+    isObjectIdValid([purchaseId, purchaseInventoryItemsId, editedByEmployeeId]) !==
+    true
+  ) {
+    return new NextResponse(
+      JSON.stringify({ message: "Purchase or supplier or employee ID not valid!" }),
+      { status: 400, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
   await connectDb();
+
+  const employee = await Employee.findById(editedByEmployeeId)
+    .select("currentShiftRole onDuty businessId")
+    .lean() as IEmployee | null;
+
+  if (
+    !employee ||
+    !ALLOWED_EDIT_ROLES.includes(employee.currentShiftRole ?? "") ||
+    !employee.onDuty
+  ) {
+    return new NextResponse(
+      JSON.stringify({
+        message: "You are not allowed to edit purchase lines!",
+      }),
+      { status: 403, headers: { "Content-Type": "application/json" } }
+    );
+  }
 
   // start the transaction
   const session = await mongoose.startSession();
@@ -76,9 +119,17 @@ export const PATCH = async (
     const previousPrice =
       purchaseItem?.purchaseInventoryItems?.[0].purchasePrice ?? 0;
 
+    if (purchaseItem.businessId && employee.businessId?.toString() !== purchaseItem.businessId.toString()) {
+      await session.abortTransaction();
+      return new NextResponse(
+        JSON.stringify({ message: "Purchase does not belong to your business!" }),
+        { status: 403, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    const now = new Date();
     const [updatePurchase, updatedInventory] = await Promise.all([
-      // Update the purchaseItem with the new values
-      await Purchase.findOneAndUpdate(
+      Purchase.findOneAndUpdate(
         {
           _id: purchaseId,
           "purchaseInventoryItems._id": purchaseInventoryItemsId,
@@ -87,6 +138,9 @@ export const PATCH = async (
           $set: {
             "purchaseInventoryItems.$.quantityPurchased": newQuantityPurchased,
             "purchaseInventoryItems.$.purchasePrice": newPurchasePrice,
+            "purchaseInventoryItems.$.lastEditByEmployeeId": editedByEmployeeId,
+            "purchaseInventoryItems.$.lastEditReason": reason.trim(),
+            "purchaseInventoryItems.$.lastEditDate": now,
           },
           $inc: {
             totalAmount: newPurchasePrice - previousPrice,
@@ -140,7 +194,7 @@ export const PATCH = async (
 
     return new NextResponse(
       JSON.stringify({
-        message: "SupplierGood added to purchase successfully!",
+        message: "Supplier good line updated successfully!",
       }),
       {
         status: 200,
@@ -151,7 +205,10 @@ export const PATCH = async (
     );
   } catch (error) {
     await session.abortTransaction();
-    return handleApiError("Add supplierGood to purchase failed!", error);
+    return handleApiError(
+      "Add supplierGood to purchase failed!",
+      error instanceof Error ? error.message : String(error)
+    );
   } finally {
     session.endSession();
   }

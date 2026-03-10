@@ -1,18 +1,24 @@
 import { Types } from "mongoose";
 import { NextResponse } from "next/server";
 
-// imported utils
 import connectDb from "@/lib/db/connectDb";
 import { handleApiError } from "@/lib/db/handleApiError";
 import isObjectIdValid from "@/lib/utils/isObjectIdValid";
-
-// imported interfaces
 import { IInventory, IInventoryCount } from "@/lib/interface/IInventory";
 import { ISupplierGood } from "@/lib/interface/ISupplierGood";
-
-// imported models
+import { IEmployee } from "@/lib/interface/IEmployee";
 import Inventory from "@/lib/db/models/inventory";
 import SupplierGood from "@/lib/db/models/supplierGood";
+import Employee from "@/lib/db/models/employee";
+
+const ALLOWED_REEDIT_ROLES = [
+  "General Manager",
+  "Manager",
+  "Assistant Manager",
+  "MoD",
+  "Admin",
+  "Supervisor",
+];
 
 // This PATCH route will update ONLY THE LAST existing count for an individualy supplier good from the inventory
 // @desc    Update inventory count for a specific supplier good
@@ -38,19 +44,17 @@ export const PATCH = async (
     reason: string;
   };
 
-  // Check required fields
-  if (!inventoryId || !supplierGoodId || !countId || !reason) {
+  if (!inventoryId || !supplierGoodId || !countId || !reason || !countedByEmployeeId) {
     return new NextResponse(
       JSON.stringify({
         message:
-          "InventoryId, supplierGoodId, countId and reason are required!",
+          "InventoryId, supplierGoodId, countId, reason and countedByEmployeeId are required for re-edit!",
       }),
       { status: 400, headers: { "Content-Type": "application/json" } }
     );
   }
 
-  // Check if the IDs are valid
-  if (!isObjectIdValid([inventoryId, supplierGoodId, countId])) {
+  if (!isObjectIdValid([inventoryId, supplierGoodId, countId, countedByEmployeeId])) {
     return new NextResponse(
       JSON.stringify({ message: "One or more IDs are not valid!" }),
       { status: 400, headers: { "Content-Type": "application/json" } }
@@ -58,10 +62,25 @@ export const PATCH = async (
   }
 
   try {
-    // Connect to the database
     await connectDb();
 
-    // Fetch inventory and supplier good in a single query
+    const employee = await Employee.findById(countedByEmployeeId)
+      .select("currentShiftRole onDuty")
+      .lean() as IEmployee | null;
+    if (
+      !employee ||
+      !ALLOWED_REEDIT_ROLES.includes(employee.currentShiftRole ?? "") ||
+      !employee.onDuty
+    ) {
+      return new NextResponse(
+        JSON.stringify({
+          message:
+            "Only managers or supervisors on duty can re-edit inventory counts!",
+        }),
+        { status: 403, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     const [inventory, supplierGood] = await Promise.all([
       Inventory.findOne({
         _id: inventoryId,
@@ -210,6 +229,9 @@ export const PATCH = async (
       }
     );
   } catch (error) {
-    return handleApiError("Updating count failed!", error);
+    return handleApiError(
+      "Updating count failed!",
+      error instanceof Error ? error.message : String(error)
+    );
   }
 };

@@ -54,7 +54,7 @@ app/api/v1/purchases/
 | DELETE | `/api/v1/purchases/:purchaseId` | Deletes purchase and **decrements** inventory for each line. Transactional. |
 | PATCH | `/api/v1/purchases/:purchaseId/addSupplierGoodToPurchase` | Appends one item to `purchaseInventoryItems` and **increments** inventory. Transactional. |
 | PATCH | `/api/v1/purchases/:purchaseId/deleteSupplierGoodFromPurchase` | Removes one item by `purchaseInventoryItemsId` and **decrements** inventory. Transactional. |
-| PATCH | `/api/v1/purchases/:purchaseId/editSupplierGoodFromPurchase` | Updates one item’s quantity/price and **adjusts** inventory delta. Transactional. |
+| PATCH | `/api/v1/purchases/:purchaseId/editSupplierGoodFromPurchase` | Updates one item’s quantity/price and **adjusts** inventory delta. **Manager-only** (same roles as close daily report); body must include **`editedByEmployeeId`** and non-empty **`reason`**. Writes audit fields on the line: `lastEditByEmployeeId`, `lastEditReason`, `lastEditDate`. Transactional. |
 | GET | `/api/v1/purchases/supplier/:supplierId?startDate=&endDate=` | Returns purchases for a supplier. Optional date range. |
 | GET | `/api/v1/purchases/user/:userId?startDate=&endDate=` | Returns purchases made by an employee. Optional date range. |
 
@@ -114,7 +114,7 @@ All responses are JSON (except one DELETE returns plain text). Errors use `handl
 
 - **Add:** Body `supplierGoodId`, `quantityPurchased`, `purchasePrice`. Push one element into `purchaseInventoryItems`, `$inc totalAmount`, and increment inventory for that supplier good. All in one transaction.
 - **Delete:** Body `purchaseInventoryItemsId` (subdocument `_id`). Pull that element, adjust `totalAmount`, and decrement inventory. Transaction.
-- **Edit:** Body `purchaseInventoryItemsId`, `newQuantityPurchased`, `newPurchasePrice`. Set the line’s quantity and price, adjust `totalAmount` by the price delta, and update inventory by the quantity delta. Transaction.
+- **Edit:** Body **`purchaseInventoryItemsId`, `newQuantityPurchased`, `newPurchasePrice`, `editedByEmployeeId`, `reason`** (all required). **Manager-only:** employee must have `currentShiftRole` in (General Manager, Manager, Assistant Manager, MoD, Admin) and be **on duty**; otherwise 403. Set the line’s quantity and price; **$set** on the line **`lastEditByEmployeeId`, `lastEditReason` (trimmed), `lastEditDate` (new Date())** for audit. Adjust `totalAmount` by the price delta and update inventory by the quantity delta. Transaction.
 
 **Important:** Inventory updates filter by `businessId`, `setFinalCount: false`, and the matching `inventoryGoods.supplierGoodId`. The inventory model must have an open (non-final) inventory for that business and that supplier good for the update to succeed.
 
@@ -182,6 +182,6 @@ All responses are JSON (except one DELETE returns plain text). Errors use `handl
 ## 9. Data model summary (for context)
 
 - **Purchase:** `supplierId`, `purchaseDate`, `businessId`, `purchasedByEmployeeId`, `totalAmount`, `receiptId`, optional `title`, `documentsUrl`, `purchaseInventoryItems[]`, `oneTimePurchase`, optional `comment`.
-- **Purchase item (subdocument):** `supplierGoodId`, `quantityPurchased`, `purchasePrice`.
+- **Purchase item (subdocument):** `supplierGoodId`, `quantityPurchased`, `purchasePrice`, optional audit fields **`lastEditByEmployeeId`, `lastEditReason`, `lastEditDate`** (set when a manager edits the line).
 
 This README is the main context for how the purchases API works, how it fits into the app (suppliers, inventory, business, employees), and how to extend it consistently.

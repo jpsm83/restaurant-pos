@@ -27,29 +27,43 @@ app/api/v1/inventories/
 ├── route.ts                     # GET all inventories | POST create inventory (first day of month)
 ├── business/
 │   └── [businessId]/
-│       └── route.ts             # GET inventories by businessId (optional ?monthDate)
+│       ├── route.ts             # GET inventories by businessId (optional ?monthDate)
+│       ├── lowStock/
+│       │   └── route.ts         # GET — items below par/minimum for dashboard
+│       └── varianceReport/
+│           └── route.ts        # GET — theoretical vs actual usage per supplier good (?month=YYYY-MM)
 ├── [inventoryId]/
-│   └── route.ts                 # GET one inventory | DELETE one (rare; see section 6)
+│   ├── route.ts                 # GET one inventory | DELETE one (rare; see section 6)
+│   ├── close/
+│   │   └── route.ts             # PATCH — manager-only close + auto-create next period inventory
 │   └── supplierGood/
 │       └── [supplierGoodId]/
 │           ├── route.ts         # GET inventory entries for one supplier good (optional ?monthDate)
 │           ├── addCountToSupplierGood/
 │           │   └── route.ts     # PATCH — add a new physical count for this supplier good
 │           └── updateCountFromSupplierGood/
-│               └── route.ts     # PATCH — update the last existing count (re-edit)
+│               └── route.ts     # PATCH — re-edit last count (manager/supervisor on duty; countedByEmployeeId + reason required)
 └── utils/
     ├── updateDynamicCountSupplierGood.ts   # Used by orders: add/remove quantity from dynamicSystemCount
     ├── addSupplierGoodToInventory.ts       # Used by supplier goods: add good to open inventory
-    └── deleteSupplierGoodFromInventory.ts   # Used by supplier goods: remove good from open inventory
+    ├── deleteSupplierGoodFromInventory.ts  # Used by supplier goods: remove good from open inventory
+    ├── createNextPeriodInventory.ts         # Used by close: create next month inventory in same transaction
+    ├── checkLowStockAndNotify.ts           # Fire-and-forget: low-stock Warning notification to managers on duty
+    ├── getTheoreticalUsage.ts              # Usage from orders (ingredients) in date range
+    ├── getActualUsage.ts                   # Opening + purchases - closing in date range
+    └── getVarianceReport.ts                # Variance report (theoretical vs actual) per supplier good
 ```
 
-- **`route.ts`** (root): list all inventories; POST creates a new monthly inventory (closes previous, creates new with all `currentlyInUse` supplier goods).
+- **`route.ts`** (root): list all inventories; POST creates a new monthly inventory (closes previous, creates new with all `currentlyInUse` supplier goods). **Preferred flow for bootstrap;** for month-end close use **PATCH close**.
 - **`business/[businessId]/route.ts`**: list inventories for a business, optionally filtered by `?monthDate`.
+- **`business/[businessId]/lowStock/route.ts`**: GET items below par or minimum for the open inventory (dashboard/alerts).
+- **`business/[businessId]/varianceReport/route.ts`**: GET theoretical vs actual usage per supplier good for a month (`?month=YYYY-MM`; default current month).
 - **`[inventoryId]/route.ts`**: get one inventory by ID; DELETE exists but is discouraged for data integrity (see section 6).
+- **`[inventoryId]/close/route.ts`**: **Manager-only** (General Manager, Manager, Assistant Manager, MoD, Admin). PATCH with body `{ employeeId }`. Closes current inventory (`setFinalCount: true`) and **auto-creates next period inventory** in the same transaction (via `createNextPeriodInventory`).
 - **`[inventoryId]/supplierGood/[supplierGoodId]/route.ts`**: get inventory data for a specific supplier good (optional `?monthDate`).
 - **`addCountToSupplierGood`**: add a new physical count (current quantity, deviation, par level, comments); updates `dynamicSystemCount` and `monthlyCounts`.
-- **`updateCountFromSupplierGood`**: re-edit the **last** count (requires countId, reason, reedited metadata).
-- **Utils** are used by **orders** (`updateDynamicCountSupplierGood`) and **supplier goods** (`addSupplierGoodToInventory`, `deleteSupplierGoodFromInventory`); they are not HTTP routes.
+- **`updateCountFromSupplierGood`**: re-edit the **last** count. **Requires** `countId`, `reason`, and **`countedByEmployeeId`**. Only **managers or supervisors on duty** (General Manager, Manager, Assistant Manager, MoD, Admin, Supervisor) may re-edit; 403 otherwise.
+- **Utils** are used by **orders** (`updateDynamicCountSupplierGood`, `checkLowStockAndNotify` after commit), **supplier goods** (`addSupplierGoodToInventory`, `deleteSupplierGoodFromInventory`), and **close** (`createNextPeriodInventory`). Variance utils power the variance report route.
 
 ---
 
@@ -64,9 +78,12 @@ app/api/v1/inventories/
 | DELETE | `/api/v1/inventories/:inventoryId` | Deletes one inventory. **Discouraged** except for cleanup; see section 6. |
 | GET | `/api/v1/inventories/:inventoryId/supplierGood/:supplierGoodId` | Returns inventory entries for that supplier good. Optional `?monthDate`. 404 if none. |
 | PATCH | `/api/v1/inventories/:inventoryId/supplierGood/:supplierGoodId/addCountToSupplierGood` | Adds a new physical count. Body: `currentCountQuantity`, optional `countedByEmployeeId`, `comments`. Updates `dynamicSystemCount` and appends to `monthlyCounts`. 400 if inventory already finalized. |
-| PATCH | `/api/v1/inventories/:inventoryId/supplierGood/:supplierGoodId/updateCountFromSupplierGood` | Updates the **last** count (re-edit). Body: `countId`, `reason`, `currentCountQuantity`, optional `countedByEmployeeId`, `comments`. 400 if finalized; 404 if count not found. |
+| PATCH | `/api/v1/inventories/:inventoryId/supplierGood/:supplierGoodId/updateCountFromSupplierGood` | Re-edit the **last** count. Body: **`countId`, `reason`, `countedByEmployeeId`** (required), `currentCountQuantity`, optional `comments`. **Manager or supervisor on duty** only; 403 otherwise. 400 if finalized; 404 if count not found. |
+| PATCH | `/api/v1/inventories/:inventoryId/close` | **Manager-only.** Body: `{ employeeId }`. Closes inventory and auto-creates next period inventory in one transaction. 403 if not allowed role or not on duty. |
+| GET | `/api/v1/inventories/business/:businessId/lowStock` | Returns items below par or minimum for the open inventory. Response: `{ lowStock: [...] }` with supplierGoodId, supplierGood, dynamicSystemCount, parLevel, minimumQuantityRequired, measurementUnit. |
+| GET | `/api/v1/inventories/business/:businessId/varianceReport?month=YYYY-MM` | Returns theoretical vs actual usage per supplier good for the month. Default month = current. Response: `{ varianceReport: [...] }` with supplierGoodId, supplierGoodName, theoreticalQuantity, actualQuantity, varianceQuantity, measurementUnit. |
 
-All responses are JSON. Errors use `handleApiError` (500) or explicit `NextResponse` with 400/404.
+All responses are JSON. Errors use `handleApiError` (500) or explicit `NextResponse` with 400/403/404.
 
 ---
 
@@ -100,10 +117,10 @@ All responses are JSON. Errors use `handleApiError` (500) or explicit `NextRespo
 
 ### 4.4 PATCH updateCountFromSupplierGood
 
-- **Body:** `countId`, `reason` (required), `currentCountQuantity`, optional `countedByEmployeeId`, `comments`.
-- **Validation:** Same ID checks; inventory must not be finalized; the count with `_id === countId` must exist in that supplier good’s `monthlyCounts`.
+- **Body:** `countId`, `reason`, **`countedByEmployeeId`** (all required for re-edit), `currentCountQuantity`, optional `comments`.
+- **Validation:** Same ID checks; **countedByEmployeeId** must be a valid employee with **currentShiftRole** in (General Manager, Manager, Assistant Manager, MoD, Admin, Supervisor) and **onDuty: true**; otherwise 403. Inventory must not be finalized; the count with `_id === countId` must exist in that supplier good’s `monthlyCounts`.
 - **Logic:** Recompute deviation from the “previous” dynamic count (derived from the count being edited). Update that count document with new quantity, deviation, and `reedited: { reeditedByEmployeeId, date, reason, originalValues }`. Update `dynamicSystemCount` and `averageDeviationPercent`.
-- **Response:** 200 success; 400 if finalized or same quantity; 404 if count not found.
+- **Response:** 200 success; 400 if finalized or same quantity; 403 if not manager/supervisor on duty; 404 if count not found.
 
 ---
 
@@ -180,7 +197,12 @@ These functions live under `app/api/v1/inventories/utils/` and are **not** HTTP 
 - **Purchases** → increase **Inventory** `dynamicSystemCount`.
 - **Orders** (via business good ingredients) → decrease **Inventory** `dynamicSystemCount` (via **updateDynamicCountSupplierGood**).
 - **Physical counts** (addCount / updateCount) → record real quantities, deviation, re-edits; **addCount** also sets `dynamicSystemCount` to the counted value for that good.
-- **First day of month** → close previous inventory (`setFinalCount: true`), create new inventory with all currently in-use supplier goods and carry over last count (or 0).
+- **First day of month** → close previous inventory (`setFinalCount: true`), create new inventory with all currently in-use supplier goods and carry over last count (or 0). This can be done via **POST** (root) or, preferably, **PATCH close** (manager-only), which closes and **auto-creates the next period inventory** in one transaction.
+
+### 7.6 Low-stock notifications and variance report
+
+- **checkLowStockAndNotify(businessId)** runs **after order creation** (and optionally after stock-reducing purchase edits). It finds the open inventory, filters items below par or minimum, finds manager-level employees on duty, and creates one **Warning** notification with a message listing those items; it then pushes that notification to those employees. It is fire-and-forget (no session; does not fail the request).
+- **Variance report** uses **getTheoreticalUsage** (orders in month, expanded to ingredients, excluded cancelled) and **getActualUsage** (opening closed inventory + purchases in month − closing closed inventory). **getVarianceReport** returns per–supplier-good theoretical, actual, and variance (theoretical − actual) for analytics.
 
 ---
 
@@ -210,8 +232,9 @@ These functions live under `app/api/v1/inventories/utils/` and are **not** HTTP 
 4. **Use the same transaction** when orders or supplier goods change inventory (pass `session` into updateDynamicCountSupplierGood, addSupplierGoodToInventory, deleteSupplierGoodFromInventory).
 5. **Quantities and units:** All inventory counts and dynamicSystemCount are in the **SupplierGood’s measurement unit**. When applying order ingredients, convert from the ingredient’s unit to the supplier good’s unit if they differ.
 6. **Month boundaries:** Use start/end of month for “current month” and “previous month” (e.g. moment or setDate(1) and last day); keep query params like `monthDate` consistent (first day of month for clarity).
-7. **Re-edits:** Only the **last** count (lastCount: true) is updateable via updateCountFromSupplierGood; store `reedited` with reason and original values for audit.
+7. **Re-edits:** Only the **last** count (lastCount: true) is updateable via updateCountFromSupplierGood; require **countedByEmployeeId** and allow only **managers or supervisors on duty**; store `reedited` with reason and original values for audit.
 8. **Cascade:** Inventory is deleted only as part of business cascade; avoid ad-hoc DELETE inventory in normal flows.
+9. **Close:** Prefer **PATCH close** (manager-only) over POST create for month-end: it closes and creates the next period in one transaction. Use same manager roles as daily report close (General Manager, Manager, Assistant Manager, MoD, Admin).
 
 ---
 
