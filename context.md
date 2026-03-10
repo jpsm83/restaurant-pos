@@ -2,6 +2,10 @@
 
 This file (`context.md`) is the **source of truth** for understanding **what this app is** and **how it works end-to-end**.
 
+For a **detailed, user-level walkthrough of the full operational flow** (from business onboarding to live service, purchasing, inventory, and reporting), see:
+
+- `docs/user-flow.md`
+
 It is also the **entrypoint context for AI-assisted coding** in this repo:
 
 - Start here to understand the product and high-level flow.

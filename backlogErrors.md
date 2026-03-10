@@ -1,3 +1,21 @@
+- 1 Create users (people identities) - A user can be linked to the business as employee but it is a total individual user, a user log into the app as normal user and make orders at any business as self customer or can log into the app as employee. this choice supose to be allowed on the log in page of the app, the app check if user has an employee status and if so it gives hin the choice to log in as normal user or employee. to login as employee the user also have to be allowed by the schedule, he can be employee but not schedule to work at that time so still we could see the option to login as normal user or employee but at that time the employee login button can be disable. In simple context, user can be anyone that want use the app for a personal orders, while user can also be an employee but that is dictacte by the business and if so the user has both options of self login, normal user or employee, and the employee login will only be enable if he is on schedule for that time.
+
+- 1 Configure schedules and labour cost - The schedule configuration by the manager cannot be optional once the user cannot login as employee if the schedule not permit it. the user supose to be abble to login as employee 5 minutes prior the scheduele start time.
+
+- 1 Configure promotions - Promotions are apply on the fly by the frontend so the user can see the updated price but those promotions also must be applyed, or better saying, validating on the backend for precision and validations of data.
+
+- 1 Create sales points (tables, bar, rooms) - QR codes should not be only for user self-ordering, it can also be for employee to open a table and create a table instance, we must identify how is scanning the QR code by its login session, he can be a normal user self-ordering or it can be a employee on-duty.
+
+- 3.1 Staff‑opened session - staff can open a table selecting from the ones existing or scaning the QR code that is linked to all the points of sale, the app will know if whoever opening the table is a normal user or an employee checking the session of this person
+
+- 3.1 Self‑ordering - user can self order hinself login the app, them it must have 2 options, scan a QR code for order on site or choose the restarutante from a filter of choices he select
+
+- 3.1 Self‑ordering via QR - if is a normal customer opening the table is has no other option but pay the order before send it, order must be payed and table closed, them an email with the confirmation supose to be sent to the user so the waiter can request a confirmation of the order before delivery it
+
+- 3.1 Self‑ordering via home - use can self order from his home too for delivery, in that case user can login as normal customer, choose the restaurante and the same menu and flow as the "Self‑ordering via QR" would happens, the only difference is there was no table delivery but insted a address from the user. 
+
+======================================================================
+
 business - DONE
 salesPoint - DONE
 employees - DONE
