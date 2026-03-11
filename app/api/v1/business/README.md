@@ -7,7 +7,7 @@ This folder contains the **REST API for the Business entity**: the core tenant o
 ## 1. Purpose and role in the application
 
 - **Business** = one restaurant (or location) using the POS. It holds company identity, address, subscription, currency, and optional **metrics** (cost percentages, waste thresholds).
-- **Authentication**: Sign-in is done against the **Business** collection (email + password). NextAuth Credentials provider uses `Business` in MongoDB; the session user is effectively the business (see `app/api/auth/[...nextauth]/options.ts`).
+- **Authentication**: The app uses a **single sign-in form** (email + password). NextAuth validates against **Business** first, then **User** (see `app/api/auth/[...nextauth]/options.ts`). If the email matches a **Business** and the password is correct, the session has type `business` and the user is redirected to the business/admin flow (e.g. `/admin`). Business sessions are the back-office identity.
 - **Multi-tenancy**: The app is multi-tenant by `businessId`. The global Zustand store (`app/store/store.ts`) keeps `businessId` (and `username`) after login. API routes under `.../business/[businessId]/...` or that accept `businessId` in the body use it to scope data.
 - **Cascade**: Deleting a business (DELETE) removes all related data in a single transaction (employees, orders, suppliers, sales points, etc.) and then the Cloudinary folder for that business.
 
@@ -193,7 +193,7 @@ This is the core operational loop of the application, and `businessId` is the th
 
 - Orders are created by employees through `POST /api/v1/orders` (customer self-ordering uses a different route).
 - Internally, order creation:
-  - Validates IDs (`businessId`, `salesInstanceId`, `employeeId`, and the `businessGoodsIds`).
+  - Validates IDs (`businessId`, `salesInstanceId`, `employeeId`, and each order’s `businessGoodId` and `addOns`).
   - Creates orders in a transaction (`createOrders`).
   - Pushes a `salesGroup` entry into the `SalesInstance` with an `orderCode` and the created order IDs.
   - Updates inventory “dynamic count” for the supplier goods used as ingredients (ingredients are consumed when orders are created).

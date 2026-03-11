@@ -129,10 +129,10 @@ All responses are JSON. Errors use `handleApiError` (500) or explicit `NextRespo
 ### 5.3 updateEmployeeDailySalesReport
 
 - **Signature:** `updateEmployeesDailySalesReport(employeeIds, dailyReferenceNumber)` (no session; runs its own connectDb and a single update).
-- **Purpose:** Recompute each listed employee’s daily sales from **SalesInstance** (responsibleById + dailyReferenceNumber), **Order** (populated businessGoodsIds), and **BusinessGood**; then **replace** the report’s `employeesDailySalesReport` with the new array.
+- **Purpose:** Recompute each listed employee’s daily sales from **SalesInstance** (responsibleById + dailyReferenceNumber), **Order** (populated businessGoodId and addOns), and **BusinessGood**; then **replace** the report’s `employeesDailySalesReport` with the new array.
 - **Logic (summary):**
-  - For each employeeId: find SalesInstance where responsibleById = employeeId and dailyReferenceNumber = dailyReferenceNumber; populate salesGroup.ordersIds → Order (paymentMethod, billingStatus, orderGrossPrice, orderNetPrice, orderTips, orderCostPrice, businessGoodsIds → BusinessGood with sellingPrice, costPrice).
-  - For each order: aggregate payment methods into employeePaymentMethods; add to totalNetPaidAmount, totalTipsReceived, totalSalesBeforeAdjustments, totalCostOfGoodsSold; for each businessGood in the order, push to goodsSold / goodsVoid / goodsInvited according to order.billingStatus (Paid / Void / Invitation). Sum guests into totalCustomersServed. Set hasOpenSalesInstances if any instance has status !== "Closed".
+  - For each employeeId: find SalesInstance where responsibleById = employeeId and dailyReferenceNumber = dailyReferenceNumber; populate salesGroup.ordersIds → Order (paymentMethod, billingStatus, orderGrossPrice, orderNetPrice, orderTips, orderCostPrice, businessGoodId and addOns → BusinessGood with sellingPrice, costPrice).
+  - For each order: aggregate payment methods into employeePaymentMethods; add to totalNetPaidAmount, totalTipsReceived, totalSalesBeforeAdjustments, totalCostOfGoodsSold; for each good (main product + addOns) on the order, push to goodsSold / goodsVoid / goodsInvited according to order.billingStatus (Paid / Void / Invitation). Sum guests into totalCustomersServed. Set hasOpenSalesInstances if any instance has status !== "Closed".
   - Compute averageCustomerExpenditure, totalVoidValue, totalInvitedValue. Build IEmployeeDailySalesReport (soldGoods, voidedGoods, invitedGoods).
   - After processing all employeeIds, **DailySalesReport.updateOne({ dailyReferenceNumber }, { $set: { employeesDailySalesReport: employeeReports } })**.
 - **Returns:** `{ updatedEmployees: IEmployeeDailySalesReport[], errors: string[] }` or an error string. Used by calculateUsersDailySalesReport and calculateBusinessDailySalesReport.
@@ -157,8 +157,8 @@ All responses are JSON. Errors use `handleApiError` (500) or explicit `NextRespo
 
 ### 7.2 Orders (source of totals and goods)
 
-- **Orders** store `dailyReferenceNumber`, `billingStatus` (Open, Paid, Void, Invitation), `paymentMethod`, `orderGrossPrice`, `orderNetPrice`, `orderTips`, `orderCostPrice`, `businessGoodsIds` (with quantity, sellingPrice, costPrice). They are grouped under **SalesInstance** via `salesGroup.ordersIds`.
-- **updateEmployeeDailySalesReport** reads **SalesInstance** by responsibleById and dailyReferenceNumber, then for each instance’s orders aggregates payment methods, totals, and business goods into sold/void/invited by billingStatus. So: **orders are the source of truth for what was sold/void/invited; the daily report is the aggregated view.**
+- **Orders** store `dailyReferenceNumber`, `billingStatus` (Open, Paid, Void, Invitation), `paymentMethod`, `orderGrossPrice`, `orderNetPrice`, `orderTips`, `orderCostPrice`, `businessGoodId` and `addOns` (populated with sellingPrice, costPrice). `orderNetPrice` already reflects **backend-validated promotions and manual discounts** at the moment of order creation.
+- **updateEmployeeDailySalesReport** reads **SalesInstance** by responsibleById and dailyReferenceNumber, then for each instance’s orders aggregates payment methods, totals, and business goods into sold/void/invited by billingStatus. So: **orders (with validated net prices) are the source of truth for what was sold/void/invited; the daily report is the aggregated view.**
 
 ### 7.3 Business (tenant and subscription)
 

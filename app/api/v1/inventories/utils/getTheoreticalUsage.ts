@@ -42,10 +42,13 @@ export async function getTheoreticalUsage(
     createdAt: { $gte: startDate, $lte: endDate },
     billingStatus: { $ne: "Cancel" },
   })
-    .select("businessGoodsIds")
+    .select("businessGoodId addOns")
     .lean();
 
-  const allBusinessGoodsIds = orders.flatMap((o) => o.businessGoodsIds ?? []);
+  const allBusinessGoodsIds = orders.flatMap((o) => [
+    o.businessGoodId,
+    ...(o.addOns ?? []),
+  ]);
   if (allBusinessGoodsIds.length === 0) return [];
 
   const businessGoods = (await BusinessGood.find({

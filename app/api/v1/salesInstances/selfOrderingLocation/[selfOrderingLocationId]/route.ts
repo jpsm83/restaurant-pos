@@ -26,6 +26,7 @@ import { IPaymentMethod } from "@/lib/interface/IPaymentMethod";
 import DailySalesReport from "@/lib/db/models/dailySalesReport";
 import Customer from "@/app/lib/models/customer";
 import { validatePaymentMethodArray } from "@/app/api/v1/orders/utils/validatePaymentMethodArray";
+import { applyPromotionsToOrders } from "@/lib/promotions/applyPromotions";
 
 // first create a empty salesInstance, then update it with the salesGroup.ordersIds
 // @desc    Create new salesInstances
@@ -59,7 +60,7 @@ export const POST = async (
   //       orderGrossPrice,
   //       orderNetPrice, - calculated on the front_end following the promotion rules
   //       orderCostPrice,
-  //       businessGoodsIds, - can be an array of businessId goods (3 IDs) "burger with extra cheese and add bacon"
+  //       businessGoodId, addOns - main product + optional add-ons (e.g. burger + extra cheese)
   //       allergens,
   //       promotionApplyed, - automatically set by the front_end upon creation
   //       comments
@@ -90,9 +91,12 @@ export const POST = async (
     );
   }
 
-  // Validate IDs
+  // Validate IDs (main product + addOns per order)
   const objectIds = [
-    ...ordersArr.flatMap((order) => order.businessGoodsIds),
+    ...ordersArr.flatMap((order) => [
+      order.businessGoodId!,
+      ...(order.addOns ?? []),
+    ]),
     businessId,
     openedByCustomerId,
     selfOrderingLocationId,
@@ -197,6 +201,49 @@ export const POST = async (
       });
     }
 
+    // Validate client pricing against backend calculation; save only when they match
+    const pricedOrders = await applyPromotionsToOrders({
+      businessId,
+      ordersArr,
+    });
+
+    if (typeof pricedOrders === "string") {
+      await session.abortTransaction();
+      return new NextResponse(JSON.stringify({ message: pricedOrders }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const PRICE_TOLERANCE = 0.01;
+    for (let i = 0; i < pricedOrders.length; i++) {
+      const backend = pricedOrders[i];
+      const client = ordersArr[i];
+      if (
+        Math.abs((client.orderNetPrice ?? 0) - (backend.orderNetPrice ?? 0)) >
+          PRICE_TOLERANCE ||
+        (client.promotionApplyed !== undefined &&
+          backend.promotionApplyed !== undefined &&
+          client.promotionApplyed !== backend.promotionApplyed) ||
+        (client.promotionApplyed === undefined &&
+          backend.promotionApplyed !== undefined) ||
+        (client.promotionApplyed !== undefined &&
+          backend.promotionApplyed === undefined) ||
+        Math.abs(
+          (client.discountPercentage ?? 0) - (backend.discountPercentage ?? 0)
+        ) > PRICE_TOLERANCE
+      ) {
+        await session.abortTransaction();
+        return new NextResponse(
+          JSON.stringify({
+            message:
+              "Order price or promotion does not match server calculation",
+          }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     // create orders
     // inventory will be updated in this function
     const createdOrders = await createOrders(
@@ -247,23 +294,25 @@ export const POST = async (
     }
 
     const soldGoods: IGoodsReduced[] = [];
+    const goodIdsPerOrder = ordersArr.flatMap((order) => [
+      order.businessGoodId!,
+      ...(order.addOns ?? []),
+    ]);
+    goodIdsPerOrder.forEach((goodId) => {
+      const existingGood = soldGoods.find(
+        (good) =>
+          (good.businessGoodId?.toString?.() ?? good.businessGoodId) ===
+          (goodId?.toString?.() ?? goodId)
+      );
 
-    // Assuming ordersArr is an array of orders
-    ordersArr.forEach((order) => {
-      order.businessGoodsIds.forEach((goodId) => {
-        const existingGood = soldGoods.find(
-          (good) => good.businessGoodId === goodId
-        );
-
-        if (existingGood) {
-          existingGood.quantity += 1;
-        } else {
-          soldGoods.push({
-            businessGoodId: goodId,
-            quantity: 1,
-          });
-        }
-      });
+      if (existingGood) {
+        existingGood.quantity += 1;
+      } else {
+        soldGoods.push({
+          businessGoodId: goodId,
+          quantity: 1,
+        });
+      }
     });
 
     const totalSalesBeforeAdjustments = createdOrders.reduce(

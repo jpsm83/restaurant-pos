@@ -12,7 +12,8 @@ export interface IOrder {
   employeeId?: Types.ObjectId;
   customerId?: Types.ObjectId;
   salesInstanceId: Types.ObjectId;
-  businessGoodsIds: Types.ObjectId[];
+  businessGoodId: Types.ObjectId;
+  addOns?: Types.ObjectId[];
   businessId: Types.ObjectId;
   orderTips?: number;
   paymentMethod?: IPaymentMethod[];

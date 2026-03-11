@@ -65,7 +65,13 @@ export const GET = async (
         model: User,
       })
       .populate({
-        path: "businessGoodsIds",
+        path: "businessGoodId",
+        select:
+          "name mainCategory subCategory productionTime sellingPrice allergens",
+        model: BusinessGood,
+      })
+      .populate({
+        path: "addOns",
         select:
           "name mainCategory subCategory productionTime sellingPrice allergens",
         model: BusinessGood,

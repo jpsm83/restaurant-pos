@@ -64,7 +64,13 @@ export const GET = async (
         model: Customer,
       })
       .populate({
-        path: "businessGoodsIds",
+        path: "businessGoodId",
+        select:
+          "name mainCategory subCategory productionTime sellingPrice allergens",
+        model: BusinessGood,
+      })
+      .populate({
+        path: "addOns",
         select:
           "name mainCategory subCategory productionTime sellingPrice allergens",
         model: BusinessGood,
@@ -81,6 +87,6 @@ export const GET = async (
           headers: { "Content-Type": "application/json" },
         });
   } catch (error) {
-    return handleApiError("Get all orders by employee ID failed!", error);
+    return handleApiError("Get all orders by employee ID failed!", error instanceof Error ? error.message : String(error));
   }
 };

@@ -48,12 +48,17 @@ const orderSchema = new Schema(
       required: [true, "Sales instance id is required!"],
       index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
     }, // salesInstance refers to salesPoint, where the order was made
-    businessGoodsIds: {
+    businessGoodId: {
+      type: Schema.Types.ObjectId,
+      ref: "BusinessGood",
+      required: [true, "Business good id is required!"],
+      index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
+    }, // main product for this order line; one order = one billable line (one main product; quantity is multiple orders)
+    addOns: {
       type: [Schema.Types.ObjectId],
       ref: "BusinessGood",
-      required: [true, "Business good ids is required!"],
-      index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
-    }, // can be an aray of business goods (3) "burger with extra cheese and add bacon"
+      default: undefined,
+    }, // optional add-ons (e.g. burger + extra cheese); promotions apply only to businessGoodId, not to addOns
     businessId: {
       type: Schema.Types.ObjectId,
       ref: "Business",

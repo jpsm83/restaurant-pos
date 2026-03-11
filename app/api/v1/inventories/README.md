@@ -167,9 +167,9 @@ These functions live under `app/api/v1/inventories/utils/` and are **not** HTTP 
 
 ### 7.1 Orders (consumption)
 
-- **Orders** store `businessGoodsIds`. Each business good has **ingredients** (SupplierGood + quantity + unit) and optionally **setMenuIds** (more business goods with ingredients).
+- **Orders** store `businessGoodId` (main product) and optional `addOns`. Callers (createOrders, cancelOrders) build a flattened list `[businessGoodId, ...addOns]` per order and pass it to the util. Each business good has **ingredients** (SupplierGood + quantity + unit) and optionally **setMenuIds** (more business goods with ingredients).
 - When orders are **created**, `createOrders` calls **updateDynamicCountSupplierGood(businessGoodsIds, "remove", session)** so the open inventory’s `dynamicSystemCount` **decreases** for each ingredient.
-- When orders are **cancelled**, `cancelOrders` calls **updateDynamicCountSupplierGood(businessGoodsIds, "add", session)** to **restore** stock.
+- When orders are **cancelled**, `cancelOrders` calls **updateDynamicCountSupplierGood(businessGoodsIds, "add", session)** to **restore** stock. **getTheoreticalUsage** selects `businessGoodId` and `addOns` from orders and flattens them the same way.
 - So: **order created → consume stock; order cancelled → give it back.** No direct reference from Order to Inventory; the link is Order → BusinessGood → ingredients (SupplierGood) → Inventory.inventoryGoods.
 
 ### 7.2 Purchases (replenishment)

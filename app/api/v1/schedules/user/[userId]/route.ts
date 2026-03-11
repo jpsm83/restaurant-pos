@@ -4,28 +4,28 @@ import { Types } from "mongoose";
 
 // imported utils
 import { handleApiError } from "@/lib/db/handleApiError";
+import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 
 // imported models
 import Schedule from "@/lib/db/models/schedule";
 import Employee from "@/lib/db/models/employee";
-import isObjectIdValid from "@/lib/utils/isObjectIdValid";
+import User from "@/lib/db/models/user";
 
-// @desc    Get all schedules by employee ID
-// @route   GET /schedules/employee/:employeeId
+// @desc    Get all schedules where this user (as employee) appears
+// @route   GET /api/v1/schedules/user/:userId
 // @access  Public
 export const GET = async (
   req: Request,
   context: {
-    params: { employeeId: Types.ObjectId };
+    params: { userId: Types.ObjectId };
   }
 ) => {
   try {
-    const employeeId = context.params.employeeId;
+    const userId = context.params.userId;
 
-    // check if the schedule ID is valid
-    if (isObjectIdValid([employeeId]) !== true) {
+    if (isObjectIdValid([userId]) !== true) {
       return new NextResponse(
-        JSON.stringify({ message: "Invalid employee Id!" }),
+        JSON.stringify({ message: "Invalid user Id!" }),
         {
           status: 400,
           headers: { "Content-Type": "application/json" },
@@ -33,8 +33,20 @@ export const GET = async (
       );
     }
 
-    // connect before first call to DB
     await connectDb();
+
+    const user = (await User.findById(userId).select("employeeDetails").lean()) as { employeeDetails?: unknown } | null;
+    if (!user?.employeeDetails) {
+      return new NextResponse(
+        JSON.stringify({ message: "User not found or not linked to an employee!" }),
+        {
+          status: 404,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    const employeeId = user.employeeDetails as Types.ObjectId;
 
     const schedules = await Schedule.find({
       "employeesSchedules.employeeId": employeeId,
@@ -58,6 +70,6 @@ export const GET = async (
           },
         });
   } catch (error) {
-    return handleApiError("Get schedule by employee id failed!", error);
+    return handleApiError("Get schedule by employee id failed!", error as string);
   }
 };

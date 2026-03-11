@@ -24,9 +24,9 @@ This document explains how the employee routes work, how they fit into the app, 
   - **Orders**: employee-driven order creation uses `employeeId`
   - **Reporting**: daily sales reports track employees who participated
   - **Printers**: printers can allow/exclude employees for printing
-  - **Schedules/shift management**: employees are scheduled and their duty status affects UI/operations
+  - **Schedules/shift management**: employees are scheduled and their duty status affects UI/operations. At **login**, if a user has `employeeDetails`, the app runs `canLogAsEmployee(employeeId)` to decide whether the user can continue as employee and to set `canLogAsEmployee` in the session. For **non-admin employees**, this is a schedule check (today's shift, from 5 minutes before start to end); employees whose `allEmployeeRoles` includes the **Admin** role can log in as employee at any time (no schedule required).
 
-So: **Employees are the “who” behind most business operations in the POS.** This folder is the source of truth for creating, updating, and managing employees and their linkage to users and printers.
+So: **Employees are the “who” behind most business operations in the POS.** This folder is the source of truth for creating, updating, and managing employees and their linkage to users and printers. Create, update, and delete operations keep **User.employeeDetails** in sync (see users README).
 
 ---
 

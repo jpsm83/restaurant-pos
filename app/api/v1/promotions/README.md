@@ -2,8 +2,10 @@
 
 This folder contains the **REST API for the Promotion entity**: time-bound discount/offer rules a **Business** can run (happy hour fixed price, percentage discounts, 2x1, 3x2, etc.). Promotions are scoped by `businessId` and can optionally target a subset of **BusinessGoods** (menu items).
 
-In this codebase, **promotion calculation is intentionally done on the front end** so prices can be shown in real time while ordering. The backend stores promotion definitions and attaches promotion metadata to orders when applicable.
+Promotion rules are applied in **two stages**:
 
+- The **front end** calculates promotion effects in real time so staff and customers see discounted prices while ordering.
+- The **backend** uses a shared promotion engine to **run the same rules to validate** promotions at order creation (employee and self-ordering flows); if client payload matches backend calculation, it is saved; otherwise an error is returned. No overwriting. Close/billing does not re-validate promotions.
 This document explains how the promotion routes work, their validation logic, how they integrate with orders and billing, and the patterns to follow when extending them.
 
 ---
@@ -11,10 +13,15 @@ This document explains how the promotion routes work, their validation logic, ho
 ## 1. Purpose and role in the application
 
 - **Business-scoped pricing rules:** Promotions belong to a business (`businessId`) and define when/where an offer applies.
-- **Real-time UX requirement:** The order creation flow expects the client to calculate the promotion price live (so the user sees the discounted price immediately). This is reinforced by the comments in the orders code (`createOrders`) stating promotions should be calculated in the front end.
-- **Operational coupling:** Promotions affect:\n  - order net price\n  - promotion identification (`promotionApplyed` field on orders)\n  - reporting/analytics (knowing which orders were discounted)
+- **Real-time UX requirement:** The order creation flow lets the client calculate the promotion price live (so the user sees the discounted price immediately) and sends that result to the backend.
+- **Backend validation:** A shared promotion engine (`lib/promotions/applyPromotions.ts`) runs the same rules: it loads active promotions for the business, checks time windows (`promotionPeriod`, `weekDays`, `activePromotion`) and targeting (`businessGoodsToApplyIds`). **Promotions apply only to the main product (order.businessGoodId), not to addOns.** The backend **compares** its computed `orderNetPrice`, `promotionApplyed`, and `discountPercentage` to what the client sent; only when they match is the order saved. If they do not match, the API returns an error and does not persist. At close/billing, stored order data is trusted; there is no second validation.
+- **Operational coupling:** Promotions affect:
+  - order net price
+  - promotion identification (`promotionApplyed` field on orders)
+  - reporting/analytics (knowing which orders were discounted)
+  - eligibility for additional manual discounts (discounts are blocked when a promotion is applied)
 
-So: **Promotions are the canonical rules; the UI applies them during ordering and stores the result on the Order.**
+So: **Promotions are the canonical rules; the UI applies them during ordering for UX, and the backend recomputes and validates them so Orders and reports remain authoritative.**
 
 ---
 
@@ -129,13 +136,20 @@ This endpoint is how the UI can load “current promotions” for a business and
 
 ### 6.1 Orders and real-time pricing
 
-The order creation utilities (`orders/utils/createOrders.ts`) include explicit guidance:
+Orders integrate with promotions via a **backend promotion engine**:
 
-- Promotion price should be calculated on the front end so it can be shown in real time.
-- Individual business goods should not have multiple promotions applied simultaneously.
-- When promotions apply, the client stores:\n  - the promotion name\n  - the updated net price\n  - promotion metadata on the order (`promotionApplyed`)
+- The front end still calculates promotion prices live so the user sees discounts as they build the order.
+- On POST `/orders` (employee flow) and in the self-ordering flow, the backend calls `applyPromotionsToOrders({ businessId, ordersArr })` from `lib/promotions/applyPromotions.ts` **before** creating orders.
+  - This helper:
+    - loads active promotions for the business,
+    - filters them by time window and weekday using an `atDateTime` (order creation moment),
+    - filters them by targeted goods (`businessGoodsToApplyIds`),
+    - enforces “one promotion per business good” (no stacking),
+    - chooses, when multiple promotions could apply, the one that yields the lowest net price,
+    - returns authoritative `orderNetPrice`, `promotionApplyed`, and `discountPercentage` per order.
+  - The backend compares the result to the client-sent payload; if they match, the client payload is persisted; if not, an error is returned. There is no validation at close.
 
-So the Promotions API is used to **fetch definitions**, and the ordering UI uses those definitions to compute the final order price.
+So the Promotions API is used to **fetch and manage definitions**, and the shared promotion engine uses those definitions to validate (and only then persist) the client's order price and promotion data.
 
 ### 6.2 BusinessGoods targeting
 

@@ -45,7 +45,7 @@ app/api/v1/salesInstances/
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/v1/salesInstances` | Returns all sales instances (populated: salesPoint, customer, employees, salesGroup.ordersIds + businessGoodsIds). 404 if none. |
+| GET | `/api/v1/salesInstances` | Returns all sales instances (populated: salesPoint, customer, employees, salesGroup.ordersIds + businessGoodId, addOns). 404 if none. |
 | POST | `/api/v1/salesInstances` | Creates a sales instance (employee-opened). Body: **JSON**. Ensures daily report exists, no duplicate open instance for same (dailyRef, business, salesPoint), then createSalesInstance. Transaction. |
 | GET | `/api/v1/salesInstances/business/:businessId` | Intended: list sales instances for the business. Filter by businessId when implemented. |
 | GET | `/api/v1/salesInstances/user/:userId` | Intended: list sales instances for an employee (openedByEmployeeId or responsibleById). Path param used as employeeId; add filter when implemented. |
@@ -63,7 +63,7 @@ All responses are JSON. Errors use `handleApiError` (500) or explicit NextRespon
 ### 4.1 GET (list, by id, by business, by user/employee)
 
 - **DB:** `connectDb()` before first query.
-- **Populate:** salesPointId (name, type, selfOrdering), openedByCustomerId (customerName), openedByEmployeeId / responsibleById / closedById (employeeName, currentShiftRole), salesGroup.ordersIds with businessGoodsIds (name, mainCategory, subCategory, allergens, sellingPrice). Order fields: billingStatus, orderStatus, orderGrossPrice, orderNetPrice, paymentMethod, allergens, promotionApplyed, discountPercentage, createdAt, businessGoodsIds.
+- **Populate:** salesPointId (name, type, selfOrdering), openedByCustomerId (customerName), openedByEmployeeId / responsibleById / closedById (employeeName, currentShiftRole), salesGroup.ordersIds with businessGoodId and addOns (name, mainCategory, subCategory, allergens, sellingPrice). Order fields: billingStatus, orderStatus, orderGrossPrice, orderNetPrice, paymentMethod, allergens, promotionApplyed, discountPercentage, createdAt, businessGoodId, addOns.
 - **List by business:** Intended filter `SalesInstance.find({ businessId })`. Ensure businessId is validated with isObjectIdValid.
 - **List by employee:** Intended filter by openedByEmployeeId or responsibleById (path param is the employee/user id).
 - **By ID:** Validate salesInstanceId; use findById(salesInstanceId) or findOne({ _id: salesInstanceId }) so a single document is returned.
@@ -111,8 +111,8 @@ Note: salesPointId and salesGroup are not updated in this route; they are manage
 
 **Body:** `businessId`, `openedByCustomerId`, `ordersArr`, `paymentMethodArr`.
 
-- **Validation:** Validate all IDs (businessId, openedByCustomerId, selfOrderingLocationId, and businessGoodsIds inside ordersArr). ordersArrValidation(ordersArr); validatePaymentMethodArray(paymentMethodArr). Customer must exist.
-- **Transaction:** Create or get daily report (createDailySalesReport if needed). Create sales instance with salesPointId = selfOrderingLocationId, openedByCustomerId, guests: 1, salesInstanceStatus: "Occupied", clientName from customer. createSalesInstance(..., session). Create orders with createOrders(dailyReferenceNumber, ordersArr, undefined, openedByCustomerId, salesInstance._id, businessId, session). closeOrders(createdOrdersIds, paymentMethodArr, session). Then update DailySalesReport: push to selfOrderingSalesReport with customerId, paymentMethodArr, totals (totalSalesBeforeAdjustments, totalNetPaidAmount, totalCostOfGoodsSold), soldGoods. Commit.
+- **Validation:** Validate all IDs (businessId, openedByCustomerId, selfOrderingLocationId, and each order’s businessGoodId and addOns). ordersArrValidation(ordersArr); validatePaymentMethodArray(paymentMethodArr). Customer must exist.
+- **Transaction:** Create or get daily report (createDailySalesReport if needed). Create sales instance with salesPointId = selfOrderingLocationId, openedByCustomerId, guests: 1, salesInstanceStatus: "Occupied", clientName from customer. createSalesInstance(..., session). Create orders with createOrders(dailyReferenceNumber, ordersArr, undefined, openedByCustomerId, salesInstance._id, businessId, session). closeOrders(createdOrdersIds, paymentMethodArr, session). Then update DailySalesReport: push to selfOrderingSalesReport with customerId, paymentMethodArr, totals (totalSalesBeforeAdjustments, totalNetPaidAmount, totalCostOfGoodsSold), soldGoods (built from businessGoodId + addOns per order). Commit.
 
 ---
 

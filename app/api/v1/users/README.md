@@ -11,7 +11,7 @@ This document describes how these routes work, how they fit into the app (employ
 ## 1. Purpose and role in the application
 
 - **User** = one person in the system with `personalDetails` (credentials, name, id, address, optional image). Stored in the **User** collection; password is hashed with bcrypt and excluded from GET responses.
-- **Employee linkage:** An **Employee** document has a required `userId` referencing **User**. So a user can “be” an employee; the app distinguishes “user as client” vs “user as employee” by the presence of that link and employee status (e.g. onDuty).
+- **Employee linkage:** **User.employeeDetails** is the single optional reference to **Employee**; it is set only when the user is linked as an employee and is maintained by the employees API. An **Employee** document has a required `userId` referencing **User**. So a user can “be” an employee; the app distinguishes “user as client” vs “user as employee” by the presence of that link and employee status (e.g. onDuty).
 - **Notification inbox:** Each user has an optional `notifications[]` array: `{ notificationId, readFlag, deletedFlag }`. When a notification is created or updated with **customersRecipientsIds**, the notifications API pushes this entry into each recipient User’s `notifications` array. Users **do not** create or delete notification documents; they only update their own **inbox state** (read/deleted flags) via the sub-routes under `users/[userId]/`.
 - **Self-orders:** The schema reserves `selfOrders` (array of Order refs) for orders made by the user when logged in as a client; the users API in this folder does not create or update orders.
 
@@ -123,7 +123,7 @@ So: deletion is **blocked** when the user is linked to an employee that has a te
 
 ### 5.4 Business and auth
 
-- **Back-office login** is against **Business** (email + password), not User (see `app/api/auth/[...nextauth]/options.ts`). So “current session” for the POS admin is a Business. Users are a separate identity layer (e.g. for customer-facing or employee-linked accounts). Do not confuse User with the Business used for tenant login.
+- **Unified login:** NextAuth validates credentials against **both** Business and User (see `app/api/auth/[...nextauth]/options.ts`). One sign-in form (email + password); the app looks up Business first, then User. The session includes `type` ("business" or "user") and for users linked to an employee: `employeeId`, `businessId`, and `canLogAsEmployee` (derived from a login-time check). For **non-admin employees**, `canLogAsEmployee` is `true` only when the user is scheduled for that day and the current time is within the window from 5 minutes before shift start until shift end; for employees whose `allEmployeeRoles` includes the **Admin** role, `canLogAsEmployee` is always `true` (they can log in as employee at any time). So "current session" can be a Business (back-office) or a User (customer or employee mode). How User fits into the login flow: after sign-in, a user with `employeeDetails` is sent to a **mode-selection** page (customer vs employee); the employee option is enabled only when `canLogAsEmployee` is true.
 
 ### 5.5 Cascade
 
@@ -167,7 +167,7 @@ So: deletion is **blocked** when the user is linked to an employee that has a te
 
 ## 8. Data model summary (for context)
 
-- **User:** `personalDetails` (required): username, email, password, idType, idNumber, address, firstName, lastName, nationality, gender, birthDate, phoneNumber; optional imageUrl. Optional: `employeeDetails` (ref: Employee), `selfOrders` (refs: Order), `notifications` (array of `{ notificationId, readFlag, deletedFlag }`).
+- **User:** `personalDetails` (required): username, email, password, idType, idNumber, address, firstName, lastName, nationality, gender, birthDate, phoneNumber; optional imageUrl. Optional: `employeeDetails` (ref: Employee — set only when the user is linked as an employee; kept in sync by the employees API), `selfOrders` (refs: Order), `notifications` (array of `{ notificationId, readFlag, deletedFlag }`).
 - **personalDetails** uses the same address structure as elsewhere (see `addressSchema` / `IAddress`).
 
 This README is the main context for how the users API works and how it ties into employees, notifications, and the rest of the app.

@@ -22,14 +22,17 @@ export const closeOrders = async (
     // Connect to DB
     await connectDb();
 
-    // Fetch orders to be closed
+    // Fetch orders to be closed (stored prices are trusted; no promotion re-validation)
     const orders = (await Order.find({
       _id: { $in: ordersIdsArr },
       billingStatus: "Open",
     })
-      .select("salesInstanceId billingStatus orderNetPrice")
+      .select("_id salesInstanceId billingStatus orderNetPrice")
       .session(session)
-      .lean()) as unknown as IOrder[] | null;
+      .lean()) as unknown as Pick<
+      IOrder,
+      "_id" | "salesInstanceId" | "billingStatus" | "orderNetPrice"
+    >[] | null;
 
     if (!orders || orders.length !== ordersIdsArr.length) {
       return "No open orders found!";

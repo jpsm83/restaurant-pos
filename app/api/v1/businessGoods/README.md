@@ -6,7 +6,7 @@ Business goods are where the app “joins”:
 
 - **Supplier goods** (what you buy from suppliers) → as **ingredients**
 - **Inventory** (what you have in stock) → consumed when orders are created
-- **Orders** (what customers buy) → reference `businessGoodsIds`
+- **Orders** (what customers buy) → reference `businessGoodId` (main product) and optional `addOns`
 - **Promotions** (discount rules) → apply to business goods
 
 This document describes how these routes and utilities work, how they interact with the rest of the app, and the patterns to follow when extending them.
@@ -24,7 +24,7 @@ This document describes how these routes and utilities work, how they interact w
   - `costPrice` (sum of ingredient costs or sum of set-menu members’ costPrice)
   - `allergens` (union of ingredient allergens + any manual allergens passed)
 - **Gross margin helper:** If `grossProfitMarginDesired` is provided (and a `costPrice` exists), the API computes `suggestedSellingPrice`.
-- **Inventory coupling happens via orders:** Orders store `businessGoodsIds`. When orders are created, the system expands those business goods into their ingredient supplier goods and **decrements inventory dynamic counts** accordingly (see `app/api/v1/orders/utils/createOrders.ts` → `app/api/v1/inventories/utils/updateDynamicCountSupplierGood.ts`).
+- **Inventory coupling happens via orders:** Orders store `businessGoodId` and optional `addOns`. When orders are created, the system builds a flattened list of those business good IDs (main + addOns per order) and passes it to **updateDynamicCountSupplierGood** to decrement inventory dynamic counts (see `app/api/v1/orders/utils/createOrders.ts` → `app/api/v1/inventories/utils/updateDynamicCountSupplierGood.ts`).
 
 So: **Business goods are the menu layer, but they’re also the “recipe” layer that powers costing, allergens, promotions applicability, and inventory consumption.**
 
@@ -147,7 +147,7 @@ If both `costPrice` and `grossProfitMarginDesired` are present:
 
 DELETE is intentionally restricted for integrity and analytics. This endpoint deletes only when safe:
 
-- **Cannot delete if used in open orders:** checks `Order.exists({ businessGoodsIds: businessGoodId, billingStatus: \"Open\" })`.
+- **Cannot delete if used in open orders:** checks `Order.exists({ $or: [ { businessGoodId }, { addOns: businessGoodId } ], billingStatus: \"Open\" })` (good cannot be deleted if it is the main product or an add-on of any open order).
 - **Cannot delete if it is part of a set menu:** checks `BusinessGood.exists({ setMenuIds: businessGoodId })`.
 
 If deletable, in a MongoDB transaction it:
@@ -188,8 +188,8 @@ If deletable, in a MongoDB transaction it:
 
 ### 6.1 Orders (sales flow)
 
-- Orders store `businessGoodsIds`.
-- At order creation time (`app/api/v1/orders/utils/createOrders.ts`), after inserting orders, the API calls:
+- Orders store `businessGoodId` and optional `addOns`. Callers pass a flattened list (main + addOns per order).
+- At order creation time (`app/api/v1/orders/utils/createOrders.ts`), after inserting orders, the API builds that list and calls:
   - `updateDynamicCountSupplierGood(businessGoodsIds, \"remove\", session)`
 - That inventory helper expands business goods → ingredients (including set-menu members), converts units where needed, and decrements `inventoryGoods.$.dynamicSystemCount` for each `supplierGoodId`.
 

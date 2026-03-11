@@ -17,6 +17,38 @@ import DailySalesReport from "@/lib/db/models/dailySalesReport";
 import BusinessGood from "@/lib/db/models/businessGood";
 import SalesInstance from "@/lib/db/models/salesInstance";
 
+/** Populated business good (lean) used in order reporting */
+interface PopulatedBusinessGood {
+  _id: Types.ObjectId;
+  sellingPrice?: number;
+  costPrice?: number;
+}
+
+/** Order document as returned by populate (lean) for daily report */
+interface OrderForReport {
+  paymentMethod?: IPaymentMethod[];
+  billingStatus?: string;
+  orderGrossPrice?: number;
+  orderNetPrice?: number;
+  orderTips?: number;
+  orderCostPrice?: number;
+  businessGoodId?: Types.ObjectId | PopulatedBusinessGood;
+  addOns?: (Types.ObjectId | PopulatedBusinessGood)[];
+}
+
+/** Sales group with populated orders */
+interface SalesGroupWithOrders {
+  orderCode?: string;
+  ordersIds?: OrderForReport[];
+}
+
+/** Sales instance document (lean) with populated salesGroup.ordersIds */
+interface SalesInstanceForReport {
+  salesInstanceStatus?: string;
+  guests?: number;
+  salesGroup?: SalesGroupWithOrders[];
+}
+
 // this function will update individual employee daily sales report
 // it will be fired individualy when the employee closes his daily sales report for the day or if he just want to see the report at current time
 // it also will be fired when manager closes the day sales report, running for all employees
@@ -53,21 +85,33 @@ export const updateEmployeesDailySalesReport = async (
           .populate({
             path: "salesGroup.ordersIds",
             model: Order,
-            populate: {
-              path: "businessGoodsIds",
-              model: BusinessGood,
-              populate: {
-                path: "setMenuIds",
-                select: "_id name mainCategory subCategory",
+            populate: [
+              {
+                path: "businessGoodId",
+                model: BusinessGood,
+                populate: {
+                  path: "setMenuIds",
+                  select: "_id name mainCategory subCategory",
+                },
+                select:
+                  "_id name mainCategory subCategory sellingPrice costPrice",
               },
-              select:
-                "_id name mainCategory subCategory sellingPrice costPrice",
-            },
+              {
+                path: "addOns",
+                model: BusinessGood,
+                populate: {
+                  path: "setMenuIds",
+                  select: "_id name mainCategory subCategory",
+                },
+                select:
+                  "_id name mainCategory subCategory sellingPrice costPrice",
+              },
+            ],
             select:
-              "employeeId paymentMethod billingStatus orderGrossPrice orderNetPrice orderTips orderCostPrice",
+              "employeeId paymentMethod billingStatus orderGrossPrice orderNetPrice orderTips orderCostPrice businessGoodId addOns",
           })
           .select(
-            "dailyReferenceNumber status businessId orderNetPrice orderTips guests closedById"
+            "dailyReferenceNumber salesInstanceStatus businessId orderNetPrice orderTips guests closedById"
           )
           .lean();
 
@@ -95,98 +139,128 @@ export const updateEmployeesDailySalesReport = async (
         };
 
         // Process each sales instance for the employee
-        if (salesInstance && salesInstance.length > 0) {
-          salesInstance.forEach((saleGroup) => {
-            saleGroup.forEach((sale: any) => {
+        const instances = salesInstance as SalesInstanceForReport[] | null;
+        if (instances && instances.length > 0) {
+          for (const instance of instances) {
             employeeDailySalesReportObj.hasOpenSalesInstances =
-              sale.status !== "Closed"
+              instance.salesInstanceStatus !== "Closed"
                 ? true
                 : employeeDailySalesReportObj.hasOpenSalesInstances;
 
-            // Process orders in the sales instance
-            if (
-              sale.ordersIds &&
-              sale.ordersIds.length > 0
-            ) {
-              sale.ordersIds.forEach((order: any) => {
-                order.paymentMethod.forEach((payment: IPaymentMethod) => {
+            const groups = instance.salesGroup ?? [];
+            for (const group of groups) {
+              const orders = group.ordersIds ?? [];
+              for (const order of orders) {
+                (order.paymentMethod ?? []).forEach((payment: IPaymentMethod) => {
                   const existingPayment =
                     employeeDailySalesReportObj?.employeePaymentMethods?.find(
-                      (p: any) =>
+                      (p: IPaymentMethod) =>
                         p.paymentMethodType === payment.paymentMethodType &&
                         p.methodBranch === payment.methodBranch
                     );
 
                   if (existingPayment) {
                     existingPayment.methodSalesTotal +=
-                      payment.methodSalesTotal;
+                      payment.methodSalesTotal ?? 0;
                   } else {
                     employeeDailySalesReportObj?.employeePaymentMethods?.push({
                       paymentMethodType: payment.paymentMethodType,
                       methodBranch: payment.methodBranch,
-                      methodSalesTotal: payment.methodSalesTotal,
+                      methodSalesTotal: payment.methodSalesTotal ?? 0,
                     });
                   }
                 });
 
-                employeeDailySalesReportObj.totalNetPaidAmount +=
-                  order.orderNetPrice ?? 0;
-                employeeDailySalesReportObj.totalTipsReceived +=
-                  order.orderTips ?? 0;
-                employeeDailySalesReportObj.totalSalesBeforeAdjustments +=
-                  order.orderGrossPrice ?? 0;
-                employeeDailySalesReportObj.totalCostOfGoodsSold +=
-                  order.orderCostPrice ?? 0;
+                employeeDailySalesReportObj.totalNetPaidAmount =
+                  (employeeDailySalesReportObj.totalNetPaidAmount ?? 0) +
+                  (order.orderNetPrice ?? 0);
+                employeeDailySalesReportObj.totalTipsReceived =
+                  (employeeDailySalesReportObj.totalTipsReceived ?? 0) +
+                  (order.orderTips ?? 0);
+                employeeDailySalesReportObj.totalSalesBeforeAdjustments =
+                  (employeeDailySalesReportObj.totalSalesBeforeAdjustments ?? 0) +
+                  (order.orderGrossPrice ?? 0);
+                employeeDailySalesReportObj.totalCostOfGoodsSold =
+                  (employeeDailySalesReportObj.totalCostOfGoodsSold ?? 0) +
+                  (order.orderCostPrice ?? 0);
 
-                // Update business goods sales report
-                if (
-                  order.businessGoodsIds &&
-                  order.businessGoodsIds.length > 0
-                ) {
-                  order.businessGoodsIds.forEach((businessGood: any) => {
-                    const updateGoodsArray = (array: any[]) => {
-                      const existingGood = array.find(
-                        (item: any) => item.businessGoodId === businessGood._id
-                      );
+                // Update business goods sales report (main product + addOns, each counts as 1 unit)
+                const goodsOnOrder: (Types.ObjectId | PopulatedBusinessGood)[] =
+                  order.businessGoodId
+                    ? [order.businessGoodId].concat(order.addOns ?? [])
+                    : (order.addOns ?? []);
+                goodsOnOrder.forEach((businessGood) => {
+                  const good =
+                    businessGood &&
+                    (typeof businessGood === "object" && "_id" in businessGood
+                      ? businessGood._id
+                      : businessGood);
+                  if (!good) return;
+                  const goodId =
+                    typeof good === "object" && good !== null && "_id" in good
+                      ? (good as { _id: Types.ObjectId })._id
+                      : (good as Types.ObjectId);
+                  const sellingPrice =
+                    typeof businessGood === "object" &&
+                    businessGood !== null &&
+                    "sellingPrice" in businessGood
+                      ? (businessGood as PopulatedBusinessGood).sellingPrice ?? 0
+                      : 0;
+                  const costPrice =
+                    typeof businessGood === "object" &&
+                    businessGood !== null &&
+                    "costPrice" in businessGood
+                      ? (businessGood as PopulatedBusinessGood).costPrice ?? 0
+                      : 0;
+                  const updateGoodsArray = (array: IGoodsReduced[]) => {
+                    const idStr =
+                      typeof goodId === "object" && goodId !== null
+                        ? (goodId as Types.ObjectId).toString()
+                        : String(goodId);
+                    const existingGood = array.find(
+                      (item: IGoodsReduced) =>
+                        (item.businessGoodId?.toString?.() ??
+                          String(item.businessGoodId)) === idStr
+                    );
 
-                      if (existingGood) {
-                        existingGood.quantity += businessGood.quantity ?? 1;
-                        existingGood.totalPrice += businessGood.sellingPrice;
-                        existingGood.totalCostPrice += businessGood.costPrice;
-                      } else {
-                        array.push({
-                          businessGoodId: businessGood._id,
-                          quantity: businessGood.quantity ?? 1,
-                          totalPrice: businessGood.sellingPrice,
-                          totalCostPrice: businessGood.costPrice,
-                        });
-                      }
-                    };
-
-                    // Update the correct array based on billing status
-                    switch (order.billingStatus) {
-                      case "Paid":
-                        updateGoodsArray(employeeGoodsReport.goodsSold);
-                        break;
-                      case "Void":
-                        updateGoodsArray(employeeGoodsReport.goodsVoid);
-                        break;
-                      case "Invitation":
-                        updateGoodsArray(employeeGoodsReport.goodsInvited);
-                        break;
-                      default:
-                        break;
+                    if (existingGood) {
+                      existingGood.quantity += 1;
+                      existingGood.totalPrice =
+                        (existingGood.totalPrice ?? 0) + sellingPrice;
+                      existingGood.totalCostPrice =
+                        (existingGood.totalCostPrice ?? 0) + costPrice;
+                    } else {
+                      array.push({
+                        businessGoodId: goodId as Types.ObjectId,
+                        quantity: 1,
+                        totalPrice: sellingPrice,
+                        totalCostPrice: costPrice,
+                      });
                     }
-                  });
-                }
-              });
+                  };
+
+                  switch (order.billingStatus) {
+                    case "Paid":
+                      updateGoodsArray(employeeGoodsReport.goodsSold);
+                      break;
+                    case "Void":
+                      updateGoodsArray(employeeGoodsReport.goodsVoid);
+                      break;
+                    case "Invitation":
+                      updateGoodsArray(employeeGoodsReport.goodsInvited);
+                      break;
+                    default:
+                      break;
+                  }
+                });
+              }
             }
 
-            // Update total customers served
-            employeeDailySalesReportObj.totalCustomersServed +=
-              sale.guests ?? 0;
-          });
-          });
+            const prevServed =
+              employeeDailySalesReportObj.totalCustomersServed ?? 0;
+            employeeDailySalesReportObj.totalCustomersServed =
+              prevServed + (instance.guests ?? 0);
+          }
         }
 
         // Calculate average customer expenditure
@@ -215,9 +289,11 @@ export const updateEmployeesDailySalesReport = async (
 
         // Add the updated result to the array
         employeeReports.push(employeeDailySalesReportObj);
-      } catch (error: any) {
+      } catch (error: unknown) {
         // Log errors for specific employees
-        errors.push(`Error updating employee ${employeeId}: ${error.message}`);
+        const message =
+          error instanceof Error ? error.message : String(error);
+        errors.push(`Error updating employee ${employeeId}: ${message}`);
       }
     }
 
@@ -232,7 +308,8 @@ export const updateEmployeesDailySalesReport = async (
       updatedEmployees: employeeReports,
       errors,
     };
-  } catch (error: any) {
-    return `Failed to update employee daily sales reports! ${error.message}`;
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    return `Failed to update employee daily sales reports! ${message}`;
   }
 };

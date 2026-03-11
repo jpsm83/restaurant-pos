@@ -87,8 +87,8 @@ app/api/v1/monthlyBusinessReport/
 
 ### 5.2 Daily sales reports (main source of sales and COGS)
 
-- **Daily Sales Reports** are calculated and optionally closed per day. They contain daily totals (dailyNetPaidAmount, dailyCostOfGoodsSold, dailyTipsReceived, dailySoldGoods, dailyVoidedGoods, dailyInvitedGoods, businessPaymentMethods, dailyPosSystemCommission).
-- The **monthly report** should **aggregate** these daily reports for the same business and month: sum totals, merge goods arrays by businessGoodId, merge payment methods. So: **daily reports are the source of truth for day-level data; the monthly report is the rolled-up view.** Update can run after daily report is calculated (as in toDo: “updates daily after daily sales report is calculate (not dynamic)”).
+- **Daily Sales Reports** are calculated and optionally closed per day. They contain daily totals (dailyNetPaidAmount, dailyCostOfGoodsSold, dailyTipsReceived, dailySoldGoods, dailyVoidedGoods, dailyInvitedGoods, businessPaymentMethods, dailyPosSystemCommission). These totals are based on `orderNetPrice` and promotion/discount effects that have already been **validated on the backend** at order creation.
+- The **monthly report** should **aggregate** these daily reports for the same business and month: sum totals, merge goods arrays by businessGoodId, merge payment methods. So: **daily reports (which themselves are fed by backend-validated orders) are the source of truth for day-level data; the monthly report is the rolled-up view.** Update can run after daily report is calculated (as in toDo: “updates daily after daily sales report is calculate (not dynamic)”).
 
 ### 5.3 Orders and sales instances
 

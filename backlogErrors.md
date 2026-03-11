@@ -1,8 +1,8 @@
-- 1 Create users (people identities) - A user can be linked to the business as employee but it is a total individual user, a user log into the app as normal user and make orders at any business as self customer or can log into the app as employee. this choice supose to be allowed on the log in page of the app, the app check if user has an employee status and if so it gives hin the choice to log in as normal user or employee. to login as employee the user also have to be allowed by the schedule, he can be employee but not schedule to work at that time so still we could see the option to login as normal user or employee but at that time the employee login button can be disable. In simple context, user can be anyone that want use the app for a personal orders, while user can also be an employee but that is dictacte by the business and if so the user has both options of self login, normal user or employee, and the employee login will only be enable if he is on schedule for that time.
+- 1 Create users (people identities) - A user can be linked to the business as employee but it is a total individual user, a user log into the app as normal user and make orders at any business as self customer or can log into the app as employee. this choice supose to be allowed on the log in page of the app, the app check if user has an employee status and if so it gives hin the choice to log in as normal user or employee. to login as employee the user also have to be allowed by the schedule, he can be employee but not schedule to work at that time so still we could see the option to login as normal user or employee but at that time the employee login button can be disable. In simple context, user can be anyone that want use the app for a personal orders, while user can also be an employee but that is dictacte by the business and if so the user has both options of self login, normal user or employee, and the employee login will only be enable if he is on schedule for that time. - DONE
 
-- 1 Configure schedules and labour cost - The schedule configuration by the manager cannot be optional once the user cannot login as employee if the schedule not permit it. the user supose to be abble to login as employee 5 minutes prior the scheduele start time.
+- 1 Configure schedules and labour cost - The schedule configuration by the manager cannot be optional once the user cannot login as employee if the schedule not permit it. the user supose to be abble to login as employee 5 minutes prior the scheduele start time. Implementation detail: for **non-admin employees**, the schedule for today and the 5-minute window before shift start are required for employee login; employees whose `allEmployeeRoles` includes the **Admin** role can log in as employee at any time, even when not scheduled. - DONE
 
-- 1 Configure promotions - Promotions are apply on the fly by the frontend so the user can see the updated price but those promotions also must be applyed, or better saying, validating on the backend for precision and validations of data.
+- 1 Configure promotions - Promotions are apply on the fly by the frontend so the user can see the updated price but those promotions also must be applyed, or better saying, validating on the backend for precision and validations of data. - DONE
 
 - 1 Create sales points (tables, bar, rooms) - QR codes should not be only for user self-ordering, it can also be for employee to open a table and create a table instance, we must identify how is scanning the QR code by its login session, he can be a normal user self-ordering or it can be a employee on-duty.
 
@@ -29,6 +29,8 @@
 - 9 During service - Waiters, bartender or users can open tables and order at the bar/restaurante. the bar/restaurante supose to have its open times defined on the business model so users can order food from home only whem the business is open
 
 ======================================================================
+
+move the dummy data orders.json to mongodb, delete the enterely orders from there and replace, delete any relation with the old version of orders once it has been modified
 
 business - DONE
 salesPoint - DONE

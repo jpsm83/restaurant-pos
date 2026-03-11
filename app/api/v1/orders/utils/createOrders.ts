@@ -86,7 +86,8 @@ export const createOrders = async (
       orderGrossPrice: order.orderGrossPrice,
       orderNetPrice: order.orderNetPrice,
       orderCostPrice: order.orderCostPrice,
-      businessGoodsIds: order.businessGoodsIds,
+      businessGoodId: order.businessGoodId,
+      addOns: order.addOns ?? undefined,
       allergens: order.allergens || undefined,
       promotionApplyed: order.promotionApplyed || undefined,
       comments: order.comments || undefined,
@@ -101,9 +102,10 @@ export const createOrders = async (
     }
 
     const ordersIdsCreated = ordersCreated.map((order) => order._id);
-    const businessGoodsIds = ordersCreated.flatMap(
-      (order) => order.businessGoodsIds
-    );
+    const businessGoodsIds = ordersCreated.flatMap((order) => [
+      order.businessGoodId,
+      ...(order.addOns ?? []),
+    ]);
 
     // update the dynamic count of the supplier goods ingredients
     // dynamicSystemCount have to decrease because the ingredients are being used
@@ -148,6 +150,6 @@ export const createOrders = async (
 
     return ordersCreated;
   } catch (error) {
-    return handleApiError("Create order failed!", error);
+    return handleApiError("Create order failed!", error instanceof Error ? error.message : String(error));
   }
 };

@@ -472,10 +472,12 @@ export const DELETE = async (
 
   try {
     const [businessGoodInOrders, businessGoodInSetMenu] = await Promise.all([
-      // check if the business good is used in any order.billingStatus: "Open"
+      // check if the business good is used as main product or add-on in any open order
       Order.exists({
-        businessGoodsIds: businessGoodId,
-        billingStatus: "Open",
+        $or: [
+          { businessGoodId, billingStatus: "Open" },
+          { addOns: businessGoodId, billingStatus: "Open" },
+        ],
       }),
       // check if the business good is used in any set menu
       BusinessGood.exists({

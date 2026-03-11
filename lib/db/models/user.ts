@@ -9,8 +9,8 @@ const userSchema = new Schema(
       required: [true, "Personal details are required!"],
     }, // personal details of the user
 
-    // we distinguish between user-client or user-employee by checking if the employeeDetails exists, if so, check if "onDuty" is true"
     // optional fields
+    // Set only when this user is linked as an employee; kept in sync by employee create/update/delete.
     employeeDetails: {
         type: Schema.Types.ObjectId,
         ref: "Employee",

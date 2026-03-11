@@ -41,7 +41,7 @@ This section summarizes **what the app can do** and **what solution it offers** 
 ### Service and sales
 
 - **Open and manage tables/sessions** — Define **sales points** (tables, bar, rooms), then open a **sales instance** (check/tab) per point. One open instance per table per day; staff or customers (via QR) can start a session and attach all orders to it until close.
-- **Take and bill orders** — Create **orders** (menu items / business goods) on a sales instance; support **discounts**, **promotions** (happy hour, % off, 2x1, etc., calculated in real time on the front end), **payment methods**, **tips**, and **void** or **invitation** (complimentary) status. **Transfer** open orders between tables; **cancel** orders (stock is restored). **Close** orders with payment and optionally close the table when everything is paid.
+- **Take and bill orders** — Create **orders** (menu items / business goods) on a sales instance: each order has one **main product** (businessGoodId) and optional **addOns**; **promotions** apply only to the main product. Support **discounts**, **promotions** (happy hour, % off, 2x1, etc., calculated in real time on the front end), **payment methods**, **tips**, and **void** or **invitation** (complimentary) status. **Transfer** open orders between tables; **cancel** orders (stock is restored). **Close** orders with payment and optionally close the table when everything is paid.
 - **Self-ordering** — Sales points can have **QR codes** for self-ordering. One flow: customer scans → opens session → places order → pays; the app creates the sales instance, orders, closes them, and records the sale in the **daily report** self-ordering section.
 - **Printing** — **Printers** are configured per business; orders can be routed by **category** and **sales point** (e.g. kitchen printer for table X).
 
@@ -57,11 +57,20 @@ This section summarizes **what the app can do** and **what solution it offers** 
 - **Purchases (incoming stock)** — Record **purchases** (one per receipt): supplier, date, employee, and **lines** (supplier good, quantity, price). Each line **increases** inventory. Add, edit, or remove lines (inventory stays in sync). **One-time purchase** flow exists for ad-hoc buys when no supplier good is set up.
 - **Waste and targets** — Business can set **metrics**: target **food/labor/fixed cost** percentages and **supplier good waste** by budget impact. Inventory and **monthly business report** tie actual performance to these targets (e.g. waste % by impact level).
 
+### Login and flow routing
+
+- **Single login** — The app uses one sign-in form (email + password). NextAuth validates credentials against **Business** first, then **User**. The same form is used for back-office (business) and for people (users); the redirect after login depends on which entity the email belongs to.
+- **Business** — If the email matches a Business and the password is correct, the session has type `business` and the user is redirected to the business/admin flow (e.g. `/admin`).
+- **User** — If the email matches a User (and not a Business), the session has type `user`. The user is an individual identity: they can use the app as a **customer** (e.g. self-ordering, personal orders) or, if linked to an **Employee** record, they may also choose to continue as **employee**. When a user is linked to an employee, after login they are shown a **mode-selection** page: “Continue as customer” or “Continue as employee”.
+  - For **non-admin employees**, the **employee** option is enabled only when the user is **scheduled for that day** and the current time is within the allowed window: **from 5 minutes before the shift start** until the shift end; otherwise the employee button is visible but disabled (e.g. “Available from 5 minutes before your shift”). Schedule configuration is therefore **required for employee login** for non-admin staff (optional only if the business never uses employee mode).
+  - Employees whose `allEmployeeRoles` includes the **Admin** role can log in as employee at any time, even when there is no schedule or they are outside any shift window.
+  - The chosen mode is stored (e.g. in a cookie) and used by middleware to allow or deny access to the admin/employee area.
+
 ### People and operations
 
 - **Employees** — **Employees** per business: name, role, documents, optional link to a **user** account. **Current shift role** and **on duty** drive who can close daily reports or perform manager actions. Employees are attached to sales instances (opened by / responsible for) and to daily reports (who served, tips, goods sold/void/invited).
-- **Schedules** — **Schedules** provide **day-level** shift planning: which employees work when, **labour cost**, vacation, overlap validation. Labour cost feeds **monthly business report** cost breakdown.
-- **Users and notifications** — **Users** are app identities (e.g. linked to an employee). **Notifications** are business-scoped messages/events; users have an inbox with read/deleted state so the business can push alerts, promotions, or operational messages.
+- **Schedules** — **Schedules** provide **day-level** shift planning: which employees work when, **labour cost**, vacation, overlap validation. Labour cost feeds **monthly business report** cost breakdown. Schedules are also used at **login** to determine whether a user who is an employee can choose “Continue as employee” (see **Schedule check at login** in `app/api/v1/schedules/README.md`).
+- **Users and notifications** — **Users** are app identities (e.g. linked to an employee). **User.employeeDetails** is the single optional reference to **Employee**, set only when the user is linked as staff and kept in sync by the employees API. **Notifications** are business-scoped messages/events; users have an inbox with read/deleted state so the business can push alerts, promotions, or operational messages.
 
 ### Reporting and analytics
 
@@ -112,7 +121,7 @@ At the moment, there are **18 READMEs** in the app. This list will grow over tim
   - `app/api/v1/salesPoints/README.md`
 - **Sales instances (open table/session per sales point, daily report trigger, order grouping, self-order flow, PATCH order actions)**  
   - `app/api/v1/salesInstances/README.md`
-- **Orders (billable items per sales instance, inventory consumption via business-good ingredients, create/cancel/close/transfer, promotions and payment)**  
+- **Orders (billable items per sales instance: main product businessGoodId + optional addOns; inventory consumption via business-good ingredients; promotions apply to main product only; create/cancel/close/transfer, payment)**  
   - `app/api/v1/orders/README.md`
 - **Daily sales reports (day-level report per business, created by first sales instance, employee/business totals, calculate and close flow)**  
   - `app/api/v1/dailySalesReports/README.md`

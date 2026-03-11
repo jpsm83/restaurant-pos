@@ -48,12 +48,19 @@ export const GET = async () => {
       .populate({
         path: "salesGroup.ordersIds",
         select:
-          "billingStatus orderStatus orderGrossPrice orderNetPrice paymentMethod allergens promotionApplyed discountPercentage createdAt businessGoodsIds",
-        populate: {
-          path: "businessGoodsIds",
-          select: "name mainCategory subCategory allergens sellingPrice",
-          model: BusinessGood,
-        },
+          "billingStatus orderStatus orderGrossPrice orderNetPrice paymentMethod allergens promotionApplyed discountPercentage createdAt businessGoodId addOns",
+        populate: [
+          {
+            path: "businessGoodId",
+            select: "name mainCategory subCategory allergens sellingPrice",
+            model: BusinessGood,
+          },
+          {
+            path: "addOns",
+            select: "name mainCategory subCategory allergens sellingPrice",
+            model: BusinessGood,
+          },
+        ],
         model: Order,
       })
       .lean();
@@ -73,7 +80,7 @@ export const GET = async () => {
           },
         });
   } catch (error) {
-    return handleApiError("Get all salesInstances failed!", error);
+    return handleApiError("Get all salesInstances failed!", error instanceof Error ? error.message : String(error));
   }
 };
 
@@ -208,6 +215,6 @@ export const POST = async (req: Request) => {
       }
     );
   } catch (error) {
-    return handleApiError("Create salesInstance failed!", error);
+    return handleApiError("Create salesInstance failed!", error instanceof Error ? error.message : String(error));
   }
 };

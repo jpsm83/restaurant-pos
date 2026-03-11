@@ -7,6 +7,7 @@ import { handleApiError } from "@/lib/db/handleApiError";
 import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 import { ordersArrValidation } from "./utils/validateOrdersArr";
 import { createOrders } from "./utils/createOrders";
+import { applyPromotionsToOrders } from "@/lib/promotions/applyPromotions";
 import { checkLowStockAndNotify } from "@/app/api/v1/inventories/utils/checkLowStockAndNotify";
 
 // imported interfaces
@@ -50,7 +51,13 @@ export const GET = async () => {
         model: Customer,
       })
       .populate({
-        path: "businessGoodsIds",
+        path: "businessGoodId",
+        select:
+          "name mainCategory subCategory productionTime sellingPrice allergens",
+        model: BusinessGood,
+      })
+      .populate({
+        path: "addOns",
         select:
           "name mainCategory subCategory productionTime sellingPrice allergens",
         model: BusinessGood,
@@ -127,7 +134,7 @@ export const POST = async (req: Request) => {
   //       orderGrossPrice,
   //       orderNetPrice, - calculated on the front_end following the promotion rules
   //       orderCostPrice,
-  //       businessGoodsIds, - can be an array of businessId goods (3 IDs) "burger with extra cheese and add bacon"
+  //       businessGoodId, addOns - main product + optional add-ons (e.g. burger + extra cheese)
   //       allergens,
   //       promotionApplyed, - automatically set by the front_end upon creation
   //       comments
@@ -167,9 +174,10 @@ export const POST = async (req: Request) => {
     );
   }
 
-  const objectIds: Types.ObjectId[] = ordersArr.flatMap(
-    (order) => order.businessGoodsIds ?? []
-  );
+  const objectIds: Types.ObjectId[] = ordersArr.flatMap((order) => [
+    order.businessGoodId!,
+    ...(order.addOns ?? []),
+  ]);
   objectIds.push(businessId, salesInstanceId, employeeId);
 
   // validate ids
@@ -177,7 +185,7 @@ export const POST = async (req: Request) => {
     return new NextResponse(
       JSON.stringify({
         message:
-          "BusinessGoodsIds, employeeId, businessId or salesInstanceId not valid!",
+          "businessGoodId, addOns, employeeId, businessId or salesInstanceId not valid!",
       }),
       {
         status: 400,
@@ -203,6 +211,49 @@ export const POST = async (req: Request) => {
   session.startTransaction();
 
   try {
+    // Validate client pricing against backend calculation; save only when they match
+    const pricedOrders = await applyPromotionsToOrders({
+      businessId,
+      ordersArr,
+    });
+
+    if (typeof pricedOrders === "string") {
+      await session.abortTransaction();
+      return new NextResponse(JSON.stringify({ message: pricedOrders }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const PRICE_TOLERANCE = 0.01;
+    for (let i = 0; i < pricedOrders.length; i++) {
+      const backend = pricedOrders[i];
+      const client = ordersArr[i];
+      if (
+        Math.abs((client.orderNetPrice ?? 0) - (backend.orderNetPrice ?? 0)) >
+          PRICE_TOLERANCE ||
+        (client.promotionApplyed !== undefined &&
+          backend.promotionApplyed !== undefined &&
+          client.promotionApplyed !== backend.promotionApplyed) ||
+        (client.promotionApplyed === undefined &&
+          backend.promotionApplyed !== undefined) ||
+        (client.promotionApplyed !== undefined &&
+          backend.promotionApplyed === undefined) ||
+        Math.abs(
+          (client.discountPercentage ?? 0) - (backend.discountPercentage ?? 0)
+        ) > PRICE_TOLERANCE
+      ) {
+        await session.abortTransaction();
+        return new NextResponse(
+          JSON.stringify({
+            message:
+              "Order price or promotion does not match server calculation",
+          }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     const createdOrders = await createOrders(
       dailyReferenceNumber,
       ordersArr,

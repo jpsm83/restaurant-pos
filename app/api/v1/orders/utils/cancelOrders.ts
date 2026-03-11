@@ -26,7 +26,7 @@ export const cancelOrders = async (
     const orders = await Order.find({
       _id: { $in: ordersIdsArr },
     })
-      .select("businessGoodsIds salesInstanceId orderStatus")
+      .select("businessGoodId addOns salesInstanceId orderStatus")
       .lean()
       .session(session);
 
@@ -39,10 +39,11 @@ export const cancelOrders = async (
       return "Cannot cancel orders with status 'Done'!";
     }
 
-    // Bulk update dynamic count for all business goods
-    const businessGoodsIds = orders
-      .map((order) => order.businessGoodsIds)
-      .flat();
+    // Bulk update dynamic count for all business goods (main + addOns per order)
+    const businessGoodsIds = orders.flatMap((order) => [
+      order.businessGoodId,
+      ...(order.addOns ?? []),
+    ]);
     // once you are canceling the order, the quantity of the business goods should be added back to the inventory
     const updateDynamicCountSupplierGoodResult =
       await updateDynamicCountSupplierGood(businessGoodsIds, "add", session);

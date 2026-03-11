@@ -70,12 +70,19 @@ export const GET = async (
       .populate({
         path: "salesGroup.ordersIds",
         select:
-          "billingStatus orderStatus orderGrossPrice orderNetPrice paymentMethod allergens promotionApplyed discountPercentage createdAt businessGoodsIds",
-        populate: {
-          path: "businessGoodsIds",
-          select: "name mainCategory subCategory allergens sellingPrice",
-          model: BusinessGood,
-        },
+          "billingStatus orderStatus orderGrossPrice orderNetPrice paymentMethod allergens promotionApplyed discountPercentage createdAt businessGoodId addOns",
+        populate: [
+          {
+            path: "businessGoodId",
+            select: "name mainCategory subCategory allergens sellingPrice",
+            model: BusinessGood,
+          },
+          {
+            path: "addOns",
+            select: "name mainCategory subCategory allergens sellingPrice",
+            model: BusinessGood,
+          },
+        ],
         model: Order,
       })
       .lean();
@@ -93,7 +100,10 @@ export const GET = async (
           headers: { "Content-Type": "application/json" },
         });
   } catch (error) {
-    return handleApiError("Get employee by its id failed!", error);
+    return handleApiError(
+      "Get employee by its id failed!",
+      error instanceof Error ? error.message : String(error)
+    );
   }
 };
 
@@ -125,6 +135,7 @@ export const PATCH = async (
     salesInstanceStatus,
     responsibleById,
     clientName,
+    employeeId,
   } = (await req.json()) as {
     ordersIdsArr: Types.ObjectId[];
     discountPercentage: number;
@@ -134,6 +145,7 @@ export const PATCH = async (
     ordersNewStatus: string;
     paymentMethodArr: IPaymentMethod[];
     toSalesInstanceId: Types.ObjectId;
+    employeeId: Types.ObjectId;
   } & Partial<ISalesInstance>;
 
   // Validate ObjectIds in one step for better performance
@@ -141,6 +153,7 @@ export const PATCH = async (
   if (responsibleById) idsToValidate.push(responsibleById);
   if (ordersIdsArr) idsToValidate.push(...ordersIdsArr);
   if (toSalesInstanceId) idsToValidate.push(toSalesInstanceId);
+  if (employeeId) idsToValidate.push(employeeId);
 
   // validate ids
   if (isObjectIdValid(idsToValidate) !== true) {
@@ -215,6 +228,70 @@ export const PATCH = async (
 
     // if discountPercentage is provided, add discount to orders
     if (discountPercentage) {
+      if (!employeeId) {
+        await session.abortTransaction();
+        return new NextResponse(
+          JSON.stringify({
+            message:
+              "employeeId is required to apply a manual discount to orders!",
+          }),
+          {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      const discountEmployee = (await Employee.findById(employeeId)
+        .select("allEmployeeRoles onDuty")
+        .session(session)
+        .lean()) as
+        | {
+            allEmployeeRoles?: string[];
+            onDuty?: boolean;
+          }
+        | null;
+
+      if (!discountEmployee) {
+        await session.abortTransaction();
+        return new NextResponse(
+          JSON.stringify({ message: "Employee not found!" }),
+          {
+            status: 404,
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      const allowedRoles = [
+        "Owner",
+        "General Manager",
+        "Manager",
+        "Assistant Manager",
+        "MoD",
+        "Admin",
+        "Supervisor",
+      ];
+
+      const hasAllowedRole =
+        discountEmployee.allEmployeeRoles?.some((role: string) =>
+          allowedRoles.includes(role)
+        ) ?? false;
+
+      if (!discountEmployee.onDuty || !hasAllowedRole) {
+        await session.abortTransaction();
+        return new NextResponse(
+          JSON.stringify({
+            message:
+              "Only on-duty management roles can apply manual discounts to orders!",
+          }),
+          {
+            status: 403,
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+      }
+
       const addDiscountToOrdersResult = await addDiscountToOrders(
         ordersIdsArr,
         discountPercentage,
@@ -420,7 +497,10 @@ export const PATCH = async (
     );
   } catch (error) {
     await session.abortTransaction();
-    return handleApiError("Update salesInstance failed!", error);
+    return handleApiError(
+      "Update salesInstance failed!",
+      error instanceof Error ? error.message : String(error)
+    );
   } finally {
     session.endSession();
   }
@@ -475,6 +555,9 @@ export const DELETE = async (
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
   } catch (error) {
-    return handleApiError("Fail to delete salesInstance", error);
+    return handleApiError(
+      "Fail to delete salesInstance",
+      error instanceof Error ? error.message : String(error)
+    );
   }
 };

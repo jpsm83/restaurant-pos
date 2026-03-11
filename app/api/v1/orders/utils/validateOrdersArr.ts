@@ -15,27 +15,35 @@ export const ordersArrValidation = (ordersArr: Partial<IOrder>[]) => {
   if (
     ordersArr.some(
       (order) =>
-        !Array.isArray(order.businessGoodsIds) ||
-        order.businessGoodsIds.length === 0 ||
-        order.businessGoodsIds.some(
-          (id: Types.ObjectId) => !Types.ObjectId.isValid(id)
-        )
+        !order.businessGoodId || !Types.ObjectId.isValid(order.businessGoodId)
     )
   )
-    return "BusinessGoodsIds must be an array of Ids!";
+    return "businessGoodId is required and must be a valid ObjectId!";
 
-  // Validate ids
-  const businessGoodsIds = ordersArr.flatMap((order) => order.businessGoodsIds);
+  if (
+    ordersArr.some(
+      (order) =>
+        order.addOns != null &&
+        (!Array.isArray(order.addOns) ||
+          order.addOns.some((id: Types.ObjectId) => !Types.ObjectId.isValid(id)))
+    )
+  )
+    return "addOns must be an array of valid ObjectIds when present!";
 
-  if (isObjectIdValid(businessGoodsIds) !== true) {
-    return "Invalid businessGoodsIds!";
+  const allIds = ordersArr.flatMap((order) => [
+    order.businessGoodId!,
+    ...(order.addOns ?? []),
+  ]);
+  if (isObjectIdValid(allIds) !== true) {
+    return "Invalid businessGoodId or addOns!";
   }
 
   const validKeys = [
     "orderGrossPrice",
     "orderNetPrice",
     "orderCostPrice",
-    "businessGoodsIds",
+    "businessGoodId",
+    "addOns",
     "allergens",
     "promotionApplyed",
     "comments",
@@ -45,7 +53,7 @@ export const ordersArrValidation = (ordersArr: Partial<IOrder>[]) => {
     "orderGrossPrice",
     "orderNetPrice",
     "orderCostPrice",
-    "businessGoodsIds",
+    "businessGoodId",
   ];
 
   // Check for invalid keys and required fields

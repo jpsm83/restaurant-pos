@@ -9,17 +9,23 @@ This document describes **how the app works from a user perspective**, from init
 - **Create business (tenant)**
   - The owner or manager creates a **Business** in the system (onboarding/start‑business flow).
   - This business is the **tenant**: all data (employees, tables, orders, stock, reports, etc.) is scoped by `businessId`.
-  - Business login (back office) is against **Business** (email + password), not Users.
   - At this stage the business can also configure **currency**, subscription, and optional **metrics/targets**:
     - Target cost percentages (food, beverage, labour, fixed).
     - **Supplier‑good waste thresholds** by budget impact (very low → very high).
 
 - **Create users (people identities)**
-  - A **User** is the app‑level identity for a person (username, email, password, address, avatar).
+  - A **User** is the app‑level identity for a person (username, email, password, address, avatar). Users log in with the **same sign-in form** as the business (email + password); the app decides whether the email belongs to a **Business** or a **User** and routes accordingly.
   - Users can later:
-    - Be linked to an **Employee** record (staff identity).
+    - Be linked to an **Employee** record (staff identity). When linked, the user has both options: use the app as a normal **customer** or, when scheduled, as an **employee** (see **Login and flow routing** below).
     - Receive **notifications** in a personal inbox with read/deleted flags.
     - Act as customers in self‑service or marketing scenarios.
+
+- **Login and flow routing**
+  - After sign-in, the app redirects based on session type:
+    - **Business** → business/admin flow (e.g. `/admin`).
+    - **User** without an employee link → customer flow (e.g. home, self‑ordering).
+    - **User** linked to an employee → **mode-selection** page: “Continue as customer” or “Continue as employee”. For **non-admin employees**, the **employee** option is enabled only when the user is **scheduled for that day** and the current time is within **5 minutes before the shift start** until the shift end; otherwise the button is visible but disabled. Employees whose `allEmployeeRoles` includes the **Admin** role can log in as employee at any time (no schedule or 5‑minute window required).
+  - This keeps the user as a single **individual identity** (customer by default) while allowing the business to grant them an employee role and the app to gate employee access by schedule (with an explicit bypass for admins).
 
 - **Register employees and roles**
   - Manager creates **Employees** for the business and links each to an existing **User** by email.
@@ -30,7 +36,7 @@ This document describes **how the app works from a user perspective**, from init
   - The creation/update of employees keeps the **User ↔ Employee** link consistent in transactions.
   - **Roles and on‑duty state** drive permissions (e.g. who may close a daily report or monthly report) and whose sales are shown in reporting.
 
-- **Configure schedules and labour cost (optional but recommended)**
+- **Configure schedules and labour cost (required for employee login; optional only if you never use employee mode)**
   - Manager defines **Schedules** for each day:
     - One schedule per business per calendar day, with multiple **employee shifts** attached.
     - Each shift stores employee, role, time range, optional `vacation` flag, **shift hours** and **employee cost**.
@@ -38,6 +44,7 @@ This document describes **how the app works from a user perspective**, from init
     - No overlapping shifts for the same employee on the same day.
     - Correct handling of vacation days (deducting/returning from `vacationDaysLeft`).
   - Aggregates per day (total staff count, vacation count, daily labour cost) later feed into **monthly business reporting** and labour KPIs.
+  - For **non-admin employees**, schedule configuration is what allows or blocks “Continue as employee” at login (with access from 5 minutes before shift start until shift end). Employees with the **Admin** role can always log in as employee even when not scheduled.
 
 - **Set up suppliers and supplier goods**
   - Manager registers **Suppliers** (vendors) used by the business.
@@ -134,7 +141,7 @@ This document describes **how the app works from a user perspective**, from init
 
 - **Creating orders**
   - From an open **sales instance**, staff (or the customer in self‑ordering) adds **Orders**:
-    - Each order line is a **Business good** with quantity, price, and applied promotions.
+    - Each order has one **main product** (businessGoodId) and optional **addOns**; **promotions** apply only to the main product. Quantity is expressed as multiple orders (e.g. 3 beers = 3 orders).
     - The system calculates discounts and totals in real time using **Promotion** rules.
   - When an order is created:
     - It is grouped under the current **sales instance**.

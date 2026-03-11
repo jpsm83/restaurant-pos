@@ -7,7 +7,7 @@ const AdminPage = async () => {
   const session = await getServerSession(options);
 
   if (!session) {
-    redirect("/api/auth/signin?callbackUrl=/admin"); // page to redirect when you login in thsi page
+    redirect("/api/auth/signin?callbackUrl=/auth/post-login");
   }
 
   return (

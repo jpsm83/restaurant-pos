@@ -13,7 +13,9 @@ This document describes how the routes and utils work, how they interact with Em
 - **Employee shifts and vacation:** The same employee can appear **more than once** on the same day (e.g. split shift). Adding a shift with `vacation: true` decrements the employee’s `vacationDaysLeft`; removing or updating that entry can increment it back. Overlapping time ranges for the **same** employee are not allowed (validated via `isScheduleOverlapping`).
 - **Labour cost:** Each shift has `employeeCost` (from `calculateEmployeeCost`: employee salary, shift duration, pay frequency, weekdays in month). The schedule keeps `totalDayEmployeesCost`, `totalEmployeesScheduled`, and `totalEmployeesVacation` for analytics and reporting.
 
-So: **Schedules are the daily roster and labour-cost layer: they tie employees to dates, enforce no overlapping shifts per employee, and drive vacation balance and day-level cost.**
+So: **Schedules are the daily roster and labour-cost layer: they tie employees to dates, enforce no overlapping shifts per employee, and drive vacation balance and day-level cost.** For **non-admin employees**, schedules are also **required for employee login**: without a schedule for today covering the current time window, they cannot continue as employee at login. Schedules remain optional only if the business never uses employee mode.
+
+- **Schedule check at login:** The helper `canLogAsEmployee(employeeId)` (in `lib/auth/canLogAsEmployee.ts`) is used by NextAuth **authorize** when a user with `employeeDetails` signs in. For **non-admin employees**, it returns whether that employee is scheduled **today** and the current time is within the allowed window: **from 5 minutes before shift start** until shift end (non-vacation shifts only). Employees whose `allEmployeeRoles` includes the **Admin** role can log in as employee at any time (the helper returns `true` for them regardless of schedule). The result is stored in the session as `canLogAsEmployee` and controls whether the "Continue as employee" button is enabled on the mode-selection page.
 
 ---
 
@@ -54,7 +56,7 @@ app/api/v1/schedules/
 | GET | `/api/v1/schedules` | Returns all schedules (employeesSchedules populated with employee name/roles). 404 if none. |
 | POST | `/api/v1/schedules` | Creates an empty schedule for a date. Body: **JSON** `{ date, businessId, comments? }`. Duplicate (businessId + same calendar day) → 409. |
 | GET | `/api/v1/schedules/business/:businessId` | Returns schedules for the business. |
-| GET | `/api/v1/schedules/user/:userId` | Returns schedules where `employeesSchedules.employeeId` matches the path param (path is `userId`; used as employee id for the query). |
+| GET | `/api/v1/schedules/user/:userId` | Returns schedules where this **user** (as employee) appears. Path param is `userId`; the handler resolves **User** by `userId`, then uses `user.employeeDetails` as `employeeId` and queries `Schedule.find({ "employeesSchedules.employeeId": employeeId })`. 404 if user not found or not linked to an employee. |
 | GET | `/api/v1/schedules/:scheduleId` | Returns one schedule by ID. |
 | PATCH | `/api/v1/schedules/:scheduleId` | Updates schedule **comments** only. Body: **JSON** `{ comments? }`. |
 | DELETE | `/api/v1/schedules/:scheduleId` | Deletes schedule only if **date is in the future** (not today or past). 400 otherwise. |
@@ -73,8 +75,8 @@ All responses are JSON. Errors use `handleApiError` (500) or explicit `NextRespo
 - **DB:** `connectDb()` before first query.
 - **Populate:** `employeesSchedules.employeeId` with `employeeName`, `allEmployeeRoles`.
 - **By business:** `Schedule.find({ businessId })`.
-- **By user/employee:** `Schedule.find({ "employeesSchedules.employeeId": employeeId })` (route path is `user/[userId]`; the param is used as the employee id to filter).
-- **Validation:** `isObjectIdValid` for scheduleId, businessId, employeeId (or userId param).
+- **By user:** Route path is `user/[userId]`. The handler uses `context.params.userId`, loads **User** by `userId`, reads `user.employeeDetails` (employeeId); if missing, returns 404. Then `Schedule.find({ "employeesSchedules.employeeId": employeeId })`. Returns all schedules where that employee appears (not limited to today).
+- **Validation:** `isObjectIdValid` for scheduleId, businessId, userId (and employeeId where applicable).
 
 ### 4.2 POST (create schedule) — JSON body
 
