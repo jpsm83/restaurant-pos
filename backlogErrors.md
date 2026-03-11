@@ -4,17 +4,17 @@
 
 - 1 Configure promotions - Promotions are apply on the fly by the frontend so the user can see the updated price but those promotions also must be applyed, or better saying, validating on the backend for precision and validations of data. - DONE
 
-- 1 Create sales points (tables, bar, rooms) - QR codes should not be only for user self-ordering, it can also be for employee to open a table and create a table instance, we must identify how is scanning the QR code by its login session, he can be a normal user self-ordering or it can be a employee on-duty.
+- 1 Create sales points (tables, bar, rooms) - QR codes should not be only for user self-ordering, it can also be for employee to open a table and create a table instance, we must identify how is scanning the QR code by its login session, he can be a normal user self-ordering or it can be a employee on-duty. - DONE
 
-- 3.1 Staff‑opened session - staff can open a table selecting from the ones existing or scaning the QR code that is linked to all the points of sale, the app will know if whoever opening the table is a normal user or an employee checking the session of this person
+- 3.1 Staff‑opened session - staff can open a table selecting from the ones existing or scaning the QR code that is linked to all the points of sale, the app will know if whoever opening the table is a normal user or an employee checking the session of this person - DONE
 
-- 3.1 Self‑ordering - user can self order hinself login the app, them it must have 2 options, scan a QR code for order on site or choose the restarutante from a filter of choices he select
+- 3.1 Self‑ordering - user can self order hinself login the app, them it must have 2 options, scan a QR code for order on site or choose the restarutante from a filter of choices he select. filter will show all the business he can order following his seach choices. - DONE
 
-- 3.1 Self‑ordering via QR - if is a normal customer opening the table is has no other option but pay the order before send it, order must be payed and table closed, them an email with the confirmation supose to be sent to the user so the waiter can request a confirmation of the order before delivery it
+- 3.1 Self‑ordering via QR - if is a normal customer opening the table is has no other option but pay the order before send it, order must be payed and table closed, them an email with the confirmation supose to be sent to the user so the waiter can request a confirmation of the order before delivery it - DONE
 
-- 3.1 Self‑ordering via home - use can self order from his home too for delivery, in that case user can login as normal customer, choose the restaurante and the same menu and flow as the "Self‑ordering via QR" would happens, the only difference is there was no table delivery but insted a address from the user. 
+- 3.1 Self‑ordering via home - use can self order from his home too for delivery, in that case user can login as normal customer, choose the restaurante and the same menu and flow as the "Self‑ordering via QR" would happens, the only difference is there was no table delivery but insted a address from the user. - DONE
 
-- 3.2 Modifying orders during service - only staff with admin or superviser level can cancel or void orders, and void orders must be with a descriptio as waste, mistake, refund or any other reason but must be especify.
+- 3.2 Modifying orders during service - only staff with admin or superviser level can cancel or void orders, and void orders must be with a descriptio as waste, mistake, refund or any other reason but must be especify. - DONE
 
 - 4 Recording purchases - The system supose to **increases** the actual current **Inventory** `dynamicSystemCount` for that supplier good by the purchased quantity (in the good’s measurement unit).
 
@@ -30,7 +30,9 @@
 
 ======================================================================
 
-move the dummy data orders.json to mongodb, delete the enterely orders from there and replace, delete any relation with the old version of orders once it has been modified
+move the dummy data orders.json to mongodb, delete the enterely orders from there and replace, delete any relation with the old version of orders once it has been modified (do the same with - dailySalesReport, orders, salesInstance)
+
+orders made by self-ordering or delivery must send the receit to the user email for comprovation - DONE
 
 business - DONE
 salesPoint - DONE

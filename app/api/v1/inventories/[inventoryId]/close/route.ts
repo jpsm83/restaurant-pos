@@ -4,19 +4,12 @@ import mongoose, { Types } from "mongoose";
 import connectDb from "@/lib/db/connectDb";
 import { handleApiError } from "@/lib/db/handleApiError";
 import isObjectIdValid from "@/lib/utils/isObjectIdValid";
+import { MANAGEMENT_ROLES } from "@/lib/constants";
 import Employee from "@/lib/db/models/employee";
 import Inventory from "@/lib/db/models/inventory";
 import { IEmployee } from "@/lib/interface/IEmployee";
 import { IInventory } from "@/lib/interface/IInventory";
 import { createNextPeriodInventory } from "../../utils/createNextPeriodInventory";
-
-const ALLOWED_CLOSE_ROLES = [
-  "General Manager",
-  "Manager",
-  "Assistant Manager",
-  "MoD",
-  "Admin",
-];
 
 // @desc    Close current inventory and automatically create next period inventory
 // @route   PATCH /api/v1/inventories/:inventoryId/close
@@ -74,7 +67,7 @@ export const PATCH = async (
     }
 
     if (
-      !ALLOWED_CLOSE_ROLES.includes(employee.currentShiftRole ?? "") ||
+      !MANAGEMENT_ROLES.includes(employee.currentShiftRole ?? "") ||
       !employee.onDuty
     ) {
       await session.abortTransaction();

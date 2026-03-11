@@ -25,12 +25,12 @@ export const goodsReducedSchema = new Schema(
 const employeeDailySalesReportSchema = new Schema(
   {
     // required fields
-    employeeId: {
+    userId: {
       type: Schema.Types.ObjectId,
-      ref: "Employee",
-      required: [true, "Employee id is required!"],
+      ref: "User",
+      required: [true, "User id is required!"],
       index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
-    }, // employee that closed the salesInstance, salesInstance.responsibleBy
+    }, // user (employee role) for this report entry, salesInstance.responsibleByUserId
 
     // optional fields on creation, required on update
     hasOpenSalesInstances: { type: Boolean }, // if the employee has open sales instances, the employee can view but not close the daily report
@@ -68,12 +68,12 @@ const employeeDailySalesReportSchema = new Schema(
 
 const selfOrderingSalesReportSchema = new Schema(
   {
-    customerId: {
+    userId: {
       type: Schema.Types.ObjectId,
-      ref: "Customer",
-      required: [true, "Customer id is required!"],
+      ref: "User",
+      required: [true, "User id is required!"],
       index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
-    }, // customer that made the order
+    }, // user (customer role) that made the self-order
     customerPaymentMethod: { type: [paymentMethod], default: undefined }, // single payment methods used by the customer
     totalSalesBeforeAdjustments: { type: Number }, // sum of all orders regardless of promotions or discounts
     totalNetPaidAmount: { type: Number }, // sum of all orders after adjustments have been made to the final price as discounts and promotions

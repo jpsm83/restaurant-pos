@@ -6,32 +6,28 @@ import connectDb from "@/lib/db/connectDb";
 import { handleApiError } from "@/lib/db/handleApiError";
 import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 
-// imported interfaces
-
 // imported models
 import Order from "@/lib/db/models/order";
-import Employee from "@/lib/db/models/employee";
+import User from "@/lib/db/models/user";
 import BusinessGood from "@/lib/db/models/businessGood";
 import SalesPoint from "@/lib/db/models/salesPoint";
 import SalesInstance from "@/lib/db/models/salesInstance";
-import Customer from "@/app/lib/models/customer";
 
-// @desc    Get orders employee ID
-// @route   GET /orders/employee/:employeeId
+// @desc    Get orders by user ID (createdByUserId)
+// @route   GET /orders/user/:userId
 // @access  Private
 export const GET = async (
   req: Request,
   context: {
-    params: { employeeId: Types.ObjectId };
+    params: { userId: Types.ObjectId };
   }
 ) => {
   try {
-    const employeeId = context.params.employeeId;
+    const userId = context.params.userId;
 
-    // check if employeeId is valid
-    if (isObjectIdValid([employeeId]) !== true) {
+    if (isObjectIdValid([userId]) !== true) {
       return new NextResponse(
-        JSON.stringify({ message: "Invalid employeeId" }),
+        JSON.stringify({ message: "Invalid userId" }),
         {
           status: 400,
           headers: { "Content-Type": "application/json" },
@@ -39,10 +35,9 @@ export const GET = async (
       );
     }
 
-    // connect before first call to DB
     await connectDb();
 
-    const orders = await Order.find({ employeeId: employeeId })
+    const orders = await Order.find({ createdByUserId: userId })
       .populate({
         path: "salesInstanceId",
         select: "salesPointId",
@@ -54,14 +49,9 @@ export const GET = async (
         model: SalesInstance,
       })
       .populate({
-        path: "employeeId",
-        select: "employeeName allEmployeeRoles currentShiftRole",
-        model: Employee,
-      })
-      .populate({
-        path: "customerId",
-        select: "employeeName allEmployeeRoles currentShiftRole",
-        model: Customer,
+        path: "createdByUserId",
+        select: "personalDetails.firstName personalDetails.lastName",
+        model: User,
       })
       .populate({
         path: "businessGoodId",
@@ -87,6 +77,6 @@ export const GET = async (
           headers: { "Content-Type": "application/json" },
         });
   } catch (error) {
-    return handleApiError("Get all orders by employee ID failed!", error instanceof Error ? error.message : String(error));
+    return handleApiError("Get all orders by user ID failed!", error instanceof Error ? error.message : String(error));
   }
 };

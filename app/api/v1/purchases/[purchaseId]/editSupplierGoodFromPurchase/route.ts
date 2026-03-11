@@ -4,19 +4,12 @@ import mongoose, { Types } from "mongoose";
 import connectDb from "@/lib/db/connectDb";
 import { handleApiError } from "@/lib/db/handleApiError";
 import isObjectIdValid from "@/lib/utils/isObjectIdValid";
+import { MANAGEMENT_ROLES } from "@/lib/constants";
 import { IPurchase } from "@/lib/interface/IPurchase";
 import { IEmployee } from "@/lib/interface/IEmployee";
 import Purchase from "@/lib/db/models/purchase";
 import Inventory from "@/lib/db/models/inventory";
 import Employee from "@/lib/db/models/employee";
-
-const ALLOWED_EDIT_ROLES = [
-  "General Manager",
-  "Manager",
-  "Assistant Manager",
-  "MoD",
-  "Admin",
-];
 
 // Edit supplier good line on a purchase (manager-only, with reason)
 // @desc    Edit supplierGood from purchase by ID
@@ -74,7 +67,7 @@ export const PATCH = async (
 
   if (
     !employee ||
-    !ALLOWED_EDIT_ROLES.includes(employee.currentShiftRole ?? "") ||
+    !MANAGEMENT_ROLES.includes(employee.currentShiftRole ?? "") ||
     !employee.onDuty
   ) {
     return new NextResponse(

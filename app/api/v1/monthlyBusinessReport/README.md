@@ -40,7 +40,7 @@ app/api/v1/monthlyBusinessReport/
 ├── [monthlyReportId]/
 │   ├── route.ts                 # GET one report; PATCH fixed/extra costs when isReportOpen
 │   └── closeMonthlyReport/
-│       └── route.ts             # PATCH — close report (body: employeeId), role check, no open daily reports in month
+│       └── route.ts             # PATCH — close report; auth from session (userId → Employee for role); no open daily reports in month
 └── utils/
     ├── createMonthlyBusinessReport.ts   # Find or create open report for current month; close previous in transaction
     └── aggregateDailyReportsIntoMonthly.ts  # Aggregate calculated daily reports + Schedules labour; called after calculateBusinessDailySalesReport
@@ -59,7 +59,7 @@ app/api/v1/monthlyBusinessReport/
 | GET | `/api/v1/monthlyBusinessReport/business/:businessId` | Return monthly reports for business. Optional `?startMonth=`, `?endMonth=` (YYYY-MM). 404 if none. |
 | GET | `/api/v1/monthlyBusinessReport/:monthlyReportId` | Return one report by ID. 404 if not found. |
 | PATCH | `/api/v1/monthlyBusinessReport/:monthlyReportId` | When isReportOpen: update totalFixedOperatingCost and/or totalExtraCost (manual entry). Recomputes totalOperatingCost and costPercentages. Returns updated report. Or separate PATCH for “recalculate from daily reports.” |
-| PATCH | `/api/v1/monthlyBusinessReport/:monthlyReportId/closeMonthlyReport` | Set isReportOpen: false. Body: `{ employeeId }`. Same role check as daily report close. 400 if any daily report for that month is still open. |
+| PATCH | `/api/v1/monthlyBusinessReport/:monthlyReportId/closeMonthlyReport` | Set isReportOpen: false. No employeeId in body; auth from session (userId → Employee.findOne({ userId, businessId }) for role/onDuty, same as daily report close). 400 if any daily report for that month is still open. |
 
 - **Creation:** The open report for the current month is created internally by `createMonthlyBusinessReport` when `aggregateDailyReportsIntoMonthly(businessId)` runs (triggered after **calculateBusinessDailySalesReport**). No public POST.
 - DELETE is not used in normal flow; reports are removed only when **Business** is deleted (cascade in `app/api/v1/business/[businessId]/route.ts`).
@@ -110,7 +110,7 @@ app/api/v1/monthlyBusinessReport/
 
 - **Start of month (or first aggregation):** When `aggregateDailyReportsIntoMonthly(businessId)` runs, `createMonthlyBusinessReport` finds or creates the open report for the current month (isReportOpen: true) and closes the previous month’s report (isReportOpen: false) in the same transaction. Same pattern as Inventory.
 - **After daily report is calculated:** The **calculateBusinessDailySalesReport** route calls `aggregateDailyReportsIntoMonthly(dailySalesReport.businessId)` after updating the daily report. Aggregation re-sums all **calculated** daily reports for that month (dailyNetPaidAmount present), merges payment methods and goods by businessGoodId, sums labour from Schedules, preserves manual fixed/extra costs, and sets supplierWasteAnalysis (Phase 1: zeroed). The PATCH response is not failed if aggregation throws (errors are logged).
-- **End of month:** Manager calls PATCH **closeMonthlyReport** with employeeId. Validates no open daily reports in that month; sets isReportOpen: false. Final snapshot for reporting and comparison with Business.metrics.
+- **End of month:** Manager calls PATCH **closeMonthlyReport** (identity from session userId; role check via Employee). Validates no open daily reports in that month; sets isReportOpen: false. Final snapshot for reporting and comparison with Business.metrics.
 
 ---
 

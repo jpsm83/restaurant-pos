@@ -8,8 +8,7 @@ import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 
 // imported models
 import DailySalesReport from "@/lib/db/models/dailySalesReport";
-import Employee from "@/lib/db/models/employee";
-import Customer from "@/app/lib/models/customer";
+import User from "@/lib/db/models/user";
 
 // @desc    Get daily reports by business ID, startDate and endDate
 // @route   GET /dailySalesReports/business/:businessId?startDate=<date>&endDate=<date>
@@ -49,7 +48,7 @@ export const GET = async (
       : null;
 
     // Build query based on the presence of startDate and endDate
-    let query: {
+    const query: {
       businessId: Types.ObjectId;
       createdAt?: { $gte?: Date | null; $lte?: Date | null };
     } = { businessId: businessId };
@@ -78,14 +77,14 @@ export const GET = async (
     // fetch daily reports with the given business ID and date
     const dailySalesReports = await DailySalesReport.find(query)
       .populate({
-        path: "employeesDailySalesReport.employeeId",
-        select: "employeeName",
-        model: Employee,
+        path: "employeesDailySalesReport.userId",
+        select: "personalDetails.firstName personalDetails.lastName",
+        model: User,
       })
       .populate({
-        path: "selfOrderingSalesReport.customerId",
-        select: "customerName",
-        model: Customer,
+        path: "selfOrderingSalesReport.userId",
+        select: "personalDetails.firstName personalDetails.lastName",
+        model: User,
       })
       .lean();
 
@@ -101,7 +100,7 @@ export const GET = async (
   } catch (error) {
     return handleApiError(
       "Get daily sales report by business id failed!",
-      error
+      String(error)
     );
   }
 };

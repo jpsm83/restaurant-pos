@@ -49,37 +49,37 @@ interface SalesInstanceForReport {
   salesGroup?: SalesGroupWithOrders[];
 }
 
-// this function will update individual employee daily sales report
-// it will be fired individualy when the employee closes his daily sales report for the day or if he just want to see the report at current time
-// it also will be fired when manager closes the day sales report, running for all employees
+// this function will update individual user (employee role) daily sales report
+// it will be fired individually when the user closes his daily sales report for the day or if he just want to see the report at current time
+// it also will be fired when manager closes the day sales report, running for all users
 export const updateEmployeesDailySalesReport = async (
-  employeeIds: Types.ObjectId[], // Now accepts an array of employeeIds
+  userIds: Types.ObjectId[],
   dailyReferenceNumber: number
 ) => {
   try {
-    // validate employeeIds
-    if (isObjectIdValid(employeeIds) !== true) {
-      return "Invalid employeeIds!";
+    // validate userIds
+    if (isObjectIdValid(userIds) !== true) {
+      return "Invalid userIds!";
     }
 
     // check required fields
     if (!dailyReferenceNumber) {
-      return "EmployeeIds and dailyReferenceNumber are required!";
+      return "UserIds and dailyReferenceNumber are required!";
     }
 
     // connect before first call to DB
     await connectDb();
 
-    // Array to collect results for each employee
+    // Array to collect results for each user
     const employeeReports: IEmployeeDailySalesReport[] = [];
     const errors: string[] = [];
 
-    // Loop through each employeeId and process the report
-    for (const employeeId of employeeIds) {
+    // Loop through each userId and process the report
+    for (const userId of userIds) {
       try {
-        // Fetch all sales instance closed by the employee for the given dailyReferenceNumber
+        // Fetch all sales instances where this user is responsible for the given dailyReferenceNumber
         const salesInstance = await SalesInstance.find({
-          responsibleById: employeeId,
+          responsibleByUserId: userId,
           dailyReferenceNumber: dailyReferenceNumber,
         })
           .populate({
@@ -108,10 +108,10 @@ export const updateEmployeesDailySalesReport = async (
               },
             ],
             select:
-              "employeeId paymentMethod billingStatus orderGrossPrice orderNetPrice orderTips orderCostPrice businessGoodId addOns",
+              "createdByUserId createdAsRole paymentMethod billingStatus orderGrossPrice orderNetPrice orderTips orderCostPrice businessGoodId addOns",
           })
           .select(
-            "dailyReferenceNumber salesInstanceStatus businessId orderNetPrice orderTips guests closedById"
+            "dailyReferenceNumber salesInstanceStatus businessId orderNetPrice orderTips guests closedByUserId"
           )
           .lean();
 
@@ -127,7 +127,7 @@ export const updateEmployeesDailySalesReport = async (
         };
 
         const employeeDailySalesReportObj: IEmployeeDailySalesReport = {
-          employeeId: employeeId,
+          userId: userId,
           hasOpenSalesInstances: false,
           employeePaymentMethods: [] as IPaymentMethod[],
           totalSalesBeforeAdjustments: 0,
@@ -138,7 +138,7 @@ export const updateEmployeesDailySalesReport = async (
           averageCustomerExpenditure: 0,
         };
 
-        // Process each sales instance for the employee
+        // Process each sales instance for the user
         const instances = salesInstance as SalesInstanceForReport[] | null;
         if (instances && instances.length > 0) {
           for (const instance of instances) {
@@ -290,14 +290,14 @@ export const updateEmployeesDailySalesReport = async (
         // Add the updated result to the array
         employeeReports.push(employeeDailySalesReportObj);
       } catch (error: unknown) {
-        // Log errors for specific employees
+        // Log errors for specific users
         const message =
           error instanceof Error ? error.message : String(error);
-        errors.push(`Error updating employee ${employeeId}: ${message}`);
+        errors.push(`Error updating user ${userId}: ${message}`);
       }
     }
 
-    // Update DailySalesReport after processing all employees
+    // Update DailySalesReport after processing all users
     await DailySalesReport.updateOne(
       { dailyReferenceNumber },
       { $set: { employeesDailySalesReport: employeeReports } }

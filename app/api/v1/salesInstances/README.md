@@ -1,6 +1,6 @@
 # Sales Instances API — `app/api/v1/salesInstances`
 
-This folder contains the **REST API for the SalesInstance entity**: the **open table/session** (check or tab) at a **SalesPoint**. A sales instance is where **Orders** are grouped: staff (or a customer via self-ordering) opens a session for a table/bar/room, and all orders for that session are attached to it until the session is closed. Sales instances are **not** related to suppliers; they are the **core of the live service flow**: they trigger creation of the **Daily Sales Report** when the first instance of the day is opened, they drive order creation and billing, and they tie together sales point, employees/customers, and daily reporting.
+This folder contains the **REST API for the SalesInstance entity**: the **open table/session** (check or tab) at a **SalesPoint**. A sales instance is where **Orders** are grouped: staff opens a session from the **POS UI** or by **scanning the table’s QR** (open-table-only); customers can self-order via the same QR **only when the sales point has selfOrdering enabled**. All orders for that session are attached to it until the session is closed. Sales instances are **not** related to suppliers; they are the **core of the live service flow**: they trigger creation of the **Daily Sales Report** when the first instance of the day is opened, they drive order creation and billing, and they tie together sales point, employees/customers, and daily reporting.
 
 This document describes how these routes and the create util work, how they interact with orders, daily reports, sales points, and the rest of the app, and the patterns to follow when extending them.
 
@@ -8,11 +8,11 @@ This document describes how these routes and the create util work, how they inte
 
 ## 1. Purpose and role in the application
 
-- **SalesInstance** = one open session at a **SalesPoint** for a **Business**: `dailyReferenceNumber`, `salesPointId`, `guests`, `salesInstanceStatus` (e.g. Occupied, Reserved, Closed), optional `openedByEmployeeId` or `openedByCustomerId`, optional `responsibleById`, `clientName`, and **salesGroup** (array of order groups: orderCode + ordersIds).
+- **SalesInstance** = one open session at a **SalesPoint** for a **Business**: `dailyReferenceNumber`, `salesPointId`, `guests`, `salesInstanceStatus` (e.g. Occupied, Reserved, Closed), optional `openedByUserId` (ref User) and `openedAsRole` ('employee' | 'customer'), optional `responsibleByUserId`, `closedByUserId` (ref User), `clientName`, and **salesGroup** (array of order groups: orderCode + ordersIds).
 - **One open instance per table per day:** For a given day (dailyReferenceNumber), business, and sales point, there should be at most one sales instance that is not Closed. Creating a second one returns 409.
-- **Daily report coupling:** The **first** sales instance of the day for a business triggers creation of the **Daily Sales Report** (open report for that day) if it does not exist. The daily reference number from that report is then used for all sales instances and orders created that day. Employees who open instances are added to the daily report’s employee list (via `addEmployeeToDailySalesReport`) when needed.
+- **Daily report coupling:** The **first** sales instance of the day for a business triggers creation of the **Daily Sales Report** (open report for that day) if it does not exist. The daily reference number from that report is then used for all sales instances and orders created that day. Users who open instances (as employee) or become responsible are added to the daily report via **addUserToDailySalesReport(userId, businessId, session)** when needed. **createSalesInstance** also adds **responsibleByUserId** to the report when it is provided (e.g. delivery instances with responsibleByUserId = DELIVERY_ATTRIBUTION_USER_ID).
 - **Orders:** Orders are created in the context of a sales instance (they reference it and are pushed into `salesGroup` with an orderCode). PATCH on a sales instance can apply discount, cancel orders, change billing/order status, close orders (payment), or transfer orders to another sales instance. The sales instance is not updated for `salesPointId` or `salesGroup` in PATCH; orders are created/updated via the orders API, which updates the instance’s salesGroup.
-- **Self-ordering:** The route `POST /salesInstances/selfOrderingLocation/:selfOrderingLocationId` implements the full flow: create sales instance (with `salesPointId` = the id from the QR/location), create orders, close orders (payment), and update the daily report’s self-ordering section. So one request = open table + place order + pay.
+- **Self-ordering:** The route `POST /salesInstances/selfOrderingLocation/:selfOrderingLocationId` is the **customer** self-order flow (open + order + pay) and is **only allowed when the sales point has selfOrdering === true** (returns 400 otherwise). The route `POST .../selfOrderingLocation/:id/openTable` lets an **employee (on-duty)** scan the same QR to **open the table only** (no orders); identity from session.
 
 So: **Sales instances are the “open check” layer: they anchor orders to a place and a day, trigger daily reporting, and support both staff-driven and self-ordering flows.**
 
@@ -31,10 +31,12 @@ app/api/v1/salesInstances/
 │       └── route.ts                             # GET sales instances for a business
 ├── user/
 │   └── [userId]/
-│       └── route.ts                             # GET sales instances (by employee; path param is userId/employeeId)
+│       └── route.ts                             # GET sales instances for a user (openedByUserId or responsibleByUserId)
 ├── selfOrderingLocation/
 │   └── [selfOrderingLocationId]/
-│       └── route.ts                             # POST — create instance + orders + close + update daily report (self-order flow)
+│       ├── route.ts                             # POST — customer self-order flow (open + orders + pay; requires sales point selfOrdering true)
+│       └── openTable/
+│           └── route.ts                         # POST — employee open table only (from QR; on-duty required)
 └── utils/
     └── createSalesInstance.ts                   # Shared create logic: ensure employee in daily report, create document
 ```
@@ -45,14 +47,15 @@ app/api/v1/salesInstances/
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/v1/salesInstances` | Returns all sales instances (populated: salesPoint, customer, employees, salesGroup.ordersIds + businessGoodId, addOns). 404 if none. |
-| POST | `/api/v1/salesInstances` | Creates a sales instance (employee-opened). Body: **JSON**. Ensures daily report exists, no duplicate open instance for same (dailyRef, business, salesPoint), then createSalesInstance. Transaction. |
-| GET | `/api/v1/salesInstances/business/:businessId` | Intended: list sales instances for the business. Filter by businessId when implemented. |
-| GET | `/api/v1/salesInstances/user/:userId` | Intended: list sales instances for an employee (openedByEmployeeId or responsibleById). Path param used as employeeId; add filter when implemented. |
-| GET | `/api/v1/salesInstances/:salesInstanceId` | Returns one sales instance by ID (same populates as list). Use findById(salesInstanceId) for correct behavior. |
-| PATCH | `/api/v1/salesInstances/:salesInstanceId` | Update instance and/or run order actions: discount, cancel, change billing/order status, close orders (payment), transfer orders to another instance; update guests, salesInstanceStatus, responsibleById, clientName. Can delete empty Occupied instance if status is changed. Transaction. |
+| GET | `/api/v1/salesInstances` | Returns all sales instances (populated: salesPoint, openedByUserId, responsibleByUserId, closedByUserId → User; salesGroup.ordersIds + businessGoodId, addOns). 404 if none. |
+| POST | `/api/v1/salesInstances` | Creates a sales instance (employee-opened). Body: **JSON**. Identity from **session** (userId only; no employeeId in body). **Requires on-duty employee** for that business (403 otherwise). Ensures daily report exists, no duplicate open instance, then createSalesInstance with openedByUserId, openedAsRole: 'employee'. Transaction. |
+| GET | `/api/v1/salesInstances/business/:businessId` | List sales instances for the business. Filter by businessId. |
+| GET | `/api/v1/salesInstances/user/:userId` | List sales instances for a user: openedByUserId or responsibleByUserId equals path userId. |
+| GET | `/api/v1/salesInstances/:salesInstanceId` | Returns one sales instance by ID (same populates as list). Use findById(salesInstanceId). |
+| PATCH | `/api/v1/salesInstances/:salesInstanceId` | Update instance and/or run order actions: discount, cancel, change billing/order status, close orders (payment), transfer; update guests, salesInstanceStatus, responsibleByUserId, clientName. Can delete empty Occupied instance if status is changed. Transaction. |
 | DELETE | `/api/v1/salesInstances/:salesInstanceId` | Deletes instance only if it has no orders (salesGroup empty or missing). 404 otherwise. |
-| POST | `/api/v1/salesInstances/selfOrderingLocation/:selfOrderingLocationId` | Self-order flow: create instance (salesPointId = selfOrderingLocationId, openedByCustomerId), create orders, close orders with payment, push to daily report selfOrderingSalesReport. Transaction. |
+| POST | `/api/v1/salesInstances/selfOrderingLocation/:selfOrderingLocationId` | **Customer** self-order flow: only when sales point has **selfOrdering === true** (400 otherwise). Rejects with **409** when the table already has an open (non-Closed) sales instance (e.g. staff-opened). Create instance (openedByUserId, openedAsRole: 'customer'), create orders, close with payment, push to selfOrderingSalesReport. On success, sends an order confirmation **email** (nodemailer, to the user's email) and an **in-app notification** (pushed to the User's inbox) so the customer can show proof of payment. Order confirmation is implemented in `lib/orderConfirmation` and triggered after commit (fire-and-forget). Transaction. |
+| POST | `/api/v1/salesInstances/selfOrderingLocation/:selfOrderingLocationId/openTable` | **Employee** open table from QR. Body: `businessId`, optional `guests`. Session userId; employee must be **on-duty** for that business. Opens table only (openedByUserId, openedAsRole: 'employee'). 201 created instance, 409 duplicate, 403 not on-duty, 400 validation. |
 
 All responses are JSON. Errors use `handleApiError` (500) or explicit NextResponse with 400/404/409.
 
@@ -63,43 +66,40 @@ All responses are JSON. Errors use `handleApiError` (500) or explicit NextRespon
 ### 4.1 GET (list, by id, by business, by user/employee)
 
 - **DB:** `connectDb()` before first query.
-- **Populate:** salesPointId (name, type, selfOrdering), openedByCustomerId (customerName), openedByEmployeeId / responsibleById / closedById (employeeName, currentShiftRole), salesGroup.ordersIds with businessGoodId and addOns (name, mainCategory, subCategory, allergens, sellingPrice). Order fields: billingStatus, orderStatus, orderGrossPrice, orderNetPrice, paymentMethod, allergens, promotionApplyed, discountPercentage, createdAt, businessGoodId, addOns.
-- **List by business:** Intended filter `SalesInstance.find({ businessId })`. Ensure businessId is validated with isObjectIdValid.
-- **List by employee:** Intended filter by openedByEmployeeId or responsibleById (path param is the employee/user id).
+- **Populate:** salesPointId (name, type, selfOrdering), openedByUserId / responsibleByUserId / closedByUserId → User (e.g. personalDetails.firstName, lastName, username), salesGroup.ordersIds with businessGoodId and addOns (name, mainCategory, subCategory, allergens, sellingPrice). Order fields: billingStatus, orderStatus, orderGrossPrice, orderNetPrice, paymentMethod, allergens, promotionApplyed, discountPercentage, createdAt, businessGoodId, addOns.
+- **List by business:** Filter `SalesInstance.find({ businessId })`. Validate businessId with isObjectIdValid.
+- **List by user:** Filter `$or: [ { openedByUserId: userId }, { responsibleByUserId: userId } ]` (path param is userId).
 - **By ID:** Validate salesInstanceId; use findById(salesInstanceId) or findOne({ _id: salesInstanceId }) so a single document is returned.
 
 ### 4.2 POST (create — employee-opened) — JSON body + transaction
 
-**Required:** `salesPointId`, `guests`, `openedByEmployeeId`, `businessId`.  
-**Optional:** `salesInstanceStatus`, `clientName`.
+**Required:** `salesPointId`, `guests`, `businessId`.  
+**Optional:** `salesInstanceStatus`, `clientName`.  
+**Identity:** From **session** only (getToken → token.id = userId). No employeeId in body.
 
-- **Validation:** isObjectIdValid(salesPointId, openedByEmployeeId, businessId). Check SalesPoint and Employee exist.
-- **Daily report:** Find open daily report for business; if none, call `createDailySalesReport(businessId, session)` to create it. Use its `dailyReferenceNumber` (or abort if create returned an error string).
-- **Duplicate:** No existing sales instance with same dailyReferenceNumber, businessId, salesPointId and status not Closed (use `salesInstanceStatus: { $ne: "Closed" }` in the schema; the route currently uses `status` — align with schema field `salesInstanceStatus`). Return 409 if duplicate.
-- **Create:** Build ISalesInstance and call `createSalesInstance(newSalesInstanceObj, session)`. That util ensures the opening employee is in the daily report’s employeesDailySalesReport (via addEmployeeToDailySalesReport if missing), then SalesInstance.create(..., { session }). Commit transaction.
+- **Validation:** isObjectIdValid(salesPointId, businessId). Check SalesPoint exists. User identity from session (userId).
+- **Employee check:** After connectDb(), resolve Employee by (userId, businessId); require employee exists and **onDuty** is true. If not, return 403 (e.g. "You must be an on-duty employee to open a table from the POS.").
+- **Daily report:** Find open daily report for business; if none, call `createDailySalesReport(businessId, session)`. Use its `dailyReferenceNumber` (or abort if create returned an error string).
+- **Duplicate:** No existing sales instance with same dailyReferenceNumber, businessId, salesPointId and salesInstanceStatus not Closed. Return 409 if duplicate.
+- **Create:** Build newSalesInstanceObj with `openedByUserId: userId`, `openedAsRole: 'employee'`. Call `createSalesInstance(newSalesInstanceObj, session)`. That util ensures the opening user is in the daily report (addUserToDailySalesReport if missing), then SalesInstance.create(..., { session }). Commit transaction.
 
 ### 4.3 createSalesInstance util
 
 - **Signature:** `createSalesInstance(newSalesInstanceObj: ISalesInstance, session: ClientSession)`.
 - **Required keys:** dailyReferenceNumber, salesPointId, guests, salesInstanceStatus, businessId.
-- **Behavior:** If openedByEmployeeId is present, ensure that employee exists in the daily report for that dailyReferenceNumber and businessId; if not, call addEmployeeToDailySalesReport(openedByEmployeeId, businessId, session). Then SalesInstance.create(newSalesInstanceObj, { session }). Returns the created document or an error string.
+- **Behavior:** If openedByUserId and openedAsRole === 'employee', ensure that user exists in the daily report’s employeesDailySalesReport (by userId); if not, call addUserToDailySalesReport(openedByUserId, businessId, session). Then SalesInstance.create(newSalesInstanceObj, { session }). Returns the created document or an error string. No openedByEmployeeId/openedByCustomerId; use openedByUserId and openedAsRole.
 - **Used by:** POST /salesInstances and POST /salesInstances/selfOrderingLocation/:selfOrderingLocationId.
 
 ### 4.4 PATCH (update and order actions) — JSON body + transaction
 
-**Body fields (all optional):** ordersIdsArr, discountPercentage, comments, cancel, ordersNewBillingStatus, ordersNewStatus, paymentMethodArr, toSalesInstanceId, guests, salesInstanceStatus, responsibleById, clientName.
+**Body fields (all optional):** ordersIdsArr, discountPercentage, comments, cancel, ordersNewBillingStatus, voidReason, ordersNewStatus, paymentMethodArr, toSalesInstanceId, guests, salesInstanceStatus, responsibleByUserId, clientName.
 
-- **Validation:** Validate salesInstanceId and any IDs in body (responsibleById, ordersIdsArr, toSalesInstanceId). Load sales instance; 404 if not found.
+- **Validation:** Validate salesInstanceId and any IDs in body (responsibleByUserId, ordersIdsArr, toSalesInstanceId). Load sales instance; 404 if not found.
+- **Management-only actions:** **Discount**, **cancel**, and **ordersNewBillingStatus** (Void, Invitation) require the caller to be an on-duty employee with a **management role** (Owner, General Manager, Manager, Assistant Manager, MoD, Admin, Supervisor). Session userId → Employee.findOne({ userId, businessId }) for allEmployeeRoles and onDuty; role must be in MANAGEMENT_ROLES (lib/constants). When setting **ordersNewBillingStatus** to **Void**, **voidReason** is required in the body (one of: waste, mistake, refund, other) and is stored on the order (e.g. in comments).
 - **Special case:** If instance is Occupied and has no salesGroup (or empty) and the new status is not Reserved, the route can **delete** the instance (empty table cleanup) and return success.
-- **Order actions (in order as applicable):**
-  - **discountPercentage:** addDiscountToOrders(ordersIdsArr, discountPercentage, comments, session).
-  - **cancel:** cancelOrders(ordersIdsArr, session).
-  - **ordersNewBillingStatus:** changeOrdersBillingStatus(ordersIdsArr, ordersNewBillingStatus, session).
-  - **ordersNewStatus:** changeOrdersStatus(ordersIdsArr, ordersNewStatus, session).
-  - **paymentMethodArr:** validatePaymentMethodArray(paymentMethodArr); then closeOrders(ordersIdsArr, paymentMethodArr, session).
-  - **toSalesInstanceId:** transferOrdersBetweenSalesInstances(ordersIdsArr, toSalesInstanceId, session).
-- **Responsible employee change:** If responsibleById is set and different from openedByEmployeeId, ensure that employee is in the daily report (addEmployeeToDailySalesReport if not).
-- **Instance update:** Set guests, salesInstanceStatus, clientName, responsibleById on the document; SalesInstance.updateOne({ _id: salesInstanceId }, { $set: updatedSalesInstanceObj }, { session }). Commit.
+- **Order actions (in order as applicable):** discountPercentage, cancel, ordersNewBillingStatus (with voidReason when Void), ordersNewStatus, paymentMethodArr (closeOrders), toSalesInstanceId (transfer).
+- **Responsible user change:** If responsibleByUserId is set and different from openedByUserId, ensure that user is in the daily report (addUserToDailySalesReport(responsibleByUserId, businessId, session) if not).
+- **Instance update:** Set guests, salesInstanceStatus, clientName, responsibleByUserId on the document; SalesInstance.updateOne(..., { $set: updatedSalesInstanceObj }, { session }). Commit.
 
 Note: salesPointId and salesGroup are not updated in this route; they are managed by the orders flow (orders are added to salesGroup when orders are created).
 
@@ -107,12 +107,29 @@ Note: salesPointId and salesGroup are not updated in this route; they are manage
 
 - **Condition:** Delete only if the instance has no orders: `salesGroup` has length 0 or does not exist. Use deleteOne with filter `{ _id: salesInstanceId, $or: [{ salesGroup: { $size: 0 } }, { salesGroup: { $exists: false } }] }`. Return 404 if no document deleted.
 
-### 4.6 POST selfOrderingLocation — full self-order flow
+### 4.6 POST selfOrderingLocation — customer self-order flow
 
-**Body:** `businessId`, `openedByCustomerId`, `ordersArr`, `paymentMethodArr`.
+This POST is the **customer** flow (open table + place order + pay). It is **only allowed when the sales point has selfOrdering === true**; otherwise the route returns 400 (e.g. “Self-ordering is not available at this table”). If the table **already has an open (non-Closed) sales instance** (e.g. opened by staff), the route returns **409** with a message that the table is being served by staff and self-ordering is not available until the table is closed. For **employees** scanning the same QR to open the table only, use **POST .../selfOrderingLocation/:id/openTable** (see route table).
 
-- **Validation:** Validate all IDs (businessId, openedByCustomerId, selfOrderingLocationId, and each order’s businessGoodId and addOns). ordersArrValidation(ordersArr); validatePaymentMethodArray(paymentMethodArr). Customer must exist.
-- **Transaction:** Create or get daily report (createDailySalesReport if needed). Create sales instance with salesPointId = selfOrderingLocationId, openedByCustomerId, guests: 1, salesInstanceStatus: "Occupied", clientName from customer. createSalesInstance(..., session). Create orders with createOrders(dailyReferenceNumber, ordersArr, undefined, openedByCustomerId, salesInstance._id, businessId, session). closeOrders(createdOrdersIds, paymentMethodArr, session). Then update DailySalesReport: push to selfOrderingSalesReport with customerId, paymentMethodArr, totals (totalSalesBeforeAdjustments, totalNetPaidAmount, totalCostOfGoodsSold), soldGoods (built from businessGoodId + addOns per order). Commit.
+**Body:** `businessId`, `ordersArr`, `paymentMethodArr`. Identity from **session** (userId).
+
+- **Guard:** Load SalesPoint by selfOrderingLocationId; if not found or `selfOrdering !== true`, return 400. Ensure salesPoint.businessId matches body businessId.
+- **Open-session guard:** Get open daily report for business; if it exists, check SalesInstance.exists for same dailyReferenceNumber, businessId, salesPointId, and salesInstanceStatus not Closed. If an open instance exists, return 409 ("Table is being served by staff. Self-ordering is not available until the table is closed.").
+- **Validation:** Validate all IDs (businessId, selfOrderingLocationId, and each order’s businessGoodId and addOns). ordersArrValidation(ordersArr); validatePaymentMethodArray(paymentMethodArr).
+- **Transaction:** Create or get daily report (createDailySalesReport if needed). Create sales instance with salesPointId = selfOrderingLocationId, openedByUserId: userId, openedAsRole: 'customer', guests: 1, salesInstanceStatus: "Occupied", clientName from User. createSalesInstance(..., session). Create orders, closeOrders, push to selfOrderingSalesReport. Commit.
+
+### 4.7 POST selfOrderingLocation/:id/openTable — employee open table from QR
+
+**Body:** `businessId` (required), `guests` (optional, default 1). Identity from **session** (userId).
+
+- **Auth:** Employee must exist for (userId, businessId) and be **on-duty** (403 otherwise).
+- **Validation:** isObjectIdValid(selfOrderingLocationId, businessId). SalesPoint must exist and its businessId must match body businessId.
+- **Duplicate:** Same as POST /salesInstances — no non-Closed instance for same dailyReferenceNumber, businessId, salesPointId; 409 if duplicate.
+- **Logic:** Get or create daily report, build ISalesInstance (openedByUserId, openedAsRole: 'employee', salesPointId = path param), createSalesInstance. Return 201 with created instance.
+
+### 4.8 Delivery order flow (contract for future implementation)
+
+When a **delivery order** endpoint is added, it should: (1) accept an optional **deliveryAddress** in the body; (2) if absent, use the authenticated user’s address from the **User** model; (3) create a sales instance for the business’s **delivery sales point** (the sales point with `salesPointType === 'delivery'`) with **responsibleByUserId** set to **DELIVERY_ATTRIBUTION_USER_ID** (from `@/lib/constants`), and store the chosen delivery address on the instance or on the order (e.g. embedded or reference). Payment before order submit for self-order and delivery is under study; third-party integration is not yet implemented.
 
 ---
 
@@ -134,9 +151,9 @@ Note: salesPointId and salesGroup are not updated in this route; they are manage
 
 - Sales instances are scoped by **businessId**. When a **Business** is deleted, **SalesInstance** is deleted in the same transaction (SalesInstance.deleteMany({ businessId }, { session }) in business DELETE).
 
-### 5.5 Employees and customers
+### 5.5 Users (attribution)
 
-- **openedByEmployeeId** / **openedByCustomerId**, **responsibleById**, **closedById** link to Employee and Customer. These drive who opened the table, who is responsible, and who placed a self-order; they also drive daily report employee entries.
+- **openedByUserId**, **openedAsRole**, **responsibleByUserId**, **closedByUserId** (ref User) drive who opened the table, who is responsible, and who closed. Display names come from User (personalDetails or username). Daily report entries use userId in employeesDailySalesReport and selfOrderingSalesReport.
 
 ### 5.6 No link to suppliers
 
@@ -152,12 +169,12 @@ Note: salesPointId and salesGroup are not updated in this route; they are manage
 | `@/lib/db/handleApiError` | Central 500 JSON error response. |
 | `@/lib/utils/isObjectIdValid` | Validate salesInstanceId, businessId, salesPointId, employeeId, order IDs, toSalesInstanceId, etc. |
 | `../dailySalesReports/utils/createDailySalesReport` | Create or get open daily report for the business. |
-| `../dailySalesReports/utils/addEmployeeToDailySalesReport` | Add employee to daily report (used in createSalesInstance and PATCH when responsibleById changes). |
+| `../dailySalesReports/utils/addEmployeeToDailySalesReport` | addUserToDailySalesReport(userId, businessId, session) — add user to daily report (used in createSalesInstance and PATCH when responsibleByUserId changes). |
 | `./utils/createSalesInstance` | Create sales instance document and ensure employee in daily report. |
 | Order utils (discount, cancel, billing status, order status, close, transfer) | Called from PATCH to modify orders. |
 | `@/lib/db/models/salesInstance` | SalesInstance model. |
 | `@/lib/db/models/dailySalesReport` | Daily report for dailyReferenceNumber and selfOrderingSalesReport. |
-| SalesPoint, Employee, Order, BusinessGood, Customer | Populates and existence checks. |
+| SalesPoint, User, Order, BusinessGood | Populates and existence checks. |
 | `@/lib/interface/ISalesInstance` | Type for create/update. |
 
 ---
@@ -170,14 +187,14 @@ Note: salesPointId and salesGroup are not updated in this route; they are manage
 4. **Daily report first:** When creating an instance, resolve or create the daily report and use its dailyReferenceNumber; ensure the opening (or responsible) employee is in the report when applicable.
 5. **No duplicate open table:** Enforce at most one non-Closed sales instance per (dailyReferenceNumber, businessId, salesPointId); use schema field `salesInstanceStatus` (not `status`) for the duplicate check.
 6. **DELETE only when empty:** Allow delete only when the instance has no orders (salesGroup empty or missing).
-7. **List routes:** Filter GET by businessId or by employee (openedByEmployeeId / responsibleById) so list endpoints return the correct subset.
+7. **List routes:** Filter GET by businessId or by user (openedByUserId / responsibleByUserId) so list endpoints return the correct subset.
 8. **Consistent JSON** responses and error messages.
 
 ---
 
 ## 8. Data model summary (for context)
 
-- **SalesInstance:** dailyReferenceNumber (number), salesPointId (ref: SalesPoint), guests (number), salesInstanceStatus (enum, default Occupied), openedByEmployeeId / openedByCustomerId / responsibleById / closedById (refs), businessId (ref: Business), clientName, salesGroup (array of { orderCode, ordersIds[], createdAt }), closedAt.
+- **SalesInstance:** dailyReferenceNumber (number), salesPointId (ref: SalesPoint), guests (number), salesInstanceStatus (enum, default Occupied), openedByUserId / openedAsRole ('employee'|'customer') / responsibleByUserId / closedByUserId (ref User), businessId (ref: Business), clientName, salesGroup (array of { orderCode, ordersIds[], createdAt }), closedAt.
 - **salesGroup** is updated when orders are created (orders API pushes to the instance’s salesGroup).
 
 This README is the main context for how the sales instances API works and how it ties into orders, daily reports, sales points, and the rest of the app.

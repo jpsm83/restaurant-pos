@@ -8,8 +8,7 @@ import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 
 // imported models
 import DailySalesReport from "@/lib/db/models/dailySalesReport";
-import Employee from "@/lib/db/models/employee";
-import Customer from "@/app/lib/models/customer";
+import User from "@/lib/db/models/user";
 
 // @desc    Get daily report by ID
 // @route   GET /dailySalesReports/:dailySalesReportId
@@ -33,17 +32,17 @@ export const GET = async (
     await connectDb();
 
     const dailySalesReport = await DailySalesReport.findById(dailySalesReportId)
-    .populate({
-      path: "employeesDailySalesReport.employeeId",
-      select: "employeeName",
-      model: Employee,
-    })
-    .populate({
-      path: "selfOrderingSalesReport.customerId",
-      select: "customerName",
-      model: Customer,
-    })
-    .lean();
+      .populate({
+        path: "employeesDailySalesReport.userId",
+        select: "personalDetails.firstName personalDetails.lastName",
+        model: User,
+      })
+      .populate({
+        path: "selfOrderingSalesReport.userId",
+        select: "personalDetails.firstName personalDetails.lastName",
+        model: User,
+      })
+      .lean();
 
     return !dailySalesReport
       ? new NextResponse(
@@ -55,7 +54,7 @@ export const GET = async (
           headers: { "Content-Type": "application/json" },
         });
   } catch (error) {
-    return handleApiError("Get daily sales report by its id failed!", error);
+    return handleApiError("Get daily sales report by its id failed!", error instanceof Error ? error.message : String(error));
   }
 };
 
@@ -98,6 +97,6 @@ export const DELETE = async (
       status: 200,
     });
   } catch (error) {
-    return handleApiError("Delete daily sales report failed!", error);
+    return handleApiError("Delete daily sales report failed!", error instanceof Error ? error.message : String(error));
   }
 };

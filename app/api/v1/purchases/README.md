@@ -157,7 +157,7 @@ All responses are JSON (except one DELETE returns plain text). Errors use `handl
 |------------|------|
 | `@/lib/db/connectDb` | Ensure MongoDB connection before first DB call. |
 | `@/lib/db/handleApiError` | Central 500 JSON error response. |
-| `@/lib/utils/isObjectIdValid` | Validate purchaseId, businessId, employeeId, supplierId, supplierGoodId, purchaseInventoryItemsId. |
+| `@/lib/utils/isObjectIdValid` | Validate purchaseId, businessId, supplierId, supplierGoodId, purchaseInventoryItemsId. Identity (who recorded the purchase) from session (userId) where needed; Employee resolved by userId + businessId for role checks. |
 | `../suppliers/utils/oneTimePurchaseSupplier` | Resolve or create "One Time Purchase" supplier for a business. |
 | `./utils/validateInventoryPurchaseItems` | Validate `purchaseInventoryItems` array for POST. |
 | `@/lib/db/models/purchase` | Purchase model. |
@@ -170,7 +170,7 @@ All responses are JSON (except one DELETE returns plain text). Errors use `handl
 ## 8. Patterns to follow when coding
 
 1. **Always call `connectDb()`** before DB work.
-2. **Validate IDs** with `isObjectIdValid` (purchaseId, businessId, employeeId, supplierGoodId, subdocument ids). Do not validate `supplierId` when it is the string `"One Time Purchase"`.
+2. **Validate IDs** with `isObjectIdValid` (purchaseId, businessId, supplierGoodId, subdocument ids). Do not validate `supplierId` when it is the string `"One Time Purchase"`. Identity for “who recorded” can be from session (userId); no employeeId in body for attribution.
 3. **Keep purchase and inventory in sync** inside a **single transaction** when creating, deleting, or changing purchase lines.
 4. **One purchase = one receipt:** Enforce uniqueness of `(businessId, supplierId, receiptId)` on create (and on header update if receiptId can change).
 5. **Quantities in measurement unit:** `quantityPurchased` is in the supplier good’s **measurement unit**; purchase price is total for that quantity (often `pricePerMeasurementUnit * quantityPurchased` from the front end).

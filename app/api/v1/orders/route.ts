@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import mongoose, { Types } from "mongoose";
+import { getToken } from "next-auth/jwt";
 
 // imported utils
 import connectDb from "@/lib/db/connectDb";
@@ -16,10 +17,9 @@ import { IOrder } from "@/lib/interface/IOrder";
 // imported models
 import Order from "@/lib/db/models/order";
 import SalesInstance from "@/lib/db/models/salesInstance";
-import Employee from "@/lib/db/models/employee";
+import User from "@/lib/db/models/user";
 import BusinessGood from "@/lib/db/models/businessGood";
 import SalesPoint from "@/lib/db/models/salesPoint";
-import Customer from "@/app/lib/models/customer";
 
 // @desc    Get all orders
 // @route   GET /orders
@@ -41,14 +41,9 @@ export const GET = async () => {
         model: SalesInstance,
       })
       .populate({
-        path: "employeeId",
-        select: "employeeName allEmployeeRoles currentShiftRole",
-        model: Employee,
-      })
-      .populate({
-        path: "customerId",
-        select: "employeeName allEmployeeRoles currentShiftRole",
-        model: Customer,
+        path: "createdByUserId",
+        select: "personalDetails.firstName personalDetails.lastName",
+        model: User,
       })
       .populate({
         path: "businessGoodId",
@@ -142,33 +137,40 @@ export const POST = async (req: Request) => {
   //    }
   //]
 
-  // paymentMethod cannot be created here, only updated - MAKE IT SIMPLE
+  const token = await getToken({
+    req: req as Parameters<typeof getToken>[0]["req"],
+    secret: process.env.NEXTAUTH_SECRET,
+  });
+  if (!token?.id || token.type !== "user") {
+    return new NextResponse(
+      JSON.stringify({ message: "Unauthorized" }),
+      { status: 401, headers: { "Content-Type": "application/json" } }
+    );
+  }
+  const createdByUserId = new Types.ObjectId(token.id as string);
+
   const {
     ordersArr,
-    employeeId,
     salesInstanceId,
     businessId,
     dailyReferenceNumber,
   } = (await req.json()) as {
     ordersArr: Partial<IOrder>[];
-    employeeId: Types.ObjectId;
     salesInstanceId: Types.ObjectId;
     businessId: Types.ObjectId;
     dailyReferenceNumber: string;
   };
 
-  // check required fields
   if (
     !ordersArr ||
     !salesInstanceId ||
     !businessId ||
-    !employeeId ||
     !dailyReferenceNumber
   ) {
     return new NextResponse(
       JSON.stringify({
         message:
-          "OrdersArr, dailyReferenceNumber, employeeId, salesInstanceId and businessId are required fields!",
+          "OrdersArr, dailyReferenceNumber, salesInstanceId and businessId are required fields!",
       }),
       { status: 400, headers: { "Content-Type": "application/json" } }
     );
@@ -178,14 +180,13 @@ export const POST = async (req: Request) => {
     order.businessGoodId!,
     ...(order.addOns ?? []),
   ]);
-  objectIds.push(businessId, salesInstanceId, employeeId);
+  objectIds.push(businessId, salesInstanceId);
 
-  // validate ids
   if (isObjectIdValid(objectIds) !== true) {
     return new NextResponse(
       JSON.stringify({
         message:
-          "businessGoodId, addOns, employeeId, businessId or salesInstanceId not valid!",
+          "businessGoodId, addOns, businessId or salesInstanceId not valid!",
       }),
       {
         status: 400,
@@ -257,8 +258,8 @@ export const POST = async (req: Request) => {
     const createdOrders = await createOrders(
       dailyReferenceNumber,
       ordersArr,
-      employeeId,
-      undefined,
+      createdByUserId,
+      "employee",
       salesInstanceId,
       businessId,
       session

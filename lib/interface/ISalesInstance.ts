@@ -11,11 +11,11 @@ export interface ISalesInstance {
   salesPointId: Types.ObjectId;
   guests: number;
   salesInstanceStatus: string;
-  openedByCustomerId?: Types.ObjectId;
-  openedByEmployeeId?: Types.ObjectId;
-  responsibleById?: Types.ObjectId;
+  openedByUserId?: Types.ObjectId;
+  openedAsRole?: "employee" | "customer";
+  responsibleByUserId?: Types.ObjectId;
   businessId: Types.ObjectId;
   clientName?: string;
   salesGroup?: ISalesGroup[];
-  closedById?: Types.ObjectId;
+  closedByUserId?: Types.ObjectId;
 }

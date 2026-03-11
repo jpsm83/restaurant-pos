@@ -10,24 +10,22 @@ import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 import User from "@/lib/db/models/user";
 import Notification from "@/lib/db/models/notification";
 
-// @desc    Create new customers
-// @route   PATCH /customers/:customerId/markNotificationAsDeleted
+// @desc    Mark notification as deleted in user inbox
+// @route   PATCH /users/:userId/markNotificationAsDeleted
 // @access  Private
 export const PATCH = async (
   req: Request,
   context: {
-    params: { customerId: Types.ObjectId };
+    params: { userId: Types.ObjectId };
   }
 ) => {
-  // delete notification relation from user.notifications
-  const customerId = context.params.customerId;
+  const userId = context.params.userId;
 
   const { notificationId } = (await req.json()) as {
     notificationId: Types.ObjectId;
   };
 
-  // validate customerId
-  if (!isObjectIdValid([customerId, notificationId])) {
+  if (!isObjectIdValid([userId, notificationId])) {
     return new NextResponse(
       JSON.stringify({ message: "User or notification ID is not valid!" }),
       {
@@ -62,7 +60,7 @@ export const PATCH = async (
 
     // user can mark notification as deleted but never delete it for data integrity
     const updatedCustomer = await User.findOneAndUpdate(
-      { _id: customerId, "notifications.notificationId": notificationId },
+      { _id: userId, "notifications.notificationId": notificationId },
       {
         $set: {
           "notifications.$.deletedFlag": true,

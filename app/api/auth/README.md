@@ -18,7 +18,8 @@ This folder contains the NextAuth configuration and auth routes. The app uses a 
 
 ## Session shape
 
-- **JWT/session** (see `types/next-auth.d.ts`): `user.type` (`"business"` | `"user"`), `user.id`, `user.email`. For `type === "user"`: optional `employeeId`, `businessId`, `canLogAsEmployee`.
+- **JWT/session** (see `types/next-auth.d.ts`): `user.type` (`"business"` | `"user"`), **`user.id`** (the **userId**), `user.email`. For `type === "user"`: optional `employeeId`, `businessId`, `canLogAsEmployee`.
+- **Attribution:** Across the app, “who did it” (open table, create order, close report, etc.) is always derived from **session `user.id`** (userId). APIs do not accept or trust `employeeId` in request bodies for identity; when role or on-duty checks are needed, the server resolves `Employee.findOne({ userId: session.user.id, businessId })`. The optional `employeeId` on the session is used only for **mode selection** (customer vs employee) and UI, not for sending in API request bodies.
 - **Mode** for users: stored in cookie `auth_mode` (`customer` | `employee`), read by middleware to allow or deny access to `/admin`.
 
 ## Schedule check at login

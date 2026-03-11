@@ -2,7 +2,7 @@ import { ClientSession } from "mongoose";
 
 // imported utils
 import connectDb from "@/lib/db/connectDb";
-import { addEmployeeToDailySalesReport } from "../../dailySalesReports/utils/addEmployeeToDailySalesReport";
+import { addUserToDailySalesReport } from "../../dailySalesReports/utils/addEmployeeToDailySalesReport";
 
 // imported interfaces
 import { ISalesInstance } from "@/lib/interface/ISalesInstance";
@@ -24,42 +24,58 @@ export const createSalesInstance = async (
       "businessId",
     ];
 
-    // check required fields
     for (const key of requiredKeys) {
       if (!(key in newSalesInstanceObj)) {
         return `${key} is missing!`;
       }
     }
 
-    const { dailyReferenceNumber, openedByEmployeeId, businessId } =
-      newSalesInstanceObj;
+    const {
+      dailyReferenceNumber,
+      openedByUserId,
+      openedAsRole,
+      businessId,
+      responsibleByUserId,
+    } = newSalesInstanceObj;
 
-    // connect before first call to DB
     await connectDb();
 
-    if (openedByEmployeeId) {
-      // Check if the employee exists in the dailySalesReport
-      if (
-        !(await DailySalesReport.exists({
-          dailyReferenceNumber: dailyReferenceNumber,
-          businessId: businessId,
-          "employeesDailySalesReport.employeeId": openedByEmployeeId,
-        }))
-      ) {
-        const addEmployeeToDailySalesReportResult =
-          await addEmployeeToDailySalesReport(
-            openedByEmployeeId,
-            businessId,
-            session
-          );
-
-        if (addEmployeeToDailySalesReportResult !== true) {
-          return addEmployeeToDailySalesReportResult;
+    if (openedByUserId && openedAsRole === "employee") {
+      const exists = await DailySalesReport.exists({
+        dailyReferenceNumber,
+        businessId,
+        "employeesDailySalesReport.userId": openedByUserId,
+      });
+      if (!exists) {
+        const addResult = await addUserToDailySalesReport(
+          openedByUserId,
+          businessId,
+          session
+        );
+        if (addResult !== true) {
+          return addResult;
         }
       }
     }
 
-    // Create the sales instance and return it
+    if (responsibleByUserId) {
+      const responsibleExists = await DailySalesReport.exists({
+        dailyReferenceNumber,
+        businessId,
+        "employeesDailySalesReport.userId": responsibleByUserId,
+      });
+      if (!responsibleExists) {
+        const addResult = await addUserToDailySalesReport(
+          responsibleByUserId,
+          businessId,
+          session
+        );
+        if (addResult !== true) {
+          return addResult;
+        }
+      }
+    }
+
     const newSalesInstance = await SalesInstance.create(newSalesInstanceObj, {
       session,
     });

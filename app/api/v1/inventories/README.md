@@ -59,7 +59,7 @@ app/api/v1/inventories/
 - **`business/[businessId]/lowStock/route.ts`**: GET items below par or minimum for the open inventory (dashboard/alerts).
 - **`business/[businessId]/varianceReport/route.ts`**: GET theoretical vs actual usage per supplier good for a month (`?month=YYYY-MM`; default current month).
 - **`[inventoryId]/route.ts`**: get one inventory by ID; DELETE exists but is discouraged for data integrity (see section 6).
-- **`[inventoryId]/close/route.ts`**: **Manager-only** (General Manager, Manager, Assistant Manager, MoD, Admin). PATCH with body `{ employeeId }`. Closes current inventory (`setFinalCount: true`) and **auto-creates next period inventory** in the same transaction (via `createNextPeriodInventory`).
+- **`[inventoryId]/close/route.ts`**: **Manager-only** (General Manager, Manager, Assistant Manager, MoD, Admin). PATCH with auth from **session** (userId → Employee.findOne({ userId, businessId }) for role and onDuty). Closes current inventory (`setFinalCount: true`) and **auto-creates next period inventory** in the same transaction (via `createNextPeriodInventory`).
 - **`[inventoryId]/supplierGood/[supplierGoodId]/route.ts`**: get inventory data for a specific supplier good (optional `?monthDate`).
 - **`addCountToSupplierGood`**: add a new physical count (current quantity, deviation, par level, comments); updates `dynamicSystemCount` and `monthlyCounts`.
 - **`updateCountFromSupplierGood`**: re-edit the **last** count. **Requires** `countId`, `reason`, and **`countedByEmployeeId`**. Only **managers or supervisors on duty** (General Manager, Manager, Assistant Manager, MoD, Admin, Supervisor) may re-edit; 403 otherwise.
@@ -79,7 +79,7 @@ app/api/v1/inventories/
 | GET | `/api/v1/inventories/:inventoryId/supplierGood/:supplierGoodId` | Returns inventory entries for that supplier good. Optional `?monthDate`. 404 if none. |
 | PATCH | `/api/v1/inventories/:inventoryId/supplierGood/:supplierGoodId/addCountToSupplierGood` | Adds a new physical count. Body: `currentCountQuantity`, optional `countedByEmployeeId`, `comments`. Updates `dynamicSystemCount` and appends to `monthlyCounts`. 400 if inventory already finalized. |
 | PATCH | `/api/v1/inventories/:inventoryId/supplierGood/:supplierGoodId/updateCountFromSupplierGood` | Re-edit the **last** count. Body: **`countId`, `reason`, `countedByEmployeeId`** (required), `currentCountQuantity`, optional `comments`. **Manager or supervisor on duty** only; 403 otherwise. 400 if finalized; 404 if count not found. |
-| PATCH | `/api/v1/inventories/:inventoryId/close` | **Manager-only.** Body: `{ employeeId }`. Closes inventory and auto-creates next period inventory in one transaction. 403 if not allowed role or not on duty. |
+| PATCH | `/api/v1/inventories/:inventoryId/close` | **Manager-only.** Auth from session (userId → Employee for role/onDuty). Closes inventory and auto-creates next period inventory in one transaction. 403 if not allowed role or not on duty. |
 | GET | `/api/v1/inventories/business/:businessId/lowStock` | Returns items below par or minimum for the open inventory. Response: `{ lowStock: [...] }` with supplierGoodId, supplierGood, dynamicSystemCount, parLevel, minimumQuantityRequired, measurementUnit. |
 | GET | `/api/v1/inventories/business/:businessId/varianceReport?month=YYYY-MM` | Returns theoretical vs actual usage per supplier good for the month. Default month = current. Response: `{ varianceReport: [...] }` with supplierGoodId, supplierGoodName, theoreticalQuantity, actualQuantity, varianceQuantity, measurementUnit. |
 

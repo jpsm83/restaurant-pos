@@ -11,7 +11,8 @@ import { ISalesPoint } from "@/lib/interface/ISalesPoint";
 // imported models
 import SalesPoint from "@/lib/db/models/salesPoint";
 import { Types } from "mongoose";
-import deleteCloudinaryImage from "../../cloudinaryActions/utils/deleteCloudinaryImage";
+import { salesPointTypeEnums } from "@/lib/enums";
+import deleteFilesCloudinary from "@/lib/cloudinary/deleteFilesCloudinary";
 
 // sales point are the physical locations where salesInstance can be made and gathered orders
 
@@ -54,7 +55,10 @@ export const GET = async (
           },
         });
   } catch (error) {
-    return handleApiError("Get salesPoint by salesPoinId failed!", error);
+    return handleApiError(
+      "Get salesPoint by salesPoinId failed!",
+      error instanceof Error ? error.message : String(error)
+    );
   }
 };
 
@@ -72,6 +76,19 @@ export const PATCH = async (
 
     const { salesPointName, salesPointType, selfOrdering, qrEnabled } =
       (await req.json()) as ISalesPoint;
+
+    if (
+      salesPointType !== undefined &&
+      salesPointType !== "" &&
+      !salesPointTypeEnums.includes(salesPointType.toLowerCase())
+    ) {
+      return new NextResponse(
+        JSON.stringify({
+          message: `salesPointType must be one of: ${salesPointTypeEnums.join(", ")}`,
+        }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
 
     // check if salesPointId is valid
     if (isObjectIdValid([salesPointId]) !== true) {
@@ -115,7 +132,8 @@ export const PATCH = async (
     const updatedSalesPoint: Partial<ISalesPoint> = {};
 
     if (salesPointName) updatedSalesPoint.salesPointName = salesPointName;
-    if (salesPointType) updatedSalesPoint.salesPointType = salesPointType;
+    if (salesPointType)
+      updatedSalesPoint.salesPointType = salesPointType.toLowerCase();
     if (selfOrdering !== undefined)
       updatedSalesPoint.selfOrdering = selfOrdering;
     if (qrEnabled !== undefined) updatedSalesPoint.qrEnabled = qrEnabled;
@@ -133,7 +151,10 @@ export const PATCH = async (
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
   } catch (error) {
-    return handleApiError("Update salesPoint failed!", error);
+    return handleApiError(
+      "Update salesPoint failed!",
+      error instanceof Error ? error.message : String(error)
+    );
   }
 };
 
@@ -191,13 +212,15 @@ export const DELETE = async (
       );
     }
 
-    const deleteCloudinaryImageResult = await deleteCloudinaryImage(qrCode);
+    if (qrCode) {
+      const deleteResult = await deleteFilesCloudinary(qrCode);
 
-    if (deleteCloudinaryImageResult !== true) {
-      return new NextResponse(
-        JSON.stringify({ message: deleteCloudinaryImageResult }),
-        { status: 500, headers: { "Content-Type": "application/json" } }
-      );
+      if (deleteResult !== true) {
+        return new NextResponse(
+          JSON.stringify({ message: deleteResult }),
+          { status: 500, headers: { "Content-Type": "application/json" } }
+        );
+      }
     }
 
     return new NextResponse(
@@ -210,6 +233,9 @@ export const DELETE = async (
       }
     );
   } catch (error) {
-    return handleApiError("Delete business failed!", error);
+    return handleApiError(
+      "Delete business failed!",
+      error instanceof Error ? error.message : String(error)
+    );
   }
 };

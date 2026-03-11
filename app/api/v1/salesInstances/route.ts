@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
+import { Types } from "mongoose";
 
 // import utils
 import connectDb from "@/lib/db/connectDb";
@@ -12,21 +14,20 @@ import { IDailySalesReport } from "@/lib/interface/IDailySalesReport";
 import { ISalesInstance } from "@/lib/interface/ISalesInstance";
 
 // imported models
-import Employee from "@/lib/db/models/employee";
 import BusinessGood from "@/lib/db/models/businessGood";
+import DailySalesReport from "@/lib/db/models/dailySalesReport";
+import Employee from "@/lib/db/models/employee";
 import Order from "@/lib/db/models/order";
 import SalesInstance from "@/lib/db/models/salesInstance";
 import SalesPoint from "@/lib/db/models/salesPoint";
-import Customer from "@/app/lib/models/customer";
+import User from "@/lib/db/models/user";
 import mongoose from "mongoose";
-import DailySalesReport from "@/lib/db/models/dailySalesReport";
 
 // @desc    Get all salesInstances
 // @route   GET /salesInstances
 // @access  Private
 export const GET = async () => {
   try {
-    // connect before first call to DB
     await connectDb();
 
     const salesInstances = await SalesInstance.find()
@@ -36,14 +37,14 @@ export const GET = async () => {
         model: SalesPoint,
       })
       .populate({
-        path: "openedByCustomerId",
-        select: "customerName",
-        model: Customer,
+        path: "openedByUserId",
+        select: "personalDetails.firstName personalDetails.lastName",
+        model: User,
       })
       .populate({
-        path: "openedByEmployeeId responsibleById closedById",
-        select: "employeeName currentShiftRole",
-        model: Employee,
+        path: "responsibleByUserId closedByUserId",
+        select: "personalDetails.firstName personalDetails.lastName",
+        model: User,
       })
       .populate({
         path: "salesGroup.ordersIds",
@@ -84,58 +85,71 @@ export const GET = async () => {
   }
 };
 
-// first create a empty salesInstance, then update it with the salesGroup.ordersIds
-// @desc    Create new salesInstances
+// @desc    Create new salesInstances (staff opening a table)
 // @route   POST /salesInstances
 // @access  Private
 export const POST = async (req: Request) => {
-  // ************ IMPORTANT ************
-  // only employees can open a table to be populated with orders in this route
-  // self ordering will have its own route
+  const token = await getToken({
+    req: req as Parameters<typeof getToken>[0]["req"],
+    secret: process.env.NEXTAUTH_SECRET,
+  });
+  if (!token?.id || token.type !== "user") {
+    return new NextResponse(
+      JSON.stringify({ message: "Unauthorized" }),
+      { status: 401, headers: { "Content-Type": "application/json" } }
+    );
+  }
+  const openedByUserId = new Types.ObjectId(token.id as string);
+
   const {
     salesPointId,
     guests,
     salesInstanceStatus,
-    openedByEmployeeId,
     businessId,
     clientName,
   } = (await req.json()) as ISalesInstance;
 
-  // check required fields
-  if (!salesPointId || !guests || !openedByEmployeeId || !businessId) {
+  if (!salesPointId || !guests || !businessId) {
     return new NextResponse(
       JSON.stringify({
         message:
-          "SalesInstanceReference, guest, openedByEmployeeId and businessId are required!",
+          "SalesPointId, guests and businessId are required!",
       }),
       { status: 400, headers: { "Content-Type": "application/json" } }
     );
   }
 
-  // validate ids
-  if (
-    isObjectIdValid([salesPointId, openedByEmployeeId, businessId]) !== true
-  ) {
+  if (isObjectIdValid([salesPointId, businessId]) !== true) {
     return new NextResponse(
       JSON.stringify({
-        message: "OpenedByEmployeeId or businessId not valid!",
+        message: "SalesPointId or businessId not valid!",
       }),
       { status: 400, headers: { "Content-Type": "application/json" } }
     );
   }
 
-  // connect before first call to DB
   await connectDb();
+
+  const employee = (await Employee.findOne({
+    userId: openedByUserId,
+    businessId,
+  })
+    .select("onDuty")
+    .lean()) as { onDuty: boolean } | null;
+  if (!employee || !employee.onDuty) {
+    return new NextResponse(
+      JSON.stringify({
+        message: "You must be an on-duty employee to open a table from the POS.",
+      }),
+      { status: 403, headers: { "Content-Type": "application/json" } }
+    );
+  }
 
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
-
-    const [employee, salesPoint, dailySalesReport] = await Promise.all([
-      // check if openedByEmployeeId is an employee or a customer
-      Employee.exists({ _id: openedByEmployeeId }),
-      // check if salesPointId exists
+    const [salesPoint, dailySalesReport] = await Promise.all([
       SalesPoint.exists({ _id: salesPointId }),
       DailySalesReport.findOne({
         isDailyReportOpen: true,
@@ -145,22 +159,14 @@ export const POST = async (req: Request) => {
         .lean() as unknown as Promise<IDailySalesReport | null>,
     ]);
 
-    // check salesPointId exists
-    if (!salesPoint || !employee) {
+    if (!salesPoint) {
       await session.abortTransaction();
-      const message = !salesPoint
-        ? "Sales point does not exist!"
-        : "Employee does not exist!";
       return new NextResponse(
-        JSON.stringify({
-          message: message,
-        }),
+        JSON.stringify({ message: "Sales point does not exist!" }),
         { status: 404, headers: { "Content-Type": "application/json" } }
       );
     }
 
-    // **** IMPORTANT ****
-    // dailySalesReport is created when the first salesInstance of the day is created
     const dailyReferenceNumber = dailySalesReport
       ? dailySalesReport.dailyReferenceNumber
       : await createDailySalesReport(businessId, session);
@@ -173,14 +179,14 @@ export const POST = async (req: Request) => {
       );
     }
 
-    if (
-      await SalesInstance.exists({
-        dailyReferenceNumber: dailyReferenceNumber,
-        businessId,
-        salesPointId,
-        status: { $ne: "Closed" },
-      })
-    ) {
+    const existingOpen = await SalesInstance.exists({
+      dailyReferenceNumber,
+      businessId,
+      salesPointId,
+      salesInstanceStatus: { $ne: "Closed" },
+    });
+
+    if (existingOpen) {
       await session.abortTransaction();
       return new NextResponse(
         JSON.stringify({
@@ -190,21 +196,27 @@ export const POST = async (req: Request) => {
       );
     }
 
-    // create new salesInstance
     const newSalesInstanceObj: ISalesInstance = {
       dailyReferenceNumber,
       salesPointId,
       guests,
-      salesInstanceStatus,
-      openedByEmployeeId,
+      salesInstanceStatus: salesInstanceStatus ?? "Occupied",
+      openedByUserId,
+      openedAsRole: "employee",
       businessId,
       clientName,
     };
 
-    // we use a outside function to create the salesInstance because this function is used in other places
-    // create new salesInstance
-    await createSalesInstance(newSalesInstanceObj, session);
+    const result = await createSalesInstance(newSalesInstanceObj, session);
+    if (typeof result === "string") {
+      await session.abortTransaction();
+      return new NextResponse(
+        JSON.stringify({ message: result }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
 
+    await session.commitTransaction();
     return new NextResponse(
       JSON.stringify({
         message: "SalesInstance created successfully!",
@@ -215,6 +227,9 @@ export const POST = async (req: Request) => {
       }
     );
   } catch (error) {
+    await session.abortTransaction();
     return handleApiError("Create salesInstance failed!", error instanceof Error ? error.message : String(error));
+  } finally {
+    session.endSession();
   }
 };

@@ -6,7 +6,7 @@ const SalesPointSchema = new Schema(
       type: String,
       required: [true, "Sales point name is required!"],
     }, // name of the location sale reference - ex: 101
-    salesPointType: { type: String }, // table, room, bar, seat, etc - ex: Table101
+    salesPointType: { type: String }, // table, room, bar, seat, delivery, etc. "delivery" = virtual sales point for delivery orders (no physical table/QR)
     selfOrdering: { type: Boolean, default: false }, // manager decision if location can order by itself using QR code
     qrCode: { type: String }, // auto created QR code for the location
     qrEnabled: { type: Boolean, default: true }, // QR code enabled or disabled - when QR is scanned, it will be disabled and a timer on the frontend will set, if the timer expires, the frontend page will close and the QR code will be enabled again - only if selfOrdering is true

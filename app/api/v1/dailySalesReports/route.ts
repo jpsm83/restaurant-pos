@@ -5,9 +5,8 @@ import connectDb from "@/lib/db/connectDb";
 import { handleApiError } from "@/lib/db/handleApiError";
 
 // import models
-import Employee from "@/lib/db/models/employee";
+import User from "@/lib/db/models/user";
 import DailySalesReport from "@/lib/db/models/dailySalesReport";
-import Customer from "@/app/lib/models/customer";
 
 // @desc    Get all daily reports
 // @route   GET /dailySalesReports
@@ -19,14 +18,14 @@ export const GET = async () => {
 
     const dailySalesReports = await DailySalesReport.find()
       .populate({
-        path: "employeesDailySalesReport.employeeId",
-        select: "employeeName",
-        model: Employee,
+        path: "employeesDailySalesReport.userId",
+        select: "personalDetails.firstName personalDetails.lastName",
+        model: User,
       })
       .populate({
-        path: "selfOrderingSalesReport.customerId",
-        select: "customerName",
-        model: Customer,
+        path: "selfOrderingSalesReport.userId",
+        select: "personalDetails.firstName personalDetails.lastName",
+        model: User,
       })
       .lean();
 
@@ -40,7 +39,7 @@ export const GET = async () => {
           headers: { "Content-Type": "application/json" },
         });
   } catch (error) {
-    return handleApiError("Get daily sales reports tables failed!", error);
+    return handleApiError("Get daily sales reports tables failed!", error instanceof Error ? error.message : String(error));
   }
 };
 

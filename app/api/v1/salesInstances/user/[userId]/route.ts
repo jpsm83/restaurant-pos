@@ -8,26 +8,24 @@ import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 
 // import models
 import SalesInstance from "@/lib/db/models/salesInstance";
-import Employee from "@/lib/db/models/employee";
 import BusinessGood from "@/lib/db/models/businessGood";
 import Order from "@/lib/db/models/order";
 import SalesPoint from "@/lib/db/models/salesPoint";
-import Customer from "@/app/lib/models/customer";
+import User from "@/lib/db/models/user";
 
-// @desc   Get salesInstances by employee ID
-// @route  GET /salesInstances/employee/:employeeId
+// @desc   Get salesInstances by user ID (opened by or responsible by)
+// @route  GET /salesInstances/user/:userId
 // @access Private
 export const GET = async (
   req: Request,
-  context: { params: { employeeId: Types.ObjectId } }
+  context: { params: { userId: Types.ObjectId } }
 ) => {
   try {
-    const employeeId = context.params.employeeId;
+    const userId = context.params.userId;
 
-    // validate salesInstanceId
-    if (isObjectIdValid([employeeId]) !== true) {
+    if (isObjectIdValid([userId]) !== true) {
       return new NextResponse(
-        JSON.stringify({ message: "Invalid salesInstanceId!" }),
+        JSON.stringify({ message: "Invalid userId!" }),
         {
           status: 400,
           headers: { "Content-Type": "application/json" },
@@ -35,24 +33,28 @@ export const GET = async (
       );
     }
 
-    // connect before first call to DB
     await connectDb();
 
-    const salesInstances = await SalesInstance.find()
+    const salesInstances = await SalesInstance.find({
+      $or: [
+        { openedByUserId: userId },
+        { responsibleByUserId: userId },
+      ],
+    })
       .populate({
         path: "salesPointId",
         select: "salesPointName salesPointType selfOrdering",
         model: SalesPoint,
       })
       .populate({
-        path: "openedByCustomerId",
-        select: "customerName",
-        model: Customer,
+        path: "openedByUserId",
+        select: "personalDetails.firstName personalDetails.lastName",
+        model: User,
       })
       .populate({
-        path: "openedByEmployeeId responsibleById closedById",
-        select: "employeeName currentShiftRole",
-        model: Employee,
+        path: "responsibleByUserId closedByUserId",
+        select: "personalDetails.firstName personalDetails.lastName",
+        model: User,
       })
       .populate({
         path: "salesGroup.ordersIds",
@@ -88,7 +90,7 @@ export const GET = async (
         });
   } catch (error) {
     return handleApiError(
-      "Fail to get all salesInstances by employee ID!",
+      "Fail to get all salesInstances by user ID!",
       error instanceof Error ? error.message : String(error)
     );
   }

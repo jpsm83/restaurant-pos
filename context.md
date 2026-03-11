@@ -40,9 +40,9 @@ This section summarizes **what the app can do** and **what solution it offers** 
 
 ### Service and sales
 
-- **Open and manage tables/sessions** — Define **sales points** (tables, bar, rooms), then open a **sales instance** (check/tab) per point. One open instance per table per day; staff or customers (via QR) can start a session and attach all orders to it until close.
-- **Take and bill orders** — Create **orders** (menu items / business goods) on a sales instance: each order has one **main product** (businessGoodId) and optional **addOns**; **promotions** apply only to the main product. Support **discounts**, **promotions** (happy hour, % off, 2x1, etc., calculated in real time on the front end), **payment methods**, **tips**, and **void** or **invitation** (complimentary) status. **Transfer** open orders between tables; **cancel** orders (stock is restored). **Close** orders with payment and optionally close the table when everything is paid.
-- **Self-ordering** — Sales points can have **QR codes** for self-ordering. One flow: customer scans → opens session → places order → pays; the app creates the sales instance, orders, closes them, and records the sale in the **daily report** self-ordering section.
+- **Open and manage tables/sessions** — Define **sales points** (tables, bar, rooms), then open a **sales instance** (check/tab) per point. One open instance per table per day. There is **one QR per sales point** (the QR encodes the sales point id). Staff can open a table from the **POS UI** (on-duty employee only) or by **scanning the table’s QR**; customers can start a session via the same QR only when the sales point has **selfOrdering** enabled and **no open session exists at that table** (if an employee has already opened the table, customer self-order is blocked until the table is closed). Who is scanning is identified by login session.
+- **Take and bill orders** — Create **orders** (menu items / business goods) on a sales instance: each order has one **main product** (businessGoodId) and optional **addOns**; **promotions** apply only to the main product. Support **discounts**, **promotions** (happy hour, % off, 2x1, etc., calculated in real time on the front end), **payment methods**, **tips**, and **void** or **invitation** (complimentary) status. **Transfer** open orders between tables. **Cancel**, **void**, and **invitation** are restricted to on-duty staff with a management role (Owner, General Manager, Manager, Assistant Manager, MoD, Admin, Supervisor); **void** requires a reason (e.g. waste, mistake, refund, other). **Close** orders with payment and optionally close the table when everything is paid.
+- **Self-ordering** — The **same QR** at a sales point (one QR per point) can be used by an **employee (on-duty)** to open the table only (no order yet) or by a **customer** to self-order **when the sales point has selfOrdering enabled and the table has no open session**. If a table is already opened by staff, customers cannot use the QR to self-order until the table is closed. Who is scanning is identified by login session. Customer flow: scan → open session → place order → pay; the app creates the sales instance, orders, closes them, and records the sale in the **daily report** self-ordering section. After payment, the system sends an **email** (via nodemailer) and an **in-app notification** with the order confirmation/receipt so the customer can show it to staff when collecting the order; the same applies to delivery when that flow is implemented. **Payment before orders are sent** (for self-order and delivery) is under study and not yet implemented; third-party payment integration is planned.
 - **Printing** — **Printers** are configured per business; orders can be routed by **category** and **sales point** (e.g. kitchen printer for table X).
 
 ### Menu, costing, and inventory
@@ -61,20 +61,20 @@ This section summarizes **what the app can do** and **what solution it offers** 
 
 - **Single login** — The app uses one sign-in form (email + password). NextAuth validates credentials against **Business** first, then **User**. The same form is used for back-office (business) and for people (users); the redirect after login depends on which entity the email belongs to.
 - **Business** — If the email matches a Business and the password is correct, the session has type `business` and the user is redirected to the business/admin flow (e.g. `/admin`).
-- **User** — If the email matches a User (and not a Business), the session has type `user`. The user is an individual identity: they can use the app as a **customer** (e.g. self-ordering, personal orders) or, if linked to an **Employee** record, they may also choose to continue as **employee**. When a user is linked to an employee, after login they are shown a **mode-selection** page: “Continue as customer” or “Continue as employee”.
+- **User** — If the email matches a User (and not a Business), the session has type `user`. The user is an individual identity: they can use the app as a **customer** (e.g. self-ordering, personal orders) or, if linked to an **Employee** record, they may also choose to continue as **employee**. Role (customer vs employee) is dictated by session/context. When a user is linked to an employee, after login they are shown a **mode-selection** page: “Continue as customer” or “Continue as employee”.
   - For **non-admin employees**, the **employee** option is enabled only when the user is **scheduled for that day** and the current time is within the allowed window: **from 5 minutes before the shift start** until the shift end; otherwise the employee button is visible but disabled (e.g. “Available from 5 minutes before your shift”). Schedule configuration is therefore **required for employee login** for non-admin staff (optional only if the business never uses employee mode).
   - Employees whose `allEmployeeRoles` includes the **Admin** role can log in as employee at any time, even when there is no schedule or they are outside any shift window.
   - The chosen mode is stored (e.g. in a cookie) and used by middleware to allow or deny access to the admin/employee area.
 
 ### People and operations
 
-- **Employees** — **Employees** per business: name, role, documents, optional link to a **user** account. **Current shift role** and **on duty** drive who can close daily reports or perform manager actions. Employees are attached to sales instances (opened by / responsible for) and to daily reports (who served, tips, goods sold/void/invited).
+- **Employees** — **Employees** per business: name, role, documents, optional link to a **user** account. **Current shift role** and **on duty** drive who can close daily reports or perform manager actions. Attribution everywhere uses **userId** (ref User): sales instances store **openedByUserId**, **openedAsRole** (employee | customer), **responsibleByUserId**, **closedByUserId**; orders store **createdByUserId** and **createdAsRole**; daily reports store **userId** in employee and self-order sections. The app never uses employeeId for "who did it"; identity comes from session (userId).
 - **Schedules** — **Schedules** provide **day-level** shift planning: which employees work when, **labour cost**, vacation, overlap validation. Labour cost feeds **monthly business report** cost breakdown. Schedules are also used at **login** to determine whether a user who is an employee can choose “Continue as employee” (see **Schedule check at login** in `app/api/v1/schedules/README.md`).
 - **Users and notifications** — **Users** are app identities (e.g. linked to an employee). **User.employeeDetails** is the single optional reference to **Employee**, set only when the user is linked as staff and kept in sync by the employees API. **Notifications** are business-scoped messages/events; users have an inbox with read/deleted state so the business can push alerts, promotions, or operational messages.
 
 ### Reporting and analytics
 
-- **Daily sales report** — Created automatically when the **first sales instance of the day** is opened. Tracks **per-employee** totals (sales, tips, cost of goods, payment methods, goods sold/void/invited) and **business** totals. **Calculate** runs off **sales instances** and **orders** (by responsible employee and daily reference). **Close** the day (manager/admin, no open orders) to lock the report. Self-ordering sales are recorded in a separate section.
+- **Daily sales report** — Created automatically when the **first sales instance of the day** is opened. Tracks **per-user** totals (sales, tips, cost of goods, payment methods, goods sold/void/invited) keyed by **userId** in `employeesDailySalesReport` and **userId** in `selfOrderingSalesReport`. **Calculate** runs off **sales instances** (responsibleByUserId) and **orders** (createdByUserId, createdAsRole). **Close** the day (manager/admin from session userId, no open orders) to lock the report.
 - **Monthly business report** — One report per **month** per business: **financial summary** (sales, COGS, net revenue, gross profit, void/invited, tips, percentages), **cost breakdown** (food, beverage, labour, fixed, extra), **goods sold/voided/complimentary**, **supplier waste by budget impact**, **payment methods**, **POS commission**. **Updates daily** after the business daily sales report is calculated (trigger from calculateBusinessDailySalesReport) and **closes at end of month** (PATCH closeMonthlyReport). Comparison to business **metrics** (food cost %, labour cost %, waste targets) for break-even and KPI tracking.
 
 ### Why it matters for bars and restaurants
@@ -83,6 +83,12 @@ This section summarizes **what the app can do** and **what solution it offers** 
 - **Real-time** POS: open tables, send orders, apply promotions, close with payment, and see stock move with sales — all without leaving the app.
 - **Multi-location ready**: each **business** is a tenant; the same codebase serves many restaurants or bars with isolated data.
 - **Control and visibility**: set **targets** (cost %, waste %); track **actual** in daily and monthly reports; use **inventory** and **purchases** to see what you have and what you spent. Reservations and further workflows are planned.
+
+---
+
+## Environment (order confirmation email)
+
+Order confirmation emails (self-order and delivery) are sent via nodemailer. If SMTP is not configured, the order still succeeds and the in-app notification is still created. Optional env vars: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` (see `lib/orderConfirmation`).
 
 ---
 
@@ -101,7 +107,7 @@ This section summarizes **what the app can do** and **what solution it offers** 
 
 ## READMEs (subsystem documentation)
 
-At the moment, there are **18 READMEs** in the app. This list will grow over time and should be kept up to date.
+At the moment, there are **19 READMEs** in the app. This list will grow over time and should be kept up to date.
 
 - **Business domain (tenant root, onboarding, cascade delete, and app-wide coupling)**  
   - `app/api/v1/business/README.md`
@@ -137,6 +143,8 @@ At the moment, there are **18 READMEs** in the app. This list will grow over tim
   - `app/api/v1/users/README.md`
 - **Promotions (business-scoped discount rules, validation helpers, and real-time pricing integration with orders)**  
   - `app/api/v1/promotions/README.md`
+- **Ratings (user reviews 0–5 per business, Business averageRating/ratingCount, discovery filter and future rating emails)**  
+  - `app/api/v1/ratings/README.md`
 - **Reservations (planned: table/booking per business, link to sales points and service flow; API to be implemented)**  
   - `app/api/v1/reservations/README.md`
 

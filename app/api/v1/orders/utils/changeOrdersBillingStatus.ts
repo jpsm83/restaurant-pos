@@ -12,11 +12,12 @@ import Order from "@/lib/db/models/order";
 // Void, Cancel and Invitation can be manually changed by managers
 // Paid is automatically changed by the system
 // Open is the default status
-// ******** NOT USED ANYWHERE YET ********
+// When status is Void, reason (e.g. waste, mistake, refund, other) is stored in order.comments.
 export const changeOrdersBillingStatus = async (
   ordersIdsArr: Types.ObjectId[],
   ordersNewBillingStatus: string,
-  session: ClientSession
+  session: ClientSession,
+  reason?: string
 ) => {
   // here you not allowed to change the billing status to Paid or Cancel
   // those status are automatically changed by the system
@@ -61,6 +62,9 @@ export const changeOrdersBillingStatus = async (
           billingStatus: ordersNewBillingStatus,
           orderNetPrice:
             ordersNewBillingStatus === "Open" ? order.orderGrossPrice : 0,
+          ...(ordersNewBillingStatus === "Void" && reason != null && reason !== ""
+            ? { comments: reason }
+            : {}),
         },
       },
     }));

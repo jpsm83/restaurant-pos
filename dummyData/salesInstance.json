@@ -6,10 +6,9 @@
             "_id": { "$oid": "6707a83888a5002362018ccc" }
         },
         "guests": 1,
-        "openedById": { "$oid": "66e92e066a5cfcc2a707696b" },
-        "responsibleById": {
-            "_id": { "$oid": "66e92e066a5cfcc2a707696b" }
-        },
+        "openedByUserId": { "$oid": "66e92e066a5cfcc2a707696b" },
+        "openedAsRole": "employee",
+        "responsibleByUserId": { "$oid": "66e92e066a5cfcc2a707696b" },
         "businessId": { "$oid": "66e169a709901431386c97cb" },
         "createdAt": { "$date": "2024-10-11T05:56:33.943Z" },
         "updatedAt": { "$date": "2024-11-03T22:54:54.582Z" },
@@ -31,7 +30,8 @@
                 "_id": { "$oid": "6727ff3ecc4cd063245ee9a3" }
             }
         ],
-        "salesInstanceStatus": "Open",
+        "salesInstanceStatus": "Closed",
+        "closedByUserId": { "$oid": "66e92e066a5cfcc2a707696b" },
         "closedAt": { "$date": "2024-10-27T18:23:42.647Z" }
     },
     {
@@ -41,10 +41,9 @@
             "_id": { "$oid": "6707a83888a5002362018ccc" }
         },
         "guests": 11,
-        "openedById": { "$oid": "66e92e066a5cfcc2a707696b" },
-        "responsibleById": {
-            "_id": { "$oid": "66e92e066a5cfcc2a707696b" }
-        },
+        "openedByUserId": { "$oid": "66e92e066a5cfcc2a707696b" },
+        "openedAsRole": "employee",
+        "responsibleByUserId": { "$oid": "66e92e066a5cfcc2a707696b" },
         "businessId": { "$oid": "66e169a709901431386c97cb" },
         "clientName": "testing",
         "createdAt": { "$date": "2024-10-14T07:44:10.100Z" },

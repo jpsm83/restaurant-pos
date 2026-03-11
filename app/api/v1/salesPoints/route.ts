@@ -12,6 +12,9 @@ import { ISalesPoint } from "@/lib/interface/ISalesPoint";
 // imported models
 import SalesPoint from "@/lib/db/models/salesPoint";
 
+// imported enums
+import { salesPointTypeEnums } from "@/lib/enums";
+
 // sales point are the physical locations where salesInstance can be made and gathered orders
 
 // @desc Get all salesPoints
@@ -75,8 +78,36 @@ export const POST = async (req: Request) => {
       );
     }
 
+    if (
+      salesPointType !== undefined &&
+      salesPointType !== "" &&
+      !salesPointTypeEnums.includes(salesPointType.toLowerCase())
+    ) {
+      return new NextResponse(
+        JSON.stringify({
+          message: `salesPointType must be one of: ${salesPointTypeEnums.join(", ")}`,
+        }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     // connect before first call to DB
     await connectDb();
+
+    if (salesPointType?.toLowerCase() === "delivery") {
+      const existingDelivery = await SalesPoint.exists({
+        businessId,
+        salesPointType: "delivery",
+      });
+      if (existingDelivery) {
+        return new NextResponse(
+          JSON.stringify({
+            message: "This business already has a delivery sales point.",
+          }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+    }
 
     // check for duplicate salesPoint
     const duplicateSalesPoint = await SalesPoint.exists({
@@ -93,10 +124,14 @@ export const POST = async (req: Request) => {
       );
     }
 
+    const normalizedType = salesPointType
+      ? salesPointType.toLowerCase()
+      : undefined;
+
     // create salesPoint object
     const newSalesPoint = {
       salesPointName,
-      salesPointType: salesPointType || undefined,
+      salesPointType: normalizedType,
       selfOrdering: selfOrdering !== undefined ? selfOrdering : false,
       qrEnabled: qrEnabled !== undefined ? qrEnabled : true,
       businessId,
@@ -105,24 +140,24 @@ export const POST = async (req: Request) => {
     // create salesPoint
     const salesPointCreated = await SalesPoint.create(newSalesPoint);
 
-    // Generate QR code after successful create
-    const qrCode = await generateQrCode(businessId);
+    const isDelivery = normalizedType === "delivery";
 
-    if (!qrCode || qrCode.includes("Failed")) {
-      // if QR code generation fails, remove the newly created sales location
-      await SalesPoint.deleteOne({ _id: salesPointCreated._id });
+    if (!isDelivery) {
+      // Generate QR code after successful create (encodes salesPointId for open-table / self-order)
+      const qrCode = await generateQrCode(businessId, salesPointCreated._id);
 
-      return NextResponse.json(
-        { message: "Failed to generate QR code, rollback applied" },
-        { status: 500 }
+      if (!qrCode || qrCode.includes("Failed")) {
+        await SalesPoint.deleteOne({ _id: salesPointCreated._id });
+        return NextResponse.json(
+          { message: "Failed to generate QR code, rollback applied" },
+          { status: 500 }
+        );
+      }
+      await SalesPoint.updateOne(
+        { _id: salesPointCreated._id },
+        { $set: { qrCode } }
       );
     }
-
-    // Update the new sales location with the QR code
-    await SalesPoint.updateOne(
-      { _id: salesPointCreated._id },
-      { $set: { qrCode: qrCode } }
-    );
 
     return NextResponse.json(
       { message: "Sales Point created" },

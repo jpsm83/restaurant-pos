@@ -8,11 +8,10 @@ import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 
 // imported models
 import Order from "@/lib/db/models/order";
-import Employee from "@/lib/db/models/employee";
+import User from "@/lib/db/models/user";
 import BusinessGood from "@/lib/db/models/businessGood";
 import SalesInstance from "@/lib/db/models/salesInstance";
 import SalesPoint from "@/lib/db/models/salesPoint";
-import Customer from "@/app/lib/models/customer";
 
 // @desc    Get orders salesInstance ID
 // @route   GET /orders/salesInstance/:salesInstanceId
@@ -52,14 +51,9 @@ export const GET = async (
         model: SalesInstance,
       })
       .populate({
-        path: "employeeId",
-        select: "employeeName allEmployeeRoles currentShiftRole",
-        model: Employee,
-      })
-      .populate({
-        path: "customerId",
-        select: "employeeName allEmployeeRoles currentShiftRole",
-        model: Customer,
+        path: "createdByUserId",
+        select: "personalDetails.firstName personalDetails.lastName",
+        model: User,
       })
       .populate({
         path: "businessGoodId",

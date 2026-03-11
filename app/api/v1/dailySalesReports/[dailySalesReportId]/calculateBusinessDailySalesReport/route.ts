@@ -1,6 +1,7 @@
 import connectDb from "@/lib/db/connectDb";
 import { Types } from "mongoose";
 import { NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
 
 // imported utils
 import { handleApiError } from "@/lib/db/handleApiError";
@@ -17,9 +18,11 @@ import { IEmployee } from "@/lib/interface/IEmployee";
 // imported models
 import DailySalesReport from "@/lib/db/models/dailySalesReport";
 import Employee from "@/lib/db/models/employee";
+import User from "@/lib/db/models/user";
 import Business from "@/lib/db/models/business";
 import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 import { IPaymentMethod } from "@/lib/interface/IPaymentMethod";
+import { DELIVERY_ATTRIBUTION_USER_ID, MANAGEMENT_ROLES } from "@/lib/constants";
 
 // @desc    Calculate the business daily sales report
 // @route   PATCH /dailySalesReports/:dailySalesReportId/calculateBusinessDailySalesReport
@@ -28,74 +31,39 @@ export const PATCH = async (
   req: Request,
   context: { params: { dailySalesReportId: Types.ObjectId } }
 ) => {
-  // this function will call the updateEmployeeDailySalesReport function to update all employees daily sales report
-  // them it will update the whole business daily sales report
-  // this is called by mananger or admin
   try {
     const dailySalesReportId = context.params.dailySalesReportId;
 
-    const { employeeId } = (await req.json()) as {
-      employeeId: Types.ObjectId;
-    };
-
-    // check if the ID is valid
-    if (isObjectIdValid([dailySalesReportId, employeeId]) !== true) {
+    const token = await getToken({
+      req: req as Parameters<typeof getToken>[0]["req"],
+      secret: process.env.NEXTAUTH_SECRET,
+    });
+    if (!token?.id || token.type !== "user") {
       return new NextResponse(
-        JSON.stringify({ message: "Invalid dailySalesReport or employee ID!" }),
+        JSON.stringify({ message: "Unauthorized" }),
+        { status: 401, headers: { "Content-Type": "application/json" } }
+      );
+    }
+    const userId = new Types.ObjectId(token.id as string);
+
+    if (isObjectIdValid([dailySalesReportId]) !== true) {
+      return new NextResponse(
+        JSON.stringify({ message: "Invalid dailySalesReport ID!" }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
 
-    // connect before first call to DB
     await connectDb();
 
-    // check if the employee is "General Manager", "Manager", "Assistant Manager", "MoD" or "Admin"
-    const employeeRoleOnDuty = (await Employee.findById(employeeId)
-      .select("currentShiftRole onDuty")
-      .lean()) as IEmployee | null;
-
-    const allowedRoles = [
-      "General Manager",
-      "Manager",
-      "Assistant Manager",
-      "MoD",
-      "Admin",
-    ];
-
-    if (
-      !employeeRoleOnDuty ||
-      !allowedRoles.includes(employeeRoleOnDuty.currentShiftRole ?? "") ||
-      !employeeRoleOnDuty.onDuty
-    ) {
-      return new NextResponse(
-        JSON.stringify({
-          message: "You are not allowed to close the daily sales report!",
-        }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
-      );
-    }
-
-    // get the daily report to update
-    const dailySalesReport = await DailySalesReport.findOne({
+    const dailySalesReport = (await DailySalesReport.findOne({
       _id: dailySalesReportId,
     })
-      .select(
-        "_id dailyReferenceNumber employeesDailySalesReport.employeeId employeesDailySalesReport.hasOpenSalesInstances businessId"
-      )
-      .populate({
-        path: "employeesDailySalesReport.employeeId",
-        select: "employeeName",
-        model: Employee,
-      })
-      .populate({ path: "businessId", select: "subscription", model: Business })
-      .lean() as {
-      _id: Types.ObjectId;
+      .select("dailyReferenceNumber businessId")
+      .lean()) as {
       dailyReferenceNumber: number;
-      businessId: { _id: Types.ObjectId; subscription?: string } | Types.ObjectId;
-      employeesDailySalesReport: { employeeId: { _id: Types.ObjectId } }[];
+      businessId: Types.ObjectId | { _id: Types.ObjectId };
     } | null;
 
-    // check if daily report exists
     if (!dailySalesReport) {
       return new NextResponse(
         JSON.stringify({ message: "Daily report not found!" }),
@@ -103,18 +71,79 @@ export const PATCH = async (
       );
     }
 
-    const employeeIds = dailySalesReport.employeesDailySalesReport.map(
-      (emp: { employeeId: { _id: Types.ObjectId } }) => emp.employeeId._id
-    );
+    const businessId =
+      typeof dailySalesReport.businessId === "object" &&
+      dailySalesReport.businessId !== null &&
+      "_id" in dailySalesReport.businessId
+        ? (dailySalesReport.businessId as { _id: Types.ObjectId })._id
+        : (dailySalesReport.businessId as Types.ObjectId);
 
-    // Call the function to update the daily sales reports for the employees
+    const employeeRoleOnDuty = (await Employee.findOne({
+      userId,
+      businessId,
+    })
+      .select("currentShiftRole onDuty")
+      .lean()) as IEmployee | null;
+
+    if (
+      !employeeRoleOnDuty ||
+      !MANAGEMENT_ROLES.includes(employeeRoleOnDuty.currentShiftRole ?? "") ||
+      !employeeRoleOnDuty.onDuty
+    ) {
+      return new NextResponse(
+        JSON.stringify({
+          message: "You are not allowed to calculate the daily sales report!",
+        }),
+        { status: 403, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    const dailyReportWithUsers = await DailySalesReport.findOne({
+      _id: dailySalesReportId,
+    })
+      .select(
+        "_id dailyReferenceNumber employeesDailySalesReport.userId employeesDailySalesReport.hasOpenSalesInstances businessId"
+      )
+      .populate({
+        path: "employeesDailySalesReport.userId",
+        select: "personalDetails.firstName personalDetails.lastName",
+        model: User,
+      })
+      .populate({ path: "businessId", select: "subscription", model: Business })
+      .lean() as {
+      _id: Types.ObjectId;
+      dailyReferenceNumber: number;
+      businessId: { _id: Types.ObjectId; subscription?: string } | Types.ObjectId;
+      employeesDailySalesReport: { userId: { _id: Types.ObjectId } | Types.ObjectId }[];
+    } | null;
+
+    if (!dailyReportWithUsers) {
+      return new NextResponse(
+        JSON.stringify({ message: "Daily report not found!" }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    let userIds = dailyReportWithUsers.employeesDailySalesReport.map(
+      (emp: { userId: { _id: Types.ObjectId } | Types.ObjectId }) =>
+        typeof emp.userId === "object" && emp.userId !== null && "_id" in emp.userId
+          ? (emp.userId as { _id: Types.ObjectId })._id
+          : (emp.userId as Types.ObjectId)
+    );
+    if (
+      !userIds.some(
+        (id: Types.ObjectId) => id.toString() === DELIVERY_ATTRIBUTION_USER_ID.toString()
+      )
+    ) {
+      userIds = [...userIds, DELIVERY_ATTRIBUTION_USER_ID];
+    }
+
     const updatedEmployeesDailySalesReport =
       (await updateEmployeesDailySalesReport(
-        employeeIds,
-        dailySalesReport.dailyReferenceNumber
+        userIds,
+        dailyReportWithUsers.dailyReferenceNumber
       )) as { updatedEmployees: IEmployeeDailySalesReport[]; errors: string[] };
 
-    // Check if there were any errors
     if (
       updatedEmployeesDailySalesReport.errors &&
       updatedEmployeesDailySalesReport.errors.length > 0
@@ -125,13 +154,12 @@ export const PATCH = async (
           errors: updatedEmployeesDailySalesReport.errors,
         }),
         {
-          status: 207, // Multi-Status to indicate partial success
+          status: 207,
           headers: { "Content-Type": "application/json" },
         }
       );
     }
 
-    // business goods sales report
     const businessGoodsReport: {
       goodsSold: IGoodsReduced[];
       goodsVoid: IGoodsReduced[];
@@ -142,7 +170,6 @@ export const PATCH = async (
       goodsInvited: [],
     };
 
-    // prepare dailySalesReportObj to update the daily report
     const dailySalesReportObj = {
       businessPaymentMethods: [] as IPaymentMethod[],
       dailyTotalSalesBeforeAdjustments: 0,
@@ -160,15 +187,12 @@ export const PATCH = async (
       dailyPosSystemCommission: 0,
     };
 
-    // Ensure updateEmployeesDailySalesReport is an array of IEmployeeDailySalesReport
     if (Array.isArray(updatedEmployeesDailySalesReport.updatedEmployees)) {
       updatedEmployeesDailySalesReport.updatedEmployees.forEach(
         (employeeReport) => {
-          // Check if employeePaymentMethods is defined before iterating
           if (employeeReport.employeePaymentMethods) {
             employeeReport.employeePaymentMethods.forEach(
               (payment: IPaymentMethod) => {
-                // Find if the payment method and branch combination already exists in the dailySalesReportObj.employeePaymentMethods array
                 const existingPayment =
                   dailySalesReportObj.businessPaymentMethods.find(
                     (p: IPaymentMethod) =>
@@ -177,14 +201,12 @@ export const PATCH = async (
                   );
 
                 if (existingPayment) {
-                  // If it exists, add the current payment's methodSalesTotal to the existing one
-                  existingPayment.methodSalesTotal += payment.methodSalesTotal;
+                  existingPayment.methodSalesTotal += payment.methodSalesTotal ?? 0;
                 } else {
-                  // If it doesn't exist, create a new entry in the dailySalesReportObj.businessPaymentMethods array
                   dailySalesReportObj.businessPaymentMethods.push({
                     paymentMethodType: payment.paymentMethodType,
                     methodBranch: payment.methodBranch,
-                    methodSalesTotal: payment.methodSalesTotal,
+                    methodSalesTotal: payment.methodSalesTotal ?? 0,
                   });
                 }
               }
@@ -202,7 +224,6 @@ export const PATCH = async (
           dailySalesReportObj.dailyCustomersServed +=
             employeeReport.totalCustomersServed ?? 0;
 
-          // Update goodsSold, goodsVoid, and goodsInvited for the business
           const updateGoodsArray = (
             array: IGoodsReduced[],
             businessGood: IGoodsReduced
@@ -214,7 +235,6 @@ export const PATCH = async (
             );
 
             if (existingGood) {
-              // If the item already exists, update the quantity, totalPrice, and totalCostPrice
               existingGood.quantity += businessGood.quantity ?? 1;
               existingGood.totalPrice =
                 (existingGood.totalPrice ?? 0) + (businessGood.totalPrice ?? 0);
@@ -222,9 +242,8 @@ export const PATCH = async (
                 (existingGood.totalCostPrice ?? 0) +
                 (businessGood.totalCostPrice ?? 0);
             } else {
-              // If it doesn't exist, create a new entry, including businessGoodId
               array.push({
-                businessGoodId: businessGood.businessGoodId, // Fixed this to include businessGoodId
+                businessGoodId: businessGood.businessGoodId,
                 quantity: businessGood.quantity ?? 1,
                 totalPrice: businessGood.totalPrice ?? 0,
                 totalCostPrice: businessGood.totalCostPrice ?? 0,
@@ -232,14 +251,12 @@ export const PATCH = async (
             }
           };
 
-          // Populate and reduce all the goods sold
           if (employeeReport.soldGoods && employeeReport.soldGoods.length > 0) {
             employeeReport.soldGoods.forEach((businessGood: IGoodsReduced) => {
               updateGoodsArray(businessGoodsReport.goodsSold, businessGood);
             });
           }
 
-          // Populate and reduce all the goods void
           if (
             employeeReport.voidedGoods &&
             employeeReport.voidedGoods.length > 0
@@ -249,7 +266,6 @@ export const PATCH = async (
             });
           }
 
-          // Populate and reduce all the goods invited
           if (
             employeeReport.invitedGoods &&
             employeeReport.invitedGoods.length > 0
@@ -262,15 +278,15 @@ export const PATCH = async (
       );
     }
 
-    // calculate business total profit
     dailySalesReportObj.dailyProfit =
       dailySalesReportObj.dailyNetPaidAmount -
       dailySalesReportObj.dailyCostOfGoodsSold;
 
-    // calculate business average customers expended
     dailySalesReportObj.dailyAverageCustomerExpenditure =
-      dailySalesReportObj.dailyNetPaidAmount /
-      dailySalesReportObj.dailyCustomersServed;
+      dailySalesReportObj.dailyCustomersServed > 0
+        ? dailySalesReportObj.dailyNetPaidAmount /
+          dailySalesReportObj.dailyCustomersServed
+        : 0;
 
     dailySalesReportObj.dailySoldGoods = businessGoodsReport.goodsSold;
     dailySalesReportObj.dailyVoidedGoods = businessGoodsReport.goodsVoid;
@@ -289,7 +305,7 @@ export const PATCH = async (
       );
 
     let comissionPercentage = 0;
-    const businessIdPayload = dailySalesReport.businessId;
+    const businessIdPayload = dailyReportWithUsers.businessId;
     const subscription =
       typeof businessIdPayload === "object" &&
       businessIdPayload !== null &&
@@ -315,26 +331,22 @@ export const PATCH = async (
         break;
     }
 
-    // calculate the comission of the POS system app
     dailySalesReportObj.dailyPosSystemCommission =
-      dailySalesReportObj.dailyTotalSalesBeforeAdjustments *
-      comissionPercentage;
+      dailySalesReportObj.dailyTotalSalesBeforeAdjustments * comissionPercentage;
 
-    // update the document in the database
     await DailySalesReport.updateOne(
       { _id: dailySalesReportId },
       dailySalesReportObj
     );
 
-    // Refresh monthly business report (do not fail the PATCH if this fails)
-    const businessId =
-      typeof dailySalesReport.businessId === "object" &&
-      dailySalesReport.businessId !== null &&
-      "_id" in dailySalesReport.businessId
-        ? (dailySalesReport.businessId as { _id: Types.ObjectId })._id
-        : (dailySalesReport.businessId as Types.ObjectId);
+    const businessIdForMonthly =
+      typeof dailyReportWithUsers.businessId === "object" &&
+      dailyReportWithUsers.businessId !== null &&
+      "_id" in dailyReportWithUsers.businessId
+        ? (dailyReportWithUsers.businessId as { _id: Types.ObjectId })._id
+        : (dailyReportWithUsers.businessId as Types.ObjectId);
     try {
-      await aggregateDailyReportsIntoMonthly(businessId);
+      await aggregateDailyReportsIntoMonthly(businessIdForMonthly);
     } catch (aggregationError) {
       console.error(
         "Monthly report aggregation failed after daily calculate:",

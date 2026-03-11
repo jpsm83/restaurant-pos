@@ -33,16 +33,124 @@ const reqAddressFields = [
 
 const nonReqAddressFields = ["region", "additionalDetails", "coordinates"];
 
-// @desc    Get all businesses
+const DEFAULT_DISCOVERY_LIMIT = 50;
+
+/** Approximate distance in km between two points (Haversine). Coords: [longitude, latitude]. */
+function haversineKm(
+  lon1: number,
+  lat1: number,
+  lon2: number,
+  lat2: number
+): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+// @desc    Get all businesses (optional filters: cuisineType, categories, name, rating, lat, lng, radius)
 // @route   GET /business
 // @access  Private
 export const GET = async (req: Request) => {
   try {
-    // connect before first call to DB
     await connectDb();
 
-    // get all businesses
-    const business = await Business.find().select("-password").lean();
+    const url = new URL(req.url);
+    const cuisineType = url.searchParams.get("cuisineType") ?? undefined;
+    const categoriesParam = url.searchParams.get("categories") ?? undefined;
+    const name = url.searchParams.get("name") ?? url.searchParams.get("tradeName") ?? undefined;
+    const minRatingParam = url.searchParams.get("rating") ?? url.searchParams.get("minRating") ?? undefined;
+    const latParam = url.searchParams.get("lat") ?? undefined;
+    const lngParam = url.searchParams.get("lng") ?? undefined;
+    const radiusKmParam = url.searchParams.get("radius") ?? undefined;
+    const limitParam = url.searchParams.get("limit") ?? undefined;
+
+    const hasFilters =
+      cuisineType !== undefined ||
+      categoriesParam !== undefined ||
+      name !== undefined ||
+      minRatingParam !== undefined ||
+      (latParam !== undefined && lngParam !== undefined);
+
+    let business: unknown[];
+
+    if (!hasFilters) {
+      business = await Business.find().select("-password").lean();
+    } else {
+      const filter: Record<string, unknown> = {};
+
+      if (cuisineType) filter.cuisineType = cuisineType;
+
+      if (categoriesParam) {
+        const categories = categoriesParam
+          .split(",")
+          .map((s) => s.trim().toLowerCase())
+          .filter(Boolean);
+        if (categories.length > 0)
+          filter.categories = { $in: categories };
+      }
+
+      if (name) {
+        filter.tradeName = { $regex: name, $options: "i" };
+      }
+
+      if (minRatingParam !== undefined && minRatingParam !== "") {
+        const minRating = Number(minRatingParam);
+        if (!Number.isNaN(minRating) && minRating >= 0 && minRating <= 5) {
+          filter.averageRating = { $gte: minRating };
+          filter.ratingCount = { $gte: 1 };
+        }
+      }
+
+      const limit = limitParam
+        ? Math.min(Math.max(1, Number(limitParam) || DEFAULT_DISCOVERY_LIMIT), 100)
+        : DEFAULT_DISCOVERY_LIMIT;
+
+      business = await Business.find(filter)
+        .select("-password")
+        .limit(limit)
+        .lean();
+    }
+
+    if (latParam !== undefined && lngParam !== undefined && business.length > 0) {
+      const lat = Number(latParam);
+      const lng = Number(lngParam);
+      if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
+        const radiusKm =
+          radiusKmParam !== undefined && radiusKmParam !== ""
+            ? Number(radiusKmParam)
+            : null;
+
+        type BizWithCoords = { address?: { coordinates?: [number, number] }; [key: string]: unknown };
+        const withCoords = (business as BizWithCoords[]).filter(
+          (b) =>
+            Array.isArray(b.address?.coordinates) &&
+            b.address.coordinates.length >= 2
+        );
+        const withDistance = withCoords.map((b) => {
+          const [lon, coordLat] = (b.address as { coordinates: [number, number] }).coordinates;
+          const km = haversineKm(lng, lat, lon, coordLat);
+          return { ...b, _distanceKm: km };
+        });
+        const filtered =
+          radiusKm !== null && !Number.isNaN(radiusKm)
+            ? withDistance.filter((b) => (b as { _distanceKm: number })._distanceKm <= radiusKm)
+            : withDistance;
+        const sorted = [...filtered].sort(
+          (a, b) =>
+            (a as { _distanceKm: number })._distanceKm -
+            (b as { _distanceKm: number })._distanceKm
+        );
+        business = sorted.map(({ _distanceKm, ...rest }) => rest);
+      }
+    }
 
     return !business.length
       ? new NextResponse(JSON.stringify({ message: "No business found!" }), {
@@ -82,6 +190,13 @@ export const POST = async (req: Request) => {
     const currencyTrade = formData.get("currencyTrade") as string;
     const contactPerson = formData.get("contactPerson") as string | undefined;
     const imageUrl = formData.get("imageUrl") as File | undefined;
+    const cuisineType = formData.get("cuisineType") as string | undefined;
+    const categoriesStr = formData.get("categories") as string | undefined;
+    const averageRatingStr = formData.get("averageRating") as string | undefined;
+    const ratingCountStr = formData.get("ratingCount") as string | undefined;
+    const acceptsDeliveryStr = formData.get("acceptsDelivery") as string | undefined;
+    const deliveryRadiusStr = formData.get("deliveryRadius") as string | undefined;
+    const minOrderStr = formData.get("minOrder") as string | undefined;
 
     // check required fields
     if (
@@ -192,6 +307,34 @@ export const POST = async (req: Request) => {
       address: address,
       contactPerson: contactPerson || undefined,
     };
+    if (cuisineType) newBusiness.cuisineType = cuisineType;
+    if (categoriesStr) {
+      try {
+        const parsed = JSON.parse(categoriesStr) as string[];
+        if (Array.isArray(parsed))
+          newBusiness.categories = parsed.map((s) => s.trim().toLowerCase()).filter(Boolean);
+      } catch {
+        // ignore invalid JSON
+      }
+    }
+    if (averageRatingStr !== undefined && averageRatingStr !== "") {
+      const n = Number(averageRatingStr);
+      if (!Number.isNaN(n) && n >= 0 && n <= 5) newBusiness.averageRating = n;
+    }
+    if (ratingCountStr !== undefined && ratingCountStr !== "") {
+      const n = Number(ratingCountStr);
+      if (!Number.isNaN(n) && n >= 0) newBusiness.ratingCount = n;
+    }
+    if (acceptsDeliveryStr !== undefined && acceptsDeliveryStr !== "")
+      newBusiness.acceptsDelivery = acceptsDeliveryStr === "true";
+    if (deliveryRadiusStr !== undefined && deliveryRadiusStr !== "") {
+      const n = Number(deliveryRadiusStr);
+      if (!Number.isNaN(n) && n >= 0) newBusiness.deliveryRadius = n;
+    }
+    if (minOrderStr !== undefined && minOrderStr !== "") {
+      const n = Number(minOrderStr);
+      if (!Number.isNaN(n) && n >= 0) newBusiness.minOrder = n;
+    }
 
     if (imageUrl && imageUrl instanceof File && imageUrl.size > 0) {
       const folder = `/business/${businessId}`;

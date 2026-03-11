@@ -19,10 +19,8 @@ This document explains how the employee routes work, how they fit into the app, 
   - `Employee.userId` (required)
   - `User.employeeDetails` (optional pointer back to Employee)
   Employee creation and updates intentionally keep this mapping consistent using transactions.
-- **Operational coupling across the app:** Many core workflows depend on a valid employee id:
-  - **Sales instances**: `openedByEmployeeId`, `responsibleById`, etc.
-  - **Orders**: employee-driven order creation uses `employeeId`
-  - **Reporting**: daily sales reports track employees who participated
+- **Operational coupling across the app:** Employees are the business-scoped “who” for roles and schedules. **Attribution** (who opened a table, who created an order, who is on the daily report) is stored as **userId** (ref User) everywhere—sales instances use **openedByUserId**, **responsibleByUserId**, **closedByUserId**; orders use **createdByUserId** and **createdAsRole**; daily reports use **userId** in employeesDailySalesReport and selfOrderingSalesReport. APIs do not accept employeeId in request bodies for “who am I”; identity comes from session (userId). When role or on-duty checks are needed (e.g. close daily report), the server resolves Employee by `Employee.findOne({ userId, businessId })`.
+  - **Reporting**: daily sales reports track users (by userId) who participated
   - **Printers**: printers can allow/exclude employees for printing
   - **Schedules/shift management**: employees are scheduled and their duty status affects UI/operations. At **login**, if a user has `employeeDetails`, the app runs `canLogAsEmployee(employeeId)` to decide whether the user can continue as employee and to set `canLogAsEmployee` in the session. For **non-admin employees**, this is a schedule check (today's shift, from 5 minutes before start to end); employees whose `allEmployeeRoles` includes the **Admin** role can log in as employee at any time (no schedule required).
 

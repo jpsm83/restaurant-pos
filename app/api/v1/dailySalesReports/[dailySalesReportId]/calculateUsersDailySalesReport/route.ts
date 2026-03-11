@@ -29,22 +29,22 @@ export const PATCH = async (
   try {
     const dailySalesReportId = context.params.dailySalesReportId;
 
-    const { employeeIds } = (await req.json()) as {
-      employeeIds: Types.ObjectId[];
+    const { userIds } = (await req.json()) as {
+      userIds: Types.ObjectId[];
     };
 
-    // Ensure employeeIds is an array and not empty
-    if (!Array.isArray(employeeIds) || employeeIds.length === 0) {
+    // Ensure userIds is an array and not empty
+    if (!Array.isArray(userIds) || userIds.length === 0) {
       return new NextResponse(
-        JSON.stringify({ message: "Employee IDs must be a non-empty array!" }),
+        JSON.stringify({ message: "User IDs must be a non-empty array!" }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
 
     // check if the ID is valid
-    if (isObjectIdValid([dailySalesReportId, ...employeeIds]) !== true) {
+    if (isObjectIdValid([dailySalesReportId, ...userIds]) !== true) {
       return new NextResponse(
-        JSON.stringify({ message: "Invalid dailySalesReport or employee ID!" }),
+        JSON.stringify({ message: "Invalid dailySalesReport or user ID!" }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
@@ -53,10 +53,9 @@ export const PATCH = async (
     await connectDb();
 
     // get the daily sales report
-    const dailySalesReport: IDailySalesReport | null =
-      await DailySalesReport.findById(dailySalesReportId)
-        .select("dailyReferenceNumber")
-        .lean();
+    const dailySalesReport = (await DailySalesReport.findById(dailySalesReportId)
+      .select("dailyReferenceNumber")
+      .lean()) as Pick<IDailySalesReport, "dailyReferenceNumber"> | null;
 
     if (!dailySalesReport) {
       return new NextResponse(
@@ -65,9 +64,9 @@ export const PATCH = async (
       );
     }
 
-    // Call the function to update the daily sales reports for the employees
+    // Call the function to update the daily sales reports for the users
     const result = (await updateEmployeesDailySalesReport(
-      employeeIds,
+      userIds,
       dailySalesReport.dailyReferenceNumber
     )) as { updatedEmployees: IEmployeeDailySalesReport[]; errors: string[] };
 
@@ -93,7 +92,7 @@ export const PATCH = async (
   } catch (error) {
     return handleApiError(
       "Get daily sales report by employee id failed!",
-      error
+      String(error)
     );
   }
 };

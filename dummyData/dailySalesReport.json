@@ -6,10 +6,7 @@
         "countdownTimeToClose": 1721048434981,
         "employeesDailySalesReport": [
             {
-                "employee": {
-                    "_id": "66758b8904c4e6f5bbaa6b81",
-                    "employeeName": "employee3"
-                },
+                "userId": { "$oid": "66758b8904c4e6f5bbaa6b81" },
                 "hasOpenSalesInstances": false,
                 "employeeCardsSales": {
                     "cardDetails": []
@@ -54,10 +51,7 @@
         "countdownTimeToClose": 1721119227939,
         "employeesDailySalesReport": [
             {
-                "employee": {
-                    "_id": "667412df373ad7f1a285534e",
-                    "employeeName": "employee1"
-                },
+                "userId": { "$oid": "667412df373ad7f1a285534e" },
                 "employeeCardsSales": {
                     "cardDetails": []
                 },
@@ -75,10 +69,7 @@
                 "employeeGoodsInvitedArray": []
             },
             {
-                "employee": {
-                    "_id": "66758b8904c4e6f5bbaa6b81",
-                    "employeeName": "employee3"
-                },
+                "userId": { "$oid": "66758b8904c4e6f5bbaa6b81" },
                 "hasOpenSalesInstances": false,
                 "employeeCardsSales": {
                     "cardDetails": []

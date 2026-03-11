@@ -6,7 +6,7 @@ This folder contains the **REST API for the Business entity**: the core tenant o
 
 ## 1. Purpose and role in the application
 
-- **Business** = one restaurant (or location) using the POS. It holds company identity, address, subscription, currency, and optional **metrics** (cost percentages, waste thresholds).
+- **Business** = one restaurant (or location) using the POS. It holds company identity, address, subscription, currency, optional **metrics** (cost percentages, waste thresholds), and optional **discovery/delivery** fields: `cuisineType`, `categories`, `averageRating`, `ratingCount`, `acceptsDelivery`, `deliveryRadius`, `minOrder`.
 - **Authentication**: The app uses a **single sign-in form** (email + password). NextAuth validates against **Business** first, then **User** (see `app/api/auth/[...nextauth]/options.ts`). If the email matches a **Business** and the password is correct, the session has type `business` and the user is redirected to the business/admin flow (e.g. `/admin`). Business sessions are the back-office identity.
 - **Multi-tenancy**: The app is multi-tenant by `businessId`. The global Zustand store (`app/store/store.ts`) keeps `businessId` (and `username`) after login. API routes under `.../business/[businessId]/...` or that accept `businessId` in the body use it to scope data.
 - **Cascade**: Deleting a business (DELETE) removes all related data in a single transaction (employees, orders, suppliers, sales points, etc.) and then the Cloudinary folder for that business.
@@ -37,7 +37,7 @@ app/api/v1/business/
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/v1/business` | Returns all businesses (password excluded). 400 if none. |
+| GET | `/api/v1/business` | Returns all businesses (password excluded). Optional **query params** for discovery: `cuisineType`, `categories` (comma-separated), `name` or `tradeName` (regex), `rating` or `minRating` (min 0–5), `lat`, `lng`, `radius` (km), `limit` (default 50, max 100). When filters present, results are filtered (and optionally sorted by distance when lat/lng given). 400 if none. |
 | POST | `/api/v1/business` | Creates a new business. Body: **FormData** (see below). |
 | GET | `/api/v1/business/:businessId` | Returns one business by ID (password excluded). 404 if not found. |
 | PATCH | `/api/v1/business/:businessId` | Partial update. Body: **FormData**. |
@@ -51,8 +51,9 @@ All responses are JSON. Errors use `handleApiError` (500) or explicit `NextRespo
 
 ### 4.1 GET (list and by ID)
 
-- **DB**: `connectDb()` before first query; `Business.find().select("-password").lean()` or `Business.findById(businessId).select("-password").lean()`.
-- **Validation**: For by-ID route, `businessId` is validated with `isObjectIdValid([businessId])`.
+- **List (no query params):** `Business.find().select("-password").lean()`. Returns all businesses; 400 if none.
+- **List with discovery filters (query params):** When any of `cuisineType`, `categories`, `name`/`tradeName`, `rating`/`minRating`, or `lat`+`lng` are present, build a filter: `cuisineType` exact match; `categories` (comma-separated) → `categories: { $in: [...] }`; `name`/`tradeName` → case-insensitive regex on `tradeName`; `rating`/`minRating` → `averageRating: { $gte: value }` and `ratingCount: { $gte: 1 }`. Optional `limit` (default 50, max 100) and `skip`. If `lat` and `lng` are provided, results can be filtered/sorted by distance (Haversine) in memory; optional `radius` (km) filters to businesses within that distance. Geo can be optimized later with a 2dsphere index on `address.coordinates`.
+- **By ID:** `Business.findById(businessId).select("-password").lean()`. Validate `businessId` with `isObjectIdValid([businessId])`.
 - **Response**: 200 + JSON array or single object; 400/404 with `{ message: "..." }` when no data or invalid ID.
 
 ### 4.2 POST (create) and PATCH (update) — FormData
@@ -68,6 +69,7 @@ Both POST and PATCH use **FormData**, not JSON, because they can include an imag
 **Optional (both):**
 
 - `contactPerson`, `imageUrl` (File).
+- **Discovery and delivery:** `cuisineType` (string), `categories` (JSON array of strings), `averageRating` (0–5), `ratingCount` (non-negative), `acceptsDelivery` (boolean), `deliveryRadius` (non-negative number, e.g. km), `minOrder` (non-negative number). All optional. On PATCH, `averageRating`/`ratingCount`/`categories`/`deliveryRadius`/`minOrder` are validated as described in the route.
 
 **PATCH only:**
 
@@ -177,13 +179,13 @@ This is the core operational loop of the application, and `businessId` is the th
 #### A) Configure where sales happen: Sales points
 
 - A `SalesPoint` represents **a place where customers can be served** (table/room/bar/etc.).
-- It has `businessId`, and may be configured for self-ordering (QR).
+- It has `businessId`, and may be configured for self-ordering; the same QR can be used by staff to open the table or by customers to self-order when selfOrdering is enabled.
 
 #### B) Open a live session for that sales point: Sales instances
 
 - A `SalesInstance` is the **active check/tab** for a `SalesPoint` for a given day (guests count, status, responsible employee/customer, etc.).
 - When an employee opens a sales instance via `POST /api/v1/salesInstances`, the route:
-  - Validates `salesPointId`, `openedByEmployeeId`, and `businessId`.
+  - Validates `salesPointId`, `businessId`; identity (openedByUserId) from session.
   - Finds (or creates) the **open Daily Sales Report** for the business.
   - Creates the `SalesInstance` inside a MongoDB transaction.
 
@@ -193,7 +195,7 @@ This is the core operational loop of the application, and `businessId` is the th
 
 - Orders are created by employees through `POST /api/v1/orders` (customer self-ordering uses a different route).
 - Internally, order creation:
-  - Validates IDs (`businessId`, `salesInstanceId`, `employeeId`, and each order’s `businessGoodId` and `addOns`).
+  - Validates IDs (`businessId`, `salesInstanceId`, and each order’s `businessGoodId` and `addOns`); identity (createdByUserId) from session.
   - Creates orders in a transaction (`createOrders`).
   - Pushes a `salesGroup` entry into the `SalesInstance` with an `orderCode` and the created order IDs.
   - Updates inventory “dynamic count” for the supplier goods used as ingredients (ingredients are consumed when orders are created).

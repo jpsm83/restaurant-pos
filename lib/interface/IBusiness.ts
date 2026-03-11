@@ -31,4 +31,11 @@ export interface IBusiness {
   address: IAddress;
   metrics?: IMetrics;
   contactPerson?: string;
+  cuisineType?: string;
+  categories?: string[];
+  averageRating?: number;
+  ratingCount?: number;
+  acceptsDelivery?: boolean;
+  deliveryRadius?: number;
+  minOrder?: number;
 }

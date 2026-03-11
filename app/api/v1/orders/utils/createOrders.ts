@@ -46,20 +46,18 @@ import SalesInstance from "@/lib/db/models/salesInstance";
 export const createOrders = async (
   dailyReferenceNumber: string,
   ordersArr: Partial<IOrder>[],
-  employeeId: Types.ObjectId | undefined,
-  customerId: Types.ObjectId | undefined,
+  createdByUserId: Types.ObjectId | undefined,
+  createdAsRole: "employee" | "customer" | undefined,
   salesInstanceId: Types.ObjectId,
   businessId: Types.ObjectId,
   session: ClientSession
 ) => {
-  // connect before first call to DB
   await connectDb();
 
   try {
-    if (employeeId) {
-      // Check if salesInstanceId exists and is open and get the dailySalesReport reference number
+    if (createdByUserId && createdAsRole === "employee") {
       const salesInstance = (await SalesInstance.findById(salesInstanceId)
-        .select("status")
+        .select("salesInstanceStatus")
         .lean()) as unknown as ISalesInstance | null;
 
       if (!salesInstance || salesInstance.salesInstanceStatus === "Closed") {
@@ -79,8 +77,8 @@ export const createOrders = async (
       dailyReferenceNumber: dailyReferenceNumber,
       billingStatus: "Open",
       orderStatus: "Sent",
-      employeeId: employeeId || undefined,
-      customerId: customerId || undefined,
+      createdByUserId: createdByUserId || undefined,
+      createdAsRole: createdAsRole || undefined,
       salesInstanceId,
       businessId,
       orderGrossPrice: order.orderGrossPrice,

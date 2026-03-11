@@ -20,22 +20,24 @@ const salesInstanceSchema = new Schema(
       enum: salesInstanceStatusEnums,
       default: "Occupied",
     }, // status of the table
-    openedByCustomerId: {
+    openedByUserId: {
       type: Schema.Types.ObjectId,
-      ref: "Customer",
+      ref: "User",
       index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
-    }, // if self ordering, the customer that opened the table
-    openedByEmployeeId: {
+    }, // user that opened the table (employee or customer by openedAsRole)
+    openedAsRole: {
+      type: String,
+      enum: ["employee", "customer"],
+    }, // whether opened as employee or customer
+    responsibleByUserId: {
       type: Schema.Types.ObjectId,
-      ref: "Employee",
+      ref: "User",
       index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
-    }, // employee that opened the table
-    responsibleById: {
+    }, // user (employee) that is responsible for the table - one can open, finish the shift then pass the responsability to another - does not apply for self ordering
+    closedByUserId: {
       type: Schema.Types.ObjectId,
-      ref: "Employee",
-      index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
-    }, // employee that is responsible for the table - one employee can open, finish the shift then pass the responsability to another employee - does not apply for self ordering
-    closedById: { type: Schema.Types.ObjectId, ref: "Employee" }, // employee that closed the table, same as responsibleBy - does not apply for self ordering
+      ref: "User",
+    }, // user (employee) that closed the table, same as responsibleBy - does not apply for self ordering
     businessId: {
       type: Schema.Types.ObjectId,
       ref: "Business",

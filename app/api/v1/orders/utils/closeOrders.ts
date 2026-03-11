@@ -115,34 +115,32 @@ export const closeOrders = async (
     const salesInstance = (await SalesInstance.findById(
       orders[0].salesInstanceId
     )
-      .select("responsibleById salesGroup")
+      .select("responsibleByUserId salesGroup")
       .populate({
         path: "salesGroup.ordersIds",
         select: "billingStatus",
         model: Order,
       })
-      .session(session) // Use the same session
+      .session(session)
       .lean()) as unknown as ISalesInstance | null;
 
     if (!salesInstance) {
       return "SalesInstance not found!";
     }
 
-    // Check if all orders in the sales instance are paid
     const allOrdersPaid = salesInstance?.salesGroup?.every((group) =>
       group.ordersIds.every(
         (order: Partial<IOrder>) => order.billingStatus === "Paid"
       )
     );
 
-    // if they are all payed, close the sales instance
     if (allOrdersPaid) {
       const updatedSalesInstance = await SalesInstance.updateOne(
         { _id: salesInstance._id },
         {
           salesInstanceStatus: "Closed",
           closedAt: new Date(),
-          closedById: salesInstance.responsibleById,
+          closedByUserId: salesInstance.responsibleByUserId,
         },
         { session }
       );

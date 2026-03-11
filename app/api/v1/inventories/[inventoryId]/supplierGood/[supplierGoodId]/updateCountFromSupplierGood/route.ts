@@ -4,21 +4,13 @@ import { NextResponse } from "next/server";
 import connectDb from "@/lib/db/connectDb";
 import { handleApiError } from "@/lib/db/handleApiError";
 import isObjectIdValid from "@/lib/utils/isObjectIdValid";
+import { MANAGEMENT_ROLES } from "@/lib/constants";
 import { IInventory, IInventoryCount } from "@/lib/interface/IInventory";
 import { ISupplierGood } from "@/lib/interface/ISupplierGood";
 import { IEmployee } from "@/lib/interface/IEmployee";
 import Inventory from "@/lib/db/models/inventory";
 import SupplierGood from "@/lib/db/models/supplierGood";
 import Employee from "@/lib/db/models/employee";
-
-const ALLOWED_REEDIT_ROLES = [
-  "General Manager",
-  "Manager",
-  "Assistant Manager",
-  "MoD",
-  "Admin",
-  "Supervisor",
-];
 
 // This PATCH route will update ONLY THE LAST existing count for an individualy supplier good from the inventory
 // @desc    Update inventory count for a specific supplier good
@@ -69,7 +61,7 @@ export const PATCH = async (
       .lean() as IEmployee | null;
     if (
       !employee ||
-      !ALLOWED_REEDIT_ROLES.includes(employee.currentShiftRole ?? "") ||
+      !MANAGEMENT_ROLES.includes(employee.currentShiftRole ?? "") ||
       !employee.onDuty
     ) {
       return new NextResponse(

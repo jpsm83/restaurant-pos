@@ -11,18 +11,18 @@ import Notification from "@/lib/db/models/notification";
 import Employee from "@/lib/db/models/employee";
 import Customer from "@/app/lib/models/customer";
 
-// @desc    Get all notifications by employee ID
-// @route   GET /notifications/employee/:employeeId
+// @desc    Get all notifications for a user (route segment is userId)
+// @route   GET /notifications/user/:userId
 // @access  Public
 export const GET = async (
   req: Request,
   context: {
-    params: { employeeId: Types.ObjectId };
+    params: { userId: Types.ObjectId };
   }
 ) => {
-  const employeeId = context.params.employeeId;
+  const userId = context.params.userId;
 
-  if (!isObjectIdValid([employeeId])) {
+  if (!isObjectIdValid([userId])) {
     return new NextResponse(
       JSON.stringify({ message: "Invalid business ID!" }),
       {
@@ -37,7 +37,7 @@ export const GET = async (
     await connectDb();
 
     const notifications = await Notification.find({
-      recipientsId: employeeId,
+      recipientsId: userId,
     })
       .populate({
         path: "employeesRecipientsIds",
@@ -63,6 +63,6 @@ export const GET = async (
           },
         });
   } catch (error) {
-    return handleApiError("Get employees by business id failed!", error);
+    return handleApiError("Get employees by business id failed!", String(error));
   }
 };

@@ -56,16 +56,6 @@ const weekDaysByIndex = [
   "Saturday",
 ];
 
-const MANAGEMENT_ROLES = new Set<string>([
-  "Owner",
-  "General Manager",
-  "Manager",
-  "Assistant Manager",
-  "MoD",
-  "Admin",
-  "Supervisor",
-]);
-
 const isWithinPromotionWindow = (promo: PromotionDoc, at: Date): boolean => {
   const { start, end } = promo.promotionPeriod;
   if (at < start || at > end) return false;
@@ -265,5 +255,5 @@ export const applyPromotionsToOrders = async (
   }
 };
 
-export { MANAGEMENT_ROLES };
+export { MANAGEMENT_ROLES } from "@/lib/constants";
 

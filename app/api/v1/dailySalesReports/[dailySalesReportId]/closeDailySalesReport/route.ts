@@ -1,19 +1,21 @@
 import { Types } from "mongoose";
+import { getToken } from "next-auth/jwt";
 
 // imported utils
 import connectDb from "@/lib/db/connectDb";
 import { handleApiError } from "@/lib/db/handleApiError";
+import isObjectIdValid from "@/lib/utils/isObjectIdValid";
+import { MANAGEMENT_ROLES } from "@/lib/constants";
 
 // imported models
 import DailySalesReport from "@/lib/db/models/dailySalesReport";
 import Employee from "@/lib/db/models/employee";
-import isObjectIdValid from "@/lib/utils/isObjectIdValid";
-import { NextResponse } from "next/server";
 import Order from "@/lib/db/models/order";
 import { IEmployee } from "@/lib/interface/IEmployee";
 import { IDailySalesReport } from "@/lib/interface/IDailySalesReport";
+import { NextResponse } from "next/server";
 
-// this is called by mananger or admin after the calculateBusinessDailySalesReport been executed
+// this is called by manager or admin after the calculateBusinessDailySalesReport been executed
 // the purpose of this function is to close the daily sales report
 // @desc    Close the daily sales report
 // @route   PATCH /dailySalesReports/:dailySalesReportId/closeDailySalesReport
@@ -25,42 +27,54 @@ export const PATCH = async (
   try {
     const dailySalesReportId = context.params.dailySalesReportId;
 
-    const { employeeId } = (await req.json()) as {
-      employeeId: Types.ObjectId;
-    };
-
-    // check if the ID is valid
-    if (isObjectIdValid([dailySalesReportId, employeeId]) !== true) {
+    const token = await getToken({
+      req: req as Parameters<typeof getToken>[0]["req"],
+      secret: process.env.NEXTAUTH_SECRET,
+    });
+    if (!token?.id || token.type !== "user") {
       return new NextResponse(
-        JSON.stringify({ message: "Invalid dailySalesReport or employee ID!" }),
+        JSON.stringify({ message: "Unauthorized" }),
+        { status: 401, headers: { "Content-Type": "application/json" } }
+      );
+    }
+    const userId = new Types.ObjectId(token.id as string);
+
+    if (isObjectIdValid([dailySalesReportId]) !== true) {
+      return new NextResponse(
+        JSON.stringify({ message: "Invalid dailySalesReport ID!" }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
 
-    // connect before first call to DB
     await connectDb();
 
-    // Fetch the employee and daily report details in parallel to save time
-    const [employee, dailySalesReport] = await Promise.all([
-      Employee.findById(employeeId)
-        .select("currentShiftRole onDuty businessId")
-        .lean() as Promise<IEmployee>,
-      DailySalesReport.findById(dailySalesReportId)
-        .select("dailyReferenceNumber")
-        .lean() as Promise<IDailySalesReport>,
-    ]);
+    const dailyReport = (await DailySalesReport.findById(dailySalesReportId)
+      .select("dailyReferenceNumber businessId")
+      .lean()) as IDailySalesReport | null;
 
-    // Validate the employee's role and whether they are on duty
+    if (!dailyReport) {
+      return new NextResponse(
+        JSON.stringify({ message: "Daily sales report not found!" }),
+        { status: 404, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    const businessId =
+      typeof dailyReport.businessId === "object" && dailyReport.businessId !== null && "_id" in dailyReport.businessId
+        ? (dailyReport.businessId as { _id: Types.ObjectId })._id
+        : (dailyReport.businessId as Types.ObjectId);
+
+    const employeeDoc = (await Employee.findOne({
+      userId,
+      businessId,
+    })
+      .select("currentShiftRole onDuty businessId")
+      .lean()) as IEmployee | null;
+
     if (
-      !employee ||
-      ![
-        "General Manager",
-        "Manager",
-        "Assistant Manager",
-        "MoD",
-        "Admin",
-      ].includes(employee.currentShiftRole ?? "") ||
-      !employee.onDuty
+      !employeeDoc ||
+      !MANAGEMENT_ROLES.includes(employeeDoc.currentShiftRole ?? "") ||
+      !employeeDoc.onDuty
     ) {
       return new NextResponse(
         JSON.stringify({
@@ -70,19 +84,10 @@ export const PATCH = async (
       );
     }
 
-    // Check if the daily sales report exists
-    if (!dailySalesReport) {
-      return new NextResponse(
-        JSON.stringify({ message: "Daily sales report not found!" }),
-        { status: 404, headers: { "Content-Type": "application/json" } }
-      );
-    }
-
-    // Use a single query to check if there are open orders tied to the same business and reference number
     const openOrdersExist = await Order.exists({
-      businessId: employee.businessId,
+      businessId: employeeDoc.businessId,
       billingStatus: "Open",
-      dailyReferenceNumber: dailySalesReport?.dailyReferenceNumber,
+      dailyReferenceNumber: dailyReport.dailyReferenceNumber,
     });
 
     if (openOrdersExist) {
@@ -95,10 +100,10 @@ export const PATCH = async (
       );
     }
 
-    // Close the daily sales report in a single operation
-    const updatedReport = await DailySalesReport.updateOne(dailySalesReportId, {
-      $set: { isDailyReportOpen: false },
-    });
+    const updatedReport = await DailySalesReport.updateOne(
+      { _id: dailySalesReportId },
+      { $set: { isDailyReportOpen: false } }
+    );
 
     if (updatedReport.modifiedCount === 0) {
       return new NextResponse(
@@ -107,12 +112,11 @@ export const PATCH = async (
       );
     }
 
-    // Respond with success
     return new NextResponse(
       JSON.stringify({ message: "Daily sales report closed successfully" }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
   } catch (error) {
-    return handleApiError("Failed to close daily sales report!", error);
+    return handleApiError("Failed to close daily sales report!", error instanceof Error ? error.message : String(error));
   }
 };

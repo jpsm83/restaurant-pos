@@ -73,6 +73,8 @@ The API enforces that a notification targets **exactly one recipient group** per
 - Either `employeesRecipientsIds` **or** `customersRecipientsIds` must be provided
 - Both cannot be set at the same time
 
+**Order confirmation** (after self-order or delivery payment) is created internally via `lib/orderConfirmation`: a Notification document is created and pushed to the **User**'s `notifications` array (so the customer sees the receipt in their inbox). This flow does not use the public POST with `customersRecipientsIds`; it updates the User document directly.
+
 ### 4.3 Recipient-side read/deleted flags (inbox state)
 
 Recipient state is modeled as an array of objects like:

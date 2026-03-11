@@ -5,6 +5,7 @@ import mongoose, { Types } from "mongoose";
 import connectDb from "@/lib/db/connectDb";
 import { handleApiError } from "@/lib/db/handleApiError";
 import isObjectIdValid from "@/lib/utils/isObjectIdValid";
+import { hasManagementRole } from "@/lib/constants";
 import { cancelOrders } from "../../orders/utils/cancelOrders";
 import { addDiscountToOrders } from "../../orders/utils/addDiscountToOrders";
 import { changeOrdersBillingStatus } from "../../orders/utils/changeOrdersBillingStatus";
@@ -12,7 +13,8 @@ import { changeOrdersStatus } from "../../orders/utils/changeOrdersStatus";
 import { validatePaymentMethodArray } from "../../orders/utils/validatePaymentMethodArray";
 import { closeOrders } from "../../orders/utils/closeOrders";
 import { transferOrdersBetweenSalesInstances } from "../../orders/utils/transferOrdersBetweenSalesInstances";
-import { addEmployeeToDailySalesReport } from "../../dailySalesReports/utils/addEmployeeToDailySalesReport";
+import { addUserToDailySalesReport } from "../../dailySalesReports/utils/addEmployeeToDailySalesReport";
+import { getToken } from "next-auth/jwt";
 
 // import interfaces
 import { IPaymentMethod } from "@/lib/interface/IPaymentMethod";
@@ -25,7 +27,7 @@ import BusinessGood from "@/lib/db/models/businessGood";
 import Order from "@/lib/db/models/order";
 import SalesInstance from "@/lib/db/models/salesInstance";
 import SalesPoint from "@/lib/db/models/salesPoint";
-import Customer from "@/app/lib/models/customer";
+import User from "@/lib/db/models/user";
 
 // @desc    Get salesInstances by ID
 // @route   GET /salesInstances/:salesInstanceId
@@ -51,21 +53,21 @@ export const GET = async (
     // connect before first call to DB
     await connectDb();
 
-    const salesInstance = await SalesInstance.find()
+    const salesInstance = await SalesInstance.findById(salesInstanceId)
       .populate({
         path: "salesPointId",
         select: "salesPointName salesPointType selfOrdering",
         model: SalesPoint,
       })
       .populate({
-        path: "openedByCustomerId",
-        select: "customerName",
-        model: Customer,
+        path: "openedByUserId",
+        select: "personalDetails.firstName personalDetails.lastName",
+        model: User,
       })
       .populate({
-        path: "openedByEmployeeId responsibleById closedById",
-        select: "employeeName currentShiftRole",
-        model: Employee,
+        path: "responsibleByUserId closedByUserId",
+        select: "personalDetails.firstName personalDetails.lastName",
+        model: User,
       })
       .populate({
         path: "salesGroup.ordersIds",
@@ -122,38 +124,44 @@ export const PATCH = async (
   const { salesInstanceId } = await context.params;
 
   // calculation of the tableTotalPrice, tableTotalNetPrice, tableTotalNetPaid, tableTotalTips should be done on the front end so employee can see the total price, net price, net paid and tips in real time
+  const token = await getToken({
+    req: req as Parameters<typeof getToken>[0]["req"],
+    secret: process.env.NEXTAUTH_SECRET,
+  });
+  const sessionUserId = token?.id && token.type === "user" ? new Types.ObjectId(token.id as string) : null;
+
   const {
     ordersIdsArr,
     discountPercentage,
     comments,
     cancel,
     ordersNewBillingStatus,
+    voidReason,
     ordersNewStatus,
     paymentMethodArr,
     toSalesInstanceId,
     guests,
     salesInstanceStatus,
-    responsibleById,
+    responsibleByUserId,
     clientName,
-    employeeId,
   } = (await req.json()) as {
     ordersIdsArr: Types.ObjectId[];
     discountPercentage: number;
     comments: string;
     cancel: boolean;
     ordersNewBillingStatus: string;
+    voidReason?: string;
     ordersNewStatus: string;
     paymentMethodArr: IPaymentMethod[];
     toSalesInstanceId: Types.ObjectId;
-    employeeId: Types.ObjectId;
   } & Partial<ISalesInstance>;
 
-  // Validate ObjectIds in one step for better performance
+  const VOID_REASON_VALUES = ["waste", "mistake", "refund", "other"] as const;
+
   const idsToValidate = [salesInstanceId];
-  if (responsibleById) idsToValidate.push(responsibleById);
+  if (responsibleByUserId) idsToValidate.push(responsibleByUserId);
   if (ordersIdsArr) idsToValidate.push(...ordersIdsArr);
   if (toSalesInstanceId) idsToValidate.push(toSalesInstanceId);
-  if (employeeId) idsToValidate.push(employeeId);
 
   // validate ids
   if (isObjectIdValid(idsToValidate) !== true) {
@@ -170,9 +178,8 @@ export const PATCH = async (
   session.startTransaction();
 
   try {
-    // get the salesInstance
     const salesInstance = (await SalesInstance.findById(salesInstanceId)
-      .select("openedByEmployeeId businessId salesInstanceStatus salesGroup")
+      .select("openedByUserId businessId salesInstanceStatus salesGroup")
       .session(session)
       .lean()) as unknown as ISalesInstance | null;
 
@@ -210,39 +217,29 @@ export const PATCH = async (
       }
     }
 
-    // check if responsibleById is an employee
-    if (responsibleById) {
-      const employee = await Employee.findById(responsibleById);
-
-      if (!employee) {
-        await session.abortTransaction();
-        return new NextResponse(
-          JSON.stringify({ message: "Employee not found!" }),
-          {
-            status: 404,
-            headers: { "Content-Type": "application/json" },
-          }
-        );
-      }
+    if (responsibleByUserId && !sessionUserId) {
+      await session.abortTransaction();
+      return new NextResponse(
+        JSON.stringify({ message: "Unauthorized to set responsible user" }),
+        { status: 401, headers: { "Content-Type": "application/json" } }
+      );
     }
 
-    // if discountPercentage is provided, add discount to orders
     if (discountPercentage) {
-      if (!employeeId) {
+      if (!sessionUserId) {
         await session.abortTransaction();
         return new NextResponse(
           JSON.stringify({
-            message:
-              "employeeId is required to apply a manual discount to orders!",
+            message: "Unauthorized; userId from session is required to apply a manual discount!",
           }),
-          {
-            status: 400,
-            headers: { "Content-Type": "application/json" },
-          }
+          { status: 401, headers: { "Content-Type": "application/json" } }
         );
       }
 
-      const discountEmployee = (await Employee.findById(employeeId)
+      const discountEmployee = (await Employee.findOne({
+        userId: sessionUserId,
+        businessId: salesInstance.businessId,
+      })
         .select("allEmployeeRoles onDuty")
         .session(session)
         .lean()) as
@@ -255,7 +252,7 @@ export const PATCH = async (
       if (!discountEmployee) {
         await session.abortTransaction();
         return new NextResponse(
-          JSON.stringify({ message: "Employee not found!" }),
+          JSON.stringify({ message: "Employee not found for this user and business!" }),
           {
             status: 404,
             headers: { "Content-Type": "application/json" },
@@ -263,22 +260,7 @@ export const PATCH = async (
         );
       }
 
-      const allowedRoles = [
-        "Owner",
-        "General Manager",
-        "Manager",
-        "Assistant Manager",
-        "MoD",
-        "Admin",
-        "Supervisor",
-      ];
-
-      const hasAllowedRole =
-        discountEmployee.allEmployeeRoles?.some((role: string) =>
-          allowedRoles.includes(role)
-        ) ?? false;
-
-      if (!discountEmployee.onDuty || !hasAllowedRole) {
+      if (!discountEmployee.onDuty || !hasManagementRole(discountEmployee.allEmployeeRoles)) {
         await session.abortTransaction();
         return new NextResponse(
           JSON.stringify({
@@ -311,8 +293,29 @@ export const PATCH = async (
       }
     }
 
-    // if cancel is true, cancel orders
+    // if cancel is true, cancel orders (management role required)
     if (cancel) {
+      if (!sessionUserId) {
+        await session.abortTransaction();
+        return new NextResponse(
+          JSON.stringify({ message: "Unauthorized; userId from session is required to cancel orders!" }),
+          { status: 401, headers: { "Content-Type": "application/json" } }
+        );
+      }
+      const cancelEmployee = (await Employee.findOne({
+        userId: sessionUserId,
+        businessId: salesInstance.businessId,
+      })
+        .select("allEmployeeRoles onDuty")
+        .session(session)
+        .lean()) as { allEmployeeRoles?: string[]; onDuty?: boolean } | null;
+      if (!cancelEmployee || !cancelEmployee.onDuty || !hasManagementRole(cancelEmployee.allEmployeeRoles)) {
+        await session.abortTransaction();
+        return new NextResponse(
+          JSON.stringify({ message: "Only on-duty management roles can cancel orders!" }),
+          { status: 403, headers: { "Content-Type": "application/json" } }
+        );
+      }
       const cancelOrdersResult = await cancelOrders(ordersIdsArr, session);
 
       if (cancelOrdersResult !== true) {
@@ -327,12 +330,43 @@ export const PATCH = async (
       }
     }
 
-    // if ordersNewBillingStatus is provided, change orders billing status
+    // if ordersNewBillingStatus is provided, change orders billing status (management role required)
     if (ordersNewBillingStatus) {
+      if (!sessionUserId) {
+        await session.abortTransaction();
+        return new NextResponse(
+          JSON.stringify({ message: "Unauthorized; userId from session is required to change order billing status!" }),
+          { status: 401, headers: { "Content-Type": "application/json" } }
+        );
+      }
+      if (ordersNewBillingStatus === "Void") {
+        if (!voidReason || typeof voidReason !== "string" || !VOID_REASON_VALUES.includes(voidReason as (typeof VOID_REASON_VALUES)[number])) {
+          await session.abortTransaction();
+          return new NextResponse(
+            JSON.stringify({ message: "When voiding orders, voidReason is required and must be one of: waste, mistake, refund, other." }),
+            { status: 400, headers: { "Content-Type": "application/json" } }
+          );
+        }
+      }
+      const billingEmployee = (await Employee.findOne({
+        userId: sessionUserId,
+        businessId: salesInstance.businessId,
+      })
+        .select("allEmployeeRoles onDuty")
+        .session(session)
+        .lean()) as { allEmployeeRoles?: string[]; onDuty?: boolean } | null;
+      if (!billingEmployee || !billingEmployee.onDuty || !hasManagementRole(billingEmployee.allEmployeeRoles)) {
+        await session.abortTransaction();
+        return new NextResponse(
+          JSON.stringify({ message: "Only on-duty management roles can void or set invitation/complimentary orders!" }),
+          { status: 403, headers: { "Content-Type": "application/json" } }
+        );
+      }
       const changeOrdersBillingStatusResult = await changeOrdersBillingStatus(
         ordersIdsArr,
         ordersNewBillingStatus,
-        session
+        session,
+        ordersNewBillingStatus === "Void" ? voidReason : undefined
       );
 
       if (changeOrdersBillingStatusResult !== true) {
@@ -430,33 +464,30 @@ export const PATCH = async (
     if (salesInstanceStatus)
       updatedSalesInstanceObj.salesInstanceStatus = salesInstanceStatus;
     if (clientName) updatedSalesInstanceObj.clientName = clientName;
-    if (responsibleById)
-      updatedSalesInstanceObj.responsibleById = responsibleById;
+    if (responsibleByUserId)
+      updatedSalesInstanceObj.responsibleByUserId = responsibleByUserId;
 
-    // if salesInstance is transferred to another employee, and that is the first salesInstance from the new employee, update the dailySalesReport to create a new employeeDailySalesReport for the new employee
     if (
-      responsibleById &&
-      responsibleById != salesInstance?.openedByEmployeeId
+      responsibleByUserId &&
+      responsibleByUserId.toString() !== salesInstance?.openedByUserId?.toString()
     ) {
       const dailySalesReport = await DailySalesReport.exists({
         isDailyReportOpen: true,
         businessId: salesInstance?.businessId,
-        "employeesDailySalesReport.employeeId": responsibleById,
+        "employeesDailySalesReport.userId": responsibleByUserId,
       });
 
-      // check if employee exists in the dailySalesReport
       if (!dailySalesReport) {
-        const addEmployeeToDailySalesReportResult =
-          await addEmployeeToDailySalesReport(
-            responsibleById,
-            salesInstance.businessId,
-            session
-          );
+        const addResult = await addUserToDailySalesReport(
+          responsibleByUserId,
+          salesInstance.businessId,
+          session
+        );
 
-        if (addEmployeeToDailySalesReportResult !== true) {
+        if (addResult !== true) {
           await session.abortTransaction();
           return new NextResponse(
-            JSON.stringify({ message: addEmployeeToDailySalesReportResult }),
+            JSON.stringify({ message: addResult }),
             {
               status: 400,
               headers: { "Content-Type": "application/json" },

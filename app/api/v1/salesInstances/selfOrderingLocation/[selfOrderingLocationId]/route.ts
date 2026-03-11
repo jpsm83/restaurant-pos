@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import mongoose, { Types } from "mongoose";
+import { getToken } from "next-auth/jwt";
 
 // import utils
 import connectDb from "@/lib/db/connectDb";
@@ -11,6 +12,7 @@ import { ordersArrValidation } from "@/app/api/v1/orders/utils/validateOrdersArr
 import { createOrders } from "@/app/api/v1/orders/utils/createOrders";
 import { closeOrders } from "@/app/api/v1/orders/utils/closeOrders";
 import { checkLowStockAndNotify } from "@/app/api/v1/inventories/utils/checkLowStockAndNotify";
+import { sendOrderConfirmation } from "@/lib/orderConfirmation/sendOrderConfirmation";
 
 // import interfaces
 import {
@@ -19,12 +21,13 @@ import {
 } from "@/lib/interface/IDailySalesReport";
 import { ISalesInstance } from "@/lib/interface/ISalesInstance";
 import { IOrder } from "@/lib/interface/IOrder";
-import { ICustomer } from "@/app/lib/interface/ICustomer";
 import { IPaymentMethod } from "@/lib/interface/IPaymentMethod";
 
 // imported models
 import DailySalesReport from "@/lib/db/models/dailySalesReport";
-import Customer from "@/app/lib/models/customer";
+import SalesInstance from "@/lib/db/models/salesInstance";
+import SalesPoint from "@/lib/db/models/salesPoint";
+import User from "@/lib/db/models/user";
 import { validatePaymentMethodArray } from "@/app/api/v1/orders/utils/validatePaymentMethodArray";
 import { applyPromotionsToOrders } from "@/lib/promotions/applyPromotions";
 
@@ -32,6 +35,8 @@ import { applyPromotionsToOrders } from "@/lib/promotions/applyPromotions";
 // @desc    Create new salesInstances
 // @route   POST /salesInstances/selfOrderingLocation/:selfOrderingLocationId
 // @access  Private
+//
+// Payment before order submit: under construction; integration with third-party payment provider under study.
 
 // self ordering will do all the flow at once
 // create the table
@@ -68,16 +73,26 @@ export const POST = async (
   //    }
   //]
 
-  const { businessId, ordersArr, openedByCustomerId, paymentMethodArr } =
+  const token = await getToken({
+    req: req as Parameters<typeof getToken>[0]["req"],
+    secret: process.env.NEXTAUTH_SECRET,
+  });
+  if (!token?.id || token.type !== "user") {
+    return new NextResponse(
+      JSON.stringify({ message: "Unauthorized" }),
+      { status: 401, headers: { "Content-Type": "application/json" } }
+    );
+  }
+  const userId = new Types.ObjectId(token.id as string);
+
+  const { businessId, ordersArr, paymentMethodArr } =
     (await req.json()) as Partial<ISalesInstance> & {
       ordersArr: IOrder[];
       paymentMethodArr: IPaymentMethod[];
     };
 
-  // check required fields
   if (
     !selfOrderingLocationId ||
-    !openedByCustomerId ||
     !businessId ||
     !ordersArr ||
     !paymentMethodArr
@@ -85,35 +100,30 @@ export const POST = async (
     return new NextResponse(
       JSON.stringify({
         message:
-          "SelfOrderingLocationId, ordersArr, paymentMethodArr, openedByCustomerId and businessId are required!",
+          "SelfOrderingLocationId, ordersArr, paymentMethodArr and businessId are required!",
       }),
       { status: 400, headers: { "Content-Type": "application/json" } }
     );
   }
 
-  // Validate IDs (main product + addOns per order)
   const objectIds = [
     ...ordersArr.flatMap((order) => [
       order.businessGoodId!,
       ...(order.addOns ?? []),
     ]),
     businessId,
-    openedByCustomerId,
     selfOrderingLocationId,
   ];
 
-  // validate ids
   if (isObjectIdValid(objectIds) !== true) {
     return new NextResponse(
       JSON.stringify({
         message:
-          "BusinessId, openedByCustomerId, selfOrderingLocationId or ordersArr's IDs not valid!",
+          "BusinessId, selfOrderingLocationId or ordersArr's IDs not valid!",
       }),
       { status: 400, headers: { "Content-Type": "application/json" } }
     );
   }
-
-  const customerId: Types.ObjectId = openedByCustomerId!;
 
   // validate ordersArr
   const ordersArrValidationResult = ordersArrValidation(ordersArr);
@@ -136,18 +146,68 @@ export const POST = async (
   // connect before first call to DB
   await connectDb();
 
+  // Self-ordering is only allowed when the sales point has selfOrdering enabled
+  const salesPoint = (await SalesPoint.findById(selfOrderingLocationId)
+    .select("selfOrdering businessId")
+    .lean()) as {
+    selfOrdering: boolean;
+    businessId: Types.ObjectId | { _id: Types.ObjectId };
+  } | null;
+  if (!salesPoint || salesPoint.selfOrdering !== true) {
+    return new NextResponse(
+      JSON.stringify({
+        message: "Self-ordering is not available at this table.",
+      }),
+      { status: 400, headers: { "Content-Type": "application/json" } }
+    );
+  }
+  const salesPointBusinessId =
+    typeof salesPoint.businessId === "object" &&
+    salesPoint.businessId !== null &&
+    "_id" in salesPoint.businessId
+      ? (salesPoint.businessId as { _id: Types.ObjectId })._id
+      : (salesPoint.businessId as Types.ObjectId);
+  if (salesPointBusinessId.toString() !== businessId.toString()) {
+    return new NextResponse(
+      JSON.stringify({ message: "Sales point does not belong to this business." }),
+      { status: 400, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  // Block customer self-order when table already has an open session (e.g. opened by staff)
+  const dailySalesReportForCheck = (await DailySalesReport.findOne({
+    isDailyReportOpen: true,
+    businessId,
+  })
+    .select("dailyReferenceNumber")
+    .lean()) as { dailyReferenceNumber: number } | null;
+  if (dailySalesReportForCheck) {
+    const existingOpenInstance = await SalesInstance.exists({
+      dailyReferenceNumber: dailySalesReportForCheck.dailyReferenceNumber,
+      businessId,
+      salesPointId: selfOrderingLocationId,
+      salesInstanceStatus: { $ne: "Closed" },
+    });
+    if (existingOpenInstance) {
+      return new NextResponse(
+        JSON.stringify({
+          message:
+            "Table is being served by staff. Self-ordering is not available until the table is closed.",
+        }),
+        { status: 409, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }
+
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
-    // all db calls in one promise
-    const [customer, dailySalesReport] = await Promise.all([
-      // check customer exists
-      Customer.findById(customerId)
-        .select("customerName")
-        .lean() as unknown as Promise<ICustomer>,
+    const [user, dailySalesReport] = await Promise.all([
+      User.findById(userId)
+        .select("personalDetails.firstName personalDetails.lastName")
+        .lean(),
 
-      // check if dailySalesReport exists
       DailySalesReport.findOne({
         isDailyReportOpen: true,
         businessId,
@@ -156,13 +216,19 @@ export const POST = async (
         .lean() as unknown as Promise<IDailySalesReport>,
     ]);
 
-    if (!customer) {
+    if (!user) {
       await session.abortTransaction();
       return new NextResponse(
-        JSON.stringify({ message: "Customer not found!" }),
+        JSON.stringify({ message: "User not found!" }),
         { status: 404, headers: { "Content-Type": "application/json" } }
       );
     }
+
+    const userObj = user as { personalDetails?: { firstName?: string; lastName?: string }; username?: string } | null;
+    const clientName =
+      userObj?.personalDetails?.firstName && userObj?.personalDetails?.lastName
+        ? `${userObj.personalDetails.firstName} ${userObj.personalDetails.lastName}`
+        : userObj?.username ?? undefined;
 
     // **** IMPORTANT ****
     // dailySalesReport is created when the first salesInstance of the day is created
@@ -178,15 +244,15 @@ export const POST = async (
       );
     }
 
-    // create new salesInstance
     const newSalesInstanceObj = {
       dailyReferenceNumber,
       salesPointId: selfOrderingLocationId,
       guests: 1,
       salesInstanceStatus: "Occupied",
-      openedByCustomerId: customerId,
+      openedByUserId: userId,
+      openedAsRole: "customer" as const,
       businessId,
-      clientName: customer?.customerName,
+      clientName,
     };
 
     // create a salesInstance
@@ -244,13 +310,11 @@ export const POST = async (
       }
     }
 
-    // create orders
-    // inventory will be updated in this function
     const createdOrders = await createOrders(
       dailyReferenceNumber,
       ordersArr,
-      undefined,
-      customerId,
+      userId,
+      "customer",
       salesInstance._id as Types.ObjectId,
       businessId,
       session
@@ -333,13 +397,12 @@ export const POST = async (
       0
     );
 
-    // update dailySalesReport adding the customerId and the purchase details
     const dailySalesReportUpdate = await DailySalesReport.updateOne(
-      { dailyReferenceNumber: dailyReferenceNumber },
+      { dailyReferenceNumber },
       {
         $push: {
           selfOrderingSalesReport: {
-            customerId,
+            userId,
             customerPaymentMethod: paymentMethodArr,
             totalSalesBeforeAdjustments,
             totalNetPaidAmount,
@@ -362,6 +425,11 @@ export const POST = async (
     await session.commitTransaction();
 
     checkLowStockAndNotify(businessId).catch(() => {});
+    sendOrderConfirmation(userId, businessId, {
+      dailyReferenceNumber,
+      totalNetPaidAmount,
+      orderCount: createdOrders.length,
+    }).catch(() => {});
 
     return new NextResponse(
       JSON.stringify({ message: "Customer self ordering created" }),

@@ -14,14 +14,7 @@ import SupplierGood from "@/lib/db/models/supplierGood";
 import Supplier from "@/lib/db/models/supplier";
 import Employee from "@/lib/db/models/employee";
 import Notification from "@/lib/db/models/notification";
-
-const MANAGER_ROLES = [
-  "General Manager",
-  "Manager",
-  "Assistant Manager",
-  "MoD",
-  "Admin",
-];
+import { MANAGEMENT_ROLES } from "@/lib/constants";
 
 /**
  * Checks open inventory for items below par/minimum, and creates one Warning
@@ -69,7 +62,7 @@ export async function checkLowStockAndNotify(
     const managerEmployees = await Employee.find({
       businessId,
       onDuty: true,
-      currentShiftRole: { $in: MANAGER_ROLES },
+      currentShiftRole: { $in: MANAGEMENT_ROLES },
     })
       .select("_id")
       .lean();

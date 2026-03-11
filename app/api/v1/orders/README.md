@@ -8,7 +8,7 @@ This document describes how the order routes and utils work, how they interact w
 
 ## 1. Purpose and role in the application
 
-- **Order** = one billable line in a **SalesInstance**: dailyReferenceNumber, salesInstanceId, businessId, **businessGoodId** (required, main product), **addOns** (optional array of BusinessGood refs), orderGrossPrice, orderNetPrice, orderCostPrice, billingStatus (Open, Paid, Void, Cancel, Invitation), orderStatus (Sent, Done, Delivered, Dont Make), optional employeeId/customerId, paymentMethod, allergens, promotionApplyed, discountPercentage, comments. One order = one main product; quantity is expressed as multiple orders. **Promotions apply only to the main product (businessGoodId), not to addOns.**
+- **Order** = one billable line in a **SalesInstance**: dailyReferenceNumber, salesInstanceId, businessId, **businessGoodId** (required, main product), **addOns** (optional array of BusinessGood refs), orderGrossPrice, orderNetPrice, orderCostPrice, billingStatus (Open, Paid, Void, Cancel, Invitation), orderStatus (Sent, Done, Delivered, Dont Make), optional **createdByUserId** (ref User) and **createdAsRole** ('employee' | 'customer'), paymentMethod, allergens, promotionApplyed, discountPercentage, comments. One order = one main product; quantity is expressed as multiple orders. **Promotions apply only to the main product (businessGoodId), not to addOns.** Identity for "who created" is never employeeId/customerId; it is always userId (and role) from session.
 - **Creation and inventory:** When orders are created (**createOrders**), the flow builds a flattened list of business good IDs (main + addOns per order) and calls **updateDynamicCountSupplierGood(businessGoodsIds, "remove", session)** so that the **ingredients** of those business goods have their inventory **dynamicSystemCount** decreased. When orders are **cancelled** (**cancelOrders**), the same helper is called with **"add"** to restore stock. Purchases **add** stock; orders **remove** it.
 - **Sales instance coupling:** Orders are pushed into the sales instance’s **salesGroup** (orderCode + ordersIds). When orders are closed (paid), **closeOrders** can set the sales instance to **Closed** if all its orders are paid. **cancelOrders** removes orders from the sales instance’s salesGroup and deletes the order documents. **transferOrdersBetweenSalesInstances** moves orders from one instance to another (salesGroup and order.salesInstanceId).
 - **Promotions:** Promotion pricing is first calculated on the **front end** for real-time UX and sent to the backend. The backend runs the **same** promotion rules to **validate**; if the client payload matches the backend calculation, it is saved; otherwise an error is returned. No overwriting. The promotion engine applies rules based on the **main product (businessGoodId) only**; addOns are not considered. One business good cannot have more than one promotion at a time; if multiple rules target the same item, the backend chooses the effective promotion (e.g. lowest net price).
@@ -30,7 +30,7 @@ app/api/v1/orders/
 │       └── route.ts                             # GET orders by salesInstanceId
 ├── user/
 │   └── [userId]/
-│       └── route.ts                             # GET orders by employeeId (path param may be userId/employeeId)
+│       └── route.ts                             # GET orders by createdByUserId (path param: userId)
 └── utils/
     ├── createOrders.ts                          # Bulk insert orders, update inventory (remove), push to salesInstance salesGroup
     ├── cancelOrders.ts                         # Restore inventory (add), remove from salesGroup, delete orders
@@ -49,12 +49,12 @@ app/api/v1/orders/
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/v1/orders` | Returns all orders (populated: salesInstance→salesPoint, employee, customer, businessGoodId, addOns). 404 if none. |
-| POST | `/api/v1/orders` | Creates orders (employee flow). Body: **JSON** (ordersArr, employeeId, salesInstanceId, businessId, dailyReferenceNumber). Validates, then createOrders (transaction). |
-| GET | `/api/v1/orders/:orderId` | Returns one order by ID (same populates). |
-| DELETE | `/api/v1/orders/:orderId` | Cancels and deletes one order: cancelOrders([orderId], session). Transaction. |
+| GET | `/api/v1/orders` | Returns all orders (populated: salesInstance→salesPoint, createdByUserId→User, businessGoodId, addOns). 404 if none. |
+| POST | `/api/v1/orders` | Creates orders (employee flow). Body: **JSON** (ordersArr, salesInstanceId, businessId, dailyReferenceNumber). **No employeeId in body**; identity from session (userId). createOrders(..., createdByUserId, 'employee', ...). Transaction. |
+| GET | `/api/v1/orders/:orderId` | Returns one order by ID (same populates, including createdByUserId→User). |
+| DELETE | `/api/v1/orders/:orderId` | Cancels and deletes one order. **Caller must be an on-duty employee with a management role** (see `MANAGEMENT_ROLES` in lib/constants). cancelOrders([orderId], session). Transaction. Cancel is also available via Sales Instance PATCH with the same restriction. |
 | GET | `/api/v1/orders/salesInstance/:salesInstanceId` | Returns orders for the sales instance. |
-| GET | `/api/v1/orders/user/:userId` | Returns orders where employeeId matches path param (path is userId; used as employeeId for filter). |
+| GET | `/api/v1/orders/user/:userId` | Returns orders where createdByUserId matches path param (userId). |
 
 **Note:** Order **updates** (discount, cancel, billing status, order status, payment/close, transfer) are invoked from the **Sales Instance PATCH** route, not from an order PATCH. The orders API provides GET, POST (create), and DELETE (cancel one); the rest is done via order utils called by sales instances.
 
@@ -67,36 +67,38 @@ All responses are JSON. Errors use `handleApiError` (500) or explicit NextRespon
 ### 4.1 GET (list, by id, by sales instance, by user/employee)
 
 - **DB:** `connectDb()` before first query.
-- **Populate:** salesInstanceId → salesPointId (salesPointName); employeeId (employeeName, allEmployeeRoles, currentShiftRole); customerId (same select — may be Customer model); businessGoodId and addOns (name, mainCategory, subCategory, productionTime, sellingPrice, allergens).
+- **Populate:** salesInstanceId → salesPointId (salesPointName); createdByUserId → User (e.g. personalDetails.firstName, lastName, username); businessGoodId and addOns (name, mainCategory, subCategory, productionTime, sellingPrice, allergens).
 - **By sales instance:** `Order.find({ salesInstanceId })`.
-- **By employee:** `Order.find({ employeeId: employeeId })` (path param is userId in folder name; handler uses employeeId — ensure param matches).
+- **By user:** `Order.find({ createdByUserId: userId })` (path param is userId).
 - **By id:** Validate orderId; `Order.findById(orderId)`.
 
 ### 4.2 POST (create orders — employee) — JSON body + transaction
 
-**Required:** `ordersArr`, `employeeId`, `salesInstanceId`, `businessId`, `dailyReferenceNumber`.
+**Required:** `ordersArr`, `salesInstanceId`, `businessId`, `dailyReferenceNumber`. **No employeeId in body**; identity from **session** (userId).
 
-- **ordersArr:** Array of objects. Each: orderGrossPrice, orderNetPrice, orderCostPrice, **businessGoodId** (required ObjectId), **addOns** (optional array of ObjectIds). Optional: allergens, promotionApplyed, comments, discountPercentage. Validated by **ordersArrValidation** (required businessGoodId, optional addOns, valid IDs, allowed keys).
-- **Validation:** isObjectIdValid for all IDs (businessId, salesInstanceId, employeeId, and each order’s businessGoodId and addOns). Then ordersArrValidation(ordersArr).
-- **Transaction:** createOrders(dailyReferenceNumber, ordersArr, employeeId, undefined, salesInstanceId, businessId, session). On string return (error), abort and return 400. Commit on success.
+- **ordersArr:** Array of objects. Each: orderGrossPrice, orderNetPrice, orderCostPrice, **businessGoodId** (required ObjectId), **addOns** (optional array of ObjectIds). Optional: allergens, promotionApplyed, comments, discountPercentage. Validated by **ordersArrValidation**.
+- **Validation:** isObjectIdValid for all IDs (businessId, salesInstanceId, and each order’s businessGoodId and addOns). Get userId from session. Then ordersArrValidation(ordersArr).
+- **Transaction:** createOrders(dailyReferenceNumber, ordersArr, createdByUserId (from session), 'employee', salesInstanceId, businessId, session). On string return (error), abort and return 400. Commit on success.
 
 ### 4.3 createOrders util
 
-- **Signature:** createOrders(dailyReferenceNumber, ordersArr, employeeId, customerId, salesInstanceId, businessId, session).
-- **Behavior:** If employeeId present, check sales instance exists and is not Closed (use salesInstanceStatus, not status). Bulk insert orders (billingStatus: Open, orderStatus: Sent) with businessGoodId and addOns. Build flattened list of IDs (main + addOns per order) and call **updateDynamicCountSupplierGood(businessGoodsIds, "remove", session)** to decrement inventory. Generate orderCode (date + dayOfWeek + random). **SalesInstance.updateOne** push salesGroup { orderCode, ordersIds: ordersIdsCreated, createdAt }. Returns created order documents or error string.
-- **Inventory:** The inventory util resolves business goods → ingredients (including set-menu members), converts units, and decrements inventoryGoods.$.dynamicSystemCount. So creating orders **consumes** supplier-good stock.
+- **Signature:** createOrders(dailyReferenceNumber, ordersArr, createdByUserId, createdAsRole, salesInstanceId, businessId, session). createdByUserId and createdAsRole ('employee' | 'customer') identify who created the orders; no employeeId/customerId.
+- **Behavior:** If salesInstanceId present, check sales instance exists and is not Closed (salesInstanceStatus). Bulk insert orders with **createdByUserId**, **createdAsRole**, businessGoodId and addOns (billingStatus: Open, orderStatus: Sent). Build flattened list of business good IDs and call **updateDynamicCountSupplierGood(businessGoodsIds, "remove", session)** to decrement inventory. Generate orderCode. **SalesInstance.updateOne** push salesGroup { orderCode, ordersIds, createdAt }. Returns created order documents or error string.
+- **Inventory:** The inventory util resolves business goods → ingredients, converts units, and decrements dynamicSystemCount. Creating orders **consumes** supplier-good stock.
 
 ### 4.4 DELETE (cancel one order)
 
+- **Auth:** Caller must be authenticated (session userId). Resolve Employee by userId + order’s businessId; employee must be on duty and have at least one **management role** (Owner, General Manager, Manager, Assistant Manager, MoD, Admin, Supervisor). Otherwise 401 or 403.
 - **Transaction:** cancelOrders([orderId], session). If result is not true, return 400 with message. Commit.
 - **cancelOrders util:** Load orders by ids (select businessGoodId, addOns); if any has orderStatus "Done", return error. Build flattened list (main + addOns per order) and call **updateDynamicCountSupplierGood(businessGoodsIds, "add", session)** to restore inventory. Remove ordersIds from sales instance salesGroup ($pull), remove empty salesGroup entries, delete order documents. Returns true or error string.
+- **Void and invitation:** Set via Sales Instance PATCH (**ordersNewBillingStatus**). Same management-role requirement. When setting status to **Void**, a **void reason** (e.g. waste, mistake, refund, other) is required in the body and stored on the order (e.g. in comments).
 
 ### 4.5 Order utils (used by Sales Instance PATCH and/or self-order flow)
 
-- **addDiscountToOrders(ordersIdsArr, discountPercentage, comments, session):** Only for orders with billingStatus Open and no promotionApplyed. Validates 0 ≤ discountPercentage ≤ 100 and comments. The SalesInstance PATCH route enforces that only **on‑duty management roles** (e.g. Owner, General Manager, Manager, Assistant Manager, MoD, Admin, Supervisor) can trigger this action by requiring an `employeeId` with those roles and `onDuty: true`. Sets orderNetPrice = orderGrossPrice - (orderGrossPrice * discountPercentage / 100), discountPercentage, comments. Bulk write. Manual discounts are therefore clearly separated from promotions and controlled by role.
-- **changeOrdersBillingStatus(ordersIdsArr, ordersNewBillingStatus, session):** Cannot set Paid or Cancel (system-set). Only orders with Open, Invitation, or Void can be changed. Sets billingStatus and orderNetPrice (Open → gross, else 0). Bulk write.
+- **addDiscountToOrders(ordersIdsArr, discountPercentage, comments, session):** Only for orders with billingStatus Open and no promotionApplyed. The SalesInstance PATCH route enforces that only **on‑duty management roles** can trigger this action: identity from session (userId) → Employee.findOne({ userId, businessId }) for role and onDuty. Sets orderNetPrice, discountPercentage, comments. Bulk write.
+- **changeOrdersBillingStatus(ordersIdsArr, ordersNewBillingStatus, session, reason?):** Cannot set Paid or Cancel (system-set). Only orders with Open, Invitation, or Void can be changed. Sets billingStatus and orderNetPrice (Open → gross, else 0). When status is Void and reason is provided, sets order **comments** to reason. Bulk write. The Sales Instance PATCH enforces management role and requires voidReason when voiding.
 - **changeOrdersStatus(ordersIdsArr, ordersNewStatus, session):** Orders with "Dont Make" cannot be changed. updateMany orderStatus.
-- **closeOrders(ordersIdsArr, paymentMethodArr, session):** Only orders with billingStatus Open. Validates total paid ≥ total order net price. Allocates paymentMethodArr across orders (paymentMethod, billingStatus: Paid), tips on first order. Bulk update orders. Then: if all orders in the sales instance are Paid, set sales instance to Closed (salesInstanceStatus, closedAt, closedById). Stored order net prices from creation are the source of truth; close does not re-validate promotions.
+- **closeOrders(ordersIdsArr, paymentMethodArr, session):** Only orders with billingStatus Open. Validates total paid ≥ total order net price. Allocates paymentMethodArr across orders (paymentMethod, billingStatus: Paid), tips on first order. Bulk update orders. Then: if all orders in the sales instance are Paid, set sales instance to Closed (salesInstanceStatus, closedAt, **closedByUserId** from sales instance’s responsibleByUserId). Stored order net prices from creation are the source of truth.
 - **transferOrdersBetweenSalesInstances(ordersIdsArr, toSalesInstanceId, session):** Target instance must exist and not be Closed. All orders must be Open. Update order.salesInstanceId; remove from original instance salesGroup; add to target salesGroup (by orderCode or new group). Clean empty groups.
 
 ### 4.6 Validation helpers
@@ -140,7 +142,7 @@ All responses are JSON. Errors use `handleApiError` (500) or explicit NextRespon
 |------------|------|
 | `@/lib/db/connectDb` | Ensure MongoDB connection before first DB call. |
 | `@/lib/db/handleApiError` | Central 500 JSON error response. |
-| `@/lib/utils/isObjectIdValid` | Validate orderId, salesInstanceId, businessId, employeeId, businessGoodId, addOns, etc. |
+| `@/lib/utils/isObjectIdValid` | Validate orderId, salesInstanceId, businessId, businessGoodId, addOns, etc. |
 | `../../inventories/utils/updateDynamicCountSupplierGood` | Decrement (create) or increment (cancel) inventory for order ingredients. |
 | `./utils/createOrders` | Insert orders, update inventory (remove), push to sales instance salesGroup. |
 | `./utils/cancelOrders` | Restore inventory (add), remove from salesGroup, delete orders. |
@@ -151,7 +153,7 @@ All responses are JSON. Errors use `handleApiError` (500) or explicit NextRespon
 | `./utils/transferOrdersBetweenSalesInstances` | Move orders to another sales instance. |
 | `./utils/validateOrdersArr` | Validate orders array for create. |
 | `./utils/validatePaymentMethodArray` | Validate payment methods for close. |
-| Order, SalesInstance, Employee, BusinessGood, SalesPoint, Customer | Models and populates. |
+| Order, SalesInstance, User, BusinessGood, SalesPoint | Models and populates (createdByUserId → User). |
 | `@/lib/interface/IOrder`, `@/lib/interface/IPaymentMethod` | Types. |
 | `@/lib/enums` | billingStatusEnums, orderStatusEnums, paymentMethods, cardTypes, etc. |
 
@@ -160,7 +162,7 @@ All responses are JSON. Errors use `handleApiError` (500) or explicit NextRespon
 ## 7. Patterns to follow when coding
 
 1. **Always call `connectDb()`** before the first DB operation in each request.
-2. **Validate IDs** with isObjectIdValid for all path and body IDs (orderId, salesInstanceId, businessId, employeeId, businessGoodId, addOns, etc.).
+2. **Validate IDs** with isObjectIdValid for all path and body IDs. Identity (createdByUserId) from session only; no employeeId/customerId in body.
 3. **Use a transaction** when creating orders (createOrders does inventory + sales instance update) or when cancelling (cancelOrders does inventory + salesGroup + delete). Use the same session for all steps.
 4. **Inventory consistency:** Create → updateDynamicCountSupplierGood(..., "remove"). Cancel → updateDynamicCountSupplierGood(..., "add"). Never skip these when creating or cancelling orders.
 5. **Sales instance sync:** When creating orders, push to salesGroup. When cancelling, pull from salesGroup and remove empty groups. When closing, check if all orders in the instance are Paid and then close the instance.
@@ -172,7 +174,7 @@ All responses are JSON. Errors use `handleApiError` (500) or explicit NextRespon
 
 ## 8. Data model summary (for context)
 
-- **Order:** dailyReferenceNumber, salesInstanceId, businessId, **businessGoodId** (required), **addOns** (optional array), orderGrossPrice, orderNetPrice, orderCostPrice, billingStatus (default Open), orderStatus (default Sent), optional employeeId, customerId, paymentMethod[], orderTips, allergens[], promotionApplyed, discountPercentage, comments.
+- **Order:** dailyReferenceNumber, salesInstanceId, businessId, **businessGoodId** (required), **addOns** (optional array), orderGrossPrice, orderNetPrice, orderCostPrice, billingStatus (default Open), orderStatus (default Sent), optional **createdByUserId** (ref User), **createdAsRole** ('employee' | 'customer'), paymentMethod[], orderTips, allergens[], promotionApplyed, discountPercentage, comments.
 - **businessGoodId** is the main product; **addOns** are optional extras (e.g. burger + extra cheese). Promotions apply only to businessGoodId. The flattened list [businessGoodId, ...addOns] per order is passed to updateDynamicCountSupplierGood for inventory.
 
 This README is the main context for how the orders API works and how it ties into inventory (supplier goods consumption), sales instances, business goods, promotions, and the rest of the app.

@@ -9,6 +9,7 @@
 
 import Employee from "@/lib/db/models/employee";
 import Schedule from "@/lib/db/models/schedule";
+import { hasManagementRole } from "@/lib/constants";
 import type { Types } from "mongoose";
 
 const FIVE_MINUTES_MS = 5 * 60 * 1000;
@@ -42,7 +43,7 @@ export async function canLogAsEmployee(
     Array.isArray(employee.allEmployeeRoles) && employee.allEmployeeRoles.length
       ? (employee.allEmployeeRoles as unknown[]).map((role) => String(role))
       : [];
-  if (roles.includes("Admin")) {
+  if (hasManagementRole(roles)) {
     return { canLogAsEmployee: true };
   }
 

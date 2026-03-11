@@ -10,9 +10,8 @@ import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 import SalesInstance from "@/lib/db/models/salesInstance";
 import Order from "@/lib/db/models/order";
 import BusinessGood from "@/lib/db/models/businessGood";
-import Employee from "@/lib/db/models/employee";
 import SalesPoint from "@/lib/db/models/salesPoint";
-import Customer from "@/app/lib/models/customer";
+import User from "@/lib/db/models/user";
 
 // @desc   Get salesInstances by bussiness ID
 // @route  GET /salesInstances/business/:businessId
@@ -38,21 +37,21 @@ export const GET = async (
     // connect before first call to DB
     await connectDb();
 
-    const salesInstances = await SalesInstance.find()
+    const salesInstances = await SalesInstance.find({ businessId })
       .populate({
         path: "salesPointId",
         select: "salesPointName salesPointType selfOrdering",
         model: SalesPoint,
       })
       .populate({
-        path: "openedByCustomerId",
-        select: "customerName",
-        model: Customer,
+        path: "openedByUserId",
+        select: "personalDetails.firstName personalDetails.lastName",
+        model: User,
       })
       .populate({
-        path: "openedByEmployeeId responsibleById closedById",
-        select: "employeeName currentShiftRole",
-        model: Employee,
+        path: "responsibleByUserId closedByUserId",
+        select: "personalDetails.firstName personalDetails.lastName",
+        model: User,
       })
       .populate({
         path: "salesGroup.ordersIds",

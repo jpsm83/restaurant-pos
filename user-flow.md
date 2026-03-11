@@ -78,7 +78,7 @@ This document describes **how the app works from a user perspective**, from init
   - Manager configures **Sales points** that represent where customers sit or are served:
     - Physical tables in rooms, bar seats, service counters, etc.
   - Each sales point can be:
-    - Linked to **QR codes** for self‑ordering flows.
+    - Linked to **QR codes**. The **same QR** can be used by **staff** to open the table (scan → open table only) or by **customers** to self-order when the sales point has **selfOrdering: true**.
     - Linked to **Printers** / printer groups for routing orders (e.g. kitchen vs bar).
   - Sales points are the anchors for **Sales instances** (open checks/tabs) during service.
 
@@ -118,24 +118,23 @@ This document describes **how the app works from a user perspective**, from init
 
 ### 3.1 Opening a table / sales instance (waiter / bartender / customer via QR)
 
+Role (customer vs employee) is determined by session/context; the app does not require a separate mode choice for this flow.
+
 - **Staff‑opened session**
-  - A waiter or bartender selects a **Sales point** (table/bar seat) in the POS UI.
-  - They **open a Sales instance** for that sales point:
-    - At most **one non‑closed sales instance per sales point per work day** (per business).
-    - The employee who opens it is attached as the **responsible employee** (can change later).
-  - From this moment:
-    - The table is considered **occupied**.
-    - All orders taken at this table are attached to that sales instance.
-    - The open sales instance is linked to the **current Daily sales report**.
+  - A waiter or bartender can open a table in two ways: (1) select a **Sales point** (table/bar seat) in the **POS UI**, or (2) **scan the table’s QR code** (one QR **per** sales point; identity from session: **userId**; same outcome as opening from POS). Opening from the POS or via QR requires the user to be an **on-duty employee** for that business.
+  - They **open a Sales instance** for that sales point. The system stores **openedByUserId** (ref User) and **openedAsRole: 'employee'**; the **responsible** user can be set or changed later (**responsibleByUserId**).
+  - At most **one non‑closed sales instance per sales point per work day** (per business).
+  - From this moment the table is **occupied**, all orders are attached to that sales instance, and it is linked to the **current Daily sales report**. **When a table is opened by an employee, customers cannot use the QR to self-order at that table until the table is closed**; orders are taken only by staff.
 
 - **Self‑ordering via QR**
-  - A customer scans the **QR code** associated with a sales point.
+  - A **customer** can use the **QR code** at a sales point to self-order **only when that sales point has self-ordering enabled** and **no open sales instance exists at that table** (otherwise the table is service-only or already staff-served). The customer is logged in as **User**.
   - The self‑ordering flow:
-    - Customer opens a session for that table or seat (if none is open, the system creates a new **sales instance** whose `salesPointId` matches the scanned location id).
+    - Customer opens a session for that table or seat (if none is open, the system creates a new **sales instance** with **openedByUserId** = session userId and **openedAsRole: 'customer'**).
     - Customer browses **Business goods** (menu) with real‑time promotions applied.
-    - Customer places orders, which create **Orders** tied to that sales instance.
-    - Depending on configuration, customer may also **pay directly** in the self‑ordering flow.
-  - Self‑ordering sales are tracked in a separate section inside the **Daily sales report**.
+    - Customer places orders (**createdByUserId**, **createdAsRole: 'customer'**), which create **Orders** tied to that sales instance.
+    - Depending on configuration, customer may also **pay directly** in the self‑ordering flow. (Enforcing **payment before orders are sent** for self‑order and delivery is under study; third‑party payment integration is not yet implemented.)
+  - After the order is paid and the table closed, the customer receives an **email** and an **in-app notification** with the order confirmation/receipt (ref, total paid); they can show either to staff when collecting the order.
+  - Self‑ordering sales are tracked in **Daily sales report** in **selfOrderingSalesReport** (keyed by **userId**).
 
 ### 3.2 Taking and managing orders (waiter / bartender / customer)
 
@@ -144,10 +143,9 @@ This document describes **how the app works from a user perspective**, from init
     - Each order has one **main product** (businessGoodId) and optional **addOns**; **promotions** apply only to the main product. Quantity is expressed as multiple orders (e.g. 3 beers = 3 orders).
     - The system calculates discounts and totals in real time using **Promotion** rules.
   - When an order is created:
-    - It is grouped under the current **sales instance**.
-    - It is attributed to the responsible employee (if staff‑created) or to the customer (in self‑ordering) and to the business/day.
-    - The system interfaces with **Printers**:
-      - Routes each line to the right printer(s) based on category and sales point.
+    - It is grouped under the current **sales instance** and attributed by **createdByUserId** (ref User) and **createdAsRole** (employee | customer).
+    - Identity is taken from the session (userId); no employeeId or customerId is sent in request bodies.
+    - The system interfaces with **Printers**: routes each line to the right printer(s) based on category and sales point.
 
 - **Inventory impact from orders**
   - For **ingredient‑based** and **combo** business goods, each order:
@@ -159,10 +157,12 @@ This document describes **how the app works from a user perspective**, from init
     - It still affects reporting (e.g. voided/complimentary goods) and may influence cost and waste metrics.
 
 - **Modifying orders during service**
-  - Staff can perform actions on open orders:
-    - Add new orders to the same sales instance (rounds, additional items).
-    - **Transfer** orders between tables/sales points (e.g. when guests move).
-    - Mark orders as **cancelled**, **voided**, or **invitation/complimentary**.
+  - Staff can add new orders, transfer orders between tables/sales points, and (for **management roles** only) cancel, void, or mark orders as invitation/complimentary.
+  - **Cancel, void, and invitation/complimentary** are restricted to on-duty staff with a **management/superior role** (Owner, General Manager, Manager, Assistant Manager, MoD, Admin, Supervisor). Only they can:
+    - **Cancel** orders (order is removed and inventory restored).
+    - **Void** orders (order remains in reporting but is marked void; a **reason is required**: waste, mistake, refund, or other).
+    - Mark orders as **invitation/complimentary**.
+  - **Void reason** is required when voiding and is stored on the order (e.g. in comments) for audit and reporting.
   - All actions are tracked so that:
     - Inventory is kept in sync (consumption vs restoration).
     - The **Daily sales report** knows what was sold, voided, or given away when it is calculated.
@@ -187,10 +187,10 @@ This document describes **how the app works from a user perspective**, from init
 
 - **Closing the sales instance / table**
   - When all orders in a sales instance are closed and paid:
-    - Staff can **close the sales instance**, freeing the sales point (table becomes available again).
+    - The system can **close the sales instance** (**closedByUserId** = responsible user), freeing the sales point.
     - The daily report logs the final values for that sales instance.
-  - If configured, self‑ordering flows may also:
-    - Automatically close orders and sales instances when payment is completed by the customer.
+  - If configured, self‑ordering flows may also automatically close orders and sales instances when payment is completed by the customer.
+  - For self‑ordering (and for delivery when implemented), the system also sends a confirmation **email** and **in-app notification** with the receipt so the customer can show proof of payment when collecting the order.
 
 ---
 
@@ -267,11 +267,8 @@ This document describes **how the app works from a user perspective**, from init
 - **Daily sales report lifecycle**
   - A **Daily sales report** is created automatically when the **first sales instance** opens for the day for a business.
   - Throughout the day it accumulates:
-    - **Per‑employee** metrics:
-      - Sales totals.
-      - Tips.
-      - Goods sold, voided, and given as invitation/complimentary.
-      - Payment method breakdown.
+    - **Per‑user** metrics in **employeesDailySalesReport** (keyed by **userId**, ref User): sales totals, tips, goods sold/voided/invited, payment method breakdown.
+    - **Self‑ordering** in **selfOrderingSalesReport** (keyed by **userId**).
     - **Business‑level** metrics:
       - Total sales, cost of goods (from recipes and inventory), gross margin.
       - Payment methods totals (cash, card types, etc.).
@@ -280,12 +277,12 @@ This document describes **how the app works from a user perspective**, from init
 - **Calculating the daily report**
   - At any point (typically at end of shift/day), a manager can **calculate** or recalculate the daily report:
     - The system aggregates data from **Sales instances** and **Orders** using the shared `dailyReferenceNumber`.
-    - It respects which employee was responsible for which sales instances and their orders, and groups self‑ordering sales separately.
+    - It aggregates by **responsibleByUserId** (sales instances) and **createdByUserId** / **createdAsRole** (orders); self-ordering is grouped in **selfOrderingSalesReport** by userId.
   - This gives an up‑to‑date snapshot of performance before final closure.
 
 - **Conditions for closing the day**
   - To **close** the daily sales report:
-    - A user with an allowed management role (e.g. manager, MoD, admin) and marked **on duty** initiates the close.
+    - Identity from **session** (userId); the system resolves Employee by userId + businessId and checks allowed role and **on duty**.
     - There must be **no open orders** (billingStatus `Open`) for that business and `dailyReferenceNumber`.
   - Once closed:
     - The daily report becomes **locked** for that date.

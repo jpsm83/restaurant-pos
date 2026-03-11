@@ -37,6 +37,7 @@ import Purchase from "@/lib/db/models/purchase";
 import SalesPoint from "@/lib/db/models/salesPoint";
 import MonthlyBusinessReport from "@/lib/db/models/monthlyBusinessReport";
 import User from "@/lib/db/models/user";
+import Rating from "@/lib/db/models/rating";
 
 // imported enums
 import { subscriptionEnums, currenctyEnums } from "@/lib/enums";
@@ -157,6 +158,13 @@ export const PATCH = async (
     const password = formData.get("password") as string | undefined;
     const contactPerson = formData.get("contactPerson") as string | undefined;
     const imageUrl = formData.get("imageUrl") as File | undefined;
+    const cuisineType = formData.get("cuisineType") as string | undefined;
+    const categoriesStr = formData.get("categories") as string | undefined;
+    const averageRatingStr = formData.get("averageRating") as string | undefined;
+    const ratingCountStr = formData.get("ratingCount") as string | undefined;
+    const acceptsDeliveryStr = formData.get("acceptsDelivery") as string | undefined;
+    const deliveryRadiusStr = formData.get("deliveryRadius") as string | undefined;
+    const minOrderStr = formData.get("minOrder") as string | undefined;
 
     // check required fields
     if (
@@ -268,6 +276,60 @@ export const PATCH = async (
       );
     }
 
+    // validate optional discovery/delivery fields if provided
+    if (averageRatingStr !== undefined && averageRatingStr !== "") {
+      const n = Number(averageRatingStr);
+      if (Number.isNaN(n) || n < 0 || n > 5) {
+        return new NextResponse(
+          JSON.stringify({ message: "averageRating must be between 0 and 5!" }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+    }
+    if (ratingCountStr !== undefined && ratingCountStr !== "") {
+      const n = Number(ratingCountStr);
+      if (Number.isNaN(n) || n < 0) {
+        return new NextResponse(
+          JSON.stringify({ message: "ratingCount must be a non-negative number!" }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+    }
+    if (categoriesStr !== undefined && categoriesStr !== "") {
+      try {
+        const parsed = JSON.parse(categoriesStr) as unknown;
+        if (!Array.isArray(parsed) || !parsed.every((x) => typeof x === "string")) {
+          return new NextResponse(
+            JSON.stringify({ message: "categories must be an array of strings!" }),
+            { status: 400, headers: { "Content-Type": "application/json" } }
+          );
+        }
+      } catch {
+        return new NextResponse(
+          JSON.stringify({ message: "categories must be a valid JSON array of strings!" }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+    }
+    if (deliveryRadiusStr !== undefined && deliveryRadiusStr !== "") {
+      const n = Number(deliveryRadiusStr);
+      if (Number.isNaN(n) || n < 0) {
+        return new NextResponse(
+          JSON.stringify({ message: "deliveryRadius must be a non-negative number!" }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+    }
+    if (minOrderStr !== undefined && minOrderStr !== "") {
+      const n = Number(minOrderStr);
+      if (Number.isNaN(n) || n < 0) {
+        return new NextResponse(
+          JSON.stringify({ message: "minOrder must be a non-negative number!" }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     // connect before first call to DB
     await connectDb();
 
@@ -320,6 +382,35 @@ export const PATCH = async (
       updateBusinessObj.subscription = subscription;
     if (contactPerson && contactPerson !== business?.contactPerson)
       updateBusinessObj.contactPerson = contactPerson;
+
+    if (cuisineType !== undefined) updateBusinessObj.cuisineType = cuisineType || undefined;
+    if (categoriesStr !== undefined) {
+      try {
+        const parsed = JSON.parse(categoriesStr) as string[];
+        if (Array.isArray(parsed))
+          updateBusinessObj.categories = parsed.map((s) => String(s).trim().toLowerCase()).filter(Boolean);
+      } catch {
+        // leave unchanged if invalid
+      }
+    }
+    if (averageRatingStr !== undefined && averageRatingStr !== "") {
+      const n = Number(averageRatingStr);
+      if (!Number.isNaN(n) && n >= 0 && n <= 5) updateBusinessObj.averageRating = n;
+    }
+    if (ratingCountStr !== undefined && ratingCountStr !== "") {
+      const n = Number(ratingCountStr);
+      if (!Number.isNaN(n) && n >= 0) updateBusinessObj.ratingCount = n;
+    }
+    if (acceptsDeliveryStr !== undefined && acceptsDeliveryStr !== "")
+      updateBusinessObj.acceptsDelivery = acceptsDeliveryStr === "true";
+    if (deliveryRadiusStr !== undefined && deliveryRadiusStr !== "") {
+      const n = Number(deliveryRadiusStr);
+      if (!Number.isNaN(n) && n >= 0) updateBusinessObj.deliveryRadius = n;
+    }
+    if (minOrderStr !== undefined && minOrderStr !== "") {
+      const n = Number(minOrderStr);
+      if (!Number.isNaN(n) && n >= 0) updateBusinessObj.minOrder = n;
+    }
 
     // Handle address updates dynamically
     const updatedAddress: Partial<IAddress> = {};
@@ -476,6 +567,7 @@ export const DELETE = async (
       Printer.deleteMany({ businessId }, { session }),
       Promotion.deleteMany({ businessId }, { session }),
       Purchase.deleteMany({ businessId }, { session }),
+      Rating.deleteMany({ businessId }, { session }),
       // Reservation.deleteMany({ businessId }, { session }), TO BE CREATED
       SalesInstance.deleteMany({ businessId }, { session }),
       SalesPoint.deleteMany({ businessId }, { session }),

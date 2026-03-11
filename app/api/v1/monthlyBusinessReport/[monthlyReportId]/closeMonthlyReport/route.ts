@@ -3,19 +3,12 @@ import { Types } from "mongoose";
 
 import connectDb from "@/lib/db/connectDb";
 import { handleApiError } from "@/lib/db/handleApiError";
+import { MANAGEMENT_ROLES } from "@/lib/constants";
 import DailySalesReport from "@/lib/db/models/dailySalesReport";
 import Employee from "@/lib/db/models/employee";
 import MonthlyBusinessReport from "@/lib/db/models/monthlyBusinessReport";
 import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 import { IEmployee } from "@/lib/interface/IEmployee";
-
-const ALLOWED_CLOSE_ROLES = [
-  "General Manager",
-  "Manager",
-  "Assistant Manager",
-  "MoD",
-  "Admin",
-];
 
 function getMonthEnd(monthStart: Date): Date {
   return new Date(
@@ -87,7 +80,7 @@ export const PATCH = async (
     }
 
     if (
-      !ALLOWED_CLOSE_ROLES.includes(employee.currentShiftRole ?? "") ||
+      !MANAGEMENT_ROLES.includes(employee.currentShiftRole ?? "") ||
       !employee.onDuty
     ) {
       return new NextResponse(

@@ -31,17 +31,16 @@ const orderSchema = new Schema(
       type: Number,
       required: [true, "Order cost price is required!"],
     }, // cost price of the sun of product being sold regardless of any discounts, voids, or cancellations
-    // one of the following two fields is required - employeeId or customerId
-    employeeId: {
+    // user that created the order (employee or customer by createdAsRole)
+    createdByUserId: {
       type: Schema.Types.ObjectId,
-      ref: "Employee",
+      ref: "User",
       index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
-    }, // employee that made the order
-    customerId: {
-      type: Schema.Types.ObjectId,
-      ref: "Customer",
-      index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
-    }, // employee that made the order
+    },
+    createdAsRole: {
+      type: String,
+      enum: ["employee", "customer"],
+    },
     salesInstanceId: {
       type: Schema.Types.ObjectId,
       ref: "SalesInstance",

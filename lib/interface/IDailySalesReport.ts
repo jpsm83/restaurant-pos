@@ -9,7 +9,7 @@ export interface IGoodsReduced {
 }
 
 export interface IEmployeeDailySalesReport {
-  employeeId: Types.ObjectId;
+  userId: Types.ObjectId;
   hasOpenSalesInstances?: boolean;
   employeePaymentMethods?: IPaymentMethod[];
   totalSalesBeforeAdjustments?: number;
@@ -26,7 +26,7 @@ export interface IEmployeeDailySalesReport {
 }
 
 export interface ISelfOrderingSalesReport {
-  customerId: Types.ObjectId;
+  userId: Types.ObjectId;
   customerPaymentMethods?: IPaymentMethod[];
   totalSalesBeforeAdjustments?: number;
   totalNetPaidAmount?: number;
@@ -40,7 +40,7 @@ export interface IDailySalesReport {
   isDailyReportOpen: boolean;
   timeCountdownToClose: number;
   employeesDailySalesReport: IEmployeeDailySalesReport[];
-  selfOrderingSalesReport: IEmployeeDailySalesReport[];
+  selfOrderingSalesReport: ISelfOrderingSalesReport[];
   businessId: Types.ObjectId;
   businessPaymentMethods?: IPaymentMethod[];
   dailyTotalSalesBeforeAdjustments?: number;
