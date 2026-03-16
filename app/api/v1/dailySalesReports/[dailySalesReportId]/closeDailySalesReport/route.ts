@@ -68,13 +68,12 @@ export const PATCH = async (
       userId,
       businessId,
     })
-      .select("currentShiftRole onDuty businessId")
+      .select("currentShiftRole businessId")
       .lean()) as IEmployee | null;
 
     if (
       !employeeDoc ||
-      !MANAGEMENT_ROLES.includes(employeeDoc.currentShiftRole ?? "") ||
-      !employeeDoc.onDuty
+      !MANAGEMENT_ROLES.includes(employeeDoc.currentShiftRole ?? "")
     ) {
       return new NextResponse(
         JSON.stringify({

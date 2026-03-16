@@ -141,14 +141,14 @@ export const DELETE = async (
       userId: sessionUserId,
       businessId,
     })
-      .select("allEmployeeRoles onDuty")
+      .select("allEmployeeRoles")
       .session(session)
-      .lean()) as { allEmployeeRoles?: string[]; onDuty?: boolean } | null;
+      .lean()) as { allEmployeeRoles?: string[] } | null;
 
-    if (!employee || !employee.onDuty || !hasManagementRole(employee.allEmployeeRoles)) {
+    if (!employee || !hasManagementRole(employee.allEmployeeRoles)) {
       await session.abortTransaction();
       return new NextResponse(
-        JSON.stringify({ message: "Only on-duty management roles can cancel orders!" }),
+        JSON.stringify({ message: "Only management roles can cancel orders!" }),
         { status: 403, headers: { "Content-Type": "application/json" } }
       );
     }

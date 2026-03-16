@@ -1,25 +1,25 @@
 [
     {
         "_id": "6674501ebe48364ae423dcc4",
-        "printerName": "printer1printerName",
-        "connected": false,
+        "printerAlias": "printer1printerName",
+        "description": "printer1description",
+        "printerStatus": "Offline",
         "ipAddress": "127.0.0.2",
         "port": 2000,
-        "business": "6673fed98c45d0a0ca5f34c1",
+        "businessId": "6673fed98c45d0a0ca5f34c1",
+        "employeesAllowedToPrintDataIds": [
+            "66758b8904c4e6f5bbaa6b81"
+        ],
+        "configurationSetupToPrintOrders": [
+            {
+                "mainCategory": "Food",
+                "subCategories": [],
+                "salesPointIds": [],
+                "excludeEmployeeIds": []
+            }
+        ],
         "createdAt": "2024-06-20T15:51:58.551Z",
         "updatedAt": "2024-06-20T16:46:17.706Z",
-        "__v": 0,
-        "description": "printer1description",
-        "location": "printer1location",
-        "printFor": {
-            "employees": [
-                {
-                    "_id": "66758b8904c4e6f5bbaa6b81",
-                    "employeeName": "employee3"
-                }
-            ],
-            "categories": [],
-            "subCategories": []
-        }
+        "__v": 0
     }
 ]

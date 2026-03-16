@@ -21,7 +21,7 @@
                 "requiredQuantity": 0.5,
                 "costOfRequiredQuantity": 0.00675,
                 "_id": "667c13f2f22bdc543f105886",
-                "supplierGood": "667bfac8d28a7ee19d9be444"
+                "supplierGoodId": "667bfac8d28a7ee19d9be444"
             }
         ],
         "costPrice": 2.00675,
@@ -30,7 +30,7 @@
             "Eggs",
             "Milk"
         ],
-        "image": "../public/images/default_img.png",
+        "imagesUrl": ["../public/images/default_img.png"],
         "createdAt": "2024-06-26T11:31:24.946Z",
         "updatedAt": "2024-06-26T13:13:22.859Z",
         "__v": 0,
@@ -51,11 +51,11 @@
                 "requiredQuantity": 100,
                 "costOfRequiredQuantity": 0.27999999999999997,
                 "_id": "667bfddd5d50be40f0c7b07b",
-                "supplierGood": "667bfac8d28a7ee19d9be448"
+                "supplierGoodId": "667bfac8d28a7ee19d9be448"
             }
         ],
         "costPrice": 0.27999999999999997,
-        "image": "../public/images/default_img.png",
+        "imagesUrl": ["../public/images/default_img.png"],
         "createdAt": "2024-06-26T11:39:09.683Z",
         "updatedAt": "2024-06-26T11:39:09.683Z",
         "__v": 0,
@@ -70,7 +70,7 @@
         "onMenu": true,
         "available": true,
         "sellingPrice": 12.5,
-        "setMenu": [
+        "setMenuIds": [
             "667bfc0c5d50be40f0c7b065",
             "667bfddd5d50be40f0c7b079"
         ],
@@ -80,7 +80,7 @@
             "Eggs",
             "Milk"
         ],
-        "image": "../public/images/default_img.png",
+        "imagesUrl": ["../public/images/default_img.png"],
         "createdAt": "2024-06-26T12:19:45.023Z",
         "updatedAt": "2024-08-28T18:29:18.081Z",
         "__v": 0,

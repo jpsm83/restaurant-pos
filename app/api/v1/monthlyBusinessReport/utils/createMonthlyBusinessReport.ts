@@ -19,17 +19,10 @@ function getMonthStart(d: Date): Date {
 }
 
 /**
- * Returns the first day of the previous month at 00:00:00 (local time).
- */
-function getPreviousMonthStart(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth() - 1, 1, 0, 0, 0, 0);
-}
-
-/**
  * Finds or creates the open monthly business report for the current month.
- * If no report exists for the current month, closes any open report for the
- * previous month (in the same transaction) and creates a new report.
- * Caller must pass an active session when creation might occur.
+ * If no report exists for the current month, creates a new open report.
+ * Any required auto-close of the previous month is handled by the
+ * aggregation layer, not here.
  */
 export async function createMonthlyBusinessReport(
   businessId: Types.ObjectId,
@@ -59,17 +52,6 @@ export async function createMonthlyBusinessReport(
       isReportOpen: existing.isReportOpen ?? true,
     };
   }
-
-  const prevMonthStart = getPreviousMonthStart(now);
-  await MonthlyBusinessReport.updateOne(
-    {
-      businessId,
-      monthReference: prevMonthStart,
-      isReportOpen: true,
-    },
-    { $set: { isReportOpen: false } },
-    { session }
-  );
 
   const created = await MonthlyBusinessReport.create(
     [

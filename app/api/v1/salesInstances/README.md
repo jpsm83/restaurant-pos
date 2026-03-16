@@ -95,7 +95,7 @@ All responses are JSON. Errors use `handleApiError` (500) or explicit NextRespon
 **Body fields (all optional):** ordersIdsArr, discountPercentage, comments, cancel, ordersNewBillingStatus, voidReason, ordersNewStatus, paymentMethodArr, toSalesInstanceId, guests, salesInstanceStatus, responsibleByUserId, clientName.
 
 - **Validation:** Validate salesInstanceId and any IDs in body (responsibleByUserId, ordersIdsArr, toSalesInstanceId). Load sales instance; 404 if not found.
-- **Management-only actions:** **Discount**, **cancel**, and **ordersNewBillingStatus** (Void, Invitation) require the caller to be an on-duty employee with a **management role** (Owner, General Manager, Manager, Assistant Manager, MoD, Admin, Supervisor). Session userId → Employee.findOne({ userId, businessId }) for allEmployeeRoles and onDuty; role must be in MANAGEMENT_ROLES (lib/constants). When setting **ordersNewBillingStatus** to **Void**, **voidReason** is required in the body (one of: waste, mistake, refund, other) and is stored on the order (e.g. in comments).
+- **Management-only actions:** **Discount**, **cancel**, and **ordersNewBillingStatus** (Void, Invitation) require the caller to have a **management role** (Owner, General Manager, Manager, Assistant Manager, MoD, Admin, Supervisor). Session userId → Employee.findOne({ userId, businessId }) for allEmployeeRoles; role must be in MANAGEMENT_ROLES (lib/constants). When setting **ordersNewBillingStatus** to **Void**, **voidReason** is required in the body (one of: waste, mistake, refund, other) and is stored on the order (e.g. in comments).
 - **Special case:** If instance is Occupied and has no salesGroup (or empty) and the new status is not Reserved, the route can **delete** the instance (empty table cleanup) and return success.
 - **Order actions (in order as applicable):** discountPercentage, cancel, ordersNewBillingStatus (with voidReason when Void), ordersNewStatus, paymentMethodArr (closeOrders), toSalesInstanceId (transfer).
 - **Responsible user change:** If responsibleByUserId is set and different from openedByUserId, ensure that user is in the daily report (addUserToDailySalesReport(responsibleByUserId, businessId, session) if not).
@@ -110,6 +110,12 @@ Note: salesPointId and salesGroup are not updated in this route; they are manage
 ### 4.6 POST selfOrderingLocation — customer self-order flow
 
 This POST is the **customer** flow (open table + place order + pay). It is **only allowed when the sales point has selfOrdering === true**; otherwise the route returns 400 (e.g. “Self-ordering is not available at this table”). If the table **already has an open (non-Closed) sales instance** (e.g. opened by staff), the route returns **409** with a message that the table is being served by staff and self-ordering is not available until the table is closed. For **employees** scanning the same QR to open the table only, use **POST .../selfOrderingLocation/:id/openTable** (see route table).
+
+Additionally, customer self-ordering via QR **respects the business opening hours**:
+
+- The route loads the `Business` for the given `businessId` and uses `isBusinessOpenNow(business)` (from `lib/utils/isBusinessOpenNow`) against `businessOpeningHours`.
+- If the business is currently closed according to its configured opening hours, the API responds with 403 and a clear message (e.g. “Business is currently closed for service.”).
+- Staff can still open tables via the POS/QR (openTable route) when on-duty; opening hours apply only to **customer** self-ordering.
 
 **Body:** `businessId`, `ordersArr`, `paymentMethodArr`. Identity from **session** (userId).
 
@@ -127,9 +133,25 @@ This POST is the **customer** flow (open table + place order + pay). It is **onl
 - **Duplicate:** Same as POST /salesInstances — no non-Closed instance for same dailyReferenceNumber, businessId, salesPointId; 409 if duplicate.
 - **Logic:** Get or create daily report, build ISalesInstance (openedByUserId, openedAsRole: 'employee', salesPointId = path param), createSalesInstance. Return 201 with created instance.
 
-### 4.8 Delivery order flow (contract for future implementation)
+### 4.8 POST /salesInstances/delivery — home/delivery order flow
 
-When a **delivery order** endpoint is added, it should: (1) accept an optional **deliveryAddress** in the body; (2) if absent, use the authenticated user’s address from the **User** model; (3) create a sales instance for the business’s **delivery sales point** (the sales point with `salesPointType === 'delivery'`) with **responsibleByUserId** set to **DELIVERY_ATTRIBUTION_USER_ID** (from `@/lib/constants`), and store the chosen delivery address on the instance or on the order (e.g. embedded or reference). Payment before order submit for self-order and delivery is under study; third-party integration is not yet implemented.
+This POST is the **home/delivery** customer flow. It:
+
+- Accepts in the JSON body:
+  - `businessId` (required),
+  - `ordersArr` (required) — same structure as other order-creation flows,
+  - `paymentMethodArr` (required),
+  - `deliveryAddress` (optional; if omitted, the user’s stored address is used when available).
+- Requires an authenticated **User** session (`token.type === "user"`).
+- Loads the `Business` and enforces:
+  - `acceptsDelivery === true`,
+  - `isDeliveryOpenNow(business)` using `deliveryOpeningWindows` (from `lib/utils/isBusinessOpenNow`); if false, returns 403 (“Delivery is currently unavailable.”).
+- Resolves the **delivery sales point** (`salesPointType === "delivery"`) for that business and creates a `SalesInstance` with:
+  - `salesPointId` = delivery sales point id,
+  - `openedByUserId` = current user,
+  - `openedAsRole = 'customer'`,
+  - `responsibleByUserId = DELIVERY_ATTRIBUTION_USER_ID`.
+- Creates orders, applies promotions, closes orders with the provided payment methods, updates inventory and low-stock notifications, and sends an order confirmation email + in-app notification via `sendOrderConfirmation`.
 
 ---
 

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import mongoose, { Types } from "mongoose";
+import { getToken } from "next-auth/jwt";
 
 import connectDb from "@/lib/db/connectDb";
 import { handleApiError } from "@/lib/db/handleApiError";
@@ -21,54 +22,86 @@ export const PATCH = async (
 ) => {
   const purchaseId = context.params.purchaseId;
 
-  const {
-    purchaseInventoryItemsId,
-    newQuantityPurchased,
-    newPurchasePrice,
-    editedByEmployeeId,
-    reason,
-  } = (await req.json()) as {
-    purchaseInventoryItemsId: Types.ObjectId;
-    newQuantityPurchased: number;
-    newPurchasePrice: number;
-    editedByEmployeeId: Types.ObjectId;
-    reason: string;
-  };
+  const { purchaseInventoryItemsId, newQuantityPurchased, newPurchasePrice, reason } =
+    (await req.json()) as {
+      purchaseInventoryItemsId: Types.ObjectId;
+      newQuantityPurchased: number;
+      newPurchasePrice: number;
+      reason: string;
+    };
 
-  if (
-    !editedByEmployeeId ||
-    !reason ||
-    typeof reason !== "string" ||
-    reason.trim() === ""
-  ) {
+  if (!reason || typeof reason !== "string" || reason.trim() === "") {
     return new NextResponse(
       JSON.stringify({
-        message: "editedByEmployeeId and reason (non-empty) are required!",
+        message: "reason (non-empty) is required!",
       }),
       { status: 400, headers: { "Content-Type": "application/json" } }
     );
   }
 
   if (
-    isObjectIdValid([purchaseId, purchaseInventoryItemsId, editedByEmployeeId]) !==
-    true
+    isObjectIdValid([purchaseId, purchaseInventoryItemsId]) !== true
   ) {
     return new NextResponse(
-      JSON.stringify({ message: "Purchase or supplier or employee ID not valid!" }),
+      JSON.stringify({ message: "Purchase or supplier ID not valid!" }),
       { status: 400, headers: { "Content-Type": "application/json" } }
     );
   }
 
+  const token = await getToken({
+    req: req as Parameters<typeof getToken>[0]["req"],
+    secret: process.env.NEXTAUTH_SECRET,
+  });
+  if (!token?.id || token.type !== "user") {
+    return new NextResponse(
+      JSON.stringify({ message: "Unauthorized" }),
+      { status: 401, headers: { "Content-Type": "application/json" } }
+    );
+  }
+  const userId = new Types.ObjectId(token.id as string);
+
   await connectDb();
 
-  const employee = await Employee.findById(editedByEmployeeId)
-    .select("currentShiftRole onDuty businessId")
-    .lean() as IEmployee | null;
+  const purchaseItem = (await Purchase.findOne(
+    {
+      _id: purchaseId,
+      "purchaseInventoryItems._id": purchaseInventoryItemsId,
+    },
+    {
+      businessId: 1,
+      "purchaseInventoryItems.$": 1, // Only retrieve the matching inventory item
+    }
+  ).lean()) as unknown as IPurchase | null;
+
+  if (!purchaseItem) {
+    return new NextResponse(
+      JSON.stringify({ message: "Purchase item not found!" }),
+      {
+        status: 404,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+  }
+
+  const businessId =
+    typeof purchaseItem.businessId === "object" &&
+    purchaseItem.businessId !== null &&
+    "_id" in purchaseItem.businessId
+      ? (purchaseItem.businessId as { _id: Types.ObjectId })._id
+      : (purchaseItem.businessId as Types.ObjectId);
+
+  const employee = (await Employee.findOne({
+    userId,
+    businessId,
+  })
+    .select("_id currentShiftRole businessId")
+    .lean()) as IEmployee | null;
 
   if (
     !employee ||
-    !MANAGEMENT_ROLES.includes(employee.currentShiftRole ?? "") ||
-    !employee.onDuty
+    !MANAGEMENT_ROLES.includes(employee.currentShiftRole ?? "")
   ) {
     return new NextResponse(
       JSON.stringify({
@@ -78,47 +111,25 @@ export const PATCH = async (
     );
   }
 
+  if (
+    purchaseItem.businessId &&
+    employee.businessId?.toString() !== purchaseItem.businessId.toString()
+  ) {
+    return new NextResponse(
+      JSON.stringify({ message: "Purchase does not belong to your business!" }),
+      { status: 403, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
   // start the transaction
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
-    const purchaseItem = (await Purchase.findOne(
-      {
-        _id: purchaseId,
-        "purchaseInventoryItems._id": purchaseInventoryItemsId,
-      },
-      {
-        businessId: 1,
-        "purchaseInventoryItems.$": 1, // Only retrieve the matching inventory item
-      }
-    ).lean()) as unknown as IPurchase | null;
-
-    if (!purchaseItem) {
-      await session.abortTransaction();
-      return new NextResponse(
-        JSON.stringify({ message: "Purchase item not found!" }),
-        {
-          status: 404,
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-    }
-
     const previousQuantity =
       purchaseItem?.purchaseInventoryItems?.[0].quantityPurchased ?? 0;
     const previousPrice =
       purchaseItem?.purchaseInventoryItems?.[0].purchasePrice ?? 0;
-
-    if (purchaseItem.businessId && employee.businessId?.toString() !== purchaseItem.businessId.toString()) {
-      await session.abortTransaction();
-      return new NextResponse(
-        JSON.stringify({ message: "Purchase does not belong to your business!" }),
-        { status: 403, headers: { "Content-Type": "application/json" } }
-      );
-    }
 
     const now = new Date();
     const [updatePurchase, updatedInventory] = await Promise.all([
@@ -131,9 +142,11 @@ export const PATCH = async (
           $set: {
             "purchaseInventoryItems.$.quantityPurchased": newQuantityPurchased,
             "purchaseInventoryItems.$.purchasePrice": newPurchasePrice,
-            "purchaseInventoryItems.$.lastEditByEmployeeId": editedByEmployeeId,
+            "purchaseInventoryItems.$.lastEditByEmployeeId": employee._id,
             "purchaseInventoryItems.$.lastEditReason": reason.trim(),
             "purchaseInventoryItems.$.lastEditDate": now,
+            "purchaseInventoryItems.$.lastEditOriginalQuantity": previousQuantity,
+            "purchaseInventoryItems.$.lastEditOriginalPrice": previousPrice,
           },
           $inc: {
             totalAmount: newPurchasePrice - previousPrice,

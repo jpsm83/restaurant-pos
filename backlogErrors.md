@@ -16,38 +16,21 @@
 
 - 3.2 Modifying orders during service - only staff with admin or superviser level can cancel or void orders, and void orders must be with a descriptio as waste, mistake, refund or any other reason but must be especify. - DONE
 
-- 4 Recording purchases - The system supose to **increases** the actual current **Inventory** `dynamicSystemCount` for that supplier good by the purchased quantity (in the good’s measurement unit).
+- 4 Recording purchases - The system supose to **increases** the actual current **Inventory** `dynamicSystemCount` for that supplier good by the purchased quantity (in the good’s measurement unit). - DONE
 
-- 4 Editing purchase details - edit purchase can be done only by managers and must add the reason on the update of that register as it is done on the inventory physical count with re‑edit data for tracking
+- 4 Editing purchase details - edit purchase can be done only by managers and must add the reason on the update of that register as it is done on the inventory physical count with re‑edit data for tracking - DONE
 
-- 5 Physical counts and corrections - only managers and supervisers can re-edit a inventory
+- 5 Physical counts and corrections - only managers and supervisers can re-edit a inventory - DONE
 
-- 5 Re‑editing - i am not ver clear what is "Waste analysis" and KPIs
+- 9 During service - Waiters, bartender or users can open tables and order at the bar/restaurante. the bar/restaurante supose to have its open times defined on the business model so users can order food from home only whem the business is open - DONE
 
-- 5 must review the file app/api/v1/monthlyBusinessReport/toDo.md
-
-- 9 During service - Waiters, bartender or users can open tables and order at the bar/restaurante. the bar/restaurante supose to have its open times defined on the business model so users can order food from home only whem the business is open
-
-======================================================================
-
-move the dummy data orders.json to mongodb, delete the enterely orders from there and replace, delete any relation with the old version of orders once it has been modified (do the same with - dailySalesReport, orders, salesInstance)
-
-orders made by self-ordering or delivery must send the receit to the user email for comprovation - DONE
+- orders made by self-ordering or delivery must send the receit to the user email for comprovation - DONE
 
 business - DONE
 salesPoint - DONE
 employees - DONE
 customer - DONE
-
-
-
-dailySalesReports
-- review the whole code
-- probaly a better approach is to add user sales report when tables are closed
-- addEmployeeToDailySalesReport tested and working
-
-
-
+dailySalesReports - DONE
 salesInstance - DONE
 printers - DONE
 schedules - DONE
@@ -60,9 +43,11 @@ purchases - DONE
 inventories - DONE
 notifications - DONE
 
-monthlyBusinessReport
+monthlyBusinessReport - DONE BUT NOT TESTED - create a simple route to execute it
 reservations
 cloudinaryActions
+
+- move the dummy data to mongodb
 
 - add upload cloudinary to all POST and PATH of documents that have imageUrl or documentsUrl
     - BUSINESS - single image - DONE
@@ -81,3 +66,5 @@ cloudinaryActions
 - transform cloudinaryActions route to be a function to be used in all the creations that could have images
 - when a salesInstance is created by client using qrCode, update the qrLastScanned of the salesPoint
 - add collor themes for the types of businessGoods (or photo)
+
+- must review the file app/api/v1/monthlyBusinessReport/toDo.md

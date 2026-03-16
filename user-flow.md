@@ -34,7 +34,7 @@ This document describes **how the app works from a user perspective**, from init
     - Operational flags like `active`, `onDuty`, and `currentShiftRole`.
     - HR data: join date, vacation allowance/balance, salary (frequency + gross/net).
   - The creation/update of employees keeps the **User ↔ Employee** link consistent in transactions.
-  - **Roles and on‑duty state** drive permissions (e.g. who may close a daily report or monthly report) and whose sales are shown in reporting.
+  - **Manager roles** (Owner, General Manager, Manager, Assistant Manager, MoD, Admin, Supervisor) can close daily/monthly reports and perform manager actions at any time (no on-duty requirement). **Non‑manager** employees must be on duty for operational actions (e.g. opening tables), and on‑duty state continues to drive day-to-day attribution of sales and tips.
 
 - **Configure schedules and labour cost (required for employee login; optional only if you never use employee mode)**
   - Manager defines **Schedules** for each day:
@@ -158,7 +158,7 @@ Role (customer vs employee) is determined by session/context; the app does not r
 
 - **Modifying orders during service**
   - Staff can add new orders, transfer orders between tables/sales points, and (for **management roles** only) cancel, void, or mark orders as invitation/complimentary.
-  - **Cancel, void, and invitation/complimentary** are restricted to on-duty staff with a **management/superior role** (Owner, General Manager, Manager, Assistant Manager, MoD, Admin, Supervisor). Only they can:
+  - **Cancel, void, and invitation/complimentary** are restricted to staff with a **management/superior role** (Owner, General Manager, Manager, Assistant Manager, MoD, Admin, Supervisor). Only they can:
     - **Cancel** orders (order is removed and inventory restored).
     - **Void** orders (order remains in reporting but is marked void; a **reason is required**: waste, mistake, refund, or other).
     - Mark orders as **invitation/complimentary**.
@@ -209,7 +209,7 @@ Role (customer vs employee) is determined by session/context; the app does not r
 - **Editing purchase details**
   - Users can:
     - Add more lines if the receipt is incomplete.
-    - **Edit** quantities or prices if there were mistakes — **manager-only** (same roles as closing the daily report); the editor must be **on duty** and provide a **reason**. The system records who edited, when, and the reason on the line for audit.
+    - **Edit** quantities or prices if there were mistakes — **manager-only** (same roles as closing the daily report); the editor must provide a **reason**. The system records who edited, when, the reason, **and the previous quantity and price (re‑edit data)** on the line for audit, similar to inventory physical-count re-edits.
     - Remove lines that were added in error.
   - The system keeps inventory in sync:
     - Adding a line **increments** stock for that supplier good.
@@ -244,7 +244,7 @@ Role (customer vs employee) is determined by session/context; the app does not r
   - Inventory staff performs **physical counts** periodically or at month end:
     - For each supplier good, they record the **actual quantity on hand**.
     - The system logs who counted, when, and any **deviation** between system count and physical count.
-  - **Re‑editing** a count is restricted to **managers or supervisors on duty**; the request must include who is authorizing the re‑edit and a **reason**. Each re‑edit is tracked (who, when, reason, original values), and deviations are updated.
+  - **Re‑editing** a count is restricted to **managers or supervisors**; the request must include a **reason**. The system verifies that the user performing the re‑edit is a manager or supervisor using the current session (no employee ID in the request body). Each re‑edit is tracked (who, when, reason, original values), and deviations are updated.
   - These deviations feed into:
     - **Waste analysis** (linked to budget impact levels).
     - Preparation for monthly reporting and KPIs.
@@ -282,7 +282,7 @@ Role (customer vs employee) is determined by session/context; the app does not r
 
 - **Conditions for closing the day**
   - To **close** the daily sales report:
-    - Identity from **session** (userId); the system resolves Employee by userId + businessId and checks allowed role and **on duty**.
+    - Identity from **session** (userId); the system resolves Employee by userId + businessId and checks an allowed **manager role** (no on-duty requirement).
     - There must be **no open orders** (billingStatus `Open`) for that business and `dailyReferenceNumber`.
   - Once closed:
     - The daily report becomes **locked** for that date.
@@ -290,12 +290,22 @@ Role (customer vs employee) is determined by session/context; the app does not r
 
 ---
 
-## 7. Monthly business reporting and KPIs (manager / owner)
+## 7. Weekly and monthly business reporting and KPIs (manager / owner)
+
+- **Weekly business report**
+  - Each business can configure the **start day of its reporting week** (e.g. Monday or Sunday) in the Business settings. This is stored on the business document (e.g. `reportingConfig.weeklyReportStartDay`, where 0 = Sunday, 1 = Monday, etc.).
+  - For each reporting week and business, the system maintains a **Weekly business report**:
+    - Aggregates data from all **calculated/closed** daily sales reports whose days fall into that week (sales, COGS, tips, goods sold/voided/complimentary, payment methods, POS commission).
+    - Focuses on **operational performance**; fixed and extra monthly costs are **not** included in the weekly view.
+  - Lifecycle:
+    - As daily reports are calculated and closed, they continuously feed the current week’s report.
+    - When the first sales instance of a new reporting week is opened (which creates a new `dailySalesReport` for that day), the system **automatically aggregates and closes** the **previous** week’s report.
+  - Managers receive a **notification** when a weekly report has been aggregated and closed, so they can review that week’s results.
 
 - **Monthly business report**
   - For each business and month, the system maintains a **Monthly business report**:
     - Aggregates data from all **calculated** daily sales reports in the month (sales, COGS, tips, goods sold/voided/complimentary, payment methods, POS commission). The report is refreshed automatically after each **calculate business daily sales report**.
-    - Combines this with **inventory** (deviations and waste by supplier‑good budget impact), **purchasing** data, and **labour cost** from **Schedules**.
+    - Combines this with **inventory** (deviations and waste by supplier‑good budget impact), **purchasing** data, and **labour cost** from **Schedules**, plus **fixed** and **extra** operating costs recorded for that month.
   - The monthly report is designed to show:
     - **Financial summary**:
       - Total sales, cost of goods (COGS), net revenue, gross profit, tips.
@@ -303,27 +313,26 @@ Role (customer vs employee) is determined by session/context; the app does not r
     - **Cost breakdown**:
       - Food and beverage cost percentages.
       - Labour cost (from schedules and shifts).
-      - Fixed and extra costs.
+      - Fixed and extra operating costs for that month.
     - **Goods analysis**:
       - What goods were sold, voided, or given as invitations.
     - **Supplier waste**:
-      - Waste by supplier good budget impact level.
+      - Waste by supplier good budget impact level, derived from inventory variance.
     - **Payment and commission**:
       - Payment method breakdown and any POS commissions.
-
-- **Targets vs actuals**
-  - The monthly report is compared against **business metrics** configured at onboarding:
-    - Target food cost %, labour %, and waste thresholds.
-  - This allows managers and owners to see:
-    - Where they are over or under target.
-    - Whether the business is at or near **break‑even**.
-
-- **Closing the month**
-  - At the end of the month, managers can **close** the monthly business report (PATCH closeMonthlyReport):
-    - After inventories are closed and all daily reports for that month are closed (no open daily reports in the month).
-  - Once closed, it becomes the reference for:
-    - Strategic decisions (price changes, promotions, staffing adjustments).
-    - Historical comparisons across months.
+  - **Targets vs actuals**
+    - The monthly report is compared against **business metrics** configured at onboarding:
+      - Target food cost %, labour %, fixed cost %, and waste thresholds by budget impact.
+    - A persisted `metricsComparison` section stores, per metric, the target, actual, delta, and over/under‑target flags so the UI can highlight where the business is off course.
+    - This allows managers and owners to see:
+      - Where they are over or under target.
+      - Whether the business is at or near **break‑even**.
+  - **Closing the month**
+    - The system **auto-closes** the monthly business report at the month boundary once all daily reports for that month are closed (no open daily reports in the month).
+    - Once closed, it becomes the reference for:
+      - Strategic decisions (price changes, promotions, staffing adjustments).
+      - Historical comparisons across months.
+    - When the system finishes aggregating the full month (e.g. on the first daily calculation of the new month that closes the previous one), managers receive a **notification** that the monthly report for that period is ready to be reviewed.
 
 ---
 
@@ -356,16 +365,17 @@ Role (customer vs employee) is determined by session/context; the app does not r
 - **During service**
   - Waiters/bartenders:
     - Open **sales instances** for tables.
-    - Take **orders** (or monitor self‑ordering) using the configured menu.
+    - Take **orders** (or monitor self‑ordering and delivery) using the configured menu.
     - Manage order lifecycle (send, transfer, cancel, void, complimentary).
     - Receive printed order tickets in kitchen/bar via configured printers.
     - Present bills and collect **payments** and **tips**.
   - Customers:
-    - Sit at tables (sales points) or scan **QR codes** for self‑ordering.
-    - Place orders and, in some flows, pay directly.
+    - Sit at tables (sales points) or scan **QR codes** for self‑ordering when the business is open according to its configured **businessOpeningHours**.
+    - Place delivery orders from home using the **delivery** flow when the business has `acceptsDelivery === true` and is within its configured **deliveryOpeningWindows**.
+    - Place orders and, in these flows, pay directly.
   - The system:
     - Updates **inventory** in real time based on orders and purchases.
-    - Tracks per‑employee sales, tips, and order actions.
+    - Tracks per‑employee and **delivery** sales, tips, and order actions (delivery attributed to a fixed delivery user id in reports).
 
 - **End of the day**
   - Manager:

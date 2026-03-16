@@ -17,6 +17,40 @@ const metricsSchema = new Schema({
   }, // Food waste percentage acceptable - 3-7% of sales average
 });
 
+const businessOpeningHourSchema = new Schema(
+  {
+    dayOfWeek: { type: Number, min: 0, max: 6, required: true },
+    openTime: { type: String, required: true },
+    closeTime: { type: String, required: true },
+  }
+);
+
+const deliveryWindowSchema = new Schema(
+  {
+    openTime: { type: String, required: true },
+    closeTime: { type: String, required: true },
+  }
+);
+
+const deliveryOpeningWindowSchema = new Schema(
+  {
+    dayOfWeek: { type: Number, min: 0, max: 6, required: true },
+    windows: { type: [deliveryWindowSchema], default: [] },
+  }
+);
+
+const reportingConfigSchema = new Schema(
+  {
+    weeklyReportStartDay: {
+      type: Number,
+      min: 0,
+      max: 6,
+      default: 1,
+    }, // 0 = Sunday, 1 = Monday (default), etc.; used for weeklyBusinessReport
+  },
+  { _id: false }
+);
+
 const businessSchema = new Schema(
   {
     // required fields
@@ -60,6 +94,18 @@ const businessSchema = new Schema(
     acceptsDelivery: { type: Boolean, default: false },
     deliveryRadius: { type: Number }, // e.g. km; unit documented in API
     minOrder: { type: Number }, // minimum order amount for delivery
+    businessOpeningHours: {
+      type: [businessOpeningHourSchema],
+      default: undefined,
+    }, // simple weekly opening hours by dayOfWeek and HH:MM range
+    deliveryOpeningWindows: {
+      type: [deliveryOpeningWindowSchema],
+      default: undefined,
+    }, // weekly delivery windows; each has dayOfWeek and windows with HH:MM ranges
+    reportingConfig: {
+      type: reportingConfigSchema,
+      default: undefined,
+    }, // optional reporting configuration (e.g. weekly report start day)
   },
   {
     timestamps: true,

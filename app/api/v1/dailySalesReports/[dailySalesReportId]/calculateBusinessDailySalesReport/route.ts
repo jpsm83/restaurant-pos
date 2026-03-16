@@ -9,10 +9,7 @@ import { updateEmployeesDailySalesReport } from "../../utils/updateEmployeeDaily
 import { aggregateDailyReportsIntoMonthly } from "@/app/api/v1/monthlyBusinessReport/utils/aggregateDailyReportsIntoMonthly";
 
 // imported interfaces
-import {
-  IGoodsReduced,
-  IEmployeeDailySalesReport,
-} from "@/lib/interface/IDailySalesReport";
+import { IGoodsReduced } from "@/lib/interface/IDailySalesReport";
 import { IEmployee } from "@/lib/interface/IEmployee";
 
 // imported models
@@ -82,13 +79,12 @@ export const PATCH = async (
       userId,
       businessId,
     })
-      .select("currentShiftRole onDuty")
+      .select("currentShiftRole")
       .lean()) as IEmployee | null;
 
     if (
       !employeeRoleOnDuty ||
-      !MANAGEMENT_ROLES.includes(employeeRoleOnDuty.currentShiftRole ?? "") ||
-      !employeeRoleOnDuty.onDuty
+      !MANAGEMENT_ROLES.includes(employeeRoleOnDuty.currentShiftRole ?? "")
     ) {
       return new NextResponse(
         JSON.stringify({
@@ -138,16 +134,12 @@ export const PATCH = async (
       userIds = [...userIds, DELIVERY_ATTRIBUTION_USER_ID];
     }
 
-    const updatedEmployeesDailySalesReport =
-      (await updateEmployeesDailySalesReport(
-        userIds,
-        dailyReportWithUsers.dailyReferenceNumber
-      )) as { updatedEmployees: IEmployeeDailySalesReport[]; errors: string[] };
+    const updatedEmployeesDailySalesReport = await updateEmployeesDailySalesReport(
+      userIds,
+      dailyReportWithUsers.dailyReferenceNumber
+    );
 
-    if (
-      updatedEmployeesDailySalesReport.errors &&
-      updatedEmployeesDailySalesReport.errors.length > 0
-    ) {
+    if (updatedEmployeesDailySalesReport.errors.length > 0) {
       return new NextResponse(
         JSON.stringify({
           message: "Some errors occurred while updating employees!",

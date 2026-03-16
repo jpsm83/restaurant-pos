@@ -19,6 +19,7 @@ import {
   IDailySalesReport,
   IGoodsReduced,
 } from "@/lib/interface/IDailySalesReport";
+import { IBusiness } from "@/lib/interface/IBusiness";
 import { ISalesInstance } from "@/lib/interface/ISalesInstance";
 import { IOrder } from "@/lib/interface/IOrder";
 import { IPaymentMethod } from "@/lib/interface/IPaymentMethod";
@@ -27,6 +28,8 @@ import { IPaymentMethod } from "@/lib/interface/IPaymentMethod";
 import DailySalesReport from "@/lib/db/models/dailySalesReport";
 import SalesInstance from "@/lib/db/models/salesInstance";
 import SalesPoint from "@/lib/db/models/salesPoint";
+import Business from "@/lib/db/models/business";
+import { isBusinessOpenNow } from "@/lib/utils/isBusinessOpenNow";
 import User from "@/lib/db/models/user";
 import { validatePaymentMethodArray } from "@/app/api/v1/orders/utils/validatePaymentMethodArray";
 import { applyPromotionsToOrders } from "@/lib/promotions/applyPromotions";
@@ -171,6 +174,23 @@ export const POST = async (
     return new NextResponse(
       JSON.stringify({ message: "Sales point does not belong to this business." }),
       { status: 400, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  // Enforce business opening hours for customer self-ordering
+  const business = (await Business.findById(businessId).lean()) as unknown as IBusiness | null;
+  if (!business) {
+    return new NextResponse(
+      JSON.stringify({ message: "Business not found." }),
+      { status: 404, headers: { "Content-Type": "application/json" } }
+    );
+  }
+  if (!isBusinessOpenNow(business)) {
+    return new NextResponse(
+      JSON.stringify({
+        message: "Business is currently closed for service.",
+      }),
+      { status: 403, headers: { "Content-Type": "application/json" } }
     );
   }
 

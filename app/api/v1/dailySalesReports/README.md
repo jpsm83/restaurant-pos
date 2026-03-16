@@ -49,9 +49,9 @@ app/api/v1/dailySalesReports/
 - **`route.ts`** (root): GET all daily sales reports (populated employeesDailySalesReport.userId, selfOrderingSalesReport.userId → User).
 - **`business/[businessId]/route.ts`**: GET reports for a business, optionally filtered by `?startDate` and `?endDate`.
 - **`[dailySalesReportId]/route.ts`**: GET one by ID; DELETE exists but is discouraged (see section 6).
-- **`closeDailySalesReport`**: PATCH — set `isDailyReportOpen: false` (role check; no open orders allowed).
+- **`closeDailySalesReport`**: PATCH — set `isDailyReportOpen: false` (manager role check; no open orders allowed).
 - **`calculateUsersDailySalesReport`**: PATCH — body: `userIds` (array). Run updateEmployeesDailySalesReport(userIds, dailyReferenceNumber); return updated user reports.
-- **`calculateBusinessDailySalesReport`**: PATCH — no employeeId in body; auth from session (userId → Employee.findOne({ userId, businessId }) for role/onDuty). Run updateEmployeesDailySalesReport for all userIds from employeesDailySalesReport, then aggregate to business-level fields. Populate employeesDailySalesReport.userId → User for response.
+- **`calculateBusinessDailySalesReport`**: PATCH — no employeeId in body; auth from session (userId → Employee.findOne({ userId, businessId }) for manager role). Run updateEmployeesDailySalesReport for all userIds from employeesDailySalesReport, then aggregate to business-level fields. Populate employeesDailySalesReport.userId → User for response.
 - **Utils** are used by **sales instance** routes (`createDailySalesReport`, `addUserToDailySalesReport`) and by the **calculate** routes (`updateEmployeesDailySalesReport`).
 
 ---
@@ -64,9 +64,9 @@ app/api/v1/dailySalesReports/
 | GET | `/api/v1/dailySalesReports/business/:businessId` | Returns reports for business. Optional `?startDate=&endDate=` (date range). 400 if startDate > endDate; 404 if none. |
 | GET | `/api/v1/dailySalesReports/:dailySalesReportId` | Returns one report by ID (populated userId → User). 404 if not found. |
 | DELETE | `/api/v1/dailySalesReports/:dailySalesReportId` | Deletes one report. **Discouraged** for data integrity; see section 6. |
-| PATCH | `/api/v1/dailySalesReports/:dailySalesReportId/closeDailySalesReport` | Closes the report (sets isDailyReportOpen: false). **No body employeeId**; auth from session (userId → Employee.findOne({ userId, businessId }) for Manager/Admin/MoD, on duty). 400 if open orders exist. |
+| PATCH | `/api/v1/dailySalesReports/:dailySalesReportId/closeDailySalesReport` | Closes the report (sets isDailyReportOpen: false). **No body employeeId**; auth from session (userId → Employee.findOne({ userId, businessId }) for Manager/Admin/MoD). 400 if open orders exist. |
 | PATCH | `/api/v1/dailySalesReports/:dailySalesReportId/calculateUsersDailySalesReport` | Recomputes user daily sales for given userIds. Body: `userIds` (array). Returns updated user reports; 207 if some errors. |
-| PATCH | `/api/v1/dailySalesReports/:dailySalesReportId/calculateBusinessDailySalesReport` | Recomputes all users (from employeesDailySalesReport.userId) then business totals. **No body employeeId**; auth from session (userId → Employee for role/onDuty). Manager/Admin/etc., on duty. |
+| PATCH | `/api/v1/dailySalesReports/:dailySalesReportId/calculateBusinessDailySalesReport` | Recomputes all users (from employeesDailySalesReport.userId) then business totals. **No body employeeId**; auth from session (userId → Employee for manager role). |
 
 All responses are JSON. Errors use `handleApiError` (500) or explicit `NextResponse` with 400/403/404/207.
 
@@ -83,7 +83,7 @@ All responses are JSON. Errors use `handleApiError` (500) or explicit `NextRespo
 
 ### 4.2 PATCH closeDailySalesReport
 
-- **Body:** None for identity. Auth from **session**: getToken → token.id (userId). Resolve Employee by `Employee.findOne({ userId, businessId })` (report’s businessId); Employee must have `currentShiftRole` in allowed roles and `onDuty: true` (403 otherwise). Report must exist (404).
+- **Body:** None for identity. Auth from **session**: getToken → token.id (userId). Resolve Employee by `Employee.findOne({ userId, businessId })` (report’s businessId); Employee must have `currentShiftRole` in allowed manager roles (403 otherwise). Report must exist (404).
 - **Business rule:** No **open orders** (billingStatus "Open") for that business and that report’s `dailyReferenceNumber`; otherwise 400.
 - **Logic:** `DailySalesReport.updateOne(dailySalesReportId, { $set: { isDailyReportOpen: false } })`.
 - **Response:** 200 success; 400 if open orders; 403 if not allowed; 404 if report not found; 500 if update modifiedCount === 0.
@@ -92,12 +92,12 @@ All responses are JSON. Errors use `handleApiError` (500) or explicit `NextRespo
 
 - **Body:** `{ userIds: Types.ObjectId[] }` (non-empty array).
 - **Validation:** `isObjectIdValid([dailySalesReportId, ...userIds])`. Load report to get `dailyReferenceNumber`; 404 if report not found.
-- **Logic:** Call **updateEmployeesDailySalesReport(userIds, dailyReferenceNumber)**. That util **replaces** the report’s `employeesDailySalesReport` with the recalculated array **only for the given userIds** — so if you pass a subset, the report will contain only those users (others are removed). For a full refresh, the client should pass all userIds currently on the report. Return the updated user reports.
-- **Response:** 200 + updated user reports; 207 if partial errors; 400 for invalid IDs; 404 if report not found.
+- **Logic:** Call **updateEmployeesDailySalesReport(userIds, dailyReferenceNumber)**. That util **replaces** the report’s `employeesDailySalesReport` with the recalculated array **only for the given userIds** — so if you pass a subset, the report will contain only those users (others are removed). For a full refresh, the client should pass all userIds currently on the report. Return the updated user reports and any **per-user errors** in a structured object.
+- **Response:** 200 + updated user reports; 207 if partial errors (some userIds failed to update while others succeeded); 400 for invalid IDs; 404 if report not found.
 
 ### 4.4 PATCH calculateBusinessDailySalesReport
 
-- **Body:** None for identity. Auth from **session** (userId → Employee.findOne({ userId, businessId }) for Manager/Admin/etc. and on duty). Load report (with businessId for subscription); 404 if not found.
+- **Body:** None for identity. Auth from **session** (userId → Employee.findOne({ userId, businessId }) for Manager/Admin/etc.). Load report (with businessId for subscription); 404 if not found.
 - **Logic:**
   1. Get all **userIds** from the report’s `employeesDailySalesReport` (each entry has userId).
   2. Call **updateEmployeesDailySalesReport(userIds, dailyReferenceNumber)** to refresh user data.
@@ -163,7 +163,7 @@ All responses are JSON. Errors use `handleApiError` (500) or explicit `NextRespo
 
 ### 7.4 Users and role checks
 
-- **Users** are added to the report (employeesDailySalesReport with **userId**) when they open or become responsible for a sales instance as employee. For **closeDailySalesReport** and **calculateBusinessDailySalesReport**, the server gets userId from session and resolves **Employee** by `Employee.findOne({ userId, businessId })` to check **currentShiftRole** and **onDuty** (Manager/Admin/MoD/etc. only).
+- **Users** are added to the report (employeesDailySalesReport with **userId**) when they open or become responsible for a sales instance as employee. For **closeDailySalesReport** and **calculateBusinessDailySalesReport**, the server gets userId from session and resolves **Employee** by `Employee.findOne({ userId, businessId })` to check **currentShiftRole** is in allowed manager roles (Manager/Admin/MoD/etc.); there is no on-duty requirement for these manager actions.
 - User names are populated on GET (employeesDailySalesReport.userId → User: personalDetails.firstName, lastName, username).
 
 ### 7.5 Self-ordering
@@ -189,7 +189,7 @@ All responses are JSON. Errors use `handleApiError` (500) or explicit `NextRespo
 | `@/lib/utils/isObjectIdValid` | Validate dailySalesReportId, businessId, userId, userIds. |
 | `@/lib/interface/IDailySalesReport`, `IEmployeeDailySalesReport`, `IGoodsReduced` | Types for report and employee report. |
 | `@/lib/interface/IPaymentMethod` | Payment method structure. |
-| `@/lib/interface/IEmployee` | Employee currentShiftRole, onDuty for auth. |
+| `@/lib/interface/IEmployee` | Employee currentShiftRole for auth. |
 | `@/lib/db/models/dailySalesReport` | Mongoose DailySalesReport model. |
 | `@/lib/db/models/employee` | Role/onDuty checks via Employee.findOne({ userId, businessId }). |
 | `@/lib/db/models/user` | Populate userId → User for display. |

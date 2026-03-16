@@ -165,6 +165,12 @@ export const PATCH = async (
     const acceptsDeliveryStr = formData.get("acceptsDelivery") as string | undefined;
     const deliveryRadiusStr = formData.get("deliveryRadius") as string | undefined;
     const minOrderStr = formData.get("minOrder") as string | undefined;
+    const businessOpeningHoursStr = formData.get(
+      "businessOpeningHours"
+    ) as string | undefined;
+    const deliveryOpeningWindowsStr = formData.get(
+      "deliveryOpeningWindows"
+    ) as string | undefined;
 
     // check required fields
     if (
@@ -410,6 +416,32 @@ export const PATCH = async (
     if (minOrderStr !== undefined && minOrderStr !== "") {
       const n = Number(minOrderStr);
       if (!Number.isNaN(n) && n >= 0) updateBusinessObj.minOrder = n;
+    }
+    if (businessOpeningHoursStr !== undefined) {
+      try {
+        const parsed = JSON.parse(businessOpeningHoursStr) as unknown;
+        if (Array.isArray(parsed)) {
+          updateBusinessObj.businessOpeningHours =
+            parsed as IBusiness["businessOpeningHours"];
+        } else if (businessOpeningHoursStr === "") {
+          updateBusinessObj.businessOpeningHours = undefined;
+        }
+      } catch {
+        // leave unchanged if invalid
+      }
+    }
+    if (deliveryOpeningWindowsStr !== undefined) {
+      try {
+        const parsed = JSON.parse(deliveryOpeningWindowsStr) as unknown;
+        if (Array.isArray(parsed)) {
+          updateBusinessObj.deliveryOpeningWindows =
+            parsed as IBusiness["deliveryOpeningWindows"];
+        } else if (deliveryOpeningWindowsStr === "") {
+          updateBusinessObj.deliveryOpeningWindows = undefined;
+        }
+      } catch {
+        // leave unchanged if invalid
+      }
     }
 
     // Handle address updates dynamically

@@ -31,6 +31,8 @@ const purchaseItemInventorySchema = new Schema(
     lastEditByEmployeeId: { type: Schema.Types.ObjectId, ref: "Employee" },
     lastEditReason: { type: String },
     lastEditDate: { type: Date },
+    lastEditOriginalQuantity: { type: Number },
+    lastEditOriginalPrice: { type: Number },
   },
   {
     timestamps: true,

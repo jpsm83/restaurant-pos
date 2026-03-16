@@ -92,6 +92,66 @@ const monthlyBusinessReportSchema = new Schema(
       // Average percentage of wasted goods with very high budget impact.
     },
     // Percentages representing the waste of supplier goods categorized by their budget impact level.
+    metricsComparison: {
+      foodCostPercentage: {
+        targetValue: { type: Number },
+        actualValue: { type: Number },
+        delta: { type: Number },
+        isOverTarget: { type: Boolean },
+        isUnderTarget: { type: Boolean },
+      },
+      laborCostPercentage: {
+        targetValue: { type: Number },
+        actualValue: { type: Number },
+        delta: { type: Number },
+        isOverTarget: { type: Boolean },
+        isUnderTarget: { type: Boolean },
+      },
+      fixedCostPercentage: {
+        targetValue: { type: Number },
+        actualValue: { type: Number },
+        delta: { type: Number },
+        isOverTarget: { type: Boolean },
+        isUnderTarget: { type: Boolean },
+      },
+      supplierGoodWastePercentage: {
+        veryLowBudgetImpact: {
+          targetValue: { type: Number },
+          actualValue: { type: Number },
+          delta: { type: Number },
+          isOverTarget: { type: Boolean },
+          isUnderTarget: { type: Boolean },
+        },
+        lowBudgetImpact: {
+          targetValue: { type: Number },
+          actualValue: { type: Number },
+          delta: { type: Number },
+          isOverTarget: { type: Boolean },
+          isUnderTarget: { type: Boolean },
+        },
+        mediumBudgetImpact: {
+          targetValue: { type: Number },
+          actualValue: { type: Number },
+          delta: { type: Number },
+          isOverTarget: { type: Boolean },
+          isUnderTarget: { type: Boolean },
+        },
+        hightBudgetImpact: {
+          targetValue: { type: Number },
+          actualValue: { type: Number },
+          delta: { type: Number },
+          isOverTarget: { type: Boolean },
+          isUnderTarget: { type: Boolean },
+        },
+        veryHightBudgetImpact: {
+          targetValue: { type: Number },
+          actualValue: { type: Number },
+          delta: { type: Number },
+          isOverTarget: { type: Boolean },
+          isUnderTarget: { type: Boolean },
+        },
+      },
+    },
     totalCustomersServed: { type: Number },
     // Total number of customers served during the month.
     averageSpendingPerCustomer: { type: Number },

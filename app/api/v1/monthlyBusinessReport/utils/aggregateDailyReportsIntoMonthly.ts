@@ -4,16 +4,24 @@ import connectDb from "@/lib/db/connectDb";
 import DailySalesReport from "@/lib/db/models/dailySalesReport";
 import MonthlyBusinessReport from "@/lib/db/models/monthlyBusinessReport";
 import Schedule from "@/lib/db/models/schedule";
+import Business from "@/lib/db/models/business";
 import { IGoodsReduced } from "@/lib/interface/IDailySalesReport";
 import { IPaymentMethod } from "@/lib/interface/IPaymentMethod";
+import { IMetrics } from "@/lib/interface/IBusiness";
 import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 import {
   createMonthlyBusinessReport,
   type MonthlyReportOpen,
 } from "./createMonthlyBusinessReport";
+import { getWasteByBudgetImpactForMonth } from "../../inventories/utils/getWasteByBudgetImpactForMonth";
+import { sendMonthlyReportReadyNotification } from "@/lib/monthlyReports/sendMonthlyReportReadyNotification";
 
 function getMonthStart(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0);
+}
+
+function getPreviousMonthStart(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth() - 1, 1, 0, 0, 0, 0);
 }
 
 function getMonthEnd(monthStart: Date): Date {
@@ -101,6 +109,9 @@ export async function aggregateDailyReportsIntoMonthly(
   const session = await mongoose.startSession();
   session.startTransaction();
 
+  let shouldSendReadyNotification = false;
+  let closedMonthLabel: string | null = null;
+
   try {
     const report = await createMonthlyBusinessReport(businessId, session);
     if (!report) {
@@ -113,7 +124,49 @@ export async function aggregateDailyReportsIntoMonthly(
       (report as MonthlyReportOpen).monthReference ?? getMonthStart(new Date());
     const monthEnd = getMonthEnd(monthStart);
 
-    const [dailyReports, schedules, existingReport] = await Promise.all([
+    // Auto-close previous month (if any) when aggregating a new month,
+    // mirroring weekly auto-close behaviour.
+    const previousMonthStart = getPreviousMonthStart(monthStart);
+    const previousMonthEnd = getMonthEnd(previousMonthStart);
+
+    const openPrevMonthReport = (await MonthlyBusinessReport.findOne({
+      businessId,
+      monthReference: previousMonthStart,
+      isReportOpen: true,
+    })
+      .select("_id monthReference isReportOpen")
+      .session(session)
+      .lean()) as
+      | { _id: Types.ObjectId; monthReference: Date; isReportOpen?: boolean }
+      | null;
+
+    if (openPrevMonthReport) {
+      const openDailyInPrevMonth = await DailySalesReport.exists({
+        businessId,
+        createdAt: { $gte: previousMonthStart, $lte: previousMonthEnd },
+        isDailyReportOpen: true,
+      }).session(session);
+
+      if (!openDailyInPrevMonth) {
+        const closeResult = await MonthlyBusinessReport.updateOne(
+          { _id: openPrevMonthReport._id, isReportOpen: true },
+          { $set: { isReportOpen: false } },
+          { session }
+        );
+        if (closeResult.modifiedCount > 0) {
+          shouldSendReadyNotification = true;
+          closedMonthLabel = previousMonthStart.toISOString().slice(0, 7); // YYYY-MM
+        }
+      }
+    }
+
+    const [
+      dailyReports,
+      schedules,
+      existingReport,
+      supplierWasteAnalysis,
+      businessDoc,
+    ] = await Promise.all([
       DailySalesReport.find({
         businessId,
         createdAt: { $gte: monthStart, $lte: monthEnd },
@@ -132,9 +185,13 @@ export async function aggregateDailyReportsIntoMonthly(
         .session(session)
         .lean(),
       MonthlyBusinessReport.findById(reportId)
-        .select("costBreakdown.totalFixedOperatingCost costBreakdown.totalExtraCost")
+        .select(
+          "costBreakdown.totalFixedOperatingCost costBreakdown.totalExtraCost"
+        )
         .session(session)
         .lean(),
+      getWasteByBudgetImpactForMonth(businessId, monthStart),
+      Business.findById(businessId).select("metrics").lean(),
     ]);
 
     let totalSalesForMonth = 0;
@@ -228,6 +285,135 @@ export async function aggregateDailyReportsIntoMonthly(
     const averageSpendingPerCustomer =
       totalCustomersServed > 0 ? totalNetRevenue / totalCustomersServed : 0;
 
+    const metrics = (businessDoc as { metrics?: IMetrics | null } | null)
+      ?.metrics;
+
+    const metricsComparison =
+      metrics && totalOperatingCost > 0
+        ? {
+            foodCostPercentage: {
+              targetValue: metrics.foodCostPercentage,
+              actualValue: foodCostRatio * 100,
+              delta: foodCostRatio * 100 - metrics.foodCostPercentage,
+              isOverTarget: foodCostRatio * 100 > metrics.foodCostPercentage,
+              isUnderTarget: foodCostRatio * 100 < metrics.foodCostPercentage,
+            },
+            laborCostPercentage: {
+              targetValue: metrics.laborCostPercentage,
+              actualValue: laborCostRatio * 100,
+              delta: laborCostRatio * 100 - metrics.laborCostPercentage,
+              isOverTarget: laborCostRatio * 100 > metrics.laborCostPercentage,
+              isUnderTarget: laborCostRatio * 100 < metrics.laborCostPercentage,
+            },
+            fixedCostPercentage: {
+              targetValue: metrics.fixedCostPercentage,
+              actualValue: fixedCostRatio * 100,
+              delta: fixedCostRatio * 100 - metrics.fixedCostPercentage,
+              isOverTarget: fixedCostRatio * 100 > metrics.fixedCostPercentage,
+              isUnderTarget: fixedCostRatio * 100 < metrics.fixedCostPercentage,
+            },
+            supplierGoodWastePercentage:
+              supplierWasteAnalysis != null
+                ? {
+                    veryLowBudgetImpact: {
+                      targetValue:
+                        metrics.supplierGoodWastePercentage.veryLowBudgetImpact,
+                      actualValue:
+                        supplierWasteAnalysis.veryLowImpactWastePercentage ?? 0,
+                      delta:
+                        (supplierWasteAnalysis.veryLowImpactWastePercentage ??
+                          0) -
+                        metrics.supplierGoodWastePercentage
+                          .veryLowBudgetImpact,
+                      isOverTarget:
+                        (supplierWasteAnalysis.veryLowImpactWastePercentage ??
+                          0) >
+                        metrics.supplierGoodWastePercentage
+                          .veryLowBudgetImpact,
+                      isUnderTarget:
+                        (supplierWasteAnalysis.veryLowImpactWastePercentage ??
+                          0) <
+                        metrics.supplierGoodWastePercentage
+                          .veryLowBudgetImpact,
+                    },
+                    lowBudgetImpact: {
+                      targetValue:
+                        metrics.supplierGoodWastePercentage.lowBudgetImpact,
+                      actualValue:
+                        supplierWasteAnalysis.lowImpactWastePercentage ?? 0,
+                      delta:
+                        (supplierWasteAnalysis.lowImpactWastePercentage ?? 0) -
+                        metrics.supplierGoodWastePercentage.lowBudgetImpact,
+                      isOverTarget:
+                        (supplierWasteAnalysis.lowImpactWastePercentage ?? 0) >
+                        metrics.supplierGoodWastePercentage.lowBudgetImpact,
+                      isUnderTarget:
+                        (supplierWasteAnalysis.lowImpactWastePercentage ?? 0) <
+                        metrics.supplierGoodWastePercentage.lowBudgetImpact,
+                    },
+                    mediumBudgetImpact: {
+                      targetValue:
+                        metrics.supplierGoodWastePercentage.mediumBudgetImpact,
+                      actualValue:
+                        supplierWasteAnalysis.mediumImpactWastePercentage ?? 0,
+                      delta:
+                        (supplierWasteAnalysis.mediumImpactWastePercentage ??
+                          0) -
+                        metrics.supplierGoodWastePercentage.mediumBudgetImpact,
+                      isOverTarget:
+                        (supplierWasteAnalysis.mediumImpactWastePercentage ??
+                          0) >
+                        metrics.supplierGoodWastePercentage.mediumBudgetImpact,
+                      isUnderTarget:
+                        (supplierWasteAnalysis.mediumImpactWastePercentage ??
+                          0) <
+                        metrics.supplierGoodWastePercentage.mediumBudgetImpact,
+                    },
+                    hightBudgetImpact: {
+                      targetValue:
+                        metrics.supplierGoodWastePercentage.hightBudgetImpact,
+                      actualValue:
+                        supplierWasteAnalysis.highImpactWastePercentage ?? 0,
+                      delta:
+                        (supplierWasteAnalysis.highImpactWastePercentage ??
+                          0) -
+                        metrics.supplierGoodWastePercentage.hightBudgetImpact,
+                      isOverTarget:
+                        (supplierWasteAnalysis.highImpactWastePercentage ??
+                          0) >
+                        metrics.supplierGoodWastePercentage.hightBudgetImpact,
+                      isUnderTarget:
+                        (supplierWasteAnalysis.highImpactWastePercentage ??
+                          0) <
+                        metrics.supplierGoodWastePercentage.hightBudgetImpact,
+                    },
+                    veryHightBudgetImpact: {
+                      targetValue:
+                        metrics.supplierGoodWastePercentage.veryHightBudgetImpact,
+                      actualValue:
+                        supplierWasteAnalysis.veryHighImpactWastePercentage ??
+                        0,
+                      delta:
+                        (supplierWasteAnalysis.veryHighImpactWastePercentage ??
+                          0) -
+                        metrics.supplierGoodWastePercentage
+                          .veryHightBudgetImpact,
+                      isOverTarget:
+                        (supplierWasteAnalysis.veryHighImpactWastePercentage ??
+                          0) >
+                        metrics.supplierGoodWastePercentage
+                          .veryHightBudgetImpact,
+                      isUnderTarget:
+                        (supplierWasteAnalysis.veryHighImpactWastePercentage ??
+                          0) <
+                        metrics.supplierGoodWastePercentage
+                          .veryHightBudgetImpact,
+                    },
+                  }
+                : undefined,
+          }
+        : undefined;
+
     await MonthlyBusinessReport.updateOne(
       { _id: reportId },
       {
@@ -265,13 +451,8 @@ export async function aggregateDailyReportsIntoMonthly(
           goodsSold: goodsSoldAcc,
           goodsVoided: goodsVoidedAcc,
           goodsComplimentary: goodsComplimentaryAcc,
-          supplierWasteAnalysis: {
-            veryLowImpactWastePercentage: 0,
-            lowImpactWastePercentage: 0,
-            mediumImpactWastePercentage: 0,
-            highImpactWastePercentage: 0,
-            veryHighImpactWastePercentage: 0,
-          },
+          supplierWasteAnalysis,
+          metricsComparison,
           totalCustomersServed,
           averageSpendingPerCustomer,
           paymentMethods: paymentMethodsAcc,
@@ -287,5 +468,10 @@ export async function aggregateDailyReportsIntoMonthly(
     throw error;
   } finally {
     session.endSession();
+  }
+
+  // Send \"report ready\" notification after transaction commits successfully.
+  if (shouldSendReadyNotification && closedMonthLabel) {
+    await sendMonthlyReportReadyNotification(businessId, closedMonthLabel);
   }
 }

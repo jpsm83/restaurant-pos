@@ -55,24 +55,26 @@ interface SalesInstanceForReport {
 export const updateEmployeesDailySalesReport = async (
   userIds: Types.ObjectId[],
   dailyReferenceNumber: number
-) => {
+): Promise<{ updatedEmployees: IEmployeeDailySalesReport[]; errors: string[] }> => {
   try {
+    // Array to collect results for each user
+    const employeeReports: IEmployeeDailySalesReport[] = [];
+    const errors: string[] = [];
+
     // validate userIds
     if (isObjectIdValid(userIds) !== true) {
-      return "Invalid userIds!";
+      errors.push("Invalid userIds!");
+      return { updatedEmployees: employeeReports, errors };
     }
 
     // check required fields
     if (!dailyReferenceNumber) {
-      return "UserIds and dailyReferenceNumber are required!";
+      errors.push("UserIds and dailyReferenceNumber are required!");
+      return { updatedEmployees: employeeReports, errors };
     }
 
     // connect before first call to DB
     await connectDb();
-
-    // Array to collect results for each user
-    const employeeReports: IEmployeeDailySalesReport[] = [];
-    const errors: string[] = [];
 
     // Loop through each userId and process the report
     for (const userId of userIds) {
@@ -297,19 +299,20 @@ export const updateEmployeesDailySalesReport = async (
       }
     }
 
-    // Update DailySalesReport after processing all users
+    // Update DailySalesReport after processing all users.
+    // Note: this overwrites employeesDailySalesReport with ONLY the passed userIds.
     await DailySalesReport.updateOne(
       { dailyReferenceNumber },
       { $set: { employeesDailySalesReport: employeeReports } }
     );
 
-    // Return both successful reports and errors
-    return {
-      updatedEmployees: employeeReports,
-      errors,
-    };
+    // Return both successful reports and any collected errors
+    return { updatedEmployees: employeeReports, errors };
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
-    return `Failed to update employee daily sales reports! ${message}`;
+    return {
+      updatedEmployees: [],
+      errors: [`Failed to update employee daily sales reports! ${message}`],
+    };
   }
 };

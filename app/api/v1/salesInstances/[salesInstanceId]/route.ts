@@ -240,12 +240,11 @@ export const PATCH = async (
         userId: sessionUserId,
         businessId: salesInstance.businessId,
       })
-        .select("allEmployeeRoles onDuty")
+        .select("allEmployeeRoles")
         .session(session)
         .lean()) as
         | {
             allEmployeeRoles?: string[];
-            onDuty?: boolean;
           }
         | null;
 
@@ -260,7 +259,7 @@ export const PATCH = async (
         );
       }
 
-      if (!discountEmployee.onDuty || !hasManagementRole(discountEmployee.allEmployeeRoles)) {
+      if (!hasManagementRole(discountEmployee.allEmployeeRoles)) {
         await session.abortTransaction();
         return new NextResponse(
           JSON.stringify({
@@ -306,10 +305,10 @@ export const PATCH = async (
         userId: sessionUserId,
         businessId: salesInstance.businessId,
       })
-        .select("allEmployeeRoles onDuty")
+        .select("allEmployeeRoles")
         .session(session)
-        .lean()) as { allEmployeeRoles?: string[]; onDuty?: boolean } | null;
-      if (!cancelEmployee || !cancelEmployee.onDuty || !hasManagementRole(cancelEmployee.allEmployeeRoles)) {
+        .lean()) as { allEmployeeRoles?: string[] } | null;
+      if (!cancelEmployee || !hasManagementRole(cancelEmployee.allEmployeeRoles)) {
         await session.abortTransaction();
         return new NextResponse(
           JSON.stringify({ message: "Only on-duty management roles can cancel orders!" }),
@@ -352,10 +351,10 @@ export const PATCH = async (
         userId: sessionUserId,
         businessId: salesInstance.businessId,
       })
-        .select("allEmployeeRoles onDuty")
+        .select("allEmployeeRoles")
         .session(session)
-        .lean()) as { allEmployeeRoles?: string[]; onDuty?: boolean } | null;
-      if (!billingEmployee || !billingEmployee.onDuty || !hasManagementRole(billingEmployee.allEmployeeRoles)) {
+        .lean()) as { allEmployeeRoles?: string[] } | null;
+      if (!billingEmployee || !hasManagementRole(billingEmployee.allEmployeeRoles)) {
         await session.abortTransaction();
         return new NextResponse(
           JSON.stringify({ message: "Only on-duty management roles can void or set invitation/complimentary orders!" }),

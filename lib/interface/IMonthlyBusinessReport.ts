@@ -46,6 +46,27 @@ export interface ISupplierWasteAnalysis {
   veryHighImpactWastePercentage: number; // Percentage of very high impact waste
 }
 
+export interface IMetricComparisonEntry {
+  targetValue: number; // Target value configured on Business.metrics
+  actualValue: number; // Actual value observed in the report
+  delta: number; // actualValue - targetValue (percentage points or same unit)
+  isOverTarget: boolean; // True when actualValue > targetValue
+  isUnderTarget: boolean; // True when actualValue < targetValue
+}
+
+export interface IMonthlyMetricsComparison {
+  foodCostPercentage?: IMetricComparisonEntry;
+  laborCostPercentage?: IMetricComparisonEntry;
+  fixedCostPercentage?: IMetricComparisonEntry;
+  supplierGoodWastePercentage?: {
+    veryLowBudgetImpact?: IMetricComparisonEntry;
+    lowBudgetImpact?: IMetricComparisonEntry;
+    mediumBudgetImpact?: IMetricComparisonEntry;
+    hightBudgetImpact?: IMetricComparisonEntry;
+    veryHightBudgetImpact?: IMetricComparisonEntry;
+  };
+}
+
 export interface IMonthlyBusinessReport {
   isReportOpen: boolean; // Indicates if the report is open for edits
   businessId: Types.ObjectId; // Business reference
@@ -56,6 +77,7 @@ export interface IMonthlyBusinessReport {
   goodsVoided: (typeof goodsReducedSchema)[]; // Voided goods during the month
   goodsComplimentary: (typeof goodsReducedSchema)[]; // Complimentary goods
   supplierWasteAnalysis: ISupplierWasteAnalysis; // Analysis of supplier waste percentages
+  metricsComparison?: IMonthlyMetricsComparison; // Comparison between targets (Business.metrics) and actual report ratios
   totalCustomersServed: number; // Total number of customers served
   averageSpendingPerCustomer: number; // Average spending per customer
   paymentMethods: IPaymentMethod[]; // Array of payment methods used

@@ -7,6 +7,8 @@ export interface IPurchaseItem {
   lastEditByEmployeeId?: Types.ObjectId;
   lastEditReason?: string;
   lastEditDate?: Date;
+   lastEditOriginalQuantity?: number;
+   lastEditOriginalPrice?: number;
 }
 
 export interface IPurchase {

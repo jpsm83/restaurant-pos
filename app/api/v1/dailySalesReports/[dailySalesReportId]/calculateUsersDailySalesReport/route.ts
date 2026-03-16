@@ -8,10 +8,7 @@ import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 import { updateEmployeesDailySalesReport } from "../../utils/updateEmployeeDailySalesReport";
 
 // imported interfaces
-import {
-  IDailySalesReport,
-  IEmployeeDailySalesReport,
-} from "@/lib/interface/IDailySalesReport";
+import { IDailySalesReport } from "@/lib/interface/IDailySalesReport";
 
 // imported models
 import DailySalesReport from "@/lib/db/models/dailySalesReport";
@@ -64,11 +61,12 @@ export const PATCH = async (
       );
     }
 
-    // Call the function to update the daily sales reports for the users
-    const result = (await updateEmployeesDailySalesReport(
+    // Call the function to update the daily sales reports for the users.
+    // Note: this overwrites employeesDailySalesReport with ONLY the passed userIds.
+    const result = await updateEmployeesDailySalesReport(
       userIds,
       dailySalesReport.dailyReferenceNumber
-    )) as { updatedEmployees: IEmployeeDailySalesReport[]; errors: string[] };
+    );
 
     // Check if there were any errors
     if (result.errors && result.errors.length > 0) {

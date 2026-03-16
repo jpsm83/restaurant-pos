@@ -52,7 +52,7 @@ app/api/v1/orders/
 | GET | `/api/v1/orders` | Returns all orders (populated: salesInstance→salesPoint, createdByUserId→User, businessGoodId, addOns). 404 if none. |
 | POST | `/api/v1/orders` | Creates orders (employee flow). Body: **JSON** (ordersArr, salesInstanceId, businessId, dailyReferenceNumber). **No employeeId in body**; identity from session (userId). createOrders(..., createdByUserId, 'employee', ...). Transaction. |
 | GET | `/api/v1/orders/:orderId` | Returns one order by ID (same populates, including createdByUserId→User). |
-| DELETE | `/api/v1/orders/:orderId` | Cancels and deletes one order. **Caller must be an on-duty employee with a management role** (see `MANAGEMENT_ROLES` in lib/constants). cancelOrders([orderId], session). Transaction. Cancel is also available via Sales Instance PATCH with the same restriction. |
+| DELETE | `/api/v1/orders/:orderId` | Cancels and deletes one order. **Caller must have a management role** (see `MANAGEMENT_ROLES` in lib/constants). cancelOrders([orderId], session). Transaction. Cancel is also available via Sales Instance PATCH with the same restriction. |
 | GET | `/api/v1/orders/salesInstance/:salesInstanceId` | Returns orders for the sales instance. |
 | GET | `/api/v1/orders/user/:userId` | Returns orders where createdByUserId matches path param (userId). |
 

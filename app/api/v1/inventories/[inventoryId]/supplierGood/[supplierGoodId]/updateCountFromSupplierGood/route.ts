@@ -1,5 +1,6 @@
 import { Types } from "mongoose";
 import { NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
 
 import connectDb from "@/lib/db/connectDb";
 import { handleApiError } from "@/lib/db/handleApiError";
@@ -14,8 +15,8 @@ import Employee from "@/lib/db/models/employee";
 
 // This PATCH route will update ONLY THE LAST existing count for an individualy supplier good from the inventory
 // @desc    Update inventory count for a specific supplier good
-// @route   PATCH /inventories/:inventoryId/supplierGood/:supplierGoodIs/updateCountFromSupplierGood
-// @access  Private
+// @route   PATCH /inventories/:inventoryId/supplierGood/:supplierGoodId/updateCountFromSupplierGood
+// @access  Private (manager or supervisor only; auth from session)
 export const PATCH = async (
   req: Request,
   context: {
@@ -24,29 +25,41 @@ export const PATCH = async (
 ) => {
   const { inventoryId, supplierGoodId } = context.params;
 
+  const token = await getToken({
+    req: req as Parameters<typeof getToken>[0]["req"],
+    secret: process.env.NEXTAUTH_SECRET,
+  });
+  if (!token?.id || token.type !== "user") {
+    return new NextResponse(
+      JSON.stringify({ message: "Unauthorized" }),
+      { status: 401, headers: { "Content-Type": "application/json" } }
+    );
+  }
+  const userId = new Types.ObjectId(token.id as string);
+
   const {
     currentCountQuantity,
-    countedByEmployeeId,
     comments,
     countId,
     reason,
-  } = (await req.json()) as IInventoryCount & {
-    supplierGoodId: Types.ObjectId;
+  } = (await req.json()) as {
     countId: Types.ObjectId;
     reason: string;
+    currentCountQuantity?: number;
+    comments?: string;
   };
 
-  if (!inventoryId || !supplierGoodId || !countId || !reason || !countedByEmployeeId) {
+  if (!inventoryId || !supplierGoodId || !countId || !reason) {
     return new NextResponse(
       JSON.stringify({
         message:
-          "InventoryId, supplierGoodId, countId, reason and countedByEmployeeId are required for re-edit!",
+          "inventoryId, supplierGoodId, countId and reason are required for re-edit!",
       }),
       { status: 400, headers: { "Content-Type": "application/json" } }
     );
   }
 
-  if (!isObjectIdValid([inventoryId, supplierGoodId, countId, countedByEmployeeId])) {
+  if (!isObjectIdValid([inventoryId, supplierGoodId, countId])) {
     return new NextResponse(
       JSON.stringify({ message: "One or more IDs are not valid!" }),
       { status: 400, headers: { "Content-Type": "application/json" } }
@@ -56,29 +69,12 @@ export const PATCH = async (
   try {
     await connectDb();
 
-    const employee = await Employee.findById(countedByEmployeeId)
-      .select("currentShiftRole onDuty")
-      .lean() as IEmployee | null;
-    if (
-      !employee ||
-      !MANAGEMENT_ROLES.includes(employee.currentShiftRole ?? "") ||
-      !employee.onDuty
-    ) {
-      return new NextResponse(
-        JSON.stringify({
-          message:
-            "Only managers or supervisors on duty can re-edit inventory counts!",
-        }),
-        { status: 403, headers: { "Content-Type": "application/json" } }
-      );
-    }
-
     const [inventory, supplierGood] = await Promise.all([
       Inventory.findOne({
         _id: inventoryId,
-        "inventoryGoods.supplierGoodId": supplierGoodId, // Match specific supplierGoodId
+        "inventoryGoods.supplierGoodId": supplierGoodId,
       })
-        .select("setFinalCount inventoryGoods") // Use $ to project only the matching element from the array
+        .select("businessId setFinalCount inventoryGoods")
         .lean() as Promise<IInventory | null>,
       SupplierGood.findById(supplierGoodId)
         .select("parLevel")
@@ -93,6 +89,24 @@ export const PATCH = async (
         status: 400,
         headers: { "Content-Type": "application/json" },
       });
+    }
+
+    const businessId = inventory.businessId as Types.ObjectId;
+    const employee = (await Employee.findOne({
+      userId,
+      businessId,
+    })
+      .select("_id currentShiftRole")
+      .lean()) as IEmployee | null;
+
+    if (!employee || !MANAGEMENT_ROLES.includes(employee.currentShiftRole ?? "")) {
+      return new NextResponse(
+        JSON.stringify({
+          message:
+            "Only managers or supervisors can re-edit inventory counts!",
+        }),
+        { status: 403, headers: { "Content-Type": "application/json" } }
+      );
     }
 
     // Check if the inventory is finalized
@@ -129,8 +143,15 @@ export const PATCH = async (
       });
     }
 
-    // if count from currentCountObject is equal to the new count we dont need to update the inventory
-    if (currentCountObject.currentCountQuantity === currentCountQuantity) {
+    const newQuantity =
+      currentCountQuantity !== undefined
+        ? currentCountQuantity
+        : currentCountObject.currentCountQuantity;
+
+    if (
+      currentCountQuantity !== undefined &&
+      currentCountObject.currentCountQuantity === currentCountQuantity
+    ) {
       return new NextResponse(
         JSON.stringify({ message: "Count is the same, no need to update!" }),
         {
@@ -148,21 +169,21 @@ export const PATCH = async (
         (1 - (currentCountObject.deviationPercent ?? 0) / 100);
     }
 
-    // Prepare the new inventory count object
+    // Prepare the new inventory count object (preserve original counter; reeditor from session)
     const updateInventoryCount: IInventoryCount = {
       _id: countId,
-      currentCountQuantity,
-      quantityNeeded: (supplierGood.parLevel || 0) - currentCountQuantity,
-      countedByEmployeeId,
+      currentCountQuantity: newQuantity,
+      quantityNeeded: (supplierGood.parLevel || 0) - newQuantity,
+      countedByEmployeeId: currentCountObject.countedByEmployeeId,
       deviationPercent:
-        ((previewDynamicSystemCount - currentCountQuantity) /
+        ((previewDynamicSystemCount - newQuantity) /
           (previewDynamicSystemCount || 1)) *
         100,
       comments,
       reedited: {
-        reeditedByEmployeeId: countedByEmployeeId,
+        reeditedByEmployeeId: employee._id as Types.ObjectId,
         date: new Date(),
-        reason, // You might want to pass this in the request as well
+        reason,
         originalValues: {
           currentCountQuantity: currentCountObject.currentCountQuantity,
           deviationPercent: currentCountObject.deviationPercent ?? 0,
@@ -193,22 +214,21 @@ export const PATCH = async (
       {
         _id: inventoryId,
         "inventoryGoods.supplierGoodId": supplierGoodId,
-        "inventoryGoods.monthlyCounts._id": countId, // Ensure this matches the correct count
+        "inventoryGoods.monthlyCounts._id": countId,
       },
       {
         $set: {
-          "inventoryGoods.$[supplierGood].dynamicSystemCount":
-            currentCountQuantity,
+          "inventoryGoods.$[supplierGood].dynamicSystemCount": newQuantity,
           "inventoryGoods.$[supplierGood].averageDeviationPercent":
             averageDeviationPercentCalculation,
           "inventoryGoods.$[supplierGood].monthlyCounts.$[count]":
-            updateInventoryCount, // Correctly reference monthlyCounts
+            updateInventoryCount,
         },
       },
       {
         arrayFilters: [
-          { "supplierGood.supplierGoodId": supplierGoodId }, // Matches supplierGood in inventoryGoods
-          { "count._id": countId }, // Matches count in monthlyCounts by _id
+          { "supplierGood.supplierGoodId": supplierGoodId },
+          { "count._id": countId },
         ],
       }
     );

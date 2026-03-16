@@ -69,7 +69,15 @@ Both POST and PATCH use **FormData**, not JSON, because they can include an imag
 **Optional (both):**
 
 - `contactPerson`, `imageUrl` (File).
-- **Discovery and delivery:** `cuisineType` (string), `categories` (JSON array of strings), `averageRating` (0–5), `ratingCount` (non-negative), `acceptsDelivery` (boolean), `deliveryRadius` (non-negative number, e.g. km), `minOrder` (non-negative number). All optional. On PATCH, `averageRating`/`ratingCount`/`categories`/`deliveryRadius`/`minOrder` are validated as described in the route.
+- **Discovery and delivery:** `cuisineType` (string), `categories` (JSON array of strings), `averageRating` (0–5), `ratingCount` (non-negative), `acceptsDelivery` (boolean), `deliveryRadius` (non-negative number, e.g. km), `minOrder` (non-negative number).
+- **Opening times (customer-facing service windows):**
+  - `businessOpeningHours` (JSON string) — array of objects:
+    - `{ dayOfWeek: number (0=Sunday..6=Saturday), openTime: "HH:MM", closeTime: "HH:MM" }[]`
+  - `deliveryOpeningWindows` (JSON string) — array of objects:
+    - `{ dayOfWeek: number, windows: { openTime: "HH:MM", closeTime: "HH:MM" }[] }[]`
+  - These are optional; when omitted, back-office/staff flows still work as normal. Customer flows (self-ordering and delivery) will additionally check these windows when enforcing “only order from home when open”.
+
+On PATCH, `averageRating`/`ratingCount`/`categories`/`deliveryRadius`/`minOrder` are validated as described in the route. `businessOpeningHours` and `deliveryOpeningWindows` are expected to be valid JSON arrays; invalid JSON is ignored and leaves the stored values unchanged.
 
 **PATCH only:**
 

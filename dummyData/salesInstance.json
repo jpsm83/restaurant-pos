@@ -1,67 +1,63 @@
 [
     {
-        "_id": { "$oid": "6708be11f98653e839ebc184" },
+        "_id": "6708be11f98653e839ebc184",
         "dailyReferenceNumber": 1728626126608,
-        "salesPointId": {
-            "_id": { "$oid": "6707a83888a5002362018ccc" }
-        },
+        "salesPointId": "6707a83888a5002362018ccc",
         "guests": 1,
-        "openedByUserId": { "$oid": "66e92e066a5cfcc2a707696b" },
+        "openedByUserId": "66e92e066a5cfcc2a707696b",
         "openedAsRole": "employee",
-        "responsibleByUserId": { "$oid": "66e92e066a5cfcc2a707696b" },
-        "businessId": { "$oid": "66e169a709901431386c97cb" },
-        "createdAt": { "$date": "2024-10-11T05:56:33.943Z" },
-        "updatedAt": { "$date": "2024-11-03T22:54:54.582Z" },
+        "responsibleByUserId": "66e92e066a5cfcc2a707696b",
+        "businessId": "66e169a709901431386c97cb",
+        "createdAt": "2024-10-11T05:56:33.943Z",
+        "updatedAt": "2024-11-03T22:54:54.582Z",
         "clientName": "salesLocation1clientName",
         "salesGroup": [
             {
                 "orderCode": "300300",
                 "ordersIds": [
-                    { "$oid": "671e88bfcc1c6949ec838fa1" }
+                    "671e88bfcc1c6949ec838fa1"
                 ],
-                "createdAt": { "$date": "2024-10-17T04:27:53.704Z" },
-                "_id": { "$oid": "6727ff3ecc4cd063245ee99f" }
+                "createdAt": "2024-10-17T04:27:53.704Z",
+                "_id": "6727ff3ecc4cd063245ee99f"
             },
             {
                 "orderCode": "400400",
                 "ordersIds": [
-                    { "$oid": "671e88c5cc1c6949ec838fa2" }
+                    "671e88c5cc1c6949ec838fa2"
                 ],
-                "_id": { "$oid": "6727ff3ecc4cd063245ee9a3" }
+                "_id": "6727ff3ecc4cd063245ee9a3"
             }
         ],
         "salesInstanceStatus": "Closed",
-        "closedByUserId": { "$oid": "66e92e066a5cfcc2a707696b" },
-        "closedAt": { "$date": "2024-10-27T18:23:42.647Z" }
+        "closedByUserId": "66e92e066a5cfcc2a707696b",
+        "closedAt": "2024-10-27T18:23:42.647Z"
     },
     {
-        "_id": { "$oid": "670ccbcac966c93a0bd46f16" },
+        "_id": "670ccbcac966c93a0bd46f16",
         "dailyReferenceNumber": 1728626126608,
-        "salesPointId": {
-            "_id": { "$oid": "6707a83888a5002362018ccc" }
-        },
+        "salesPointId": "6707a83888a5002362018ccc",
         "guests": 11,
-        "openedByUserId": { "$oid": "66e92e066a5cfcc2a707696b" },
+        "openedByUserId": "66e92e066a5cfcc2a707696b",
         "openedAsRole": "employee",
-        "responsibleByUserId": { "$oid": "66e92e066a5cfcc2a707696b" },
-        "businessId": { "$oid": "66e169a709901431386c97cb" },
+        "responsibleByUserId": "66e92e066a5cfcc2a707696b",
+        "businessId": "66e169a709901431386c97cb",
         "clientName": "testing",
-        "createdAt": { "$date": "2024-10-14T07:44:10.100Z" },
-        "updatedAt": { "$date": "2024-11-03T22:54:54.834Z" },
+        "createdAt": "2024-10-14T07:44:10.100Z",
+        "updatedAt": "2024-11-03T22:54:54.834Z",
         "__v": 0,
         "salesGroup": [
             {
                 "orderCode": "100100",
                 "ordersIds": [
-                    { "$oid": "671d032013bce13524c21c1e" }
+                    "671d032013bce13524c21c1e"
                 ],
-                "createdAt": { "$date": "2024-10-13T07:25:22.736Z" },
-                "_id": { "$oid": "670cd443c966c93a0bd46f75" }
+                "createdAt": "2024-10-13T07:25:22.736Z",
+                "_id": "670cd443c966c93a0bd46f75"
             },
             {
                 "orderCode": "200200",
                 "ordersIds": [
-                    { "$oid": "671d032013bce13524c21c1f" }
+                    "671d032013bce13524c21c1f"
                 ]
             }
         ],

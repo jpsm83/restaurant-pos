@@ -28,7 +28,37 @@
         "updatedAt": "2024-09-01T11:01:26.349Z",
         "__v": 0,
         "contactPerson": "business1contactPerson",
-        "salesLocation": []
+        "acceptsDelivery": true,
+        "deliveryRadius": 5,
+        "minOrder": 20,
+        "businessOpeningHours": [
+            { "dayOfWeek": 0, "openTime": "10:00", "closeTime": "22:00" },
+            { "dayOfWeek": 1, "openTime": "10:00", "closeTime": "22:00" },
+            { "dayOfWeek": 2, "openTime": "10:00", "closeTime": "22:00" },
+            { "dayOfWeek": 3, "openTime": "10:00", "closeTime": "22:00" },
+            { "dayOfWeek": 4, "openTime": "10:00", "closeTime": "23:59" },
+            { "dayOfWeek": 5, "openTime": "10:00", "closeTime": "23:59" },
+            { "dayOfWeek": 6, "openTime": "10:00", "closeTime": "22:00" }
+        ],
+        "deliveryOpeningWindows": [
+            {
+                "dayOfWeek": 0,
+                "windows": [
+                    { "openTime": "11:00", "closeTime": "15:00" },
+                    { "openTime": "18:00", "closeTime": "22:00" }
+                ]
+            },
+            {
+                "dayOfWeek": 5,
+                "windows": [
+                    { "openTime": "11:00", "closeTime": "16:00" },
+                    { "openTime": "18:00", "closeTime": "23:59" }
+                ]
+            }
+        ],
+        "reportingConfig": {
+            "weeklyReportStartDay": 1
+        }
     },
     {
         "_id": "6673fef88c45d0a0ca5f34c5",
@@ -51,6 +81,12 @@
         },
         "createdAt": "2024-06-20T10:05:44.029Z",
         "updatedAt": "2024-06-20T10:21:41.671Z",
-        "__v": 0
+        "__v": 0,
+        "acceptsDelivery": false,
+        "businessOpeningHours": [],
+        "deliveryOpeningWindows": [],
+        "reportingConfig": {
+            "weeklyReportStartDay": 1
+        }
     }
 ]

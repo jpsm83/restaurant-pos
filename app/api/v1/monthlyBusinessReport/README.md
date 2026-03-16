@@ -2,7 +2,7 @@
 
 This folder is intended to contain the **REST API and logic for the Monthly Business Report entity**: one **month-level** report per business that aggregates sales, costs (food, beverage, labor, fixed, extra), supplier waste by budget impact, payment methods, and POS commission. The monthly report is the **business-level analytics layer** that sits above **Daily Sales Reports**: it is updated (e.g. daily) from closed daily reports and other sources (purchases, schedules, fixed costs) and **closes at the end of the month**, similar to **Inventory**. It ties **Business** (metrics and targets), **Daily Sales Reports**, **Orders**, **Purchases**, **Schedules** (labor), **Inventories** (waste), and **Supplier goods** (waste by budget impact) into a single view for profitability, break-even, and KPI tracking.
 
-**Current state:** The **model** and **interface** include `monthReference` (first day of month) and live in `lib/db/models/monthlyBusinessReport.ts` and `lib/interface/IMonthlyBusinessReport.ts`. **Business DELETE** cascades to `MonthlyBusinessReport.deleteMany({ businessId })`. The **API and aggregation are implemented**: root and business routes (GET), get/update by report ID, close-monthly-report (PATCH), and utils `createMonthlyBusinessReport` and `aggregateDailyReportsIntoMonthly`. The monthly report is **refreshed automatically** after each **calculateBusinessDailySalesReport** (daily trigger). **toDo.md** remains for additional formulas and future metrics.
+**Current state:** The **model** and **interface** include `monthReference` (first day of month) and live in `lib/db/models/monthlyBusinessReport.ts` and `lib/interface/IMonthlyBusinessReport.ts`. **Business DELETE** cascades to `MonthlyBusinessReport.deleteMany({ businessId })`. The **API and aggregation are implemented**: root and business routes (GET), get/update by report ID, close-monthly-report (PATCH), and utils `createMonthlyBusinessReport` and `aggregateDailyReportsIntoMonthly`. The monthly report is **refreshed automatically** after each **calculateBusinessDailySalesReport** (daily trigger). `supplierWasteAnalysis` is populated from inventory variance via `getWasteByBudgetImpactForMonth`. A `metricsComparison` section is persisted on each report to compare **targets** from `Business.metrics` with **actual** cost ratios and supplier-waste percentages. **toDo.md** remains for additional formulas and future metrics.
 
 This document follows the same structure as `app/api/v1/business/README.md` for consistency.
 
@@ -18,7 +18,7 @@ This document follows the same structure as `app/api/v1/business/README.md` for 
   - **supplierWasteAnalysis**: waste percentages by **supplier good budget impact** (veryLowImpactWastePercentage, lowImpactWastePercentage, mediumImpactWastePercentage, highImpactWastePercentage, veryHighImpactWastePercentage). This links to **Business.metrics.supplierGoodWastePercentage** (targets per impact level) and to **Inventory** deviation/waste data.
   - **totalCustomersServed**, **averageSpendingPerCustomer**, **paymentMethods**, **posSystemCommission**.
 - **Relationship to suppliers and business:** The report does not reference **Supplier** directly. It references **supplier good waste by budget impact** (SupplierGoods have budgetImpact; waste is tracked in inventory and can be rolled up here). **Purchases** feed into cost and COGS; **Business.metrics** define target percentages (food cost, labor cost, fixed cost, supplier good waste by impact). The monthly report is where **actual** performance is compared to those **targets** (e.g. food cost %, labor cost %, waste %).
-- **Intended lifecycle (from toDo.md):** The report **updates daily** after the **daily sales report** is calculated (not real-time dynamic). It **closes** on the **last day of the month**, same logic as **Inventory** (new month = new report; previous month marked closed). This aligns with how the app already creates one inventory per month and one daily report per day.
+- **Lifecycle:** The report **updates automatically** after the **daily sales report** is calculated (not real-time dynamic). Managers **explicitly close** the monthly report via the close-monthly-report PATCH route once all daily reports for that month are closed (and the month’s inventory is closed where enforced). Creating a new month **does not** auto-close the previous month; closure is an explicit manager action.
 - **Planned metrics (from toDo.md):** Break-even (daily sales target = sum of all costs / days in month), gross profit margin, net profit margin, minimum daily sales (break-even sales), food cost percentage, labor cost percentage, waste by category (food/beverage), inventory turnover, table turnover, sales per labor hour, promotion sales share. Many of these can be derived from the existing schema (financialSummary, costBreakdown, supplierWasteAnalysis) plus business metrics and schedules.
 
 So: **Monthly Business Report is the month-level hub for business KPIs, costs, and supplier-related waste analytics. It is fed by daily reports and other cost sources and is important for understanding profitability, break-even, and how the business (and its supply chain) is performing against targets.**
@@ -29,7 +29,7 @@ So: **Monthly Business Report is the month-level hub for business KPIs, costs, a
 
 **Current:**
 
-```
+```text
 app/api/v1/monthlyBusinessReport/
 ├── README.md                    # This file — context for flow, patterns, and app integration
 ├── toDo.md                      # Additional formulas and metrics (break-even, waste %, etc.)
@@ -40,10 +40,10 @@ app/api/v1/monthlyBusinessReport/
 ├── [monthlyReportId]/
 │   ├── route.ts                 # GET one report; PATCH fixed/extra costs when isReportOpen
 │   └── closeMonthlyReport/
-│       └── route.ts             # PATCH — close report; auth from session (userId → Employee for role); no open daily reports in month
+│       └── route.ts             # Deprecated PATCH — monthly reports now auto-close at month boundary
 └── utils/
-    ├── createMonthlyBusinessReport.ts   # Find or create open report for current month; close previous in transaction
-    └── aggregateDailyReportsIntoMonthly.ts  # Aggregate calculated daily reports + Schedules labour; called after calculateBusinessDailySalesReport
+    ├── createMonthlyBusinessReport.ts   # Find or create open report for current month
+    └── aggregateDailyReportsIntoMonthly.ts  # Aggregate calculated daily reports + Schedules labour; auto-closes previous month; called after calculateBusinessDailySalesReport
 ```
 
 - **Model and interface** live in **lib**: `lib/db/models/monthlyBusinessReport.ts` (includes `monthReference`), `lib/interface/IMonthlyBusinessReport.ts`.
@@ -58,8 +58,8 @@ app/api/v1/monthlyBusinessReport/
 | GET | `/api/v1/monthlyBusinessReport` | Return monthly reports. Optional query: `?businessId=`, `?startMonth=YYYY-MM`, `?endMonth=YYYY-MM`. 404 if none. |
 | GET | `/api/v1/monthlyBusinessReport/business/:businessId` | Return monthly reports for business. Optional `?startMonth=`, `?endMonth=` (YYYY-MM). 404 if none. |
 | GET | `/api/v1/monthlyBusinessReport/:monthlyReportId` | Return one report by ID. 404 if not found. |
-| PATCH | `/api/v1/monthlyBusinessReport/:monthlyReportId` | When isReportOpen: update totalFixedOperatingCost and/or totalExtraCost (manual entry). Recomputes totalOperatingCost and costPercentages. Returns updated report. Or separate PATCH for “recalculate from daily reports.” |
-| PATCH | `/api/v1/monthlyBusinessReport/:monthlyReportId/closeMonthlyReport` | Set isReportOpen: false. No employeeId in body; auth from session (userId → Employee.findOne({ userId, businessId }) for role/onDuty, same as daily report close). 400 if any daily report for that month is still open. |
+| PATCH | `/api/v1/monthlyBusinessReport/:monthlyReportId` | When isReportOpen: update totalFixedOperatingCost and/or totalExtraCost (manual entry). Recomputes totalOperatingCost and costPercentages. Returns updated report. |
+| PATCH | `/api/v1/monthlyBusinessReport/:monthlyReportId/closeMonthlyReport` | **Deprecated**. Monthly reports now auto-close at month boundary; this endpoint returns 410. |
 
 - **Creation:** The open report for the current month is created internally by `createMonthlyBusinessReport` when `aggregateDailyReportsIntoMonthly(businessId)` runs (triggered after **calculateBusinessDailySalesReport**). No public POST.
 - DELETE is not used in normal flow; reports are removed only when **Business** is deleted (cascade in `app/api/v1/business/[businessId]/route.ts`).
@@ -100,7 +100,19 @@ app/api/v1/monthlyBusinessReport/
 
 ### 5.5 Inventories and supplier waste
 
-- **Inventory** holds **supplier good** usage and physical counts (dynamicSystemCount, deviation, monthlyCounts). **SupplierGood** has **budgetImpact** (e.g. very low, low, medium, high, very high). Waste can be inferred from inventory deviation or from dedicated waste logs. **supplierWasteAnalysis** in the monthly report should reflect **waste percentages by budget impact**, aligned with **Business.metrics.supplierGoodWastePercentage** targets. So the monthly report ties **supplier-side** performance (waste by impact level) to the business’s targets and to inventory data.
+- **Inventory** holds **supplier good** usage and physical counts (dynamicSystemCount, deviation, monthlyCounts). **SupplierGood** has **budgetImpact** (e.g. very low, low, medium, high, very high).
+- **Waste definition (implemented):**
+  - For each supplier good in a month, the **variance report** provides:
+    - `theoreticalQuantity` (expected usage from orders/recipes).
+    - `actualQuantity` (opening closed inventory + purchases in month − closing closed inventory).
+  - The system treats **shrink/waste** as cases where `actualQuantity > theoreticalQuantity`:
+    - `wasteQuantity = max(actualQuantity − theoreticalQuantity, 0)`.
+    - `baseQuantity = actualQuantity when > 0, otherwise theoreticalQuantity`.
+  - `getWasteByBudgetImpactForMonth` groups waste and base quantities by **budgetImpact** (`"Very Low"`, `"Low"`, `"Medium"`, `"High"`, `"Very High"`) and computes:
+    - `waste% per impact level = (sum wasteQuantity / sum baseQuantity) * 100`.
+- **supplierWasteAnalysis** in the monthly report is **filled from this util** and holds the resulting percentages:
+  - `veryLowImpactWastePercentage`, `lowImpactWastePercentage`, `mediumImpactWastePercentage`, `highImpactWastePercentage`, `veryHighImpactWastePercentage`.
+- These values are aligned with **Business.metrics.supplierGoodWastePercentage** targets (veryLowBudgetImpact, lowBudgetImpact, mediumBudgetImpact, hightBudgetImpact, veryHightBudgetImpact). So the monthly report ties **supplier-side waste performance (by impact level)** to the business’s configured targets and to inventory data.
 
 ### 5.6 Schedules (labor cost)
 
@@ -108,9 +120,18 @@ app/api/v1/monthlyBusinessReport/
 
 ### 5.7 Summary flow (implemented)
 
-- **Start of month (or first aggregation):** When `aggregateDailyReportsIntoMonthly(businessId)` runs, `createMonthlyBusinessReport` finds or creates the open report for the current month (isReportOpen: true) and closes the previous month’s report (isReportOpen: false) in the same transaction. Same pattern as Inventory.
-- **After daily report is calculated:** The **calculateBusinessDailySalesReport** route calls `aggregateDailyReportsIntoMonthly(dailySalesReport.businessId)` after updating the daily report. Aggregation re-sums all **calculated** daily reports for that month (dailyNetPaidAmount present), merges payment methods and goods by businessGoodId, sums labour from Schedules, preserves manual fixed/extra costs, and sets supplierWasteAnalysis (Phase 1: zeroed). The PATCH response is not failed if aggregation throws (errors are logged).
-- **End of month:** Manager calls PATCH **closeMonthlyReport** (identity from session userId; role check via Employee). Validates no open daily reports in that month; sets isReportOpen: false. Final snapshot for reporting and comparison with Business.metrics.
+- **Start of month (or first aggregation):** When `aggregateDailyReportsIntoMonthly(businessId)` runs, `createMonthlyBusinessReport` finds or creates the open report for the current month (`isReportOpen: true`). `aggregateDailyReportsIntoMonthly` also auto-closes the previous month’s report (sets `isReportOpen: false`) once all daily reports for that month are closed.
+- **After daily report is calculated:** The **calculateBusinessDailySalesReport** route calls `aggregateDailyReportsIntoMonthly(dailySalesReport.businessId)` after updating the daily report. Aggregation:
+  - Re-sums all **calculated** daily reports for that month (dailyNetPaidAmount present).
+  - Merges payment methods and goods by businessGoodId.
+  - Sums labour from Schedules.
+  - Preserves manual fixed/extra costs.
+  - Calls `getWasteByBudgetImpactForMonth(businessId, monthReference)` and sets **supplierWasteAnalysis** based on inventory variance and supplier-good budget impact.
+  - Reads `Business.metrics` and computes `metricsComparison`:
+    - Cost ratios (food, labour, fixed) vs `Business.metrics` percentages.
+    - Supplier-waste percentages per budget-impact band vs `Business.metrics.supplierGoodWastePercentage`.
+  - The PATCH response is not failed if aggregation throws (errors are logged).
+- **End of month:** Once the previous month’s report has been auto-closed, it becomes the final snapshot for reporting and comparison with `Business.metrics`, and a “monthly report ready” notification is sent to management roles.
 
 ---
 
@@ -139,7 +160,7 @@ app/api/v1/monthlyBusinessReport/
 4. **Creation:** When creating a new month report, run in a **transaction**: close previous month’s report (set isReportOpen: false), then create new report. Return 400 if current month report already exists.
 5. **Aggregation:** When updating from daily reports, aggregate only **closed** or **calculated** daily reports for that month to avoid double-counting or partial data. Define clearly whether “update daily” runs on all daily reports for the month or only up to the latest calculated day.
 6. **Supplier waste:** Keep **supplierWasteAnalysis** in sync with **Business.metrics.supplierGoodWastePercentage** structure (same budget impact levels) so UI can compare actual vs target.
-7. **Cost breakdown:** Define where totalFixedOperatingCost and totalExtraCost come from (manual PATCH, future “costs” entity, or leave null until implemented).
+7. **Cost breakdown:** Define where totalFixedOperatingCost and totalExtraCost come from. Currently they are **optional manual inputs** via the PATCH route; future implementations may introduce a dedicated “costs” entity. It is valid for some months to have them at `0`.
 8. **Cascade:** Do not implement DELETE for single report in normal flow; rely on business cascade delete.
 9. **Role checks:** For close-monthly-report (and possibly create), restrict to Manager/Admin (or same roles as daily report close).
 
@@ -147,7 +168,7 @@ app/api/v1/monthlyBusinessReport/
 
 ## 8. Data model summary (for context)
 
-- **MonthlyBusinessReport:** businessId, **monthReference** (Date, first day of month at 00:00:00; required, indexed; unique with businessId), isReportOpen, financialSummary, costBreakdown, goodsSold, goodsVoided, goodsComplimentary, supplierWasteAnalysis, totalCustomersServed, averageSpendingPerCustomer, paymentMethods, posSystemCommission.
+- **MonthlyBusinessReport:** businessId, **monthReference** (Date, first day of month at 00:00:00; required, indexed; unique with businessId), isReportOpen, financialSummary, costBreakdown, goodsSold, goodsVoided, goodsComplimentary, supplierWasteAnalysis, `metricsComparison`, totalCustomersServed, averageSpendingPerCustomer, paymentMethods, posSystemCommission.
 - **financialSummary:** totalSalesForMonth, totalCostOfGoodsSold, totalNetRevenue, totalGrossProfit, totalVoidSales, totalInvitedSales, totalTips; **financialPercentages:** salesPaymentCompletionPercentage, profitMarginPercentage, voidSalesPercentage, invitedSalesPercentage, tipsToCostOfGoodsPercentage.
 - **costBreakdown:** totalFoodCost, totalBeverageCost, totalLaborCost, totalFixedOperatingCost, totalExtraCost, totalOperatingCost; **costPercentages:** foodCostRatio, beverageCostRatio, laborCostRatio, fixedCostRatio.
 - **supplierWasteAnalysis:** veryLowImpactWastePercentage, lowImpactWastePercentage, mediumImpactWastePercentage, highImpactWastePercentage, veryHighImpactWastePercentage (align with SupplierGood budgetImpact and Business.metrics.supplierGoodWastePercentage).

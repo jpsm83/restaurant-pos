@@ -1,169 +1,42 @@
 [
-    {
-        "_id": "6693cbf30693ec3374a899f4",
-        "dayReferenceNumber": 1720908000000,
-        "dailyReportOpen": false,
-        "countdownTimeToClose": 1721048434981,
-        "employeesDailySalesReport": [
-            {
-                "userId": { "$oid": "66758b8904c4e6f5bbaa6b81" },
-                "hasOpenSalesInstances": false,
-                "employeeCardsSales": {
-                    "cardDetails": []
-                },
-                "employeeCryptosSales": {
-                    "cryptoDetails": []
-                },
-                "employeeOthersSales": {
-                    "otherDetails": []
-                },
-                "employeeCustomersServed": 0,
-                "employeeAverageCustomersExpended": 0,
-                "employeeGoodsSoldArray": [],
-                "employeeGoodsVoidArray": [],
-                "employeeGoodsInvitedArray": [],
-                "employeeTotalVoid": 0,
-                "employeeTotalInvited": 0,
-                "_id": "66c0774f2d51c878c05d4011"
-            }
-        ],
-        "business": "6673fed98c45d0a0ca5f34c1",
-        "totalCardsSales": {
-            "cardDetails": []
-        },
-        "totalCryptosSales": {
-            "criptoDetails": []
-        },
-        "totalOthersSales": {
-            "otherDetails": []
-        },
-        "businessGoodsSoldArray": [],
-        "businessGoodsVoidArray": [],
-        "businessGoodsInvitedArray": [],
-        "createdAt": "2024-07-14T13:00:35.011Z",
-        "updatedAt": "2024-08-17T10:11:27.837Z",
-        "__v": 0
-    },
-    {
-        "_id": "6694e07be213878112113c1e",
-        "dayReferenceNumber": 1721032827939,
-        "dailyReportOpen": false,
-        "countdownTimeToClose": 1721119227939,
-        "employeesDailySalesReport": [
-            {
-                "userId": { "$oid": "667412df373ad7f1a285534e" },
-                "employeeCardsSales": {
-                    "cardDetails": []
-                },
-                "employeeCryptosSales": {
-                    "cryptoDetails": []
-                },
-                "employeeOthersSales": {
-                    "otherDetails": []
-                },
-                "employeeCustomersServed": 0,
-                "employeeAverageCustomersExpended": 0,
-                "_id": "6694f3983ad92a74cc1996f7",
-                "employeeGoodsSoldArray": [],
-                "employeeGoodsVoidArray": [],
-                "employeeGoodsInvitedArray": []
-            },
-            {
-                "userId": { "$oid": "66758b8904c4e6f5bbaa6b81" },
-                "hasOpenSalesInstances": false,
-                "employeeCardsSales": {
-                    "cardDetails": []
-                },
-                "employeeCryptosSales": {
-                    "cryptoDetails": []
-                },
-                "employeeOthersSales": {
-                    "otherDetails": []
-                },
-                "employeeCustomersServed": 0,
-                "employeeAverageCustomersExpended": 0,
-                "employeeGoodsSoldArray": [],
-                "employeeGoodsVoidArray": [],
-                "employeeGoodsInvitedArray": [],
-                "employeeTotalVoid": 0,
-                "employeeTotalInvited": 0,
-                "_id": "66c0730c2d51c878c05d3ff4"
-            }
-        ],
-        "business": "6673fed98c45d0a0ca5f34c1",
-        "totalCardsSales": {
-            "cardDetails": []
-        },
-        "totalCryptosSales": {
-            "criptoDetails": []
-        },
-        "totalOthersSales": {
-            "otherDetails": []
-        },
-        "businessGoodsSoldArray": [],
-        "businessGoodsVoidArray": [],
-        "businessGoodsInvitedArray": [],
-        "createdAt": "2024-07-15T08:40:27.953Z",
-        "updatedAt": "2024-08-17T09:53:16.222Z",
-        "__v": 0
-    },
-    {
-        "_id": "66c071122d51c878c05d3fef",
-        "dayReferenceNumber": 1723974290376,
-        "dailyReportOpen": false,
-        "countdownTimeToClose": 1723974290376,
-        "business": "6673fed98c45d0a0ca5f34c1",
-        "totalCardsSales": {
-            "cardDetails": []
-        },
-        "totalCryptosSales": {
-            "criptoDetails": []
-        },
-        "totalOthersSales": {
-            "otherDetails": []
-        },
-        "businessGoodsSoldArray": [
-            {
-                "good": "667bfc0c5d50be40f0c7b065",
-                "quantity": 1,
-                "totalPrice": 16.45,
-                "totalCostPrice": 2.00675,
-                "_id": "66c327578cd51ad03c62efff"
-            }
-        ],
-        "businessGoodsVoidArray": [],
-        "businessGoodsInvitedArray": [],
-        "createdAt": "2024-08-17T09:44:50.387Z",
-        "updatedAt": "2024-09-01T11:21:12.137Z",
-        "__v": 0,
-        "businessAverageCustomersExpended": 40,
-        "businessPayments": [
-            {
-                "paymentMethodType": "Cash",
-                "methodBranch": "Cash",
-                "methodSalesTotal": 20,
-                "_id": "66c327578cd51ad03c62effc"
-            },
-            {
-                "paymentMethodType": "Crypto",
-                "methodBranch": "Bitcoin",
-                "methodSalesTotal": 80,
-                "_id": "66c327578cd51ad03c62effd"
-            },
-            {
-                "paymentMethodType": "Other",
-                "methodBranch": "Voucher",
-                "methodSalesTotal": 110,
-                "_id": "66c327578cd51ad03c62effe"
-            }
-        ],
-        "businessTotalCost": 20,
-        "businessTotalInvitedPrice": 0,
-        "businessTotalNetPaid": 200,
-        "businessTotalProfit": 180,
-        "businessTotalSales": 200,
-        "businessTotalVoidPrice": 0,
-        "businessTotaltips": 10,
-        "posSystemAppComission": 20
-    }
+  {
+    "_id": "6693cbf30693ec3374a899f4",
+    "dailyReferenceNumber": 1720908000000,
+    "isDailyReportOpen": false,
+    "timeCountdownToClose": 1721048434981,
+    "employeesDailySalesReport": [
+      {
+        "userId": "66758b8904c4e6f5bbaa6b81",
+        "hasOpenSalesInstances": false,
+        "employeePaymentMethods": [],
+        "totalSalesBeforeAdjustments": 0,
+        "totalNetPaidAmount": 0,
+        "totalTipsReceived": 0,
+        "totalCostOfGoodsSold": 0,
+        "totalCustomersServed": 0,
+        "averageCustomerExpenditure": 0,
+        "soldGoods": [],
+        "voidedGoods": [],
+        "invitedGoods": [],
+        "totalVoidValue": 0,
+        "totalInvitedValue": 0
+      }
+    ],
+    "selfOrderingSalesReport": [],
+    "businessId": "6673fed98c45d0a0ca5f34c1",
+    "businessPaymentMethods": [],
+    "dailyTotalSalesBeforeAdjustments": 0,
+    "dailyNetPaidAmount": 0,
+    "dailyTipsReceived": 0,
+    "dailyCostOfGoodsSold": 0,
+    "dailyProfit": 0,
+    "dailyCustomersServed": 0,
+    "dailyAverageCustomerExpenditure": 0,
+    "dailySoldGoods": [],
+    "dailyVoidedGoods": [],
+    "dailyInvitedGoods": [],
+    "dailyTotalVoidValue": 0,
+    "dailyTotalInvitedValue": 0,
+    "dailyPosSystemCommission": 0
+  }
 ]

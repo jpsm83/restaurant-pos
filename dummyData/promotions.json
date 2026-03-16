@@ -15,14 +15,13 @@
         ],
         "activePromotion": true,
         "promotionType": {
-            "fullComplimentary": true,
-            "_id": "667c1fd8f22bdc543f10591c"
+            "fullComplimentary": true
         },
-        "business": "6673fed98c45d0a0ca5f34c1",
+        "businessId": "6673fed98c45d0a0ca5f34c1",
         "createdAt": "2024-06-21T06:49:03.082Z",
         "updatedAt": "2024-06-26T14:08:47.083Z",
         "__v": 0,
-        "businessGoodsToApply": []
+        "businessGoodsToApplyIds": []
     },
     {
         "_id": "667522901a4081cb67c6f662",
@@ -40,10 +39,9 @@
         ],
         "activePromotion": true,
         "promotionType": {
-            "fixedPrice": 100,
-            "_id": "667522901a4081cb67c6f664"
+            "fixedPrice": 100
         },
-        "business": "6673fed98c45d0a0ca5f34c1",
+        "businessId": "6673fed98c45d0a0ca5f34c1",
         "createdAt": "2024-06-21T06:49:52.954Z",
         "updatedAt": "2024-06-21T06:49:52.954Z",
         "__v": 0
@@ -64,10 +62,9 @@
         ],
         "activePromotion": true,
         "promotionType": {
-            "fixedPrice": 100,
-            "_id": "6675231e1a4081cb67c6f66a"
+            "fixedPrice": 100
         },
-        "business": "6673fef88c45d0a0ca5f34c5",
+        "businessId": "6673fef88c45d0a0ca5f34c5",
         "createdAt": "2024-06-21T06:52:14.061Z",
         "updatedAt": "2024-06-21T06:52:14.061Z",
         "__v": 0

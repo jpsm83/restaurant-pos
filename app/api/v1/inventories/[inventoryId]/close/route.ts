@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import mongoose, { Types } from "mongoose";
+import { getToken } from "next-auth/jwt";
 
 import connectDb from "@/lib/db/connectDb";
 import { handleApiError } from "@/lib/db/handleApiError";
@@ -20,27 +21,21 @@ export const PATCH = async (
 ) => {
   const inventoryId = context.params.inventoryId;
 
-  let body: { employeeId: Types.ObjectId };
-  try {
-    body = (await req.json()) as { employeeId: Types.ObjectId };
-  } catch {
+  const token = await getToken({
+    req: req as Parameters<typeof getToken>[0]["req"],
+    secret: process.env.NEXTAUTH_SECRET,
+  });
+  if (!token?.id || token.type !== "user") {
     return new NextResponse(
-      JSON.stringify({ message: "Invalid JSON body" }),
-      { status: 400, headers: { "Content-Type": "application/json" } }
+      JSON.stringify({ message: "Unauthorized" }),
+      { status: 401, headers: { "Content-Type": "application/json" } }
     );
   }
+  const userId = new Types.ObjectId(token.id as string);
 
-  const { employeeId } = body;
-  if (!inventoryId || !employeeId) {
+  if (!inventoryId || isObjectIdValid([inventoryId]) !== true) {
     return new NextResponse(
-      JSON.stringify({ message: "inventoryId and employeeId are required" }),
-      { status: 400, headers: { "Content-Type": "application/json" } }
-    );
-  }
-
-  if (isObjectIdValid([inventoryId, employeeId]) !== true) {
-    return new NextResponse(
-      JSON.stringify({ message: "Invalid inventory or employee ID" }),
+      JSON.stringify({ message: "Valid inventoryId is required" }),
       { status: 400, headers: { "Content-Type": "application/json" } }
     );
   }
@@ -51,33 +46,10 @@ export const PATCH = async (
   session.startTransaction();
 
   try {
-    const [employee, inventory] = await Promise.all([
-      Employee.findById(employeeId)
-        .select("currentShiftRole onDuty businessId")
-        .lean() as Promise<IEmployee | null>,
-      Inventory.findById(inventoryId).select("businessId setFinalCount inventoryGoods").lean() as Promise<IInventory | null>,
-    ]);
-
-    if (!employee) {
-      await session.abortTransaction();
-      return new NextResponse(
-        JSON.stringify({ message: "Employee not found" }),
-        { status: 404, headers: { "Content-Type": "application/json" } }
-      );
-    }
-
-    if (
-      !MANAGEMENT_ROLES.includes(employee.currentShiftRole ?? "") ||
-      !employee.onDuty
-    ) {
-      await session.abortTransaction();
-      return new NextResponse(
-        JSON.stringify({
-          message: "You are not allowed to close the inventory!",
-        }),
-        { status: 403, headers: { "Content-Type": "application/json" } }
-      );
-    }
+    const inventory = (await Inventory.findById(inventoryId)
+      .select("businessId setFinalCount inventoryGoods")
+      .lean()
+      .session(session)) as IInventory | null;
 
     if (!inventory) {
       await session.abortTransaction();
@@ -87,20 +59,46 @@ export const PATCH = async (
       );
     }
 
-    if (inventory.setFinalCount) {
+    const businessId = inventory.businessId as Types.ObjectId;
+    const employee = (await Employee.findOne({
+      userId,
+      businessId,
+    })
+      .select("currentShiftRole businessId")
+      .lean()
+      .session(session)) as IEmployee | null;
+
+    if (!employee) {
       await session.abortTransaction();
       return new NextResponse(
-        JSON.stringify({ message: "Inventory is already closed" }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
+        JSON.stringify({ message: "Employee not found for this business" }),
+        { status: 403, headers: { "Content-Type": "application/json" } }
       );
     }
 
-    const businessId = inventory.businessId as Types.ObjectId;
+    if (!MANAGEMENT_ROLES.includes(employee.currentShiftRole ?? "")) {
+      await session.abortTransaction();
+      return new NextResponse(
+        JSON.stringify({
+          message: "You are not allowed to close the inventory!",
+        }),
+        { status: 403, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     if (employee.businessId?.toString() !== businessId.toString()) {
       await session.abortTransaction();
       return new NextResponse(
         JSON.stringify({ message: "Inventory does not belong to your business" }),
         { status: 403, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    if (inventory.setFinalCount) {
+      await session.abortTransaction();
+      return new NextResponse(
+        JSON.stringify({ message: "Inventory is already closed" }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
 

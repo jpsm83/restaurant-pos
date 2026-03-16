@@ -17,6 +17,29 @@ export interface IMetrics {
   supplierGoodWastePercentage: IsupplierGoodWastePercentage;
 }
 
+export interface IBusinessOpeningHour {
+  dayOfWeek: number;
+  openTime: string;
+  closeTime: string;
+}
+
+export interface IDeliveryOpeningWindow {
+  dayOfWeek: number;
+  windows: {
+    openTime: string;
+    closeTime: string;
+  }[];
+}
+
+export interface IReportingConfig {
+  /**
+   * Start day of the business reporting week.
+   * 0 = Sunday, 1 = Monday, ... 6 = Saturday.
+   * Used by weeklyBusinessReport to group dailySalesReports.
+   */
+  weeklyReportStartDay: number;
+}
+
 export interface IBusiness {
   _id?: Types.ObjectId;
   tradeName: string;
@@ -38,4 +61,7 @@ export interface IBusiness {
   acceptsDelivery?: boolean;
   deliveryRadius?: number;
   minOrder?: number;
+  businessOpeningHours?: IBusinessOpeningHour[];
+  deliveryOpeningWindows?: IDeliveryOpeningWindow[];
+  reportingConfig?: IReportingConfig;
 }
