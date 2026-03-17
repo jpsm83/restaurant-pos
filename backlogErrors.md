@@ -43,9 +43,11 @@ purchases - DONE
 inventories - DONE
 notifications - DONE
 
-monthlyBusinessReport - DONE BUT NOT TESTED - create a simple route to execute it
-reservations
+monthlyBusinessReport - DONE BUT NOT TESTED
+reservations - DONE BUT NOT TESTED
 cloudinaryActions
+
+reservations has lots of logic for send email an notifications but many other features does the same, try to unify the sending of messages
 
 - move the dummy data to mongodb
 

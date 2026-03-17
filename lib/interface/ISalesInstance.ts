@@ -11,6 +11,7 @@ export interface ISalesInstance {
   salesPointId: Types.ObjectId;
   guests: number;
   salesInstanceStatus: string;
+  reservationId?: Types.ObjectId;
   openedByUserId?: Types.ObjectId;
   openedAsRole?: "employee" | "customer";
   responsibleByUserId?: Types.ObjectId;

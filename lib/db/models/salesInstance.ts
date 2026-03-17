@@ -44,6 +44,11 @@ const salesInstanceSchema = new Schema(
       required: [true, "Business id is required!"],
       index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
     }, // business where the table is located
+    reservationId: {
+      type: Schema.Types.ObjectId,
+      ref: "Reservation",
+      index: true,
+    }, // optional link to reservation that originated this sales instance (set on first order)
 
     // non required fields
     clientName: { type: String }, // name of the client that is in the table

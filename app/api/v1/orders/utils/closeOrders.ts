@@ -11,6 +11,7 @@ import { IPaymentMethod } from "@/lib/interface/IPaymentMethod";
 // imported models
 import Order from "@/lib/db/models/order";
 import SalesInstance from "@/lib/db/models/salesInstance";
+import Reservation from "@/lib/db/models/reservation";
 
 // close multiple orders at the same time
 export const closeOrders = async (
@@ -112,10 +113,8 @@ export const closeOrders = async (
     }
 
     // Fetch sales instance associated with the first order
-    const salesInstance = (await SalesInstance.findById(
-      orders[0].salesInstanceId
-    )
-      .select("responsibleByUserId salesGroup")
+    const salesInstance = (await SalesInstance.findById(orders[0].salesInstanceId)
+      .select("responsibleByUserId salesGroup reservationId")
       .populate({
         path: "salesGroup.ordersIds",
         select: "billingStatus",
@@ -147,6 +146,22 @@ export const closeOrders = async (
 
       if (updatedSalesInstance.modifiedCount !== 1) {
         return "Failed to close sales instance!";
+      }
+
+      // If this salesInstance is linked to a reservation, mark reservation as Completed.
+      const reservation = (await Reservation.findOne({
+        $or: [{ salesInstanceId: salesInstance._id }, { _id: salesInstance.reservationId }],
+      })
+        .select("_id status")
+        .session(session)
+        .lean()) as unknown as { _id: Types.ObjectId; status?: string } | null;
+
+      if (reservation && reservation.status !== "Cancelled" && reservation.status !== "NoShow") {
+        await Reservation.updateOne(
+          { _id: reservation._id },
+          { $set: { status: "Completed" } },
+          { session }
+        );
       }
     }
 

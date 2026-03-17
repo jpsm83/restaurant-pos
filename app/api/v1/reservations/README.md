@@ -1,25 +1,22 @@
 # Reservations API — `app/api/v1/reservations`
 
-This folder is the **planned home of the Reservations API**. Reservations are part of the product vision (see `context.md`: “Reservations and other service workflows as the app expands”), and the business cascade delete already reserves a place for a future `Reservation` model (`app/api/v1/business/[businessId]/route.ts`: `// Reservation.deleteMany({ businessId }, { session }), TO BE CREATED`). At the moment **no route or model files exist** in this folder; this README describes the **intended role**, **integration points**, and **patterns** so that when the feature is implemented, it fits the rest of the app.
+This folder contains the **REST API for Reservations**: the **booking layer** that sits on top of live service. Reservations are **scoped by `businessId`**, can be created by **customers** (pending approval) or by **staff** (confirmed immediately), and connect to **SalesPoints** (tables) and **SalesInstances** (the consuming session) once the guest is seated and starts ordering.
 
-Reservations are **not related to suppliers**; they belong to the **service flow**: booking tables/rooms for a business, typically linked to **SalesPoint** (tables, bar, rooms) and potentially to **SalesInstance** when a reservation becomes a seated session.
+Reservations are **not related to suppliers**; they belong to the **service flow**: booking tables/rooms for a business and connecting that booking to the POS session when guests arrive.
 
 ---
 
-## 1. Purpose and role in the application (intended)
+## 1. Purpose and role in the application
 
-- **Reservation** = a booked slot for a **Business**: date/time, guest count, optional contact, status (e.g. pending, confirmed, seated, cancelled, no-show), and typically a link to a **SalesPoint** (table/room) or a “to be assigned” state.
-- **Scoping:** Reservations are scoped by `businessId` so they belong to one restaurant/location. When a **Business** is deleted, all its reservations should be removed in the same transaction (hence the placeholder in the business DELETE).
-- **Flow:** A reservation can later become a **SalesInstance** (e.g. “seated” at a sales point); the exact handoff (reservation → open table/session) can be implemented when the API and UI are built.
-- **UI:** The app already has a navigation entry to “Reservations” (`components/BusinessNavigation.tsx` → `/reservations`); the page and data will be backed by the API in this folder once it exists.
+- **Reservation** = a booked slot for a **Business**: date/time, guest count, optional description, and a **status lifecycle** (Pending → Confirmed → Arrived → Seated → Completed, with Cancelled/NoShow as terminals).
+- **Scoping:** Reservations are scoped by `businessId`. When a **Business** is deleted, reservations are removed in the same DB transaction (`Reservation.deleteMany({ businessId }, { session })`).
+- **Flow:** When staff seats a reservation, the system creates a **SalesInstance** for the assigned **SalesPoint**. The **bidirectional linkage** is finalized on the **first order** (so consumption can be attributed to a reservation).
 
 So: **Reservations are the booking layer for the business: who is coming, when, and (optionally) which table/area, and how it connects to the live service (sales points / sales instances).**
 
 ---
 
-## 2. File structure (suggested for implementation)
-
-When the feature is implemented, a structure in line with other v1 domains could look like:
+## 2. File structure
 
 ```
 app/api/v1/reservations/
@@ -40,16 +37,22 @@ Optional additions as needed: `utils/` for validation (e.g. date/time, capacity)
 
 ---
 
-## 3. Route reference (intended)
+## 3. Route reference
 
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/v1/reservations` | List reservations (optional query: businessId, startDate, endDate, status). |
-| POST | `/api/v1/reservations` | Create reservation. Body: **JSON** (businessId, reservationDate, time, guestCount, optional salesPointId, contact, status). |
+| POST | `/api/v1/reservations` | Create reservation. Body: **JSON** (businessId, guestCount, reservationStart, optional reservationEnd/duration, description). Customer-created reservations start as **Pending** and trigger notifications/email. |
 | GET | `/api/v1/reservations/business/:businessId` | List reservations for a business (optional date/status filters). |
 | GET | `/api/v1/reservations/:reservationId` | Get one reservation. |
-| PATCH | `/api/v1/reservations/:reservationId` | Update reservation (e.g. status, time, sales point). |
+| PATCH | `/api/v1/reservations/:reservationId` | Update reservation (status lifecycle, salesPoint assignment, seating which creates SalesInstance, etc.). |
 | DELETE | `/api/v1/reservations/:reservationId` | Delete or cancel reservation. |
+
+Related SalesInstance helper route:
+
+| Method | Path | Description |
+|--------|------|-------------|
+| PATCH | `/api/v1/salesInstances/:salesInstanceId/transferSalesPoint` | Move an open SalesInstance to a new SalesPoint and (if linked) keep `Reservation.salesPointId` in sync. |
 
 All responses should be JSON. Use `handleApiError` for 500 and explicit `NextResponse` for 400/404/409, consistent with other v1 APIs.
 
@@ -64,7 +67,8 @@ All responses should be JSON. Use `handleApiError` for 500 and explicit `NextRes
 ### 4.2 SalesPoint and SalesInstance (service flow)
 
 - **SalesPoint** represents a table, room, bar, etc. A reservation can optionally reference a **salesPointId** (booked table) or leave it unset until assignment.
-- **SalesInstance** is the “open session” at a sales point. When a reservation is “seated,” the app may create or link a SalesInstance for that sales point; that logic can live in the reservations API (e.g. PATCH status to “Seated”) or in a shared service, and should stay consistent with how orders and daily reports work (see business README, section 8.4).
+- **SalesInstance** is the “open session” at a sales point. When a reservation is “Seated,” the reservations API creates a SalesInstance (status `Reserved`) and stores its id on the reservation. On the **first order**, the orders create util sets `SalesInstance.reservationId` so consumption can be traced from both sides.
+- **Table moves:** If host changes `Reservation.salesPointId`, the linked SalesInstance is also moved (same DB transaction). If server moves the SalesInstance, `/transferSalesPoint` also updates the reservation’s salesPoint.
 
 ### 4.3 Employees and Users (optional)
 
@@ -76,33 +80,28 @@ All responses should be JSON. Use `handleApiError` for 500 and explicit `NextRes
 
 ---
 
-## 5. Patterns to follow when implementing
+## 5. Patterns to follow when extending
 
 1. **Always call `connectDb()`** before the first DB operation in each request.
 2. **Validate IDs** with `isObjectIdValid` for `reservationId`, `businessId`, `salesPointId` (and any other refs) before queries or updates.
 3. **Scope by businessId** for list and create; enforce that reservation documents always have a valid `businessId` that exists.
 4. **Use JSON body** for create/update unless you need file uploads (then use FormData like business/user routes).
 5. **Return consistent JSON:** 200/201 with the resource or a clear message; 400/404/409 with a `message`; use `handleApiError` in catch blocks for 500.
-6. **Cascade:** Add `Reservation.deleteMany({ businessId }, { session })` to the business DELETE transaction when the model exists.
-7. **Uniqueness / conflicts:** If you need to avoid double-booking (e.g. same sales point, overlapping time), add validation and return 409 on conflict.
+6. **Cascade:** Reservations are deleted as part of the business delete transaction.
+7. **Conflicts:** Table moves prevent moving into an already-occupied table (409). Reservation overlap is intentionally manager-controlled; conflict checks can be extended later.
 
 ---
 
-## 6. Data model (suggested for context)
+## 6. Data model (implemented)
 
-When you introduce the **Reservation** model, it could include:
+Reservation model lives in `lib/db/models/reservation.ts` and includes (key fields):
 
-- **Required:** `businessId` (ref: Business), `reservationDate` (Date), `guestCount` (Number), `status` (e.g. string enum: Pending, Confirmed, Seated, Cancelled, NoShow).
-- **Optional:** `salesPointId` (ref: SalesPoint), `time` or `slot`, `contactName`, `contactPhone`, `contactEmail`, `userId` (ref: User), `notes`, `createdByEmployeeId` (ref: Employee).
-
-Indexes on `businessId`, `reservationDate`, and `status` will help list/filter performance.
+- **Required:** `businessId`, `createdByUserId`, `createdByRole` ("customer" | "employee"), `guestCount`, `reservationStart`.
+- **Status enum:** `Pending`, `Confirmed`, `Arrived`, `Seated`, `Cancelled`, `NoShow`, `Completed`.
+- **Optional:** `employeeResponsableByUserId`, `reservationEnd`, `description`, `salesPointId`, `salesInstanceId`.
 
 ---
 
-## 7. Current status
+## 7. Notifications and emails
 
-- **No routes or models exist yet** in `app/api/v1/reservations`.
-- **Business DELETE** has a placeholder for `Reservation.deleteMany({ businessId }, { session })` to be enabled once the model exists.
-- **Navigation** already links to `/reservations`; the page can be wired to the API once it is implemented.
-
-This README is the place to document the actual file structure, route table, and data model once the Reservations API is built, and to keep context for flow, boundaries, and app-wide integration.
+- **Customer creates reservation** → status `Pending` and triggers:\n  - Customer email + in-app notification (“pending approval”).\n  - Managers-on-duty in-app notification (“action required”).\n- **Manager confirms/cancels** → triggers customer email + in-app notification with the decision.\n\nEmail uses the same SMTP config as `lib/orderConfirmation` (nodemailer).

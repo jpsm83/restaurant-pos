@@ -12,6 +12,7 @@ import { ISalesInstance } from "@/lib/interface/ISalesInstance";
 // imported models
 import Order from "@/lib/db/models/order";
 import SalesInstance from "@/lib/db/models/salesInstance";
+import Reservation from "@/lib/db/models/reservation";
 
 // *** IMPORTANT *** PROMOTIONS PRICE SHOULD BE CALCUATED ON THE FRONT END SO PRICE CAN BE SEEN REAL TIME
 
@@ -144,6 +145,31 @@ export const createOrders = async (
 
     if (updatedSalesInstance.modifiedCount === 0) {
       return "SalesInstance not updated!";
+    }
+
+    // If this salesInstance was created from a reservation (reservation.salesInstanceId),
+    // set bidirectional linking on the first order so we can attribute consumption.
+    const reservation = (await Reservation.findOne({
+      salesInstanceId,
+      status: { $in: ["Arrived", "Seated", "Confirmed"] },
+    })
+      .select("_id")
+      .session(session)
+      .lean()) as unknown as { _id: Types.ObjectId } | null;
+
+    if (reservation) {
+      await Promise.all([
+        SalesInstance.updateOne(
+          { _id: salesInstanceId, reservationId: { $exists: false } },
+          { $set: { reservationId: reservation._id } },
+          { session }
+        ),
+        Reservation.updateOne(
+          { _id: reservation._id },
+          { $set: { status: "Seated" } },
+          { session }
+        ),
+      ]);
     }
 
     return ordersCreated;

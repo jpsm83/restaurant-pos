@@ -38,6 +38,7 @@ import SalesPoint from "@/lib/db/models/salesPoint";
 import MonthlyBusinessReport from "@/lib/db/models/monthlyBusinessReport";
 import User from "@/lib/db/models/user";
 import Rating from "@/lib/db/models/rating";
+import Reservation from "@/lib/db/models/reservation";
 
 // imported enums
 import { subscriptionEnums, currenctyEnums } from "@/lib/enums";
@@ -600,7 +601,7 @@ export const DELETE = async (
       Promotion.deleteMany({ businessId }, { session }),
       Purchase.deleteMany({ businessId }, { session }),
       Rating.deleteMany({ businessId }, { session }),
-      // Reservation.deleteMany({ businessId }, { session }), TO BE CREATED
+      Reservation.deleteMany({ businessId }, { session }),
       SalesInstance.deleteMany({ businessId }, { session }),
       SalesPoint.deleteMany({ businessId }, { session }),
       Schedule.deleteMany({ businessId }, { session }),

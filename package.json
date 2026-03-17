@@ -4,6 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:monorepo": "concurrently -n frontend,backend -c blue,green \"npm run dev:frontend\" \"npm run dev:backend\"",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
@@ -26,10 +29,10 @@
     "moment": "^2.30.1",
     "mongodb": "^6.10.0",
     "mongoose": "^8.12.1",
-    "nodemailer": "^6.9.16",
     "next": "^15.2.1",
     "next-auth": "^4.24.11",
     "next-cloudinary": "^6.16.0",
+    "nodemailer": "^6.9.16",
     "qrcode": "^1.5.4",
     "react": "19.0.0",
     "react-dom": "19.0.0",
@@ -48,10 +51,12 @@
     "@types/qrcode": "^1.5.5",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "concurrently": "^9.2.1",
     "eslint": "^8",
     "eslint-config-next": "15.0.2",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
+    "concurrently": "^9.2.1",
     "typescript": "^5.8.2"
   }
 }

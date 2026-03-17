@@ -26,7 +26,7 @@ This is a **complete, real-time POS system** for **bars and restaurants**, desig
 - **Reports** (daily/monthly business reports and other analytics)
 - **Notifications** (operational alerts, messages, promotions, etc.)
 - **Promotions**
-- **Reservations** (and other service workflows as the app expands)
+- **Reservations** (booking layer: customer requests + staff approval; links to tables/sales instances)
 
 Everything is designed to work **in live time**, where the POS state (open tables/sales instances, order status, stock movement, etc.) is continuously updated and reflected across the UI and APIs.
 
@@ -83,7 +83,7 @@ This section summarizes **what the app can do** and **what solution it offers** 
 - **One system** for service (tables, orders, payments), **menu** (items, recipes, costing, allergens), **supply** (suppliers, goods, purchases), **stock** (inventory driven by sales and purchases), and **reporting** (daily by employee, monthly by business).
 - **Real-time** POS: open tables, send orders, apply promotions, close with payment, and see stock move with sales — all without leaving the app.
 - **Multi-location ready**: each **business** is a tenant; the same codebase serves many restaurants or bars with isolated data.
-- **Control and visibility**: set **targets** (cost %, waste %); track **actual** in daily and monthly reports; use **inventory** and **purchases** to see what you have and what you spent. Reservations and further workflows are planned.
+- **Control and visibility**: set **targets** (cost %, waste %); track **actual** in daily and monthly reports; use **inventory** and **purchases** to see what you have and what you spent. Reservations integrate into service flow via sales points and sales instances.
 
 ---
 
@@ -146,7 +146,7 @@ At the moment, there are **19 READMEs** in the app. This list will grow over tim
   - `app/api/v1/promotions/README.md`
 - **Ratings (user reviews 0–5 per business, Business averageRating/ratingCount, discovery filter and future rating emails)**  
   - `app/api/v1/ratings/README.md`
-- **Reservations (planned: table/booking per business, link to sales points and service flow; API to be implemented)**  
+- **Reservations (table/booking per business, linked to sales points and sales instances; API implemented)**  
   - `app/api/v1/reservations/README.md`
 
 ---

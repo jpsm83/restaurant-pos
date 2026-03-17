@@ -116,6 +116,30 @@ This document describes **how the app works from a user perspective**, from init
 
 ## 3. Live service – tables, orders, and payments
 
+### 3.0 Reservations (booking → service handoff)
+
+Reservations are the **booking layer** that can be created by a **customer** or by **staff**, and then handed off into live service (tables / sales instances).
+
+- **Customer-created reservation**
+  - Customer creates a reservation request (party size + desired time).
+  - The reservation is created with status **Pending**.
+  - Customer receives an **email** + **in-app notification** that the reservation is pending approval.
+  - **Managers on duty** receive an **in-app notification** to approve or reject.
+  - When staff sets the reservation to **Confirmed** or **Cancelled**, the customer receives an **email** + **in-app notification** with the decision.
+
+- **Staff-created reservation**
+  - Staff creates a reservation directly for the business; status is **Confirmed** immediately.
+
+- **Arrival / seating**
+  - When guests arrive, staff can mark the reservation as **Arrived**, then **Seated**.
+  - When a reservation is seated, the system creates a **SalesInstance** (open session) for the assigned **SalesPoint** (table/room) and stores its id on the reservation.
+  - On the **first order** created for that SalesInstance, the system sets `SalesInstance.reservationId` so consumption is attributed to the reservation.
+  - When the SalesInstance is **fully paid and closed**, the reservation becomes **Completed**.
+
+- **Table moves**
+  - If staff changes the reservation’s assigned table (SalesPoint), the linked SalesInstance is moved to the new SalesPoint as well.
+  - If staff moves the SalesInstance to a different SalesPoint, the reservation’s SalesPoint is updated to match.
+
 ### 3.1 Opening a table / sales instance (waiter / bartender / customer via QR)
 
 Role (customer vs employee) is determined by session/context; the app does not require a separate mode choice for this flow.
