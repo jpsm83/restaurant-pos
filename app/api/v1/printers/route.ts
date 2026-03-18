@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 // imported interfaces
-import { IPrinter } from "@/lib/interface/IPrinter";
+import { IPrinter } from "@shared/interfaces/IPrinter";
 
 // imported utils
 import connectDb from "@/lib/db/connectDb";

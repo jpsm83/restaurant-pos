@@ -11,8 +11,8 @@ import { MANAGEMENT_ROLES } from "@/lib/constants";
 import DailySalesReport from "@/lib/db/models/dailySalesReport";
 import Employee from "@/lib/db/models/employee";
 import Order from "@/lib/db/models/order";
-import { IEmployee } from "@/lib/interface/IEmployee";
-import { IDailySalesReport } from "@/lib/interface/IDailySalesReport";
+import { IEmployee } from "@shared/interfaces/IEmployee";
+import { IDailySalesReport } from "@shared/interfaces/IDailySalesReport";
 import { NextResponse } from "next/server";
 
 // this is called by manager or admin after the calculateBusinessDailySalesReport been executed

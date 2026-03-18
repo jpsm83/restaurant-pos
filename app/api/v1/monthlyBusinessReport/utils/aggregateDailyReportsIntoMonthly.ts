@@ -5,9 +5,9 @@ import DailySalesReport from "@/lib/db/models/dailySalesReport";
 import MonthlyBusinessReport from "@/lib/db/models/monthlyBusinessReport";
 import Schedule from "@/lib/db/models/schedule";
 import Business from "@/lib/db/models/business";
-import { IGoodsReduced } from "@/lib/interface/IDailySalesReport";
-import { IPaymentMethod } from "@/lib/interface/IPaymentMethod";
-import { IMetrics } from "@/lib/interface/IBusiness";
+import { IGoodsReduced } from "@shared/interfaces/IDailySalesReport";
+import { IPaymentMethod } from "@shared/interfaces/IPaymentMethod";
+import { IMetrics } from "@shared/interfaces/IBusiness";
 import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 import {
   createMonthlyBusinessReport,

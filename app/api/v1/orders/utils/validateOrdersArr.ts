@@ -1,4 +1,4 @@
-import { IOrder } from "@/lib/interface/IOrder";
+import { IOrder } from "@shared/interfaces/IOrder";
 import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 import { Types } from "mongoose";
 

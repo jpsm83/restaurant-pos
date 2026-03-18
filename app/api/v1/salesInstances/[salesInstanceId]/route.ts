@@ -17,8 +17,8 @@ import { addUserToDailySalesReport } from "../../dailySalesReports/utils/addEmpl
 import { getToken } from "next-auth/jwt";
 
 // import interfaces
-import { IPaymentMethod } from "@/lib/interface/IPaymentMethod";
-import { ISalesInstance } from "@/lib/interface/ISalesInstance";
+import { IPaymentMethod } from "@shared/interfaces/IPaymentMethod";
+import { ISalesInstance } from "@shared/interfaces/ISalesInstance";
 
 // import models
 import DailySalesReport from "@/lib/db/models/dailySalesReport";

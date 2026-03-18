@@ -4,7 +4,7 @@ import { ClientSession, Types } from "mongoose";
 import connectDb from "@/lib/db/connectDb";
 
 // imported interfaces
-import { ISalesInstance } from "@/lib/interface/ISalesInstance";
+import { ISalesInstance } from "@shared/interfaces/ISalesInstance";
 
 // imported models
 import Order from "@/lib/db/models/order";

@@ -9,7 +9,7 @@ import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 import oneTimePurchaseSupplier from "../suppliers/utils/oneTimePurchaseSupplier";
 
 // imported interfaces
-import { IPurchase, IPurchaseItem } from "@/lib/interface/IPurchase";
+import { IPurchase, IPurchaseItem } from "@shared/interfaces/IPurchase";
 
 // imported models
 import Inventory from "@/lib/db/models/inventory";

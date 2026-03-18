@@ -11,8 +11,8 @@ import getWeekdaysInMonth from "../../utils/getWeekDaysInMonth";
 import calculateEmployeeCost from "../../utils/calculateEmployeeCost";
 
 // imported interfaces
-import { IEmployee } from "@/lib/interface/IEmployee";
-import { IEmployeeSchedule, ISchedule } from "@/lib/interface/ISchedule";
+import { IEmployee } from "@shared/interfaces/IEmployee";
+import { IEmployeeSchedule, ISchedule } from "@shared/interfaces/ISchedule";
 
 // imported models
 import Schedule from "@/lib/db/models/schedule";

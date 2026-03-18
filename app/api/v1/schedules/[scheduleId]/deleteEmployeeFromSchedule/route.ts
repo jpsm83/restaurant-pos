@@ -7,7 +7,7 @@ import { handleApiError } from "@/lib/db/handleApiError";
 import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 
 // imported interfaces
-import { IEmployeeSchedule, ISchedule } from "@/lib/interface/ISchedule";
+import { IEmployeeSchedule, ISchedule } from "@shared/interfaces/ISchedule";
 
 // imported models
 import Schedule from "@/lib/db/models/schedule";

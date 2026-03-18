@@ -2,7 +2,7 @@ import connectDb from "@/lib/db/connectDb";
 import { NextResponse } from "next/server";
 
 // imported interfaces
-import { ISchedule } from "@/lib/interface/ISchedule";
+import { ISchedule } from "@shared/interfaces/ISchedule";
 
 // import utils
 import { handleApiError } from "@/lib/db/handleApiError";

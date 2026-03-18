@@ -1,0 +1,62 @@
+import { ClientSession, Types } from "mongoose";
+import type { ISalesInstance } from "@shared/interfaces/ISalesInstance";
+import SalesInstance from "../models/salesInstance.js";
+import DailySalesReport from "../models/dailySalesReport.js";
+
+export async function createSalesInstance(
+  newSalesInstanceObj: ISalesInstance,
+  session: ClientSession
+): Promise<unknown | string> {
+  try {
+    const requiredKeys = [
+      "dailyReferenceNumber",
+      "salesPointId",
+      "guests",
+      "salesInstanceStatus",
+      "businessId",
+    ];
+
+    for (const key of requiredKeys) {
+      if (!(key in (newSalesInstanceObj as Record<string, unknown>))) {
+        return `${key} is missing!`;
+      }
+    }
+
+    const { dailyReferenceNumber, openedByUserId, openedAsRole, businessId } =
+      newSalesInstanceObj;
+
+    if (openedByUserId && openedAsRole === "employee") {
+      const exists = await DailySalesReport.exists({
+        dailyReferenceNumber,
+        businessId,
+        "employeesDailySalesReport.userId": openedByUserId as unknown as Types.ObjectId,
+      }).session(session);
+
+      if (!exists) {
+        await DailySalesReport.updateOne(
+          { dailyReferenceNumber, businessId },
+          {
+            $push: {
+              employeesDailySalesReport: {
+                userId: openedByUserId,
+                hasOpenSalesInstances: true,
+              },
+            },
+          },
+          { session }
+        );
+      }
+    }
+
+    const newSalesInstance = await SalesInstance.create([newSalesInstanceObj], {
+      session,
+    });
+
+    if (!newSalesInstance?.length) return "Create sales instance failed!";
+
+    return newSalesInstance[0];
+  } catch (error) {
+    return "Create sales instance failed! " + error;
+  }
+}
+

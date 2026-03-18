@@ -3,7 +3,7 @@ import mongoose, { Types } from "mongoose";
 import { NextResponse } from "next/server";
 
 // imported interfaces
-import { IPrinter } from "@/lib/interface/IPrinter";
+import { IPrinter } from "@shared/interfaces/IPrinter";
 
 // imported utils
 import { checkPrinterConnection } from "../utils/checkPrinterConnection";

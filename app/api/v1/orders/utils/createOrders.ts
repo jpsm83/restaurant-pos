@@ -6,8 +6,8 @@ import { handleApiError } from "@/lib/db/handleApiError";
 import { updateDynamicCountSupplierGood } from "../../inventories/utils/updateDynamicCountSupplierGood";
 
 // imported interfaces
-import { IOrder } from "@/lib/interface/IOrder";
-import { ISalesInstance } from "@/lib/interface/ISalesInstance";
+import { IOrder } from "@shared/interfaces/IOrder";
+import { ISalesInstance } from "@shared/interfaces/ISalesInstance";
 
 // imported models
 import Order from "@/lib/db/models/order";

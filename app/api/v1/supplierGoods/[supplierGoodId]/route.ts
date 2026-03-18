@@ -9,7 +9,7 @@ import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 import addSupplierGoodToInventory from "../../inventories/utils/addSupplierGoodToInventory";
 
 // imported interfaces
-import { ISupplierGood } from "@/lib/interface/ISupplierGood";
+import { ISupplierGood } from "@shared/interfaces/ISupplierGood";
 
 // imported models
 import SupplierGood from "@/lib/db/models/supplierGood";

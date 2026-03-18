@@ -7,7 +7,7 @@ import { handleApiError } from "@/lib/db/handleApiError";
 import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 
 // imported interfaces
-import { IPurchase } from "@/lib/interface/IPurchase";
+import { IPurchase } from "@shared/interfaces/IPurchase";
 
 // imported models
 import Purchase from "@/lib/db/models/purchase";

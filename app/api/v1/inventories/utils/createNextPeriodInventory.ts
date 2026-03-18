@@ -1,6 +1,6 @@
 import { ClientSession, Types } from "mongoose";
 
-import { IInventory } from "@/lib/interface/IInventory";
+import { IInventory } from "@shared/interfaces/IInventory";
 import Inventory from "@/lib/db/models/inventory";
 import SupplierGood from "@/lib/db/models/supplierGood";
 

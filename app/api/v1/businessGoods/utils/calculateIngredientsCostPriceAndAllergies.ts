@@ -1,12 +1,12 @@
 import convert, { Unit } from "convert-units";
 
 // imported interfaces
-import { ISupplierGood } from "@/lib/interface/ISupplierGood";
-import { IIngredient } from "@/lib/interface/IBusinessGood";
+import { ISupplierGood } from "@shared/interfaces/ISupplierGood";
+import { IIngredient } from "@shared/interfaces/IBusinessGood";
 
 // imported models
 import SupplierGood from "@/lib/db/models/supplierGood";
-import objDefaultValidation from "@/lib/utils/objDefaultValidation";
+import objDefaultValidation from "@shared/utils/objDefaultValidation";
 import { Types } from "mongoose";
 
 const reqIngredientsFields = [

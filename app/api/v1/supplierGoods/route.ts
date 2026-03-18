@@ -9,7 +9,7 @@ import uploadFilesCloudinary from "@/lib/cloudinary/uploadFilesCloudinary";
 import addSupplierGoodToInventory from "../inventories/utils/addSupplierGoodToInventory";
 
 // imported interfaces
-import { ISupplierGood } from "@/lib/interface/ISupplierGood";
+import { ISupplierGood } from "@shared/interfaces/ISupplierGood";
 
 // import models
 import SupplierGood from "@/lib/db/models/supplierGood";

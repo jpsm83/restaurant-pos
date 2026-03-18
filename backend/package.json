@@ -1,22 +1,40 @@
 {
-  "name": "backend",
+  "name": "project imperium",
   "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "start": "tsx src/server.ts"
+    "start": "tsx src/server.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
+    "test:routes": "vitest run tests/routes"
   },
   "keywords": [],
-  "author": "",
+  "author": "Joao Paulo de Souza Machado",
   "license": "ISC",
-  "description": "",
+  "description": "Full Management System for a Restaurant/Bar",
   "dependencies": {
-    "fastify": "^5.8.2"
+    "@fastify/cookie": "^11.0.2",
+    "@fastify/jwt": "^10.0.0",
+    "@fastify/multipart": "^9.4.0",
+    "bcrypt": "^6.0.0",
+    "cloudinary": "^2.9.0",
+    "convert-units": "^2.3.4",
+    "fastify": "^5.8.2",
+    "mongoose": "^9.3.0"
   },
   "devDependencies": {
+    "@faker-js/faker": "^10.3.0",
+    "@types/bcrypt": "^6.0.0",
+    "@types/mongoose": "^5.11.96",
     "@types/node": "^25.5.0",
+    "@vitest/coverage-v8": "^4.1.0",
+    "mongodb-memory-server": "^11.0.1",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.0"
   }
 }

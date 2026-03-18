@@ -9,8 +9,8 @@ import { updateEmployeesDailySalesReport } from "../../utils/updateEmployeeDaily
 import { aggregateDailyReportsIntoMonthly } from "@/app/api/v1/monthlyBusinessReport/utils/aggregateDailyReportsIntoMonthly";
 
 // imported interfaces
-import { IGoodsReduced } from "@/lib/interface/IDailySalesReport";
-import { IEmployee } from "@/lib/interface/IEmployee";
+import { IGoodsReduced } from "@shared/interfaces/IDailySalesReport";
+import { IEmployee } from "@shared/interfaces/IEmployee";
 
 // imported models
 import DailySalesReport from "@/lib/db/models/dailySalesReport";
@@ -18,7 +18,7 @@ import Employee from "@/lib/db/models/employee";
 import User from "@/lib/db/models/user";
 import Business from "@/lib/db/models/business";
 import isObjectIdValid from "@/lib/utils/isObjectIdValid";
-import { IPaymentMethod } from "@/lib/interface/IPaymentMethod";
+import { IPaymentMethod } from "@shared/interfaces/IPaymentMethod";
 import { DELIVERY_ATTRIBUTION_USER_ID, MANAGEMENT_ROLES } from "@/lib/constants";
 
 // @desc    Calculate the business daily sales report

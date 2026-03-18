@@ -18,18 +18,18 @@ import { sendOrderConfirmation } from "@/lib/orderConfirmation/sendOrderConfirma
 import {
   IDailySalesReport,
   IGoodsReduced,
-} from "@/lib/interface/IDailySalesReport";
-import { IBusiness } from "@/lib/interface/IBusiness";
-import { ISalesInstance } from "@/lib/interface/ISalesInstance";
-import { IOrder } from "@/lib/interface/IOrder";
-import { IPaymentMethod } from "@/lib/interface/IPaymentMethod";
+} from "@shared/interfaces/IDailySalesReport";
+import { IBusiness } from "@shared/interfaces/IBusiness";
+import { ISalesInstance } from "@shared/interfaces/ISalesInstance";
+import { IOrder } from "@shared/interfaces/IOrder";
+import { IPaymentMethod } from "@shared/interfaces/IPaymentMethod";
 
 // imported models
 import DailySalesReport from "@/lib/db/models/dailySalesReport";
 import SalesInstance from "@/lib/db/models/salesInstance";
 import SalesPoint from "@/lib/db/models/salesPoint";
 import Business from "@/lib/db/models/business";
-import { isBusinessOpenNow } from "@/lib/utils/isBusinessOpenNow";
+import { isBusinessOpenNow } from "@shared/utils/isBusinessOpenNow";
 import User from "@/lib/db/models/user";
 import { validatePaymentMethodArray } from "@/app/api/v1/orders/utils/validatePaymentMethodArray";
 import { applyPromotionsToOrders } from "@/lib/promotions/applyPromotions";

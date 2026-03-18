@@ -10,7 +10,7 @@ import { calculateSetMenuCostPriceAndAllergies } from "./utils/calculateSetMenuC
 import uploadFilesCloudinary from "@/lib/cloudinary/uploadFilesCloudinary";
 
 // imported interfaces
-import { IBusinessGood, IIngredient } from "@/lib/interface/IBusinessGood";
+import { IBusinessGood, IIngredient } from "@shared/interfaces/IBusinessGood";
 
 // imported models
 import BusinessGood from "@/lib/db/models/businessGood";

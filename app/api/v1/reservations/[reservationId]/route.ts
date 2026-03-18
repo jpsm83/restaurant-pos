@@ -11,9 +11,9 @@ import { createDailySalesReport } from "../../dailySalesReports/utils/createDail
 import { createSalesInstance } from "../../salesInstances/utils/createSalesInstance";
 
 // imported interfaces
-import { IReservation } from "@/lib/interface/IReservation";
-import { ISalesInstance } from "@/lib/interface/ISalesInstance";
-import { IDailySalesReport } from "@/lib/interface/IDailySalesReport";
+import { IReservation } from "@shared/interfaces/IReservation";
+import { ISalesInstance } from "@shared/interfaces/ISalesInstance";
+import { IDailySalesReport } from "@shared/interfaces/IDailySalesReport";
 
 // imported models
 import Reservation from "@/lib/db/models/reservation";

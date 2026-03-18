@@ -1,4 +1,4 @@
-import { IEmployeeSchedule } from "@/lib/interface/ISchedule";
+import { IEmployeeSchedule } from "@shared/interfaces/ISchedule";
 
 export const employeesValidation = (employee: IEmployeeSchedule) => {
   // check if the schedule is an array

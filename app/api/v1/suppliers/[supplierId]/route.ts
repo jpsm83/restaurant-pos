@@ -5,14 +5,14 @@ import { Types } from "mongoose";
 import connectDb from "@/lib/db/connectDb";
 import { handleApiError } from "@/lib/db/handleApiError";
 import isObjectIdValid from "@/lib/utils/isObjectIdValid";
-import objDefaultValidation from "@/lib/utils/objDefaultValidation";
+import objDefaultValidation from "@shared/utils/objDefaultValidation";
 import uploadFilesCloudinary from "@/lib/cloudinary/uploadFilesCloudinary";
 import deleteFilesCloudinary from "@/lib/cloudinary/deleteFilesCloudinary";
 import deleteFolderCloudinary from "@/lib/cloudinary/deleteFolderCloudinary";
 
 // imported interface
-import { ISupplier } from "@/lib/interface/ISupplier";
-import { IAddress } from "@/lib/interface/IAddress";
+import { ISupplier } from "@shared/interfaces/ISupplier";
+import { IAddress } from "@shared/interfaces/IAddress";
 
 // imported models
 import Supplier from "@/lib/db/models/supplier";

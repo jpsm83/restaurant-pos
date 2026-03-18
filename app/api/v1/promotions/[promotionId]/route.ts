@@ -10,7 +10,7 @@ import { validatePromotionType } from "../utils/validatePromotionType";
 import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 
 // imported interfaces
-import { IPromotion } from "@/lib/interface/IPromotion";
+import { IPromotion } from "@shared/interfaces/IPromotion";
 
 // imported models
 import Promotion from "@/lib/db/models/promotion";

@@ -6,7 +6,7 @@ import { handleApiError } from "@/lib/db/handleApiError";
 import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 
 // imported intefaces
-import { ISalesPoint } from "@/lib/interface/ISalesPoint";
+import { ISalesPoint } from "@shared/interfaces/ISalesPoint";
 
 // imported models
 import SalesPoint from "@/lib/db/models/salesPoint";

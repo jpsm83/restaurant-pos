@@ -10,7 +10,7 @@ import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 import Purchase from "@/lib/db/models/purchase";
 import Supplier from "@/lib/db/models/supplier";
 import SupplierGood from "@/lib/db/models/supplierGood";
-import { IPurchase } from "@/lib/interface/IPurchase";
+import { IPurchase } from "@shared/interfaces/IPurchase";
 import Inventory from "@/lib/db/models/inventory";
 
 // @desc    GET purchase by ID

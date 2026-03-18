@@ -2,7 +2,7 @@ import { Types } from "mongoose";
 
 import connectDb from "@/lib/db/connectDb";
 import Promotion from "@/lib/db/models/promotion";
-import { IOrder } from "@/lib/interface/IOrder";
+import { IOrder } from "@shared/interfaces/IOrder";
 
 type ObjectId = Types.ObjectId;
 

@@ -12,7 +12,7 @@ import { applyPromotionsToOrders } from "@/lib/promotions/applyPromotions";
 import { checkLowStockAndNotify } from "@/app/api/v1/inventories/utils/checkLowStockAndNotify";
 
 // imported interfaces
-import { IOrder } from "@/lib/interface/IOrder";
+import { IOrder } from "@shared/interfaces/IOrder";
 
 // imported models
 import Order from "@/lib/db/models/order";

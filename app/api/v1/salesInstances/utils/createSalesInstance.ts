@@ -5,7 +5,7 @@ import connectDb from "@/lib/db/connectDb";
 import { addUserToDailySalesReport } from "../../dailySalesReports/utils/addEmployeeToDailySalesReport";
 
 // imported interfaces
-import { ISalesInstance } from "@/lib/interface/ISalesInstance";
+import { ISalesInstance } from "@shared/interfaces/ISalesInstance";
 
 // imported models
 import DailySalesReport from "@/lib/db/models/dailySalesReport";

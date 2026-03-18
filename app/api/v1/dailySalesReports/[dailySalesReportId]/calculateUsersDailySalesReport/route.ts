@@ -8,7 +8,7 @@ import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 import { updateEmployeesDailySalesReport } from "../../utils/updateEmployeeDailySalesReport";
 
 // imported interfaces
-import { IDailySalesReport } from "@/lib/interface/IDailySalesReport";
+import { IDailySalesReport } from "@shared/interfaces/IDailySalesReport";
 
 // imported models
 import DailySalesReport from "@/lib/db/models/dailySalesReport";

@@ -5,14 +5,14 @@ import mongoose from "mongoose";
 import connectDb from "@/lib/db/connectDb";
 import { handleApiError } from "@/lib/db/handleApiError";
 import isObjectIdValid from "@/lib/utils/isObjectIdValid";
-import objDefaultValidation from "@/lib/utils/objDefaultValidation";
+import objDefaultValidation from "@shared/utils/objDefaultValidation";
 import uploadFilesCloudinary from "@/lib/cloudinary/uploadFilesCloudinary";
 
 // imported models
 import Supplier from "@/lib/db/models/supplier";
 
 // imported interface
-import { ISupplier } from "@/lib/interface/ISupplier";
+import { ISupplier } from "@shared/interfaces/ISupplier";
 
 const emailRegex = /^[\w-]+(\.[\w-]+)*@([\w-]+\.)+[a-zA-Z]{2,7}$/;
 

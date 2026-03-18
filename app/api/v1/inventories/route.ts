@@ -9,7 +9,7 @@ import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 import { updateDynamicCountSupplierGood } from "./utils/updateDynamicCountSupplierGood";
 
 // imported interfaces
-import { IInventory } from "@/lib/interface/IInventory";
+import { IInventory } from "@shared/interfaces/IInventory";
 
 // imported models
 import Inventory from "@/lib/db/models/inventory";

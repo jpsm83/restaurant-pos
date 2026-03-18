@@ -9,7 +9,7 @@ import Business from "@/lib/db/models/business";
 import WeeklyBusinessReport from "@/lib/db/models/weeklyBusinessReport";
 
 // imported interfaces
-import { IDailySalesReport } from "@/lib/interface/IDailySalesReport";
+import { IDailySalesReport } from "@shared/interfaces/IDailySalesReport";
 import connectDb from "@/lib/db/connectDb";
 
 import { aggregateDailyReportsIntoWeekly } from "@/app/api/v1/weeklyBusinessReport/utils/aggregateDailyReportsIntoWeekly";

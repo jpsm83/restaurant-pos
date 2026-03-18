@@ -2,6 +2,8 @@
 
 This folder contains the **REST API for the Business entity**: the core tenant of the restaurant POS. Every restaurant/location is a **Business**. All other domain entities (users, employees, orders, suppliers, sales points, etc.) are scoped by `businessId`. This document describes how these routes work, how they fit into the app, and the patterns to follow when extending or integrating with them.
 
+> Migration note: The new Fastify backend implementation is being built in `backend/src/routes/v1/business.ts` (mounted at `/api/v1/business`). The legacy Next.js routes remain in place during the transition.
+
 ---
 
 ## 1. Purpose and role in the application

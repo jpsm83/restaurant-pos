@@ -7,8 +7,8 @@ import { handleApiError } from "@/lib/db/handleApiError";
 import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 
 // imported interfaces
-import { IInventory, IInventoryCount } from "@/lib/interface/IInventory";
-import { ISupplierGood } from "@/lib/interface/ISupplierGood";
+import { IInventory, IInventoryCount } from "@shared/interfaces/IInventory";
+import { ISupplierGood } from "@shared/interfaces/ISupplierGood";
 
 // imported models
 import Inventory from "@/lib/db/models/inventory";

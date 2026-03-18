@@ -10,8 +10,8 @@ import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 import { createSalesInstance } from "./utils/createSalesInstance";
 
 // import interfaces
-import { IDailySalesReport } from "@/lib/interface/IDailySalesReport";
-import { ISalesInstance } from "@/lib/interface/ISalesInstance";
+import { IDailySalesReport } from "@shared/interfaces/IDailySalesReport";
+import { ISalesInstance } from "@shared/interfaces/ISalesInstance";
 
 // imported models
 import BusinessGood from "@/lib/db/models/businessGood";

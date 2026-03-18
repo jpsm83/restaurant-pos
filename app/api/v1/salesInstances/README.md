@@ -2,6 +2,8 @@
 
 This folder contains the **REST API for the SalesInstance entity**: the **open table/session** (check or tab) at a **SalesPoint**. A sales instance is where **Orders** are grouped: staff opens a session from the **POS UI** or by **scanning the table’s QR** (open-table-only); customers can self-order via the same QR **only when the sales point has selfOrdering enabled**. All orders for that session are attached to it until the session is closed. Sales instances are **not** related to suppliers; they are the **core of the live service flow**: they trigger creation of the **Daily Sales Report** when the first instance of the day is opened, they drive order creation and billing, and they tie together sales point, employees/customers, and daily reporting.
 
+> Migration note: The new Fastify backend implementation is being built in `backend/src/routes/v1/salesInstances.ts` (mounted at `/api/v1/salesInstances`). The legacy Next.js routes remain in place during the transition.
+
 This document describes how these routes and the create util work, how they interact with orders, daily reports, sales points, and the rest of the app, and the patterns to follow when extending them.
 
 ---

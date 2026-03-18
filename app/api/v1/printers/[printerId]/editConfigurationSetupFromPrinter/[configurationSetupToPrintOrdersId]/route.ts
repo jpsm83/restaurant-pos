@@ -10,7 +10,7 @@ import { handleApiError } from "@/lib/db/handleApiError";
 import Printer from "@/lib/db/models/printer";
 
 // imported interfaces
-import { IConfigurationSetupToPrintOrders } from "@/lib/interface/IPrinter";
+import { IConfigurationSetupToPrintOrders } from "@shared/interfaces/IPrinter";
 
 // this route will edit individual configurationSetupToPrintOrders references from the printer
 // @desc    Delete sales location

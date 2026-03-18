@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import connectDb from "@/lib/db/connectDb";
 import { handleApiError } from "@/lib/db/handleApiError";
 import isObjectIdValid from "@/lib/utils/isObjectIdValid";
-import { IInventory } from "@/lib/interface/IInventory";
+import { IInventory } from "@shared/interfaces/IInventory";
 import Inventory from "@/lib/db/models/inventory";
 import SupplierGood from "@/lib/db/models/supplierGood";
 import Supplier from "@/lib/db/models/supplier";

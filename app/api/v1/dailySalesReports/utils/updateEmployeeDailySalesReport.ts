@@ -8,8 +8,8 @@ import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 import {
   IGoodsReduced,
   IEmployeeDailySalesReport,
-} from "@/lib/interface/IDailySalesReport";
-import { IPaymentMethod } from "@/lib/interface/IPaymentMethod";
+} from "@shared/interfaces/IDailySalesReport";
+import { IPaymentMethod } from "@shared/interfaces/IPaymentMethod";
 
 // import models
 import Order from "@/lib/db/models/order";

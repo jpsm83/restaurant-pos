@@ -1,5 +1,5 @@
 // imported interfaces
-import { IPurchaseItem } from "@/lib/interface/IPurchase";
+import { IPurchaseItem } from "@shared/interfaces/IPurchase";
 
 // imported utils
 import isObjectIdValid from "@/lib/utils/isObjectIdValid";

@@ -2,6 +2,8 @@
 
 This folder contains the **REST API for the Order entity**: the **billable items** (menu items / business goods) placed in a **SalesInstance** (open table/session). Orders are created by employees (POST /orders) or by customers via the self-ordering flow (POST salesInstance/selfOrderingLocation). Each order references **businessGoodId** (main product) and optional **addOns** (the items sold); when orders are **created**, the app **decrements inventory** for the ingredients of those business goods (via **SupplierGood** → inventory dynamic count). When orders are **cancelled**, inventory is **incremented** back. Orders are **not** directly “related to the supplier”; they are the **sales side** that **consumes** what suppliers and purchases stock — so they are the link between **menu (business goods)**, **inventory (supplier goods)**, and **billing**.
 
+> Migration note: The new Fastify backend implementation is being built in `backend/src/routes/v1/orders.ts` (mounted at `/api/v1/orders`). The legacy Next.js routes remain in place during the transition.
+
 This document describes how the order routes and utils work, how they interact with sales instances, inventory, business goods, promotions, and the rest of the app, and the patterns to follow when extending them.
 
 ---

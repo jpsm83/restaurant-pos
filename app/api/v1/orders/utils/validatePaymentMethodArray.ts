@@ -1,4 +1,4 @@
-import { IPaymentMethod } from "@/lib/interface/IPaymentMethod";
+import { IPaymentMethod } from "@shared/interfaces/IPaymentMethod";
 import {
   paymentMethods,
   cardTypes,

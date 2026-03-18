@@ -8,8 +8,8 @@ import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 import { MANAGEMENT_ROLES } from "@/lib/constants";
 import Employee from "@/lib/db/models/employee";
 import Inventory from "@/lib/db/models/inventory";
-import { IEmployee } from "@/lib/interface/IEmployee";
-import { IInventory } from "@/lib/interface/IInventory";
+import { IEmployee } from "@shared/interfaces/IEmployee";
+import { IInventory } from "@shared/interfaces/IInventory";
 import { createNextPeriodInventory } from "../../utils/createNextPeriodInventory";
 
 // @desc    Close current inventory and automatically create next period inventory

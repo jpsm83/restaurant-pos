@@ -8,7 +8,7 @@ import { handleApiError } from "@/lib/db/handleApiError";
 import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 
 // imported interfaces
-import { IReservation } from "@/lib/interface/IReservation";
+import { IReservation } from "@shared/interfaces/IReservation";
 
 // imported models
 import Reservation from "@/lib/db/models/reservation";

@@ -8,7 +8,7 @@ import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 
 import Rating from "@/lib/db/models/rating";
 import Business from "@/lib/db/models/business";
-import { IRating } from "@/lib/interface/IRating";
+import { IRating } from "@shared/interfaces/IRating";
 
 // @desc    Create a rating for a business
 // @route   POST /api/v1/ratings

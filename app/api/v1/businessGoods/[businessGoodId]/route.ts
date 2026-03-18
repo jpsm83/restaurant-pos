@@ -11,7 +11,7 @@ import uploadFilesCloudinary from "@/lib/cloudinary/uploadFilesCloudinary";
 import deleteFolderCloudinary from "@/lib/cloudinary/deleteFolderCloudinary";
 
 // imported interfaces
-import { IBusinessGood } from "@/lib/interface/IBusinessGood";
+import { IBusinessGood } from "@shared/interfaces/IBusinessGood";
 
 // imported models
 import BusinessGood from "@/lib/db/models/businessGood";

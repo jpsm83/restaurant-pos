@@ -12,14 +12,14 @@ import { createOrders } from "@/app/api/v1/orders/utils/createOrders";
 import { closeOrders } from "@/app/api/v1/orders/utils/closeOrders";
 import { checkLowStockAndNotify } from "@/app/api/v1/inventories/utils/checkLowStockAndNotify";
 import { sendOrderConfirmation } from "@/lib/orderConfirmation/sendOrderConfirmation";
-import { isDeliveryOpenNow } from "@/lib/utils/isBusinessOpenNow";
+import { isDeliveryOpenNow } from "@shared/utils/isBusinessOpenNow";
 
-import { IDailySalesReport } from "@/lib/interface/IDailySalesReport";
-import { ISalesInstance } from "@/lib/interface/ISalesInstance";
-import { IOrder } from "@/lib/interface/IOrder";
-import { IPaymentMethod } from "@/lib/interface/IPaymentMethod";
-import { IAddress } from "@/lib/interface/IAddress";
-import { IBusiness } from "@/lib/interface/IBusiness";
+import { IDailySalesReport } from "@shared/interfaces/IDailySalesReport";
+import { ISalesInstance } from "@shared/interfaces/ISalesInstance";
+import { IOrder } from "@shared/interfaces/IOrder";
+import { IPaymentMethod } from "@shared/interfaces/IPaymentMethod";
+import { IAddress } from "@shared/interfaces/IAddress";
+import { IBusiness } from "@shared/interfaces/IBusiness";
 
 import DailySalesReport from "@/lib/db/models/dailySalesReport";
 // SalesInstance model is used indirectly via createSalesInstance

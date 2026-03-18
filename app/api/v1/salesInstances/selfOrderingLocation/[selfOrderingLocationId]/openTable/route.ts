@@ -8,8 +8,8 @@ import { handleApiError } from "@/lib/db/handleApiError";
 import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 import { createSalesInstance } from "../../../utils/createSalesInstance";
 
-import { IDailySalesReport } from "@/lib/interface/IDailySalesReport";
-import { ISalesInstance } from "@/lib/interface/ISalesInstance";
+import { IDailySalesReport } from "@shared/interfaces/IDailySalesReport";
+import { ISalesInstance } from "@shared/interfaces/ISalesInstance";
 
 import DailySalesReport from "@/lib/db/models/dailySalesReport";
 import Employee from "@/lib/db/models/employee";

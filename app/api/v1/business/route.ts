@@ -5,11 +5,11 @@ import mongoose from "mongoose";
 // imported utils
 import connectDb from "@/lib/db/connectDb";
 import { handleApiError } from "@/lib/db/handleApiError";
-import objDefaultValidation from "@/lib/utils/objDefaultValidation";
+import objDefaultValidation from "@shared/utils/objDefaultValidation";
 import uploadFilesCloudinary from "@/lib/cloudinary/uploadFilesCloudinary";
 
 // imported interface
-import { IBusiness } from "@/lib/interface/IBusiness";
+import { IBusiness } from "@shared/interfaces/IBusiness";
 
 // imported models
 import Business from "@/lib/db/models/business";

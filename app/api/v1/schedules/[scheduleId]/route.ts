@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { Types } from "mongoose";
 
 // imported interfaces
-import { ISchedule } from "@/lib/interface/ISchedule";
+import { ISchedule } from "@shared/interfaces/ISchedule";
 
 // imported utils
 import { handleApiError } from "@/lib/db/handleApiError";

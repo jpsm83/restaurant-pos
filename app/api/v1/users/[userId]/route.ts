@@ -6,17 +6,17 @@ import { Types } from "mongoose";
 import connectDb from "@/lib/db/connectDb";
 import { handleApiError } from "@/lib/db/handleApiError";
 import isObjectIdValid from "@/lib/utils/isObjectIdValid";
-import objDefaultValidation from "@/lib/utils/objDefaultValidation";
+import objDefaultValidation from "@shared/utils/objDefaultValidation";
 import uploadFilesCloudinary from "@/lib/cloudinary/uploadFilesCloudinary";
 import deleteFilesCloudinary from "@/lib/cloudinary/deleteFilesCloudinary";
 
 // imported interfaces
-import { IUser } from "@/lib/interface/IUser";
+import { IUser } from "@shared/interfaces/IUser";
 
 // imported models
 import User from "@/lib/db/models/user";
 import deleteFolderCloudinary from "@/lib/cloudinary/deleteFolderCloudinary";
-import { IEmployee } from "@/lib/interface/IEmployee";
+import { IEmployee } from "@shared/interfaces/IEmployee";
 import Employee from "@/lib/db/models/employee";
 
 const reqAddressFields = [

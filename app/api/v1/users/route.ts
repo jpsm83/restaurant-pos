@@ -4,7 +4,7 @@ import mongoose from "mongoose";
 
 // imported utils
 import connectDb from "@/lib/db/connectDb";
-import objDefaultValidation from "@/lib/utils/objDefaultValidation";
+import objDefaultValidation from "@shared/utils/objDefaultValidation";
 import { handleApiError } from "@/lib/db/handleApiError";
 import uploadFilesCloudinary from "@/lib/cloudinary/uploadFilesCloudinary";
 
@@ -12,7 +12,7 @@ import uploadFilesCloudinary from "@/lib/cloudinary/uploadFilesCloudinary";
 import User from "@/lib/db/models/user";
 
 // imported interface
-import { IUser } from "@/lib/interface/IUser";
+import { IUser } from "@shared/interfaces/IUser";
 
 const reqAddressFields = [
   "country",

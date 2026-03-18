@@ -7,7 +7,7 @@ import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 import { generateQrCode } from "./utils/generateQrCode";
 
 // imported intefaces
-import { ISalesPoint } from "@/lib/interface/ISalesPoint";
+import { ISalesPoint } from "@shared/interfaces/ISalesPoint";
 
 // imported models
 import SalesPoint from "@/lib/db/models/salesPoint";

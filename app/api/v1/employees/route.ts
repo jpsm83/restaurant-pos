@@ -4,13 +4,13 @@ import mongoose from "mongoose";
 // imported utils
 import connectDb from "@/lib/db/connectDb";
 import isObjectIdValid from "@/lib/utils/isObjectIdValid";
-import objDefaultValidation from "@/lib/utils/objDefaultValidation";
+import objDefaultValidation from "@shared/utils/objDefaultValidation";
 import { handleApiError } from "@/lib/db/handleApiError";
 import uploadFilesCloudinary from "@/lib/cloudinary/uploadFilesCloudinary";
 
 // imported interfaces
-import { IEmployee, ISalary } from "@/lib/interface/IEmployee";
-import { IUser } from "@/lib/interface/IUser";
+import { IEmployee, ISalary } from "@shared/interfaces/IEmployee";
+import { IUser } from "@shared/interfaces/IUser";
 
 // imported models
 import Employee from "@/lib/db/models/employee";

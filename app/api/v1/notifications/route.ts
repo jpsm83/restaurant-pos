@@ -7,7 +7,7 @@ import { handleApiError } from "@/lib/db/handleApiError";
 import isObjectIdValid from "@/lib/utils/isObjectIdValid";
 
 // imported interfaces
-import { INotification } from "@/lib/interface/INotification";
+import { INotification } from "@shared/interfaces/INotification";
 
 // imported models
 import Notification from "@/lib/db/models/notification";
