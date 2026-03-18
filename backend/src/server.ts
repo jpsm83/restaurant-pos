@@ -64,12 +64,23 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
 }
 
 // Only start the server if this file is run directly (not imported for tests)
-const isMainModule = import.meta.url === `file://${process.argv[1]?.replace(/\\/g, "/")}`;
-
-if (isMainModule) {
+async function main() {
   const server = await buildApp();
   const port = Number(process.env.PORT ?? 4000);
   const host = process.env.HOST ?? "0.0.0.0";
   await server.listen({ port, host });
+  console.log(`Server running at http://${host}:${port}`);
+}
+
+// Check if running as main module (not during tests)
+const isTest = process.env.VITEST === "true" || process.env.NODE_ENV === "test";
+const scriptPath = process.argv[1]?.replace(/\\/g, "/").toLowerCase();
+const isServerScript = scriptPath?.includes("server.ts") || scriptPath?.includes("server.js");
+
+if (!isTest && isServerScript) {
+  main().catch((err) => {
+    console.error("Failed to start server:", err);
+    process.exit(1);
+  });
 }
 
