@@ -3,8 +3,8 @@
  */
 
 export const AUTH_CONFIG = {
-  JWT_SECRET: process.env.JWT_SECRET || "dev-jwt-secret-change-in-production",
-  REFRESH_SECRET: process.env.REFRESH_SECRET || "dev-refresh-secret-change-in-production",
+  JWT_SECRET: process.env.JWT_SECRET || process.env.AUTH_SECRET || "dev-jwt-secret",
+  REFRESH_SECRET: process.env.REFRESH_SECRET || "dev-refresh-secret",
   ACCESS_TOKEN_EXPIRES_IN: "15m",
   REFRESH_TOKEN_EXPIRES_IN: "7d",
   REFRESH_COOKIE_NAME: "refresh_token",

@@ -13,7 +13,7 @@ const COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 export async function POST(req: NextRequest) {
   const token = await getToken({
     req,
-    secret: process.env.NEXTAUTH_SECRET,
+    secret: process.env.AUTH_SECRET,
   });
 
   if (!token || token.type !== "user") {

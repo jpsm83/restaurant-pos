@@ -23,6 +23,7 @@
     "bcrypt": "^6.0.0",
     "cloudinary": "^2.9.0",
     "convert-units": "^2.3.4",
+    "dotenv": "^17.3.1",
     "fastify": "^5.8.2",
     "mongoose": "^9.3.0"
   },

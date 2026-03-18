@@ -612,10 +612,10 @@ export const businessGoodsRoutes: FastifyPluginAsync = async (app) => {
             { businessGoodId, billingStatus: "Open" },
             { addOns: businessGoodId, billingStatus: "Open" },
           ],
-        }),
+        }).session(session),
         BusinessGood.exists({
           setMenuIds: businessGoodId,
-        }),
+        }).session(session),
       ]);
 
       if (businessGoodInOrders || businessGoodInSetMenu) {

@@ -6,6 +6,12 @@ export interface ISalary {
   netSalary: number;
 }
 
+export interface INotificationEntry {
+  notificationId: Types.ObjectId | string;
+  readFlag?: boolean;
+  deletedFlag?: boolean;
+}
+
 export interface IEmployee {
   _id?: Types.ObjectId | string;
   allEmployeeRoles: string[];
@@ -23,4 +29,5 @@ export interface IEmployee {
   terminatedDate?: Date;
   comments?: string;
   documentsUrl?: string[];
+  notifications?: INotificationEntry[];
 }

@@ -1,15 +1,16 @@
 import { v2 as cloudinary } from "cloudinary";
 
-cloudinary.config({
-  cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-  secure: true,
-});
-
 export async function deleteFilesCloudinary(
   imageUrl: string | undefined
 ): Promise<boolean | string> {
+  // Configure cloudinary at runtime (after env vars are loaded)
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+    secure: true,
+  });
+
   try {
     if (imageUrl) {
       const cloudinaryPublicId = imageUrl.match(/restaurant-pos\/[^.]+/);

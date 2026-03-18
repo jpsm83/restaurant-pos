@@ -314,6 +314,7 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
             select: "personalDetails.email",
             model: User,
           })
+          .session(session)
           .lean()) as (IEmployee & { userId: IUser }) | null;
 
         if (!employee) {
@@ -369,6 +370,7 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
         if (userEmail !== employee?.userId?.personalDetails?.email) {
           const user = await User.findOne({ "personalDetails.email": userEmail })
             .select("_id")
+            .session(session)
             .lean<IUser | null>();
 
           if (!user) {
@@ -379,7 +381,7 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
           const employeeAlreadyExists = await Employee.exists({
             businessId: employee.businessId,
             userId: user._id,
-          });
+          }).session(session);
 
           if (employeeAlreadyExists) {
             await session.abortTransaction();
@@ -424,6 +426,7 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
             cloudinaryUploadResponse.length === 0 ||
             !cloudinaryUploadResponse.every((str) => str.includes("https://"))
           ) {
+            await session.abortTransaction();
             return reply.code(400).send({
               message: `Error uploading image: ${cloudinaryUploadResponse}`,
             });
@@ -505,9 +508,10 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
     session.startTransaction();
 
     try {
-      const employee = await Employee.findById(employeeId).lean<IEmployee>();
+      const employee = await Employee.findById(employeeId).session(session).lean<IEmployee>();
 
       if (!employee) {
+        await session.abortTransaction();
         return reply.code(404).send({ message: "Employee not found!" });
       }
 

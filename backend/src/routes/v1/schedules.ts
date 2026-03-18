@@ -210,12 +210,14 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
         (emp) => emp.employeeId.toString() === employeeId.toString()
       );
 
-      if (employeeAlreadyScheduled && employeeAlreadyScheduled.some((el) => el.vacation)) {
+      // Check if employee is already on vacation for this day
+      if (employeeAlreadyScheduled.length > 0 && employeeAlreadyScheduled.some((el) => el.vacation)) {
         await session.abortTransaction();
         return reply.code(400).send({ message: "Employee on vacation!" });
       }
 
-      if (vacation && employeeAlreadyScheduled) {
+      // If trying to add vacation, check if employee already has schedules
+      if (vacation && employeeAlreadyScheduled.length > 0) {
         if (employeeAlreadyScheduled.some((el) => el.vacation)) {
           await session.abortTransaction();
           return reply.code(400).send({ message: "Employee already on vacation!" });
@@ -271,7 +273,8 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
         employeeCost,
       };
 
-      const totalEmployeesScheduledIncrement = employeeAlreadyScheduled ? 0 : 1;
+      // Only increment total if this is the first schedule entry for this employee
+      const totalEmployeesScheduledIncrement = employeeAlreadyScheduled.length > 0 ? 0 : 1;
 
       const updatedSchedule = await Schedule.findByIdAndUpdate(
         scheduleId,
@@ -413,18 +416,22 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
       employeeScheduleId?: string;
     };
 
-    const { employeeId, role, timeRange, vacation } = employeeSchedule;
-    const startTime = new Date(timeRange.startTime);
-    const endTime = new Date(timeRange.endTime);
-
     if (!scheduleId || isObjectIdValid([scheduleId]) !== true) {
       return reply.code(400).send({ message: "Invalid schedule Id!" });
     }
 
+    if (!employeeScheduleId || isObjectIdValid([employeeScheduleId]) !== true) {
+      return reply.code(400).send({ message: "Invalid employee schedule Id!" });
+    }
+
     const validEmployees = employeesValidation(employeeSchedule);
     if (validEmployees !== true) {
-      return reply.code(404).send({ message: validEmployees });
+      return reply.code(400).send({ message: validEmployees });
     }
+
+    const { employeeId, role, timeRange, vacation } = employeeSchedule;
+    const startTime = new Date(timeRange.startTime);
+    const endTime = new Date(timeRange.endTime);
 
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -433,7 +440,7 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
       const [schedule, employee] = await Promise.all([
         Schedule.findById(scheduleId)
           .select(
-            "employeesSchedules._id employeesSchedules.employeeId employeesSchedules.vacation employeesSchedules.timeRange"
+            "employeesSchedules._id employeesSchedules.employeeId employeesSchedules.vacation employeesSchedules.timeRange employeesSchedules.employeeCost"
           )
           .lean<ISchedule | null>(),
         Employee.findById(employeeId)
@@ -457,7 +464,7 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
 
       if (!employeeScheduleToUpdate) {
         await session.abortTransaction();
-        return reply.code(500).send({ message: "Employee schedule not found!" });
+        return reply.code(404).send({ message: "Employee schedule not found!" });
       }
 
       const employeeAlreadyScheduled = (schedule.employeesSchedules || []).filter(
@@ -502,25 +509,27 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
         );
       }
 
-      const updateEmployeeScheduleObj = {
-        _id: employeeScheduleId,
-        employeeId,
-        role,
-        timeRange: { startTime, endTime },
-        vacation: vacation !== undefined ? vacation : false,
-        shiftHours: shiftDurationMs,
-        employeeCost,
-      };
+      // Calculate cost difference (subtract old cost, add new cost)
+      const oldEmployeeCost = employeeScheduleToUpdate.employeeCost ?? 0;
+      const costDifference = employeeCost - oldEmployeeCost;
 
+      // Update individual fields to avoid timestamps conflict
       const updatedSchedule = await Schedule.findOneAndUpdate(
         {
           _id: scheduleId,
           "employeesSchedules._id": employeeScheduleId,
         },
         {
-          $set: { "employeesSchedules.$": updateEmployeeScheduleObj },
+          $set: {
+            "employeesSchedules.$.employeeId": new Types.ObjectId(employeeId.toString()),
+            "employeesSchedules.$.role": role,
+            "employeesSchedules.$.timeRange": { startTime, endTime },
+            "employeesSchedules.$.vacation": vacation !== undefined ? vacation : false,
+            "employeesSchedules.$.shiftHours": shiftDurationMs,
+            "employeesSchedules.$.employeeCost": employeeCost,
+          },
           $inc: {
-            totalDayEmployeesCost: employeeCost,
+            totalDayEmployeesCost: costDifference,
             totalEmployeesScheduled:
               employeeScheduleToUpdate?.vacation && !vacation
                 ? 1

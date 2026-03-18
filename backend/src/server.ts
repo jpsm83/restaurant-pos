@@ -1,3 +1,8 @@
+// Load environment variables from .env file in project root
+import { config } from "dotenv";
+import { resolve } from "path";
+config({ path: resolve(process.cwd(), "..", ".env") });
+
 import Fastify, { type FastifyInstance } from "fastify";
 import multipart from "@fastify/multipart";
 import jwt from "@fastify/jwt";
@@ -66,8 +71,8 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
 // Only start the server if this file is run directly (not imported for tests)
 async function main() {
   const server = await buildApp();
-  const port = Number(process.env.PORT ?? 4000);
-  const host = process.env.HOST ?? "0.0.0.0";
+  const port = Number(process.env.PORT) || 4000;
+  const host = process.env.HOST || "0.0.0.0";
   await server.listen({ port, host });
   console.log(`Server running at http://${host}:${port}`);
 }

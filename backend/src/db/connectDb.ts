@@ -1,7 +1,5 @@
 import mongoose from "mongoose";
 
-const MONGODB_URI = process.env.MONGODB_URI;
-
 export async function connectDb(): Promise<void> {
   const state = mongoose.connection.readyState;
 
@@ -10,11 +8,11 @@ export async function connectDb(): Promise<void> {
   // 2 = connecting
   if (state === 2) return;
 
-  if (!MONGODB_URI) {
+  if (!process.env.MONGODB_URI) {
     throw new Error("Missing MONGODB_URI");
   }
 
-  await mongoose.connect(MONGODB_URI, {
+  await mongoose.connect(process.env.MONGODB_URI, {
     dbName: "restaurant-pos-api",
     bufferCommands: false,
   });

@@ -1,12 +1,5 @@
 import { v2 as cloudinary } from "cloudinary";
 
-cloudinary.config({
-  cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-  secure: true,
-});
-
 export interface UploadInputFile {
   buffer: Buffer;
   mimeType: string;
@@ -17,6 +10,14 @@ export async function uploadFilesCloudinary(params: {
   filesArr: UploadInputFile[];
   onlyImages?: boolean;
 }): Promise<string | string[]> {
+  // Configure cloudinary at runtime (after env vars are loaded)
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+    secure: true,
+  });
+
   const uploadPreset = "restaurant-pos";
 
   if (params.onlyImages) {

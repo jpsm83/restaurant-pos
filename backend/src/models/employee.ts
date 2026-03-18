@@ -14,6 +14,15 @@ const salarySchema = new Schema(
   { timestamps: true, trim: true }
 );
 
+const notificationEntrySchema = new Schema(
+  {
+    notificationId: { type: Schema.Types.ObjectId, ref: "Notification", required: true },
+    readFlag: { type: Boolean, default: false },
+    deletedFlag: { type: Boolean, default: false },
+  },
+  { _id: false }
+);
+
 const employeeSchema = new Schema(
   {
     allEmployeeRoles: [
@@ -34,6 +43,7 @@ const employeeSchema = new Schema(
     terminatedDate: { type: Date },
     documentsUrl: { type: [String], default: undefined },
     comments: { type: String },
+    notifications: { type: [notificationEntrySchema], default: undefined },
   },
   { timestamps: true, trim: true }
 );

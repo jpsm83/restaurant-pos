@@ -113,7 +113,7 @@ export const supplierGoodsRoutes: FastifyPluginAsync = async (app) => {
           businessId,
           supplierId,
           name,
-        });
+        }).session(session);
 
         if (duplicateSupplierGood) {
           await session.abortTransaction();
@@ -315,7 +315,7 @@ export const supplierGoodsRoutes: FastifyPluginAsync = async (app) => {
       session.startTransaction();
 
       try {
-        const supplierGood = (await SupplierGood.findById(supplierGoodId).lean()) as unknown as ISupplierGood | null;
+        const supplierGood = (await SupplierGood.findById(supplierGoodId).session(session).lean()) as unknown as ISupplierGood | null;
 
         if (!supplierGood) {
           await session.abortTransaction();
@@ -332,7 +332,7 @@ export const supplierGoodsRoutes: FastifyPluginAsync = async (app) => {
           businessId: supplierGood.businessId,
           supplierId: supplierGood.supplierId,
           name,
-        });
+        }).session(session);
 
         if (duplicateSupplierGood) {
           await session.abortTransaction();
@@ -484,6 +484,7 @@ export const supplierGoodsRoutes: FastifyPluginAsync = async (app) => {
     try {
       const supplierGood = (await SupplierGood.findById(supplierGoodId)
         .select("businessId")
+        .session(session)
         .lean()) as unknown as ISupplierGood | null;
 
       if (!supplierGood) {
@@ -494,7 +495,7 @@ export const supplierGoodsRoutes: FastifyPluginAsync = async (app) => {
       const isInUse = await BusinessGood.exists({
         businessId: supplierGood.businessId,
         "ingredients.supplierGoodId": supplierGoodId,
-      });
+      }).session(session);
 
       if (isInUse) {
         await session.abortTransaction();
