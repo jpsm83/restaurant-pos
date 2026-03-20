@@ -40,6 +40,7 @@ export interface IDailySalesReport {
   isDailyReportOpen: boolean;
   timeCountdownToClose: number;
   employeesDailySalesReport: IEmployeeDailySalesReport[];
+  deliveryDailySalesReport?: IEmployeeDailySalesReport;
   selfOrderingSalesReport: ISelfOrderingSalesReport[];
   businessId: Types.ObjectId;
   businessPaymentMethods?: IPaymentMethod[];

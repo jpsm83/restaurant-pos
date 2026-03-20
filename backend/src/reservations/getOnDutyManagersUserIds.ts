@@ -4,7 +4,9 @@
 
 import { Types } from "mongoose";
 import Employee from "../models/employee.ts";
-import { managementRolesEnums } from "../../../lib/enums.ts";
+import * as enums from "../../../lib/enums.ts";
+
+const { managementRolesEnums } = enums;
 
 const getOnDutyManagersUserIds = async (
   businessId: Types.ObjectId,

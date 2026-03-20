@@ -10,7 +10,7 @@ import bcrypt from "bcrypt";
 import Business from "../../models/business.ts";
 import User from "../../models/user.ts";
 import Employee from "../../models/employee.ts";
-import { canLogAsEmployee } from "../../auth/canLogAsEmployee.ts";
+import canLogAsEmployee from "../../auth/canLogAsEmployee.ts";
 import { AUTH_CONFIG } from "../../auth/config.ts";
 import type {
   AuthSession,
@@ -43,7 +43,9 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return reply.code(400).send({ message: "Email and password are required" });
+      return reply
+        .code(400)
+        .send({ message: "Email and password are required" });
     }
 
     const normalizedEmail = email.toLowerCase().trim();
@@ -96,7 +98,9 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     const user = (await User.findOne({
       "personalDetails.email": normalizedEmail,
     })
-      .select("_id personalDetails.email personalDetails.password employeeDetails")
+      .select(
+        "_id personalDetails.email personalDetails.password employeeDetails",
+      )
       .lean()) as {
       _id: unknown;
       personalDetails: { email?: string; password?: string };
@@ -109,7 +113,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
 
     const passwordMatch = await bcrypt.compare(
       password,
-      user.personalDetails.password
+      user.personalDetails.password,
     );
     if (!passwordMatch) {
       return reply.code(401).send({ message: "Invalid credentials" });
@@ -138,7 +142,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
 
       if (employee && employee.active && !employee.terminatedDate) {
         const { canLogAsEmployee: canLog } = await canLogAsEmployee(
-          user.employeeDetails as import("mongoose").Types.ObjectId
+          user.employeeDetails as import("mongoose").Types.ObjectId,
         );
 
         session.employeeId = String(user.employeeDetails);
@@ -193,7 +197,9 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       });
     } catch {
       reply.clearCookie(AUTH_CONFIG.REFRESH_COOKIE_NAME, { path: "/" });
-      return reply.code(401).send({ message: "Invalid or expired refresh token" });
+      return reply
+        .code(401)
+        .send({ message: "Invalid or expired refresh token" });
     }
 
     let session: AuthSession;
@@ -249,7 +255,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
 
         if (employee && employee.active && !employee.terminatedDate) {
           const { canLogAsEmployee: canLog } = await canLogAsEmployee(
-            user.employeeDetails as import("mongoose").Types.ObjectId
+            user.employeeDetails as import("mongoose").Types.ObjectId,
           );
 
           userSession.employeeId = String(user.employeeDetails);
@@ -299,7 +305,9 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       const session = app.jwt.verify<AuthSession>(token);
       return reply.code(200).send({ user: session });
     } catch {
-      return reply.code(401).send({ message: "Invalid or expired access token" });
+      return reply
+        .code(401)
+        .send({ message: "Invalid or expired access token" });
     }
   });
 
@@ -321,7 +329,9 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     try {
       session = app.jwt.verify<AuthSession>(token);
     } catch {
-      return reply.code(401).send({ message: "Invalid or expired access token" });
+      return reply
+        .code(401)
+        .send({ message: "Invalid or expired access token" });
     }
 
     if (session.type !== "user") {
@@ -330,11 +340,15 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
 
     const { mode } = req.body;
     if (mode !== "customer" && mode !== "employee") {
-      return reply.code(400).send({ message: "Mode must be 'customer' or 'employee'" });
+      return reply
+        .code(400)
+        .send({ message: "Mode must be 'customer' or 'employee'" });
     }
 
     if (mode === "employee" && !session.canLogAsEmployee) {
-      return reply.code(403).send({ message: "Not authorized to log in as employee" });
+      return reply
+        .code(403)
+        .send({ message: "Not authorized to log in as employee" });
     }
 
     reply.setCookie(AUTH_CONFIG.AUTH_MODE_COOKIE_NAME, mode, {

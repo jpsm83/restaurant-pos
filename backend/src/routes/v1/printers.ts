@@ -1,9 +1,12 @@
 import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
-import type { IPrinter, IConfigurationSetupToPrintOrders } from "@shared/interfaces/IPrinter";
+import type {
+  IPrinter,
+  IConfigurationSetupToPrintOrders,
+} from "../../../../lib/interface/IPrinter.ts";
 
-import { isObjectIdValid } from "../../utils/isObjectIdValid.ts";
-import { checkPrinterConnection } from "../../printers/checkPrinterConnection.ts";
+import isObjectIdValid from "../../utils/isObjectIdValid.ts";
+import checkPrinterConnection from "../../printers/checkPrinterConnection.ts";
 import Printer from "../../models/printer.ts";
 import Employee from "../../models/employee.ts";
 import SalesPoint from "../../models/salesPoint.ts";
@@ -62,7 +65,8 @@ export const printersRoutes: FastifyPluginAsync = async (app) => {
 
       if (!printerAlias || !ipAddress || !port || !businessId) {
         return reply.code(400).send({
-          message: "PrinterAlias, ipAddress, port and businessId are required fields!",
+          message:
+            "PrinterAlias, ipAddress, port and businessId are required fields!",
         });
       }
 
@@ -79,10 +83,13 @@ export const printersRoutes: FastifyPluginAsync = async (app) => {
       if (employeesAllowedToPrintDataIds) {
         if (
           !Array.isArray(employeesAllowedToPrintDataIds) ||
-          isObjectIdValid(employeesAllowedToPrintDataIds as Types.ObjectId[]) !== true
+          isObjectIdValid(
+            employeesAllowedToPrintDataIds as Types.ObjectId[],
+          ) !== true
         ) {
           return reply.code(400).send({
-            message: "EmployeesAllowedToPrintDataIds have to be an array of valid Ids!",
+            message:
+              "EmployeesAllowedToPrintDataIds have to be an array of valid Ids!",
           });
         }
       }
@@ -98,7 +105,10 @@ export const printersRoutes: FastifyPluginAsync = async (app) => {
         });
       }
 
-      const isOnline = (await checkPrinterConnection(ipAddress, port)) as boolean;
+      const isOnline = (await checkPrinterConnection(
+        ipAddress,
+        port,
+      )) as boolean;
 
       const newPrinter = {
         printerAlias,
@@ -197,10 +207,13 @@ export const printersRoutes: FastifyPluginAsync = async (app) => {
       if (employeesAllowedToPrintDataIds) {
         if (
           !Array.isArray(employeesAllowedToPrintDataIds) ||
-          isObjectIdValid(employeesAllowedToPrintDataIds as Types.ObjectId[]) !== true
+          isObjectIdValid(
+            employeesAllowedToPrintDataIds as Types.ObjectId[],
+          ) !== true
         ) {
           return reply.code(400).send({
-            message: "EmployeesAllowedToPrintDataIds have to be an array of valid Ids!",
+            message:
+              "EmployeesAllowedToPrintDataIds have to be an array of valid Ids!",
           });
         }
       }
@@ -236,7 +249,10 @@ export const printersRoutes: FastifyPluginAsync = async (app) => {
         return reply.code(400).send({ message });
       }
 
-      const isOnline = (await checkPrinterConnection(ipAddress, port)) as boolean;
+      const isOnline = (await checkPrinterConnection(
+        ipAddress,
+        port,
+      )) as boolean;
 
       const updatePrinterObj: Partial<IPrinter> = {
         printerStatus: isOnline ? "Online" : "Offline",
@@ -248,12 +264,13 @@ export const printersRoutes: FastifyPluginAsync = async (app) => {
       if (port) updatePrinterObj.port = port;
       if (backupPrinterId) updatePrinterObj.backupPrinterId = backupPrinterId;
       if (employeesAllowedToPrintDataIds)
-        updatePrinterObj.employeesAllowedToPrintDataIds = employeesAllowedToPrintDataIds;
+        updatePrinterObj.employeesAllowedToPrintDataIds =
+          employeesAllowedToPrintDataIds;
 
       const updatedPrinter = await Printer.findByIdAndUpdate(
         printerId,
         { $set: updatePrinterObj },
-        { new: true, lean: true }
+        { new: true, lean: true },
       );
 
       if (!updatedPrinter) {
@@ -289,15 +306,15 @@ export const printersRoutes: FastifyPluginAsync = async (app) => {
         return reply.code(404).send({ message: "Printer not found!" });
       }
 
-      const isBackupPrinter = await Printer.exists({ backupPrinterId: printerId }).session(
-        session
-      );
+      const isBackupPrinter = await Printer.exists({
+        backupPrinterId: printerId,
+      }).session(session);
 
       if (isBackupPrinter) {
         const updatedPrinter = await Printer.updateMany(
           { backupPrinterId: printerId },
           { $unset: { backupPrinterId: "" } },
-          { session }
+          { session },
         );
 
         if (!updatedPrinter) {
@@ -343,7 +360,8 @@ export const printersRoutes: FastifyPluginAsync = async (app) => {
         !mainCategory
       ) {
         return reply.code(400).send({
-          message: "salesPointIds is required and must be an array of ObjectIds!",
+          message:
+            "salesPointIds is required and must be an array of ObjectIds!",
         });
       }
 
@@ -383,7 +401,8 @@ export const printersRoutes: FastifyPluginAsync = async (app) => {
 
       if (existingCombination) {
         return reply.code(400).send({
-          message: "A combination of these mainCategory and subCategories already exists!",
+          message:
+            "A combination of these mainCategory and subCategories already exists!",
         });
       }
 
@@ -399,7 +418,7 @@ export const printersRoutes: FastifyPluginAsync = async (app) => {
             },
           },
         },
-        { new: true, lean: true }
+        { new: true, lean: true },
       );
 
       if (!updatedPrinter) {
@@ -407,7 +426,8 @@ export const printersRoutes: FastifyPluginAsync = async (app) => {
       }
 
       return reply.code(201).send({
-        message: "Configuration setup to print orders add to printer successfully",
+        message:
+          "Configuration setup to print orders add to printer successfully",
       });
     } catch (error) {
       return reply.code(500).send({
@@ -418,140 +438,163 @@ export const printersRoutes: FastifyPluginAsync = async (app) => {
   });
 
   // PATCH /printers/:printerId/deleteConfigurationSetup/:configId - delete config
-  app.patch("/:printerId/deleteConfigurationSetup/:configId", async (req, reply) => {
-    try {
-      const params = req.params as { printerId?: string; configId?: string };
-      const { printerId, configId } = params;
+  app.patch(
+    "/:printerId/deleteConfigurationSetup/:configId",
+    async (req, reply) => {
+      try {
+        const params = req.params as { printerId?: string; configId?: string };
+        const { printerId, configId } = params;
 
-      if (!printerId || !configId || isObjectIdValid([printerId, configId]) !== true) {
-        return reply.code(400).send({
-          message: "Invalid printerId or configurationSetupToPrintOrdersId!",
-        });
-      }
-
-      const updatedPrinter = await Printer.findOneAndUpdate(
-        { _id: printerId },
-        {
-          $pull: {
-            configurationSetupToPrintOrders: { _id: configId },
-          },
-        },
-        { new: true, lean: true }
-      );
-
-      if (!updatedPrinter) {
-        return reply.code(404).send({
-          message: "Configuration setup to print orders not found!",
-        });
-      }
-
-      return reply.code(200).send({
-        message: "Configuration setup to print orders successfully deleted!",
-      });
-    } catch (error) {
-      return reply.code(500).send({
-        message: "Delete configuration setup to print orders failed!",
-        error: error instanceof Error ? error.message : error,
-      });
-    }
-  });
-
-  // PATCH /printers/:printerId/editConfigurationSetup/:configId - edit config
-  app.patch("/:printerId/editConfigurationSetup/:configId", async (req, reply) => {
-    try {
-      const params = req.params as { printerId?: string; configId?: string };
-      const { printerId, configId } = params;
-
-      const { mainCategory, subCategories, salesPointIds, excludeEmployeeIds } =
-        req.body as IConfigurationSetupToPrintOrders;
-
-      if (!printerId || !configId || isObjectIdValid([printerId, configId]) !== true) {
-        return reply.code(400).send({
-          message: "Invalid printerId or configurationSetupToPrintOrdersId!",
-        });
-      }
-
-      if (
-        !salesPointIds ||
-        salesPointIds.length === 0 ||
-        !Array.isArray(salesPointIds) ||
-        isObjectIdValid(salesPointIds as Types.ObjectId[]) !== true ||
-        !mainCategory
-      ) {
-        return reply.code(400).send({
-          message: "salesPointIds is required and must be an array of ObjectIds!",
-        });
-      }
-
-      if (excludeEmployeeIds) {
         if (
-          !Array.isArray(excludeEmployeeIds) ||
-          excludeEmployeeIds.length === 0 ||
-          isObjectIdValid(excludeEmployeeIds as Types.ObjectId[]) !== true
+          !printerId ||
+          !configId ||
+          isObjectIdValid([printerId, configId]) !== true
         ) {
           return reply.code(400).send({
-            message: "excludeEmployeeIds must be an array of ObjectIds!",
+            message: "Invalid printerId or configurationSetupToPrintOrdersId!",
           });
         }
-      }
 
-      if (subCategories) {
-        if (!Array.isArray(subCategories)) {
+        const updatedPrinter = await Printer.findOneAndUpdate(
+          { _id: printerId },
+          {
+            $pull: {
+              configurationSetupToPrintOrders: { _id: configId },
+            },
+          },
+          { new: true, lean: true },
+        );
+
+        if (!updatedPrinter) {
+          return reply.code(404).send({
+            message: "Configuration setup to print orders not found!",
+          });
+        }
+
+        return reply.code(200).send({
+          message: "Configuration setup to print orders successfully deleted!",
+        });
+      } catch (error) {
+        return reply.code(500).send({
+          message: "Delete configuration setup to print orders failed!",
+          error: error instanceof Error ? error.message : error,
+        });
+      }
+    },
+  );
+
+  // PATCH /printers/:printerId/editConfigurationSetup/:configId - edit config
+  app.patch(
+    "/:printerId/editConfigurationSetup/:configId",
+    async (req, reply) => {
+      try {
+        const params = req.params as { printerId?: string; configId?: string };
+        const { printerId, configId } = params;
+
+        const {
+          mainCategory,
+          subCategories,
+          salesPointIds,
+          excludeEmployeeIds,
+        } = req.body as IConfigurationSetupToPrintOrders;
+
+        if (
+          !printerId ||
+          !configId ||
+          isObjectIdValid([printerId, configId]) !== true
+        ) {
           return reply.code(400).send({
-            message: "subCategories must be an array of strings!",
+            message: "Invalid printerId or configurationSetupToPrintOrdersId!",
           });
         }
-      }
 
-      const existingCombination = await Printer.exists({
-        _id: printerId,
-        configurationSetupToPrintOrders: {
-          $elemMatch: {
-            _id: { $ne: configId },
-            mainCategory,
-            subCategories: { $in: subCategories },
-          },
-        },
-      });
+        if (
+          !salesPointIds ||
+          salesPointIds.length === 0 ||
+          !Array.isArray(salesPointIds) ||
+          isObjectIdValid(salesPointIds as Types.ObjectId[]) !== true ||
+          !mainCategory
+        ) {
+          return reply.code(400).send({
+            message:
+              "salesPointIds is required and must be an array of ObjectIds!",
+          });
+        }
 
-      if (existingCombination) {
-        return reply.code(400).send({
-          message: "A combination of this mainCategory and one of the subCategories already exists!",
-        });
-      }
+        if (excludeEmployeeIds) {
+          if (
+            !Array.isArray(excludeEmployeeIds) ||
+            excludeEmployeeIds.length === 0 ||
+            isObjectIdValid(excludeEmployeeIds as Types.ObjectId[]) !== true
+          ) {
+            return reply.code(400).send({
+              message: "excludeEmployeeIds must be an array of ObjectIds!",
+            });
+          }
+        }
 
-      const updatedPrinter = await Printer.findOneAndUpdate(
-        {
+        if (subCategories) {
+          if (!Array.isArray(subCategories)) {
+            return reply.code(400).send({
+              message: "subCategories must be an array of strings!",
+            });
+          }
+        }
+
+        const existingCombination = await Printer.exists({
           _id: printerId,
-          "configurationSetupToPrintOrders._id": configId,
-        },
-        {
-          $set: {
-            "configurationSetupToPrintOrders.$.salesPointIds": salesPointIds,
-            "configurationSetupToPrintOrders.$.excludeEmployeeIds": excludeEmployeeIds,
-            "configurationSetupToPrintOrders.$.mainCategory": mainCategory,
-            "configurationSetupToPrintOrders.$.subCategories": subCategories || [],
+          configurationSetupToPrintOrders: {
+            $elemMatch: {
+              _id: { $ne: configId },
+              mainCategory,
+              subCategories: { $in: subCategories },
+            },
           },
-        },
-        { new: true, lean: true }
-      );
+        });
 
-      if (!updatedPrinter) {
-        return reply.code(404).send({
-          message: "Printer or configuration setup to print orders not found!",
+        if (existingCombination) {
+          return reply.code(400).send({
+            message:
+              "A combination of this mainCategory and one of the subCategories already exists!",
+          });
+        }
+
+        const updatedPrinter = await Printer.findOneAndUpdate(
+          {
+            _id: printerId,
+            "configurationSetupToPrintOrders._id": configId,
+          },
+          {
+            $set: {
+              "configurationSetupToPrintOrders.$.salesPointIds": salesPointIds,
+              "configurationSetupToPrintOrders.$.excludeEmployeeIds":
+                excludeEmployeeIds,
+              "configurationSetupToPrintOrders.$.mainCategory": mainCategory,
+              "configurationSetupToPrintOrders.$.subCategories":
+                subCategories || [],
+            },
+          },
+          { new: true, lean: true },
+        );
+
+        if (!updatedPrinter) {
+          return reply.code(404).send({
+            message:
+              "Printer or configuration setup to print orders not found!",
+          });
+        }
+
+        return reply.code(200).send({
+          message: "Configuration setup to print orders updated successfully",
+        });
+      } catch (error) {
+        return reply.code(500).send({
+          message: "Update configuration setup to print orders failed!",
+          error: error instanceof Error ? error.message : error,
         });
       }
-
-      return reply.code(200).send({
-        message: "Configuration setup to print orders updated successfully",
-      });
-    } catch (error) {
-      return reply.code(500).send({
-        message: "Update configuration setup to print orders failed!",
-        error: error instanceof Error ? error.message : error,
-      });
-    }
-  });
+    },
+  );
 
   // GET /printers/business/:businessId - get by business
   app.get("/business/:businessId", async (req, reply) => {

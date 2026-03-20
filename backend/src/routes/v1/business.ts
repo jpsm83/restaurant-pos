@@ -20,12 +20,15 @@ import Schedule from "../../models/schedule.ts";
 import SupplierGood from "../../models/supplierGood.ts";
 import Supplier from "../../models/supplier.ts";
 import User from "../../models/user.ts";
-import { isObjectIdValid } from "../../utils/isObjectIdValid.ts";
-import { subscriptionEnums, currenctyEnums } from "../../../../lib/enums.ts";
-import { uploadFilesCloudinary } from "../../cloudinary/uploadFilesCloudinary.ts";
-import { deleteFilesCloudinary } from "../../cloudinary/deleteFilesCloudinary.ts";
-import { deleteFolderCloudinary } from "../../cloudinary/deleteFolderCloudinary.ts";
-import objDefaultValidation from "@shared/utils/objDefaultValidation";
+import isObjectIdValid from "../../utils/isObjectIdValid.ts";
+import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
+import deleteFilesCloudinary from "../../cloudinary/deleteFilesCloudinary.ts";
+import deleteFolderCloudinary from "../../cloudinary/deleteFolderCloudinary.ts";
+import objDefaultValidation from "../../../../lib/utils/objDefaultValidation.ts";
+import type { ObjDefaultValidationType } from "../../../../lib/utils/objDefaultValidation.ts";
+import * as enums from "../../../../lib/enums.ts";
+
+const { subscriptionEnums, currenctyEnums } = enums;
 
 const DEFAULT_DISCOVERY_LIMIT = 50;
 
@@ -63,7 +66,7 @@ function haversineKm(
   lon1: number,
   lat1: number,
   lon2: number,
-  lat2: number
+  lat2: number,
 ): number {
   const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -130,7 +133,7 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
       const limit = limitParam
         ? Math.min(
             Math.max(1, Number(limitParam) || DEFAULT_DISCOVERY_LIMIT),
-            100
+            100,
           )
         : DEFAULT_DISCOVERY_LIMIT;
 
@@ -140,7 +143,11 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
         .lean();
     }
 
-    if (latParam !== undefined && lngParam !== undefined && businesses.length > 0) {
+    if (
+      latParam !== undefined &&
+      lngParam !== undefined &&
+      businesses.length > 0
+    ) {
       const lat = Number(latParam);
       const lng = Number(lngParam);
       if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
@@ -156,24 +163,25 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
         const withCoords = (businesses as BizWithCoords[]).filter(
           (b) =>
             Array.isArray(b.address?.coordinates) &&
-            b.address.coordinates.length >= 2
+            b.address.coordinates.length >= 2,
         );
         const withDistance = withCoords.map((b) => {
-          const [lon, coordLat] = (b.address as { coordinates: [number, number] })
-            .coordinates;
+          const [lon, coordLat] = (
+            b.address as { coordinates: [number, number] }
+          ).coordinates;
           const km = haversineKm(lng, lat, lon, coordLat);
           return { ...b, _distanceKm: km };
         });
         const filtered =
           radiusKm !== null && !Number.isNaN(radiusKm)
             ? withDistance.filter(
-                (b) => (b as { _distanceKm: number })._distanceKm <= radiusKm
+                (b) => (b as { _distanceKm: number })._distanceKm <= radiusKm,
               )
             : withDistance;
         const sorted = [...filtered].sort(
           (a, b) =>
             (a as { _distanceKm: number })._distanceKm -
-            (b as { _distanceKm: number })._distanceKm
+            (b as { _distanceKm: number })._distanceKm,
         );
         businesses = sorted.map(({ _distanceKm, ...rest }) => rest);
       }
@@ -194,7 +202,9 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
       return reply.code(400).send({ message: "Invalid businessId!" });
     }
 
-    const business = await Business.findById(businessId).select("-password").lean();
+    const business = await Business.findById(businessId)
+      .select("-password")
+      .lean();
 
     if (!business) {
       return reply.code(404).send({ message: "No business found!" });
@@ -214,9 +224,7 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const parts = (req as any).parts?.();
     if (!parts || typeof parts[Symbol.asyncIterator] !== "function") {
-      return reply
-        .code(400)
-        .send({ message: "Expected multipart/form-data" });
+      return reply.code(400).send({ message: "Expected multipart/form-data" });
     }
 
     for await (const part of parts) {
@@ -252,7 +260,8 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
     const deliveryRadiusStr = fields.deliveryRadius || undefined;
     const minOrderStr = fields.minOrder || undefined;
     const businessOpeningHoursStr = fields.businessOpeningHours || undefined;
-    const deliveryOpeningWindowsStr = fields.deliveryOpeningWindows || undefined;
+    const deliveryOpeningWindowsStr =
+      fields.deliveryOpeningWindows || undefined;
 
     let address: unknown = undefined;
     try {
@@ -289,11 +298,9 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
       });
     }
 
-    const addressValidationResult = objDefaultValidation(
-      address as object,
-      reqAddressFields,
-      nonReqAddressFields
-    );
+    const addressValidationResult = (
+      objDefaultValidation as unknown as ObjDefaultValidationType
+    )(address as object, reqAddressFields, nonReqAddressFields);
     if (addressValidationResult !== true) {
       return reply.code(400).send({ message: addressValidationResult });
     }
@@ -461,7 +468,8 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
     const deliveryRadiusStr = fields.deliveryRadius || undefined;
     const minOrderStr = fields.minOrder || undefined;
     const businessOpeningHoursStr = fields.businessOpeningHours || undefined;
-    const deliveryOpeningWindowsStr = fields.deliveryOpeningWindows || undefined;
+    const deliveryOpeningWindowsStr =
+      fields.deliveryOpeningWindows || undefined;
 
     let address: Record<string, unknown> | undefined = undefined;
     try {
@@ -504,29 +512,27 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
       });
     }
 
-    const addressValidationResult = objDefaultValidation(
-      address as object,
-      reqAddressFields,
-      nonReqAddressFields
-    );
+    const addressValidationResult = (
+      objDefaultValidation as unknown as ObjDefaultValidationType
+    )(address as object, reqAddressFields, nonReqAddressFields);
     if (addressValidationResult !== true) {
       return reply.code(400).send({ message: addressValidationResult });
     }
 
     if (metrics) {
-      const metricsValidationResult = objDefaultValidation(
-        metrics as object,
-        reqMetrics,
-        []
-      );
+      const metricsValidationResult = (
+        objDefaultValidation as unknown as ObjDefaultValidationType
+      )(metrics as object, reqMetrics, []);
       if (metricsValidationResult !== true) {
         return reply.code(400).send({ message: metricsValidationResult });
       }
 
-      const supplierGoodWastePercentageValidationResult = objDefaultValidation(
+      const supplierGoodWastePercentageValidationResult = (
+        objDefaultValidation as unknown as ObjDefaultValidationType
+      )(
         metrics.supplierGoodWastePercentage as object,
         reqSupplierGoodWastePercentage,
-        []
+        [],
       );
       if (supplierGoodWastePercentageValidationResult !== true) {
         return reply.code(400).send({
@@ -562,7 +568,10 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
     if (categoriesStr !== undefined && categoriesStr !== "") {
       try {
         const parsed = JSON.parse(categoriesStr) as unknown;
-        if (!Array.isArray(parsed) || !parsed.every((x) => typeof x === "string")) {
+        if (
+          !Array.isArray(parsed) ||
+          !parsed.every((x) => typeof x === "string")
+        ) {
           return reply.code(400).send({
             message: "categories must be an array of strings!",
           });
@@ -621,7 +630,10 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
       updateBusinessObj.currencyTrade = currencyTrade;
     if (subscription !== (business as Record<string, unknown>).subscription)
       updateBusinessObj.subscription = subscription;
-    if (contactPerson && contactPerson !== (business as Record<string, unknown>).contactPerson)
+    if (
+      contactPerson &&
+      contactPerson !== (business as Record<string, unknown>).contactPerson
+    )
       updateBusinessObj.contactPerson = contactPerson;
 
     if (cuisineType !== undefined)
@@ -639,7 +651,8 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
     }
     if (averageRatingStr !== undefined && averageRatingStr !== "") {
       const n = Number(averageRatingStr);
-      if (!Number.isNaN(n) && n >= 0 && n <= 5) updateBusinessObj.averageRating = n;
+      if (!Number.isNaN(n) && n >= 0 && n <= 5)
+        updateBusinessObj.averageRating = n;
     }
     if (ratingCountStr !== undefined && ratingCountStr !== "") {
       const n = Number(ratingCountStr);
@@ -705,12 +718,13 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
             updatedMetrics[key] = value;
           }
         } else {
-          const metricsSupplierWaste = metrics.supplierGoodWastePercentage as Record<
-            string,
-            unknown
-          >;
-          const businessSupplierWaste = (businessMetrics?.supplierGoodWastePercentage ||
-            {}) as Record<string, unknown>;
+          const metricsSupplierWaste =
+            metrics.supplierGoodWastePercentage as Record<string, unknown>;
+          const businessSupplierWaste =
+            (businessMetrics?.supplierGoodWastePercentage || {}) as Record<
+              string,
+              unknown
+            >;
           for (const [wKey, wValue] of Object.entries(metricsSupplierWaste)) {
             if (wValue !== businessSupplierWaste[wKey]) {
               updatedSupplierGoodWastePercentage[wKey] = wValue;
@@ -719,7 +733,8 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
         }
       }
       if (Object.keys(updatedSupplierGoodWastePercentage).length > 0)
-        updatedMetrics.supplierGoodWastePercentage = updatedSupplierGoodWastePercentage;
+        updatedMetrics.supplierGoodWastePercentage =
+          updatedSupplierGoodWastePercentage;
       if (Object.keys(updatedMetrics).length > 0)
         updateBusinessObj.metrics = updatedMetrics;
     }
@@ -743,10 +758,10 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
         });
       }
 
-      const existingImageUrl = (business as Record<string, unknown>).imageUrl as
-        | string
-        | undefined;
-      const deleteFilesCloudinaryResult = await deleteFilesCloudinary(existingImageUrl);
+      const existingImageUrl = (business as Record<string, unknown>)
+        .imageUrl as string | undefined;
+      const deleteFilesCloudinaryResult =
+        await deleteFilesCloudinary(existingImageUrl);
 
       if (deleteFilesCloudinaryResult !== true) {
         return reply.code(400).send({ message: deleteFilesCloudinaryResult });
@@ -762,7 +777,7 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
     const updatedBusiness = await Business.findByIdAndUpdate(
       businessId,
       { $set: updateBusinessObj },
-      { new: true, lean: true }
+      { new: true, lean: true },
     );
 
     if (!updatedBusiness) {
@@ -809,7 +824,8 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
       await session.commitTransaction();
 
       const folderPath = `business/${businessId}`;
-      const deleteFolderCloudinaryResult = await deleteFolderCloudinary(folderPath);
+      const deleteFolderCloudinaryResult =
+        await deleteFolderCloudinary(folderPath);
 
       if (deleteFolderCloudinaryResult !== true) {
         return reply.code(400).send({ message: deleteFolderCloudinaryResult });
@@ -827,4 +843,3 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
     }
   });
 };
-

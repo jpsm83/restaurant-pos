@@ -9,13 +9,19 @@
 
 import mongoose from "mongoose";
 
-const MONGODB_URI = process.env.MONGODB_URI;
-
 /**
  * Connects to MongoDB if not already connected. Safe to call repeatedly.
  * Uses restaurantPos db and bufferCommands for serverless compatibility.
  */
 const connectDb = async () => {
+  // Read env at call-time (not module load time), so `dotenv` setup in `server.ts`
+  // has a chance to populate `process.env` before we attempt to connect.
+  const mongodbUri = process.env.MONGODB_URI;
+
+  if (!mongodbUri) {
+    throw new Error("MONGODB_URI is not defined");
+  }
+
   const connectionState = mongoose.connection.readyState;
 
   /** 1 = connected; skip to avoid duplicate connection. */
@@ -31,7 +37,7 @@ const connectDb = async () => {
   }
 
   try {
-    await mongoose.connect(MONGODB_URI!, {
+    await mongoose.connect(mongodbUri, {
       dbName: "restaurantPos",
       bufferCommands: true,
     });

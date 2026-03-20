@@ -3,7 +3,9 @@ import { Types } from "mongoose";
 import type { IIngredient } from "../../../lib/interface/IBusinessGood.ts";
 import type { ISupplierGood } from "../../../lib/interface/ISupplierGood.ts";
 import SupplierGood from "../models/supplierGood.ts";
-import objDefaultValidation from "../../../lib/utils/objDefaultValidation.ts";
+import objDefaultValidation, {
+  type ObjDefaultValidationType,
+} from "../../../lib/utils/objDefaultValidation.ts";
 
 const reqIngredientsFields = [
   "supplierGoodId",
@@ -14,7 +16,7 @@ const reqIngredientsFields = [
 const nonReqIngredientsFields = ["costOfRequiredQuantity"];
 
 const calculateIngredientsCostPriceAndAllergies = async (
-  ingredients: IIngredient[]
+  ingredients: IIngredient[],
 ) => {
   try {
     const newIngredientsArray: {
@@ -26,11 +28,9 @@ const calculateIngredientsCostPriceAndAllergies = async (
     }[] = [];
 
     for (const ingredient of ingredients) {
-      const ingredientValidationResult = objDefaultValidation(
-        ingredient,
-        reqIngredientsFields,
-        nonReqIngredientsFields
-      );
+      const ingredientValidationResult = (
+        objDefaultValidation as unknown as ObjDefaultValidationType
+      )(ingredient, reqIngredientsFields, nonReqIngredientsFields);
 
       if (ingredientValidationResult !== true) {
         return ingredientValidationResult;

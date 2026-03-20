@@ -1,4 +1,4 @@
-import { Schema, model, models } from "mongoose";
+import mongoose, { Schema, model } from "mongoose";
 import { paymentMethod } from "./paymentMethod.ts";
 import { goodsReducedSchema } from "./dailySalesReport.ts";
 
@@ -123,6 +123,6 @@ weeklyBusinessReportSchema.index(
 );
 
 const WeeklyBusinessReport =
-  models.WeeklyBusinessReport ||
+  mongoose.models.WeeklyBusinessReport ||
   model("WeeklyBusinessReport", weeklyBusinessReportSchema);
 export default WeeklyBusinessReport;

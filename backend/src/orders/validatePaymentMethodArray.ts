@@ -1,5 +1,7 @@
 import type { IPaymentMethod } from "../../../lib/interface/IPaymentMethod.ts";
-import { paymentMethodsEnums, creditCardEnums, cryptoEnums, otherPaymentEnums } from "../../../lib/enums.ts";
+import * as enums from "../../../lib/enums.ts";
+
+const { paymentMethodsEnums, creditCardEnums, cryptoEnums, otherPaymentEnums } = enums;
 
 const validatePaymentMethodArray = (
   paymentMethod: IPaymentMethod[]

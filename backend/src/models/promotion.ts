@@ -1,5 +1,7 @@
-import { Schema, model, models } from "mongoose";
-import { weekDaysEnums } from "../../../lib/enums.ts";
+import mongoose, { Schema, model } from "mongoose";
+import * as enums from "../../../lib/enums.ts";
+
+const { weekDaysEnums } = enums;
 
 const promotionSchema = new Schema(
   {
@@ -57,5 +59,5 @@ const promotionSchema = new Schema(
   }
 );
 
-const Promotion = models.Promotion || model("Promotion", promotionSchema);
+const Promotion = mongoose.models.Promotion || model("Promotion", promotionSchema);
 export default Promotion;

@@ -24,7 +24,7 @@ import { monthlyBusinessReportRoutes } from "./monthlyBusinessReport.ts";
 export const registerV1Routes: FastifyPluginAsync = async (app) => {
   // Auth routes (no authentication required for login/refresh/logout)
   await app.register(authRoutes, { prefix: "/auth" });
-  
+
   await app.register(businessRoutes, { prefix: "/business" });
   await app.register(businessGoodsRoutes, { prefix: "/businessGoods" });
   await app.register(ordersRoutes, { prefix: "/orders" });
@@ -43,7 +43,10 @@ export const registerV1Routes: FastifyPluginAsync = async (app) => {
   await app.register(ratingsRoutes, { prefix: "/ratings" });
   await app.register(notificationsRoutes, { prefix: "/notifications" });
   await app.register(printersRoutes, { prefix: "/printers" });
-  await app.register(weeklyBusinessReportRoutes, { prefix: "/weeklyBusinessReport" });
-  await app.register(monthlyBusinessReportRoutes, { prefix: "/monthlyBusinessReport" });
+  await app.register(weeklyBusinessReportRoutes, {
+    prefix: "/weeklyBusinessReport",
+  });
+  await app.register(monthlyBusinessReportRoutes, {
+    prefix: "/monthlyBusinessReport",
+  });
 };
-

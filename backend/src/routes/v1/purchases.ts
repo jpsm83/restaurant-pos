@@ -4,7 +4,6 @@ import type { IPurchase, IPurchaseItem } from "../../../../lib/interface/IPurcha
 import type { IEmployee } from "../../../../lib/interface/IEmployee.ts";
 
 import isObjectIdValid from "../../utils/isObjectIdValid.ts";
-import { managementRolesEnums } from "../../../../lib/enums.ts";
 import validateInventoryPurchaseItems from "../../purchases/validateInventoryPurchaseItems.ts";
 import oneTimePurchaseSupplier from "../../suppliers/oneTimePurchaseSupplier.ts";
 import Purchase from "../../models/purchase.ts";
@@ -13,6 +12,9 @@ import Supplier from "../../models/supplier.ts";
 import SupplierGood from "../../models/supplierGood.ts";
 import Employee from "../../models/employee.ts";
 import { createAuthHook } from "../../auth/middleware.ts";
+import * as enums from "../../../../lib/enums.ts";
+
+const { managementRolesEnums } = enums;
 
 export const purchasesRoutes: FastifyPluginAsync = async (app) => {
   // GET /purchases - list all

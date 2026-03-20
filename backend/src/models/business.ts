@@ -1,6 +1,8 @@
-import { Schema, model, models } from "mongoose";
+import mongoose, { Schema, model } from "mongoose";
 import { addressSchema } from "./address.ts";
-import { subscriptionEnums } from "../../../lib/enums.ts";
+import * as enums from "../../../lib/enums.ts";
+
+const { subscriptionEnums } = enums;
 
 const metricsSchema = new Schema({
   foodCostPercentage: { type: Number, default: 30 }, // Food cost percentage acceptable - 28-35% of sales average
@@ -112,5 +114,5 @@ const businessSchema = new Schema(
   }
 );
 
-const Business = models.Business || model("Business", businessSchema);
+const Business = mongoose.models.Business || model("Business", businessSchema);
 export default Business;

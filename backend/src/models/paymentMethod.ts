@@ -1,10 +1,7 @@
 import { Schema } from "mongoose";
-import {
-  creditCardEnums,
-  cryptoEnums,
-  otherPaymentEnums,
-  paymentMethodsEnums,
-} from "../../../lib/enums.ts";
+import * as enums from "../../../lib/enums.ts";
+
+const { paymentMethodsEnums, allPaymentMethodsEnums } = enums;
 
 // example of a payment method object
 // paymentMethod = [
@@ -40,7 +37,7 @@ export const paymentMethod = new Schema(
     },
     methodBranch: {
       type: String,
-      enum: [...creditCardEnums, ...cryptoEnums, ...otherPaymentEnums],
+      enum: allPaymentMethodsEnums,
       default: undefined,
       required: [true, "Method branch is required!"],
     }, // Branch/type of the payment method (e.g., card branch, crypto type, etc.)

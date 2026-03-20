@@ -1,6 +1,8 @@
-import { Schema, model, models } from "mongoose";
-import { allergensEnums, billingStatusEnums, orderStatusEnums } from "../../../lib/enums.ts";
+import mongoose, { Schema, model } from "mongoose";
 import { paymentMethod } from "./paymentMethod.ts";
+import * as enums from "../../../lib/enums.ts";
+
+const { allergensEnums, billingStatusEnums, orderStatusEnums } = enums;
 
 const orderSchema = new Schema(
   {
@@ -82,5 +84,5 @@ const orderSchema = new Schema(
   }
 );
 
-const Order = models.Order || model("Order", orderSchema);
+const Order = mongoose.models.Order || model("Order", orderSchema);
 export default Order;

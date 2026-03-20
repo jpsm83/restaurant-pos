@@ -1,19 +1,29 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2022"],
-    "module": "ES2022",
-    "moduleResolution": "Bundler",
+    "lib": [
+      "ES2022"
+    ],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "strict": true,
     "skipLibCheck": true,
-    "types": ["node", "vitest/globals"],
+    "types": [
+      "node",
+      "vitest/globals"
+    ],
     "noEmit": true,
     "baseUrl": ".",
-    "paths": {
-      "@shared/*": ["../packages/shared/src/*"]
-    },
     "allowImportingTsExtensions": true,
+    "paths": {
+      "@lib/*": ["../lib/*"]
+    },
   },
-  "include": ["src/**/*.ts", "tests/**/*.ts", "../packages/shared/src/**/*.ts", "../lib/utils/isBusinessOpenNow.ts", "../lib/enums.ts"]
+  "include": [
+    "src/**/*.ts",
+    "tests/**/*.ts",
+    "../packages/shared/src/**/*.ts",
+    "../lib/utils/isBusinessOpenNow.ts",
+    "../lib/enums.ts"
+  ]
 }
-

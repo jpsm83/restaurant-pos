@@ -1,5 +1,7 @@
-import { Schema, model, models } from "mongoose";
-import { notificationEnums } from "../../../lib/enums.ts";
+import mongoose, { Schema, model } from "mongoose";
+import * as enums from "../../../lib/enums.ts";
+
+const { notificationEnums } = enums;
 
 const notificationSchema = new Schema(
   {
@@ -45,5 +47,6 @@ const notificationSchema = new Schema(
 );
 
 const Notification =
-  models.Notification || model("Notification", notificationSchema);
+  mongoose.models.Notification ||
+  model("Notification", notificationSchema);
 export default Notification;

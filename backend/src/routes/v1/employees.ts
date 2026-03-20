@@ -1,17 +1,22 @@
 import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
-import type { IEmployee, ISalary } from "@shared/interfaces/IEmployee";
-import type { IUser } from "@shared/interfaces/IUser";
+import type { IEmployee, ISalary } from "../../../../lib/interface/IEmployee.ts";
+import type { IUser } from "../../../../lib/interface/IUser.ts";
 
-import { isObjectIdValid } from "../../utils/isObjectIdValid.ts";
-import { uploadFilesCloudinary, UploadInputFile } from "../../cloudinary/uploadFilesCloudinary.ts";
-import { deleteFolderCloudinary } from "../../cloudinary/deleteFolderCloudinary.ts";
-import { calculateVacationProportional } from "../../employees/calculateVacationProportional.ts";
-import objDefaultValidation from "@shared/utils/objDefaultValidation";
+import isObjectIdValid from "../../utils/isObjectIdValid.ts";
+import deleteFolderCloudinary from "../../cloudinary/deleteFolderCloudinary.ts";
+import calculateVacationProportional from "../../employees/calculateVacationProportional.ts";
+import objDefaultValidation, {
+  type ObjDefaultValidationType,
+} from "../../../../lib/utils/objDefaultValidation.ts";
 import Employee from "../../models/employee.ts";
 import User from "../../models/user.ts";
 import Printer from "../../models/printer.ts";
-import { userRolesEnums } from "../../../../lib/enums.ts";
+import uploadFilesCloudinary from "src/cloudinary/uploadFilesCloudinary.ts";
+import { UploadInputFile } from "@lib/interface/ICloudinary.ts";
+import * as enums from "../../../../lib/enums.ts";
+
+const { userRolesEnums } = enums;
 
 const reqSalaryFields = ["payFrequency", "grossSalary", "netSalary"];
 
@@ -97,7 +102,7 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
       }
 
       if (salary) {
-        const salaryValidationResult = objDefaultValidation(
+        const salaryValidationResult = (objDefaultValidation as unknown as ObjDefaultValidationType)(
           salary,
           reqSalaryFields,
           []
@@ -295,7 +300,7 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
       }
 
       if (salary) {
-        const salaryValidationResult = objDefaultValidation(
+        const salaryValidationResult = (objDefaultValidation as unknown as ObjDefaultValidationType)(
           salary,
           reqSalaryFields,
           []

@@ -1,4 +1,4 @@
-import { Schema, model, models } from "mongoose";
+import mongoose, { Schema, model } from "mongoose";
 import { personalDetailsSchema } from "./personalDetails.ts";
 
 const notificationEntrySchema = new Schema(
@@ -48,5 +48,5 @@ const userSchema = new Schema(
   },
 );
 
-const User = models.User || model("User", userSchema);
+const User = mongoose.models.User || model("User", userSchema);
 export default User;

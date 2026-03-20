@@ -1,11 +1,11 @@
 import type { FastifyPluginAsync } from "fastify";
 import { Types } from "mongoose";
-import type { IGoodsReduced } from "@shared/interfaces/IDailySalesReport";
-import type { IPaymentMethod } from "@shared/interfaces/IPaymentMethod";
-import type { IMetrics } from "@shared/interfaces/IBusiness";
+import type { IGoodsReduced } from "../../../../lib/interface/IDailySalesReport.ts";
+import type { IPaymentMethod } from "../../../../lib/interface/IPaymentMethod.ts";
+import type { IMetrics } from "../../../../lib/interface/IBusiness.ts";
 
-import { isObjectIdValid } from "../../utils/isObjectIdValid.ts";
-import { getWasteByBudgetImpactForMonth } from "../../inventories/getWasteByBudgetImpactForMonth.ts";
+import isObjectIdValid from "../../utils/isObjectIdValid.ts";
+import getWasteByBudgetImpactForMonth from "../../inventories/getWasteByBudgetImpactForMonth.ts";
 import MonthlyBusinessReport from "../../models/monthlyBusinessReport.ts";
 import DailySalesReport from "../../models/dailySalesReport.ts";
 import Schedule from "../../models/schedule.ts";
@@ -26,7 +26,7 @@ function monthEnd(monthStart: Date): Date {
     23,
     59,
     59,
-    999
+    999,
   );
 }
 
@@ -42,7 +42,7 @@ function getMonthEnd(monthStart: Date): Date {
     23,
     59,
     59,
-    999
+    999,
   );
 }
 
@@ -73,12 +73,14 @@ export const monthlyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
         const end = parseMonthStart(queryParams.endMonth);
         if (!start || !end) {
           return reply.code(400).send({
-            message: "Invalid month range. Use startMonth and endMonth as YYYY-MM.",
+            message:
+              "Invalid month range. Use startMonth and endMonth as YYYY-MM.",
           });
         }
         if (start > monthEnd(end)) {
           return reply.code(400).send({
-            message: "Invalid month range, startMonth must be before or equal to endMonth.",
+            message:
+              "Invalid month range, startMonth must be before or equal to endMonth.",
           });
         }
         filter.monthReference = { $gte: start, $lte: monthEnd(end) };
@@ -111,7 +113,8 @@ export const monthlyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
         return reply.code(400).send({ message: "Invalid monthly report ID!" });
       }
 
-      const report = await MonthlyBusinessReport.findById(monthlyReportId).lean();
+      const report =
+        await MonthlyBusinessReport.findById(monthlyReportId).lean();
 
       if (!report) {
         return reply.code(404).send({ message: "Monthly report not found!" });
@@ -142,9 +145,13 @@ export const monthlyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
       };
 
       const { totalFixedOperatingCost, totalExtraCost } = body;
-      if (totalFixedOperatingCost === undefined && totalExtraCost === undefined) {
+      if (
+        totalFixedOperatingCost === undefined &&
+        totalExtraCost === undefined
+      ) {
         return reply.code(400).send({
-          message: "Provide at least one of totalFixedOperatingCost or totalExtraCost.",
+          message:
+            "Provide at least one of totalFixedOperatingCost or totalExtraCost.",
         });
       }
 
@@ -162,7 +169,8 @@ export const monthlyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
         });
       }
 
-      const cost = (report as { costBreakdown?: Record<string, unknown> }).costBreakdown;
+      const cost = (report as { costBreakdown?: Record<string, unknown> })
+        .costBreakdown;
       const totalFoodCost = (cost?.totalFoodCost as number) ?? 0;
       const totalBeverageCost = (cost?.totalBeverageCost as number) ?? 0;
       const totalLaborCost = (cost?.totalLaborCost as number) ?? 0;
@@ -176,12 +184,20 @@ export const monthlyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
           : ((cost?.totalExtraCost as number) ?? 0);
 
       const totalOperatingCost =
-        totalFoodCost + totalBeverageCost + totalLaborCost + newFixed + newExtra;
+        totalFoodCost +
+        totalBeverageCost +
+        totalLaborCost +
+        newFixed +
+        newExtra;
 
-      const foodCostRatio = totalOperatingCost > 0 ? totalFoodCost / totalOperatingCost : 0;
-      const beverageCostRatio = totalOperatingCost > 0 ? totalBeverageCost / totalOperatingCost : 0;
-      const laborCostRatio = totalOperatingCost > 0 ? totalLaborCost / totalOperatingCost : 0;
-      const fixedCostRatio = totalOperatingCost > 0 ? newFixed / totalOperatingCost : 0;
+      const foodCostRatio =
+        totalOperatingCost > 0 ? totalFoodCost / totalOperatingCost : 0;
+      const beverageCostRatio =
+        totalOperatingCost > 0 ? totalBeverageCost / totalOperatingCost : 0;
+      const laborCostRatio =
+        totalOperatingCost > 0 ? totalLaborCost / totalOperatingCost : 0;
+      const fixedCostRatio =
+        totalOperatingCost > 0 ? newFixed / totalOperatingCost : 0;
 
       await MonthlyBusinessReport.updateOne(
         { _id: monthlyReportId },
@@ -191,14 +207,16 @@ export const monthlyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
             "costBreakdown.totalExtraCost": newExtra,
             "costBreakdown.totalOperatingCost": totalOperatingCost,
             "costBreakdown.costPercentages.foodCostRatio": foodCostRatio,
-            "costBreakdown.costPercentages.beverageCostRatio": beverageCostRatio,
+            "costBreakdown.costPercentages.beverageCostRatio":
+              beverageCostRatio,
             "costBreakdown.costPercentages.laborCostRatio": laborCostRatio,
             "costBreakdown.costPercentages.fixedCostRatio": fixedCostRatio,
           },
-        }
+        },
       );
 
-      const updated = await MonthlyBusinessReport.findById(monthlyReportId).lean();
+      const updated =
+        await MonthlyBusinessReport.findById(monthlyReportId).lean();
       return reply.code(200).send(updated);
     } catch (error) {
       return reply.code(500).send({
@@ -235,12 +253,14 @@ export const monthlyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
         const end = parseMonthStart(queryParams.endMonth);
         if (!start || !end) {
           return reply.code(400).send({
-            message: "Invalid month range. Use startMonth and endMonth as YYYY-MM.",
+            message:
+              "Invalid month range. Use startMonth and endMonth as YYYY-MM.",
           });
         }
         if (start > monthEnd(end)) {
           return reply.code(400).send({
-            message: "Invalid month range, startMonth must be before or equal to endMonth.",
+            message:
+              "Invalid month range, startMonth must be before or equal to endMonth.",
           });
         }
         filter.monthReference = { $gte: start, $lte: monthEnd(end) };
@@ -298,14 +318,20 @@ export const monthlyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
 
       const businessObjId = new Types.ObjectId(businessId);
 
-      const [dailyReports, schedules, existingReport, supplierWasteAnalysis, businessDoc] = await Promise.all([
+      const [
+        dailyReports,
+        schedules,
+        existingReport,
+        supplierWasteAnalysis,
+        businessDoc,
+      ] = await Promise.all([
         DailySalesReport.find({
           businessId: businessObjId,
           createdAt: { $gte: monthStart, $lte: monthEndDate },
           dailyNetPaidAmount: { $exists: true, $ne: null },
         })
           .select(
-            "dailyTotalSalesBeforeAdjustments dailyNetPaidAmount dailyCostOfGoodsSold dailyTipsReceived dailyTotalVoidValue dailyTotalInvitedValue dailyCustomersServed dailyPosSystemCommission businessPaymentMethods dailySoldGoods dailyVoidedGoods dailyInvitedGoods"
+            "dailyTotalSalesBeforeAdjustments dailyNetPaidAmount dailyCostOfGoodsSold dailyTipsReceived dailyTotalVoidValue dailyTotalInvitedValue dailyCustomersServed dailyPosSystemCommission businessPaymentMethods dailySoldGoods dailyVoidedGoods dailyInvitedGoods",
           )
           .lean(),
         Schedule.find({
@@ -318,7 +344,9 @@ export const monthlyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
           businessId: businessObjId,
           monthReference: monthStart,
         })
-          .select("isReportOpen costBreakdown.totalFixedOperatingCost costBreakdown.totalExtraCost")
+          .select(
+            "isReportOpen costBreakdown.totalFixedOperatingCost costBreakdown.totalExtraCost",
+          )
           .lean(),
         getWasteByBudgetImpactForMonth(businessObjId, monthStart),
         Business.findById(businessObjId).select("metrics").lean(),
@@ -366,7 +394,7 @@ export const monthlyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
             const existing = paymentMethodsAcc.find(
               (p) =>
                 p.paymentMethodType === pm.paymentMethodType &&
-                p.methodBranch === pm.methodBranch
+                p.methodBranch === pm.methodBranch,
             );
             if (existing) {
               existing.methodSalesTotal += pm.methodSalesTotal ?? 0;
@@ -385,12 +413,14 @@ export const monthlyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
             const existing = goodsSoldAcc.find(
               (x) =>
                 (x.businessGoodId as Types.ObjectId)?.toString() ===
-                (item.businessGoodId as Types.ObjectId)?.toString()
+                (item.businessGoodId as Types.ObjectId)?.toString(),
             );
             if (existing) {
               existing.quantity += item.quantity ?? 1;
-              existing.totalPrice = (existing.totalPrice ?? 0) + (item.totalPrice ?? 0);
-              existing.totalCostPrice = (existing.totalCostPrice ?? 0) + (item.totalCostPrice ?? 0);
+              existing.totalPrice =
+                (existing.totalPrice ?? 0) + (item.totalPrice ?? 0);
+              existing.totalCostPrice =
+                (existing.totalCostPrice ?? 0) + (item.totalCostPrice ?? 0);
             } else {
               goodsSoldAcc.push({
                 businessGoodId: item.businessGoodId as Types.ObjectId,
@@ -407,12 +437,14 @@ export const monthlyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
             const existing = goodsVoidedAcc.find(
               (x) =>
                 (x.businessGoodId as Types.ObjectId)?.toString() ===
-                (item.businessGoodId as Types.ObjectId)?.toString()
+                (item.businessGoodId as Types.ObjectId)?.toString(),
             );
             if (existing) {
               existing.quantity += item.quantity ?? 1;
-              existing.totalPrice = (existing.totalPrice ?? 0) + (item.totalPrice ?? 0);
-              existing.totalCostPrice = (existing.totalCostPrice ?? 0) + (item.totalCostPrice ?? 0);
+              existing.totalPrice =
+                (existing.totalPrice ?? 0) + (item.totalPrice ?? 0);
+              existing.totalCostPrice =
+                (existing.totalCostPrice ?? 0) + (item.totalCostPrice ?? 0);
             } else {
               goodsVoidedAcc.push({
                 businessGoodId: item.businessGoodId as Types.ObjectId,
@@ -429,12 +461,14 @@ export const monthlyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
             const existing = goodsComplimentaryAcc.find(
               (x) =>
                 (x.businessGoodId as Types.ObjectId)?.toString() ===
-                (item.businessGoodId as Types.ObjectId)?.toString()
+                (item.businessGoodId as Types.ObjectId)?.toString(),
             );
             if (existing) {
               existing.quantity += item.quantity ?? 1;
-              existing.totalPrice = (existing.totalPrice ?? 0) + (item.totalPrice ?? 0);
-              existing.totalCostPrice = (existing.totalCostPrice ?? 0) + (item.totalCostPrice ?? 0);
+              existing.totalPrice =
+                (existing.totalPrice ?? 0) + (item.totalPrice ?? 0);
+              existing.totalCostPrice =
+                (existing.totalCostPrice ?? 0) + (item.totalCostPrice ?? 0);
             } else {
               goodsComplimentaryAcc.push({
                 businessGoodId: item.businessGoodId as Types.ObjectId,
@@ -448,10 +482,9 @@ export const monthlyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
       }
 
       const totalGrossProfit = totalNetRevenue - totalCostOfGoodsSold;
-      const totalLaborCost = (schedules as { totalDayEmployeesCost?: number }[]).reduce(
-        (sum, s) => sum + (s.totalDayEmployeesCost ?? 0),
-        0
-      );
+      const totalLaborCost = (
+        schedules as { totalDayEmployeesCost?: number }[]
+      ).reduce((sum, s) => sum + (s.totalDayEmployeesCost ?? 0), 0);
 
       const existingCost = existingReport as {
         costBreakdown?: {
@@ -459,33 +492,53 @@ export const monthlyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
           totalExtraCost?: number;
         };
       } | null;
-      const totalFixedOperatingCost = existingCost?.costBreakdown?.totalFixedOperatingCost ?? 0;
+      const totalFixedOperatingCost =
+        existingCost?.costBreakdown?.totalFixedOperatingCost ?? 0;
       const totalExtraCost = existingCost?.costBreakdown?.totalExtraCost ?? 0;
       const totalFoodCost = totalCostOfGoodsSold;
       const totalBeverageCost = 0;
       const totalOperatingCost =
-        totalFoodCost + totalBeverageCost + totalLaborCost + totalFixedOperatingCost + totalExtraCost;
+        totalFoodCost +
+        totalBeverageCost +
+        totalLaborCost +
+        totalFixedOperatingCost +
+        totalExtraCost;
 
-      const foodCostRatio = totalOperatingCost > 0 ? totalFoodCost / totalOperatingCost : 0;
-      const beverageCostRatio = totalOperatingCost > 0 ? totalBeverageCost / totalOperatingCost : 0;
-      const laborCostRatio = totalOperatingCost > 0 ? totalLaborCost / totalOperatingCost : 0;
-      const fixedCostRatio = totalOperatingCost > 0 ? totalFixedOperatingCost / totalOperatingCost : 0;
+      const foodCostRatio =
+        totalOperatingCost > 0 ? totalFoodCost / totalOperatingCost : 0;
+      const beverageCostRatio =
+        totalOperatingCost > 0 ? totalBeverageCost / totalOperatingCost : 0;
+      const laborCostRatio =
+        totalOperatingCost > 0 ? totalLaborCost / totalOperatingCost : 0;
+      const fixedCostRatio =
+        totalOperatingCost > 0
+          ? totalFixedOperatingCost / totalOperatingCost
+          : 0;
 
       const profitMarginPercentage =
-        totalSalesForMonth > 0 ? (totalGrossProfit / totalSalesForMonth) * 100 : 0;
+        totalSalesForMonth > 0
+          ? (totalGrossProfit / totalSalesForMonth) * 100
+          : 0;
       const voidSalesPercentage =
-        totalSalesForMonth > 0 ? (totalVoidSales / totalSalesForMonth) * 100 : 0;
+        totalSalesForMonth > 0
+          ? (totalVoidSales / totalSalesForMonth) * 100
+          : 0;
       const invitedSalesPercentage =
-        totalSalesForMonth > 0 ? (totalInvitedSales / totalSalesForMonth) * 100 : 0;
+        totalSalesForMonth > 0
+          ? (totalInvitedSales / totalSalesForMonth) * 100
+          : 0;
       const salesPaymentCompletionPercentage =
-        totalSalesForMonth > 0 ? (totalNetRevenue / totalSalesForMonth) * 100 : 0;
+        totalSalesForMonth > 0
+          ? (totalNetRevenue / totalSalesForMonth) * 100
+          : 0;
       const tipsToCostOfGoodsPercentage =
         totalCostOfGoodsSold > 0 ? (totalTips / totalCostOfGoodsSold) * 100 : 0;
 
       const averageSpendingPerCustomer =
         totalCustomersServed > 0 ? totalNetRevenue / totalCustomersServed : 0;
 
-      const metrics = (businessDoc as { metrics?: IMetrics | null } | null)?.metrics;
+      const metrics = (businessDoc as { metrics?: IMetrics | null } | null)
+        ?.metrics;
 
       const metricsComparison =
         metrics && totalOperatingCost > 0
@@ -501,15 +554,19 @@ export const monthlyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
                 targetValue: metrics.laborCostPercentage,
                 actualValue: laborCostRatio * 100,
                 delta: laborCostRatio * 100 - metrics.laborCostPercentage,
-                isOverTarget: laborCostRatio * 100 > metrics.laborCostPercentage,
-                isUnderTarget: laborCostRatio * 100 < metrics.laborCostPercentage,
+                isOverTarget:
+                  laborCostRatio * 100 > metrics.laborCostPercentage,
+                isUnderTarget:
+                  laborCostRatio * 100 < metrics.laborCostPercentage,
               },
               fixedCostPercentage: {
                 targetValue: metrics.fixedCostPercentage,
                 actualValue: fixedCostRatio * 100,
                 delta: fixedCostRatio * 100 - metrics.fixedCostPercentage,
-                isOverTarget: fixedCostRatio * 100 > metrics.fixedCostPercentage,
-                isUnderTarget: fixedCostRatio * 100 < metrics.fixedCostPercentage,
+                isOverTarget:
+                  fixedCostRatio * 100 > metrics.fixedCostPercentage,
+                isUnderTarget:
+                  fixedCostRatio * 100 < metrics.fixedCostPercentage,
               },
               supplierGoodWastePercentage: undefined,
             }
@@ -518,7 +575,9 @@ export const monthlyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
       const responseBody = {
         businessId: businessObjId,
         monthReference: monthStart,
-        isReportOpen: (existingReport as { isReportOpen?: boolean } | null)?.isReportOpen ?? false,
+        isReportOpen:
+          (existingReport as { isReportOpen?: boolean } | null)?.isReportOpen ??
+          false,
         financialSummary: {
           totalSalesForMonth,
           totalCostOfGoodsSold,

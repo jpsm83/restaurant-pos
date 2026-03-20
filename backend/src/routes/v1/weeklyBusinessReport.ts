@@ -1,7 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
 import { Types } from "mongoose";
 
-import { isObjectIdValid } from "../../utils/isObjectIdValid.ts";
+import isObjectIdValid from "../../utils/isObjectIdValid.ts";
 import WeeklyBusinessReport from "../../models/weeklyBusinessReport.ts";
 
 function parseWeekStart(dateStr: string): Date | null {
@@ -45,12 +45,14 @@ export const weeklyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
         const end = parseWeekStart(queryParams.endWeek);
         if (!start || !end) {
           return reply.code(400).send({
-            message: "Invalid week range. Use startWeek and endWeek as ISO dates (YYYY-MM-DD).",
+            message:
+              "Invalid week range. Use startWeek and endWeek as ISO dates (YYYY-MM-DD).",
           });
         }
         if (start > weekEnd(end)) {
           return reply.code(400).send({
-            message: "Invalid week range, startWeek must be before or equal to endWeek.",
+            message:
+              "Invalid week range, startWeek must be before or equal to endWeek.",
           });
         }
         filter.weekReference = { $gte: start, $lte: weekEnd(end) };
@@ -125,12 +127,14 @@ export const weeklyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
         const end = parseWeekStart(queryParams.endWeek);
         if (!start || !end) {
           return reply.code(400).send({
-            message: "Invalid week range. Use startWeek and endWeek as YYYY-MM-DD.",
+            message:
+              "Invalid week range. Use startWeek and endWeek as YYYY-MM-DD.",
           });
         }
         if (start > weekEnd(end)) {
           return reply.code(400).send({
-            message: "Invalid week range, startWeek must be before or equal to endWeek.",
+            message:
+              "Invalid week range, startWeek must be before or equal to endWeek.",
           });
         }
         filter.weekReference = { $gte: start, $lte: weekEnd(end) };

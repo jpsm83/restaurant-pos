@@ -1,4 +1,4 @@
-import { Schema, model, models } from "mongoose";
+import mongoose, { Schema, model } from "mongoose";
 
 const SalesPointSchema = new Schema(
   {
@@ -24,5 +24,6 @@ const SalesPointSchema = new Schema(
   }
 );
 
-const SalesPoint = models.SalesPoint || model("SalesPoint", SalesPointSchema);
+const SalesPoint =
+  mongoose.models.SalesPoint || model("SalesPoint", SalesPointSchema);
 export default SalesPoint;

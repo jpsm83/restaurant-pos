@@ -1,11 +1,11 @@
 import type { FastifyPluginAsync } from "fastify";
 import { Types } from "mongoose";
-import type { IPromotion } from "@shared/interfaces/IPromotion";
+import type { IPromotion } from "../../../../lib/interface/IPromotion.ts";
 
-import { isObjectIdValid } from "../../utils/isObjectIdValid.ts";
-import { validateDateAndTime } from "../../promotions/validateDateAndTime.ts";
-import { validateDaysOfTheWeek } from "../../promotions/validateDaysOfTheWeek.ts";
-import { validatePromotionType } from "../../promotions/validatePromotionType.ts";
+import isObjectIdValid from "../../utils/isObjectIdValid.ts";
+import validateDateAndTime from "../../promotions/validateDateAndTime.ts";
+import validateDaysOfTheWeek from "../../promotions/validateDaysOfTheWeek.ts";
+import validatePromotionType from "../../promotions/validatePromotionType.ts";
 import Promotion from "../../models/promotion.ts";
 import BusinessGood from "../../models/businessGood.ts";
 
@@ -214,7 +214,8 @@ export const promotionsRoutes: FastifyPluginAsync = async (app) => {
       }
 
       if (promotionType) {
-        const validatePromotionTypeResult = validatePromotionType(promotionType);
+        const validatePromotionTypeResult =
+          validatePromotionType(promotionType);
         if (validatePromotionTypeResult !== true) {
           return reply.code(400).send({ message: validatePromotionTypeResult });
         }
@@ -251,7 +252,10 @@ export const promotionsRoutes: FastifyPluginAsync = async (app) => {
         updatedPromotion.businessGoodsToApplyIds = businessGoodsToApplyIds;
       if (description) updatedPromotion.description = description;
 
-      await Promotion.updateOne({ _id: promotionId }, { $set: updatedPromotion });
+      await Promotion.updateOne(
+        { _id: promotionId },
+        { $set: updatedPromotion },
+      );
 
       return reply.code(200).send({
         message: "Promotion updated successfully!",
@@ -280,7 +284,9 @@ export const promotionsRoutes: FastifyPluginAsync = async (app) => {
         return reply.code(404).send({ message: "Promotion not found!" });
       }
 
-      return reply.code(200).send({ message: `Promotion ${promotionId} deleted!` });
+      return reply
+        .code(200)
+        .send({ message: `Promotion ${promotionId} deleted!` });
     } catch (error) {
       return reply.code(500).send({
         message: "Delete promotion failed!",

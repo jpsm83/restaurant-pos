@@ -10,11 +10,11 @@ export const mainCategoriesEnums = [
   "Services",
   "Equipment",
   "Other",
-] as const;
+] as string[];
 
-export const paymentMethodsEnums = ["Cash", "Card", "Crypto", "Other"] as const;
+export const paymentMethodsEnums = ["Cash", "Card", "Crypto", "Other"] as string[];
 
-export const currenctyEnums = ["USD", "EUR", "CHF", "AUD", "CAD", "GBP", "JPY"] as const;
+export const currenctyEnums = ["USD", "EUR", "CHF", "AUD", "CAD", "GBP", "JPY"] as string[];
 
 export const creditCardEnums = [
   "Visa",
@@ -23,7 +23,7 @@ export const creditCardEnums = [
   "Discover",
   "Diners Club",
   "Maestro",
-] as const;
+] as string[];
 
 export const cryptoEnums = [
   "Bitcoin",
@@ -33,7 +33,7 @@ export const cryptoEnums = [
   "Cardano",
   "Polkadot",
   "Dogecoin",
-] as const;
+] as string[];
 
 export const otherPaymentEnums = [
   "Voucher",
@@ -42,7 +42,9 @@ export const otherPaymentEnums = [
   "Apple Pay",
   "Google Pay",
   "Samsung Pay",
-] as const;
+] as string[];
+
+export const allPaymentMethodsEnums = [...creditCardEnums, ...cryptoEnums, ...otherPaymentEnums] as string[];
 
 export const purchaseUnitEnums = [
   "Unit",
@@ -64,11 +66,11 @@ export const purchaseUnitEnums = [
   "Container",
   "Crate",
   "Gallon",
-] as const;
+] as string[];
 
-export const printerStatusEnums = ["Online", "Offline", "Out of paper", "Error"] as const;
+export const printerStatusEnums = ["Online", "Offline", "Out of paper", "Error"] as string[];
 
-export const locationEnums = ["Table", "Room", "Seat", "Bar", "Counter", "Spot", "Other"] as const;
+export const locationEnums = ["Table", "Room", "Seat", "Bar", "Counter", "Spot", "Other"] as string[];
 
 /** Valid salesPointType values; includes "delivery" for virtual delivery sales points. */
 export const salesPointTypeEnums = [
@@ -80,11 +82,11 @@ export const salesPointTypeEnums = [
   "spot",
   "delivery",
   "other",
-] as const;
+] as string[];
 
-export const notificationEnums = ["Warning", "Emergency", "Info", "Message", "Promotion", "Birthday", "Event"] as const;
+export const notificationEnums = ["Warning", "Emergency", "Info", "Message", "Promotion", "Birthday", "Event"] as string[];
 
-export const salesInstanceStatusEnums = ["Occupied", "Reserved", "Bill", "Closed"] as const;
+export const salesInstanceStatusEnums = ["Occupied", "Reserved", "Bill", "Closed"] as string[];
 
 export const reservationStatusEnums = [
   "Pending",
@@ -94,11 +96,11 @@ export const reservationStatusEnums = [
   "Cancelled",
   "NoShow",
   "Completed",
-] as const;
+] as string[];
 
-export const subscriptionEnums = ["Free", "Basic", "Premium", "Enterprise"] as const;
+export const subscriptionEnums = ["Free", "Basic", "Premium", "Enterprise"] as string[];
 
-export const idEnums = ["National ID", "Passport", "Driving License"] as const;
+export const idEnums = ["National ID", "Passport", "Driving License"] as string[];
 
 export const userRolesEnums = [
   "Owner",
@@ -125,7 +127,7 @@ export const userRolesEnums = [
   "Supervisor",
   "Entertainer",
   "Other",
-] as const;
+] as string[];
 
 export const managementRolesEnums = [
   "Owner",
@@ -135,13 +137,13 @@ export const managementRolesEnums = [
   "MoD",
   "Admin",
   "Supervisor",
-] as const;
+] as string[];
 
-export const orderStatusEnums = ["Sent", "Done", "Dont Make", "Hold", "Delivered"] as const;
+export const orderStatusEnums = ["Sent", "Done", "Dont Make", "Hold", "Delivered"] as string[];
 // once it has been started, it can't be cancel
 // "Dont Make" means it has been done before it been requested, it cannot be cancel
 
-export const billingStatusEnums = ["Open", "Paid", "Void", "Cancel", "Invitation"] as const;
+export const billingStatusEnums = ["Open", "Paid", "Void", "Cancel", "Invitation"] as string[];
 // OPEN - order is open and can be paid
 // PAID - order is paid and can't be changed
 // VOID - order been done but is voided by manager, good been lost and business will not be paid, ex: client left without paying, good was badly done and have to be remake, mistake was made
@@ -166,7 +168,7 @@ export const measurementUnitEnums = [
   "pnt", // Pint
   "qt", // Quart
   "gal", // Gallon
-] as const;
+] as string[];
 
 export const allergensEnums = [
   "Gluten",
@@ -183,11 +185,11 @@ export const allergensEnums = [
   "Sulphur dioxide",
   "Lupin",
   "Molluscs",
-] as const;
+] as string[];
 
-export const budgetImpactEnums = ["Very Low", "Low", "Medium", "High", "Very High"] as const;
+export const budgetImpactEnums = ["Very Low", "Low", "Medium", "High", "Very High"] as string[];
 
-export const inventoryScheduleEnums = ["daily", "weekly", "monthly"] as const;
+export const inventoryScheduleEnums = ["daily", "weekly", "monthly"] as string[];
 
 // not in use
 // employee can be free to create those subcategories as they wish
@@ -225,7 +227,7 @@ export const foodSubCategoryEnums = [
   "Starter",
   "Vegetables",
   "Other",
-] as const;
+] as string[];
 
 export const beverageSubCategoryEnums = [
   "Beer",
@@ -253,7 +255,7 @@ export const beverageSubCategoryEnums = [
   "Water",
   "Whiskey",
   "White Wine",
-] as const;
+] as string[];
 
 export const merchandiseSubCategoryEnums = [
   "Clothing",
@@ -262,11 +264,11 @@ export const merchandiseSubCategoryEnums = [
   "Health & Beauty",
   "Souvenirs",
   "Others",
-] as const;
+] as string[];
 
-export const othersSubcategoryEnums = ["Cleaning", "Office", "Furniture", "Disposable", "Services", "Equipment", "Other"] as const;
+export const othersSubcategoryEnums = ["Cleaning", "Office", "Furniture", "Disposable", "Services", "Equipment", "Other"] as string[];
 
-export const weekDaysEnums = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as const;
+export const weekDaysEnums = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as string[];
 
-export const employeePayFrequencyEnums = ["Hourly", "Daily", "Weekly", "Monthly"] as const;
+export const employeePayFrequencyEnums = ["Hourly", "Daily", "Weekly", "Monthly"] as string[];
 

@@ -8,11 +8,17 @@
  * duplicating validation logic across endpoints.
  */
 
-const objDefaultValidation = (
+export type ObjDefaultValidationType = (
   obj: unknown,
   reqFields: string[],
-  nonReqFields: string[]
-) => {
+  nonReqFields: string[],
+) => true | string;
+
+export default function objDefaultValidation(
+  obj: unknown,
+  reqFields: string[],
+  nonReqFields: string[],
+): true | string {
   if (typeof obj !== "object" || obj === null) {
     return "Object must be a non-null object!";
   }
@@ -57,6 +63,4 @@ const objDefaultValidation = (
   }
 
   return true;
-};
-
-export default objDefaultValidation;
+}

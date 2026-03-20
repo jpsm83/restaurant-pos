@@ -9,8 +9,10 @@
 
 import Employee from "src/models/employee.ts";
 import Schedule from "src/models/schedule.ts";
-import { managementRolesEnums } from "../../../lib/enums.ts";
 import type { Types } from "mongoose";
+import * as enums from "../../../lib/enums.ts";
+
+const { managementRolesEnums } = enums;
 
 const FIVE_MINUTES_MS = 5 * 60 * 1000;
 

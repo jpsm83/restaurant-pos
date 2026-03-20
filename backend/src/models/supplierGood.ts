@@ -1,12 +1,14 @@
-import { Schema, model, models } from "mongoose";
-import {
+import mongoose, { Schema, model } from "mongoose";
+import * as enums from "../../../lib/enums.ts";
+
+const {
+  mainCategoriesEnums,
+  measurementUnitEnums,
   allergensEnums,
   budgetImpactEnums,
   inventoryScheduleEnums,
-  mainCategoriesEnums,
-  measurementUnitEnums,
   purchaseUnitEnums,
-} from "../../../lib/enums.ts";
+} = enums;
 
 const supplierGoodSchema = new Schema(
   {
@@ -30,7 +32,7 @@ const supplierGoodSchema = new Schema(
       required: [true, "Business id is required!"],
       index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
     }, // business that deals with the supplier
-    
+
     // optional fields
     currentlyInUse: { type: Boolean, default: true }, // if the good is currently in use base on the business goods
     subCategory: {
@@ -80,9 +82,9 @@ const supplierGoodSchema = new Schema(
   {
     timestamps: true,
     trim: true,
-  }
+  },
 );
 
 const SupplierGood =
-  models.SupplierGood || model("SupplierGood", supplierGoodSchema);
+  mongoose.models.SupplierGood || model("SupplierGood", supplierGoodSchema);
 export default SupplierGood;

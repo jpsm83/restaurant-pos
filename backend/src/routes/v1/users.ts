@@ -5,9 +5,11 @@ import type { IUser } from "../../../../lib/interface/IUser.ts";
 import type { IEmployee } from "../../../../lib/interface/IEmployee.ts";
 
 import isObjectIdValid from "../../utils/isObjectIdValid.ts";
-import objDefaultValidation from "../../../../lib/utils/objDefaultValidation.ts";
-import { uploadFilesCloudinary } from "../../cloudinary/uploadFilesCloudinary.ts";
-import { deleteFilesCloudinary } from "../../cloudinary/deleteFilesCloudinary.ts";
+import objDefaultValidation, {
+  type ObjDefaultValidationType,
+} from "../../../../lib/utils/objDefaultValidation.ts";
+import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
+import deleteFilesCloudinary from "../../cloudinary/deleteFilesCloudinary.ts";
 import deleteFolderCloudinary from "../../cloudinary/deleteFolderCloudinary.ts";
 import User from "../../models/user.ts";
 import Employee from "../../models/employee.ts";
@@ -28,7 +30,10 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
   // GET /users - list all
   app.get("/", async (_req, reply) => {
     try {
-      const users = await User.find({}, { "personalDetails.password": 0 }).lean();
+      const users = await User.find(
+        {},
+        { "personalDetails.password": 0 },
+      ).lean();
 
       if (!users?.length) {
         return reply.code(404).send({ message: "No users found" });
@@ -46,14 +51,22 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
   app.post("/", async (req, reply) => {
     try {
       const fields: Record<string, string> = {};
-      let imageFile: { buffer: Buffer; filename: string; mimeType: string } | null = null;
+      let imageFile: {
+        buffer: Buffer;
+        filename: string;
+        mimeType: string;
+      } | null = null;
 
       const parts = req.parts();
       for await (const part of parts) {
         if (part.type === "file") {
           if (part.fieldname === "imageUrl") {
             const buffer = await part.toBuffer();
-            imageFile = { buffer, filename: part.filename, mimeType: part.mimetype };
+            imageFile = {
+              buffer,
+              filename: part.filename,
+              mimeType: part.mimetype,
+            };
           }
         } else {
           fields[part.fieldname] = part.value as string;
@@ -93,10 +106,10 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
         });
       }
 
-      const addressValidationResult = objDefaultValidation(
+      const addressValidationResult = (objDefaultValidation as unknown as ObjDefaultValidationType)(
         address,
         reqAddressFields,
-        nonReqAddressFields
+        nonReqAddressFields,
       );
 
       if (addressValidationResult !== true) {
@@ -209,14 +222,22 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
 
     try {
       const fields: Record<string, string> = {};
-      let imageFile: { buffer: Buffer; filename: string; mimeType: string } | null = null;
+      let imageFile: {
+        buffer: Buffer;
+        filename: string;
+        mimeType: string;
+      } | null = null;
 
       const parts = req.parts();
       for await (const part of parts) {
         if (part.type === "file") {
           if (part.fieldname === "imageUrl") {
             const buffer = await part.toBuffer();
-            imageFile = { buffer, filename: part.filename, mimeType: part.mimetype };
+            imageFile = {
+              buffer,
+              filename: part.filename,
+              mimeType: part.mimetype,
+            };
           }
         } else {
           fields[part.fieldname] = part.value as string;
@@ -255,10 +276,10 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
         });
       }
 
-      const addressValidationResult = objDefaultValidation(
+      const addressValidationResult = (objDefaultValidation as unknown as ObjDefaultValidationType)(
         address,
         reqAddressFields,
-        nonReqAddressFields
+        nonReqAddressFields,
       );
 
       if (addressValidationResult !== true) {
@@ -324,7 +345,10 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
 
       if (address) {
         Object.keys(address).forEach((key) => {
-          if (address[key] !== (user.personalDetails.address as Record<string, unknown>)?.[key]) {
+          if (
+            address[key] !==
+            (user.personalDetails.address as Record<string, unknown>)?.[key]
+          ) {
             updateUserObj[`personalDetails.address.${key}`] = address[key];
           }
         });
@@ -366,7 +390,7 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
       const updatedUser = await User.findByIdAndUpdate(
         userId,
         { $set: updateUserObj },
-        { new: true, lean: true }
+        { new: true, lean: true },
       );
 
       if (!updatedUser) {
@@ -433,7 +457,11 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
 
     const { notificationId } = req.body as { notificationId?: string };
 
-    if (!userId || !notificationId || !isObjectIdValid([userId, notificationId])) {
+    if (
+      !userId ||
+      !notificationId ||
+      !isObjectIdValid([userId, notificationId])
+    ) {
       return reply.code(400).send({
         message: "User or notification ID is not valid!",
       });
@@ -460,7 +488,7 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
             "notifications.$.readFlag": true,
           },
         },
-        { new: true, lean: true, session }
+        { new: true, lean: true, session },
       );
 
       if (!updatedCustomer) {
@@ -490,7 +518,11 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
       const params = req.params as { userId?: string; notificationId?: string };
       const { userId, notificationId } = params;
 
-      if (!userId || !notificationId || !isObjectIdValid([userId, notificationId])) {
+      if (
+        !userId ||
+        !notificationId ||
+        !isObjectIdValid([userId, notificationId])
+      ) {
         return reply.code(400).send({
           message: "User or notification ID is not valid!",
         });
@@ -510,11 +542,13 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
           "notifications.notificationId": notificationId,
         },
         { $set: { "notifications.$.readFlag": true } },
-        { new: true, lean: true }
+        { new: true, lean: true },
       );
 
       if (!updatedCustomer) {
-        return reply.code(404).send({ message: "User notification not updated!" });
+        return reply
+          .code(404)
+          .send({ message: "User notification not updated!" });
       }
 
       return reply.code(200).send({

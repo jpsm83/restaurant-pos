@@ -1,4 +1,4 @@
-import { Schema, model, models } from "mongoose";
+import mongoose, { Schema, model } from "mongoose";
 
 // on the time of record the purchase, employee should be able to select the supplier good in a dropdown
 // and from there employee should be able to see the supplierGood.pricePerMeasurementUnit to compare with the price of the purchase
@@ -87,5 +87,5 @@ const purchaseSchema = new Schema(
   }
 );
 
-const Purchase = models.Purchase || model("Purchase", purchaseSchema);
+const Purchase = mongoose.models.Purchase || model("Purchase", purchaseSchema);
 export default Purchase;

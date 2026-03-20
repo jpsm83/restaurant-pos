@@ -1,19 +1,27 @@
 import type { FastifyPluginAsync } from "fastify";
 import { Types } from "mongoose";
+import type {
+  IEmployeeDailySalesReport,
+  IGoodsReduced,
+  IDailySalesReport,
+} from "../../../../lib/interface/IDailySalesReport.ts";
+import type { IPaymentMethod } from "../../../../lib/interface/IPaymentMethod.ts";
+import type { IEmployee } from "../../../../lib/interface/IEmployee.ts";
 
 import isObjectIdValid from "../../utils/isObjectIdValid.ts";
 import updateEmployeesDailySalesReport from "../../dailySalesReports/updateEmployeeDailySalesReport.ts";
-import { DELIVERY_ATTRIBUTION_USER_ID } from "../../../lib/enums.ts";
-import { aggregateDailyReportsIntoMonthly } from "../../weeklyBusinessReport/aggregateDailyReportsIntoMonthly.ts";
+import updateDeliveryDailySalesReport from "../../dailySalesReports/updateDeliveryDailySalesReport.ts";
+import aggregateDailyReportsIntoMonthly from "../../monthlyBusinessReport/aggregateDailyReportsIntoMonthly.ts";
 import DailySalesReport from "../../models/dailySalesReport.ts";
 import User from "../../models/user.ts";
 import Employee from "../../models/employee.ts";
 import Business from "../../models/business.ts";
 import Order from "../../models/order.ts";
+import SalesPoint from "../../models/salesPoint.ts";
 import { createAuthHook } from "../../auth/middleware.ts";
-import { managementRolesEnums } from "../../../../lib/enums.ts";
-import { IEmployee } from "../../../../lib/interface/IEmployee.ts";
-import { IGoodsReduced } from "../../../../lib/interface/IDailySalesReport.ts";
+import * as enums from "../../../../lib/enums.ts";
+
+const { managementRolesEnums } = enums;
 
 export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
   // GET /dailySalesReports - list all
@@ -22,6 +30,11 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
       const dailySalesReports = await DailySalesReport.find()
         .populate({
           path: "employeesDailySalesReport.userId",
+          select: "personalDetails.firstName personalDetails.lastName",
+          model: User,
+        })
+        .populate({
+          path: "deliveryDailySalesReport.userId",
           select: "personalDetails.firstName personalDetails.lastName",
           model: User,
         })
@@ -50,13 +63,23 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
       const params = req.params as { dailySalesReportId?: string };
       const dailySalesReportId = params.dailySalesReportId;
 
-      if (!dailySalesReportId || isObjectIdValid([dailySalesReportId]) !== true) {
+      if (
+        !dailySalesReportId ||
+        isObjectIdValid([dailySalesReportId]) !== true
+      ) {
         return reply.code(400).send({ message: "Invalid daily report ID!" });
       }
 
-      const dailySalesReport = await DailySalesReport.findById(dailySalesReportId)
+      const dailySalesReport = await DailySalesReport.findById(
+        dailySalesReportId,
+      )
         .populate({
           path: "employeesDailySalesReport.userId",
+          select: "personalDetails.firstName personalDetails.lastName",
+          model: User,
+        })
+        .populate({
+          path: "deliveryDailySalesReport.userId",
           select: "personalDetails.firstName personalDetails.lastName",
           model: User,
         })
@@ -85,7 +108,10 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
       const params = req.params as { dailySalesReportId?: string };
       const dailySalesReportId = params.dailySalesReportId;
 
-      if (!dailySalesReportId || isObjectIdValid([dailySalesReportId]) !== true) {
+      if (
+        !dailySalesReportId ||
+        isObjectIdValid([dailySalesReportId]) !== true
+      ) {
         return reply.code(400).send({ message: "Invalid daily report ID!" });
       }
 
@@ -107,303 +133,452 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
   });
 
   // PATCH /dailySalesReports/:dailySalesReportId/calculateBusinessReport - calculate business report
-  app.patch("/:dailySalesReportId/calculateBusinessReport", { preValidation: [createAuthHook(app)] }, async (req, reply) => {
-    try {
-      const params = req.params as { dailySalesReportId?: string };
-      const dailySalesReportId = params.dailySalesReportId;
+  app.patch(
+    "/:dailySalesReportId/calculateBusinessReport",
+    { preValidation: [createAuthHook(app)] },
+    async (req, reply) => {
+      try {
+        const params = req.params as { dailySalesReportId?: string };
+        const dailySalesReportId = params.dailySalesReportId;
 
-      if (!req.authSession || req.authSession.type !== "user") {
-        return reply.code(401).send({ message: "Unauthorized" });
-      }
-      const userObjectId = new Types.ObjectId(req.authSession.id);
+        if (!req.authSession || req.authSession.type !== "user") {
+          return reply.code(401).send({ message: "Unauthorized" });
+        }
+        const userObjectId = new Types.ObjectId(req.authSession.id);
 
-      if (!dailySalesReportId || isObjectIdValid([dailySalesReportId]) !== true) {
-        return reply.code(400).send({ message: "Invalid dailySalesReport ID!" });
-      }
+        if (
+          !dailySalesReportId ||
+          isObjectIdValid([dailySalesReportId]) !== true
+        ) {
+          return reply
+            .code(400)
+            .send({ message: "Invalid dailySalesReport ID!" });
+        }
 
-      const dailySalesReport = (await DailySalesReport.findOne({
-        _id: dailySalesReportId,
-      })
-        .select("dailyReferenceNumber businessId")
-        .lean()) as {
-        dailyReferenceNumber: number;
-        businessId: Types.ObjectId | { _id: Types.ObjectId };
-      } | null;
-
-      if (!dailySalesReport) {
-        return reply.code(400).send({ message: "Daily report not found!" });
-      }
-
-      const businessId =
-        typeof dailySalesReport.businessId === "object" &&
-        dailySalesReport.businessId !== null &&
-        "_id" in dailySalesReport.businessId
-          ? (dailySalesReport.businessId as { _id: Types.ObjectId })._id
-          : (dailySalesReport.businessId as Types.ObjectId);
-
-      const employeeRoleOnDuty = (await Employee.findOne({
-        userId: userObjectId,
-        businessId,
-      })
-        .select("currentShiftRole")
-        .lean()) as IEmployee | null;
-
-      if (
-        !employeeRoleOnDuty ||
-        !managementRolesEnums.includes(employeeRoleOnDuty.currentShiftRole ?? "")
-      ) {
-        return reply.code(403).send({
-          message: "You are not allowed to calculate the daily sales report!",
-        });
-      }
-
-      const dailyReportWithUsers = await DailySalesReport.findOne({
-        _id: dailySalesReportId,
-      })
-        .select(
-          "_id dailyReferenceNumber employeesDailySalesReport.userId employeesDailySalesReport.hasOpenSalesInstances businessId"
-        )
-        .populate({
-          path: "employeesDailySalesReport.userId",
-          select: "personalDetails.firstName personalDetails.lastName",
-          model: User,
+        const dailySalesReport = (await DailySalesReport.findOne({
+          _id: dailySalesReportId,
         })
-        .populate({ path: "businessId", select: "subscription", model: Business })
-        .lean() as {
-        _id: Types.ObjectId;
-        dailyReferenceNumber: number;
-        businessId: { _id: Types.ObjectId; subscription?: string } | Types.ObjectId;
-        employeesDailySalesReport: { userId: { _id: Types.ObjectId } | Types.ObjectId }[];
-      } | null;
+          .select("dailyReferenceNumber businessId")
+          .lean()) as {
+          dailyReferenceNumber: number;
+          businessId: Types.ObjectId | { _id: Types.ObjectId };
+        } | null;
 
-      if (!dailyReportWithUsers) {
-        return reply.code(400).send({ message: "Daily report not found!" });
-      }
+        if (!dailySalesReport) {
+          return reply.code(400).send({ message: "Daily report not found!" });
+        }
 
-      let userIds = dailyReportWithUsers.employeesDailySalesReport.map(
-        (emp: { userId: { _id: Types.ObjectId } | Types.ObjectId }) =>
-          typeof emp.userId === "object" && emp.userId !== null && "_id" in emp.userId
-            ? (emp.userId as { _id: Types.ObjectId })._id
-            : (emp.userId as Types.ObjectId)
-      );
-      if (
-        !userIds.some(
-          (id: Types.ObjectId) => id.toString() === DELIVERY_ATTRIBUTION_USER_ID.toString()
-        )
-      ) {
-        userIds = [...userIds, DELIVERY_ATTRIBUTION_USER_ID];
-      }
+        const businessId =
+          typeof dailySalesReport.businessId === "object" &&
+          dailySalesReport.businessId !== null &&
+          "_id" in dailySalesReport.businessId
+            ? (dailySalesReport.businessId as { _id: Types.ObjectId })._id
+            : (dailySalesReport.businessId as Types.ObjectId);
 
-      const updatedEmployeesDailySalesReport = await updateEmployeesDailySalesReport(
-        userIds,
-        dailyReportWithUsers.dailyReferenceNumber
-      );
+        const employeeRoleOnDuty = (await Employee.findOne({
+          userId: userObjectId,
+          businessId,
+        })
+          .select("currentShiftRole")
+          .lean()) as IEmployee | null;
 
-      if (updatedEmployeesDailySalesReport.errors.length > 0) {
-        return reply.code(207).send({
-          message: "Some errors occurred while updating employees!",
-          errors: updatedEmployeesDailySalesReport.errors,
+        if (
+          !employeeRoleOnDuty ||
+          !managementRolesEnums.some(
+            (role) => role === employeeRoleOnDuty.currentShiftRole,
+          )
+        ) {
+          return reply.code(403).send({
+            message: "You are not allowed to calculate the daily sales report!",
+          });
+        }
+
+        const dailyReportWithUsers = (await DailySalesReport.findOne({
+          _id: dailySalesReportId,
+        })
+          .select(
+            "_id dailyReferenceNumber employeesDailySalesReport.userId employeesDailySalesReport.hasOpenSalesInstances businessId",
+          )
+          .populate({
+            path: "employeesDailySalesReport.userId",
+            select: "personalDetails.firstName personalDetails.lastName",
+            model: User,
+          })
+          .populate({
+            path: "businessId",
+            select: "subscription",
+            model: Business,
+          })
+          .lean()) as {
+          _id: Types.ObjectId;
+          dailyReferenceNumber: number;
+          businessId:
+            | { _id: Types.ObjectId; subscription?: string }
+            | Types.ObjectId;
+          employeesDailySalesReport: {
+            userId: { _id: Types.ObjectId } | Types.ObjectId;
+          }[];
+        } | null;
+
+        if (!dailyReportWithUsers) {
+          return reply.code(400).send({ message: "Daily report not found!" });
+        }
+
+        const userIds = dailyReportWithUsers.employeesDailySalesReport.map(
+          (emp: { userId: { _id: Types.ObjectId } | Types.ObjectId }) =>
+            typeof emp.userId === "object" &&
+            emp.userId !== null &&
+            "_id" in emp.userId
+              ? (emp.userId as { _id: Types.ObjectId })._id
+              : (emp.userId as Types.ObjectId),
+        );
+
+        const updatedEmployeesDailySalesReport = userIds.length
+          ? await updateEmployeesDailySalesReport(
+              userIds,
+              dailyReportWithUsers.dailyReferenceNumber,
+            )
+          : { updatedEmployees: [], errors: [] as string[] };
+
+        if (updatedEmployeesDailySalesReport.errors.length > 0) {
+          return reply.code(207).send({
+            message: "Some errors occurred while updating employees!",
+            errors: updatedEmployeesDailySalesReport.errors,
+          });
+        }
+
+        let deliveryDailySalesReport: IEmployeeDailySalesReport | undefined =
+          undefined;
+
+        const deliverySalesPoint = (await SalesPoint.findOne({
+          businessId,
+          salesPointType: "delivery",
+        })
+          .select("_id")
+          .lean()) as { _id: Types.ObjectId } | null;
+
+        if (deliverySalesPoint?._id) {
+          const updatedDeliveryDailySalesReport =
+            await updateDeliveryDailySalesReport(
+              deliverySalesPoint._id,
+              dailyReportWithUsers.dailyReferenceNumber,
+            );
+
+          if (updatedDeliveryDailySalesReport.errors.length > 0) {
+            return reply.code(207).send({
+              message: "Some errors occurred while updating deliveries!",
+              errors: updatedDeliveryDailySalesReport.errors,
+            });
+          }
+
+          deliveryDailySalesReport =
+            updatedDeliveryDailySalesReport.deliveryDailySalesReport;
+        }
+
+        const businessGoodsReport: {
+          goodsSold: IGoodsReduced[];
+          goodsVoid: IGoodsReduced[];
+          goodsInvited: IGoodsReduced[];
+        } = {
+          goodsSold: [],
+          goodsVoid: [],
+          goodsInvited: [],
+        };
+
+        const dailySalesReportObj = {
+          businessPaymentMethods: [] as IPaymentMethod[],
+          dailyTotalSalesBeforeAdjustments: 0,
+          dailyNetPaidAmount: 0,
+          dailyTipsReceived: 0,
+          dailyCostOfGoodsSold: 0,
+          dailyProfit: 0,
+          dailyCustomersServed: 0,
+          dailyAverageCustomerExpenditure: 0,
+          dailySoldGoods: [] as IGoodsReduced[],
+          dailyVoidedGoods: [] as IGoodsReduced[],
+          dailyInvitedGoods: [] as IGoodsReduced[],
+          dailyTotalVoidValue: 0,
+          dailyTotalInvitedValue: 0,
+          dailyPosSystemCommission: 0,
+          deliveryDailySalesReport: deliveryDailySalesReport,
+        };
+
+        if (Array.isArray(updatedEmployeesDailySalesReport.updatedEmployees)) {
+          updatedEmployeesDailySalesReport.updatedEmployees.forEach(
+            (employeeReport) => {
+              if (employeeReport.employeePaymentMethods) {
+                employeeReport.employeePaymentMethods.forEach(
+                  (payment: IPaymentMethod) => {
+                    const existingPayment =
+                      dailySalesReportObj.businessPaymentMethods.find(
+                        (p: IPaymentMethod) =>
+                          p.paymentMethodType === payment.paymentMethodType &&
+                          p.methodBranch === payment.methodBranch,
+                      );
+
+                    if (existingPayment) {
+                      existingPayment.methodSalesTotal +=
+                        payment.methodSalesTotal ?? 0;
+                    } else {
+                      dailySalesReportObj.businessPaymentMethods.push({
+                        paymentMethodType: payment.paymentMethodType,
+                        methodBranch: payment.methodBranch,
+                        methodSalesTotal: payment.methodSalesTotal ?? 0,
+                      });
+                    }
+                  },
+                );
+              }
+
+              dailySalesReportObj.dailyTotalSalesBeforeAdjustments +=
+                employeeReport.totalSalesBeforeAdjustments ?? 0;
+              dailySalesReportObj.dailyNetPaidAmount +=
+                employeeReport.totalNetPaidAmount ?? 0;
+              dailySalesReportObj.dailyTipsReceived +=
+                employeeReport.totalTipsReceived ?? 0;
+              dailySalesReportObj.dailyCostOfGoodsSold +=
+                employeeReport.totalCostOfGoodsSold ?? 0;
+              dailySalesReportObj.dailyCustomersServed +=
+                employeeReport.totalCustomersServed ?? 0;
+
+              const updateGoodsArray = (
+                array: IGoodsReduced[],
+                businessGood: IGoodsReduced,
+              ) => {
+                const existingGood = array.find(
+                  (item) =>
+                    (item.businessGoodId as Types.ObjectId)?.toString() ===
+                    (businessGood.businessGoodId as Types.ObjectId)?.toString(),
+                );
+
+                if (existingGood) {
+                  existingGood.quantity += businessGood.quantity ?? 1;
+                  existingGood.totalPrice =
+                    (existingGood.totalPrice ?? 0) +
+                    (businessGood.totalPrice ?? 0);
+                  existingGood.totalCostPrice =
+                    (existingGood.totalCostPrice ?? 0) +
+                    (businessGood.totalCostPrice ?? 0);
+                } else {
+                  array.push({
+                    businessGoodId: businessGood.businessGoodId,
+                    quantity: businessGood.quantity ?? 1,
+                    totalPrice: businessGood.totalPrice ?? 0,
+                    totalCostPrice: businessGood.totalCostPrice ?? 0,
+                  });
+                }
+              };
+
+              if (
+                employeeReport.soldGoods &&
+                employeeReport.soldGoods.length > 0
+              ) {
+                employeeReport.soldGoods.forEach(
+                  (businessGood: IGoodsReduced) => {
+                    updateGoodsArray(
+                      businessGoodsReport.goodsSold,
+                      businessGood,
+                    );
+                  },
+                );
+              }
+
+              if (
+                employeeReport.voidedGoods &&
+                employeeReport.voidedGoods.length > 0
+              ) {
+                employeeReport.voidedGoods.forEach(
+                  (businessGood: IGoodsReduced) => {
+                    updateGoodsArray(
+                      businessGoodsReport.goodsVoid,
+                      businessGood,
+                    );
+                  },
+                );
+              }
+
+              if (
+                employeeReport.invitedGoods &&
+                employeeReport.invitedGoods.length > 0
+              ) {
+                employeeReport.invitedGoods.forEach(
+                  (businessGood: IGoodsReduced) => {
+                    updateGoodsArray(
+                      businessGoodsReport.goodsInvited,
+                      businessGood,
+                    );
+                  },
+                );
+              }
+            },
+          );
+        }
+
+        if (deliveryDailySalesReport) {
+          if (deliveryDailySalesReport.employeePaymentMethods) {
+            deliveryDailySalesReport.employeePaymentMethods.forEach(
+              (payment: IPaymentMethod) => {
+                const existingPayment =
+                  dailySalesReportObj.businessPaymentMethods.find(
+                    (p: IPaymentMethod) =>
+                      p.paymentMethodType === payment.paymentMethodType &&
+                      p.methodBranch === payment.methodBranch,
+                  );
+
+                if (existingPayment) {
+                  existingPayment.methodSalesTotal +=
+                    payment.methodSalesTotal ?? 0;
+                } else {
+                  dailySalesReportObj.businessPaymentMethods.push({
+                    paymentMethodType: payment.paymentMethodType,
+                    methodBranch: payment.methodBranch,
+                    methodSalesTotal: payment.methodSalesTotal ?? 0,
+                  });
+                }
+              },
+            );
+          }
+
+          dailySalesReportObj.dailyTotalSalesBeforeAdjustments +=
+            deliveryDailySalesReport.totalSalesBeforeAdjustments ?? 0;
+          dailySalesReportObj.dailyNetPaidAmount +=
+            deliveryDailySalesReport.totalNetPaidAmount ?? 0;
+          dailySalesReportObj.dailyTipsReceived +=
+            deliveryDailySalesReport.totalTipsReceived ?? 0;
+          dailySalesReportObj.dailyCostOfGoodsSold +=
+            deliveryDailySalesReport.totalCostOfGoodsSold ?? 0;
+          dailySalesReportObj.dailyCustomersServed +=
+            deliveryDailySalesReport.totalCustomersServed ?? 0;
+
+          const updateGoodsArray = (
+            array: IGoodsReduced[],
+            businessGood: IGoodsReduced,
+          ) => {
+            const existingGood = array.find(
+              (item) =>
+                (item.businessGoodId as Types.ObjectId)?.toString() ===
+                (businessGood.businessGoodId as Types.ObjectId)?.toString(),
+            );
+
+            if (existingGood) {
+              existingGood.quantity += businessGood.quantity ?? 1;
+              existingGood.totalPrice =
+                (existingGood.totalPrice ?? 0) + (businessGood.totalPrice ?? 0);
+              existingGood.totalCostPrice =
+                (existingGood.totalCostPrice ?? 0) +
+                (businessGood.totalCostPrice ?? 0);
+            } else {
+              array.push({
+                businessGoodId: businessGood.businessGoodId,
+                quantity: businessGood.quantity ?? 1,
+                totalPrice: businessGood.totalPrice ?? 0,
+                totalCostPrice: businessGood.totalCostPrice ?? 0,
+              });
+            }
+          };
+
+          if (deliveryDailySalesReport.soldGoods?.length) {
+            deliveryDailySalesReport.soldGoods.forEach((businessGood) => {
+              updateGoodsArray(businessGoodsReport.goodsSold, businessGood);
+            });
+          }
+
+          if (deliveryDailySalesReport.voidedGoods?.length) {
+            deliveryDailySalesReport.voidedGoods.forEach((businessGood) => {
+              updateGoodsArray(businessGoodsReport.goodsVoid, businessGood);
+            });
+          }
+
+          if (deliveryDailySalesReport.invitedGoods?.length) {
+            deliveryDailySalesReport.invitedGoods.forEach((businessGood) => {
+              updateGoodsArray(businessGoodsReport.goodsInvited, businessGood);
+            });
+          }
+        }
+
+        dailySalesReportObj.dailyProfit =
+          dailySalesReportObj.dailyNetPaidAmount -
+          dailySalesReportObj.dailyCostOfGoodsSold;
+
+        dailySalesReportObj.dailyAverageCustomerExpenditure =
+          dailySalesReportObj.dailyCustomersServed > 0
+            ? dailySalesReportObj.dailyNetPaidAmount /
+              dailySalesReportObj.dailyCustomersServed
+            : 0;
+
+        dailySalesReportObj.dailySoldGoods = businessGoodsReport.goodsSold;
+        dailySalesReportObj.dailyVoidedGoods = businessGoodsReport.goodsVoid;
+        dailySalesReportObj.dailyInvitedGoods =
+          businessGoodsReport.goodsInvited;
+
+        dailySalesReportObj.dailyTotalVoidValue =
+          dailySalesReportObj.dailyVoidedGoods.reduce(
+            (acc, curr) => acc + (curr.totalPrice ?? 0),
+            0,
+          );
+
+        dailySalesReportObj.dailyTotalInvitedValue =
+          dailySalesReportObj.dailyInvitedGoods.reduce(
+            (acc, curr) => acc + (curr.totalPrice ?? 0),
+            0,
+          );
+
+        let comissionPercentage = 0;
+        const businessIdPayload = dailyReportWithUsers.businessId;
+        const subscription =
+          typeof businessIdPayload === "object" &&
+          businessIdPayload !== null &&
+          "subscription" in businessIdPayload
+            ? (businessIdPayload as { subscription?: string }).subscription
+            : undefined;
+
+        switch (subscription) {
+          case "Free":
+            comissionPercentage = 0;
+            break;
+          case "Basic":
+            comissionPercentage = 0.05;
+            break;
+          case "Premium":
+            comissionPercentage = 0.08;
+            break;
+          case "Enterprise":
+            comissionPercentage = 0.1;
+            break;
+          default:
+            comissionPercentage = 0;
+            break;
+        }
+
+        dailySalesReportObj.dailyPosSystemCommission =
+          dailySalesReportObj.dailyTotalSalesBeforeAdjustments *
+          comissionPercentage;
+
+        await DailySalesReport.updateOne(
+          { _id: dailySalesReportId },
+          dailySalesReportObj,
+        );
+
+        const businessIdForMonthly =
+          typeof dailyReportWithUsers.businessId === "object" &&
+          dailyReportWithUsers.businessId !== null
+            ? ((dailyReportWithUsers.businessId as { _id?: Types.ObjectId })
+                ._id ?? (dailyReportWithUsers.businessId as Types.ObjectId))
+            : new Types.ObjectId(String(dailyReportWithUsers.businessId));
+
+        aggregateDailyReportsIntoMonthly(businessIdForMonthly).catch((err) => {
+          app.log.error("aggregateDailyReportsIntoMonthly failed:", err);
+        });
+
+        return reply.code(200).send({ message: "Daily sales report updated" });
+      } catch (error) {
+        return reply.code(500).send({
+          message: "Failed to update daily sales report!",
+          error: error instanceof Error ? error.message : error,
         });
       }
-
-      const businessGoodsReport: {
-        goodsSold: IGoodsReduced[];
-        goodsVoid: IGoodsReduced[];
-        goodsInvited: IGoodsReduced[];
-      } = {
-        goodsSold: [],
-        goodsVoid: [],
-        goodsInvited: [],
-      };
-
-      const dailySalesReportObj = {
-        businessPaymentMethods: [] as IPaymentMethod[],
-        dailyTotalSalesBeforeAdjustments: 0,
-        dailyNetPaidAmount: 0,
-        dailyTipsReceived: 0,
-        dailyCostOfGoodsSold: 0,
-        dailyProfit: 0,
-        dailyCustomersServed: 0,
-        dailyAverageCustomerExpenditure: 0,
-        dailySoldGoods: [] as IGoodsReduced[],
-        dailyVoidedGoods: [] as IGoodsReduced[],
-        dailyInvitedGoods: [] as IGoodsReduced[],
-        dailyTotalVoidValue: 0,
-        dailyTotalInvitedValue: 0,
-        dailyPosSystemCommission: 0,
-      };
-
-      if (Array.isArray(updatedEmployeesDailySalesReport.updatedEmployees)) {
-        updatedEmployeesDailySalesReport.updatedEmployees.forEach(
-          (employeeReport) => {
-            if (employeeReport.employeePaymentMethods) {
-              employeeReport.employeePaymentMethods.forEach(
-                (payment: IPaymentMethod) => {
-                  const existingPayment =
-                    dailySalesReportObj.businessPaymentMethods.find(
-                      (p: IPaymentMethod) =>
-                        p.paymentMethodType === payment.paymentMethodType &&
-                        p.methodBranch === payment.methodBranch
-                    );
-
-                  if (existingPayment) {
-                    existingPayment.methodSalesTotal += payment.methodSalesTotal ?? 0;
-                  } else {
-                    dailySalesReportObj.businessPaymentMethods.push({
-                      paymentMethodType: payment.paymentMethodType,
-                      methodBranch: payment.methodBranch,
-                      methodSalesTotal: payment.methodSalesTotal ?? 0,
-                    });
-                  }
-                }
-              );
-            }
-
-            dailySalesReportObj.dailyTotalSalesBeforeAdjustments +=
-              employeeReport.totalSalesBeforeAdjustments ?? 0;
-            dailySalesReportObj.dailyNetPaidAmount +=
-              employeeReport.totalNetPaidAmount ?? 0;
-            dailySalesReportObj.dailyTipsReceived +=
-              employeeReport.totalTipsReceived ?? 0;
-            dailySalesReportObj.dailyCostOfGoodsSold +=
-              employeeReport.totalCostOfGoodsSold ?? 0;
-            dailySalesReportObj.dailyCustomersServed +=
-              employeeReport.totalCustomersServed ?? 0;
-
-            const updateGoodsArray = (
-              array: IGoodsReduced[],
-              businessGood: IGoodsReduced
-            ) => {
-              const existingGood = array.find(
-                (item) =>
-                  (item.businessGoodId as Types.ObjectId)?.toString() ===
-                  (businessGood.businessGoodId as Types.ObjectId)?.toString()
-              );
-
-              if (existingGood) {
-                existingGood.quantity += businessGood.quantity ?? 1;
-                existingGood.totalPrice =
-                  (existingGood.totalPrice ?? 0) + (businessGood.totalPrice ?? 0);
-                existingGood.totalCostPrice =
-                  (existingGood.totalCostPrice ?? 0) +
-                  (businessGood.totalCostPrice ?? 0);
-              } else {
-                array.push({
-                  businessGoodId: businessGood.businessGoodId,
-                  quantity: businessGood.quantity ?? 1,
-                  totalPrice: businessGood.totalPrice ?? 0,
-                  totalCostPrice: businessGood.totalCostPrice ?? 0,
-                });
-              }
-            };
-
-            if (employeeReport.soldGoods && employeeReport.soldGoods.length > 0) {
-              employeeReport.soldGoods.forEach((businessGood: IGoodsReduced) => {
-                updateGoodsArray(businessGoodsReport.goodsSold, businessGood);
-              });
-            }
-
-            if (
-              employeeReport.voidedGoods &&
-              employeeReport.voidedGoods.length > 0
-            ) {
-              employeeReport.voidedGoods.forEach((businessGood: IGoodsReduced) => {
-                updateGoodsArray(businessGoodsReport.goodsVoid, businessGood);
-              });
-            }
-
-            if (
-              employeeReport.invitedGoods &&
-              employeeReport.invitedGoods.length > 0
-            ) {
-              employeeReport.invitedGoods.forEach((businessGood: IGoodsReduced) => {
-                updateGoodsArray(businessGoodsReport.goodsInvited, businessGood);
-              });
-            }
-          }
-        );
-      }
-
-      dailySalesReportObj.dailyProfit =
-        dailySalesReportObj.dailyNetPaidAmount -
-        dailySalesReportObj.dailyCostOfGoodsSold;
-
-      dailySalesReportObj.dailyAverageCustomerExpenditure =
-        dailySalesReportObj.dailyCustomersServed > 0
-          ? dailySalesReportObj.dailyNetPaidAmount /
-            dailySalesReportObj.dailyCustomersServed
-          : 0;
-
-      dailySalesReportObj.dailySoldGoods = businessGoodsReport.goodsSold;
-      dailySalesReportObj.dailyVoidedGoods = businessGoodsReport.goodsVoid;
-      dailySalesReportObj.dailyInvitedGoods = businessGoodsReport.goodsInvited;
-
-      dailySalesReportObj.dailyTotalVoidValue =
-        dailySalesReportObj.dailyVoidedGoods.reduce(
-          (acc, curr) => acc + (curr.totalPrice ?? 0),
-          0
-        );
-
-      dailySalesReportObj.dailyTotalInvitedValue =
-        dailySalesReportObj.dailyInvitedGoods.reduce(
-          (acc, curr) => acc + (curr.totalPrice ?? 0),
-          0
-        );
-
-      let comissionPercentage = 0;
-      const businessIdPayload = dailyReportWithUsers.businessId;
-      const subscription =
-        typeof businessIdPayload === "object" &&
-        businessIdPayload !== null &&
-        "subscription" in businessIdPayload
-          ? (businessIdPayload as { subscription?: string }).subscription
-          : undefined;
-
-      switch (subscription) {
-        case "Free":
-          comissionPercentage = 0;
-          break;
-        case "Basic":
-          comissionPercentage = 0.05;
-          break;
-        case "Premium":
-          comissionPercentage = 0.08;
-          break;
-        case "Enterprise":
-          comissionPercentage = 0.1;
-          break;
-        default:
-          comissionPercentage = 0;
-          break;
-      }
-
-      dailySalesReportObj.dailyPosSystemCommission =
-        dailySalesReportObj.dailyTotalSalesBeforeAdjustments * comissionPercentage;
-
-      await DailySalesReport.updateOne(
-        { _id: dailySalesReportId },
-        dailySalesReportObj
-      );
-
-      const businessIdForMonthly =
-        typeof dailyReportWithUsers.businessId === "object" &&
-        dailyReportWithUsers.businessId !== null
-          ? ((dailyReportWithUsers.businessId as { _id?: Types.ObjectId })._id ??
-              (dailyReportWithUsers.businessId as Types.ObjectId))
-          : new Types.ObjectId(String(dailyReportWithUsers.businessId));
-
-      aggregateDailyReportsIntoMonthly(businessIdForMonthly).catch((err: Error) => {
-        app.log.error("aggregateDailyReportsIntoMonthly failed:", err.message);
-      });
-
-      return reply.code(200).send({ message: "Daily sales report updated" });
-    } catch (error) {
-      return reply.code(500).send({
-        message: "Failed to update daily sales report!",
-        error: error instanceof Error ? error.message : error,
-      });
-    }
-  });
+    },
+  );
 
   // PATCH /dailySalesReports/:dailySalesReportId/calculateUsersReport - calculate users report
   app.patch("/:dailySalesReportId/calculateUsersReport", async (req, reply) => {
@@ -428,17 +603,21 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
         });
       }
 
-      const dailySalesReport = (await DailySalesReport.findById(dailySalesReportId)
+      const dailySalesReport = (await DailySalesReport.findById(
+        dailySalesReportId,
+      )
         .select("dailyReferenceNumber")
         .lean()) as Pick<IDailySalesReport, "dailyReferenceNumber"> | null;
 
       if (!dailySalesReport) {
-        return reply.code(404).send({ message: "Daily sales report not found!" });
+        return reply
+          .code(404)
+          .send({ message: "Daily sales report not found!" });
       }
 
       const result = await updateEmployeesDailySalesReport(
         userIds.map((id) => new Types.ObjectId(id)),
-        dailySalesReport.dailyReferenceNumber
+        dailySalesReport.dailyReferenceNumber,
       );
 
       if (result.errors && result.errors.length > 0) {
@@ -458,85 +637,98 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
   });
 
   // PATCH /dailySalesReports/:dailySalesReportId/close - close report
-  app.patch("/:dailySalesReportId/close", { preValidation: [createAuthHook(app)] }, async (req, reply) => {
-    try {
-      const params = req.params as { dailySalesReportId?: string };
-      const dailySalesReportId = params.dailySalesReportId;
+  app.patch(
+    "/:dailySalesReportId/close",
+    { preValidation: [createAuthHook(app)] },
+    async (req, reply) => {
+      try {
+        const params = req.params as { dailySalesReportId?: string };
+        const dailySalesReportId = params.dailySalesReportId;
 
-      if (!req.authSession || req.authSession.type !== "user") {
-        return reply.code(401).send({ message: "Unauthorized" });
-      }
-      const userObjectId = new Types.ObjectId(req.authSession.id);
+        if (!req.authSession || req.authSession.type !== "user") {
+          return reply.code(401).send({ message: "Unauthorized" });
+        }
+        const userObjectId = new Types.ObjectId(req.authSession.id);
 
-      if (!dailySalesReportId || isObjectIdValid([dailySalesReportId]) !== true) {
-        return reply.code(400).send({ message: "Invalid dailySalesReport ID!" });
-      }
+        if (
+          !dailySalesReportId ||
+          isObjectIdValid([dailySalesReportId]) !== true
+        ) {
+          return reply
+            .code(400)
+            .send({ message: "Invalid dailySalesReport ID!" });
+        }
 
-      const dailyReport = (await DailySalesReport.findById(dailySalesReportId)
-        .select("dailyReferenceNumber businessId")
-        .lean()) as IDailySalesReport | null;
+        const dailyReport = (await DailySalesReport.findById(dailySalesReportId)
+          .select("dailyReferenceNumber businessId")
+          .lean()) as IDailySalesReport | null;
 
-      if (!dailyReport) {
-        return reply.code(404).send({ message: "Daily sales report not found!" });
-      }
+        if (!dailyReport) {
+          return reply
+            .code(404)
+            .send({ message: "Daily sales report not found!" });
+        }
 
-      const businessId =
-        typeof dailyReport.businessId === "object" &&
-        dailyReport.businessId !== null &&
-        "_id" in dailyReport.businessId
-          ? (dailyReport.businessId as { _id: Types.ObjectId })._id
-          : (dailyReport.businessId as Types.ObjectId);
+        const businessId =
+          typeof dailyReport.businessId === "object" &&
+          dailyReport.businessId !== null &&
+          "_id" in dailyReport.businessId
+            ? (dailyReport.businessId as { _id: Types.ObjectId })._id
+            : (dailyReport.businessId as Types.ObjectId);
 
-      const employeeDoc = (await Employee.findOne({
-        userId: userObjectId,
-        businessId,
-      })
-        .select("currentShiftRole businessId")
-        .lean()) as IEmployee | null;
+        const employeeDoc = (await Employee.findOne({
+          userId: userObjectId,
+          businessId,
+        })
+          .select("currentShiftRole businessId")
+          .lean()) as IEmployee | null;
 
-      if (
-        !employeeDoc ||
-        !managementRolesEnums.includes(employeeDoc.currentShiftRole ?? "")
-      ) {
-        return reply.code(403).send({
-          message: "You are not allowed to close the daily sales report!",
+        if (
+          !employeeDoc ||
+          !managementRolesEnums.some(
+            (role) => role === employeeDoc.currentShiftRole,
+          )
+        ) {
+          return reply.code(403).send({
+            message: "You are not allowed to close the daily sales report!",
+          });
+        }
+
+        const openOrdersExist = await Order.exists({
+          businessId: employeeDoc.businessId,
+          billingStatus: "Open",
+          dailyReferenceNumber: dailyReport.dailyReferenceNumber,
         });
-      }
 
-      const openOrdersExist = await Order.exists({
-        businessId: employeeDoc.businessId,
-        billingStatus: "Open",
-        dailyReferenceNumber: dailyReport.dailyReferenceNumber,
-      });
+        if (openOrdersExist) {
+          return reply.code(400).send({
+            message:
+              "You can't close the daily sales because there are open orders!",
+          });
+        }
 
-      if (openOrdersExist) {
-        return reply.code(400).send({
-          message:
-            "You can't close the daily sales because there are open orders!",
+        const updatedReport = await DailySalesReport.updateOne(
+          { _id: dailySalesReportId },
+          { $set: { isDailyReportOpen: false } },
+        );
+
+        if (updatedReport.modifiedCount === 0) {
+          return reply.code(500).send({
+            message: "Failed to close the daily sales report!",
+          });
+        }
+
+        return reply.code(200).send({
+          message: "Daily sales report closed successfully",
         });
-      }
-
-      const updatedReport = await DailySalesReport.updateOne(
-        { _id: dailySalesReportId },
-        { $set: { isDailyReportOpen: false } }
-      );
-
-      if (updatedReport.modifiedCount === 0) {
+      } catch (error) {
         return reply.code(500).send({
-          message: "Failed to close the daily sales report!",
+          message: "Failed to close daily sales report!",
+          error: error instanceof Error ? error.message : error,
         });
       }
-
-      return reply.code(200).send({
-        message: "Daily sales report closed successfully",
-      });
-    } catch (error) {
-      return reply.code(500).send({
-        message: "Failed to close daily sales report!",
-        error: error instanceof Error ? error.message : error,
-      });
-    }
-  });
+    },
+  );
 
   // GET /dailySalesReports/business/:businessId - get by business
   app.get("/business/:businessId", async (req, reply) => {
@@ -580,6 +772,11 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
       const dailySalesReports = await DailySalesReport.find(filter)
         .populate({
           path: "employeesDailySalesReport.userId",
+          select: "personalDetails.firstName personalDetails.lastName",
+          model: User,
+        })
+        .populate({
+          path: "deliveryDailySalesReport.userId",
           select: "personalDetails.firstName personalDetails.lastName",
           model: User,
         })

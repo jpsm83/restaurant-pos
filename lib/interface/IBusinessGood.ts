@@ -5,6 +5,9 @@ export interface IIngredient {
   measurementUnit: string; // convert.Unit
   requiredQuantity: number;
   costOfRequiredQuantity?: number;
+  // Enriched at runtime by `calculateIngredientsCostPriceAndAllergies`
+  // (adds allergens from SupplierGood).
+  allergens?: string[];
 }
 
 export interface IBusinessGood {

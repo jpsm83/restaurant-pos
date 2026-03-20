@@ -6,7 +6,9 @@ import { Types } from "mongoose";
 import Employee from "../models/employee.ts";
 import User from "../models/user.ts";
 import Notification from "../models/notification.ts";
-import { managementRolesEnums } from "../../../lib/enums.ts";
+import * as enums from "../../../lib/enums.ts";
+
+const { managementRolesEnums } = enums;
 
 /**
  * Sends a notification to manager-level employees that a monthly

@@ -1,14 +1,17 @@
 import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
-import type { ISchedule, IEmployeeSchedule } from "@shared/interfaces/ISchedule";
-import type { IEmployee } from "@shared/interfaces/IEmployee";
+import type {
+  ISchedule,
+  IEmployeeSchedule,
+} from "../../../../lib/interface/ISchedule.ts";
+import type { IEmployee } from "../../../../lib/interface/IEmployee.ts";
 
-import { isObjectIdValid } from "../../utils/isObjectIdValid.ts";
-import { getWeekNumber } from "../../schedules/getWeekNumber.ts";
-import { employeesValidation } from "../../schedules/employeesValidation.ts";
-import { isScheduleOverlapping } from "../../schedules/isScheduleOverlapping.ts";
-import { getWeekdaysInMonth } from "../../schedules/getWeekdaysInMonth.ts";
-import { calculateEmployeeCost } from "../../schedules/calculateEmployeeCost.ts";
+import isObjectIdValid from "../../utils/isObjectIdValid.ts";
+import getWeekNumber from "../../schedules/getWeekNumber.ts";
+import employeesValidation from "../../schedules/employeesValidation.ts";
+import isScheduleOverlapping from "../../schedules/isScheduleOverlapping.ts";
+import getWeekdaysInMonth from "../../schedules/getWeekdaysInMonth.ts";
+import calculateEmployeeCost from "../../schedules/calculateEmployeeCost.ts";
 import Schedule from "../../models/schedule.ts";
 import Employee from "../../models/employee.ts";
 import User from "../../models/user.ts";
@@ -78,7 +81,9 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
 
       await Schedule.create(newSchedule);
 
-      return reply.code(201).send({ message: `Schedule ${newSchedule.date} created!` });
+      return reply
+        .code(201)
+        .send({ message: `Schedule ${newSchedule.date} created!` });
     } catch (error) {
       return reply.code(500).send({
         message: "Create schedule failed!",
@@ -129,7 +134,7 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
     const updatedSchedule = await Schedule.findByIdAndUpdate(
       scheduleId,
       { $set: updateSchedule },
-      { new: true, lean: true }
+      { new: true, lean: true },
     );
 
     if (!updatedSchedule) {
@@ -148,7 +153,9 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
       return reply.code(400).send({ message: "Invalid schedule ID!" });
     }
 
-    const schedule = (await Schedule.findById(scheduleId).lean()) as unknown as ISchedule | null;
+    const schedule = (await Schedule.findById(
+      scheduleId,
+    ).lean()) as unknown as ISchedule | null;
     if (!schedule) {
       return reply.code(404).send({ message: "Schedule not found!" });
     }
@@ -160,7 +167,9 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
     currentDate.setHours(0, 0, 0, 0);
 
     if (scheduleDate <= currentDate) {
-      return reply.code(400).send({ message: "Cannot delete past or current schedules!" });
+      return reply
+        .code(400)
+        .send({ message: "Cannot delete past or current schedules!" });
     }
 
     const result = await Schedule.deleteOne({ _id: scheduleId });
@@ -176,7 +185,9 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
   app.patch("/:scheduleId/addEmployee", async (req, reply) => {
     const params = req.params as { scheduleId?: string };
     const scheduleId = params.scheduleId;
-    const { employeeSchedule } = req.body as { employeeSchedule: IEmployeeSchedule };
+    const { employeeSchedule } = req.body as {
+      employeeSchedule: IEmployeeSchedule;
+    };
 
     const { employeeId, role, timeRange, vacation } = employeeSchedule;
     const startTime = new Date(timeRange.startTime);
@@ -197,7 +208,7 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
     try {
       const schedule = (await Schedule.findById(scheduleId)
         .select(
-          "employeesSchedules.employeeId employeesSchedules.vacation employeesSchedules.timeRange"
+          "employeesSchedules.employeeId employeesSchedules.vacation employeesSchedules.timeRange",
         )
         .session(session)
         .lean()) as unknown as ISchedule | null;
@@ -207,12 +218,15 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
         return reply.code(404).send({ message: "Schedule not found!" });
       }
 
-      const employeeAlreadyScheduled = (schedule.employeesSchedules || []).filter(
-        (emp) => emp.employeeId.toString() === employeeId.toString()
-      );
+      const employeeAlreadyScheduled = (
+        schedule.employeesSchedules || []
+      ).filter((emp) => emp.employeeId.toString() === employeeId.toString());
 
       // Check if employee is already on vacation for this day
-      if (employeeAlreadyScheduled.length > 0 && employeeAlreadyScheduled.some((el) => el.vacation)) {
+      if (
+        employeeAlreadyScheduled.length > 0 &&
+        employeeAlreadyScheduled.some((el) => el.vacation)
+      ) {
         await session.abortTransaction();
         return reply.code(400).send({ message: "Employee on vacation!" });
       }
@@ -221,7 +235,9 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
       if (vacation && employeeAlreadyScheduled.length > 0) {
         if (employeeAlreadyScheduled.some((el) => el.vacation)) {
           await session.abortTransaction();
-          return reply.code(400).send({ message: "Employee already on vacation!" });
+          return reply
+            .code(400)
+            .send({ message: "Employee already on vacation!" });
         }
         await session.abortTransaction();
         return reply.code(400).send({ message: "Employee already scheduled!" });
@@ -254,7 +270,7 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
       const shiftDurationMs = endTime.getTime() - startTime.getTime();
       const weekdaysInMonth = getWeekdaysInMonth(
         new Date().getFullYear(),
-        new Date().getMonth()
+        new Date().getMonth(),
       );
       let employeeCost = 0;
 
@@ -262,7 +278,7 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
         employeeCost = calculateEmployeeCost(
           employeeEmployee.salary,
           shiftDurationMs,
-          weekdaysInMonth
+          weekdaysInMonth,
         );
       }
 
@@ -276,7 +292,8 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
       };
 
       // Only increment total if this is the first schedule entry for this employee
-      const totalEmployeesScheduledIncrement = employeeAlreadyScheduled.length > 0 ? 0 : 1;
+      const totalEmployeesScheduledIncrement =
+        employeeAlreadyScheduled.length > 0 ? 0 : 1;
 
       const updatedSchedule = await Schedule.findByIdAndUpdate(
         scheduleId,
@@ -284,18 +301,20 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
           $push: { employeesSchedules: addEmployeeSchedule },
           $inc: {
             totalDayEmployeesCost: employeeCost,
-            totalEmployeesScheduled: vacation ? 0 : totalEmployeesScheduledIncrement,
+            totalEmployeesScheduled: vacation
+              ? 0
+              : totalEmployeesScheduledIncrement,
             totalEmployeesVacation: vacation ? 1 : 0,
           },
         },
-        { new: true, lean: true, session }
+        { new: true, lean: true, session },
       );
 
       if (updatedSchedule && vacation) {
         const updatedEmployee = await Employee.findByIdAndUpdate(
           employeeId,
           { $inc: { vacationDaysLeft: -1 } },
-          { new: true, lean: true, session }
+          { new: true, lean: true, session },
         );
 
         if (!updatedEmployee) {
@@ -358,15 +377,17 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
         (schedule.employeesSchedules || []).find(
           (emp) =>
             emp._id?.toString() === employeeScheduleId &&
-            emp.employeeId.toString() === employeeId
+            emp.employeeId.toString() === employeeId,
         ) || null;
 
       if (!employeeSchedule) {
-        return reply.code(404).send({ message: "Employee not found in schedule!" });
+        return reply
+          .code(404)
+          .send({ message: "Employee not found in schedule!" });
       }
 
       const scheduleToDelete = (schedule.employeesSchedules || []).find(
-        (s) => s._id?.toString() === employeeScheduleId
+        (s) => s._id?.toString() === employeeScheduleId,
       );
 
       const scheduleEmployeesLen = (schedule.employeesSchedules || []).length;
@@ -377,18 +398,20 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
           $pull: { employeesSchedules: { _id: employeeScheduleId } },
           $inc: {
             totalEmployeesScheduled: -(scheduleEmployeesLen > 0 ? 0 : 1),
-            totalEmployeesVacation: -(scheduleToDelete?.vacation === true ? 1 : 0),
+            totalEmployeesVacation: -(scheduleToDelete?.vacation === true
+              ? 1
+              : 0),
             totalDayEmployeesCost: -(scheduleToDelete?.employeeCost ?? 0),
           },
         },
-        { new: true, lean: true }
+        { new: true, lean: true },
       );
 
       if (updatedSchedule && scheduleToDelete?.vacation === true) {
         const updatedEmployee = await Employee.findByIdAndUpdate(
           employeeId,
           { $inc: { vacationDaysLeft: 1 } },
-          { new: true, lean: true }
+          { new: true, lean: true },
         );
 
         if (!updatedEmployee) {
@@ -399,7 +422,9 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
         }
       }
 
-      return reply.code(200).send({ message: "Employee deleted from schedule!" });
+      return reply
+        .code(200)
+        .send({ message: "Employee deleted from schedule!" });
     } catch (error) {
       return reply.code(500).send({
         message: "Delete employee from schedule failed!",
@@ -442,7 +467,7 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
       const [schedule, employee] = await Promise.all([
         Schedule.findById(scheduleId)
           .select(
-            "employeesSchedules._id employeesSchedules.employeeId employeesSchedules.vacation employeesSchedules.timeRange employeesSchedules.employeeCost"
+            "employeesSchedules._id employeesSchedules.employeeId employeesSchedules.vacation employeesSchedules.timeRange employeesSchedules.employeeCost",
           )
           .session(session)
           .lean<ISchedule | null>(),
@@ -463,18 +488,22 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
       }
 
       const employeeScheduleToUpdate = (schedule.employeesSchedules || []).find(
-        (empSch) => empSch._id?.toString() === employeeScheduleId
+        (empSch) => empSch._id?.toString() === employeeScheduleId,
       );
 
       if (!employeeScheduleToUpdate) {
         await session.abortTransaction();
-        return reply.code(404).send({ message: "Employee schedule not found!" });
+        return reply
+          .code(404)
+          .send({ message: "Employee schedule not found!" });
       }
 
-      const employeeAlreadyScheduled = (schedule.employeesSchedules || []).filter(
+      const employeeAlreadyScheduled = (
+        schedule.employeesSchedules || []
+      ).filter(
         (emp) =>
           emp.employeeId.toString() === employeeId.toString() &&
-          emp._id?.toString() !== employeeScheduleId
+          emp._id?.toString() !== employeeScheduleId,
       );
 
       if (employeeAlreadyScheduled.length > 0 && vacation) {
@@ -501,7 +530,7 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
       const shiftDurationMs = endTime.getTime() - startTime.getTime();
       const weekdaysInMonth = getWeekdaysInMonth(
         new Date().getFullYear(),
-        new Date().getMonth()
+        new Date().getMonth(),
       );
       let employeeCost = 0;
 
@@ -509,7 +538,7 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
         employeeCost = calculateEmployeeCost(
           employee.salary,
           shiftDurationMs,
-          weekdaysInMonth
+          weekdaysInMonth,
         );
       }
 
@@ -525,10 +554,13 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
         },
         {
           $set: {
-            "employeesSchedules.$.employeeId": new Types.ObjectId(employeeId.toString()),
+            "employeesSchedules.$.employeeId": new Types.ObjectId(
+              employeeId.toString(),
+            ),
             "employeesSchedules.$.role": role,
             "employeesSchedules.$.timeRange": { startTime, endTime },
-            "employeesSchedules.$.vacation": vacation !== undefined ? vacation : false,
+            "employeesSchedules.$.vacation":
+              vacation !== undefined ? vacation : false,
             "employeesSchedules.$.shiftHours": shiftDurationMs,
             "employeesSchedules.$.employeeCost": employeeCost,
           },
@@ -538,17 +570,17 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
               employeeScheduleToUpdate?.vacation && !vacation
                 ? 1
                 : employeeScheduleToUpdate?.vacation === false && vacation
-                ? -1
-                : 0,
+                  ? -1
+                  : 0,
             totalEmployeesVacation:
               employeeScheduleToUpdate?.vacation && !vacation
                 ? -1
                 : employeeScheduleToUpdate?.vacation === false && vacation
-                ? 1
-                : 0,
+                  ? 1
+                  : 0,
           },
         },
-        { new: true, lean: true, session }
+        { new: true, lean: true, session },
       );
 
       if (updatedSchedule) {
@@ -560,11 +592,11 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
                 employeeScheduleToUpdate?.vacation && !vacation
                   ? 1
                   : !employeeScheduleToUpdate?.vacation && vacation
-                  ? -1
-                  : 0,
+                    ? -1
+                    : 0,
             },
           },
-          { new: true, lean: true, session }
+          { new: true, lean: true, session },
         );
 
         if (!updatedEmployee) {
@@ -599,7 +631,9 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
       return reply.code(400).send({ message: "Invalid business Id!" });
     }
 
-    const schedules = await Schedule.find({ businessId: new Types.ObjectId(businessId) })
+    const schedules = await Schedule.find({
+      businessId: new Types.ObjectId(businessId),
+    })
       .populate({
         path: "employeesSchedules.employeeId",
         select: "employeeName allEmployeeRoles",
@@ -623,7 +657,9 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
     }
 
     try {
-      const user = (await User.findById(userId).select("employeeDetails").lean()) as {
+      const user = (await User.findById(userId)
+        .select("employeeDetails")
+        .lean()) as {
         employeeDetails?: unknown;
       } | null;
       if (!user?.employeeDetails) {

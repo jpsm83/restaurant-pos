@@ -1,4 +1,4 @@
-import { Schema, model, models } from "mongoose";
+import mongoose, { Schema, model } from "mongoose";
 
 // Schema for individual count events will be created only upon the count of the inventory
 const inventoryCountSchema = new Schema(
@@ -106,5 +106,5 @@ const inventorySchema = new Schema(
 );
 
 // Create the model
-const Inventory = models.Inventory || model("Inventory", inventorySchema);
+const Inventory = mongoose.models.Inventory || model("Inventory", inventorySchema);
 export default Inventory;

@@ -1,8 +1,8 @@
 import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
-import type { INotification } from "@shared/interfaces/INotification";
+import type { INotification } from "../../../../lib/interface/INotification.ts";
 
-import { isObjectIdValid } from "../../utils/isObjectIdValid.ts";
+import isObjectIdValid from "../../utils/isObjectIdValid.ts";
 import Notification from "../../models/notification.ts";
 import Employee from "../../models/employee.ts";
 import Business from "../../models/business.ts";
@@ -26,7 +26,8 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
         })
         .populate({
           path: "customersRecipientsIds",
-          select: "personalDetails.firstName personalDetails.lastName personalDetails.username",
+          select:
+            "personalDetails.firstName personalDetails.lastName personalDetails.username",
           model: User,
         })
         .lean();
@@ -59,13 +60,15 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
       (employeesRecipientsIds && customersRecipientsIds)
     ) {
       return reply.code(400).send({
-        message: "EmployeesRecipientsIds or customersRecipientsIds is required!",
+        message:
+          "EmployeesRecipientsIds or customersRecipientsIds is required!",
       });
     }
 
     if (!notificationType || !message || !businessId) {
       return reply.code(400).send({
-        message: "NotificationType, message, recipientsId and businessId are required!",
+        message:
+          "NotificationType, message, recipientsId and businessId are required!",
       });
     }
 
@@ -113,7 +116,9 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
 
       if (!employees && !customers) {
         await session.abortTransaction();
-        return reply.code(404).send({ message: "Employees or customers not found!" });
+        return reply
+          .code(404)
+          .send({ message: "Employees or customers not found!" });
       }
 
       if (!business) {
@@ -127,7 +132,9 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
 
       if (!newNotification) {
         await session.abortTransaction();
-        return reply.code(400).send({ message: "Notification could not be created!" });
+        return reply
+          .code(400)
+          .send({ message: "Notification could not be created!" });
       }
 
       const notificationIdToPush = newNotification[0]._id;
@@ -141,10 +148,14 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
 
         if (employeeDocs.length !== recipientsId.length) {
           await session.abortTransaction();
-          return reply.code(400).send({ message: "One or more employees do not exist!" });
+          return reply
+            .code(400)
+            .send({ message: "One or more employees do not exist!" });
         }
 
-        const employeeUserIds = employeeDocs.map((e) => e.userId).filter(Boolean);
+        const employeeUserIds = employeeDocs
+          .map((e) => e.userId)
+          .filter(Boolean);
 
         const sendNotifications = await User.updateMany(
           { _id: { $in: employeeUserIds } },
@@ -155,7 +166,7 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
               },
             },
           },
-          { session }
+          { session },
         );
 
         if (sendNotifications.modifiedCount === 0) {
@@ -174,7 +185,7 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
               },
             },
           },
-          { session }
+          { session },
         );
 
         if (sendNotifications.modifiedCount === 0) {
@@ -225,7 +236,8 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
         })
         .populate({
           path: "customersRecipientsIds",
-          select: "personalDetails.firstName personalDetails.lastName personalDetails.username",
+          select:
+            "personalDetails.firstName personalDetails.lastName personalDetails.username",
           model: User,
         })
         .lean();
@@ -260,7 +272,8 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
       (employeesRecipientsIds && customersRecipientsIds)
     ) {
       return reply.code(400).send({
-        message: "EmployeesRecipientsIds or customersRecipientsIds is required!",
+        message:
+          "EmployeesRecipientsIds or customersRecipientsIds is required!",
       });
     }
 
@@ -277,7 +290,12 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
       objectIds.push(senderId);
     }
 
-    if (!isObjectIdValid([...objectIds, notificationId as string] as Types.ObjectId[])) {
+    if (
+      !isObjectIdValid([
+        ...objectIds,
+        notificationId as string,
+      ] as Types.ObjectId[])
+    ) {
       return reply.code(400).send({
         message: "Invalid array of IDs!",
       });
@@ -297,9 +315,9 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
           .select(`${notificationField} message`)
           .lean()
           .session(session) as Promise<INotification | null>,
-        RecipientsModel.find({ _id: { $in: objectIds } }, null, { lean: true }).session(
-          session
-        ),
+        RecipientsModel.find({ _id: { $in: objectIds } }, null, {
+          lean: true,
+        }).session(session),
       ]);
 
       if (!notification || validRecipients.length !== objectIds.length) {
@@ -313,20 +331,22 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
       const existingRecipients = notification[notificationField] || [];
 
       const addedRecipients = recipientsId.filter(
-        (id) => !existingRecipients.toString().includes(id.toString())
+        (id) => !existingRecipients.toString().includes(id.toString()),
       );
 
       const removedRecipients = existingRecipients.filter(
-        (id: Types.ObjectId) => !recipientsId.toString().includes(id.toString())
+        (id: Types.ObjectId) =>
+          !recipientsId.toString().includes(id.toString()),
       );
 
       const unchangedRecipients = recipientsId.filter((id) =>
-        existingRecipients.toString().includes(id.toString())
+        existingRecipients.toString().includes(id.toString()),
       );
 
       const updateNotification: Partial<INotification> = {};
 
-      if (notificationType) updateNotification.notificationType = notificationType;
+      if (notificationType)
+        updateNotification.notificationType = notificationType;
       if (message) updateNotification.message = message;
       if (employeesRecipientsIds)
         updateNotification.employeesRecipientsIds = employeesRecipientsIds;
@@ -354,7 +374,7 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
           .session(session);
 
         const employeeUserIdByEmployeeId = new Map(
-          employeeDocs.map((e) => [String(e._id), e.userId])
+          employeeDocs.map((e) => [String(e._id), e.userId]),
         );
 
         addedRecipientUserIds = addedRecipients
@@ -377,14 +397,14 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
         Notification.updateOne(
           { _id: notificationId },
           { $set: updateNotification },
-          { session }
+          { session },
         ),
 
         addedRecipientUserIds.length > 0
           ? User.updateMany(
               { _id: { $in: addedRecipientUserIds } },
               { $push: { notifications: { notificationId } } },
-              { session }
+              { session },
             )
           : Promise.resolve(true),
 
@@ -392,7 +412,7 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
           ? User.updateMany(
               { _id: { $in: removedRecipientUserIds } },
               { $pull: { notifications: { notificationId } } },
-              { session }
+              { session },
             )
           : Promise.resolve(true),
 
@@ -408,7 +428,7 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
                   "notifications.$.deletedFlag": false,
                 },
               },
-              { session }
+              { session },
             )
           : Promise.resolve(true),
       ]);
@@ -420,7 +440,9 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
         !employeeFlagUpdated
       ) {
         await session.abortTransaction();
-        return reply.code(400).send({ message: "Failed to update recipients!" });
+        return reply
+          .code(400)
+          .send({ message: "Failed to update recipients!" });
       }
 
       await session.commitTransaction();
@@ -458,7 +480,7 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
           session,
           select: "employeesRecipientsIds customersRecipientsIds",
           lean: true,
-        }
+        },
       )) as INotification | null;
 
       if (!notificationDeleted) {
@@ -466,7 +488,8 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
         return reply.code(404).send({ message: "Notification not found!" });
       }
 
-      const isEmployeeNotification = !!notificationDeleted.employeesRecipientsIds;
+      const isEmployeeNotification =
+        !!notificationDeleted.employeesRecipientsIds;
       const recipientIds =
         notificationDeleted[
           isEmployeeNotification
@@ -490,18 +513,25 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
           ? await User.updateMany(
               { _id: { $in: recipientUserIds } },
               { $pull: { notifications: { notificationId } } },
-              { session }
+              { session },
             )
           : { modifiedCount: 0 };
 
-      if (recipientsUpdated.modifiedCount === 0 && recipientUserIds.length > 0) {
+      if (
+        recipientsUpdated.modifiedCount === 0 &&
+        recipientUserIds.length > 0
+      ) {
         await session.abortTransaction();
-        return reply.code(400).send({ message: "Failed to update recipients!" });
+        return reply
+          .code(400)
+          .send({ message: "Failed to update recipients!" });
       }
 
       await session.commitTransaction();
 
-      return reply.code(200).send({ message: "Notification deleted successfully" });
+      return reply
+        .code(200)
+        .send({ message: "Notification deleted successfully" });
     } catch (error) {
       await session.abortTransaction();
       return reply.code(500).send({
@@ -537,7 +567,8 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
         })
         .populate({
           path: "customersRecipientsIds",
-          select: "personalDetails.firstName personalDetails.lastName personalDetails.username",
+          select:
+            "personalDetails.firstName personalDetails.lastName personalDetails.username",
           model: User,
         })
         .lean();
@@ -564,9 +595,7 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
     }
 
     try {
-      const employeeDocs = await Employee.find({ userId })
-        .select("_id")
-        .lean();
+      const employeeDocs = await Employee.find({ userId }).select("_id").lean();
       const employeeIds = employeeDocs.map((e) => e._id);
 
       const notifications = await Notification.find({
@@ -590,7 +619,8 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
         })
         .populate({
           path: "customersRecipientsIds",
-          select: "personalDetails.firstName personalDetails.lastName personalDetails.username",
+          select:
+            "personalDetails.firstName personalDetails.lastName personalDetails.username",
           model: User,
         })
         .lean();

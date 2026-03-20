@@ -1,12 +1,14 @@
 import type { FastifyPluginAsync } from "fastify";
 import { Types } from "mongoose";
-import type { ISalesPoint } from "@shared/interfaces/ISalesPoint";
+import type { ISalesPoint } from "../../../../lib/interface/ISalesPoint.ts";
 
-import { isObjectIdValid } from "../../utils/isObjectIdValid.ts";
+import isObjectIdValid from "../../utils/isObjectIdValid.ts";
 import SalesPoint from "../../models/salesPoint.ts";
-import { generateQrCode } from "../../salesPoints/generateQrCode.ts";
-import { deleteFilesCloudinary } from "../../cloudinary/deleteFilesCloudinary.ts";
-import { salesPointTypeEnums } from "../../../../lib/enums.ts";
+import generateQrCode from "../../salesPoints/generateQrCode.ts";
+import deleteFilesCloudinary from "../../cloudinary/deleteFilesCloudinary.ts";
+import * as enums from "../../../../lib/enums.ts";
+
+const { salesPointTypeEnums } = enums;
 
 export const salesPointsRoutes: FastifyPluginAsync = async (app) => {
   // GET /salesPoints - list all
@@ -23,8 +25,13 @@ export const salesPointsRoutes: FastifyPluginAsync = async (app) => {
   app.post("/", async (req, reply) => {
     try {
       const body = req.body as ISalesPoint;
-      const { salesPointName, salesPointType, selfOrdering, qrEnabled, businessId } =
-        body ?? {};
+      const {
+        salesPointName,
+        salesPointType,
+        selfOrdering,
+        qrEnabled,
+        businessId,
+      } = body ?? {};
 
       if (!salesPointName || !businessId) {
         return reply.code(400).send({
@@ -39,7 +46,9 @@ export const salesPointsRoutes: FastifyPluginAsync = async (app) => {
       if (
         salesPointType !== undefined &&
         salesPointType !== "" &&
-        !(salesPointTypeEnums as readonly string[]).includes(salesPointType.toLowerCase())
+        !(salesPointTypeEnums as readonly string[]).includes(
+          salesPointType.toLowerCase(),
+        )
       ) {
         return reply.code(400).send({
           message: `salesPointType must be one of: ${salesPointTypeEnums.join(", ")}`,
@@ -88,7 +97,7 @@ export const salesPointsRoutes: FastifyPluginAsync = async (app) => {
       if (!isDelivery) {
         const qrCode = await generateQrCode(
           businessId as unknown as Types.ObjectId,
-          salesPointCreated._id
+          salesPointCreated._id,
         );
 
         if (!qrCode || qrCode.includes("Failed")) {
@@ -99,7 +108,7 @@ export const salesPointsRoutes: FastifyPluginAsync = async (app) => {
         }
         await SalesPoint.updateOne(
           { _id: salesPointCreated._id },
-          { $set: { qrCode } }
+          { $set: { qrCode } },
         );
       }
 
@@ -136,12 +145,15 @@ export const salesPointsRoutes: FastifyPluginAsync = async (app) => {
       const salesPointId = params.salesPointId;
 
       const body = req.body as ISalesPoint;
-      const { salesPointName, salesPointType, selfOrdering, qrEnabled } = body ?? {};
+      const { salesPointName, salesPointType, selfOrdering, qrEnabled } =
+        body ?? {};
 
       if (
         salesPointType !== undefined &&
         salesPointType !== "" &&
-        !(salesPointTypeEnums as readonly string[]).includes(salesPointType.toLowerCase())
+        !(salesPointTypeEnums as readonly string[]).includes(
+          salesPointType.toLowerCase(),
+        )
       ) {
         return reply.code(400).send({
           message: `salesPointType must be one of: ${salesPointTypeEnums.join(", ")}`,
@@ -165,7 +177,9 @@ export const salesPointsRoutes: FastifyPluginAsync = async (app) => {
       });
 
       if (duplicateSalesPoint) {
-        return reply.code(400).send({ message: "SalesPointName already exists!" });
+        return reply
+          .code(400)
+          .send({ message: "SalesPointName already exists!" });
       }
 
       const updatedSalesPoint: Partial<ISalesPoint> = {};
@@ -179,7 +193,7 @@ export const salesPointsRoutes: FastifyPluginAsync = async (app) => {
 
       await SalesPoint.updateOne(
         { _id: salesPointId },
-        { $set: updatedSalesPoint }
+        { $set: updatedSalesPoint },
       );
 
       return reply.code(200).send({

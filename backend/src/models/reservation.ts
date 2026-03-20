@@ -1,5 +1,8 @@
-import { Schema, model, models } from "mongoose";
-import { reservationStatusEnums } from "../../../lib/enums.ts";
+import mongoose, { Schema, model } from "mongoose";
+import * as enums from "../../../lib/enums.ts";
+
+const { reservationStatusEnums } = enums;
+
 
 const reservationSchema = new Schema(
   {
@@ -71,5 +74,5 @@ reservationSchema.index({ businessId: 1, reservationStart: 1 });
 reservationSchema.index({ businessId: 1, status: 1, reservationStart: 1 });
 
 const Reservation =
-  models.Reservation || model("Reservation", reservationSchema);
+  mongoose.models.Reservation || model("Reservation", reservationSchema);
 export default Reservation;

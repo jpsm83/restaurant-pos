@@ -1,5 +1,7 @@
-import { Schema, model, models } from "mongoose";
-import { allergensEnums, mainCategoriesEnums, measurementUnitEnums } from "../../../lib/enums.ts";
+import mongoose, { Schema, model } from "mongoose";
+import * as enums from "../../../lib/enums.ts";
+
+const { mainCategoriesEnums, measurementUnitEnums, allergensEnums } = enums;
 
 const businessGoodSchema = new Schema(
   {
@@ -85,5 +87,6 @@ const businessGoodSchema = new Schema(
 );
 
 const BusinessGood =
-  models.BusinessGood || model("BusinessGood", businessGoodSchema);
+  mongoose.models.BusinessGood ||
+  model("BusinessGood", businessGoodSchema);
 export default BusinessGood;

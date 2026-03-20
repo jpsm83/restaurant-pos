@@ -1,21 +1,23 @@
 import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
-import type { IBusinessGood, IIngredient } from "@shared/interfaces/IBusinessGood";
+import type {
+  IBusinessGood,
+  IIngredient,
+} from "../../../../lib/interface/IBusinessGood.ts";
 
-import { isObjectIdValid } from "../../utils/isObjectIdValid.ts";
+import isObjectIdValid from "../../utils/isObjectIdValid.ts";
 import BusinessGood from "../../models/businessGood.ts";
 import SupplierGood from "../../models/supplierGood.ts";
 import Promotion from "../../models/promotion.ts";
 import Order from "../../models/order.ts";
-import { uploadFilesCloudinary, UploadInputFile } from "../../cloudinary/uploadFilesCloudinary.ts";
-import { deleteFolderCloudinary } from "../../cloudinary/deleteFolderCloudinary.ts";
-import { calculateIngredientsCostPriceAndAllergies } from "../../businessGoods/calculateIngredientsCostPriceAndAllergies.ts";
+import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
+import deleteFolderCloudinary from "../../cloudinary/deleteFolderCloudinary.ts";
+import calculateIngredientsCostPriceAndAllergies from "../../businessGoods/calculateIngredientsCostPriceAndAllergies.ts";
 import { calculateSetMenuCostPriceAndAllergies } from "../../businessGoods/calculateSetMenuCostPriceAndAllergies.ts";
-import {
-  mainCategoriesEnums,
-  allergensEnums,
-  measurementUnitEnums,
-} from "../../../../lib/enums.ts";
+import { UploadInputFile } from "../../../../lib/interface/ICloudinary.ts";
+import * as enums from "../../../../lib/enums.ts";
+
+const { mainCategoriesEnums, allergensEnums, measurementUnitEnums } = enums;
 
 export const businessGoodsRoutes: FastifyPluginAsync = async (app) => {
   // GET /businessGoods - list all business goods
@@ -132,8 +134,14 @@ export const businessGoodsRoutes: FastifyPluginAsync = async (app) => {
 
       if (ingredients) {
         for (const ingredient of ingredients) {
-          if (!(measurementUnitEnums as readonly string[]).includes(ingredient.measurementUnit)) {
-            return reply.code(400).send({ message: "Invalid measurement unit!" });
+          if (
+            !(measurementUnitEnums as readonly string[]).includes(
+              ingredient.measurementUnit,
+            )
+          ) {
+            return reply
+              .code(400)
+              .send({ message: "Invalid measurement unit!" });
           }
         }
       }
@@ -161,7 +169,10 @@ export const businessGoodsRoutes: FastifyPluginAsync = async (app) => {
         sellingPrice,
         businessId: new Types.ObjectId(businessId),
         subCategory: subCategory || undefined,
-        setMenuIds: setMenuIds.length > 0 ? setMenuIds.map(id => new Types.ObjectId(id)) : undefined,
+        setMenuIds:
+          setMenuIds.length > 0
+            ? setMenuIds.map((id) => new Types.ObjectId(id))
+            : undefined,
         grossProfitMarginDesired: grossProfitMarginDesired || undefined,
         description: description || undefined,
         deliveryTime: deliveryTime || undefined,
@@ -193,14 +204,16 @@ export const businessGoodsRoutes: FastifyPluginAsync = async (app) => {
         const calculateIngredientsCostPriceAndAllergiesResult =
           await calculateIngredientsCostPriceAndAllergies(ingredients);
 
-        if (typeof calculateIngredientsCostPriceAndAllergiesResult !== "object") {
+        if (
+          typeof calculateIngredientsCostPriceAndAllergiesResult !== "object"
+        ) {
           return reply.code(400).send({
             message: calculateIngredientsCostPriceAndAllergiesResult,
           });
         }
 
         newBusinessGood.ingredients =
-          calculateIngredientsCostPriceAndAllergiesResult.map((ing) => {
+          calculateIngredientsCostPriceAndAllergiesResult.map((ing: IIngredient) => {
             return {
               supplierGoodId: ing.supplierGoodId,
               measurementUnit: ing.measurementUnit,
@@ -213,13 +226,13 @@ export const businessGoodsRoutes: FastifyPluginAsync = async (app) => {
 
         newBusinessGood.costPrice = parseFloat(
           calculateIngredientsCostPriceAndAllergiesResult
-            .reduce((acc, curr) => acc + curr.costOfRequiredQuantity, 0)
-            .toFixed(2)
+            .reduce((acc: number, curr: IIngredient) => acc + (curr.costOfRequiredQuantity ?? 0), 0)
+            .toFixed(2),
         );
 
-        const reducedAllergens =
+        const reducedAllergens: string[] =
           calculateIngredientsCostPriceAndAllergiesResult.reduce(
-            (acc: string[], curr) => {
+            (acc: string[], curr: IIngredient) => {
               if (curr.allergens) {
                 curr.allergens.forEach((allergen) => {
                   if (!acc.includes(allergen)) {
@@ -229,12 +242,12 @@ export const businessGoodsRoutes: FastifyPluginAsync = async (app) => {
               }
               return acc;
             },
-            []
+            [],
           );
 
         const allergensArr = [...allergens];
         allergensArr.push(
-          ...reducedAllergens.filter((item) => !allergensArr.includes(item))
+          ...reducedAllergens.filter((item: string) => !allergensArr.includes(item)),
         );
 
         newBusinessGood.allergens =
@@ -252,10 +265,12 @@ export const businessGoodsRoutes: FastifyPluginAsync = async (app) => {
         }
 
         newBusinessGood.ingredients = undefined;
-        newBusinessGood.setMenuIds = setMenuIds.map(id => new Types.ObjectId(id));
+        newBusinessGood.setMenuIds = setMenuIds.map(
+          (id) => new Types.ObjectId(id),
+        );
 
         newBusinessGood.costPrice = parseFloat(
-          calculateSetMenuCostPriceAndAllergiesResult.costPrice.toFixed(2)
+          calculateSetMenuCostPriceAndAllergiesResult.costPrice.toFixed(2),
         );
 
         newBusinessGood.allergens =
@@ -270,7 +285,7 @@ export const businessGoodsRoutes: FastifyPluginAsync = async (app) => {
           (
             newBusinessGood.costPrice *
             (1 + grossProfitMarginDesired / 100)
-          ).toFixed(2)
+          ).toFixed(2),
         );
       }
 
@@ -407,13 +422,21 @@ export const businessGoodsRoutes: FastifyPluginAsync = async (app) => {
 
       if (ingredients) {
         for (const ingredient of ingredients) {
-          if (!(measurementUnitEnums as readonly string[]).includes(ingredient.measurementUnit)) {
-            return reply.code(400).send({ message: "Invalid measurement unit!" });
+          if (
+            !(measurementUnitEnums as readonly string[]).includes(
+              ingredient.measurementUnit,
+            )
+          ) {
+            return reply
+              .code(400)
+              .send({ message: "Invalid measurement unit!" });
           }
         }
       }
 
-      const businessGood = (await BusinessGood.findById(businessGoodId).lean()) as IBusinessGood | null;
+      const businessGood = (await BusinessGood.findById(
+        businessGoodId,
+      ).lean()) as IBusinessGood | null;
 
       if (!businessGood) {
         return reply.code(404).send({ message: "Business good not found!" });
@@ -430,7 +453,9 @@ export const businessGoodsRoutes: FastifyPluginAsync = async (app) => {
       });
 
       if (duplicateBusinessGood) {
-        return reply.code(409).send({ message: `Business good ${name} already exists!` });
+        return reply
+          .code(409)
+          .send({ message: `Business good ${name} already exists!` });
       }
 
       const updatedBusinessGoodObj: Partial<IBusinessGood> = {};
@@ -440,7 +465,8 @@ export const businessGoodsRoutes: FastifyPluginAsync = async (app) => {
         updatedBusinessGoodObj.keyword = keyword;
       if (mainCategory !== businessGood?.mainCategory)
         updatedBusinessGoodObj.mainCategory = mainCategory;
-      if (onMenu !== businessGood?.onMenu) updatedBusinessGoodObj.onMenu = onMenu;
+      if (onMenu !== businessGood?.onMenu)
+        updatedBusinessGoodObj.onMenu = onMenu;
       if (available !== businessGood?.available)
         updatedBusinessGoodObj.available = available;
       if (sellingPrice !== businessGood?.sellingPrice)
@@ -490,14 +516,16 @@ export const businessGoodsRoutes: FastifyPluginAsync = async (app) => {
         const calculateIngredientsCostPriceAndAllergiesResult =
           await calculateIngredientsCostPriceAndAllergies(ingredients);
 
-        if (typeof calculateIngredientsCostPriceAndAllergiesResult !== "object") {
+        if (
+          typeof calculateIngredientsCostPriceAndAllergiesResult !== "object"
+        ) {
           return reply.code(400).send({
             message: calculateIngredientsCostPriceAndAllergiesResult,
           });
         }
 
         updatedBusinessGoodObj.ingredients =
-          calculateIngredientsCostPriceAndAllergiesResult.map((ing) => {
+          calculateIngredientsCostPriceAndAllergiesResult.map((ing: IIngredient) => {
             return {
               supplierGoodId: ing.supplierGoodId,
               measurementUnit: ing.measurementUnit,
@@ -510,13 +538,13 @@ export const businessGoodsRoutes: FastifyPluginAsync = async (app) => {
 
         updatedBusinessGoodObj.costPrice = parseFloat(
           calculateIngredientsCostPriceAndAllergiesResult
-            .reduce((acc, curr) => acc + curr.costOfRequiredQuantity, 0)
-            .toFixed(2)
+            .reduce((acc: number, curr: IIngredient) => acc + (curr.costOfRequiredQuantity ?? 0), 0)
+            .toFixed(2),
         );
 
         const reducedAllergens =
           calculateIngredientsCostPriceAndAllergiesResult.reduce(
-            (acc: string[], curr) => {
+            (acc: string[], curr: IIngredient) => {
               if (curr.allergens) {
                 curr.allergens.forEach((allergen) => {
                   if (!acc.includes(allergen)) {
@@ -526,12 +554,12 @@ export const businessGoodsRoutes: FastifyPluginAsync = async (app) => {
               }
               return acc;
             },
-            []
+            [],
           );
 
         const allergensArr = [...allergens];
         allergensArr.push(
-          ...reducedAllergens.filter((item) => !allergensArr.includes(item))
+          ...reducedAllergens.filter((item: string) => !allergensArr.includes(item)),
         );
 
         updatedBusinessGoodObj.allergens =
@@ -550,10 +578,12 @@ export const businessGoodsRoutes: FastifyPluginAsync = async (app) => {
 
         updatedBusinessGoodObj.ingredients = [];
 
-        updatedBusinessGoodObj.setMenuIds = setMenuIds.map(id => new Types.ObjectId(id));
+        updatedBusinessGoodObj.setMenuIds = setMenuIds.map(
+          (id) => new Types.ObjectId(id),
+        );
 
         updatedBusinessGoodObj.costPrice = parseFloat(
-          calculateSetMenuCostPriceAndAllergiesResult.costPrice.toFixed(2)
+          calculateSetMenuCostPriceAndAllergiesResult.costPrice.toFixed(2),
         );
 
         updatedBusinessGoodObj.allergens =
@@ -568,18 +598,20 @@ export const businessGoodsRoutes: FastifyPluginAsync = async (app) => {
           (
             updatedBusinessGoodObj.costPrice *
             (1 + grossProfitMarginDesired / 100)
-          ).toFixed(2)
+          ).toFixed(2),
         );
       }
 
       const updateBusinessGood = await BusinessGood.findByIdAndUpdate(
         businessGoodId,
         { $set: updatedBusinessGoodObj },
-        { new: true, lean: true }
+        { new: true, lean: true },
       );
 
       if (!updateBusinessGood) {
-        return reply.code(404).send({ message: "Business good to update not found!" });
+        return reply
+          .code(404)
+          .send({ message: "Business good to update not found!" });
       }
 
       return reply.code(200).send({
@@ -632,7 +664,7 @@ export const businessGoodsRoutes: FastifyPluginAsync = async (app) => {
         Promotion.updateMany(
           { businessGoodsToApplyIds: businessGoodId },
           { $pull: { businessGoodsToApplyIds: businessGoodId } },
-          { session }
+          { session },
         ),
       ]);
 

@@ -1,4 +1,4 @@
-import { Schema, model, models } from "mongoose";
+import mongoose, { Schema, model } from "mongoose";
 import { paymentMethod } from "./paymentMethod.ts";
 
 export const goodsReducedSchema = new Schema(
@@ -103,6 +103,10 @@ const dailySalesReportSchema = new Schema(
       type: [employeeDailySalesReportSchema],
       default: undefined,
     }, // array of objects with each individual sales report of the employee
+    deliveryDailySalesReport: {
+      type: employeeDailySalesReportSchema,
+      default: undefined,
+    }, // aggregated delivery sales report (stored as a single bucket)
     selfOrderingSalesReport: {
       type: [selfOrderingSalesReportSchema],
       default: undefined,
@@ -136,5 +140,6 @@ const dailySalesReportSchema = new Schema(
 );
 
 const DailySalesReport =
-  models.DailySalesReport || model("DailySalesReport", dailySalesReportSchema);
+  mongoose.models.DailySalesReport ||
+  model("DailySalesReport", dailySalesReportSchema);
 export default DailySalesReport;

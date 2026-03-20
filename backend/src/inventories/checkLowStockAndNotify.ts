@@ -5,7 +5,9 @@ import Supplier from "../models/supplier.ts";
 import Employee from "../models/employee.ts";
 import User from "../models/user.ts";
 import Notification from "../models/notification.ts";
-import { managementRolesEnums } from "../../../lib/enums.ts";
+import * as enums from "../../../lib/enums.ts";
+
+const { managementRolesEnums } = enums;
 
 interface InventoryGoodPopulated {
   supplierGoodId: { _id: Types.ObjectId; name?: string; parLevel?: number; minimumQuantityRequired?: number };

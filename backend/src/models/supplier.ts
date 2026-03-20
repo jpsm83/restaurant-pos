@@ -1,4 +1,4 @@
-import { Schema, model, models } from "mongoose";
+import mongoose, { Schema, model } from "mongoose";
 import { addressSchema } from "./address.ts";
 
 const supplierSchema = new Schema(
@@ -38,5 +38,5 @@ const supplierSchema = new Schema(
   }
 );
 
-const Supplier = models.Supplier || model("Supplier", supplierSchema);
+const Supplier = mongoose.models.Supplier || model("Supplier", supplierSchema);
 export default Supplier;

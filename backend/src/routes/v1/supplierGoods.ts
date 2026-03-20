@@ -1,17 +1,20 @@
 import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
-import type { ISupplierGood } from "@shared/interfaces/ISupplierGood";
+import type { ISupplierGood } from "../../../../lib/interface/ISupplierGood.ts";
 
-import { isObjectIdValid } from "../../utils/isObjectIdValid.ts";
+import isObjectIdValid from "../../utils/isObjectIdValid.ts";
 import SupplierGood from "../../models/supplierGood.ts";
 import Supplier from "../../models/supplier.ts";
 import BusinessGood from "../../models/businessGood.ts";
 import Inventory from "../../models/inventory.ts";
-import { uploadFilesCloudinary, UploadInputFile } from "../../cloudinary/uploadFilesCloudinary.ts";
-import { deleteFolderCloudinary } from "../../cloudinary/deleteFolderCloudinary.ts";
-import { addSupplierGoodToInventory } from "../../inventories/addSupplierGoodToInventory.ts";
-import { deleteSupplierGoodFromInventory } from "../../inventories/deleteSupplierGoodFromInventory.ts";
-import { allergensEnums, mainCategoriesEnums } from "../../../../lib/enums.ts";
+import deleteFolderCloudinary from "../../cloudinary/deleteFolderCloudinary.ts";
+import addSupplierGoodToInventory from "../../inventories/addSupplierGoodToInventory.ts";
+import deleteSupplierGoodFromInventory from "../../inventories/deleteSupplierGoodFromInventory.ts";
+import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
+import type { UploadInputFile } from "../../../../lib/interface/ICloudinary.ts";
+import * as enums from "../../../../lib/enums.ts";
+
+const { allergensEnums, mainCategoriesEnums } = enums;
 
 export const supplierGoodsRoutes: FastifyPluginAsync = async (app) => {
   // GET /supplierGoods - list all
@@ -174,7 +177,7 @@ export const supplierGoodsRoutes: FastifyPluginAsync = async (app) => {
 
         const [newSupplierGood] = await SupplierGood.create(
           [newSupplierGoodObj],
-          { session }
+          { session },
         );
 
         if (!newSupplierGood) {
@@ -184,11 +187,8 @@ export const supplierGoodsRoutes: FastifyPluginAsync = async (app) => {
           });
         }
 
-        const addSupplierGoodToInventoryResult = await addSupplierGoodToInventory(
-          supplierGoodId,
-          businessId,
-          session
-        );
+        const addSupplierGoodToInventoryResult =
+          await addSupplierGoodToInventory(supplierGoodId, businessId, session);
 
         if (addSupplierGoodToInventoryResult !== true) {
           await session.abortTransaction();
@@ -315,14 +315,19 @@ export const supplierGoodsRoutes: FastifyPluginAsync = async (app) => {
       session.startTransaction();
 
       try {
-        const supplierGood = (await SupplierGood.findById(supplierGoodId).session(session).lean()) as unknown as ISupplierGood | null;
+        const supplierGood = (await SupplierGood.findById(supplierGoodId)
+          .session(session)
+          .lean()) as unknown as ISupplierGood | null;
 
         if (!supplierGood) {
           await session.abortTransaction();
           return reply.code(404).send({ message: "Supplier good not found!" });
         }
 
-        if (files && files.length + (supplierGood?.imagesUrl?.length || 0) > 3) {
+        if (
+          files &&
+          files.length + (supplierGood?.imagesUrl?.length || 0) > 3
+        ) {
           await session.abortTransaction();
           return reply.code(400).send({ message: "Max file quantity is 3!" });
         }
@@ -348,7 +353,10 @@ export const supplierGoodsRoutes: FastifyPluginAsync = async (app) => {
           updateSupplierGood.keyword = keyword;
         if (mainCategory && mainCategory !== supplierGood.mainCategory)
           updateSupplierGood.mainCategory = mainCategory;
-        if (currentlyInUse !== undefined && currentlyInUse !== supplierGood.currentlyInUse)
+        if (
+          currentlyInUse !== undefined &&
+          currentlyInUse !== supplierGood.currentlyInUse
+        )
           updateSupplierGood.currentlyInUse = currentlyInUse;
 
         if (subCategory && subCategory !== supplierGood.subCategory)
@@ -359,9 +367,15 @@ export const supplierGoodsRoutes: FastifyPluginAsync = async (app) => {
           updateSupplierGood.allergens = allergens;
         if (budgetImpact && budgetImpact !== supplierGood.budgetImpact)
           updateSupplierGood.budgetImpact = budgetImpact;
-        if (inventorySchedule && inventorySchedule !== supplierGood.inventorySchedule)
+        if (
+          inventorySchedule &&
+          inventorySchedule !== supplierGood.inventorySchedule
+        )
           updateSupplierGood.inventorySchedule = inventorySchedule;
-        if (minimumQuantityRequired && minimumQuantityRequired !== supplierGood.minimumQuantityRequired)
+        if (
+          minimumQuantityRequired &&
+          minimumQuantityRequired !== supplierGood.minimumQuantityRequired
+        )
           updateSupplierGood.minimumQuantityRequired = minimumQuantityRequired;
         if (parLevel && parLevel !== supplierGood.parLevel)
           updateSupplierGood.parLevel = parLevel;
@@ -369,12 +383,22 @@ export const supplierGoodsRoutes: FastifyPluginAsync = async (app) => {
           updateSupplierGood.purchaseUnit = purchaseUnit;
         if (measurementUnit && measurementUnit !== supplierGood.measurementUnit)
           updateSupplierGood.measurementUnit = measurementUnit;
-        if (quantityInMeasurementUnit && quantityInMeasurementUnit !== supplierGood.quantityInMeasurementUnit)
-          updateSupplierGood.quantityInMeasurementUnit = quantityInMeasurementUnit;
-        if (totalPurchasePrice && totalPurchasePrice !== supplierGood.totalPurchasePrice)
+        if (
+          quantityInMeasurementUnit &&
+          quantityInMeasurementUnit !== supplierGood.quantityInMeasurementUnit
+        )
+          updateSupplierGood.quantityInMeasurementUnit =
+            quantityInMeasurementUnit;
+        if (
+          totalPurchasePrice &&
+          totalPurchasePrice !== supplierGood.totalPurchasePrice
+        )
           updateSupplierGood.totalPurchasePrice = totalPurchasePrice;
 
-        if (updateSupplierGood.totalPurchasePrice && updateSupplierGood.quantityInMeasurementUnit)
+        if (
+          updateSupplierGood.totalPurchasePrice &&
+          updateSupplierGood.quantityInMeasurementUnit
+        )
           updateSupplierGood.pricePerMeasurementUnit =
             (totalPurchasePrice ?? 0) / (quantityInMeasurementUnit ?? 0);
 
@@ -407,12 +431,14 @@ export const supplierGoodsRoutes: FastifyPluginAsync = async (app) => {
         const updatedSupplierGood = await SupplierGood.findByIdAndUpdate(
           supplierGoodId,
           { $set: updateSupplierGood },
-          { new: true, lean: true, session }
+          { new: true, lean: true, session },
         );
 
         if (!updatedSupplierGood) {
           await session.abortTransaction();
-          return reply.code(404).send({ message: "Supplier good not updated!" });
+          return reply
+            .code(404)
+            .send({ message: "Supplier good not updated!" });
         }
 
         const startOfCurrentMonth = new Date();
@@ -436,7 +462,7 @@ export const supplierGoodsRoutes: FastifyPluginAsync = async (app) => {
               await addSupplierGoodToInventory(
                 supplierGoodId,
                 supplierGood.businessId as Types.ObjectId,
-                session
+                session,
               );
 
             if (addSupplierGoodToInventoryResult !== true) {
@@ -506,7 +532,7 @@ export const supplierGoodsRoutes: FastifyPluginAsync = async (app) => {
 
       const deletedSupplierGood = await SupplierGood.findOneAndDelete(
         { _id: supplierGoodId },
-        { session }
+        { session },
       );
 
       if (!deletedSupplierGood) {
@@ -518,7 +544,7 @@ export const supplierGoodsRoutes: FastifyPluginAsync = async (app) => {
         await deleteSupplierGoodFromInventory(
           supplierGoodId,
           supplierGood.businessId,
-          session
+          session,
         );
 
       if (deleteSupplierGoodFromInventoryResult !== true) {

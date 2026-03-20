@@ -1,6 +1,8 @@
 import { Schema } from "mongoose";
-import { idEnums } from "../../../lib/enums.ts";
 import { addressSchema } from "./address.ts";
+import * as enums from "../../../lib/enums.ts";
+
+const { idEnums } = enums;
 
 export const personalDetailsSchema = new Schema(
   {

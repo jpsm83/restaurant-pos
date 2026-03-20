@@ -1,5 +1,8 @@
-import { Schema, model, models } from "mongoose";
-import { salesInstanceStatusEnums } from "../../../lib/enums.ts";
+import mongoose, { Schema, model } from "mongoose";
+import * as enums from "../../../lib/enums.ts";
+
+const { salesInstanceStatusEnums } = enums;
+
 
 const salesInstanceSchema = new Schema(
   {
@@ -79,5 +82,5 @@ const salesInstanceSchema = new Schema(
 );
 
 const SalesInstance =
-  models.SalesInstance || model("SalesInstance", salesInstanceSchema);
+  mongoose.models.SalesInstance || model("SalesInstance", salesInstanceSchema);
 export default SalesInstance;

@@ -1,5 +1,7 @@
-import { Schema, model, models } from "mongoose";
-import { mainCategoriesEnums, printerStatusEnums } from "../../../lib/enums.ts";
+import mongoose, { Schema, model } from "mongoose";
+import * as enums from "../../../lib/enums.ts";
+
+const { mainCategoriesEnums, printerStatusEnums } = enums;
 
 const configurationSetupToPrintOrdersSchema = new Schema(
   {
@@ -72,5 +74,5 @@ const printerSchema = new Schema(
   }
 );
 
-const Printer = models.Printer || model("Printer", printerSchema);
+const Printer = mongoose.models.Printer || model("Printer", printerSchema);
 export default Printer;

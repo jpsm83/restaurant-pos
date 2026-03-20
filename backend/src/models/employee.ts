@@ -1,5 +1,7 @@
-import { Schema, model, models } from "mongoose";
-import { employeePayFrequencyEnums, userRolesEnums } from "../../../lib/enums.ts";
+import mongoose, { Schema, model } from "mongoose";
+import * as enums from "../../../lib/enums.ts";
+
+const { employeePayFrequencyEnums, userRolesEnums } = enums;
 
 const salarySchema = new Schema(
   {
@@ -86,5 +88,5 @@ const employeeSchema = new Schema(
   { timestamps: true, trim: true },
 );
 
-const Employee = models.Employee || model("Employee", employeeSchema);
+const Employee = mongoose.models.Employee || model("Employee", employeeSchema);
 export default Employee;

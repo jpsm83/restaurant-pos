@@ -1,4 +1,4 @@
-import { Schema, model, models } from "mongoose";
+import mongoose, { Schema, model } from "mongoose";
 
 const employeesScheduledSchema = new Schema(
   {
@@ -77,5 +77,5 @@ const scheduleSchema = new Schema(
   }
 );
 
-const Schedule = models.Schedule || model("Schedule", scheduleSchema);
+const Schedule = mongoose.models.Schedule || model("Schedule", scheduleSchema);
 export default Schedule;

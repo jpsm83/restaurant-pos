@@ -1,4 +1,4 @@
-import { Schema, model, models } from "mongoose";
+import mongoose, { Schema, model } from "mongoose";
 import { paymentMethod } from "./paymentMethod.ts";
 import { goodsReducedSchema } from "./dailySalesReport.ts";
 
@@ -173,6 +173,6 @@ monthlyBusinessReportSchema.index(
 );
 
 const MonthlyBusinessReport =
-  models.MonthlyBusinessReport ||
+  mongoose.models.MonthlyBusinessReport ||
   model("MonthlyBusinessReport", monthlyBusinessReportSchema);
 export default MonthlyBusinessReport;

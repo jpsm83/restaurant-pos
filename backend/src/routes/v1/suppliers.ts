@@ -1,16 +1,19 @@
 import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
-import type { ISupplier } from "@shared/interfaces/ISupplier";
-import type { IAddress } from "@shared/interfaces/IAddress";
+import type { ISupplier } from "../../../../lib/interface/ISupplier.ts";
+import type { IAddress } from "../../../../lib/interface/IAddress.ts";
 
-import { isObjectIdValid } from "../../utils/isObjectIdValid.ts";
+import isObjectIdValid from "../../utils/isObjectIdValid.ts";
 import Supplier from "../../models/supplier.ts";
 import SupplierGood from "../../models/supplierGood.ts";
 import BusinessGood from "../../models/businessGood.ts";
-import { uploadFilesCloudinary, UploadInputFile } from "../../cloudinary/uploadFilesCloudinary.ts";
-import { deleteFilesCloudinary } from "../../cloudinary/deleteFilesCloudinary.ts";
-import { deleteFolderCloudinary } from "../../cloudinary/deleteFolderCloudinary.ts";
-import objDefaultValidation from "@shared/utils/objDefaultValidation";
+import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
+import type { UploadInputFile } from "../../../../lib/interface/ICloudinary.ts";
+import deleteFilesCloudinary from "../../cloudinary/deleteFilesCloudinary.ts";
+import deleteFolderCloudinary from "../../cloudinary/deleteFolderCloudinary.ts";
+import objDefaultValidation, {
+  type ObjDefaultValidationType,
+} from "../../../../lib/utils/objDefaultValidation.ts";
 
 const emailRegex = /^[\w-]+(\.[\w-]+)*@([\w-]+\.)+[a-zA-Z]{2,7}$/;
 
@@ -94,10 +97,10 @@ export const suppliersRoutes: FastifyPluginAsync = async (app) => {
         return reply.code(400).send({ message: "Invalid email format!" });
       }
 
-      const addressValidationResult = objDefaultValidation(
+      const addressValidationResult = (objDefaultValidation as unknown as ObjDefaultValidationType)(
         address,
         reqAddressFields,
-        nonReqAddressFields
+        nonReqAddressFields,
       );
 
       if (addressValidationResult !== true) {
@@ -253,10 +256,10 @@ export const suppliersRoutes: FastifyPluginAsync = async (app) => {
         return reply.code(400).send({ message: "Invalid email format!" });
       }
 
-      const addressValidationResult = objDefaultValidation(
+      const addressValidationResult = (objDefaultValidation as unknown as ObjDefaultValidationType)(
         address,
         reqAddressFields,
-        nonReqAddressFields
+        nonReqAddressFields,
       );
 
       if (addressValidationResult !== true) {
@@ -264,7 +267,9 @@ export const suppliersRoutes: FastifyPluginAsync = async (app) => {
       }
 
       const supplier = (await Supplier.findById(supplierId)
-        .select("businessId imageUrl address tradeName legalName email phoneNumber taxNumber currentlyInUse contactPerson")
+        .select(
+          "businessId imageUrl address tradeName legalName email phoneNumber taxNumber currentlyInUse contactPerson",
+        )
         .lean()) as unknown as ISupplier | null;
 
       if (!supplier) {
@@ -302,7 +307,7 @@ export const suppliersRoutes: FastifyPluginAsync = async (app) => {
       const updatedAddress: Partial<IAddress> = {};
 
       for (const [key, value] of Object.entries(address)) {
-        if (value !== supplier.address?.[key as keyof typeof address]) {
+        if (value !== supplier.address?.[key as keyof IAddress]) {
           (updatedAddress as Record<string, unknown>)[key] = value;
         }
       }
@@ -341,11 +346,13 @@ export const suppliersRoutes: FastifyPluginAsync = async (app) => {
       const updatedSupplier = await Supplier.findByIdAndUpdate(
         supplierId,
         { $set: updateSupplierObj },
-        { new: true, lean: true }
+        { new: true, lean: true },
       );
 
       if (!updatedSupplier) {
-        return reply.code(404).send({ message: "Business to update not found!" });
+        return reply
+          .code(404)
+          .send({ message: "Business to update not found!" });
       }
 
       return reply.code(200).send({

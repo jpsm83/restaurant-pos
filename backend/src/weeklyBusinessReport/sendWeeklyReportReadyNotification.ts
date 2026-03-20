@@ -4,8 +4,10 @@ import connectDb from "../db/connectDb.ts";
 import Employee from "../models/employee.ts";
 import Notification from "../models/notification.ts";
 import User from "../models/user.ts";
-import { managementRolesEnums } from "../../../lib/enums.ts";
 import type { WeekLabel } from "../../../lib/interface/IWeeklyBusinessReport.ts";
+import * as enums from "../../../lib/enums.ts";
+
+const { managementRolesEnums } = enums;
 
 /**
  * Sends a notification to on-duty manager-level employees that a weekly
