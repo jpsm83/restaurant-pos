@@ -6,17 +6,17 @@
  */
 
 import mongoose, { Types } from "mongoose";
-import DailySalesReport from "../models/dailySalesReport.js";
-import WeeklyBusinessReport from "../models/weeklyBusinessReport.js";
-import Schedule from "../models/schedule.js";
-import Business from "../models/business.js";
-import { isObjectIdValid } from "../utils/isObjectIdValid.js";
+import DailySalesReport from "../models/dailySalesReport.ts";
+import WeeklyBusinessReport from "../models/weeklyBusinessReport.ts";
+import Schedule from "../models/schedule.ts";
+import Business from "../models/business.ts";
+import { isObjectIdValid } from "../utils/isObjectIdValid.ts";
 import {
   getWeekReference,
   createWeeklyBusinessReport,
   type WeeklyReportOpen,
-} from "./createWeeklyBusinessReport.js";
-import { getWasteByBudgetImpactForMonth } from "../inventories/getWasteByBudgetImpactForMonth.js";
+} from "./createWeeklyBusinessReport.ts";
+import { getWasteByBudgetImpactForMonth } from "../inventories/getWasteByBudgetImpactForMonth.ts";
 
 interface IGoodsReduced {
   businessGoodId: Types.ObjectId;
@@ -158,7 +158,7 @@ export async function aggregateDailyReportsIntoWeekly(
           .session(session)
           .lean(),
         getWasteByBudgetImpactForMonth(businessId, weekStart),
-        Business.findById(businessId).select("metrics").lean(),
+        Business.findById(businessId).select("metrics").session(session).lean(),
       ]);
 
     let totalSalesForWeek = 0;

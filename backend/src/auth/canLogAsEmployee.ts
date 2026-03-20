@@ -7,9 +7,9 @@
  * Management roles bypass schedule check entirely.
  */
 
-import Employee from "../models/employee.js";
-import Schedule from "../models/schedule.js";
-import { hasManagementRole } from "../utils/constants.js";
+import Employee from "src/models/employee.ts";
+import Schedule from "src/models/schedule.ts";
+import { hasManagementRole } from "src/utils/constants.ts";
 import type { Types } from "mongoose";
 
 const FIVE_MINUTES_MS = 5 * 60 * 1000;
@@ -23,8 +23,9 @@ export interface CanLogAsEmployeeResult {
  * and current time is within [shiftStart - 5 min, shiftEnd]. Management roles
  * always return true. Caller must ensure DB is connected before invoking.
  */
-export async function canLogAsEmployee(
-  employeeId: Types.ObjectId | string
+export default async function canLogAsEmployee(
+  employeeId: Types.ObjectId | string,
+  now?: Date,
 ): Promise<CanLogAsEmployeeResult> {
   const employee = (await Employee.findById(employeeId)
     .select("businessId active terminatedDate allEmployeeRoles")
@@ -47,8 +48,8 @@ export async function canLogAsEmployee(
     return { canLogAsEmployee: true };
   }
 
-  const now = new Date();
-  const startOfDay = new Date(now);
+  const effectiveNow = now ?? new Date();
+  const startOfDay = new Date(effectiveNow);
   startOfDay.setHours(0, 0, 0, 0);
   const endOfDay = new Date(startOfDay);
   endOfDay.setDate(endOfDay.getDate() + 1);
@@ -76,15 +77,18 @@ export async function canLogAsEmployee(
     if (entry.vacation) continue;
     const entryEmployeeId =
       typeof entry.employeeId === "object" && entry.employeeId !== null
-        ? (entry.employeeId as { toString?: () => string }).toString?.() ??
-          String(entry.employeeId)
+        ? ((entry.employeeId as { toString?: () => string }).toString?.() ??
+          String(entry.employeeId))
         : String(entry.employeeId);
     if (entryEmployeeId !== employeeIdStr) continue;
 
     const start = new Date(entry.timeRange.startTime).getTime();
     const end = new Date(entry.timeRange.endTime).getTime();
     const windowStart = start - FIVE_MINUTES_MS;
-    if (now.getTime() >= windowStart && now.getTime() <= end) {
+    if (
+      effectiveNow.getTime() >= windowStart &&
+      effectiveNow.getTime() <= end
+    ) {
       return { canLogAsEmployee: true };
     }
   }

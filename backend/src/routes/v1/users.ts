@@ -1,17 +1,17 @@
 import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
 import { hash } from "bcrypt";
-import type { IUser } from "@shared/interfaces/IUser";
-import type { IEmployee } from "@shared/interfaces/IEmployee";
+import type { IUser } from "../../../../lib/interface/IUser.ts";
+import type { IEmployee } from "../../../../lib/interface/IEmployee.ts";
 
-import { isObjectIdValid } from "../../utils/isObjectIdValid.js";
-import objDefaultValidation from "@shared/utils/objDefaultValidation";
-import { uploadFilesCloudinary } from "../../cloudinary/uploadFilesCloudinary.js";
-import { deleteFilesCloudinary } from "../../cloudinary/deleteFilesCloudinary.js";
-import { deleteFolderCloudinary } from "../../cloudinary/deleteFolderCloudinary.js";
-import User from "../../models/user.js";
-import Employee from "../../models/employee.js";
-import Notification from "../../models/notification.js";
+import isObjectIdValid from "../../utils/isObjectIdValid.ts";
+import objDefaultValidation from "../../../../lib/utils/objDefaultValidation.ts";
+import { uploadFilesCloudinary } from "../../cloudinary/uploadFilesCloudinary.ts";
+import { deleteFilesCloudinary } from "../../cloudinary/deleteFilesCloudinary.ts";
+import deleteFolderCloudinary from "../../cloudinary/deleteFolderCloudinary.ts";
+import User from "../../models/user.ts";
+import Employee from "../../models/employee.ts";
+import Notification from "../../models/notification.ts";
 
 const reqAddressFields = [
   "country",
@@ -445,7 +445,7 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
     try {
       const notificationExists = await Notification.exists({
         _id: notificationId,
-      });
+      }).session(session);
 
       if (!notificationExists) {
         await session.abortTransaction();

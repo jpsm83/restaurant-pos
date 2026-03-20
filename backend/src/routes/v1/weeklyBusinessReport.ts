@@ -1,8 +1,8 @@
 import type { FastifyPluginAsync } from "fastify";
 import { Types } from "mongoose";
 
-import { isObjectIdValid } from "../../utils/isObjectIdValid.js";
-import WeeklyBusinessReport from "../../models/weeklyBusinessReport.js";
+import { isObjectIdValid } from "../../utils/isObjectIdValid.ts";
+import WeeklyBusinessReport from "../../models/weeklyBusinessReport.ts";
 
 function parseWeekStart(dateStr: string): Date | null {
   const d = new Date(dateStr);

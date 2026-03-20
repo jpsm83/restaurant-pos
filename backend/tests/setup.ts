@@ -13,8 +13,8 @@ import { MongoMemoryReplSet } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import { beforeAll, afterAll, afterEach } from "vitest";
 import type { FastifyInstance } from "fastify";
-import { buildApp } from "../src/server.js";
-import type { AuthSession } from "../src/auth/types.js";
+import { buildApp } from "../src/server.ts";
+import type { AuthSession } from "../src/auth/types.ts";
 
 let mongoReplSet: MongoMemoryReplSet | null = null;
 let testApp: FastifyInstance | null = null;

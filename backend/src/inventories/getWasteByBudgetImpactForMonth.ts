@@ -6,8 +6,8 @@
  */
 
 import { Types } from "mongoose";
-import SupplierGood from "../models/supplierGood.js";
-import { getVarianceReport } from "./getVarianceReport.js";
+import SupplierGood from "../models/supplierGood.ts";
+import { getVarianceReport } from "./getVarianceReport.ts";
 
 export interface WasteByImpactPercentages {
   veryLowImpactWastePercentage: number;

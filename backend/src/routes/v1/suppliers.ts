@@ -3,13 +3,13 @@ import mongoose, { Types } from "mongoose";
 import type { ISupplier } from "@shared/interfaces/ISupplier";
 import type { IAddress } from "@shared/interfaces/IAddress";
 
-import { isObjectIdValid } from "../../utils/isObjectIdValid.js";
-import Supplier from "../../models/supplier.js";
-import SupplierGood from "../../models/supplierGood.js";
-import BusinessGood from "../../models/businessGood.js";
-import { uploadFilesCloudinary, UploadInputFile } from "../../cloudinary/uploadFilesCloudinary.js";
-import { deleteFilesCloudinary } from "../../cloudinary/deleteFilesCloudinary.js";
-import { deleteFolderCloudinary } from "../../cloudinary/deleteFolderCloudinary.js";
+import { isObjectIdValid } from "../../utils/isObjectIdValid.ts";
+import Supplier from "../../models/supplier.ts";
+import SupplierGood from "../../models/supplierGood.ts";
+import BusinessGood from "../../models/businessGood.ts";
+import { uploadFilesCloudinary, UploadInputFile } from "../../cloudinary/uploadFilesCloudinary.ts";
+import { deleteFilesCloudinary } from "../../cloudinary/deleteFilesCloudinary.ts";
+import { deleteFolderCloudinary } from "../../cloudinary/deleteFolderCloudinary.ts";
 import objDefaultValidation from "@shared/utils/objDefaultValidation";
 
 const emailRegex = /^[\w-]+(\.[\w-]+)*@([\w-]+\.)+[a-zA-Z]{2,7}$/;

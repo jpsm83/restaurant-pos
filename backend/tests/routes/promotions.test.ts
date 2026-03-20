@@ -5,9 +5,9 @@
 
 import { describe, it, expect } from "vitest";
 import { Types } from "mongoose";
-import { getTestApp } from "../setup.js";
-import Promotion from "../../src/models/promotion.js";
-import Business from "../../src/models/business.js";
+import { getTestApp } from "../setup.ts";
+import Promotion from "../../src/models/promotion.ts";
+import Business from "../../src/models/business.ts";
 
 describe("Promotions Routes", () => {
   const createTestBusiness = async () => {

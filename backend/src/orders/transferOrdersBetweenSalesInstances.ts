@@ -1,6 +1,6 @@
 import { ClientSession, Types } from "mongoose";
-import Order from "../models/order.js";
-import SalesInstance from "../models/salesInstance.js";
+import Order from "../models/order.ts";
+import SalesInstance from "../models/salesInstance.ts";
 
 export const transferOrdersBetweenSalesInstances = async (
   ordersIdsArr: Types.ObjectId[],

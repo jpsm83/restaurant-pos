@@ -6,17 +6,17 @@
  */
 
 import mongoose, { Types } from "mongoose";
-import DailySalesReport from "../models/dailySalesReport.js";
-import MonthlyBusinessReport from "../models/monthlyBusinessReport.js";
-import Schedule from "../models/schedule.js";
-import Business from "../models/business.js";
-import { isObjectIdValid } from "../utils/isObjectIdValid.js";
+import DailySalesReport from "../models/dailySalesReport.ts";
+import MonthlyBusinessReport from "../models/monthlyBusinessReport.ts";
+import Schedule from "../models/schedule.ts";
+import Business from "../models/business.ts";
+import { isObjectIdValid } from "../utils/isObjectIdValid.ts";
 import {
   createMonthlyBusinessReport,
   type MonthlyReportOpen,
-} from "./createMonthlyBusinessReport.js";
-import { getWasteByBudgetImpactForMonth } from "../inventories/getWasteByBudgetImpactForMonth.js";
-import { sendMonthlyReportReadyNotification } from "./sendMonthlyReportReadyNotification.js";
+} from "./createMonthlyBusinessReport.ts";
+import { getWasteByBudgetImpactForMonth } from "../inventories/getWasteByBudgetImpactForMonth.ts";
+import { sendMonthlyReportReadyNotification } from "./sendMonthlyReportReadyNotification.ts";
 
 interface IGoodsReduced {
   businessGoodId: Types.ObjectId;
@@ -215,7 +215,7 @@ export async function aggregateDailyReportsIntoMonthly(
         .session(session)
         .lean(),
       getWasteByBudgetImpactForMonth(businessId, monthStart),
-      Business.findById(businessId).select("metrics").lean(),
+      Business.findById(businessId).select("metrics").session(session).lean(),
     ]);
 
     let totalSalesForMonth = 0;

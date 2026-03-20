@@ -5,8 +5,8 @@
 
 import { describe, it, expect, beforeEach } from "vitest";
 import { Types } from "mongoose";
-import { getTestApp } from "../setup.js";
-import Business from "../../src/models/business.js";
+import { getTestApp } from "../setup.ts";
+import Business from "../../src/models/business.ts";
 
 describe("Business Routes", () => {
   const validAddress = {

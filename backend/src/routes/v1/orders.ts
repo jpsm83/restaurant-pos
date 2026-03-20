@@ -1,18 +1,18 @@
 import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
-import Order from "../../models/order.js";
-import SalesInstance from "../../models/salesInstance.js";
-import User from "../../models/user.js";
-import BusinessGood from "../../models/businessGood.js";
-import SalesPoint from "../../models/salesPoint.js";
-import Employee from "../../models/employee.js";
-import { isObjectIdValid } from "../../utils/isObjectIdValid.js";
-import { hasManagementRole } from "../../utils/constants.js";
-import { ordersArrValidation } from "../../orders/ordersArrValidation.js";
-import { createOrders } from "../../orders/createOrders.js";
-import { cancelOrders } from "../../orders/cancelOrders.js";
-import { applyPromotionsToOrders } from "../../promotions/applyPromotions.js";
-import { createAuthHook } from "../../auth/middleware.js";
+import Order from "../../models/order.ts";
+import SalesInstance from "../../models/salesInstance.ts";
+import User from "../../models/user.ts";
+import BusinessGood from "../../models/businessGood.ts";
+import SalesPoint from "../../models/salesPoint.ts";
+import Employee from "../../models/employee.ts";
+import { isObjectIdValid } from "../../utils/isObjectIdValid.ts";
+import { hasManagementRole } from "../../utils/constants.ts";
+import { ordersArrValidation } from "../../orders/ordersArrValidation.ts";
+import { createOrders } from "../../orders/createOrders.ts";
+import { cancelOrders } from "../../orders/cancelOrders.ts";
+import { applyPromotionsToOrders } from "../../promotions/applyPromotions.ts";
+import { createAuthHook } from "../../auth/middleware.ts";
 
 export const ordersRoutes: FastifyPluginAsync = async (app) => {
   app.get("/", async (_req, reply) => {
@@ -95,6 +95,7 @@ export const ordersRoutes: FastifyPluginAsync = async (app) => {
       const pricedOrders = await applyPromotionsToOrders({
         businessId: new Types.ObjectId(businessId),
         ordersArr: ordersArr as any,
+        session,
       });
       if (typeof pricedOrders === "string") {
         await session.abortTransaction();

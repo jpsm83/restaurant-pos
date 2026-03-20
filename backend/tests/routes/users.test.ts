@@ -7,10 +7,10 @@
 
 import { describe, it, expect, beforeEach } from "vitest";
 import { Types } from "mongoose";
-import { getTestApp } from "../setup.js";
-import User from "../../src/models/user.js";
-import Notification from "../../src/models/notification.js";
-import Business from "../../src/models/business.js";
+import { getTestApp } from "../setup.ts";
+import User from "../../src/models/user.ts";
+import Notification from "../../src/models/notification.ts";
+import Business from "../../src/models/business.ts";
 
 describe("Users Routes", () => {
   const validAddress = {

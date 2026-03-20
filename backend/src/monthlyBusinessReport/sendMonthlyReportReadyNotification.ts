@@ -3,9 +3,10 @@
  */
 
 import { Types } from "mongoose";
-import Employee from "../models/employee.js";
-import Notification from "../models/notification.js";
-import { MANAGEMENT_ROLES } from "../utils/constants.js";
+import Employee from "../models/employee.ts";
+import User from "../models/user.ts";
+import Notification from "../models/notification.ts";
+import { MANAGEMENT_ROLES } from "../utils/constants.ts";
 
 /**
  * Sends a notification to manager-level employees that a monthly
@@ -20,7 +21,7 @@ export async function sendMonthlyReportReadyNotification(
       businessId,
       currentShiftRole: { $in: MANAGEMENT_ROLES },
     })
-      .select("_id")
+      .select("_id userId")
       .lean();
 
     if (!managerEmployees?.length) return;
@@ -37,12 +38,15 @@ export async function sendMonthlyReportReadyNotification(
     ]);
 
     if (newNotification) {
-      await Employee.updateMany(
-        { _id: { $in: managerEmployees.map((e) => e._id) } },
+      const managerUserIds = managerEmployees.map((e) => e.userId).filter(Boolean);
+
+      await User.updateMany(
+        { _id: { $in: managerUserIds } },
         {
           $push: {
             notifications: {
               notificationId: newNotification._id,
+              // readFlag/deletedFlag default to false in the User schema
             },
           },
         }

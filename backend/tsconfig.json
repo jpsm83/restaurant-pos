@@ -13,6 +13,6 @@
       "@shared/*": ["../packages/shared/src/*"]
     }
   },
-  "include": ["src/**/*.ts", "tests/**/*.ts", "../packages/shared/src/**/*.ts"]
+  "include": ["src/**/*.ts", "tests/**/*.ts", "../packages/shared/src/**/*.ts", "../lib/utils/isBusinessOpenNow.ts", "../lib/enums.ts"]
 }
 

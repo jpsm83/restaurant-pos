@@ -1,8 +1,8 @@
 import convert, { Unit } from "convert-units";
 import { Types } from "mongoose";
-import Order from "../models/order.js";
-import BusinessGood from "../models/businessGood.js";
-import SupplierGood from "../models/supplierGood.js";
+import Order from "../models/order.ts";
+import BusinessGood from "../models/businessGood.ts";
+import SupplierGood from "../models/supplierGood.ts";
 
 export interface TheoreticalUsageItem {
   supplierGoodId: Types.ObjectId;

@@ -3,15 +3,15 @@ import mongoose, { Types } from "mongoose";
 import type { ISchedule, IEmployeeSchedule } from "@shared/interfaces/ISchedule";
 import type { IEmployee } from "@shared/interfaces/IEmployee";
 
-import { isObjectIdValid } from "../../utils/isObjectIdValid.js";
-import { getWeekNumber } from "../../schedules/getWeekNumber.js";
-import { employeesValidation } from "../../schedules/employeesValidation.js";
-import { isScheduleOverlapping } from "../../schedules/isScheduleOverlapping.js";
-import { getWeekdaysInMonth } from "../../schedules/getWeekdaysInMonth.js";
-import { calculateEmployeeCost } from "../../schedules/calculateEmployeeCost.js";
-import Schedule from "../../models/schedule.js";
-import Employee from "../../models/employee.js";
-import User from "../../models/user.js";
+import { isObjectIdValid } from "../../utils/isObjectIdValid.ts";
+import { getWeekNumber } from "../../schedules/getWeekNumber.ts";
+import { employeesValidation } from "../../schedules/employeesValidation.ts";
+import { isScheduleOverlapping } from "../../schedules/isScheduleOverlapping.ts";
+import { getWeekdaysInMonth } from "../../schedules/getWeekdaysInMonth.ts";
+import { calculateEmployeeCost } from "../../schedules/calculateEmployeeCost.ts";
+import Schedule from "../../models/schedule.ts";
+import Employee from "../../models/employee.ts";
+import User from "../../models/user.ts";
 
 export const schedulesRoutes: FastifyPluginAsync = async (app) => {
   // GET /schedules - list all
@@ -199,6 +199,7 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
         .select(
           "employeesSchedules.employeeId employeesSchedules.vacation employeesSchedules.timeRange"
         )
+        .session(session)
         .lean()) as unknown as ISchedule | null;
 
       if (!schedule) {
@@ -242,6 +243,7 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
 
       const employeeEmployee = (await Employee.findById(employeeId)
         .select("salary.grossSalary salary.payFrequency")
+        .session(session)
         .lean()) as unknown as IEmployee | null;
 
       if (!employeeEmployee) {
@@ -442,9 +444,11 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
           .select(
             "employeesSchedules._id employeesSchedules.employeeId employeesSchedules.vacation employeesSchedules.timeRange employeesSchedules.employeeCost"
           )
+          .session(session)
           .lean<ISchedule | null>(),
         Employee.findById(employeeId)
           .select("salary.grossSalary salary.payFrequency")
+          .session(session)
           .lean<IEmployee | null>(),
       ]);
 

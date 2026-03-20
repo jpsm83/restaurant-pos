@@ -2,16 +2,16 @@ import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
 import type { ISupplierGood } from "@shared/interfaces/ISupplierGood";
 
-import { isObjectIdValid } from "../../utils/isObjectIdValid.js";
-import SupplierGood from "../../models/supplierGood.js";
-import Supplier from "../../models/supplier.js";
-import BusinessGood from "../../models/businessGood.js";
-import Inventory from "../../models/inventory.js";
-import { uploadFilesCloudinary, UploadInputFile } from "../../cloudinary/uploadFilesCloudinary.js";
-import { deleteFolderCloudinary } from "../../cloudinary/deleteFolderCloudinary.js";
-import { addSupplierGoodToInventory } from "../../inventories/addSupplierGoodToInventory.js";
-import { deleteSupplierGoodFromInventory } from "../../inventories/deleteSupplierGoodFromInventory.js";
-import { allergensEnums, mainCategoriesEnums } from "../../enums.js";
+import { isObjectIdValid } from "../../utils/isObjectIdValid.ts";
+import SupplierGood from "../../models/supplierGood.ts";
+import Supplier from "../../models/supplier.ts";
+import BusinessGood from "../../models/businessGood.ts";
+import Inventory from "../../models/inventory.ts";
+import { uploadFilesCloudinary, UploadInputFile } from "../../cloudinary/uploadFilesCloudinary.ts";
+import { deleteFolderCloudinary } from "../../cloudinary/deleteFolderCloudinary.ts";
+import { addSupplierGoodToInventory } from "../../inventories/addSupplierGoodToInventory.ts";
+import { deleteSupplierGoodFromInventory } from "../../inventories/deleteSupplierGoodFromInventory.ts";
+import { allergensEnums, mainCategoriesEnums } from "../../../../lib/enums.ts";
 
 export const supplierGoodsRoutes: FastifyPluginAsync = async (app) => {
   // GET /supplierGoods - list all
@@ -428,7 +428,7 @@ export const supplierGoodsRoutes: FastifyPluginAsync = async (app) => {
           setFinalCount: false,
           createdAt: { $gte: startOfCurrentMonth, $lte: endOfCurrentMonth },
           "inventoryGoods.supplierGoodId": supplierGoodId,
-        });
+        }).session(session);
 
         if (currentlyInUse === true) {
           if (!isSupplierGoodInInventory) {

@@ -1,3 +1,7 @@
+/**
+ * Builds a short receipt message for order confirmation (email and in-app notification).
+ * Used after self-order or delivery payment.
+ */
 export function buildReceiptMessage(params: {
   dailyReferenceNumber: string | number;
   totalNetPaidAmount: number;

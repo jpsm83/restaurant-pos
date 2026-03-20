@@ -2,9 +2,9 @@ import { ClientSession, Types } from "mongoose";
 import type { IOrder } from "@shared/interfaces/IOrder";
 import type { ISalesInstance } from "@shared/interfaces/ISalesInstance";
 import type { IPaymentMethod } from "@shared/interfaces/IPaymentMethod";
-import Order from "../models/order.js";
-import SalesInstance from "../models/salesInstance.js";
-import Reservation from "../models/reservation.js";
+import Order from "../models/order.ts";
+import SalesInstance from "../models/salesInstance.ts";
+import Reservation from "../models/reservation.ts";
 
 export const closeOrders = async (
   ordersIdsArr: Types.ObjectId[],

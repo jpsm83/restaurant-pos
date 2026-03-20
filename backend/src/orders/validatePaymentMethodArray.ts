@@ -4,7 +4,7 @@ import {
   creditCardEnums,
   cryptoEnums,
   otherPaymentEnums,
-} from "../enums.js";
+} from "../../../lib/enums.ts";
 
 export const validatePaymentMethodArray = (
   paymentMethod: IPaymentMethod[]

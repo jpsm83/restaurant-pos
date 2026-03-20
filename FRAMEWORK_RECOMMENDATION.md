@@ -27,7 +27,7 @@ So the platform target is:
 - **Web SaaS (admin + POS web surfaces, if any)**: **Vite + React** (SPA) with:
   - **TanStack Router** for routing/loaders
   - **TanStack Query** for server-state caching, dedupe, invalidation, optimistic updates
-- **Backend**: **standalone Node.js API service** (not coupled to Next route handlers)
+- **Backend**: **standalone Node.ts API service** (not coupled to Next route handlers)
   - Prefer **Fastify** for performance + plugin ecosystem (Express is acceptable if already entrenched)
   - Add **real-time** transport (WebSockets or SSE) for live POS updates
 - **Android & IOS POS**: **React Native (Expo)** + TanStack Query
@@ -51,7 +51,7 @@ This structure makes it easier to:
 
 ### What we’re *not* recommending as the “center”
 
-- **Next.js App Router as the core of the POS/admin**: it can work, but its SSR/RSC/caching strengths don’t align with an interaction-first POS that constantly fetches/mutates state.
+- **Next.ts App Router as the core of the POS/admin**: it can work, but its SSR/RSC/caching strengths don’t align with an interaction-first POS that constantly fetches/mutates state.
 - **TanStack Start as a requirement**: we can adopt it later, but we don’t need it to get the biggest gains (router + query + explicit caching patterns).
 
 ## Package manager / workspaces (monorepo tooling)
@@ -82,7 +82,7 @@ Because we will have Web + Android (and possibly more clients):
 
 ### Backend (shared for Web + RN)
 
-- **Runtime**: Node.js
+- **Runtime**: Node.ts
 - **HTTP framework**: **Fastify**
 - **Validation**: **Zod** at API boundaries
 - **Realtime**: **WebSockets** (or **SSE** for unidirectional updates)
@@ -139,16 +139,16 @@ POS feels “fast” when state changes appear immediately across screens/device
 - Use WebSockets/SSE to push changes.
 - Use TanStack Query to keep caches consistent (invalidate/refetch on events).
 
-## When Next.js *does* make sense here
+## When Next.ts *does* make sense here
 
-Use Next.js when you explicitly want:
+Use Next.ts when you explicitly want:
 
 - **Marketing/public pages with SEO**
 - A small set of **public entry points** (e.g., reservation landing pages) that benefit from SSR/edge middleware
 
-If we keep Next.js, a common pattern is:
+If we keep Next.ts, a common pattern is:
 
-- Next.js for marketing/public pages (optional)
+- Next.ts for marketing/public pages (optional)
 - Vite SPA for the authenticated admin/POS UI (recommended)
 - Standalone Node API for all domain operations (recommended)
 
@@ -168,7 +168,7 @@ If/when you migrate from Express to Fastify, keep risk low by preserving behavio
 
 ## Monorepo bootstrap (what we created in this repo)
 
-This repo now contains the **new monorepo skeleton** alongside the existing root Next.js app (kept temporarily as a reference during migration).
+This repo now contains the **new monorepo skeleton**; the legacy root Next.ts app has been decommissioned, with `backend/` + `frontend/` as the intended core.
 
 ### Folders
 

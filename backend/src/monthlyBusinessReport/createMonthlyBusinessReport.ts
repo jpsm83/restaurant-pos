@@ -3,8 +3,8 @@
  */
 
 import { ClientSession, Types } from "mongoose";
-import MonthlyBusinessReport from "../models/monthlyBusinessReport.js";
-import { isObjectIdValid } from "../utils/isObjectIdValid.js";
+import MonthlyBusinessReport from "../models/monthlyBusinessReport.ts";
+import { isObjectIdValid } from "../utils/isObjectIdValid.ts";
 
 export type MonthlyReportOpen = {
   _id: Types.ObjectId;

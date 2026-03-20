@@ -1,6 +1,6 @@
 import type { IOrder } from "@shared/interfaces/IOrder";
 import { Types } from "mongoose";
-import { isObjectIdValid } from "../utils/isObjectIdValid.js";
+import { isObjectIdValid } from "../utils/isObjectIdValid.ts";
 
 export function ordersArrValidation(ordersArr: Partial<IOrder>[]): true | string {
   if (

@@ -1,12 +1,12 @@
 # Restaurant POS Backend (Fastify)
 
-This is the new Fastify backend for the Restaurant POS system, fully migrated from the legacy Next.js API routes.
+This is the new Fastify backend for the Restaurant POS system, fully migrated from the legacy Next.ts API routes.
 
 ## Migration Status
 
 **✅ Migration Completed - 2026-03-18**
 
-All 126 endpoints have been successfully migrated from the legacy Next.js backend to this Fastify server.
+All 126 endpoints have been successfully migrated from the legacy Next.ts backend to this Fastify server.
 
 ## Quick Start
 
@@ -101,7 +101,7 @@ backend/
 │   │   └── v1/         # API v1 routes
 │   ├── utils/          # Shared utilities
 │   └── server.ts       # Server entry point
-└── package.json
+└── package.tson
 ```
 
 ## Development
@@ -115,7 +115,7 @@ backend/
 ### Authentication Hooks
 
 ```typescript
-import { createAuthHook, requireBusinessHook } from "../../auth/middleware.js";
+import { createAuthHook, requireBusinessHook } from "../../auth/middleware.ts";
 
 // Protected route
 app.get("/protected", { preValidation: [createAuthHook(app)] }, async (req, reply) => {
@@ -192,7 +192,7 @@ describe("Business Routes", () => {
 
 ## Migration Notes
 
-- This backend replaces the legacy Next.js API routes in `app/api/`
+- This backend replaces the legacy Next.ts API routes that used to live under `app/api/`.
 - Shared types and interfaces are in `packages/shared/`
 - The legacy routes are kept for reference but not used
 - See `docs/migration/MIGRATION_PLAN.md` for complete migration history

@@ -7,11 +7,11 @@
 
 import { describe, it, expect, beforeEach } from "vitest";
 import { Types } from "mongoose";
-import { getTestApp } from "../setup.js";
-import Employee from "../../src/models/employee.js";
-import Business from "../../src/models/business.js";
-import User from "../../src/models/user.js";
-import Printer from "../../src/models/printer.js";
+import { getTestApp } from "../setup.ts";
+import Employee from "../../src/models/employee.ts";
+import Business from "../../src/models/business.ts";
+import User from "../../src/models/user.ts";
+import Printer from "../../src/models/printer.ts";
 
 describe("Employees Routes", () => {
   let businessId: Types.ObjectId;

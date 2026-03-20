@@ -3,7 +3,7 @@
  */
 
 import type { FastifyInstance } from "fastify";
-import { buildApp } from "../../src/server.js";
+import { buildApp } from "../../src/server.ts";
 
 let cachedApp: FastifyInstance | null = null;
 

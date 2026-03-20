@@ -1,5 +1,9 @@
 import nodemailer from "nodemailer";
 
+/**
+ * Sends an order confirmation/receipt email. Fire-and-forget safe: does not throw.
+ * If SMTP env is missing or send fails, logs and returns; caller is not affected.
+ */
 export async function sendReceiptEmail(
   toEmail: string,
   receiptMessage: string,

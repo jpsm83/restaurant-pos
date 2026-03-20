@@ -1,7 +1,7 @@
 import convert, { Unit } from "convert-units";
 import { ClientSession, Types } from "mongoose";
-import BusinessGood from "../models/businessGood.js";
-import Inventory from "../models/inventory.js";
+import BusinessGood from "../models/businessGood.ts";
+import Inventory from "../models/inventory.ts";
 
 export async function updateDynamicCountSupplierGood(
   businessGoodsIds: Types.ObjectId[],

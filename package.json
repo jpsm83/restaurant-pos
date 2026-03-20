@@ -1,62 +1,25 @@
 {
   "name": "restaurant-pos",
-  "version": "0.1.0",
-  "private": true,
+  "version": "1.0.0",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib"
+  },
   "scripts": {
-    "dev": "next dev --turbopack",
-    "dev:frontend": "npm --prefix frontend run dev",
-    "dev:backend": "npm --prefix backend run dev",
-    "dev:monorepo": "concurrently -n frontend,backend -c blue,green \"npm run dev:frontend\" \"npm run dev:backend\"",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jpsm83/restaurant-pos.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jpsm83/restaurant-pos/issues"
+  },
+  "homepage": "https://github.com/jpsm83/restaurant-pos#readme",
+  "description": "",
   "dependencies": {
-    "@hookform/resolvers": "4.1.3",
-    "@radix-ui/react-dialog": "^1.1.2",
-    "@radix-ui/react-dropdown-menu": "^2.1.2",
-    "@radix-ui/react-icons": "^1.3.1",
-    "@radix-ui/react-label": "^2.1.0",
-    "@radix-ui/react-menubar": "^1.1.2",
-    "@radix-ui/react-slot": "^1.1.0",
-    "@types/mongoose": "^5.11.96",
-    "bcrypt": "^5.1.1",
-    "class-variance-authority": "^0.7.0",
-    "cloudinary": "^2.5.1",
-    "clsx": "^2.1.1",
-    "convert-units": "^2.3.4",
-    "lucide-react": "^0.454.0",
-    "moment": "^2.30.1",
-    "mongodb": "^6.10.0",
-    "mongoose": "^8.12.1",
-    "next": "^15.2.1",
-    "next-auth": "^4.24.11",
-    "next-cloudinary": "^6.16.0",
-    "nodemailer": "^6.9.16",
-    "qrcode": "^1.5.4",
-    "react": "19.0.0",
-    "react-dom": "19.0.0",
-    "react-hook-form": "^7.0.0",
-    "tailwind-merge": "^2.5.4",
-    "tailwindcss-animate": "^1.0.7",
-    "vaul": "^1.1.1",
-    "zod": "^3.23.8",
-    "zustand": "^5.0.1"
-  },
-  "devDependencies": {
-    "@types/bcrypt": "^5.0.2",
-    "@types/convert-units": "^2.3.11",
-    "@types/node": "^20",
-    "@types/nodemailer": "^6.4.17",
-    "@types/qrcode": "^1.5.5",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
-    "concurrently": "^9.2.1",
-    "eslint": "^8",
-    "eslint-config-next": "15.0.2",
-    "postcss": "^8",
-    "tailwindcss": "^3.4.1",
-    "concurrently": "^9.2.1",
-    "typescript": "^5.8.2"
+    "mongoose": "^9.3.1"
   }
 }

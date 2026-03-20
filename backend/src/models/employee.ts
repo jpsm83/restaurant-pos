@@ -1,5 +1,5 @@
-import mongoose, { Schema, model } from "mongoose";
-import { employeePayFrequencyEnums, userRolesEnums } from "../enums.js";
+import { Schema, model, models } from "mongoose";
+import { employeePayFrequencyEnums, userRolesEnums } from "../../../lib/enums.ts";
 
 const salarySchema = new Schema(
   {
@@ -7,47 +7,84 @@ const salarySchema = new Schema(
       type: String,
       enum: employeePayFrequencyEnums,
       required: [true, "Pay frequency is required!"],
-    },
-    grossSalary: { type: Number, required: [true, "Gross salary is required!"] },
-    netSalary: { type: Number, required: [true, "Net salary is required!"] },
+    }, // frequency of the payment
+    grossSalary: {
+      type: Number,
+      required: [true, "Gross salary is required!"],
+    }, // hourly employee salary before taxes
+    netSalary: { type: Number, required: [true, "Net salary is required!"] }, // net employee salary after taxes
   },
-  { timestamps: true, trim: true }
-);
-
-const notificationEntrySchema = new Schema(
   {
-    notificationId: { type: Schema.Types.ObjectId, ref: "Notification", required: true },
-    readFlag: { type: Boolean, default: false },
-    deletedFlag: { type: Boolean, default: false },
+    timestamps: true,
+    trim: true,
   },
-  { _id: false }
 );
 
 const employeeSchema = new Schema(
   {
     allEmployeeRoles: [
-      { type: String, enum: userRolesEnums, required: [true, "Employee role is required!"] },
-    ],
-    taxNumber: { type: String, required: [true, "Tax number is required!"], unique: true },
-    joinDate: { type: Date, required: [true, "Join date is required!"] },
-    active: { type: Boolean, default: true },
-    onDuty: { type: Boolean, default: false },
-    vacationDaysPerYear: { type: Number, required: [true, "Vacations days per year is required!"] },
-    businessId: { type: Schema.Types.ObjectId, ref: "Business", required: true, index: true },
-    userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+      {
+        type: String,
+        enum: userRolesEnums,
+        required: [true, "Employee role is required!"],
+      },
+    ], // all roles of the employee, can be multiple
+    taxNumber: {
+      type: String,
+      required: [true, "Tax number is required!"],
+      unique: true,
+    }, // tax number of the employee
+    joinDate: { type: Date, required: [true, "Join date is required!"] }, // date when the employee joined the business
+    active: {
+      type: Boolean,
+      default: true,
+    }, // if the employee is active, could be a sesonality worker
+    onDuty: {
+      type: Boolean,
+      default: false,
+    }, // if the employee is on duty, shift working right now
+    vacationDaysPerYear: {
+      type: Number,
+      required: [true, "Vacations days per year is required!"],
+    }, // days of holidays per year
+    businessId: {
+      type: Schema.Types.ObjectId,
+      ref: "Business",
+      required: [true, "Business id is required!"],
+      index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
+    }, // business where the employee works
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: [true, "User id is required!"],
+      index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
+    }, // business where the employee works
 
-    vacationDaysLeft: { type: Number },
-    currentShiftRole: { type: String, enum: userRolesEnums },
-    contractHoursWeek: { type: Number },
-    salary: { type: salarySchema },
-    terminatedDate: { type: Date },
-    documentsUrl: { type: [String], default: undefined },
-    comments: { type: String },
-    notifications: { type: [notificationEntrySchema], default: undefined },
+    // optional fields
+    vacationDaysLeft: { type: Number }, // days of holidays left
+    currentShiftRole: { type: String, enum: userRolesEnums }, // current shift role of the employee
+
+    // *** IMPORTANTE ***
+    // employee might input the contract hours per week as a whole hour number on the front of the application and them it will be converted to milliseconds
+    contractHoursWeek: { type: Number }, // contract hours per week
+    salary: { type: salarySchema }, // salary of the employee
+    terminatedDate: {
+      type: Date,
+      validate: {
+        validator: function (value: string) {
+          // Allow terminatedDate to be null (employee still active)
+          if (!value) return true;
+
+          return value > (this as typeof employeeSchema.methods).joinDate; // Ensure terminatedDate is after joinDate
+        },
+        message: "Terminate date must be after join date!",
+      },
+    }, // date when the employee left the business
+    documentsUrl: { type: [String], default: undefined }, // photo of the employee documents as id, contract, tax, etc
+    comments: { type: String }, // comments about the employee
   },
-  { timestamps: true, trim: true }
+  { timestamps: true, trim: true },
 );
 
-const Employee = model("Employee", employeeSchema);
+const Employee = models.Employee || model("Employee", employeeSchema);
 export default Employee;
-

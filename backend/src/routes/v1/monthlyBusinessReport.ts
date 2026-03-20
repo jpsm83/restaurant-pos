@@ -4,12 +4,12 @@ import type { IGoodsReduced } from "@shared/interfaces/IDailySalesReport";
 import type { IPaymentMethod } from "@shared/interfaces/IPaymentMethod";
 import type { IMetrics } from "@shared/interfaces/IBusiness";
 
-import { isObjectIdValid } from "../../utils/isObjectIdValid.js";
-import { getWasteByBudgetImpactForMonth } from "../../inventories/getWasteByBudgetImpactForMonth.js";
-import MonthlyBusinessReport from "../../models/monthlyBusinessReport.js";
-import DailySalesReport from "../../models/dailySalesReport.js";
-import Schedule from "../../models/schedule.js";
-import Business from "../../models/business.js";
+import { isObjectIdValid } from "../../utils/isObjectIdValid.ts";
+import { getWasteByBudgetImpactForMonth } from "../../inventories/getWasteByBudgetImpactForMonth.ts";
+import MonthlyBusinessReport from "../../models/monthlyBusinessReport.ts";
+import DailySalesReport from "../../models/dailySalesReport.ts";
+import Schedule from "../../models/schedule.ts";
+import Business from "../../models/business.ts";
 
 function parseMonthStart(ym: string): Date | null {
   const [y, m] = ym.split("-").map(Number);

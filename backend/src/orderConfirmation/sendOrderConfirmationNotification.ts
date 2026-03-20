@@ -1,7 +1,12 @@
 import { Types } from "mongoose";
-import Notification from "../models/notification.js";
-import User from "../models/user.js";
+import Notification from "../models/notification.ts";
+import User from "../models/user.ts";
 
+/**
+ * Creates an order confirmation Notification and pushes it to the User's inbox.
+ * Used after self-order or delivery payment. Fire-and-forget safe: does not throw.
+ * We push to User (not Customer) because the customer identity for self-order is User.
+ */
 export async function sendOrderConfirmationNotification(
   userId: Types.ObjectId,
   businessId: Types.ObjectId,

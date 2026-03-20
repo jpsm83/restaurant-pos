@@ -3,16 +3,16 @@ import mongoose, { Types } from "mongoose";
 import type { IPurchase, IPurchaseItem } from "@shared/interfaces/IPurchase";
 import type { IEmployee } from "@shared/interfaces/IEmployee";
 
-import { isObjectIdValid } from "../../utils/isObjectIdValid.js";
-import { MANAGEMENT_ROLES } from "../../utils/constants.js";
-import { validateInventoryPurchaseItems } from "../../purchases/validateInventoryPurchaseItems.js";
-import { oneTimePurchaseSupplier } from "../../suppliers/oneTimePurchaseSupplier.js";
-import Purchase from "../../models/purchase.js";
-import Inventory from "../../models/inventory.js";
-import Supplier from "../../models/supplier.js";
-import SupplierGood from "../../models/supplierGood.js";
-import Employee from "../../models/employee.js";
-import { createAuthHook } from "../../auth/middleware.js";
+import { isObjectIdValid } from "../../utils/isObjectIdValid.ts";
+import { MANAGEMENT_ROLES } from "../../utils/constants.ts";
+import { validateInventoryPurchaseItems } from "../../purchases/validateInventoryPurchaseItems.ts";
+import { oneTimePurchaseSupplier } from "../../suppliers/oneTimePurchaseSupplier.ts";
+import Purchase from "../../models/purchase.ts";
+import Inventory from "../../models/inventory.ts";
+import Supplier from "../../models/supplier.ts";
+import SupplierGood from "../../models/supplierGood.ts";
+import Employee from "../../models/employee.ts";
+import { createAuthHook } from "../../auth/middleware.ts";
 
 export const purchasesRoutes: FastifyPluginAsync = async (app) => {
   // GET /purchases - list all
@@ -138,7 +138,7 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
         receiptId,
         businessId,
         supplierId: newSupplierId,
-      });
+      }).session(session);
       if (existingReceiptId) {
         await session.abortTransaction();
         return reply.code(400).send({ message: "Receipt Id already exists!" });
@@ -312,6 +312,7 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
     try {
       const purchase = (await Purchase.findById(purchaseId)
         .select("businessId purchaseInventoryItems")
+        .session(session)
         .lean()) as unknown as IPurchase | null;
 
       if (!purchase) {
@@ -474,7 +475,9 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
           businessId: 1,
           "purchaseInventoryItems.$": 1,
         }
-      ).lean()) as unknown as IPurchase | null;
+      )
+        .session(session)
+        .lean()) as unknown as IPurchase | null;
 
       if (!purchaseItem) {
         await session.abortTransaction();

@@ -7,11 +7,11 @@
  */
 
 import { Types } from "mongoose";
-import User from "../models/user.js";
-import { buildReservationMessage } from "./buildReservationMessage.js";
-import { sendReservationEmail } from "./sendReservationEmail.js";
-import { sendReservationNotification } from "./sendReservationNotification.js";
-import { getOnDutyManagersUserIds } from "./getOnDutyManagersUserIds.js";
+import User from "../models/user.ts";
+import { buildReservationMessage } from "./buildReservationMessage.ts";
+import { sendReservationEmail } from "./sendReservationEmail.ts";
+import { sendReservationNotification } from "./sendReservationNotification.ts";
+import { getOnDutyManagersUserIds } from "./getOnDutyManagersUserIds.ts";
 
 export async function sendReservationPendingFlow(params: {
   userId: Types.ObjectId;

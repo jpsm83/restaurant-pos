@@ -7,17 +7,17 @@
 
 import type { FastifyPluginAsync } from "fastify";
 import bcrypt from "bcrypt";
-import Business from "../../models/business.js";
-import User from "../../models/user.js";
-import Employee from "../../models/employee.js";
-import { canLogAsEmployee } from "../../auth/canLogAsEmployee.js";
-import { AUTH_CONFIG } from "../../auth/config.js";
+import Business from "../../models/business.ts";
+import User from "../../models/user.ts";
+import Employee from "../../models/employee.ts";
+import { canLogAsEmployee } from "../../auth/canLogAsEmployee.ts";
+import { AUTH_CONFIG } from "../../auth/config.ts";
 import type {
   AuthSession,
   AuthBusiness,
   AuthUser,
   RefreshTokenPayload,
-} from "../../auth/types.js";
+} from "../../auth/types.ts";
 
 interface LoginBody {
   email: string;

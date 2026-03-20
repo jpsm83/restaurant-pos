@@ -1,6 +1,6 @@
 import { ClientSession, Types } from "mongoose";
-import DailySalesReport from "../models/dailySalesReport.js";
-import { isObjectIdValid } from "../utils/isObjectIdValid.js";
+import DailySalesReport from "../models/dailySalesReport.ts";
+import { isObjectIdValid } from "../utils/isObjectIdValid.ts";
 
 export async function createDailySalesReport(
   businessId: Types.ObjectId,

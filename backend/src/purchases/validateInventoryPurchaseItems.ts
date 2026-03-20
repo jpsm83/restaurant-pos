@@ -1,5 +1,5 @@
 import type { IPurchaseItem } from "@shared/interfaces/IPurchase";
-import { isObjectIdValid } from "../utils/isObjectIdValid.js";
+import { isObjectIdValid } from "../utils/isObjectIdValid.ts";
 
 export const validateInventoryPurchaseItems = (
   purchaseInventoryItems: IPurchaseItem[],

@@ -5,9 +5,9 @@
 
 import { describe, it, expect } from "vitest";
 import { Types } from "mongoose";
-import { calculateEmployeeCost } from "../../src/schedules/calculateEmployeeCost.js";
-import { employeesValidation } from "../../src/schedules/employeesValidation.js";
-import { isScheduleOverlapping } from "../../src/schedules/isScheduleOverlapping.js";
+import { calculateEmployeeCost } from "../../src/schedules/calculateEmployeeCost.ts";
+import { employeesValidation } from "../../src/schedules/employeesValidation.ts";
+import { isScheduleOverlapping } from "../../src/schedules/isScheduleOverlapping.ts";
 
 describe("Schedule Helpers", () => {
   describe("calculateEmployeeCost", () => {

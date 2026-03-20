@@ -3,15 +3,15 @@ import mongoose, { Types } from "mongoose";
 import type { IEmployee, ISalary } from "@shared/interfaces/IEmployee";
 import type { IUser } from "@shared/interfaces/IUser";
 
-import { isObjectIdValid } from "../../utils/isObjectIdValid.js";
-import { uploadFilesCloudinary, UploadInputFile } from "../../cloudinary/uploadFilesCloudinary.js";
-import { deleteFolderCloudinary } from "../../cloudinary/deleteFolderCloudinary.js";
-import { calculateVacationProportional } from "../../employees/calculateVacationProportional.js";
+import { isObjectIdValid } from "../../utils/isObjectIdValid.ts";
+import { uploadFilesCloudinary, UploadInputFile } from "../../cloudinary/uploadFilesCloudinary.ts";
+import { deleteFolderCloudinary } from "../../cloudinary/deleteFolderCloudinary.ts";
+import { calculateVacationProportional } from "../../employees/calculateVacationProportional.ts";
 import objDefaultValidation from "@shared/utils/objDefaultValidation";
-import Employee from "../../models/employee.js";
-import User from "../../models/user.js";
-import Printer from "../../models/printer.js";
-import { userRolesEnums } from "../../enums.js";
+import Employee from "../../models/employee.ts";
+import User from "../../models/user.ts";
+import Printer from "../../models/printer.ts";
+import { userRolesEnums } from "../../../../lib/enums.ts";
 
 const reqSalaryFields = ["payFrequency", "grossSalary", "netSalary"];
 
@@ -113,6 +113,7 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
       try {
         const user = await User.findOne({ "personalDetails.email": userEmail })
           .select("_id")
+          .session(session)
           .lean<IUser | null>();
 
         if (!user) {
@@ -123,7 +124,7 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
         const employeeAlreadyExists = await Employee.exists({
           businessId,
           userId: user._id,
-        });
+        }).session(session);
 
         if (employeeAlreadyExists) {
           await session.abortTransaction();

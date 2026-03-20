@@ -11,22 +11,22 @@ import {
   mockDeleteFolderCloudinary,
   mockGenerateQrCode,
   resetCloudinaryMocks,
-} from "../mocks/cloudinary.js";
+} from "../mocks/cloudinary.ts";
 
 // Mock the cloudinary modules
-vi.mock("../../src/cloudinary/uploadFilesCloudinary.js", () => ({
+vi.mock("../../src/cloudinary/uploadFilesCloudinary.ts", () => ({
   uploadFilesCloudinary: mockUploadFilesCloudinary,
 }));
 
-vi.mock("../../src/cloudinary/deleteFilesCloudinary.js", () => ({
+vi.mock("../../src/cloudinary/deleteFilesCloudinary.ts", () => ({
   deleteFilesCloudinary: mockDeleteFilesCloudinary,
 }));
 
-vi.mock("../../src/cloudinary/deleteFolderCloudinary.js", () => ({
+vi.mock("../../src/cloudinary/deleteFolderCloudinary.ts", () => ({
   deleteFolderCloudinary: mockDeleteFolderCloudinary,
 }));
 
-vi.mock("../../src/salesPoints/generateQrCode.js", () => ({
+vi.mock("../../src/salesPoints/generateQrCode.ts", () => ({
   generateQrCode: mockGenerateQrCode,
 }));
 
@@ -38,7 +38,7 @@ describe("Cloudinary Helpers (Mocked)", () => {
   describe("uploadFilesCloudinary", () => {
     it("uploads files successfully and returns URLs", async () => {
       const { uploadFilesCloudinary } = await import(
-        "../../src/cloudinary/uploadFilesCloudinary.js"
+        "../../src/cloudinary/uploadFilesCloudinary.ts"
       );
 
       const result = await uploadFilesCloudinary({
@@ -53,7 +53,7 @@ describe("Cloudinary Helpers (Mocked)", () => {
 
     it("uploads multiple files and returns array of URLs", async () => {
       const { uploadFilesCloudinary } = await import(
-        "../../src/cloudinary/uploadFilesCloudinary.js"
+        "../../src/cloudinary/uploadFilesCloudinary.ts"
       );
 
       const result = await uploadFilesCloudinary({
@@ -71,7 +71,7 @@ describe("Cloudinary Helpers (Mocked)", () => {
 
     it("rejects non-image files when onlyImages is true", async () => {
       const { uploadFilesCloudinary } = await import(
-        "../../src/cloudinary/uploadFilesCloudinary.js"
+        "../../src/cloudinary/uploadFilesCloudinary.ts"
       );
 
       const result = await uploadFilesCloudinary({
@@ -87,7 +87,7 @@ describe("Cloudinary Helpers (Mocked)", () => {
 
     it("allows non-image files when onlyImages is false", async () => {
       const { uploadFilesCloudinary } = await import(
-        "../../src/cloudinary/uploadFilesCloudinary.js"
+        "../../src/cloudinary/uploadFilesCloudinary.ts"
       );
 
       const result = await uploadFilesCloudinary({
@@ -105,7 +105,7 @@ describe("Cloudinary Helpers (Mocked)", () => {
   describe("deleteFilesCloudinary", () => {
     it("deletes file successfully and returns true", async () => {
       const { deleteFilesCloudinary } = await import(
-        "../../src/cloudinary/deleteFilesCloudinary.js"
+        "../../src/cloudinary/deleteFilesCloudinary.ts"
       );
 
       const result = await deleteFilesCloudinary(
@@ -118,7 +118,7 @@ describe("Cloudinary Helpers (Mocked)", () => {
 
     it("returns true when imageUrl is undefined", async () => {
       const { deleteFilesCloudinary } = await import(
-        "../../src/cloudinary/deleteFilesCloudinary.js"
+        "../../src/cloudinary/deleteFilesCloudinary.ts"
       );
 
       const result = await deleteFilesCloudinary(undefined);
@@ -127,7 +127,7 @@ describe("Cloudinary Helpers (Mocked)", () => {
 
     it("returns true when imageUrl is empty string", async () => {
       const { deleteFilesCloudinary } = await import(
-        "../../src/cloudinary/deleteFilesCloudinary.js"
+        "../../src/cloudinary/deleteFilesCloudinary.ts"
       );
 
       const result = await deleteFilesCloudinary("");
@@ -138,7 +138,7 @@ describe("Cloudinary Helpers (Mocked)", () => {
   describe("deleteFolderCloudinary", () => {
     it("deletes folder successfully and returns true", async () => {
       const { deleteFolderCloudinary } = await import(
-        "../../src/cloudinary/deleteFolderCloudinary.js"
+        "../../src/cloudinary/deleteFolderCloudinary.ts"
       );
 
       const result = await deleteFolderCloudinary("/business/123/images");
@@ -151,7 +151,7 @@ describe("Cloudinary Helpers (Mocked)", () => {
   describe("generateQrCode", () => {
     it("generates QR code and returns URL", async () => {
       const { generateQrCode } = await import(
-        "../../src/salesPoints/generateQrCode.js"
+        "../../src/salesPoints/generateQrCode.ts"
       );
 
       const result = await generateQrCode("business123", "salespoint456" as any);

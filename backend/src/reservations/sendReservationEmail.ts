@@ -4,8 +4,12 @@
  * Uses the same SMTP setup as receipts. Fire-and-forget safe.
  */
 
-import { sendReceiptEmail } from "../orderConfirmation/sendReceiptEmail.js";
+import { sendReceiptEmail } from "../orderConfirmation/sendReceiptEmail.ts";
 
+/**
+ * Sends a reservation-related email. Uses the same SMTP setup as receipts.
+ * Fire-and-forget safe: does not throw.
+ */
 export async function sendReservationEmail(
   toEmail: string,
   message: string,

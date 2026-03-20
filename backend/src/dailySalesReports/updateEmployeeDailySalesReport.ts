@@ -1,14 +1,14 @@
 import { Types } from "mongoose";
-import { isObjectIdValid } from "../utils/isObjectIdValid.js";
+import { isObjectIdValid } from "../utils/isObjectIdValid.ts";
 import type {
   IGoodsReduced,
   IEmployeeDailySalesReport,
 } from "@shared/interfaces/IDailySalesReport";
 import type { IPaymentMethod } from "@shared/interfaces/IPaymentMethod";
-import Order from "../models/order.js";
-import DailySalesReport from "../models/dailySalesReport.js";
-import BusinessGood from "../models/businessGood.js";
-import SalesInstance from "../models/salesInstance.js";
+import Order from "../models/order.ts";
+import DailySalesReport from "../models/dailySalesReport.ts";
+import BusinessGood from "../models/businessGood.ts";
+import SalesInstance from "../models/salesInstance.ts";
 
 interface PopulatedBusinessGood {
   _id: Types.ObjectId;

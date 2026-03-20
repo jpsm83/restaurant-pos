@@ -2,11 +2,11 @@ import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
 import type { INotification } from "@shared/interfaces/INotification";
 
-import { isObjectIdValid } from "../../utils/isObjectIdValid.js";
-import Notification from "../../models/notification.js";
-import Employee from "../../models/employee.js";
-import Business from "../../models/business.js";
-import Customer from "../../models/customer.js";
+import { isObjectIdValid } from "../../utils/isObjectIdValid.ts";
+import Notification from "../../models/notification.ts";
+import Employee from "../../models/employee.ts";
+import Business from "../../models/business.ts";
+import User from "../../models/user.ts";
 
 export const notificationsRoutes: FastifyPluginAsync = async (app) => {
   // GET /notifications - list all
@@ -15,13 +15,19 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
       const notifications = await Notification.find()
         .populate({
           path: "employeesRecipientsIds",
-          select: "employeeName",
+          select: "userId",
           model: Employee,
+          populate: {
+            path: "userId",
+            select:
+              "personalDetails.firstName personalDetails.lastName personalDetails.username",
+            model: User,
+          },
         })
         .populate({
           path: "customersRecipientsIds",
-          select: "customerName",
-          model: Customer,
+          select: "personalDetails.firstName personalDetails.lastName personalDetails.username",
+          model: User,
         })
         .lean();
 
@@ -96,12 +102,12 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
       };
 
       const [business, employees, customers] = await Promise.all([
-        Business.exists({ _id: businessId }),
+        Business.exists({ _id: businessId }).session(session),
         employeesRecipientsIds
-          ? Employee.exists({ _id: { $in: recipientsId } })
+          ? Employee.exists({ _id: { $in: recipientsId } }).session(session)
           : null,
         customersRecipientsIds
-          ? Customer.exists({ _id: { $in: recipientsId } })
+          ? User.exists({ _id: { $in: recipientsId } }).session(session)
           : null,
       ]);
 
@@ -124,31 +130,65 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
         return reply.code(400).send({ message: "Notification could not be created!" });
       }
 
-      const ModelToUpdate = employees ? Employee : Customer;
+      const notificationIdToPush = newNotification[0]._id;
 
-      const sendNotifications = await ModelToUpdate.updateMany(
-        { _id: { $in: recipientsId } },
-        {
-          $push: {
-            notifications: {
-              notificationId: newNotification[0]._id,
+      // Inbox state is centralized on User.notifications only.
+      if (employeesRecipientsIds) {
+        const employeeDocs = await Employee.find({ _id: { $in: recipientsId } })
+          .select("userId")
+          .lean()
+          .session(session);
+
+        if (employeeDocs.length !== recipientsId.length) {
+          await session.abortTransaction();
+          return reply.code(400).send({ message: "One or more employees do not exist!" });
+        }
+
+        const employeeUserIds = employeeDocs.map((e) => e.userId).filter(Boolean);
+
+        const sendNotifications = await User.updateMany(
+          { _id: { $in: employeeUserIds } },
+          {
+            $push: {
+              notifications: {
+                notificationId: notificationIdToPush,
+              },
             },
           },
-        },
-        { session }
-      );
+          { session }
+        );
 
-      if (sendNotifications.modifiedCount === 0) {
-        await session.abortTransaction();
-        return reply.code(400).send({
-          message: `Failed to update ${employees ? "employees" : "customers"} with notification!`,
-        });
+        if (sendNotifications.modifiedCount === 0) {
+          await session.abortTransaction();
+          return reply.code(400).send({
+            message: "Failed to update employee user inbox with notification!",
+          });
+        }
+      } else {
+        const sendNotifications = await User.updateMany(
+          { _id: { $in: recipientsId } },
+          {
+            $push: {
+              notifications: {
+                notificationId: notificationIdToPush,
+              },
+            },
+          },
+          { session }
+        );
+
+        if (sendNotifications.modifiedCount === 0) {
+          await session.abortTransaction();
+          return reply.code(400).send({
+            message: "Failed to update customer user inbox with notification!",
+          });
+        }
       }
 
       await session.commitTransaction();
 
       return reply.code(201).send({
-        message: "Notification message created and sent to employees",
+        message: "Notification message created and sent",
       });
     } catch (error) {
       await session.abortTransaction();
@@ -174,13 +214,19 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
       const notification = await Notification.findById(notificationId)
         .populate({
           path: "employeesRecipientsIds",
-          select: "employeeName",
+          select: "userId",
           model: Employee,
+          populate: {
+            path: "userId",
+            select:
+              "personalDetails.firstName personalDetails.lastName personalDetails.username",
+            model: User,
+          },
         })
         .populate({
           path: "customersRecipientsIds",
-          select: "customerName",
-          model: Customer,
+          select: "personalDetails.firstName personalDetails.lastName personalDetails.username",
+          model: User,
         })
         .lean();
 
@@ -241,7 +287,7 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
     session.startTransaction();
 
     try {
-      const RecipientsModel = employeesRecipientsIds ? Employee : Customer;
+      const RecipientsModel = employeesRecipientsIds ? Employee : User;
       const notificationField = employeesRecipientsIds
         ? "employeesRecipientsIds"
         : "customersRecipientsIds";
@@ -251,7 +297,9 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
           .select(`${notificationField} message`)
           .lean()
           .session(session) as Promise<INotification | null>,
-        RecipientsModel.find({ _id: { $in: objectIds } }, null, { lean: true }),
+        RecipientsModel.find({ _id: { $in: objectIds } }, null, { lean: true }).session(
+          session
+        ),
       ]);
 
       if (!notification || validRecipients.length !== objectIds.length) {
@@ -286,6 +334,40 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
         updateNotification.customersRecipientsIds = customersRecipientsIds;
       if (senderId) updateNotification.senderId = senderId;
 
+      // Inbox state is centralized on User.notifications only.
+      let addedRecipientUserIds = addedRecipients;
+      let removedRecipientUserIds = removedRecipients;
+      let unchangedRecipientUserIds = unchangedRecipients;
+
+      if (employeesRecipientsIds) {
+        const allEmployeeIdsToMap = [
+          ...addedRecipients,
+          ...removedRecipients,
+          ...unchangedRecipients,
+        ];
+
+        const employeeDocs = await Employee.find({
+          _id: { $in: allEmployeeIdsToMap },
+        })
+          .select("userId")
+          .lean()
+          .session(session);
+
+        const employeeUserIdByEmployeeId = new Map(
+          employeeDocs.map((e) => [String(e._id), e.userId])
+        );
+
+        addedRecipientUserIds = addedRecipients
+          .map((id) => employeeUserIdByEmployeeId.get(String(id)))
+          .filter(Boolean);
+        removedRecipientUserIds = removedRecipients
+          .map((id) => employeeUserIdByEmployeeId.get(String(id)))
+          .filter(Boolean);
+        unchangedRecipientUserIds = unchangedRecipients
+          .map((id) => employeeUserIdByEmployeeId.get(String(id)))
+          .filter(Boolean);
+      }
+
       const [
         updatedNotification,
         employeeNotificationAdded,
@@ -298,26 +380,26 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
           { session }
         ),
 
-        addedRecipients.length > 0
-          ? RecipientsModel.updateMany(
-              { _id: { $in: addedRecipients } },
+        addedRecipientUserIds.length > 0
+          ? User.updateMany(
+              { _id: { $in: addedRecipientUserIds } },
               { $push: { notifications: { notificationId } } },
               { session }
             )
           : Promise.resolve(true),
 
-        removedRecipients.length > 0
-          ? RecipientsModel.updateMany(
-              { _id: { $in: removedRecipients } },
+        removedRecipientUserIds.length > 0
+          ? User.updateMany(
+              { _id: { $in: removedRecipientUserIds } },
               { $pull: { notifications: { notificationId } } },
               { session }
             )
           : Promise.resolve(true),
 
-        unchangedRecipients.length > 0 && notification.message !== message
-          ? RecipientsModel.updateMany(
+        unchangedRecipientUserIds.length > 0 && notification.message !== message
+          ? User.updateMany(
               {
-                _id: { $in: unchangedRecipients },
+                _id: { $in: unchangedRecipientUserIds },
                 "notifications.notificationId": notificationId,
               },
               {
@@ -385,7 +467,6 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
       }
 
       const isEmployeeNotification = !!notificationDeleted.employeesRecipientsIds;
-      const RecipientsModel = isEmployeeNotification ? Employee : Customer;
       const recipientIds =
         notificationDeleted[
           isEmployeeNotification
@@ -393,16 +474,27 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
             : "customersRecipientsIds"
         ] || [];
 
+      // Inbox state is centralized on User.notifications only.
+      let recipientUserIds = recipientIds;
+      if (isEmployeeNotification) {
+        const employeeDocs = await Employee.find({ _id: { $in: recipientIds } })
+          .select("userId")
+          .lean()
+          .session(session);
+
+        recipientUserIds = employeeDocs.map((e) => e.userId).filter(Boolean);
+      }
+
       const recipientsUpdated =
-        recipientIds.length > 0
-          ? await RecipientsModel.updateMany(
-              { _id: { $in: recipientIds } },
+        recipientUserIds.length > 0
+          ? await User.updateMany(
+              { _id: { $in: recipientUserIds } },
               { $pull: { notifications: { notificationId } } },
               { session }
             )
           : { modifiedCount: 0 };
 
-      if (recipientsUpdated.modifiedCount === 0 && recipientIds.length > 0) {
+      if (recipientsUpdated.modifiedCount === 0 && recipientUserIds.length > 0) {
         await session.abortTransaction();
         return reply.code(400).send({ message: "Failed to update recipients!" });
       }
@@ -434,13 +526,19 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
       const notifications = await Notification.find({ businessId })
         .populate({
           path: "employeesRecipientsIds",
-          select: "employeeName",
+          select: "userId",
           model: Employee,
+          populate: {
+            path: "userId",
+            select:
+              "personalDetails.firstName personalDetails.lastName personalDetails.username",
+            model: User,
+          },
         })
         .populate({
           path: "customersRecipientsIds",
-          select: "customerName",
-          model: Customer,
+          select: "personalDetails.firstName personalDetails.lastName personalDetails.username",
+          model: User,
         })
         .lean();
 
@@ -466,21 +564,34 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
     }
 
     try {
+      const employeeDocs = await Employee.find({ userId })
+        .select("_id")
+        .lean();
+      const employeeIds = employeeDocs.map((e) => e._id);
+
       const notifications = await Notification.find({
         $or: [
-          { employeesRecipientsIds: userId },
+          ...(employeeIds.length > 0
+            ? [{ employeesRecipientsIds: { $in: employeeIds } }]
+            : []),
           { customersRecipientsIds: userId },
         ],
       })
         .populate({
           path: "employeesRecipientsIds",
-          select: "employeeName",
+          select: "userId",
           model: Employee,
+          populate: {
+            path: "userId",
+            select:
+              "personalDetails.firstName personalDetails.lastName personalDetails.username",
+            model: User,
+          },
         })
         .populate({
           path: "customersRecipientsIds",
-          select: "customerName",
-          model: Customer,
+          select: "personalDetails.firstName personalDetails.lastName personalDetails.username",
+          model: User,
         })
         .lean();
 

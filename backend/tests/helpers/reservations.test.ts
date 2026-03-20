@@ -5,7 +5,7 @@
 
 import { describe, it, expect } from "vitest";
 import { Types } from "mongoose";
-import { buildReservationMessage } from "../../src/reservations/buildReservationMessage.js";
+import { buildReservationMessage } from "../../src/reservations/buildReservationMessage.ts";
 
 describe("Reservation Helpers", () => {
   const reservationId = new Types.ObjectId();
@@ -127,7 +127,7 @@ describe("Reservation Helpers", () => {
   describe("sendReservationPendingFlow", () => {
     it("function exists and is callable", async () => {
       const { sendReservationPendingFlow } = await import(
-        "../../src/reservations/sendReservationCustomerFlow.js"
+        "../../src/reservations/sendReservationCustomerFlow.ts"
       );
       expect(typeof sendReservationPendingFlow).toBe("function");
     });
@@ -136,7 +136,7 @@ describe("Reservation Helpers", () => {
   describe("sendReservationDecisionFlow", () => {
     it("function exists and is callable", async () => {
       const { sendReservationDecisionFlow } = await import(
-        "../../src/reservations/sendReservationCustomerFlow.js"
+        "../../src/reservations/sendReservationCustomerFlow.ts"
       );
       expect(typeof sendReservationDecisionFlow).toBe("function");
     });

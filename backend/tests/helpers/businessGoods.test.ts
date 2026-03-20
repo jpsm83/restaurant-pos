@@ -5,9 +5,9 @@
 
 import { describe, it, expect, beforeEach } from "vitest";
 import { Types } from "mongoose";
-import { calculateIngredientsCostPriceAndAllergies } from "../../src/businessGoods/calculateIngredientsCostPriceAndAllergies.js";
-import SupplierGood from "../../src/models/supplierGood.js";
-import Supplier from "../../src/models/supplier.js";
+import { calculateIngredientsCostPriceAndAllergies } from "../../src/businessGoods/calculateIngredientsCostPriceAndAllergies.ts";
+import SupplierGood from "../../src/models/supplierGood.ts";
+import Supplier from "../../src/models/supplier.ts";
 
 describe("BusinessGoods Helpers", () => {
   const businessId = new Types.ObjectId();

@@ -8,9 +8,9 @@
 
 import { describe, it, expect, beforeEach } from "vitest";
 import { Types } from "mongoose";
-import { getTestApp } from "../setup.js";
-import SalesPoint from "../../src/models/salesPoint.js";
-import Business from "../../src/models/business.js";
+import { getTestApp } from "../setup.ts";
+import SalesPoint from "../../src/models/salesPoint.ts";
+import Business from "../../src/models/business.ts";
 
 describe("SalesPoints Routes", () => {
   let businessId: Types.ObjectId;

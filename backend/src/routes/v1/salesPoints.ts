@@ -2,11 +2,11 @@ import type { FastifyPluginAsync } from "fastify";
 import { Types } from "mongoose";
 import type { ISalesPoint } from "@shared/interfaces/ISalesPoint";
 
-import { isObjectIdValid } from "../../utils/isObjectIdValid.js";
-import SalesPoint from "../../models/salesPoint.js";
-import { generateQrCode } from "../../salesPoints/generateQrCode.js";
-import { deleteFilesCloudinary } from "../../cloudinary/deleteFilesCloudinary.js";
-import { salesPointTypeEnums } from "../../enums.js";
+import { isObjectIdValid } from "../../utils/isObjectIdValid.ts";
+import SalesPoint from "../../models/salesPoint.ts";
+import { generateQrCode } from "../../salesPoints/generateQrCode.ts";
+import { deleteFilesCloudinary } from "../../cloudinary/deleteFilesCloudinary.ts";
+import { salesPointTypeEnums } from "../../../../lib/enums.ts";
 
 export const salesPointsRoutes: FastifyPluginAsync = async (app) => {
   // GET /salesPoints - list all

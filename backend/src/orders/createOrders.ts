@@ -1,10 +1,10 @@
 import { ClientSession, Types } from "mongoose";
 import type { IOrder } from "@shared/interfaces/IOrder";
 import type { ISalesInstance } from "@shared/interfaces/ISalesInstance";
-import Order from "../models/order.js";
-import SalesInstance from "../models/salesInstance.js";
-import Reservation from "../models/reservation.js";
-import { updateDynamicCountSupplierGood } from "../inventories/updateDynamicCountSupplierGood.js";
+import Order from "../models/order.ts";
+import SalesInstance from "../models/salesInstance.ts";
+import Reservation from "../models/reservation.ts";
+import { updateDynamicCountSupplierGood } from "../inventories/updateDynamicCountSupplierGood.ts";
 
 export async function createOrders(
   dailyReferenceNumber: string,

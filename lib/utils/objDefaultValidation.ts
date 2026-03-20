@@ -9,7 +9,7 @@
  */
 
 const objDefaultValidation = (
-  obj: object,
+  obj: unknown,
   reqFields: string[],
   nonReqFields: string[]
 ) => {
@@ -17,21 +17,24 @@ const objDefaultValidation = (
     return "Object must be a non-null object!";
   }
 
+  const record = obj as Record<string, unknown>;
+
   /** Only these keys are allowed; anything else is invalid. */
   const allFields = new Set([...reqFields, ...nonReqFields]);
 
-  for (const key of Object.keys(obj)) {
+  for (const key of Object.keys(record)) {
     if (!allFields.has(key)) {
       return `Invalid key: ${key}`;
     }
-    if (reqFields.includes(key) && !obj[key]) {
+    if (reqFields.includes(key) && !record[key]) {
       return `${key} must have a value!`;
     }
     /** If present, password must meet strength rules (length + lower, upper, digit, symbol). */
     if (key === "password") {
       const regex =
         /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-      if (!regex.test(obj[key])) {
+      const password = record[key];
+      if (typeof password !== "string" || !regex.test(password)) {
         return "Password must be at least 8 characters long and contain a lowercase letter, an uppercase letter, a symbol, and a number!";
       }
     }
@@ -39,7 +42,8 @@ const objDefaultValidation = (
     /** If present, email must match a basic email pattern. */
     if (key === "email") {
       const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-      if (!regex.test(obj[key])) {
+      const email = record[key];
+      if (typeof email !== "string" || !regex.test(email)) {
         return "Please enter a valid email address!";
       }
     }
@@ -47,7 +51,7 @@ const objDefaultValidation = (
 
   /** Every required field must exist on the object (value check done above). */
   for (const key of reqFields) {
-    if (!(key in obj)) {
+    if (!(key in record)) {
       return `Missing key: ${key}`;
     }
   }

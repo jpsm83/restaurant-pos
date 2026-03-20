@@ -1,7 +1,7 @@
 import { ClientSession, Types } from "mongoose";
 import type { IInventory } from "@shared/interfaces/IInventory";
-import Inventory from "../models/inventory.js";
-import SupplierGood from "../models/supplierGood.js";
+import Inventory from "../models/inventory.ts";
+import SupplierGood from "../models/supplierGood.ts";
 
 export const createNextPeriodInventory = async (
   businessId: Types.ObjectId,

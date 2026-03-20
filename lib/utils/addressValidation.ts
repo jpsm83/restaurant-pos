@@ -7,12 +7,12 @@
  * prevent malformed data and to return clear, user-facing error messages.
  */
 
-import { IAddress } from "@shared/interfaces/IAddress";
+import { IAddress } from "../interface/IAddress.ts";
 
 /**
  * Validates an address object. Returns true if valid, or a string error message.
  */
-export const addressValidation = (address: IAddress) => {
+const addressValidation = (address: IAddress) => {
   if (typeof address !== "object")
     return "Address must be an object!";
 
@@ -55,3 +55,5 @@ export const addressValidation = (address: IAddress) => {
 
   return true;
 };
+
+export default addressValidation;

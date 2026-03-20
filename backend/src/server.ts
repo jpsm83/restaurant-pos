@@ -7,10 +7,10 @@ import Fastify, { type FastifyInstance } from "fastify";
 import multipart from "@fastify/multipart";
 import jwt from "@fastify/jwt";
 import cookie from "@fastify/cookie";
-import { connectDb } from "./db/connectDb.js";
-import { registerV1Routes } from "./routes/v1/index.js";
-import { toHttpError, type HttpErrorShape } from "./utils/httpError.js";
-import { AUTH_CONFIG } from "./auth/config.js";
+import { connectDb } from "./db/connectDb.ts";
+import { registerV1Routes } from "./routes/v1/index.ts";
+import { toHttpError, type HttpErrorShape } from "./utils/httpError.ts";
+import { AUTH_CONFIG } from "./auth/config.ts";
 
 export interface BuildAppOptions {
   logger?: boolean;
@@ -80,7 +80,7 @@ async function main() {
 // Check if running as main module (not during tests)
 const isTest = process.env.VITEST === "true" || process.env.NODE_ENV === "test";
 const scriptPath = process.argv[1]?.replace(/\\/g, "/").toLowerCase();
-const isServerScript = scriptPath?.includes("server.ts") || scriptPath?.includes("server.js");
+const isServerScript = scriptPath?.includes("server.ts") || scriptPath?.includes("server.ts");
 
 if (!isTest && isServerScript) {
   main().catch((err) => {

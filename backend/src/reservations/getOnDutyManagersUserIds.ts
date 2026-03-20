@@ -3,8 +3,8 @@
  */
 
 import { Types } from "mongoose";
-import Employee from "../models/employee.js";
-import { hasManagementRole } from "../utils/constants.js";
+import Employee from "../models/employee.ts";
+import { hasManagementRole } from "../utils/constants.ts";
 
 export async function getOnDutyManagersUserIds(
   businessId: Types.ObjectId

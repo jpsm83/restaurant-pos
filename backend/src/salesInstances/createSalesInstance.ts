@@ -1,7 +1,7 @@
 import { ClientSession, Types } from "mongoose";
 import type { ISalesInstance } from "@shared/interfaces/ISalesInstance";
-import SalesInstance from "../models/salesInstance.js";
-import DailySalesReport from "../models/dailySalesReport.js";
+import SalesInstance from "../models/salesInstance.ts";
+import DailySalesReport from "../models/dailySalesReport.ts";
 
 export async function createSalesInstance(
   newSalesInstanceObj: ISalesInstance,

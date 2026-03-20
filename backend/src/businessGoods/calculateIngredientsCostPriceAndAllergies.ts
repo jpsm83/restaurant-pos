@@ -2,8 +2,8 @@ import convert, { Unit } from "convert-units";
 import { Types } from "mongoose";
 import type { IIngredient } from "@shared/interfaces/IBusinessGood";
 import type { ISupplierGood } from "@shared/interfaces/ISupplierGood";
-import SupplierGood from "../models/supplierGood.js";
-import objDefaultValidation from "@shared/utils/objDefaultValidation";
+import SupplierGood from "../models/supplierGood.ts";
+import objDefaultValidation from "../../../lib/utils/objDefaultValidation.ts";
 
 const reqIngredientsFields = [
   "supplierGoodId",

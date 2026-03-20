@@ -2,11 +2,11 @@ import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
 import type { IPrinter, IConfigurationSetupToPrintOrders } from "@shared/interfaces/IPrinter";
 
-import { isObjectIdValid } from "../../utils/isObjectIdValid.js";
-import { checkPrinterConnection } from "../../printers/checkPrinterConnection.js";
-import Printer from "../../models/printer.js";
-import Employee from "../../models/employee.js";
-import SalesPoint from "../../models/salesPoint.js";
+import { isObjectIdValid } from "../../utils/isObjectIdValid.ts";
+import { checkPrinterConnection } from "../../printers/checkPrinterConnection.ts";
+import Printer from "../../models/printer.ts";
+import Employee from "../../models/employee.ts";
+import SalesPoint from "../../models/salesPoint.ts";
 
 export const printersRoutes: FastifyPluginAsync = async (app) => {
   // GET /printers - list all
@@ -289,7 +289,9 @@ export const printersRoutes: FastifyPluginAsync = async (app) => {
         return reply.code(404).send({ message: "Printer not found!" });
       }
 
-      const isBackupPrinter = await Printer.exists({ backupPrinterId: printerId });
+      const isBackupPrinter = await Printer.exists({ backupPrinterId: printerId }).session(
+        session
+      );
 
       if (isBackupPrinter) {
         const updatedPrinter = await Printer.updateMany(

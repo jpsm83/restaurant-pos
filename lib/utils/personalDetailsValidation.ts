@@ -12,7 +12,7 @@ import { IPersonalDetails } from "../interface/IPersonalDetails";
 /**
  * Validates personal details. Returns true if valid, or a string error message.
  */
-export const personalDetailsValidation = (
+const personalDetailsValidation = (
   personalDetails: IPersonalDetails
 ) => {
   if (typeof personalDetails !== "object" || Object.keys(personalDetails).length !== 6)
@@ -44,3 +44,5 @@ export const personalDetailsValidation = (
 
   return true;
 };
+
+export default personalDetailsValidation;

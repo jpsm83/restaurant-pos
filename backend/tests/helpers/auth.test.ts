@@ -5,15 +5,15 @@
 
 import { describe, it, expect, beforeEach } from "vitest";
 import { Types } from "mongoose";
-import { getTestApp } from "./app.js";
-import { canLogAsEmployee } from "../../src/auth/canLogAsEmployee.js";
+import { getTestApp } from "./app.ts";
+import { canLogAsEmployee } from "../../src/auth/canLogAsEmployee.ts";
 import {
   createAuthHook,
   hasBusinessAccess,
-} from "../../src/auth/middleware.js";
-import type { AuthSession, AuthUser, AuthBusiness } from "../../src/auth/types.js";
-import Employee from "../../src/models/employee.js";
-import Schedule from "../../src/models/schedule.js";
+} from "../../src/auth/middleware.ts";
+import type { AuthSession, AuthUser, AuthBusiness } from "../../src/auth/types.ts";
+import Employee from "../../src/models/employee.ts";
+import Schedule from "../../src/models/schedule.ts";
 
 describe("Auth Helpers", () => {
   const businessId = new Types.ObjectId();

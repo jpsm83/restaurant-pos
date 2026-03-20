@@ -4,16 +4,16 @@ import type { IGoodsReduced, IDailySalesReport } from "@shared/interfaces/IDaily
 import type { IPaymentMethod } from "@shared/interfaces/IPaymentMethod";
 import type { IEmployee } from "@shared/interfaces/IEmployee";
 
-import { isObjectIdValid } from "../../utils/isObjectIdValid.js";
-import { updateEmployeesDailySalesReport } from "../../dailySalesReports/updateEmployeeDailySalesReport.js";
-import { DELIVERY_ATTRIBUTION_USER_ID, MANAGEMENT_ROLES } from "../../utils/constants.js";
-import { aggregateDailyReportsIntoMonthly } from "../../monthlyBusinessReport/aggregateDailyReportsIntoMonthly.js";
-import DailySalesReport from "../../models/dailySalesReport.js";
-import User from "../../models/user.js";
-import Employee from "../../models/employee.js";
-import Business from "../../models/business.js";
-import Order from "../../models/order.js";
-import { createAuthHook } from "../../auth/middleware.js";
+import { isObjectIdValid } from "../../utils/isObjectIdValid.ts";
+import { updateEmployeesDailySalesReport } from "../../dailySalesReports/updateEmployeeDailySalesReport.ts";
+import { DELIVERY_ATTRIBUTION_USER_ID, MANAGEMENT_ROLES } from "../../utils/constants.ts";
+import { aggregateDailyReportsIntoMonthly } from "../../monthlyBusinessReport/aggregateDailyReportsIntoMonthly.ts";
+import DailySalesReport from "../../models/dailySalesReport.ts";
+import User from "../../models/user.ts";
+import Employee from "../../models/employee.ts";
+import Business from "../../models/business.ts";
+import Order from "../../models/order.ts";
+import { createAuthHook } from "../../auth/middleware.ts";
 
 export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
   // GET /dailySalesReports - list all

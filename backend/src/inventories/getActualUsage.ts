@@ -1,7 +1,7 @@
 import { Types } from "mongoose";
-import Inventory from "../models/inventory.js";
-import Purchase from "../models/purchase.js";
-import SupplierGood from "../models/supplierGood.js";
+import Inventory from "../models/inventory.ts";
+import Purchase from "../models/purchase.ts";
+import SupplierGood from "../models/supplierGood.ts";
 
 interface InvGoodLean {
   supplierGoodId: Types.ObjectId;

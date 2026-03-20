@@ -6,14 +6,14 @@
 
 import { describe, it, expect, beforeEach } from "vitest";
 import { Types } from "mongoose";
-import { getTestApp, generateTestToken } from "../setup.js";
-import Purchase from "../../src/models/purchase.js";
-import Supplier from "../../src/models/supplier.js";
-import SupplierGood from "../../src/models/supplierGood.js";
-import Business from "../../src/models/business.js";
-import Employee from "../../src/models/employee.js";
-import User from "../../src/models/user.js";
-import Inventory from "../../src/models/inventory.js";
+import { getTestApp, generateTestToken } from "../setup.ts";
+import Purchase from "../../src/models/purchase.ts";
+import Supplier from "../../src/models/supplier.ts";
+import SupplierGood from "../../src/models/supplierGood.ts";
+import Business from "../../src/models/business.ts";
+import Employee from "../../src/models/employee.ts";
+import User from "../../src/models/user.ts";
+import Inventory from "../../src/models/inventory.ts";
 
 describe("Purchases Routes", () => {
   let businessId: Types.ObjectId;

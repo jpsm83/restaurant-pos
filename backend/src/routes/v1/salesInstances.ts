@@ -7,30 +7,30 @@ import type { IOrder } from "@shared/interfaces/IOrder";
 import type { IAddress } from "@shared/interfaces/IAddress";
 import type { IBusiness } from "@shared/interfaces/IBusiness";
 
-import { isObjectIdValid } from "../../utils/isObjectIdValid.js";
-import { hasManagementRole, DELIVERY_ATTRIBUTION_USER_ID } from "../../utils/constants.js";
-import { isBusinessOpenNow, isDeliveryOpenNow } from "../../utils/isBusinessOpenNow.js";
-import SalesInstance from "../../models/salesInstance.js";
-import SalesPoint from "../../models/salesPoint.js";
-import User from "../../models/user.js";
-import Order from "../../models/order.js";
-import BusinessGood from "../../models/businessGood.js";
-import Employee from "../../models/employee.js";
-import DailySalesReport from "../../models/dailySalesReport.js";
-import Reservation from "../../models/reservation.js";
-import Business from "../../models/business.js";
-import { createDailySalesReport } from "../../dailySalesReports/createDailySalesReport.js";
-import { createSalesInstance } from "../../salesInstances/createSalesInstance.js";
-import { cancelOrders } from "../../orders/cancelOrders.js";
-import { closeOrders } from "../../orders/closeOrders.js";
-import { createAuthHook, createOptionalAuthHook } from "../../auth/middleware.js";
-import { transferOrdersBetweenSalesInstances } from "../../orders/transferOrdersBetweenSalesInstances.js";
-import { validatePaymentMethodArray } from "../../orders/validatePaymentMethodArray.js";
-import { ordersArrValidation } from "../../orders/ordersArrValidation.js";
-import { createOrders } from "../../orders/createOrders.js";
-import { applyPromotionsToOrders } from "../../promotions/applyPromotions.js";
-import { checkLowStockAndNotify } from "../../inventories/checkLowStockAndNotify.js";
-import { sendOrderConfirmation } from "../../orderConfirmation/sendOrderConfirmation.js";
+import { isObjectIdValid } from "../../utils/isObjectIdValid.ts";
+import { hasManagementRole, DELIVERY_ATTRIBUTION_USER_ID } from "../../utils/constants.ts";
+import { isBusinessOpenNow, isDeliveryOpenNow } from "../../utils/isBusinessOpenNow.ts";
+import SalesInstance from "../../models/salesInstance.ts";
+import SalesPoint from "../../models/salesPoint.ts";
+import User from "../../models/user.ts";
+import Order from "../../models/order.ts";
+import BusinessGood from "../../models/businessGood.ts";
+import Employee from "../../models/employee.ts";
+import DailySalesReport from "../../models/dailySalesReport.ts";
+import Reservation from "../../models/reservation.ts";
+import Business from "../../models/business.ts";
+import { createDailySalesReport } from "../../dailySalesReports/createDailySalesReport.ts";
+import { createSalesInstance } from "../../salesInstances/createSalesInstance.ts";
+import { cancelOrders } from "../../orders/cancelOrders.ts";
+import { closeOrders } from "../../orders/closeOrders.ts";
+import { createAuthHook, createOptionalAuthHook } from "../../auth/middleware.ts";
+import { transferOrdersBetweenSalesInstances } from "../../orders/transferOrdersBetweenSalesInstances.ts";
+import { validatePaymentMethodArray } from "../../orders/validatePaymentMethodArray.ts";
+import { ordersArrValidation } from "../../orders/ordersArrValidation.ts";
+import { createOrders } from "../../orders/createOrders.ts";
+import { applyPromotionsToOrders } from "../../promotions/applyPromotions.ts";
+import { checkLowStockAndNotify } from "../../inventories/checkLowStockAndNotify.ts";
+import { sendOrderConfirmation } from "../../orderConfirmation/sendOrderConfirmation.ts";
 
 export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
   app.get("/", async (_req, reply) => {
@@ -114,9 +114,10 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
 
     try {
       const [salesPoint, dailySalesReport] = await Promise.all([
-        SalesPoint.exists({ _id: salesPointId }),
+        SalesPoint.exists({ _id: salesPointId }).session(session),
         DailySalesReport.findOne({ isDailyReportOpen: true, businessId })
           .select("dailyReferenceNumber")
+          .session(session)
           .lean() as unknown as Promise<IDailySalesReport | null>,
       ]);
 
@@ -721,6 +722,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
         businessId,
       })
         .select("dailyReferenceNumber")
+        .session(session)
         .lean()) as unknown as (Pick<IDailySalesReport, "dailyReferenceNumber"> & { _id: unknown }) | null;
 
       const dailyReferenceNumber = dailySalesReport
@@ -737,7 +739,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
         businessId,
         salesPointId: selfOrderingLocationId,
         salesInstanceStatus: { $ne: "Closed" },
-      });
+      }).session(session);
 
       if (existingOpen) {
         await session.abortTransaction();
@@ -867,6 +869,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
         businessId,
       })
         .select("dailyReferenceNumber")
+        .session(session)
         .lean()) as unknown as IDailySalesReport | null;
 
       const dailyReferenceNumber = dailySalesReport
@@ -913,6 +916,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
       const ordersWithPromotions = await applyPromotionsToOrders({
         businessId: businessId as Types.ObjectId,
         ordersArr,
+        session,
       });
 
       if (typeof ordersWithPromotions === "string") {
@@ -1088,12 +1092,14 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
       const [user, dailySalesReport] = await Promise.all([
         User.findById(userId)
           .select("personalDetails.firstName personalDetails.lastName username")
+          .session(session)
           .lean(),
         DailySalesReport.findOne({
           isDailyReportOpen: true,
           businessId,
         })
           .select("dailyReferenceNumber")
+          .session(session)
           .lean() as unknown as Promise<IDailySalesReport | null>,
       ]);
 
@@ -1138,6 +1144,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
       const pricedOrders = await applyPromotionsToOrders({
         businessId: new Types.ObjectId(businessId as string),
         ordersArr,
+        session,
       });
 
       if (typeof pricedOrders === "string") {

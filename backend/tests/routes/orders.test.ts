@@ -5,13 +5,15 @@
 
 import { describe, it, expect, beforeEach } from "vitest";
 import { Types } from "mongoose";
-import { getTestApp } from "../setup.js";
-import Order from "../../src/models/order.js";
-import Business from "../../src/models/business.js";
-import BusinessGood from "../../src/models/businessGood.js";
-import SalesInstance from "../../src/models/salesInstance.js";
-import SalesPoint from "../../src/models/salesPoint.js";
-import User from "../../src/models/user.js";
+import { getTestApp } from "../setup.ts";
+import Order from "../../src/models/order.ts";
+import Business from "../../src/models/business.ts";
+import BusinessGood from "../../src/models/businessGood.ts";
+import Notification from "../../src/models/notification.ts";
+import SalesInstance from "../../src/models/salesInstance.ts";
+import SalesPoint from "../../src/models/salesPoint.ts";
+import User from "../../src/models/user.ts";
+import { sendOrderConfirmation } from "../../src/orderConfirmation/sendOrderConfirmation.ts";
 
 describe("Orders Routes", () => {
   let businessId: Types.ObjectId;
@@ -348,6 +350,30 @@ describe("Orders Routes", () => {
       });
 
       expect(response.statusCode).toBe(404);
+    });
+  });
+
+  describe("Order confirmation side-effects", () => {
+    it("pushes an order-confirmation notification to User.notifications", async () => {
+      const beforeUser = await User.findById(userId).lean();
+      const beforeCount = beforeUser?.notifications?.length ?? 0;
+
+      await sendOrderConfirmation(userId, businessId, {
+        dailyReferenceNumber: 1,
+        totalNetPaidAmount: 12.99,
+        orderCount: 1,
+        orderCode: "ORD-TEST-1",
+      });
+
+      const updatedUser = await User.findById(userId).lean();
+      expect(updatedUser?.notifications?.length ?? 0).toBe(beforeCount + 1);
+
+      const notificationsArray = updatedUser?.notifications ?? [];
+      const latestEntry = notificationsArray[notificationsArray.length - 1];
+      expect(latestEntry?.notificationId).toBeDefined();
+
+      const notifDoc = await Notification.findById(latestEntry.notificationId).lean();
+      expect(notifDoc).toBeDefined();
     });
   });
 });

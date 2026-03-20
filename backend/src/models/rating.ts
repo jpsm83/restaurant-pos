@@ -1,4 +1,4 @@
-import { Schema, model } from "mongoose";
+import { Schema, model, models } from "mongoose";
 
 const ratingSchema = new Schema(
   {
@@ -32,5 +32,5 @@ const ratingSchema = new Schema(
 
 ratingSchema.index({ businessId: 1, createdAt: -1 });
 
-const Rating = model("Rating", ratingSchema);
+const Rating = models.Rating || model("Rating", ratingSchema);
 export default Rating;

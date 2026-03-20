@@ -1,22 +1,45 @@
+/**
+ * connectDb — MongoDB connection singleton helper
+ *
+ * Ensures a single, reusable connection to MongoDB and avoids opening
+ * multiple connections per request (e.g. in serverless). Idempotent:
+ * if already connected or connecting, it returns without reconnecting.
+ * Necessary for stable DB access in API routes and server actions.
+ */
+
 import mongoose from "mongoose";
 
-export async function connectDb(): Promise<void> {
-  const state = mongoose.connection.readyState;
+const MONGODB_URI = process.env.MONGODB_URI;
 
-  // 1 = connected
-  if (state === 1) return;
-  // 2 = connecting
-  if (state === 2) return;
+/**
+ * Connects to MongoDB if not already connected. Safe to call repeatedly.
+ * Uses restaurant-pos-api db and bufferCommands for serverless compatibility.
+ */
+const connectDb = async () => {
+  const connectionState = mongoose.connection.readyState;
 
-  if (!process.env.MONGODB_URI) {
-    throw new Error("Missing MONGODB_URI");
+  /** 1 = connected; skip to avoid duplicate connection. */
+  if (connectionState === 1) {
+    console.log("Connection already established");
+    return;
   }
 
-  await mongoose.connect(process.env.MONGODB_URI, {
-    dbName: "restaurant-pos-api",
-    bufferCommands: false,
-  });
-}
+  /** 2 = connecting; skip to avoid concurrent connect attempts. */
+  if (connectionState === 2) {
+    console.log("Connection is connecting");
+    return;
+  }
 
-export { mongoose };
+  try {
+    await mongoose.connect(MONGODB_URI!, {
+      dbName: "restaurant-pos-api",
+      bufferCommands: true,
+    });
+    console.log("Connection established");
+  } catch (error) {
+    console.error("Error: ", error);
+    throw new Error("Error: ", error as Error);
+  }
+};
 
+export default connectDb;

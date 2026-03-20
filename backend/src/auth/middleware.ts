@@ -10,8 +10,8 @@ import type {
   FastifyInstance,
   preValidationHookHandler,
 } from "fastify";
-import type { AuthSession, AuthUser } from "./types.js";
-import { hasManagementRole } from "../utils/constants.js";
+import type { AuthSession, AuthUser } from "./types.ts";
+import { hasManagementRole } from "../utils/constants.ts";
 
 declare module "fastify" {
   interface FastifyRequest {

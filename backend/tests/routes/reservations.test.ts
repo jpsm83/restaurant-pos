@@ -5,12 +5,12 @@
 
 import { describe, it, expect } from "vitest";
 import { Types } from "mongoose";
-import { getTestApp, generateTestToken } from "../setup.js";
-import Reservation from "../../src/models/reservation.js";
-import Business from "../../src/models/business.js";
-import SalesPoint from "../../src/models/salesPoint.js";
-import User from "../../src/models/user.js";
-import Employee from "../../src/models/employee.js";
+import { getTestApp, generateTestToken } from "../setup.ts";
+import Reservation from "../../src/models/reservation.ts";
+import Business from "../../src/models/business.ts";
+import SalesPoint from "../../src/models/salesPoint.ts";
+import User from "../../src/models/user.ts";
+import Employee from "../../src/models/employee.ts";
 
 describe("Reservations Routes", () => {
   const createTestBusiness = async () => {
@@ -444,6 +444,22 @@ describe("Reservations Routes", () => {
       expect(reservation).not.toBeNull();
       expect(reservation?.guestCount).toBe(4);
       expect(reservation?.createdByRole).toBe("customer");
+
+      // Reservation pending flow is fire-and-forget; wait briefly for inbox update
+      const timeoutMs = 1500;
+      const startedAt = Date.now();
+      while (Date.now() - startedAt < timeoutMs) {
+        const updatedUser = await User.findById(user._id).lean();
+        const notificationsCount = updatedUser?.notifications?.length ?? 0;
+        if (notificationsCount >= 1) {
+          expect(notificationsCount).toBeGreaterThanOrEqual(1);
+          return;
+        }
+        await new Promise((r) => setTimeout(r, 50));
+      }
+
+      const finalUser = await User.findById(user._id).lean();
+      expect(finalUser?.notifications?.length ?? 0).toBeGreaterThanOrEqual(1);
     });
 
     it("creates reservation as employee when on duty", async () => {
@@ -507,6 +523,11 @@ describe("Reservations Routes", () => {
       // Verify created as employee
       const reservation = await Reservation.findOne({ businessId: business._id }).lean();
       expect(reservation?.createdByRole).toBe("employee");
+
+      // Employee creation doesn't trigger the customer pending flow
+      await new Promise((r) => setTimeout(r, 100));
+      const updatedUser = await User.findById(user._id).lean();
+      expect(updatedUser?.notifications?.length ?? 0).toBe(0);
     });
   });
 
@@ -579,6 +600,22 @@ describe("Reservations Routes", () => {
       // Verify status was updated
       const updatedReservation = await Reservation.findById(reservation._id).lean();
       expect(updatedReservation?.status).toBe("Confirmed");
+
+      // Decision flow is also fire-and-forget; wait briefly for inbox update
+      const timeoutMs = 1500;
+      const startedAt = Date.now();
+      while (Date.now() - startedAt < timeoutMs) {
+        const updatedUser = await User.findById(user._id).lean();
+        const notificationsCount = updatedUser?.notifications?.length ?? 0;
+        if (notificationsCount >= 1) {
+          expect(notificationsCount).toBeGreaterThanOrEqual(1);
+          return;
+        }
+        await new Promise((r) => setTimeout(r, 50));
+      }
+
+      const finalUser = await User.findById(user._id).lean();
+      expect(finalUser?.notifications?.length ?? 0).toBeGreaterThanOrEqual(1);
     });
   });
 });

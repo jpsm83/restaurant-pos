@@ -1,6 +1,6 @@
 import mongoose, { Types } from "mongoose";
-import Supplier from "../models/supplier.js";
-import { isObjectIdValid } from "../utils/isObjectIdValid.js";
+import Supplier from "../models/supplier.ts";
+import { isObjectIdValid } from "../utils/isObjectIdValid.ts";
 
 export const oneTimePurchaseSupplier = async (
   businessId: Types.ObjectId | string

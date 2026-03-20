@@ -1,25 +1,25 @@
 import type { FastifyPluginAsync } from "fastify";
-import { authRoutes } from "./auth.js";
-import { businessRoutes } from "./business.js";
-import { businessGoodsRoutes } from "./businessGoods.js";
-import { ordersRoutes } from "./orders.js";
-import { salesInstancesRoutes } from "./salesInstances.js";
-import { salesPointsRoutes } from "./salesPoints.js";
-import { suppliersRoutes } from "./suppliers.js";
-import { supplierGoodsRoutes } from "./supplierGoods.js";
-import { inventoriesRoutes } from "./inventories.js";
-import { purchasesRoutes } from "./purchases.js";
-import { employeesRoutes } from "./employees.js";
-import { schedulesRoutes } from "./schedules.js";
-import { usersRoutes } from "./users.js";
-import { promotionsRoutes } from "./promotions.js";
-import { dailySalesReportsRoutes } from "./dailySalesReports.js";
-import { reservationsRoutes } from "./reservations.js";
-import { ratingsRoutes } from "./ratings.js";
-import { notificationsRoutes } from "./notifications.js";
-import { printersRoutes } from "./printers.js";
-import { weeklyBusinessReportRoutes } from "./weeklyBusinessReport.js";
-import { monthlyBusinessReportRoutes } from "./monthlyBusinessReport.js";
+import { authRoutes } from "./auth.ts";
+import { businessRoutes } from "./business.ts";
+import { businessGoodsRoutes } from "./businessGoods.ts";
+import { ordersRoutes } from "./orders.ts";
+import { salesInstancesRoutes } from "./salesInstances.ts";
+import { salesPointsRoutes } from "./salesPoints.ts";
+import { suppliersRoutes } from "./suppliers.ts";
+import { supplierGoodsRoutes } from "./supplierGoods.ts";
+import { inventoriesRoutes } from "./inventories.ts";
+import { purchasesRoutes } from "./purchases.ts";
+import { employeesRoutes } from "./employees.ts";
+import { schedulesRoutes } from "./schedules.ts";
+import { usersRoutes } from "./users.ts";
+import { promotionsRoutes } from "./promotions.ts";
+import { dailySalesReportsRoutes } from "./dailySalesReports.ts";
+import { reservationsRoutes } from "./reservations.ts";
+import { ratingsRoutes } from "./ratings.ts";
+import { notificationsRoutes } from "./notifications.ts";
+import { printersRoutes } from "./printers.ts";
+import { weeklyBusinessReportRoutes } from "./weeklyBusinessReport.ts";
+import { monthlyBusinessReportRoutes } from "./monthlyBusinessReport.ts";
 
 export const registerV1Routes: FastifyPluginAsync = async (app) => {
   // Auth routes (no authentication required for login/refresh/logout)

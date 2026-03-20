@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { getTestApp } from "./helpers/index.js";
+import { getTestApp } from "./helpers/index.ts";
 
 describe("Health Check", () => {
   it("GET /health returns ok", async () => {
@@ -15,6 +15,6 @@ describe("Health Check", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({ ok: true });
+    expect(response.tson()).toEqual({ ok: true });
   });
 });

@@ -4,9 +4,9 @@
 
 import type { FastifyInstance } from "fastify";
 import bcrypt from "bcrypt";
-import Business from "../../src/models/business.js";
-import User from "../../src/models/user.js";
-import Employee from "../../src/models/employee.js";
+import Business from "../../src/models/business.ts";
+import User from "../../src/models/user.ts";
+import Employee from "../../src/models/employee.ts";
 
 export interface TestBusinessCredentials {
   email: string;
@@ -123,7 +123,7 @@ export async function loginAsBusiness(
     throw new Error(`Login failed: ${response.body}`);
   }
 
-  const body = response.json<{ accessToken: string }>();
+  const body = response.tson<{ accessToken: string }>();
   return body.accessToken;
 }
 
@@ -147,7 +147,7 @@ export async function loginAsUser(
     throw new Error(`Login failed: ${response.body}`);
   }
 
-  const body = response.json<{ accessToken: string }>();
+  const body = response.tson<{ accessToken: string }>();
   return body.accessToken;
 }
 

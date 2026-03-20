@@ -4,15 +4,15 @@ import type { IInventory, IInventoryCount } from "@shared/interfaces/IInventory"
 import type { ISupplierGood } from "@shared/interfaces/ISupplierGood";
 import type { IEmployee } from "@shared/interfaces/IEmployee";
 
-import { isObjectIdValid } from "../../utils/isObjectIdValid.js";
-import { MANAGEMENT_ROLES } from "../../utils/constants.js";
-import Inventory from "../../models/inventory.js";
-import SupplierGood from "../../models/supplierGood.js";
-import Supplier from "../../models/supplier.js";
-import Employee from "../../models/employee.js";
-import { createNextPeriodInventory } from "../../inventories/createNextPeriodInventory.js";
-import { getVarianceReport } from "../../inventories/getVarianceReport.js";
-import { createAuthHook } from "../../auth/middleware.js";
+import { isObjectIdValid } from "../../utils/isObjectIdValid.ts";
+import { MANAGEMENT_ROLES } from "../../utils/constants.ts";
+import Inventory from "../../models/inventory.ts";
+import SupplierGood from "../../models/supplierGood.ts";
+import Supplier from "../../models/supplier.ts";
+import Employee from "../../models/employee.ts";
+import { createNextPeriodInventory } from "../../inventories/createNextPeriodInventory.ts";
+import { getVarianceReport } from "../../inventories/getVarianceReport.ts";
+import { createAuthHook } from "../../auth/middleware.ts";
 
 export const inventoriesRoutes: FastifyPluginAsync = async (app) => {
   // GET /inventories - list all
@@ -62,6 +62,7 @@ export const inventoriesRoutes: FastifyPluginAsync = async (app) => {
         createdAt: { $gte: startOfCurrentMonth, $lte: endOfCurrentMonth },
       })
         .select("setFinalCount")
+        .session(session)
         .lean();
 
       if (currentMonthInventory) {
@@ -93,6 +94,7 @@ export const inventoriesRoutes: FastifyPluginAsync = async (app) => {
         currentlyInUse: true,
       })
         .select("_id")
+        .session(session)
         .lean();
 
       const inventoryGoodsArr = supplierGoods.map((supplierGood: { _id: Types.ObjectId }) => {

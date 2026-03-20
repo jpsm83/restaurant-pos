@@ -1,6 +1,6 @@
 import { Types, ClientSession } from "mongoose";
-import { isObjectIdValid } from "../utils/isObjectIdValid.js";
-import Inventory from "../models/inventory.js";
+import { isObjectIdValid } from "../utils/isObjectIdValid.ts";
+import Inventory from "../models/inventory.ts";
 
 export const deleteSupplierGoodFromInventory = async (
   supplierGoodId: Types.ObjectId | string,

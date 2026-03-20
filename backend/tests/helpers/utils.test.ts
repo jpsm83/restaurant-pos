@@ -5,10 +5,10 @@
 
 import { describe, it, expect } from "vitest";
 import { Types } from "mongoose";
-import { isObjectIdValid } from "../../src/utils/isObjectIdValid.js";
-import { isBusinessOpenNow } from "../../src/utils/isBusinessOpenNow.js";
-import { hasManagementRole, MANAGEMENT_ROLES } from "../../src/utils/constants.js";
-import type { IBusiness } from "@shared/interfaces/IBusiness.js";
+import { isObjectIdValid } from "../../src/utils/isObjectIdValid.ts";
+import { isBusinessOpenNow } from "../../src/utils/isBusinessOpenNow.ts";
+import { hasManagementRole, MANAGEMENT_ROLES } from "../../src/utils/constants.ts";
+import type { IBusiness } from "@shared/interfaces/IBusiness.ts";
 
 describe("Utility Helpers", () => {
   describe("isObjectIdValid", () => {

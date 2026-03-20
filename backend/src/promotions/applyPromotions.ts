@@ -1,5 +1,5 @@
-import { Types } from "mongoose";
-import Promotion from "../models/promotion.js";
+import { Types, type ClientSession } from "mongoose";
+import Promotion from "../models/promotion.ts";
 import type { IOrder } from "@shared/interfaces/IOrder";
 
 type ObjectId = Types.ObjectId;
@@ -13,6 +13,7 @@ export interface IPromotionPricingInput {
     >
   >;
   atDateTime?: Date;
+  session?: ClientSession;
 }
 
 export interface IPricedOrderOutput {
@@ -149,7 +150,7 @@ const applySinglePromotionToOrder = (
 export const applyPromotionsToOrders = async (
   params: IPromotionPricingInput
 ): Promise<IPricedOrderOutput[] | string> => {
-  const { businessId, ordersArr } = params;
+  const { businessId, ordersArr, session } = params;
   const atDateTime = params.atDateTime ?? new Date();
 
   if (!ordersArr || ordersArr.length === 0) {
@@ -164,6 +165,7 @@ export const applyPromotionsToOrders = async (
       .select(
         "promotionName promotionPeriod weekDays activePromotion promotionType businessGoodsToApplyIds"
       )
+      .session(session ?? null)
       .lean()) as unknown as PromotionDoc[];
 
     const applicablePromotions = activePromotions.filter((promo) =>

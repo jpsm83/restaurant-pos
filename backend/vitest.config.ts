@@ -15,20 +15,13 @@ export default defineConfig({
     setupFiles: ["./tests/setup.ts"],
     
     // Timeouts
-    testTimeout: 30000,
-    hookTimeout: 30000,
+    // MongoMemoryReplSet creation can take longer on first download (especially in CI-like environments).
+    testTimeout: 120000,
+    hookTimeout: 120000,
     
     // Coverage configuration
-    coverage: {
-      provider: "v8",
-      reporter: ["text", "json", "html"],
-      reportsDirectory: "./coverage",
-      include: ["src/**/*.ts"],
-      exclude: [
-        "src/models/legacy/**",
-        "src/**/*.d.ts",
-      ],
-    },
+    // Disable coverage output so Vitest doesn't generate `backend/coverage/` during regular runs.
+    coverage: { enabled: false },
     
     // Run tests sequentially for database operations
     fileParallelism: false,

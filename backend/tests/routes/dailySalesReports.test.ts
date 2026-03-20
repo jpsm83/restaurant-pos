@@ -5,9 +5,9 @@
 
 import { describe, it, expect } from "vitest";
 import { Types } from "mongoose";
-import { getTestApp } from "../setup.js";
-import DailySalesReport from "../../src/models/dailySalesReport.js";
-import Business from "../../src/models/business.js";
+import { getTestApp } from "../setup.ts";
+import DailySalesReport from "../../src/models/dailySalesReport.ts";
+import Business from "../../src/models/business.ts";
 
 describe("DailySalesReports Routes", () => {
   const createTestBusiness = async () => {

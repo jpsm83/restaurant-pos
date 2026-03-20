@@ -3,9 +3,13 @@
  */
 
 import { Types } from "mongoose";
-import Notification from "../models/notification.js";
-import User from "../models/user.js";
+import Notification from "../models/notification.ts";
+import User from "../models/user.ts";
 
+/**
+ * Creates a Notification and pushes it to the given Users' inboxes.
+ * Uses Notification.customersRecipientsIds for userIds (same pattern as orderConfirmation).
+ */
 export async function sendReservationNotification(params: {
   userIds: Types.ObjectId[];
   businessId: Types.ObjectId;

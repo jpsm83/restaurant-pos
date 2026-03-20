@@ -2,11 +2,11 @@ import type { FastifyPluginAsync } from "fastify";
 import { Types } from "mongoose";
 import type { IRating } from "@shared/interfaces/IRating";
 
-import { isObjectIdValid } from "../../utils/isObjectIdValid.js";
-import Rating from "../../models/rating.js";
-import Business from "../../models/business.js";
-import User from "../../models/user.js";
-import { createAuthHook } from "../../auth/middleware.js";
+import { isObjectIdValid } from "../../utils/isObjectIdValid.ts";
+import Rating from "../../models/rating.ts";
+import Business from "../../models/business.ts";
+import User from "../../models/user.ts";
+import { createAuthHook } from "../../auth/middleware.ts";
 
 export const ratingsRoutes: FastifyPluginAsync = async (app) => {
   // POST /ratings - create

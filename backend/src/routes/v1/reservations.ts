@@ -4,20 +4,20 @@ import type { IReservation } from "@shared/interfaces/IReservation";
 import type { ISalesInstance } from "@shared/interfaces/ISalesInstance";
 import type { IDailySalesReport } from "@shared/interfaces/IDailySalesReport";
 
-import { isObjectIdValid } from "../../utils/isObjectIdValid.js";
-import { hasManagementRole } from "../../utils/constants.js";
-import { createDailySalesReport } from "../../dailySalesReports/createDailySalesReport.js";
-import { createSalesInstance } from "../../salesInstances/createSalesInstance.js";
+import { isObjectIdValid } from "../../utils/isObjectIdValid.ts";
+import { hasManagementRole } from "../../utils/constants.ts";
+import { createDailySalesReport } from "../../dailySalesReports/createDailySalesReport.ts";
+import { createSalesInstance } from "../../salesInstances/createSalesInstance.ts";
 import {
   sendReservationPendingFlow,
   sendReservationDecisionFlow,
-} from "../../reservations/sendReservationCustomerFlow.js";
-import Reservation from "../../models/reservation.js";
-import Employee from "../../models/employee.js";
-import SalesPoint from "../../models/salesPoint.js";
-import SalesInstance from "../../models/salesInstance.js";
-import DailySalesReport from "../../models/dailySalesReport.js";
-import { createAuthHook } from "../../auth/middleware.js";
+} from "../../reservations/sendReservationCustomerFlow.ts";
+import Reservation from "../../models/reservation.ts";
+import Employee from "../../models/employee.ts";
+import SalesPoint from "../../models/salesPoint.ts";
+import SalesInstance from "../../models/salesInstance.ts";
+import DailySalesReport from "../../models/dailySalesReport.ts";
+import { createAuthHook } from "../../auth/middleware.ts";
 
 const RESERVATION_STATUS_VALUES = [
   "Pending",

@@ -120,14 +120,14 @@ export const resetCloudinaryMocks = () => {
  *   mockUploadFilesCloudinary,
  *   mockDeleteFilesCloudinary,
  *   resetCloudinaryMocks,
- * } from "../mocks/cloudinary.js";
+ * } from "../mocks/cloudinary.ts";
  * 
  * // Mock at top level (these get hoisted)
- * vi.mock("../../src/cloudinary/uploadFilesCloudinary.js", () => ({
+ * vi.mock("../../src/cloudinary/uploadFilesCloudinary.ts", () => ({
  *   uploadFilesCloudinary: mockUploadFilesCloudinary,
  * }));
  * 
- * vi.mock("../../src/cloudinary/deleteFilesCloudinary.js", () => ({
+ * vi.mock("../../src/cloudinary/deleteFilesCloudinary.ts", () => ({
  *   deleteFilesCloudinary: mockDeleteFilesCloudinary,
  * }));
  * 

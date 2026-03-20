@@ -1,7 +1,7 @@
 import { ClientSession, Types } from "mongoose";
-import { updateDynamicCountSupplierGood } from "../inventories/updateDynamicCountSupplierGood.js";
-import Order from "../models/order.js";
-import SalesInstance from "../models/salesInstance.js";
+import { updateDynamicCountSupplierGood } from "../inventories/updateDynamicCountSupplierGood.ts";
+import Order from "../models/order.ts";
+import SalesInstance from "../models/salesInstance.ts";
 
 export const cancelOrders = async (
   ordersIdsArr: Types.ObjectId[],

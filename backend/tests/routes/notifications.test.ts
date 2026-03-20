@@ -6,11 +6,11 @@
 
 import { describe, it, expect, beforeEach } from "vitest";
 import { Types } from "mongoose";
-import { getTestApp } from "../setup.js";
-import Notification from "../../src/models/notification.js";
-import Business from "../../src/models/business.js";
-import Employee from "../../src/models/employee.js";
-import User from "../../src/models/user.js";
+import { getTestApp } from "../setup.ts";
+import Notification from "../../src/models/notification.ts";
+import Business from "../../src/models/business.ts";
+import Employee from "../../src/models/employee.ts";
+import User from "../../src/models/user.ts";
 
 describe("Notifications Routes", () => {
   const createTestBusiness = async () => {
@@ -403,7 +403,6 @@ describe("Notifications Routes", () => {
         vacationDaysPerYear: 20,
         vacationDaysLeft: 20,
         allEmployeeRoles: ["Waiter"],
-        notifications: [],
       });
 
       const response = await app.inject({
@@ -428,11 +427,49 @@ describe("Notifications Routes", () => {
       }).lean();
       expect(notification).not.toBeNull();
 
-      // Verify employee's notifications array was updated
-      const updatedEmployee = await Employee.findById(employee._id).lean();
-      expect(updatedEmployee?.notifications).toBeDefined();
-      expect(updatedEmployee?.notifications?.length).toBe(1);
-      expect(updatedEmployee?.notifications?.[0].notificationId.toString()).toBe(
+      // Verify user's notifications inbox was updated (employee inbox state is centralized on User)
+      const updatedUser = await User.findById(user._id).lean();
+      expect(updatedUser?.notifications).toBeDefined();
+      expect(updatedUser?.notifications?.length).toBe(1);
+      expect(updatedUser?.notifications?.[0].notificationId.toString()).toBe(
+        notification?._id.toString()
+      );
+    });
+
+    it("creates notification and updates customer recipients", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+
+      // Create a customer user
+      const user = await createTestUser(`notif-customer-${Date.now()}`);
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/notifications",
+        payload: {
+          notificationType: "Info",
+          message: "Test notification for customer transaction test",
+          businessId: business._id.toString(),
+          customersRecipientsIds: [user._id.toString()],
+        },
+      });
+
+      expect(response.statusCode).toBe(201);
+      const body = JSON.parse(response.body);
+      expect(body.message).toContain("created");
+
+      // Verify notification was created
+      const notification = await Notification.findOne({
+        businessId: business._id,
+        message: "Test notification for customer transaction test",
+      }).lean();
+      expect(notification).not.toBeNull();
+
+      // Verify customer's notifications inbox was updated
+      const updatedUser = await User.findById(user._id).lean();
+      expect(updatedUser?.notifications).toBeDefined();
+      expect(updatedUser?.notifications?.length).toBe(1);
+      expect(updatedUser?.notifications?.[0].notificationId.toString()).toBe(
         notification?._id.toString()
       );
     });
@@ -454,7 +491,6 @@ describe("Notifications Routes", () => {
         vacationDaysPerYear: 20,
         vacationDaysLeft: 20,
         allEmployeeRoles: ["Waiter"],
-        notifications: [],
       });
 
       // Create notification via POST first
@@ -495,12 +531,12 @@ describe("Notifications Routes", () => {
       const updatedNotification = await Notification.findById(notification?._id).lean();
       expect(updatedNotification?.message).toBe("Updated message");
 
-      // Verify employee's notification flags were reset (since message changed)
-      const updatedEmployee = await Employee.findById(employee._id).lean();
-      const employeeNotif = updatedEmployee?.notifications?.find(
+      // Verify user's notification flags were reset (since message changed)
+      const updatedUser = await User.findById(user._id).lean();
+      const userNotif = updatedUser?.notifications?.find(
         (n) => n.notificationId.toString() === notification?._id.toString()
       );
-      expect(employeeNotif?.readFlag).toBe(false);
+      expect(userNotif?.readFlag).toBe(false);
     });
   });
 
@@ -520,7 +556,6 @@ describe("Notifications Routes", () => {
         vacationDaysPerYear: 20,
         vacationDaysLeft: 20,
         allEmployeeRoles: ["Waiter"],
-        notifications: [],
       });
 
       // Create notification via POST
@@ -543,9 +578,9 @@ describe("Notifications Routes", () => {
       }).lean();
       expect(notification).not.toBeNull();
 
-      // Verify employee has notification
-      let emp = await Employee.findById(employee._id).lean();
-      expect(emp?.notifications?.length).toBe(1);
+      // Verify user's inbox has notification (employee inbox state centralized on User)
+      const updatedUserAfterPost = await User.findById(user._id).lean();
+      expect(updatedUserAfterPost?.notifications?.length).toBe(1);
 
       // DELETE the notification
       const deleteResponse = await app.inject({
@@ -561,9 +596,9 @@ describe("Notifications Routes", () => {
       const deletedNotification = await Notification.findById(notification?._id);
       expect(deletedNotification).toBeNull();
 
-      // Verify notification was removed from employee's array
-      emp = await Employee.findById(employee._id).lean();
-      expect(emp?.notifications?.length).toBe(0);
+      // Verify notification was removed from user's inbox (employee inbox state is centralized on User)
+      const updatedUser = await User.findById(user._id).lean();
+      expect(updatedUser?.notifications?.length).toBe(0);
     });
   });
 });

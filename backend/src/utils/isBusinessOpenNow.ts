@@ -1,4 +1,4 @@
-import type { IBusiness } from "@shared/interfaces/IBusiness";
+import type { IBusiness } from "../../../lib/interface/IBusiness.ts";
 
 function toTimeNumber(date: Date): number {
   const hours = date.getHours();
@@ -23,7 +23,10 @@ function parseTimeToMinutes(time: string): number | null {
   return hours * 60 + minutes;
 }
 
-export function isBusinessOpenNow(business: IBusiness, now: Date = new Date()): boolean {
+export function isBusinessOpenNow(
+  business: IBusiness,
+  now: Date = new Date(),
+): boolean {
   const openingHours = business.businessOpeningHours;
   if (!openingHours || openingHours.length === 0) return true;
 
@@ -41,7 +44,7 @@ export function isBusinessOpenNow(business: IBusiness, now: Date = new Date()): 
 
 export function isDeliveryOpenNow(
   business: IBusiness,
-  now: Date = new Date()
+  now: Date = new Date(),
 ): boolean {
   if (!business.acceptsDelivery) return false;
 

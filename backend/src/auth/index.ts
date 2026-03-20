@@ -2,8 +2,9 @@
  * Auth Module - Exports for authentication utilities
  */
 
-export { AUTH_CONFIG } from "./config.js";
-export { canLogAsEmployee, type CanLogAsEmployeeResult } from "./canLogAsEmployee.js";
+export { AUTH_CONFIG } from "./config.ts";
+export { canLogAsEmployee, type CanLogAsEmployeeResult } from "./canLogAsEmployee.ts";
+export { getEffectiveUserRoleAtTime, type EffectiveUserRole } from "./getEffectiveUserRoleAtTime.ts";
 export {
   createAuthHook,
   createOptionalAuthHook,
@@ -12,11 +13,11 @@ export {
   requireEmployeeHook,
   hasBusinessAccess,
   getSessionBusinessId,
-} from "./middleware.js";
+} from "./middleware.ts";
 export type {
   AuthBusiness,
   AuthUser,
   AuthSession,
   JwtPayload,
   RefreshTokenPayload,
-} from "./types.js";
+} from "./types.ts";

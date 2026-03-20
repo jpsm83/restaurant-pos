@@ -5,10 +5,10 @@
 
 import { describe, it, expect } from "vitest";
 import { Types } from "mongoose";
-import { getTestApp } from "../setup.js";
-import Rating from "../../src/models/rating.js";
-import Business from "../../src/models/business.js";
-import User from "../../src/models/user.js";
+import { getTestApp } from "../setup.ts";
+import Rating from "../../src/models/rating.ts";
+import Business from "../../src/models/business.ts";
+import User from "../../src/models/user.ts";
 
 describe("Ratings Routes", () => {
   const createTestBusiness = async () => {

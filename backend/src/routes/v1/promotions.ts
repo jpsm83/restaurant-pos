@@ -2,12 +2,12 @@ import type { FastifyPluginAsync } from "fastify";
 import { Types } from "mongoose";
 import type { IPromotion } from "@shared/interfaces/IPromotion";
 
-import { isObjectIdValid } from "../../utils/isObjectIdValid.js";
-import { validateDateAndTime } from "../../promotions/validateDateAndTime.js";
-import { validateDaysOfTheWeek } from "../../promotions/validateDaysOfTheWeek.js";
-import { validatePromotionType } from "../../promotions/validatePromotionType.js";
-import Promotion from "../../models/promotion.js";
-import BusinessGood from "../../models/businessGood.js";
+import { isObjectIdValid } from "../../utils/isObjectIdValid.ts";
+import { validateDateAndTime } from "../../promotions/validateDateAndTime.ts";
+import { validateDaysOfTheWeek } from "../../promotions/validateDaysOfTheWeek.ts";
+import { validatePromotionType } from "../../promotions/validatePromotionType.ts";
+import Promotion from "../../models/promotion.ts";
+import BusinessGood from "../../models/businessGood.ts";
 
 export const promotionsRoutes: FastifyPluginAsync = async (app) => {
   // GET /promotions - list all

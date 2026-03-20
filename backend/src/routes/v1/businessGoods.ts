@@ -2,20 +2,20 @@ import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
 import type { IBusinessGood, IIngredient } from "@shared/interfaces/IBusinessGood";
 
-import { isObjectIdValid } from "../../utils/isObjectIdValid.js";
-import BusinessGood from "../../models/businessGood.js";
-import SupplierGood from "../../models/supplierGood.js";
-import Promotion from "../../models/promotion.js";
-import Order from "../../models/order.js";
-import { uploadFilesCloudinary, UploadInputFile } from "../../cloudinary/uploadFilesCloudinary.js";
-import { deleteFolderCloudinary } from "../../cloudinary/deleteFolderCloudinary.js";
-import { calculateIngredientsCostPriceAndAllergies } from "../../businessGoods/calculateIngredientsCostPriceAndAllergies.js";
-import { calculateSetMenuCostPriceAndAllergies } from "../../businessGoods/calculateSetMenuCostPriceAndAllergies.js";
+import { isObjectIdValid } from "../../utils/isObjectIdValid.ts";
+import BusinessGood from "../../models/businessGood.ts";
+import SupplierGood from "../../models/supplierGood.ts";
+import Promotion from "../../models/promotion.ts";
+import Order from "../../models/order.ts";
+import { uploadFilesCloudinary, UploadInputFile } from "../../cloudinary/uploadFilesCloudinary.ts";
+import { deleteFolderCloudinary } from "../../cloudinary/deleteFolderCloudinary.ts";
+import { calculateIngredientsCostPriceAndAllergies } from "../../businessGoods/calculateIngredientsCostPriceAndAllergies.ts";
+import { calculateSetMenuCostPriceAndAllergies } from "../../businessGoods/calculateSetMenuCostPriceAndAllergies.ts";
 import {
   mainCategoriesEnums,
   allergensEnums,
   measurementUnitEnums,
-} from "../../enums.js";
+} from "../../../../lib/enums.ts";
 
 export const businessGoodsRoutes: FastifyPluginAsync = async (app) => {
   // GET /businessGoods - list all business goods

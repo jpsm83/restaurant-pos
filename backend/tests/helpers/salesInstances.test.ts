@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { createSalesInstance } from "../../src/salesInstances/createSalesInstance.js";
+import { createSalesInstance } from "../../src/salesInstances/createSalesInstance.ts";
 
 describe("SalesInstance Helpers", () => {
   describe("createSalesInstance", () => {

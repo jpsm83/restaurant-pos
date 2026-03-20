@@ -1,6 +1,6 @@
-import mongoose, { Schema, model } from "mongoose";
-import { paymentMethod } from "./paymentMethod.js";
-import { goodsReducedSchema } from "./dailySalesReport.js";
+import { Schema, model, models } from "mongoose";
+import { paymentMethod } from "./paymentMethod.ts";
+import { goodsReducedSchema } from "./dailySalesReport.ts";
 
 const weeklyBusinessReportSchema = new Schema(
   {
@@ -111,7 +111,10 @@ const weeklyBusinessReportSchema = new Schema(
     paymentMethods: { type: [paymentMethod], default: undefined },
     posSystemCommission: { type: Number },
   },
-  { timestamps: true, trim: true }
+  {
+    timestamps: true,
+    trim: true,
+  }
 );
 
 weeklyBusinessReportSchema.index(
@@ -119,6 +122,7 @@ weeklyBusinessReportSchema.index(
   { unique: true }
 );
 
-const WeeklyBusinessReport = model("WeeklyBusinessReport", weeklyBusinessReportSchema);
-
+const WeeklyBusinessReport =
+  models.WeeklyBusinessReport ||
+  model("WeeklyBusinessReport", weeklyBusinessReportSchema);
 export default WeeklyBusinessReport;

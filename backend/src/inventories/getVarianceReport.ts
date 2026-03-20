@@ -1,6 +1,6 @@
 import { Types } from "mongoose";
-import { getTheoreticalUsage } from "./getTheoreticalUsage.js";
-import { getActualUsage } from "./getActualUsage.js";
+import { getTheoreticalUsage } from "./getTheoreticalUsage.ts";
+import { getActualUsage } from "./getActualUsage.ts";
 
 export interface VarianceReportItem {
   supplierGoodId: Types.ObjectId;
