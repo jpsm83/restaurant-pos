@@ -12,7 +12,7 @@ import objDefaultValidation, {
 import Employee from "../../models/employee.ts";
 import User from "../../models/user.ts";
 import Printer from "../../models/printer.ts";
-import uploadFilesCloudinary from "src/cloudinary/uploadFilesCloudinary.ts";
+import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
 import { UploadInputFile } from "@lib/interface/ICloudinary.ts";
 import * as enums from "../../../../lib/enums.ts";
 

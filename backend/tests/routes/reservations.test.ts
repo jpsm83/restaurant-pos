@@ -484,17 +484,23 @@ describe("Reservations Routes", () => {
         },
       });
 
-      // Create employee on duty
-      await Employee.create({
+      // Create employee on duty (Admin role bypasses schedule check in canLogAsEmployee)
+      const employee = await Employee.create({
         businessId: business._id,
         userId: user._id,
         currentShiftRole: "Waiter",
+        allEmployeeRoles: ["Admin"],
         onDuty: true,
         joinDate: new Date(),
         taxNumber: `RES-EMP-${Date.now()}`,
         vacationDaysPerYear: 20,
         vacationDaysLeft: 20,
       });
+
+      await User.updateOne(
+        { _id: user._id },
+        { $set: { employeeDetails: employee._id } }
+      );
 
       const token = await generateTestToken({
         id: user._id.toString(),
@@ -555,17 +561,22 @@ describe("Reservations Routes", () => {
       });
 
       // Create employee (required for status changes)
-      await Employee.create({
+      const employee = await Employee.create({
         businessId: business._id,
         userId: user._id,
         currentShiftRole: "Host",
-        allEmployeeRoles: ["Host"],
+        allEmployeeRoles: ["Host", "Admin"],
         onDuty: true,
         joinDate: new Date(),
         taxNumber: `RES-MGR-${Date.now()}`,
         vacationDaysPerYear: 20,
         vacationDaysLeft: 20,
       });
+
+      await User.updateOne(
+        { _id: user._id },
+        { $set: { employeeDetails: employee._id } }
+      );
 
       // Create reservation
       const reservation = await Reservation.create({

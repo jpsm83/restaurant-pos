@@ -504,7 +504,7 @@ describe("Notifications Routes", () => {
           employeesRecipientsIds: [employee._id.toString()],
         },
       });
-      expect(createResponse.statusCode).toBe(201);
+      expect(createResponse.statusCode, createResponse.body).toBe(201);
 
       // Get the notification
       const notification = await Notification.findOne({
@@ -569,7 +569,7 @@ describe("Notifications Routes", () => {
           employeesRecipientsIds: [employee._id.toString()],
         },
       });
-      expect(createResponse.statusCode).toBe(201);
+      expect(createResponse.statusCode, createResponse.body).toBe(201);
 
       // Get the notification
       const notification = await Notification.findOne({

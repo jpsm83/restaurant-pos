@@ -1,6 +1,6 @@
 import { Types } from "mongoose";
-import BusinessGood from "src/models/businessGood";
-import isObjectIdValid from "src/utils/isObjectIdValid";
+import BusinessGood from "../models/businessGood.ts";
+import isObjectIdValid from "../utils/isObjectIdValid.ts";
 
 export const calculateSetMenuCostPriceAndAllergies = async (
   setMenuIds: Types.ObjectId[] | string[],

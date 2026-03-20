@@ -11,6 +11,7 @@ import {
   sendReservationPendingFlow,
   sendReservationDecisionFlow,
 } from "../../reservations/sendReservationCustomerFlow.ts";
+import getEffectiveUserRoleAtTime from "../../auth/getEffectiveUserRoleAtTime.ts";
 import Reservation from "../../models/reservation.ts";
 import Employee from "../../models/employee.ts";
 import SalesPoint from "../../models/salesPoint.ts";
@@ -158,16 +159,10 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
       session.startTransaction();
 
       try {
-        const employee = (await Employee.findOne({
+        const createdByRole = await getEffectiveUserRoleAtTime({
           userId: createdByUserId,
-          businessId,
-        })
-          .select("onDuty")
-          .session(session)
-          .lean()) as { onDuty?: boolean } | null;
-
-        const createdByRole: IReservation["createdByRole"] =
-          employee?.onDuty === true ? "employee" : "customer";
+          businessId: businessId as Types.ObjectId,
+        });
 
         const effectiveReservationStart = new Date(reservationStart);
 
@@ -312,6 +307,16 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
           typeof status === "string" || typeof salesPointId !== "undefined";
 
         if (isStatusOrTableChange) {
+          const effectiveRole = await getEffectiveUserRoleAtTime({
+            userId: sessionUserId,
+            businessId: reservation.businessId as Types.ObjectId,
+          });
+
+          if (effectiveRole !== "employee") {
+            await session.abortTransaction();
+            return reply.code(403).send({ message: "Employee access required" });
+          }
+
           const employee = (await Employee.findOne({
             userId: sessionUserId,
             businessId: reservation.businessId,

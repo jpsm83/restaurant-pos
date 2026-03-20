@@ -30,12 +30,16 @@ import createOrders from "../../orders/createOrders.ts";
 import applyPromotionsToOrders from "../../promotions/applyPromotions.ts";
 import checkLowStockAndNotify from "../../inventories/checkLowStockAndNotify.ts";
 import sendOrderConfirmation from "../../orderConfirmation/sendOrderConfirmation.ts";
-import { createAuthHook, createOptionalAuthHook } from "src/auth/middleware.ts";
-import transferOrdersBetweenSalesInstances from "src/orders/transferOrdersBetweenSalesInstances.ts";
+import {
+  createAuthHook,
+  createOptionalAuthHook,
+} from "../../auth/middleware.ts";
+import transferOrdersBetweenSalesInstances from "../../orders/transferOrdersBetweenSalesInstances.ts";
+import getEffectiveUserRoleAtTime from "../../auth/getEffectiveUserRoleAtTime.ts";
 import {
   isBusinessOpenNow,
   isDeliveryOpenNow,
-} from "src/business/isBusinessOpenNow.ts";
+} from "../../business/isBusinessOpenNow.ts";
 import * as enums from "../../../../lib/enums.ts";
 
 const { managementRolesEnums } = enums;
@@ -114,14 +118,11 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
           .send({ message: "SalesPointId or businessId not valid!" });
       }
 
-      const employee = (await Employee.findOne({
+      const effectiveRole = await getEffectiveUserRoleAtTime({
         userId: openedByUserId,
-        businessId,
-      })
-        .select("onDuty")
-        .lean()) as { onDuty: boolean } | null;
-
-      if (!employee || !employee.onDuty) {
+        businessId: businessId as Types.ObjectId,
+      });
+      if (effectiveRole !== "employee") {
         return reply.code(403).send({
           message:
             "You must be an on-duty employee to open a table from the POS.",
@@ -774,14 +775,11 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
           .send({ message: "Sales point does not belong to this business" });
       }
 
-      const employee = (await Employee.findOne({
+      const effectiveRole = await getEffectiveUserRoleAtTime({
         userId: openedByUserId,
-        businessId,
-      })
-        .select("onDuty")
-        .lean()) as { onDuty: boolean } | null;
-
-      if (!employee || !employee.onDuty) {
+        businessId: new Types.ObjectId(businessId),
+      });
+      if (effectiveRole !== "employee") {
         return reply.code(403).send({
           message: "Employee must be on duty to open a table from QR",
         });

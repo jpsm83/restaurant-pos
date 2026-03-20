@@ -13,7 +13,7 @@ import Notification from "../../src/models/notification.ts";
 import SalesInstance from "../../src/models/salesInstance.ts";
 import SalesPoint from "../../src/models/salesPoint.ts";
 import User from "../../src/models/user.ts";
-import { sendOrderConfirmation } from "../../src/orderConfirmation/sendOrderConfirmation.ts";
+import sendOrderConfirmation from "../../src/orderConfirmation/sendOrderConfirmation.ts";
 
 describe("Orders Routes", () => {
   let businessId: Types.ObjectId;

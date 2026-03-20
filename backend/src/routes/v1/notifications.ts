@@ -104,21 +104,28 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
         businessId,
       };
 
-      const [business, employees, customers] = await Promise.all([
-        Business.exists({ _id: businessId }).session(session),
-        employeesRecipientsIds
-          ? Employee.exists({ _id: { $in: recipientsId } }).session(session)
-          : null,
-        customersRecipientsIds
-          ? User.exists({ _id: { $in: recipientsId } }).session(session)
-          : null,
-      ]);
+      const business = await Business.exists({ _id: businessId }).session(
+        session,
+      );
+      const employeesCount = employeesRecipientsIds
+        ? await Employee.countDocuments({ _id: { $in: recipientsId } }).session(
+            session,
+          )
+        : 0;
+      const customersCount = customersRecipientsIds
+        ? await User.countDocuments({ _id: { $in: recipientsId } }).session(
+            session,
+          )
+        : 0;
 
-      if (!employees && !customers) {
+      if (
+        (employeesRecipientsIds && employeesCount !== recipientsId.length) ||
+        (customersRecipientsIds && customersCount !== recipientsId.length)
+      ) {
         await session.abortTransaction();
         return reply
-          .code(404)
-          .send({ message: "Employees or customers not found!" });
+          .code(400)
+          .send({ message: "One or more recipients do not exist!" });
       }
 
       if (!business) {

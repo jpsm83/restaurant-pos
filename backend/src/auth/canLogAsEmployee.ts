@@ -7,8 +7,8 @@
  * Management roles bypass schedule check entirely.
  */
 
-import Employee from "src/models/employee.ts";
-import Schedule from "src/models/schedule.ts";
+import Employee from "../models/employee.ts";
+import Schedule from "../models/schedule.ts";
 import type { Types } from "mongoose";
 import * as enums from "../../../lib/enums.ts";
 

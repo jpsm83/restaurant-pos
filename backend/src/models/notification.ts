@@ -22,16 +22,13 @@ const notificationSchema = new Schema(
       ],
       default: undefined,
     }, // Reference to the employee receiving the notification
-    customersRecipientsIds: {
-      type: [
-        {
-          type: [Schema.Types.ObjectId],
-          ref: "User",
-          index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
-        },
-      ],
-      default: undefined,
-    }, // Reference to the customer receiving the notification
+    customersRecipientsIds: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+        index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
+      },
+    ], // Reference to the customer receiving the notification
     senderId: { type: Schema.Types.ObjectId, ref: "Employee" }, // Reference to the employee who created the notification, only used on messages
     businessId: {
       type: Schema.Types.ObjectId,
