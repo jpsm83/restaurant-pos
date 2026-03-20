@@ -3,11 +3,11 @@ import { ClientSession, Types } from "mongoose";
 import BusinessGood from "../models/businessGood.ts";
 import Inventory from "../models/inventory.ts";
 
-export async function updateDynamicCountSupplierGood(
+const updateDynamicCountSupplierGood = async (
   businessGoodsIds: Types.ObjectId[],
   addOrRemove: "add" | "remove",
   session: ClientSession
-): Promise<true | string> {
+): Promise<true | string> => {
   try {
     const businessGoodsIngredients = await BusinessGood.find({
       _id: { $in: businessGoodsIds },
@@ -178,3 +178,4 @@ export async function updateDynamicCountSupplierGood(
   }
 }
 
+export default updateDynamicCountSupplierGood;

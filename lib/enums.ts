@@ -127,6 +127,16 @@ export const userRolesEnums = [
   "Other",
 ] as const;
 
+export const managementRolesEnums = [
+  "Owner",
+  "General Manager",
+  "Manager",
+  "Assistant Manager",
+  "MoD",
+  "Admin",
+  "Supervisor",
+] as const;
+
 export const orderStatusEnums = ["Sent", "Done", "Dont Make", "Hold", "Delivered"] as const;
 // once it has been started, it can't be cancel
 // "Dont Make" means it has been done before it been requested, it cannot be cancel

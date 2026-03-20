@@ -2,13 +2,13 @@
  * Builds a short receipt message for order confirmation (email and in-app notification).
  * Used after self-order or delivery payment.
  */
-export function buildReceiptMessage(params: {
+const buildReceiptMessage = (params: {
   dailyReferenceNumber: string | number;
   totalNetPaidAmount: number;
   orderCount: number;
   orderCode?: string;
   currency?: string;
-}): string {
+}): string => {
   const ref = params.orderCode ?? String(params.dailyReferenceNumber);
   const currency = params.currency ? ` ${params.currency}` : "";
   return [
@@ -17,3 +17,5 @@ export function buildReceiptMessage(params: {
     `Show this to staff when collecting your order.`,
   ].join(" ");
 }
+
+export default buildReceiptMessage;

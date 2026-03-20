@@ -2,6 +2,35 @@ import { Types } from "mongoose";
 import { IPaymentMethod } from "./IPaymentMethod";
 import { IGoodsReduced } from "./IDailySalesReport";
 
+export type WeekLabel = string;
+
+/**
+ * Lean/open-report info returned by `createWeeklyBusinessReport()`.
+ * Used internally by weekly aggregation flows.
+ */
+export type WeeklyReportOpen = {
+  _id: Types.ObjectId;
+  businessId: Types.ObjectId;
+  weekReference: Date;
+  isReportOpen: boolean;
+};
+
+/**
+ * Raw metrics stored on the Business document (targets used for comparisons).
+ * `aggregateDailyReportsIntoWeekly` consumes this shape.
+ */
+export interface IMetrics {
+  foodCostPercentage: number;
+  laborCostPercentage: number;
+  supplierGoodWastePercentage: {
+    veryLowBudgetImpact: number;
+    lowBudgetImpact: number;
+    mediumBudgetImpact: number;
+    hightBudgetImpact: number;
+    veryHightBudgetImpact: number;
+  };
+}
+
 export interface IWeeklyFinancialPercentages {
   salesPaymentCompletionPercentage: number;
   profitMarginPercentage: number;

@@ -1,6 +1,6 @@
 import { Types } from "mongoose";
-import { getTheoreticalUsage } from "./getTheoreticalUsage.ts";
-import { getActualUsage } from "./getActualUsage.ts";
+import getTheoreticalUsage from "./getTheoreticalUsage.ts";
+import getActualUsage from "./getActualUsage.ts";
 
 export interface VarianceReportItem {
   supplierGoodId: Types.ObjectId;
@@ -10,11 +10,11 @@ export interface VarianceReportItem {
   measurementUnit: string;
 }
 
-export async function getVarianceReport(
+const getVarianceReport = async (
   businessId: Types.ObjectId,
   year: number,
-  month: number
-): Promise<VarianceReportItem[]> {
+  month: number,
+): Promise<VarianceReportItem[]> => {
   const startDate = new Date(year, month - 1, 1, 0, 0, 0, 0);
   const endDate = new Date(year, month, 0, 23, 59, 59, 999);
 
@@ -23,14 +23,20 @@ export async function getVarianceReport(
     getActualUsage(businessId, startDate, endDate),
   ]);
 
-  const theoreticalMap = new Map<string, { quantity: number; measurementUnit: string }>();
+  const theoreticalMap = new Map<
+    string,
+    { quantity: number; measurementUnit: string }
+  >();
   theoretical.forEach((t) => {
     theoreticalMap.set(t.supplierGoodId.toString(), {
       quantity: t.quantity,
       measurementUnit: t.measurementUnit,
     });
   });
-  const actualMap = new Map<string, { quantity: number; measurementUnit: string }>();
+  const actualMap = new Map<
+    string,
+    { quantity: number; measurementUnit: string }
+  >();
   actual.forEach((a) => {
     actualMap.set(a.supplierGoodId.toString(), {
       quantity: a.quantity,
@@ -59,4 +65,6 @@ export async function getVarianceReport(
     });
   }
   return result;
-}
+};
+
+export default getVarianceReport;

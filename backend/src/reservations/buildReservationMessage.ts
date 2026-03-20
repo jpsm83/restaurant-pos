@@ -4,13 +4,13 @@
 
 import { Types } from "mongoose";
 
-export function buildReservationMessage(params: {
+const buildReservationMessage = (params: {
   reservationId: Types.ObjectId | string;
   status: string;
   reservationStart: Date;
   guestCount: number;
   description?: string;
-}): string {
+}): string => {
   const ref =
     typeof params.reservationId === "string"
       ? params.reservationId
@@ -21,4 +21,6 @@ export function buildReservationMessage(params: {
   const desc = params.description ? `\nReason: ${params.description}` : "";
 
   return `Reservation – Ref ${ref}\nStatus: ${params.status}\nWhen: ${when}\nGuests: ${params.guestCount}${desc}`;
-}
+};
+
+export default buildReservationMessage;

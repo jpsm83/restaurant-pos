@@ -1,12 +1,12 @@
 import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
-import type { IPurchase, IPurchaseItem } from "@shared/interfaces/IPurchase";
-import type { IEmployee } from "@shared/interfaces/IEmployee";
+import type { IPurchase, IPurchaseItem } from "../../../../lib/interface/IPurchase.ts";
+import type { IEmployee } from "../../../../lib/interface/IEmployee.ts";
 
-import { isObjectIdValid } from "../../utils/isObjectIdValid.ts";
-import { MANAGEMENT_ROLES } from "../../utils/constants.ts";
-import { validateInventoryPurchaseItems } from "../../purchases/validateInventoryPurchaseItems.ts";
-import { oneTimePurchaseSupplier } from "../../suppliers/oneTimePurchaseSupplier.ts";
+import isObjectIdValid from "../../utils/isObjectIdValid.ts";
+import { managementRolesEnums } from "../../../../lib/enums.ts";
+import validateInventoryPurchaseItems from "../../purchases/validateInventoryPurchaseItems.ts";
+import oneTimePurchaseSupplier from "../../suppliers/oneTimePurchaseSupplier.ts";
 import Purchase from "../../models/purchase.ts";
 import Inventory from "../../models/inventory.ts";
 import Supplier from "../../models/supplier.ts";
@@ -608,7 +608,7 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
 
     if (
       !employee ||
-      !MANAGEMENT_ROLES.includes(employee.currentShiftRole ?? "")
+      !managementRolesEnums.includes(employee.currentShiftRole as (typeof managementRolesEnums)[number])
     ) {
       return reply.code(403).send({
         message: "You are not allowed to edit purchase lines!",

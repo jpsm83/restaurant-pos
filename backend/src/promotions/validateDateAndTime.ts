@@ -1,7 +1,8 @@
-export const validateDateAndTime = (promotionPeriod: {
-  start: Date;
-  end: Date;
-}): true | string => {
+import type { IPromotionPeriod } from "../../../lib/interface/IPromotion.ts";
+
+const validateDateAndTime = (
+  promotionPeriod: IPromotionPeriod,
+): true | string => {
   if (typeof promotionPeriod !== "object" || !promotionPeriod)
     return "The promotion period is required and must be an object!";
 
@@ -20,3 +21,5 @@ export const validateDateAndTime = (promotionPeriod: {
   }
   return "The promotion period must have a start and end valid date!";
 };
+
+export default validateDateAndTime;

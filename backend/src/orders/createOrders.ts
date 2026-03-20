@@ -1,12 +1,12 @@
 import { ClientSession, Types } from "mongoose";
-import type { IOrder } from "@shared/interfaces/IOrder";
-import type { ISalesInstance } from "@shared/interfaces/ISalesInstance";
+import type { IOrder } from "../../../lib/interface/IOrder.ts";
+import type { ISalesInstance } from "../../../lib/interface/ISalesInstance.ts";
 import Order from "../models/order.ts";
 import SalesInstance from "../models/salesInstance.ts";
 import Reservation from "../models/reservation.ts";
-import { updateDynamicCountSupplierGood } from "../inventories/updateDynamicCountSupplierGood.ts";
+import updateDynamicCountSupplierGood from "../inventories/updateDynamicCountSupplierGood.ts";
 
-export async function createOrders(
+const createOrders = async (
   dailyReferenceNumber: string,
   ordersArr: Partial<IOrder>[],
   createdByUserId: Types.ObjectId | undefined,
@@ -14,7 +14,7 @@ export async function createOrders(
   salesInstanceId: Types.ObjectId,
   businessId: Types.ObjectId,
   session: ClientSession
-): Promise<unknown[] | string> {
+): Promise<unknown[] | string> => {
   try {
     if (createdByUserId && createdAsRole === "employee") {
       const salesInstance = (await SalesInstance.findById(salesInstanceId)
@@ -111,3 +111,4 @@ export async function createOrders(
   }
 }
 
+export default createOrders;

@@ -1,6 +1,6 @@
-import type { IEmployeeSchedule } from "@shared/interfaces/ISchedule";
+import type { IEmployeeSchedule } from "../../../lib/interface/ISchedule.ts";
 
-export const employeesValidation = (employee: IEmployeeSchedule): true | string => {
+const employeesValidation = (employee: IEmployeeSchedule): true | string => {
   if (typeof employee !== "object" || employee === undefined) {
     return "Invalid employee object";
   }
@@ -33,3 +33,5 @@ export const employeesValidation = (employee: IEmployeeSchedule): true | string 
 
   return true;
 };
+
+export default employeesValidation;

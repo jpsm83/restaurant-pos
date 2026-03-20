@@ -1,25 +1,21 @@
 import { Types } from "mongoose";
 import QRCode from "qrcode";
 import { v2 as cloudinary } from "cloudinary";
+import configureCloudinary from "../cloudinary/cloudinaryConfig.ts";
 
-export const generateQrCode = async (
+const generateQrCode = async (
   businessId: Types.ObjectId | string,
-  salesPointId: Types.ObjectId
-) => {
+  salesPointId: Types.ObjectId,
+): Promise<string | string> => {
   // Configure cloudinary at runtime (after env vars are loaded)
-  cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
-    secure: true,
-  });
+  configureCloudinary();
 
   const BASE_URL = process.env.BASE_URL || "http://localhost:3000";
 
   try {
     const salesPointIdStr = salesPointId.toString();
     const qrCodeDataUrl = await QRCode.toDataURL(
-      `${BASE_URL}/api/v1/salesInstances/selfOrderingLocation/${salesPointIdStr}`
+      `${BASE_URL}/api/v1/salesInstances/selfOrderingLocation/${salesPointIdStr}`,
     );
 
     const bytes = Buffer.from(qrCodeDataUrl.split(",")[1], "base64");
@@ -39,3 +35,5 @@ export const generateQrCode = async (
     return "Failed to generate QR code: " + error;
   }
 };
+
+export default generateQrCode;

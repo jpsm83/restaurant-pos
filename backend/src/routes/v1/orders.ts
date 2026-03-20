@@ -7,7 +7,7 @@ import BusinessGood from "../../models/businessGood.ts";
 import SalesPoint from "../../models/salesPoint.ts";
 import Employee from "../../models/employee.ts";
 import { isObjectIdValid } from "../../utils/isObjectIdValid.ts";
-import { hasManagementRole } from "../../utils/constants.ts";
+import { managementRolesEnums } from "../../../lib/enums.ts";
 import { ordersArrValidation } from "../../orders/ordersArrValidation.ts";
 import { createOrders } from "../../orders/createOrders.ts";
 import { cancelOrders } from "../../orders/cancelOrders.ts";
@@ -242,7 +242,7 @@ export const ordersRoutes: FastifyPluginAsync = async (app) => {
         .session(session)
         .lean()) as { allEmployeeRoles?: string[] } | null;
 
-      if (!employee || !hasManagementRole(employee.allEmployeeRoles)) {
+      if (!employee || !managementRolesEnums.some((role) => employee.allEmployeeRoles?.includes(role))) {
         await session.abortTransaction();
         return reply.code(403).send({
           message: "Only management roles can cancel orders!",

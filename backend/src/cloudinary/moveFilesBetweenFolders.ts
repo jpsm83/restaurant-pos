@@ -8,25 +8,21 @@
  */
 
 import { v2 as cloudinary } from "cloudinary";
+import configureCloudinary from "./cloudinaryConfig.ts";
 
 /**
  * Moves all files from oldFolder to newFolder under the restaurant-pos prefix.
  * Returns array of new secure URLs or an error string. Max 500 resources per call.
  */
-export async function moveFilesBetweenFolders({
+const moveFilesBetweenFolders = async ({
   oldFolder,
   newFolder,
 }: {
   oldFolder: string;
   newFolder: string;
-}): Promise<string | string[]> {
+}): Promise<string | string[]> => {
   // Configure cloudinary at runtime (after env vars are loaded)
-  cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
-    secure: true,
-  });
+  configureCloudinary();
 
   try {
     const uploadPreset = "restaurant-pos";
@@ -64,3 +60,5 @@ export async function moveFilesBetweenFolders({
     }`;
   }
 }
+
+export default moveFilesBetweenFolders;

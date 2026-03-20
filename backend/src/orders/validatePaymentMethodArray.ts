@@ -1,12 +1,7 @@
-import type { IPaymentMethod } from "@shared/interfaces/IPaymentMethod";
-import {
-  paymentMethodsEnums,
-  creditCardEnums,
-  cryptoEnums,
-  otherPaymentEnums,
-} from "../../../lib/enums.ts";
+import type { IPaymentMethod } from "../../../lib/interface/IPaymentMethod.ts";
+import { paymentMethodsEnums, creditCardEnums, cryptoEnums, otherPaymentEnums } from "../../../lib/enums.ts";
 
-export const validatePaymentMethodArray = (
+const validatePaymentMethodArray = (
   paymentMethod: IPaymentMethod[]
 ): true | string => {
   if (!Array.isArray(paymentMethod) || paymentMethod.length === 0) {
@@ -61,3 +56,5 @@ export const validatePaymentMethodArray = (
 
   return true;
 };
+
+export default validatePaymentMethodArray;

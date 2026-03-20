@@ -10,13 +10,13 @@ import DailySalesReport from "../models/dailySalesReport.ts";
 import MonthlyBusinessReport from "../models/monthlyBusinessReport.ts";
 import Schedule from "../models/schedule.ts";
 import Business from "../models/business.ts";
-import { isObjectIdValid } from "../utils/isObjectIdValid.ts";
+import isObjectIdValid from "../utils/isObjectIdValid.ts";
+import getWasteByBudgetImpactForMonth from "../inventories/getWasteByBudgetImpactForMonth.ts";
 import {
   createMonthlyBusinessReport,
   type MonthlyReportOpen,
 } from "./createMonthlyBusinessReport.ts";
-import { getWasteByBudgetImpactForMonth } from "../inventories/getWasteByBudgetImpactForMonth.ts";
-import { sendMonthlyReportReadyNotification } from "./sendMonthlyReportReadyNotification.ts";
+import sendMonthlyReportReadyNotification from "./sendMonthlyReportReadyNotification.ts";
 
 interface IGoodsReduced {
   businessGoodId: Types.ObjectId;
@@ -60,13 +60,13 @@ function getMonthEnd(monthStart: Date): Date {
     23,
     59,
     59,
-    999
+    999,
   );
 }
 
 function mergeGoodsByBusinessGoodId(
   acc: IGoodsReduced[],
-  items: IGoodsReduced[] | undefined
+  items: IGoodsReduced[] | undefined,
 ): void {
   if (!items?.length) return;
   items.forEach((item) => {
@@ -78,7 +78,7 @@ function mergeGoodsByBusinessGoodId(
       (x) =>
         (typeof x.businessGoodId === "object" && x.businessGoodId != null
           ? (x.businessGoodId as Types.ObjectId).toString()
-          : String(x.businessGoodId)) === idStr
+          : String(x.businessGoodId)) === idStr,
     );
     if (existing) {
       existing.quantity += item.quantity ?? 1;
@@ -98,14 +98,14 @@ function mergeGoodsByBusinessGoodId(
 
 function mergePaymentMethods(
   acc: IPaymentMethod[],
-  methods: IPaymentMethod[] | undefined
+  methods: IPaymentMethod[] | undefined,
 ): void {
   if (!methods?.length) return;
   methods.forEach((pm) => {
     const existing = acc.find(
       (p) =>
         p.paymentMethodType === pm.paymentMethodType &&
-        p.methodBranch === pm.methodBranch
+        p.methodBranch === pm.methodBranch,
     );
     if (existing) {
       existing.methodSalesTotal += pm.methodSalesTotal ?? 0;
@@ -125,9 +125,9 @@ function mergePaymentMethods(
  * Call this after calculateBusinessDailySalesReport.
  * Preserves totalFixedOperatingCost and totalExtraCost if already set on the report.
  */
-export async function aggregateDailyReportsIntoMonthly(
-  businessId: Types.ObjectId
-): Promise<void> {
+const aggregateDailyReportsIntoMonthly = async (
+  businessId: Types.ObjectId,
+): Promise<void> => {
   if (isObjectIdValid([businessId]) !== true) {
     return;
   }
@@ -160,9 +160,11 @@ export async function aggregateDailyReportsIntoMonthly(
     })
       .select("_id monthReference isReportOpen")
       .session(session)
-      .lean()) as
-      | { _id: Types.ObjectId; monthReference: Date; isReportOpen?: boolean }
-      | null;
+      .lean()) as {
+      _id: Types.ObjectId;
+      monthReference: Date;
+      isReportOpen?: boolean;
+    } | null;
 
     if (openPrevMonthReport) {
       const openDailyInPrevMonth = await DailySalesReport.exists({
@@ -175,7 +177,7 @@ export async function aggregateDailyReportsIntoMonthly(
         const closeResult = await MonthlyBusinessReport.updateOne(
           { _id: openPrevMonthReport._id, isReportOpen: true },
           { $set: { isReportOpen: false } },
-          { session }
+          { session },
         );
         if (closeResult.modifiedCount > 0) {
           shouldSendReadyNotification = true;
@@ -197,7 +199,7 @@ export async function aggregateDailyReportsIntoMonthly(
         dailyNetPaidAmount: { $exists: true, $ne: null },
       })
         .select(
-          "dailyTotalSalesBeforeAdjustments dailyNetPaidAmount dailyCostOfGoodsSold dailyTipsReceived dailyTotalVoidValue dailyTotalInvitedValue dailyCustomersServed dailyPosSystemCommission businessPaymentMethods dailySoldGoods dailyVoidedGoods dailyInvitedGoods"
+          "dailyTotalSalesBeforeAdjustments dailyNetPaidAmount dailyCostOfGoodsSold dailyTipsReceived dailyTotalVoidValue dailyTotalInvitedValue dailyCustomersServed dailyPosSystemCommission businessPaymentMethods dailySoldGoods dailyVoidedGoods dailyInvitedGoods",
         )
         .session(session)
         .lean(),
@@ -210,7 +212,7 @@ export async function aggregateDailyReportsIntoMonthly(
         .lean(),
       MonthlyBusinessReport.findById(reportId)
         .select(
-          "costBreakdown.totalFixedOperatingCost costBreakdown.totalExtraCost"
+          "costBreakdown.totalFixedOperatingCost costBreakdown.totalExtraCost",
         )
         .session(session)
         .lean(),
@@ -470,7 +472,7 @@ export async function aggregateDailyReportsIntoMonthly(
           posSystemCommission,
         },
       },
-      { session }
+      { session },
     );
 
     await session.commitTransaction();
@@ -484,4 +486,6 @@ export async function aggregateDailyReportsIntoMonthly(
   if (shouldSendReadyNotification && closedMonthLabel) {
     await sendMonthlyReportReadyNotification(businessId, closedMonthLabel);
   }
-}
+};
+
+export default aggregateDailyReportsIntoMonthly;

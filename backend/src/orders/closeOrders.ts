@@ -1,12 +1,12 @@
 import { ClientSession, Types } from "mongoose";
-import type { IOrder } from "@shared/interfaces/IOrder";
-import type { ISalesInstance } from "@shared/interfaces/ISalesInstance";
-import type { IPaymentMethod } from "@shared/interfaces/IPaymentMethod";
+import type { IOrder } from "../../../lib/interface/IOrder.ts";
+import type { ISalesInstance } from "../../../lib/interface/ISalesInstance.ts";
+import type { IPaymentMethod } from "../../../lib/interface/IPaymentMethod.ts";
 import Order from "../models/order.ts";
 import SalesInstance from "../models/salesInstance.ts";
 import Reservation from "../models/reservation.ts";
 
-export const closeOrders = async (
+const closeOrders = async (
   ordersIdsArr: Types.ObjectId[],
   paymentMethodArr: IPaymentMethod[],
   session: ClientSession
@@ -148,3 +148,5 @@ export const closeOrders = async (
     return "Close orders failed! Error: " + error;
   }
 };
+
+export default closeOrders;

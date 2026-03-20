@@ -24,11 +24,11 @@ interface BusinessGoodLean {
   setMenuIds?: SetMenuItemLean[];
 }
 
-export async function getTheoreticalUsage(
+const getTheoreticalUsage = async (
   businessId: Types.ObjectId,
   startDate: Date,
   endDate: Date
-): Promise<TheoreticalUsageItem[]> {
+): Promise<TheoreticalUsageItem[]> => {
   const orders = await Order.find({
     businessId,
     createdAt: { $gte: startDate, $lte: endDate },
@@ -160,3 +160,5 @@ export async function getTheoreticalUsage(
   }
   return result;
 }
+
+export default getTheoreticalUsage;

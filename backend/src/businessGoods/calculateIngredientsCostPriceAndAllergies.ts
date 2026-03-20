@@ -1,7 +1,7 @@
 import convert, { Unit } from "convert-units";
 import { Types } from "mongoose";
-import type { IIngredient } from "@shared/interfaces/IBusinessGood";
-import type { ISupplierGood } from "@shared/interfaces/ISupplierGood";
+import type { IIngredient } from "../../../lib/interface/IBusinessGood.ts";
+import type { ISupplierGood } from "../../../lib/interface/ISupplierGood.ts";
 import SupplierGood from "../models/supplierGood.ts";
 import objDefaultValidation from "../../../lib/utils/objDefaultValidation.ts";
 
@@ -13,7 +13,7 @@ const reqIngredientsFields = [
 
 const nonReqIngredientsFields = ["costOfRequiredQuantity"];
 
-export const calculateIngredientsCostPriceAndAllergies = async (
+const calculateIngredientsCostPriceAndAllergies = async (
   ingredients: IIngredient[]
 ) => {
   try {
@@ -81,3 +81,5 @@ export const calculateIngredientsCostPriceAndAllergies = async (
     return "Ingredients array calculation and allergens failed! " + error;
   }
 };
+
+export default calculateIngredientsCostPriceAndAllergies;

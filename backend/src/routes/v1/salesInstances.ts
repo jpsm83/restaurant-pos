@@ -8,8 +8,8 @@ import type { IAddress } from "@shared/interfaces/IAddress";
 import type { IBusiness } from "@shared/interfaces/IBusiness";
 
 import { isObjectIdValid } from "../../utils/isObjectIdValid.ts";
-import { hasManagementRole, DELIVERY_ATTRIBUTION_USER_ID } from "../../utils/constants.ts";
-import { isBusinessOpenNow, isDeliveryOpenNow } from "../../utils/isBusinessOpenNow.ts";
+import { managementRolesEnums } from "../../../lib/enums.ts";
+import { isBusinessOpenNow, isDeliveryOpenNow } from "../../business/isBusinessOpenNow.ts";
 import SalesInstance from "../../models/salesInstance.ts";
 import SalesPoint from "../../models/salesPoint.ts";
 import User from "../../models/user.ts";
@@ -322,7 +322,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
           .session(session)
           .lean()) as { allEmployeeRoles?: string[] } | null;
 
-        if (!cancelEmployee || !hasManagementRole(cancelEmployee.allEmployeeRoles)) {
+        if (!cancelEmployee || !managementRolesEnums.some((role) => cancelEmployee.allEmployeeRoles?.includes(role))) {
           await session.abortTransaction();
           return reply.code(403).send({
             message: "Only on-duty management roles can cancel orders!",
@@ -484,7 +484,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
 
       const isAllowed =
         (employee?.allEmployeeRoles || []).includes("Host") ||
-        hasManagementRole(employee?.allEmployeeRoles);
+        managementRolesEnums.some((role) => employee?.allEmployeeRoles?.includes(role));
 
       if (!isAllowed) {
         await session.abortTransaction();

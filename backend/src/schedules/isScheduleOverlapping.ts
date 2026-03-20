@@ -1,7 +1,7 @@
-export const isScheduleOverlapping = (
+const isScheduleOverlapping = (
   newStartTime: Date,
   newEndTime: Date,
-  existTimeRangeArr: { startTime: Date; endTime: Date }[]
+  existTimeRangeArr: { startTime: Date; endTime: Date }[],
 ): boolean => {
   const overlap = existTimeRangeArr.some((schedule) => {
     return (
@@ -13,3 +13,5 @@ export const isScheduleOverlapping = (
 
   return overlap;
 };
+
+export default isScheduleOverlapping;

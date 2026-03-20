@@ -5,7 +5,7 @@ import Supplier from "../models/supplier.ts";
 import Employee from "../models/employee.ts";
 import User from "../models/user.ts";
 import Notification from "../models/notification.ts";
-import { MANAGEMENT_ROLES } from "../utils/constants.ts";
+import { managementRolesEnums } from "../../../lib/enums.ts";
 
 interface InventoryGoodPopulated {
   supplierGoodId: { _id: Types.ObjectId; name?: string; parLevel?: number; minimumQuantityRequired?: number };
@@ -16,9 +16,9 @@ interface InventoryWithGoods {
   inventoryGoods?: InventoryGoodPopulated[];
 }
 
-export async function checkLowStockAndNotify(
+const checkLowStockAndNotify = async (
   businessId: Types.ObjectId
-): Promise<void> {
+): Promise<void> => {
   try {
     const inventory = await Inventory.findOne({
       businessId,
@@ -55,7 +55,7 @@ export async function checkLowStockAndNotify(
     const managerEmployees = await Employee.find({
       businessId,
       onDuty: true,
-      currentShiftRole: { $in: MANAGEMENT_ROLES },
+      currentShiftRole: { $in: managementRolesEnums },
     })
       .select("_id userId")
       .lean();
@@ -102,3 +102,5 @@ export async function checkLowStockAndNotify(
     // Fire-and-forget: do not throw
   }
 }
+
+export default checkLowStockAndNotify;

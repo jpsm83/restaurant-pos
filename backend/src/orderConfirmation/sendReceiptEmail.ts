@@ -4,11 +4,11 @@ import nodemailer from "nodemailer";
  * Sends an order confirmation/receipt email. Fire-and-forget safe: does not throw.
  * If SMTP env is missing or send fails, logs and returns; caller is not affected.
  */
-export async function sendReceiptEmail(
+const sendReceiptEmail = async (
   toEmail: string,
   receiptMessage: string,
   options?: { subject?: string; ref?: string }
-): Promise<void> {
+): Promise<void> => {
   if (!toEmail?.trim()) return;
 
   const host = process.env.SMTP_HOST;
@@ -46,3 +46,5 @@ export async function sendReceiptEmail(
     console.error("[orderConfirmation] sendReceiptEmail failed:", error);
   }
 }
+
+export default sendReceiptEmail;

@@ -1,9 +1,9 @@
 import { ClientSession, Types } from "mongoose";
-import { updateDynamicCountSupplierGood } from "../inventories/updateDynamicCountSupplierGood.ts";
+import updateDynamicCountSupplierGood from "../inventories/updateDynamicCountSupplierGood.ts";
 import Order from "../models/order.ts";
 import SalesInstance from "../models/salesInstance.ts";
 
-export const cancelOrders = async (
+const cancelOrders = async (
   ordersIdsArr: Types.ObjectId[],
   session: ClientSession
 ): Promise<true | string> => {
@@ -72,3 +72,5 @@ export const cancelOrders = async (
     return "Cancel order and update dynamic count failed! " + error;
   }
 };
+
+export default cancelOrders;

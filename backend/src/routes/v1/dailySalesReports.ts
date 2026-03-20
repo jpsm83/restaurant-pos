@@ -1,19 +1,19 @@
 import type { FastifyPluginAsync } from "fastify";
 import { Types } from "mongoose";
-import type { IGoodsReduced, IDailySalesReport } from "@shared/interfaces/IDailySalesReport";
-import type { IPaymentMethod } from "@shared/interfaces/IPaymentMethod";
-import type { IEmployee } from "@shared/interfaces/IEmployee";
 
-import { isObjectIdValid } from "../../utils/isObjectIdValid.ts";
-import { updateEmployeesDailySalesReport } from "../../dailySalesReports/updateEmployeeDailySalesReport.ts";
-import { DELIVERY_ATTRIBUTION_USER_ID, MANAGEMENT_ROLES } from "../../utils/constants.ts";
-import { aggregateDailyReportsIntoMonthly } from "../../monthlyBusinessReport/aggregateDailyReportsIntoMonthly.ts";
+import isObjectIdValid from "../../utils/isObjectIdValid.ts";
+import updateEmployeesDailySalesReport from "../../dailySalesReports/updateEmployeeDailySalesReport.ts";
+import { DELIVERY_ATTRIBUTION_USER_ID } from "../../../lib/enums.ts";
+import { aggregateDailyReportsIntoMonthly } from "../../weeklyBusinessReport/aggregateDailyReportsIntoMonthly.ts";
 import DailySalesReport from "../../models/dailySalesReport.ts";
 import User from "../../models/user.ts";
 import Employee from "../../models/employee.ts";
 import Business from "../../models/business.ts";
 import Order from "../../models/order.ts";
 import { createAuthHook } from "../../auth/middleware.ts";
+import { managementRolesEnums } from "../../../../lib/enums.ts";
+import { IEmployee } from "../../../../lib/interface/IEmployee.ts";
+import { IGoodsReduced } from "../../../../lib/interface/IDailySalesReport.ts";
 
 export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
   // GET /dailySalesReports - list all
@@ -150,7 +150,7 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
 
       if (
         !employeeRoleOnDuty ||
-        !MANAGEMENT_ROLES.includes(employeeRoleOnDuty.currentShiftRole ?? "")
+        !managementRolesEnums.includes(employeeRoleOnDuty.currentShiftRole ?? "")
       ) {
         return reply.code(403).send({
           message: "You are not allowed to calculate the daily sales report!",
@@ -392,8 +392,8 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
               (dailyReportWithUsers.businessId as Types.ObjectId))
           : new Types.ObjectId(String(dailyReportWithUsers.businessId));
 
-      aggregateDailyReportsIntoMonthly(businessIdForMonthly).catch((err) => {
-        app.log.error("aggregateDailyReportsIntoMonthly failed:", err);
+      aggregateDailyReportsIntoMonthly(businessIdForMonthly).catch((err: Error) => {
+        app.log.error("aggregateDailyReportsIntoMonthly failed:", err.message);
       });
 
       return reply.code(200).send({ message: "Daily sales report updated" });
@@ -496,7 +496,7 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
 
       if (
         !employeeDoc ||
-        !MANAGEMENT_ROLES.includes(employeeDoc.currentShiftRole ?? "")
+        !managementRolesEnums.includes(employeeDoc.currentShiftRole ?? "")
       ) {
         return reply.code(403).send({
           message: "You are not allowed to close the daily sales report!",

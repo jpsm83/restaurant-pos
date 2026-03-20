@@ -1,6 +1,6 @@
 import * as net from "net";
 
-export const checkPrinterConnection = (
+const checkPrinterConnection = (
   ipAddress: string,
   port: number
 ): Promise<boolean> => {
@@ -29,3 +29,5 @@ export const checkPrinterConnection = (
     });
   });
 };
+
+export default checkPrinterConnection;

@@ -24,11 +24,11 @@ export interface ActualUsageItem {
   measurementUnit: string;
 }
 
-export async function getActualUsage(
+const getActualUsage = async (
   businessId: Types.ObjectId,
   startDate: Date,
   endDate: Date
-): Promise<ActualUsageItem[]> {
+): Promise<ActualUsageItem[]> => {
   const [openingInventory, closingInventory, purchasesInRange] =
     await Promise.all([
       Inventory.findOne({
@@ -110,3 +110,5 @@ export async function getActualUsage(
   }
   return result;
 }
+
+export default getActualUsage;

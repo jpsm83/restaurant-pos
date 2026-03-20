@@ -2,7 +2,7 @@ import { ClientSession, Types } from "mongoose";
 import Order from "../models/order.ts";
 import SalesInstance from "../models/salesInstance.ts";
 
-export const transferOrdersBetweenSalesInstances = async (
+const transferOrdersBetweenSalesInstances = async (
   ordersIdsArr: Types.ObjectId[],
   toSalesInstanceId: Types.ObjectId,
   session: ClientSession
@@ -77,3 +77,5 @@ export const transferOrdersBetweenSalesInstances = async (
     return "Transfer orders failed! Error: " + error;
   }
 };
+
+export default transferOrdersBetweenSalesInstances;

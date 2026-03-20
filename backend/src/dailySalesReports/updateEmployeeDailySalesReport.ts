@@ -1,10 +1,10 @@
 import { Types } from "mongoose";
-import { isObjectIdValid } from "../utils/isObjectIdValid.ts";
+import isObjectIdValid from "../utils/isObjectIdValid.ts";
 import type {
   IGoodsReduced,
   IEmployeeDailySalesReport,
-} from "@shared/interfaces/IDailySalesReport";
-import type { IPaymentMethod } from "@shared/interfaces/IPaymentMethod";
+} from "../../../lib/interface/IDailySalesReport.ts";
+import type { IPaymentMethod } from "../../../lib/interface/IPaymentMethod.ts";
 import Order from "../models/order.ts";
 import DailySalesReport from "../models/dailySalesReport.ts";
 import BusinessGood from "../models/businessGood.ts";
@@ -38,10 +38,13 @@ interface SalesInstanceForReport {
   salesGroup?: SalesGroupWithOrders[];
 }
 
-export const updateEmployeesDailySalesReport = async (
+const updateEmployeesDailySalesReport = async (
   userIds: Types.ObjectId[],
-  dailyReferenceNumber: number
-): Promise<{ updatedEmployees: IEmployeeDailySalesReport[]; errors: string[] }> => {
+  dailyReferenceNumber: number,
+): Promise<{
+  updatedEmployees: IEmployeeDailySalesReport[];
+  errors: string[];
+}> => {
   try {
     const employeeReports: IEmployeeDailySalesReport[] = [];
     const errors: string[] = [];
@@ -91,7 +94,7 @@ export const updateEmployeesDailySalesReport = async (
               "createdByUserId createdAsRole paymentMethod billingStatus orderGrossPrice orderNetPrice orderTips orderCostPrice businessGoodId addOns",
           })
           .select(
-            "dailyReferenceNumber salesInstanceStatus businessId orderNetPrice orderTips guests closedByUserId"
+            "dailyReferenceNumber salesInstanceStatus businessId orderNetPrice orderTips guests closedByUserId",
           )
           .lean();
 
@@ -129,25 +132,29 @@ export const updateEmployeesDailySalesReport = async (
             for (const group of groups) {
               const orders = group.ordersIds ?? [];
               for (const order of orders) {
-                (order.paymentMethod ?? []).forEach((payment: IPaymentMethod) => {
-                  const existingPayment =
-                    employeeDailySalesReportObj?.employeePaymentMethods?.find(
-                      (p: IPaymentMethod) =>
-                        p.paymentMethodType === payment.paymentMethodType &&
-                        p.methodBranch === payment.methodBranch
-                    );
+                (order.paymentMethod ?? []).forEach(
+                  (payment: IPaymentMethod) => {
+                    const existingPayment =
+                      employeeDailySalesReportObj?.employeePaymentMethods?.find(
+                        (p: IPaymentMethod) =>
+                          p.paymentMethodType === payment.paymentMethodType &&
+                          p.methodBranch === payment.methodBranch,
+                      );
 
-                  if (existingPayment) {
-                    existingPayment.methodSalesTotal +=
-                      payment.methodSalesTotal ?? 0;
-                  } else {
-                    employeeDailySalesReportObj?.employeePaymentMethods?.push({
-                      paymentMethodType: payment.paymentMethodType,
-                      methodBranch: payment.methodBranch,
-                      methodSalesTotal: payment.methodSalesTotal ?? 0,
-                    });
-                  }
-                });
+                    if (existingPayment) {
+                      existingPayment.methodSalesTotal +=
+                        payment.methodSalesTotal ?? 0;
+                    } else {
+                      employeeDailySalesReportObj?.employeePaymentMethods?.push(
+                        {
+                          paymentMethodType: payment.paymentMethodType,
+                          methodBranch: payment.methodBranch,
+                          methodSalesTotal: payment.methodSalesTotal ?? 0,
+                        },
+                      );
+                    }
+                  },
+                );
 
                 employeeDailySalesReportObj.totalNetPaidAmount =
                   (employeeDailySalesReportObj.totalNetPaidAmount ?? 0) +
@@ -156,8 +163,8 @@ export const updateEmployeesDailySalesReport = async (
                   (employeeDailySalesReportObj.totalTipsReceived ?? 0) +
                   (order.orderTips ?? 0);
                 employeeDailySalesReportObj.totalSalesBeforeAdjustments =
-                  (employeeDailySalesReportObj.totalSalesBeforeAdjustments ?? 0) +
-                  (order.orderGrossPrice ?? 0);
+                  (employeeDailySalesReportObj.totalSalesBeforeAdjustments ??
+                    0) + (order.orderGrossPrice ?? 0);
                 employeeDailySalesReportObj.totalCostOfGoodsSold =
                   (employeeDailySalesReportObj.totalCostOfGoodsSold ?? 0) +
                   (order.orderCostPrice ?? 0);
@@ -181,13 +188,14 @@ export const updateEmployeesDailySalesReport = async (
                     typeof businessGood === "object" &&
                     businessGood !== null &&
                     "sellingPrice" in businessGood
-                      ? (businessGood as PopulatedBusinessGood).sellingPrice ?? 0
+                      ? ((businessGood as PopulatedBusinessGood).sellingPrice ??
+                        0)
                       : 0;
                   const costPrice =
                     typeof businessGood === "object" &&
                     businessGood !== null &&
                     "costPrice" in businessGood
-                      ? (businessGood as PopulatedBusinessGood).costPrice ?? 0
+                      ? ((businessGood as PopulatedBusinessGood).costPrice ?? 0)
                       : 0;
                   const updateGoodsArray = (array: IGoodsReduced[]) => {
                     const idStr =
@@ -197,7 +205,7 @@ export const updateEmployeesDailySalesReport = async (
                     const existingGood = array.find(
                       (item: IGoodsReduced) =>
                         (item.businessGoodId?.toString?.() ??
-                          String(item.businessGoodId)) === idStr
+                          String(item.businessGoodId)) === idStr,
                     );
 
                     if (existingGood) {
@@ -254,25 +262,24 @@ export const updateEmployeesDailySalesReport = async (
         employeeDailySalesReportObj.totalVoidValue =
           employeeGoodsReport.goodsVoid.reduce(
             (acc, curr) => acc + (curr.totalPrice ?? 0),
-            0
+            0,
           );
         employeeDailySalesReportObj.totalInvitedValue =
           employeeGoodsReport.goodsInvited.reduce(
             (acc, curr) => acc + (curr.totalPrice ?? 0),
-            0
+            0,
           );
 
         employeeReports.push(employeeDailySalesReportObj);
       } catch (error: unknown) {
-        const message =
-          error instanceof Error ? error.message : String(error);
+        const message = error instanceof Error ? error.message : String(error);
         errors.push(`Error updating user ${userId}: ${message}`);
       }
     }
 
     await DailySalesReport.updateOne(
       { dailyReferenceNumber },
-      { $set: { employeesDailySalesReport: employeeReports } }
+      { $set: { employeesDailySalesReport: employeeReports } },
     );
 
     return { updatedEmployees: employeeReports, errors };
@@ -284,3 +291,5 @@ export const updateEmployeesDailySalesReport = async (
     };
   }
 };
+
+export default updateEmployeesDailySalesReport;

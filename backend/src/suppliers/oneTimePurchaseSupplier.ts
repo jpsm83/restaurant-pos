@@ -1,9 +1,9 @@
 import mongoose, { Types } from "mongoose";
 import Supplier from "../models/supplier.ts";
-import { isObjectIdValid } from "../utils/isObjectIdValid.ts";
+import isObjectIdValid from "../utils/isObjectIdValid.ts";
 
-export const oneTimePurchaseSupplier = async (
-  businessId: Types.ObjectId | string
+const oneTimePurchaseSupplier = async (
+  businessId: Types.ObjectId | string,
 ): Promise<Types.ObjectId | string> => {
   try {
     if (!isObjectIdValid([businessId])) {
@@ -46,3 +46,5 @@ export const oneTimePurchaseSupplier = async (
     return "Create one time purchase supplier failed! " + error;
   }
 };
+
+export default oneTimePurchaseSupplier;

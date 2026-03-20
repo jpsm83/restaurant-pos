@@ -1,15 +1,11 @@
 import { v2 as cloudinary } from "cloudinary";
+import configureCloudinary from "./cloudinaryConfig.ts";
 
-export async function deleteFilesCloudinary(
+const deleteFilesCloudinary = async (
   imageUrl: string | undefined
-): Promise<boolean | string> {
+): Promise<boolean | string> => {
   // Configure cloudinary at runtime (after env vars are loaded)
-  cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
-    secure: true,
-  });
+  configureCloudinary();
 
   try {
     if (imageUrl) {
@@ -33,3 +29,5 @@ export async function deleteFilesCloudinary(
     }`;
   }
 }
+
+export default deleteFilesCloudinary;

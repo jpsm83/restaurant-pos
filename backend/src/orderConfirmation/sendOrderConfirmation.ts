@@ -1,8 +1,8 @@
 import { Types } from "mongoose";
 import User from "../models/user.ts";
-import { buildReceiptMessage } from "./buildReceiptMessage.ts";
-import { sendOrderConfirmationNotification } from "./sendOrderConfirmationNotification.ts";
-import { sendReceiptEmail } from "./sendReceiptEmail.ts";
+import buildReceiptMessage from "./buildReceiptMessage.ts";
+import sendOrderConfirmationNotification from "./sendOrderConfirmationNotification.ts";
+import sendReceiptEmail from "./sendReceiptEmail.ts";
 
 export interface OrderConfirmationParams {
   dailyReferenceNumber: string | number;
@@ -15,11 +15,11 @@ export interface OrderConfirmationParams {
  * Sends order confirmation after self-order (or delivery) payment: email + in-app notification.
  * Call fire-and-forget (e.g. .catch(() => {})) so failures do not affect the order response.
  */
-export async function sendOrderConfirmation(
+const sendOrderConfirmation = async (
   userId: Types.ObjectId,
   businessId: Types.ObjectId,
   params: OrderConfirmationParams
-): Promise<void> {
+): Promise<void> => {
   try {
     const user = (await User.findById(userId)
       .select("personalDetails.email")
@@ -45,4 +45,6 @@ export async function sendOrderConfirmation(
   } catch (error) {
     console.error("[orderConfirmation] sendOrderConfirmation failed:", error);
   }
-}
+};
+
+export default sendOrderConfirmation;

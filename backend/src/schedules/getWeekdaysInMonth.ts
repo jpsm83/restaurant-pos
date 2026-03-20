@@ -1,4 +1,4 @@
-export const getWeekdaysInMonth = (year: number, month: number): number => {
+const getWeekdaysInMonth = (year: number, month: number): number => {
   let weekdays = 0;
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
@@ -10,3 +10,5 @@ export const getWeekdaysInMonth = (year: number, month: number): number => {
   }
   return weekdays;
 };
+
+export default getWeekdaysInMonth;

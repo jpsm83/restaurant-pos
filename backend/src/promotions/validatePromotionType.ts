@@ -1,14 +1,6 @@
-type PromotionType = {
-  fixedPrice?: number;
-  discountPercent?: number;
-  twoForOne?: boolean;
-  threeForTwo?: boolean;
-  secondHalfPrice?: boolean;
-  fullComplimentary?: boolean;
-  [key: string]: number | boolean | undefined;
-};
+import type { PromotionType } from "../../../lib/interface/IPromotion.ts";
 
-export const validatePromotionType = (promotionType: PromotionType): true | string => {
+const validatePromotionType = (promotionType: PromotionType): true | string => {
   if (!promotionType || typeof promotionType !== "object") {
     return "Promotion type is a required object!";
   }
@@ -42,3 +34,5 @@ export const validatePromotionType = (promotionType: PromotionType): true | stri
     ? true
     : `Invalid type for ${key}. Expected ${matchingKey.typeValue}, got ${typeof keyValue}.`;
 };
+
+export default validatePromotionType;

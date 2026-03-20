@@ -4,16 +4,13 @@
 
 import { ClientSession, Types } from "mongoose";
 import WeeklyBusinessReport from "../models/weeklyBusinessReport.ts";
-import { isObjectIdValid } from "../utils/isObjectIdValid.ts";
+import isObjectIdValid from "../utils/isObjectIdValid.ts";
+import type { WeeklyReportOpen } from "../../../lib/interface/IWeeklyBusinessReport.ts";
 
-export type WeeklyReportOpen = {
-  _id: Types.ObjectId;
-  businessId: Types.ObjectId;
-  weekReference: Date;
-  isReportOpen: boolean;
-};
-
-export function getWeekReference(date: Date, weeklyReportStartDay: number): Date {
+export function getWeekReference(
+  date: Date,
+  weeklyReportStartDay: number,
+): Date {
   const start = new Date(
     date.getFullYear(),
     date.getMonth(),
@@ -21,7 +18,7 @@ export function getWeekReference(date: Date, weeklyReportStartDay: number): Date
     0,
     0,
     0,
-    0
+    0,
   );
   const day = start.getDay();
   const diff = (day - weeklyReportStartDay + 7) % 7;
@@ -32,7 +29,7 @@ export function getWeekReference(date: Date, weeklyReportStartDay: number): Date
 export async function createWeeklyBusinessReport(
   businessId: Types.ObjectId,
   weekReference: Date,
-  session: ClientSession
+  session: ClientSession,
 ): Promise<WeeklyReportOpen | null> {
   if (isObjectIdValid([businessId]) !== true) {
     return null;
@@ -67,7 +64,7 @@ export async function createWeeklyBusinessReport(
         isReportOpen: true,
       },
     ],
-    { session }
+    { session },
   );
 
   const doc = Array.isArray(created) ? created[0] : created;

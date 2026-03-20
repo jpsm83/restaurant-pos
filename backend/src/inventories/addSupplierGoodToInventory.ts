@@ -1,8 +1,8 @@
 import { Types, ClientSession } from "mongoose";
-import { isObjectIdValid } from "../utils/isObjectIdValid.ts";
+import isObjectIdValid from "../utils/isObjectIdValid.ts";
 import Inventory from "../models/inventory.ts";
 
-export const addSupplierGoodToInventory = async (
+const addSupplierGoodToInventory = async (
   supplierGoodId: Types.ObjectId | string,
   businessId: Types.ObjectId | string,
   session: ClientSession
@@ -38,3 +38,5 @@ export const addSupplierGoodToInventory = async (
     return "Something went wrong with addSupplierGoodToInventory: " + error;
   }
 };
+
+export default addSupplierGoodToInventory;

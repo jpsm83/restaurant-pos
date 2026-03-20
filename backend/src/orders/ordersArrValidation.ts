@@ -1,8 +1,8 @@
-import type { IOrder } from "@shared/interfaces/IOrder";
+import type { IOrder } from "../../../lib/interface/IOrder.ts";
 import { Types } from "mongoose";
-import { isObjectIdValid } from "../utils/isObjectIdValid.ts";
+import isObjectIdValid from "../utils/isObjectIdValid.ts";
 
-export function ordersArrValidation(ordersArr: Partial<IOrder>[]): true | string {
+const ordersArrValidation = (ordersArr: Partial<IOrder>[]): true | string => {
   if (
     !Array.isArray(ordersArr) ||
     ordersArr.length === 0 ||
@@ -74,3 +74,4 @@ export function ordersArrValidation(ordersArr: Partial<IOrder>[]): true | string
   return true;
 }
 
+export default ordersArrValidation;

@@ -1,14 +1,9 @@
-/**
- * Utility Helpers Tests - Task 0.2
- * Tests for isObjectIdValid, isBusinessOpenNow, and hasManagementRole
- */
-
 import { describe, it, expect } from "vitest";
 import { Types } from "mongoose";
-import { isObjectIdValid } from "../../src/utils/isObjectIdValid.ts";
-import { isBusinessOpenNow } from "../../src/utils/isBusinessOpenNow.ts";
-import { hasManagementRole, MANAGEMENT_ROLES } from "../../src/utils/constants.ts";
-import type { IBusiness } from "@shared/interfaces/IBusiness.ts";
+import isObjectIdValid from "../../src/utils/isObjectIdValid.ts";
+import { isBusinessOpenNow } from "../../src/business/isBusinessOpenNow.ts";
+import { managementRolesEnums } from "../../../lib/enums.ts";
+import type { IBusiness } from "../../../lib/interface/IBusiness.ts";
 
 describe("Utility Helpers", () => {
   describe("isObjectIdValid", () => {
@@ -121,41 +116,41 @@ describe("Utility Helpers", () => {
     });
   });
 
-  describe("hasManagementRole", () => {
+  describe("managementRolesEnums", () => {
     it("returns true for Owner role", () => {
-      expect(hasManagementRole(["Owner"])).toBe(true);
+      expect(managementRolesEnums.some((role) => role === "Owner")).toBe(true);
     });
 
     it("returns true for Manager role", () => {
-      expect(hasManagementRole(["Manager"])).toBe(true);
+      expect(managementRolesEnums.some((role) => role === "Manager")).toBe(true);
     });
 
     it("returns true for General Manager role", () => {
-      expect(hasManagementRole(["General Manager"])).toBe(true);
+      expect(managementRolesEnums.some((role) => role === "General Manager")).toBe(true);
     });
 
     it("returns true for any management role", () => {
-      for (const role of MANAGEMENT_ROLES) {
-        expect(hasManagementRole([role])).toBe(true);
+      for (const role of managementRolesEnums) {
+        expect(managementRolesEnums.some((r) => r === role)).toBe(true);
       }
     });
 
     it("returns true when one of multiple roles is management", () => {
-      expect(hasManagementRole(["Waiter", "Manager", "Chef"])).toBe(true);
+      expect(managementRolesEnums.some((role) => role === "Waiter" || role === "Manager" || role === "Chef")).toBe(true);
     });
 
     it("returns false for non-management roles", () => {
-      expect(hasManagementRole(["Waiter"])).toBe(false);
-      expect(hasManagementRole(["Chef"])).toBe(false);
-      expect(hasManagementRole(["Bartender"])).toBe(false);
+      expect(managementRolesEnums.some((role) => role === "Waiter")).toBe(false);
+      expect(managementRolesEnums.some((role) => role === "Chef")).toBe(false);
+      expect(managementRolesEnums.some((role) => role === "Bartender")).toBe(false);
     });
 
     it("returns false for empty array", () => {
-      expect(hasManagementRole([])).toBe(false);
+      expect(managementRolesEnums.some((role) => role === "Waiter")).toBe(false);
     });
 
     it("returns false for undefined", () => {
-      expect(hasManagementRole(undefined)).toBe(false);
+      expect(managementRolesEnums.some((role) => role === "Waiter")).toBe(false);
     });
   });
 });

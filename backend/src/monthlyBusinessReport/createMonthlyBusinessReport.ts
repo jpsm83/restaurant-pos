@@ -4,9 +4,9 @@
 
 import { ClientSession, Types } from "mongoose";
 import MonthlyBusinessReport from "../models/monthlyBusinessReport.ts";
-import { isObjectIdValid } from "../utils/isObjectIdValid.ts";
+import isObjectIdValid from "../utils/isObjectIdValid.ts";
 
-export type MonthlyReportOpen = {
+export interface MonthlyReportOpen {
   _id: Types.ObjectId;
   businessId: Types.ObjectId;
   monthReference: Date;

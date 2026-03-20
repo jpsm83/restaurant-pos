@@ -1,7 +1,7 @@
-import type { IPurchaseItem } from "@shared/interfaces/IPurchase";
-import { isObjectIdValid } from "../utils/isObjectIdValid.ts";
+import type { IPurchaseItem } from "../../../lib/interface/IPurchase.ts";
+import isObjectIdValid from "../utils/isObjectIdValid.ts";
 
-export const validateInventoryPurchaseItems = (
+const validateInventoryPurchaseItems = (
   purchaseInventoryItems: IPurchaseItem[],
   oneTimePurchase: boolean
 ): true | string => {
@@ -32,3 +32,5 @@ export const validateInventoryPurchaseItems = (
   }
   return true;
 };
+
+export default validateInventoryPurchaseItems;

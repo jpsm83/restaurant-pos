@@ -1,9 +1,9 @@
-import type { ISalary } from "@shared/interfaces/IEmployee";
+import type { ISalary } from "../../../lib/interface/IEmployee.ts";
 
-export const calculateEmployeeCost = (
+const calculateEmployeeCost = (
   salary: ISalary,
   shiftDurationMs: number,
-  weekdaysInMonth: number
+  weekdaysInMonth: number,
 ): number => {
   const durationInHours = shiftDurationMs / 3600000;
   switch (salary.payFrequency) {
@@ -17,3 +17,5 @@ export const calculateEmployeeCost = (
       return salary.grossSalary * durationInHours;
   }
 };
+
+export default calculateEmployeeCost;

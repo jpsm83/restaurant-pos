@@ -10,7 +10,7 @@ import User from "../models/user.ts";
  * Creates a Notification and pushes it to the given Users' inboxes.
  * Uses Notification.customersRecipientsIds for userIds (same pattern as orderConfirmation).
  */
-export async function sendReservationNotification(params: {
+const sendReservationNotification = async (params: {
   userIds: Types.ObjectId[];
   businessId: Types.ObjectId;
   message: string;
@@ -22,7 +22,7 @@ export async function sendReservationNotification(params: {
     | "Promotion"
     | "Birthday"
     | "Event";
-}): Promise<void> {
+}): Promise<void> => {
   try {
     if (!params.userIds?.length) return;
 
@@ -47,9 +47,11 @@ export async function sendReservationNotification(params: {
             deletedFlag: false,
           },
         },
-      }
+      },
     );
   } catch (error) {
     console.error("[reservations] sendReservationNotification failed:", error);
   }
-}
+};
+
+export default sendReservationNotification;

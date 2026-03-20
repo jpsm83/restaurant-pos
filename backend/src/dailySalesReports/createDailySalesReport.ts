@@ -1,11 +1,11 @@
 import { ClientSession, Types } from "mongoose";
 import DailySalesReport from "../models/dailySalesReport.ts";
-import { isObjectIdValid } from "../utils/isObjectIdValid.ts";
+import isObjectIdValid from "../utils/isObjectIdValid.ts";
 
-export async function createDailySalesReport(
+const createDailySalesReport = async (
   businessId: Types.ObjectId,
-  session: ClientSession
-): Promise<number | string> {
+  session: ClientSession,
+): Promise<number | string> => {
   try {
     if (isObjectIdValid([businessId]) !== true) return "Business ID not valid!";
 
@@ -22,14 +22,18 @@ export async function createDailySalesReport(
       businessId,
     };
 
-    const dailySalesReport = await DailySalesReport.create([dailySalesReportObj], {
-      session,
-    });
+    const dailySalesReport = await DailySalesReport.create(
+      [dailySalesReportObj],
+      {
+        session,
+      },
+    );
 
     if (!dailySalesReport) return "Fail to create a daily sales report!";
     return dailySalesReport[0].dailyReferenceNumber as number;
   } catch (error) {
     return "Fail to create a daily sales report! " + error;
   }
-}
+};
 
+export default createDailySalesReport;

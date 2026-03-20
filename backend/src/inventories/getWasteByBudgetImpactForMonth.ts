@@ -7,7 +7,7 @@
 
 import { Types } from "mongoose";
 import SupplierGood from "../models/supplierGood.ts";
-import { getVarianceReport } from "./getVarianceReport.ts";
+import getVarianceReport from "./getVarianceReport.ts";
 
 export interface WasteByImpactPercentages {
   veryLowImpactWastePercentage: number;
@@ -57,10 +57,10 @@ type ImpactKey =
  *  - "High"      -> highImpactWastePercentage
  *  - "Very High" -> veryHighImpactWastePercentage
  */
-export async function getWasteByBudgetImpactForMonth(
+const getWasteByBudgetImpactForMonth = async (
   businessId: Types.ObjectId,
-  monthReference: Date
-): Promise<WasteByImpactPercentages> {
+  monthReference: Date,
+): Promise<WasteByImpactPercentages> => {
   const monthStart = new Date(
     monthReference.getFullYear(),
     monthReference.getMonth(),
@@ -68,7 +68,7 @@ export async function getWasteByBudgetImpactForMonth(
     0,
     0,
     0,
-    0
+    0,
   );
 
   const year = monthStart.getFullYear();
@@ -89,7 +89,7 @@ export async function getWasteByBudgetImpactForMonth(
   if (!supplierGoods.length) return ZERO_WASTE;
 
   const varianceById = new Map(
-    varianceItems.map((item) => [item.supplierGoodId.toString(), item])
+    varianceItems.map((item) => [item.supplierGoodId.toString(), item]),
   );
 
   const totals: Record<
@@ -107,7 +107,7 @@ export async function getWasteByBudgetImpactForMonth(
   };
 
   const mapBudgetImpactToKey = (
-    budgetImpact?: string | null
+    budgetImpact?: string | null,
   ): ImpactKey | null => {
     switch (budgetImpact) {
       case "Very Low":
@@ -127,7 +127,7 @@ export async function getWasteByBudgetImpactForMonth(
 
   for (const sg of supplierGoods) {
     const impactKey = mapBudgetImpactToKey(
-      (sg as { budgetImpact?: string }).budgetImpact
+      (sg as { budgetImpact?: string }).budgetImpact,
     );
     if (!impactKey) continue;
 
@@ -160,4 +160,6 @@ export async function getWasteByBudgetImpactForMonth(
   });
 
   return result;
-}
+};
+
+export default getWasteByBudgetImpactForMonth;

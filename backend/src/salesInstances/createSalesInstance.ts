@@ -1,12 +1,12 @@
 import { ClientSession, Types } from "mongoose";
-import type { ISalesInstance } from "@shared/interfaces/ISalesInstance";
+import type { ISalesInstance } from "../../../lib/interface/ISalesInstance.ts";
 import SalesInstance from "../models/salesInstance.ts";
 import DailySalesReport from "../models/dailySalesReport.ts";
 
-export async function createSalesInstance(
+const createSalesInstance = async (
   newSalesInstanceObj: ISalesInstance,
   session: ClientSession
-): Promise<unknown | string> {
+): Promise<unknown | string> => {
   try {
     const requiredKeys = [
       "dailyReferenceNumber",
@@ -17,7 +17,9 @@ export async function createSalesInstance(
     ];
 
     for (const key of requiredKeys) {
-      if (!(key in (newSalesInstanceObj as Record<string, unknown>))) {
+      if (
+        !(key in (newSalesInstanceObj as unknown as Record<string, unknown>))
+      ) {
         return `${key} is missing!`;
       }
     }
@@ -58,5 +60,6 @@ export async function createSalesInstance(
   } catch (error) {
     return "Create sales instance failed! " + error;
   }
-}
+};
 
+export default createSalesInstance;

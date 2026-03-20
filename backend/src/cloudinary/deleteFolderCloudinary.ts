@@ -8,20 +8,17 @@
  */
 
 import { v2 as cloudinary } from "cloudinary";
-
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME as string,
-  api_key: process.env.CLOUDINARY_API_KEY as string,
-  api_secret: process.env.CLOUDINARY_API_SECRET as string,
-  secure: true,
-});
+import configureCloudinary from "./cloudinaryConfig.ts";
 
 /**
  * Deletes all resources under restaurant-pos{folderPath}, then the folder.
  * Returns true on success, false on error (and logs to console).
  */
-export default async function deleteFolderCloudinary(folderPath: string): Promise<boolean | string> {
+const deleteFolderCloudinary = async (folderPath: string): Promise<boolean | string> => {
   try {
+    // Configure cloudinary at runtime (after env vars are loaded)
+    configureCloudinary();
+
     const uploadPreset = "restaurant-pos";
 
     /** Must delete assets first; delete_folder only removes empty folder structure. */
@@ -35,3 +32,5 @@ export default async function deleteFolderCloudinary(folderPath: string): Promis
     return false;
   }
 }
+
+export default deleteFolderCloudinary;

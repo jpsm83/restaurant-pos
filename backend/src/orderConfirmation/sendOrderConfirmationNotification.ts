@@ -7,11 +7,11 @@ import User from "../models/user.ts";
  * Used after self-order or delivery payment. Fire-and-forget safe: does not throw.
  * We push to User (not Customer) because the customer identity for self-order is User.
  */
-export async function sendOrderConfirmationNotification(
+const sendOrderConfirmationNotification = async (
   userId: Types.ObjectId,
   businessId: Types.ObjectId,
   message: string
-): Promise<void> {
+): Promise<void> => {
   try {
     const [newNotification] = await Notification.create([
       {
@@ -43,3 +43,5 @@ export async function sendOrderConfirmationNotification(
     );
   }
 }
+
+export default sendOrderConfirmationNotification;

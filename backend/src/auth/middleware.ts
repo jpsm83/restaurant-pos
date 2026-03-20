@@ -11,7 +11,6 @@ import type {
   preValidationHookHandler,
 } from "fastify";
 import type { AuthSession, AuthUser } from "./types.ts";
-import { hasManagementRole } from "../utils/constants.ts";
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -23,9 +22,7 @@ declare module "fastify" {
  * Creates an authentication hook that verifies the JWT access token
  * and attaches the decoded user to request.user.
  */
-export function createAuthHook(
-  app: FastifyInstance
-): preValidationHookHandler {
+export function createAuthHook(app: FastifyInstance): preValidationHookHandler {
   return async (req: FastifyRequest, reply: FastifyReply) => {
     const authHeader = req.headers.authorization;
 
@@ -39,7 +36,9 @@ export function createAuthHook(
       const decoded = app.jwt.verify<AuthSession>(token);
       req.authSession = decoded;
     } catch {
-      return reply.code(401).send({ message: "Invalid or expired access token" });
+      return reply
+        .code(401)
+        .send({ message: "Invalid or expired access token" });
     }
   };
 }
@@ -50,7 +49,7 @@ export function createAuthHook(
  * Sets request.user if a valid token is present.
  */
 export function createOptionalAuthHook(
-  app: FastifyInstance
+  app: FastifyInstance,
 ): preValidationHookHandler {
   return async (req: FastifyRequest) => {
     const authHeader = req.headers.authorization;
@@ -137,7 +136,7 @@ export function requireEmployeeHook(): preValidationHookHandler {
  */
 export function hasBusinessAccess(
   session: AuthSession | undefined,
-  businessId: string
+  businessId: string,
 ): boolean {
   if (!session) return false;
 
@@ -146,7 +145,9 @@ export function hasBusinessAccess(
   }
 
   const userSession = session as AuthUser;
-  return userSession.businessId === businessId && !!userSession.canLogAsEmployee;
+  return (
+    userSession.businessId === businessId && !!userSession.canLogAsEmployee
+  );
 }
 
 /**
@@ -154,7 +155,9 @@ export function hasBusinessAccess(
  * For business accounts, returns their ID.
  * For employees, returns their linked businessId.
  */
-export function getSessionBusinessId(session: AuthSession | undefined): string | null {
+export function getSessionBusinessId(
+  session: AuthSession | undefined,
+): string | null {
   if (!session) return null;
 
   if (session.type === "business") {

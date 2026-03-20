@@ -1,8 +1,8 @@
 import { Types, ClientSession } from "mongoose";
-import { isObjectIdValid } from "../utils/isObjectIdValid.ts";
+import isObjectIdValid from "../utils/isObjectIdValid.ts";
 import Inventory from "../models/inventory.ts";
 
-export const deleteSupplierGoodFromInventory = async (
+const deleteSupplierGoodFromInventory = async (
   supplierGoodId: Types.ObjectId | string,
   businessId: Types.ObjectId | string,
   session: ClientSession
@@ -36,3 +36,5 @@ export const deleteSupplierGoodFromInventory = async (
     return "Something went wrong with deleteSupplierGoodFromInventory: " + error;
   }
 };
+
+export default deleteSupplierGoodFromInventory;

@@ -11,7 +11,8 @@
     "baseUrl": ".",
     "paths": {
       "@shared/*": ["../packages/shared/src/*"]
-    }
+    },
+    "allowImportingTsExtensions": true,
   },
   "include": ["src/**/*.ts", "tests/**/*.ts", "../packages/shared/src/**/*.ts", "../lib/utils/isBusinessOpenNow.ts", "../lib/enums.ts"]
 }

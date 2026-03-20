@@ -1,4 +1,6 @@
-export const validateDaysOfTheWeek = (weekDays: string[]): true | string => {
+import type { WeekDays } from "../../../lib/interface/IPromotion.ts";
+
+const validateDaysOfTheWeek = (weekDays: WeekDays): true | string => {
   if (!Array.isArray(weekDays) || !weekDays || weekDays.length === 0)
     return "WeekDaysis required and must be an array of days of the week!";
 
@@ -19,3 +21,5 @@ export const validateDaysOfTheWeek = (weekDays: string[]): true | string => {
   }
   return true;
 };
+
+export default validateDaysOfTheWeek;

@@ -5,7 +5,7 @@ import type { ISalesInstance } from "@shared/interfaces/ISalesInstance";
 import type { IDailySalesReport } from "@shared/interfaces/IDailySalesReport";
 
 import { isObjectIdValid } from "../../utils/isObjectIdValid.ts";
-import { hasManagementRole } from "../../utils/constants.ts";
+import { managementRolesEnums } from "../../../lib/enums.ts";
 import { createDailySalesReport } from "../../dailySalesReports/createDailySalesReport.ts";
 import { createSalesInstance } from "../../salesInstances/createSalesInstance.ts";
 import {
@@ -304,7 +304,7 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
 
         const isAllowed =
           (employee.allEmployeeRoles || []).includes("Host") ||
-          hasManagementRole(employee.allEmployeeRoles || []);
+          managementRolesEnums.some((role) => employee.allEmployeeRoles?.includes(role));
 
         if (!isAllowed) {
           await session.abortTransaction();

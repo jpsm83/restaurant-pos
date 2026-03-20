@@ -1,9 +1,9 @@
 import { Types } from "mongoose";
-import { isObjectIdValid } from "../utils/isObjectIdValid.ts";
-import BusinessGood from "../models/businessGood.ts";
+import BusinessGood from "src/models/businessGood";
+import isObjectIdValid from "src/utils/isObjectIdValid";
 
 export const calculateSetMenuCostPriceAndAllergies = async (
-  setMenuIds: Types.ObjectId[] | string[]
+  setMenuIds: Types.ObjectId[] | string[],
 ) => {
   try {
     if (Array.isArray(setMenuIds) && setMenuIds.length === 0) {

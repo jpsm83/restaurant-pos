@@ -4,11 +4,11 @@
 
 import { Types } from "mongoose";
 import Employee from "../models/employee.ts";
-import { hasManagementRole } from "../utils/constants.ts";
+import { managementRolesEnums } from "../../../lib/enums.ts";
 
-export async function getOnDutyManagersUserIds(
-  businessId: Types.ObjectId
-): Promise<Types.ObjectId[]> {
+const getOnDutyManagersUserIds = async (
+  businessId: Types.ObjectId,
+): Promise<Types.ObjectId[]> => {
   const employees = (await Employee.find({
     businessId,
     onDuty: true,
@@ -21,9 +21,14 @@ export async function getOnDutyManagersUserIds(
 
   const ids: Types.ObjectId[] = [];
   for (const e of employees) {
-    if (e.userId && hasManagementRole(e.allEmployeeRoles)) {
+    if (
+      e.userId &&
+      managementRolesEnums.some((role) => e.allEmployeeRoles?.includes(role))
+    ) {
       ids.push(e.userId);
     }
   }
   return ids;
-}
+};
+
+export default getOnDutyManagersUserIds;

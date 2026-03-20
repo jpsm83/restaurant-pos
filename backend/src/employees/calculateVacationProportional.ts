@@ -1,4 +1,4 @@
-export const calculateVacationProportional = (
+const calculateVacationProportional = (
   joinDate: Date,
   vacationDaysPerYear: number
 ): number => {
@@ -30,3 +30,5 @@ export const calculateVacationProportional = (
 
   return vacationDaysLeft;
 };
+
+export default calculateVacationProportional;

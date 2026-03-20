@@ -13,7 +13,7 @@ const MONGODB_URI = process.env.MONGODB_URI;
 
 /**
  * Connects to MongoDB if not already connected. Safe to call repeatedly.
- * Uses restaurant-pos-api db and bufferCommands for serverless compatibility.
+ * Uses restaurantPos db and bufferCommands for serverless compatibility.
  */
 const connectDb = async () => {
   const connectionState = mongoose.connection.readyState;
@@ -32,7 +32,7 @@ const connectDb = async () => {
 
   try {
     await mongoose.connect(MONGODB_URI!, {
-      dbName: "restaurant-pos-api",
+      dbName: "restaurantPos",
       bufferCommands: true,
     });
     console.log("Connection established");

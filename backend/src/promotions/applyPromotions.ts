@@ -1,45 +1,16 @@
-import { Types, type ClientSession } from "mongoose";
 import Promotion from "../models/promotion.ts";
-import type { IOrder } from "@shared/interfaces/IOrder";
+import type {
+  IPromotionDocLean,
+  IPricedOrderOutput,
+  IPromotionPricingInput,
+  ObjectId,
+  PromotionType,
+} from "../../../lib/interface/IPromotion.ts";
 
-type ObjectId = Types.ObjectId;
-
-export interface IPromotionPricingInput {
-  businessId: ObjectId;
-  ordersArr: Array<
-    Pick<
-      Partial<IOrder>,
-      "orderGrossPrice" | "businessGoodId" | "addOns" | "promotionApplyed" | "discountPercentage"
-    >
-  >;
-  atDateTime?: Date;
-  session?: ClientSession;
-}
-
-export interface IPricedOrderOutput {
-  orderGrossPrice: number;
-  orderNetPrice: number;
-  businessGoodId: ObjectId;
-  addOns?: ObjectId[];
-  promotionApplyed?: string;
-  discountPercentage?: number;
-}
-
-type PromotionDoc = {
-  promotionName: string;
-  promotionPeriod: { start: Date; end: Date };
-  weekDays: string[];
-  activePromotion: boolean;
-  promotionType: {
-    fixedPrice?: number;
-    discountPercent?: number;
-    twoForOne?: boolean;
-    threeForTwo?: boolean;
-    secondHalfPrice?: boolean;
-    fullComplimentary?: boolean;
-  };
-  businessGoodsToApplyIds?: ObjectId[];
-};
+export type {
+  IPromotionPricingInput,
+  IPricedOrderOutput,
+} from "../../../lib/interface/IPromotion.ts";
 
 const weekDaysByIndex = [
   "Sunday",
@@ -51,7 +22,10 @@ const weekDaysByIndex = [
   "Saturday",
 ];
 
-const isWithinPromotionWindow = (promo: PromotionDoc, at: Date): boolean => {
+const isWithinPromotionWindow = (
+  promo: IPromotionDocLean,
+  at: Date,
+): boolean => {
   const { start, end } = promo.promotionPeriod;
   if (at < start || at > end) return false;
 
@@ -62,21 +36,26 @@ const isWithinPromotionWindow = (promo: PromotionDoc, at: Date): boolean => {
 };
 
 const promotionTargetsOrder = (
-  promo: PromotionDoc,
-  businessGoodsIds: ObjectId[]
+  promo: IPromotionDocLean,
+  businessGoodsIds: ObjectId[],
 ): boolean => {
-  if (!promo.businessGoodsToApplyIds || promo.businessGoodsToApplyIds.length === 0) {
+  if (
+    !promo.businessGoodsToApplyIds ||
+    promo.businessGoodsToApplyIds.length === 0
+  ) {
     return true;
   }
 
   const idsSet = new Set(
-    promo.businessGoodsToApplyIds.map((id) => id.toString())
+    promo.businessGoodsToApplyIds.map((id) => id.toString()),
   );
 
   return businessGoodsIds.some((id) => idsSet.has(id.toString()));
 };
 
-const getEffectiveDiscountPercent = (promotionType: PromotionDoc["promotionType"]):
+const getEffectiveDiscountPercent = (
+  promotionType: PromotionType,
+):
   | { mode: "fixedPrice"; fixedPrice: number }
   | { mode: "percent"; percent: number }
   | { mode: "fullComplimentary" }
@@ -110,8 +89,12 @@ const getEffectiveDiscountPercent = (promotionType: PromotionDoc["promotionType"
 
 const applySinglePromotionToOrder = (
   orderGrossPrice: number,
-  promotion: PromotionDoc
-): { netPrice: number; promotionName?: string; discountPercentage?: number } => {
+  promotion: IPromotionDocLean,
+): {
+  netPrice: number;
+  promotionName?: string;
+  discountPercentage?: number;
+} => {
   const effective = getEffectiveDiscountPercent(promotion.promotionType);
 
   if (!effective) {
@@ -147,8 +130,8 @@ const applySinglePromotionToOrder = (
   };
 };
 
-export const applyPromotionsToOrders = async (
-  params: IPromotionPricingInput
+const applyPromotionsToOrders = async (
+  params: IPromotionPricingInput,
 ): Promise<IPricedOrderOutput[] | string> => {
   const { businessId, ordersArr, session } = params;
   const atDateTime = params.atDateTime ?? new Date();
@@ -163,13 +146,13 @@ export const applyPromotionsToOrders = async (
       activePromotion: true,
     })
       .select(
-        "promotionName promotionPeriod weekDays activePromotion promotionType businessGoodsToApplyIds"
+        "promotionName promotionPeriod weekDays activePromotion promotionType businessGoodsToApplyIds",
       )
       .session(session ?? null)
-      .lean()) as unknown as PromotionDoc[];
+      .lean()) as unknown as IPromotionDocLean[];
 
     const applicablePromotions = activePromotions.filter((promo) =>
-      isWithinPromotionWindow(promo, atDateTime)
+      isWithinPromotionWindow(promo, atDateTime),
     );
 
     return ordersArr.map((order) => {
@@ -187,7 +170,7 @@ export const applyPromotionsToOrders = async (
       }
 
       const promosForOrder = applicablePromotions.filter((promo) =>
-        promotionTargetsOrder(promo, [businessGoodId])
+        promotionTargetsOrder(promo, [businessGoodId]),
       );
 
       if (!promosForOrder.length) {
@@ -232,3 +215,5 @@ export const applyPromotionsToOrders = async (
     return "Apply promotions failed! Error: " + error;
   }
 };
+
+export default applyPromotionsToOrders;

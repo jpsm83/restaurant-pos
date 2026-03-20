@@ -10,38 +10,18 @@ import DailySalesReport from "../models/dailySalesReport.ts";
 import WeeklyBusinessReport from "../models/weeklyBusinessReport.ts";
 import Schedule from "../models/schedule.ts";
 import Business from "../models/business.ts";
-import { isObjectIdValid } from "../utils/isObjectIdValid.ts";
+import isObjectIdValid from "../utils/isObjectIdValid.ts";
 import {
   getWeekReference,
   createWeeklyBusinessReport,
-  type WeeklyReportOpen,
 } from "./createWeeklyBusinessReport.ts";
-import { getWasteByBudgetImpactForMonth } from "../inventories/getWasteByBudgetImpactForMonth.ts";
-
-interface IGoodsReduced {
-  businessGoodId: Types.ObjectId;
-  quantity: number;
-  totalPrice: number;
-  totalCostPrice: number;
-}
-
-interface IPaymentMethod {
-  paymentMethodType: string;
-  methodBranch?: string;
-  methodSalesTotal: number;
-}
-
-interface IMetrics {
-  foodCostPercentage: number;
-  laborCostPercentage: number;
-  supplierGoodWastePercentage: {
-    veryLowBudgetImpact: number;
-    lowBudgetImpact: number;
-    mediumBudgetImpact: number;
-    hightBudgetImpact: number;
-    veryHightBudgetImpact: number;
-  };
-}
+import type {
+  IMetrics,
+  WeeklyReportOpen,
+} from "../../../lib/interface/IWeeklyBusinessReport.ts";
+import type { IGoodsReduced } from "../../../lib/interface/IDailySalesReport.ts";
+import type { IPaymentMethod } from "../../../lib/interface/IPaymentMethod.ts";
+import getWasteByBudgetImpactForMonth from "../inventories/getWasteByBudgetImpactForMonth.ts";
 
 function getWeekEnd(weekStart: Date): Date {
   const end = new Date(weekStart);
@@ -52,7 +32,7 @@ function getWeekEnd(weekStart: Date): Date {
 
 function mergeGoodsByBusinessGoodId(
   acc: IGoodsReduced[],
-  items: IGoodsReduced[] | undefined
+  items: IGoodsReduced[] | undefined,
 ): void {
   if (!items?.length) return;
   items.forEach((item) => {
@@ -64,7 +44,7 @@ function mergeGoodsByBusinessGoodId(
       (x) =>
         (typeof x.businessGoodId === "object" && x.businessGoodId != null
           ? (x.businessGoodId as Types.ObjectId).toString()
-          : String(x.businessGoodId)) === idStr
+          : String(x.businessGoodId)) === idStr,
     );
     if (existing) {
       existing.quantity += item.quantity ?? 1;
@@ -84,14 +64,14 @@ function mergeGoodsByBusinessGoodId(
 
 function mergePaymentMethods(
   acc: IPaymentMethod[],
-  methods: IPaymentMethod[] | undefined
+  methods: IPaymentMethod[] | undefined,
 ): void {
   if (!methods?.length) return;
   methods.forEach((pm) => {
     const existing = acc.find(
       (p) =>
         p.paymentMethodType === pm.paymentMethodType &&
-        p.methodBranch === pm.methodBranch
+        p.methodBranch === pm.methodBranch,
     );
     if (existing) {
       existing.methodSalesTotal += pm.methodSalesTotal ?? 0;
@@ -110,11 +90,11 @@ function mergePaymentMethods(
  * weekly business report. Also sums labour cost from Schedules.
  * Weekly reports ignore fixed/extra costs and focus on variable performance.
  */
-export async function aggregateDailyReportsIntoWeekly(
+const aggregateDailyReportsIntoWeekly = async (
   businessId: Types.ObjectId,
   anyDateInWeek: Date,
-  weeklyReportStartDay: number
-): Promise<void> {
+  weeklyReportStartDay: number,
+): Promise<void> => {
   if (isObjectIdValid([businessId]) !== true) {
     return;
   }
@@ -127,7 +107,7 @@ export async function aggregateDailyReportsIntoWeekly(
     const report = await createWeeklyBusinessReport(
       businessId,
       weekReference,
-      session
+      session,
     );
     if (!report) {
       await session.abortTransaction();
@@ -146,7 +126,7 @@ export async function aggregateDailyReportsIntoWeekly(
           dailyNetPaidAmount: { $exists: true, $ne: null },
         })
           .select(
-            "dailyTotalSalesBeforeAdjustments dailyNetPaidAmount dailyCostOfGoodsSold dailyTipsReceived dailyTotalVoidValue dailyTotalInvitedValue dailyCustomersServed dailyPosSystemCommission businessPaymentMethods dailySoldGoods dailyVoidedGoods dailyInvitedGoods"
+            "dailyTotalSalesBeforeAdjustments dailyNetPaidAmount dailyCostOfGoodsSold dailyTipsReceived dailyTotalVoidValue dailyTotalInvitedValue dailyCustomersServed dailyPosSystemCommission businessPaymentMethods dailySoldGoods dailyVoidedGoods dailyInvitedGoods",
           )
           .session(session)
           .lean(),
@@ -221,15 +201,11 @@ export async function aggregateDailyReportsIntoWeekly(
       totalOperatingCost > 0 ? totalLaborCost / totalOperatingCost : 0;
 
     const profitMarginPercentage =
-      totalSalesForWeek > 0
-        ? (totalGrossProfit / totalSalesForWeek) * 100
-        : 0;
+      totalSalesForWeek > 0 ? (totalGrossProfit / totalSalesForWeek) * 100 : 0;
     const voidSalesPercentage =
       totalSalesForWeek > 0 ? (totalVoidSales / totalSalesForWeek) * 100 : 0;
     const invitedSalesPercentage =
-      totalSalesForWeek > 0
-        ? (totalInvitedSales / totalSalesForWeek) * 100
-        : 0;
+      totalSalesForWeek > 0 ? (totalInvitedSales / totalSalesForWeek) * 100 : 0;
     const salesPaymentCompletionPercentage =
       totalSalesForWeek > 0 ? (totalNetRevenue / totalSalesForWeek) * 100 : 0;
     const tipsToCostOfGoodsPercentage =
@@ -388,7 +364,7 @@ export async function aggregateDailyReportsIntoWeekly(
           posSystemCommission,
         },
       },
-      { session }
+      { session },
     );
 
     await session.commitTransaction();
@@ -398,4 +374,6 @@ export async function aggregateDailyReportsIntoWeekly(
   } finally {
     session.endSession();
   }
-}
+};
+
+export default aggregateDailyReportsIntoWeekly;
