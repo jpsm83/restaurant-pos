@@ -1,13 +1,6 @@
 import { Types } from "mongoose";
-
-import connectDb from "../db/connectDb.ts";
-import Employee from "../models/employee.ts";
-import Notification from "../models/notification.ts";
-import User from "../models/user.ts";
 import type { WeekLabel } from "../../../lib/interface/IWeeklyBusinessReport.ts";
-import * as enums from "../../../lib/enums.ts";
-
-const { managementRolesEnums } = enums;
+import dispatchEvent from "../communications/dispatchEvent.ts";
 
 /**
  * Sends a notification to on-duty manager-level employees that a weekly
@@ -18,46 +11,14 @@ const sendWeeklyReportReadyNotification = async (
   weekLabel: WeekLabel,
 ): Promise<void> => {
   try {
-    await connectDb();
-
-    const managerEmployees = await Employee.find({
-      businessId,
-      onDuty: true,
-      currentShiftRole: { $in: managementRolesEnums },
-    })
-      .select("_id userId")
-      .lean();
-
-    if (!managerEmployees?.length) return;
-
-    const message = `Weekly business report for ${weekLabel} is ready.`;
-
-    const [newNotification] = await Notification.create([
+    await dispatchEvent(
+      "WEEKLY_REPORT_READY",
       {
-        notificationType: "Info",
-        message,
-        employeesRecipientsIds: managerEmployees.map((e) => e._id),
         businessId,
+        weekLabel,
       },
-    ]);
-
-    if (newNotification) {
-      const managerUserIds = managerEmployees
-        .map((e) => e.userId)
-        .filter(Boolean);
-
-      await User.updateMany(
-        { _id: { $in: managerUserIds } },
-        {
-          $push: {
-            notifications: {
-              notificationId: newNotification._id,
-              // readFlag/deletedFlag default to false in the User schema
-            },
-          },
-        },
-      );
-    }
+      { fireAndForget: true },
+    );
   } catch {
     // Fire-and-forget: do not throw; avoid breaking calling flows.
   }

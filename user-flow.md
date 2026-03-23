@@ -128,7 +128,7 @@ Reservations are the **booking layer** that can be created by a **customer** or 
   - When staff sets the reservation to **Confirmed** or **Cancelled**, the customer receives an **email** + **in-app notification** with the decision.
 
 - **Staff-created reservation**
-  - Staff creates a reservation directly for the business; status is **Confirmed** immediately.
+  - Staff creates a reservation directly for the business as **Confirmed** immediately when the staff member's *effective role* is currently **employee** (on duty + schedule window, with admin bypass). Otherwise the reservation is created in the **Pending** customer flow.
 
 - **Arrival / seating**
   - When guests arrive, staff can mark the reservation as **Arrived**, then **Seated**.
@@ -145,7 +145,7 @@ Reservations are the **booking layer** that can be created by a **customer** or 
 Role (customer vs employee) is determined by session/context; the app does not require a separate mode choice for this flow.
 
 - **Staff‑opened session**
-  - A waiter or bartender can open a table in two ways: (1) select a **Sales point** (table/bar seat) in the **POS UI**, or (2) **scan the table’s QR code** (one QR **per** sales point; identity from session: **userId**; same outcome as opening from POS). Opening from the POS or via QR requires the user to be an **on-duty employee** for that business.
+  - A waiter or bartender can open a table in two ways: (1) select a **Sales point** (table/bar seat) in the **POS UI**, or (2) **scan the table’s QR code** (one QR **per** sales point; identity from session: **userId**; same outcome as opening from POS). Opening from the POS or via QR requires the user to be an **effective employee** for that business (on duty + schedule window; admins bypass the schedule window but still must be on duty).
   - They **open a Sales instance** for that sales point. The system stores **openedByUserId** (ref User) and **openedAsRole: 'employee'**; the **responsible** user can be set or changed later (**responsibleByUserId**).
   - At most **one non‑closed sales instance per sales point per work day** (per business).
   - From this moment the table is **occupied**, all orders are attached to that sales instance, and it is linked to the **current Daily sales report**. **When a table is opened by an employee, customers cannot use the QR to self-order at that table until the table is closed**; orders are taken only by staff.
@@ -362,18 +362,42 @@ Role (customer vs employee) is determined by session/context; the app does not r
 
 ## 8. Notifications and communication (users / employees)
 
-- **Notifications as operational messages**
-  - The system can generate or store **Notifications** scoped to the business:
-    - For example: report closings, inventory tasks, promotional campaigns, or alerts.
-  - Each **User** linked to the business has an **inbox**:
-    - Notifications can be **read** or **deleted**.
-    - Read/deleted states are stored per user.
+- **Unified communication behavior across flows**
+  - Communication is triggered by domain events (orders, reservations, low-stock, weekly/monthly report-ready) through one backend orchestration layer.
+  - This keeps messaging consistent in content, recipient targeting, and delivery semantics across the app.
+  - At user level, this means the same type of action always produces the same type of notification experience.
 
-- **Using notifications in daily operations**
-  - Managers may use notifications to:
-    - Remind staff of counting inventory or closing daily reports.
-    - Share internal promotions or special menus.
-    - Notify about stock or supply issues.
+- **Customer-facing communication**
+  - **Order confirmed (self-order / delivery flow):**
+    - Customer receives an **email** receipt/confirmation.
+    - Customer also receives an **in-app notification** with the same confirmation context.
+  - **Reservation pending:**
+    - Customer receives an email + in-app message confirming the request is pending review.
+  - **Reservation decided (confirmed/cancelled):**
+    - Customer receives the decision by email + in-app notification.
+
+- **Manager-facing communication**
+  - **Reservation pending:** managers receive an in-app action-required notification.
+  - **Low-stock alert:** managers receive warning notifications for items below threshold.
+  - **Weekly and monthly report-ready:** managers receive in-app notifications that the period is ready for review.
+  - Manager targeting follows explicit policy (on-duty vs all managers depending on event type), with optional runtime overrides.
+
+- **Persistence-first and live delivery**
+  - In-app notifications are persisted first and linked to recipient inbox state; this is the source of truth.
+  - If recipients are online, the backend also pushes the notification live over WebSocket.
+  - If recipients are offline or disconnected, no message is lost: they still see it in their inbox when they reconnect.
+
+- **Inbox behavior for all users**
+  - Each user has a notification inbox with per-notification state:
+    - `read` and `deleted` flags.
+  - This inbox model is shared for both customer recipients and employee recipients (through user identity).
+  - Manual/admin-created notifications and domain-generated notifications converge to the same inbox persistence path.
+
+- **Reliability behavior from user perspective**
+  - Core business actions are not blocked by communication failures (fire-and-forget side effects).
+  - Email has retry behavior for transient transport failures.
+  - Repeated event noise (notably low-stock) is controlled with cooldown and idempotency.
+  - Operational telemetry tracks dispatch attempts, channel success/failure, live delivery stats, and auth failures for live connections.
 
 ---
 

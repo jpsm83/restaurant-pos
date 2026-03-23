@@ -416,7 +416,7 @@ describe("Notifications Routes", () => {
         },
       });
 
-      expect(response.statusCode).toBe(201);
+      expect(response.statusCode, response.body).toBe(201);
       const body = JSON.parse(response.body);
       expect(body.message).toContain("created");
 
@@ -454,7 +454,7 @@ describe("Notifications Routes", () => {
         },
       });
 
-      expect(response.statusCode).toBe(201);
+      expect(response.statusCode, response.body).toBe(201);
       const body = JSON.parse(response.body);
       expect(body.message).toContain("created");
 

@@ -21,6 +21,7 @@
   },
   "include": [
     "src/**/*.ts",
+    "scripts/**/*.ts",
     "tests/**/*.ts",
     "../packages/shared/src/**/*.ts",
     "../lib/utils/isBusinessOpenNow.ts",

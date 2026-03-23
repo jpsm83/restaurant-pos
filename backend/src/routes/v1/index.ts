@@ -17,6 +17,7 @@ import { dailySalesReportsRoutes } from "./dailySalesReports.ts";
 import { reservationsRoutes } from "./reservations.ts";
 import { ratingsRoutes } from "./ratings.ts";
 import { notificationsRoutes } from "./notifications.ts";
+import { notificationsLiveRoutes } from "./notificationsLive.ts";
 import { printersRoutes } from "./printers.ts";
 import { weeklyBusinessReportRoutes } from "./weeklyBusinessReport.ts";
 import { monthlyBusinessReportRoutes } from "./monthlyBusinessReport.ts";
@@ -42,6 +43,7 @@ export const registerV1Routes: FastifyPluginAsync = async (app) => {
   await app.register(reservationsRoutes, { prefix: "/reservations" });
   await app.register(ratingsRoutes, { prefix: "/ratings" });
   await app.register(notificationsRoutes, { prefix: "/notifications" });
+  await app.register(notificationsLiveRoutes, { prefix: "/notifications" });
   await app.register(printersRoutes, { prefix: "/printers" });
   await app.register(weeklyBusinessReportRoutes, {
     prefix: "/weeklyBusinessReport",

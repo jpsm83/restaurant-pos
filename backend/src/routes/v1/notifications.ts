@@ -1,14 +1,19 @@
 import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
 import type { INotification } from "../../../../lib/interface/INotification.ts";
+import type { NotificationType } from "../../communications/types.ts";
 
 import isObjectIdValid from "../../utils/isObjectIdValid.ts";
 import Notification from "../../models/notification.ts";
 import Employee from "../../models/employee.ts";
 import Business from "../../models/business.ts";
 import User from "../../models/user.ts";
+import notificationRepository from "../../communications/repositories/notificationRepository.ts";
 
 export const notificationsRoutes: FastifyPluginAsync = async (app) => {
+  // Boundary note:
+  // - This route handles manual/admin notification CRUD operations.
+  // - Domain-triggered notifications must go through communications/dispatchEvent.
   // GET /notifications - list all
   app.get("/", async (req, reply) => {
     try {
@@ -95,15 +100,6 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
     session.startTransaction();
 
     try {
-      const notificationObj = {
-        notificationType,
-        message,
-        employeesRecipientsIds: employeesRecipientsIds || undefined,
-        customersRecipientsIds: customersRecipientsIds || undefined,
-        senderId: senderId || undefined,
-        businessId,
-      };
-
       const business = await Business.exists({ _id: businessId }).session(
         session,
       );
@@ -133,75 +129,16 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
         return reply.code(404).send({ message: "Business not found!" });
       }
 
-      const newNotification = await Notification.create([notificationObj], {
+      await notificationRepository.createAndFanout({
+        notificationType: notificationType as NotificationType | undefined,
+        message,
+        businessId,
+        senderId: senderId || undefined,
+        recipients: employeesRecipientsIds
+          ? { employeeIds: employeesRecipientsIds as Types.ObjectId[] }
+          : { customerUserIds: customersRecipientsIds as Types.ObjectId[] },
         session,
       });
-
-      if (!newNotification) {
-        await session.abortTransaction();
-        return reply
-          .code(400)
-          .send({ message: "Notification could not be created!" });
-      }
-
-      const notificationIdToPush = newNotification[0]._id;
-
-      // Inbox state is centralized on User.notifications only.
-      if (employeesRecipientsIds) {
-        const employeeDocs = await Employee.find({ _id: { $in: recipientsId } })
-          .select("userId")
-          .lean()
-          .session(session);
-
-        if (employeeDocs.length !== recipientsId.length) {
-          await session.abortTransaction();
-          return reply
-            .code(400)
-            .send({ message: "One or more employees do not exist!" });
-        }
-
-        const employeeUserIds = employeeDocs
-          .map((e) => e.userId)
-          .filter(Boolean);
-
-        const sendNotifications = await User.updateMany(
-          { _id: { $in: employeeUserIds } },
-          {
-            $push: {
-              notifications: {
-                notificationId: notificationIdToPush,
-              },
-            },
-          },
-          { session },
-        );
-
-        if (sendNotifications.modifiedCount === 0) {
-          await session.abortTransaction();
-          return reply.code(400).send({
-            message: "Failed to update employee user inbox with notification!",
-          });
-        }
-      } else {
-        const sendNotifications = await User.updateMany(
-          { _id: { $in: recipientsId } },
-          {
-            $push: {
-              notifications: {
-                notificationId: notificationIdToPush,
-              },
-            },
-          },
-          { session },
-        );
-
-        if (sendNotifications.modifiedCount === 0) {
-          await session.abortTransaction();
-          return reply.code(400).send({
-            message: "Failed to update customer user inbox with notification!",
-          });
-        }
-      }
 
       await session.commitTransaction();
 

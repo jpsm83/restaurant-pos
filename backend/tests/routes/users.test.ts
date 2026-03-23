@@ -90,7 +90,7 @@ describe("Users Routes", () => {
         headers: { "content-type": "multipart/form-data" },
       });
 
-      expect(response.statusCode).toBe(400);
+      expect(response.statusCode, response.body).toBe(400);
       const body = JSON.parse(response.body);
       expect(body.message).toContain("required");
     });
@@ -119,7 +119,7 @@ describe("Users Routes", () => {
         headers: { "content-type": "multipart/form-data" },
       });
 
-      expect(response.statusCode).toBe(400);
+      expect(response.statusCode, response.body).toBe(400);
     });
 
     it("returns 409 for duplicate user", async () => {
@@ -148,7 +148,7 @@ describe("Users Routes", () => {
         headers: { "content-type": "multipart/form-data" },
       });
 
-      expect(response.statusCode).toBe(409);
+      expect(response.statusCode, response.body).toBe(409);
       const body = JSON.parse(response.body);
       expect(body.message).toContain("already exists");
     });
@@ -192,7 +192,7 @@ describe("Users Routes", () => {
         url: `/api/v1/users/${fakeId}`,
       });
 
-      expect(response.statusCode).toBe(404);
+      expect(response.statusCode, response.body).toBe(404);
       const body = JSON.parse(response.body);
       expect(body.message).toBe("User not found!");
     });
@@ -261,7 +261,7 @@ describe("Users Routes", () => {
         headers: { "content-type": "multipart/form-data" },
       });
 
-      expect(response.statusCode).toBe(404);
+      expect(response.statusCode, response.body).toBe(404);
       const body = JSON.parse(response.body);
       expect(body.message).toBe("User not found!");
     });
@@ -358,6 +358,72 @@ describe("Users Routes", () => {
       const body = JSON.parse(response.body);
       expect(body.message).toBe("Notification not found!");
     });
+
+    it("marks user notification as read", async () => {
+      const app = await getTestApp();
+
+      const business = await Business.create({
+        tradeName: "Read Flag Business",
+        legalName: "Read Flag Business LLC",
+        email: "read-flag-business@test.com",
+        password: "hashedpassword",
+        phoneNumber: "1234567890",
+        taxNumber: `READ-FLAG-${Date.now()}`,
+        currencyTrade: "USD",
+        address: validAddress,
+      });
+
+      const notification = await Notification.create({
+        message: "Read me",
+        notificationType: "Info",
+        businessId: business._id,
+      });
+
+      const user = await User.create({
+        username: "readflagmarkuser",
+        email: "readflagmarkuser@test.com",
+        password: "hashedpassword",
+        allUserRoles: ["employee"],
+        notifications: [
+          {
+            notificationId: notification._id,
+            readFlag: false,
+            deletedFlag: false,
+          },
+        ],
+        personalDetails: {
+          username: "readflagmarkuser",
+          email: "readflagmarkuser@test.com",
+          password: "hashedpassword",
+          firstName: "Read",
+          lastName: "Flag",
+          phoneNumber: "1234567890",
+          birthDate: new Date("1990-01-01"),
+          gender: "Man",
+          nationality: "USA",
+          idType: "National ID",
+          idNumber: `ID-readflag-${Date.now()}`,
+          address: validAddress,
+        },
+      });
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/users/${user._id}/updateReadFlag/${notification._id}`,
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.message).toContain("updated");
+
+      const updatedUser = await User.findById(user._id).lean();
+      const updatedUserNotification = updatedUser?.notifications?.find(
+        (n: { notificationId?: Types.ObjectId }) =>
+          n.notificationId?.toString() === notification._id.toString()
+      );
+      expect(updatedUserNotification?.readFlag).toBe(true);
+      expect(updatedUserNotification?.deletedFlag).toBe(false);
+    });
   });
 
   // Phase 4 Task 4.6: Transaction Tests for markNotificationAsDeleted
@@ -427,7 +493,8 @@ describe("Users Routes", () => {
       // Verify notification was marked as deleted
       const updatedUser = await User.findById(user._id).lean();
       const userNotification = updatedUser?.notifications?.find(
-        (n) => n.notificationId?.toString() === notification._id.toString()
+        (n: { notificationId?: Types.ObjectId }) =>
+          n.notificationId?.toString() === notification._id.toString()
       );
       expect(userNotification?.deletedFlag).toBe(true);
       expect(userNotification?.readFlag).toBe(true);

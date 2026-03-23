@@ -47,7 +47,7 @@ monthlyBusinessReport - DONE BUT NOT TESTED
 reservations - DONE BUT NOT TESTED
 cloudinaryActions
 
-reservations has lots of logic for send email an notifications but many other features does the same, try to unify the sending of messages
+reservations has lots of logic for send email an notifications but many other features does the same, try to unify the sending of messages - DONE
 
 - move the dummy data to mongodb
 

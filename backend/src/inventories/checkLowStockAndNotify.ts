@@ -2,12 +2,7 @@ import { Types } from "mongoose";
 import Inventory from "../models/inventory.ts";
 import SupplierGood from "../models/supplierGood.ts";
 import Supplier from "../models/supplier.ts";
-import Employee from "../models/employee.ts";
-import User from "../models/user.ts";
-import Notification from "../models/notification.ts";
-import * as enums from "../../../lib/enums.ts";
-
-const { managementRolesEnums } = enums;
+import dispatchEvent from "../communications/dispatchEvent.ts";
 
 interface InventoryGoodPopulated {
   supplierGoodId: { _id: Types.ObjectId; name?: string; parLevel?: number; minimumQuantityRequired?: number };
@@ -17,6 +12,46 @@ interface InventoryGoodPopulated {
 interface InventoryWithGoods {
   inventoryGoods?: InventoryGoodPopulated[];
 }
+
+const LOW_STOCK_ALERT_COOLDOWN_MS =
+  Number(process.env.LOW_STOCK_ALERT_COOLDOWN_MS) || 15 * 60 * 1000;
+const LOW_STOCK_ALERT_DISPATCH_IDEMPOTENCY_WINDOW_MS =
+  Number(process.env.LOW_STOCK_ALERT_DISPATCH_IDEMPOTENCY_WINDOW_MS) ||
+  LOW_STOCK_ALERT_COOLDOWN_MS;
+
+const lastLowStockAlertByBusinessAndItems = new Map<string, number>();
+
+const buildLowStockDedupKey = (
+  businessId: Types.ObjectId,
+  supplierGoodIds: Types.ObjectId[]
+): string => {
+  const sortedIds = supplierGoodIds
+    .map((id) => id.toString())
+    .sort((a, b) => a.localeCompare(b));
+  return `${businessId.toString()}::${sortedIds.join(",")}`;
+};
+
+const normalizeCooldownMs = (value: number): number =>
+  Number.isFinite(value) && value > 0 ? Math.floor(value) : 15 * 60 * 1000;
+
+const getCooldownMs = (): number => normalizeCooldownMs(LOW_STOCK_ALERT_COOLDOWN_MS);
+
+const shouldSendLowStockAlert = (
+  businessId: Types.ObjectId,
+  supplierGoodIds: Types.ObjectId[]
+): boolean => {
+  const now = Date.now();
+  const dedupKey = buildLowStockDedupKey(businessId, supplierGoodIds);
+  const lastSentAt = lastLowStockAlertByBusinessAndItems.get(dedupKey);
+  const cooldownMs = getCooldownMs();
+
+  if (lastSentAt && now - lastSentAt < cooldownMs) {
+    return false;
+  }
+
+  lastLowStockAlertByBusinessAndItems.set(dedupKey, now);
+  return true;
+};
 
 const checkLowStockAndNotify = async (
   businessId: Types.ObjectId
@@ -54,52 +89,39 @@ const checkLowStockAndNotify = async (
 
     if (lowStockItems.length === 0) return;
 
-    const managerEmployees = await Employee.find({
-      businessId,
-      onDuty: true,
-      currentShiftRole: { $in: managementRolesEnums },
-    })
-      .select("_id userId")
-      .lean();
+    const lowStockSupplierGoodIds = lowStockItems.map(
+      (item) => item.supplierGoodId._id
+    );
+    if (!shouldSendLowStockAlert(businessId, lowStockSupplierGoodIds)) return;
 
-    if (!managerEmployees?.length) return;
-
-    const message =
-      "Low stock: " +
-      lowStockItems
-        .map((ig: InventoryGoodPopulated) => {
-          const sg = ig.supplierGoodId as { name?: string; parLevel?: number; minimumQuantityRequired?: number };
-          const name = sg?.name ?? "Item";
-          const count = ig.dynamicSystemCount ?? 0;
-          const par = sg?.parLevel ?? sg?.minimumQuantityRequired ?? "?";
-          return `${name} (${count}/${par})`;
-        })
-        .join(", ");
-
-    const [newNotification] = await Notification.create([
+    await dispatchEvent(
+      "LOW_STOCK_ALERT",
       {
-        notificationType: "Warning",
-        message,
-        employeesRecipientsIds: managerEmployees.map((e) => e._id),
         businessId,
+        lowStockItems: lowStockItems.map((ig: InventoryGoodPopulated) => {
+          const sg = ig.supplierGoodId as {
+            _id: Types.ObjectId;
+            name?: string;
+            parLevel?: number;
+            minimumQuantityRequired?: number;
+          };
+          const threshold = sg?.parLevel ?? sg?.minimumQuantityRequired ?? 0;
+          return {
+            supplierGoodId: sg._id,
+            name: sg?.name ?? "Item",
+            currentCount: ig.dynamicSystemCount ?? 0,
+            threshold: Number(threshold),
+          };
+        }),
       },
-    ]);
-
-    if (newNotification) {
-      const managerUserIds = managerEmployees.map((e) => e.userId).filter(Boolean);
-
-      await User.updateMany(
-        { _id: { $in: managerUserIds } },
-        {
-          $push: {
-            notifications: {
-              notificationId: newNotification._id,
-              // readFlag/deletedFlag default to false in the User schema
-            },
-          },
-        }
-      );
-    }
+      {
+        fireAndForget: true,
+        idempotencyKey: buildLowStockDedupKey(businessId, lowStockSupplierGoodIds),
+        idempotencyWindowMs: normalizeCooldownMs(
+          LOW_STOCK_ALERT_DISPATCH_IDEMPOTENCY_WINDOW_MS
+        ),
+      }
+    );
   } catch {
     // Fire-and-forget: do not throw
   }

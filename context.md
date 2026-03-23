@@ -2,9 +2,9 @@
 
 This file (`context.md`) is the **source of truth** for understanding **what this app is** and **how it works end-to-end**.
 
-For a **detailed, user-level walkthrough of the full operational flow** (from business onboarding to live service, purchasing, inventory, and reporting), see:
+For a **detailed, user-level walkthrough of the full operational flow** (from business onboarding to live service, purchasing, inventory, reporting, and communications), see:
 
-- `docs/user-flow.md`
+- `user-flow.md`
 
 It is also the **entrypoint context for AI-assisted coding** in this repo:
 
@@ -70,7 +70,7 @@ This section summarizes **what the app can do** and **what solution it offers** 
 
 - **Employees** — **Employees** per business: name, role, documents, optional link to a **user** account. **Manager roles** (Owner, General Manager, Manager, Assistant Manager, MoD, Admin, Supervisor) can close daily/monthly reports and perform manager actions at any time (no on-duty requirement); **non‑manager** employees must be on duty for operational actions like opening tables. Attribution everywhere uses **userId** (ref User): sales instances store **openedByUserId**, **openedAsRole** (employee | customer), **responsibleByUserId**, **closedByUserId**; orders store **createdByUserId** and **createdAsRole**; daily reports store **userId** in employee and self-order sections. The app never uses employeeId for "who did it"; identity comes from session (userId).
 - **Schedules** — **Schedules** provide **day-level** shift planning: which employees work when, **labour cost**, vacation, overlap validation. Labour cost feeds **monthly business report** cost breakdown. Schedules are also used at **login** to determine whether a user who is an employee can choose “Continue as employee” (see **Schedule check at login** in `app/api/v1/schedules/README.md`).
-- **Users and notifications** — **Users** are app identities (e.g. linked to an employee). **User.employeeDetails** is the single optional reference to **Employee**, set only when the user is linked as staff and kept in sync by the employees API. **Notifications** are business-scoped messages/events; users have an inbox with read/deleted state so the business can push alerts, promotions, or operational messages.
+- **Users and notifications** — **Users** are app identities (e.g. linked to an employee). **User.employeeDetails** is the single optional reference to **Employee**, set only when the user is linked as staff and kept in sync by the employees API. There is no separate `Customer` persistence model; customer recipients are `User` ids. Effective role at runtime (`employee` vs `customer`) is derived from the user's employee link plus schedule/on-duty checks. Notification inbox state (read/deleted flags) is centralized on `User.notifications` for both customer and employee recipients.
 
 ### Reporting and analytics
 
@@ -87,9 +87,22 @@ This section summarizes **what the app can do** and **what solution it offers** 
 
 ---
 
-## Environment (order confirmation email)
+## Unified communications layer (email + in-app + live push)
 
-Order confirmation emails (self-order and delivery) are sent via nodemailer. If SMTP is not configured, the order still succeeds and the in-app notification is still created. Optional env vars: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` (see `lib/orderConfirmation`).
+Communication delivery is centralized in `backend/src/communications` using a single domain orchestration entrypoint (`dispatchEvent`).
+
+- **Email** uses one SMTP provider path (Nodemailer transport singleton).
+- **In-app** notifications are persisted first (source of truth) and then fanned out to user inbox state.
+- **Live in-app** uses WebSocket push as an acceleration layer; persisted inbox remains the fallback when users are offline.
+- **Domain modules** (orders, reservations, inventory alerts, weekly/monthly report-ready) trigger communication by dispatching typed events, not by calling channels directly.
+- **Reliability** uses fire-and-forget defaults for non-blocking business flows, idempotency/noise controls for repeated events, and retry logic for transient SMTP failures.
+
+Core environment controls:
+
+- SMTP config: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`
+- Channel switches: `COMMUNICATIONS_EMAIL_ENABLED`, `COMMUNICATIONS_INAPP_ENABLED`, `COMMUNICATIONS_INAPP_LIVE_ENABLED`
+- Reliability tuning: `COMMUNICATIONS_EMAIL_RETRY_ATTEMPTS`, `COMMUNICATIONS_EMAIL_RETRY_BASE_DELAY_MS`, `COMMUNICATIONS_IDEMPOTENCY_WINDOW_MS`
+- Event policy overrides: `RESERVATION_PENDING_MANAGER_POLICY`, `LOW_STOCK_MANAGER_POLICY`, `MONTHLY_REPORT_MANAGER_POLICY`, `WEEKLY_REPORT_MANAGER_POLICY`
 
 ---
 
@@ -108,7 +121,7 @@ Order confirmation emails (self-order and delivery) are sent via nodemailer. If 
 
 ## READMEs (subsystem documentation)
 
-At the moment, there are **19 READMEs** in the app. This list will grow over time and should be kept up to date.
+At the moment, there are **20 READMEs** in the app. This list will grow over time and should be kept up to date.
 
 - **Business domain (tenant root, onboarding, cascade delete, and app-wide coupling)**  
   - `app/api/v1/business/README.md`
@@ -148,6 +161,8 @@ At the moment, there are **19 READMEs** in the app. This list will grow over tim
   - `app/api/v1/ratings/README.md`
 - **Reservations (table/booking per business, linked to sales points and sales instances; API implemented)**  
   - `app/api/v1/reservations/README.md`
+- **Communications (unified dispatch orchestration, SMTP email, persisted in-app notifications, and live WebSocket push)**  
+  - `backend/src/communications/README.md`
 
 ---
 

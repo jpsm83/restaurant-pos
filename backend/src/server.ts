@@ -7,11 +7,15 @@ import Fastify, { type FastifyInstance } from "fastify";
 import multipart from "@fastify/multipart";
 import jwt from "@fastify/jwt";
 import cookie from "@fastify/cookie";
+import websocket from "@fastify/websocket";
 
 import connectDb from "./db/connectDb.ts";
 import { registerV1Routes } from "./routes/v1/index.ts";
 import { toHttpError, type HttpErrorShape } from "./utils/httpError.ts";
 import { AUTH_CONFIG } from "./auth/config.ts";
+import { onLiveInAppNotification } from "./communications/channels/liveInAppEvents.ts";
+import liveInAppChannel from "./communications/channels/liveInAppChannel.ts";
+import liveConnectionRegistry from "./communications/live/connectionRegistry.ts";
 
 export interface BuildAppOptions {
   logger?: boolean;
@@ -78,9 +82,11 @@ export async function buildApp(
     limits: {
       fileSize: 10 * 1024 * 1024, // 10MB
       files: 1,
-      fields: 10,
+      fields: 30,
     },
   });
+
+  await server.register(websocket);
 
   /**
    * Health check
@@ -112,6 +118,40 @@ export async function buildApp(
    * Routes
    */
   await server.register(registerV1Routes, { prefix: "/api/v1" });
+
+  onLiveInAppNotification(async (payload) => {
+    if (process.env.COMMUNICATIONS_INAPP_LIVE_ENABLED === "false") return;
+
+    const result = await liveInAppChannel.send(payload, server.log);
+    if (!result.success) {
+      server.log.warn({
+        scope: "communications.live.push",
+        outcome: "failed",
+        eventName: payload.eventName ?? "UNKNOWN",
+        businessId: payload.businessId.toString(),
+        correlationId: payload.correlationId,
+        error: result.error ?? "unknown",
+      });
+      return;
+    }
+
+    const liveMetrics = liveConnectionRegistry.getLiveMetrics();
+    server.log.info({
+      scope: "communications.live.push",
+      outcome: "success",
+      eventName: payload.eventName ?? "UNKNOWN",
+      businessId: payload.businessId.toString(),
+      correlationId: payload.correlationId,
+      deliveredSockets: result.sentCount ?? 0,
+      connectedUsers: liveMetrics.connectedUsers,
+      connectedSockets: liveMetrics.connectedSockets,
+    });
+  });
+
+  server.addHook("onClose", async () => {
+    liveConnectionRegistry.stopHeartbeat();
+    liveConnectionRegistry.clearAllConnections();
+  });
 
   return server;
 }

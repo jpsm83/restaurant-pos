@@ -15,6 +15,7 @@ import {
   getWeekReference,
   createWeeklyBusinessReport,
 } from "./createWeeklyBusinessReport.ts";
+import sendWeeklyReportReadyNotification from "./sendWeeklyReportReadyNotification.ts";
 import type {
   IMetrics,
   WeeklyReportOpen,
@@ -28,6 +29,12 @@ function getWeekEnd(weekStart: Date): Date {
   end.setDate(end.getDate() + 6);
   end.setHours(23, 59, 59, 999);
   return end;
+}
+
+function getPreviousWeekStart(weekStart: Date): Date {
+  const prev = new Date(weekStart);
+  prev.setDate(prev.getDate() - 7);
+  return prev;
 }
 
 function mergeGoodsByBusinessGoodId(
@@ -101,6 +108,8 @@ const aggregateDailyReportsIntoWeekly = async (
 
   const session = await mongoose.startSession();
   session.startTransaction();
+  let shouldSendReadyNotification = false;
+  let closedWeekLabel: string | null = null;
 
   try {
     const weekReference = getWeekReference(anyDateInWeek, weeklyReportStartDay);
@@ -117,6 +126,43 @@ const aggregateDailyReportsIntoWeekly = async (
     const reportId = (report as WeeklyReportOpen)._id;
     const weekStart = weekReference;
     const weekEnd = getWeekEnd(weekStart);
+    const previousWeekStart = getPreviousWeekStart(weekStart);
+    const previousWeekEnd = getWeekEnd(previousWeekStart);
+
+    const openPreviousWeekReport = (await WeeklyBusinessReport.findOne({
+      businessId,
+      weekReference: previousWeekStart,
+      isReportOpen: true,
+    })
+      .select("_id weekReference isReportOpen")
+      .session(session)
+      .lean()) as {
+      _id: Types.ObjectId;
+      weekReference: Date;
+      isReportOpen?: boolean;
+    } | null;
+
+    if (openPreviousWeekReport) {
+      const openDailyInPreviousWeek = await DailySalesReport.exists({
+        businessId,
+        createdAt: { $gte: previousWeekStart, $lte: previousWeekEnd },
+        isDailyReportOpen: true,
+      }).session(session);
+
+      if (!openDailyInPreviousWeek) {
+        const closeResult = await WeeklyBusinessReport.updateOne(
+          { _id: openPreviousWeekReport._id, isReportOpen: true },
+          { $set: { isReportOpen: false } },
+          { session },
+        );
+        // Send ready-notification only when this execution actually closes
+        // the previous weekly report (idempotent close gate).
+        if (closeResult.modifiedCount === 1) {
+          shouldSendReadyNotification = true;
+          closedWeekLabel = previousWeekStart.toISOString().slice(0, 10);
+        }
+      }
+    }
 
     const [dailyReports, schedules, supplierWasteAnalysis, businessDoc] =
       await Promise.all([
@@ -373,6 +419,11 @@ const aggregateDailyReportsIntoWeekly = async (
     throw error;
   } finally {
     session.endSession();
+  }
+
+  if (shouldSendReadyNotification && closedWeekLabel) {
+    // Product requirement: notify managers when a weekly report is finalized.
+    await sendWeeklyReportReadyNotification(businessId, closedWeekLabel);
   }
 };
 

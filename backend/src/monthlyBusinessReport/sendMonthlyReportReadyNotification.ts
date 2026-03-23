@@ -3,12 +3,12 @@
  */
 
 import { Types } from "mongoose";
-import Employee from "../models/employee.ts";
-import User from "../models/user.ts";
-import Notification from "../models/notification.ts";
-import * as enums from "../../../lib/enums.ts";
+import dispatchEvent from "../communications/dispatchEvent.ts";
 
-const { managementRolesEnums } = enums;
+const sentMonthlyReadyNotifications = new Set<string>();
+
+const buildDedupKey = (businessId: Types.ObjectId, monthLabel: string): string =>
+  `${businessId.toString()}::${monthLabel}`;
 
 /**
  * Sends a notification to manager-level employees that a monthly
@@ -19,43 +19,19 @@ const sendMonthlyReportReadyNotification = async (
   monthLabel: string,
 ): Promise<void> => {
   try {
-    const managerEmployees = await Employee.find({
-      businessId,
-      currentShiftRole: { $in: managementRolesEnums },
-    })
-      .select("_id userId")
-      .lean();
+    const dedupKey = buildDedupKey(businessId, monthLabel);
+    if (sentMonthlyReadyNotifications.has(dedupKey)) return;
 
-    if (!managerEmployees?.length) return;
-
-    const message = `Monthly business report for ${monthLabel} is ready to be reviewed.`;
-
-    const [newNotification] = await Notification.create([
+    await dispatchEvent(
+      "MONTHLY_REPORT_READY",
       {
-        notificationType: "Info",
-        message,
-        employeesRecipientsIds: managerEmployees.map((e) => e._id),
         businessId,
+        monthLabel,
       },
-    ]);
+      { fireAndForget: true }
+    );
 
-    if (newNotification) {
-      const managerUserIds = managerEmployees
-        .map((e) => e.userId)
-        .filter(Boolean);
-
-      await User.updateMany(
-        { _id: { $in: managerUserIds } },
-        {
-          $push: {
-            notifications: {
-              notificationId: newNotification._id,
-              // readFlag/deletedFlag default to false in the User schema
-            },
-          },
-        },
-      );
-    }
+    sentMonthlyReadyNotifications.add(dedupKey);
   } catch {
     // Fire-and-forget: do not throw
   }

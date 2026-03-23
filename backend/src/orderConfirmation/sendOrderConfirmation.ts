@@ -1,8 +1,5 @@
 import { Types } from "mongoose";
-import User from "../models/user.ts";
-import buildReceiptMessage from "./buildReceiptMessage.ts";
-import sendOrderConfirmationNotification from "./sendOrderConfirmationNotification.ts";
-import sendReceiptEmail from "./sendReceiptEmail.ts";
+import dispatchEvent from "../communications/dispatchEvent.ts";
 
 export interface OrderConfirmationParams {
   dailyReferenceNumber: string | number;
@@ -21,27 +18,18 @@ const sendOrderConfirmation = async (
   params: OrderConfirmationParams
 ): Promise<void> => {
   try {
-    const user = (await User.findById(userId)
-      .select("personalDetails.email")
-      .lean()) as
-      | { personalDetails?: { email?: string } }
-      | null;
-
-    const receiptMessage = buildReceiptMessage({
-      dailyReferenceNumber: params.dailyReferenceNumber,
-      totalNetPaidAmount: params.totalNetPaidAmount,
-      orderCount: params.orderCount,
-      orderCode: params.orderCode,
-    });
-
-    const ref = params.orderCode ?? String(params.dailyReferenceNumber);
-
-    const email = user?.personalDetails?.email;
-    if (email) {
-      await sendReceiptEmail(email, receiptMessage, { ref });
-    }
-
-    await sendOrderConfirmationNotification(userId, businessId, receiptMessage);
+    await dispatchEvent(
+      "ORDER_CONFIRMED",
+      {
+        businessId,
+        userId,
+        dailyReferenceNumber: params.dailyReferenceNumber,
+        totalNetPaidAmount: params.totalNetPaidAmount,
+        orderCount: params.orderCount,
+        orderCode: params.orderCode,
+      },
+      { fireAndForget: true }
+    );
   } catch (error) {
     console.error("[orderConfirmation] sendOrderConfirmation failed:", error);
   }

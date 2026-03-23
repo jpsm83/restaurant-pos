@@ -179,7 +179,9 @@ const aggregateDailyReportsIntoMonthly = async (
           { $set: { isReportOpen: false } },
           { session },
         );
-        if (closeResult.modifiedCount > 0) {
+        // Send ready-notification only when this execution actually closes
+        // the previous monthly report (idempotent close gate).
+        if (closeResult.modifiedCount === 1) {
           shouldSendReadyNotification = true;
           closedMonthLabel = previousMonthStart.toISOString().slice(0, 7);
         }

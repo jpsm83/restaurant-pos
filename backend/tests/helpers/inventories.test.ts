@@ -10,7 +10,7 @@ import SupplierGood from "../../src/models/supplierGood.ts";
 import Supplier from "../../src/models/supplier.ts";
 import Employee from "../../src/models/employee.ts";
 import Notification from "../../src/models/notification.ts";
-import { checkLowStockAndNotify } from "../../src/inventories/checkLowStockAndNotify.ts";
+import checkLowStockAndNotify from "../../src/inventories/checkLowStockAndNotify.ts";
 
 describe("Inventory Helpers", () => {
   const businessId = new Types.ObjectId();
@@ -206,12 +206,13 @@ describe("Inventory Helpers", () => {
       const notifications = await Notification.find({ businessId });
       expect(notifications.length).toBe(0);
     });
+
   });
 
   describe("getVarianceReport", () => {
     it("returns empty array when no data exists", async () => {
       // Import dynamically to avoid issues
-      const { getVarianceReport } = await import("../../src/inventories/getVarianceReport.ts");
+      const { default: getVarianceReport } = await import("../../src/inventories/getVarianceReport.ts");
       
       const result = await getVarianceReport(businessId, 2025, 1);
       expect(Array.isArray(result)).toBe(true);
@@ -221,7 +222,7 @@ describe("Inventory Helpers", () => {
 
   describe("updateDynamicCountSupplierGood", () => {
     it("function exists and is callable", async () => {
-      const { updateDynamicCountSupplierGood } = await import(
+      const { default: updateDynamicCountSupplierGood } = await import(
         "../../src/inventories/updateDynamicCountSupplierGood.ts"
       );
       expect(typeof updateDynamicCountSupplierGood).toBe("function");
@@ -230,7 +231,7 @@ describe("Inventory Helpers", () => {
 
   describe("createNextPeriodInventory", () => {
     it("function exists and is callable", async () => {
-      const { createNextPeriodInventory } = await import(
+      const { default: createNextPeriodInventory } = await import(
         "../../src/inventories/createNextPeriodInventory.ts"
       );
       expect(typeof createNextPeriodInventory).toBe("function");

@@ -39,6 +39,42 @@ npm --prefix backend run start
 | `CLOUDINARY_API_SECRET` | Yes | Cloudinary API secret |
 | `PORT` | No | Server port (default: 4000) |
 
+### Communications reliability env vars
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `COMMUNICATIONS_EMAIL_RETRY_ATTEMPTS` | No | Number of retries for transient SMTP send failures (default: `2`) |
+| `COMMUNICATIONS_EMAIL_RETRY_BASE_DELAY_MS` | No | Base backoff delay in milliseconds for retries (default: `250`) |
+
+Failed dispatch persistence policy (initial version):
+- failed attempts are logged/metriced for observability
+- failed attempts are **not** persisted to a replay queue yet
+- core business flow remains non-blocking when `fireAndForget` is enabled
+
+### Communications rollout (progressive)
+
+Use this rollout sequence to enable unified communications safely:
+
+1. Non-production first (required)
+   - set `COMMUNICATIONS_EMAIL_ENABLED=true`
+   - set `COMMUNICATIONS_INAPP_ENABLED=true`
+   - set `COMMUNICATIONS_INAPP_LIVE_ENABLED=true`
+2. Validate in staging/UAT with route + communications suites.
+3. Production enablement
+   - optional burn-in: keep `COMMUNICATIONS_INAPP_LIVE_ENABLED=false` for 24-48h
+   - then enable live push (`COMMUNICATIONS_INAPP_LIVE_ENABLED=true`)
+4. Unified dispatcher cutover status
+   - unified dispatch is always active after Phase 6 cutover
+   - channel-level controls remain available via `COMMUNICATIONS_EMAIL_ENABLED`, `COMMUNICATIONS_INAPP_ENABLED`, and `COMMUNICATIONS_INAPP_LIVE_ENABLED`
+
+Module migration order used in this project:
+- Orders
+- Reservations
+- Inventory alerts
+- Monthly reports
+- Weekly reports
+- Notifications route internals (optional)
+
 ## API Modules
 
 | Module | Prefix | Endpoints |
