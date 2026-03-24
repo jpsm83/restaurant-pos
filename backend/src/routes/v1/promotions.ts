@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
 import { Types } from "mongoose";
 import type { IPromotion } from "../../../../lib/interface/IPromotion.ts";
+import type { PromotionType } from "../../../../lib/interface/IPromotion.ts";
 
 import isObjectIdValid from "../../utils/isObjectIdValid.ts";
 import validateDateAndTime from "../../promotions/validateDateAndTime.ts";
@@ -90,7 +91,9 @@ export const promotionsRoutes: FastifyPluginAsync = async (app) => {
         return reply.code(400).send({ message: validateDaysOfTheWeekResult });
       }
 
-      const validatePromotionTypeResult = validatePromotionType(promotionType);
+      const validatePromotionTypeResult = validatePromotionType(
+        promotionType as PromotionType,
+      );
       if (validatePromotionTypeResult !== true) {
         return reply.code(400).send({ message: validatePromotionTypeResult });
       }
@@ -214,8 +217,9 @@ export const promotionsRoutes: FastifyPluginAsync = async (app) => {
       }
 
       if (promotionType) {
-        const validatePromotionTypeResult =
-          validatePromotionType(promotionType);
+        const validatePromotionTypeResult = validatePromotionType(
+          promotionType as PromotionType,
+        );
         if (validatePromotionTypeResult !== true) {
           return reply.code(400).send({ message: validatePromotionTypeResult });
         }

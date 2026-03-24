@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach } from "vitest";
 import { Types } from "mongoose";
-import { calculateIngredientsCostPriceAndAllergies } from "../../src/businessGoods/calculateIngredientsCostPriceAndAllergies.ts";
+import calculateIngredientsCostPriceAndAllergies from "../../src/businessGoods/calculateIngredientsCostPriceAndAllergies.ts";
 import SupplierGood from "../../src/models/supplierGood.ts";
 import Supplier from "../../src/models/supplier.ts";
 

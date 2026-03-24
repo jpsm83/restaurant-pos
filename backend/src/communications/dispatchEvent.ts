@@ -87,6 +87,206 @@ const appendResult = (
   results.push(result);
 };
 
+interface DispatchContext {
+  eventName: CommunicationsEventName;
+  options?: CommunicationsDispatchOptions;
+  correlationId: string;
+  fireAndForget: boolean;
+  businessId?: Types.ObjectId;
+  channelResults: CommunicationsChannelResult[];
+  safeInAppSend: (input: {
+    message: string;
+    notificationType?: NotificationType;
+    businessId: Types.ObjectId;
+    recipients: {
+      customerUserIds?: Types.ObjectId[];
+      employeeIds?: Types.ObjectId[];
+      employeeUserIds?: Types.ObjectId[];
+    };
+  }) => Promise<void>;
+  safeEmailSend: (input: {
+    to: string | string[];
+    subject: string;
+    text: string;
+    businessId: Types.ObjectId;
+  }) => Promise<void>;
+}
+
+type EventHandler<E extends CommunicationsEventName> = (
+  payload: CommunicationsEventPayloadMap[E],
+  ctx: DispatchContext
+) => Promise<void>;
+
+const handleOrderConfirmed: EventHandler<"ORDER_CONFIRMED"> = async (p, ctx) => {
+  const message = buildOrderReceiptTemplate(p);
+  const email = await getUserEmail(p.userId);
+
+  if (email) {
+    await ctx.safeEmailSend({
+      to: email,
+      subject: `Order confirmation - Ref ${p.orderCode ?? String(p.dailyReferenceNumber)}`,
+      text: message,
+      businessId: p.businessId,
+    });
+  }
+
+  await ctx.safeInAppSend({
+    message,
+    notificationType: "Info",
+    businessId: p.businessId,
+    recipients: { customerUserIds: [p.userId] },
+  });
+};
+
+const handleReservationPending: EventHandler<"RESERVATION_PENDING"> = async (
+  p,
+  ctx
+) => {
+  const baseMessage = buildReservationTemplate({
+    reservationId: p.reservationId,
+    status: "Pending",
+    reservationStart: p.reservationStart,
+    guestCount: p.guestCount,
+    description: p.description,
+  });
+  const email = await getUserEmail(p.userId);
+
+  if (email) {
+    await ctx.safeEmailSend({
+      to: email,
+      subject: `Reservation request received - Ref ${p.reservationId.toString()}`,
+      text: baseMessage,
+      businessId: p.businessId,
+    });
+  }
+
+  await ctx.safeInAppSend({
+    message: `${baseMessage}\n\nYour reservation is pending approval.`,
+    notificationType: "Info",
+    businessId: p.businessId,
+    recipients: { customerUserIds: [p.userId] },
+  });
+
+  const managers = await resolveManagersByPolicy({
+    businessId: p.businessId,
+    eventName: ctx.eventName,
+  });
+
+  if (managers.employeeIds.length > 0) {
+    await ctx.safeInAppSend({
+      message: `${baseMessage}\n\nAction required: approve or reject this reservation.`,
+      notificationType: "Info",
+      businessId: p.businessId,
+      recipients: { employeeIds: managers.employeeIds },
+    });
+  }
+};
+
+const handleReservationDecided: EventHandler<"RESERVATION_DECIDED"> = async (
+  p,
+  ctx
+) => {
+  const message = buildReservationTemplate({
+    reservationId: p.reservationId,
+    status: p.status,
+    reservationStart: p.reservationStart,
+    guestCount: p.guestCount,
+    description: p.description,
+  });
+  const email = await getUserEmail(p.userId);
+
+  if (email) {
+    await ctx.safeEmailSend({
+      to: email,
+      subject: `Reservation ${p.status.toLowerCase()} - Ref ${p.reservationId.toString()}`,
+      text: message,
+      businessId: p.businessId,
+    });
+  }
+
+  await ctx.safeInAppSend({
+    message,
+    notificationType: "Info",
+    businessId: p.businessId,
+    recipients: { customerUserIds: [p.userId] },
+  });
+};
+
+const handleLowStockAlert: EventHandler<"LOW_STOCK_ALERT"> = async (p, ctx) => {
+  const message = buildLowStockTemplate(
+    p.lowStockItems.map((item) => ({
+      name: item.name,
+      currentCount: item.currentCount,
+      threshold: item.threshold,
+    }))
+  );
+
+  const managers = await resolveManagersByPolicy({
+    businessId: p.businessId,
+    eventName: ctx.eventName,
+  });
+
+  if (managers.employeeIds.length > 0) {
+    await ctx.safeInAppSend({
+      message,
+      notificationType: "Warning",
+      businessId: p.businessId,
+      recipients: { employeeIds: managers.employeeIds },
+    });
+  }
+};
+
+const handleMonthlyReportReady: EventHandler<"MONTHLY_REPORT_READY"> = async (
+  p,
+  ctx
+) => {
+  const message = buildMonthlyReportReadyTemplate(p.monthLabel);
+  const managers = await resolveManagersByPolicy({
+    businessId: p.businessId,
+    eventName: ctx.eventName,
+  });
+
+  if (managers.employeeIds.length > 0) {
+    await ctx.safeInAppSend({
+      message,
+      notificationType: "Info",
+      businessId: p.businessId,
+      recipients: { employeeIds: managers.employeeIds },
+    });
+  }
+};
+
+const handleWeeklyReportReady: EventHandler<"WEEKLY_REPORT_READY"> = async (
+  p,
+  ctx
+) => {
+  const message = buildWeeklyReportReadyTemplate(p.weekLabel);
+  const managers = await resolveManagersByPolicy({
+    businessId: p.businessId,
+    eventName: ctx.eventName,
+  });
+
+  if (managers.employeeIds.length > 0) {
+    await ctx.safeInAppSend({
+      message,
+      notificationType: "Info",
+      businessId: p.businessId,
+      recipients: { employeeIds: managers.employeeIds },
+    });
+  }
+};
+
+const eventHandlers: {
+  [K in CommunicationsEventName]: EventHandler<K>;
+} = {
+  ORDER_CONFIRMED: handleOrderConfirmed,
+  RESERVATION_PENDING: handleReservationPending,
+  RESERVATION_DECIDED: handleReservationDecided,
+  LOW_STOCK_ALERT: handleLowStockAlert,
+  MONTHLY_REPORT_READY: handleMonthlyReportReady,
+  WEEKLY_REPORT_READY: handleWeeklyReportReady,
+};
+
 export const dispatchEvent = async <E extends CommunicationsEventName>(
   eventName: E,
   payload: CommunicationsEventPayload<E>,
@@ -198,160 +398,20 @@ export const dispatchEvent = async <E extends CommunicationsEventName>(
     });
   };
 
-  const typedPayload = payload as CommunicationsEventPayloadMap[E];
-
-  if (eventName === "ORDER_CONFIRMED") {
-    const p = typedPayload as CommunicationsEventPayloadMap["ORDER_CONFIRMED"];
-    const message = buildOrderReceiptTemplate(p);
-    const email = await getUserEmail(p.userId);
-
-    if (email) {
-      await safeEmailSend({
-        to: email,
-        subject: `Order confirmation - Ref ${p.orderCode ?? String(p.dailyReferenceNumber)}`,
-        text: message,
-        businessId: p.businessId,
-      });
-    }
-
-    await safeInAppSend({
-      message,
-      notificationType: "Info",
-      businessId: p.businessId,
-      recipients: { customerUserIds: [p.userId] },
-    });
+  const handler = eventHandlers[eventName];
+  if (!handler) {
+    throw new Error(`${LOG_PREFIX} Unsupported event handler for ${eventName}`);
   }
-
-  if (eventName === "RESERVATION_PENDING") {
-    const p = typedPayload as CommunicationsEventPayloadMap["RESERVATION_PENDING"];
-    const baseMessage = buildReservationTemplate({
-      reservationId: p.reservationId,
-      status: "Pending",
-      reservationStart: p.reservationStart,
-      guestCount: p.guestCount,
-      description: p.description,
-    });
-    const email = await getUserEmail(p.userId);
-
-    if (email) {
-      await safeEmailSend({
-        to: email,
-        subject: `Reservation request received - Ref ${p.reservationId.toString()}`,
-        text: baseMessage,
-        businessId: p.businessId,
-      });
-    }
-
-    await safeInAppSend({
-      message: `${baseMessage}\n\nYour reservation is pending approval.`,
-      notificationType: "Info",
-      businessId: p.businessId,
-      recipients: { customerUserIds: [p.userId] },
-    });
-
-    const managers = await resolveManagersByPolicy({
-      businessId: p.businessId,
-      eventName,
-    });
-
-    if (managers.employeeIds.length > 0) {
-      await safeInAppSend({
-        message: `${baseMessage}\n\nAction required: approve or reject this reservation.`,
-        notificationType: "Info",
-        businessId: p.businessId,
-        recipients: { employeeIds: managers.employeeIds },
-      });
-    }
-  }
-
-  if (eventName === "RESERVATION_DECIDED") {
-    const p = typedPayload as CommunicationsEventPayloadMap["RESERVATION_DECIDED"];
-    const message = buildReservationTemplate({
-      reservationId: p.reservationId,
-      status: p.status,
-      reservationStart: p.reservationStart,
-      guestCount: p.guestCount,
-      description: p.description,
-    });
-    const email = await getUserEmail(p.userId);
-
-    if (email) {
-      await safeEmailSend({
-        to: email,
-        subject: `Reservation ${p.status.toLowerCase()} - Ref ${p.reservationId.toString()}`,
-        text: message,
-        businessId: p.businessId,
-      });
-    }
-
-    await safeInAppSend({
-      message,
-      notificationType: "Info",
-      businessId: p.businessId,
-      recipients: { customerUserIds: [p.userId] },
-    });
-  }
-
-  if (eventName === "LOW_STOCK_ALERT") {
-    const p = typedPayload as CommunicationsEventPayloadMap["LOW_STOCK_ALERT"];
-    const message = buildLowStockTemplate(
-      p.lowStockItems.map((item) => ({
-        name: item.name,
-        currentCount: item.currentCount,
-        threshold: item.threshold,
-      }))
-    );
-
-    const managers = await resolveManagersByPolicy({
-      businessId: p.businessId,
-      eventName,
-    });
-
-    if (managers.employeeIds.length > 0) {
-      await safeInAppSend({
-        message,
-        notificationType: "Warning",
-        businessId: p.businessId,
-        recipients: { employeeIds: managers.employeeIds },
-      });
-    }
-  }
-
-  if (eventName === "MONTHLY_REPORT_READY") {
-    const p = typedPayload as CommunicationsEventPayloadMap["MONTHLY_REPORT_READY"];
-    const message = buildMonthlyReportReadyTemplate(p.monthLabel);
-    const managers = await resolveManagersByPolicy({
-      businessId: p.businessId,
-      eventName,
-    });
-
-    if (managers.employeeIds.length > 0) {
-      await safeInAppSend({
-        message,
-        notificationType: "Info",
-        businessId: p.businessId,
-        recipients: { employeeIds: managers.employeeIds },
-      });
-    }
-  }
-
-  if (eventName === "WEEKLY_REPORT_READY") {
-    const p = typedPayload as CommunicationsEventPayloadMap["WEEKLY_REPORT_READY"];
-    const message = buildWeeklyReportReadyTemplate(p.weekLabel);
-    const managers = await resolveManagersByPolicy({
-      businessId: p.businessId,
-      eventName,
-    });
-
-    if (managers.employeeIds.length > 0) {
-      await safeInAppSend({
-        message,
-        notificationType: "Info",
-        businessId: p.businessId,
-        recipients: { employeeIds: managers.employeeIds },
-      });
-    }
-  }
+  await handler(payload as CommunicationsEventPayloadMap[E], {
+    eventName,
+    options,
+    correlationId,
+    fireAndForget,
+    businessId,
+    channelResults,
+    safeInAppSend,
+    safeEmailSend,
+  });
 
   const success = channelResults.length === 0 || channelResults.every((r) => r.success);
   recordDispatchResult(eventName, success);

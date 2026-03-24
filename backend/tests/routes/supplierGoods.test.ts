@@ -414,7 +414,8 @@ describe("SupplierGoods Routes", () => {
       expect(inventory).not.toBeNull();
 
       const hasSupplierGood = inventory?.inventoryGoods?.some(
-        (g) => g.supplierGoodId.toString() === createdSupplierGood?._id?.toString()
+        (g: { supplierGoodId: { toString: () => string } }) =>
+          g.supplierGoodId.toString() === createdSupplierGood?._id?.toString()
       );
       expect(hasSupplierGood).toBe(true);
     });
@@ -494,7 +495,8 @@ describe("SupplierGoods Routes", () => {
       // Verify supplierGood was added to inventory
       const inventory = await Inventory.findOne({ businessId }).lean();
       const hasSupplierGood = inventory?.inventoryGoods?.some(
-        (g) => g.supplierGoodId.toString() === supplierGood._id.toString()
+        (g: { supplierGoodId: { toString: () => string } }) =>
+          g.supplierGoodId.toString() === supplierGood._id.toString()
       );
       expect(hasSupplierGood).toBe(true);
     });

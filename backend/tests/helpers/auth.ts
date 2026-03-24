@@ -123,7 +123,7 @@ export async function loginAsBusiness(
     throw new Error(`Login failed: ${response.body}`);
   }
 
-  const body = response.tson<{ accessToken: string }>();
+  const body = response.json<{ accessToken: string }>();
   return body.accessToken;
 }
 
@@ -147,7 +147,7 @@ export async function loginAsUser(
     throw new Error(`Login failed: ${response.body}`);
   }
 
-  const body = response.tson<{ accessToken: string }>();
+  const body = response.json<{ accessToken: string }>();
   return body.accessToken;
 }
 

@@ -1,6 +1,5 @@
 import type { CommunicationsChannelResult, InAppSendInput } from "../types.ts";
-import { emitLiveInAppNotification } from "./liveInAppEvents.ts";
-import notificationRepository from "../repositories/notificationRepository.ts";
+import notificationService from "../services/notificationService.ts";
 
 const LOG_PREFIX = "[communications][inAppChannel]";
 
@@ -16,32 +15,24 @@ const send = async (payload: InAppSendInput): Promise<CommunicationsChannelResul
       };
     }
 
-    const fanout = await notificationRepository.createAndFanout({
+    const delivered = await notificationService.createAndDeliver({
       message: payload.message,
       notificationType: payload.notificationType ?? "Info",
       businessId: payload.businessId,
       recipients: payload.recipients,
+      eventName: payload.eventName,
+      correlationId: payload.correlationId,
       session: payload.session,
     });
 
-    emitLiveInAppNotification({
-      notificationId: fanout.notificationId,
-      businessId: payload.businessId,
-      message: payload.message,
-      notificationType: payload.notificationType ?? "Info",
-      recipientUserIds: fanout.recipientUserIds,
-      eventName: payload.eventName,
-      correlationId: payload.correlationId,
-    });
-
     console.info(
-      `${LOG_PREFIX} Notification persisted eventName=${payload.eventName ?? "UNKNOWN"} businessId=${payload.businessId.toString()} recipientCount=${fanout.recipientCount} correlationId=${payload.correlationId ?? "N/A"}`
+      `${LOG_PREFIX} Notification persisted eventName=${payload.eventName ?? "UNKNOWN"} businessId=${payload.businessId.toString()} recipientCount=${delivered.recipientCount} correlationId=${payload.correlationId ?? "N/A"}`
     );
 
     return {
       channel: "inApp",
       success: true,
-      sentCount: fanout.recipientCount,
+      sentCount: delivered.recipientCount,
       deliveryMode: "persisted",
     };
   } catch (error) {

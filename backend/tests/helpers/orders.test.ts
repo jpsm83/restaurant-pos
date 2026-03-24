@@ -5,7 +5,7 @@
 
 import { describe, it, expect } from "vitest";
 import { Types } from "mongoose";
-import { ordersArrValidation } from "../../src/orders/ordersArrValidation.ts";
+import ordersArrValidation from "../../src/orders/ordersArrValidation.ts";
 
 describe("Order Helpers", () => {
   describe("ordersArrValidation", () => {

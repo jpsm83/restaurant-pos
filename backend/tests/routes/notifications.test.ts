@@ -61,7 +61,7 @@ describe("Notifications Routes", () => {
       expect(body.length).toBeGreaterThanOrEqual(1);
     });
 
-    it("returns 404 when no notifications exist", async () => {
+    it("returns 200 with empty array when no notifications exist", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
@@ -69,9 +69,27 @@ describe("Notifications Routes", () => {
         url: "/api/v1/notifications",
       });
 
-      expect(response.statusCode).toBe(404);
+      expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-      expect(body.message).toContain("No notifications");
+      expect(Array.isArray(body)).toBe(true);
+      expect(body).toHaveLength(0);
+    });
+
+    it("applies pagination with limit query param", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      await createTestNotification(business._id as Types.ObjectId);
+      await createTestNotification(business._id as Types.ObjectId);
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/notifications?limit=1",
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(Array.isArray(body)).toBe(true);
+      expect(body.length).toBe(1);
     });
   });
 
@@ -279,7 +297,7 @@ describe("Notifications Routes", () => {
 
       expect(response.statusCode).toBe(400);
       const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid notification ID!");
+      expect(body.message).toBe("Invalid notification ID");
     });
   });
 
@@ -294,10 +312,10 @@ describe("Notifications Routes", () => {
 
       expect(response.statusCode).toBe(400);
       const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid business ID!");
+      expect(body.message).toBe("Invalid business ID");
     });
 
-    it("returns 404 when no notifications for business", async () => {
+    it("returns 200 with empty array when no notifications for business", async () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
@@ -306,9 +324,10 @@ describe("Notifications Routes", () => {
         url: `/api/v1/notifications/business/${fakeId}`,
       });
 
-      expect(response.statusCode).toBe(404);
+      expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-      expect(body.message).toContain("No notifications");
+      expect(Array.isArray(body)).toBe(true);
+      expect(body).toHaveLength(0);
     });
 
     it("lists notifications by business", async () => {
@@ -339,10 +358,10 @@ describe("Notifications Routes", () => {
 
       expect(response.statusCode).toBe(400);
       const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid user ID!");
+      expect(body.message).toBe("Invalid user ID");
     });
 
-    it("returns 404 when no notifications for user", async () => {
+    it("returns 200 with empty array when no notifications for user", async () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
@@ -351,9 +370,10 @@ describe("Notifications Routes", () => {
         url: `/api/v1/notifications/user/${fakeId}`,
       });
 
-      expect(response.statusCode).toBe(404);
+      expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-      expect(body.message).toContain("No notifications");
+      expect(Array.isArray(body)).toBe(true);
+      expect(body).toHaveLength(0);
     });
   });
 
@@ -534,9 +554,71 @@ describe("Notifications Routes", () => {
       // Verify user's notification flags were reset (since message changed)
       const updatedUser = await User.findById(user._id).lean();
       const userNotif = updatedUser?.notifications?.find(
-        (n) => n.notificationId.toString() === notification?._id.toString()
+        (n: { notificationId: { toString: () => string } }) =>
+          n.notificationId.toString() === notification?._id.toString()
       );
       expect(userNotif?.readFlag).toBe(false);
+    });
+
+    it("does not reset inbox flags when message is unchanged/omitted", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      const user = await createTestUser(`patch-flags-${Date.now()}`);
+
+      const employee = await Employee.create({
+        businessId: business._id,
+        userId: user._id,
+        taxNumber: `EMP-FLAGS-${Date.now()}`,
+        joinDate: new Date(),
+        vacationDaysPerYear: 20,
+        vacationDaysLeft: 20,
+        allEmployeeRoles: ["Waiter"],
+      });
+
+      const createResponse = await app.inject({
+        method: "POST",
+        url: "/api/v1/notifications",
+        payload: {
+          notificationType: "Info",
+          message: "Flags baseline message",
+          businessId: business._id.toString(),
+          employeesRecipientsIds: [employee._id.toString()],
+        },
+      });
+      expect(createResponse.statusCode, createResponse.body).toBe(201);
+
+      const notification = await Notification.findOne({
+        businessId: business._id,
+        message: "Flags baseline message",
+      }).lean();
+      expect(notification).not.toBeNull();
+
+      await User.updateOne(
+        { _id: user._id, "notifications.notificationId": notification?._id },
+        {
+          $set: {
+            "notifications.$.readFlag": true,
+            "notifications.$.deletedFlag": true,
+          },
+        }
+      );
+
+      const patchResponse = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/notifications/${notification?._id}`,
+        payload: {
+          employeesRecipientsIds: [employee._id.toString()],
+        },
+      });
+      expect(patchResponse.statusCode, patchResponse.body).toBe(200);
+
+      const updatedUser = await User.findById(user._id).lean();
+      const userNotif = updatedUser?.notifications?.find(
+        (n: { notificationId: { toString: () => string } }) =>
+          n.notificationId.toString() === notification?._id?.toString()
+      );
+      expect(userNotif?.readFlag).toBe(true);
+      expect(userNotif?.deletedFlag).toBe(true);
     });
   });
 

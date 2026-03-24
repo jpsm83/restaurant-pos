@@ -5,8 +5,8 @@
 
 import { describe, it, expect, beforeEach } from "vitest";
 import { Types } from "mongoose";
-import { validatePromotionType } from "../../src/promotions/validatePromotionType.ts";
-import { applyPromotionsToOrders } from "../../src/promotions/applyPromotions.ts";
+import validatePromotionType from "../../src/promotions/validatePromotionType.ts";
+import applyPromotionsToOrders from "../../src/promotions/applyPromotions.ts";
 import Promotion from "../../src/models/promotion.ts";
 
 describe("Promotion Helpers", () => {

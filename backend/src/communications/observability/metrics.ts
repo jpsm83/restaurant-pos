@@ -12,6 +12,8 @@ let livePushedEvents = 0;
 let liveDeliveredSockets = 0;
 let liveDroppedPushes = 0;
 let liveAuthFailures = 0;
+const liveDroppedPushesByReason: CounterMap = {};
+const liveAuthFailuresByReason: CounterMap = {};
 
 const increment = (bag: CounterMap, key: string, delta = 1): void => {
   bag[key] = (bag[key] ?? 0) + delta;
@@ -48,14 +50,35 @@ export const recordChannelResult = (
 export const recordLivePushMetrics = (input: {
   deliveredSockets: number;
   droppedPushes: number;
+  droppedByReason?: {
+    offlineRecipient?: number;
+    socketSendFailure?: number;
+  };
 }): void => {
   livePushedEvents += 1;
   liveDeliveredSockets += input.deliveredSockets;
   liveDroppedPushes += input.droppedPushes;
+  if ((input.droppedByReason?.offlineRecipient ?? 0) > 0) {
+    increment(
+      liveDroppedPushesByReason,
+      "offline_recipient",
+      input.droppedByReason?.offlineRecipient
+    );
+  }
+  if ((input.droppedByReason?.socketSendFailure ?? 0) > 0) {
+    increment(
+      liveDroppedPushesByReason,
+      "socket_send_failure",
+      input.droppedByReason?.socketSendFailure
+    );
+  }
 };
 
-export const recordLiveAuthFailure = (): void => {
+export const recordLiveAuthFailure = (
+  reason: "missing_bearer_token" | "invalid_token" | "non_user_session"
+): void => {
   liveAuthFailures += 1;
+  increment(liveAuthFailuresByReason, reason);
 };
 
 export const getCommunicationsMetricsSnapshot = () => ({
@@ -68,6 +91,8 @@ export const getCommunicationsMetricsSnapshot = () => ({
     pushedEvents: livePushedEvents,
     deliveredSockets: liveDeliveredSockets,
     droppedPushes: liveDroppedPushes,
+    droppedPushesByReason: { ...liveDroppedPushesByReason },
     authFailures: liveAuthFailures,
+    authFailuresByReason: { ...liveAuthFailuresByReason },
   },
 });

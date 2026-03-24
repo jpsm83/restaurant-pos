@@ -2,6 +2,7 @@ import type { WebSocket } from "ws";
 import type { FastifyBaseLogger } from "fastify";
 import { Types } from "mongoose";
 import type { LiveInAppNotificationEvent } from "../types.ts";
+import { toNotificationCreatedMessage } from "./contracts.ts";
 import {
   recordLiveAuthFailure,
   recordLivePushMetrics,
@@ -65,25 +66,18 @@ const pushToUserIds = (
   const targetUserIds = Array.from(
     new Set(event.recipientUserIds.map((id) => id.toString()))
   );
-  const payload = JSON.stringify({
-    type: "notification.created",
-    data: {
-      notificationId: event.notificationId.toString(),
-      businessId: event.businessId.toString(),
-      message: event.message,
-      notificationType: event.notificationType,
-      eventName: event.eventName,
-      correlationId: event.correlationId,
-    },
-  });
+  const payload = JSON.stringify(toNotificationCreatedMessage(event));
 
   let deliveredSockets = 0;
   let droppedPushes = 0;
+  let offlineRecipientDrops = 0;
+  let socketSendFailureDrops = 0;
 
   targetUserIds.forEach((userId) => {
     const sockets = socketsByUserId.get(userId);
     if (!sockets?.size) {
       droppedPushes += 1;
+      offlineRecipientDrops += 1;
       return;
     }
 
@@ -94,6 +88,7 @@ const pushToUserIds = (
         deliveredSockets += 1;
       } catch {
         droppedPushes += 1;
+        socketSendFailureDrops += 1;
         unregisterSocket(socket);
       }
     });
@@ -102,6 +97,10 @@ const pushToUserIds = (
   recordLivePushMetrics({
     deliveredSockets,
     droppedPushes,
+    droppedByReason: {
+      offlineRecipient: offlineRecipientDrops,
+      socketSendFailure: socketSendFailureDrops,
+    },
   });
 
   logger?.info(
@@ -161,8 +160,10 @@ const getLiveMetrics = () => ({
   connectedSockets: entries.size,
 });
 
-const markAuthFailure = (): void => {
-  recordLiveAuthFailure();
+const markAuthFailure = (
+  reason: "missing_bearer_token" | "invalid_token" | "non_user_session"
+): void => {
+  recordLiveAuthFailure(reason);
 };
 
 const liveConnectionRegistry = {

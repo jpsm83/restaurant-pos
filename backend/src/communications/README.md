@@ -1,223 +1,421 @@
-# Communications Module README
+# Communications and Notifications (Backend)
 
-This module is the unified communication layer for the backend.
+This is the single source of truth for backend communications/notifications documentation.
 
-Its job is to make every domain event that needs communication (email, persisted in-app notification, and live in-app push) follow one consistent flow, with one orchestration entrypoint and clear reliability rules.
+It consolidates architecture, API contracts, WebSocket contracts, runbook operations, index/migration guidance, and performance baseline notes.
 
-## Purpose and boundaries
+## Scope and boundaries
 
-- Centralize all domain-triggered communication logic in one place.
-- Keep domain modules focused on business actions (orders, reservations, inventory, reports), not channel implementation details.
-- Persist in-app notifications as the source of truth before any live push attempt.
-- Keep communications non-blocking for critical business flows by default.
-- Make delivery behavior observable through structured logs and counters.
-
-This module is for domain-triggered communications. Manual admin CRUD operations for notifications remain under the notifications route and share the same repository path for persistence/fanout consistency.
+- Module scope: backend communications pipeline and notifications routes.
+- REST base path: `/api/v1/notifications`
+- WebSocket path: `/api/v1/notifications/live`
+- Source of truth: persisted in-app notification (live push is best-effort acceleration).
 
 ## Core architecture
 
-### 1) Single orchestration entrypoint
+### 1) Orchestration entrypoint
 
-- `dispatchEvent` is the single event orchestration entrypoint for domain communications.
-- Domain modules call `dispatchEvent(eventName, payload, options)` with typed payloads.
-- `dispatchEvent` decides:
-  - Which message template to use.
-  - Which recipients to target.
-  - Which channels to execute.
-  - How to apply feature flags, idempotency, and fire-and-forget behavior.
+- `dispatchEvent` is the domain communications entrypoint.
+- Domain modules call `dispatchEvent(eventName, payload, options)`.
+- Orchestration resolves:
+  - message templates,
+  - recipients,
+  - channels,
+  - feature flags, idempotency, and fire-and-forget behavior.
 
-### 2) Channel abstraction
-
-The module uses channel adapters so orchestration is independent of transport details:
+### 2) Channel boundaries
 
 - `email` channel:
-  - Sends through the SMTP provider.
-  - Uses retry with exponential backoff for transient errors.
+  - SMTP send path with retry/backoff.
 - `inApp` channel:
-  - Persists a notification.
-  - Fans out inbox references to recipients in `User.notifications`.
-  - Emits live event for optional WebSocket push.
+  - Delegates to `notificationService.createAndDeliver(...)`.
+  - Persists notification and fans out inbox refs in `User.notifications`.
+  - Emits persisted-notification live event.
 - `liveInApp` channel:
-  - Pushes persisted notifications to connected user sockets.
-  - Never replaces persistence; it is an acceleration layer.
+  - Pushes normalized payload to connected recipient sockets.
+  - Never replaces persisted inbox delivery.
 
-### 3) Provider and repository single paths
+### 3) Service and repository boundaries
 
-- One SMTP transport entrypoint:
-  - SMTP transport is initialized and cached in the SMTP provider.
-  - Email channel consumes provider state, not raw transport setup.
-- One in-app persistence path:
-  - Notification creation and user inbox fanout are centralized in the notification repository.
-  - Both domain dispatch and manual notification route operations use this shared path.
+- Shared create path: `notificationService.createAndDeliver(...)`
+  - used by both manual `POST /notifications` and domain-triggered flows.
+- Persistence path: `notificationRepository.createAndFanoutResolved(...)`
+  - persistence/fanout focused.
 
-### 4) Recipient resolvers and policies
+### 4) Live bridge ownership
 
-- Recipient resolution is centralized in dedicated resolver functions.
-- Manager recipient policy is event-based:
-  - On-duty managers for operational urgency events.
-  - All managers for report-ready review events.
-- Policy can be overridden by environment variables per event when needed.
+- `liveBridge` subscribes to persisted-notification events.
+- Live route (`notificationsLive.ts`) only handles connection/auth/registry.
+- Bridge/channel handle push orchestration.
 
-### 5) Templates
-
-- Message templates are pure builders.
-- Final message generation for domain events happens in the orchestration layer, not scattered through modules.
-- This ensures consistent wording, formatting, and future localization strategy.
-
-## Event catalog and user-facing behavior
-
-The orchestration layer currently handles:
+## Event catalog (domain-triggered)
 
 - `ORDER_CONFIRMED`
-  - Trigger: paid self-order or paid delivery-style flow.
-  - Recipients: the customer user.
-  - Channels: email (if SMTP configured and enabled) + in-app persisted notification.
-  - User-level outcome: customer receives receipt/confirmation by email and in app.
-
 - `RESERVATION_PENDING`
-  - Trigger: reservation request created in pending state.
-  - Recipients: requesting customer and managers by policy.
-  - Channels:
-    - Customer: email + in-app.
-    - Managers: in-app action-required notification.
-  - User-level outcome: customer sees pending status; managers get approval task.
-
 - `RESERVATION_DECIDED`
-  - Trigger: reservation status set to confirmed or cancelled.
-  - Recipients: customer.
-  - Channels: email + in-app.
-  - User-level outcome: customer receives final reservation decision.
-
 - `LOW_STOCK_ALERT`
-  - Trigger: low-stock check after inventory-impacting flow.
-  - Recipients: managers by policy.
-  - Channels: in-app.
-  - User-level outcome: managers are alerted to inventory risk items.
-  - Noise controls:
-    - Domain cooldown guard.
-    - Dispatch-level idempotency guard.
-
 - `MONTHLY_REPORT_READY`
-  - Trigger: monthly report closure/finalization flow.
-  - Recipients: managers by policy.
-  - Channels: in-app.
-  - User-level outcome: managers are informed the month is ready for review.
-  - Includes in-process dedup protection to avoid repeated notifications for same period.
-
 - `WEEKLY_REPORT_READY`
-  - Trigger: weekly report closure/finalization flow.
-  - Recipients: managers by policy.
-  - Channels: in-app.
-  - User-level outcome: managers are informed the week is ready for review.
 
-## End-to-end flow (domain event to user)
+## Reliability model
 
-1. A domain module finishes a business action and emits a communication event through `dispatchEvent`.
-2. Orchestration resolves message content and recipients for that event.
-3. Enabled channels execute according to flags and optional preferred channel selection.
-4. For in-app:
-   - Notification is persisted.
-   - User inbox entries are updated.
-   - A live event is emitted for optional WebSocket delivery.
-5. For live in-app:
-   - Connected sockets for recipients receive the notification payload.
-   - If user has no active socket, nothing is lost because persistence already happened.
-6. Structured logs and counters record attempt, per-channel result, and final dispatch outcome.
+- Durability first:
+  - in-app persistence is the delivery source of truth.
+- Live push:
+  - best-effort acceleration for online recipients.
+- Fire-and-forget:
+  - default for non-blocking business flows.
+- Idempotency:
+  - process-local in-memory dispatch window.
+  - multi-instance duplicate suppression is not guaranteed yet.
 
-## Reliability and failure strategy
+Future-ready interface (not implemented yet):
 
-### Fire-and-forget default
+- `isDuplicate(key, windowMs): Promise<boolean>`
+- `markDispatched(key, atMs): Promise<void>`
 
-- Dispatch defaults to fire-and-forget to avoid blocking core business actions.
-- Channel failures are captured as results/logs instead of throwing by default.
+## Observability and metrics
 
-### Email reliability
+Recorded counters include:
 
-- Email channel validates recipients and content.
-- SMTP provider state is checked before send.
-- Transient failures use retry with exponential backoff.
-- Retry behavior is configurable through environment variables.
+- `dispatchAttemptsByEvent`
+- `dispatchSuccessByEvent`
+- `dispatchFailureByEvent`
+- `channelSuccessByEvent`
+- `channelFailureByEvent`
+- `live.pushedEvents`
+- `live.deliveredSockets`
+- `live.droppedPushes`
+- `live.droppedPushesByReason`
+- `live.authFailures`
+- `live.authFailuresByReason`
 
-### In-app reliability
+Initial threshold guidance:
 
-- Persistence is the source of truth.
-- Live push is best-effort enhancement.
-- Users without active WebSocket connections still see notifications through inbox APIs.
+- live auth failures: `> 20` in 5 minutes
+- socket send failure drops: `> 10` in 5 minutes
+- dropped/pushed ratio: `> 0.30` for 10 minutes
 
-### Idempotency and noise control
+## REST API contract
 
-- Orchestration supports idempotency key + window to suppress duplicate dispatches.
-- Inventory low-stock flow uses both local cooldown and dispatch idempotency for noise reduction.
+### `GET /api/v1/notifications`
 
-## Observability
+List all notifications.
 
-The module records:
+Query params:
 
-- Dispatch attempts by event.
-- Dispatch success/failure by event.
-- Channel success/failure by event+channel.
-- Live push counters:
-  - pushed events
-  - delivered sockets
-  - dropped pushes
-  - live auth failures
+- `page` (optional, integer >= 1, default `1`)
+- `limit` (optional, integer `1..100`, default `20`)
+- `includeRecipients` (optional, `true|false`, default `false`)
 
-Logs are structured with fields such as:
+Response:
 
-- scope
-- stage or outcome
-- event name
-- business id
-- correlation id
+- `200` with `Notification[]` (including `[]` for empty)
 
-This supports tracing one communication operation through orchestration, persistence, and live push.
+### `POST /api/v1/notifications`
 
-## WebSocket live in-app design
+Create notification + fanout + live best-effort push.
 
-- Live route accepts user sessions only.
-- Authentication failures are logged and counted.
-- Connection registry tracks sockets by user id.
-- Heartbeat keeps connection health and cleans dead sockets.
-- Pushes target recipient user ids and count delivered vs dropped attempts.
+Required:
 
-## Feature flags and controls
+- `notificationType`
+- `message`
+- `businessId`
+- exactly one recipient mode:
+  - `employeesRecipientsIds`, or
+  - `customersRecipientsIds`
 
-Channel-level flags control runtime behavior:
+Response:
+
+- `201` with `{ "message": "Notification message created and sent" }`
+
+Common errors:
+
+- `400` invalid/missing data
+- `404` business not found
+- `500` create failed
+
+### `GET /api/v1/notifications/:notificationId`
+
+- `200` notification
+- `400` invalid id
+- `404` not found
+
+### `PATCH /api/v1/notifications/:notificationId`
+
+Update fields/recipients.
+
+Rules:
+
+- exactly one recipient mode (`employeesRecipientsIds` xor `customersRecipientsIds`)
+- recipient list cannot be empty
+
+Response:
+
+- `200` with `{ "message": "Notification and recipients updated successfully" }`
+
+### `DELETE /api/v1/notifications/:notificationId`
+
+Delete notification and recipient inbox references.
+
+Response:
+
+- `200` with `{ "message": "Notification deleted successfully" }`
+
+### `GET /api/v1/notifications/business/:businessId`
+
+Business-scoped list with same pagination/query rules.
+
+Response:
+
+- `200` with `Notification[]` (including empty list)
+- `400` invalid business id
+
+### `GET /api/v1/notifications/user/:userId`
+
+User inbox list with same pagination/query rules.
+
+Response:
+
+- `200` with `Notification[]` (including empty list)
+- `400` invalid user id
+
+## WebSocket contract
+
+Endpoint:
+
+- `GET /api/v1/notifications/live`
+
+Auth methods:
+
+- `Authorization: Bearer <token>` (preferred)
+- `?access_token=<token>` query fallback
+
+Auth failure close behavior:
+
+- missing token -> `1008 Unauthorized`
+- invalid token -> `1008 Unauthorized`
+- non-user session -> `1008 Forbidden`
+
+### Connection ack event
+
+```json
+{
+  "type": "notification.live.connected",
+  "data": {
+    "userId": "..."
+  }
+}
+```
+
+### Notification event
+
+```json
+{
+  "type": "notification.created",
+  "data": {
+    "notificationId": "...",
+    "businessId": "...",
+    "message": "...",
+    "notificationType": "...",
+    "correlationId": "..."
+  }
+}
+```
+
+Contract evolution policy:
+
+- additive changes: optional fields only
+- breaking changes: introduce versioning (`schemaVersion` and/or versioned event name)
+- keep old contract version active during migration window
+
+## Operations runbook
+
+### Local setup
+
+```bash
+npm --prefix backend install
+npm --prefix backend run dev
+```
+
+### Validation commands
+
+```bash
+# full backend suite
+npm --prefix backend test
+
+# focused notifications/communications regression
+npm --prefix backend test -- tests/routes/notifications.test.ts tests/routes/notificationsLive.test.ts tests/integration/communicationsDomainFlows.test.ts tests/communications/communicationsCore.test.ts
+
+# performance baseline harness
+npm --prefix backend test -- tests/perf/notificationsReadPerf.test.ts
+```
+
+### Required environment controls
 
 - `COMMUNICATIONS_EMAIL_ENABLED`
 - `COMMUNICATIONS_INAPP_ENABLED`
 - `COMMUNICATIONS_INAPP_LIVE_ENABLED`
+- `COMMUNICATIONS_IDEMPOTENCY_WINDOW_MS`
+- `COMMUNICATIONS_EMAIL_RETRY_ATTEMPTS`
+- `COMMUNICATIONS_EMAIL_RETRY_BASE_DELAY_MS`
 
-Unified dispatch is the active architecture; channel flags are used for operational control and progressive rollout behavior.
+Recommended local/staging baseline:
 
-Additional controls:
+- `COMMUNICATIONS_INAPP_ENABLED=true`
+- `COMMUNICATIONS_INAPP_LIVE_ENABLED=true`
+- `COMMUNICATIONS_EMAIL_ENABLED=false` (optional local simplification)
 
-- Email retry attempts and backoff delay env vars.
-- Dispatch idempotency window env var.
-- Event-specific manager policy override env vars.
+### Manual WebSocket checks
 
-## Design patterns used
+Connection/auth:
 
-- Event-driven orchestration.
-- Channel adapter pattern.
-- Repository pattern for persistence + fanout.
-- Resolver pattern for recipient computation.
-- Policy matrix with per-event override support.
-- Template builder pattern for deterministic message content.
-- Structured observability and lightweight in-process metrics.
-- Fire-and-forget safe boundary for non-critical side effects.
+1. No token -> close `1008 Unauthorized`
+2. Invalid token -> close `1008 Unauthorized`
+3. Non-user token -> close `1008 Forbidden`
+4. Valid user token -> receive `notification.live.connected`
 
-## User-level experience summary
+Push/fallback:
 
-- Customers receive order confirmations and reservation updates consistently in the same communication style.
-- Managers receive actionable operational alerts (pending reservations, low stock) and period-closure readiness signals (weekly/monthly reports).
-- In-app inbox is always the durable source of truth.
-- Live updates make notifications feel real-time when users are online.
-- If a user is offline, they still receive the notification when they next read their inbox.
+1. Keep valid user connected.
+2. `POST /api/v1/notifications` targeting that user.
+3. Expect `notification.created`.
+4. Disconnect user and create another notification.
+5. Confirm REST inbox fallback: `GET /api/v1/notifications/user/:userId`.
 
-## Operational notes
+### Troubleshooting quick matrix
 
-- Keep domain modules calling only `dispatchEvent` for domain communications.
-- Avoid direct channel or transport usage in route/domain modules.
-- Keep manual/admin notification CRUD logic inside notifications route boundaries.
-- Use architecture linting and communications tests as guardrails for regressions.
+| Symptom | Likely cause | Check | Fix |
+|---|---|---|---|
+| No `notification.created` | live disabled | `COMMUNICATIONS_INAPP_LIVE_ENABLED` | enable and restart |
+| WS unauthorized | missing/invalid token | auth header/query token | send valid user JWT |
+| WS forbidden | non-user session | token payload `type` | use user token |
+| Persisted but no live push | user offline/no socket | live counters/registry logs | expected; use REST inbox |
+| Slow read endpoints | query/index mismatch | explain stats, query params | tune indexes/projections |
+| Auth failure spike | token lifecycle issue | `authFailuresByReason` | fix token refresh/session |
+| Push drop spike | socket/network instability | `droppedPushesByReason` | inspect WS/network lifecycle |
+
+### Rollback checklist
+
+1. Disable live quickly if needed: `COMMUNICATIONS_INAPP_LIVE_ENABLED=false`
+2. Optionally disable email channel: `COMMUNICATIONS_EMAIL_ENABLED=false`
+3. Keep durability path on: `COMMUNICATIONS_INAPP_ENABLED=true`
+4. Re-run focused regression tests
+5. Validate manual create, domain dispatch, inbox reads, and WS connect behavior
+6. Review logs/metrics for elevated failures
+
+## Indexes, migration, and rollback
+
+### Canonical indexes
+
+`notifications`:
+
+- `{ businessId: 1, createdAt: -1 }`
+- `{ customersRecipientsIds: 1, createdAt: -1 }`
+- `{ employeesRecipientsIds: 1, createdAt: -1 }`
+
+`users`:
+
+- `{ "notifications.notificationId": 1 }`
+
+Definition locations:
+
+- `backend/src/models/notification.ts`
+- `backend/src/models/user.ts`
+
+### Deployment notes
+
+- Indexes are additive, no data migration required.
+- Build in maintenance windows for large datasets.
+- Validate query plans using `explain("executionStats")`.
+
+### Post-deploy checks
+
+- `db.notifications.getIndexes()`
+- `db.users.getIndexes()`
+- Verify query shapes:
+  - `/api/v1/notifications`
+  - `/api/v1/notifications/business/:businessId`
+  - `/api/v1/notifications/user/:userId`
+
+### Explain commands
+
+```javascript
+// global list
+db.notifications
+  .find({}, { _id: 1, notificationType: 1, message: 1, businessId: 1, senderId: 1, employeesRecipientsIds: 1, customersRecipientsIds: 1, createdAt: 1, updatedAt: 1 })
+  .sort({ createdAt: -1 })
+  .limit(20)
+  .explain("executionStats");
+
+// business list
+db.notifications
+  .find({ businessId: ObjectId("<businessId>") }, { _id: 1, notificationType: 1, message: 1, businessId: 1, senderId: 1, employeesRecipientsIds: 1, customersRecipientsIds: 1, createdAt: 1, updatedAt: 1 })
+  .sort({ createdAt: -1 })
+  .limit(20)
+  .explain("executionStats");
+
+// user inbox notification fetch step
+db.notifications
+  .find({ _id: { $in: [ObjectId("<notificationId1>"), ObjectId("<notificationId2>")] } }, { _id: 1, notificationType: 1, message: 1, businessId: 1, senderId: 1, employeesRecipientsIds: 1, customersRecipientsIds: 1, createdAt: 1, updatedAt: 1 })
+  .sort({ createdAt: -1 })
+  .limit(20)
+  .explain("executionStats");
+
+// user-side inbox ref lookup
+db.users.find({ _id: ObjectId("<userId>") }, { "notifications.notificationId": 1 }).explain("executionStats");
+```
+
+Validation expectations:
+
+- Indexed query shapes should avoid `COLLSCAN`.
+- `totalDocsExamined` should stay near returned docs for targeted queries.
+
+### Index rollback
+
+Drop in this order if required:
+
+1. `db.users.dropIndex({ "notifications.notificationId": 1 })`
+2. `db.notifications.dropIndex({ employeesRecipientsIds: 1, createdAt: -1 })`
+3. `db.notifications.dropIndex({ customersRecipientsIds: 1, createdAt: -1 })`
+4. `db.notifications.dropIndex({ businessId: 1, createdAt: -1 })`
+
+## Performance baseline and history
+
+Baseline harness:
+
+- `backend/tests/perf/notificationsReadPerf.test.ts`
+
+Current snapshots:
+
+- latest rolling:
+  - `backend/src/communications/NOTIFICATIONS_PERFORMANCE_BASELINE_SNAPSHOT.json`
+- date-stamped history:
+  - `backend/src/communications/NOTIFICATIONS_PERFORMANCE_BASELINE_SNAPSHOT_2026-03-24.json`
+
+Notes:
+
+- values are local synthetic baseline numbers (not production SLOs).
+- use date-stamped snapshots for before/after optimization comparisons.
+- evaluate global read indexing (`createdAt`-first path) only if production telemetry confirms sustained pressure.
+
+## Verification history (latest closure highlights)
+
+- two-user live flow regression:
+  - `npm --prefix backend test -- tests/routes/notificationsLive.test.ts tests/routes/notifications.test.ts`
+  - result: `2` files, `32` tests passed.
+- perf baseline harness:
+  - `npm --prefix backend test -- tests/perf/notificationsReadPerf.test.ts`
+  - result: `1` file, `1` test passed.
+- full backend closure proof:
+  - `npm --prefix backend test`
+  - result: `40` files, `605` tests passed.
+
+## Related implementation paths
+
+- `backend/src/routes/v1/notifications.ts`
+- `backend/src/routes/v1/notificationsLive.ts`
+- `backend/src/communications/dispatchEvent.ts`
+- `backend/src/communications/services/notificationService.ts`
+- `backend/src/communications/live/liveBridge.ts`
+- `backend/src/communications/live/connectionRegistry.ts`

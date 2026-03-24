@@ -6,7 +6,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { Types } from "mongoose";
 import { getTestApp } from "./app.ts";
-import { canLogAsEmployee } from "../../src/auth/canLogAsEmployee.ts";
+import canLogAsEmployee from "../../src/auth/canLogAsEmployee.ts";
 import {
   createAuthHook,
   hasBusinessAccess,
@@ -121,12 +121,13 @@ describe("Auth Helpers", () => {
     });
 
     it("returns false for terminated employee", async () => {
+      const joinDate = new Date(Date.now() - 24 * 60 * 60 * 1000);
       const employee = await Employee.create({
         businessId,
         userId,
         allEmployeeRoles: ["Manager"],
         taxNumber: "TAX-TERMED-001",
-        joinDate: new Date(),
+        joinDate,
         active: true,
         terminatedDate: new Date(),
         vacationDaysPerYear: 20,
@@ -162,7 +163,7 @@ describe("Auth Helpers", () => {
         }),
       } as any;
 
-      await authHook(mockReq, mockReply);
+      await authHook.call(app as any, mockReq, mockReply, () => {});
 
       expect(sentResponse).not.toBeNull();
       expect(sentResponse.statusCode).toBe(401);
@@ -189,7 +190,7 @@ describe("Auth Helpers", () => {
         }),
       } as any;
 
-      await authHook(mockReq, mockReply);
+      await authHook.call(app as any, mockReq, mockReply, () => {});
 
       expect(sentResponse).not.toBeNull();
       expect(sentResponse.statusCode).toBe(401);
@@ -218,7 +219,7 @@ describe("Auth Helpers", () => {
         code: () => ({ send: () => mockReply }),
       } as any;
 
-      await authHook(mockReq, mockReply);
+      await authHook.call(app as any, mockReq, mockReply, () => {});
 
       expect(mockReq.authSession).toBeDefined();
       expect(mockReq.authSession.type).toBe("business");

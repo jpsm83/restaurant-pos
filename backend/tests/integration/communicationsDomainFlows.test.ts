@@ -19,6 +19,7 @@ import sendWeeklyReportReadyNotification from "../../src/weeklyBusinessReport/se
 import liveConnectionRegistry from "../../src/communications/live/connectionRegistry.ts";
 import liveInAppChannel from "../../src/communications/channels/liveInAppChannel.ts";
 import dispatchEvent from "../../src/communications/dispatchEvent.ts";
+import { getCommunicationsMetricsSnapshot } from "../../src/communications/observability/metrics.ts";
 import { getTestApp } from "../setup.ts";
 
 const validAddress = {
@@ -301,7 +302,14 @@ describe("Phase 5.2 - Communications Integration Domain Flows", () => {
     expect(result.success).toBe(true);
     expect((result.sentCount ?? 0) > 0).toBe(true);
     expect(socket.sentPayloads.length).toBeGreaterThan(0);
-    expect(socket.sentPayloads[0]).toContain("notification.created");
+    const livePayload = JSON.parse(socket.sentPayloads[0]);
+    expect(livePayload.type).toBe("notification.created");
+    expect(typeof livePayload.data.notificationId).toBe("string");
+    expect(typeof livePayload.data.businessId).toBe("string");
+    expect(livePayload.data.message).toBe("Live push test");
+    expect(livePayload.data.notificationType).toBe("Info");
+    expect(livePayload.data.correlationId).toBe("corr-live-connected");
+    expect(livePayload.data.eventName).toBeUndefined();
     expect(elapsedMs).toBeLessThan(1000);
   });
 
@@ -325,6 +333,7 @@ describe("Phase 5.2 - Communications Integration Domain Flows", () => {
       }
     );
 
+    const beforeMetrics = getCommunicationsMetricsSnapshot();
     const result = await liveInAppChannel.send({
       notificationId: new Types.ObjectId(),
       businessId: new Types.ObjectId(),
@@ -338,6 +347,11 @@ describe("Phase 5.2 - Communications Integration Domain Flows", () => {
     expect(result.success).toBe(true);
     expect(result.sentCount).toBe(0);
     expect(result.error).toContain("No active WebSocket connections");
+    const afterMetrics = getCommunicationsMetricsSnapshot();
+    expect(
+      (afterMetrics.live.droppedPushesByReason.offline_recipient ?? 0) -
+        (beforeMetrics.live.droppedPushesByReason.offline_recipient ?? 0)
+    ).toBeGreaterThanOrEqual(1);
 
     const userInboxResponse = await app.inject({
       method: "GET",
@@ -349,5 +363,32 @@ describe("Phase 5.2 - Communications Integration Domain Flows", () => {
     expect(body.some((notification) => notification.message?.includes("Order confirmed."))).toBe(
       true
     );
+  });
+
+  it("tracks socket_send_failure drop reason when websocket send throws", async () => {
+    const userId = new Types.ObjectId();
+    const socket = new FakeSocket();
+    socket.send = () => {
+      throw new Error("forced send failure");
+    };
+    liveConnectionRegistry.registerSocket(userId, socket as unknown as WebSocket);
+
+    const beforeMetrics = getCommunicationsMetricsSnapshot();
+    const result = await liveInAppChannel.send({
+      notificationId: new Types.ObjectId(),
+      businessId: new Types.ObjectId(),
+      message: "Live send failure test",
+      notificationType: "Info",
+      recipientUserIds: [userId],
+      correlationId: "corr-send-failure",
+    });
+    const afterMetrics = getCommunicationsMetricsSnapshot();
+
+    expect(result.success).toBe(true);
+    expect(result.sentCount).toBe(0);
+    expect(
+      (afterMetrics.live.droppedPushesByReason.socket_send_failure ?? 0) -
+        (beforeMetrics.live.droppedPushesByReason.socket_send_failure ?? 0)
+    ).toBeGreaterThanOrEqual(1);
   });
 });

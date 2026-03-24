@@ -15,6 +15,6 @@ describe("Health Check", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.tson()).toEqual({ ok: true });
+    expect(response.json()).toEqual({ ok: true });
   });
 });

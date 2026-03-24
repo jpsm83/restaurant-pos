@@ -139,6 +139,23 @@ export interface NotificationFanoutResult {
   recipientCount: number;
 }
 
+export interface NotificationCreateAndDeliverInput {
+  message: string;
+  businessId: Types.ObjectId;
+  recipients: CommunicationsRecipientTarget;
+  notificationType?: NotificationType;
+  senderId?: Types.ObjectId;
+  eventName?: CommunicationsEventName;
+  correlationId?: string;
+  session?: ClientSession;
+}
+
+export interface NotificationCreateAndDeliverResult extends NotificationFanoutResult {
+  eventName?: CommunicationsEventName;
+  correlationId?: string;
+  emittedLiveEvent: boolean;
+}
+
 export interface LiveInAppNotificationEvent {
   notificationId: Types.ObjectId;
   businessId: Types.ObjectId;

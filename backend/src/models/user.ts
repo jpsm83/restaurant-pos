@@ -6,7 +6,6 @@ const notificationEntrySchema = new Schema(
     notificationId: {
       type: Schema.Types.ObjectId,
       ref: "Notification",
-      index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
       required: true,
     },
     readFlag: { type: Boolean, default: false },
@@ -47,6 +46,9 @@ const userSchema = new Schema(
     trim: true,
   },
 );
+
+// Supports inbox lookup and joins from User.notifications to Notification.
+userSchema.index({ "notifications.notificationId": 1 });
 
 const User = mongoose.models.User || model("User", userSchema);
 export default User;

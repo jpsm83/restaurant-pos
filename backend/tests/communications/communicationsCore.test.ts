@@ -1,11 +1,16 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { Types } from "mongoose";
+import type { AddressInfo } from "node:net";
+import WebSocket from "ws";
 import User from "../../src/models/user.ts";
 import Employee from "../../src/models/employee.ts";
 import Notification from "../../src/models/notification.ts";
 import dispatchEvent from "../../src/communications/dispatchEvent.ts";
 import resolveEmployeeUserRecipients from "../../src/communications/recipientResolvers/resolveEmployeeUserRecipients.ts";
 import notificationRepository from "../../src/communications/repositories/notificationRepository.ts";
+import notificationService from "../../src/communications/services/notificationService.ts";
+import { buildApp } from "../../src/server.ts";
+import * as liveInAppEvents from "../../src/communications/channels/liveInAppEvents.ts";
 import buildOrderReceiptTemplate from "../../src/communications/templates/orderReceiptTemplate.ts";
 import buildReservationTemplate from "../../src/communications/templates/reservationTemplate.ts";
 import buildLowStockTemplate from "../../src/communications/templates/lowStockTemplate.ts";
@@ -140,6 +145,16 @@ describe("Communications Core - Dispatcher Event Routing", () => {
       process.env.COMMUNICATIONS_EMAIL_ENABLED = previousEmailToggle;
     }
   });
+
+  it("rejects unknown events via handler map guard", async () => {
+    await expect(
+      dispatchEvent(
+        "UNKNOWN_EVENT" as any,
+        { businessId: new Types.ObjectId() } as any,
+        { fireAndForget: true }
+      )
+    ).rejects.toThrow("Unsupported event handler");
+  });
 });
 
 describe("Communications Core - Recipient Resolvers", () => {
@@ -238,5 +253,110 @@ describe("Communications Core - Repository Fanout", () => {
 
     expect(updatedCustomer?.notifications?.length ?? 0).toBe(1);
     expect(updatedEmployeeUser?.notifications?.length ?? 0).toBe(1);
+  });
+});
+
+describe("Communications Core - Notification Service", () => {
+  it("createAndDeliver validates recipients and emits live event", async () => {
+    const businessId = new Types.ObjectId();
+    const customer = await createTestUser("service-customer");
+    const emitSpy = vi.spyOn(liveInAppEvents, "emitLiveInAppNotification");
+
+    const result = await notificationService.createAndDeliver({
+      message: "Service delivery test",
+      businessId,
+      recipients: {
+        customerUserIds: [customer._id],
+      },
+      notificationType: "Info",
+      correlationId: "corr-service-1",
+    });
+
+    const userAfter = await User.findById(customer._id).select("notifications").lean();
+    expect(result.recipientCount).toBe(1);
+    expect(result.emittedLiveEvent).toBe(true);
+    expect(userAfter?.notifications?.length ?? 0).toBe(1);
+    expect(emitSpy).toHaveBeenCalledTimes(1);
+
+    emitSpy.mockRestore();
+  });
+
+  it("createAndDeliver throws when no recipients resolve", async () => {
+    const businessId = new Types.ObjectId();
+    await expect(
+      notificationService.createAndDeliver({
+        message: "No recipients",
+        businessId,
+        recipients: {},
+      })
+    ).rejects.toThrow("No recipients resolved");
+  });
+});
+
+describe("Communications Core - Feature Flags", () => {
+  it("COMMUNICATIONS_INAPP_ENABLED=false skips in-app persistence", async () => {
+    const previousInAppToggle = process.env.COMMUNICATIONS_INAPP_ENABLED;
+    const previousEmailToggle = process.env.COMMUNICATIONS_EMAIL_ENABLED;
+    process.env.COMMUNICATIONS_INAPP_ENABLED = "false";
+    process.env.COMMUNICATIONS_EMAIL_ENABLED = "false";
+
+    const user = await createTestUser("inapp-disabled");
+    const businessId = new Types.ObjectId();
+
+    const result = await dispatchEvent(
+      "ORDER_CONFIRMED",
+      {
+        businessId,
+        userId: user._id,
+        dailyReferenceNumber: "NO-INAPP-1",
+        totalNetPaidAmount: 13.2,
+        orderCount: 1,
+      },
+      { fireAndForget: true, preferredChannels: ["inApp"] }
+    );
+
+    const [userAfter, notificationDocs] = await Promise.all([
+      User.findById(user._id).select("notifications").lean(),
+      Notification.find({ businessId }).lean(),
+    ]);
+
+    expect(result.success).toBe(true);
+    expect(result.channels.length).toBe(0);
+    expect(notificationDocs.length).toBe(0);
+    expect(userAfter?.notifications?.length ?? 0).toBe(0);
+
+    if (previousInAppToggle === undefined) delete process.env.COMMUNICATIONS_INAPP_ENABLED;
+    else process.env.COMMUNICATIONS_INAPP_ENABLED = previousInAppToggle;
+    if (previousEmailToggle === undefined) delete process.env.COMMUNICATIONS_EMAIL_ENABLED;
+    else process.env.COMMUNICATIONS_EMAIL_ENABLED = previousEmailToggle;
+  });
+
+  it("COMMUNICATIONS_INAPP_LIVE_ENABLED=false disables /notifications/live websocket route", async () => {
+    const previousLiveToggle = process.env.COMMUNICATIONS_INAPP_LIVE_ENABLED;
+    process.env.COMMUNICATIONS_INAPP_LIVE_ENABLED = "false";
+
+    const app = await buildApp({ logger: false, skipDb: true });
+    await app.listen({ port: 0, host: "127.0.0.1" });
+    const address = app.server.address() as AddressInfo;
+    const wsUrl = `ws://127.0.0.1:${address.port}/api/v1/notifications/live`;
+
+    try {
+      const closedCode = await new Promise<number>((resolve) => {
+        const socket = new WebSocket(wsUrl);
+        socket.on("unexpected-response", (_request, response) => {
+          resolve(response.statusCode ?? 0);
+          socket.terminate();
+        });
+        socket.on("close", (code) => resolve(code));
+      });
+
+      // With route disabled, upgrade is rejected by HTTP layer (expected non-101).
+      expect(closedCode).not.toBe(101);
+    } finally {
+      await app.close();
+      if (previousLiveToggle === undefined)
+        delete process.env.COMMUNICATIONS_INAPP_LIVE_ENABLED;
+      else process.env.COMMUNICATIONS_INAPP_LIVE_ENABLED = previousLiveToggle;
+    }
   });
 });

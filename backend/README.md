@@ -45,6 +45,10 @@ npm --prefix backend run start
 |----------|----------|-------------|
 | `COMMUNICATIONS_EMAIL_RETRY_ATTEMPTS` | No | Number of retries for transient SMTP send failures (default: `2`) |
 | `COMMUNICATIONS_EMAIL_RETRY_BASE_DELAY_MS` | No | Base backoff delay in milliseconds for retries (default: `250`) |
+| `COMMUNICATIONS_EMAIL_ENABLED` | No | Enable/disable email channel (`false` disables) |
+| `COMMUNICATIONS_INAPP_ENABLED` | No | Enable/disable persisted in-app channel (`false` disables) |
+| `COMMUNICATIONS_INAPP_LIVE_ENABLED` | No | Enable/disable live WS push bridge and `/notifications/live` route |
+| `COMMUNICATIONS_IDEMPOTENCY_WINDOW_MS` | No | Default dispatch idempotency suppression window in milliseconds |
 
 Failed dispatch persistence policy (initial version):
 - failed attempts are logged/metriced for observability
@@ -74,6 +78,53 @@ Module migration order used in this project:
 - Monthly reports
 - Weekly reports
 - Notifications route internals (optional)
+
+## Notifications and communications architecture
+
+Current backend notification design uses a single write boundary for both domain and manual flows:
+
+- Domain-triggered flow:
+  - domain module -> `dispatchEvent` -> `inAppChannel.send` -> `notificationService.createAndDeliver`
+- Manual admin flow:
+  - `POST /api/v1/notifications` -> `notificationService.createAndDeliver`
+- Shared persistence path:
+  - `notificationRepository.createAndFanoutResolved`
+- Live bridge ownership:
+  - `liveBridge` subscribes to persisted notification events and calls live push channel
+- Live route ownership:
+  - `GET /api/v1/notifications/live` handles connection/auth/registry only (no persistence writes)
+
+### Notifications API behavior (current)
+
+- List endpoints return `200` with arrays (empty list returns `[]`):
+  - `GET /api/v1/notifications`
+  - `GET /api/v1/notifications/business/:businessId`
+  - `GET /api/v1/notifications/user/:userId`
+- List endpoints support pagination query parameters:
+  - `page` (default `1`)
+  - `limit` (default `20`, max `100`)
+- Optional heavy recipient population can be enabled by:
+  - `includeRecipients=true`
+
+### WebSocket notifications contract (current)
+
+- Connection ack event:
+  - `type: "notification.live.connected"`
+  - `data: { userId }`
+- Notification push event:
+  - `type: "notification.created"`
+  - `data: { notificationId, businessId, message, notificationType, correlationId }`
+- Live auth supports:
+  - `Authorization: Bearer <token>`
+  - `?access_token=<token>` query fallback for browser WS constraints
+
+### Operational notes
+
+- Persistence is the source of truth; live push is best-effort acceleration.
+- Idempotency is supported in dispatch via key + window controls.
+- Live metrics include drop/auth reasons for diagnostics.
+- Index migration/rollback notes for notification performance tuning:
+  - `src/communications/NOTIFICATION_INDEX_MIGRATION_NOTES.md`
 
 ## API Modules
 
@@ -133,11 +184,12 @@ backend/
 │   ├── cloudinary/     # Image upload utilities
 │   ├── db/             # Database connection
 │   ├── models/         # Mongoose models
+│   ├── communications/ # Communications, notifications, live bridge
 │   ├── routes/
 │   │   └── v1/         # API v1 routes
 │   ├── utils/          # Shared utilities
 │   └── server.ts       # Server entry point
-└── package.tson
+└── package.json
 ```
 
 ## Development

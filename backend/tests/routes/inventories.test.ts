@@ -491,7 +491,8 @@ describe("Inventories Routes", () => {
 
       // Verify supplierGood is included
       const hasSupplierGood = createdInventory?.inventoryGoods?.some(
-        (g) => g.supplierGoodId.toString() === supplierGoodId.toString()
+        (g: { supplierGoodId: { toString: () => string } }) =>
+          g.supplierGoodId.toString() === supplierGoodId.toString()
       );
       expect(hasSupplierGood).toBe(true);
     });
@@ -575,7 +576,8 @@ describe("Inventories Routes", () => {
 
       // The new inventory should have the supplierGood
       const supplierGoodEntry = newInventory?.inventoryGoods?.find(
-        (g) => g.supplierGoodId.toString() === supplierGoodId.toString()
+        (g: { supplierGoodId: { toString: () => string } }) =>
+          g.supplierGoodId.toString() === supplierGoodId.toString()
       );
       expect(supplierGoodEntry).toBeDefined();
     });

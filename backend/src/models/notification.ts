@@ -17,7 +17,6 @@ const notificationSchema = new Schema(
         {
           type: Schema.Types.ObjectId,
           ref: "Employee",
-          index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
         },
       ],
       default: undefined,
@@ -26,7 +25,6 @@ const notificationSchema = new Schema(
       {
         type: Schema.Types.ObjectId,
         ref: "User",
-        index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
       },
     ], // Reference to the customer receiving the notification
     senderId: { type: Schema.Types.ObjectId, ref: "Employee" }, // Reference to the employee who created the notification, only used on messages
@@ -34,7 +32,6 @@ const notificationSchema = new Schema(
       type: Schema.Types.ObjectId,
       ref: "Business",
       required: [true, "Business id is required!"],
-      index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
     }, // Reference to the business where the notification was created
   },
   {
@@ -42,6 +39,11 @@ const notificationSchema = new Schema(
     trim: true,
   }
 );
+
+// Explicit index declarations for notification read patterns.
+notificationSchema.index({ businessId: 1, createdAt: -1 });
+notificationSchema.index({ customersRecipientsIds: 1, createdAt: -1 });
+notificationSchema.index({ employeesRecipientsIds: 1, createdAt: -1 });
 
 const Notification =
   mongoose.models.Notification ||

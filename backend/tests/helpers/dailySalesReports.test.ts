@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach } from "vitest";
 import { Types } from "mongoose";
-import { updateEmployeesDailySalesReport } from "../../src/dailySalesReports/updateEmployeeDailySalesReport.ts";
+import updateEmployeesDailySalesReport from "../../src/dailySalesReports/updateEmployeeDailySalesReport.ts";
 import DailySalesReport from "../../src/models/dailySalesReport.ts";
 
 describe("Daily Sales Report Helpers", () => {
@@ -14,7 +14,7 @@ describe("Daily Sales Report Helpers", () => {
 
   describe("createDailySalesReport", () => {
     it("function exists and is callable", async () => {
-      const { createDailySalesReport } = await import(
+      const { default: createDailySalesReport } = await import(
         "../../src/dailySalesReports/createDailySalesReport.ts"
       );
       expect(typeof createDailySalesReport).toBe("function");
