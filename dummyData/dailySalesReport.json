@@ -1,21 +1,26 @@
 [
   {
-    "_id": "6693cbf30693ec3374a899f4",
-    "dailyReferenceNumber": 1720908000000,
+    "_id": { "$oid": "64b000000000000000000e01" },
+    "dailyReferenceNumber": 20260323,
     "isDailyReportOpen": false,
-    "timeCountdownToClose": 1721048434981,
+    "timeCountdownToClose": 1774310400000,
     "employeesDailySalesReport": [
       {
-        "userId": "66758b8904c4e6f5bbaa6b81",
+        "userId": { "$oid": "64b000000000000000000101" },
         "hasOpenSalesInstances": false,
-        "employeePaymentMethods": [],
-        "totalSalesBeforeAdjustments": 0,
-        "totalNetPaidAmount": 0,
-        "totalTipsReceived": 0,
-        "totalCostOfGoodsSold": 0,
-        "totalCustomersServed": 0,
-        "averageCustomerExpenditure": 0,
-        "soldGoods": [],
+        "employeePaymentMethods": [
+          { "paymentMethodType": "Card", "methodBranch": "Mastercard", "methodSalesTotal": 12.4 }
+        ],
+        "totalSalesBeforeAdjustments": 15.1,
+        "totalNetPaidAmount": 12.4,
+        "totalTipsReceived": 1.2,
+        "totalCostOfGoodsSold": 3.363,
+        "totalCustomersServed": 3,
+        "averageCustomerExpenditure": 4.13,
+        "soldGoods": [
+          { "businessGoodId": { "$oid": "64b000000000000000000502" }, "quantity": 1, "totalPrice": 13.5, "totalCostPrice": 2.963 },
+          { "businessGoodId": { "$oid": "64b000000000000000000503" }, "quantity": 1, "totalPrice": 1.6, "totalCostPrice": 0.4 }
+        ],
         "voidedGoods": [],
         "invitedGoods": [],
         "totalVoidValue": 0,
@@ -23,20 +28,102 @@
       }
     ],
     "selfOrderingSalesReport": [],
-    "businessId": "6673fed98c45d0a0ca5f34c1",
-    "businessPaymentMethods": [],
-    "dailyTotalSalesBeforeAdjustments": 0,
-    "dailyNetPaidAmount": 0,
-    "dailyTipsReceived": 0,
-    "dailyCostOfGoodsSold": 0,
-    "dailyProfit": 0,
-    "dailyCustomersServed": 0,
-    "dailyAverageCustomerExpenditure": 0,
-    "dailySoldGoods": [],
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "businessPaymentMethods": [
+      { "paymentMethodType": "Card", "methodBranch": "Mastercard", "methodSalesTotal": 12.4 }
+    ],
+    "dailyTotalSalesBeforeAdjustments": 15.1,
+    "dailyNetPaidAmount": 12.4,
+    "dailyTipsReceived": 1.2,
+    "dailyCostOfGoodsSold": 3.363,
+    "dailyProfit": 9.037,
+    "dailyCustomersServed": 3,
+    "dailyAverageCustomerExpenditure": 4.13,
+    "dailySoldGoods": [
+      { "businessGoodId": { "$oid": "64b000000000000000000502" }, "quantity": 1, "totalPrice": 13.5, "totalCostPrice": 2.963 },
+      { "businessGoodId": { "$oid": "64b000000000000000000503" }, "quantity": 1, "totalPrice": 1.6, "totalCostPrice": 0.4 }
+    ],
     "dailyVoidedGoods": [],
     "dailyInvitedGoods": [],
     "dailyTotalVoidValue": 0,
     "dailyTotalInvitedValue": 0,
-    "dailyPosSystemCommission": 0
+    "dailyPosSystemCommission": 0.37
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000e02" },
+    "dailyReferenceNumber": 20260324,
+    "isDailyReportOpen": false,
+    "timeCountdownToClose": 1774396800000,
+    "employeesDailySalesReport": [
+      {
+        "userId": { "$oid": "64b000000000000000000102" },
+        "hasOpenSalesInstances": false,
+        "employeePaymentMethods": [
+          { "paymentMethodType": "Card", "methodBranch": "Visa", "methodSalesTotal": 20.45 },
+          { "paymentMethodType": "Other", "methodBranch": "Voucher", "methodSalesTotal": 4 }
+        ],
+        "totalSalesBeforeAdjustments": 29.8,
+        "totalNetPaidAmount": 24.45,
+        "totalTipsReceived": 1.1,
+        "totalCostOfGoodsSold": 6.4908,
+        "totalCustomersServed": 3,
+        "averageCustomerExpenditure": 8.15,
+        "soldGoods": [
+          { "businessGoodId": { "$oid": "64b000000000000000000501" }, "quantity": 2, "totalPrice": 25.8, "totalCostPrice": 5.4908 },
+          { "businessGoodId": { "$oid": "64b000000000000000000504" }, "quantity": 1, "totalPrice": 2.4, "totalCostPrice": 0.6 },
+          { "businessGoodId": { "$oid": "64b000000000000000000503" }, "quantity": 1, "totalPrice": 1.6, "totalCostPrice": 0.4 }
+        ],
+        "voidedGoods": [],
+        "invitedGoods": [],
+        "totalVoidValue": 0,
+        "totalInvitedValue": 0
+      },
+      {
+        "userId": { "$oid": "64b000000000000000000101" },
+        "hasOpenSalesInstances": false,
+        "employeePaymentMethods": [
+          { "paymentMethodType": "Card", "methodBranch": "Mastercard", "methodSalesTotal": 8.35 }
+        ],
+        "totalSalesBeforeAdjustments": 15.1,
+        "totalNetPaidAmount": 8.35,
+        "totalTipsReceived": 0.7,
+        "totalCostOfGoodsSold": 3.363,
+        "totalCustomersServed": 2,
+        "averageCustomerExpenditure": 4.175,
+        "soldGoods": [
+          { "businessGoodId": { "$oid": "64b000000000000000000502" }, "quantity": 1, "totalPrice": 13.5, "totalCostPrice": 2.963 },
+          { "businessGoodId": { "$oid": "64b000000000000000000503" }, "quantity": 1, "totalPrice": 1.6, "totalCostPrice": 0.4 }
+        ],
+        "voidedGoods": [],
+        "invitedGoods": [],
+        "totalVoidValue": 0,
+        "totalInvitedValue": 0
+      }
+    ],
+    "selfOrderingSalesReport": [],
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "businessPaymentMethods": [
+      { "paymentMethodType": "Card", "methodBranch": "Visa", "methodSalesTotal": 20.45 },
+      { "paymentMethodType": "Card", "methodBranch": "Mastercard", "methodSalesTotal": 8.35 },
+      { "paymentMethodType": "Other", "methodBranch": "Voucher", "methodSalesTotal": 4 }
+    ],
+    "dailyTotalSalesBeforeAdjustments": 44.9,
+    "dailyNetPaidAmount": 32.8,
+    "dailyTipsReceived": 1.8,
+    "dailyCostOfGoodsSold": 9.8538,
+    "dailyProfit": 22.9462,
+    "dailyCustomersServed": 5,
+    "dailyAverageCustomerExpenditure": 6.56,
+    "dailySoldGoods": [
+      { "businessGoodId": { "$oid": "64b000000000000000000501" }, "quantity": 2, "totalPrice": 25.8, "totalCostPrice": 5.4908 },
+      { "businessGoodId": { "$oid": "64b000000000000000000502" }, "quantity": 1, "totalPrice": 13.5, "totalCostPrice": 2.963 },
+      { "businessGoodId": { "$oid": "64b000000000000000000503" }, "quantity": 2, "totalPrice": 3.2, "totalCostPrice": 0.8 },
+      { "businessGoodId": { "$oid": "64b000000000000000000504" }, "quantity": 1, "totalPrice": 2.4, "totalCostPrice": 0.6 }
+    ],
+    "dailyVoidedGoods": [],
+    "dailyInvitedGoods": [],
+    "dailyTotalVoidValue": 0,
+    "dailyTotalInvitedValue": 0,
+    "dailyPosSystemCommission": 0.98
   }
 ]

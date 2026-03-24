@@ -1,89 +1,176 @@
 [
-    {
-        "_id": "667bfc0c5d50be40f0c7b065",
-        "name": "Cheeseburger",
-        "keyword": "burger",
-        "mainCategory": "Food",
-        "subCategory": "Burger",
-        "onMenu": true,
-        "available": true,
-        "sellingPrice": 16.45,
-        "ingredients": [
-            {
-                "measurementUnit": "unit",
-                "requiredQuantity": 2,
-                "costOfRequiredQuantity": 2,
-                "_id": "667c13f2f22bdc543f105885",
-                "supplierGoodId": "667bfac8d28a7ee19d9be443"
-            },
-            {
-                "measurementUnit": "g",
-                "requiredQuantity": 0.5,
-                "costOfRequiredQuantity": 0.00675,
-                "_id": "667c13f2f22bdc543f105886",
-                "supplierGoodId": "667bfac8d28a7ee19d9be444"
-            }
-        ],
-        "costPrice": 2.00675,
-        "allergens": [
-            "Gluten",
-            "Eggs",
-            "Milk"
-        ],
-        "imagesUrl": ["../public/images/default_img.png"],
-        "createdAt": "2024-06-26T11:31:24.946Z",
-        "updatedAt": "2024-06-26T13:13:22.859Z",
-        "__v": 0,
-        "businessId": "66e169a709901431386c97cb"
-    },
-    {
-        "_id": "667bfddd5d50be40f0c7b079",
-        "name": "Fried french fries",
-        "keyword": "Fries",
-        "mainCategory": "Food",
-        "subCategory": "Sides",
-        "onMenu": true,
-        "available": true,
-        "sellingPrice": 3.5,
-        "ingredients": [
-            {
-                "measurementUnit": "g",
-                "requiredQuantity": 100,
-                "costOfRequiredQuantity": 0.27999999999999997,
-                "_id": "667bfddd5d50be40f0c7b07b",
-                "supplierGoodId": "667bfac8d28a7ee19d9be448"
-            }
-        ],
-        "costPrice": 0.27999999999999997,
-        "imagesUrl": ["../public/images/default_img.png"],
-        "createdAt": "2024-06-26T11:39:09.683Z",
-        "updatedAt": "2024-06-26T11:39:09.683Z",
-        "__v": 0,
-        "businessId": "66e169a709901431386c97cb"
-    },
-    {
-        "_id": "667c0761b1f9de2be3a80e17",
-        "name": "Cheeseburger with Fries",
-        "keyword": "Burger",
-        "mainCategory": "Set Menu",
-        "subCategory": "Burger Menu",
-        "onMenu": true,
-        "available": true,
-        "sellingPrice": 12.5,
-        "setMenuIds": [
-            "667bfc0c5d50be40f0c7b065",
-            "667bfddd5d50be40f0c7b079"
-        ],
-        "costPrice": 3.14575,
-        "allergens": [
-            "Gluten",
-            "Eggs",
-            "Milk"
-        ],
-        "imagesUrl": ["../public/images/default_img.png"],
-        "createdAt": "2024-06-26T12:19:45.023Z",
-        "updatedAt": "2024-08-28T18:29:18.081Z",
-        "__v": 0,
-        "businessId": "66e169a709901431386c97cb"
-    }
+  {
+    "_id": { "$oid": "64b000000000000000000501" },
+    "name": "Cheese Burger",
+    "keyword": "cheese burger",
+    "mainCategory": "Food",
+    "subCategory": "Burger",
+    "onMenu": true,
+    "available": true,
+    "sellingPrice": 12.9,
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "ingredients": [
+      {
+        "supplierGoodId": { "$oid": "64b000000000000000000711" },
+        "measurementUnit": "unit",
+        "requiredQuantity": 1,
+        "costOfRequiredQuantity": 0.6
+      },
+      {
+        "supplierGoodId": { "$oid": "64b000000000000000000712" },
+        "measurementUnit": "unit",
+        "requiredQuantity": 1,
+        "costOfRequiredQuantity": 1.8
+      },
+      {
+        "supplierGoodId": { "$oid": "64b000000000000000000716" },
+        "measurementUnit": "g",
+        "requiredQuantity": 30,
+        "costOfRequiredQuantity": 0.24
+      },
+      {
+        "supplierGoodId": { "$oid": "64b000000000000000000719" },
+        "measurementUnit": "g",
+        "requiredQuantity": 20,
+        "costOfRequiredQuantity": 0.05
+      },
+      {
+        "supplierGoodId": { "$oid": "64b000000000000000000720" },
+        "measurementUnit": "g",
+        "requiredQuantity": 15,
+        "costOfRequiredQuantity": 0.045
+      },
+      {
+        "supplierGoodId": { "$oid": "64b000000000000000000721" },
+        "measurementUnit": "g",
+        "requiredQuantity": 2,
+        "costOfRequiredQuantity": 0.0024
+      },
+      {
+        "supplierGoodId": { "$oid": "64b000000000000000000722" },
+        "measurementUnit": "g",
+        "requiredQuantity": 1,
+        "costOfRequiredQuantity": 0.008
+      }
+    ],
+    "setMenuIds": [],
+    "costPrice": 2.7454,
+    "grossProfitMarginDesired": 360,
+    "suggestedSellingPrice": 12.63,
+    "description": "Cheese burger with tomato and lettuce.",
+    "allergens": ["Gluten", "Milk"],
+    "imagesUrl": ["https://cdn.example.com/business-goods/cheeseburger.png"],
+    "deliveryTime": 18
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000502" },
+    "name": "Pizza Margarita",
+    "keyword": "pizza margarita",
+    "mainCategory": "Food",
+    "subCategory": "Pizza",
+    "onMenu": true,
+    "available": true,
+    "sellingPrice": 13.5,
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "ingredients": [
+      {
+        "supplierGoodId": { "$oid": "64b000000000000000000714" },
+        "measurementUnit": "unit",
+        "requiredQuantity": 1,
+        "costOfRequiredQuantity": 1.4
+      },
+      {
+        "supplierGoodId": { "$oid": "64b000000000000000000723" },
+        "measurementUnit": "g",
+        "requiredQuantity": 120,
+        "costOfRequiredQuantity": 0.42
+      },
+      {
+        "supplierGoodId": { "$oid": "64b000000000000000000715" },
+        "measurementUnit": "g",
+        "requiredQuantity": 2,
+        "costOfRequiredQuantity": 0.08
+      },
+      {
+        "supplierGoodId": { "$oid": "64b000000000000000000717" },
+        "measurementUnit": "g",
+        "requiredQuantity": 70,
+        "costOfRequiredQuantity": 0.98
+      },
+      {
+        "supplierGoodId": { "$oid": "64b000000000000000000719" },
+        "measurementUnit": "g",
+        "requiredQuantity": 30,
+        "costOfRequiredQuantity": 0.075
+      },
+      {
+        "supplierGoodId": { "$oid": "64b000000000000000000722" },
+        "measurementUnit": "g",
+        "requiredQuantity": 1,
+        "costOfRequiredQuantity": 0.008
+      }
+    ],
+    "setMenuIds": [],
+    "costPrice": 2.963,
+    "grossProfitMarginDesired": 300,
+    "suggestedSellingPrice": 11.85,
+    "description": "Pizza margarita with tomato sauce and cheddar.",
+    "allergens": ["Gluten", "Milk"],
+    "imagesUrl": ["https://cdn.example.com/business-goods/pizza-margarita.png"],
+    "deliveryTime": 22
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000503" },
+    "name": "Water Bottle 250ml",
+    "keyword": "water 250ml",
+    "mainCategory": "Beverage",
+    "subCategory": "Water",
+    "onMenu": true,
+    "available": true,
+    "sellingPrice": 1.6,
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "ingredients": [
+      {
+        "supplierGoodId": { "$oid": "64b000000000000000000713" },
+        "measurementUnit": "unit",
+        "requiredQuantity": 1,
+        "costOfRequiredQuantity": 0.4
+      }
+    ],
+    "setMenuIds": [],
+    "costPrice": 0.4,
+    "grossProfitMarginDesired": 300,
+    "suggestedSellingPrice": 1.6,
+    "description": "Still water bottle 250ml.",
+    "allergens": [],
+    "imagesUrl": ["https://cdn.example.com/business-goods/water-250ml.png"],
+    "deliveryTime": 5
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000504" },
+    "name": "Coca Cola 33ml",
+    "keyword": "coca cola 33ml",
+    "mainCategory": "Beverage",
+    "subCategory": "Soft Drinks",
+    "onMenu": true,
+    "available": true,
+    "sellingPrice": 2.4,
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "ingredients": [
+      {
+        "supplierGoodId": { "$oid": "64b000000000000000000718" },
+        "measurementUnit": "unit",
+        "requiredQuantity": 1,
+        "costOfRequiredQuantity": 0.6
+      }
+    ],
+    "setMenuIds": [],
+    "costPrice": 0.6,
+    "grossProfitMarginDesired": 300,
+    "suggestedSellingPrice": 2.4,
+    "description": "Coca cola can 330ml.",
+    "allergens": [],
+    "imagesUrl": ["https://cdn.example.com/business-goods/coke-33ml.png"],
+    "deliveryTime": 5
+  }
 ]

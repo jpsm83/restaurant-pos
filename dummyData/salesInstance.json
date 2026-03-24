@@ -1,66 +1,58 @@
 [
-    {
-        "_id": "6708be11f98653e839ebc184",
-        "dailyReferenceNumber": 1728626126608,
-        "salesPointId": "6707a83888a5002362018ccc",
-        "guests": 1,
-        "openedByUserId": "66e92e066a5cfcc2a707696b",
-        "openedAsRole": "employee",
-        "responsibleByUserId": "66e92e066a5cfcc2a707696b",
-        "businessId": "66e169a709901431386c97cb",
-        "createdAt": "2024-10-11T05:56:33.943Z",
-        "updatedAt": "2024-11-03T22:54:54.582Z",
-        "clientName": "salesLocation1clientName",
-        "salesGroup": [
-            {
-                "orderCode": "300300",
-                "ordersIds": [
-                    "671e88bfcc1c6949ec838fa1"
-                ],
-                "createdAt": "2024-10-17T04:27:53.704Z",
-                "_id": "6727ff3ecc4cd063245ee99f"
-            },
-            {
-                "orderCode": "400400",
-                "ordersIds": [
-                    "671e88c5cc1c6949ec838fa2"
-                ],
-                "_id": "6727ff3ecc4cd063245ee9a3"
-            }
+  {
+    "_id": { "$oid": "64b000000000000000000401" },
+    "dailyReferenceNumber": 20260324,
+    "salesPointId": { "$oid": "64b000000000000000000301" },
+    "guests": 3,
+    "salesInstanceStatus": "Closed",
+    "openedByUserId": { "$oid": "64b000000000000000000102" },
+    "openedAsRole": "employee",
+    "responsibleByUserId": { "$oid": "64b000000000000000000102" },
+    "closedByUserId": { "$oid": "64b000000000000000000102" },
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "clientName": "Walk-in Table 01",
+    "salesGroup": [
+      {
+        "orderCode": "A-1001",
+        "ordersIds": [
+          { "$oid": "64b000000000000000000a01" },
+          { "$oid": "64b000000000000000000a02" }
         ],
-        "salesInstanceStatus": "Closed",
-        "closedByUserId": "66e92e066a5cfcc2a707696b",
-        "closedAt": "2024-10-27T18:23:42.647Z"
-    },
-    {
-        "_id": "670ccbcac966c93a0bd46f16",
-        "dailyReferenceNumber": 1728626126608,
-        "salesPointId": "6707a83888a5002362018ccc",
-        "guests": 11,
-        "openedByUserId": "66e92e066a5cfcc2a707696b",
-        "openedAsRole": "employee",
-        "responsibleByUserId": "66e92e066a5cfcc2a707696b",
-        "businessId": "66e169a709901431386c97cb",
-        "clientName": "testing",
-        "createdAt": "2024-10-14T07:44:10.100Z",
-        "updatedAt": "2024-11-03T22:54:54.834Z",
-        "__v": 0,
-        "salesGroup": [
-            {
-                "orderCode": "100100",
-                "ordersIds": [
-                    "671d032013bce13524c21c1e"
-                ],
-                "createdAt": "2024-10-13T07:25:22.736Z",
-                "_id": "670cd443c966c93a0bd46f75"
-            },
-            {
-                "orderCode": "200200",
-                "ordersIds": [
-                    "671d032013bce13524c21c1f"
-                ]
-            }
+        "createdAt": { "$date": "2026-03-24T12:10:00.000Z" }
+      },
+      {
+        "orderCode": "A-1002",
+        "ordersIds": [
+          { "$oid": "64b000000000000000000a03" },
+          { "$oid": "64b000000000000000000a04" }
         ],
-        "salesInstanceStatus": "Open"
-    }
+        "createdAt": { "$date": "2026-03-24T12:20:00.000Z" }
+      }
+    ],
+    "closedAt": { "$date": "2026-03-24T13:05:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000402" },
+    "dailyReferenceNumber": 20260324,
+    "salesPointId": { "$oid": "64b000000000000000000303" },
+    "guests": 2,
+    "salesInstanceStatus": "Closed",
+    "openedByUserId": { "$oid": "64b000000000000000000101" },
+    "openedAsRole": "employee",
+    "responsibleByUserId": { "$oid": "64b000000000000000000101" },
+    "closedByUserId": { "$oid": "64b000000000000000000101" },
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "clientName": "Walk-in Table 02",
+    "salesGroup": [
+      {
+        "orderCode": "B-2001",
+        "ordersIds": [
+          { "$oid": "64b000000000000000000a05" },
+          { "$oid": "64b000000000000000000a06" }
+        ],
+        "createdAt": { "$date": "2026-03-24T13:10:00.000Z" }
+      }
+    ],
+    "closedAt": { "$date": "2026-03-24T13:50:00.000Z" }
+  }
 ]

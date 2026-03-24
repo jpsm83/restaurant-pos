@@ -49,7 +49,7 @@ cloudinaryActions
 
 reservations has lots of logic for send email an notifications but many other features does the same, try to unify the sending of messages - DONE
 
-- move the dummy data to mongodb
+- move the dummy data to mongodb - DONE
 
 - add upload cloudinary to all POST and PATH of documents that have imageUrl or documentsUrl
     - BUSINESS - single image - DONE

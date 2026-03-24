@@ -1,0 +1,144 @@
+[
+  {
+    "_id": { "$oid": "64b000000000000000001201" },
+    "isReportOpen": false,
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "monthReference": { "$date": "2026-02-01T00:00:00.000Z" },
+    "financialSummary": {
+      "totalSalesForMonth": 1800,
+      "totalCostOfGoodsSold": 620,
+      "totalNetRevenue": 1540,
+      "totalGrossProfit": 920,
+      "totalVoidSales": 0,
+      "totalInvitedSales": 0,
+      "totalTips": 75,
+      "financialPercentages": {
+        "salesPaymentCompletionPercentage": 85.56,
+        "profitMarginPercentage": 51.11,
+        "voidSalesPercentage": 0,
+        "invitedSalesPercentage": 0,
+        "tipsToCostOfGoodsPercentage": 12.1
+      }
+    },
+    "costBreakdown": {
+      "totalFoodCost": 430,
+      "totalBeverageCost": 190,
+      "totalLaborCost": 4700,
+      "totalFixedOperatingCost": 2200,
+      "totalExtraCost": 350,
+      "totalOperatingCost": 7870,
+      "costPercentages": {
+        "foodCostRatio": 5.46,
+        "beverageCostRatio": 2.41,
+        "laborCostRatio": 59.72,
+        "fixedCostRatio": 27.95
+      }
+    },
+    "goodsSold": [
+      { "businessGoodId": { "$oid": "64b000000000000000000501" }, "quantity": 70, "totalPrice": 903, "totalCostPrice": 192.178 },
+      { "businessGoodId": { "$oid": "64b000000000000000000502" }, "quantity": 40, "totalPrice": 540, "totalCostPrice": 118.52 },
+      { "businessGoodId": { "$oid": "64b000000000000000000503" }, "quantity": 110, "totalPrice": 176, "totalCostPrice": 44 },
+      { "businessGoodId": { "$oid": "64b000000000000000000504" }, "quantity": 60, "totalPrice": 144, "totalCostPrice": 36 }
+    ],
+    "goodsVoided": [],
+    "goodsComplimentary": [],
+    "supplierWasteAnalysis": {
+      "veryLowImpactWastePercentage": 2,
+      "lowImpactWastePercentage": 3.2,
+      "mediumImpactWastePercentage": 2.4,
+      "highImpactWastePercentage": 1.5,
+      "veryHighImpactWastePercentage": 0.7
+    },
+    "metricsComparison": {
+      "foodCostPercentage": { "targetValue": 30, "actualValue": 23.9, "delta": -6.1, "isOverTarget": false, "isUnderTarget": true },
+      "laborCostPercentage": { "targetValue": 30, "actualValue": 31.4, "delta": 1.4, "isOverTarget": true, "isUnderTarget": false },
+      "fixedCostPercentage": { "targetValue": 20, "actualValue": 18.7, "delta": -1.3, "isOverTarget": false, "isUnderTarget": true },
+      "supplierGoodWastePercentage": {
+        "veryLowBudgetImpact": { "targetValue": 9, "actualValue": 2, "delta": -7, "isOverTarget": false, "isUnderTarget": true },
+        "lowBudgetImpact": { "targetValue": 7, "actualValue": 3.2, "delta": -3.8, "isOverTarget": false, "isUnderTarget": true },
+        "mediumBudgetImpact": { "targetValue": 5, "actualValue": 2.4, "delta": -2.6, "isOverTarget": false, "isUnderTarget": true },
+        "hightBudgetImpact": { "targetValue": 3, "actualValue": 1.5, "delta": -1.5, "isOverTarget": false, "isUnderTarget": true },
+        "veryHightBudgetImpact": { "targetValue": 1, "actualValue": 0.7, "delta": -0.3, "isOverTarget": false, "isUnderTarget": true }
+      }
+    },
+    "totalCustomersServed": 260,
+    "averageSpendingPerCustomer": 5.92,
+    "paymentMethods": [
+      { "paymentMethodType": "Card", "methodBranch": "Visa", "methodSalesTotal": 900 },
+      { "paymentMethodType": "Card", "methodBranch": "Mastercard", "methodSalesTotal": 500 },
+      { "paymentMethodType": "Other", "methodBranch": "Voucher", "methodSalesTotal": 140 }
+    ],
+    "posSystemCommission": 38
+  },
+  {
+    "_id": { "$oid": "64b000000000000000001202" },
+    "isReportOpen": false,
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "monthReference": { "$date": "2026-03-01T00:00:00.000Z" },
+    "financialSummary": {
+      "totalSalesForMonth": 2200,
+      "totalCostOfGoodsSold": 760,
+      "totalNetRevenue": 1890,
+      "totalGrossProfit": 1130,
+      "totalVoidSales": 0,
+      "totalInvitedSales": 0,
+      "totalTips": 92,
+      "financialPercentages": {
+        "salesPaymentCompletionPercentage": 85.91,
+        "profitMarginPercentage": 51.36,
+        "voidSalesPercentage": 0,
+        "invitedSalesPercentage": 0,
+        "tipsToCostOfGoodsPercentage": 12.11
+      }
+    },
+    "costBreakdown": {
+      "totalFoodCost": 520,
+      "totalBeverageCost": 240,
+      "totalLaborCost": 5200,
+      "totalFixedOperatingCost": 2200,
+      "totalExtraCost": 420,
+      "totalOperatingCost": 8580,
+      "costPercentages": {
+        "foodCostRatio": 6.06,
+        "beverageCostRatio": 2.8,
+        "laborCostRatio": 60.61,
+        "fixedCostRatio": 25.64
+      }
+    },
+    "goodsSold": [
+      { "businessGoodId": { "$oid": "64b000000000000000000501" }, "quantity": 90, "totalPrice": 1161, "totalCostPrice": 247.086 },
+      { "businessGoodId": { "$oid": "64b000000000000000000502" }, "quantity": 55, "totalPrice": 742.5, "totalCostPrice": 162.965 },
+      { "businessGoodId": { "$oid": "64b000000000000000000503" }, "quantity": 130, "totalPrice": 208, "totalCostPrice": 52 },
+      { "businessGoodId": { "$oid": "64b000000000000000000504" }, "quantity": 70, "totalPrice": 168, "totalCostPrice": 42 }
+    ],
+    "goodsVoided": [],
+    "goodsComplimentary": [],
+    "supplierWasteAnalysis": {
+      "veryLowImpactWastePercentage": 2.2,
+      "lowImpactWastePercentage": 3.4,
+      "mediumImpactWastePercentage": 2.6,
+      "highImpactWastePercentage": 1.7,
+      "veryHighImpactWastePercentage": 0.8
+    },
+    "metricsComparison": {
+      "foodCostPercentage": { "targetValue": 30, "actualValue": 24.3, "delta": -5.7, "isOverTarget": false, "isUnderTarget": true },
+      "laborCostPercentage": { "targetValue": 30, "actualValue": 31.1, "delta": 1.1, "isOverTarget": true, "isUnderTarget": false },
+      "fixedCostPercentage": { "targetValue": 20, "actualValue": 19.3, "delta": -0.7, "isOverTarget": false, "isUnderTarget": true },
+      "supplierGoodWastePercentage": {
+        "veryLowBudgetImpact": { "targetValue": 9, "actualValue": 2.2, "delta": -6.8, "isOverTarget": false, "isUnderTarget": true },
+        "lowBudgetImpact": { "targetValue": 7, "actualValue": 3.4, "delta": -3.6, "isOverTarget": false, "isUnderTarget": true },
+        "mediumBudgetImpact": { "targetValue": 5, "actualValue": 2.6, "delta": -2.4, "isOverTarget": false, "isUnderTarget": true },
+        "hightBudgetImpact": { "targetValue": 3, "actualValue": 1.7, "delta": -1.3, "isOverTarget": false, "isUnderTarget": true },
+        "veryHightBudgetImpact": { "targetValue": 1, "actualValue": 0.8, "delta": -0.2, "isOverTarget": false, "isUnderTarget": true }
+      }
+    },
+    "totalCustomersServed": 310,
+    "averageSpendingPerCustomer": 6.1,
+    "paymentMethods": [
+      { "paymentMethodType": "Card", "methodBranch": "Visa", "methodSalesTotal": 980 },
+      { "paymentMethodType": "Card", "methodBranch": "Mastercard", "methodSalesTotal": 640 },
+      { "paymentMethodType": "Other", "methodBranch": "Voucher", "methodSalesTotal": 270 }
+    ],
+    "posSystemCommission": 44
+  }
+]

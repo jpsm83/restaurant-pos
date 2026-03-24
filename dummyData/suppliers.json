@@ -1,44 +1,48 @@
 [
-    {
-        "_id": "6674414e36e26dff0dc4ee8f",
-        "tradeName": "supplier1tradeName",
-        "legalName": "supplier1legalName",
-        "email": "supplier1@supplier1.com",
-        "phoneNumber": "supplier1phoneNumber",
-        "taxNumber": "supplier1taxNumber",
-        "currentlyInUse": true,
-        "businessId": "6673fed98c45d0a0ca5f34c1",
-        "address": {
-            "country": "supplier1country",
-            "state": "supplier1state",
-            "city": "supplier1city",
-            "street": "supplier1street",
-            "buildingNumber": "supplier1buildingNumber",
-            "postCode": "supplier1postcode"
-        },
-        "createdAt": "2024-06-20T14:48:46.380Z",
-        "updatedAt": "2024-08-28T17:12:08.274Z",
-        "__v": 0
+  {
+    "_id": { "$oid": "64b000000000000000000601" },
+    "tradeName": "Bakery And Grill Supply",
+    "legalName": "Bakery And Grill Supply Lda",
+    "email": "supplier-a@restaurantpos.test",
+    "phoneNumber": "+351910000601",
+    "taxNumber": "SUP-PT-0001",
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "address": {
+      "country": "Portugal",
+      "state": "Lisbon",
+      "city": "Lisbon",
+      "street": "Avenida Fornecedores A",
+      "buildingNumber": "12",
+      "postCode": "1000-601",
+      "region": "Lisbon Metropolitan Area",
+      "additionalDetails": "Warehouse A",
+      "coordinates": [-9.1501, 38.7361]
     },
-    {
-        "_id": "66744585be48364ae423dca4",
-        "tradeName": "supplier2tradeName",
-        "legalName": "supplier2legalName",
-        "email": "supplier2@supplier2.com",
-        "phoneNumber": "supplier2phoneNumber",
-        "taxNumber": "supplier2taxNumber",
-        "currentlyInUse": true,
-        "businessId": "6673fef88c45d0a0ca5f34c5",
-        "address": {
-            "country": "supplier1country",
-            "state": "supplier1state",
-            "city": "supplier1city",
-            "street": "supplier1street",
-            "buildingNumber": "supplier1buildingNumber",
-            "postCode": "supplier1postcode"
-        },
-        "createdAt": "2024-06-20T15:06:45.033Z",
-        "updatedAt": "2024-06-20T15:12:30.942Z",
-        "__v": 0
-    }
+    "currentlyInUse": true,
+    "imageUrl": "https://cdn.example.com/suppliers/a.png",
+    "contactPerson": "Andre Supplier"
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000602" },
+    "tradeName": "Fresh Produce And Drinks",
+    "legalName": "Fresh Produce And Drinks Lda",
+    "email": "supplier-b@restaurantpos.test",
+    "phoneNumber": "+351910000602",
+    "taxNumber": "SUP-PT-0002",
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "address": {
+      "country": "Portugal",
+      "state": "Lisbon",
+      "city": "Lisbon",
+      "street": "Avenida Fornecedores B",
+      "buildingNumber": "34",
+      "postCode": "1000-602",
+      "region": "Lisbon Metropolitan Area",
+      "additionalDetails": "Warehouse B",
+      "coordinates": [-9.1488, 38.7374]
+    },
+    "currentlyInUse": true,
+    "imageUrl": "https://cdn.example.com/suppliers/b.png",
+    "contactPerson": "Beatriz Supplier"
+  }
 ]

@@ -1,263 +1,102 @@
 [
   {
-      "_id": "667856f2d15d9c4bf3e1b53e",
-      "dailyReferenceNumber": 1719093600000,
-      "salesLocationReference": "business1table1",
-      "guests": 1,
-      "status": "Closed",
-      "openedBy": {
-          "_id": "66758b8904c4e6f5bbaa6b81",
-          "employeeName": "employee3",
-          "currentShiftRole": "Manager"
-      },
-      "responsibleBy": {
-          "_id": "66758b8904c4e6f5bbaa6b81",
-          "employeeName": "employee3",
-          "currentShiftRole": "Manager"
-      },
-      "business": "6673fed98c45d0a0ca5f34c1",
-      "createdAt": "2024-04-23T00:10:10.004Z",
-      "updatedAt": "2024-04-23T23:00:12.503Z",
-      "__v": 0,
-      "orders": []
+    "_id": { "$oid": "64b000000000000000000301" },
+    "salesPointName": "Table 01",
+    "salesPointType": "table",
+    "selfOrdering": false,
+    "qrCode": "qr-table-01",
+    "qrEnabled": true,
+    "qrLastScanned": { "$date": "2026-03-24T11:50:00.000Z" },
+    "businessId": { "$oid": "64b000000000000000000001" }
   },
   {
-      "_id": "66785dcf6c4422d1ab204b07",
-      "dailyReferenceNumber": 1719093600000,
-      "salesLocationReference": "business1table2",
-      "guests": 1,
-      "status": "Closed",
-      "openedBy": {
-          "_id": "66758b8904c4e6f5bbaa6b81",
-          "employeeName": "employee3",
-          "currentShiftRole": "Manager"
-      },
-      "responsibleBy": {
-          "_id": "66758b8904c4e6f5bbaa6b81",
-          "employeeName": "employee3",
-          "currentShiftRole": "Manager"
-      },
-      "business": "6673fed98c45d0a0ca5f34c1",
-      "createdAt": "2024-04-23T00:26:07.288Z",
-      "updatedAt": "2024-04-23T23:34:12.077Z",
-      "__v": 0,
-      "orders": []
+    "_id": { "$oid": "64b000000000000000000302" },
+    "salesPointName": "Delivery Hub",
+    "salesPointType": "delivery",
+    "selfOrdering": true,
+    "qrCode": "qr-delivery-hub",
+    "qrEnabled": true,
+    "qrLastScanned": { "$date": "2026-03-24T11:55:00.000Z" },
+    "businessId": { "$oid": "64b000000000000000000001" }
   },
   {
-      "_id": "6693eb1c0693ec3374a89b41",
-      "dailyReferenceNumber": 1719093600000,
-      "salesLocationReference": "business1table3",
-      "guests": 5,
-      "status": "Closed",
-      "openedBy": {
-          "_id": "66758b8904c4e6f5bbaa6b81",
-          "employeeName": "employee3",
-          "currentShiftRole": "Manager"
-      },
-      "responsibleBy": {
-          "_id": "66758b8904c4e6f5bbaa6b81",
-          "employeeName": "employee3",
-          "currentShiftRole": "Manager"
-      },
-      "business": "6673fed98c45d0a0ca5f34c1",
-      "clientName": "cliente one",
-      "createdAt": "2024-04-23T23:00:12.411Z",
-      "updatedAt": "2024-04-23T23:53:31.970Z",
-      "__v": 0,
-      "orders": [
-          {
-              "_id": "669642706e92805872dbfb3e",
-              "billingStatus": "Paid",
-              "orderStatus": "Done",
-              "orderPrice": 200,
-              "orderNetPrice": 200,
-              "businessGoods": [
-                  {
-                      "_id": "667bfc0c5d50be40f0c7b065",
-                      "name": "Cheeseburger",
-                      "mainCategory": "Food",
-                      "subCategory": "Burger",
-                      "sellingPrice": 16.45,
-                      "allergens": [
-                          "Gluten",
-                          "Eggs",
-                          "Milk"
-                      ]
-                  }
-              ],
-              "createdAt": "2024-07-14T12:13:49.342Z",
-              "discountPercentage": 20,
-              "paymentMethod": [
-                  {
-                      "paymentMethodType": "Cash",
-                      "methodBranch": "Cash",
-                      "methodSalesTotal": 20,
-                      "_id": "66c0f97b86c56fde98661233"
-                  },
-                  {
-                      "paymentMethodType": "Crypto",
-                      "methodBranch": "Bitcoin",
-                      "methodSalesTotal": 80,
-                      "_id": "66c0f97b86c56fde98661234"
-                  },
-                  {
-                      "paymentMethodType": "Other",
-                      "methodBranch": "Voucher",
-                      "methodSalesTotal": 110,
-                      "_id": "66c0f97b86c56fde98661235"
-                  }
-              ]
-          },
-          {
-              "_id": "6693c0fd0693ec3374a899b5",
-              "billingStatus": "Paid",
-              "orderStatus": "Done",
-              "orderPrice": 200,
-              "orderNetPrice": 200,
-              "businessGoods": [
-                  {
-                      "_id": "667bfc0c5d50be40f0c7b065",
-                      "name": "Cheeseburger",
-                      "mainCategory": "Food",
-                      "subCategory": "Burger",
-                      "sellingPrice": 16.45,
-                      "allergens": [
-                          "Gluten",
-                          "Eggs",
-                          "Milk"
-                      ]
-                  }
-              ],
-              "createdAt": "2024-07-14T12:13:49.342Z",
-              "discountPercentage": 20,
-              "paymentMethod": [
-                  {
-                      "paymentMethodType": "Card",
-                      "methodBranch": "Visa",
-                      "methodSalesTotal": 20,
-                      "_id": "66c0f97b86c56fde9866122c"
-                  },
-                  {
-                      "paymentMethodType": "Card",
-                      "methodBranch": "Mastercard",
-                      "methodSalesTotal": 100,
-                      "_id": "66c0f97b86c56fde9866122d"
-                  },
-                  {
-                      "paymentMethodType": "Cash",
-                      "methodBranch": "Cash",
-                      "methodSalesTotal": 80,
-                      "_id": "66c0f97b86c56fde9866122e"
-                  }
-              ]
-          }
-      ],
-      "closedAt": "2024-04-23T23:53:31.970Z",
-      "closedBy": {
-          "_id": "66758b8904c4e6f5bbaa6b81",
-          "employeeName": "employee3",
-          "currentShiftRole": "Manager"
-      }
+    "_id": { "$oid": "64b000000000000000000303" },
+    "salesPointName": "Table 02",
+    "salesPointType": "table",
+    "selfOrdering": true,
+    "qrCode": "qr-table-02",
+    "qrEnabled": true,
+    "qrLastScanned": { "$date": "2026-03-23T20:10:00.000Z" },
+    "businessId": { "$oid": "64b000000000000000000001" }
   },
   {
-      "_id": "669b67a8c7b5d874b0fd92a0",
-      "dailyReferenceNumber": 1719093600000,
-      "salesLocationReference": "business1table1",
-      "guests": 3,
-      "status": "Closed",
-      "openedBy": {
-          "_id": "66758b8904c4e6f5bbaa6b81",
-          "employeeName": "employee3",
-          "currentShiftRole": "Manager"
-      },
-      "responsibleBy": {
-          "_id": "66758b8904c4e6f5bbaa6b81",
-          "employeeName": "employee3",
-          "currentShiftRole": "Manager"
-      },
-      "business": "6673fed98c45d0a0ca5f34c1",
-      "clientName": "clienteNameField",
-      "createdAt": "2024-04-23T09:44:08.652Z",
-      "updatedAt": "2024-04-23T09:59:05.695Z",
-      "__v": 0,
-      "closedAt": "2024-04-23T09:59:05.694Z",
-      "closedBy": {
-          "_id": "66758b8904c4e6f5bbaa6b81",
-          "employeeName": "employee3",
-          "currentShiftRole": "Manager"
-      }
+    "_id": { "$oid": "64b000000000000000000304" },
+    "salesPointName": "Room A",
+    "salesPointType": "room",
+    "selfOrdering": false,
+    "qrCode": "qr-room-a",
+    "qrEnabled": false,
+    "qrLastScanned": { "$date": "2026-03-22T19:45:00.000Z" },
+    "businessId": { "$oid": "64b000000000000000000001" }
   },
   {
-      "_id": "66c07b6638e5e3a49c76a8b9",
-      "dailyReferenceNumber": 1723974290376,
-      "salesLocationReference": "testing",
-      "guests": 5,
-      "status": "Closed",
-      "openedBy": {
-          "_id": "66758b8904c4e6f5bbaa6b81",
-          "employeeName": "employee3",
-          "currentShiftRole": "Manager"
-      },
-      "responsibleBy": {
-          "_id": "66758b8904c4e6f5bbaa6b81",
-          "employeeName": "employee3",
-          "currentShiftRole": "Manager"
-      },
-      "business": "6673fed98c45d0a0ca5f34c1",
-      "clientName": "cliente one",
-      "createdAt": "2024-04-23T23:00:12.411Z",
-      "updatedAt": "2024-04-23T09:30:12.340Z",
-      "__v": 0,
-      "orders": [
-          {
-              "_id": "669642706e92805872dbfb3e",
-              "billingStatus": "Paid",
-              "orderStatus": "Done",
-              "orderPrice": 200,
-              "orderNetPrice": 200,
-              "businessGoods": [
-                  {
-                      "_id": "667bfc0c5d50be40f0c7b065",
-                      "name": "Cheeseburger",
-                      "mainCategory": "Food",
-                      "subCategory": "Burger",
-                      "sellingPrice": 16.45,
-                      "allergens": [
-                          "Gluten",
-                          "Eggs",
-                          "Milk"
-                      ]
-                  }
-              ],
-              "createdAt": "2024-07-14T12:13:49.342Z",
-              "discountPercentage": 20,
-              "paymentMethod": [
-                  {
-                      "paymentMethodType": "Cash",
-                      "methodBranch": "Cash",
-                      "methodSalesTotal": 20,
-                      "_id": "66c0f97b86c56fde98661233"
-                  },
-                  {
-                      "paymentMethodType": "Crypto",
-                      "methodBranch": "Bitcoin",
-                      "methodSalesTotal": 80,
-                      "_id": "66c0f97b86c56fde98661234"
-                  },
-                  {
-                      "paymentMethodType": "Other",
-                      "methodBranch": "Voucher",
-                      "methodSalesTotal": 110,
-                      "_id": "66c0f97b86c56fde98661235"
-                  }
-              ]
-          }
-      ],
-      "closedAt": "2024-04-23T09:30:12.339Z",
-      "closedBy": {
-          "_id": "66758b8904c4e6f5bbaa6b81",
-          "employeeName": "employee3",
-          "currentShiftRole": "Manager"
-      }
+    "_id": { "$oid": "64b000000000000000000305" },
+    "salesPointName": "Bar Seat 01",
+    "salesPointType": "bar",
+    "selfOrdering": true,
+    "qrCode": "qr-bar-seat-01",
+    "qrEnabled": true,
+    "qrLastScanned": { "$date": "2026-03-24T12:05:00.000Z" },
+    "businessId": { "$oid": "64b000000000000000000001" }
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000306" },
+    "salesPointName": "Seat 07",
+    "salesPointType": "seat",
+    "selfOrdering": false,
+    "qrCode": "qr-seat-07",
+    "qrEnabled": true,
+    "qrLastScanned": { "$date": "2026-03-21T17:00:00.000Z" },
+    "businessId": { "$oid": "64b000000000000000000001" }
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000307" },
+    "salesPointName": "Counter 01",
+    "salesPointType": "counter",
+    "selfOrdering": true,
+    "qrCode": "qr-counter-01",
+    "qrEnabled": true,
+    "qrLastScanned": { "$date": "2026-03-24T12:03:00.000Z" },
+    "businessId": { "$oid": "64b000000000000000000001" }
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000308" },
+    "salesPointName": "Spot Terrace",
+    "salesPointType": "spot",
+    "selfOrdering": true,
+    "qrCode": "qr-spot-terrace",
+    "qrEnabled": true,
+    "qrLastScanned": { "$date": "2026-03-24T12:01:00.000Z" },
+    "businessId": { "$oid": "64b000000000000000000001" }
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000309" },
+    "salesPointName": "Other Event Area",
+    "salesPointType": "other",
+    "selfOrdering": false,
+    "qrCode": "qr-event-area",
+    "qrEnabled": false,
+    "qrLastScanned": { "$date": "2026-03-20T18:30:00.000Z" },
+    "businessId": { "$oid": "64b000000000000000000001" }
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000310" },
+    "salesPointName": "Office POS",
+    "salesPointType": "counter",
+    "selfOrdering": false,
+    "qrCode": "qr-office-pos",
+    "qrEnabled": true,
+    "qrLastScanned": { "$date": "2026-03-24T09:00:00.000Z" },
+    "businessId": { "$oid": "64b000000000000000000001" }
   }
 ]

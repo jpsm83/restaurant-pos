@@ -1,72 +1,42 @@
 [
-    {
-        "_id": "6675225f1a4081cb67c6f65b",
-        "promotionName": "promotionName1promotionName",
-        "promotionPeriod": {
-            "start": "2023-04-01T15:00:00.000Z",
-            "end": "2023-04-01T17:00:00.000Z",
-            "_id": "6675225f1a4081cb67c6f65c"
-        },
-        "weekDays": [
-            "Monday",
-            "Tuesday",
-            "Wednesday",
-            "Thursday"
-        ],
-        "activePromotion": true,
-        "promotionType": {
-            "fullComplimentary": true
-        },
-        "businessId": "6673fed98c45d0a0ca5f34c1",
-        "createdAt": "2024-06-21T06:49:03.082Z",
-        "updatedAt": "2024-06-26T14:08:47.083Z",
-        "__v": 0,
-        "businessGoodsToApplyIds": []
+  {
+    "_id": { "$oid": "64b000000000000000000c01" },
+    "promotionName": "Lunch Burger 2x1",
+    "promotionPeriod": {
+      "start": { "$date": "2026-03-01T00:00:00.000Z" },
+      "end": { "$date": "2026-12-31T23:59:59.000Z" }
     },
-    {
-        "_id": "667522901a4081cb67c6f662",
-        "promotionName": "promotionName2promotionName",
-        "promotionPeriod": {
-            "start": "2023-04-01T15:00:00.000Z",
-            "end": "2023-04-01T17:00:00.000Z",
-            "_id": "667522901a4081cb67c6f663"
-        },
-        "weekDays": [
-            "Monday",
-            "Tuesday",
-            "Wednesday",
-            "Thursday"
-        ],
-        "activePromotion": true,
-        "promotionType": {
-            "fixedPrice": 100
-        },
-        "businessId": "6673fed98c45d0a0ca5f34c1",
-        "createdAt": "2024-06-21T06:49:52.954Z",
-        "updatedAt": "2024-06-21T06:49:52.954Z",
-        "__v": 0
+    "weekDays": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+    "activePromotion": true,
+    "promotionType": {
+      "twoForOne": true
     },
-    {
-        "_id": "6675231e1a4081cb67c6f668",
-        "promotionName": "promotionName3promotionName",
-        "promotionPeriod": {
-            "start": "2023-04-01T15:00:00.000Z",
-            "end": "2023-04-01T17:00:00.000Z",
-            "_id": "6675231e1a4081cb67c6f669"
-        },
-        "weekDays": [
-            "Monday",
-            "Tuesday",
-            "Wednesday",
-            "Thursday"
-        ],
-        "activePromotion": true,
-        "promotionType": {
-            "fixedPrice": 100
-        },
-        "businessId": "6673fef88c45d0a0ca5f34c5",
-        "createdAt": "2024-06-21T06:52:14.061Z",
-        "updatedAt": "2024-06-21T06:52:14.061Z",
-        "__v": 0
-    }
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "businessGoodsToApplyIds": [{ "$oid": "64b000000000000000000501" }],
+    "description": "Lunch campaign (12:00-15:00) buy one cheeseburger get one free."
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000c02" },
+    "promotionName": "Pizza 50 Percent Off",
+    "promotionPeriod": {
+      "start": { "$date": "2026-03-01T00:00:00.000Z" },
+      "end": { "$date": "2026-12-31T23:59:59.000Z" }
+    },
+    "weekDays": [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday"
+    ],
+    "activePromotion": true,
+    "promotionType": {
+      "discountPercent": 50
+    },
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "businessGoodsToApplyIds": [{ "$oid": "64b000000000000000000502" }],
+    "description": "All-day 50 percent discount for Pizza Margarita."
+  }
 ]

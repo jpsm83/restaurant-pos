@@ -1,92 +1,74 @@
 [
-    {
-        "_id": "6673fed98c45d0a0ca5f34c1",
-        "tradeName": "updated",
-        "legalName": "testing",
-        "email": "business1@business1.com",
-        "password": "business1password",
-        "phoneNumber": "business1phoneNumber",
-        "taxNumber": "business1taxNumber",
-        "currencyTrade": "business1currencyTrade",
-        "subscription": "Enterprise",
-        "address": {
-            "country": "business1country",
-            "state": "business1state",
-            "city": "business1city",
-            "street": "business1street",
-            "buildingNumber": "business1buildingNumber",
-            "postCode": "business1postcode",
-            "region": "business1region",
-            "additionalDetails": "business1additionalDetails",
-            "coordinates": [
-                1001,
-                1002
-            ],
-            "_id": "66cde01e296555e7eb8985e2"
-        },
-        "createdAt": "2024-06-20T10:05:13.920Z",
-        "updatedAt": "2024-09-01T11:01:26.349Z",
-        "__v": 0,
-        "contactPerson": "business1contactPerson",
-        "acceptsDelivery": true,
-        "deliveryRadius": 5,
-        "minOrder": 20,
-        "businessOpeningHours": [
-            { "dayOfWeek": 0, "openTime": "10:00", "closeTime": "22:00" },
-            { "dayOfWeek": 1, "openTime": "10:00", "closeTime": "22:00" },
-            { "dayOfWeek": 2, "openTime": "10:00", "closeTime": "22:00" },
-            { "dayOfWeek": 3, "openTime": "10:00", "closeTime": "22:00" },
-            { "dayOfWeek": 4, "openTime": "10:00", "closeTime": "23:59" },
-            { "dayOfWeek": 5, "openTime": "10:00", "closeTime": "23:59" },
-            { "dayOfWeek": 6, "openTime": "10:00", "closeTime": "22:00" }
-        ],
-        "deliveryOpeningWindows": [
-            {
-                "dayOfWeek": 0,
-                "windows": [
-                    { "openTime": "11:00", "closeTime": "15:00" },
-                    { "openTime": "18:00", "closeTime": "22:00" }
-                ]
-            },
-            {
-                "dayOfWeek": 5,
-                "windows": [
-                    { "openTime": "11:00", "closeTime": "16:00" },
-                    { "openTime": "18:00", "closeTime": "23:59" }
-                ]
-            }
-        ],
-        "reportingConfig": {
-            "weeklyReportStartDay": 1
-        }
+  {
+    "_id": { "$oid": "64b000000000000000000001" },
+    "tradeName": "Demo Bistro",
+    "legalName": "Demo Bistro LLC",
+    "imageUrl": "https://cdn.example.com/demo-bistro/logo.png",
+    "email": "demo-bistro@restaurantpos.test",
+    "password": "demoBusinessPassword123",
+    "phoneNumber": "+351910000001",
+    "taxNumber": "PT500000001",
+    "currencyTrade": "EUR",
+    "subscription": "Free",
+    "address": {
+      "country": "Portugal",
+      "state": "Lisbon",
+      "city": "Lisbon",
+      "street": "Rua Central",
+      "buildingNumber": "100",
+      "postCode": "1000-001",
+      "region": "Lisbon Metropolitan Area",
+      "additionalDetails": "Near central station",
+      "coordinates": [-9.1393, 38.7223]
     },
-    {
-        "_id": "6673fef88c45d0a0ca5f34c5",
-        "tradeName": "business2tradeName",
-        "legalName": "business2legalName",
-        "email": "business2@business2.com",
-        "phoneNumber": "business2phoneNumber",
-        "taxNumber": "business2taxNumber",
-        "currencyTrade": "business2currencyTrade",
-        "subscription": "Free",
-        "address": {
-            "country": "business2country",
-            "state": "business2state",
-            "city": "business2city",
-            "street": "business2street",
-            "buildingNumber": "business2buildingNumber",
-            "postCode": "business2postcode",
-            "region": "business2region",
-            "_id": "667402b553d2489c1798c013"
-        },
-        "createdAt": "2024-06-20T10:05:44.029Z",
-        "updatedAt": "2024-06-20T10:21:41.671Z",
-        "__v": 0,
-        "acceptsDelivery": false,
-        "businessOpeningHours": [],
-        "deliveryOpeningWindows": [],
-        "reportingConfig": {
-            "weeklyReportStartDay": 1
-        }
+    "metrics": {
+      "foodCostPercentage": 30,
+      "beverageCostPercentage": 20,
+      "laborCostPercentage": 30,
+      "fixedCostPercentage": 20,
+      "supplierGoodWastePercentage": {
+        "veryLowBudgetImpact": 9,
+        "lowBudgetImpact": 7,
+        "mediumBudgetImpact": 5,
+        "hightBudgetImpact": 3,
+        "veryHightBudgetImpact": 1
+      }
+    },
+    "contactPerson": "Demo Manager",
+    "cuisineType": "International",
+    "categories": ["burgers", "pizza", "beverages"],
+    "averageRating": 4.6,
+    "ratingCount": 4,
+    "acceptsDelivery": true,
+    "deliveryRadius": 8,
+    "minOrder": 12,
+    "businessOpeningHours": [
+      { "dayOfWeek": 0, "openTime": "12:00", "closeTime": "23:00" },
+      { "dayOfWeek": 1, "openTime": "12:00", "closeTime": "23:00" },
+      { "dayOfWeek": 2, "openTime": "12:00", "closeTime": "23:00" },
+      { "dayOfWeek": 3, "openTime": "12:00", "closeTime": "23:00" },
+      { "dayOfWeek": 4, "openTime": "12:00", "closeTime": "23:30" },
+      { "dayOfWeek": 5, "openTime": "12:00", "closeTime": "23:30" },
+      { "dayOfWeek": 6, "openTime": "12:00", "closeTime": "23:00" }
+    ],
+    "deliveryOpeningWindows": [
+      {
+        "dayOfWeek": 1,
+        "windows": [
+          { "openTime": "12:00", "closeTime": "15:00" },
+          { "openTime": "19:00", "closeTime": "22:30" }
+        ]
+      },
+      {
+        "dayOfWeek": 2,
+        "windows": [
+          { "openTime": "12:00", "closeTime": "15:00" },
+          { "openTime": "19:00", "closeTime": "22:30" }
+        ]
+      }
+    ],
+    "reportingConfig": {
+      "weeklyReportStartDay": 1
     }
+  }
 ]

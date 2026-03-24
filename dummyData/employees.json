@@ -1,98 +1,50 @@
 [
-    {
-        "_id": "67151a06c3aeb9d58c562d50",
-        "personalDetails": {
-            "_id": "67d11544821a0dcb5d045e08",
-            "username": "employee1",
-            "email": "employee1email@employee1.com",
-            "idType": "National ID",
-            "idNumber": "employee1IdNumber",
-            "address": {
-                "_id": "67d11544821a0dcb5d045e09",
-                "country": "country2",
-                "state": "state2",
-                "city": "city2",
-                "street": "street2",
-                "buildingNumber": "buildingNumber2",
-                "postCode": "postCode2",
-                "region": "region2",
-                "additionalDetails": "additionalDetails2",
-                "coordinates": [
-                    10,
-                    20
-                ]
-            },
-            "firstName": "employee1FirstName",
-            "lastName": "employee1LastName",
-            "imageUrl": "imageUrl1",
-            "nationality": "employee1Nationality",
-            "gender": "Man",
-            "birthDate": "2014-10-10T14:48:00.000Z",
-            "phoneNumber": "employee1PhoneNumber"
-        },
-        "allEmployeeRoles": [
-            "Manager",
-            "Bartender"
-        ],
-        "taxNumber": "employee1TaxNumber",
-        "joinDate": "2024-06-10T14:48:00.000Z",
-        "active": true,
-        "onDuty": true,
-        "vacationDaysPerYear": 23,
-        "businessId": "66e169a709901431386c97cb",
-        "userId": "67151a06c3aeb9d58c562d50",
-        "vacationDaysLeft": 23,
-        "contractHoursWeek": 40,
-        "createdAt": "2025-03-12T05:01:56.491Z",
-        "updatedAt": "2025-03-12T05:01:56.491Z",
-        "__v": 0
+  {
+    "_id": { "$oid": "64b000000000000000000201" },
+    "allEmployeeRoles": ["Manager"],
+    "taxNumber": "EMP-TAX-0001",
+    "joinDate": { "$date": "2024-01-02T00:00:00.000Z" },
+    "active": true,
+    "onDuty": true,
+    "vacationDaysPerYear": 22,
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "userId": { "$oid": "64b000000000000000000101" },
+    "vacationDaysLeft": 18,
+    "currentShiftRole": "Manager",
+    "contractHoursWeek": 40,
+    "salary": {
+      "payFrequency": "Monthly",
+      "grossSalary": 1800,
+      "netSalary": 1450
     },
-    {
-        "_id": "66e92e066a5cfcc2a707696b",
-        "personalDetails": {
-            "_id": "67d11544821a0dcb5d045e08",
-            "username": "employee2",
-            "email": "employee2email@employee2.com",
-            "idType": "National ID",
-            "idNumber": "employee2IdNumber",
-            "address": {
-                "_id": "67d11544821a0dcb5d045e09",
-                "country": "country2",
-                "state": "state2",
-                "city": "city2",
-                "street": "street2",
-                "buildingNumber": "buildingNumber2",
-                "postCode": "postCode2",
-                "region": "region2",
-                "additionalDetails": "additionalDetails2",
-                "coordinates": [
-                    10,
-                    20
-                ]
-            },
-            "firstName": "employee2FirstName",
-            "lastName": "employee2LastName",
-            "imageUrl": "imageUrl1",
-            "nationality": "employee2Nationality",
-            "gender": "Man",
-            "birthDate": "2014-10-10T14:48:00.000Z",
-            "phoneNumber": "employee2PhoneNumber"
-        },
-        "allEmployeeRoles": [
-            "Manager",
-            "Bartender"
-        ],
-        "taxNumber": "employee2TaxNumber",
-        "joinDate": "2024-06-10T14:48:00.000Z",
-        "active": true,
-        "onDuty": true,
-        "vacationDaysPerYear": 23,
-        "businessId": "66e169a709901431386c97cb",
-        "userId": "66e92e066a5cfcc2a707696b",
-        "vacationDaysLeft": 23,
-        "contractHoursWeek": 40,
-        "createdAt": "2025-03-12T05:01:56.491Z",
-        "updatedAt": "2025-03-12T05:01:56.491Z",
-        "__v": 0
-    }
+    "terminatedDate": null,
+    "documentsUrl": [
+      "https://cdn.example.com/employees/manager-contract.pdf"
+    ],
+    "comments": "Main manager profile for demo data."
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000202" },
+    "allEmployeeRoles": ["Waiter"],
+    "taxNumber": "EMP-TAX-0002",
+    "joinDate": { "$date": "2024-02-01T00:00:00.000Z" },
+    "active": true,
+    "onDuty": true,
+    "vacationDaysPerYear": 22,
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "userId": { "$oid": "64b000000000000000000102" },
+    "vacationDaysLeft": 20,
+    "currentShiftRole": "Waiter",
+    "contractHoursWeek": 40,
+    "salary": {
+      "payFrequency": "Monthly",
+      "grossSalary": 1300,
+      "netSalary": 1100
+    },
+    "terminatedDate": null,
+    "documentsUrl": [
+      "https://cdn.example.com/employees/waiter-contract.pdf"
+    ],
+    "comments": "Waiter profile for demo data."
+  }
 ]

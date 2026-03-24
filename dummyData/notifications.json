@@ -1,43 +1,68 @@
 [
-    {
-        "_id": "6675475e3bfefbb6373c7158",
-        "dayReferenceNumber": 1,
-        "notificationType": "Warning",
-        "message": "notification message",
-        "employeesRecipientsIds": [],
-        "customersRecipientsIds": [],
-        "businessId": "6673fed98c45d0a0ca5f34c1",
-        "createdAt": "2024-06-21T09:26:54.673Z",
-        "updatedAt": "2024-06-23T10:50:17.311Z",
-        "__v": 0,
-        "senderId": "66741dbbdf254a9fd7e3af59"
-    },
-    {
-        "_id": "6675476e3bfefbb6373c715c",
-        "dayReferenceNumber": 1,
-        "notificationType": "Info",
-        "message": "notification message",
-        "employeesRecipientsIds": [
-            "667412df373ad7f1a285534e"
-        ],
-        "customersRecipientsIds": [],
-        "businessId": "6673fed98c45d0a0ca5f34c1",
-        "createdAt": "2024-06-21T09:27:10.648Z",
-        "updatedAt": "2024-06-21T09:27:10.648Z",
-        "__v": 0
-    },
-    {
-        "_id": "667548d33bfefbb6373c716e",
-        "dayReferenceNumber": 1,
-        "notificationType": "Info",
-        "message": "notification message",
-        "employeesRecipientsIds": [
-            "667412df373ad7f1a285534e"
-        ],
-        "customersRecipientsIds": [],
-        "businessId": "6673fef88c45d0a0ca5f34c5",
-        "createdAt": "2024-06-21T09:33:07.928Z",
-        "updatedAt": "2024-06-21T09:33:07.928Z",
-        "__v": 0
-    }
+  {
+    "_id": { "$oid": "64b000000000000000000b01" },
+    "notificationType": "Warning",
+    "message": "Low stock alert for beef patties.",
+    "employeesRecipientsIds": [{ "$oid": "64b000000000000000000201" }],
+    "customersRecipientsIds": [{ "$oid": "64b000000000000000000101" }],
+    "senderId": { "$oid": "64b000000000000000000201" },
+    "businessId": { "$oid": "64b000000000000000000001" }
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000b02" },
+    "notificationType": "Info",
+    "message": "Manager shift starts at 12:00.",
+    "employeesRecipientsIds": [{ "$oid": "64b000000000000000000201" }],
+    "customersRecipientsIds": [{ "$oid": "64b000000000000000000101" }],
+    "senderId": { "$oid": "64b000000000000000000202" },
+    "businessId": { "$oid": "64b000000000000000000001" }
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000b03" },
+    "notificationType": "Info",
+    "message": "New table assigned to waiter.",
+    "employeesRecipientsIds": [{ "$oid": "64b000000000000000000202" }],
+    "customersRecipientsIds": [{ "$oid": "64b000000000000000000102" }],
+    "senderId": { "$oid": "64b000000000000000000201" },
+    "businessId": { "$oid": "64b000000000000000000001" }
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000b04" },
+    "notificationType": "Message",
+    "message": "Please check bar printer before service.",
+    "employeesRecipientsIds": [{ "$oid": "64b000000000000000000202" }],
+    "customersRecipientsIds": [{ "$oid": "64b000000000000000000102" }],
+    "senderId": { "$oid": "64b000000000000000000201" },
+    "businessId": { "$oid": "64b000000000000000000001" }
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000b05" },
+    "notificationType": "Promotion",
+    "message": "Lunch burger 2x1 is active.",
+    "employeesRecipientsIds": [
+      { "$oid": "64b000000000000000000201" },
+      { "$oid": "64b000000000000000000202" }
+    ],
+    "customersRecipientsIds": [
+      { "$oid": "64b000000000000000000101" },
+      { "$oid": "64b000000000000000000102" }
+    ],
+    "senderId": { "$oid": "64b000000000000000000201" },
+    "businessId": { "$oid": "64b000000000000000000001" }
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000b06" },
+    "notificationType": "Event",
+    "message": "Team meeting at 11:30 before opening.",
+    "employeesRecipientsIds": [
+      { "$oid": "64b000000000000000000201" },
+      { "$oid": "64b000000000000000000202" }
+    ],
+    "customersRecipientsIds": [
+      { "$oid": "64b000000000000000000101" },
+      { "$oid": "64b000000000000000000102" }
+    ],
+    "senderId": { "$oid": "64b000000000000000000201" },
+    "businessId": { "$oid": "64b000000000000000000001" }
+  }
 ]

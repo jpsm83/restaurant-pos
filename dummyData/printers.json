@@ -1,25 +1,68 @@
 [
-    {
-        "_id": "6674501ebe48364ae423dcc4",
-        "printerAlias": "printer1printerName",
-        "description": "printer1description",
-        "printerStatus": "Offline",
-        "ipAddress": "127.0.0.2",
-        "port": 2000,
-        "businessId": "6673fed98c45d0a0ca5f34c1",
-        "employeesAllowedToPrintDataIds": [
-            "66758b8904c4e6f5bbaa6b81"
+  {
+    "_id": { "$oid": "64b000000000000000000f01" },
+    "printerAlias": "Kitchen Printer",
+    "description": "Main kitchen production printer",
+    "printerStatus": "Online",
+    "ipAddress": "192.168.1.50",
+    "port": 9100,
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "backupPrinterId": { "$oid": "64b000000000000000000f03" },
+    "employeesAllowedToPrintDataIds": [
+      { "$oid": "64b000000000000000000201" },
+      { "$oid": "64b000000000000000000202" }
+    ],
+    "configurationSetupToPrintOrders": [
+      {
+        "mainCategory": "Food",
+        "subCategories": ["Burger", "Pizza"],
+        "salesPointIds": [
+          { "$oid": "64b000000000000000000301" },
+          { "$oid": "64b000000000000000000303" },
+          { "$oid": "64b000000000000000000304" }
         ],
-        "configurationSetupToPrintOrders": [
-            {
-                "mainCategory": "Food",
-                "subCategories": [],
-                "salesPointIds": [],
-                "excludeEmployeeIds": []
-            }
+        "excludeEmployeeIds": []
+      }
+    ]
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000f02" },
+    "printerAlias": "Bar Printer",
+    "description": "Bar and drinks orders printer",
+    "printerStatus": "Online",
+    "ipAddress": "192.168.1.51",
+    "port": 9100,
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "backupPrinterId": { "$oid": "64b000000000000000000f03" },
+    "employeesAllowedToPrintDataIds": [{ "$oid": "64b000000000000000000202" }],
+    "configurationSetupToPrintOrders": [
+      {
+        "mainCategory": "Beverage",
+        "subCategories": ["Soft Drinks", "Water"],
+        "salesPointIds": [
+          { "$oid": "64b000000000000000000302" },
+          { "$oid": "64b000000000000000000305" }
         ],
-        "createdAt": "2024-06-20T15:51:58.551Z",
-        "updatedAt": "2024-06-20T16:46:17.706Z",
-        "__v": 0
-    }
+        "excludeEmployeeIds": []
+      }
+    ]
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000f03" },
+    "printerAlias": "Office Printer",
+    "description": "Back office documents and fallback printer",
+    "printerStatus": "Online",
+    "ipAddress": "192.168.1.52",
+    "port": 9100,
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "employeesAllowedToPrintDataIds": [{ "$oid": "64b000000000000000000201" }],
+    "configurationSetupToPrintOrders": [
+      {
+        "mainCategory": "Other",
+        "subCategories": ["Admin"],
+        "salesPointIds": [{ "$oid": "64b000000000000000000310" }],
+        "excludeEmployeeIds": []
+      }
+    ]
+  }
 ]

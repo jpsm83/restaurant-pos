@@ -1,138 +1,185 @@
 [
-    {
-        "_id": "66d9b3ab8b201c52c9d514c9",
-        "supplierId": "6674414e36e26dff0dc4ee8f",
-        "purchaseDate": "2024-08-30T10:10:10.004Z",
-        "businessId": "6673fed98c45d0a0ca5f34c1",
-        "purchasedByEmployeeId": "667412df373ad7f1a285534e",
-        "purchaseInventoryItems": [
-            {
-                "supplierGoodId": "667bfac8d28a7ee19d9be448",
-                "quantityPurchased": 20,
-                "purchasePrice": 5,
-                "_id": "66d9b3ab8b201c52c9d514ca"
-            },
-            {
-                "supplierGoodId": "667bfac8d28a7ee19d9be444",
-                "quantityPurchased": 40,
-                "purchasePrice": 10,
-                "_id": "66d9b3ab8b201c52c9d514cb"
-            }
-        ],
-        "totalAmount": 100,
-        "receiptId": "re101",
-        "createdAt": "2024-09-05T13:35:39.935Z",
-        "updatedAt": "2024-09-05T13:35:39.935Z",
-        "__v": 0
-    },
-    {
-        "_id": "66d9b3d38b201c52c9d514d0",
-        "supplierId": "6674414e36e26dff0dc4ee8f",
-        "purchaseDate": "2024-08-29T10:10:10.004Z",
-        "businessId": "6673fed98c45d0a0ca5f34c1",
-        "purchasedByEmployeeId": "667412df373ad7f1a285534e",
-        "purchaseInventoryItems": [
-            {
-                "supplierGoodId": "667bfac8d28a7ee19d9be448",
-                "quantityPurchased": 20,
-                "purchasePrice": 5,
-                "_id": "66d9b3d38b201c52c9d514d1"
-            },
-            {
-                "supplierGoodId": "667bfac8d28a7ee19d9be444",
-                "quantityPurchased": 40,
-                "purchasePrice": 10,
-                "_id": "66d9b3d38b201c52c9d514d2"
-            }
-        ],
-        "totalAmount": 100,
-        "receiptId": "re102",
-        "createdAt": "2024-09-05T13:36:19.475Z",
-        "updatedAt": "2024-09-05T13:36:19.475Z",
-        "__v": 0
-    },
-    {
-        "_id": "66e01a284ca32d6dc7caad27",
-        "title": "Purchase without title!",
-        "supplierId": "6674414e36e26dff0dc4ee8f",
-        "purchaseDate": "2024-08-30T10:10:10.004Z",
-        "businessId": "6673fed98c45d0a0ca5f34c1",
-        "purchasedByEmployeeId": "667412df373ad7f1a285534e",
-        "purchaseInventoryItems": [
-            {
-                "supplierGoodId": "667bfac8d28a7ee19d9be443",
-                "quantityPurchased": 16,
-                "purchasePrice": 5,
-                "_id": "66e01a284ca32d6dc7caad28"
-            },
-            {
-                "supplierGoodId": "667bfac8d28a7ee19d9be444",
-                "quantityPurchased": 40,
-                "purchasePrice": 10,
-                "_id": "66e01a284ca32d6dc7caad29"
-            }
-        ],
-        "totalAmount": 100,
-        "receiptId": "re103",
-        "createdAt": "2024-09-10T10:06:32.756Z",
-        "updatedAt": "2024-09-10T10:06:32.756Z",
-        "__v": 0
-    },
-    {
-        "_id": "66e01e614ca32d6dc7caad2f",
-        "title": "Purchase without title!",
-        "supplierId": "6674414e36e26dff0dc4ee8f",
-        "purchaseDate": "2024-08-30T10:10:10.004Z",
-        "businessId": "6673fed98c45d0a0ca5f34c1",
-        "purchasedByEmployeeId": "667412df373ad7f1a285534e",
-        "purchaseInventoryItems": [
-            {
-                "supplierGoodId": "667bfac8d28a7ee19d9be443",
-                "quantityPurchased": 16,
-                "purchasePrice": 5,
-                "_id": "66e01e614ca32d6dc7caad30"
-            },
-            {
-                "supplierGoodId": "667bfac8d28a7ee19d9be444",
-                "quantityPurchased": 40,
-                "purchasePrice": 10,
-                "_id": "66e01e614ca32d6dc7caad31"
-            }
-        ],
-        "totalAmount": 100,
-        "receiptId": "re104",
-        "createdAt": "2024-09-10T10:24:33.402Z",
-        "updatedAt": "2024-09-10T10:24:33.402Z",
-        "__v": 0
-    },
-    {
-        "_id": "66e01ed24ca32d6dc7caad39",
-        "title": "Purchase without title!",
-        "supplierId": {
-            "_id": "6674414e36e26dff0dc4ee8f",
-            "tradeName": "supplier1tradeName"
-        },
-        "purchaseDate": "2024-08-30T10:10:10.004Z",
-        "businessId": "6673fed98c45d0a0ca5f34c1",
-        "purchasedByEmployeeId": "667412df373ad7f1a285534e",
-        "purchaseItems": [
-            {
-                "supplierGoodId": "667bfac8d28a7ee19d9be443",
-                "quantityPurchased": 16,
-                "purchasePrice": 5,
-                "_id": "66e01ed24ca32d6dc7caad3a"
-            },
-            {
-                "supplierGoodId": "667bfac8d28a7ee19d9be444",
-                "quantityPurchased": 10,
-                "purchasePrice": 10,
-                "_id": "66e01ed24ca32d6dc7caad3b"
-            }
-        ],
-        "totalAmount": 100,
-        "receiptId": "re105",
-        "createdAt": "2024-09-10T10:26:26.487Z",
-        "updatedAt": "2024-09-10T10:26:26.487Z",
-        "__v": 0
-    }
+  {
+    "_id": { "$oid": "64b000000000000000000901" },
+    "title": "Purchase Bun",
+    "supplierId": { "$oid": "64b000000000000000000601" },
+    "purchaseDate": { "$date": "2026-03-20T09:00:00.000Z" },
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "purchasedByEmployeeId": { "$oid": "64b000000000000000000201" },
+    "totalAmount": 54,
+    "receiptId": "RCPT-0001",
+    "purchaseInventoryItems": [
+      { "supplierGoodId": { "$oid": "64b000000000000000000711" }, "quantityPurchased": 90, "purchasePrice": 54 }
+    ],
+    "oneTimePurchase": false,
+    "comment": "Weekly bread stock"
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000902" },
+    "title": "Purchase Patties",
+    "supplierId": { "$oid": "64b000000000000000000601" },
+    "purchaseDate": { "$date": "2026-03-20T09:15:00.000Z" },
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "purchasedByEmployeeId": { "$oid": "64b000000000000000000201" },
+    "totalAmount": 90,
+    "receiptId": "RCPT-0002",
+    "purchaseInventoryItems": [
+      { "supplierGoodId": { "$oid": "64b000000000000000000712" }, "quantityPurchased": 50, "purchasePrice": 90 }
+    ],
+    "oneTimePurchase": false
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000903" },
+    "title": "Purchase Water",
+    "supplierId": { "$oid": "64b000000000000000000601" },
+    "purchaseDate": { "$date": "2026-03-20T09:30:00.000Z" },
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "purchasedByEmployeeId": { "$oid": "64b000000000000000000202" },
+    "totalAmount": 36,
+    "receiptId": "RCPT-0003",
+    "purchaseInventoryItems": [
+      { "supplierGoodId": { "$oid": "64b000000000000000000713" }, "quantityPurchased": 90, "purchasePrice": 36 }
+    ],
+    "oneTimePurchase": false
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000904" },
+    "title": "Purchase Pizza Base",
+    "supplierId": { "$oid": "64b000000000000000000601" },
+    "purchaseDate": { "$date": "2026-03-20T10:00:00.000Z" },
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "purchasedByEmployeeId": { "$oid": "64b000000000000000000202" },
+    "totalAmount": 56,
+    "receiptId": "RCPT-0004",
+    "purchaseInventoryItems": [
+      { "supplierGoodId": { "$oid": "64b000000000000000000714" }, "quantityPurchased": 40, "purchasePrice": 56 }
+    ],
+    "oneTimePurchase": false
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000905" },
+    "title": "Purchase Oregano",
+    "supplierId": { "$oid": "64b000000000000000000601" },
+    "purchaseDate": { "$date": "2026-03-20T10:15:00.000Z" },
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "purchasedByEmployeeId": { "$oid": "64b000000000000000000201" },
+    "totalAmount": 40,
+    "receiptId": "RCPT-0005",
+    "purchaseInventoryItems": [
+      { "supplierGoodId": { "$oid": "64b000000000000000000715" }, "quantityPurchased": 1000, "purchasePrice": 40 }
+    ],
+    "oneTimePurchase": false
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000906" },
+    "title": "Purchase Mozzarella",
+    "supplierId": { "$oid": "64b000000000000000000602" },
+    "purchaseDate": { "$date": "2026-03-20T10:30:00.000Z" },
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "purchasedByEmployeeId": { "$oid": "64b000000000000000000201" },
+    "totalAmount": 72,
+    "receiptId": "RCPT-0006",
+    "purchaseInventoryItems": [
+      { "supplierGoodId": { "$oid": "64b000000000000000000716" }, "quantityPurchased": 9000, "purchasePrice": 72 }
+    ],
+    "oneTimePurchase": false
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000907" },
+    "title": "Purchase Cheddar",
+    "supplierId": { "$oid": "64b000000000000000000602" },
+    "purchaseDate": { "$date": "2026-03-20T10:45:00.000Z" },
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "purchasedByEmployeeId": { "$oid": "64b000000000000000000202" },
+    "totalAmount": 56,
+    "receiptId": "RCPT-0007",
+    "purchaseInventoryItems": [
+      { "supplierGoodId": { "$oid": "64b000000000000000000717" }, "quantityPurchased": 4000, "purchasePrice": 56 }
+    ],
+    "oneTimePurchase": false
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000908" },
+    "title": "Purchase Coca Cola",
+    "supplierId": { "$oid": "64b000000000000000000602" },
+    "purchaseDate": { "$date": "2026-03-20T11:00:00.000Z" },
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "purchasedByEmployeeId": { "$oid": "64b000000000000000000202" },
+    "totalAmount": 72,
+    "receiptId": "RCPT-0008",
+    "purchaseInventoryItems": [
+      { "supplierGoodId": { "$oid": "64b000000000000000000718" }, "quantityPurchased": 120, "purchasePrice": 72 }
+    ],
+    "oneTimePurchase": false
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000909" },
+    "title": "Purchase Tomato",
+    "supplierId": { "$oid": "64b000000000000000000602" },
+    "purchaseDate": { "$date": "2026-03-20T11:15:00.000Z" },
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "purchasedByEmployeeId": { "$oid": "64b000000000000000000201" },
+    "totalAmount": 45,
+    "receiptId": "RCPT-0009",
+    "purchaseInventoryItems": [
+      { "supplierGoodId": { "$oid": "64b000000000000000000719" }, "quantityPurchased": 18000, "purchasePrice": 45 }
+    ],
+    "oneTimePurchase": false
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000910" },
+    "title": "Purchase Lettuce",
+    "supplierId": { "$oid": "64b000000000000000000602" },
+    "purchaseDate": { "$date": "2026-03-20T11:30:00.000Z" },
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "purchasedByEmployeeId": { "$oid": "64b000000000000000000201" },
+    "totalAmount": 27,
+    "receiptId": "RCPT-0010",
+    "purchaseInventoryItems": [
+      { "supplierGoodId": { "$oid": "64b000000000000000000720" }, "quantityPurchased": 9000, "purchasePrice": 27 }
+    ],
+    "oneTimePurchase": false
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000911" },
+    "title": "Purchase Salt",
+    "supplierId": { "$oid": "64b000000000000000000602" },
+    "purchaseDate": { "$date": "2026-03-20T11:45:00.000Z" },
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "purchasedByEmployeeId": { "$oid": "64b000000000000000000202" },
+    "totalAmount": 4.8,
+    "receiptId": "RCPT-0011",
+    "purchaseInventoryItems": [
+      { "supplierGoodId": { "$oid": "64b000000000000000000721" }, "quantityPurchased": 4000, "purchasePrice": 4.8 }
+    ],
+    "oneTimePurchase": false
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000912" },
+    "title": "Purchase Pepper",
+    "supplierId": { "$oid": "64b000000000000000000602" },
+    "purchaseDate": { "$date": "2026-03-20T12:00:00.000Z" },
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "purchasedByEmployeeId": { "$oid": "64b000000000000000000202" },
+    "totalAmount": 16,
+    "receiptId": "RCPT-0012",
+    "purchaseInventoryItems": [
+      { "supplierGoodId": { "$oid": "64b000000000000000000722" }, "quantityPurchased": 2000, "purchasePrice": 16 }
+    ],
+    "oneTimePurchase": false
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000913" },
+    "title": "Purchase Tomato Sauce",
+    "supplierId": { "$oid": "64b000000000000000000602" },
+    "purchaseDate": { "$date": "2026-03-20T12:15:00.000Z" },
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "purchasedByEmployeeId": { "$oid": "64b000000000000000000201" },
+    "totalAmount": 31.5,
+    "receiptId": "RCPT-0013",
+    "purchaseInventoryItems": [
+      { "supplierGoodId": { "$oid": "64b000000000000000000723" }, "quantityPurchased": 9000, "purchasePrice": 31.5 }
+    ],
+    "oneTimePurchase": false
+  }
 ]
