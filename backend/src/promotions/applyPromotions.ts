@@ -165,11 +165,13 @@ const applyPromotionsToOrders = async (
       const gross = order.orderGrossPrice ?? 0;
       const businessGoodId = order.businessGoodId;
       const addOns = order.addOns ?? [];
+      const orderCostPrice = order.orderCostPrice;
 
       if (!gross || !businessGoodId) {
         return {
           orderGrossPrice: gross,
           orderNetPrice: gross,
+          orderCostPrice,
           businessGoodId: businessGoodId as ObjectId,
           addOns: addOns.length ? addOns : undefined,
         };
@@ -183,6 +185,7 @@ const applyPromotionsToOrders = async (
         return {
           orderGrossPrice: gross,
           orderNetPrice: gross,
+          orderCostPrice,
           businessGoodId,
           addOns: addOns.length ? addOns : undefined,
           promotionApplyed: undefined,
@@ -211,6 +214,7 @@ const applyPromotionsToOrders = async (
       return {
         orderGrossPrice: gross,
         orderNetPrice: bestResult.netPrice,
+        orderCostPrice,
         businessGoodId,
         addOns: addOns.length ? addOns : undefined,
         promotionApplyed: bestResult.promotionName,

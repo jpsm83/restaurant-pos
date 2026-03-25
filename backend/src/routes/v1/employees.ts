@@ -1,6 +1,9 @@
 import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
-import type { IEmployee, ISalary } from "../../../../packages/interfaces/IEmployee.ts";
+import type {
+  IEmployee,
+  ISalary,
+} from "../../../../packages/interfaces/IEmployee.ts";
 import type { IUser } from "../../../../packages/interfaces/IUser.ts";
 
 import isObjectIdValid from "../../utils/isObjectIdValid.ts";
@@ -13,8 +16,8 @@ import Employee from "../../models/employee.ts";
 import User from "../../models/user.ts";
 import Printer from "../../models/printer.ts";
 import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
-import { UploadInputFile } from "@packages/interfaces/ICloudinary.ts";
 import * as enums from "../../../../packages/enums.ts";
+import { UploadInputFile } from "../../../../packages/interfaces/ICloudinary.ts";
 
 const { userRolesEnums } = enums;
 
@@ -102,11 +105,9 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
       }
 
       if (salary) {
-        const salaryValidationResult = (objDefaultValidation as unknown as ObjDefaultValidationType)(
-          salary,
-          reqSalaryFields,
-          []
-        );
+        const salaryValidationResult = (
+          objDefaultValidation as unknown as ObjDefaultValidationType
+        )(salary, reqSalaryFields, []);
         if (salaryValidationResult !== true) {
           return reply.code(400).send({ message: salaryValidationResult });
         }
@@ -133,7 +134,9 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
 
         if (employeeAlreadyExists) {
           await session.abortTransaction();
-          return reply.code(409).send({ message: "User is already an employee!" });
+          return reply
+            .code(409)
+            .send({ message: "User is already an employee!" });
         }
 
         const employeeId = new mongoose.Types.ObjectId();
@@ -175,14 +178,14 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
           newEmployee.documentsUrl = cloudinaryUploadResponse;
         }
 
-        const [createEmployee, updateUser] = await Promise.all([
-          Employee.create([newEmployee], { session }),
-          User.findOneAndUpdate(
-            { _id: user._id },
-            { $set: { employeeDetails: employeeId } },
-            { new: true, lean: true, session }
-          ),
-        ]);
+        const createEmployee = await Employee.create([newEmployee], {
+          session,
+        });
+        const updateUser = await User.findOneAndUpdate(
+          { _id: user._id },
+          { $set: { employeeDetails: employeeId } },
+          { new: true, lean: true, session },
+        );
 
         if (!createEmployee || !updateUser) {
           await session.abortTransaction();
@@ -300,11 +303,9 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
       }
 
       if (salary) {
-        const salaryValidationResult = (objDefaultValidation as unknown as ObjDefaultValidationType)(
-          salary,
-          reqSalaryFields,
-          []
-        );
+        const salaryValidationResult = (
+          objDefaultValidation as unknown as ObjDefaultValidationType
+        )(salary, reqSalaryFields, []);
         if (salaryValidationResult !== true) {
           return reply.code(400).send({ message: salaryValidationResult });
         }
@@ -328,7 +329,10 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
           return reply.code(404).send({ message: "Employee not found!" });
         }
 
-        if (files && files.length + (employee?.documentsUrl?.length || 0) > 10) {
+        if (
+          files &&
+          files.length + (employee?.documentsUrl?.length || 0) > 10
+        ) {
           await session.abortTransaction();
           return reply.code(400).send({ message: "Max file quantity is 10!" });
         }
@@ -341,13 +345,22 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
           updateEmployeeObj.taxNumber = taxNumber;
         if (joinDate && joinDate.getTime() !== employee.joinDate?.getTime())
           updateEmployeeObj.joinDate = joinDate;
-        if (vacationDaysPerYear && vacationDaysPerYear !== employee.vacationDaysPerYear)
+        if (
+          vacationDaysPerYear &&
+          vacationDaysPerYear !== employee.vacationDaysPerYear
+        )
           updateEmployeeObj.vacationDaysPerYear = vacationDaysPerYear;
         if (active !== undefined && active !== employee.active)
           updateEmployeeObj.active = active;
-        if (contractHoursWeek && contractHoursWeek !== employee.contractHoursWeek)
+        if (
+          contractHoursWeek &&
+          contractHoursWeek !== employee.contractHoursWeek
+        )
           updateEmployeeObj.contractHoursWeek = contractHoursWeek;
-        if (terminatedDate && terminatedDate.getTime() !== employee.terminatedDate?.getTime())
+        if (
+          terminatedDate &&
+          terminatedDate.getTime() !== employee.terminatedDate?.getTime()
+        )
           updateEmployeeObj.terminatedDate = terminatedDate;
         if (comments && comments !== employee.comments)
           updateEmployeeObj.comments = comments;
@@ -369,12 +382,14 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
         ) {
           updateEmployeeObj.vacationDaysLeft = calculateVacationProportional(
             joinDate || employee.joinDate!,
-            vacationDaysPerYear || employee.vacationDaysPerYear
+            vacationDaysPerYear || employee.vacationDaysPerYear,
           );
         }
 
         if (userEmail !== employee?.userId?.personalDetails?.email) {
-          const user = await User.findOne({ "personalDetails.email": userEmail })
+          const user = await User.findOne({
+            "personalDetails.email": userEmail,
+          })
             .select("_id")
             .session(session)
             .lean<IUser | null>();
@@ -391,21 +406,21 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
 
           if (employeeAlreadyExists) {
             await session.abortTransaction();
-            return reply.code(409).send({ message: "User is already an employee!" });
+            return reply
+              .code(409)
+              .send({ message: "User is already an employee!" });
           }
 
-          const [updatedOldUser, updateNewUser] = await Promise.all([
-            User.findOneAndUpdate(
-              { _id: (employee.userId as IUser)._id },
-              { $unset: { employeeDetails: null } },
-              { new: true, lean: true, session }
-            ),
-            User.findOneAndUpdate(
-              { _id: user._id },
-              { $set: { employeeDetails: employeeId } },
-              { new: true, lean: true, session }
-            ),
-          ]);
+          const updatedOldUser = await User.findOneAndUpdate(
+            { _id: (employee.userId as IUser)._id },
+            { $unset: { employeeDetails: null } },
+            { new: true, lean: true, session },
+          );
+          const updateNewUser = await User.findOneAndUpdate(
+            { _id: user._id },
+            { $set: { employeeDetails: employeeId } },
+            { new: true, lean: true, session },
+          );
 
           if (!updatedOldUser || !updateNewUser) {
             await session.abortTransaction();
@@ -444,36 +459,34 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
           ];
         }
 
-        const [updatedEmployee] = await Promise.all([
-          Employee.findOneAndUpdate(
-            { _id: employeeId },
-            { $set: updateEmployeeObj },
-            { new: true, lean: true, session }
-          ),
+        const updatedEmployee = await Employee.findOneAndUpdate(
+          { _id: employeeId },
+          { $set: updateEmployeeObj },
+          { new: true, lean: true, session },
+        );
 
-          active === false
-            ? Printer.updateMany(
+        if (active === false) {
+          await Printer.updateMany(
+            {
+              businessId: employee.businessId,
+              $or: [
+                { employeesAllowedToPrintDataIds: employeeId },
                 {
-                  businessId: employee.businessId,
-                  $or: [
-                    { employeesAllowedToPrintDataIds: employeeId },
-                    {
-                      "configurationSetupToPrintOrders.excludeemployeeIds":
-                        employeeId,
-                    },
-                  ],
+                  "configurationSetupToPrintOrders.excludeemployeeIds":
+                    employeeId,
                 },
-                {
-                  $pull: {
-                    employeesAllowedToPrintDataIds: employeeId,
-                    "configurationSetupToPrintOrders.$[].excludeemployeeIds":
-                      employeeId,
-                  },
-                },
-                { session }
-              )
-            : Promise.resolve(null),
-        ]);
+              ],
+            },
+            {
+              $pull: {
+                employeesAllowedToPrintDataIds: employeeId,
+                "configurationSetupToPrintOrders.$[].excludeemployeeIds":
+                  employeeId,
+              },
+            },
+            { session },
+          );
+        }
 
         if (!updatedEmployee) {
           await session.abortTransaction();
@@ -514,50 +527,53 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
     session.startTransaction();
 
     try {
-      const employee = await Employee.findById(employeeId).session(session).lean<IEmployee>();
+      const employee = await Employee.findById(employeeId)
+        .session(session)
+        .lean<IEmployee>();
 
       if (!employee) {
         await session.abortTransaction();
         return reply.code(404).send({ message: "Employee not found!" });
       }
 
-      const [deletedEmployee, updatePrinter, updateUser] = await Promise.all([
-        Employee.findOneAndDelete({ _id: employeeId }, { session }),
+      const deletedEmployee = await Employee.findOneAndDelete(
+        { _id: employeeId },
+        { session },
+      );
 
-        Printer.updateMany(
-          {
-            businessId: employee.businessId,
-            $or: [
-              { employeesAllowedToPrintDataIds: employeeId },
-              {
-                "configurationSetupToPrintOrders.excludeemployeeIds": employeeId,
-              },
-            ],
-          },
-          {
-            $pull: {
-              employeesAllowedToPrintDataIds: employeeId,
-              "configurationSetupToPrintOrders.$[].excludeemployeeIds":
-                employeeId,
+      const updatePrinter = await Printer.updateMany(
+        {
+          businessId: employee.businessId,
+          $or: [
+            { employeesAllowedToPrintDataIds: employeeId },
+            {
+              "configurationSetupToPrintOrders.excludeemployeeIds": employeeId,
             },
+          ],
+        },
+        {
+          $pull: {
+            employeesAllowedToPrintDataIds: employeeId,
+            "configurationSetupToPrintOrders.$[].excludeemployeeIds":
+              employeeId,
           },
-          { session }
-        ),
+        },
+        { session },
+      );
 
-        User.findOneAndUpdate(
-          { employeeDetails: employeeId },
-          { $unset: { employeeDetails: null } },
-          { new: true, lean: true, session }
-        ),
-      ]);
+      const updateUser = await User.findOneAndUpdate(
+        { employeeDetails: employeeId },
+        { $unset: { employeeDetails: null } },
+        { new: true, lean: true, session },
+      );
 
       if (!deletedEmployee || !updatePrinter || !updateUser) {
         await session.abortTransaction();
         const message = !deletedEmployee
           ? "Employee not found or not deleted"
           : !updatePrinter
-          ? "Printer not updated"
-          : "User not found or not updated";
+            ? "Printer not updated"
+            : "User not found or not updated";
         return reply.code(200).send({ message });
       }
 

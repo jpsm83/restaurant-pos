@@ -799,27 +799,26 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
     session.startTransaction();
 
     try {
-      await Promise.all([
-        Business.deleteOne({ _id: businessId }, { session }),
-        BusinessGood.deleteMany({ businessId }, { session }),
-        DailySalesReport.deleteMany({ businessId }, { session }),
-        Employee.deleteMany({ businessId }, { session }),
-        Inventory.deleteMany({ businessId }, { session }),
-        MonthlyBusinessReport.deleteMany({ businessId }, { session }),
-        Notification.deleteMany({ businessId }, { session }),
-        Order.deleteMany({ businessId }, { session }),
-        Printer.deleteMany({ businessId }, { session }),
-        Promotion.deleteMany({ businessId }, { session }),
-        Purchase.deleteMany({ businessId }, { session }),
-        Rating.deleteMany({ businessId }, { session }),
-        Reservation.deleteMany({ businessId }, { session }),
-        SalesInstance.deleteMany({ businessId }, { session }),
-        SalesPoint.deleteMany({ businessId }, { session }),
-        Schedule.deleteMany({ businessId }, { session }),
-        SupplierGood.deleteMany({ businessId }, { session }),
-        Supplier.deleteMany({ businessId }, { session }),
-        User.deleteMany({ businessId }, { session }),
-      ]);
+      // Sequential writes: MongoDB does not support concurrent use of one session.
+      await Business.deleteOne({ _id: businessId }, { session });
+      await BusinessGood.deleteMany({ businessId }, { session });
+      await DailySalesReport.deleteMany({ businessId }, { session });
+      await Employee.deleteMany({ businessId }, { session });
+      await Inventory.deleteMany({ businessId }, { session });
+      await MonthlyBusinessReport.deleteMany({ businessId }, { session });
+      await Notification.deleteMany({ businessId }, { session });
+      await Order.deleteMany({ businessId }, { session });
+      await Printer.deleteMany({ businessId }, { session });
+      await Promotion.deleteMany({ businessId }, { session });
+      await Purchase.deleteMany({ businessId }, { session });
+      await Rating.deleteMany({ businessId }, { session });
+      await Reservation.deleteMany({ businessId }, { session });
+      await SalesInstance.deleteMany({ businessId }, { session });
+      await SalesPoint.deleteMany({ businessId }, { session });
+      await Schedule.deleteMany({ businessId }, { session });
+      await SupplierGood.deleteMany({ businessId }, { session });
+      await Supplier.deleteMany({ businessId }, { session });
+      await User.deleteMany({ businessId }, { session });
 
       await session.commitTransaction();
 

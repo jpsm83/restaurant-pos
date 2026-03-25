@@ -9,7 +9,7 @@
 
 import Employee from "../models/employee.ts";
 import Schedule from "../models/schedule.ts";
-import type { Types } from "mongoose";
+import type { ClientSession, Types } from "mongoose";
 import * as enums from "../../../packages/enums.ts";
 
 const { managementRolesEnums } = enums;
@@ -28,10 +28,13 @@ export interface CanLogAsEmployeeResult {
 export default async function canLogAsEmployee(
   employeeId: Types.ObjectId | string,
   now?: Date,
+  session?: ClientSession,
 ): Promise<CanLogAsEmployeeResult> {
-  const employee = (await Employee.findById(employeeId)
+  let employeeQuery = Employee.findById(employeeId)
     .select("businessId active terminatedDate allEmployeeRoles")
-    .lean()) as {
+    .lean();
+  if (session) employeeQuery = employeeQuery.session(session);
+  const employee = (await employeeQuery) as {
     businessId: unknown;
     active?: boolean;
     terminatedDate?: unknown;
@@ -56,12 +59,14 @@ export default async function canLogAsEmployee(
   const endOfDay = new Date(startOfDay);
   endOfDay.setDate(endOfDay.getDate() + 1);
 
-  const schedule = (await Schedule.findOne({
+  let scheduleQuery = Schedule.findOne({
     businessId: employee.businessId,
     date: { $gte: startOfDay, $lt: endOfDay },
   })
     .select("employeesSchedules")
-    .lean()) as {
+    .lean();
+  if (session) scheduleQuery = scheduleQuery.session(session);
+  const schedule = (await scheduleQuery) as {
     employeesSchedules?: Array<{
       employeeId: unknown;
       vacation?: boolean;

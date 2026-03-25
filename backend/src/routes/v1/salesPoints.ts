@@ -25,13 +25,8 @@ export const salesPointsRoutes: FastifyPluginAsync = async (app) => {
   app.post("/", async (req, reply) => {
     try {
       const body = req.body as ISalesPoint;
-      const {
-        salesPointName,
-        salesPointType,
-        selfOrdering,
-        qrEnabled,
-        businessId,
-      } = body ?? {};
+      const { salesPointName, salesPointType, selfOrdering, businessId } =
+        body ?? {};
 
       if (!salesPointName || !businessId) {
         return reply.code(400).send({
@@ -86,7 +81,6 @@ export const salesPointsRoutes: FastifyPluginAsync = async (app) => {
         salesPointName,
         salesPointType: normalizedType,
         selfOrdering: selfOrdering !== undefined ? selfOrdering : false,
-        qrEnabled: qrEnabled !== undefined ? qrEnabled : true,
         businessId,
       };
 
@@ -145,8 +139,7 @@ export const salesPointsRoutes: FastifyPluginAsync = async (app) => {
       const salesPointId = params.salesPointId;
 
       const body = req.body as ISalesPoint;
-      const { salesPointName, salesPointType, selfOrdering, qrEnabled } =
-        body ?? {};
+      const { salesPointName, salesPointType, selfOrdering } = body ?? {};
 
       if (
         salesPointType !== undefined &&
@@ -189,7 +182,6 @@ export const salesPointsRoutes: FastifyPluginAsync = async (app) => {
         updatedSalesPoint.salesPointType = salesPointType.toLowerCase();
       if (selfOrdering !== undefined)
         updatedSalesPoint.selfOrdering = selfOrdering;
-      if (qrEnabled !== undefined) updatedSalesPoint.qrEnabled = qrEnabled;
 
       await SalesPoint.updateOne(
         { _id: salesPointId },

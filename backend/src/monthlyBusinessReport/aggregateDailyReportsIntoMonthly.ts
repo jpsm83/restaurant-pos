@@ -188,39 +188,42 @@ const aggregateDailyReportsIntoMonthly = async (
       }
     }
 
-    const [
-      dailyReports,
-      schedules,
-      existingReport,
-      supplierWasteAnalysis,
-      businessDoc,
-    ] = await Promise.all([
-      DailySalesReport.find({
-        businessId,
-        createdAt: { $gte: monthStart, $lte: monthEnd },
-        dailyNetPaidAmount: { $exists: true, $ne: null },
-      })
-        .select(
-          "dailyTotalSalesBeforeAdjustments dailyNetPaidAmount dailyCostOfGoodsSold dailyTipsReceived dailyTotalVoidValue dailyTotalInvitedValue dailyCustomersServed dailyPosSystemCommission businessPaymentMethods dailySoldGoods dailyVoidedGoods dailyInvitedGoods",
-        )
-        .session(session)
-        .lean(),
-      Schedule.find({
-        businessId,
-        date: { $gte: monthStart, $lte: monthEnd },
-      })
-        .select("totalDayEmployeesCost")
-        .session(session)
-        .lean(),
-      MonthlyBusinessReport.findById(reportId)
-        .select(
-          "costBreakdown.totalFixedOperatingCost costBreakdown.totalExtraCost",
-        )
-        .session(session)
-        .lean(),
-      getWasteByBudgetImpactForMonth(businessId, monthStart),
-      Business.findById(businessId).select("metrics").session(session).lean(),
-    ]);
+    // Sequential reads on `session`: one ClientSession must not run operations in parallel.
+    const dailyReports = await DailySalesReport.find({
+      businessId,
+      createdAt: { $gte: monthStart, $lte: monthEnd },
+      dailyNetPaidAmount: { $exists: true, $ne: null },
+    })
+      .select(
+        "dailyTotalSalesBeforeAdjustments dailyNetPaidAmount dailyCostOfGoodsSold dailyTipsReceived dailyTotalVoidValue dailyTotalInvitedValue dailyCustomersServed dailyPosSystemCommission businessPaymentMethods dailySoldGoods dailyVoidedGoods dailyInvitedGoods",
+      )
+      .session(session)
+      .lean();
+
+    const schedules = await Schedule.find({
+      businessId,
+      date: { $gte: monthStart, $lte: monthEnd },
+    })
+      .select("totalDayEmployeesCost")
+      .session(session)
+      .lean();
+
+    const existingReport = await MonthlyBusinessReport.findById(reportId)
+      .select(
+        "costBreakdown.totalFixedOperatingCost costBreakdown.totalExtraCost",
+      )
+      .session(session)
+      .lean();
+
+    const supplierWasteAnalysis = await getWasteByBudgetImpactForMonth(
+      businessId,
+      monthStart,
+    );
+
+    const businessDoc = await Business.findById(businessId)
+      .select("metrics")
+      .session(session)
+      .lean();
 
     let totalSalesForMonth = 0;
     let totalNetRevenue = 0;

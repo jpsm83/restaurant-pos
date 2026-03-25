@@ -63,10 +63,11 @@ reservations has lots of logic for send email an notifications but many other fe
 - REVIEW ALL THE LOGIC OF SALES INSTANCES AND SALES POINT - DONE
 - them review the cloudinary upload of sales point - DONE
 
-- review all functions that need session as parameter
-- daily saler report have to be tested once we got all the models tested and with data
+- review all functions that need session as parameter - DONE
+- review all the routes that uses promise.all and session once they cannot work toguether ("In MongoDB, when you’re using a session (especially inside a transaction), running operations in parallel (e.g., with Promise.all) on the same session is not supported and leads to undefined behavior.") - DONE
+
+- daily sales report have to be reviewed and tested once we got all the models tested and with data
 - transform cloudinaryActions route to be a function to be used in all the creations that could have images
-- when a salesInstance is created by client using qrCode, update the qrLastScanned of the salesPoint
 - add collor themes for the types of businessGoods (or photo)
 
 - must review the file app/api/v1/monthlyBusinessReport/toDo.md

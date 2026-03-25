@@ -20,6 +20,41 @@ let mongoReplSet: MongoMemoryReplSet | null = null;
 let testApp: FastifyInstance | null = null;
 
 /**
+ * Wait until the in-memory replica set has elected a PRIMARY.
+ * Avoids intermittent transaction / catalog errors right after `connect()`.
+ */
+async function waitForReplicaSetPrimary(
+  maxWaitMs = 30_000,
+  pollMs = 50,
+) {
+  const db = mongoose.connection.db;
+  if (!db) {
+    throw new Error("Mongoose has no database handle after connect");
+  }
+  const started = Date.now();
+  while (Date.now() - started < maxWaitMs) {
+    try {
+      const status = (await db.admin().command({ replSetGetStatus: 1 })) as {
+        members?: Array<{ stateStr?: string }>;
+      };
+      const hasPrimary =
+        Array.isArray(status.members) &&
+        status.members.some((m) => m.stateStr === "PRIMARY");
+      if (hasPrimary) {
+        await db.admin().command({ ping: 1 });
+        return;
+      }
+    } catch {
+      // Repl set or command not ready yet
+    }
+    await new Promise((r) => setTimeout(r, pollMs));
+  }
+  throw new Error(
+    `MongoDB replica set: no PRIMARY after ${maxWaitMs}ms (transactions need a primary)`,
+  );
+}
+
+/**
  * Get the test Fastify app instance (creates one if needed)
  */
 export async function getTestApp(): Promise<FastifyInstance> {
@@ -64,6 +99,16 @@ beforeAll(async () => {
   
   // Connect mongoose to in-memory replica set
   await mongoose.connect(mongoUri);
+  await waitForReplicaSetPrimary();
+  // In-memory mongo defaults to very short lock waits; under CI load this spuriously fails txns/tests.
+  try {
+    await mongoose.connection.db?.admin().command({
+      setParameter: 1,
+      maxTransactionLockRequestTimeoutMillis: 500,
+    } as Record<string, unknown>);
+  } catch {
+    // Non-fatal if repl set build forbids setParameter
+  }
 });
 
 /**

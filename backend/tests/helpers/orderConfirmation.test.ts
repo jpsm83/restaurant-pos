@@ -19,9 +19,11 @@ describe("Order Confirmation Communication", () => {
       orderCount: 2,
     });
 
-    expect(message).toBe(
-      "Order confirmed. Ref: 12345. Total paid: 19.50. Show this to staff when collecting your order."
-    );
+    expect(message).toContain("Order confirmed.");
+    expect(message).toContain("Ref: 12345");
+    expect(message).toContain("Items: 2");
+    expect(message).toContain("Total paid: 19.50");
+    expect(message).toContain("Keep this receipt for your records.");
   });
 
   it("sendOrderConfirmation stays non-blocking on dispatch failure", async () => {

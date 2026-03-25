@@ -464,18 +464,17 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
     session.startTransaction();
 
     try {
-      const [schedule, employee] = await Promise.all([
-        Schedule.findById(scheduleId)
-          .select(
-            "employeesSchedules._id employeesSchedules.employeeId employeesSchedules.vacation employeesSchedules.timeRange employeesSchedules.employeeCost",
-          )
-          .session(session)
-          .lean<ISchedule | null>(),
-        Employee.findById(employeeId)
-          .select("salary.grossSalary salary.payFrequency")
-          .session(session)
-          .lean<IEmployee | null>(),
-      ]);
+      const schedule = await Schedule.findById(scheduleId)
+        .select(
+          "employeesSchedules._id employeesSchedules.employeeId employeesSchedules.vacation employeesSchedules.timeRange employeesSchedules.employeeCost",
+        )
+        .session(session)
+        .lean<ISchedule | null>();
+
+      const employee = await Employee.findById(employeeId)
+        .select("salary.grossSalary salary.payFrequency")
+        .session(session)
+        .lean<IEmployee | null>();
 
       if (!schedule) {
         await session.abortTransaction();

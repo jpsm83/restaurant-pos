@@ -163,6 +163,7 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
         const createdByRole = await getEffectiveUserRoleAtTime({
           userId: createdByUserId,
           businessId: businessId as Types.ObjectId,
+          session,
         });
 
         const effectiveReservationStart = new Date(reservationStart);
@@ -311,6 +312,7 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
           const effectiveRole = await getEffectiveUserRoleAtTime({
             userId: sessionUserId,
             businessId: reservation.businessId as Types.ObjectId,
+            session,
           });
 
           if (effectiveRole !== "employee") {

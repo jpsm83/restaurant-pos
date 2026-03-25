@@ -26,6 +26,8 @@ export interface IPromotionPricingInput {
     Pick<
       Partial<IOrder>,
       | "orderGrossPrice"
+      | "orderNetPrice"
+      | "orderCostPrice"
       | "businessGoodId"
       | "addOns"
       | "promotionApplyed"
@@ -45,6 +47,7 @@ export interface IPromotionPricingInput {
 export interface IPricedOrderOutput {
   orderGrossPrice: number;
   orderNetPrice: number;
+  orderCostPrice?: number;
   businessGoodId: ObjectId;
   addOns?: ObjectId[];
   promotionApplyed?: string;

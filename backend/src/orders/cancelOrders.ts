@@ -40,26 +40,24 @@ const cancelOrders = async (
       );
     }
 
-    const [salesInstance1, salesInstance2, order] = await Promise.all([
-      SalesInstance.updateMany(
-        {
-          _id: salesInstanceId,
-          "salesGroup.ordersIds": { $in: ordersIdsArr },
-        },
-        { $pull: { "salesGroup.$.ordersIds": { $in: ordersIdsArr } } },
-        { session }
-      ),
+    const salesInstance1 = await SalesInstance.updateMany(
+      {
+        _id: salesInstanceId,
+        "salesGroup.ordersIds": { $in: ordersIdsArr },
+      },
+      { $pull: { "salesGroup.$.ordersIds": { $in: ordersIdsArr } } },
+      { session },
+    );
 
-      SalesInstance.updateMany(
-        { _id: salesInstanceId },
-        { $pull: { salesGroup: { ordersIds: { $size: 0 } } } },
-        { session }
-      ),
+    const salesInstance2 = await SalesInstance.updateMany(
+      { _id: salesInstanceId },
+      { $pull: { salesGroup: { ordersIds: { $size: 0 } } } },
+      { session },
+    );
 
-      Order.deleteMany({
-        _id: { $in: ordersIdsArr },
-      }).session(session),
-    ]);
+    const order = await Order.deleteMany({
+      _id: { $in: ordersIdsArr },
+    }).session(session);
 
     if (salesInstance1.modifiedCount !== 1) {
       return "Cancel order failed, salesInstance not updated!";

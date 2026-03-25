@@ -23,8 +23,9 @@ export default defineConfig({
     // Disable coverage output so Vitest doesn't generate `backend/coverage/` during regular runs.
     coverage: { enabled: false },
     
-    // Run tests sequentially for database operations
+    // Run tests sequentially for database operations (Vitest 4: also forces a single worker).
     fileParallelism: false,
+    maxWorkers: 1,
   },
   
   resolve: {

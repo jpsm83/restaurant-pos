@@ -15,6 +15,7 @@ import { createAuthHook } from "../../auth/middleware.ts";
 import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
 import deleteFilesCloudinary from "../../cloudinary/deleteFilesCloudinary.ts";
 import * as enums from "../../../../packages/enums.ts";
+import { runTxnWithTransientRetry } from "../../mongo/runTxnWithTransientRetry.ts";
 
 const { managementRolesEnums } = enums;
 
@@ -596,31 +597,29 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
       const quantityPurchased =
         purchaseItem?.purchaseInventoryItems?.[0].quantityPurchased ?? 0;
 
-      const [updatePurchase, updatedInventory] = await Promise.all([
-        Purchase.findOneAndUpdate(
-          { _id: purchaseId },
-          {
-            $pull: { purchaseInventoryItems: { _id: purchaseInventoryItemsId } },
-            $inc: { totalAmount: -quantityPurchased },
-          },
-          { new: true, lean: true, session }
-        ).select("businessId"),
+      const updatePurchase = await Purchase.findOneAndUpdate(
+        { _id: purchaseId },
+        {
+          $pull: { purchaseInventoryItems: { _id: purchaseInventoryItemsId } },
+          $inc: { totalAmount: -quantityPurchased },
+        },
+        { new: true, lean: true, session },
+      ).select("businessId");
 
-        Inventory.findOneAndUpdate(
-          {
-            businessId: purchaseItem.businessId,
-            "inventoryGoods.supplierGoodId":
-              purchaseItem?.purchaseInventoryItems?.[0].supplierGoodId,
-            setFinalCount: false,
+      const updatedInventory = await Inventory.findOneAndUpdate(
+        {
+          businessId: purchaseItem.businessId,
+          "inventoryGoods.supplierGoodId":
+            purchaseItem?.purchaseInventoryItems?.[0].supplierGoodId,
+          setFinalCount: false,
+        },
+        {
+          $inc: {
+            "inventoryGoods.$.dynamicSystemCount": -quantityPurchased,
           },
-          {
-            $inc: {
-              "inventoryGoods.$.dynamicSystemCount": -quantityPurchased,
-            },
-          },
-          { new: true, lean: true, session }
-        ),
-      ]);
+        },
+        { new: true, lean: true, session },
+      );
 
       if (!updatePurchase) {
         await session.abortTransaction();
@@ -733,18 +732,15 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
       });
     }
 
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
     try {
-      const previousQuantity =
-        purchaseItem?.purchaseInventoryItems?.[0].quantityPurchased ?? 0;
-      const previousPrice =
-        purchaseItem?.purchaseInventoryItems?.[0].purchasePrice ?? 0;
+      const txnOut = await runTxnWithTransientRetry(async (session) => {
+        const previousQuantity =
+          purchaseItem?.purchaseInventoryItems?.[0].quantityPurchased ?? 0;
+        const previousPrice =
+          purchaseItem?.purchaseInventoryItems?.[0].purchasePrice ?? 0;
 
-      const now = new Date();
-      const [updatePurchase, updatedInventory] = await Promise.all([
-        Purchase.findOneAndUpdate(
+        const now = new Date();
+        const updatePurchase = await Purchase.findOneAndUpdate(
           {
             _id: purchaseId,
             "purchaseInventoryItems._id": purchaseInventoryItemsId,
@@ -763,10 +759,18 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
               totalAmount: (newPurchasePrice ?? 0) - previousPrice,
             },
           },
-          { new: true, lean: true, session }
-        ).select("businessId"),
+          { new: true, lean: true, session },
+        ).select("businessId");
 
-        Inventory.findOneAndUpdate(
+        if (!updatePurchase) {
+          return {
+            type: "http" as const,
+            status: 404,
+            body: { message: "Purchase not found!" },
+          };
+        }
+
+        const updatedInventory = await Inventory.findOneAndUpdate(
           {
             businessId: purchaseItem.businessId,
             "inventoryGoods.supplierGoodId":
@@ -779,35 +783,31 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
                 (newQuantityPurchased ?? 0) - previousQuantity,
             },
           },
-          { new: true, lean: true, session }
-        ),
-      ]);
+          { new: true, lean: true, session },
+        );
 
-      if (!updatePurchase) {
-        await session.abortTransaction();
-        return reply.code(404).send({ message: "Purchase not found!" });
+        if (!updatedInventory) {
+          return {
+            type: "http" as const,
+            status: 404,
+            body: { message: "Inventory not found or update failed." },
+          };
+        }
+
+        return { type: "commit" as const, value: undefined };
+      });
+
+      if (txnOut.type === "http") {
+        return reply.code(txnOut.status).send(txnOut.body);
       }
-
-      if (!updatedInventory) {
-        await session.abortTransaction();
-        return reply.code(404).send({
-          message: "Inventory not found or update failed.",
-        });
-      }
-
-      await session.commitTransaction();
-
       return reply.code(200).send({
         message: "Supplier good line updated successfully!",
       });
     } catch (error) {
-      await session.abortTransaction();
       return reply.code(500).send({
-        message: "Add supplierGood to purchase failed!",
+        message: "Edit supplier good on purchase failed!",
         error: error instanceof Error ? error.message : error,
       });
-    } finally {
-      session.endSession();
     }
   });
 

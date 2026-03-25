@@ -25,6 +25,7 @@ const createOrders = async (
       businessId,
     })
       .select("salesInstanceStatus salesPointId")
+      .session(session)
       .lean()) as unknown as Pick<
       ISalesInstance,
       "salesInstanceStatus" | "salesPointId"
@@ -42,7 +43,7 @@ const createOrders = async (
     const salesPointOk = await SalesPoint.exists({
       _id: salesInstance.salesPointId,
       businessId,
-    });
+    }).session(session);
 
     if (!salesPointOk) {
       return "SalesPoint not found for this business!";
@@ -122,18 +123,16 @@ const createOrders = async (
       .lean()) as unknown as { _id: Types.ObjectId } | null;
 
     if (reservation) {
-      await Promise.all([
-        SalesInstance.updateOne(
-          { _id: salesInstanceId, reservationId: { $exists: false } },
-          { $set: { reservationId: reservation._id } },
-          { session }
-        ),
-        Reservation.updateOne(
-          { _id: reservation._id },
-          { $set: { status: "Seated" } },
-          { session }
-        ),
-      ]);
+      await SalesInstance.updateOne(
+        { _id: salesInstanceId, reservationId: { $exists: false } },
+        { $set: { reservationId: reservation._id } },
+        { session },
+      );
+      await Reservation.updateOne(
+        { _id: reservation._id },
+        { $set: { status: "Seated" } },
+        { session },
+      );
     }
 
     return ordersCreated;

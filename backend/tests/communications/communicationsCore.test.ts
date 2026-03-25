@@ -192,8 +192,9 @@ describe("Communications Core - Template Builders", () => {
     const weekly = buildWeeklyReportReadyTemplate("2026-W12");
     const monthly = buildMonthlyReportReadyTemplate("2026-03");
 
-    expect(order).toContain("Order confirmed. Ref: A-1.");
-    expect(order).toContain("Total paid: 9.50.");
+    expect(order).toContain("Order confirmed.");
+    expect(order).toContain("Ref: A-1");
+    expect(order).toContain("Total paid: 9.50");
     expect(weekly).toBe("Weekly business report for 2026-W12 is ready.");
     expect(monthly).toBe(
       "Monthly business report for 2026-03 is ready to be reviewed."

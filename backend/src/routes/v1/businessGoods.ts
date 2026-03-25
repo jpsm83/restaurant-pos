@@ -638,17 +638,15 @@ export const businessGoodsRoutes: FastifyPluginAsync = async (app) => {
     session.startTransaction();
 
     try {
-      const [businessGoodInOrders, businessGoodInSetMenu] = await Promise.all([
-        Order.exists({
-          $or: [
-            { businessGoodId, billingStatus: "Open" },
-            { addOns: businessGoodId, billingStatus: "Open" },
-          ],
-        }).session(session),
-        BusinessGood.exists({
-          setMenuIds: businessGoodId,
-        }).session(session),
-      ]);
+      const businessGoodInOrders = await Order.exists({
+        $or: [
+          { businessGoodId, billingStatus: "Open" },
+          { addOns: businessGoodId, billingStatus: "Open" },
+        ],
+      }).session(session);
+      const businessGoodInSetMenu = await BusinessGood.exists({
+        setMenuIds: businessGoodId,
+      }).session(session);
 
       if (businessGoodInOrders || businessGoodInSetMenu) {
         await session.abortTransaction();
@@ -659,14 +657,15 @@ export const businessGoodsRoutes: FastifyPluginAsync = async (app) => {
         });
       }
 
-      const [deletedBusinessGood] = await Promise.all([
-        BusinessGood.findOneAndDelete({ _id: businessGoodId }, { session }),
-        Promotion.updateMany(
-          { businessGoodsToApplyIds: businessGoodId },
-          { $pull: { businessGoodsToApplyIds: businessGoodId } },
-          { session },
-        ),
-      ]);
+      const deletedBusinessGood = await BusinessGood.findOneAndDelete(
+        { _id: businessGoodId },
+        { session },
+      );
+      await Promotion.updateMany(
+        { businessGoodsToApplyIds: businessGoodId },
+        { $pull: { businessGoodsToApplyIds: businessGoodId } },
+        { session },
+      );
 
       if (!deletedBusinessGood) {
         await session.abortTransaction();

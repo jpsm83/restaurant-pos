@@ -2,6 +2,7 @@ import { ClientSession, Types } from "mongoose";
 import type { ISalesInstance } from "../../../packages/interfaces/ISalesInstance.ts";
 import SalesInstance from "../models/salesInstance.ts";
 import DailySalesReport from "../models/dailySalesReport.ts";
+import { isTransientMongoClusterError } from "../mongo/transientClusterError.ts";
 
 const createSalesInstance = async (
   newSalesInstanceObj: ISalesInstance,
@@ -58,6 +59,9 @@ const createSalesInstance = async (
 
     return newSalesInstance[0];
   } catch (error) {
+    if (isTransientMongoClusterError(error)) {
+      throw error;
+    }
     return "Create sales instance failed! " + error;
   }
 };

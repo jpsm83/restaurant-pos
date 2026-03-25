@@ -8,6 +8,7 @@ import Employee from "../../models/employee.ts";
 import Business from "../../models/business.ts";
 import User from "../../models/user.ts";
 import notificationService from "../../communications/services/notificationService.ts";
+import { runTxnWithTransientRetry } from "../../mongo/runTxnWithTransientRetry.ts";
 
 const LOG_SCOPE = "communications.notifications.route";
 const ROUTE_SOURCE = "manual_notifications_route";
@@ -226,52 +227,59 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
       });
     }
 
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
     try {
-      const business = await Business.exists({ _id: businessId }).session(
-        session,
-      );
-      const employeesCount = employeesRecipientsIds
-        ? await Employee.countDocuments({ _id: { $in: recipientIds } }).session(
-            session,
-          )
-        : 0;
-      const customersCount = customersRecipientsIds
-        ? await User.countDocuments({ _id: { $in: recipientIds } }).session(
-            session,
-          )
-        : 0;
+      const txnOut = await runTxnWithTransientRetry(async (session) => {
+        const business = await Business.exists({ _id: businessId }).session(
+          session,
+        );
+        const employeesCount = employeesRecipientsIds
+          ? await Employee.countDocuments({
+              _id: { $in: recipientIds },
+            }).session(session)
+          : 0;
+        const customersCount = customersRecipientsIds
+          ? await User.countDocuments({ _id: { $in: recipientIds } }).session(
+              session,
+            )
+          : 0;
 
-      if (
-        (employeesRecipientsIds && employeesCount !== recipientIds.length) ||
-        (customersRecipientsIds && customersCount !== recipientIds.length)
-      ) {
-        await session.abortTransaction();
-        return reply
-          .code(400)
-          .send({ message: "One or more recipients do not exist!" });
-      }
+        if (
+          (employeesRecipientsIds && employeesCount !== recipientIds.length) ||
+          (customersRecipientsIds && customersCount !== recipientIds.length)
+        ) {
+          return {
+            type: "http" as const,
+            status: 400,
+            body: { message: "One or more recipients do not exist!" },
+          };
+        }
 
-      if (!business) {
-        await session.abortTransaction();
-        return reply.code(404).send({ message: "Business not found!" });
-      }
+        if (!business) {
+          return {
+            type: "http" as const,
+            status: 404,
+            body: { message: "Business not found!" },
+          };
+        }
 
-      await notificationService.createAndDeliver({
-        notificationType: notificationType as NotificationType | undefined,
-        message,
-        businessId,
-        senderId: senderId || undefined,
-        recipients: employeesRecipientsIds
-          ? { employeeIds: employeesRecipientsIds as Types.ObjectId[] }
-          : { customerUserIds: customersRecipientsIds as Types.ObjectId[] },
-        correlationId,
-        session,
+        await notificationService.createAndDeliver({
+          notificationType: notificationType as NotificationType | undefined,
+          message,
+          businessId,
+          senderId: senderId || undefined,
+          recipients: employeesRecipientsIds
+            ? { employeeIds: employeesRecipientsIds as Types.ObjectId[] }
+            : { customerUserIds: customersRecipientsIds as Types.ObjectId[] },
+          correlationId,
+          session,
+        });
+
+        return { type: "commit" as const, value: undefined };
       });
 
-      await session.commitTransaction();
+      if (txnOut.type === "http") {
+        return reply.code(txnOut.status).send(txnOut.body);
+      }
 
       app.log.info({
         scope: LOG_SCOPE,
@@ -289,7 +297,6 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
         message: "Notification message created and sent",
       });
     } catch (error) {
-      await session.abortTransaction();
       app.log.error({
         scope: LOG_SCOPE,
         source: ROUTE_SOURCE,
@@ -306,8 +313,6 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
         message: "Create notification failed!",
         error: error instanceof Error ? error.message : error,
       });
-    } finally {
-      session.endSession();
     }
   });
 
@@ -413,19 +418,22 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
         ? "employeesRecipientsIds"
         : "customersRecipientsIds";
 
-      const [notification, validRecipients] = await Promise.all([
-        Notification.findById(notificationId)
-          .select(`${notificationField} message`)
-          .lean()
-          .session(session) as Promise<{
-            message?: string;
-            employeesRecipientsIds?: Types.ObjectId[];
-            customersRecipientsIds?: Types.ObjectId[];
-          } | null>,
-        RecipientsModel.find({ _id: { $in: objectIds } }, null, {
+      const notification = (await Notification.findById(notificationId)
+        .select(`${notificationField} message`)
+        .lean()
+        .session(session)) as {
+        message?: string;
+        employeesRecipientsIds?: Types.ObjectId[];
+        customersRecipientsIds?: Types.ObjectId[];
+      } | null;
+
+      const validRecipients = await RecipientsModel.find(
+        { _id: { $in: objectIds } },
+        null,
+        {
           lean: true,
-        }).session(session),
-      ]);
+        },
+      ).session(session);
 
       if (!notification || validRecipients.length !== objectIds.length) {
         await session.abortTransaction();
@@ -495,38 +503,38 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
           .filter(Boolean);
       }
 
-      const notificationUpdatePromise =
+      const updatedNotification =
         Object.keys(updateNotification).length > 0
-          ? Notification.updateOne(
+          ? await Notification.updateOne(
               { _id: notificationId },
               { $set: updateNotification },
               { session },
             )
-          : Promise.resolve({ acknowledged: true });
+          : { acknowledged: true };
 
-      const [updatedNotification, employeeNotificationAdded, employeeNotificationRemoved, employeeFlagUpdated] = await Promise.all([
-        notificationUpdatePromise,
-
+      const employeeNotificationAdded =
         addedRecipientUserIds.length > 0
-          ? User.updateMany(
+          ? await User.updateMany(
               { _id: { $in: addedRecipientUserIds } },
               { $push: { notifications: { notificationId } } },
               { session },
             )
-          : Promise.resolve(true),
+          : true;
 
+      const employeeNotificationRemoved =
         removedRecipientUserIds.length > 0
-          ? User.updateMany(
+          ? await User.updateMany(
               { _id: { $in: removedRecipientUserIds } },
               { $pull: { notifications: { notificationId } } },
               { session },
             )
-          : Promise.resolve(true),
+          : true;
 
+      const employeeFlagUpdated =
         unchangedRecipientUserIds.length > 0 &&
         typeof message === "string" &&
         notification.message !== message
-          ? User.updateMany(
+          ? await User.updateMany(
               {
                 _id: { $in: unchangedRecipientUserIds },
                 "notifications.notificationId": notificationId,
@@ -539,8 +547,7 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
               },
               { session },
             )
-          : Promise.resolve(true),
-      ]);
+          : true;
 
       if (
         !updatedNotification ||

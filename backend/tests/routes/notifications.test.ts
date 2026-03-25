@@ -543,7 +543,7 @@ describe("Notifications Routes", () => {
         },
       });
 
-      expect(patchResponse.statusCode).toBe(200);
+      expect(patchResponse.statusCode, patchResponse.body).toBe(200);
       const body = JSON.parse(patchResponse.body);
       expect(body.message).toContain("updated");
 

@@ -7,10 +7,8 @@ const SalesPointSchema = new Schema(
       required: [true, "Sales point name is required!"],
     }, // name of the location sale reference - ex: 101
     salesPointType: { type: String }, // table, room, bar, seat, delivery, etc. "delivery" = virtual sales point for delivery orders (no physical table/QR)
-    selfOrdering: { type: Boolean, default: false }, // manager decision if location can order by itself using QR code
-    qrCode: { type: String }, // auto created QR code for the location
-    qrEnabled: { type: Boolean, default: true }, // QR code enabled or disabled - when QR is scanned, it will be disabled and a timer on the frontend will set, if the timer expires, the frontend page will close and the QR code will be enabled again - only if selfOrdering is true
-    qrLastScanned: { type: Date }, // last time the QR code was scanned
+    selfOrdering: { type: Boolean, default: false }, // manager toggles customer QR self-order for this location; server gates self-order endpoints on this flag only
+    qrCode: { type: String }, // Cloudinary URL (or placeholder) for the table QR; generated on create for non-delivery points
     businessId: {
       type: Schema.Types.ObjectId,
       ref: "Business",

@@ -23,6 +23,11 @@ import Business from "../../models/business.ts";
 import createDailySalesReport from "../../dailySalesReports/createDailySalesReport.ts";
 import createSalesInstance from "../../salesInstances/createSalesInstance.ts";
 import {
+  runEmployeeSalesInstanceTxn,
+  type EmployeeSalesTxnResult,
+} from "../../salesInstances/runEmployeeSalesInstanceTxn.ts";
+import { isTransientMongoClusterError } from "../../mongo/transientClusterError.ts";
+import {
   pointBusyForCustomerSelfOrder,
   pointBusyForEmployee,
 } from "../../salesInstances/salesInstanceConflicts.ts";
@@ -133,41 +138,39 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
         });
       }
 
-      const session = await mongoose.startSession();
-      session.startTransaction();
+      const salesPointExists = await SalesPoint.exists({
+        _id: salesPointId,
+        businessId: businessId as Types.ObjectId,
+      });
+      if (!salesPointExists) {
+        return reply.code(404).send({
+          message:
+            "Sales point does not belong to this business (or does not exist)!",
+        });
+      }
 
-      try {
-        const [salesPointExists, dailySalesReport] = await Promise.all([
-          SalesPoint.exists({
-            _id: salesPointId,
-            businessId: businessId as Types.ObjectId,
-          }).session(session),
-          DailySalesReport.findOne({
-            isDailyReportOpen: true,
-            businessId: businessId as Types.ObjectId,
-          })
-            .select("dailyReferenceNumber")
-            .session(session)
-            .lean() as unknown as Promise<IDailySalesReport | null>,
-        ]);
-
-        if (!salesPointExists) {
-          await session.abortTransaction();
-          return reply
-            .code(404)
-            .send({
-              message:
-                "Sales point does not belong to this business (or does not exist)!",
-            });
-        }
+      const outcome = await runEmployeeSalesInstanceTxn(async (session) => {
+        const dailySalesReport = (await DailySalesReport.findOne({
+          isDailyReportOpen: true,
+          businessId: businessId as Types.ObjectId,
+        })
+          .select("dailyReferenceNumber")
+          .session(session)
+          .lean()) as unknown as IDailySalesReport | null;
 
         const dailyReferenceNumber = dailySalesReport
           ? (dailySalesReport as any).dailyReferenceNumber
           : await createDailySalesReport(businessId as any, session);
 
         if (typeof dailyReferenceNumber === "string") {
-          await session.abortTransaction();
-          return reply.code(400).send({ message: dailyReferenceNumber });
+          if (isTransientMongoClusterError(dailyReferenceNumber)) {
+            throw new Error(dailyReferenceNumber);
+          }
+          return {
+            kind: "response" as const,
+            status: 400,
+            body: { message: dailyReferenceNumber },
+          };
         }
 
         const existingOpen = await pointBusyForEmployee({
@@ -177,10 +180,13 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
         });
 
         if (existingOpen) {
-          await session.abortTransaction();
-          return reply.code(409).send({
-            message: "SalesInstance already exists and it is not closed!",
-          });
+          return {
+            kind: "response" as const,
+            status: 409,
+            body: {
+              message: "SalesInstance already exists and it is not closed!",
+            },
+          };
         }
 
         const newSalesInstanceObj: ISalesInstance = {
@@ -196,20 +202,25 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
 
         const result = await createSalesInstance(newSalesInstanceObj, session);
         if (typeof result === "string") {
-          await session.abortTransaction();
-          return reply.code(400).send({ message: result });
+          if (isTransientMongoClusterError(result)) {
+            throw new Error(result);
+          }
+          return {
+            kind: "response" as const,
+            status: 400,
+            body: { message: result },
+          };
         }
 
-        await session.commitTransaction();
-        return reply
-          .code(201)
-          .send({ message: "SalesInstance created successfully!" });
-      } catch (e) {
-        await session.abortTransaction();
-        throw e;
-      } finally {
-        session.endSession();
+        return { kind: "committed" as const };
+      });
+
+      if (outcome.kind === "response") {
+        return reply.code(outcome.status).send(outcome.body);
       }
+      return reply
+        .code(201)
+        .send({ message: "SalesInstance created successfully!" });
     },
   );
 
@@ -943,10 +954,12 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
         });
       }
 
-      const session = await mongoose.startSession();
-      session.startTransaction();
+      type OpenTableTxnOutcome = Extract<
+        EmployeeSalesTxnResult,
+        { kind: "response" } | { kind: "created" }
+      >;
 
-      try {
+      const openOutcome = (await runEmployeeSalesInstanceTxn(async (session) => {
         const dailySalesReport = (await DailySalesReport.findOne({
           isDailyReportOpen: true,
           businessId,
@@ -954,7 +967,9 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
           .select("dailyReferenceNumber")
           .session(session)
           .lean()) as unknown as
-          | (Pick<IDailySalesReport, "dailyReferenceNumber"> & { _id: unknown })
+          | (Pick<IDailySalesReport, "dailyReferenceNumber"> & {
+              _id: unknown;
+            })
           | null;
 
         const dailyReferenceNumber = dailySalesReport
@@ -965,8 +980,14 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
             );
 
         if (typeof dailyReferenceNumber === "string") {
-          await session.abortTransaction();
-          return reply.code(400).send({ message: dailyReferenceNumber });
+          if (isTransientMongoClusterError(dailyReferenceNumber)) {
+            throw new Error(dailyReferenceNumber);
+          }
+          return {
+            kind: "response" as const,
+            status: 400,
+            body: { message: dailyReferenceNumber },
+          };
         }
 
         const existingOpen = await pointBusyForEmployee({
@@ -976,10 +997,13 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
         });
 
         if (existingOpen) {
-          await session.abortTransaction();
-          return reply.code(409).send({
-            message: "SalesInstance already exists and it is not closed!",
-          });
+          return {
+            kind: "response" as const,
+            status: 409,
+            body: {
+              message: "SalesInstance already exists and it is not closed!",
+            },
+          };
         }
 
         const newSalesInstanceObj: ISalesInstance = {
@@ -994,18 +1018,23 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
 
         const result = await createSalesInstance(newSalesInstanceObj, session);
         if (typeof result === "string") {
-          await session.abortTransaction();
-          return reply.code(400).send({ message: result });
+          if (isTransientMongoClusterError(result)) {
+            throw new Error(result);
+          }
+          return {
+            kind: "response" as const,
+            status: 400,
+            body: { message: result },
+          };
         }
 
-        await session.commitTransaction();
-        return reply.code(201).send(result);
-      } catch (err) {
-        await session.abortTransaction();
-        throw err;
-      } finally {
-        session.endSession();
+        return { kind: "created" as const, doc: result };
+      })) as OpenTableTxnOutcome;
+
+      if (openOutcome.kind === "response") {
+        return reply.code(openOutcome.status).send(openOutcome.body);
       }
+      return reply.code(201).send(openOutcome.doc);
     },
   );
 
@@ -1351,7 +1380,6 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
         }
 
         await session.commitTransaction();
-        session.endSession();
 
         checkLowStockAndNotify(businessId as Types.ObjectId).catch(() => {});
 
@@ -1396,12 +1424,15 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
           deliveryAddress: resolvedDeliveryAddress,
         });
       } catch (error) {
-        await session.abortTransaction();
-        session.endSession();
+        if (session.inTransaction()) {
+          await session.abortTransaction();
+        }
         return reply.code(500).send({
           message: "Create delivery order failed!",
           error: error instanceof Error ? error.message : error,
         });
+      } finally {
+        session.endSession();
       }
     },
   );
@@ -1595,40 +1626,33 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
         });
       }
 
+      const userDoc = (await User.findById(userId)
+        .select("personalDetails.firstName personalDetails.lastName username")
+        .lean()) as {
+        personalDetails?: { firstName?: string; lastName?: string };
+        username?: string;
+      } | null;
+
+      if (!userDoc) {
+        return reply.code(404).send({ message: "User not found!" });
+      }
+
+      const clientName =
+        userDoc.personalDetails?.firstName && userDoc.personalDetails?.lastName
+          ? `${userDoc.personalDetails.firstName} ${userDoc.personalDetails.lastName}`
+          : (userDoc.username ?? undefined);
+
       const session = await mongoose.startSession();
       session.startTransaction();
 
       try {
-        const [user, dailySalesReport] = await Promise.all([
-          User.findById(userId)
-            .select(
-              "personalDetails.firstName personalDetails.lastName username",
-            )
-            .session(session)
-            .lean(),
-          DailySalesReport.findOne({
-            isDailyReportOpen: true,
-            businessId,
-          })
-            .select("dailyReferenceNumber")
-            .session(session)
-            .lean() as unknown as Promise<IDailySalesReport | null>,
-        ]);
-
-        if (!user) {
-          await session.abortTransaction();
-          return reply.code(404).send({ message: "User not found!" });
-        }
-
-        const userObj = user as {
-          personalDetails?: { firstName?: string; lastName?: string };
-          username?: string;
-        } | null;
-        const clientName =
-          userObj?.personalDetails?.firstName &&
-          userObj?.personalDetails?.lastName
-            ? `${userObj.personalDetails.firstName} ${userObj.personalDetails.lastName}`
-            : (userObj?.username ?? undefined);
+        const dailySalesReport = (await DailySalesReport.findOne({
+          isDailyReportOpen: true,
+          businessId,
+        })
+          .select("dailyReferenceNumber")
+          .session(session)
+          .lean()) as unknown as IDailySalesReport | null;
 
         // payment-first contract: do not persist DailySalesReport/SalesInstance/Order
         // until payment totals are validated.
@@ -1921,7 +1945,9 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
           .code(201)
           .send({ message: "Customer self ordering created" });
       } catch (error) {
-        await session.abortTransaction();
+        if (session.inTransaction()) {
+          await session.abortTransaction();
+        }
         return reply.code(500).send({
           message: "Create salesInstance failed!",
           error: error instanceof Error ? error.message : error,

@@ -5,18 +5,14 @@
     "salesPointType": "table",
     "selfOrdering": false,
     "qrCode": "qr-table-01",
-    "qrEnabled": true,
-    "qrLastScanned": { "$date": "2026-03-24T11:50:00.000Z" },
     "businessId": { "$oid": "64b000000000000000000001" }
   },
   {
     "_id": { "$oid": "64b000000000000000000302" },
     "salesPointName": "Delivery Hub",
     "salesPointType": "delivery",
-    "selfOrdering": true,
+    "selfOrdering": false,
     "qrCode": "qr-delivery-hub",
-    "qrEnabled": true,
-    "qrLastScanned": { "$date": "2026-03-24T11:55:00.000Z" },
     "businessId": { "$oid": "64b000000000000000000001" }
   },
   {
@@ -25,8 +21,6 @@
     "salesPointType": "table",
     "selfOrdering": true,
     "qrCode": "qr-table-02",
-    "qrEnabled": true,
-    "qrLastScanned": { "$date": "2026-03-23T20:10:00.000Z" },
     "businessId": { "$oid": "64b000000000000000000001" }
   },
   {
@@ -35,8 +29,6 @@
     "salesPointType": "room",
     "selfOrdering": false,
     "qrCode": "qr-room-a",
-    "qrEnabled": false,
-    "qrLastScanned": { "$date": "2026-03-22T19:45:00.000Z" },
     "businessId": { "$oid": "64b000000000000000000001" }
   },
   {
@@ -45,8 +37,6 @@
     "salesPointType": "bar",
     "selfOrdering": true,
     "qrCode": "qr-bar-seat-01",
-    "qrEnabled": true,
-    "qrLastScanned": { "$date": "2026-03-24T12:05:00.000Z" },
     "businessId": { "$oid": "64b000000000000000000001" }
   },
   {
@@ -55,8 +45,6 @@
     "salesPointType": "seat",
     "selfOrdering": false,
     "qrCode": "qr-seat-07",
-    "qrEnabled": true,
-    "qrLastScanned": { "$date": "2026-03-21T17:00:00.000Z" },
     "businessId": { "$oid": "64b000000000000000000001" }
   },
   {
@@ -65,8 +53,6 @@
     "salesPointType": "counter",
     "selfOrdering": true,
     "qrCode": "qr-counter-01",
-    "qrEnabled": true,
-    "qrLastScanned": { "$date": "2026-03-24T12:03:00.000Z" },
     "businessId": { "$oid": "64b000000000000000000001" }
   },
   {
@@ -75,8 +61,6 @@
     "salesPointType": "spot",
     "selfOrdering": true,
     "qrCode": "qr-spot-terrace",
-    "qrEnabled": true,
-    "qrLastScanned": { "$date": "2026-03-24T12:01:00.000Z" },
     "businessId": { "$oid": "64b000000000000000000001" }
   },
   {
@@ -85,8 +69,6 @@
     "salesPointType": "other",
     "selfOrdering": false,
     "qrCode": "qr-event-area",
-    "qrEnabled": false,
-    "qrLastScanned": { "$date": "2026-03-20T18:30:00.000Z" },
     "businessId": { "$oid": "64b000000000000000000001" }
   },
   {
@@ -95,8 +77,6 @@
     "salesPointType": "counter",
     "selfOrdering": false,
     "qrCode": "qr-office-pos",
-    "qrEnabled": true,
-    "qrLastScanned": { "$date": "2026-03-24T09:00:00.000Z" },
     "businessId": { "$oid": "64b000000000000000000001" }
   }
 ]
