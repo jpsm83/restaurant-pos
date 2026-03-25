@@ -1,8 +1,8 @@
 import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
-import type { IReservation } from "../../../../lib/interface/IReservation.ts";
-import type { ISalesInstance } from "../../../../lib/interface/ISalesInstance.ts";
-import type { IDailySalesReport } from "../../../../lib/interface/IDailySalesReport.ts";
+import type { IReservation } from "../../../../packages/interfaces/IReservation.ts";
+import type { ISalesInstance } from "../../../../packages/interfaces/ISalesInstance.ts";
+import type { IDailySalesReport } from "../../../../packages/interfaces/IDailySalesReport.ts";
 
 import isObjectIdValid from "../../utils/isObjectIdValid.ts";
 import createDailySalesReport from "../../dailySalesReports/createDailySalesReport.ts";
@@ -18,7 +18,7 @@ import SalesPoint from "../../models/salesPoint.ts";
 import SalesInstance from "../../models/salesInstance.ts";
 import DailySalesReport from "../../models/dailySalesReport.ts";
 import { createAuthHook } from "../../auth/middleware.ts";
-import * as enums from "../../../../lib/enums.ts";
+import * as enums from "../../../../packages/enums.ts";
 
 const { managementRolesEnums } = enums;
 

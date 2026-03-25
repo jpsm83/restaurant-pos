@@ -3,12 +3,12 @@ import mongoose, { Types } from "mongoose";
 import type {
   IDailySalesReport,
   IGoodsReduced,
-} from "../../../../lib/interface/IDailySalesReport.ts";
-import type { ISalesInstance } from "../../../../lib/interface/ISalesInstance.ts";
-import type { IPaymentMethod } from "../../../../lib/interface/IPaymentMethod.ts";
-import type { IOrder } from "../../../../lib/interface/IOrder.ts";
-import type { IAddress } from "../../../../lib/interface/IAddress.ts";
-import type { IBusiness } from "../../../../lib/interface/IBusiness.ts";
+} from "../../../../packages/interfaces/IDailySalesReport.ts";
+import type { ISalesInstance } from "../../../../packages/interfaces/ISalesInstance.ts";
+import type { IPaymentMethod } from "../../../../packages/interfaces/IPaymentMethod.ts";
+import type { IOrder } from "../../../../packages/interfaces/IOrder.ts";
+import type { IAddress } from "../../../../packages/interfaces/IAddress.ts";
+import type { IBusiness } from "../../../../packages/interfaces/IBusiness.ts";
 
 import isObjectIdValid from "../../utils/isObjectIdValid.ts";
 import SalesInstance from "../../models/salesInstance.ts";
@@ -40,7 +40,7 @@ import {
   isBusinessOpenNow,
   isDeliveryOpenNow,
 } from "../../business/isBusinessOpenNow.ts";
-import * as enums from "../../../../lib/enums.ts";
+import * as enums from "../../../../packages/enums.ts";
 
 const { managementRolesEnums } = enums;
 

@@ -1,12 +1,12 @@
 import type { FastifyPluginAsync } from "fastify";
 import { Types } from "mongoose";
-import type { ISalesPoint } from "../../../../lib/interface/ISalesPoint.ts";
+import type { ISalesPoint } from "../../../../packages/interfaces/ISalesPoint.ts";
 
 import isObjectIdValid from "../../utils/isObjectIdValid.ts";
 import SalesPoint from "../../models/salesPoint.ts";
 import generateQrCode from "../../salesPoints/generateQrCode.ts";
 import deleteFilesCloudinary from "../../cloudinary/deleteFilesCloudinary.ts";
-import * as enums from "../../../../lib/enums.ts";
+import * as enums from "../../../../packages/enums.ts";
 
 const { salesPointTypeEnums } = enums;
 

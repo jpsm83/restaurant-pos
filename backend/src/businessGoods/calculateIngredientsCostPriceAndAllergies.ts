@@ -1,11 +1,11 @@
 import convert, { Unit } from "convert-units";
 import { Types } from "mongoose";
-import type { IIngredient } from "../../../lib/interface/IBusinessGood.ts";
-import type { ISupplierGood } from "../../../lib/interface/ISupplierGood.ts";
+import type { IIngredient } from "../../../packages/interfaces/IBusinessGood.ts";
+import type { ISupplierGood } from "../../../packages/interfaces/ISupplierGood.ts";
 import SupplierGood from "../models/supplierGood.ts";
 import objDefaultValidation, {
   type ObjDefaultValidationType,
-} from "../../../lib/utils/objDefaultValidation.ts";
+} from "../../../packages/utils/objDefaultValidation.ts";
 
 const reqIngredientsFields = [
   "supplierGoodId",

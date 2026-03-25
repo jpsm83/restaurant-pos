@@ -1,5 +1,5 @@
 import mongoose, { Schema, model } from "mongoose";
-import * as enums from "../../../lib/enums.ts";
+import * as enums from "../../../packages/enums.ts";
 
 const { mainCategoriesEnums, measurementUnitEnums, allergensEnums } = enums;
 

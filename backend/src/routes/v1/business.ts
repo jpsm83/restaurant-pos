@@ -24,9 +24,9 @@ import isObjectIdValid from "../../utils/isObjectIdValid.ts";
 import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
 import deleteFilesCloudinary from "../../cloudinary/deleteFilesCloudinary.ts";
 import deleteFolderCloudinary from "../../cloudinary/deleteFolderCloudinary.ts";
-import objDefaultValidation from "../../../../lib/utils/objDefaultValidation.ts";
-import type { ObjDefaultValidationType } from "../../../../lib/utils/objDefaultValidation.ts";
-import * as enums from "../../../../lib/enums.ts";
+import objDefaultValidation from "../../../../packages/utils/objDefaultValidation.ts";
+import type { ObjDefaultValidationType } from "../../../../packages/utils/objDefaultValidation.ts";
+import * as enums from "../../../../packages/enums.ts";
 
 const { subscriptionEnums, currenctyEnums } = enums;
 

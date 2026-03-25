@@ -12,7 +12,7 @@ import createOrders from "../../orders/createOrders.ts";
 import cancelOrders from "../../orders/cancelOrders.ts";
 import applyPromotionsToOrders from "../../promotions/applyPromotions.ts";
 import { createAuthHook } from "../../auth/middleware.ts";
-import * as enums from "../../../../lib/enums.ts";
+import * as enums from "../../../../packages/enums.ts";
 
 const { managementRolesEnums } = enums;
 

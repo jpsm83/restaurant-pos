@@ -1,4 +1,4 @@
-import type { WeekDays } from "../../../lib/interface/IPromotion.ts";
+import type { WeekDays } from "../../../packages/interfaces/IPromotion.ts";
 
 const validateDaysOfTheWeek = (weekDays: WeekDays): true | string => {
   if (!Array.isArray(weekDays) || !weekDays || weekDays.length === 0)

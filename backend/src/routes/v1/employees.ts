@@ -1,20 +1,20 @@
 import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
-import type { IEmployee, ISalary } from "../../../../lib/interface/IEmployee.ts";
-import type { IUser } from "../../../../lib/interface/IUser.ts";
+import type { IEmployee, ISalary } from "../../../../packages/interfaces/IEmployee.ts";
+import type { IUser } from "../../../../packages/interfaces/IUser.ts";
 
 import isObjectIdValid from "../../utils/isObjectIdValid.ts";
 import deleteFolderCloudinary from "../../cloudinary/deleteFolderCloudinary.ts";
 import calculateVacationProportional from "../../employees/calculateVacationProportional.ts";
 import objDefaultValidation, {
   type ObjDefaultValidationType,
-} from "../../../../lib/utils/objDefaultValidation.ts";
+} from "../../../../packages/utils/objDefaultValidation.ts";
 import Employee from "../../models/employee.ts";
 import User from "../../models/user.ts";
 import Printer from "../../models/printer.ts";
 import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
-import { UploadInputFile } from "@lib/interface/ICloudinary.ts";
-import * as enums from "../../../../lib/enums.ts";
+import { UploadInputFile } from "@packages/interfaces/ICloudinary.ts";
+import * as enums from "../../../../packages/enums.ts";
 
 const { userRolesEnums } = enums;
 

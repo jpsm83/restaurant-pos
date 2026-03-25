@@ -3,7 +3,7 @@ import mongoose, { Types } from "mongoose";
 import type {
   IBusinessGood,
   IIngredient,
-} from "../../../../lib/interface/IBusinessGood.ts";
+} from "../../../../packages/interfaces/IBusinessGood.ts";
 
 import isObjectIdValid from "../../utils/isObjectIdValid.ts";
 import BusinessGood from "../../models/businessGood.ts";
@@ -14,8 +14,8 @@ import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
 import deleteFolderCloudinary from "../../cloudinary/deleteFolderCloudinary.ts";
 import calculateIngredientsCostPriceAndAllergies from "../../businessGoods/calculateIngredientsCostPriceAndAllergies.ts";
 import { calculateSetMenuCostPriceAndAllergies } from "../../businessGoods/calculateSetMenuCostPriceAndAllergies.ts";
-import { UploadInputFile } from "../../../../lib/interface/ICloudinary.ts";
-import * as enums from "../../../../lib/enums.ts";
+import { UploadInputFile } from "../../../../packages/interfaces/ICloudinary.ts";
+import * as enums from "../../../../packages/enums.ts";
 
 const { mainCategoriesEnums, allergensEnums, measurementUnitEnums } = enums;
 

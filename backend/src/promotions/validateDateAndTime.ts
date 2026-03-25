@@ -1,4 +1,4 @@
-import type { IPromotionPeriod } from "../../../lib/interface/IPromotion.ts";
+import type { IPromotionPeriod } from "../../../packages/interfaces/IPromotion.ts";
 
 const validateDateAndTime = (
   promotionPeriod: IPromotionPeriod,

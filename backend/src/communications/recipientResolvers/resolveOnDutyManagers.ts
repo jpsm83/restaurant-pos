@@ -1,7 +1,7 @@
 import { Types } from "mongoose";
 import type { ClientSession } from "mongoose";
 import Employee from "../../models/employee.ts";
-import * as enums from "../../../../lib/enums.ts";
+import * as enums from "../../../../packages/enums.ts";
 import { toUniqueObjectIds } from "./utils.ts";
 
 const { managementRolesEnums } = enums;

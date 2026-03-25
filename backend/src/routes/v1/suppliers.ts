@@ -1,19 +1,19 @@
 import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
-import type { ISupplier } from "../../../../lib/interface/ISupplier.ts";
-import type { IAddress } from "../../../../lib/interface/IAddress.ts";
+import type { ISupplier } from "../../../../packages/interfaces/ISupplier.ts";
+import type { IAddress } from "../../../../packages/interfaces/IAddress.ts";
 
 import isObjectIdValid from "../../utils/isObjectIdValid.ts";
 import Supplier from "../../models/supplier.ts";
 import SupplierGood from "../../models/supplierGood.ts";
 import BusinessGood from "../../models/businessGood.ts";
 import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
-import type { UploadInputFile } from "../../../../lib/interface/ICloudinary.ts";
+import type { UploadInputFile } from "../../../../packages/interfaces/ICloudinary.ts";
 import deleteFilesCloudinary from "../../cloudinary/deleteFilesCloudinary.ts";
 import deleteFolderCloudinary from "../../cloudinary/deleteFolderCloudinary.ts";
 import objDefaultValidation, {
   type ObjDefaultValidationType,
-} from "../../../../lib/utils/objDefaultValidation.ts";
+} from "../../../../packages/utils/objDefaultValidation.ts";
 
 const emailRegex = /^[\w-]+(\.[\w-]+)*@([\w-]+\.)+[a-zA-Z]{2,7}$/;
 

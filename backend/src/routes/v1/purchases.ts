@@ -1,7 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
-import type { IPurchase, IPurchaseItem } from "../../../../lib/interface/IPurchase.ts";
-import type { IEmployee } from "../../../../lib/interface/IEmployee.ts";
+import type { IPurchase, IPurchaseItem } from "../../../../packages/interfaces/IPurchase.ts";
+import type { IEmployee } from "../../../../packages/interfaces/IEmployee.ts";
 
 import isObjectIdValid from "../../utils/isObjectIdValid.ts";
 import validateInventoryPurchaseItems from "../../purchases/validateInventoryPurchaseItems.ts";
@@ -12,7 +12,9 @@ import Supplier from "../../models/supplier.ts";
 import SupplierGood from "../../models/supplierGood.ts";
 import Employee from "../../models/employee.ts";
 import { createAuthHook } from "../../auth/middleware.ts";
-import * as enums from "../../../../lib/enums.ts";
+import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
+import deleteFilesCloudinary from "../../cloudinary/deleteFilesCloudinary.ts";
+import * as enums from "../../../../packages/enums.ts";
 
 const { managementRolesEnums } = enums;
 
@@ -245,11 +247,58 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
     const params = req.params as { purchaseId?: string };
     const purchaseId = params.purchaseId;
 
-    const { title, purchaseDate, businessId, purchasedByEmployeeId, receiptId } =
-      req.body as IPurchase;
+    // If multipart, read from fastify parts; otherwise use JSON body.
+    const isMultipart =
+      typeof req.headers["content-type"] === "string" &&
+      req.headers["content-type"].includes("multipart/form-data");
+
+    const multipartFields: Record<string, string> = {};
+    let uploadedFiles: { buffer: Buffer; mimeType: string; filename?: string }[] =
+      [];
+
+    if (isMultipart) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const parts = (req as any).parts?.();
+      if (!parts || typeof parts[Symbol.asyncIterator] !== "function") {
+        return reply.code(400).send({ message: "Expected multipart/form-data" });
+      }
+
+      // Note: we intentionally accept any file fieldname(s). For your plan, `imageUrl`
+      // may be used, but some future endpoints might use `documentsUrl`.
+      for await (const part of parts) {
+        if (part.type === "file") {
+          const chunks: Buffer[] = [];
+          for await (const chunk of part.file) chunks.push(chunk as Buffer);
+
+          if (chunks.length > 0) {
+            uploadedFiles.push({
+              buffer: Buffer.concat(chunks),
+              mimeType: part.mimetype,
+              filename: part.filename,
+            });
+          }
+        } else {
+          multipartFields[part.fieldname] = String(part.value ?? "");
+        }
+      }
+    }
+
+    const {
+      title,
+      purchaseDate,
+      businessId,
+      purchasedByEmployeeId,
+      receiptId,
+    } = (isMultipart ? multipartFields : req.body) as unknown as Partial<IPurchase>;
 
     if (!businessId) {
       return reply.code(400).send({ message: "Business ID is required!" });
+    }
+
+    if (!purchasedByEmployeeId) {
+      return reply.code(400).send({
+        message: "purchasedByEmployeeId is required!",
+      });
     }
 
     if (isObjectIdValid([businessId, purchasedByEmployeeId]) !== true) {
@@ -259,6 +308,64 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
     }
 
     try {
+      // Multipart upload: upload files and update documentsUrl.
+      if (isMultipart && uploadedFiles.length > 0) {
+        const folder = `/business/${businessId}/purchases/${purchaseId}`;
+
+        const cloudinaryUploadResponse = await uploadFilesCloudinary({
+          folder,
+          filesArr: uploadedFiles.map((f) => ({
+            buffer: f.buffer,
+            mimeType: f.mimeType,
+          })),
+          // Purchases can include docs and images; don't restrict type here.
+          onlyImages: false,
+        });
+
+        if (
+          typeof cloudinaryUploadResponse === "string" ||
+          cloudinaryUploadResponse.length === 0 ||
+          !cloudinaryUploadResponse.every((u) => typeof u === "string" && u.includes("https://"))
+        ) {
+          return reply.code(400).send({
+            message: `Error uploading purchase documents: ${cloudinaryUploadResponse}`,
+          });
+        }
+
+        // Optional replace/clean old files: deleteDocuments are keyed by Cloudinary public id.
+        // (If existing documentsUrl are non-Cloudinary URLs, deleteFilesCloudinary no-ops.)
+        const purchase = await Purchase.findById(purchaseId).lean();
+        const existingDocs = (purchase as unknown as { documentsUrl?: string[] }).documentsUrl || [];
+        for (const url of existingDocs) {
+          // Best-effort delete old assets.
+          // eslint-disable-next-line no-await-in-loop
+          await deleteFilesCloudinary(url);
+        }
+
+        // Overwrite documentsUrl with newly uploaded assets.
+        const updatedPurchase = await Purchase.findByIdAndUpdate(
+          purchaseId,
+          {
+            $set: {
+              ...(title ? { title } : {}),
+              ...(purchaseDate ? { purchaseDate: new Date(purchaseDate as any) } : {}),
+              ...(purchasedByEmployeeId ? { purchasedByEmployeeId } : {}),
+              ...(receiptId ? { receiptId } : {}),
+              documentsUrl: cloudinaryUploadResponse,
+            },
+          },
+          { new: true, lean: true },
+        );
+
+        if (!updatedPurchase) {
+          return reply.code(404).send({ message: "Purchase not found!" });
+        }
+
+        return reply.code(200).send({
+          message: "Purchase updated successfully!",
+        });
+      }
+
       if (receiptId) {
         const existingReceiptId = await Purchase.exists({
           _id: { $ne: purchaseId },
@@ -273,7 +380,7 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
       const updatePurchaseObj: Partial<IPurchase> = {};
 
       if (title) updatePurchaseObj.title = title;
-      if (purchaseDate) updatePurchaseObj.purchaseDate = purchaseDate;
+      if (purchaseDate) updatePurchaseObj.purchaseDate = new Date(purchaseDate as any);
       if (purchasedByEmployeeId)
         updatePurchaseObj.purchasedByEmployeeId = purchasedByEmployeeId;
       if (receiptId) updatePurchaseObj.receiptId = receiptId;

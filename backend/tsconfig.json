@@ -24,7 +24,7 @@
     "scripts/**/*.ts",
     "tests/**/*.ts",
     "../packages/shared/src/**/*.ts",
-    "../lib/utils/isBusinessOpenNow.ts",
-    "../lib/enums.ts"
+    "../packages/utils/isBusinessOpenNow.ts",
+    "../packages/enums.ts"
   ]
 }

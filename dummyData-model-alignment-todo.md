@@ -111,7 +111,7 @@ Critical rules:
 ### Phase 8 - Final 100% alignment validation
 
 - [x] For every file, verify all model properties exist (required + optional).
-- [x] Verify enum values are valid against `lib/enums.ts`.
+- [x] Verify enum values are valid against `packages/enums.ts`.
 - [x] Verify all ObjectId relations exist in referenced files.
 - [x] Verify no orphan IDs and no mixed incompatible id formats.
 - [x] Verify counts match requested scope exactly.

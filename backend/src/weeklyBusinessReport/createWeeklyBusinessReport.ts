@@ -5,7 +5,7 @@
 import { ClientSession, Types } from "mongoose";
 import WeeklyBusinessReport from "../models/weeklyBusinessReport.ts";
 import isObjectIdValid from "../utils/isObjectIdValid.ts";
-import type { WeeklyReportOpen } from "../../../lib/interface/IWeeklyBusinessReport.ts";
+import type { WeeklyReportOpen } from "../../../packages/interfaces/IWeeklyBusinessReport.ts";
 
 export function getWeekReference(
   date: Date,

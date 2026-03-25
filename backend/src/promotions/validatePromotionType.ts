@@ -1,4 +1,4 @@
-import type { PromotionType } from "../../../lib/interface/IPromotion.ts";
+import type { PromotionType } from "../../../packages/interfaces/IPromotion.ts";
 
 const validatePromotionType = (promotionType: PromotionType): true | string => {
   if (!promotionType || typeof promotionType !== "object") {

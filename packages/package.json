@@ -1,9 +1,11 @@
 {
-  "name": "restaurant-pos",
+  "name": "restaurant-pos-packages",
+  "private": true,
+  "type": "module",
   "version": "1.0.0",
   "main": "index.js",
   "directories": {
-    "lib": "lib"
+    "packages": "packages"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

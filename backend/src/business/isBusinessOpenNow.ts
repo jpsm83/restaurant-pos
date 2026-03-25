@@ -1,4 +1,4 @@
-import type { IBusiness } from "../../../lib/interface/IBusiness.ts";
+import type { IBusiness } from "../../../packages/interfaces/IBusiness.ts";
 
 function toTimeNumber(date: Date): number {
   const hours = date.getHours();

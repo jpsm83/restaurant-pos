@@ -19,9 +19,9 @@ import sendWeeklyReportReadyNotification from "./sendWeeklyReportReadyNotificati
 import type {
   IMetrics,
   WeeklyReportOpen,
-} from "../../../lib/interface/IWeeklyBusinessReport.ts";
-import type { IGoodsReduced } from "../../../lib/interface/IDailySalesReport.ts";
-import type { IPaymentMethod } from "../../../lib/interface/IPaymentMethod.ts";
+} from "../../../packages/interfaces/IWeeklyBusinessReport.ts";
+import type { IGoodsReduced } from "../../../packages/interfaces/IDailySalesReport.ts";
+import type { IPaymentMethod } from "../../../packages/interfaces/IPaymentMethod.ts";
 import getWasteByBudgetImpactForMonth from "../inventories/getWasteByBudgetImpactForMonth.ts";
 
 function getWeekEnd(weekStart: Date): Date {

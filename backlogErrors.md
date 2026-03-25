@@ -43,9 +43,11 @@ purchases - DONE
 inventories - DONE
 notifications - DONE
 
-monthlyBusinessReport - DONE BUT NOT TESTED
-reservations - DONE BUT NOT TESTED
+monthlyBusinessReport - DONE
+reservations - DONE
 cloudinaryActions
+
+user photo on the user model, not employee model - review both models for more inconsistencies
 
 reservations has lots of logic for send email an notifications but many other features does the same, try to unify the sending of messages - DONE
 

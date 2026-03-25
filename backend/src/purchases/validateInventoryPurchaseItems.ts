@@ -1,4 +1,4 @@
-import type { IPurchaseItem } from "../../../lib/interface/IPurchase.ts";
+import type { IPurchaseItem } from "../../../packages/interfaces/IPurchase.ts";
 import isObjectIdValid from "../utils/isObjectIdValid.ts";
 
 const validateInventoryPurchaseItems = (

@@ -1,6 +1,6 @@
 import mongoose, { Schema, model } from "mongoose";
 import { paymentMethod } from "./paymentMethod.ts";
-import * as enums from "../../../lib/enums.ts";
+import * as enums from "../../../packages/enums.ts";
 
 const { allergensEnums, billingStatusEnums, orderStatusEnums } = enums;
 

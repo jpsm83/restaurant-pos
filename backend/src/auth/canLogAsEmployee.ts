@@ -10,7 +10,7 @@
 import Employee from "../models/employee.ts";
 import Schedule from "../models/schedule.ts";
 import type { Types } from "mongoose";
-import * as enums from "../../../lib/enums.ts";
+import * as enums from "../../../packages/enums.ts";
 
 const { managementRolesEnums } = enums;
 

@@ -3,8 +3,8 @@ import isObjectIdValid from "../utils/isObjectIdValid.ts";
 import type {
   IEmployeeDailySalesReport,
   IGoodsReduced,
-} from "../../../lib/interface/IDailySalesReport.ts";
-import type { IPaymentMethod } from "../../../lib/interface/IPaymentMethod.ts";
+} from "../../../packages/interfaces/IDailySalesReport.ts";
+import type { IPaymentMethod } from "../../../packages/interfaces/IPaymentMethod.ts";
 
 import SalesInstance from "../models/salesInstance.ts";
 import BusinessGood from "../models/businessGood.ts";

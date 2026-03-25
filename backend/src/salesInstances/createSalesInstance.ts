@@ -1,5 +1,5 @@
 import { ClientSession, Types } from "mongoose";
-import type { ISalesInstance } from "../../../lib/interface/ISalesInstance.ts";
+import type { ISalesInstance } from "../../../packages/interfaces/ISalesInstance.ts";
 import SalesInstance from "../models/salesInstance.ts";
 import DailySalesReport from "../models/dailySalesReport.ts";
 

@@ -1,5 +1,5 @@
-import type { IPaymentMethod } from "../../../lib/interface/IPaymentMethod.ts";
-import * as enums from "../../../lib/enums.ts";
+import type { IPaymentMethod } from "../../../packages/interfaces/IPaymentMethod.ts";
+import * as enums from "../../../packages/enums.ts";
 
 const { paymentMethodsEnums, creditCardEnums, cryptoEnums, otherPaymentEnums } = enums;
 

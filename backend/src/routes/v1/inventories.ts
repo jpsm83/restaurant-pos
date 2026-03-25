@@ -3,9 +3,9 @@ import mongoose, { Types } from "mongoose";
 import type {
   IInventory,
   IInventoryCount,
-} from "../../../../lib/interface/IInventory.ts";
-import type { ISupplierGood } from "../../../../lib/interface/ISupplierGood.ts";
-import type { IEmployee } from "../../../../lib/interface/IEmployee.ts";
+} from "../../../../packages/interfaces/IInventory.ts";
+import type { ISupplierGood } from "../../../../packages/interfaces/ISupplierGood.ts";
+import type { IEmployee } from "../../../../packages/interfaces/IEmployee.ts";
 
 import isObjectIdValid from "../../utils/isObjectIdValid.ts";
 import Inventory from "../../models/inventory.ts";
@@ -15,7 +15,7 @@ import Employee from "../../models/employee.ts";
 import createNextPeriodInventory from "../../inventories/createNextPeriodInventory.ts";
 import getVarianceReport from "../../inventories/getVarianceReport.ts";
 import { createAuthHook } from "../../auth/middleware.ts";
-import * as enums from "../../../../lib/enums.ts";
+import * as enums from "../../../../packages/enums.ts";
 
 const { managementRolesEnums } = enums;
 

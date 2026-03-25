@@ -1,5 +1,5 @@
 import { Types } from "mongoose";
-import type { WeekLabel } from "../../../lib/interface/IWeeklyBusinessReport.ts";
+import type { WeekLabel } from "../../../packages/interfaces/IWeeklyBusinessReport.ts";
 import dispatchEvent from "../communications/dispatchEvent.ts";
 
 /**

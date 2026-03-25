@@ -3,7 +3,7 @@ import mongoose, { Types } from "mongoose";
 import type {
   IPrinter,
   IConfigurationSetupToPrintOrders,
-} from "../../../../lib/interface/IPrinter.ts";
+} from "../../../../packages/interfaces/IPrinter.ts";
 
 import isObjectIdValid from "../../utils/isObjectIdValid.ts";
 import checkPrinterConnection from "../../printers/checkPrinterConnection.ts";

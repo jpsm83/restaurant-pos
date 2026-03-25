@@ -1,13 +1,13 @@
 import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
 import { hash } from "bcrypt";
-import type { IUser } from "../../../../lib/interface/IUser.ts";
-import type { IEmployee } from "../../../../lib/interface/IEmployee.ts";
+import type { IUser } from "../../../../packages/interfaces/IUser.ts";
+import type { IEmployee } from "../../../../packages/interfaces/IEmployee.ts";
 
 import isObjectIdValid from "../../utils/isObjectIdValid.ts";
 import objDefaultValidation, {
   type ObjDefaultValidationType,
-} from "../../../../lib/utils/objDefaultValidation.ts";
+} from "../../../../packages/utils/objDefaultValidation.ts";
 import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
 import deleteFilesCloudinary from "../../cloudinary/deleteFilesCloudinary.ts";
 import deleteFolderCloudinary from "../../cloudinary/deleteFolderCloudinary.ts";

@@ -1,4 +1,4 @@
-import type { IEmployeeSchedule } from "../../../lib/interface/ISchedule.ts";
+import type { IEmployeeSchedule } from "../../../packages/interfaces/ISchedule.ts";
 
 const employeesValidation = (employee: IEmployeeSchedule): true | string => {
   if (typeof employee !== "object" || employee === undefined) {

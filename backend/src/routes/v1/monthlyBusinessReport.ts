@@ -1,8 +1,8 @@
 import type { FastifyPluginAsync } from "fastify";
 import { Types } from "mongoose";
-import type { IGoodsReduced } from "../../../../lib/interface/IDailySalesReport.ts";
-import type { IPaymentMethod } from "../../../../lib/interface/IPaymentMethod.ts";
-import type { IMetrics } from "../../../../lib/interface/IBusiness.ts";
+import type { IGoodsReduced } from "../../../../packages/interfaces/IDailySalesReport.ts";
+import type { IPaymentMethod } from "../../../../packages/interfaces/IPaymentMethod.ts";
+import type { IMetrics } from "../../../../packages/interfaces/IBusiness.ts";
 
 import isObjectIdValid from "../../utils/isObjectIdValid.ts";
 import getWasteByBudgetImpactForMonth from "../../inventories/getWasteByBudgetImpactForMonth.ts";

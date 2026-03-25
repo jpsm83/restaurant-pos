@@ -80,7 +80,8 @@ export async function buildApp(
   await server.register(multipart, {
     limits: {
       fileSize: 10 * 1024 * 1024, // 10MB
-      files: 1,
+      // Some flows (e.g. purchase receipts) upload multiple files in one request.
+      files: 10,
       fields: 30,
     },
   });
@@ -143,7 +144,7 @@ async function main() {
 
     server.log.info(`🚀 Server running at http://${host}:${port}`);
   } catch (err) {
-    server.log.error("Failed to start server");
+    server.log.error({ err }, "Failed to start server");
     process.exit(1);
   }
 

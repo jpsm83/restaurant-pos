@@ -1,6 +1,6 @@
 import { v2 as cloudinary } from "cloudinary";
 import configureCloudinary from "./cloudinaryConfig.ts";
-import type { UploadInputFile } from "../../../lib/interface/ICloudinary.ts";
+import type { UploadInputFile } from "../../../packages/interfaces/ICloudinary.ts";
 
 const uploadFilesCloudinary = async (params: {
   folder: string;
@@ -14,8 +14,7 @@ const uploadFilesCloudinary = async (params: {
 
   if (params.onlyImages) {
     for (const f of params.filesArr) {
-      if (!f.mimeType.startsWith("image/"))
-        return "Only images can be uploaded!";
+      if (!f.mimeType.startsWith("image/")) return "Only images can be uploaded!";
     }
   }
 
@@ -34,9 +33,17 @@ const uploadFilesCloudinary = async (params: {
     );
     return uploaded;
   } catch (error) {
-    return `Error trying to upload images: ${
-      error instanceof Error ? error.message : "Unknown error"
-    }`;
+    const message = (() => {
+      if (error instanceof Error) return error.message;
+      if (typeof error === "string") return error;
+      try {
+        return JSON.stringify(error);
+      } catch {
+        return String(error);
+      }
+    })();
+
+    return `Error trying to upload images: ${message || "Unknown error"}`;
   }
 };
 

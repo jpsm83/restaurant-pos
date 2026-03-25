@@ -3,8 +3,8 @@ import mongoose, { Types } from "mongoose";
 import type {
   ISchedule,
   IEmployeeSchedule,
-} from "../../../../lib/interface/ISchedule.ts";
-import type { IEmployee } from "../../../../lib/interface/IEmployee.ts";
+} from "../../../../packages/interfaces/ISchedule.ts";
+import type { IEmployee } from "../../../../packages/interfaces/IEmployee.ts";
 
 import isObjectIdValid from "../../utils/isObjectIdValid.ts";
 import getWeekNumber from "../../schedules/getWeekNumber.ts";

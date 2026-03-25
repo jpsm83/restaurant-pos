@@ -1,6 +1,6 @@
 import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
-import type { ISupplierGood } from "../../../../lib/interface/ISupplierGood.ts";
+import type { ISupplierGood } from "../../../../packages/interfaces/ISupplierGood.ts";
 
 import isObjectIdValid from "../../utils/isObjectIdValid.ts";
 import SupplierGood from "../../models/supplierGood.ts";
@@ -11,8 +11,8 @@ import deleteFolderCloudinary from "../../cloudinary/deleteFolderCloudinary.ts";
 import addSupplierGoodToInventory from "../../inventories/addSupplierGoodToInventory.ts";
 import deleteSupplierGoodFromInventory from "../../inventories/deleteSupplierGoodFromInventory.ts";
 import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
-import type { UploadInputFile } from "../../../../lib/interface/ICloudinary.ts";
-import * as enums from "../../../../lib/enums.ts";
+import type { UploadInputFile } from "../../../../packages/interfaces/ICloudinary.ts";
+import * as enums from "../../../../packages/enums.ts";
 
 const { allergensEnums, mainCategoriesEnums } = enums;
 

@@ -1,0 +1,2 @@
+Cloudinary negative test file.
+This is intentionally not an image.

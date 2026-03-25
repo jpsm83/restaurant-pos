@@ -4,9 +4,9 @@ import type {
   IEmployeeDailySalesReport,
   IGoodsReduced,
   IDailySalesReport,
-} from "../../../../lib/interface/IDailySalesReport.ts";
-import type { IPaymentMethod } from "../../../../lib/interface/IPaymentMethod.ts";
-import type { IEmployee } from "../../../../lib/interface/IEmployee.ts";
+} from "../../../../packages/interfaces/IDailySalesReport.ts";
+import type { IPaymentMethod } from "../../../../packages/interfaces/IPaymentMethod.ts";
+import type { IEmployee } from "../../../../packages/interfaces/IEmployee.ts";
 
 import isObjectIdValid from "../../utils/isObjectIdValid.ts";
 import updateEmployeesDailySalesReport from "../../dailySalesReports/updateEmployeeDailySalesReport.ts";
@@ -19,7 +19,7 @@ import Business from "../../models/business.ts";
 import Order from "../../models/order.ts";
 import SalesPoint from "../../models/salesPoint.ts";
 import { createAuthHook } from "../../auth/middleware.ts";
-import * as enums from "../../../../lib/enums.ts";
+import * as enums from "../../../../packages/enums.ts";
 
 const { managementRolesEnums } = enums;
 

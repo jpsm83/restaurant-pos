@@ -5,12 +5,12 @@ import type {
   IPromotionPricingInput,
   ObjectId,
   PromotionType,
-} from "../../../lib/interface/IPromotion.ts";
+} from "../../../packages/interfaces/IPromotion.ts";
 
 export type {
   IPromotionPricingInput,
   IPricedOrderOutput,
-} from "../../../lib/interface/IPromotion.ts";
+} from "../../../packages/interfaces/IPromotion.ts";
 
 const weekDaysByIndex = [
   "Sunday",

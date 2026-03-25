@@ -1,6 +1,6 @@
 import type { FastifyPluginAsync } from "fastify";
 import { Types } from "mongoose";
-import type { IRating } from "../../../../lib/interface/IRating.ts";
+import type { IRating } from "../../../../packages/interfaces/IRating.ts";
 
 import isObjectIdValid from "../../utils/isObjectIdValid.ts";
 import Rating from "../../models/rating.ts";

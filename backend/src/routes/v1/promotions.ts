@@ -1,7 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
 import { Types } from "mongoose";
-import type { IPromotion } from "../../../../lib/interface/IPromotion.ts";
-import type { PromotionType } from "../../../../lib/interface/IPromotion.ts";
+import type { IPromotion } from "../../../../packages/interfaces/IPromotion.ts";
+import type { PromotionType } from "../../../../packages/interfaces/IPromotion.ts";
 
 import isObjectIdValid from "../../utils/isObjectIdValid.ts";
 import validateDateAndTime from "../../promotions/validateDateAndTime.ts";
