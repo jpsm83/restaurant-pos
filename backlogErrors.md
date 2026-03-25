@@ -45,9 +45,7 @@ notifications - DONE
 
 monthlyBusinessReport - DONE
 reservations - DONE
-cloudinaryActions
-
-user photo on the user model, not employee model - review both models for more inconsistencies
+cloudinaryActions - DONE
 
 reservations has lots of logic for send email an notifications but many other features does the same, try to unify the sending of messages - DONE
 
@@ -60,10 +58,10 @@ reservations has lots of logic for send email an notifications but many other fe
     - BUSINESSGOOD - mulitple image - DONE
     - SUPPLIERGOOD - mulitple image - DONE
     - EMPLOYEE - mulitple documents - DONE
-    - PURCHASES - mulitple documents
+    - PURCHASES - mulitple documents - DONE
 
-- REVIEW ALL THE LOGIC OF SALES INSTANCES AND SALES POINT
-- them review the cloudinary upload of sales point
+- REVIEW ALL THE LOGIC OF SALES INSTANCES AND SALES POINT - DONE
+- them review the cloudinary upload of sales point - DONE
 
 - review all functions that need session as parameter
 - daily saler report have to be tested once we got all the models tested and with data

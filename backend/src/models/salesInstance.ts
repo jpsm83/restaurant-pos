@@ -47,6 +47,16 @@ const salesInstanceSchema = new Schema(
       required: [true, "Business id is required!"],
       index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
     }, // business where the table is located
+    /**
+     * Idempotency key for customer self-order/delivery payment acceptance.
+     * When provided, the backend can safely retry without creating duplicates.
+     */
+    paymentId: {
+      type: String,
+      index: true,
+      unique: true,
+      sparse: true, // allow documents without paymentId
+    },
     reservationId: {
       type: Schema.Types.ObjectId,
       ref: "Reservation",

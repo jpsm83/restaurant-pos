@@ -7,6 +7,7 @@ import type { IDailySalesReport } from "../../../../packages/interfaces/IDailySa
 import isObjectIdValid from "../../utils/isObjectIdValid.ts";
 import createDailySalesReport from "../../dailySalesReports/createDailySalesReport.ts";
 import createSalesInstance from "../../salesInstances/createSalesInstance.ts";
+import { pointBusyForEmployee } from "../../salesInstances/salesInstanceConflicts.ts";
 import {
   sendReservationPendingFlow,
   sendReservationDecisionFlow,
@@ -430,13 +431,12 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
               .send({ message: "Cannot move a closed SalesInstance!" });
           }
 
-          const openConflict = await SalesInstance.exists({
-            _id: { $ne: existingSalesInstance._id },
-            dailyReferenceNumber: existingSalesInstance.dailyReferenceNumber,
-            businessId: existingSalesInstance.businessId,
-            salesPointId,
-            salesInstanceStatus: { $ne: "Closed" },
-          }).session(session);
+          const openConflict = await pointBusyForEmployee({
+            salesPointId: new Types.ObjectId(salesPointId as any),
+            businessId: existingSalesInstance.businessId as Types.ObjectId,
+            session,
+            excludeSalesInstanceId: existingSalesInstance._id as Types.ObjectId,
+          });
 
           if (openConflict) {
             await session.abortTransaction();
@@ -496,12 +496,11 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
             return reply.code(400).send({ message: dailyReferenceNumber });
           }
 
-          const existingOpen = await SalesInstance.exists({
-            dailyReferenceNumber,
-            businessId: reservation.businessId,
-            salesPointId: effectiveSalesPointId,
-            salesInstanceStatus: { $ne: "Closed" },
-          }).session(session);
+          const existingOpen = await pointBusyForEmployee({
+            salesPointId: effectiveSalesPointId as Types.ObjectId,
+            businessId: reservation.businessId as Types.ObjectId,
+            session,
+          });
 
           if (existingOpen) {
             await session.abortTransaction();

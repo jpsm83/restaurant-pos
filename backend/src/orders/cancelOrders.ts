@@ -5,13 +5,15 @@ import SalesInstance from "../models/salesInstance.ts";
 
 const cancelOrders = async (
   ordersIdsArr: Types.ObjectId[],
+  salesInstanceId: Types.ObjectId,
   session: ClientSession
 ): Promise<true | string> => {
   try {
     const orders = await Order.find({
       _id: { $in: ordersIdsArr },
+      salesInstanceId,
     })
-      .select("businessGoodId addOns salesInstanceId orderStatus")
+      .select("businessGoodId addOns orderStatus")
       .lean()
       .session(session);
 
@@ -41,7 +43,7 @@ const cancelOrders = async (
     const [salesInstance1, salesInstance2, order] = await Promise.all([
       SalesInstance.updateMany(
         {
-          _id: orders[0].salesInstanceId,
+          _id: salesInstanceId,
           "salesGroup.ordersIds": { $in: ordersIdsArr },
         },
         { $pull: { "salesGroup.$.ordersIds": { $in: ordersIdsArr } } },
@@ -49,7 +51,7 @@ const cancelOrders = async (
       ),
 
       SalesInstance.updateMany(
-        { _id: orders[0].salesInstanceId },
+        { _id: salesInstanceId },
         { $pull: { salesGroup: { ordersIds: { $size: 0 } } } },
         { session }
       ),

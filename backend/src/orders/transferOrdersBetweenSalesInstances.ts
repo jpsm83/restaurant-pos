@@ -4,11 +4,16 @@ import SalesInstance from "../models/salesInstance.ts";
 
 const transferOrdersBetweenSalesInstances = async (
   ordersIdsArr: Types.ObjectId[],
+  fromSalesInstanceId: Types.ObjectId,
   toSalesInstanceId: Types.ObjectId,
+  businessId: Types.ObjectId,
   session: ClientSession
 ): Promise<true | string> => {
   try {
-    const orders = await Order.find({ _id: { $in: ordersIdsArr } })
+    const orders = await Order.find({
+      _id: { $in: ordersIdsArr },
+      salesInstanceId: fromSalesInstanceId,
+    })
       .select("salesInstanceId")
       .session(session)
       .lean();
@@ -17,10 +22,8 @@ const transferOrdersBetweenSalesInstances = async (
       return "Some orders were not found!";
     }
 
-    const fromSalesInstanceId = orders[0].salesInstanceId;
-
     const toSalesInstance = await SalesInstance.findById(toSalesInstanceId)
-      .select("salesInstanceStatus")
+      .select("businessId salesInstanceStatus")
       .session(session)
       .lean();
 
@@ -28,12 +31,16 @@ const transferOrdersBetweenSalesInstances = async (
       return "Target sales instance not found!";
     }
 
+    if (toSalesInstance.businessId.toString() !== businessId.toString()) {
+      return "Target sales instance does not belong to this business!";
+    }
+
     if (toSalesInstance.salesInstanceStatus === "Closed") {
       return "Cannot transfer orders to a closed sales instance!";
     }
 
     await Order.updateMany(
-      { _id: { $in: ordersIdsArr } },
+      { _id: { $in: ordersIdsArr }, salesInstanceId: fromSalesInstanceId },
       { $set: { salesInstanceId: toSalesInstanceId } },
       { session }
     );

@@ -9,12 +9,14 @@ import Reservation from "../models/reservation.ts";
 const closeOrders = async (
   ordersIdsArr: Types.ObjectId[],
   paymentMethodArr: IPaymentMethod[],
+  salesInstanceId: Types.ObjectId,
   session: ClientSession
 ): Promise<true | string> => {
   try {
     const orders = (await Order.find({
       _id: { $in: ordersIdsArr },
       billingStatus: "Open",
+      salesInstanceId,
     })
       .select("_id salesInstanceId billingStatus orderNetPrice")
       .session(session)
@@ -92,7 +94,7 @@ const closeOrders = async (
       return "Failed to update all orders!";
     }
 
-    const salesInstance = (await SalesInstance.findById(orders[0].salesInstanceId)
+    const salesInstance = (await SalesInstance.findById(salesInstanceId)
       .select("responsibleByUserId salesGroup reservationId")
       .populate({
         path: "salesGroup.ordersIds",

@@ -1,0 +1,36 @@
+{
+  "latencyMs": {
+    "globalList": {
+      "p50": 10.93,
+      "p95": 33.3
+    },
+    "businessList": {
+      "p50": 11.33,
+      "p95": 29.18
+    },
+    "userList": {
+      "p50": 12.31,
+      "p95": 47.97
+    }
+  },
+  "executionStats": {
+    "globalList": {
+      "totalDocsExamined": 320,
+      "winningStage": "SORT"
+    },
+    "businessList": {
+      "totalDocsExamined": 20,
+      "winningStage": "PROJECTION_SIMPLE"
+    },
+    "userList": {
+      "totalDocsExamined": 50,
+      "winningStage": "SORT"
+    }
+  },
+  "dataset": {
+    "totalNotifications": 320,
+    "businessANotifications": 200,
+    "businessBNotifications": 120,
+    "userInboxRefs": 120
+  }
+}

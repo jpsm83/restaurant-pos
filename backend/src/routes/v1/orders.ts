@@ -115,6 +115,7 @@ export const ordersRoutes: FastifyPluginAsync = async (app) => {
         const pricedOrders = await applyPromotionsToOrders({
           businessId: new Types.ObjectId(businessId),
           ordersArr: ordersArr as any,
+          flow: "seated",
           session,
         });
         if (typeof pricedOrders === "string") {
@@ -247,9 +248,9 @@ export const ordersRoutes: FastifyPluginAsync = async (app) => {
 
       try {
         const orderDoc = (await Order.findById(orderId)
-          .select("businessId")
+          .select("businessId salesInstanceId")
           .session(session)
-          .lean()) as { businessId: Types.ObjectId } | null;
+          .lean()) as { businessId: Types.ObjectId; salesInstanceId: Types.ObjectId } | null;
 
         if (!orderDoc) {
           await session.abortTransaction();
@@ -262,6 +263,8 @@ export const ordersRoutes: FastifyPluginAsync = async (app) => {
           "_id" in orderDoc.businessId
             ? (orderDoc.businessId as { _id: Types.ObjectId })._id
             : (orderDoc.businessId as Types.ObjectId);
+
+        const salesInstanceId = orderDoc.salesInstanceId;
 
         const employee = (await Employee.findOne({
           userId: sessionUserId,
@@ -285,6 +288,7 @@ export const ordersRoutes: FastifyPluginAsync = async (app) => {
 
         const cancelOrdersResult = await cancelOrders(
           [new Types.ObjectId(orderId)],
+          salesInstanceId,
           session,
         );
 

@@ -6,6 +6,20 @@ export interface OrderConfirmationParams {
   totalNetPaidAmount: number;
   orderCount: number;
   orderCode?: string;
+  flow?: "delivery" | "selfOrder";
+  clientName?: string;
+  deliveryAddress?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    postalCode?: string;
+    country?: string;
+  };
+  /**
+   * Idempotency key passed down to communications dispatch to prevent
+   * duplicate receipts/notifications on payment retries.
+   */
+  idempotencyKey?: string;
 }
 
 /**
@@ -27,8 +41,11 @@ const sendOrderConfirmation = async (
         totalNetPaidAmount: params.totalNetPaidAmount,
         orderCount: params.orderCount,
         orderCode: params.orderCode,
+        flow: params.flow,
+        clientName: params.clientName,
+        deliveryAddress: params.deliveryAddress,
       },
-      { fireAndForget: true }
+      { fireAndForget: true, idempotencyKey: params.idempotencyKey }
     );
   } catch (error) {
     console.error("[orderConfirmation] sendOrderConfirmation failed:", error);

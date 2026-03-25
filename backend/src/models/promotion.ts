@@ -45,6 +45,7 @@ const promotionSchema = new Schema(
     },
 
     // optional fields
+    applyToDelivery: { type: Boolean, default: false }, // if true, this promotion applies to delivery orders
     businessGoodsToApplyIds: {
       type: [Schema.Types.ObjectId],
       ref: "BusinessGood",

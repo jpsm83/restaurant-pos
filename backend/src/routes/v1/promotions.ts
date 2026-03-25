@@ -45,6 +45,7 @@ export const promotionsRoutes: FastifyPluginAsync = async (app) => {
         promotionType,
         businessId,
         businessGoodsToApplyIds,
+        applyToDelivery,
         description,
       } = req.body as IPromotion;
 
@@ -59,6 +60,15 @@ export const promotionsRoutes: FastifyPluginAsync = async (app) => {
         return reply.code(400).send({
           message:
             "PromotionName, promotionPeriod, weekDays, activePromotion, promotionType and business are required fields!",
+        });
+      }
+
+      if (
+        applyToDelivery !== undefined &&
+        typeof applyToDelivery !== "boolean"
+      ) {
+        return reply.code(400).send({
+          message: "applyToDelivery must be a boolean when provided!",
         });
       }
 
@@ -116,7 +126,8 @@ export const promotionsRoutes: FastifyPluginAsync = async (app) => {
         activePromotion,
         promotionType,
         businessId,
-        businessGoodsToApply: businessGoodsToApplyIds || undefined,
+        businessGoodsToApplyIds: businessGoodsToApplyIds || undefined,
+        applyToDelivery: applyToDelivery ?? undefined,
         description: description || undefined,
       };
 
@@ -180,6 +191,7 @@ export const promotionsRoutes: FastifyPluginAsync = async (app) => {
         activePromotion,
         promotionType,
         businessGoodsToApplyIds,
+        applyToDelivery,
         description,
       } = req.body as IPromotion;
 
@@ -225,6 +237,15 @@ export const promotionsRoutes: FastifyPluginAsync = async (app) => {
         }
       }
 
+      if (
+        applyToDelivery !== undefined &&
+        typeof applyToDelivery !== "boolean"
+      ) {
+        return reply.code(400).send({
+          message: "applyToDelivery must be a boolean when provided!",
+        });
+      }
+
       const promotion = (await Promotion.findById(promotionId)
         .select("businessId")
         .lean()) as unknown as IPromotion | null;
@@ -254,6 +275,8 @@ export const promotionsRoutes: FastifyPluginAsync = async (app) => {
       if (promotionType) updatedPromotion.promotionType = promotionType;
       if (businessGoodsToApplyIds)
         updatedPromotion.businessGoodsToApplyIds = businessGoodsToApplyIds;
+      if (applyToDelivery !== undefined)
+        updatedPromotion.applyToDelivery = applyToDelivery;
       if (description) updatedPromotion.description = description;
 
       await Promotion.updateOne(

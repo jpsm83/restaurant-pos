@@ -3,6 +3,7 @@ import type { IOrder } from "../../../packages/interfaces/IOrder.ts";
 import type { ISalesInstance } from "../../../packages/interfaces/ISalesInstance.ts";
 import Order from "../models/order.ts";
 import SalesInstance from "../models/salesInstance.ts";
+import SalesPoint from "../models/salesPoint.ts";
 import Reservation from "../models/reservation.ts";
 import updateDynamicCountSupplierGood from "../inventories/updateDynamicCountSupplierGood.ts";
 
@@ -16,14 +17,35 @@ const createOrders = async (
   session: ClientSession
 ): Promise<unknown[] | string> => {
   try {
-    if (createdByUserId && createdAsRole === "employee") {
-      const salesInstance = (await SalesInstance.findById(salesInstanceId)
-        .select("salesInstanceStatus")
-        .lean()) as unknown as ISalesInstance | null;
+    // Idea doc §5/§6: orders must always validate that the target SalesInstance
+    // exists, is not closed, and belongs to the provided businessId.
+    // This applies to both employee-served and customer/self-order/delivery flows.
+    const salesInstance = (await SalesInstance.findOne({
+      _id: salesInstanceId,
+      businessId,
+    })
+      .select("salesInstanceStatus salesPointId")
+      .lean()) as unknown as Pick<
+      ISalesInstance,
+      "salesInstanceStatus" | "salesPointId"
+    > | null;
 
-      if (!salesInstance || salesInstance.salesInstanceStatus === "Closed") {
-        return "SalesInstance not found or closed!";
-      }
+    if (!salesInstance) {
+      return "SalesInstance not found for this business!";
+    }
+
+    if (salesInstance.salesInstanceStatus === "Closed") {
+      return "SalesInstance is closed!";
+    }
+
+    // Ensure the SalesPoint backing the instance also belongs to the business.
+    const salesPointOk = await SalesPoint.exists({
+      _id: salesInstance.salesPointId,
+      businessId,
+    });
+
+    if (!salesPointOk) {
+      return "SalesPoint not found for this business!";
     }
 
     const ordersToInsert = ordersArr.map((order) => ({
@@ -63,24 +85,33 @@ const createOrders = async (
       return "updateDynamicCountSupplierGood failed! Error: " + updateResult;
     }
 
+    // Idea doc §9: each createOrders(...) call represents a batch of orders.
+    // Each batch gets its own `orderCode` inside its own `salesGroup` block.
     const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const day = String(new Date().getDate()).padStart(2, "0");
     const month = String(new Date().getMonth() + 1).padStart(2, "0");
     const dayOfWeek = weekDays[new Date().getDay()];
     const randomNum = String(Math.floor(Math.random() * 9000) + 1000);
-    const orderCode = `${day}${month}${dayOfWeek}${randomNum}`;
+    const generatedOrderCode = `${day}${month}${dayOfWeek}${randomNum}`;
+    const orderCodeToUse = generatedOrderCode;
 
     const updatedSalesInstance = await SalesInstance.updateOne(
       { _id: salesInstanceId },
       {
         $push: {
-          salesGroup: { orderCode, ordersIds: ordersIdsCreated, createdAt: new Date() },
+          salesGroup: {
+            orderCode: orderCodeToUse,
+            ordersIds: ordersIdsCreated,
+            createdAt: new Date(),
+          },
         },
       },
-      { session }
+      { session },
     );
 
-    if (updatedSalesInstance.modifiedCount === 0) return "SalesInstance not updated!";
+    if (updatedSalesInstance.modifiedCount === 0) {
+      return "SalesInstance not updated!";
+    }
 
     const reservation = (await Reservation.findOne({
       salesInstanceId,

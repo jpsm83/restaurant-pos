@@ -17,6 +17,11 @@ export interface ISalesInstance {
   responsibleByUserId?: Types.ObjectId;
   businessId: Types.ObjectId;
   clientName?: string;
+  /**
+   * Idempotency key provided by the front-end for customer self-order/delivery payment acceptance.
+   * Used to prevent duplicate SalesInstances when payment is retried.
+   */
+  paymentId?: string;
   salesGroup?: ISalesGroup[];
   closedByUserId?: Types.ObjectId;
 }

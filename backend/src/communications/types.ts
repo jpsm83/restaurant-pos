@@ -27,6 +27,15 @@ export interface OrderConfirmedEventPayload {
   totalNetPaidAmount: number;
   orderCount: number;
   orderCode?: string;
+  flow?: "delivery" | "selfOrder";
+  clientName?: string;
+  deliveryAddress?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    postalCode?: string;
+    country?: string;
+  };
 }
 
 export interface ReservationPendingEventPayload {

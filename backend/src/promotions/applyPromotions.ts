@@ -133,7 +133,7 @@ const applySinglePromotionToOrder = (
 const applyPromotionsToOrders = async (
   params: IPromotionPricingInput,
 ): Promise<IPricedOrderOutput[] | string> => {
-  const { businessId, ordersArr, session } = params;
+  const { businessId, ordersArr, session, flow } = params;
   const atDateTime = params.atDateTime ?? new Date();
 
   if (!ordersArr || ordersArr.length === 0) {
@@ -146,7 +146,7 @@ const applyPromotionsToOrders = async (
       activePromotion: true,
     })
       .select(
-        "promotionName promotionPeriod weekDays activePromotion promotionType businessGoodsToApplyIds",
+        "promotionName promotionPeriod weekDays activePromotion promotionType businessGoodsToApplyIds applyToDelivery",
       )
       .session(session ?? null)
       .lean()) as unknown as IPromotionDocLean[];
@@ -154,6 +154,12 @@ const applyPromotionsToOrders = async (
     const applicablePromotions = activePromotions.filter((promo) =>
       isWithinPromotionWindow(promo, atDateTime),
     );
+
+    const isDeliveryFlow = flow === "delivery";
+    const scopedPromotions = applicablePromotions.filter((promo) => {
+      const applyToDelivery = promo.applyToDelivery === true;
+      return isDeliveryFlow ? applyToDelivery : !applyToDelivery;
+    });
 
     return ordersArr.map((order) => {
       const gross = order.orderGrossPrice ?? 0;
@@ -169,7 +175,7 @@ const applyPromotionsToOrders = async (
         };
       }
 
-      const promosForOrder = applicablePromotions.filter((promo) =>
+      const promosForOrder = scopedPromotions.filter((promo) =>
         promotionTargetsOrder(promo, [businessGoodId]),
       );
 

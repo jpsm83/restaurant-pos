@@ -1,6 +1,6 @@
 import { Types } from "mongoose";
 import type { ClientSession } from "mongoose";
-import type { IOrder } from "./IOrder";
+import { IOrder } from "./IOrder.ts";
 
 export interface IPromotionPeriod {
   start: Date;
@@ -34,6 +34,12 @@ export interface IPromotionPricingInput {
   >;
   atDateTime?: Date;
   session?: ClientSession;
+  /**
+   * Promotion applicability context.
+   * - "delivery": include only promotions where applyToDelivery === true
+   * - "seated": apply promotions where applyToDelivery !== true (false or undefined)
+   */
+  flow?: "delivery" | "seated";
 }
 
 export interface IPricedOrderOutput {
@@ -55,6 +61,7 @@ export type IPromotionDocLean = {
   activePromotion: boolean;
   promotionType: PromotionType;
   businessGoodsToApplyIds?: ObjectId[];
+  applyToDelivery?: boolean;
 };
 
 export interface IPromotion {
@@ -65,5 +72,6 @@ export interface IPromotion {
   promotionType: object;
   businessId: Types.ObjectId;
   businessGoodsToApplyIds?: Types.ObjectId[];
+  applyToDelivery?: boolean;
   description?: string;
 }
