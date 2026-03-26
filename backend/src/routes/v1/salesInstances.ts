@@ -2,7 +2,6 @@ import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
 import type {
   IDailySalesReport,
-  IGoodsReduced,
 } from "../../../../packages/interfaces/IDailySalesReport.ts";
 import type { ISalesInstance } from "../../../../packages/interfaces/ISalesInstance.ts";
 import type { IPaymentMethod } from "../../../../packages/interfaces/IPaymentMethod.ts";
@@ -33,6 +32,7 @@ import {
 } from "../../salesInstances/salesInstanceConflicts.ts";
 import cancelOrders from "../../orders/cancelOrders.ts";
 import closeOrders from "../../orders/closeOrders.ts";
+import finalizeOrdersBillingStatus from "../../orders/finalizeOrdersBillingStatus.ts";
 import validatePaymentMethodArray from "../../orders/validatePaymentMethodArray.ts";
 import ordersArrValidation from "../../orders/ordersArrValidation.ts";
 import createOrders from "../../orders/createOrders.ts";
@@ -306,6 +306,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
       const {
         ordersIdsArr,
         cancel,
+        ordersNewBillingStatus,
         paymentMethodArr,
         toSalesInstanceId,
         guests,
@@ -346,7 +347,18 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
         const wantsTransferOrders = Boolean(
           toSalesInstanceId && ordersIdsArr && ordersIdsArr.length > 0,
         );
-        const wantsAnyRestrictedOperation = wantsCancel || wantsCloseWithPayment || wantsTransferOrders;
+        const wantsFinalizeWithoutPayment = Boolean(
+          ordersNewBillingStatus &&
+            ordersIdsArr &&
+            ordersIdsArr.length > 0 &&
+            (ordersNewBillingStatus === "Void" ||
+              ordersNewBillingStatus === "Invitation"),
+        );
+        const wantsAnyRestrictedOperation =
+          wantsCancel ||
+          wantsCloseWithPayment ||
+          wantsTransferOrders ||
+          wantsFinalizeWithoutPayment;
 
         // Carve-out (idea doc §4/§E): customer-open/delivery/self-order sessions must not use these PATCH operations.
         if (wantsAnyRestrictedOperation && salesInstance.openedAsRole !== "employee") {
@@ -533,6 +545,50 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
           if (cancelOrdersResult !== true) {
             await session.abortTransaction();
             return reply.code(400).send({ message: cancelOrdersResult });
+          }
+        }
+
+        if (wantsFinalizeWithoutPayment && ordersIdsArr && ordersIdsArr.length > 0) {
+          if (!sessionUserId) {
+            await session.abortTransaction();
+            return reply.code(401).send({
+              message:
+                "Unauthorized; authenticated management session is required to finalize orders as Void/Invitation.",
+            });
+          }
+
+          const managerEmployee = (await Employee.findOne({
+            userId: sessionUserId,
+            businessId: salesInstance.businessId,
+          })
+            .select("allEmployeeRoles")
+            .session(session)
+            .lean()) as { allEmployeeRoles?: string[] } | null;
+
+          if (
+            !managerEmployee ||
+            !managementRolesEnums.some((role) =>
+              managerEmployee.allEmployeeRoles?.includes(role),
+            )
+          ) {
+            await session.abortTransaction();
+            return reply.code(403).send({
+              message:
+                "Only management roles can finalize orders as Void/Invitation.",
+            });
+          }
+
+          const status = ordersNewBillingStatus as "Void" | "Invitation";
+          const finalizeResult = await finalizeOrdersBillingStatus(
+            ordersIdsArr.map((id) => new Types.ObjectId(id)),
+            new Types.ObjectId(salesInstanceId),
+            status,
+            session,
+          );
+
+          if (finalizeResult !== true) {
+            await session.abortTransaction();
+            return reply.code(400).send({ message: finalizeResult });
           }
         }
 
@@ -1845,70 +1901,6 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
           return reply.code(400).send({ message: closeOrdersResult });
         }
 
-        const soldGoods: IGoodsReduced[] = [];
-        const goodIdsPerOrder = ordersArr.flatMap((order) => [
-          order.businessGoodId!,
-          ...(order.addOns ?? []),
-        ]);
-        goodIdsPerOrder.forEach((goodId) => {
-          const existingGood = soldGoods.find(
-            (good) =>
-              (good.businessGoodId?.toString?.() ?? good.businessGoodId) ===
-              (goodId?.toString?.() ?? goodId),
-          );
-
-          if (existingGood) {
-            existingGood.quantity += 1;
-          } else {
-            soldGoods.push({
-              businessGoodId: goodId,
-              quantity: 1,
-            });
-          }
-        });
-
-        const totalSalesBeforeAdjustments = (createdOrders as IOrder[]).reduce(
-          (acc: number, order: { orderGrossPrice?: number }) =>
-            acc + (order.orderGrossPrice ?? 0),
-          0,
-        );
-
-        const totalNetPaidAmount = (createdOrders as IOrder[]).reduce(
-          (acc: number, order: { orderNetPrice: number }) =>
-            acc + order.orderNetPrice,
-          0,
-        );
-
-        const totalCostOfGoodsSold = (createdOrders as IOrder[]).reduce(
-          (acc: number, order: { orderCostPrice: number }) =>
-            acc + order.orderCostPrice,
-          0,
-        );
-
-        const dailySalesReportUpdate = await DailySalesReport.updateOne(
-          { dailyReferenceNumber },
-          {
-            $push: {
-              selfOrderingSalesReport: {
-                userId,
-                customerPaymentMethod: paymentMethodArr,
-                totalSalesBeforeAdjustments,
-                totalNetPaidAmount,
-                totalCostOfGoodsSold,
-                soldGoods,
-              },
-            },
-          },
-          { session },
-        );
-
-        if (dailySalesReportUpdate.modifiedCount === 0) {
-          await session.abortTransaction();
-          return reply
-            .code(400)
-            .send({ message: "Update dailySalesReport failed!" });
-        }
-
         await session.commitTransaction();
 
         // Idea doc §9: ensure receipts reference the correct batch `orderCode`.
@@ -1928,6 +1920,12 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
               createdOrderIdsSet.has(String(id)),
             ),
           )?.orderCode ?? salesInstanceForOrderCode?.salesGroup?.[0]?.orderCode;
+
+        const totalNetPaidAmount = (createdOrders as IOrder[]).reduce(
+          (acc: number, order: { orderNetPrice: number }) =>
+            acc + order.orderNetPrice,
+          0,
+        );
 
         const businessIdObjectId = new Types.ObjectId(businessId);
         checkLowStockAndNotify(businessIdObjectId).catch(() => {});

@@ -1,176 +1,588 @@
-# Daily sales reports — current behavior, gaps, and recommendations
+# Daily sales reports — final business flow and must-do decisions
 
-This document describes how **daily sales reports** work in the product **today**, at **flow and behavior level only** (no implementation code). It is meant for discussion before any code changes.
+This document defines the agreed business flow for daily sales reporting before code changes.  
+Sections `15` and `16` contain the confirmed production hardening and MUST DO architecture.
 
 ---
 
 ## 1. Purpose in the restaurant product
 
-The daily sales report represents an **operational “business day”** for one restaurant (one `businessId`), not necessarily a calendar midnight-to-midnight day. Shifts can cross midnight; the report stays **open** until management **closes** it after reconciling activity.
+The daily sales report represents one operational business day for one restaurant (`businessId`), not strictly a calendar day. A business day can cross midnight and stays open until a manager closes it.
 
-It serves as:
+The report exists to:
 
-- The **anchor** for correlating sales instances, orders, and rollups for that period (via a shared reference number).
-- A container for **per-employee** performance slices, **delivery** aggregation, and **self-order** customer slices.
-- The source of **business-level totals** (revenue, COGS, tips, void/invite, payment mix, POS commission) after a **calculate** step.
-- An input into **monthly** business reporting (triggered after calculate).
-
----
-
-## 2. Core concept: `dailyReferenceNumber`
-
-- When no **open** daily report exists for a business, the system can **create** a new report. The new report gets a numeric **`dailyReferenceNumber`** (created from current time at creation).
-- That same number is stored on **sales instances** and **orders** created during that open period so all activity for the “day” can be queried together.
-- **Closing** the report sets it to not open; the next period gets a **new** report and a **new** reference number when something triggers creation again.
-
-**Intent:** avoid tying the “day” only to calendar dates when real operations span two calendar days.
+- Correlate all transactional activity under one day reference (`dailyReferenceNumber`)
+- Keep actor-level daily summaries for employee, delivery, and self-order channels
+- Produce business-level totals (payments, sales, net, tips, COGS, profit/loss, goods, commission)
+- Feed weekly/monthly reporting
 
 ---
 
-## 3. What the report document contains (conceptual)
+## 2. Canonical day anchor: `dailyReferenceNumber`
 
-At a high level, one daily report holds:
+- There is at most one open daily report per business.
+- `dailyReferenceNumber` identifies the active business day.
+- New day/report creation is implicit when the first qualifying transaction needs an open day.
+- The intended operational start is the first real order flow event (`Sent`) for the day context.
+- When the report is closed, next activity opens a new day with a new reference.
 
-| Area | Role |
-|------|------|
-| **Identity & lifecycle** | Reference number, open/closed flag, business link, optional “countdown” timestamp used as a conceptual deadline (see gaps). |
-| **`employeesDailySalesReport`** | One row per staff user who has been tracked for that day (opened tables as employee, etc.): payments, gross/net, tips, COGS, customers served, sold/void/invited goods, flags for open instances. Attribution is tied to **who is responsible** for the table/instance, not only who punched the first order. |
-| **`deliveryDailySalesReport`** | A **single** aggregated bucket for all delivery activity for that reference period (same “shape” as an employee row for UI compatibility; see gaps). |
-| **`selfOrderingSalesReport`** | Entries for **customer** self-order checkouts (payment-oriented snapshot: customer, payment methods, totals, sold goods). |
-| **Top-level rollups** | After **calculate**: merged payment methods, daily totals (sales, net, tips, COGS, profit, customers, averages), combined sold/void/invited goods, void/invite value totals, POS commission derived from business subscription tier. |
-
----
-
-## 4. How a new open report appears (creation flow)
-
-- There is **no** separate public “start my business day” step in the described API surface; creation is **implicit** when other flows need a day key.
-- When transactional flows (e.g. opening a table from POS, QR open-table, reservation seating that creates an instance, delivery/self-order paths that need a day) run, they:
-  - Look for a report with **open** status for that business.
-  - If none exists, they **create** one (inside the same database transaction where applicable) and use its **`dailyReferenceNumber`** on new instances and orders.
-
-**User impact:** The “day” starts when the first qualifying operation runs, not necessarily when a manager clicks a button.
+Intent:
+- Keep a stable business-day identity even when service continues after midnight.
 
 ---
 
-## 5. Employee slice: how rows get there and how they refresh
+## 3. Data model at business-flow level
 
-- When an **employee** opens a sales instance (POS / staff flow), the system ensures that user appears on the daily report’s **employee** list with a “has open activity” style flag where applicable.
-- **Calculate** (management) rebuilds **employee** metrics by scanning **sales instances** for that `dailyReferenceNumber` where the **responsible** user matches each employee row, walking **order groups** and **orders** to accumulate payments, money totals, tips, COGS, and goods classified by billing outcome (paid vs void vs invitation where the logic applies).
+One daily report contains:
 
-**User impact:** Shift handoffs and “who closes the bill” matter for **whose** row accumulates table-level totals; comments in the domain suggest preferring closed tables at shift change for cleaner per-person analytics.
+| Area | Final role in this flow |
+|---|---|
+| Identity & lifecycle | `businessId`, `dailyReferenceNumber`, open/closed state, optional close countdown metadata |
+| Actor reports | Three report buckets using shared schema/rules: `employeesDailySalesReport[]`, `deliveryDailySalesReport`, `selfOrderingSalesReport[]` |
+| Top-level rollups | Business totals generated by aggregating actor rows for the same day |
+| Audit metadata | Minimal metadata only (use default `updatedAt`) |
 
----
-
-## 6. Delivery slice
-
-- If the business has a **delivery** sales point, **calculate** runs a **delivery-specific** aggregation: all instances on that point for the reference period are rolled into **one** `deliveryDailySalesReport` bucket.
-- That bucket is then merged into the **business-level** totals on the same run as employee rows.
-
-**User impact:** Delivery appears as one line in the UI model, not one row per driver/customer in that bucket.
-
----
-
-## 7. Self-order slice
-
-- Customer **self-order** completion (pay at QR) appends structured data to **`selfOrderingSalesReport`** on the daily document (customer, payment, totals, goods).
-- This path is **separate** from the employee aggregation, which keys off **responsible employee** on instances.
-
-**User impact:** Self-order history is visible on the document for that array; how it feeds **top-level daily totals** is a known consistency topic (see gaps).
+Actor model principle:
+- Delivery and self-order are first-class channels with the same aggregation logic as employees.
+- Keep the existing 3-bucket model; avoid extra actor-type persistence complexity.
+- Implementation detail: use a shared base report shape plus lightweight bucket specializations (self-order requires `salesPointId`).
 
 ---
 
-## 8. Management: “calculate business report” flow
+## 4. Day creation flow
 
-1. Authenticated user must be **management** (by current shift role).
-2. Load the target daily report and business context (including subscription for commission).
-3. **Refresh employee reports** from live sales/order data for that `dailyReferenceNumber`; persist updated employee array on the report.
-4. If a delivery point exists, **refresh delivery bucket** the same way; merge into in-memory business rollup.
-5. **Aggregate** employee rows (and delivery bucket) into **daily totals**: payment mix, sales, net, tips, COGS, profit, customers, averages, combined goods, void/invite values, **POS commission** from subscription tier.
-6. **Persist** those top-level fields (and delivery bucket) on the daily report document.
-7. **Trigger monthly aggregation** asynchronously (errors logged; day close does not wait on completion).
+1. A transactional path requires an active business day.
+2. System checks for an open daily report for that `businessId`.
+3. If none exists, system creates a new daily report and `dailyReferenceNumber`.
+4. Sales instances/orders created in that open period must carry that day reference.
 
-**User impact:** Numbers on the report are “as of last successful calculate.” Partial errors can return a **multi-status** style response indicating some slices failed.
+User impact:
+- Managers do not need to manually press a "start day" button.
 
 ---
 
-## 9. Management: “close daily report” flow
+## 5. Actor-level reporting flow (employee, delivery, self-order)
 
-1. Authenticated **management** user.
-2. Verify there are **no orders** still in **open billing** state for that business **and** that `dailyReferenceNumber`.
-3. Set the report to **closed** (no longer open).
+Final direction aligned with section `16`:
 
-**User impact:** After close, the period is fixed for “open day” semantics; new activity should bind to a **new** reference when the next creation happens.
+- All actor types use the same actor report schema and accounting rules.
+- Actor reports are updated incrementally on backend when orders leave `Open`.
+- Frontend does not calculate report values.
 
----
-
-## 10. Other API behaviors (read / maintenance)
-
-- **List all reports** and **get by id** (populated names for users in nested arrays).
-- **List by business** with optional **date range** on report **creation** timestamps (not the same as “business day” boundaries—see gaps).
-- **Delete report by id** exists as an endpoint (product/security implications).
-- **Calculate users report** endpoint can refresh a subset of users for a report (authorization posture should be reviewed for production).
+Attribution:
+- One deterministic attribution rule is used consistently across all endpoints.
+- Transfer/handoff can only affect `Open` orders, avoiding double-attribution after finalization.
 
 ---
 
-## 11. Downstream: monthly report
+## 6. Accounting scope by billing status
 
-- After a successful **calculate business report**, the system kicks off **monthly** aggregation for that business in the background so the open monthly picture can incorporate the updated daily figures without a second user action.
+Daily actor and business metrics must only include non-open final statuses according to approved rules:
 
----
+- `Paid`: counted in realized sales/net and related metrics
+- `Void`: not realized revenue; counted in void buckets and loss impact rules
+- `Invitation`: not realized revenue; counted in invited buckets and promotional loss rules
+- `Open`: never counted
+- `Cancel`: excluded from sales totals unless explicit policy says otherwise
 
-## 12. Documented gaps (current state)
-
-These are **behavioral or product** gaps to resolve through discussion, not implementation detail.
-
-1. **Self-order vs executive totals**  
-   Top-level daily totals on calculate are built from **employee** + **delivery** slices. **`selfOrderingSalesReport`** entries are stored on the document but are **not** clearly folded into those executive totals in the same step. Risk: **under-reported** revenue/COGS for days with material QR self-order volume unless double-counted elsewhere.
-
-2. **Order billing status vs money totals on employee refresh**  
-   Employee aggregation adds money lines from orders in groups; **goods** buckets respect paid/void/invitation, but **money totals** may include lines that are not in a “final” billing state depending on implementation. **Close** already blocks while **any** open billing orders exist for the reference, which limits the window but the **exact definition** of “what counts in net/gross for a line” should be explicit for owners and accountants.
-
-3. **`dailyReferenceNumber` uniqueness**  
-   Uniqueness is **global** across all businesses. Theoretical collision if two tenants create a report in the same millisecond; also mixes tenant namespaces in one constraint.
-
-4. **`timeCountdownToClose`**  
-   Stored as a future timestamp (e.g. 24h after creation). No described **automatic** close or user-facing enforcement tied to it in the current flow description—may be **unused** or **future** behavior; if the UI mentions it, alignment is needed.
-
-5. **Delivery bucket shape**  
-   Delivery aggregation reuses the **employee** row shape and overloads **`userId`** to carry a **sales point** identifier for compatibility. Clients and future maintainers can misread that field as a person.
-
-6. **Date filters on “by business” list**  
-   Filtering uses report **document creation** time, which may **not** align with operational “business day” if creation is early morning or delayed. Owners may expect filter by **reference period** or **close time**.
-
-7. **Authorization on sensitive routes**  
-   Some read/delete/recalculate-by-user paths may not match the same **management-only** bar as calculate/close. For a real deployment, **who can see or delete** a day’s financial summary must be intentional.
-
-8. **Idempotency and partial failure**  
-   Calculate can leave the document in an **intermediate** state if a step fails mid-way; retry is the recovery path. For audit-minded users, you may want a clearer **“last successful calculate at”** or **version** story.
-
-9. **Schema comments vs reality**  
-   Minor: embedded “goods” subdocuments are described in places as tied to the wrong conceptual model (e.g. order vs menu item), which confuses onboarding.
+Rule consistency requirement:
+- Same matrix applies to all actor types and top-level aggregation.
 
 ---
 
-## 13. Recommendations (for discussion before coding)
+## 7. Manager calculate flow (final)
 
-| # | Recommendation | Rationale |
-|---|----------------|-----------|
-| R1 | **Decide and document** whether **self-order** revenue must appear in **daily totals**, and implement one consistent rule (include in rollup, or show as separate “channel” totals that sum to “true day”). | Avoids silent under-reporting or double counting. |
-| R2 | **Define accounting rules** for employee (and delivery) totals: e.g. only **Paid** (and optionally other closed states) count toward net/gross/COGS; **Open** never counts until paid—aligned with close rules. | Makes numbers match manager intuition and audit. |
-| R3 | **Replace or supplement** global unique `dailyReferenceNumber` with a **per-business** unique constraint or opaque id, if you keep a numeric display key at all. | Safer multi-tenant behavior. |
-| R4 | **Either enforce** `timeCountdownToClose` (notifications, auto-close policy, or hard block) **or remove** it from UX/docs until used. | Reduces confusion. |
-| R5 | **Evolve API shape** for delivery: explicit `deliverySalesPointId` or `channel: "delivery"` instead of overloading `userId`. | Clearer integrations and reporting. |
-| R6 | **Clarify list filters**: document whether filters are by **createdAt**, **closedAt**, or add filters by **`dailyReferenceNumber` / period**. | Correct operational reporting. |
-| R7 | **Harden authz**: align all mutating and sensitive read endpoints with **roles** (and tenant scoping); remove or protect **delete** and **global list** if not needed. | Production security and compliance. |
-| R8 | **Optional**: expose **last calculate timestamp** and/or **calculation job status** for support and trust. | Transparency when async monthly work fails silently in logs. |
-| R9 | **Clean up schema/documentation** comments for embedded goods (what ID means, what “quantity” means per order line model). | Faster onboarding and fewer bugs. |
+Manager calculate is aggregation-oriented, not full recomputation:
+
+1. Authorize management access.
+2. Load daily report and actor rows for that `dailyReferenceNumber`.
+3. Aggregate actor rows into business totals.
+4. Persist top-level daily totals.
+5. Trigger weekly/monthly downstream aggregation per policy.
+
+Expected behavior:
+- Calculate stays fast because actor rows are already up to date.
 
 ---
 
-## 14. How to use this doc
+## 8. Manager close flow (final)
 
-- Use **sections 1–11** as the **agreed “as-is” story** for workshops with product and ops.
-- Use **section 12** to track **decisions** (“accepted risk” vs “must fix”).
-- Use **section 13** as a **backlog of product/technical decisions**; reorder by your risk tolerance (financial accuracy and auth usually first).
+1. Authorize management access.
+2. Verify there are zero `Open` billing orders for the same day and business.
+3. Re-run aggregation for final snapshot.
+4. Persist final totals.
+5. Mark report as closed.
 
-When this matches your intent, you can adapt the file and then implement changes in code in a separate pass.
+Expected behavior:
+- Close is deterministic and fast.
+- After close, new activity must bind to a new day reference.
+
+---
+
+## 9. Access and visibility policy
+
+- Management users can calculate and close daily reports.
+- Employees can view their own individual actor report view.
+- Sensitive business-wide report views are role/tenant scoped.
+- Hard delete is disabled in production for financial reports.
+
+---
+
+## 10. List/read behavior and filter semantics
+
+Read behavior:
+- Get by id and list by business remain standard read operations.
+
+Filter semantics:
+- Keep technical filtering by `createdAt` if needed.
+- Business-facing reporting should support operational day interpretation (`dailyReferenceNumber` / business day label).
+- Week-start configuration can be sourced from business reporting config when presenting period-based data.
+
+---
+
+## 11. Downstream weekly/monthly flow
+
+After successful business-level daily aggregation, downstream weekly and monthly rollups should be updated according to scheduling policy.
+
+Goal:
+- Avoid requiring separate manual reconciliation steps for weekly/monthly freshness.
+
+---
+
+## 12. Resolved vs remaining gaps (aligned to sections 15 and 16)
+
+Resolved by final direction:
+
+- Self-order and delivery are included via same actor model as employee.
+- Daily totals are based on actor aggregation, not mixed ad-hoc logic.
+- Recalculation cost is reduced by incremental actor updates.
+- Close behavior is explicit and validation-first.
+- Delete policy is non-production.
+
+Remaining to confirm in implementation details:
+
+- Exact representation of actor identity fields by actor type
+- Final `Cancel` handling policy
+- No explicit report audit fields (`calculatedBy`, `closedBy`, `closedAt`, `lastCalculatedAt` are not required)
+- Use MongoDB `updatedAt` as latest calculation/update marker
+- Idempotency storage strategy for transition accounting
+
+---
+
+## 13. Decision register (final before coding)
+
+| Decision | Final direction |
+|---|---|
+| D1 | Employee, delivery, and self-order use the same actor schema and same aggregation logic |
+| D2 | Actor reports update incrementally when orders transition `Open -> Final` |
+| D3 | `Paid`, `Void`, `Invitation` are counted as final statuses for reporting logic; `Open` is excluded |
+| D4 | Manager calculate aggregates actor rows (no full actor recomputation path as default) |
+| D5 | Manager close validates no open orders, aggregates final totals, then closes report |
+| D6 | Hard delete of financial reports is disabled in production |
+| D7 | Reporting and auth behavior must remain tenant-scoped and role-controlled |
+
+---
+
+## 14. Final flow to implement (authoritative sequence)
+
+This is the final end-to-end operational flow to implement:
+
+1. First qualifying order flow for a business day creates/uses open `dailyReferenceNumber`.
+2. Orders are created with `billingStatus = Open` and day reference.
+3. When an order transitions from `Open` to final (`Paid`/`Void`/`Invitation`), backend updates that actor's daily row immediately.
+4. Actor rows stay continuously up to date during operations.
+5. Manager can click calculate anytime; system aggregates actor rows to business totals and persists snapshot.
+6. At close, system blocks if any open billing order exists; otherwise aggregates final totals and closes day.
+7. After close, new transaction flow opens a new day reference.
+8. Weekly/monthly summaries are refreshed from finalized daily aggregates.
+
+This sequence is the business contract for coding.
+
+---
+
+## 15. Suggested enhancements to make this production-professional (proposal only)
+
+This section does **not** replace any prior content. It is an add-on checklist and draft structure to help you harden the business flow before coding.
+
+### 15.1 Keep facts separate from proposals
+
+Current sections mix:
+
+- **As-is behavior** (what system does today)
+- **Personal view / intended behavior** (what should happen)
+
+Suggested format for each major section:
+
+- **As-is (confirmed)**
+- **To-be (proposed)**
+- **Decision status**: Proposed / Approved / Deferred
+
+Why this helps:
+
+- Reduces ambiguity during implementation.
+- Makes workshops with product, finance, and ops faster.
+
+---
+
+### 15.2 Add a canonical glossary (single source of truth)
+
+Create a short glossary near the top with exact definitions for:
+
+- `business day` (operational day that can cross midnight)
+- `open day`
+- `close day`
+- `dailyReferenceNumber`
+- `sent order`
+- `paid order`
+- `void`
+- `invitation`
+- `gross sales`
+- `net sales`
+- `COGS`
+- `profit/loss`
+
+Why this helps:
+
+- Prevents future disagreement between product, backend, and accounting teams.
+- Gives QA clear expected behavior.
+
+---
+
+### 15.3 Add explicit accounting rules per billing status
+
+Proposed table to include in this document:
+
+
+| Billing status | Counts in gross sales         | Counts in net sales                                           | Counts in COGS | Counts in profit/loss  | Notes                                         |
+| -------------- | ----------------------------- | ------------------------------------------------------------- | -------------- | ---------------------- | --------------------------------------------- |
+| Paid           | Yes                           | Yes                                                           | Yes            | Yes                    | Core realized transaction                     |
+| Void           | No                            | No                                                            | Yes            | Yes (loss impact)      | There is a direct inpact stock/costrecognized |
+| Invitation     | No (or separate promo bucket) | No (must have a separate count to know how much been invited) | Yes            | Yes (promotional loss) | Track separately for management insights      |
+| Open / Pending | No                            | No                                                            | No             | No                     | Never counted until resolved                  |
+
+
+Decision note:
+
+- You already stated void and invitation should affect profit/loss; this table formalizes that rule for all teams.
+
+---
+
+### 15.4 Add a lifecycle/state model
+
+Proposed daily report lifecycle:
+
+1. `OPEN` (accepting transactions)
+2. `CALCULATED` (latest rollups refreshed)
+3. `CLOSED` (no new activity should bind to this day)
+
+Add allowed actions by state:
+
+- Calculate allowed in: OPEN, CALCULATED
+- Close allowed in: OPEN, CALCULATED (only when no open billing)
+- Delete allowed in: none (production)
+
+Why this helps:
+
+- Avoids accidental operational actions and conflicting expectations.
+
+---
+
+### 15.5 Clarify channel model: employee, delivery, self-order
+
+Your direction is valid: delivery and self-order follow same aggregation rules as employees.
+
+Recommended wording:
+
+- Use a common aggregation engine and shared schema for all 3 report buckets.
+- Keep attribution in code (no persisted `DailySalesActorType` model field):
+  - Start from `userId` (creator/payer context for the finalization event).
+  - If user has employee data and currently on duty, update `employeesDailySalesReport`.
+  - If user is not recognized as on-duty employee, treat as customer context.
+  - For customer context, inspect sales instance sales point type:
+    - If sales point type is `delivery`, update `deliveryDailySalesReport`.
+    - Otherwise, update `selfOrderingSalesReport` (on-site self-ordering).
+
+Why this helps:
+
+- Keeps your unified logic while avoiding confusion caused by overloading user semantics.
+
+---
+
+### 15.6 Reporting filter semantics (business-friendly)
+
+You selected filter by `createdAt`, which is technically simple.
+
+Production suggestion:
+
+- Keep `createdAt` filter for technical/admin usage.
+- Add (or at least define in doc) a primary business filter by operational day label/reference period, because owners usually think in "Monday business day", not document creation timestamp.
+- on the business model, you can defined for the business with day will be the start of the week at reportingConfig
+
+Why this helps:
+
+- Reduces manager confusion for overnight operations.
+
+---
+
+### 15.7 Operational SLA and escalation
+
+Define ownership and deadlines:
+
+- Who is responsible to calculate? any user with managemt roles
+- Who is responsible to close? any user with manager roles
+- Max acceptable delay after opening (example: 24h, 30h, 36h) 24h, them send notification and email to all user with management roles
+- Escalation path (in-app notification, email)
+
+This aligns with your `timeCountdownToClose` idea and makes it actionable.
+
+---
+
+### 15.8 Endpoint sensitivity and deletion policy
+
+Your proposal is strong: reports should be read-only after CLOSING.
+
+Reports will dinamicaly increase and calculate with the orders closing
+
+Also the business report will be calculate at any especific time once manager request the calculation.
+
+Recommended policy text:
+
+- Disable hard delete in production for financial reports.
+- Correction should never be needed once the data is always up to date and mirror the real sales of the day.
+- Restrict sensitive read/list routes by role + tenant scope. employees can see their individual report at any time, mananger can see everything
+
+---
+
+### 15.9 Suggested "Definition of Ready" before code changes
+
+Before implementation starts, confirm these are approved:
+
+- Billing status accounting matrix is approved by finance/ops.
+- Lifecycle/state transitions are approved by product/ops.
+- Actor/channel model naming is approved.
+- Authorization matrix for report endpoints is approved.
+- Filter semantics for management UI are approved.
+- Audit fields are approved.
+
+If all items are approved, engineering can implement with lower rework risk.
+
+---
+
+## 16. MUST DO flow update — incremental per-actor reporting
+
+This section captures the new agreed direction and is marked as **MUST DO** before implementation.
+
+### 16.1 Core rule
+
+- `dailyReferenceNumber` can exist as the open day anchor.
+- Keep three distinct report buckets in `DailySalesReport`:
+  - `employeesDailySalesReport` (array)
+  - `deliveryDailySalesReport` (single object)
+  - `selfOrderingSalesReport` (array)
+- All buckets reuse the same report schema and same aggregation rules.
+
+Required actor classification:
+
+- Canonical recognition order:
+  1. Resolve `userId` from the event.
+  2. Check if `userId` belongs to an employee for that business.
+  3. If employee, check on-duty state:
+     - on-duty => employee bucket
+     - off-duty => customer path
+  4. Customer path: inspect sales instance sales point type:
+     - `delivery` => delivery bucket
+     - any other sales point => self-ordering bucket
+- Aggregation rules are identical across buckets; only bucket routing changes.
+
+### 16.1.1 Source of truth and ownership
+
+- **Orders** remain the source of truth for transactional facts.
+- **Actor daily reports** are materialized per-actor summaries for the same `dailyReferenceNumber`.
+- **DailySalesReport top-level totals** are business rollups derived from actor reports, not from direct full order scans during manager actions.
+
+### 16.2 Incremental update trigger (must happen on backend)
+
+- Every time an order billing status changes from `Open` to a non-open final status, backend must update that actor's individual daily report immediately.
+- Frontend must not be responsible for report math.
+- Actor report data should always represent up-to-date totals for non-open orders only.
+
+Event contract (must be explicit):
+
+1. Detect status transition `Open -> Final` inside backend transaction.
+2. Resolve `dailyReferenceNumber` and actor attribution for that order.
+3. Resolve target bucket (`employeesDailySalesReport` | `deliveryDailySalesReport` | `selfOrderingSalesReport`) and upsert row/document as needed.
+4. Apply metric deltas to that resolved bucket target.
+5. Mark order as accounted for that transition (idempotency guard) before commit.
+
+Current runtime hook points:
+
+- `Open -> Paid`
+  - Hooked in `closeOrders` (payment close flow).
+- `Open -> Void`
+  - Hooked in `PATCH /salesInstances/:salesInstanceId` with `ordersNewBillingStatus: "Void"` (management-restricted).
+- `Open -> Invitation`
+  - Hooked in `PATCH /salesInstances/:salesInstanceId` with `ordersNewBillingStatus: "Invitation"` (management-restricted).
+
+All three runtime hooks must keep the same invariants:
+
+- transition guard uses order filter with `billingStatus: "Open"` (idempotent retries)
+- actor attribution uses `resolveFinalizationActorReportTarget`
+- actor delta update uses `applyOrderFinalizationToActorReport`
+
+Post-remediation implementation note:
+
+- `Open -> Paid` runtime path uses `closeOrders`.
+- `Open -> Void` and `Open -> Invitation` runtime paths use `finalizeOrdersBillingStatus`.
+- All three transitions preserve the same transactional and idempotency guarantees.
+
+Field normalization rule (must be consistent):
+
+- Use `employeePaymentMethods` as the payment aggregation field for all buckets (employee, delivery, self-order).
+- Do not use a separate `customerPaymentMethod` field for self-order entries.
+
+Definition of final status for this flow:
+
+- Counted as final and reportable: `Paid`, `Void`, `Invitation`
+- Not counted as final revenue event: `Open`
+- `Cancel` must be explicitly defined (recommended: not counted as sale; if inventory/cost impact exists, handle by explicit rule)
+
+### 16.2.1 Actor attribution rule (must be deterministic)
+
+- Canonical rule (must be reused by every endpoint):
+  1. Start with `userId`.
+  2. If user has employee data and is on duty => employee bucket.
+  3. Else treat as customer, then inspect sales instance sales point type:
+     - `delivery` => delivery bucket
+     - otherwise => self-ordering bucket (on-site)
+- Transfer and shift handoff must not create ambiguous double ownership.
+  - Transfer only applies to `Open` orders; finalized orders are never re-attributed.
+- The selected attribution rule must be documented once and reused globally without endpoint-specific variants.
+
+### 16.2.1.1 Simplicity guardrail (must do)
+
+- Do not overcomplicate flow or code.
+- Reuse existing 3-bucket structure and shared schema unless a concrete requirement forces change.
+
+### 16.2.2 Incremental metric updates by final billing status
+
+When an order leaves `Open`, actor metrics must update as follows:
+
+- `Paid`
+  - Add to payment-method totals
+  - Add to gross/net/tips
+  - Add to COGS
+  - Add goods to sold bucket
+- `Void`
+  - Do not count as realized net sale
+  - Add goods to void bucket
+  - Add to void value
+  - Apply COGS/profit impact as approved accounting policy
+- `Invitation`
+  - Do not count as realized net sale
+  - Add goods to invited bucket
+  - Add to invited value
+  - Apply COGS/profit impact as approved accounting policy
+- `Cancel` (if kept in business flow)
+  - Default recommendation: excluded from sales/COGS/profit
+  - If policy differs, define exact fields impacted and why
+  - IMPORTANT, cancel orders wont exist, if they are cancel theese types of orders can be enterely deleted because they dont affect the busi
+
+### 16.2.3 Idempotency and retry safety (must do)
+
+- Backend retries or duplicate requests must not duplicate actor totals.
+- Each order transition event must be applied at most once to actor metrics.
+- If transaction fails after partial work, rollback or compensating replay must restore consistency.
+- Simplicity rule for now: idempotency is enforced by transactional `billingStatus` transition guard (`Open -> Final`) without extra order marker fields.
+- This is baseline coverage; explicit per-event hardening across all final-status paths is completed in Phase B hooks.
+
+### 16.2.4 Handling non-order actor metrics
+
+- `hasOpenSalesInstances` and `totalCustomersServed` are instance-level facts.
+- These can be updated:
+  - incrementally on salesInstance lifecycle events, or
+  - recomputed from lightweight instance queries during manager aggregate/close.
+- Rule must be documented to avoid drift in customer counts.
+
+### 16.3 Manager calculate flow (after this change)
+
+- Manager "calculate business report" should not recompute each actor from scratch.
+- It should read all already-updated actor reports for the same `dailyReferenceNumber`.
+- Then aggregate to business totals (payments, gross/net, tips, COGS, profit, customers, goods, void/invite totals, commission).
+
+Detailed calculate sequence (must happen):
+
+1. Authorize management role.
+2. Load target daily report and verify it belongs to manager business.
+3. Load all actor rows for same `dailyReferenceNumber`.
+4. Aggregate actor rows into business totals:
+  - merged payment methods
+  - daily gross/net/tips/COGS/profit
+  - customers and average spend
+  - sold/void/invited goods and values
+  - POS commission by subscription rule
+  - include self-ordering bucket rows in the same aggregation step (not employee/delivery only)
+5. Persist aggregated fields to DailySalesReport top level.
+6. Trigger weekly/monthly downstream aggregation according to final policy.
+
+Performance expectation:
+
+- Calculate is now aggregation-only, not heavy per-order recomputation.
+
+### 16.4 Manager close flow (after this change)
+
+- Keep existing validations (e.g., block close while any `Open` billing orders exist for the day).
+- On close, aggregate actor reports again for final snapshot and close the report.
+- Close should remain fast because actor reports are already updated incrementally.
+
+Detailed close sequence (must happen):
+
+1. Authorize management role.
+2. Verify zero `Open` billing orders for (`businessId`, `dailyReferenceNumber`).
+3. Run same aggregation step as calculate to produce final daily totals snapshot.
+4. Persist final top-level totals.
+5. Set report status to closed.
+6. No close-audit payload required; rely on report state and default `updatedAt`.
+
+### 16.5 Data integrity assumptions for this model
+
+- Once an order leaves `Open`, billing status is immutable (cannot be changed again).
+- Any exception path that would break this rule must be treated as explicit compensating adjustment logic.
+- Daily report deletion remains non-production behavior; production should treat financial reports as non-deletable.
+
+Mandatory integrity constraints:
+
+- No hard delete of financial report documents in production.
+- No mutation path may bypass actor incremental updates when changing `Open -> Final`.
+- `dailyReferenceNumber` must be attached consistently to all orders included in the day.
+- Actor rows and top-level rollups must always belong to same (`businessId`, `dailyReferenceNumber`).
+- Daily report uniqueness is business-scoped by (`businessId`, `dailyReferenceNumber`), not global by `dailyReferenceNumber` alone.
+
+### 16.6 Reconciliation and minimal metadata policy (must do)
+
+- Keep a reconciliation action (manual or scheduled) that can rebuild actor rows/top-level totals from source orders for the day.
+- Reconciliation is safety net for rare inconsistencies; it should not be normal calculate path.
+- Do not require explicit report audit fields (`lastCalculatedAt`, `calculatedBy`, `closedBy`, `closedAt`).
+- Use MongoDB `updatedAt` as the default marker for latest report mutation/calculation.
+- Manual reconcile endpoint and one-time backfill script should share the same reconciliation core to avoid drift.
+
+### 16.7 Acceptance criteria for this MUST DO
+
+This flow is considered implemented only when all conditions are true:
+
+- Actor rows are created and updated incrementally on every `Open -> Final` order transition.
+- Employee, Delivery, Self-order use the same actor schema and same calculation rules.
+- Manager calculate performs aggregation-only (no full per-order actor recomputation).
+- Manager close performs validation + aggregation + close state change.
+- Duplicate/retried events do not double count.
+- Finance/ops approved accounting matrix is applied consistently across all actor types.
+
+Business-facing filter criteria are considered stable when:
+
+- Operational-day filters (`dailyReferenceNumber`, from/to range) are validated and tenant-scoped.
+- Combined date + operational-day filters are treated as intersection constraints.
+
+### 16.8 Execution discipline for implementation sessions
+
+- Before executing any migration task, read this file and `daily-sales-report-code-migration-todo.md` entirely.
+- Keep decisions and implementation aligned with the latest version of both documents.
+

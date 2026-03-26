@@ -4,7 +4,7 @@
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { Types } from "mongoose";
-import { getTestApp, generateTestToken } from "../setup.ts";
+import { getTestApp, generateTestToken, resetTestApp } from "../setup.ts";
 import Business from "../../src/models/business.ts";
 import SalesPoint from "../../src/models/salesPoint.ts";
 import SalesInstance from "../../src/models/salesInstance.ts";
@@ -114,7 +114,13 @@ describe.sequential("SalesInstances flows (Task 12)", () => {
   let otherSalesPointId: Types.ObjectId;
 
   beforeEach(async () => {
+    await resetTestApp();
     app = await getTestApp();
+    const alwaysOpenHours = allWeekDays.map((_, dayOfWeek) => ({
+      dayOfWeek,
+      openTime: "00:00",
+      closeTime: "23:59",
+    }));
     const business = await Business.create({
       tradeName: "Flow Biz",
       legalName: "Flow LLC",
@@ -124,6 +130,9 @@ describe.sequential("SalesInstances flows (Task 12)", () => {
       taxNumber: `TAX-FLOW-${Date.now()}-${Math.random().toString(36).slice(2)}`,
       currencyTrade: "USD",
       address: addr,
+      acceptsDelivery: true,
+      businessOpeningHours: alwaysOpenHours,
+      deliveryOpeningWindows: deliveryWindowsAllDays,
     });
     businessId = business._id;
 
@@ -341,6 +350,14 @@ describe.sequential("SalesInstances flows (Task 12)", () => {
         orderCostPrice: 1,
         orderStatus: "Sent",
       });
+      await SalesInstance.updateOne(
+        { _id: si._id },
+        {
+          $set: {
+            salesGroup: [{ orderCode: "POS-T2-1", ordersIds: [order._id] }],
+          },
+        },
+      );
 
       const res = await app.inject({
         method: "PATCH",
@@ -429,6 +446,509 @@ describe.sequential("SalesInstances flows (Task 12)", () => {
       });
 
       expect(res.statusCode).toBe(404);
+    });
+  });
+
+  describe("Task T2 integration - actor rows update immediately", () => {
+    it("POS payment close updates employee actor row immediately", async () => {
+      const manager = await createManagerActor(businessId);
+      const dailyReferenceNumber = Math.floor(Date.now() * 1000);
+      await DailySalesReport.create({
+        businessId,
+        dailyReferenceNumber,
+        isDailyReportOpen: true,
+        timeCountdownToClose: Date.now() + 86400000,
+        employeesDailySalesReport: [],
+        selfOrderingSalesReport: [],
+      });
+
+      const good = await BusinessGood.create({
+        businessId,
+        name: "POS Item",
+        keyword: "pos-item",
+        mainCategory: "Food",
+        onMenu: true,
+        available: true,
+        sellingPrice: 20,
+        costPrice: 7,
+      });
+
+      const si = await SalesInstance.create({
+        businessId,
+        salesPointId,
+        dailyReferenceNumber,
+        guests: 1,
+        salesInstanceStatus: "Occupied",
+        openedByUserId: manager.user._id,
+        openedAsRole: "employee",
+        salesGroup: [{ orderCode: "POS-T2-1", ordersIds: [] }],
+      });
+
+      const order = await Order.create({
+        businessId,
+        businessGoodId: good._id,
+        salesInstanceId: si._id,
+        createdByUserId: manager.user._id,
+        dailyReferenceNumber,
+        billingStatus: "Open",
+        orderGrossPrice: 20,
+        orderNetPrice: 18,
+        orderTips: 2,
+        orderCostPrice: 7,
+        orderStatus: "Sent",
+      });
+
+      const res = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/salesInstances/${si._id}`,
+        headers: { authorization: manager.token },
+        payload: {
+          ordersIdsArr: [order._id.toString()],
+          paymentMethodArr: [
+            {
+              paymentMethodType: "Card",
+              methodBranch: "Visa",
+              methodSalesTotal: 18,
+            },
+          ],
+        },
+      });
+
+      expect(res.statusCode, res.body).toBe(200);
+      const report = await DailySalesReport.findOne({
+        businessId,
+        dailyReferenceNumber,
+      }).lean();
+      expect(report?.employeesDailySalesReport?.length).toBe(1);
+      expect(report?.employeesDailySalesReport?.[0]?.totalNetPaidAmount).toBe(18);
+    });
+
+    it("delivery-attributed close flow updates delivery actor row immediately", async () => {
+      const customer = await createCustomerActor();
+      const manager = await createManagerActor(businessId);
+      const dailyReferenceNumber = Math.floor(Date.now() * 1000) + 1;
+      await DailySalesReport.create({
+        businessId,
+        dailyReferenceNumber,
+        isDailyReportOpen: true,
+        timeCountdownToClose: Date.now() + 86400000,
+        employeesDailySalesReport: [],
+        selfOrderingSalesReport: [],
+      });
+      await SalesPoint.create({
+        businessId,
+        salesPointName: "Delivery Point",
+        salesPointType: "delivery",
+      });
+      const good = await BusinessGood.create({
+        businessId,
+        name: "Delivery Item",
+        keyword: "delivery-item",
+        mainCategory: "Food",
+        onMenu: true,
+        available: true,
+        sellingPrice: 15,
+        costPrice: 5,
+      });
+
+      const si = await SalesInstance.create({
+        businessId,
+        salesPointId: (
+          await SalesPoint.findOne({
+            businessId,
+            salesPointType: "delivery",
+          }).lean()
+        )!._id,
+        dailyReferenceNumber,
+        guests: 1,
+        salesInstanceStatus: "Occupied",
+        openedByUserId: manager.user._id,
+        openedAsRole: "employee",
+        salesGroup: [{ orderCode: "DEL-T2-1", ordersIds: [] }],
+      });
+      const order = await Order.create({
+        businessId,
+        businessGoodId: good._id,
+        salesInstanceId: si._id,
+        createdByUserId: customer.user._id,
+        dailyReferenceNumber,
+        billingStatus: "Open",
+        orderGrossPrice: 15,
+        orderNetPrice: 15,
+        orderCostPrice: 5,
+        orderStatus: "Sent",
+      });
+      await SalesInstance.updateOne(
+        { _id: si._id },
+        { $set: { "salesGroup.0.ordersIds": [order._id] } },
+      );
+
+      const res = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/salesInstances/${si._id}`,
+        headers: { authorization: manager.token },
+        payload: {
+          ordersIdsArr: [order._id.toString()],
+          paymentMethodArr: [
+            {
+              paymentMethodType: "Card",
+              methodBranch: "Visa",
+              methodSalesTotal: 15,
+            },
+          ],
+        },
+      });
+
+      expect(res.statusCode, res.body).toBe(200);
+      const report = await DailySalesReport.findOne({
+        businessId,
+        dailyReferenceNumber,
+      }).lean();
+      expect(report?.deliveryDailySalesReport?.totalNetPaidAmount).toBe(15);
+    });
+
+    it("self-order-attributed close flow updates self-order actor row immediately", async () => {
+      const customer = await createCustomerActor();
+      const manager = await createManagerActor(businessId);
+      const dailyReferenceNumber = Math.floor(Date.now() * 1000) + 2;
+      await DailySalesReport.create({
+        businessId,
+        dailyReferenceNumber,
+        isDailyReportOpen: true,
+        timeCountdownToClose: Date.now() + 86400000,
+        employeesDailySalesReport: [],
+        selfOrderingSalesReport: [],
+      });
+      const selfPoint = await SalesPoint.create({
+        businessId,
+        salesPointName: "Self Point",
+        salesPointType: "table",
+        selfOrdering: true,
+      });
+      const good = await BusinessGood.create({
+        businessId,
+        name: "Self Item",
+        keyword: "self-item",
+        mainCategory: "Food",
+        onMenu: true,
+        available: true,
+        sellingPrice: 12,
+        costPrice: 4,
+      });
+
+      const si = await SalesInstance.create({
+        businessId,
+        salesPointId: selfPoint._id,
+        dailyReferenceNumber,
+        guests: 1,
+        salesInstanceStatus: "Occupied",
+        openedByUserId: manager.user._id,
+        openedAsRole: "employee",
+        salesGroup: [{ orderCode: "SELF-T2-1", ordersIds: [] }],
+      });
+      const order = await Order.create({
+        businessId,
+        businessGoodId: good._id,
+        salesInstanceId: si._id,
+        createdByUserId: customer.user._id,
+        dailyReferenceNumber,
+        billingStatus: "Open",
+        orderGrossPrice: 12,
+        orderNetPrice: 12,
+        orderCostPrice: 4,
+        orderStatus: "Sent",
+      });
+      await SalesInstance.updateOne(
+        { _id: si._id },
+        { $set: { "salesGroup.0.ordersIds": [order._id] } },
+      );
+
+      const res = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/salesInstances/${si._id}`,
+        headers: { authorization: manager.token },
+        payload: {
+          ordersIdsArr: [order._id.toString()],
+          paymentMethodArr: [
+            {
+              paymentMethodType: "Card",
+              methodBranch: "Visa",
+              methodSalesTotal: 12,
+            },
+          ],
+        },
+      });
+
+      expect(res.statusCode, res.body).toBe(200);
+      const report = await DailySalesReport.findOne({
+        businessId,
+        dailyReferenceNumber,
+      }).lean();
+      expect(report?.selfOrderingSalesReport?.length).toBe(1);
+      expect(report?.selfOrderingSalesReport?.[0]?.totalNetPaidAmount).toBe(12);
+    });
+  });
+
+  describe("Task T3 regression - existing behavior unchanged", () => {
+    it("still closes employee sales instance when all open orders are paid", async () => {
+      const manager = await createManagerActor(businessId);
+      const dailyReferenceNumber = Math.floor(Date.now() * 1000) + 3;
+      await DailySalesReport.create({
+        businessId,
+        dailyReferenceNumber,
+        isDailyReportOpen: true,
+        timeCountdownToClose: Date.now() + 86400000,
+        employeesDailySalesReport: [],
+        selfOrderingSalesReport: [],
+      });
+
+      const good = await BusinessGood.create({
+        businessId,
+        name: "Close Check Item",
+        keyword: "close-check-item",
+        mainCategory: "Food",
+        onMenu: true,
+        available: true,
+        sellingPrice: 9,
+        costPrice: 3,
+      });
+
+      const si = await SalesInstance.create({
+        businessId,
+        salesPointId,
+        dailyReferenceNumber,
+        guests: 1,
+        salesInstanceStatus: "Occupied",
+        openedByUserId: manager.user._id,
+        openedAsRole: "employee",
+        salesGroup: [{ orderCode: "T3-CLOSE-1", ordersIds: [] }],
+      });
+
+      const order = await Order.create({
+        businessId,
+        businessGoodId: good._id,
+        salesInstanceId: si._id,
+        createdByUserId: manager.user._id,
+        dailyReferenceNumber,
+        billingStatus: "Open",
+        orderGrossPrice: 9,
+        orderNetPrice: 9,
+        orderCostPrice: 3,
+        orderStatus: "Sent",
+      });
+      await SalesInstance.updateOne(
+        { _id: si._id },
+        { $set: { "salesGroup.0.ordersIds": [order._id] } },
+      );
+
+      const res = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/salesInstances/${si._id}`,
+        headers: { authorization: manager.token },
+        payload: {
+          ordersIdsArr: [order._id.toString()],
+          paymentMethodArr: [
+            {
+              paymentMethodType: "Card",
+              methodBranch: "Visa",
+              methodSalesTotal: 9,
+            },
+          ],
+        },
+      });
+
+      expect(res.statusCode, res.body).toBe(200);
+      const refreshed = await SalesInstance.findById(si._id).lean();
+      expect(refreshed?.salesInstanceStatus).toBe("Closed");
+    });
+  });
+
+  describe("R1 integration - Open->Void/Open->Invitation hooks", () => {
+    it("route-level Open->Void updates actor row immediately and retries are idempotent", async () => {
+      const manager = await createManagerActor(businessId);
+      const customer = await createCustomerActor();
+      const dailyReferenceNumber = Math.floor(Date.now() * 1000) + 4;
+      await DailySalesReport.create({
+        businessId,
+        dailyReferenceNumber,
+        isDailyReportOpen: true,
+        timeCountdownToClose: Date.now() + 86400000,
+        employeesDailySalesReport: [],
+        selfOrderingSalesReport: [],
+      });
+      const deliveryPoint = await SalesPoint.create({
+        businessId,
+        salesPointName: "R1 Delivery",
+        salesPointType: "delivery",
+      });
+      const good = await BusinessGood.create({
+        businessId,
+        name: "R1 Void Item",
+        keyword: "r1-void-item",
+        mainCategory: "Food",
+        onMenu: true,
+        available: true,
+        sellingPrice: 40,
+        costPrice: 12,
+      });
+      const si = await SalesInstance.create({
+        businessId,
+        salesPointId: deliveryPoint._id,
+        dailyReferenceNumber,
+        guests: 1,
+        salesInstanceStatus: "Occupied",
+        openedByUserId: manager.user._id,
+        openedAsRole: "employee",
+        salesGroup: [{ orderCode: "R1-V-1", ordersIds: [] }],
+      });
+      const order = await Order.create({
+        businessId,
+        businessGoodId: good._id,
+        salesInstanceId: si._id,
+        createdByUserId: customer.user._id,
+        dailyReferenceNumber,
+        billingStatus: "Open",
+        orderGrossPrice: 40,
+        orderNetPrice: 40,
+        orderCostPrice: 12,
+        orderStatus: "Sent",
+      });
+      await SalesInstance.updateOne(
+        { _id: si._id },
+        { $set: { "salesGroup.0.ordersIds": [order._id] } },
+      );
+
+      const first = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/salesInstances/${si._id}`,
+        headers: { authorization: manager.token },
+        payload: {
+          ordersIdsArr: [order._id.toString()],
+          ordersNewBillingStatus: "Void",
+        },
+      });
+      expect(first.statusCode, first.body).toBe(200);
+
+      const reportAfterFirst = await DailySalesReport.findOne({
+        businessId,
+        dailyReferenceNumber,
+      }).lean();
+      expect(
+        (reportAfterFirst?.deliveryDailySalesReport as any)?.totalVoidValue,
+      ).toBe(40);
+
+      const second = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/salesInstances/${si._id}`,
+        headers: { authorization: manager.token },
+        payload: {
+          ordersIdsArr: [order._id.toString()],
+          ordersNewBillingStatus: "Void",
+        },
+      });
+      expect(second.statusCode, second.body).toBe(400);
+
+      const reportAfterSecond = await DailySalesReport.findOne({
+        businessId,
+        dailyReferenceNumber,
+      }).lean();
+      expect(
+        (reportAfterSecond?.deliveryDailySalesReport as any)?.totalVoidValue,
+      ).toBe(40);
+    });
+
+    it("route-level Open->Invitation updates actor row immediately and retries are idempotent", async () => {
+      const manager = await createManagerActor(businessId);
+      const customer = await createCustomerActor();
+      const dailyReferenceNumber = Math.floor(Date.now() * 1000) + 5;
+      await DailySalesReport.create({
+        businessId,
+        dailyReferenceNumber,
+        isDailyReportOpen: true,
+        timeCountdownToClose: Date.now() + 86400000,
+        employeesDailySalesReport: [],
+        selfOrderingSalesReport: [],
+      });
+      const selfPoint = await SalesPoint.create({
+        businessId,
+        salesPointName: "R1 Self",
+        salesPointType: "table",
+        selfOrdering: true,
+      });
+      const good = await BusinessGood.create({
+        businessId,
+        name: "R1 Invite Item",
+        keyword: "r1-invite-item",
+        mainCategory: "Food",
+        onMenu: true,
+        available: true,
+        sellingPrice: 22,
+        costPrice: 8,
+      });
+      const si = await SalesInstance.create({
+        businessId,
+        salesPointId: selfPoint._id,
+        dailyReferenceNumber,
+        guests: 1,
+        salesInstanceStatus: "Occupied",
+        openedByUserId: manager.user._id,
+        openedAsRole: "employee",
+        salesGroup: [{ orderCode: "R1-I-1", ordersIds: [] }],
+      });
+      const order = await Order.create({
+        businessId,
+        businessGoodId: good._id,
+        salesInstanceId: si._id,
+        createdByUserId: customer.user._id,
+        dailyReferenceNumber,
+        billingStatus: "Open",
+        orderGrossPrice: 22,
+        orderNetPrice: 22,
+        orderCostPrice: 8,
+        orderStatus: "Sent",
+      });
+      await SalesInstance.updateOne(
+        { _id: si._id },
+        { $set: { "salesGroup.0.ordersIds": [order._id] } },
+      );
+
+      const first = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/salesInstances/${si._id}`,
+        headers: { authorization: manager.token },
+        payload: {
+          ordersIdsArr: [order._id.toString()],
+          ordersNewBillingStatus: "Invitation",
+        },
+      });
+      expect(first.statusCode, first.body).toBe(200);
+
+      const reportAfterFirst = await DailySalesReport.findOne({
+        businessId,
+        dailyReferenceNumber,
+      }).lean();
+      expect(
+        (reportAfterFirst?.selfOrderingSalesReport?.[0] as any)?.totalInvitedValue,
+      ).toBe(22);
+
+      const second = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/salesInstances/${si._id}`,
+        headers: { authorization: manager.token },
+        payload: {
+          ordersIdsArr: [order._id.toString()],
+          ordersNewBillingStatus: "Invitation",
+        },
+      });
+      expect(second.statusCode, second.body).toBe(400);
+
+      const reportAfterSecond = await DailySalesReport.findOne({
+        businessId,
+        dailyReferenceNumber,
+      }).lean();
+      expect(
+        (reportAfterSecond?.selfOrderingSalesReport?.[0] as any)?.totalInvitedValue,
+      ).toBe(22);
     });
   });
 });

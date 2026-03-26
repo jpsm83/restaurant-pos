@@ -1,7 +1,7 @@
 import { Types } from "mongoose";
 import isObjectIdValid from "../utils/isObjectIdValid.ts";
 import type {
-  IEmployeeDailySalesReport,
+  IActorDailySalesReport,
   IGoodsReduced,
 } from "../../../packages/interfaces/IDailySalesReport.ts";
 import type { IPaymentMethod } from "../../../packages/interfaces/IPaymentMethod.ts";
@@ -34,19 +34,22 @@ interface SalesGroupWithOrders {
 interface SalesInstanceForReport {
   salesInstanceStatus?: string;
   guests?: number;
-  openedByUserId?: Types.ObjectId;
   salesGroup?: SalesGroupWithOrders[];
 }
 
 /**
+ * Reconciliation-only helper.
+ *
  * Delivery aggregation is stored as a single bucket (same shape as an employee row),
  * but aggregated by `salesPointId` instead of `responsibleByUserId`.
+ *
+ * Do not call this from normal runtime payment/finalization paths.
  */
-const updateDeliveryDailySalesReport = async (
+const reconcileDeliveryDailySalesReport = async (
   deliverySalesPointId: Types.ObjectId,
   dailyReferenceNumber: number,
 ): Promise<{
-  deliveryDailySalesReport: IEmployeeDailySalesReport;
+  deliveryDailySalesReport: IActorDailySalesReport;
   errors: string[];
 }> => {
   const errors: string[] = [];
@@ -56,7 +59,7 @@ const updateDeliveryDailySalesReport = async (
       return {
         deliveryDailySalesReport: {
           userId: deliverySalesPointId,
-        } as IEmployeeDailySalesReport,
+        } as IActorDailySalesReport,
         errors: ["Invalid deliverySalesPointId!"],
       };
     }
@@ -65,7 +68,7 @@ const updateDeliveryDailySalesReport = async (
       return {
         deliveryDailySalesReport: {
           userId: deliverySalesPointId,
-        } as IEmployeeDailySalesReport,
+        } as IActorDailySalesReport,
         errors: ["dailyReferenceNumber is required!"],
       };
     }
@@ -80,9 +83,8 @@ const updateDeliveryDailySalesReport = async (
       goodsInvited: [],
     };
 
-    const deliveryDailySalesReportObj: IEmployeeDailySalesReport = {
-      // Domain mismatch but keeps UI compatible shape.
-      // (We avoid relying on a synthetic delivery userId constant.)
+    const deliveryDailySalesReportObj: IActorDailySalesReport = {
+      // Keep a stable identity for the delivery bucket using delivery salesPoint id.
       userId: deliverySalesPointId,
       hasOpenSalesInstances: false,
       employeePaymentMethods: [] as IPaymentMethod[],
@@ -133,9 +135,6 @@ const updateDeliveryDailySalesReport = async (
 
     const instances = salesInstances as SalesInstanceForReport[] | null;
     if (instances && instances.length > 0) {
-      // Pick a representative customer so the UI can populate `deliveryDailySalesReport.userId`.
-      deliveryDailySalesReportObj.userId =
-        instances[0].openedByUserId ?? deliverySalesPointId;
       for (const instance of instances) {
         deliveryDailySalesReportObj.hasOpenSalesInstances =
           instance.salesInstanceStatus !== "Closed"
@@ -292,11 +291,11 @@ const updateDeliveryDailySalesReport = async (
     return {
       deliveryDailySalesReport: {
         userId: deliverySalesPointId,
-      } as IEmployeeDailySalesReport,
+      } as IActorDailySalesReport,
       errors,
     };
   }
 };
 
-export default updateDeliveryDailySalesReport;
+export default reconcileDeliveryDailySalesReport;
 

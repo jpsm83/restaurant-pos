@@ -271,4 +271,3 @@ export const othersSubcategoryEnums = ["Cleaning", "Office", "Furniture", "Dispo
 export const weekDaysEnums = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as string[];
 
 export const employeePayFrequencyEnums = ["Hourly", "Daily", "Weekly", "Monthly"] as string[];
-

@@ -22,43 +22,37 @@ export const goodsReducedSchema = new Schema(
   }
 );
 
+const sharedDailySalesReportFields: Record<string, any> = {
+  userId: {
+    type: Schema.Types.ObjectId,
+    ref: "User",
+    required: [true, "User id is required!"],
+    index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
+  },
+  hasOpenSalesInstances: { type: Boolean }, // if actor has open sales instances, report can be viewed but close may be blocked
+  employeePaymentMethods: { type: [paymentMethod], default: undefined }, // payment totals bucket used across channels
+  totalSalesBeforeAdjustments: { type: Number }, // sum before promotions/discounts/voids/invitations
+  totalNetPaidAmount: { type: Number }, // sum after adjustments
+  totalTipsReceived: { type: Number }, // sum of tips
+  totalCostOfGoodsSold: { type: Number }, // sum of COGS
+  totalCustomersServed: {
+    type: Number,
+    default: 0,
+  },
+  averageCustomerExpenditure: {
+    type: Number,
+    default: 0,
+  },
+  soldGoods: { type: [goodsReducedSchema], default: undefined },
+  voidedGoods: { type: [goodsReducedSchema], default: undefined },
+  invitedGoods: { type: [goodsReducedSchema], default: undefined },
+  totalVoidValue: { type: Number },
+  totalInvitedValue: { type: Number },
+};
+
 const employeeDailySalesReportSchema = new Schema(
   {
-    // required fields
-    userId: {
-      type: Schema.Types.ObjectId,
-      ref: "User",
-      required: [true, "User id is required!"],
-      index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
-    }, // user (employee role) for this report entry, salesInstance.responsibleByUserId
-
-    // optional fields on creation, required on update
-    hasOpenSalesInstances: { type: Boolean }, // if the employee has open sales instances, the employee can view but not close the daily report
-    // those "SALES" refer salesInstance sales closed by the employee (salesInstance.responsibleBy)
-    // not "SALES" made by the employee, the employee can close the salesInstance of another employee if shifts are passed and the previous employee has opened the tables
-    // when a salesInstance is closed, the sales from the previews employee is pass to the new one because the new employee is responsible for the salesInstance and will handle the payment in the end
-    employeePaymentMethods: { type: [paymentMethod], default: undefined }, // array of payment methods used by the employee
-    totalSalesBeforeAdjustments: { type: Number }, // sum of all orders made by the salesInstance.closedBy regardless of promotions, discounts, voids, or cancellations
-    totalNetPaidAmount: { type: Number }, // sum of all orders after adjustments have been made to the final price, vois, invitations, discounts, and promotions
-    totalTipsReceived: { type: Number }, // sum of all tips
-    totalCostOfGoodsSold: { type: Number }, // sum of the cost price of all goods sold by the employee
-    // if salesInstance is passed to another employee, new employee will be responsible for the previews sales, and also the customers served at the salesInstance will be pass to the new employee
-    // we recomment employees to close their tables on a shift change, so the individual analitics by employee will be more accurate
-    // this has no negative impact on the business analitics, because the sales will be passed to the new employee, and the customers served will be passed to the new employee
-    totalCustomersServed: {
-      type: Number,
-      default: 0,
-    }, // total of customers served
-    averageCustomerExpenditure: {
-      type: Number,
-      default: 0,
-    }, // average of customers expended (total of customers served / total of sales)
-    // those "GOODS" refer to the goods sold or void by the employee itself, not the one that closed the salesInstance (order.employee)
-    soldGoods: { type: [goodsReducedSchema], default: undefined }, // array of goods sold by the employee
-    voidedGoods: { type: [goodsReducedSchema], default: undefined }, // array of goods void by the employee
-    invitedGoods: { type: [goodsReducedSchema], default: undefined }, // array of goods invited by the employee
-    totalVoidValue: { type: Number }, // sum of the price of the voided items
-    totalInvitedValue: { type: Number }, // sum of the price of the invited items
+    ...sharedDailySalesReportFields,
   },
   {
     timestamps: true,
@@ -66,19 +60,15 @@ const employeeDailySalesReportSchema = new Schema(
   }
 ); // individual sales report of the employee
 
-const selfOrderingSalesReportSchema = new Schema(
+const selfOrderingDailySalesReportSchema = new Schema(
   {
-    userId: {
+    ...sharedDailySalesReportFields,
+    salesPointId: {
       type: Schema.Types.ObjectId,
-      ref: "User",
-      required: [true, "User id is required!"],
-      index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
-    }, // user (customer role) that made the self-order
-    customerPaymentMethod: { type: [paymentMethod], default: undefined }, // single payment methods used by the customer
-    totalSalesBeforeAdjustments: { type: Number }, // sum of all orders regardless of promotions or discounts
-    totalNetPaidAmount: { type: Number }, // sum of all orders after adjustments have been made to the final price as discounts and promotions
-    totalCostOfGoodsSold: { type: Number }, // sum of the cost price of all goods sold
-    soldGoods: { type: [goodsReducedSchema], default: undefined }, // array of goods purchased
+      ref: "SalesPoint",
+      required: [true, "Sales point id is required for self ordering report!"],
+      index: true,
+    }, // self-ordering entries must keep channel/sales point context
   },
   {
     timestamps: true,
@@ -92,7 +82,6 @@ const dailySalesReportSchema = new Schema(
     dailyReferenceNumber: {
       type: Number,
       required: [true, "Daily reference number is required!"],
-      unique: true,
     }, // This is the reference number of the work day, we cant use dates to refer to work day because one work day can be closed in the next day, therefore we need a reference number to refer to the work day report.
     isDailyReportOpen: { type: Boolean, default: true }, // This is the status of the daily report, if it is open or closed, if it is open the employee can still add sales to the report, if it is closed the employee can only see the report. Once close all the calculations will be done and the report will be closed for editing.
     timeCountdownToClose: {
@@ -108,9 +97,9 @@ const dailySalesReportSchema = new Schema(
       default: undefined,
     }, // aggregated delivery sales report (stored as a single bucket)
     selfOrderingSalesReport: {
-      type: [selfOrderingSalesReportSchema],
+      type: [selfOrderingDailySalesReportSchema],
       default: undefined,
-    }, // array of objects with all individual self ordering sales reports
+    }, // array of self ordering reports (shared base + self-order specifics)
     businessId: {
       type: Schema.Types.ObjectId,
       ref: "Business",
@@ -137,6 +126,12 @@ const dailySalesReportSchema = new Schema(
     timestamps: true,
     trim: true,
   }
+);
+
+// One operational day reference per business.
+dailySalesReportSchema.index(
+  { businessId: 1, dailyReferenceNumber: 1 },
+  { unique: true },
 );
 
 const DailySalesReport =

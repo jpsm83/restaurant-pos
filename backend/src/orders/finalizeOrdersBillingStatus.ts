@@ -1,12 +1,9 @@
 import { ClientSession, Types } from "mongoose";
 import type { IOrder } from "../../../packages/interfaces/IOrder.ts";
-import type { ISalesInstance } from "../../../packages/interfaces/ISalesInstance.ts";
-import type { IPaymentMethod } from "../../../packages/interfaces/IPaymentMethod.ts";
 import type { IGoodsReduced } from "../../../packages/interfaces/IDailySalesReport.ts";
 import Order from "../models/order.ts";
 import SalesInstance from "../models/salesInstance.ts";
 import SalesPoint from "../models/salesPoint.ts";
-import Reservation from "../models/reservation.ts";
 import applyOrderFinalizationToActorReport from "../dailySalesReports/applyOrderFinalizationToActorReport.ts";
 import resolveFinalizationActorReportTarget from "../dailySalesReports/resolveFinalizationActorReportTarget.ts";
 import { isIncrementalEngineEnabledForBusiness } from "../dailySalesReports/rolloutControls.ts";
@@ -16,11 +13,13 @@ import {
   recordIdempotencySkip,
 } from "../dailySalesReports/rolloutTelemetry.ts";
 
-const closeOrders = async (
+type SupportedFinalStatus = "Void" | "Invitation";
+
+const finalizeOrdersBillingStatus = async (
   ordersIdsArr: Types.ObjectId[],
-  paymentMethodArr: IPaymentMethod[],
   salesInstanceId: Types.ObjectId,
-  session: ClientSession
+  finalStatus: SupportedFinalStatus,
+  session: ClientSession,
 ): Promise<true | string> => {
   try {
     const orders = (await Order.find({
@@ -51,90 +50,30 @@ const closeOrders = async (
       return "No open orders found!";
     }
 
-    const totalOrderNetPrice = orders
-      ? orders.reduce((acc, order) => acc + order.orderNetPrice, 0)
-      : 0;
-    const totalPaid = paymentMethodArr.reduce(
-      (acc, payment) => acc + (payment.methodSalesTotal || 0),
-      0
-    );
-
-    if (totalPaid < totalOrderNetPrice) {
-      return "Total amount paid is lower than the total price of the orders!";
-    }
-
-    const totalTips = totalPaid - totalOrderNetPrice;
-    let remainingTips = totalTips;
-
-    const finalizedOrders = orders.map((order, index) => {
-      let remainingOrderNetPrice = order.orderNetPrice;
-      const orderPaymentMethods: IPaymentMethod[] = [];
-
-      for (const payment of paymentMethodArr) {
-        if (payment.methodSalesTotal <= 0) continue;
-
-        const amountToUse = Math.min(
-          payment.methodSalesTotal,
-          remainingOrderNetPrice
-        );
-
-        orderPaymentMethods.push({
-          paymentMethodType: payment.paymentMethodType,
-          methodBranch: payment.methodBranch,
-          methodSalesTotal: amountToUse,
-        });
-
-        payment.methodSalesTotal -= amountToUse;
-        remainingOrderNetPrice -= amountToUse;
-
-        if (remainingOrderNetPrice === 0) break;
-      }
-
-      const updateData: Partial<IOrder> = {
-        paymentMethod: orderPaymentMethods,
-        billingStatus: "Paid",
-      };
-
-      if (index === 0 && remainingTips > 0) {
-        updateData.orderTips = remainingTips;
-        remainingTips = 0;
-      }
-
-      return { order, updateData };
-    });
-
-    const bulkUpdateOrders = finalizedOrders.map(({ order, updateData }) => ({
+    const bulkUpdateOrders = orders.map((order) => ({
       updateOne: {
         filter: { _id: order._id, billingStatus: "Open" },
-        update: { $set: updateData },
+        update: { $set: { billingStatus: finalStatus } },
       },
     }));
-
-    const bulkUpdateResult = await Order.bulkWrite(bulkUpdateOrders, {
-      session,
-    });
+    const bulkUpdateResult = await Order.bulkWrite(bulkUpdateOrders, { session });
 
     if (bulkUpdateResult.modifiedCount !== orders.length) {
       const skipped = orders.length - bulkUpdateResult.modifiedCount;
       if (skipped > 0) {
         recordIdempotencySkip(skipped, {
           salesInstanceId: String(salesInstanceId),
+          finalStatus,
         });
       }
       return "Failed to update all orders!";
     }
 
     const salesInstance = (await SalesInstance.findById(salesInstanceId)
-      .select("responsibleByUserId salesGroup reservationId salesPointId")
-      .populate({
-        path: "salesGroup.ordersIds",
-        select: "billingStatus",
-        model: Order,
-      })
+      .select("salesPointId")
       .session(session)
-      .lean()) as unknown as ISalesInstance | null;
-
-    if (!salesInstance) {
+      .lean()) as { salesPointId?: Types.ObjectId } | null;
+    if (!salesInstance?.salesPointId) {
       return "SalesInstance not found!";
     }
 
@@ -144,20 +83,26 @@ const closeOrders = async (
       .lean()) as { salesPointType?: string } | null;
     const salesPointType = salesPoint?.salesPointType;
 
-    for (const { order, updateData } of finalizedOrders) {
+    for (const order of orders) {
       if (
         !isIncrementalEngineEnabledForBusiness(order.businessId as Types.ObjectId)
       ) {
         recordIdempotencySkip(1, {
           reason: "incremental_engine_disabled_for_business",
           businessId: String(order.businessId),
+          finalStatus,
         });
         continue;
       }
 
       const goods: IGoodsReduced[] = [];
       if (order.businessGoodId) {
-        goods.push({ businessGoodId: order.businessGoodId, quantity: 1 });
+        goods.push({
+          businessGoodId: order.businessGoodId,
+          quantity: 1,
+          totalPrice: order.orderGrossPrice,
+          totalCostPrice: order.orderCostPrice,
+        });
       }
       (order.addOns ?? []).forEach((addOnId) => {
         goods.push({ businessGoodId: addOnId, quantity: 1 });
@@ -175,12 +120,10 @@ const closeOrders = async (
         businessId: order.businessId as Types.ObjectId,
         dailyReferenceNumber: order.dailyReferenceNumber as number,
         order: {
-          billingStatus: "Paid",
+          billingStatus: finalStatus,
           orderGrossPrice: order.orderGrossPrice,
           orderNetPrice: order.orderNetPrice,
-          orderTips: updateData.orderTips,
           orderCostPrice: order.orderCostPrice,
-          paymentMethod: updateData.paymentMethod,
           goods,
         },
         targetBucket,
@@ -190,7 +133,7 @@ const closeOrders = async (
           salesPointType,
           salesPointId:
             targetBucket === "selfOrderingSalesReport"
-              ? (salesInstance.salesPointId as Types.ObjectId)
+              ? salesInstance.salesPointId
               : undefined,
         },
         session,
@@ -201,56 +144,22 @@ const closeOrders = async (
           reason: applyResult.reason ?? "unknown_reason",
           orderId: String(order._id),
           businessId: String(order.businessId),
+          finalStatus,
         });
         return `Failed to apply actor report update: ${applyResult.reason ?? "unknown reason"}`;
       }
+
       recordActorUpdateSuccess({
         orderId: String(order._id),
         businessId: String(order.businessId),
+        finalStatus,
       });
-    }
-
-    const allOrdersPaid = salesInstance?.salesGroup?.every((group) =>
-      group.ordersIds.every(
-        (order: Partial<IOrder>) => order.billingStatus === "Paid"
-      )
-    );
-
-    if (allOrdersPaid) {
-      const updatedSalesInstance = await SalesInstance.updateOne(
-        { _id: salesInstance._id },
-        {
-          salesInstanceStatus: "Closed",
-          closedAt: new Date(),
-          closedByUserId: salesInstance.responsibleByUserId,
-        },
-        { session }
-      );
-
-      if (updatedSalesInstance.modifiedCount !== 1) {
-        return "Failed to close sales instance!";
-      }
-
-      const reservation = (await Reservation.findOne({
-        $or: [{ salesInstanceId: salesInstance._id }, { _id: salesInstance.reservationId }],
-      })
-        .select("_id status")
-        .session(session)
-        .lean()) as unknown as { _id: Types.ObjectId; status?: string } | null;
-
-      if (reservation && reservation.status !== "Cancelled" && reservation.status !== "NoShow") {
-        await Reservation.updateOne(
-          { _id: reservation._id },
-          { $set: { status: "Completed" } },
-          { session }
-        );
-      }
     }
 
     return true;
   } catch (error) {
-    return "Close orders failed! Error: " + error;
+    return "Finalize orders billing status failed! Error: " + error;
   }
 };
 
-export default closeOrders;
+export default finalizeOrdersBillingStatus;

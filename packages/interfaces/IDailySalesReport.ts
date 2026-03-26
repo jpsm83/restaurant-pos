@@ -1,5 +1,5 @@
 import { Types } from "mongoose";
-import { IPaymentMethod } from "./IPaymentMethod";
+import { IPaymentMethod } from "./IPaymentMethod.js";
 
 export interface IGoodsReduced {
   businessGoodId: Types.ObjectId; // reference to the "Order" model
@@ -8,7 +8,7 @@ export interface IGoodsReduced {
   totalCostPrice?: number; // total cost price of the good sold or void
 }
 
-export interface IEmployeeDailySalesReport {
+export interface IBaseDailySalesReportEntry {
   userId: Types.ObjectId;
   hasOpenSalesInstances?: boolean;
   employeePaymentMethods?: IPaymentMethod[];
@@ -25,23 +25,22 @@ export interface IEmployeeDailySalesReport {
   totalInvitedValue?: number;
 }
 
-export interface ISelfOrderingSalesReport {
-  userId: Types.ObjectId;
-  customerPaymentMethods?: IPaymentMethod[];
-  totalSalesBeforeAdjustments?: number;
-  totalNetPaidAmount?: number;
-  totalCostOfGoodsSold?: number;
-  soldGoods?: IGoodsReduced[];
+export interface ISelfOrderingDailySalesReport
+  extends IBaseDailySalesReportEntry {
+  salesPointId: Types.ObjectId; // required for self-order channel context
 }
+
+// Backward-compatible alias used by existing helper/route modules.
+export type IActorDailySalesReport = IBaseDailySalesReportEntry;
 
 export interface IDailySalesReport {
   _id?: Types.ObjectId;
   dailyReferenceNumber: number;
   isDailyReportOpen: boolean;
   timeCountdownToClose: number;
-  employeesDailySalesReport: IEmployeeDailySalesReport[];
-  deliveryDailySalesReport?: IEmployeeDailySalesReport;
-  selfOrderingSalesReport: ISelfOrderingSalesReport[];
+  employeesDailySalesReport: IBaseDailySalesReportEntry[];
+  deliveryDailySalesReport?: IBaseDailySalesReportEntry;
+  selfOrderingSalesReport: ISelfOrderingDailySalesReport[];
   businessId: Types.ObjectId;
   businessPaymentMethods?: IPaymentMethod[];
   dailyTotalSalesBeforeAdjustments?: number;

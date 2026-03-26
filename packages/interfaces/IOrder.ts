@@ -1,5 +1,5 @@
 import { Types } from "mongoose";
-import { IPaymentMethod } from "./IPaymentMethod";
+import { IPaymentMethod } from "./IPaymentMethod.js";
 
 export interface IOrder {
   _id: Types.ObjectId;

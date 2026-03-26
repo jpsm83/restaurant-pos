@@ -2,7 +2,7 @@ import { Types } from "mongoose";
 import isObjectIdValid from "../utils/isObjectIdValid.ts";
 import type {
   IGoodsReduced,
-  IEmployeeDailySalesReport,
+  IActorDailySalesReport,
 } from "../../../packages/interfaces/IDailySalesReport.ts";
 import type { IPaymentMethod } from "../../../packages/interfaces/IPaymentMethod.ts";
 import Order from "../models/order.ts";
@@ -38,15 +38,21 @@ interface SalesInstanceForReport {
   salesGroup?: SalesGroupWithOrders[];
 }
 
-const updateEmployeesDailySalesReport = async (
+/**
+ * Reconciliation-only helper.
+ *
+ * Do not call this from normal runtime payment/finalization paths.
+ * Runtime flow must use incremental actor updates.
+ */
+const reconcileEmployeesDailySalesReport = async (
   userIds: Types.ObjectId[],
   dailyReferenceNumber: number,
 ): Promise<{
-  updatedEmployees: IEmployeeDailySalesReport[];
+  updatedEmployees: IActorDailySalesReport[];
   errors: string[];
 }> => {
   try {
-    const employeeReports: IEmployeeDailySalesReport[] = [];
+    const employeeReports: IActorDailySalesReport[] = [];
     const errors: string[] = [];
 
     if (isObjectIdValid(userIds) !== true) {
@@ -108,7 +114,7 @@ const updateEmployeesDailySalesReport = async (
           goodsInvited: [],
         };
 
-        const employeeDailySalesReportObj: IEmployeeDailySalesReport = {
+        const employeeDailySalesReportObj: IActorDailySalesReport = {
           userId: userId,
           hasOpenSalesInstances: false,
           employeePaymentMethods: [] as IPaymentMethod[],
@@ -292,4 +298,4 @@ const updateEmployeesDailySalesReport = async (
   }
 };
 
-export default updateEmployeesDailySalesReport;
+export default reconcileEmployeesDailySalesReport;

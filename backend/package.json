@@ -8,6 +8,7 @@
     "start": "tsx src/server.ts",
     "seed:dummy": "tsx scripts/importDummyData.ts",
     "validate:dummy": "tsx scripts/validateDummyDataStrict.ts",
+    "reconcile:open-daily-reports": "tsx scripts/reconcileOpenDailyReports.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
