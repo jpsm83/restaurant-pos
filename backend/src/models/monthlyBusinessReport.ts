@@ -28,17 +28,25 @@ const monthlyBusinessReportSchema = new Schema(
       // Net revenue (total sales minus any voided/invited orders).
       totalGrossProfit: { type: Number },
       // Total gross profit calculated as (totalNetRevenue - totalCostOfGoodsSold).
+      totalNetProfit: { type: Number },
+      // Total net profit after operating costs (net revenue - total operating cost).
       totalVoidSales: { type: Number },
       // Sum of sales that were voided.
       totalInvitedSales: { type: Number },
       // Sum of sales attributed to invited or complimentary goods.
       totalTips: { type: Number },
       // Total tips collected over the month.
+      breakEvenSales: { type: Number },
+      // Monthly sales needed to cover fixed-style costs under current contribution margin ratio.
+      minimumDailySalesTarget: { type: Number },
+      // Daily minimum sales target derived from monthly break-even and days in month.
       financialPercentages: {
         salesPaymentCompletionPercentage: { type: Number },
         // Percentage of sales that were successfully paid for during the month, relative to totalSalesForMonth.
         profitMarginPercentage: { type: Number },
         // Profit margin, calculated as (totalGrossProfit / totalSalesForMonth).
+        netProfitMarginPercentage: { type: Number },
+        // Net margin after operating costs, relative to totalSalesForMonth.
         voidSalesPercentage: { type: Number },
         // Percentage of sales that were voided, relative to totalSalesForMonth.
         invitedSalesPercentage: { type: Number },

@@ -1,10 +1,11 @@
 import { Types } from "mongoose";
 import { IPaymentMethod } from "./IPaymentMethod";
-import { goodsReducedSchema } from "../db/models/dailySalesReport";
+import { IGoodsReduced } from "./IDailySalesReport";
 
 export interface IFinancialPercentages {
   salesPaymentCompletionPercentage: number; // Percentage of sales paid during the month
   profitMarginPercentage: number; // Profit margin percentage
+  netProfitMarginPercentage: number; // Net profit margin after operating costs
   voidSalesPercentage: number; // Percentage of void sales
   invitedSalesPercentage: number; // Percentage of invited sales
   tipsToCostOfGoodsPercentage: number; // Tips as a percentage of the total cost of goods sold
@@ -15,9 +16,12 @@ export interface IFinancialSummary {
   totalCostOfGoodsSold: number; // Total cost of goods sold
   totalNetRevenue: number; // Total net revenue
   totalGrossProfit: number; // Total gross profit
+  totalNetProfit: number; // Total net profit after operating costs
   totalVoidSales: number; // Total void sales
   totalInvitedSales: number; // Total invited sales
   totalTips: number; // Total tips collected
+  breakEvenSales: number; // Monthly break-even sales target
+  minimumDailySalesTarget: number; // Daily sales target needed to hit monthly break-even
   financialPercentages: IFinancialPercentages; // Financial percentages
 }
 
@@ -73,9 +77,9 @@ export interface IMonthlyBusinessReport {
   monthReference: Date; // First day of the month at 00:00:00 for scoping and matching daily reports
   financialSummary: IFinancialSummary; // Financial summary for the month
   costBreakdown: ICostBreakdown; // Breakdown of various costs
-  goodsSold: (typeof goodsReducedSchema)[]; // Goods sold during the month
-  goodsVoided: (typeof goodsReducedSchema)[]; // Voided goods during the month
-  goodsComplimentary: (typeof goodsReducedSchema)[]; // Complimentary goods
+  goodsSold: IGoodsReduced[]; // Goods sold during the month
+  goodsVoided: IGoodsReduced[]; // Voided goods during the month
+  goodsComplimentary: IGoodsReduced[]; // Complimentary goods
   supplierWasteAnalysis: ISupplierWasteAnalysis; // Analysis of supplier waste percentages
   metricsComparison?: IMonthlyMetricsComparison; // Comparison between targets (Business.metrics) and actual report ratios
   totalCustomersServed: number; // Total number of customers served

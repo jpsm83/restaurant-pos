@@ -290,6 +290,113 @@ describe("DailySalesReports routes - Task T2 integration", () => {
     expect(monthly?.financialSummary?.totalNetRevenue).toBe(140);
   });
 
+  it("repeated calculate calls are idempotent for weekly/monthly rollups", async () => {
+    const app = await getTestApp();
+    const business = await createTestBusiness();
+    const token = await createManagerToken(business._id as Types.ObjectId);
+    const report = await createActorSeededReport(business._id as Types.ObjectId);
+
+    const first = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/dailySalesReports/${report._id}/calculateBusinessReport`,
+      headers: { authorization: token },
+    });
+    expect(first.statusCode, first.body).toBe(200);
+
+    const second = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/dailySalesReports/${report._id}/calculateBusinessReport`,
+      headers: { authorization: token },
+    });
+    expect(second.statusCode, second.body).toBe(200);
+
+    const weekly = await waitFor(
+      () =>
+        WeeklyBusinessReport.findOne({ businessId: business._id })
+          .sort({ createdAt: -1 })
+          .lean(),
+      (doc) =>
+        Boolean(
+          doc &&
+            doc.financialSummary?.totalSalesForWeek === 150 &&
+            doc.financialSummary?.totalNetRevenue === 140,
+        ),
+    );
+    expect(weekly?.financialSummary?.totalSalesForWeek).toBe(150);
+    expect(weekly?.financialSummary?.totalNetRevenue).toBe(140);
+
+    const monthly = await waitFor(
+      () =>
+        MonthlyBusinessReport.findOne({ businessId: business._id })
+          .sort({ createdAt: -1 })
+          .lean(),
+      (doc) =>
+        Boolean(
+          doc &&
+            doc.financialSummary?.totalSalesForMonth === 150 &&
+            doc.financialSummary?.totalNetRevenue === 140,
+        ),
+    );
+    expect(monthly?.financialSummary?.totalSalesForMonth).toBe(150);
+    expect(monthly?.financialSummary?.totalNetRevenue).toBe(140);
+  });
+
+  it("repeated close calls are idempotent and keep rollups stable", async () => {
+    const app = await getTestApp();
+    const business = await createTestBusiness();
+    const token = await createManagerToken(business._id as Types.ObjectId);
+    const report = await createActorSeededReport(business._id as Types.ObjectId);
+
+    const firstClose = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/dailySalesReports/${report._id}/close`,
+      headers: { authorization: token },
+    });
+    expect(firstClose.statusCode, firstClose.body).toBe(200);
+
+    const secondClose = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/dailySalesReports/${report._id}/close`,
+      headers: { authorization: token },
+    });
+    expect(secondClose.statusCode, secondClose.body).toBe(200);
+
+    const refreshed = await DailySalesReport.findById(report._id).lean();
+    expect(refreshed?.isDailyReportOpen).toBe(false);
+    expect(refreshed?.dailyTotalSalesBeforeAdjustments).toBe(150);
+    expect(refreshed?.dailyNetPaidAmount).toBe(140);
+
+    const weekly = await waitFor(
+      () =>
+        WeeklyBusinessReport.findOne({ businessId: business._id })
+          .sort({ createdAt: -1 })
+          .lean(),
+      (doc) =>
+        Boolean(
+          doc &&
+            doc.financialSummary?.totalSalesForWeek === 150 &&
+            doc.financialSummary?.totalNetRevenue === 140,
+        ),
+    );
+    expect(weekly?.financialSummary?.totalSalesForWeek).toBe(150);
+    expect(weekly?.financialSummary?.totalNetRevenue).toBe(140);
+
+    const monthly = await waitFor(
+      () =>
+        MonthlyBusinessReport.findOne({ businessId: business._id })
+          .sort({ createdAt: -1 })
+          .lean(),
+      (doc) =>
+        Boolean(
+          doc &&
+            doc.financialSummary?.totalSalesForMonth === 150 &&
+            doc.financialSummary?.totalNetRevenue === 140,
+        ),
+    );
+    expect(monthly?.financialSummary?.totalSalesForMonth).toBe(150);
+    expect(monthly?.financialSummary?.totalNetRevenue).toBe(140);
+  });
+
   it("manual reconcile endpoint matches shared reconciliation core output for mixed statuses", async () => {
     const app = await getTestApp();
     const business = await createTestBusiness();

@@ -28,6 +28,63 @@ import * as enums from "../../../../packages/enums.ts";
 const { managementRolesEnums } = enums;
 
 export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
+  const refreshWeeklyAndMonthlyReports = async (
+    businessId: Types.ObjectId,
+    weeklyDateReference: Date,
+    weeklyReportStartDay: number,
+    triggerSource: "calculateBusinessReport" | "closeDailyReport",
+  ): Promise<{ allSucceeded: boolean; failed: string[] }> => {
+    const settled = await Promise.allSettled([
+      aggregateDailyReportsIntoWeekly(
+        businessId,
+        weeklyDateReference,
+        weeklyReportStartDay,
+      ),
+      aggregateDailyReportsIntoMonthly(businessId),
+    ]);
+
+    const failed: string[] = [];
+
+    if (settled[0].status === "rejected") {
+      failed.push("weekly");
+      app.log.error(
+        {
+          triggerSource,
+          businessId: String(businessId),
+          error: settled[0].reason,
+        },
+        "weekly report refresh failed",
+      );
+    } else {
+      app.log.info(
+        { triggerSource, businessId: String(businessId) },
+        "weekly report refresh succeeded",
+      );
+    }
+
+    if (settled[1].status === "rejected") {
+      failed.push("monthly");
+      app.log.error(
+        {
+          triggerSource,
+          businessId: String(businessId),
+          error: settled[1].reason,
+        },
+        "monthly report refresh failed",
+      );
+    } else {
+      app.log.info(
+        { triggerSource, businessId: String(businessId) },
+        "monthly report refresh succeeded",
+      );
+    }
+
+    return {
+      allSucceeded: failed.length === 0,
+      failed,
+    };
+  };
+
   const buildReconciledDailyReportPayload = async (
     dailyReferenceNumber: number,
     businessId: Types.ObjectId,
@@ -582,19 +639,17 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
               }).reportingConfig?.weeklyReportStartDay ?? 1
             : 1;
 
-        aggregateDailyReportsIntoWeekly(
+        const rollupRefresh = await refreshWeeklyAndMonthlyReports(
           businessIdForMonthly,
           new Date(),
           weeklyReportStartDay,
-        ).catch((err) => {
-          app.log.error("aggregateDailyReportsIntoWeekly failed:", err);
-        });
+          "calculateBusinessReport",
+        );
 
-        aggregateDailyReportsIntoMonthly(businessIdForMonthly).catch((err) => {
-          app.log.error("aggregateDailyReportsIntoMonthly failed:", err);
+        return reply.code(200).send({
+          message: "Daily sales report updated",
+          rollupRefresh,
         });
-
-        return reply.code(200).send({ message: "Daily sales report updated" });
       } catch (error) {
         return reply.code(500).send({
           message: "Failed to update daily sales report!",
@@ -951,7 +1006,7 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
           { $set: { ...dailySalesReportObj, isDailyReportOpen: false } },
         );
 
-        if (updatedReport.modifiedCount === 0) {
+        if (updatedReport.matchedCount === 0) {
           return reply.code(500).send({
             message: "Failed to close the daily sales report!",
           });
@@ -973,23 +1028,26 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
               }).reportingConfig?.weeklyReportStartDay ?? 1
             : 1;
 
-        aggregateDailyReportsIntoWeekly(
+        if (updatedReport.modifiedCount === 0) {
+          app.log.info(
+            {
+              dailySalesReportId,
+              businessId: String(businessIdForRollups),
+            },
+            "daily sales report close is idempotent no-op (already closed)",
+          );
+        }
+
+        const rollupRefresh = await refreshWeeklyAndMonthlyReports(
           businessIdForRollups,
           new Date(),
           weeklyReportStartDay,
-        ).catch((err) => {
-          app.log.error(
-            "aggregateDailyReportsIntoWeekly failed on close:",
-            err,
-          );
-        });
-
-        aggregateDailyReportsIntoMonthly(businessIdForRollups).catch((err) => {
-          app.log.error("aggregateDailyReportsIntoMonthly failed on close:", err);
-        });
+          "closeDailyReport",
+        );
 
         return reply.code(200).send({
           message: "Daily sales report closed successfully",
+          rollupRefresh,
         });
       } catch (error) {
         return reply.code(500).send({

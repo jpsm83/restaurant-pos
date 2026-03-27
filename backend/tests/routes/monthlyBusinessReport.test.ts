@@ -3,11 +3,18 @@
  * Tests for monthly business report endpoints
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { Types } from "mongoose";
 import { getTestApp } from "../setup.ts";
 import MonthlyBusinessReport from "../../src/models/monthlyBusinessReport.ts";
 import Business from "../../src/models/business.ts";
+import DailySalesReport from "../../src/models/dailySalesReport.ts";
+import Schedule from "../../src/models/schedule.ts";
+import aggregateDailyReportsIntoMonthly from "../../src/monthlyBusinessReport/aggregateDailyReportsIntoMonthly.ts";
+
+vi.mock("../../src/monthlyBusinessReport/sendMonthlyReportReadyNotification.ts", () => ({
+  default: vi.fn(async () => true),
+}));
 
 describe("MonthlyBusinessReport Routes", () => {
   const createTestBusiness = async () => {
@@ -333,6 +340,87 @@ describe("MonthlyBusinessReport Routes", () => {
       expect(body.businessId).toBe(business._id.toString());
       expect(body.financialSummary).toBeDefined();
       expect(body.costBreakdown).toBeDefined();
+    });
+  });
+
+  describe("Phase 6 monthly KPI aggregation", () => {
+    it("computes monthly net profit, net margin and break-even targets", async () => {
+      const business = await createTestBusiness();
+      const businessId = business._id as Types.ObjectId;
+      const monthDate = new Date();
+
+      await DailySalesReport.create([
+        {
+          businessId,
+          dailyReferenceNumber: Number(`${Date.now()}1`),
+          isDailyReportOpen: false,
+          timeCountdownToClose: Date.now() + 86400000,
+          dailyTotalSalesBeforeAdjustments: 150,
+          dailyNetPaidAmount: 135,
+          dailyCostOfGoodsSold: 60,
+          dailyTipsReceived: 10,
+          dailyTotalVoidValue: 5,
+          dailyTotalInvitedValue: 3,
+          dailyCustomersServed: 6,
+          dailyPosSystemCommission: 6,
+          businessPaymentMethods: [],
+          dailySoldGoods: [],
+          dailyVoidedGoods: [],
+          dailyInvitedGoods: [],
+        },
+      ]);
+
+      await Schedule.create({
+        businessId,
+        date: monthDate,
+        weekNumber: 1,
+        employeesSchedules: [],
+        totalEmployeesScheduled: 0,
+        totalEmployeesVacation: 0,
+        totalDayEmployeesCost: 30,
+      });
+
+      const monthReference = new Date(
+        monthDate.getFullYear(),
+        monthDate.getMonth(),
+        1,
+        0,
+        0,
+        0,
+        0,
+      );
+
+      await MonthlyBusinessReport.create({
+        businessId,
+        monthReference,
+        isReportOpen: true,
+        costBreakdown: {
+          totalFixedOperatingCost: 30,
+          totalExtraCost: 10,
+        },
+      });
+
+      await aggregateDailyReportsIntoMonthly(businessId);
+
+      const created = await MonthlyBusinessReport.findOne({
+        businessId,
+        monthReference,
+      }).lean();
+
+      expect(created).toBeTruthy();
+      expect(created?.financialSummary?.totalSalesForMonth).toBe(150);
+      expect(created?.financialSummary?.totalNetRevenue).toBe(135);
+      expect(created?.financialSummary?.totalCostOfGoodsSold).toBe(60);
+      expect(created?.costBreakdown?.totalLaborCost).toBe(30);
+      expect(created?.costBreakdown?.totalFixedOperatingCost).toBe(30);
+      expect(created?.costBreakdown?.totalExtraCost).toBe(10);
+      expect(created?.costBreakdown?.totalOperatingCost).toBe(130);
+      expect(created?.financialSummary?.totalNetProfit).toBe(5);
+      expect(
+        created?.financialSummary?.financialPercentages?.netProfitMarginPercentage,
+      ).toBeCloseTo(3.3333, 3);
+      expect(created?.financialSummary?.breakEvenSales).toBeCloseTo(100, 6);
+      expect(created?.financialSummary?.minimumDailySalesTarget).toBeGreaterThan(0);
     });
   });
 });

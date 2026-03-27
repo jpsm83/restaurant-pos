@@ -65,9 +65,6 @@ reservations has lots of logic for send email an notifications but many other fe
 
 - review all functions that need session as parameter - DONE
 - review all the routes that uses promise.all and session once they cannot work toguether ("In MongoDB, when you’re using a session (especially inside a transaction), running operations in parallel (e.g., with Promise.all) on the same session is not supported and leads to undefined behavior.") - DONE
+- daily sales report have to be reviewed and tested once we got all the models tested and with data - DONE
 
-- daily sales report have to be reviewed and tested once we got all the models tested and with data
-- transform cloudinaryActions route to be a function to be used in all the creations that could have images
-- add collor themes for the types of businessGoods (or photo)
-
-- must review the file app/api/v1/monthlyBusinessReport/toDo.md
+- must review the file app/api/v1/monthlyBusinessReport/toDo.md - DONE

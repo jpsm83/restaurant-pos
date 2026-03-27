@@ -1,6 +1,6 @@
 import { Types } from "mongoose";
-import { IPaymentMethod } from "./IPaymentMethod";
-import { IGoodsReduced } from "./IDailySalesReport";
+import { IGoodsReduced } from "./IDailySalesReport.ts";
+import { IPaymentMethod } from "./IPaymentMethod.ts";
 
 export type WeekLabel = string;
 
@@ -32,11 +32,11 @@ export interface IMetrics {
 }
 
 export interface IWeeklyFinancialPercentages {
-  salesPaymentCompletionPercentage: number;
-  profitMarginPercentage: number;
-  voidSalesPercentage: number;
-  invitedSalesPercentage: number;
-  tipsToCostOfGoodsPercentage: number;
+  salesPaymentCompletionPercentage: number; // Paid share of gross sales during the week
+  profitMarginPercentage: number; // Gross profit margin for the week
+  voidSalesPercentage: number; // Voided share of weekly sales
+  invitedSalesPercentage: number; // Complimentary share of weekly sales
+  tipsToCostOfGoodsPercentage: number; // Tips relative to cost of goods sold
 }
 
 export interface IWeeklyFinancialSummary {

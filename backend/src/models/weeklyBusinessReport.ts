@@ -18,9 +18,13 @@ const weeklyBusinessReportSchema = new Schema(
     },
     financialSummary: {
       totalSalesForWeek: { type: Number },
+      // Total value sold before void/invited adjustments.
       totalCostOfGoodsSold: { type: Number },
+      // Total COGS for sold/voided/complimentary goods.
       totalNetRevenue: { type: Number },
+      // Revenue collected after sales adjustments.
       totalGrossProfit: { type: Number },
+      // Gross profit calculated as net revenue minus COGS.
       totalVoidSales: { type: Number },
       totalInvitedSales: { type: Number },
       totalTips: { type: Number },

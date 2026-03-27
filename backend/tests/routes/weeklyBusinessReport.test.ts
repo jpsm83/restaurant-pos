@@ -3,11 +3,18 @@
  * Tests for weekly business report endpoints
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { Types } from "mongoose";
 import { getTestApp } from "../setup.ts";
 import WeeklyBusinessReport from "../../src/models/weeklyBusinessReport.ts";
 import Business from "../../src/models/business.ts";
+import DailySalesReport from "../../src/models/dailySalesReport.ts";
+import Schedule from "../../src/models/schedule.ts";
+import aggregateDailyReportsIntoWeekly from "../../src/weeklyBusinessReport/aggregateDailyReportsIntoWeekly.ts";
+
+vi.mock("../../src/weeklyBusinessReport/sendWeeklyReportReadyNotification.ts", () => ({
+  default: vi.fn(async () => true),
+}));
 
 describe("WeeklyBusinessReport Routes", () => {
   const createTestBusiness = async () => {
@@ -216,6 +223,89 @@ describe("WeeklyBusinessReport Routes", () => {
       const body = JSON.parse(response.body);
       expect(Array.isArray(body)).toBe(true);
       expect(body.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  describe("Phase 5 weekly KPI aggregation", () => {
+    it("computes weekly financial and cost KPIs from daily reports", async () => {
+      const business = await createTestBusiness();
+      const businessId = business._id as Types.ObjectId;
+      const now = new Date();
+
+      await DailySalesReport.create([
+        {
+          businessId,
+          dailyReferenceNumber: Number(`${Date.now()}1`),
+          isDailyReportOpen: false,
+          timeCountdownToClose: Date.now() + 86400000,
+          dailyTotalSalesBeforeAdjustments: 100,
+          dailyNetPaidAmount: 90,
+          dailyCostOfGoodsSold: 40,
+          dailyTipsReceived: 10,
+          dailyTotalVoidValue: 5,
+          dailyTotalInvitedValue: 3,
+          dailyCustomersServed: 4,
+          dailyPosSystemCommission: 5,
+          businessPaymentMethods: [],
+          dailySoldGoods: [],
+          dailyVoidedGoods: [],
+          dailyInvitedGoods: [],
+        },
+        {
+          businessId,
+          dailyReferenceNumber: Number(`${Date.now()}2`),
+          isDailyReportOpen: false,
+          timeCountdownToClose: Date.now() + 86400000,
+          dailyTotalSalesBeforeAdjustments: 50,
+          dailyNetPaidAmount: 45,
+          dailyCostOfGoodsSold: 20,
+          dailyTipsReceived: 5,
+          dailyTotalVoidValue: 2,
+          dailyTotalInvitedValue: 1,
+          dailyCustomersServed: 2,
+          dailyPosSystemCommission: 2,
+          businessPaymentMethods: [],
+          dailySoldGoods: [],
+          dailyVoidedGoods: [],
+          dailyInvitedGoods: [],
+        },
+      ]);
+
+      await Schedule.create({
+        businessId,
+        date: now,
+        weekNumber: 1,
+        employeesSchedules: [],
+        totalEmployeesScheduled: 0,
+        totalEmployeesVacation: 0,
+        totalDayEmployeesCost: 30,
+      });
+
+      await aggregateDailyReportsIntoWeekly(businessId, now, 1);
+
+      const created = await WeeklyBusinessReport.findOne({
+        businessId,
+      })
+        .sort({ createdAt: -1 })
+        .lean();
+
+      expect(created).toBeTruthy();
+      expect(created?.financialSummary?.totalSalesForWeek).toBe(150);
+      expect(created?.financialSummary?.totalNetRevenue).toBe(135);
+      expect(created?.financialSummary?.totalCostOfGoodsSold).toBe(60);
+      expect(created?.financialSummary?.totalGrossProfit).toBe(75);
+      expect(
+        created?.financialSummary?.financialPercentages?.salesPaymentCompletionPercentage,
+      ).toBeCloseTo(90, 6);
+      expect(
+        created?.financialSummary?.financialPercentages?.profitMarginPercentage,
+      ).toBeCloseTo(50, 6);
+      expect(created?.costBreakdown?.totalOperatingCost).toBe(90);
+      expect(created?.costBreakdown?.costPercentages?.foodCostRatio).toBeCloseTo(
+        60 / 150,
+        6,
+      );
+      expect(created?.averageSpendingPerCustomer).toBeCloseTo(22.5, 6);
     });
   });
 });

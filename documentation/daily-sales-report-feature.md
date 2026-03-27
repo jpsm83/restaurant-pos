@@ -310,3 +310,31 @@ Telemetry counters/logs:
 - sensitive mutations are transaction-based in sales instance route flows
 - manager report APIs are tenant-scoped by authenticated business context
 
+---
+
+## 12) Weekly/Monthly KPI Architecture Summary
+
+Daily reports are the source-of-truth feed for period rollups.
+
+Flow:
+
+1. Daily management actions (`calculateBusinessReport` and `close`) rebuild top-level DSR totals.
+2. The route triggers weekly and monthly rollups (`aggregateDailyReportsIntoWeekly`, `aggregateDailyReportsIntoMonthly`).
+3. Rollups map DSR fields into canonical metric inputs via `dataContract.ts`.
+4. KPI formulas are computed in shared helper functions from `calculations.ts`.
+5. Weekly and monthly reports persist aligned KPI semantics (profitability, cost mix, break-even where applicable).
+
+Resilience and idempotency:
+
+- Rollup refresh runs through a centralized trigger helper in `dailySalesReports.ts`.
+- Weekly/monthly refresh outcomes are logged for success/failure observability.
+- Repeated daily calculate/close calls keep rollup values stable by recomputing from DSR totals instead of incrementally drifting.
+
+Primary implementation files:
+
+- `backend/src/routes/v1/dailySalesReports.ts`
+- `backend/src/weeklyBusinessReport/aggregateDailyReportsIntoWeekly.ts`
+- `backend/src/monthlyBusinessReport/aggregateDailyReportsIntoMonthly.ts`
+- `backend/src/reports/businessMetrics/calculations.ts`
+- `backend/src/reports/businessMetrics/dataContract.ts`
+

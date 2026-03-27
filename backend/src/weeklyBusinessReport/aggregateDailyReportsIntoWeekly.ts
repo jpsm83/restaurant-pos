@@ -23,6 +23,17 @@ import type {
 import type { IGoodsReduced } from "../../../packages/interfaces/IDailySalesReport.ts";
 import type { IPaymentMethod } from "../../../packages/interfaces/IPaymentMethod.ts";
 import getWasteByBudgetImpactForMonth from "../inventories/getWasteByBudgetImpactForMonth.ts";
+import {
+  avgSpendPerCustomer,
+  calculateCostRatiosByTotalSales,
+  calculateFinancialPercentages,
+  contributionMarginRatio,
+  grossProfit,
+} from "../reports/businessMetrics/calculations.ts";
+import {
+  getVariableCostsV1,
+  mapDailyReportToCanonicalInputs,
+} from "../reports/businessMetrics/dataContract.ts";
 
 function getWeekEnd(weekStart: Date): Date {
   const end = new Date(weekStart);
@@ -208,35 +219,22 @@ const aggregateDailyReportsIntoWeekly = async (
     const goodsComplimentaryAcc: IGoodsReduced[] = [];
 
     for (const d of dailyReports) {
-      const doc = d as {
-        dailyTotalSalesBeforeAdjustments?: number;
-        dailyNetPaidAmount?: number;
-        dailyCostOfGoodsSold?: number;
-        dailyTipsReceived?: number;
-        dailyTotalVoidValue?: number;
-        dailyTotalInvitedValue?: number;
-        dailyCustomersServed?: number;
-        dailyPosSystemCommission?: number;
-        businessPaymentMethods?: IPaymentMethod[];
-        dailySoldGoods?: IGoodsReduced[];
-        dailyVoidedGoods?: IGoodsReduced[];
-        dailyInvitedGoods?: IGoodsReduced[];
-      };
-      totalSalesForWeek += doc.dailyTotalSalesBeforeAdjustments ?? 0;
-      totalNetRevenue += doc.dailyNetPaidAmount ?? 0;
-      totalCostOfGoodsSold += doc.dailyCostOfGoodsSold ?? 0;
-      totalTips += doc.dailyTipsReceived ?? 0;
-      totalVoidSales += doc.dailyTotalVoidValue ?? 0;
-      totalInvitedSales += doc.dailyTotalInvitedValue ?? 0;
-      totalCustomersServed += doc.dailyCustomersServed ?? 0;
-      posSystemCommission += doc.dailyPosSystemCommission ?? 0;
-      mergePaymentMethods(paymentMethodsAcc, doc.businessPaymentMethods);
-      mergeGoodsByBusinessGoodId(goodsSoldAcc, doc.dailySoldGoods);
-      mergeGoodsByBusinessGoodId(goodsVoidedAcc, doc.dailyVoidedGoods);
-      mergeGoodsByBusinessGoodId(goodsComplimentaryAcc, doc.dailyInvitedGoods);
+      const mapped = mapDailyReportToCanonicalInputs(d as any);
+      totalSalesForWeek += mapped.totalSales;
+      totalNetRevenue += mapped.netRevenue;
+      totalCostOfGoodsSold += mapped.cogs;
+      totalTips += mapped.tips;
+      totalVoidSales += mapped.voidSales;
+      totalInvitedSales += mapped.invitedSales;
+      totalCustomersServed += mapped.customersServed;
+      posSystemCommission += mapped.posSystemCommission;
+      mergePaymentMethods(paymentMethodsAcc, mapped.paymentMethods);
+      mergeGoodsByBusinessGoodId(goodsSoldAcc, mapped.soldGoods);
+      mergeGoodsByBusinessGoodId(goodsVoidedAcc, mapped.voidedGoods);
+      mergeGoodsByBusinessGoodId(goodsComplimentaryAcc, mapped.invitedGoods);
     }
 
-    const totalGrossProfit = totalNetRevenue - totalCostOfGoodsSold;
+    const totalGrossProfit = grossProfit(totalNetRevenue, totalCostOfGoodsSold);
     const totalLaborCost = (
       schedules as { totalDayEmployeesCost?: number }[]
     ).reduce((sum, s) => sum + (s.totalDayEmployeesCost ?? 0), 0);
@@ -246,26 +244,43 @@ const aggregateDailyReportsIntoWeekly = async (
     const totalOperatingCost =
       totalFoodCost + totalBeverageCost + totalLaborCost;
 
-    const foodCostRatio =
-      totalOperatingCost > 0 ? totalFoodCost / totalOperatingCost : 0;
-    const beverageCostRatio =
-      totalOperatingCost > 0 ? totalBeverageCost / totalOperatingCost : 0;
-    const laborCostRatio =
-      totalOperatingCost > 0 ? totalLaborCost / totalOperatingCost : 0;
+    const { foodCostRatio, beverageCostRatio, laborCostRatio } =
+      calculateCostRatiosByTotalSales({
+        totalSales: totalSalesForWeek,
+        totalFoodCost,
+        totalBeverageCost,
+        totalLaborCost,
+      });
 
-    const profitMarginPercentage =
-      totalSalesForWeek > 0 ? (totalGrossProfit / totalSalesForWeek) * 100 : 0;
-    const voidSalesPercentage =
-      totalSalesForWeek > 0 ? (totalVoidSales / totalSalesForWeek) * 100 : 0;
-    const invitedSalesPercentage =
-      totalSalesForWeek > 0 ? (totalInvitedSales / totalSalesForWeek) * 100 : 0;
-    const salesPaymentCompletionPercentage =
-      totalSalesForWeek > 0 ? (totalNetRevenue / totalSalesForWeek) * 100 : 0;
-    const tipsToCostOfGoodsPercentage =
-      totalCostOfGoodsSold > 0 ? (totalTips / totalCostOfGoodsSold) * 100 : 0;
+    const {
+      profitMarginPercentage,
+      voidSalesPercentage,
+      invitedSalesPercentage,
+      salesPaymentCompletionPercentage,
+      tipsToCostOfGoodsPercentage,
+    } = calculateFinancialPercentages({
+      totalSales: totalSalesForWeek,
+      totalNetRevenue,
+      totalGrossProfit,
+      totalVoidSales,
+      totalInvitedSales,
+      totalTips,
+      totalCostOfGoodsSold,
+    });
 
-    const averageSpendingPerCustomer =
-      totalCustomersServed > 0 ? totalNetRevenue / totalCustomersServed : 0;
+    const averageSpendingPerCustomer = avgSpendPerCustomer(
+      totalNetRevenue,
+      totalCustomersServed,
+    );
+
+    // Phase-3 data contract: V1 variable costs are COGS + labor.
+    // Utilities are intentionally excluded until explicit source fields exist.
+    const _v1VariableCosts = getVariableCostsV1(totalCostOfGoodsSold, totalLaborCost);
+    const _v1ContributionMarginRatio = contributionMarginRatio(
+      totalSalesForWeek,
+      _v1VariableCosts,
+    );
+    void _v1ContributionMarginRatio;
 
     const metrics = (businessDoc as { metrics?: IMetrics | null } | null)
       ?.metrics;

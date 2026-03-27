@@ -17,12 +17,27 @@ import {
   type MonthlyReportOpen,
 } from "./createMonthlyBusinessReport.ts";
 import sendMonthlyReportReadyNotification from "./sendMonthlyReportReadyNotification.ts";
+import {
+  avgSpendPerCustomer,
+  breakEvenSales,
+  calculateCostRatiosByTotalSales,
+  calculateFinancialPercentages,
+  contributionMarginRatio,
+  grossProfit,
+  minimumDailySalesTarget,
+  netProfit,
+  netProfitMarginPct,
+} from "../reports/businessMetrics/calculations.ts";
+import {
+  getVariableCostsV1,
+  mapDailyReportToCanonicalInputs,
+} from "../reports/businessMetrics/dataContract.ts";
 
 interface IGoodsReduced {
   businessGoodId: Types.ObjectId;
-  quantity: number;
-  totalPrice: number;
-  totalCostPrice: number;
+  quantity?: number;
+  totalPrice?: number;
+  totalCostPrice?: number;
 }
 
 interface IPaymentMethod {
@@ -81,7 +96,7 @@ function mergeGoodsByBusinessGoodId(
           : String(x.businessGoodId)) === idStr,
     );
     if (existing) {
-      existing.quantity += item.quantity ?? 1;
+      existing.quantity = (existing.quantity ?? 0) + (item.quantity ?? 1);
       existing.totalPrice = (existing.totalPrice ?? 0) + (item.totalPrice ?? 0);
       existing.totalCostPrice =
         (existing.totalCostPrice ?? 0) + (item.totalCostPrice ?? 0);
@@ -239,35 +254,22 @@ const aggregateDailyReportsIntoMonthly = async (
     const goodsComplimentaryAcc: IGoodsReduced[] = [];
 
     for (const d of dailyReports) {
-      const doc = d as {
-        dailyTotalSalesBeforeAdjustments?: number;
-        dailyNetPaidAmount?: number;
-        dailyCostOfGoodsSold?: number;
-        dailyTipsReceived?: number;
-        dailyTotalVoidValue?: number;
-        dailyTotalInvitedValue?: number;
-        dailyCustomersServed?: number;
-        dailyPosSystemCommission?: number;
-        businessPaymentMethods?: IPaymentMethod[];
-        dailySoldGoods?: IGoodsReduced[];
-        dailyVoidedGoods?: IGoodsReduced[];
-        dailyInvitedGoods?: IGoodsReduced[];
-      };
-      totalSalesForMonth += doc.dailyTotalSalesBeforeAdjustments ?? 0;
-      totalNetRevenue += doc.dailyNetPaidAmount ?? 0;
-      totalCostOfGoodsSold += doc.dailyCostOfGoodsSold ?? 0;
-      totalTips += doc.dailyTipsReceived ?? 0;
-      totalVoidSales += doc.dailyTotalVoidValue ?? 0;
-      totalInvitedSales += doc.dailyTotalInvitedValue ?? 0;
-      totalCustomersServed += doc.dailyCustomersServed ?? 0;
-      posSystemCommission += doc.dailyPosSystemCommission ?? 0;
-      mergePaymentMethods(paymentMethodsAcc, doc.businessPaymentMethods);
-      mergeGoodsByBusinessGoodId(goodsSoldAcc, doc.dailySoldGoods);
-      mergeGoodsByBusinessGoodId(goodsVoidedAcc, doc.dailyVoidedGoods);
-      mergeGoodsByBusinessGoodId(goodsComplimentaryAcc, doc.dailyInvitedGoods);
+      const mapped = mapDailyReportToCanonicalInputs(d as any);
+      totalSalesForMonth += mapped.totalSales;
+      totalNetRevenue += mapped.netRevenue;
+      totalCostOfGoodsSold += mapped.cogs;
+      totalTips += mapped.tips;
+      totalVoidSales += mapped.voidSales;
+      totalInvitedSales += mapped.invitedSales;
+      totalCustomersServed += mapped.customersServed;
+      posSystemCommission += mapped.posSystemCommission;
+      mergePaymentMethods(paymentMethodsAcc, mapped.paymentMethods);
+      mergeGoodsByBusinessGoodId(goodsSoldAcc, mapped.soldGoods);
+      mergeGoodsByBusinessGoodId(goodsVoidedAcc, mapped.voidedGoods);
+      mergeGoodsByBusinessGoodId(goodsComplimentaryAcc, mapped.invitedGoods);
     }
 
-    const totalGrossProfit = totalNetRevenue - totalCostOfGoodsSold;
+    const totalGrossProfit = grossProfit(totalNetRevenue, totalCostOfGoodsSold);
     const totalLaborCost = (
       schedules as { totalDayEmployeesCost?: number }[]
     ).reduce((sum, s) => sum + (s.totalDayEmployeesCost ?? 0), 0);
@@ -289,33 +291,63 @@ const aggregateDailyReportsIntoMonthly = async (
       totalLaborCost +
       totalFixedOperatingCost +
       totalExtraCost;
+    const totalNetProfit = netProfit(totalNetRevenue, totalOperatingCost);
 
-    const foodCostRatio =
-      totalOperatingCost > 0 ? totalFoodCost / totalOperatingCost : 0;
-    const beverageCostRatio =
-      totalOperatingCost > 0 ? totalBeverageCost / totalOperatingCost : 0;
-    const laborCostRatio =
-      totalOperatingCost > 0 ? totalLaborCost / totalOperatingCost : 0;
-    const fixedCostRatio =
-      totalOperatingCost > 0 ? totalFixedOperatingCost / totalOperatingCost : 0;
+    const {
+      foodCostRatio,
+      beverageCostRatio,
+      laborCostRatio,
+      fixedCostRatio,
+    } = calculateCostRatiosByTotalSales({
+      totalSales: totalSalesForMonth,
+      totalFoodCost,
+      totalBeverageCost,
+      totalLaborCost,
+      totalFixedOperatingCost,
+    });
 
-    const profitMarginPercentage =
-      totalSalesForMonth > 0
-        ? (totalGrossProfit / totalSalesForMonth) * 100
-        : 0;
-    const voidSalesPercentage =
-      totalSalesForMonth > 0 ? (totalVoidSales / totalSalesForMonth) * 100 : 0;
-    const invitedSalesPercentage =
-      totalSalesForMonth > 0
-        ? (totalInvitedSales / totalSalesForMonth) * 100
-        : 0;
-    const salesPaymentCompletionPercentage =
-      totalSalesForMonth > 0 ? (totalNetRevenue / totalSalesForMonth) * 100 : 0;
-    const tipsToCostOfGoodsPercentage =
-      totalCostOfGoodsSold > 0 ? (totalTips / totalCostOfGoodsSold) * 100 : 0;
+    const {
+      profitMarginPercentage,
+      voidSalesPercentage,
+      invitedSalesPercentage,
+      salesPaymentCompletionPercentage,
+      tipsToCostOfGoodsPercentage,
+    } = calculateFinancialPercentages({
+      totalSales: totalSalesForMonth,
+      totalNetRevenue,
+      totalGrossProfit,
+      totalVoidSales,
+      totalInvitedSales,
+      totalTips,
+      totalCostOfGoodsSold,
+    });
 
-    const averageSpendingPerCustomer =
-      totalCustomersServed > 0 ? totalNetRevenue / totalCustomersServed : 0;
+    const averageSpendingPerCustomer = avgSpendPerCustomer(
+      totalNetRevenue,
+      totalCustomersServed,
+    );
+
+    // Phase-3 data contract: V1 variable costs are COGS + labor.
+    // Utilities are intentionally excluded until explicit source fields exist.
+    const _v1VariableCosts = getVariableCostsV1(totalCostOfGoodsSold, totalLaborCost);
+    const v1ContributionMarginRatio = contributionMarginRatio(
+      totalSalesForMonth,
+      _v1VariableCosts,
+    );
+    // Treat fixed + extra monthly costs as fixed-style obligations for break-even planning.
+    const breakEvenSalesValue = breakEvenSales(
+      totalFixedOperatingCost + totalExtraCost,
+      v1ContributionMarginRatio,
+    );
+    const daysInMonth = monthEnd.getDate();
+    const minimumDailySalesTargetValue = minimumDailySalesTarget(
+      breakEvenSalesValue,
+      daysInMonth,
+    );
+    const netProfitMarginPercentage = netProfitMarginPct(
+      totalSalesForMonth,
+      totalNetProfit,
+    );
 
     const metrics = (businessDoc as { metrics?: IMetrics | null } | null)
       ?.metrics;
@@ -339,10 +371,10 @@ const aggregateDailyReportsIntoMonthly = async (
             },
             fixedCostPercentage: {
               targetValue: metrics.fixedCostPercentage,
-              actualValue: fixedCostRatio * 100,
-              delta: fixedCostRatio * 100 - metrics.fixedCostPercentage,
-              isOverTarget: fixedCostRatio * 100 > metrics.fixedCostPercentage,
-              isUnderTarget: fixedCostRatio * 100 < metrics.fixedCostPercentage,
+              actualValue: (fixedCostRatio ?? 0) * 100,
+              delta: (fixedCostRatio ?? 0) * 100 - metrics.fixedCostPercentage,
+              isOverTarget: (fixedCostRatio ?? 0) * 100 > metrics.fixedCostPercentage,
+              isUnderTarget: (fixedCostRatio ?? 0) * 100 < metrics.fixedCostPercentage,
             },
             supplierGoodWastePercentage: supplierWasteAnalysis
               ? {
@@ -441,12 +473,16 @@ const aggregateDailyReportsIntoMonthly = async (
             totalCostOfGoodsSold,
             totalNetRevenue,
             totalGrossProfit,
+            totalNetProfit,
             totalVoidSales,
             totalInvitedSales,
             totalTips,
+            breakEvenSales: breakEvenSalesValue,
+            minimumDailySalesTarget: minimumDailySalesTargetValue,
             financialPercentages: {
               salesPaymentCompletionPercentage,
               profitMarginPercentage,
+              netProfitMarginPercentage,
               voidSalesPercentage,
               invitedSalesPercentage,
               tipsToCostOfGoodsPercentage,
@@ -463,7 +499,7 @@ const aggregateDailyReportsIntoMonthly = async (
               foodCostRatio,
               beverageCostRatio,
               laborCostRatio,
-              fixedCostRatio,
+              fixedCostRatio: fixedCostRatio ?? 0,
             },
           },
           goodsSold: goodsSoldAcc,
