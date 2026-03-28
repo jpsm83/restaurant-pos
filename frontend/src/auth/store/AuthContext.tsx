@@ -8,12 +8,17 @@ import {
   type Dispatch,
   type ReactNode,
 } from "react";
-import { getCurrentUser, refreshSession, setAccessToken } from "../api";
-import type { AuthState, AuthUser } from "../types";
+import {
+  getCurrentUser,
+  loadPersistedAccessToken,
+  refreshSession,
+  setAccessToken,
+} from "../api";
+import type { AuthSession, AuthState } from "../types";
 
 type AuthAction =
   | { type: "AUTH_LOADING" }
-  | { type: "AUTH_SUCCESS"; payload: AuthUser }
+  | { type: "AUTH_SUCCESS"; payload: AuthSession }
   | { type: "AUTH_CLEAR" }
   | { type: "AUTH_ERROR"; payload: string | null };
 
@@ -66,6 +71,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const bootstrapAuth = async () => {
       dispatch({ type: "AUTH_LOADING" });
+
+      const persisted = loadPersistedAccessToken();
+      if (persisted) {
+        setAccessToken(persisted);
+        const meFromStorage = await getCurrentUser();
+        if (meFromStorage.ok && meFromStorage.data) {
+          localStorage.setItem("auth_had_session", "1");
+          dispatch({ type: "AUTH_SUCCESS", payload: meFromStorage.data });
+          return;
+        }
+        setAccessToken(null);
+      }
 
       const refreshResult = await refreshSession();
       if (!refreshResult.ok || !refreshResult.data?.accessToken) {

@@ -1,17 +1,49 @@
-import type { AuthSession, AuthUser, LoginCredentials } from "./types";
+import type {
+  AuthLoginSnapshot,
+  AuthSession,
+  LoginCredentials,
+  SignupCredentials,
+} from "./types";
+import { queryClient } from "@/services/queryClient";
+import { queryKeys } from "@/services/queryKeys";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
+const ACCESS_TOKEN_STORAGE_KEY = "restaurant_pos_auth_access";
+
 let accessToken: string | null = null;
 
-interface AuthApiPayload {
+/** Persists access JWT for same-tab reloads; refresh cookie remains the long-lived secret (httpOnly). */
+export function setAccessToken(token: string | null) {
+  accessToken = token;
+  if (typeof window === "undefined") return;
+  try {
+    if (token) sessionStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, token);
+    else sessionStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
+  } catch {
+    // private mode / quota
+  }
+}
+
+/** Read token saved for this tab (before in-memory module state is set). */
+export function loadPersistedAccessToken(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return sessionStorage.getItem(ACCESS_TOKEN_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+/** Successful auth endpoints return `accessToken` + `user` session payload (same shape as `/auth/me`’s `user`). */
+interface AuthTokenResponseBody {
   accessToken?: string;
-  user?: AuthUser;
+  user?: AuthSession;
   message?: string;
 }
 
 async function parseJson<T>(response: Response): Promise<T | null> {
   try {
-    return (await response.tson()) as T;
+    return (await response.json()) as T;
   } catch {
     return null;
   }
@@ -60,7 +92,7 @@ async function authRequest<T>(
 }
 
 export async function login(credentials: LoginCredentials) {
-  const result = await authRequest<AuthApiPayload>(
+  const result = await authRequest<AuthTokenResponseBody>(
     "/api/v1/auth/login",
     {
       method: "POST",
@@ -70,13 +102,37 @@ export async function login(credentials: LoginCredentials) {
   );
 
   if (result.ok) {
-    accessToken = result.data?.accessToken ?? null;
+    setAccessToken(result.data?.accessToken ?? null);
     return {
       ok: true as const,
       data: {
         accessToken: result.data?.accessToken,
         user: result.data?.user ?? null,
-      } satisfies AuthSession,
+      } satisfies AuthLoginSnapshot,
+    };
+  }
+
+  return result;
+}
+
+export async function signup(credentials: SignupCredentials) {
+  const result = await authRequest<AuthTokenResponseBody>(
+    "/api/v1/auth/signup",
+    {
+      method: "POST",
+      body: JSON.stringify(credentials),
+    },
+    false
+  );
+
+  if (result.ok) {
+    setAccessToken(result.data?.accessToken ?? null);
+    return {
+      ok: true as const,
+      data: {
+        accessToken: result.data?.accessToken,
+        user: result.data?.user ?? null,
+      } satisfies AuthLoginSnapshot,
     };
   }
 
@@ -84,7 +140,7 @@ export async function login(credentials: LoginCredentials) {
 }
 
 export async function refreshSession() {
-  const result = await authRequest<AuthApiPayload>(
+  const result = await authRequest<AuthTokenResponseBody>(
     "/api/v1/auth/refresh",
     {
       method: "POST",
@@ -93,22 +149,22 @@ export async function refreshSession() {
   );
 
   if (result.ok) {
-    accessToken = result.data?.accessToken ?? null;
+    setAccessToken(result.data?.accessToken ?? null);
     return {
       ok: true as const,
       data: {
         accessToken: result.data?.accessToken,
         user: result.data?.user ?? null,
-      } satisfies AuthSession,
+      } satisfies AuthLoginSnapshot,
     };
   }
 
-  accessToken = null;
+  setAccessToken(null);
   return result;
 }
 
 export async function getCurrentUser() {
-  const result = await authRequest<{ user?: AuthUser }>("/api/v1/auth/me", {
+  const result = await authRequest<{ user?: AuthSession }>("/api/v1/auth/me", {
     method: "GET",
   });
 
@@ -128,12 +184,9 @@ export async function logout() {
     false
   );
 
-  accessToken = null;
+  setAccessToken(null);
+  queryClient.removeQueries({ queryKey: queryKeys.auth.mode() });
   return result;
-}
-
-export function setAccessToken(token: string | null) {
-  accessToken = token;
 }
 
 export function getAccessToken() {

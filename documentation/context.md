@@ -1,16 +1,30 @@
 ## Source of truth — Restaurant POS context
 
-This file (`context.md`) is the **source of truth** for understanding **what this app is** and **how it works end-to-end**.
+This file (`documentation/context.md`) is the **canonical entry point** and **bridge document** for how the Restaurant POS is supposed to work. Treat it as the **first place to read** for product intent and how subsystems connect; then open the focused docs below (or the code-adjacent READMEs) for depth.
 
-For a **detailed, user-level walkthrough of the full operational flow** (from business onboarding to live service, purchasing, inventory, reporting, and communications), see:
+### Companion documentation (reference map)
 
-- `user-flow.md`
+These files sit alongside `context.md` under `documentation/`. They are the **authoritative expansions** for specific slices of behavior. When behavior or implementation changes, update the relevant companion doc **and** keep this bridge section accurate.
 
-It is also the **entrypoint context for AI-assisted coding** in this repo:
+| Document | Use it for |
+|----------|------------|
+| [`user-flow.md`](./user-flow.md) | **End-to-end user perspective**: onboarding, login/mode selection, reservations → service, orders, purchasing, inventory, daily/weekly/monthly reporting, notifications—narrative walkthrough aligned with this file. |
+| [`sales-point-sales-instance-orders.md`](./sales-point-sales-instance-orders.md) | **Operational core**: sales points vs sales instances vs orders; `dailyReferenceNumber`; employee vs customer flows; conflict rules; key routes (`salesInstances`, `orders`, self-order/delivery); promotions by flow; inventory hooks on create/cancel/close. |
+| [`daily-sales-report-feature.md`](./daily-sales-report-feature.md) | **Daily Sales Report (DSR)**: model and actor buckets; canonical attribution (`resolveFinalizationActorReportTarget`); incremental finalization vs reconcile; manager APIs; rollout/telemetry; link to weekly/monthly rollups. |
+| [`business-metrics-formulas.md`](./business-metrics-formulas.md) | **Weekly/monthly KPI math**: profitability, cost mix, break-even targets, operational efficiency; formulas match `backend/src/reports/businessMetrics/calculations.ts`. |
+| [`authentication-and-session.md`](./authentication-and-session.md) | **Auth stack (backend)**: Business vs User credentials, JWT access + refresh cookie, login/signup/logout/refresh/me/set-mode, tokens on **business create** and **authenticated business PATCH** / **self user PATCH**, `canLogAsEmployee` vs `getEffectiveUserRoleAtTime`, route middleware. |
+| [`../FRONTEND_AUTHENTICATION_AND_NAVIGATION_STRATEGY.md`](../FRONTEND_AUTHENTICATION_AND_NAVIGATION_STRATEGY.md) | **Web app shell (strategy)**: public marketing vs authenticated areas, URL/session partitions (business tenant vs person user), employee mode and navigation — decisions before implementation. |
+| [`../FRONTEND_AUTH_NAVIGATION_IMPLEMENTATION_PLAN.md`](../FRONTEND_AUTH_NAVIGATION_IMPLEMENTATION_PLAN.md) | **Web app shell**: public marketing, auth partitions, mode selection — phased tasks, route/guard work, lazy loading/error boundary polish, and tests; companion to the strategy doc above. |
+| [`frontend-authentication-and-navigation.md`](./frontend-authentication-and-navigation.md) | **Frontend (implemented)**: detailed **auth + navigation** behavior in `frontend/src` — session types, `getPostLoginDestination`, guards, `auth_mode`, schedule countdown, route map, and file index. |
 
-- Start here to understand the product and high-level flow.
-- Then jump into the relevant READMEs listed below to understand specific subsystems (API domains, models, validation patterns, transactions, etc.).
-- As the app grows, **every major area should have its own README**, and this file should link to it.
+**Reading order suggestion:** skim `context.md` (this file) → `user-flow.md` for the story → [`authentication-and-session.md`](./authentication-and-session.md) when wiring login, cookies, or guards → `sales-point-sales-instance-orders.md` for table/order mechanics → `daily-sales-report-feature.md` when working on reporting → `business-metrics-formulas.md` when interpreting or changing KPI outputs.
+
+### Entry point for AI-assisted coding
+
+- Start here for **product shape** and **cross-cutting rules**.
+- Use the **companion docs** above for **how the app is supposed to work** in detail (users, auth sessions, POS/session model, DSR, metrics).
+- Use the **READMEs** listed later for **implementation** next to code (API domains, models, validation, transactions).
+- As the app grows, **every major area should have its own README** (or documentation file), and this file should **link** to it.
 
 ---
 
@@ -34,11 +48,13 @@ Everything is designed to work **in live time**, where the POS state (open table
 
 ## What the app can do — Solution for bars and restaurants
 
-This section summarizes **what the app can do** and **what solution it offers** to bars and restaurants, based on the subsystems documented in the READMEs below.
+This section summarizes **what the app can do** and **what solution it offers** to bars and restaurants. For the **full user journey** (onboarding through end-of-month), see [`user-flow.md`](./user-flow.md). For **tables, sessions, orders, QR, delivery/self-order mechanics**, see [`sales-point-sales-instance-orders.md`](./sales-point-sales-instance-orders.md). The READMEs below cover implementation next to the code.
 
 **The product is a full-stack, multi-tenant POS and operations platform** that lets a restaurant or bar run day-to-day service, manage its menu and supply chain, track stock and costs, and see daily and monthly performance — all from one place, with one business identity per location.
 
 ### Service and sales
+
+Route-level behavior (open table, PATCH close/transfer/cancel, self-order and delivery transactions, `paymentId` idempotency) is spelled out in [`sales-point-sales-instance-orders.md`](./sales-point-sales-instance-orders.md).
 
 - **Open and manage tables/sessions** — Define **sales points** (tables, bar, rooms), then open a **sales instance** (check/tab) per point. One open instance per table per day. There is **one QR per sales point** (the QR encodes the sales point id). Staff can open a table from the **POS UI** (on-duty employee only) or by **scanning the table’s QR**; customers can start a session via the same QR only when the sales point has **selfOrdering** enabled and **no open session exists at that table** (if an employee has already opened the table, customer self-order is blocked until the table is closed). Who is scanning is identified by login session.
 - **Take and bill orders** — Create **orders** (menu items / business goods) on a sales instance: each order has one **main product** (businessGoodId) and optional **addOns**; **promotions** apply only to the main product. Support **discounts**, **promotions** (happy hour, % off, 2x1, etc., calculated in real time on the front end), **payment methods**, **tips**, and **void** or **invitation** (complimentary) status. **Transfer** open orders between tables. **Cancel**, **void**, and **invitation** are restricted to on-duty staff with a management role (Owner, General Manager, Manager, Assistant Manager, MoD, Admin, Supervisor); **void** requires a reason (e.g. waste, mistake, refund, other). **Close** orders with payment and optionally close the table when everything is paid.
@@ -59,6 +75,8 @@ This section summarizes **what the app can do** and **what solution it offers** 
 
 ### Login and flow routing
 
+Technical detail for JWT, cookies, endpoints, and middleware: [`authentication-and-session.md`](./authentication-and-session.md).
+
 - **Single login** — The app uses one sign-in form (email + password). The backend auth validates credentials against **Business** first, then **User**. The same form is used for back-office (business) and for people (users); the redirect after login depends on which entity the email belongs to.
 - **Business** — If the email matches a Business and the password is correct, the session has type `business` and the user is redirected to the business/admin flow (e.g. `/admin`).
 - **User** — If the email matches a User (and not a Business), the session has type `user`. The user is an individual identity: they can use the app as a **customer** (e.g. self-ordering, personal orders) or, if linked to an **Employee** record, they may also choose to continue as **employee**. Role (customer vs employee) is dictated by session/context. When a user is linked to an employee, after login they are shown a **mode-selection** page: “Continue as customer” or “Continue as employee”.
@@ -74,7 +92,9 @@ This section summarizes **what the app can do** and **what solution it offers** 
 
 ### Reporting and analytics
 
-- **Daily sales report** — Created automatically when the **first sales instance of the day** is opened. Tracks **per-user** totals (sales, tips, cost of goods, payment methods, goods sold/void/invited) keyed by **userId** in `employeesDailySalesReport` and **userId** in `selfOrderingSalesReport`. **Calculate** runs off **sales instances** (responsibleByUserId) and **orders** (createdByUserId, createdAsRole). **Close** the day (manager/admin from session userId, no open orders) to lock the report.
+Implementation detail, DSR attribution, incremental vs reconcile flows, and manager endpoints are documented in [`daily-sales-report-feature.md`](./daily-sales-report-feature.md). **Weekly and monthly KPI formulas** (margins, prime cost, break-even helpers, etc.) are specified in [`business-metrics-formulas.md`](./business-metrics-formulas.md) and implemented in `backend/src/reports/businessMetrics/calculations.ts`.
+
+- **Daily sales report** — Created automatically when the **first sales instance of the day** is opened (see also [`sales-point-sales-instance-orders.md`](./sales-point-sales-instance-orders.md) for `dailyReferenceNumber`). Tracks **per-user** totals (sales, tips, cost of goods, payment methods, goods sold/void/invited) keyed by **userId** in `employeesDailySalesReport` and **userId** in `selfOrderingSalesReport`, plus **delivery** and **self-order** buckets as described in the DSR doc. **Calculate** reconciles top-level totals from actor rows; paid/void/invitation finalization feeds buckets via the canonical resolver. **Close** the day (manager/admin from session userId, no open orders) to lock the report.
 - **Weekly business report** — One report per **week** per business, where the **start day of the week** (e.g. Monday or Sunday) is configured on the `Business` (`reportingConfig.weeklyReportStartDay`). It aggregates all **calculated/closed daily sales reports** whose days fall into that week and produces week-level financials (sales, COGS, tips, goods sold/voided/complimentary, payment methods, POS commission) and customer metrics. A week is **automatically aggregated and closed** when a new `dailySalesReport` is opened that belongs to the **next** reporting week. Fixed/extra costs are **not** included at the weekly level.
 - **Monthly business report** — One report per **month** per business: **financial summary** (sales, COGS, net revenue, gross profit, void/invited, tips, percentages), **cost breakdown** (food, beverage, labour, fixed, extra), **goods sold/voided/complimentary**, **supplier waste by budget impact**, **payment methods**, **POS commission**. It is **refreshed automatically** after each business daily sales report is calculated (trigger from `calculateBusinessDailySalesReport`) by aggregating all relevant daily reports for that month, and the month is **auto-closed** at the month boundary when all daily reports are closed. A persisted `metricsComparison` section compares actual cost and waste ratios to business **metrics** (food cost %, labour %, fixed %, waste targets) to support break-even and KPI tracking, and managers receive a notification when a monthly report is ready to review.
 
@@ -172,4 +192,5 @@ When you add a new subsystem or make a meaningful change to an existing one:
 
 - Create or update the subsystem’s README close to the code (example: `app/api/v1/<domain>/README.md`).
 - Add it to the list above.
-- Keep READMEs focused on **flow**, **boundaries**, **patterns**, and **why it matters**, not just endpoint lists.
+- If the change affects **user-visible flow**, **authentication or session behavior**, **POS/session/order behavior**, **DSR**, or **reporting formulas**, update the matching file under `documentation/` ([`user-flow.md`](./user-flow.md), [`authentication-and-session.md`](./authentication-and-session.md), [`frontend-authentication-and-navigation.md`](./frontend-authentication-and-navigation.md) for **frontend** route/guard/auth changes, [`sales-point-sales-instance-orders.md`](./sales-point-sales-instance-orders.md), [`daily-sales-report-feature.md`](./daily-sales-report-feature.md), [`business-metrics-formulas.md`](./business-metrics-formulas.md)) and, if needed, one line in the **Companion documentation** table at the top of this file.
+- Keep READMEs and companion docs focused on **flow**, **boundaries**, **patterns**, and **why it matters**, not just endpoint lists.

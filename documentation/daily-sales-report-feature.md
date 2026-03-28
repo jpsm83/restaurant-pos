@@ -250,7 +250,6 @@ What it centralizes:
 Where used:
 
 - manual reconcile endpoint (`PATCH /:dailySalesReportId/reconcile`)
-- one-time script (`backend/scripts/reconcileOpenDailyReports.ts`)
 
 Design split:
 

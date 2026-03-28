@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
-import { login } from "@/auth";
+import { Link, useNavigate } from "react-router-dom";
+import { getPostLoginDestination, login } from "@/auth";
 import { useAuth } from "@/auth/store/AuthContext";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export default function LoginPage() {
+  const navigate = useNavigate();
   const { state, dispatch } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -55,11 +57,13 @@ export default function LoginPage() {
     }
 
     localStorage.setItem("auth_had_session", "1");
-    dispatch({ type: "AUTH_SUCCESS", payload: result.data.user });
+    const sessionUser = result.data.user;
+    dispatch({ type: "AUTH_SUCCESS", payload: sessionUser });
+    navigate(getPostLoginDestination(sessionUser), { replace: true });
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-neutral-100 p-4">
+    <main className="flex min-h-0 flex-1 flex-col items-center justify-center bg-neutral-100 px-4 py-8 sm:px-6 lg:px-8">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Sign in</CardTitle>
@@ -96,6 +100,10 @@ export default function LoginPage() {
 
             <Button type="submit" className="w-full" disabled={isSubmitting}>
               {isSubmitting ? "Signing in..." : "Sign in"}
+            </Button>
+
+            <Button asChild variant="outline" className="w-full">
+              <Link to="/signup">Create account</Link>
             </Button>
           </form>
         </CardContent>
