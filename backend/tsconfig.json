@@ -26,5 +26,5 @@
     "../packages/shared/src/**/*.ts",
     "../packages/utils/isBusinessOpenNow.ts",
     "../packages/enums.ts"
-  ]
+, "scripts/importDummyData.ts"  ]
 }

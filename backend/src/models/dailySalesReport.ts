@@ -5,7 +5,7 @@ export const goodsReducedSchema = new Schema(
   {
     businessGoodId: {
       type: Schema.Types.ObjectId,
-      ref: "Order",
+      ref: "BusinessGood",
       required: [true, "Business good id is required!"],
       index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
     }, // good sold or void

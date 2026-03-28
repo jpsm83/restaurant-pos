@@ -1,0 +1,145 @@
+[
+  {
+    "_id": { "$oid": "64b000000000000000000a01" },
+    "dailyReferenceNumber": 20260324,
+    "billingStatus": "Paid",
+    "orderStatus": "Done",
+    "orderGrossPrice": 12.9,
+    "orderNetPrice": 12.9,
+    "orderCostPrice": 2.7454,
+    "createdByUserId": { "$oid": "64b000000000000000000102" },
+    "createdAsRole": "employee",
+    "salesInstanceId": { "$oid": "64b000000000000000000401" },
+    "businessGoodId": { "$oid": "64b000000000000000000501" },
+    "addOns": [{ "$oid": "64b000000000000000000503" }],
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "orderTips": 1.1,
+    "paymentMethod": [
+      {
+        "paymentMethodType": "Card",
+        "methodBranch": "Visa",
+        "methodSalesTotal": 14
+      }
+    ],
+    "allergens": ["Gluten", "Milk"],
+    "promotionApplyed": "Lunch Burger 2x1",
+    "discountPercentage": 50,
+    "comments": "Burger order 1 of 2"
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000a02" },
+    "dailyReferenceNumber": 20260324,
+    "billingStatus": "Paid",
+    "orderStatus": "Done",
+    "orderGrossPrice": 12.9,
+    "orderNetPrice": 6.45,
+    "orderCostPrice": 2.7454,
+    "createdByUserId": { "$oid": "64b000000000000000000102" },
+    "createdAsRole": "employee",
+    "salesInstanceId": { "$oid": "64b000000000000000000401" },
+    "businessGoodId": { "$oid": "64b000000000000000000501" },
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "paymentMethod": [
+      {
+        "paymentMethodType": "Card",
+        "methodBranch": "Visa",
+        "methodSalesTotal": 6.45
+      }
+    ],
+    "allergens": ["Gluten", "Milk"],
+    "promotionApplyed": "Lunch Burger 2x1",
+    "discountPercentage": 50,
+    "comments": "Burger order 2 of 2"
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000a03" },
+    "dailyReferenceNumber": 20260324,
+    "billingStatus": "Paid",
+    "orderStatus": "Done",
+    "orderGrossPrice": 2.4,
+    "orderNetPrice": 2.4,
+    "orderCostPrice": 0.6,
+    "createdByUserId": { "$oid": "64b000000000000000000102" },
+    "createdAsRole": "employee",
+    "salesInstanceId": { "$oid": "64b000000000000000000401" },
+    "businessGoodId": { "$oid": "64b000000000000000000504" },
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "paymentMethod": [
+      {
+        "paymentMethodType": "Cash",
+        "methodBranch": "Voucher",
+        "methodSalesTotal": 2.4
+      }
+    ],
+    "comments": "Coca cola can"
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000a04" },
+    "dailyReferenceNumber": 20260324,
+    "billingStatus": "Paid",
+    "orderStatus": "Done",
+    "orderGrossPrice": 1.6,
+    "orderNetPrice": 1.6,
+    "orderCostPrice": 0.4,
+    "createdByUserId": { "$oid": "64b000000000000000000102" },
+    "createdAsRole": "employee",
+    "salesInstanceId": { "$oid": "64b000000000000000000401" },
+    "businessGoodId": { "$oid": "64b000000000000000000503" },
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "paymentMethod": [
+      {
+        "paymentMethodType": "Cash",
+        "methodBranch": "Voucher",
+        "methodSalesTotal": 1.6
+      }
+    ],
+    "comments": "Water bottle"
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000a05" },
+    "dailyReferenceNumber": 20260324,
+    "billingStatus": "Paid",
+    "orderStatus": "Done",
+    "orderGrossPrice": 13.5,
+    "orderNetPrice": 6.75,
+    "orderCostPrice": 2.963,
+    "createdByUserId": { "$oid": "64b000000000000000000101" },
+    "createdAsRole": "employee",
+    "salesInstanceId": { "$oid": "64b000000000000000000402" },
+    "businessGoodId": { "$oid": "64b000000000000000000502" },
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "paymentMethod": [
+      {
+        "paymentMethodType": "Card",
+        "methodBranch": "Mastercard",
+        "methodSalesTotal": 6.75
+      }
+    ],
+    "allergens": ["Gluten", "Milk"],
+    "promotionApplyed": "Pizza 50 Percent Off",
+    "discountPercentage": 50,
+    "comments": "Pizza margarita"
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000a06" },
+    "dailyReferenceNumber": 20260324,
+    "billingStatus": "Paid",
+    "orderStatus": "Done",
+    "orderGrossPrice": 1.6,
+    "orderNetPrice": 1.6,
+    "orderCostPrice": 0.4,
+    "createdByUserId": { "$oid": "64b000000000000000000101" },
+    "createdAsRole": "employee",
+    "salesInstanceId": { "$oid": "64b000000000000000000402" },
+    "businessGoodId": { "$oid": "64b000000000000000000503" },
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "paymentMethod": [
+      {
+        "paymentMethodType": "Card",
+        "methodBranch": "Mastercard",
+        "methodSalesTotal": 1.6
+      }
+    ],
+    "comments": "Water with pizza"
+  }
+]

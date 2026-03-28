@@ -21,11 +21,22 @@ import SupplierGood from "../../models/supplierGood.ts";
 import Supplier from "../../models/supplier.ts";
 import User from "../../models/user.ts";
 import isObjectIdValid from "../../utils/isObjectIdValid.ts";
+import {
+  createAuthHook,
+  requireBusinessIdMatchesSessionHook,
+  requireValidObjectIdParamHook,
+} from "../../auth/middleware.ts";
+import { issueSessionWithRefreshCookie } from "../../auth/issueSession.ts";
+import type { AuthBusiness } from "../../auth/types.ts";
 import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
 import deleteFilesCloudinary from "../../cloudinary/deleteFilesCloudinary.ts";
 import deleteFolderCloudinary from "../../cloudinary/deleteFolderCloudinary.ts";
 import objDefaultValidation from "../../../../packages/utils/objDefaultValidation.ts";
 import type { ObjDefaultValidationType } from "../../../../packages/utils/objDefaultValidation.ts";
+import {
+  isValidPassword,
+  PASSWORD_POLICY_MESSAGE,
+} from "../../../../packages/utils/passwordPolicy.ts";
 import * as enums from "../../../../packages/enums.ts";
 
 const { subscriptionEnums, currenctyEnums } = enums;
@@ -33,8 +44,6 @@ const { subscriptionEnums, currenctyEnums } = enums;
 const DEFAULT_DISCOVERY_LIMIT = 50;
 
 const emailRegex = /^[\w-]+(\.[\w-]+)*@([\w-]+\.)+[a-zA-Z]{2,7}$/;
-const passwordRegex =
-  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
 const reqAddressFields = [
   "country",
@@ -291,11 +300,8 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
       return reply.code(400).send({ message: "Invalid email format!" });
     }
 
-    if (!passwordRegex.test(password)) {
-      return reply.code(400).send({
-        message:
-          "Password must contain at least 8 characters, one uppercase, one lowercase, one number and one special character!",
-      });
+    if (!isValidPassword(password)) {
+      return reply.code(400).send({ message: PASSWORD_POLICY_MESSAGE });
     }
 
     const addressValidationResult = (
@@ -413,16 +419,36 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
 
     await Business.create(newBusiness);
 
-    return reply.code(201).send({ message: `Business ${legalName} created` });
+    const session: AuthBusiness = {
+      id: String(businessId),
+      email,
+      type: "business",
+    };
+    const { accessToken, user } = issueSessionWithRefreshCookie(
+      app,
+      reply,
+      session,
+    );
+
+    return reply.code(201).send({
+      message: `Business ${legalName} created`,
+      accessToken,
+      user,
+    });
   });
 
-  app.patch("/:businessId", async (req, reply) => {
+  app.patch(
+    "/:businessId",
+    {
+      preValidation: [
+        requireValidObjectIdParamHook("businessId"),
+        createAuthHook(app),
+        requireBusinessIdMatchesSessionHook(),
+      ],
+    },
+    async (req, reply) => {
     const params = req.params as { businessId?: string };
-    const businessId = params.businessId;
-
-    if (!businessId || isObjectIdValid([businessId]) !== true) {
-      return reply.code(400).send({ message: "Invalid businessId!" });
-    }
+    const businessId = params.businessId!;
 
     const fields: Record<string, string> = {};
     let imageFile:
@@ -505,11 +531,8 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
       return reply.code(400).send({ message: "Invalid email format!" });
     }
 
-    if (password && !passwordRegex.test(password)) {
-      return reply.code(400).send({
-        message:
-          "Password must contain at least 8 characters, one uppercase, one lowercase, one number and one special character!",
-      });
+    if (password && !isValidPassword(password)) {
+      return reply.code(400).send({ message: PASSWORD_POLICY_MESSAGE });
     }
 
     const addressValidationResult = (
@@ -784,8 +807,24 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
       return reply.code(404).send({ message: "Business to update not found!" });
     }
 
-    return reply.code(200).send({ message: "Business updated successfully" });
-  });
+    const session: AuthBusiness = {
+      id: String(updatedBusiness._id),
+      email: updatedBusiness.email,
+      type: "business",
+    };
+    const { accessToken, user } = issueSessionWithRefreshCookie(
+      app,
+      reply,
+      session,
+    );
+
+    return reply.code(200).send({
+      message: "Business updated successfully",
+      accessToken,
+      user,
+    });
+  },
+  );
 
   app.delete("/:businessId", async (req, reply) => {
     const params = req.params as { businessId?: string };

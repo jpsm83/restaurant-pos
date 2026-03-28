@@ -15,8 +15,86 @@ import calculateEmployeeCost from "../../schedules/calculateEmployeeCost.ts";
 import Schedule from "../../models/schedule.ts";
 import Employee from "../../models/employee.ts";
 import User from "../../models/user.ts";
+import {
+  createAuthHook,
+  requireValidObjectIdParamHook,
+} from "../../auth/middleware.ts";
+import type { AuthUser } from "../../auth/types.ts";
 
 export const schedulesRoutes: FastifyPluginAsync = async (app) => {
+  const authHook = createAuthHook(app);
+
+  /**
+   * Today's shift rows for the **authenticated** user's linked employee at this business.
+   * Must be registered before `GET /:scheduleId` so `business` is not parsed as an id.
+   *
+   * Query: `dayKey=YYYY-MM-DD` (optional; server-local calendar day when omitted).
+   */
+  app.get(
+    "/business/:businessId/daily",
+    {
+      preValidation: [requireValidObjectIdParamHook("businessId"), authHook],
+    },
+    async (req, reply) => {
+      const businessId = (req.params as { businessId: string }).businessId;
+      const session = req.authSession;
+      if (!session || session.type !== "user") {
+        return reply.code(403).send({ message: "Forbidden" });
+      }
+      const u = session as AuthUser;
+      if (!u.employeeId || u.businessId !== businessId) {
+        return reply.code(403).send({ message: "Forbidden" });
+      }
+
+      const rawDay = (req.query as { dayKey?: string }).dayKey;
+      let startOfDay: Date;
+      let endOfDay: Date;
+      if (typeof rawDay === "string" && /^\d{4}-\d{2}-\d{2}$/.test(rawDay)) {
+        const [y, m, d] = rawDay.split("-").map(Number);
+        startOfDay = new Date(y, m - 1, d, 0, 0, 0, 0);
+        endOfDay = new Date(y, m - 1, d + 1, 0, 0, 0, 0);
+      } else {
+        const effectiveNow = new Date();
+        startOfDay = new Date(effectiveNow);
+        startOfDay.setHours(0, 0, 0, 0);
+        endOfDay = new Date(startOfDay);
+        endOfDay.setDate(endOfDay.getDate() + 1);
+      }
+
+      const schedule = (await Schedule.findOne({
+        businessId,
+        date: { $gte: startOfDay, $lt: endOfDay },
+      })
+        .select("employeesSchedules")
+        .lean()) as {
+        employeesSchedules?: Array<{
+          employeeId: unknown;
+          vacation?: boolean;
+          timeRange: { startTime: Date; endTime: Date };
+        }>;
+      } | null;
+
+      const employeeIdStr = u.employeeId;
+      const rawEntries = schedule?.employeesSchedules ?? [];
+      const entries = rawEntries.filter((entry) => {
+        const eid =
+          typeof entry.employeeId === "object" && entry.employeeId !== null
+            ? ((entry.employeeId as { toString?: () => string }).toString?.() ??
+              String(entry.employeeId))
+            : String(entry.employeeId);
+        return eid === employeeIdStr;
+      });
+
+      return reply.code(200).send({
+        entries: entries.map((e) => ({
+          vacation: Boolean(e.vacation),
+          startTime: new Date(e.timeRange.startTime).toISOString(),
+          endTime: new Date(e.timeRange.endTime).toISOString(),
+        })),
+      });
+    },
+  );
+
   // GET /schedules - list all
   app.get("/", async (_req, reply) => {
     const schedules = await Schedule.find()

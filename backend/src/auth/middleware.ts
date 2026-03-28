@@ -10,6 +10,7 @@ import type {
   FastifyInstance,
   preValidationHookHandler,
 } from "fastify";
+import isObjectIdValid from "../utils/isObjectIdValid.ts";
 import type { AuthSession, AuthUser } from "./types.ts";
 
 declare module "fastify" {
@@ -166,4 +167,57 @@ export function getSessionBusinessId(
 
   const userSession = session as AuthUser;
   return userSession.businessId || null;
+}
+
+const PARAM_ID_MESSAGES: Record<string, string> = {
+  userId: "User ID is not valid!",
+  businessId: "Invalid businessId!",
+};
+
+/**
+ * Validates `:userId` / `:businessId` (etc.) is a valid ObjectId before auth.
+ */
+export function requireValidObjectIdParamHook(
+  paramName: keyof typeof PARAM_ID_MESSAGES,
+): preValidationHookHandler {
+  return async (req, reply) => {
+    const raw = (req.params as Record<string, string | undefined>)[paramName];
+    if (!raw || !isObjectIdValid([raw])) {
+      return reply
+        .code(400)
+        .send({ message: PARAM_ID_MESSAGES[paramName] ?? "Invalid id!" });
+    }
+  };
+}
+
+/** Business JWT must match `:businessId` in the URL. */
+export function requireBusinessIdMatchesSessionHook(): preValidationHookHandler {
+  return async (req, reply) => {
+    if (!req.authSession) {
+      return reply.code(401).send({ message: "Authentication required" });
+    }
+    if (req.authSession.type !== "business") {
+      return reply.code(403).send({ message: "Business account required" });
+    }
+    const businessId = (req.params as { businessId?: string }).businessId;
+    if (!businessId || req.authSession.id !== businessId) {
+      return reply.code(403).send({ message: "Forbidden" });
+    }
+  };
+}
+
+/** User JWT must match `:userId` in the URL (self-service updates). */
+export function requireUserIdMatchesSessionHook(): preValidationHookHandler {
+  return async (req, reply) => {
+    if (!req.authSession) {
+      return reply.code(401).send({ message: "Authentication required" });
+    }
+    if (req.authSession.type !== "user") {
+      return reply.code(403).send({ message: "User account required" });
+    }
+    const userId = (req.params as { userId?: string }).userId;
+    if (!userId || req.authSession.id !== userId) {
+      return reply.code(403).send({ message: "Forbidden" });
+    }
+  };
 }

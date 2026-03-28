@@ -7,7 +7,7 @@
 
 import { describe, it, expect, beforeEach } from "vitest";
 import { Types } from "mongoose";
-import { getTestApp } from "../setup.ts";
+import { getTestApp, generateTestToken } from "../setup.ts";
 import User from "../../src/models/user.ts";
 import Notification from "../../src/models/notification.ts";
 import Business from "../../src/models/business.ts";
@@ -101,7 +101,7 @@ describe("Users Routes", () => {
       const form = new FormData();
       form.append("username", "newuser");
       form.append("email", "newuser@test.com");
-      form.append("password", "password123");
+      form.append("password", "Password123!");
       form.append("idType", "National ID");
       form.append("idNumber", "NEW-123");
       form.append("address", JSON.stringify({ country: "USA" }));
@@ -130,7 +130,7 @@ describe("Users Routes", () => {
       const form = new FormData();
       form.append("username", "duplicateuser");
       form.append("email", "duplicate@test.com");
-      form.append("password", "password123");
+      form.append("password", "Password123!");
       form.append("idType", "National ID");
       form.append("idNumber", "ID-duplicate");
       form.append("address", JSON.stringify(validAddress));
@@ -221,6 +221,11 @@ describe("Users Routes", () => {
       const app = await getTestApp();
 
       const user = await createValidUser("patchuser");
+      const auth = await generateTestToken({
+        id: user._id.toString(),
+        email: "patchuser@test.com",
+        type: "user",
+      });
 
       const form = new FormData();
       form.append("username", "updated");
@@ -229,7 +234,10 @@ describe("Users Routes", () => {
         method: "PATCH",
         url: `/api/v1/users/${user._id}`,
         payload: form,
-        headers: { "content-type": "multipart/form-data" },
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: auth,
+        },
       });
 
       expect(response.statusCode).toBe(400);
@@ -237,9 +245,14 @@ describe("Users Routes", () => {
       expect(body.message).toContain("required");
     });
 
-    it("returns 404 for non-existent user", async () => {
+    it("returns 404 for non-existent user when JWT matches URL id", async () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
+      const auth = await generateTestToken({
+        id: fakeId.toString(),
+        email: "ghost@test.com",
+        type: "user",
+      });
 
       const form = new FormData();
       form.append("username", "updated");
@@ -258,12 +271,42 @@ describe("Users Routes", () => {
         method: "PATCH",
         url: `/api/v1/users/${fakeId}`,
         payload: form,
-        headers: { "content-type": "multipart/form-data" },
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: auth,
+        },
       });
 
       expect(response.statusCode, response.body).toBe(404);
       const body = JSON.parse(response.body);
       expect(body.message).toBe("User not found!");
+    });
+
+    it("returns 401 when PATCH user without auth", async () => {
+      const app = await getTestApp();
+      const user = await createValidUser("noauthpatch");
+
+      const form = new FormData();
+      form.append("username", "noauthpatchuser");
+      form.append("email", "noauthpatch@test.com");
+      form.append("idType", "National ID");
+      form.append("idNumber", "ID-noauthpatch");
+      form.append("address", JSON.stringify(validAddress));
+      form.append("firstName", "No");
+      form.append("lastName", "Auth");
+      form.append("nationality", "USA");
+      form.append("gender", "Man");
+      form.append("birthDate", "1990-01-01");
+      form.append("phoneNumber", "9876543210");
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/users/${user._id}`,
+        payload: form,
+        headers: { "content-type": "multipart/form-data" },
+      });
+
+      expect(response.statusCode).toBe(401);
     });
   });
 

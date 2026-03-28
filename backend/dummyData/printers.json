@@ -1,0 +1,68 @@
+[
+  {
+    "_id": { "$oid": "64b000000000000000000f01" },
+    "printerAlias": "Kitchen Printer",
+    "description": "Main kitchen production printer",
+    "printerStatus": "Online",
+    "ipAddress": "192.168.1.50",
+    "port": 9100,
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "backupPrinterId": { "$oid": "64b000000000000000000f03" },
+    "employeesAllowedToPrintDataIds": [
+      { "$oid": "64b000000000000000000201" },
+      { "$oid": "64b000000000000000000202" }
+    ],
+    "configurationSetupToPrintOrders": [
+      {
+        "mainCategory": "Food",
+        "subCategories": ["Burger", "Pizza"],
+        "salesPointIds": [
+          { "$oid": "64b000000000000000000301" },
+          { "$oid": "64b000000000000000000303" },
+          { "$oid": "64b000000000000000000304" }
+        ],
+        "excludeEmployeeIds": []
+      }
+    ]
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000f02" },
+    "printerAlias": "Bar Printer",
+    "description": "Bar and drinks orders printer",
+    "printerStatus": "Online",
+    "ipAddress": "192.168.1.51",
+    "port": 9100,
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "backupPrinterId": { "$oid": "64b000000000000000000f03" },
+    "employeesAllowedToPrintDataIds": [{ "$oid": "64b000000000000000000202" }],
+    "configurationSetupToPrintOrders": [
+      {
+        "mainCategory": "Beverage",
+        "subCategories": ["Soft Drinks", "Water"],
+        "salesPointIds": [
+          { "$oid": "64b000000000000000000302" },
+          { "$oid": "64b000000000000000000305" }
+        ],
+        "excludeEmployeeIds": []
+      }
+    ]
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000f03" },
+    "printerAlias": "Office Printer",
+    "description": "Back office documents and fallback printer",
+    "printerStatus": "Online",
+    "ipAddress": "192.168.1.52",
+    "port": 9100,
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "employeesAllowedToPrintDataIds": [{ "$oid": "64b000000000000000000201" }],
+    "configurationSetupToPrintOrders": [
+      {
+        "mainCategory": "Other",
+        "subCategories": ["Admin"],
+        "salesPointIds": [{ "$oid": "64b000000000000000000310" }],
+        "excludeEmployeeIds": []
+      }
+    ]
+  }
+]

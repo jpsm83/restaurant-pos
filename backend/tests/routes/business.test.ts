@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach } from "vitest";
 import { Types } from "mongoose";
-import { getTestApp } from "../setup.ts";
+import { getTestApp, generateTestToken } from "../setup.ts";
 import Business from "../../src/models/business.ts";
 
 describe("Business Routes", () => {
@@ -284,7 +284,7 @@ describe("Business Routes", () => {
 
       expect(response.statusCode).toBe(400);
       const body = JSON.parse(response.body);
-      expect(body.message).toContain("Password must contain");
+      expect(body.message).toContain("Password must be at least");
     });
 
     it("creates business with valid data", async () => {
@@ -323,6 +323,9 @@ describe("Business Routes", () => {
       expect(response.statusCode).toBe(201);
       const body = JSON.parse(response.body);
       expect(body.message).toContain("created");
+      expect(body.accessToken).toBeDefined();
+      expect(body.user?.type).toBe("business");
+      expect(body.user?.email).toBe("new@business.com");
 
       const created = await Business.findOne({ email: "new@business.com" });
       expect(created).not.toBeNull();
@@ -391,9 +394,14 @@ describe("Business Routes", () => {
       expect(response.statusCode).toBe(400);
     });
 
-    it("returns 404 for non-existent business", async () => {
+    it("returns 404 for non-existent business when JWT matches URL id", async () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
+      const auth = await generateTestToken({
+        id: fakeId.toString(),
+        email: "ghost@business.com",
+        type: "business",
+      });
 
       const boundary = "----formdata";
       const payload = [
@@ -419,11 +427,58 @@ describe("Business Routes", () => {
       const response = await app.inject({
         method: "PATCH",
         url: `/api/v1/business/${fakeId}`,
-        headers: { "content-type": `multipart/form-data; boundary=${boundary}` },
+        headers: {
+          "content-type": `multipart/form-data; boundary=${boundary}`,
+          authorization: auth,
+        },
         payload,
       });
 
       expect(response.statusCode).toBe(404);
+    });
+
+    it("returns 401 when PATCH business without auth", async () => {
+      const app = await getTestApp();
+      const business = await Business.create({
+        tradeName: "No Auth Patch",
+        legalName: "No Auth Patch LLC",
+        email: "noauthpatch@business.com",
+        password: "hashedpassword",
+        phoneNumber: "1234567890",
+        taxNumber: "TAX-NOAUTH-001",
+        currencyTrade: "USD",
+        address: validAddress,
+      });
+
+      const boundary = "----formdata";
+      const payload = [
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="tradeName"\r\n\r\nX',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="legalName"\r\n\r\nNo Auth Patch LLC',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="email"\r\n\r\nnoauthpatch@business.com',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="phoneNumber"\r\n\r\n1234567890',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="taxNumber"\r\n\r\nTAX-NOAUTH-001',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="subscription"\r\n\r\nFree',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="currencyTrade"\r\n\r\nUSD',
+        `--${boundary}`,
+        `Content-Disposition: form-data; name="address"\r\n\r\n${JSON.stringify(validAddress)}`,
+        `--${boundary}--`,
+      ].join("\r\n");
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/business/${business._id}`,
+        headers: { "content-type": `multipart/form-data; boundary=${boundary}` },
+        payload,
+      });
+
+      expect(response.statusCode).toBe(401);
     });
 
     it("updates business successfully", async () => {
@@ -438,6 +493,12 @@ describe("Business Routes", () => {
         taxNumber: "TAX-ORIG-001",
         currencyTrade: "USD",
         address: validAddress,
+      });
+
+      const auth = await generateTestToken({
+        id: business._id.toString(),
+        email: "original@business.com",
+        type: "business",
       });
 
       const boundary = "----formdata";
@@ -464,11 +525,17 @@ describe("Business Routes", () => {
       const response = await app.inject({
         method: "PATCH",
         url: `/api/v1/business/${business._id}`,
-        headers: { "content-type": `multipart/form-data; boundary=${boundary}` },
+        headers: {
+          "content-type": `multipart/form-data; boundary=${boundary}`,
+          authorization: auth,
+        },
         payload,
       });
 
       expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.accessToken).toBeDefined();
+      expect(body.user?.type).toBe("business");
 
       const updated = await Business.findById(business._id);
       expect(updated?.tradeName).toBe("Updated Business");

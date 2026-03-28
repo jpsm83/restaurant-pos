@@ -5,9 +5,22 @@ import type { IUser } from "../../../../packages/interfaces/IUser.ts";
 import type { IEmployee } from "../../../../packages/interfaces/IEmployee.ts";
 
 import isObjectIdValid from "../../utils/isObjectIdValid.ts";
+import {
+  createAuthHook,
+  requireUserIdMatchesSessionHook,
+  requireValidObjectIdParamHook,
+} from "../../auth/middleware.ts";
+import {
+  buildAuthUserSessionFromUserId,
+  issueSessionWithRefreshCookie,
+} from "../../auth/issueSession.ts";
 import objDefaultValidation, {
   type ObjDefaultValidationType,
 } from "../../../../packages/utils/objDefaultValidation.ts";
+import {
+  isValidPassword,
+  PASSWORD_POLICY_MESSAGE,
+} from "../../../../packages/utils/passwordPolicy.ts";
 import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
 import deleteFilesCloudinary from "../../cloudinary/deleteFilesCloudinary.ts";
 import deleteFolderCloudinary from "../../cloudinary/deleteFolderCloudinary.ts";
@@ -116,6 +129,10 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
         return reply.code(400).send({ message: addressValidationResult });
       }
 
+      if (!isValidPassword(password)) {
+        return reply.code(400).send({ message: PASSWORD_POLICY_MESSAGE });
+      }
+
       const duplicateUser = await User.exists({
         $or: [
           { "personalDetails.username": username },
@@ -211,14 +228,19 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
     }
   });
 
-  // PATCH /users/:userId - update (formData with image)
-  app.patch("/:userId", async (req, reply) => {
+  // PATCH /users/:userId - update (formData with image); authenticated self only
+  app.patch(
+    "/:userId",
+    {
+      preValidation: [
+        requireValidObjectIdParamHook("userId"),
+        createAuthHook(app),
+        requireUserIdMatchesSessionHook(),
+      ],
+    },
+    async (req, reply) => {
     const params = req.params as { userId?: string };
-    const userId = params.userId;
-
-    if (!userId || !isObjectIdValid([userId])) {
-      return reply.code(400).send({ message: "User ID is not valid!" });
-    }
+    const userId = params.userId!;
 
     try {
       const fields: Record<string, string> = {};
@@ -286,9 +308,13 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
         return reply.code(400).send({ message: addressValidationResult });
       }
 
-      const user = await User.findById(userId);
+      if (password && !isValidPassword(password)) {
+        return reply.code(400).send({ message: PASSWORD_POLICY_MESSAGE });
+      }
 
-      if (!user) {
+      const userDoc = await User.findById(userId);
+
+      if (!userDoc) {
         return reply.code(404).send({ message: "User not found!" });
       }
 
@@ -309,37 +335,37 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
 
       const updateUserObj: Record<string, unknown> = {};
 
-      if (username && username !== user.personalDetails.username) {
+      if (username && username !== userDoc.personalDetails.username) {
         updateUserObj["personalDetails.username"] = username;
       }
-      if (email && email !== user.personalDetails.email) {
+      if (email && email !== userDoc.personalDetails.email) {
         updateUserObj["personalDetails.email"] = email;
       }
-      if (idType && idType !== user.personalDetails.idType) {
+      if (idType && idType !== userDoc.personalDetails.idType) {
         updateUserObj["personalDetails.idType"] = idType;
       }
-      if (idNumber && idNumber !== user.personalDetails.idNumber) {
+      if (idNumber && idNumber !== userDoc.personalDetails.idNumber) {
         updateUserObj["personalDetails.idNumber"] = idNumber;
       }
-      if (firstName && firstName !== user.personalDetails.firstName) {
+      if (firstName && firstName !== userDoc.personalDetails.firstName) {
         updateUserObj["personalDetails.firstName"] = firstName;
       }
-      if (lastName && lastName !== user.personalDetails.lastName) {
+      if (lastName && lastName !== userDoc.personalDetails.lastName) {
         updateUserObj["personalDetails.lastName"] = lastName;
       }
-      if (nationality && nationality !== user.personalDetails.nationality) {
+      if (nationality && nationality !== userDoc.personalDetails.nationality) {
         updateUserObj["personalDetails.nationality"] = nationality;
       }
-      if (gender && gender !== user.personalDetails.gender) {
+      if (gender && gender !== userDoc.personalDetails.gender) {
         updateUserObj["personalDetails.gender"] = gender;
       }
       if (
         birthDate &&
-        birthDate !== user.personalDetails.birthDate?.toISOString()
+        birthDate !== userDoc.personalDetails.birthDate?.toISOString()
       ) {
         updateUserObj["personalDetails.birthDate"] = birthDate;
       }
-      if (phoneNumber && phoneNumber !== user.personalDetails.phoneNumber) {
+      if (phoneNumber && phoneNumber !== userDoc.personalDetails.phoneNumber) {
         updateUserObj["personalDetails.phoneNumber"] = phoneNumber;
       }
 
@@ -347,7 +373,7 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
         Object.keys(address).forEach((key) => {
           if (
             address[key] !==
-            (user.personalDetails.address as Record<string, unknown>)?.[key]
+            (userDoc.personalDetails.address as Record<string, unknown>)?.[key]
           ) {
             updateUserObj[`personalDetails.address.${key}`] = address[key];
           }
@@ -378,7 +404,7 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
         }
 
         const deleteFilesCloudinaryResult: string | boolean =
-          await deleteFilesCloudinary(user?.personalDetails.imageUrl || "");
+          await deleteFilesCloudinary(userDoc?.personalDetails.imageUrl || "");
 
         if (deleteFilesCloudinaryResult !== true) {
           return reply.code(400).send({ message: deleteFilesCloudinaryResult });
@@ -397,14 +423,29 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
         return reply.code(404).send({ message: "User not found!" });
       }
 
-      return reply.code(200).send({ message: "User updated successfully!" });
+      const session = await buildAuthUserSessionFromUserId(userId);
+      if (!session) {
+        return reply.code(404).send({ message: "User not found!" });
+      }
+      const { accessToken, user: userOut } = issueSessionWithRefreshCookie(
+        app,
+        reply,
+        session,
+      );
+
+      return reply.code(200).send({
+        message: "User updated successfully!",
+        accessToken,
+        user: userOut,
+      });
     } catch (error) {
       return reply.code(500).send({
         message: "Update user failed!",
         error: error instanceof Error ? error.message : error,
       });
     }
-  });
+  },
+  );
 
   // DELETE /users/:userId - delete
   app.delete("/:userId", async (req, reply) => {

@@ -1,0 +1,50 @@
+[
+  {
+    "_id": { "$oid": "64b000000000000000000201" },
+    "allEmployeeRoles": ["Manager"],
+    "taxNumber": "EMP-TAX-0001",
+    "joinDate": { "$date": "2024-01-02T00:00:00.000Z" },
+    "active": true,
+    "onDuty": true,
+    "vacationDaysPerYear": 22,
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "userId": { "$oid": "64b000000000000000000101" },
+    "vacationDaysLeft": 18,
+    "currentShiftRole": "Manager",
+    "contractHoursWeek": 40,
+    "salary": {
+      "payFrequency": "Monthly",
+      "grossSalary": 1800,
+      "netSalary": 1450
+    },
+    "terminatedDate": null,
+    "documentsUrl": [
+      "https://cdn.example.com/employees/manager-contract.pdf"
+    ],
+    "comments": "Main manager profile for demo data."
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000202" },
+    "allEmployeeRoles": ["Waiter"],
+    "taxNumber": "EMP-TAX-0002",
+    "joinDate": { "$date": "2024-02-01T00:00:00.000Z" },
+    "active": true,
+    "onDuty": true,
+    "vacationDaysPerYear": 22,
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "userId": { "$oid": "64b000000000000000000102" },
+    "vacationDaysLeft": 20,
+    "currentShiftRole": "Waiter",
+    "contractHoursWeek": 40,
+    "salary": {
+      "payFrequency": "Monthly",
+      "grossSalary": 1300,
+      "netSalary": 1100
+    },
+    "terminatedDate": null,
+    "documentsUrl": [
+      "https://cdn.example.com/employees/waiter-contract.pdf"
+    ],
+    "comments": "Waiter profile for demo data."
+  }
+]

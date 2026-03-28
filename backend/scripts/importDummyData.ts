@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 import { EJSON } from "bson";
@@ -27,6 +28,9 @@ import MonthlyBusinessReport from "../src/models/monthlyBusinessReport.ts";
 
 dotenv.config({ path: path.resolve(process.cwd(), "../.env") });
 dotenv.config(); // fallback to backend/.env if present
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 type ModelAndFile = {
   label: string;
@@ -62,7 +66,7 @@ const importPlan: ModelAndFile[] = [
 ];
 
 const getDummyPath = (fileName: string) =>
-  path.resolve(process.cwd(), "../dummyData", fileName);
+  path.resolve(__dirname, "../dummyData", fileName);
 
 const readDummyFile = async (fileName: string) => {
   const filePath = getDummyPath(fileName);
@@ -111,6 +115,23 @@ const upsertManyById = async (
   };
 };
 
+const clearExistingData = async () => {
+  // Delete in reverse dependency order to minimize transient reference issues.
+  const deletionPlan = [...importPlan].reverse();
+  let totalDeleted = 0;
+
+  console.log("Clearing existing restaurant data before import...");
+
+  for (const step of deletionPlan) {
+    const result = await step.model.deleteMany({});
+    const deleted = result.deletedCount ?? 0;
+    totalDeleted += deleted;
+    console.log(`[${step.label}] deleted=${deleted}`);
+  }
+
+  console.log(`Existing data cleared. Total deleted documents: ${totalDeleted}`);
+};
+
 const main = async () => {
   const mongodbUri = process.env.MONGODB_URI;
 
@@ -123,7 +144,9 @@ const main = async () => {
     bufferCommands: true,
   });
 
-  console.log("Connected to MongoDB. Importing dummy data...");
+  console.log("Connected to MongoDB.");
+  await clearExistingData();
+  console.log("Importing refreshed dummy data...");
 
   for (const step of importPlan) {
     const docs = (await readDummyFile(step.fileName)) as Record<string, unknown>[];

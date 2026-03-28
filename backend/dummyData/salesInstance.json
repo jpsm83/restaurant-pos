@@ -1,0 +1,58 @@
+[
+  {
+    "_id": { "$oid": "64b000000000000000000401" },
+    "dailyReferenceNumber": 20260324,
+    "salesPointId": { "$oid": "64b000000000000000000301" },
+    "guests": 3,
+    "salesInstanceStatus": "Closed",
+    "openedByUserId": { "$oid": "64b000000000000000000102" },
+    "openedAsRole": "employee",
+    "responsibleByUserId": { "$oid": "64b000000000000000000102" },
+    "closedByUserId": { "$oid": "64b000000000000000000102" },
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "clientName": "Walk-in Table 01",
+    "salesGroup": [
+      {
+        "orderCode": "A-1001",
+        "ordersIds": [
+          { "$oid": "64b000000000000000000a01" },
+          { "$oid": "64b000000000000000000a02" }
+        ],
+        "createdAt": { "$date": "2026-03-24T12:10:00.000Z" }
+      },
+      {
+        "orderCode": "A-1002",
+        "ordersIds": [
+          { "$oid": "64b000000000000000000a03" },
+          { "$oid": "64b000000000000000000a04" }
+        ],
+        "createdAt": { "$date": "2026-03-24T12:20:00.000Z" }
+      }
+    ],
+    "closedAt": { "$date": "2026-03-24T13:05:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000402" },
+    "dailyReferenceNumber": 20260324,
+    "salesPointId": { "$oid": "64b000000000000000000303" },
+    "guests": 2,
+    "salesInstanceStatus": "Closed",
+    "openedByUserId": { "$oid": "64b000000000000000000101" },
+    "openedAsRole": "employee",
+    "responsibleByUserId": { "$oid": "64b000000000000000000101" },
+    "closedByUserId": { "$oid": "64b000000000000000000101" },
+    "businessId": { "$oid": "64b000000000000000000001" },
+    "clientName": "Walk-in Table 02",
+    "salesGroup": [
+      {
+        "orderCode": "B-2001",
+        "ordersIds": [
+          { "$oid": "64b000000000000000000a05" },
+          { "$oid": "64b000000000000000000a06" }
+        ],
+        "createdAt": { "$date": "2026-03-24T13:10:00.000Z" }
+      }
+    ],
+    "closedAt": { "$date": "2026-03-24T13:50:00.000Z" }
+  }
+]

@@ -12,16 +12,34 @@ import User from "../../models/user.ts";
 import Employee from "../../models/employee.ts";
 import canLogAsEmployee from "../../auth/canLogAsEmployee.ts";
 import { AUTH_CONFIG } from "../../auth/config.ts";
+import {
+  isValidPassword,
+  PASSWORD_POLICY_MESSAGE,
+} from "../../../../packages/utils/passwordPolicy.ts";
 import type {
   AuthSession,
   AuthBusiness,
   AuthUser,
   RefreshTokenPayload,
 } from "../../auth/types.ts";
+import {
+  buildAuthBusinessSessionFromId,
+  buildAuthUserSessionFromUserId,
+  issueSessionWithRefreshCookie,
+  signAccessToken,
+} from "../../auth/issueSession.ts";
 
 interface LoginBody {
   email: string;
   password: string;
+}
+
+interface SignupBody {
+  email: string;
+  password: string;
+  username?: string;
+  firstName?: string;
+  lastName?: string;
 }
 
 interface SetModeBody {
@@ -29,6 +47,83 @@ interface SetModeBody {
 }
 
 export const authRoutes: FastifyPluginAsync = async (app) => {
+  /**
+   * POST /auth/signup
+   * Create a customer user account and return authenticated session.
+   */
+  app.post<{ Body: SignupBody }>("/signup", async (req, reply) => {
+    const { email, password, username, firstName, lastName } = req.body;
+
+    if (!email || !password) {
+      return reply.code(400).send({ message: "Email and password are required" });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    if (!normalizedEmail || !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(normalizedEmail)) {
+      return reply.code(400).send({ message: "Please provide a valid email address" });
+    }
+
+    if (!isValidPassword(password)) {
+      return reply.code(400).send({ message: PASSWORD_POLICY_MESSAGE });
+    }
+
+    const [existingBusiness, existingUser] = await Promise.all([
+      Business.findOne({ email: normalizedEmail }).select("_id").lean(),
+      User.findOne({ "personalDetails.email": normalizedEmail }).select("_id").lean(),
+    ]);
+
+    if (existingBusiness || existingUser) {
+      return reply.code(409).send({ message: "Account with this email already exists" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const emailPrefix = normalizedEmail.split("@")[0] || "user";
+    const safeUsername = (username?.trim() || emailPrefix).slice(0, 50);
+    const safeFirstName = (firstName?.trim() || "New").slice(0, 50);
+    const safeLastName = (lastName?.trim() || "User").slice(0, 50);
+
+    const createdUser = await User.create({
+      personalDetails: {
+        username: safeUsername,
+        email: normalizedEmail,
+        password: hashedPassword,
+        idType: "Passport",
+        idNumber: `AUTO-${Date.now()}`,
+        address: {
+          country: "Unknown",
+          state: "Unknown",
+          city: "Unknown",
+          street: "Unknown",
+          buildingNumber: "0",
+          postCode: "0000",
+        },
+        firstName: safeFirstName,
+        lastName: safeLastName,
+        nationality: "Unknown",
+        gender: "Other",
+        birthDate: new Date("2000-01-01T00:00:00.000Z"),
+        phoneNumber: "0000000000",
+      },
+    });
+
+    const session: AuthUser = {
+      id: String(createdUser._id),
+      email: normalizedEmail,
+      type: "user",
+    };
+
+    const { accessToken, user } = issueSessionWithRefreshCookie(
+      app,
+      reply,
+      session,
+    );
+
+    return reply.code(201).send({
+      accessToken,
+      user,
+    });
+  });
+
   /**
    * POST /auth/login
    * Authenticate with email/password, returns access token and sets refresh cookie.
@@ -67,30 +162,15 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         type: "business",
       };
 
-      const accessToken = app.jwt.sign(session, {
-        expiresIn: AUTH_CONFIG.ACCESS_TOKEN_EXPIRES_IN,
-      });
-
-      const refreshPayload: RefreshTokenPayload = {
-        id: session.id,
-        type: session.type,
-      };
-      const refreshToken = app.jwt.sign(refreshPayload, {
-        expiresIn: AUTH_CONFIG.REFRESH_TOKEN_EXPIRES_IN,
-        key: AUTH_CONFIG.REFRESH_SECRET,
-      });
-
-      reply.setCookie(AUTH_CONFIG.REFRESH_COOKIE_NAME, refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        path: "/",
-        maxAge: AUTH_CONFIG.COOKIE_MAX_AGE_SECONDS,
-      });
+      const { accessToken, user } = issueSessionWithRefreshCookie(
+        app,
+        reply,
+        session,
+      );
 
       return reply.code(200).send({
         accessToken,
-        user: session,
+        user,
       });
     }
 
@@ -151,30 +231,15 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       }
     }
 
-    const accessToken = app.jwt.sign(session, {
-      expiresIn: AUTH_CONFIG.ACCESS_TOKEN_EXPIRES_IN,
-    });
-
-    const refreshPayload: RefreshTokenPayload = {
-      id: session.id,
-      type: session.type,
-    };
-    const refreshToken = app.jwt.sign(refreshPayload, {
-      expiresIn: AUTH_CONFIG.REFRESH_TOKEN_EXPIRES_IN,
-      key: AUTH_CONFIG.REFRESH_SECRET,
-    });
-
-    reply.setCookie(AUTH_CONFIG.REFRESH_COOKIE_NAME, refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: AUTH_CONFIG.COOKIE_MAX_AGE_SECONDS,
-    });
+    const { accessToken, user: userOut } = issueSessionWithRefreshCookie(
+      app,
+      reply,
+      session,
+    );
 
     return reply.code(200).send({
       accessToken,
-      user: session,
+      user: userOut,
     });
   });
 
@@ -205,71 +270,22 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     let session: AuthSession;
 
     if (payload.type === "business") {
-      const business = (await Business.findById(payload.id)
-        .select("_id email")
-        .lean()) as { _id: unknown; email: string } | null;
-
-      if (!business) {
+      const businessSession = await buildAuthBusinessSessionFromId(payload.id);
+      if (!businessSession) {
         reply.clearCookie(AUTH_CONFIG.REFRESH_COOKIE_NAME, { path: "/" });
         return reply.code(401).send({ message: "Business not found" });
       }
-
-      session = {
-        id: String(business._id),
-        email: business.email,
-        type: "business",
-      };
+      session = businessSession;
     } else {
-      const user = (await User.findById(payload.id)
-        .select("_id personalDetails.email employeeDetails")
-        .lean()) as {
-        _id: unknown;
-        personalDetails: { email?: string };
-        employeeDetails?: unknown;
-      } | null;
-
-      if (!user) {
+      const userSession = await buildAuthUserSessionFromUserId(payload.id);
+      if (!userSession) {
         reply.clearCookie(AUTH_CONFIG.REFRESH_COOKIE_NAME, { path: "/" });
         return reply.code(401).send({ message: "User not found" });
       }
-
-      const userEmail =
-        typeof user.personalDetails.email === "string"
-          ? user.personalDetails.email
-          : String(user.personalDetails.email ?? "");
-
-      const userSession: AuthUser = {
-        id: String(user._id),
-        email: userEmail,
-        type: "user",
-      };
-
-      if (user.employeeDetails) {
-        const employee = (await Employee.findById(user.employeeDetails)
-          .select("businessId active terminatedDate")
-          .lean()) as {
-          businessId: unknown;
-          active?: boolean;
-          terminatedDate?: unknown;
-        } | null;
-
-        if (employee && employee.active && !employee.terminatedDate) {
-          const { canLogAsEmployee: canLog } = await canLogAsEmployee(
-            user.employeeDetails as import("mongoose").Types.ObjectId,
-          );
-
-          userSession.employeeId = String(user.employeeDetails);
-          userSession.businessId = String(employee.businessId);
-          userSession.canLogAsEmployee = canLog;
-        }
-      }
-
       session = userSession;
     }
 
-    const accessToken = app.jwt.sign(session, {
-      expiresIn: AUTH_CONFIG.ACCESS_TOKEN_EXPIRES_IN,
-    });
+    const accessToken = signAccessToken(app, session);
 
     return reply.code(200).send({
       accessToken,

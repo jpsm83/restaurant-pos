@@ -1,0 +1,82 @@
+[
+  {
+    "_id": { "$oid": "64b000000000000000000301" },
+    "salesPointName": "Table 01",
+    "salesPointType": "table",
+    "selfOrdering": false,
+    "qrCode": "qr-table-01",
+    "businessId": { "$oid": "64b000000000000000000001" }
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000302" },
+    "salesPointName": "Delivery Hub",
+    "salesPointType": "delivery",
+    "selfOrdering": false,
+    "qrCode": "qr-delivery-hub",
+    "businessId": { "$oid": "64b000000000000000000001" }
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000303" },
+    "salesPointName": "Table 02",
+    "salesPointType": "table",
+    "selfOrdering": true,
+    "qrCode": "qr-table-02",
+    "businessId": { "$oid": "64b000000000000000000001" }
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000304" },
+    "salesPointName": "Room A",
+    "salesPointType": "room",
+    "selfOrdering": false,
+    "qrCode": "qr-room-a",
+    "businessId": { "$oid": "64b000000000000000000001" }
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000305" },
+    "salesPointName": "Bar Seat 01",
+    "salesPointType": "bar",
+    "selfOrdering": true,
+    "qrCode": "qr-bar-seat-01",
+    "businessId": { "$oid": "64b000000000000000000001" }
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000306" },
+    "salesPointName": "Seat 07",
+    "salesPointType": "seat",
+    "selfOrdering": false,
+    "qrCode": "qr-seat-07",
+    "businessId": { "$oid": "64b000000000000000000001" }
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000307" },
+    "salesPointName": "Counter 01",
+    "salesPointType": "counter",
+    "selfOrdering": true,
+    "qrCode": "qr-counter-01",
+    "businessId": { "$oid": "64b000000000000000000001" }
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000308" },
+    "salesPointName": "Spot Terrace",
+    "salesPointType": "spot",
+    "selfOrdering": true,
+    "qrCode": "qr-spot-terrace",
+    "businessId": { "$oid": "64b000000000000000000001" }
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000309" },
+    "salesPointName": "Other Event Area",
+    "salesPointType": "other",
+    "selfOrdering": false,
+    "qrCode": "qr-event-area",
+    "businessId": { "$oid": "64b000000000000000000001" }
+  },
+  {
+    "_id": { "$oid": "64b000000000000000000310" },
+    "salesPointName": "Office POS",
+    "salesPointType": "counter",
+    "selfOrdering": false,
+    "qrCode": "qr-office-pos",
+    "businessId": { "$oid": "64b000000000000000000001" }
+  }
+]
