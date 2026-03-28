@@ -1,6 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { TriangleAlert } from "lucide-react";
+import i18n from "@/i18n";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -28,6 +29,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
+      const t = (key: string) => i18n.t(key, { ns: "errors" });
       return (
         <div className="flex min-h-0 w-full flex-1 flex-col bg-neutral-100">
           <main className="flex min-h-0 flex-1 flex-col items-center justify-center p-4">
@@ -36,9 +38,9 @@ export class ErrorBoundary extends Component<Props, State> {
                 <div className="mb-4 flex justify-center">
                   <TriangleAlert className="h-16 w-16 text-destructive" aria-hidden />
                 </div>
-                <CardTitle className="text-2xl">Something went wrong</CardTitle>
+                <CardTitle className="text-2xl">{t("boundary.title")}</CardTitle>
                 <CardDescription className="mt-2 text-base">
-                  The app hit an unexpected error. You can reload or return home.
+                  {t("boundary.description")}
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col gap-2">
@@ -48,10 +50,10 @@ export class ErrorBoundary extends Component<Props, State> {
                   </pre>
                 ) : null}
                 <Button type="button" className="w-full" onClick={() => window.location.reload()}>
-                  Reload page
+                  {t("boundary.reload")}
                 </Button>
                 <Button asChild variant="outline" className="w-full">
-                  <Link to="/">Home</Link>
+                  <Link to="/">{t("navigation.home")}</Link>
                 </Button>
               </CardContent>
             </Card>

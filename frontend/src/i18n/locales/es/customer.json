@@ -1,0 +1,17 @@
+{
+  "shell": {
+    "title": "Inicio del cliente",
+    "signedInLine": "Sesión iniciada como {{email}}.",
+    "emailFallback": "usuario"
+  },
+  "profile": {
+    "title": "Perfil"
+  },
+  "favorites": {
+    "title": "Favoritos"
+  },
+  "dashboard": {
+    "title": "Panel"
+  },
+  "notBuiltYet": "Esta página aún no está disponible."
+}

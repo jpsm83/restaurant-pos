@@ -1,9 +1,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import ChooseEmployeeModePage from "./ChooseEmployeeModePage";
+import { renderWithI18n } from "@/test/i18nTestUtils";
+import SelectUserModePage from "./SelectUserModePage";
 
 const mockDispatch = vi.fn();
 const mockSetModeAndRefresh = vi.fn();
@@ -53,7 +54,7 @@ function makeEmployeeUser(canLogAsEmployee: boolean) {
   };
 }
 
-function renderAtMode(path = "/u1/mode", client?: QueryClient) {
+async function renderAtMode(path = "/u1/mode", client?: QueryClient) {
   const qc =
     client ??
     new QueryClient({
@@ -62,26 +63,29 @@ function renderAtMode(path = "/u1/mode", client?: QueryClient) {
         mutations: { retry: 0 },
       },
     });
-  return render(
-    <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={[path]}>
-        <Routes>
-          <Route path="/:userId/mode" element={<ChooseEmployeeModePage />} />
-          <Route
-            path="/:userId/customer"
-            element={<div data-testid="customer-shell">Customer shell</div>}
-          />
-          <Route
-            path="/:userId/employee"
-            element={<div data-testid="employee-shell">Employee shell</div>}
-          />
-        </Routes>
-      </MemoryRouter>
-    </QueryClientProvider>,
+  return renderWithI18n(
+    <MemoryRouter initialEntries={[path]}>
+      <Routes>
+        <Route path="/:userId/mode" element={<SelectUserModePage />} />
+        <Route
+          path="/:userId/customer/home"
+          element={<div data-testid="customer-shell">Customer shell</div>}
+        />
+        <Route
+          path="/:userId/employee/home"
+          element={<div data-testid="employee-shell">Employee shell</div>}
+        />
+      </Routes>
+    </MemoryRouter>,
+    {
+      wrapper: ({ children }) => (
+        <QueryClientProvider client={qc}>{children}</QueryClientProvider>
+      ),
+    },
   );
 }
 
-describe("ChooseEmployeeModePage (Phase 3.7)", () => {
+describe("SelectUserModePage (Phase 3.7)", () => {
   beforeEach(() => {
     mockDispatch.mockReset();
     mockSetModeAndRefresh.mockReset();
@@ -101,7 +105,7 @@ describe("ChooseEmployeeModePage (Phase 3.7)", () => {
 
   it("calls setModeAndRefresh with customer then navigates to customer shell", async () => {
     const user = userEvent.setup();
-    renderAtMode();
+    await renderAtMode();
 
     await user.click(screen.getByRole("button", { name: /continue as customer/i }));
 
@@ -115,7 +119,7 @@ describe("ChooseEmployeeModePage (Phase 3.7)", () => {
 
   it("calls setModeAndRefresh with employee when canLogAsEmployee then navigates", async () => {
     const user = userEvent.setup();
-    renderAtMode();
+    await renderAtMode();
 
     await user.click(screen.getByRole("button", { name: /continue as employee/i }));
 
@@ -127,7 +131,7 @@ describe("ChooseEmployeeModePage (Phase 3.7)", () => {
     });
   });
 
-  it("disables Continue as employee when canLogAsEmployee is false", () => {
+  it("disables Continue as employee when canLogAsEmployee is false", async () => {
     mockUseAuth.mockReturnValue({
       state: {
         status: "authenticated",
@@ -137,7 +141,7 @@ describe("ChooseEmployeeModePage (Phase 3.7)", () => {
       dispatch: mockDispatch,
     });
 
-    renderAtMode();
+    await renderAtMode();
 
     expect(screen.getByRole("button", { name: /continue as employee/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /continue as customer/i })).not.toBeDisabled();

@@ -1,3 +1,6 @@
+/**
+ * Tests for `SiteAudienceContext.tsx` — pathname → audience rules under `MemoryRouter`.
+ */
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";

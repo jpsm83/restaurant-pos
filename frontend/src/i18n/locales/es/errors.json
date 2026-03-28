@@ -1,0 +1,20 @@
+{
+  "accessDenied": {
+    "title": "Acceso denegado",
+    "description": "No tienes permiso para ver esta página. Si iniciaste sesión con una cuenta de empresa, usa el espacio de negocio; las cuentas personales usan el área de cliente o de personal.",
+    "openWorkspace": "Abrir tu espacio de trabajo"
+  },
+  "notFound": {
+    "title": "Página no encontrada",
+    "description": "La página que buscas no existe o se ha movido."
+  },
+  "boundary": {
+    "title": "Algo salió mal",
+    "description": "La aplicación encontró un error inesperado. Puedes recargar o volver al inicio.",
+    "reload": "Recargar página"
+  },
+  "navigation": {
+    "home": "Inicio",
+    "goBack": "Volver"
+  }
+}

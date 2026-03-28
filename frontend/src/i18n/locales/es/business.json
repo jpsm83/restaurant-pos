@@ -1,0 +1,13 @@
+{
+  "dashboard": {
+    "title": "Panel de empresa",
+    "tenantCardTitle": "Espacio del inquilino",
+    "signedInPrefix": "Sesión iniciada como",
+    "sessionUnavailable": "No hay datos de sesión disponibles.",
+    "accountMenuHint": "Usa el menú de cuenta (arriba a la derecha) para el perfil, favoritos, el panel o para cerrar sesión."
+  },
+  "profile": {
+    "title": "Perfil del negocio",
+    "notBuiltYet": "Esta página aún no está disponible."
+  }
+}

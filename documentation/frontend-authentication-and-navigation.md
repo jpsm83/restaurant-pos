@@ -2,6 +2,8 @@
 
 This document describes **how the Restaurant POS web app handles sign-in, session shape, and routing** for **person users** versus **business (tenant) accounts**, as implemented in `frontend/src`. It is the **frontend companion** to [`authentication-and-session.md`](./authentication-and-session.md) (backend contracts) and aligns with [`FRONTEND_AUTHENTICATION_AND_NAVIGATION_STRATEGY.md`](../FRONTEND_AUTHENTICATION_AND_NAVIGATION_STRATEGY.md) and [`FRONTEND_AUTH_NAVIGATION_IMPLEMENTATION_PLAN.md`](../FRONTEND_AUTH_NAVIGATION_IMPLEMENTATION_PLAN.md).
 
+**Internationalization:** Sign-in, sign-up, business registration, mode selection, partition errors (**access denied** / **not found**), and global chrome (navbar, loading strings) use **i18next** namespaces (`auth`, `mode`, `errors`, `nav`, `common`, etc.). Supported UI languages: **English** and **Spanish** (navbar language control). See [`frontend-i18n.md`](./frontend-i18n.md) and [`i18n-locale-coverage-todo.md`](./i18n-locale-coverage-todo.md).
+
 ---
 
 ## 1. What you should not confuse (three layers)
@@ -175,7 +177,7 @@ All guards are **UX and consistency**; **security remains on the API**.
 - Ensure URL **`userId`** / **`businessId`** **equals** **`state.user.id`** for the matching type.
 - Mismatch → redirect to **canonical** path for that session (`canonicalUserCustomerPath` / `canonicalBusinessDashboardPath`) so bookmarks with wrong ids self-correct.
 
-**Helpers** (`frontend/src/routes/sessionPathGuards.ts`): `matchesSessionUserId`, `matchesSessionBusinessId`, canonical path builders, optional **`isLikelyMongoObjectIdString`** for future stricter validation.
+**Helpers** (`frontend/src/routes/canonicalPaths.ts`): `matchesSessionUserId`, `matchesSessionBusinessId`, canonical path builders, optional **`isLikelyMongoObjectIdString`** for future stricter validation.
 
 ### 8.5 `RequireEmployeeAuthMode`
 
@@ -217,7 +219,7 @@ All guards are **UX and consistency**; **security remains on the API**.
 
 1. **`useNextShiftForEmployee`** (`schedulesService.ts`) — `GET /api/v1/schedules/business/:businessId/daily?dayKey=YYYY-MM-DD` with TanStack Query key **`queryKeys.schedules.employeeDay(...)`**.
 2. **`deriveEmployeeModeFromSchedule`** (`employeeModeSchedule.ts`) — pure function: vacation rows skipped; window **`[shiftStart - 5 min, shiftEnd]`**; computes **`countdownTargetMs`** for the next window start.
-3. **`ChooseEmployeeModePage`** ticks **`Date.now()`** once per second while countdown relevant; its inline countdown fires **`onReachZero`** → invalidate schedule query and **`getCurrentUser()`** to refresh JWT payload when the server flips **`canLogAsEmployee`**.
+3. **`SelectUserModePage`** ticks **`Date.now()`** once per second while countdown relevant; its inline countdown fires **`onReachZero`** → invalidate schedule query and **`getCurrentUser()`** to refresh JWT payload when the server flips **`canLogAsEmployee`**.
 4. **Management bypass:** if **`canLogAsEmployee === true`**, the page **does not** show the misleading countdown; employee CTA is enabled from the JWT flag.
 
 ---
@@ -327,11 +329,11 @@ Toggle only switches **marketing** URLs; it does not log anyone in.
 | fetch auth API | `frontend/src/auth/api.ts` |
 | First URL after auth | `frontend/src/auth/postLoginRedirect.ts` |
 | Guards | `frontend/src/routes/AuthRouteGuards.tsx` |
-| Param matching | `frontend/src/routes/sessionPathGuards.ts` |
+| Param matching | `frontend/src/routes/canonicalPaths.ts` |
 | Marketing audience | `frontend/src/context/SiteAudienceContext.tsx` (barrel: `context/index.ts`) |
 | Auth mode query + actions | `frontend/src/context/AuthModeContext.tsx` (re-exported from `auth/index.ts`), `frontend/src/services/authMode.ts` |
 | Public chrome | `frontend/src/layouts/PublicLayout.tsx`, `frontend/src/components/Navbar.tsx` |
-| Mode + countdown UI | `frontend/src/pages/ChooseEmployeeModePage.tsx` |
+| Mode + countdown UI | `frontend/src/pages/SelectUserModePage.tsx` |
 | Schedule API + query | `frontend/src/services/schedulesService.ts` |
 | Schedule math | `frontend/src/utils/employeeModeSchedule.ts` |
 | Axios client | `frontend/src/services/http.ts` |

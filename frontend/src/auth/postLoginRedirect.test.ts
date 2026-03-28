@@ -1,3 +1,6 @@
+/**
+ * Tests for `postLoginRedirect.ts` — `getPostLoginDestination` vs session shape.
+ */
 import { describe, expect, it } from "vitest";
 import type { AuthSession } from "./types";
 import { getPostLoginDestination } from "./postLoginRedirect";
@@ -11,7 +14,7 @@ describe("getPostLoginDestination", () => {
         email: "b@test.local",
         type: "business",
       },
-      expected: "/business/b1",
+      expected: "/business/b1/home",
     },
     {
       name: "user without employee link",
@@ -20,7 +23,7 @@ describe("getPostLoginDestination", () => {
         email: "u@test.local",
         type: "user",
       },
-      expected: "/u1/customer",
+      expected: "/u1/customer/home",
     },
     {
       name: "user with employee link (mode selection)",

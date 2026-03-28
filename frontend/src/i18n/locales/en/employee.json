@@ -1,0 +1,13 @@
+{
+  "home": {
+    "title": "Employee home",
+    "subline": "User <mono>{{userId}}</mono> — POS navigation in later phases."
+  },
+  "profile": {
+    "title": "Profile"
+  },
+  "dashboard": {
+    "title": "Dashboard"
+  },
+  "notBuiltYet": "This page is not built yet."
+}

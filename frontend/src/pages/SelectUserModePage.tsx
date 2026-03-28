@@ -1,9 +1,10 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { getCurrentUser, useAuth } from "@/auth";
 import type { AuthUser } from "@/auth/types";
-import { AccountMenuPopover } from "@/components/AccountMenuPopover";
+import Navbar from "@/components/Navbar";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +20,7 @@ import {
   deriveEmployeeModeFromSchedule,
   formatDayKeyLocal,
 } from "@/lib/employeeModeSchedule";
+import { canonicalUserCustomerHomePath, canonicalUserEmployeeHomePath } from "@/routes/canonicalPaths";
 
 function formatRemaining(totalSeconds: number): string {
   const s = Math.max(0, Math.floor(totalSeconds));
@@ -31,26 +33,6 @@ function formatRemaining(totalSeconds: number): string {
   return `${m}:${String(sec).padStart(2, "0")}`;
 }
 
-function ModeChoiceCard({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description: string;
-  children: ReactNode;
-}) {
-  return (
-    <Card className="flex flex-col">
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
-      </CardHeader>
-      <CardContent className="mt-auto">{children}</CardContent>
-    </Card>
-  );
-}
-
 function EmployeeModeCountdown({
   targetMs,
   onReachZero,
@@ -60,6 +42,7 @@ function EmployeeModeCountdown({
   onReachZero: () => void;
   className?: string;
 }) {
+  const { t } = useTranslation("mode");
   const onZeroRef = useRef(onReachZero);
   const firedRef = useRef(false);
   const [label, setLabel] = useState("");
@@ -100,7 +83,7 @@ function EmployeeModeCountdown({
 
   return (
     <p className={className} role="status" aria-live="polite">
-      Unlocks in {label}
+      {t("countdown.unlocksIn", { time: label })}
     </p>
   );
 }
@@ -114,10 +97,10 @@ function hasEmployeeLink(
 }
 
 /**
- * `/:userId/mode` — staff choose **customer** vs **employee**; persists `auth_mode` then navigates (Phase 3.3).
- * Phase 3.4: schedule-backed countdown until the server allows employee login (JWT `canLogAsEmployee`).
+ * `/:userId/mode` — users linked as staff pick customer vs employee; same shell rhythm as `LoginPage`.
  */
-export default function ChooseEmployeeModePage() {
+export default function SelectUserModePage() {
+  const { t } = useTranslation("mode");
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -188,25 +171,25 @@ export default function ChooseEmployeeModePage() {
   }
 
   if (!linked || !sessionUser) {
-    return <Navigate to={`/${userId}/customer`} replace />;
+    return <Navigate to={`/${userId}/customer/home`} replace />;
   }
 
   const showCountdown =
     !canEmployee && derived.countdownTargetMs !== null;
 
   const employeeDescription = canEmployee
-    ? "Open the staff workspace for your linked business."
+    ? t("employeeHelp.canEmployee")
     : showCountdown
-      ? "Your shift window opens soon. You can log in five minutes before it starts."
-      : "Employee mode is not available right now (schedule or permissions).";
+      ? t("employeeHelp.countdownSoon")
+      : t("employeeHelp.blocked");
 
   const goCustomer = async () => {
     setError(null);
     try {
       await setModeAndRefresh("customer");
-      navigate(`/${userId}/customer`, { replace: true });
+      navigate(canonicalUserCustomerHomePath(sessionUser), { replace: true });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong");
+      setError(e instanceof Error ? e.message : t("errors.generic"));
     }
   };
 
@@ -215,79 +198,53 @@ export default function ChooseEmployeeModePage() {
     setError(null);
     try {
       await setModeAndRefresh("employee");
-      navigate(`/${userId}/employee`, { replace: true });
+      navigate(canonicalUserEmployeeHomePath(sessionUser), { replace: true });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong");
+      setError(e instanceof Error ? e.message : t("errors.generic"));
     }
   };
 
   return (
     <div className="flex min-h-0 w-full flex-1 flex-col bg-neutral-100">
-      <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-neutral-200 bg-white px-4 py-3">
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
-          <Link to="/" className="flex items-center gap-3">
-            <img
-              src="/imperium.png"
-              alt=""
-              className="h-8 w-10 object-contain"
-              width={32}
-              height={32}
-            />
-            <span className="text-md font-semibold text-neutral-800">
-              Project Imperium POS
-            </span>
-          </Link>
-          <span className="hidden text-sm text-neutral-500 sm:inline">Choose mode</span>
-        </div>
-        <AccountMenuPopover session={sessionUser} />
-      </header>
-      <main className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 p-4">
-        <div className="max-w-lg text-center">
-          <h1 className="text-2xl font-semibold text-neutral-900">How do you want to continue?</h1>
-          <p className="mt-2 text-sm text-neutral-600">
-            Choose customer browsing or your staff tools. This updates your session mode for this browser.
-          </p>
-        </div>
-
-        {error ? <Alert className="max-w-xl">{error}</Alert> : null}
-
-        <div className="grid w-full max-w-2xl gap-4 md:grid-cols-2">
-          <ModeChoiceCard
-            title="Continue as customer"
-            description="Browse and order like a guest. Use this when you are not on shift."
-          >
+      <Navbar />
+      <main className="flex min-h-0 flex-1 flex-col items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>{t("title")}</CardTitle>
+            <CardDescription>{t("description")}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {error ? <Alert>{error}</Alert> : null}
             <Button
               type="button"
-              className="w-full min-w-48"
+              className="w-full"
               disabled={isSettingMode}
               aria-busy={isSettingMode || undefined}
               onClick={() => void goCustomer()}
             >
-              Continue as customer
+              {t("continueCustomer")}
             </Button>
-          </ModeChoiceCard>
-          <ModeChoiceCard
-            title="Continue as employee"
-            description={employeeDescription}
-          >
-            {showCountdown && derived.countdownTargetMs !== null ? (
-              <EmployeeModeCountdown
-                targetMs={derived.countdownTargetMs}
-                onReachZero={() => void onCountdownComplete()}
-                className="mb-3 text-center text-sm font-medium text-neutral-700"
-              />
-            ) : null}
-            <Button
-              type="button"
-              className="w-full min-w-48"
-              disabled={!canEmployee || isSettingMode}
-              aria-busy={isSettingMode || undefined}
-              onClick={() => void goEmployee()}
-            >
-              Continue as employee
-            </Button>
-          </ModeChoiceCard>
-        </div>
+            <div className="space-y-2 border-t border-neutral-200 pt-4">
+              <p className="text-sm text-neutral-600">{employeeDescription}</p>
+              {showCountdown && derived.countdownTargetMs !== null ? (
+                <EmployeeModeCountdown
+                  targetMs={derived.countdownTargetMs}
+                  onReachZero={() => void onCountdownComplete()}
+                  className="text-center text-sm font-medium text-neutral-700"
+                />
+              ) : null}
+              <Button
+                type="button"
+                className="w-full"
+                disabled={!canEmployee || isSettingMode}
+                aria-busy={isSettingMode || undefined}
+                onClick={() => void goEmployee()}
+              >
+                {t("continueEmployee")}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </main>
     </div>
   );

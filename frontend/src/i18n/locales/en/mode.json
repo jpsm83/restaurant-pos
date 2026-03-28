@@ -1,0 +1,17 @@
+{
+  "title": "How do you want to continue?",
+  "description": "Customer browsing or staff tools — updates this browser's session mode.",
+  "continueCustomer": "Continue as customer",
+  "continueEmployee": "Continue as employee",
+  "employeeHelp": {
+    "canEmployee": "Open the staff workspace for your linked business.",
+    "countdownSoon": "Your shift window opens soon. You can log in five minutes before it starts.",
+    "blocked": "Employee mode is not available right now (schedule or permissions)."
+  },
+  "countdown": {
+    "unlocksIn": "Unlocks in {{time}}"
+  },
+  "errors": {
+    "generic": "Something went wrong"
+  }
+}

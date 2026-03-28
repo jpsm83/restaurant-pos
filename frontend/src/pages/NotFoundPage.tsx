@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,7 @@ import {
 
 /** Fallback for unknown routes (add a catch-all route in App when ready). */
 export default function NotFoundPage() {
+  const { t } = useTranslation("errors");
   const navigate = useNavigate();
 
   return (
@@ -21,14 +23,14 @@ export default function NotFoundPage() {
             <div className="mb-4 flex justify-center">
               <Info className="h-16 w-16 text-neutral-500" aria-hidden />
             </div>
-            <CardTitle className="text-2xl">Page not found</CardTitle>
+            <CardTitle className="text-2xl">{t("notFound.title")}</CardTitle>
             <CardDescription className="mt-2 text-base">
-              The page you are looking for does not exist or was moved.
+              {t("notFound.description")}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Button onClick={() => navigate(-1)} className="w-full">
-              Go back
+              {t("navigation.goBack")}
             </Button>
           </CardContent>
         </Card>

@@ -1,3 +1,7 @@
+/**
+ * Unit tests for `employeeModeSchedule.ts` — window math and `deriveEmployeeModeFromSchedule`
+ * (no mocks; pure functions).
+ */
 import { describe, expect, it, vi } from "vitest";
 import {
   deriveEmployeeModeFromSchedule,

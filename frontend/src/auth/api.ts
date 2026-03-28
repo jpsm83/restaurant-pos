@@ -1,3 +1,19 @@
+/**
+ * **Auth HTTP client** (`src/auth`) — **`fetch`**-based calls to **`/api/v1/auth/*`** (not Axios).
+ *
+ * ## Token model
+ * - **In-memory** `accessToken` + **`sessionStorage`** (`restaurant_pos_auth_access`) for same-tab reloads.
+ * - **Refresh** uses HttpOnly cookie via `credentials: "include"` on `POST /refresh`.
+ * - **`getAccessToken` / `setAccessToken`** are imported by **`services/http.ts`** so Axios requests get the same Bearer as these `fetch` calls.
+ *
+ * ## Wiring
+ * - **`AuthProvider`** (`store/AuthContext.tsx`) calls `loadPersistedAccessToken`, `getCurrentUser`, `refreshSession`, `setAccessToken` on bootstrap.
+ * - **Pages** use `login`, `signup`, `logout`, `getCurrentUser` from **`@/auth`** (barrel).
+ * - **`businessService.createBusiness`** calls **`setAccessToken`** when registration returns a token.
+ * - **`logout`** clears token and **`queryClient.removeQueries`** for `auth.mode` (TanStack cache); broader invalidation can be added here if needed.
+ *
+ * **401 handling:** `authRequest` retries once after **`refreshSession`** (except when `retryOnUnauthorized` is false for login/signup/refresh/logout).
+ */
 import type {
   AuthLoginSnapshot,
   AuthSession,

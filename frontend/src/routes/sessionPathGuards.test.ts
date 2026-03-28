@@ -1,15 +1,21 @@
+/**
+ * Tests for `canonicalPaths.ts` (file name is legacy; module under test is canonical path helpers).
+ */
 import { describe, expect, it } from "vitest";
 import {
   canonicalBusinessDashboardPath,
+  canonicalBusinessHomePath,
+  canonicalUserCustomerHomePath,
   canonicalUserCustomerPath,
+  canonicalUserEmployeeHomePath,
   canonicalUserEmployeePath,
   canonicalUserModePath,
   isLikelyMongoObjectIdString,
   matchesSessionBusinessId,
   matchesSessionUserId,
-} from "./sessionPathGuards";
+} from "./canonicalPaths";
 
-describe("sessionPathGuards", () => {
+describe("canonicalPaths", () => {
   describe("isLikelyMongoObjectIdString", () => {
     it("accepts 24 hex chars", () => {
       expect(isLikelyMongoObjectIdString("507f1f77bcf86cd799439011")).toBe(true);
@@ -73,13 +79,14 @@ describe("sessionPathGuards", () => {
       ).toBe("/u1/employee");
     });
     it("builds business path", () => {
-      expect(
-        canonicalBusinessDashboardPath({
-          id: "b1",
-          email: "b@test.local",
-          type: "business",
-        }),
-      ).toBe("/business/b1");
+      const b = { id: "b1", email: "b@test.local", type: "business" as const };
+      expect(canonicalBusinessDashboardPath(b)).toBe("/business/b1");
+      expect(canonicalBusinessHomePath(b)).toBe("/business/b1/home");
+    });
+    it("builds user home paths", () => {
+      const u = { id: "u1", email: "u@test.local", type: "user" as const };
+      expect(canonicalUserCustomerHomePath(u)).toBe("/u1/customer/home");
+      expect(canonicalUserEmployeeHomePath(u)).toBe("/u1/employee/home");
     });
   });
 });

@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState, type FormEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { getPostLoginDestination, useAuth } from "@/auth";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -15,10 +16,7 @@ import { Label } from "@/components/ui/label";
 import { useCreateBusinessMutation } from "@/services/businessService";
 import { cn } from "@/lib/utils";
 import { currenctyEnums, subscriptionEnums } from "@packages/enums.ts";
-import {
-  isValidPassword,
-  PASSWORD_POLICY_MESSAGE,
-} from "@packages/utils/passwordPolicy.ts";
+import { isValidPassword } from "@packages/utils/passwordPolicy.ts";
 
 const selectClassName = cn(
   "flex h-10 w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900",
@@ -30,6 +28,7 @@ const selectClassName = cn(
  * Multipart **`POST /api/v1/business`** — required fields match **`backend/src/routes/v1/business.ts`** (Phase 4.2).
  */
 export default function BusinessRegisterPage() {
+  const { t } = useTranslation("auth");
   const navigate = useNavigate();
   const { dispatch } = useAuth();
   const mutation = useCreateBusinessMutation();
@@ -85,29 +84,27 @@ export default function BusinessRegisterPage() {
       !tBuilding ||
       !tPost
     ) {
-      setMessage(
-        "Trade name, legal name, email, password, phone, tax number, subscription, currency, and full address (country, state, city, street, building number, post code) are required.",
-      );
+      setMessage(t("businessRegister.errors.requiredFields"));
       return;
     }
 
     if (password !== confirmPassword) {
-      setMessage("Password and confirm password must match.");
+      setMessage(t("businessRegister.errors.passwordMismatch"));
       return;
     }
 
     if (!isValidPassword(password)) {
-      setMessage(PASSWORD_POLICY_MESSAGE);
+      setMessage(t("businessRegister.errors.passwordPolicy"));
       return;
     }
 
     if (!subscriptionEnums.includes(subscription)) {
-      setMessage("Invalid subscription.");
+      setMessage(t("businessRegister.errors.invalidSubscription"));
       return;
     }
 
     if (!currenctyEnums.includes(currencyTrade)) {
-      setMessage("Invalid currency.");
+      setMessage(t("businessRegister.errors.invalidCurrency"));
       return;
     }
 
@@ -141,7 +138,9 @@ export default function BusinessRegisterPage() {
       dispatch({ type: "AUTH_SUCCESS", payload: result.user });
       navigate(getPostLoginDestination(result.user), { replace: true });
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Registration failed.");
+      setMessage(
+        e instanceof Error ? e.message : t("businessRegister.errors.registrationFailed"),
+      );
     }
   };
 
@@ -149,21 +148,20 @@ export default function BusinessRegisterPage() {
     <main className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-neutral-100 px-4 py-8 sm:px-6 lg:px-8">
       <Card className="w-full">
         <CardHeader>
-          <CardTitle>Register your business</CardTitle>
-          <CardDescription>
-            Create a tenant account. Password: at least 8 characters with uppercase, lowercase, a
-            number, and a symbol. Fields match the API requirements.
-          </CardDescription>
+          <CardTitle>{t("businessRegister.title")}</CardTitle>
+          <CardDescription>{t("businessRegister.description")}</CardDescription>
         </CardHeader>
         <CardContent>
           <form className="space-y-6" onSubmit={(e) => void handleSubmit(e)}>
             {message ? <Alert>{message}</Alert> : null}
 
             <section className="space-y-3">
-              <h2 className="text-sm font-semibold text-neutral-900">Business</h2>
+              <h2 className="text-sm font-semibold text-neutral-900">
+                {t("businessRegister.sections.business")}
+              </h2>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="br-trade">Trade name</Label>
+                  <Label htmlFor="br-trade">{t("businessRegister.labels.tradeName")}</Label>
                   <Input
                     id="br-trade"
                     value={tradeName}
@@ -172,7 +170,7 @@ export default function BusinessRegisterPage() {
                   />
                 </div>
                 <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="br-legal">Legal name</Label>
+                  <Label htmlFor="br-legal">{t("businessRegister.labels.legalName")}</Label>
                   <Input
                     id="br-legal"
                     value={legalName}
@@ -180,7 +178,7 @@ export default function BusinessRegisterPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="br-email">Email</Label>
+                  <Label htmlFor="br-email">{t("businessRegister.labels.email")}</Label>
                   <Input
                     id="br-email"
                     type="email"
@@ -190,7 +188,7 @@ export default function BusinessRegisterPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="br-phone">Phone number</Label>
+                  <Label htmlFor="br-phone">{t("businessRegister.labels.phoneNumber")}</Label>
                   <Input
                     id="br-phone"
                     type="tel"
@@ -200,7 +198,7 @@ export default function BusinessRegisterPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="br-tax">Tax number</Label>
+                  <Label htmlFor="br-tax">{t("businessRegister.labels.taxNumber")}</Label>
                   <Input
                     id="br-tax"
                     value={taxNumber}
@@ -208,7 +206,7 @@ export default function BusinessRegisterPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="br-contact">Contact person (optional)</Label>
+                  <Label htmlFor="br-contact">{t("businessRegister.labels.contactPerson")}</Label>
                   <Input
                     id="br-contact"
                     value={contactPerson}
@@ -216,7 +214,7 @@ export default function BusinessRegisterPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="br-sub">Subscription</Label>
+                  <Label htmlFor="br-sub">{t("businessRegister.labels.subscription")}</Label>
                   <select
                     id="br-sub"
                     className={selectClassName}
@@ -231,7 +229,7 @@ export default function BusinessRegisterPage() {
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="br-currency">Currency</Label>
+                  <Label htmlFor="br-currency">{t("businessRegister.labels.currency")}</Label>
                   <select
                     id="br-currency"
                     className={selectClassName}
@@ -249,10 +247,12 @@ export default function BusinessRegisterPage() {
             </section>
 
             <section className="space-y-3">
-              <h2 className="text-sm font-semibold text-neutral-900">Sign-in password</h2>
+              <h2 className="text-sm font-semibold text-neutral-900">
+                {t("businessRegister.sections.password")}
+              </h2>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="br-password">Password</Label>
+                  <Label htmlFor="br-password">{t("businessRegister.labels.password")}</Label>
                   <Input
                     id="br-password"
                     type="password"
@@ -262,7 +262,9 @@ export default function BusinessRegisterPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="br-confirm">Confirm password</Label>
+                  <Label htmlFor="br-confirm">
+                    {t("businessRegister.labels.confirmPassword")}
+                  </Label>
                   <Input
                     id="br-confirm"
                     type="password"
@@ -275,10 +277,12 @@ export default function BusinessRegisterPage() {
             </section>
 
             <section className="space-y-3">
-              <h2 className="text-sm font-semibold text-neutral-900">Address</h2>
+              <h2 className="text-sm font-semibold text-neutral-900">
+                {t("businessRegister.sections.address")}
+              </h2>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="br-country">Country</Label>
+                  <Label htmlFor="br-country">{t("businessRegister.labels.country")}</Label>
                   <Input
                     id="br-country"
                     autoComplete="country-name"
@@ -287,7 +291,7 @@ export default function BusinessRegisterPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="br-state">State / region</Label>
+                  <Label htmlFor="br-state">{t("businessRegister.labels.stateRegion")}</Label>
                   <Input
                     id="br-state"
                     autoComplete="address-level1"
@@ -296,7 +300,7 @@ export default function BusinessRegisterPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="br-city">City</Label>
+                  <Label htmlFor="br-city">{t("businessRegister.labels.city")}</Label>
                   <Input
                     id="br-city"
                     autoComplete="address-level2"
@@ -305,7 +309,7 @@ export default function BusinessRegisterPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="br-street">Street</Label>
+                  <Label htmlFor="br-street">{t("businessRegister.labels.street")}</Label>
                   <Input
                     id="br-street"
                     autoComplete="street-address"
@@ -314,7 +318,9 @@ export default function BusinessRegisterPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="br-building">Building number</Label>
+                  <Label htmlFor="br-building">
+                    {t("businessRegister.labels.buildingNumber")}
+                  </Label>
                   <Input
                     id="br-building"
                     value={buildingNumber}
@@ -322,7 +328,7 @@ export default function BusinessRegisterPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="br-post">Post code</Label>
+                  <Label htmlFor="br-post">{t("businessRegister.labels.postCode")}</Label>
                   <Input
                     id="br-post"
                     autoComplete="postal-code"
@@ -331,12 +337,14 @@ export default function BusinessRegisterPage() {
                   />
                 </div>
                 <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="br-region-extra">Region (optional)</Label>
+                  <Label htmlFor="br-region-extra">
+                    {t("businessRegister.labels.regionOptional")}
+                  </Label>
                   <Input
                     id="br-region-extra"
                     value={region}
                     onChange={(e) => setRegion(e.target.value)}
-                    placeholder="Optional address.region"
+                    placeholder={t("businessRegister.placeholders.regionOptional")}
                   />
                 </div>
               </div>
@@ -344,10 +352,12 @@ export default function BusinessRegisterPage() {
 
             <div className="flex flex-wrap gap-3">
               <Button type="submit" disabled={mutation.isPending}>
-                {mutation.isPending ? "Creating…" : "Create business"}
+                {mutation.isPending
+                  ? t("businessRegister.submitting")
+                  : t("businessRegister.submit")}
               </Button>
               <Button type="button" variant="outline" asChild>
-                <Link to="/business">Back to business home</Link>
+                <Link to="/business">{t("businessRegister.backLink")}</Link>
               </Button>
             </div>
           </form>

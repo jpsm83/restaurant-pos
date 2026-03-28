@@ -1,0 +1,17 @@
+{
+  "title": "¿Cómo quieres continuar?",
+  "description": "Navegación como cliente o herramientas de personal: se actualiza el modo de sesión de este navegador.",
+  "continueCustomer": "Continuar como cliente",
+  "continueEmployee": "Continuar como empleado",
+  "employeeHelp": {
+    "canEmployee": "Abre el espacio de trabajo del personal para tu negocio vinculado.",
+    "countdownSoon": "Tu ventana de turno abre pronto. Puedes iniciar sesión cinco minutos antes de que empiece.",
+    "blocked": "El modo empleado no está disponible ahora (horario o permisos)."
+  },
+  "countdown": {
+    "unlocksIn": "Se desbloquea en {{time}}"
+  },
+  "errors": {
+    "generic": "Algo salió mal"
+  }
+}

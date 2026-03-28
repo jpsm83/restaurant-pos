@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState, type FormEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { getPostLoginDestination, signup } from "@/auth";
 import { useAuth } from "@/auth/store/AuthContext";
 import { Alert } from "@/components/ui/alert";
@@ -13,12 +14,10 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  isValidPassword,
-  PASSWORD_POLICY_MESSAGE,
-} from "@packages/utils/passwordPolicy.ts";
+import { isValidPassword } from "@packages/utils/passwordPolicy.ts";
 
 export default function SignUpPage() {
+  const { t } = useTranslation("auth");
   const navigate = useNavigate();
   const { state, dispatch } = useAuth();
   const [email, setEmail] = useState("");
@@ -31,17 +30,17 @@ export default function SignUpPage() {
     event.preventDefault();
 
     if (!email.trim() || !password.trim() || !confirmPassword.trim()) {
-      setMessage("Email, password and confirm password are required.");
+      setMessage(t("signup.errors.allRequired"));
       return;
     }
 
     if (password !== confirmPassword) {
-      setMessage("Password and confirm password must match.");
+      setMessage(t("signup.errors.passwordMismatch"));
       return;
     }
 
     if (!isValidPassword(password)) {
-      setMessage(PASSWORD_POLICY_MESSAGE);
+      setMessage(t("signup.errors.passwordPolicy"));
       return;
     }
 
@@ -54,7 +53,9 @@ export default function SignUpPage() {
     });
 
     if (!result.ok || !result.data?.user) {
-      const errorMessage = result.ok ? "Sign up failed." : result.error;
+      const errorMessage = result.ok
+        ? t("signup.errors.signUpFailed")
+        : result.error;
       dispatch({ type: "AUTH_ERROR", payload: errorMessage });
       setMessage(errorMessage);
       return;
@@ -70,58 +71,57 @@ export default function SignUpPage() {
     <main className="flex min-h-0 flex-1 flex-col items-center justify-center bg-neutral-100 px-4 py-8 sm:px-6 lg:px-8">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Create account</CardTitle>
-          <CardDescription>
-            Create a customer account to access the app. Password: at least 8
-            characters with uppercase, lowercase, a number, and a symbol.
-          </CardDescription>
+          <CardTitle>{t("signup.title")}</CardTitle>
+          <CardDescription>{t("signup.description")}</CardDescription>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div className="space-y-2">
-              <Label htmlFor="signup-email">Email</Label>
+              <Label htmlFor="signup-email">{t("signup.emailLabel")}</Label>
               <Input
                 id="signup-email"
                 type="email"
                 autoComplete="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-                placeholder="you@example.com"
+                placeholder={t("signup.emailPlaceholder")}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="signup-password">Password</Label>
+              <Label htmlFor="signup-password">{t("signup.passwordLabel")}</Label>
               <Input
                 id="signup-password"
                 type="password"
                 autoComplete="new-password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                placeholder="Create a password"
+                placeholder={t("signup.passwordPlaceholder")}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="signup-confirm-password">Confirm password</Label>
+              <Label htmlFor="signup-confirm-password">
+                {t("signup.confirmPasswordLabel")}
+              </Label>
               <Input
                 id="signup-confirm-password"
                 type="password"
                 autoComplete="new-password"
                 value={confirmPassword}
                 onChange={(event) => setConfirmPassword(event.target.value)}
-                placeholder="Repeat your password"
+                placeholder={t("signup.confirmPasswordPlaceholder")}
               />
             </div>
 
             {message && <Alert>{message}</Alert>}
 
             <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? "Creating account..." : "Create account"}
+              {isSubmitting ? t("signup.submitting") : t("signup.submit")}
             </Button>
 
             <Button asChild variant="outline" className="w-full">
-              <Link to="/login">Back to sign in</Link>
+              <Link to="/login">{t("signup.backToSignIn")}</Link>
             </Button>
           </form>
         </CardContent>

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 import { TriangleAlert } from "lucide-react";
 import { getPostLoginDestination } from "@/auth/postLoginRedirect";
@@ -13,6 +14,7 @@ import {
 
 /** Client-side guard outcome: wrong account type for the route, or other forbidden UI (Phase 2.3). */
 export default function AccessDenied() {
+  const { t } = useTranslation("errors");
   const navigate = useNavigate();
   const { state } = useAuth();
 
@@ -33,23 +35,22 @@ export default function AccessDenied() {
             <div className="mb-4 flex justify-center">
               <TriangleAlert className="h-16 w-16 text-destructive" aria-hidden />
             </div>
-            <CardTitle className="text-2xl">Access denied</CardTitle>
+            <CardTitle className="text-2xl">{t("accessDenied.title")}</CardTitle>
             <CardDescription className="mt-2 text-base">
-              You do not have permission to view this page. If you are signed in with a business account,
-              use the business workspace; person accounts use the customer or staff areas.
+              {t("accessDenied.description")}
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-2">
             {canOpenWorkspace ? (
               <Button type="button" onClick={handleOpenWorkspace} className="w-full">
-                Open your workspace
+                {t("accessDenied.openWorkspace")}
               </Button>
             ) : null}
             <Button asChild variant="outline" className="w-full">
-              <Link to="/">Home</Link>
+              <Link to="/">{t("navigation.home")}</Link>
             </Button>
             <Button type="button" variant="outline" onClick={() => navigate(-1)} className="w-full">
-              Go back
+              {t("navigation.goBack")}
             </Button>
           </CardContent>
         </Card>

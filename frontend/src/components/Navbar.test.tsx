@@ -1,8 +1,10 @@
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
+import * as i18nModule from "@/i18n";
 import { SiteAudienceProvider } from "@/context/SiteAudienceContext";
+import { renderWithI18n } from "@/test/i18nTestUtils";
 import Navbar from "./Navbar";
 
 const mockDispatch = vi.fn();
@@ -21,7 +23,7 @@ vi.mock("@/auth/store/AuthContext", () => ({
 describe("Navbar", () => {
   it("renders red Business link on customer marketing home", async () => {
     const user = userEvent.setup();
-    render(
+    await renderWithI18n(
       <MemoryRouter initialEntries={["/"]}>
         <SiteAudienceProvider>
           <Routes>
@@ -48,7 +50,7 @@ describe("Navbar", () => {
 
   it("renders red User link on business marketing path", async () => {
     const user = userEvent.setup();
-    render(
+    await renderWithI18n(
       <MemoryRouter initialEntries={["/business"]}>
         <SiteAudienceProvider>
           <Routes>
@@ -73,8 +75,8 @@ describe("Navbar", () => {
   });
 
   // Phase 1.5.2 — Sign in preserves audience=business when path is /business.
-  it("links Sign in with audience query on business path", () => {
-    render(
+  it("links Sign in with audience query on business path", async () => {
+    await renderWithI18n(
       <MemoryRouter initialEntries={["/business"]}>
         <SiteAudienceProvider>
           <Routes>
@@ -96,8 +98,8 @@ describe("Navbar", () => {
     expect(signIn).toHaveAttribute("href", "/login?audience=business");
   });
 
-  it("links Sign up to business register when on business audience", () => {
-    render(
+  it("links Sign up to business register when on business audience", async () => {
+    await renderWithI18n(
       <MemoryRouter initialEntries={["/business"]}>
         <SiteAudienceProvider>
           <Routes>
@@ -119,5 +121,41 @@ describe("Navbar", () => {
       "href",
       "/business/register",
     );
+  });
+
+  // Phase 2.3 — language popover calls persisted change helper.
+  it("opens language popover and calls changeAppLanguage when a locale is chosen", async () => {
+    const user = userEvent.setup();
+    const spy = vi
+      .spyOn(i18nModule, "changeAppLanguage")
+      .mockResolvedValue(undefined);
+
+    await renderWithI18n(
+      <MemoryRouter initialEntries={["/"]}>
+        <SiteAudienceProvider>
+          <Routes>
+            <Route
+              path="/"
+              element={
+                <>
+                  <Navbar />
+                  <div>Page</div>
+                </>
+              }
+            />
+          </Routes>
+        </SiteAudienceProvider>
+      </MemoryRouter>,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: /change language/i }),
+    );
+    await user.click(
+      await screen.findByRole("button", { name: /^Español$/ }),
+    );
+
+    expect(spy).toHaveBeenCalledWith("es");
+    spy.mockRestore();
   });
 });

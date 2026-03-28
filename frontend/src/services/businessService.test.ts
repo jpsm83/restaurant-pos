@@ -1,3 +1,6 @@
+/**
+ * Unit tests for `businessService.ts` — mocks `./http` and `@/auth/api.setAccessToken`.
+ */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createBusiness } from "./businessService";
 

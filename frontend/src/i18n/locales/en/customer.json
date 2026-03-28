@@ -1,0 +1,17 @@
+{
+  "shell": {
+    "title": "Customer home",
+    "signedInLine": "Signed in as {{email}}.",
+    "emailFallback": "user"
+  },
+  "profile": {
+    "title": "Profile"
+  },
+  "favorites": {
+    "title": "Favorites"
+  },
+  "dashboard": {
+    "title": "Dashboard"
+  },
+  "notBuiltYet": "This page is not built yet."
+}

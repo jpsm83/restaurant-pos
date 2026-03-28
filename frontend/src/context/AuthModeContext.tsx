@@ -1,4 +1,24 @@
-/* Context + hook — same module (react-refresh exception). */
+/**
+ * **`src/context`** — see `context/index.ts` for folder map.
+ *
+ * ## `AuthModeContext` (this file)
+ * Bridges **`services/authMode.ts`** (TanStack Query + `http`) into a single **`useAuthMode()`** hook
+ * for the rest of the app. Exposes cookie-backed **`customer` | `employee`** mode, loading/error,
+ * **`setModeAndRefresh`**, and **`refreshMode`**.
+ *
+ * ## Wiring
+ * 1. **`AuthModeProvider`** is mounted in **`App.tsx`** inside **`BrowserRouter`** (needs **`useLocation`**).
+ * 2. **`useAuthModeQuery`** is **enabled** only when:
+ *    - session is authenticated **`type === "user"`**, and
+ *    - pathname matches **`/:userId/(customer|mode|employee)`** (`isUserShellPath`).
+ *    Else the query is off and `mode` is `undefined` (no spurious `/auth/mode` calls on marketing/tenant).
+ * 3. **`useSetAuthModeMutation`** runs **`POST /auth/set-mode`**; invalidation is handled in **`authMode.ts`**.
+ * 4. **Consumers:** **`RequireEmployeeAuthMode`** (`routes/AuthRouteGuards.tsx`) gates employee routes;
+ *    **`SelectUserModePage`** calls **`setModeAndRefresh`** then navigates. Public API also re-exported
+ *    from **`auth/index.ts`** as `import { useAuthMode } from "@/auth"`.
+ *
+ * Depends on: **`useAuth`** (`AuthContext`), **`useAuthModeQuery` / `useSetAuthModeMutation`** (`authMode.ts`).
+ */
 /* eslint-disable react-refresh/only-export-components */
 import {
   createContext,
@@ -27,7 +47,7 @@ type AuthModeContextValue = {
   isSettingMode: boolean;
   /** Refetch `GET /auth/mode` (no-op when query disabled). */
   refreshMode: () => Promise<unknown>;
-  /** `POST /auth/mode` then refresh cache via mutation `invalidateQueries`. */
+  /** `POST /api/v1/auth/set-mode`; mutation invalidates mode query (see `services/authMode.ts`). */
   setModeAndRefresh: (mode: AuthMode) => Promise<void>;
 };
 
@@ -40,10 +60,6 @@ function isUserShellPath(pathname: string): boolean {
   return /^\/[^/]+\/(customer|mode|employee)(\/|$)/.test(pathname);
 }
 
-/**
- * Fetches **`auth_mode`** only for **`type === "user"`** sessions on user-shell URLs (Phase 3.2.2).
- * Mount under **`BrowserRouter`** (uses **`useLocation`**).
- */
 export function AuthModeProvider({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
   const { state } = useAuth();

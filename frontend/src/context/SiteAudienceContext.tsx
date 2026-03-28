@@ -1,4 +1,23 @@
-/* Marketing URL audience — public routes only (see `PublicLayout`). */
+/**
+ * **`src/context`** — see `context/index.ts` for how this folder fits together.
+ *
+ * ## `SiteAudienceContext` (this file)
+ * **Marketing URL audience** (“customer” vs “business”) for **public** routes only. URL is the
+ * source of truth (no `localStorage`).
+ *
+ * ## Wiring
+ * - **`SiteAudienceProvider`** wraps **`PublicLayout`** (`layouts/PublicLayout.tsx`) so children
+ *   under `path="/"` (index, `/login`, `/business`, …) can call **`useSiteAudience()`**.
+ * - **`Navbar`** is shared on authenticated shells **without** this provider; it uses
+ *   **`useOptionalSiteAudience()`** and defaults to **`customer`** when the context is missing
+ *   (`Navbar.tsx`).
+ * - Do **not** wrap tenant (`/business/:id`) or user (`/:userId/...`) shells — the pathname rules
+ *   above would mis-classify paths like `/business/64a…` as `business` marketing.
+ *
+ * ## Rules (pathname → audience)
+ * - `/business` or `/business/*` → `business` (includes `/business/register`).
+ * - Otherwise → `customer`.
+ */
 /* eslint-disable react-refresh/only-export-components */
 import {
   createContext,
@@ -12,15 +31,6 @@ export type SiteAudience = "customer" | "business";
 
 const SiteAudienceContext = createContext<SiteAudience | undefined>(undefined);
 
-/**
- * Marketing audience (layer A) — **URL is the source of truth**; no `localStorage` (strategy §6.1).
- *
- * Rules:
- * - Path is exactly `/business` **or** starts with `/business/` → **`business`** (covers `/business/register`).
- * - Everything else under this provider → **`customer`** (`/`, `/login`, `/signup`, etc.).
- *
- * Use **only** under public (unauthenticated marketing/auth) routes — not under `/:userId/*` or `/business/:businessId` shells.
- */
 export function SiteAudienceProvider({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
 
@@ -44,4 +54,9 @@ export function useSiteAudience(): SiteAudience {
     throw new Error("useSiteAudience must be used within SiteAudienceProvider");
   }
   return value;
+}
+
+/** For shared chrome (`Navbar`) outside `PublicLayout`; marketing audience defaults to customer. */
+export function useOptionalSiteAudience(): SiteAudience | null {
+  return useContext(SiteAudienceContext) ?? null;
 }

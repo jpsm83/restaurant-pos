@@ -68,3 +68,5 @@ reservations has lots of logic for send email an notifications but many other fe
 - daily sales report have to be reviewed and tested once we got all the models tested and with data - DONE
 
 - must review the file app/api/v1/monthlyBusinessReport/toDo.md - DONE
+
+- add react hoo form and zod to the enterely frontend

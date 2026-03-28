@@ -1,3 +1,6 @@
+/**
+ * Smoke test: React Query runs under a local `QueryClient` (pattern only; app uses `queryClient.ts`).
+ */
 import { render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { describe, expect, it } from "vitest";

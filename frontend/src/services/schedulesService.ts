@@ -1,3 +1,15 @@
+/**
+ * **Schedules** API for employee shift windows (Phase 3.4 countdown / eligibility).
+ *
+ * ## Flow
+ * 1. **`fetchDailyEmployeeSchedule`** — `GET /api/v1/schedules/business/:businessId/daily?dayKey=…`
+ *    via shared `http`.
+ * 2. **`useNextShiftForEmployee`** — `useQuery` keyed by `queryKeys.schedules.employeeDay`; used by
+ *    **`SelectUserModePage`** when JWT disallows employee mode until shift; page invalidates this
+ *    query when countdown completes.
+ *
+ * Depends on: `./http`, `./queryKeys`, types from `@/lib/employeeModeSchedule`.
+ */
 import { useQuery } from "@tanstack/react-query";
 import { http } from "./http";
 import { queryKeys } from "./queryKeys";

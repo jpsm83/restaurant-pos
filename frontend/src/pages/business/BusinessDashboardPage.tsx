@@ -1,6 +1,5 @@
-import { useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/auth";
-import { BusinessTenantPageHeader } from "@/components/BusinessTenantPageHeader";
 import {
   Card,
   CardContent,
@@ -10,45 +9,36 @@ import {
 } from "@/components/ui/card";
 
 /**
- * Authenticated tenant home (`/business/:businessId`). Outer shell: `BusinessLayout`.
+ * Tenant dashboard stub (`/business/:businessId/dashboard`).
  */
 export default function BusinessDashboardPage() {
-  const { businessId } = useParams();
+  const { t } = useTranslation("business");
   const { state } = useAuth();
 
   const session = state.user;
   const email = session?.type === "business" ? session.email : undefined;
 
   return (
-    <>
-      {session?.type === "business" ? (
-        <BusinessTenantPageHeader
-          title="Business dashboard"
-          businessId={businessId}
-          session={session}
-        />
-      ) : null}
-      <main className="min-h-0 flex-1 p-6">
-        <Card className="mx-auto max-w-lg">
-          <CardHeader>
-            <CardTitle>Tenant workspace</CardTitle>
-            <CardDescription>
-              {email ? (
-                <>
-                  Signed in as <span className="font-medium text-neutral-800">{email}</span>
-                </>
-              ) : (
-                "Session details unavailable."
-              )}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-neutral-600">
-              Use the account menu (top right) for profile, favorites, dashboard, or to sign out.
-            </p>
-          </CardContent>
-        </Card>
-      </main>
-    </>
+    <main className="min-h-0 flex-1 p-6">
+      <h1 className="mb-4 text-xl font-semibold text-neutral-900">{t("dashboard.title")}</h1>
+      <Card className="mx-auto max-w-lg">
+        <CardHeader>
+          <CardTitle>{t("dashboard.tenantCardTitle")}</CardTitle>
+          <CardDescription>
+            {email ? (
+              <>
+                {t("dashboard.signedInPrefix")}{" "}
+                <span className="font-medium text-neutral-800">{email}</span>
+              </>
+            ) : (
+              t("dashboard.sessionUnavailable")
+            )}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-neutral-600">{t("dashboard.accountMenuHint")}</p>
+        </CardContent>
+      </Card>
+    </main>
   );
 }

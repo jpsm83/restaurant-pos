@@ -1,8 +1,9 @@
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import { AppRoutes } from "@/App";
+import { renderWithI18n } from "@/test/i18nTestUtils";
 
 vi.mock("@/auth/store/AuthContext", () => ({
   useAuth: () => ({
@@ -16,8 +17,8 @@ vi.mock("@/auth/store/AuthContext", () => ({
 }));
 
 describe("App public routing (Phase 1.5.1)", () => {
-  it("renders `/` with customer marketing heading", () => {
-    render(
+  it("renders `/` with customer marketing heading", async () => {
+    await renderWithI18n(
       <MemoryRouter initialEntries={["/"]}>
         <AppRoutes />
       </MemoryRouter>,
@@ -30,7 +31,7 @@ describe("App public routing (Phase 1.5.1)", () => {
 
   it("navigates to `/business` and shows business marketing heading", async () => {
     const user = userEvent.setup();
-    render(
+    await renderWithI18n(
       <MemoryRouter initialEntries={["/"]}>
         <AppRoutes />
       </MemoryRouter>,
@@ -47,7 +48,7 @@ describe("App public routing (Phase 1.5.1)", () => {
 
   it("toggle returns from `/business` to `/` with customer heading", async () => {
     const user = userEvent.setup();
-    render(
+    await renderWithI18n(
       <MemoryRouter initialEntries={["/business"]}>
         <AppRoutes />
       </MemoryRouter>,

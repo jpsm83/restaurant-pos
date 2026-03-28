@@ -1,3 +1,14 @@
+/**
+ * Business **registration** API — multipart `POST /api/v1/business`.
+ *
+ * ## Flow
+ * 1. **`createBusiness`** — posts `FormData` via shared `http` with Content-Type stripped so Axios
+ *    sets multipart boundary; on success calls **`setAccessToken`** from `auth/api` when the API
+ *    returns a token.
+ * 2. **`useCreateBusinessMutation`** — wraps `createBusiness` for **`BusinessRegisterPage`**.
+ *
+ * Depends on: `./http`, `@/auth/api` (token side effect only).
+ */
 import { useMutation } from "@tanstack/react-query";
 import axios, { AxiosHeaders, type AxiosRequestConfig } from "axios";
 import { setAccessToken } from "@/auth/api";

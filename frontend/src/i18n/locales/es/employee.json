@@ -1,0 +1,13 @@
+{
+  "home": {
+    "title": "Inicio del empleado",
+    "subline": "Usuario <mono>{{userId}}</mono> — La navegación del TPV llegará en fases posteriores."
+  },
+  "profile": {
+    "title": "Perfil"
+  },
+  "dashboard": {
+    "title": "Panel"
+  },
+  "notBuiltYet": "Esta página aún no está disponible."
+}

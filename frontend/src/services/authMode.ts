@@ -1,3 +1,16 @@
+/**
+ * Auth **workspace mode** API (`customer` vs `employee`) — HttpOnly cookie via backend.
+ *
+ * ## Flow
+ * 1. **`getAuthMode` / `useAuthModeQuery`** — `GET /api/v1/auth/mode` through shared `http`.
+ * 2. **`setAuthMode` / `useSetAuthModeMutation`** — `POST /api/v1/auth/set-mode`; on success
+ *    invalidates `queryKeys.auth.mode()`.
+ * 3. **`AuthModeContext`** (`context/AuthModeContext.tsx`) composes these hooks for the app shell;
+ *    **`RequireEmployeeAuthMode`** (`routes/AuthRouteGuards.tsx`) gates `/:userId/employee/*` on
+ *    the resolved mode.
+ *
+ * Depends on: `./http`, `./queryKeys`.
+ */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios, { type AxiosError } from "axios";
 import { http } from "./http";

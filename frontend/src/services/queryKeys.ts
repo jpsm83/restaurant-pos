@@ -1,5 +1,12 @@
 /**
  * Central query keys for TanStack Query — use in `useQuery` / `invalidateQueries` to avoid typos.
+ *
+ * ## Wiring
+ * - **`auth.me` / `auth.mode`:** `auth/api.ts` invalidates `me`; `authMode.ts` uses `auth.mode` for
+ *   `useAuthModeQuery` / `useSetAuthModeMutation` cache updates.
+ * - **`schedules.employeeDay`:** `schedulesService.useNextShiftForEmployee`; invalidated from
+ *   `SelectUserModePage` when countdown completes (refetch eligibility).
+ * - **`schedules.byBusiness`:** reserved for broader schedule UIs; keep keys stable when adding hooks.
  */
 export const queryKeys = {
   auth: {

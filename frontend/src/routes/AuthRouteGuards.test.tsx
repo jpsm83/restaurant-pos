@@ -1,6 +1,11 @@
-import { render, screen } from "@testing-library/react";
+/**
+ * Tests for `AuthRouteGuards.tsx` — guards in isolation with mocked `useAuth` / `useAuthMode`.
+ * For full route integration, see `App.routing.test.tsx` and page-level tests.
+ */
+import { screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { renderWithI18n } from "@/test/i18nTestUtils";
 import {
   ACCESS_DENIED_PATH,
   BusinessIdRouteGuard,
@@ -24,12 +29,12 @@ vi.mock("@/context/AuthModeContext", () => ({
 }));
 
 describe("Auth route guards", () => {
-  it("redirects unauthenticated users from protected route to /login", () => {
+  it("redirects unauthenticated users from protected route to /login", async () => {
     mockUseAuth.mockReturnValue({
       state: { status: "unauthenticated", user: null, error: null },
     });
 
-    render(
+    await renderWithI18n(
       <MemoryRouter initialEntries={["/"]}>
         <Routes>
           <Route
@@ -48,7 +53,7 @@ describe("Auth route guards", () => {
     expect(screen.getByText("Login page")).toBeInTheDocument();
   });
 
-  it("redirects authenticated users away from /login to canonical user shell", () => {
+  it("redirects authenticated users away from /login to canonical user shell", async () => {
     mockUseAuth.mockReturnValue({
       state: {
         status: "authenticated",
@@ -57,10 +62,10 @@ describe("Auth route guards", () => {
       },
     });
 
-    render(
+    await renderWithI18n(
       <MemoryRouter initialEntries={["/login"]}>
         <Routes>
-          <Route path="/u1/customer" element={<div>User customer shell</div>} />
+          <Route path="/u1/customer/home" element={<div>User customer shell</div>} />
           <Route
             path="/login"
             element={
@@ -76,7 +81,7 @@ describe("Auth route guards", () => {
     expect(screen.getByText("User customer shell")).toBeInTheDocument();
   });
 
-  it("sends business session to access-denied from RequireUserSession", () => {
+  it("sends business session to access-denied from RequireUserSession", async () => {
     mockUseAuth.mockReturnValue({
       state: {
         status: "authenticated",
@@ -89,7 +94,7 @@ describe("Auth route guards", () => {
       },
     });
 
-    render(
+    await renderWithI18n(
       <MemoryRouter initialEntries={["/only-user"]}>
         <Routes>
           <Route
@@ -111,7 +116,7 @@ describe("Auth route guards", () => {
     expect(screen.getByText("Access denied page")).toBeInTheDocument();
   });
 
-  it("sends user session to access-denied from RequireBusinessSession", () => {
+  it("sends user session to access-denied from RequireBusinessSession", async () => {
     mockUseAuth.mockReturnValue({
       state: {
         status: "authenticated",
@@ -124,7 +129,7 @@ describe("Auth route guards", () => {
       },
     });
 
-    render(
+    await renderWithI18n(
       <MemoryRouter initialEntries={["/only-business"]}>
         <Routes>
           <Route
@@ -146,7 +151,7 @@ describe("Auth route guards", () => {
     expect(screen.getByText("Access denied page")).toBeInTheDocument();
   });
 
-  it("UserIdRouteGuard redirects when :userId does not match session id", () => {
+  it("UserIdRouteGuard redirects when :userId does not match session id", async () => {
     mockUseAuth.mockReturnValue({
       state: {
         status: "authenticated",
@@ -159,11 +164,11 @@ describe("Auth route guards", () => {
       },
     });
 
-    render(
+    await renderWithI18n(
       <MemoryRouter initialEntries={["/wrong-user/customer"]}>
         <Routes>
           <Route
-            path="/u1/customer"
+            path="/u1/customer/home"
             element={<div>Canonical user shell</div>}
           />
           <Route
@@ -182,7 +187,7 @@ describe("Auth route guards", () => {
     expect(screen.queryByText("Protected customer")).not.toBeInTheDocument();
   });
 
-  it("BusinessIdRouteGuard redirects when :businessId does not match session id", () => {
+  it("BusinessIdRouteGuard redirects when :businessId does not match session id", async () => {
     mockUseAuth.mockReturnValue({
       state: {
         status: "authenticated",
@@ -195,11 +200,11 @@ describe("Auth route guards", () => {
       },
     });
 
-    render(
+    await renderWithI18n(
       <MemoryRouter initialEntries={["/business/wrong-tenant"]}>
         <Routes>
           <Route
-            path="/business/b1"
+            path="/business/b1/home"
             element={<div>Canonical business shell</div>}
           />
           <Route
@@ -230,14 +235,14 @@ describe("Auth route guards", () => {
       mockUseAuthMode.mockReset();
     });
 
-    it("redirects to /:userId/mode when auth_mode is customer", () => {
+    it("redirects to /:userId/mode when auth_mode is customer", async () => {
       mockUseAuthMode.mockReturnValue({
         mode: "customer",
         isLoading: false,
         isError: false,
       });
 
-      render(
+      await renderWithI18n(
         <MemoryRouter initialEntries={["/u1/employee"]}>
           <Routes>
             <Route path="/u1/mode" element={<div>Mode picker</div>} />
@@ -257,14 +262,14 @@ describe("Auth route guards", () => {
       expect(screen.queryByText("Employee shell")).not.toBeInTheDocument();
     });
 
-    it("redirects to /:userId/mode when mode fetch errors", () => {
+    it("redirects to /:userId/mode when mode fetch errors", async () => {
       mockUseAuthMode.mockReturnValue({
         mode: undefined,
         isLoading: false,
         isError: true,
       });
 
-      render(
+      await renderWithI18n(
         <MemoryRouter initialEntries={["/u1/employee"]}>
           <Routes>
             <Route path="/u1/mode" element={<div>Mode picker</div>} />
@@ -283,14 +288,14 @@ describe("Auth route guards", () => {
       expect(screen.getByText("Mode picker")).toBeInTheDocument();
     });
 
-    it("renders children when auth_mode is employee", () => {
+    it("renders children when auth_mode is employee", async () => {
       mockUseAuthMode.mockReturnValue({
         mode: "employee",
         isLoading: false,
         isError: false,
       });
 
-      render(
+      await renderWithI18n(
         <MemoryRouter initialEntries={["/u1/employee"]}>
           <Routes>
             <Route path="/u1/mode" element={<div>Mode picker</div>} />
@@ -310,14 +315,14 @@ describe("Auth route guards", () => {
       expect(screen.queryByText("Mode picker")).not.toBeInTheDocument();
     });
 
-    it("shows session loading while auth mode is loading", () => {
+    it("shows session loading while auth mode is loading", async () => {
       mockUseAuthMode.mockReturnValue({
         mode: undefined,
         isLoading: true,
         isError: false,
       });
 
-      render(
+      await renderWithI18n(
         <MemoryRouter initialEntries={["/u1/employee"]}>
           <Routes>
             <Route path="/u1/mode" element={<div>Mode picker</div>} />

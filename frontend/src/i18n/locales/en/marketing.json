@@ -1,0 +1,61 @@
+{
+  "listItemSeparator": " — ",
+  "customer": {
+    "public": {
+      "heroTitle": "Order and dine with confidence",
+      "heroDescription": "Project Imperium connects you to the restaurants you love: reservations, table-side ordering where venues enable it, and a single account for your activity and receipts.",
+      "logoAlt": "Imperium app logo",
+      "features": {
+        "reservations": {
+          "title": "Reservations",
+          "body": "Request a table; staff confirm and tie your visit into the venue's service flow."
+        },
+        "selfOrdering": {
+          "title": "Self-ordering",
+          "body": "At participating locations, scan the table QR to open a session, place orders, and pay when the business allows it—your session is tied to your login, with confirmations you can show staff."
+        },
+        "account": {
+          "title": "Your account",
+          "body": "Sign in once for customer mode: order history, account activity, and the same identity if you also work for a venue as staff (employee mode is gated separately)."
+        }
+      }
+    }
+  },
+  "business": {
+    "shell": {
+      "title": "Business home",
+      "tenantCardTitle": "Tenant workspace",
+      "signedInPrefix": "Signed in as",
+      "sessionUnavailable": "Session details unavailable.",
+      "accountMenuHint": "Use the account menu (top right) for profile, dashboard, or to sign out."
+    },
+    "public": {
+      "heroTitle": "One platform for service, stock, and numbers",
+      "heroDescription": "A full-stack, multi-tenant POS and operations hub for bars and restaurants: live service, menu and costing, purchasing, inventory, staff, reporting, and reservations—isolated per business.",
+      "features": {
+        "serviceSales": {
+          "title": "Service & sales",
+          "body": "Sales points and sessions, orders, promotions, payments, transfers, and printing—aligned with your floor workflow."
+        },
+        "menuInventory": {
+          "title": "Menu & inventory",
+          "body": "Business goods, recipes and allergens, stock that moves with sales, and monthly physical counts."
+        },
+        "purchasing": {
+          "title": "Purchasing",
+          "body": "Suppliers, receipts, line edits with audit trail, and waste and cost targets tied into reporting."
+        },
+        "peopleSchedules": {
+          "title": "People & schedules",
+          "body": "Employees, roles, shifts, and schedule-aware access for operational and manager actions."
+        },
+        "reporting": {
+          "title": "Reporting",
+          "body": "Daily sales by actor, weekly rollups, and monthly KPIs with targets—so you see performance as you run the house."
+        }
+      },
+      "registerCta": "Register your business",
+      "registerHint": "Creates your tenant account (same as the header <strong>Sign up</strong> link)."
+    }
+  }
+}

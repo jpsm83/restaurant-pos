@@ -1,10 +1,19 @@
 /**
- * Pure helpers mirroring **non-management** rules in `backend/src/auth/canLogAsEmployee.ts`:
- * employee login is allowed when `now ∈ [shiftStart − 5 min, shiftEnd]`; vacation entries are skipped.
+ * Pure **schedule math** for employee-mode eligibility UI (`src/lib` — no React, no network).
  *
- * **Management bypass** is applied only on the server (JWT `canLogAsEmployee === true`). The UI must
- * enable the employee CTA from the session flag and **not** show a schedule countdown in that case
- * (Phase 3.4.5).
+ * ## Domain rules (must stay aligned with backend)
+ * Mirrors **non-management** rules from `backend/src/auth/canLogAsEmployee.ts`: employee login is
+ * allowed when `now ∈ [shiftStart − 5 min, shiftEnd]`; vacation rows are ignored.
+ *
+ * **Management bypass** exists only on the server (JWT `canLogAsEmployee === true`). The UI enables
+ * the employee CTA from that flag and **skips** schedule countdown when bypass applies (Phase 3.4.5).
+ *
+ * ## Wiring
+ * 1. **`services/schedulesService.ts`** types API rows as `ScheduleShiftEntry` and fetches today’s data.
+ * 2. **`pages/SelectUserModePage.tsx`** calls `deriveEmployeeModeFromSchedule` + `formatDayKeyLocal`
+ *    with `Date.now()` / poll tick and schedule query results to drive countdown and copy.
+ * 3. Backend remains authoritative; this module only previews windows so users see “unlocks in …”
+ *    before the next `GET /auth/me` refresh grants `canLogAsEmployee`.
  */
 export const EMPLOYEE_LOGIN_EARLY_MS = 5 * 60 * 1000;
 

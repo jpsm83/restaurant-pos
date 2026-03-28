@@ -1,0 +1,14 @@
+{
+  "loading": {
+    "session": "Cargando sesión…",
+    "route": "Cargando…",
+    "checkingWorkspaceMode": "Comprobando modo del espacio de trabajo…"
+  },
+  "languageSwitcher": {
+    "ariaLabel": "Cambiar idioma"
+  },
+  "languages": {
+    "en": "English",
+    "es": "Español"
+  }
+}

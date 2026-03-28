@@ -1,0 +1,13 @@
+{
+  "dashboard": {
+    "title": "Business dashboard",
+    "tenantCardTitle": "Tenant workspace",
+    "signedInPrefix": "Signed in as",
+    "sessionUnavailable": "Session details unavailable.",
+    "accountMenuHint": "Use the account menu (top right) for profile, favorites, dashboard, or to sign out."
+  },
+  "profile": {
+    "title": "Business profile",
+    "notBuiltYet": "This page is not built yet."
+  }
+}

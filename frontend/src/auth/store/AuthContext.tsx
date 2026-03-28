@@ -1,3 +1,16 @@
+/**
+ * **React session store** for **`src/auth`** — `AuthProvider` + **`useAuth()`** (`state` + `dispatch`).
+ *
+ * ## Wiring
+ * - Mounted in **`main.tsx`** inside **`QueryClientProvider`** and **`ErrorBoundary`** (order documented there).
+ * - **Bootstrap (once on mount):** load persisted access token → `GET /me`; else `POST /refresh` then `GET /me`; set `auth_had_session` / expired notice flags as in code.
+ * - **Consumers:** route guards, `Navbar`, login/signup pages, `AccountMenuPopover`, `SelectUserModePage`, `AuthModeContext` (reads session to enable mode query), etc.
+ *
+ * ## Actions
+ * `AUTH_LOADING` | `AUTH_SUCCESS` | `AUTH_CLEAR` | `AUTH_ERROR` — pages call **`login`/`signup`** from **`api.ts`**, then dispatch success with the returned `user` payload.
+ *
+ * This is **JWT identity**, not **`auth_mode`** cookie — see **`AuthModeProvider`** (`@/auth` re-export from `context`).
+ */
 /* eslint-disable react-refresh/only-export-components */
 import {
   createContext,

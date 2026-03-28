@@ -1,0 +1,30 @@
+{
+  "mainNav": {
+    "ariaLabel": "Main navigation"
+  },
+  "brand": {
+    "title": "Project Imperium POS",
+    "logoAlt": "Project Imperium POS"
+  },
+  "audience": {
+    "switchToBusiness": "Switch to Business",
+    "switchToUser": "Switch to User"
+  },
+  "loading": "Loading...",
+  "auth": {
+    "signUp": "Sign up",
+    "signIn": "Sign in"
+  },
+  "account": {
+    "menuAriaLabel": "Account menu",
+    "dashboard": "Dashboard",
+    "profile": "Profile",
+    "favorites": "Favorites",
+    "employeeArea": "Employee area",
+    "customerHome": "Customer home",
+    "logOut": "Log out"
+  },
+  "footer": {
+    "srOnly": "Footer"
+  }
+}

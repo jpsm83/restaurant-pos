@@ -1,6 +1,7 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { renderWithI18n } from "@/test/i18nTestUtils";
 import LoginPage from "./LoginPage";
 
 const mockDispatch = vi.fn();
@@ -36,7 +37,7 @@ describe("LoginPage", () => {
   it("shows required validation when form is empty", async () => {
     const user = userEvent.setup();
 
-    render(
+    await renderWithI18n(
       <MemoryRouter>
         <LoginPage />
       </MemoryRouter>,
@@ -56,7 +57,7 @@ describe("LoginPage", () => {
       error: "Invalid credentials",
     });
 
-    render(
+    await renderWithI18n(
       <MemoryRouter>
         <LoginPage />
       </MemoryRouter>,
@@ -69,7 +70,7 @@ describe("LoginPage", () => {
     expect(screen.getByText("Invalid credentials")).toBeInTheDocument();
   });
 
-  it("navigates to /business/:id after business login", async () => {
+  it("navigates to /business/:id/home after business login", async () => {
     const user = userEvent.setup();
     mockLogin.mockResolvedValue({
       ok: true,
@@ -82,13 +83,13 @@ describe("LoginPage", () => {
       },
     });
 
-    render(
+    await renderWithI18n(
       <MemoryRouter initialEntries={["/login"]}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route
-            path="/business/:businessId"
-            element={<div>Business dashboard</div>}
+            path="/business/:businessId/home"
+            element={<div>Business tenant home</div>}
           />
         </Routes>
       </MemoryRouter>,
@@ -99,11 +100,11 @@ describe("LoginPage", () => {
     await user.click(screen.getByRole("button", { name: /sign in/i }));
 
     await waitFor(() => {
-      expect(screen.getByText("Business dashboard")).toBeInTheDocument();
+      expect(screen.getByText("Business tenant home")).toBeInTheDocument();
     });
   });
 
-  it("navigates to /:userId/customer after user login without employee", async () => {
+  it("navigates to /:userId/customer/home after user login without employee", async () => {
     const user = userEvent.setup();
     mockLogin.mockResolvedValue({
       ok: true,
@@ -116,12 +117,12 @@ describe("LoginPage", () => {
       },
     });
 
-    render(
+    await renderWithI18n(
       <MemoryRouter initialEntries={["/login"]}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route
-            path="/:userId/customer"
+            path="/:userId/customer/home"
             element={<div>User customer shell</div>}
           />
         </Routes>

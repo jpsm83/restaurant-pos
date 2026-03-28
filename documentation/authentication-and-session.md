@@ -23,7 +23,7 @@ API base path: **`/api/v1`**. Auth plugin prefix: **`/auth`** → full paths lik
 
 ### Frontend (web app) consumption
 
-The Vite/React client mirrors JWT **`type`** and **`id`** into path-based shells (**`/business/:businessId`**, **`/:userId/customer`**, **`/:userId/mode`**, **`/:userId/employee`**), route guards, and post-login redirects. Product-level URL rules and the ordered implementation checklist live in [**`FRONTEND_AUTHENTICATION_AND_NAVIGATION_STRATEGY.md`**](../FRONTEND_AUTHENTICATION_AND_NAVIGATION_STRATEGY.md) and [**`FRONTEND_AUTH_NAVIGATION_IMPLEMENTATION_PLAN.md`**](../FRONTEND_AUTH_NAVIGATION_IMPLEMENTATION_PLAN.md). Session payload shapes match **`backend/src/auth/types.ts`** (`AuthBusiness`, `AuthUser`, union `AuthSession`) — do not maintain a second field table in this doc.
+The Vite/React client mirrors JWT **`type`** and **`id`** into path-based shells (**`/business/:businessId`**, **`/:userId/customer`**, **`/:userId/mode`**, **`/:userId/employee`**), route guards, and post-login redirects. Product-level URL rules and the ordered implementation checklist live in [**`FRONTEND_AUTHENTICATION_AND_NAVIGATION_STRATEGY.md`**](../FRONTEND_AUTHENTICATION_AND_NAVIGATION_STRATEGY.md) and [**`FRONTEND_AUTH_NAVIGATION_IMPLEMENTATION_PLAN.md`**](../FRONTEND_AUTH_NAVIGATION_IMPLEMENTATION_PLAN.md). Session payload shapes match **`backend/src/auth/types.ts`** (`AuthBusiness`, `AuthUser`, union `AuthSession`) — do not maintain a second field table in this doc. **Login/sign-up/mode UI strings** are translated on the client (**English / Spanish**) via **i18next** (`auth`, `mode`, `nav`, …); see [`frontend-i18n.md`](./frontend-i18n.md).
 
 ---
 

@@ -1,0 +1,61 @@
+{
+  "listItemSeparator": " — ",
+  "customer": {
+    "public": {
+      "heroTitle": "Pide y come con tranquilidad",
+      "heroDescription": "Project Imperium te conecta con los restaurantes que te gustan: reservas, pedidos en mesa cuando el local lo permita, y una sola cuenta para tu actividad y tus tickets.",
+      "logoAlt": "Logotipo de la app Imperium",
+      "features": {
+        "reservations": {
+          "title": "Reservas",
+          "body": "Solicita mesa; el personal confirma y encaja tu visita en el flujo de servicio del local."
+        },
+        "selfOrdering": {
+          "title": "Autopedido",
+          "body": "En locales participantes, escanea el QR de la mesa para abrir una sesión, hacer pedidos y pagar cuando el negocio lo permita: la sesión va ligada a tu inicio de sesión, con confirmaciones que puedes mostrar al personal."
+        },
+        "account": {
+          "title": "Tu cuenta",
+          "body": "Inicia sesión una vez para el modo cliente: historial de pedidos, actividad de la cuenta, y la misma identidad si además trabajas en un local (el modo empleado se controla aparte)."
+        }
+      }
+    }
+  },
+  "business": {
+    "shell": {
+      "title": "Inicio de empresa",
+      "tenantCardTitle": "Espacio del inquilino",
+      "signedInPrefix": "Sesión iniciada como",
+      "sessionUnavailable": "No hay datos de sesión disponibles.",
+      "accountMenuHint": "Usa el menú de cuenta (arriba a la derecha) para el perfil, el panel o para cerrar sesión."
+    },
+    "public": {
+      "heroTitle": "Una plataforma para servicio, stock y cifras",
+      "heroDescription": "TPV y centro de operaciones multi-inquilino para bares y restaurantes: servicio en vivo, carta y costes, compras, inventario, personal, informes y reservas—aislado por negocio.",
+      "features": {
+        "serviceSales": {
+          "title": "Servicio y ventas",
+          "body": "Puntos de venta y sesiones, pedidos, promociones, pagos, traspasos e impresión—alineado con el trabajo en sala."
+        },
+        "menuInventory": {
+          "title": "Carta e inventario",
+          "body": "Artículos del negocio, recetas y alérgenos, stock que se mueve con las ventas, e inventarios físicos mensuales."
+        },
+        "purchasing": {
+          "title": "Compras",
+          "body": "Proveedores, recepciones, líneas editables con trazabilidad, y objetivos de merma y coste ligados a los informes."
+        },
+        "peopleSchedules": {
+          "title": "Personal y horarios",
+          "body": "Empleados, roles, turnos y acceso consciente del horario para acciones operativas y de gestión."
+        },
+        "reporting": {
+          "title": "Informes",
+          "body": "Ventas diarias por actor, agregados semanales e indicadores mensuales con objetivos—para ver el rendimiento mientras diriges el local."
+        }
+      },
+      "registerCta": "Registrar tu negocio",
+      "registerHint": "Crea la cuenta de inquilino (igual que el enlace <strong>Registrarse</strong> del encabezado)."
+    }
+  }
+}
