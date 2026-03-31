@@ -12,7 +12,7 @@ import marketing from "@/i18n/locales/en/marketing.json";
 import mode from "@/i18n/locales/en/mode.json";
 import nav from "@/i18n/locales/en/nav.json";
 
-/** Mirrors `frontend/src/i18n/index.ts` namespaces for tests that assert English UI copy. */
+/** Mirrors `frontend/src/i18n/i18n.ts` namespaces for tests that assert English UI copy. */
 export const TEST_I18N_NAMESPACES = [
   "common",
   "nav",
@@ -48,7 +48,7 @@ export function englishTestResources(): Record<
 }
 
 /**
- * Isolated i18n instance for tests (avoids mutating the app singleton from `@/i18n`).
+ * Isolated i18n instance for tests (avoids mutating the app singleton from `@/i18n/i18n`).
  * Use with `I18nextProvider` or `renderWithI18n`.
  */
 export async function createTestI18n(): Promise<i18n> {
@@ -75,7 +75,7 @@ export type RenderWithI18nOptions = Omit<RenderOptions, "wrapper"> & {
 
 /**
  * `render` with an `I18nextProvider` backed by `createTestI18n()`.
- * Prefer this over `import "@/i18n"` in tests so language and resources stay isolated from the singleton.
+ * Prefer this over `import "@/i18n/i18n"` in tests so language and resources stay isolated from the singleton.
  */
 export async function renderWithI18n(
   ui: ReactElement,

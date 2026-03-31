@@ -9,5 +9,92 @@
   "profile": {
     "title": "Business profile",
     "notBuiltYet": "This page is not built yet."
+  },
+  "advancedTable": {
+    "section": {
+      "title": "Advanced table integration target",
+      "description": "First production wiring will use this section as the integration boundary.",
+      "businessId": "Business ID",
+      "businessEmail": "Business Email",
+      "unavailable": "Unavailable"
+    },
+    "fields": {
+      "ticket": "Ticket",
+      "table": "Table",
+      "status": "Status",
+      "total": "Total"
+    },
+    "status": {
+      "open": "Open",
+      "inPrep": "In prep",
+      "paid": "Paid"
+    },
+    "states": {
+      "loading": "Loading table data...",
+      "error": "Failed to load table data.",
+      "retry": "Retry",
+      "emptyMessage": "No business records available.",
+      "emptySubMessage": "Try changing filters or check back later."
+    },
+    "filters": {
+      "all": "All",
+      "selectedCount": "{{count}} selected",
+      "selectAll": "Select all",
+      "typeToFilter": "Type to filter",
+      "pressEnterToFilter": "Press Enter to filter"
+    },
+    "pagination": {
+      "selectedCount": "{{selected}} of {{total}} selected",
+      "pageLabel": "Page {{page}} of {{totalPages}}",
+      "goFirstPage": "Go to first page",
+      "goPreviousPage": "Go to previous page",
+      "goNextPage": "Go to next page",
+      "goLastPage": "Go to last page",
+      "clearFilters": "Clear filters",
+      "openColumnMenu": "Open column visibility menu",
+      "columns": "Columns",
+      "resetOrderVisibility": "Reset order & visibility",
+      "exportAria": "Export filtered table data",
+      "exportingAria": "Exporting filtered table data",
+      "exportFiltered": "Export filtered",
+      "exporting": "Exporting...",
+      "exportSuccess": "Export completed successfully.",
+      "exportError": "Failed to export filtered data."
+    },
+    "config": {
+      "editEditor": "Edit table config",
+      "closeEditor": "Close config editor",
+      "saveDisabled": "Save is disabled when configuration is unavailable.",
+      "validationVisibleColumn": "At least one enabled and visible column is required."
+    },
+    "configEditor": {
+      "order": "Order",
+      "enable": "Enable",
+      "columnKey": "Column key",
+      "columnName": "Column name",
+      "visible": "Visible",
+      "cancel": "Cancel",
+      "save": "Save",
+      "saving": "Saving..."
+    },
+    "configManager": {
+      "noColumnsToSave": "No columns available to save."
+    },
+    "modal": {
+      "recordCounter": "Record {{index}} of {{total}}",
+      "previousRecord": "Previous record",
+      "nextRecord": "Next record",
+      "closeDetailsModal": "Close details modal",
+      "close": "Close",
+      "resizeHandle": "Resize modal"
+    },
+    "export": {
+      "defaultFileName": "table-export.xlsx",
+      "defaultSheetName": "Table"
+    },
+    "body": {
+      "emptyMessage": "No data found",
+      "emptySubMessage": "Try adjusting your filters"
+    }
   }
 }

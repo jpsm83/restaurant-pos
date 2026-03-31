@@ -1,3 +1,23 @@
+/**
+ * App i18next singleton — **single entry** for bootstrap and direct `i18n` access.
+ *
+ * **Load order:** `main.tsx` imports this module **before** `createRoot(...).render(...)` so
+ * `init()` runs once and `react-i18next` is registered before any `useTranslation` runs.
+ *
+ * **Exports:** default `i18n` instance (e.g. `ErrorBoundary` uses `i18n.t(...)` outside React),
+ * `changeAppLanguage` (used by `LanguageSwitcher`), `NAMESPACES` / `SUPPORTED_LANGUAGES`,
+ * `I18N_STORAGE_KEY`, and related types.
+ *
+ * **Initial language:** `readInitialLanguage()` — valid `localStorage[I18N_STORAGE_KEY]` wins,
+ * else first supported tag from `navigator.language` / `navigator.languages`, else `en`.
+ * **`languageChanged`** listener persists the chosen code back to `localStorage`.
+ *
+ * **Locale files:** co-located under `./locales/<lang>/<namespace>.json`, discovered via
+ * `import.meta.glob` (see `buildResources`).
+ *
+ * **Tests:** prefer `createTestI18n` / `renderWithI18n` from `@/test/i18nTestUtils` instead
+ * of importing this module, so assertions do not mutate the app singleton.
+ */
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 
@@ -26,15 +46,28 @@ function isSupportedLanguage(code: string): code is SupportedLanguage {
   return (SUPPORTED_LANGUAGES as readonly string[]).includes(code);
 }
 
-function readStoredLanguage(): SupportedLanguage {
-  if (typeof localStorage === "undefined") return "en";
-  try {
-    const raw = localStorage.getItem(I18N_STORAGE_KEY);
-    if (raw && isSupportedLanguage(raw)) return raw;
-  } catch {
-    /* private mode / blocked storage */
+/** First segment of BCP 47 tags (`es-MX` → `es`). */
+function readBrowserLanguage(): SupportedLanguage {
+  if (typeof navigator === "undefined") return "en";
+  const tags = [navigator.language, ...(navigator.languages ?? [])];
+  for (const tag of tags) {
+    const base = tag?.split("-")[0]?.toLowerCase();
+    if (base && isSupportedLanguage(base)) return base;
   }
   return "en";
+}
+
+/** Saved choice wins; otherwise browser (`navigator.languages` / `language`); else English. */
+function readInitialLanguage(): SupportedLanguage {
+  if (typeof localStorage !== "undefined") {
+    try {
+      const raw = localStorage.getItem(I18N_STORAGE_KEY);
+      if (raw && isSupportedLanguage(raw)) return raw;
+    } catch {
+      /* private mode / blocked storage */
+    }
+  }
+  return readBrowserLanguage();
 }
 
 function persistLanguage(lng: string): void {
@@ -86,7 +119,7 @@ function buildResources(): Record<
 i18n.on("languageChanged", persistLanguage);
 
 void i18n.use(initReactI18next).init({
-  lng: readStoredLanguage(),
+  lng: readInitialLanguage(),
   fallbackLng: "en",
   supportedLngs: [...SUPPORTED_LANGUAGES],
   resources: buildResources(),

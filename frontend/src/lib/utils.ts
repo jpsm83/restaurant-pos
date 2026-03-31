@@ -10,9 +10,9 @@
  * a few pages/components that need the same pattern (`AccountMenuPopover`, `BusinessRegisterPage`).
  * This is the standard helper for `className` composition in the app.
  */
-import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { clsx, type ClassValue } from "clsx"
+import { twMerge } from "tailwind-merge"
 
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
+  return twMerge(clsx(inputs))
 }

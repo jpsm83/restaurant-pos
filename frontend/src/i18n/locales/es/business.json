@@ -9,5 +9,92 @@
   "profile": {
     "title": "Perfil del negocio",
     "notBuiltYet": "Esta página aún no está disponible."
+  },
+  "advancedTable": {
+    "section": {
+      "title": "Objetivo de integración de tabla avanzada",
+      "description": "La primera integración en producción usará esta sección como límite de integración.",
+      "businessId": "ID del negocio",
+      "businessEmail": "Correo del negocio",
+      "unavailable": "No disponible"
+    },
+    "fields": {
+      "ticket": "Ticket",
+      "table": "Mesa",
+      "status": "Estado",
+      "total": "Total"
+    },
+    "status": {
+      "open": "Abierto",
+      "inPrep": "En preparación",
+      "paid": "Pagado"
+    },
+    "states": {
+      "loading": "Cargando datos de la tabla...",
+      "error": "No se pudieron cargar los datos de la tabla.",
+      "retry": "Reintentar",
+      "emptyMessage": "No hay registros del negocio disponibles.",
+      "emptySubMessage": "Prueba cambiando los filtros o vuelve más tarde."
+    },
+    "filters": {
+      "all": "Todos",
+      "selectedCount": "{{count}} seleccionados",
+      "selectAll": "Seleccionar todo",
+      "typeToFilter": "Escribe para filtrar",
+      "pressEnterToFilter": "Presiona Enter para filtrar"
+    },
+    "pagination": {
+      "selectedCount": "{{selected}} de {{total}} seleccionados",
+      "pageLabel": "Página {{page}} de {{totalPages}}",
+      "goFirstPage": "Ir a la primera página",
+      "goPreviousPage": "Ir a la página anterior",
+      "goNextPage": "Ir a la página siguiente",
+      "goLastPage": "Ir a la última página",
+      "clearFilters": "Limpiar filtros",
+      "openColumnMenu": "Abrir menú de visibilidad de columnas",
+      "columns": "Columnas",
+      "resetOrderVisibility": "Restablecer orden y visibilidad",
+      "exportAria": "Exportar datos filtrados de la tabla",
+      "exportingAria": "Exportando datos filtrados de la tabla",
+      "exportFiltered": "Exportar filtrado",
+      "exporting": "Exportando...",
+      "exportSuccess": "Exportación completada correctamente.",
+      "exportError": "No se pudieron exportar los datos filtrados."
+    },
+    "config": {
+      "editEditor": "Editar configuración de tabla",
+      "closeEditor": "Cerrar editor de configuración",
+      "saveDisabled": "Guardar está deshabilitado cuando la configuración no está disponible.",
+      "validationVisibleColumn": "Se requiere al menos una columna habilitada y visible."
+    },
+    "configEditor": {
+      "order": "Orden",
+      "enable": "Habilitar",
+      "columnKey": "Clave de columna",
+      "columnName": "Nombre de columna",
+      "visible": "Visible",
+      "cancel": "Cancelar",
+      "save": "Guardar",
+      "saving": "Guardando..."
+    },
+    "configManager": {
+      "noColumnsToSave": "No hay columnas disponibles para guardar."
+    },
+    "modal": {
+      "recordCounter": "Registro {{index}} de {{total}}",
+      "previousRecord": "Registro anterior",
+      "nextRecord": "Siguiente registro",
+      "closeDetailsModal": "Cerrar modal de detalles",
+      "close": "Cerrar",
+      "resizeHandle": "Redimensionar modal"
+    },
+    "export": {
+      "defaultFileName": "exportacion-tabla.xlsx",
+      "defaultSheetName": "Tabla"
+    },
+    "body": {
+      "emptyMessage": "No se encontraron datos",
+      "emptySubMessage": "Intenta ajustar tus filtros"
+    }
   }
 }

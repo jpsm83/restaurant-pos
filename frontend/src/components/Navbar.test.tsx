@@ -2,7 +2,7 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
-import * as i18nModule from "@/i18n";
+import * as i18nModule from "@/i18n/i18n";
 import { SiteAudienceProvider } from "@/context/SiteAudienceContext";
 import { renderWithI18n } from "@/test/i18nTestUtils";
 import Navbar from "./Navbar";

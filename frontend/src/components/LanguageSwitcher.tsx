@@ -1,33 +1,61 @@
-import { createElement, useState } from "react";
+import { useState } from "react";
+import { US, ES } from "country-flag-icons/react/3x2";
 import { useTranslation } from "react-i18next";
-import { changeAppLanguage } from "@/i18n";
-import {
-  getLanguageFlag,
-  SUPPORTED_LANGUAGES,
-  useLanguageOptions,
-} from "@/hooks/useLanguageOptions";
+import { changeAppLanguage } from "@/i18n/i18n";
+import { useLanguageOptions } from "@/hooks/useLanguageOptions";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
-const rowClass =
-  "flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-2 text-left text-sm text-neutral-700 outline-none hover:bg-neutral-100 focus-visible:bg-neutral-100";
+function isEs(code: string): boolean {
+  return (code.split("-")[0]?.toLowerCase() ?? "") === "es";
+}
 
-function currentLanguageCode(
-  i18nLanguage: string,
-): (typeof SUPPORTED_LANGUAGES)[number]["code"] {
-  const prefix = (i18nLanguage || "en").split("-")[0]?.toLowerCase() ?? "en";
-  const codes = SUPPORTED_LANGUAGES.map((l) => l.code) as readonly string[];
-  return codes.includes(prefix)
-    ? (prefix as (typeof SUPPORTED_LANGUAGES)[number]["code"])
-    : "en";
+function activeCode(i18nLanguage: string): "en" | "es" {
+  return isEs(i18nLanguage || "en") ? "es" : "en";
+}
+
+function LanguageFlagIcon({ code, className }: { code: string; className?: string }) {
+  return isEs(code) ? <ES className={className} /> : <US className={className} />;
+}
+
+/**
+ * Clips a 3×2 flag SVG to a circle. Inner track is 150% × 100% of the square (3:2) so the flag
+ * fills the circle; horizontal overflow is cropped equally.
+ */
+function CircularFlag({
+  code,
+  sizeClass,
+  withBorder = true,
+}: {
+  code: string;
+  sizeClass: string;
+  withBorder?: boolean;
+}) {
+  return (
+    <span
+      className={cn(
+        "relative inline-block shrink-0 overflow-hidden rounded-full",
+        withBorder && "border border-neutral-200 shadow-sm",
+        sizeClass,
+      )}
+      aria-hidden
+    >
+      <span className="pointer-events-none absolute left-1/2 top-0 h-full w-[150%] -translate-x-1/2">
+        <LanguageFlagIcon
+          code={code}
+          className="block h-full w-full object-cover object-center"
+        />
+      </span>
+    </span>
+  );
 }
 
 export function LanguageSwitcher() {
   const [open, setOpen] = useState(false);
+  // `i18n.language` follows init in `@/i18n/i18n` (storage, else `navigator`, else `en`).
   const { t, i18n } = useTranslation("common");
   const options = useLanguageOptions();
-  // `resolvedLanguage` follows fallback (often `en`); use `language` so the trigger flag matches the user’s pick.
-  const active = currentLanguageCode(i18n.language);
+  const active = activeCode(i18n.language);
 
   const select = (code: string) => {
     void changeAppLanguage(code).then(() => setOpen(false));
@@ -38,46 +66,29 @@ export function LanguageSwitcher() {
       <PopoverTrigger asChild>
         <button
           type="button"
-          className={cn(
-            "rounded-full outline-none",
-            "focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:ring-offset-2",
-          )}
+          className="flex items-center justify-center rounded-full focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:ring-offset-2 cursor-pointer shadow-sm hover:shadow-md"
           aria-label={t("languageSwitcher.ariaLabel")}
           aria-haspopup="dialog"
         >
-          <span
-            className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-neutral-200 bg-white shadow-sm"
-            aria-hidden
-          >
-            {createElement(getLanguageFlag(active), {
-              className: "h-full w-full object-cover",
-              title: "",
-            })}
-          </span>
+          <CircularFlag code={active} sizeClass="h-6 w-6" />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-[min(100vw-2rem,16rem)] p-1 sm:w-56">
-        <div className="flex flex-col gap-0.5">
+      <PopoverContent
+        align="end"
+      >
+        <div className="flex flex-col gap-1">
           {options.map((opt) => {
             const isActive = opt.value === active;
             return (
               <button
                 key={opt.value}
                 type="button"
-                className={rowClass}
+                className="flex cursor-pointer items-center gap-3 rounded-lg p-2 pr-6 text-sm text-neutral-700 outline-none hover:bg-neutral-100"
                 aria-current={isActive ? "true" : undefined}
                 onClick={() => select(opt.value)}
               >
-                <span
-                  className="relative h-6 w-9 shrink-0 overflow-hidden rounded-sm"
-                  aria-hidden
-                >
-                  {createElement(getLanguageFlag(opt.value), {
-                    className: "h-full w-full object-cover",
-                    title: "",
-                  })}
-                </span>
-                <span className="min-w-0 flex-1">{opt.label}</span>
+                <CircularFlag code={opt.value} sizeClass="h-6 w-6" />
+                <span>{opt.label}</span>
               </button>
             );
           })}

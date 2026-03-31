@@ -20,4 +20,8 @@ export const queryKeys = {
     employeeDay: (businessId: string, employeeId: string, dayKey: string) =>
       ["schedules", "employeeDay", businessId, employeeId, dayKey] as const,
   },
+  advancedTable: {
+    businessDashboard: (businessId: string, params: Record<string, unknown>) =>
+      ["advancedTable", "businessDashboard", businessId, params] as const,
+  },
 } as const;

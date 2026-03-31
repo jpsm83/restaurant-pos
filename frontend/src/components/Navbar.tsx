@@ -45,30 +45,30 @@ export default function Navbar() {
           </Link>
         </div>
 
-        <div className="flex items-center text-red-600 text-decoration-none gap-4 text-sm">
+        <div className="flex items-center  gap-4 text-sm">
           {!isLoading && !isAuthenticated && audience === "customer" ? (
-            <Link to="/business">{t("audience.switchToBusiness")}</Link>
+            <Link to="/business" className="text-red-500 text-decoration-none">{t("audience.switchToBusiness")}</Link>
           ) : null}
           {!isLoading && !isAuthenticated && audience === "business" ? (
-            <Link to="/">{t("audience.switchToUser")}</Link>
+            <Link to="/" className="text-red-500 text-decoration-none">{t("audience.switchToUser")}</Link>
           ) : null}
 
           <div className="flex items-center gap-3">
-            <LanguageSwitcher />
             {isLoading ? (
               <p className="text-sm text-neutral-600">{t("loading")}</p>
             ) : isAuthenticated && state.user ? (
               <AccountMenuPopover session={state.user} />
             ) : (
               <>
-                <Button asChild variant="outline" size="sm">
+                <Button variant="ghost" asChild>
                   <Link to={signUpHref}>{t("auth.signUp")}</Link>
                 </Button>
-                <Button asChild size="sm">
+                <Button variant="ghost" asChild>
                   <Link to={loginHref}>{t("auth.signIn")}</Link>
                 </Button>
               </>
             )}
+            <LanguageSwitcher />
           </div>
         </div>
       </div>

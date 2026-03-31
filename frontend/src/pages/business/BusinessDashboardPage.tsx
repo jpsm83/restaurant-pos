@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { useParams } from "react-router-dom";
 import { useAuth } from "@/auth";
 import {
   Card,
@@ -7,12 +8,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import BusinessAdvancedTableSection from "./BusinessAdvancedTableSection";
 
 /**
  * Tenant dashboard stub (`/business/:businessId/dashboard`).
  */
 export default function BusinessDashboardPage() {
   const { t } = useTranslation("business");
+  const { businessId } = useParams<{ businessId: string }>();
   const { state } = useAuth();
 
   const session = state.user;
@@ -39,6 +42,9 @@ export default function BusinessDashboardPage() {
           <p className="text-sm text-neutral-600">{t("dashboard.accountMenuHint")}</p>
         </CardContent>
       </Card>
+      <div className="mx-auto mt-6 w-full max-w-4xl">
+        <BusinessAdvancedTableSection businessId={businessId} businessEmail={email} />
+      </div>
     </main>
   );
 }

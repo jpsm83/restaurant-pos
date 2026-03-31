@@ -1,7 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { TriangleAlert } from "lucide-react";
-import i18n from "@/i18n";
+import i18n from "@/i18n/i18n";
 import { Button } from "@/components/ui/button";
 import {
   Card,
