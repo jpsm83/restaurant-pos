@@ -2,6 +2,10 @@ import { useEffect } from "react";
 import type { Column, Table } from "@tanstack/react-table";
 import { ChevronDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import type { FilterConfig } from "@/features/advancedTable/types/tableContracts";
 import type { DropdownFilterState } from "@/features/advancedTable/hooks/useTableFilters";
 
@@ -58,9 +62,9 @@ export const TableFilterRow = <TData,>({
   const renderInputFilter = (columnId: string, column: Column<TData, unknown>) => {
     const isRealtime = isRealtimeFilterColumn?.(columnId) ?? false;
     return (
-      <input
+      <Input
         aria-label={`Filter ${columnId}`}
-        className="h-8 w-full rounded border border-border bg-card px-2 text-sm"
+        className="h-8"
         value={getFilterValue?.(columnId) ?? ""}
         placeholder={
           isRealtime
@@ -95,12 +99,13 @@ export const TableFilterRow = <TData,>({
 
     return (
       <div className="relative" data-table-filter-dropdown="true">
-        <button
-          type="button"
+        <Button
           aria-label={`Filter ${columnId}`}
           aria-haspopup="listbox"
           aria-expanded={isOpen}
-          className="flex h-8 w-full items-center justify-between gap-2 rounded border border-border bg-card px-2 text-left text-sm"
+          variant="outline"
+          size="sm"
+          className="h-8 w-full justify-between px-2 text-left text-sm"
           title={getFilterDisplayText(selectedValues, options.length)}
           onClick={() => onDropdownOpenChange?.(columnId, !isOpen)}
         >
@@ -115,29 +120,28 @@ export const TableFilterRow = <TData,>({
                   })}
           </span>
           <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
-        </button>
+        </Button>
         {isOpen && (
           <div className="absolute z-20 mt-1 max-h-72 w-64 overflow-y-auto rounded border border-border bg-card p-2 shadow">
-            <label className="mb-1 flex items-center gap-2 border-b border-border py-1 text-sm">
-              <input
-                type="checkbox"
+            <Label className="mb-1 flex items-center gap-2 border-b border-border py-1 text-sm font-normal">
+              <Checkbox
                 checked={isAllSelected}
-                onChange={() => onDropdownSelectAllToggle?.(columnId)}
+                onCheckedChange={() => onDropdownSelectAllToggle?.(columnId)}
               />
               <span>{t("advancedTable.filters.selectAll", { defaultValue: "Select all" })}</span>
-            </label>
+            </Label>
             {options.map((option) => {
               const checked = selectedValues.includes(option.value);
               return (
-                <label key={option.value} className="flex items-center gap-2 text-sm py-1">
-                  <input
-                    type="checkbox"
+                <Label key={option.value} className="flex items-center gap-2 py-1 text-sm font-normal">
+                  <Checkbox
                     checked={checked}
-                    onChange={(event) => {
+                    onCheckedChange={(nextChecked) => {
+                      const checkedValue = nextChecked === true;
                       if (onDropdownToggleOption) {
-                        onDropdownToggleOption(columnId, option.value, event.target.checked);
+                        onDropdownToggleOption(columnId, option.value, checkedValue);
                       } else {
-                        const values = event.target.checked
+                        const values = checkedValue
                           ? [...selectedValues, option.value]
                           : selectedValues.filter((value) => value !== option.value);
                         column.setFilterValue(values.length > 0 ? values : undefined);
@@ -145,7 +149,7 @@ export const TableFilterRow = <TData,>({
                     }}
                   />
                   <span>{option.label}</span>
-                </label>
+                </Label>
               );
             })}
           </div>

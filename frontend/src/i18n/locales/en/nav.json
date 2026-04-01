@@ -17,6 +17,7 @@
   },
   "account": {
     "menuAriaLabel": "Account menu",
+    "home": "Home",
     "dashboard": "Dashboard",
     "profile": "Profile",
     "favorites": "Favorites",

@@ -14,7 +14,7 @@ function accountMenuPaths(session: AuthSession) {
   if (session.type === "business") {
     const base = canonicalBusinessDashboardPath(session);
     return {
-      dashboard: canonicalBusinessHomePath(session),
+      dashboard: `${base}/dashboard`,
       profile: `${base}/profile`,
       favorites: `${base}/favorites`,
     };
@@ -98,6 +98,11 @@ export function AccountMenuPopover({ session }: AccountMenuPopoverProps) {
       </PopoverTrigger>
       <PopoverContent align="end" className="p-1">
         <p className="truncate px-2 py-1.5 text-xs text-neutral-500">{session.email}</p>
+        {session.type === "business" ? (
+          <Link to={canonicalBusinessHomePath(session)} className={itemClass} onClick={close}>
+            {t("account.home")}
+          </Link>
+        ) : null}
         <Link to={paths.dashboard} className={itemClass} onClick={close}>
           {t("account.dashboard")}
         </Link>

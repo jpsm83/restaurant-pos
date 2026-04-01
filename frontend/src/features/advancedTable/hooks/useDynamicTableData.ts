@@ -52,6 +52,9 @@ export function useDynamicTableData<
     enabled,
     staleTime: staleTimeMs,
     refetchInterval: refetchIntervalMs,
+    // Keep previous rows while query key changes (e.g. typing filters),
+    // preventing table unmount/remount and input focus loss.
+    placeholderData: (previousData) => previousData,
   });
 
   return {

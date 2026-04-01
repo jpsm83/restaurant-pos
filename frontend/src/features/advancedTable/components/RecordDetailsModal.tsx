@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Button } from "@/components/ui/button";
 
 export type RecordDetailsModalPosition =
   | "center"
@@ -294,37 +295,43 @@ export const RecordDetailsModal: React.FC<RecordDetailsModalProps> = ({
           >
             <div className="text-sm text-foreground">{title}</div>
             <div className="flex items-center gap-2">
-              <button
+              <Button
                 type="button"
                 aria-label={t("advancedTable.modal.previousRecord", { defaultValue: "Previous record" })}
-                className="h-8 w-8 rounded border border-border bg-card disabled:opacity-50"
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
                 onClick={onPrevious}
                 disabled={!canGoPrevious}
                 title={t("advancedTable.modal.previousRecord", { defaultValue: "Previous record" })}
               >
                 ▲
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 aria-label={t("advancedTable.modal.nextRecord", { defaultValue: "Next record" })}
-                className="h-8 w-8 rounded border border-border bg-card disabled:opacity-50"
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
                 onClick={onNext}
                 disabled={!canGoNext}
                 title={t("advancedTable.modal.nextRecord", { defaultValue: "Next record" })}
               >
                 ▼
-              </button>
+              </Button>
               {headerActions}
-              <button
+              <Button
                 ref={closeButtonRef}
                 type="button"
                 aria-label={t("advancedTable.modal.closeDetailsModal", { defaultValue: "Close details modal" })}
-                className="h-8 w-8 rounded border border-border bg-card"
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
                 onClick={onClose}
                 title={t("advancedTable.modal.close", { defaultValue: "Close" })}
               >
                 ✕
-              </button>
+              </Button>
             </div>
           </div>
           <div className="flex-1 min-h-0 overflow-auto">{children}</div>

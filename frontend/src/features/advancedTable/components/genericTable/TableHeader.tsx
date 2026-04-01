@@ -1,5 +1,6 @@
 import { flexRender, type Header, type HeaderGroup, type Table } from "@tanstack/react-table";
 import { ArrowDown, ArrowUp, ArrowUpDown, GripVertical } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export interface StandaloneTableHeaderProps<TData> {
   table: Table<TData>;
@@ -72,9 +73,10 @@ export const TableHeader = <TData,>({
                     </span>
                   )}
                   {canSortColumn ? (
-                    <button
-                      type="button"
-                      className="flex flex-1 items-center justify-between gap-2 rounded px-1 py-0.5 text-left hover:bg-card"
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="flex h-auto flex-1 items-center justify-between gap-2 rounded px-1 py-0.5 text-left hover:bg-card"
                       aria-label={`Sort by ${columnId}`}
                       title="Sort rows by this column"
                       onClick={(event) => {
@@ -94,7 +96,7 @@ export const TableHeader = <TData,>({
                       ) : (
                         <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
                       )}
-                    </button>
+                    </Button>
                   ) : (
                     <span className="flex-1 select-none">
                       {header.isPlaceholder

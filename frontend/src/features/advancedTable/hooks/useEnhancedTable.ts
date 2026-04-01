@@ -178,7 +178,9 @@ export const useEnhancedTable = <TData = TableRowData>({
 
         const value = row.getValue(columnId);
         if (value == null) return false;
-        return String(value).toLowerCase().includes(String(filterValue).toLowerCase().trim());
+        return String(value)
+          .toLowerCase()
+          .includes(String(filterValue).toLowerCase().trim());
       }) as FilterFn<TData>,
     } as Record<string, FilterFn<TData>>,
     state: {

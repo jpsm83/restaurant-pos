@@ -3,6 +3,16 @@ import type { Column, Table } from "@tanstack/react-table";
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Download, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const PAGE_SIZES = [25, 50, 100, 150] as const;
 
@@ -80,24 +90,26 @@ export const TablePagination = <TData,>({
       </div>
 
       <div className="flex shrink-0 flex-wrap items-center justify-center gap-2">
-        <button
-          type="button"
+        <Button
           aria-label={t("advancedTable.pagination.goFirstPage", { defaultValue: "Go to first page" })}
-          className="flex h-8 w-8 items-center justify-center rounded border border-border bg-card"
+          variant="outline"
+          size="icon"
+          className="h-8 w-8"
           onClick={() => table.setPageIndex(0)}
           disabled={!table.getCanPreviousPage()}
         >
           <ChevronsLeft className="h-4 w-4" />
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
           aria-label={t("advancedTable.pagination.goPreviousPage", { defaultValue: "Go to previous page" })}
-          className="flex h-8 w-8 items-center justify-center rounded border border-border bg-card"
+          variant="outline"
+          size="icon"
+          className="h-8 w-8"
           onClick={() => table.previousPage()}
           disabled={!table.getCanPreviousPage()}
         >
           <ChevronLeft className="h-4 w-4" />
-        </button>
+        </Button>
         <span className="text-sm font-medium">
           {t("advancedTable.pagination.pageLabel", {
             defaultValue: getPageLabel(table.getState().pagination.pageIndex, table.getPageCount()),
@@ -105,88 +117,100 @@ export const TablePagination = <TData,>({
             totalPages: table.getPageCount(),
           })}
         </span>
-        <button
-          type="button"
+        <Button
           aria-label={t("advancedTable.pagination.goNextPage", { defaultValue: "Go to next page" })}
-          className="flex h-8 w-8 items-center justify-center rounded border border-border bg-card"
+          variant="outline"
+          size="icon"
+          className="h-8 w-8"
           onClick={() => table.nextPage()}
           disabled={!table.getCanNextPage()}
         >
           <ChevronRight className="h-4 w-4" />
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
           aria-label={t("advancedTable.pagination.goLastPage", { defaultValue: "Go to last page" })}
-          className="flex h-8 w-8 items-center justify-center rounded border border-border bg-card"
+          variant="outline"
+          size="icon"
+          className="h-8 w-8"
           onClick={() => table.setPageIndex(table.getPageCount() - 1)}
           disabled={!table.getCanNextPage()}
         >
           <ChevronsRight className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
 
       <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-        <select
-          className="h-8 rounded border border-border bg-card px-2 text-sm"
+        <Select
           value={String(table.getState().pagination.pageSize)}
-          onChange={(event) => table.setPageSize(Number(event.target.value))}
+          onValueChange={(value) => table.setPageSize(Number(value))}
         >
-          {PAGE_SIZES.map((size) => (
-            <option key={size} value={size}>
-              {size}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger className="h-8 w-[84px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {PAGE_SIZES.map((size) => (
+              <SelectItem key={size} value={String(size)}>
+                {size}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
         {onClearFilters && (
-          <button className="flex h-8 items-center gap-1 rounded border border-border bg-card px-3 text-sm" onClick={onClearFilters}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8"
+            onClick={onClearFilters}
+          >
             <X className="h-4 w-4" />
             {t("advancedTable.pagination.clearFilters", { defaultValue: "Clear filters" })}
-          </button>
+          </Button>
         )}
 
         <div ref={columnMenuRef} className="relative">
-          <button
-            type="button"
+          <Button
             aria-label={t("advancedTable.pagination.openColumnMenu", { defaultValue: "Open column visibility menu" })}
             aria-haspopup="menu"
             aria-expanded={showColumnMenu}
-            className="flex h-8 items-center gap-1 rounded border border-border bg-card px-3 text-sm"
+            variant="outline"
+            size="sm"
+            className="h-8"
             onClick={() => setShowColumnMenu((prev) => !prev)}
           >
             {t("advancedTable.pagination.columns", { defaultValue: "Columns" })} <ChevronDown className="h-4 w-4" />
-          </button>
+          </Button>
           {showColumnMenu && (
             <div className="absolute bottom-full right-0 z-20 mb-1 w-56 rounded border border-border bg-card p-2 shadow">
               {onResetColumns && (
-                <button className="mb-2 w-full text-left text-sm text-primary" onClick={onResetColumns}>
+                <Button variant="ghost" className="mb-2 w-full justify-start px-2" onClick={onResetColumns}>
                   {t("advancedTable.pagination.resetOrderVisibility", {
                     defaultValue: "Reset order & visibility",
                   })}
-                </button>
+                </Button>
               )}
               {hideableColumns.map((column) => (
-                <label key={column.id} className="flex items-center gap-2 text-sm py-1">
-                  <input
-                    type="checkbox"
+                <Label key={column.id} className="flex items-center gap-2 py-1 text-sm font-normal">
+                  <Checkbox
                     checked={column.getIsVisible()}
-                    onChange={(event) => column.toggleVisibility(event.target.checked)}
+                    onCheckedChange={(checked) => column.toggleVisibility(checked === true)}
                   />
                   <span>{(column.columnDef.meta as { label?: string } | undefined)?.label ?? column.id}</span>
-                </label>
+                </Label>
               ))}
             </div>
           )}
         </div>
 
-        <button
-          type="button"
+        <Button
           aria-label={
             isExporting
               ? t("advancedTable.pagination.exportingAria", { defaultValue: "Exporting filtered table data" })
               : t("advancedTable.pagination.exportAria", { defaultValue: "Export filtered table data" })
           }
-          className="flex h-8 items-center gap-1 rounded border border-border bg-card px-3 text-sm"
+          variant="outline"
+          size="sm"
+          className="h-8"
           onClick={handleExport}
           disabled={isExporting}
         >
@@ -194,7 +218,7 @@ export const TablePagination = <TData,>({
           {isExporting
             ? t("advancedTable.pagination.exporting", { defaultValue: "Exporting..." })
             : t("advancedTable.pagination.exportFiltered", { defaultValue: "Export filtered" })}
-        </button>
+        </Button>
       </div>
     </div>
   );

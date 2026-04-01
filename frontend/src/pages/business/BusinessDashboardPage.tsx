@@ -8,7 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import BusinessAdvancedTableSection from "./BusinessAdvancedTableSection";
+import BusinessAdvancedTableSection from "../../components/business/BusinessAdvancedTableSection";
 
 /**
  * Tenant dashboard stub (`/business/:businessId/dashboard`).

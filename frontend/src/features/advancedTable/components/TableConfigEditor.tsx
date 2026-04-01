@@ -1,5 +1,8 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 
 export interface TableConfigColumn {
   columnKey: string;
@@ -18,14 +21,18 @@ export interface TableConfigEditorProps {
   onCancel?: () => void;
 }
 
-export function reorderConfigColumns(
+function reorderConfigColumns(
   columns: TableConfigColumn[],
   draggedKey: string,
-  targetKey: string
+  targetKey: string,
 ): TableConfigColumn[] {
   if (!draggedKey || draggedKey === targetKey) return columns;
-  const sourceIndex = columns.findIndex((column) => column.columnKey === draggedKey);
-  const targetIndex = columns.findIndex((column) => column.columnKey === targetKey);
+  const sourceIndex = columns.findIndex(
+    (column) => column.columnKey === draggedKey,
+  );
+  const targetIndex = columns.findIndex(
+    (column) => column.columnKey === targetKey,
+  );
   if (sourceIndex < 0 || targetIndex < 0) return columns;
 
   const next = [...columns];
@@ -34,10 +41,10 @@ export function reorderConfigColumns(
   return next.map((column, index) => ({ ...column, order: index }));
 }
 
-export function applyEnableRule(
+function applyEnableRule(
   column: TableConfigColumn,
   enable: boolean,
-  showVisibilityControl: boolean
+  showVisibilityControl: boolean,
 ): TableConfigColumn {
   if (!showVisibilityControl) {
     return {
@@ -49,13 +56,13 @@ export function applyEnableRule(
   return {
     ...column,
     enable,
-    visible: enable ? column.visible ?? true : false,
+    visible: enable ? (column.visible ?? true) : false,
   };
 }
 
-export function applyVisibilityRule(
+function applyVisibilityRule(
   column: TableConfigColumn,
-  visible: boolean
+  visible: boolean,
 ): TableConfigColumn {
   if (!column.enable) return { ...column, visible: false };
   return { ...column, visible };
@@ -71,7 +78,7 @@ export const TableConfigEditor: React.FC<TableConfigEditorProps> = ({
 }) => {
   const { t } = useTranslation("business");
   const [localColumns, setLocalColumns] = useState<TableConfigColumn[]>(() =>
-    [...columns].sort((a, b) => a.order - b.order)
+    [...columns].sort((a, b) => a.order - b.order),
   );
   const [draggedKey, setDraggedKey] = useState<string | null>(null);
 
@@ -79,12 +86,14 @@ export const TableConfigEditor: React.FC<TableConfigEditorProps> = ({
 
   const orderedColumns = useMemo(
     () => [...localColumns].sort((a, b) => a.order - b.order),
-    [localColumns]
+    [localColumns],
   );
 
   const handleDrop = (targetKey: string) => {
     if (!draggedKey) return;
-    setLocalColumns((prev) => reorderConfigColumns(prev, draggedKey, targetKey));
+    setLocalColumns((prev) =>
+      reorderConfigColumns(prev, draggedKey, targetKey),
+    );
     setDraggedKey(null);
   };
 
@@ -95,20 +104,30 @@ export const TableConfigEditor: React.FC<TableConfigEditorProps> = ({
           <thead className="sticky top-0 bg-gray-50">
             <tr>
               <th className="p-2 text-left">
-                {t("advancedTable.configEditor.order", { defaultValue: "Order" })}
+                {t("advancedTable.configEditor.order", {
+                  defaultValue: "Order",
+                })}
               </th>
               <th className="p-2 text-left">
-                {t("advancedTable.configEditor.enable", { defaultValue: "Enable" })}
+                {t("advancedTable.configEditor.enable", {
+                  defaultValue: "Enable",
+                })}
               </th>
               <th className="p-2 text-left">
-                {t("advancedTable.configEditor.columnKey", { defaultValue: "Column key" })}
+                {t("advancedTable.configEditor.columnKey", {
+                  defaultValue: "Column key",
+                })}
               </th>
               <th className="p-2 text-left">
-                {t("advancedTable.configEditor.columnName", { defaultValue: "Column name" })}
+                {t("advancedTable.configEditor.columnName", {
+                  defaultValue: "Column name",
+                })}
               </th>
               {showVisibilityControl && (
                 <th className="p-2 text-left">
-                  {t("advancedTable.configEditor.visible", { defaultValue: "Visible" })}
+                  {t("advancedTable.configEditor.visible", {
+                    defaultValue: "Visible",
+                  })}
                 </th>
               )}
             </tr>
@@ -123,40 +142,45 @@ export const TableConfigEditor: React.FC<TableConfigEditorProps> = ({
               >
                 <td className="p-2">
                   <div className="flex items-center gap-2">
-                    <button
+                    <Button
                       type="button"
-                      className="h-7 w-7 border rounded"
+                      variant="outline"
+                      size="icon"
+                      className="h-7 w-7"
                       draggable
                       onDragStart={() => setDraggedKey(column.columnKey)}
                       onDragEnd={() => setDraggedKey(null)}
                       disabled={isDisabled}
                     >
                       ☰
-                    </button>
+                    </Button>
                     <span>{index + 1}</span>
                   </div>
                 </td>
                 <td className="p-2">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={column.enable}
                     disabled={isDisabled}
-                    onChange={(event) => {
-                      const enable = event.target.checked;
+                    onCheckedChange={(checked) => {
+                      const enable = checked === true;
                       setLocalColumns((prev) =>
                         prev.map((item) =>
                           item.columnKey === column.columnKey
-                            ? applyEnableRule(item, enable, showVisibilityControl)
-                            : item
-                        )
+                            ? applyEnableRule(
+                                item,
+                                enable,
+                                showVisibilityControl,
+                              )
+                            : item,
+                        ),
                       );
                     }}
                   />
                 </td>
                 <td className="p-2 font-mono text-xs">{column.columnKey}</td>
                 <td className="p-2">
-                  <input
-                    className="h-8 border rounded px-2 w-full"
+                  <Input
+                    className="h-8 w-full"
                     value={column.columnName}
                     disabled={isDisabled}
                     onChange={(event) => {
@@ -165,26 +189,25 @@ export const TableConfigEditor: React.FC<TableConfigEditorProps> = ({
                         prev.map((item) =>
                           item.columnKey === column.columnKey
                             ? { ...item, columnName: nextName }
-                            : item
-                        )
+                            : item,
+                        ),
                       );
                     }}
                   />
                 </td>
                 {showVisibilityControl && (
                   <td className="p-2">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={column.visible ?? column.enable}
                       disabled={isDisabled || !column.enable}
-                      onChange={(event) => {
-                        const visible = event.target.checked;
+                      onCheckedChange={(checked) => {
+                        const visible = checked === true;
                         setLocalColumns((prev) =>
                           prev.map((item) =>
                             item.columnKey === column.columnKey
                               ? applyVisibilityRule(item, visible)
-                              : item
-                          )
+                              : item,
+                          ),
                         );
                       }}
                     />
@@ -197,24 +220,28 @@ export const TableConfigEditor: React.FC<TableConfigEditorProps> = ({
       </div>
 
       <div className="flex justify-end gap-2">
-        <button
+        <Button
           type="button"
-          className="h-9 border rounded px-3"
+          variant="outline"
+          className="h-9"
           disabled={isDisabled}
           onClick={onCancel}
         >
           {t("advancedTable.configEditor.cancel", { defaultValue: "Cancel" })}
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
-          className="h-9 border rounded px-3"
+          variant="outline"
+          className="h-9"
           disabled={isDisabled || orderedColumns.length === 0}
           onClick={() => onSave?.(orderedColumns)}
         >
           {isSaving
-            ? t("advancedTable.configEditor.saving", { defaultValue: "Saving..." })
+            ? t("advancedTable.configEditor.saving", {
+                defaultValue: "Saving...",
+              })
             : t("advancedTable.configEditor.save", { defaultValue: "Save" })}
-        </button>
+        </Button>
       </div>
     </div>
   );
