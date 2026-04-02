@@ -29,7 +29,7 @@ import { useTranslation } from "react-i18next";
 import { Navigate, useParams } from "react-router-dom";
 import { getPostLoginDestination } from "@/auth/postLoginRedirect";
 import { useAuth } from "@/auth/store/AuthContext";
-import { useAuthMode } from "@/auth";
+import { useAuthMode } from "@/context/AuthModeContext";
 import { AppPendingShell } from "@/components/AppPendingShell";
 import {
   canonicalBusinessDashboardRoutePath,

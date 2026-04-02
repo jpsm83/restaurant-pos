@@ -97,14 +97,14 @@ This split is **intentional** during migration: new server I/O is supposed to go
 | `/login`, `/signup` | `PublicLayout` + **`PublicOnlyRoute`** | Auth forms; bounce authenticated users to **`getPostLoginDestination`**. |
 | `/business/register` | `PublicLayout` + **`PublicOnlyRoute`** | Tenant signup (multipart API). |
 | `/access-denied` | None of the partition guards | Wrong session **type** for a route. Registered **before** `/:userId/*`. |
-| `/business/:businessId` | **`ProtectedRoute`** → **`RequireBusinessSession`** → **`BusinessIdRouteGuard`** → **`BusinessLayout`** | Tenant dashboard shell. |
+| `/business/:businessId` | **`ProtectedRoute`** → **`RequireBusinessSession`** → **`BusinessIdRouteGuard`** → **`BusinessLayout`** | Tenant shell; index redirects to **`dashboard`**. Nested routes include **`settings/profile`** (business profile editor, lazy **`BusinessProfileSettingsPage`**), **`settings/delivery`**, **`settings/metrics`**, **`settings/open-hours`**, and account-menu-only stubs (**`settings/subscriptions`**, **`settings/address`**, **`settings/credentials`**). Canonical URLs for navigation live in **`canonicalPaths.ts`** (e.g. **`canonicalBusinessProfilePath`** → **`…/settings/profile`**). |
 | `/:userId/mode` | **`ProtectedRoute`** → **`RequireUserSession`** → **`UserIdRouteGuard`** | Staff chooses customer vs employee (`set-mode` + navigate). |
 | `/:userId/customer` | Same stack + **`CustomerLayout`** + index redirect → `dashboard` | Person “customer” app shell. |
 | `/:userId/employee` | Same stack + **`RequireEmployeeAuthMode`** + **`EmployeeLayout`** + index redirect → `dashboard` | Staff workspace; requires **`auth_mode=employee`**. |
 | `/app` | **`ProtectedRoute`** + **`LegacyAppRedirect`** | Redirects to canonical business or user customer path. |
 | `*` | **`CatchAllRedirect`** | Anonymous → `/`; authenticated → **`getPostLoginDestination`**. |
 
-**Lazy-loaded pages** (`App.tsx` / `AppRoutes`: ErrorBoundary + Suspense + `AppPendingShell` `route`): login, signup, business register, business dashboard, mode selection, customer dashboard, employee dashboard.
+**Lazy-loaded pages** (`App.tsx` / `AppRoutes`: ErrorBoundary + Suspense + `AppPendingShell` `route`): login, signup, business register, business dashboard, business profile settings (**`settings/profile`**), other business settings stubs, mode selection, customer dashboard, employee dashboard.
 
 ---
 
@@ -133,7 +133,7 @@ Dynamic segments **`/:userId/...`** could swallow words like `login` if they wer
 - **When session is loading or unauthenticated:** show **Customer | Business** links (`NavLink` to `/` and `/business`).
 - **Sign in** → `/login?audience=customer` or `?audience=business` from current audience.
 - **Sign up** → `/signup?audience=customer` for customer audience, or **`/business/register`** for business audience.
-- **When authenticated:** toggle is **hidden**; navbar shows the account menu (actor type, email, language, profile, logout).
+- **When authenticated:** toggle is **hidden**; navbar shows **`AccountMenuPopover`** (actor type, email, language switcher, profile + business settings links, log out). Business tenants see **Profile**, **Address**, **Subscriptions**, and **Credentials** with leading icons; paths come from **`canonicalPaths.ts`**.
 
 ### 6.3 Auth forms (validation and UI)
 
@@ -238,26 +238,31 @@ All guards are **UX and consistency**; **security remains on the API**.
 ### 11.1 Customer branch: `CustomerLayout`
 
 - Route **`/:userId/customer`** uses **`UserCustomerShell`** (guards + **`CustomerLayout`**).
-- Sidebar links: favorites, profile, dashboard, and optional employee area switch.
-- Account actions (language/profile/logout) live in the global navbar account menu.
+- Sidebar links: favorites, profile, dashboard, and optional employee area switch. Sidebar labels use the **`nav`** namespace (**`settings.profile`**, **`account.dashboard`**, etc.); see [`frontend-i18n.md`](./frontend-i18n.md).
+- **`ActorSidebar`** (shadcn **`Sidebar`**, `collapsible="icon"`): the header **`SidebarTrigger`** toggles expand/collapse. While **collapsed**, clicking **any** nav **`Link`**, settings row, or settings sub-link calls **`setOpen(true)`** (desktop) or **`setOpenMobile(true)`** (mobile) so the rail expands; only the **top trigger** collapses the shell again (same pattern for **`EmployeeLayout`** / **`BusinessLayout`**).
+- Account actions (language, profile, log out) live in **`AccountMenuPopover`** in the global navbar.
 - Index child redirects to **`dashboard`** (dashboard is actor “home”).
 
 ### 11.2 Employee branch: `EmployeeLayout` + `EmployeeDashboardPage`
 
 - **`UserEmployeeShell`** (guards + **`EmployeeLayout`**) redirects index → **`dashboard`**.
-- Dashboard is the employee landing page (future POS navigation grows from there).
+- Dashboard is the employee landing page (future POS navigation grows from there). Sidebar uses **`ActorSidebar`** with the same expand-on-any-nav-item behavior as the customer shell.
 - Future POS navigation: prefer a **small static list** of routes/labels (colocated with the employee shell or under `navigation/`) instead of a dynamic module registry.
 
 ### 11.3 Business shell: `BusinessLayout`
 
-- **`/business/:businessId`** provides business sidebar navigation (dashboard/profile).
-- Account actions (language/profile/logout) live in the global navbar account menu.
+- **`/business/:businessId`** provides business **`ActorSidebar`**: primary item **Dashboard**; a collapsible **Settings** group (**`settings.title`**) for **Delivery**, **Metrics**, and **Open hours** (routes under **`settings/delivery`**, **`settings/metrics`**, **`settings/open-hours`**). Labels use **`nav`** keys **`settings.delivery`**, **`settings.metrics`**, **`settings.openHours`**.
+- The full **business profile** editor is **not** in the sidebar; it lives at **`/business/:businessId/settings/profile`** and is linked from **`AccountMenuPopover`** (**Profile**) together with **Address**, **Subscriptions**, and **Credentials** stubs.
+- Sidebar starts collapsed by default (`SidebarProvider` uses `defaultOpen={false}` in `main.tsx`). Expand-on-any-sidebar-icon behavior matches §11.1.
+- Account menu: **`AccountMenuPopover`** — **`LanguageSwitcher`**, **`settings.profile`**, business-only settings shortcuts (with Lucide icons: user, map pin, card, key), **`account.logOut`**.
+- **`BusinessProfileSettingsPage`** (**`/business/:businessId/settings/profile`**) ships the full profile editor wired to `useBusinessProfileQuery` / `useUpdateBusinessProfileMutation` with explicit loading/error/retry states, route-id-aware `react-hook-form` hydration, and sectioned layout (subscription, logo upload, core info, address, discovery/delivery, metrics, opening windows, expandable credentials). A successful save triggers backend **`BUSINESS_PROFILE_UPDATED`**: management staff get persisted **in-app** notifications and **email** (when enabled), independent of the tenant UI toast; the client sends **`X-Idempotency-Key`** / **`X-Correlation-Id`** on PATCH (via `businessService`) so backend dispatch logs align with one logical save.
 
 ---
 
 ## 12. Tenant registration (business)
 
 - **`BusinessRegisterPage`** builds **`FormData`** for **`POST /api/v1/business`** via **`createBusiness`** in **`businessService.ts`**.
+- `businessService.ts` exposes tenant profile I/O (`getBusinessById`, `updateBusinessProfile`) with typed errors, operation ids on save, and headers that correlate with backend `BUSINESS_PROFILE_UPDATED` dispatch after PATCH.
 - Axios must **not** force `Content-Type` for multipart (transform strips it so the browser sets boundary).
 - On success: **`setAccessToken`**, **`dispatch(AUTH_SUCCESS, user)`**, **`navigate(getPostLoginDestination(user))`** → **`/business/:id/dashboard`**.
 
@@ -340,8 +345,10 @@ Toggle only switches **marketing** URLs; it does not log anyone in.
 | First URL after auth | `frontend/src/auth/postLoginRedirect.ts` |
 | Guards | `frontend/src/routes/AuthRouteGuards.tsx` |
 | Param matching | `frontend/src/routes/canonicalPaths.ts` |
-| Auth mode query + actions | `frontend/src/context/AuthModeContext.tsx` (re-exported from `auth/index.ts`), `frontend/src/services/authMode.ts` |
+| Auth mode query + actions | `frontend/src/context/AuthModeContext.tsx`, `frontend/src/services/authMode.ts` |
 | Public chrome | `frontend/src/layouts/PublicLayout.tsx`, `frontend/src/components/Navbar.tsx` |
+| Account menu + canonical tenant/user profile links | `frontend/src/components/AccountMenuPopover.tsx`, `frontend/src/routes/canonicalPaths.ts` |
+| Collapsible actor sidebar (dashboard + settings) | `frontend/src/components/ActorSidebar.tsx` |
 | Mode + countdown UI | `frontend/src/pages/SelectUserModePage.tsx` |
 | Schedule API + query | `frontend/src/services/schedulesService.ts` |
 | Schedule math | `frontend/src/lib/employeeModeSchedule.ts` |
@@ -351,7 +358,6 @@ Toggle only switches **marketing** URLs; it does not log anyone in.
 | Auth form examples (RHF + Zod colocated) | `LoginPage.tsx`, `SignUpPage.tsx`, `BusinessRegisterPage.tsx` |
 | Shared field error line | `frontend/src/components/FieldError.tsx` |
 | App bootstrap | `frontend/src/main.tsx` |
-| Account menu deep links | `frontend/src/navigation/accountPaths.ts` |
 
 ---
 
@@ -363,3 +369,5 @@ Toggle only switches **marketing** URLs; it does not log anyone in.
 - Strategy and phased delivery: [`FRONTEND_AUTHENTICATION_AND_NAVIGATION_STRATEGY.md`](../FRONTEND_AUTHENTICATION_AND_NAVIGATION_STRATEGY.md), [`FRONTEND_AUTH_NAVIGATION_IMPLEMENTATION_PLAN.md`](../FRONTEND_AUTH_NAVIGATION_IMPLEMENTATION_PLAN.md).
 
 When you change routes, guards, or auth flows, update **this file** and the **user-flow** / **strategy** docs as needed so reviewers and contributors see one story.
+
+Import policy note: use direct module imports (for example `@/auth/api`, `@/auth/store/AuthContext`, `@/context/AuthModeContext`, `@/services/businessService`) and avoid `index.ts` barrel imports.

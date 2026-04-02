@@ -1,5 +1,5 @@
 /**
- * **`src/context`** — see `context/index.ts` for folder map.
+ * **`src/context`** — shared UI/session context layer.
  *
  * ## `AuthModeContext` (this file)
  * Bridges **`services/authMode.ts`** (TanStack Query + `http`) into a single **`useAuthMode()`** hook
@@ -14,8 +14,8 @@
  *    Else the query is off and `mode` is `undefined` (no spurious `/auth/mode` calls on marketing/tenant).
  * 3. **`useSetAuthModeMutation`** runs **`POST /auth/set-mode`**; invalidation is handled in **`authMode.ts`**.
  * 4. **Consumers:** **`RequireEmployeeAuthMode`** (`routes/AuthRouteGuards.tsx`) gates employee routes;
- *    **`SelectUserModePage`** calls **`setModeAndRefresh`** then navigates. Public API also re-exported
- *    from **`auth/index.ts`** as `import { useAuthMode } from "@/auth"`.
+ *    **`SelectUserModePage`** calls **`setModeAndRefresh`** then navigates. Import directly from
+ *    **`@/context/AuthModeContext`** (barrel files are deprecated).
  *
  * Depends on: **`useAuth`** (`AuthContext`), **`useAuthModeQuery` / `useSetAuthModeMutation`** (`authMode.ts`).
  */

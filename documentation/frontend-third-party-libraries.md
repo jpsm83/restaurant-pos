@@ -20,7 +20,7 @@ This document explains **how the Restaurant POS web app (`frontend/`) relies on 
 |-------|---------------------------|-------------------|
 | **Runtime** | `react`, `react-dom` | UI and concurrent rendering (React 19). |
 | **Routing** | `react-router-dom` | URL-driven layouts, lazy routes, `Navigate` redirects. |
-| **Server / async state** | `@tanstack/react-query` | Queries and mutations (caching, keys in `frontend/src/services/queryKeys.ts`). |
+| **Server / async state** | `@tanstack/react-query` | Queries and mutations (caching, keys in `frontend/src/services/queryKeys.ts`, busy-time defaults in `frontend/src/services/queryClient.ts`). |
 | **HTTP** | `axios` | Authenticated API calls via `frontend/src/services/http.ts` (Bearer from auth module). |
 | **Auth (browser)** | `fetch` in `frontend/src/auth/api.ts` | Login, signup, refresh, `me`, logout; cookies + token; see [`authentication-and-session.md`](./authentication-and-session.md). |
 | **Forms + validation** | `react-hook-form`, `zod`, `@hookform/resolvers` | All **interactive forms** use RHF for state and Zod for schema validation; see **section 3**. |
@@ -60,6 +60,63 @@ Auth **password rules** for **setting** passwords are shared with the monorepo v
 2. **Install from `frontend/`:** `npm install <package>` (or `npm install -D` for build/test-only tools).
 3. **Verify:** `npm run build` and `npm run test` (and `npm run lint` if you touch ESLint-affected areas).
 4. **Document:** For **cross-cutting** or **non-obvious** packages, add a row or bullet in **section 2** or **3** of this file and, if relevant, link from [`context.md`](./context.md) companion table.
+
+---
+
+## 4.1 TanStack baseline defaults (high-load policy)
+
+Project baseline defaults live in `frontend/src/services/queryClient.ts` and should be treated as the standard unless a feature has a clear reason to override:
+
+- `staleTime`: `60_000` (1 minute)
+- `gcTime`: `600_000` (10 minutes)
+- `refetchOnWindowFocus`: `false` (prevents focus storms in busy operations)
+- `refetchOnReconnect`: `true`
+- status-aware retries (network/`408`/`429`/`5xx` only)
+- bounded retries with exponential backoff
+- `throwOnError: false` by default (screen-level explicit handling preferred)
+
+When adding new hooks, prefer these defaults and override intentionally at hook level only when product behavior requires it.
+
+---
+
+## 4.2 Request shaping rules (busy-time)
+
+For high-frequency screens, apply these defaults before introducing custom patterns:
+
+- use one primary entity query per screen whenever possible (avoid unbounded `useQueries` fan-out)
+- wire query cancellation through the `signal` provided by TanStack query functions
+- prevent duplicate writes for the same entity (single-flight or explicit submit lock)
+- include operation identifiers (`X-Idempotency-Key`, `X-Correlation-Id`) on critical mutations where backend side effects may be dispatched
+- debounce user-driven filter/search requests before triggering network calls
+
+Keep these rules in service hooks so behavior stays consistent across pages.
+
+---
+
+## 4.3 Profile fetch/save diagnostics (busy-time baseline)
+
+For **business profile** fetch/save operations (**`BusinessProfileSettingsPage`**, route **`/business/:businessId/settings/profile`** via `businessService`), keep diagnostics lightweight and structured:
+
+- emit one structured log object per request outcome with:
+  - `scope` (`services.businessProfile`)
+  - `action` (`fetch` or `save`)
+  - `stage` (`success`, `error`, `coalesced`)
+  - `businessId`
+  - `durationMs` (for success/error)
+  - `status` (for error)
+  - `operationId` (for save)
+- classify save failures by HTTP status (`400`, `401`, `403`, `409`, `5xx`) to speed up triage routing
+- keep operation identifiers aligned (`X-Idempotency-Key` == `X-Correlation-Id`) so backend dispatch logs and side effects can be traced to one logical save
+- rely on query/mutation retries from `queryClient.ts`; failed attempts and retry outcomes are visible through repeated `error/success` diagnostics events with measured latency
+
+### Busy-time triage runbook (first checks)
+
+1. Inspect frontend diagnostics for latest `services.businessProfile` error events and confirm status-class pattern (`4xx` validation/auth vs `5xx` transient).
+2. Correlate by `operationId` / `X-Idempotency-Key` in backend logs with `communications.dispatch` entries for **`BUSINESS_PROFILE_UPDATED`** to verify one logical save maps to one side-effect dispatch (manager in-app + email when enabled).
+3. Check retry behavior and latency trend:
+   - repeated short failures with `5xx/429` usually indicates transient load pressure
+   - increasing `durationMs` with eventual success suggests saturation before recovery
+4. If coalesced saves are high, confirm UI is not dispatching redundant submit intents (single-flight should still keep one active PATCH per business).
 
 ---
 

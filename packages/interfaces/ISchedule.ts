@@ -26,3 +26,17 @@ export interface ISchedule {
   businessId: Types.ObjectId;
   comments?: string;
 }
+
+/**
+ * API row consumed by employee-mode schedule checks on the frontend.
+ * Backend route: `GET /api/v1/schedules/business/:businessId/daily`.
+ */
+export interface IScheduleShiftEntry {
+  vacation: boolean;
+  startTime: string;
+  endTime: string;
+}
+
+export interface IDailyEmployeeScheduleResponse {
+  entries: IScheduleShiftEntry[];
+}

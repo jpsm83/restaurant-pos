@@ -56,6 +56,16 @@ It consolidates architecture, API contracts, WebSocket contracts, runbook operat
 - `LOW_STOCK_ALERT`
 - `MONTHLY_REPORT_READY`
 - `WEEKLY_REPORT_READY`
+- `BUSINESS_PROFILE_UPDATED`
+
+### `BUSINESS_PROFILE_UPDATED` (business profile saved)
+
+- **Trigger:** successful `PATCH /api/v1/business/:businessId` in `backend/src/routes/v1/business.ts` after `findByIdAndUpdate`, only when the computed `$set` object has at least one changed path (no dispatch on no-op updates). Typical web entry: tenant **`BusinessProfileSettingsPage`** (**`/business/:businessId/settings/profile`**).
+- **Payload:** typed in `backend/src/communications/types.ts` (`businessId`, `actor` snapshot from session, flattened `changedFields` + count, `occurredAt`, optional `context` with correlation/operation id and request metadata).
+- **Correlation / idempotency:** route forwards `X-Correlation-Id` and `X-Idempotency-Key` (when present) into `dispatchEvent` options so repeated saves can dedupe within `COMMUNICATIONS_IDEMPOTENCY_WINDOW_MS`.
+- **Recipients:** management employees resolved via `resolveManagersByPolicy`. Default policy for this event is **`allManagers`**; override with env `BUSINESS_PROFILE_UPDATED_MANAGER_POLICY` (`onDutyManagers` | `allManagers`), consistent with other events.
+- **Channels:** in-app notification to manager `employeeIds` (persisted path); email to resolved manager user emails when the email channel is enabled and SMTP is available. Copy is built by `templates/businessProfileUpdatedTemplate.ts` (sensitive field paths are not echoed verbatim in message text).
+- **Failure semantics:** route uses `fireAndForget: true` and a local `.catch` log so **HTTP 200 profile save is not blocked** by communications failures.
 
 ## Reliability model
 

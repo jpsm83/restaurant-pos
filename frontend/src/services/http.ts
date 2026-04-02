@@ -5,7 +5,7 @@
  * ## Wiring
  * - **Token:** interceptor uses `getAccessToken()` from `auth/api.ts` (module singleton, not Context).
  * - **Cookies:** `withCredentials: true` for HttpOnly cookies (e.g. `auth_mode`).
- * - **Consumers:** `authMode.ts`, `businessService.ts`, `schedulesService.ts` (see `services/index.ts`).
+ * - **Consumers:** `authMode.ts`, `businessService.ts`, `schedulesService.ts`.
  *
  * **Convention:** UI uses React Query hooks that call async functions wrapping `http`. `auth/api.ts`
  * may still use `fetch` for legacy auth until migrated.

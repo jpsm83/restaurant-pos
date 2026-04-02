@@ -9,6 +9,10 @@ import {
   buildMonthlyReportReadyTemplate,
   buildWeeklyReportReadyTemplate,
 } from "./templates/reportReadyTemplate.ts";
+import {
+  buildBusinessProfileUpdatedEmailBody,
+  buildBusinessProfileUpdatedInAppMessage,
+} from "./templates/businessProfileUpdatedTemplate.ts";
 import { resolveManagersByPolicy } from "./recipientResolvers/managerRecipientPolicy.ts";
 import type {
   CommunicationsChannel,
@@ -69,6 +73,16 @@ const getUserEmail = async (userId: Types.ObjectId): Promise<string | null> => {
     .lean()) as { personalDetails?: { email?: string } } | null;
 
   return user?.personalDetails?.email?.trim() || null;
+};
+
+const getUserEmails = async (userIds: Types.ObjectId[]): Promise<string[]> => {
+  if (userIds.length === 0) return [];
+  const rows = (await User.find({
+    _id: { $in: userIds },
+  })
+    .select("personalDetails.email")
+    .lean()) as Array<{ personalDetails?: { email?: string } }>;
+  return [...new Set(rows.map((entry) => entry?.personalDetails?.email?.trim()).filter(Boolean))];
 };
 
 const shouldUseChannel = (
@@ -276,6 +290,35 @@ const handleWeeklyReportReady: EventHandler<"WEEKLY_REPORT_READY"> = async (
   }
 };
 
+const handleBusinessProfileUpdated: EventHandler<"BUSINESS_PROFILE_UPDATED"> = async (
+  p,
+  ctx
+) => {
+  const managers = await resolveManagersByPolicy({
+    businessId: p.businessId,
+    eventName: ctx.eventName,
+  });
+  if (managers.employeeIds.length === 0) return;
+
+  const inAppMessage = buildBusinessProfileUpdatedInAppMessage(p);
+  await ctx.safeInAppSend({
+    message: inAppMessage,
+    notificationType: "Info",
+    businessId: p.businessId,
+    recipients: { employeeIds: managers.employeeIds },
+  });
+
+  const managerEmails = await getUserEmails(managers.userIds);
+  if (managerEmails.length === 0) return;
+
+  await ctx.safeEmailSend({
+    to: managerEmails,
+    subject: "Business profile updated",
+    text: buildBusinessProfileUpdatedEmailBody(p),
+    businessId: p.businessId,
+  });
+  };
+
 const eventHandlers: {
   [K in CommunicationsEventName]: EventHandler<K>;
 } = {
@@ -285,6 +328,7 @@ const eventHandlers: {
   LOW_STOCK_ALERT: handleLowStockAlert,
   MONTHLY_REPORT_READY: handleMonthlyReportReady,
   WEEKLY_REPORT_READY: handleWeeklyReportReady,
+  BUSINESS_PROFILE_UPDATED: handleBusinessProfileUpdated,
 };
 
 export const dispatchEvent = async <E extends CommunicationsEventName>(

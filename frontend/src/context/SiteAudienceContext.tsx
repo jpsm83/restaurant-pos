@@ -1,5 +1,5 @@
 /**
- * **`src/context`** — see `context/index.ts` for how this folder fits together.
+ * **`src/context`** — shared UI/session context layer.
  *
  * ## `SiteAudienceContext` (this file)
  * **Marketing URL audience** (“customer” vs “business”) for **public** routes only. URL is the

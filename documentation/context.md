@@ -18,6 +18,16 @@
 
 7. **Forms must match the backend model** — For any form work, ensure the **Zod validation schema** matches the backend form/model rules in `backend/src/models` (field names, required vs optional, types, constraints). When in doubt, reference the backend model in comments and keep the frontend schema synchronized.
 
+8. **Shared types/contracts discipline** — Shared frontend/backend domain or API contracts must live in `packages/interfaces` when they are reused across layers. Keep feature-only UI/form types colocated with the owning frontend feature.
+
+9. **No barrel index centralization** — Do not create `index.ts` files to centralize exports for domains/features. Use direct module imports instead to keep dependencies explicit and avoid “god files”.
+
+10. **Preserve shared interface filenames** — When evolving `packages/interfaces`, do not rename existing interface files unless an explicit migration plan is approved. Add or update types inside existing files to avoid breaking imports.
+
+11. **Comment flow, logic, and patterns** — All source code creation or execution must include concise comments for non-trivial flow, logic, and pattern decisions so any developer can quickly understand the implementation and optimize work time.
+
+12. **Test every touched file before progressing** — Every file created or updated must have relevant tests executed and passing before moving to the next task. If automated coverage is missing for a touched area, add/update tests or explicitly document the temporary gap and mitigation.
+
 ---
 
 ## Source of truth — Restaurant POS context
@@ -141,7 +151,7 @@ Communication delivery is centralized in `backend/src/communications` using a si
 - **Email** uses one SMTP provider path (Nodemailer transport singleton).
 - **In-app** notifications are persisted first (source of truth) and then fanned out to user inbox state.
 - **Live in-app** uses WebSocket push as an acceleration layer; persisted inbox remains the fallback when users are offline.
-- **Domain modules** (orders, reservations, inventory alerts, weekly/monthly report-ready) trigger communication by dispatching typed events, not by calling channels directly.
+- **Domain modules** (orders, reservations, inventory alerts, weekly/monthly report-ready, **business profile updates** after authenticated `PATCH /api/v1/business/:businessId`) trigger communication by dispatching typed events, not by calling channels directly. Profile changes emit `BUSINESS_PROFILE_UPDATED` (manager in-app + manager email via `dispatchEvent`; see `backend/src/communications/README.md`). The tenant web editor is **`BusinessProfileSettingsPage`** at **`/business/:businessId/settings/profile`** (see `documentation/frontend-authentication-and-navigation.md`).
 - **Reliability** uses fire-and-forget defaults for non-blocking business flows, idempotency/noise controls for repeated events, and retry logic for transient SMTP failures.
 
 Core environment controls:
@@ -149,7 +159,7 @@ Core environment controls:
 - SMTP config: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`
 - Channel switches: `COMMUNICATIONS_EMAIL_ENABLED`, `COMMUNICATIONS_INAPP_ENABLED`, `COMMUNICATIONS_INAPP_LIVE_ENABLED`
 - Reliability tuning: `COMMUNICATIONS_EMAIL_RETRY_ATTEMPTS`, `COMMUNICATIONS_EMAIL_RETRY_BASE_DELAY_MS`, `COMMUNICATIONS_IDEMPOTENCY_WINDOW_MS`
-- Event policy overrides: `RESERVATION_PENDING_MANAGER_POLICY`, `LOW_STOCK_MANAGER_POLICY`, `MONTHLY_REPORT_MANAGER_POLICY`, `WEEKLY_REPORT_MANAGER_POLICY`
+- Event policy overrides: `RESERVATION_PENDING_MANAGER_POLICY`, `LOW_STOCK_MANAGER_POLICY`, `MONTHLY_REPORT_MANAGER_POLICY`, `WEEKLY_REPORT_MANAGER_POLICY`, `BUSINESS_PROFILE_UPDATED_MANAGER_POLICY`
 
 ---
 

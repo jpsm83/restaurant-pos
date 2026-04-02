@@ -224,6 +224,7 @@ Session minting uses **`issueSessionWithRefreshCookie`** from `issueSession.ts` 
 - **`GET /business`** — Unauthenticated listing/discovery; **`password` excluded**.
 - **`GET /business/:businessId`** — Unauthenticated; no password in response.
 - **`PATCH /business/:businessId`** — **`preValidation`:** valid `:businessId`, **`Authorization: Bearer`**, session must be **business** and **`session.id === :businessId`**. Updates fields; optional password change. Response **`200`:** `message`, fresh **`accessToken`**, **`user`** (current email from DB), and **refresh cookie** re-set.
+  - **Communications (non-blocking):** when the persistence layer actually changes at least one field, the route emits **`BUSINESS_PROFILE_UPDATED`** through `dispatchEvent` (fail-soft: profile save still returns **`200`** if dispatch fails). Optional request headers **`X-Correlation-Id`** and **`X-Idempotency-Key`** are forwarded into dispatch for tracing and process-local idempotency. Management employees receive **in-app** notifications and **email** (if channels enabled) per `backend/src/communications/README.md`. The primary web editor for this PATCH is **`BusinessProfileSettingsPage`** (**`/business/:businessId/settings/profile`**); see **`documentation/frontend-authentication-and-navigation.md`**.
 - **`DELETE /business/:businessId`** — Still unauthenticated in the current code (transactional cascade + Cloudinary); tighten with auth in a follow-up if needed.
 
 ---

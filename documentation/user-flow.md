@@ -106,6 +106,7 @@ This document describes **how the app works from a user perspective**, from init
   - Manager configures **Notifications** for operational events or messages.
   - Users per business receive notifications in an **inbox**, with read/deleted status.
   - This can be used for alerts (e.g. stock issues), promotions, or internal communication.
+  - **Business profile updates:** when the tenant saves changes on **`PATCH /api/v1/business/:businessId`** (web app **Business profile** at **`/business/:businessId/settings/profile`**, page **`BusinessProfileSettingsPage`**), the backend dispatches **`BUSINESS_PROFILE_UPDATED`**: **management** employees get **in-app** notifications and **email** (when those channels are enabled), using the same unified `dispatchEvent` path as other domain notifications; see `backend/src/communications/README.md`.
 
 ---
 

@@ -48,6 +48,18 @@ Adding a **new namespace** requires: a new entry in `NAMESPACES`, `<namespace>.j
 
 ---
 
+## `nav` namespace: settings vs account vs sidebar
+
+`frontend/src/i18n/locales/<lang>/nav.json` groups chrome strings as follows:
+
+- **`settings.*`** — Labels for **settings destinations** shared by the **sidebar** and **`AccountMenuPopover`**: `title`, `profile`, `address`, `subscriptions`, `credentials`, `delivery`, `metrics`, `openHours`. Use `t("settings.profile")`, `t("settings.delivery")`, etc. with `useTranslation("nav")`. This keeps copy aligned whether the link appears in the business sidebar or the account dropdown.
+- **`account.*`** — **Account menu** and actor chrome that are **not** tied to a `/settings/…` route: `menuAriaLabel`, `actorType.*`, `dashboard`, `favorites`, `home`, `logOut`, `language`, mode-switch labels (`employeeArea`, `customerHome`), etc.
+- **`sidebar.*`** — **Sidebar chrome only**: `openMenu`, `closeMenu` (tooltips for expand/collapse).
+
+Do **not** reintroduce `sidebar.settings.*` or `account.profile`; both were folded into **`settings.profile`** for consistency.
+
+---
+
 ## How to add or change a string
 
 1. **Pick a namespace** (e.g. navbar copy → `nav`, shared buttons → `common`).
@@ -64,7 +76,7 @@ Adding a **new namespace** requires: a new entry in `NAMESPACES`, `<namespace>.j
 - **Storage key:** `I18N_STORAGE_KEY` = `restaurant_pos_i18n_lng` (see `i18n.ts`).
 - **On load:** `lng` is chosen synchronously in `init`: valid value in `localStorage` first, else the first supported match from `navigator.language` / `navigator.languages` (e.g. `es-MX` → `es`), else **`en`**. That keeps first paint aligned with saved choice or browser preference.
 - **UI:** The navbar **LanguageSwitcher** calls **`changeAppLanguage(code)`** (validates against `SUPPORTED_LANGUAGES`, then `i18n.changeLanguage`). **Native language names** and switcher aria label live in **`common`** (`languages.*`, `languageSwitcher.ariaLabel`).
-- **Flags:** [`LanguageSwitcher`](../frontend/src/components/LanguageSwitcher.tsx) imports **`US`** / **`ES`** from **`country-flag-icons/react/3x2`** and renders them via a small **`LanguageFlagIcon`** helper (`es` → ES, otherwise US). [`useLanguageOptions`](../frontend/src/hooks/useLanguageOptions.ts) only supplies codes and translated labels.
+- **Flags:** [`LanguageSwitcher`](../frontend/src/components/LanguageSwitcher.tsx) imports **`US`** / **`ES`** from **`country-flag-icons/react/1x1`** (square assets, **`preserveAspectRatio="xMidYMid slice"`** in the helper so circular triggers fill cleanly). [`useLanguageOptions`](../frontend/src/hooks/useLanguageOptions.ts) only supplies codes and translated labels.
 
 ---
 

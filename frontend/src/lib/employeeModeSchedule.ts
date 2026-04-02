@@ -1,3 +1,5 @@
+import type { IScheduleShiftEntry } from "@packages/interfaces/ISchedule.ts";
+
 /**
  * Pure **schedule math** for employee-mode eligibility UI (`src/lib` — no React, no network).
  *
@@ -9,19 +11,13 @@
  * the employee CTA from that flag and **skips** schedule countdown when bypass applies (Phase 3.4.5).
  *
  * ## Wiring
- * 1. **`services/schedulesService.ts`** types API rows as `ScheduleShiftEntry` and fetches today’s data.
+ * 1. **`services/schedulesService.ts`** types API rows as `IScheduleShiftEntry` and fetches today’s data.
  * 2. **`pages/SelectUserModePage.tsx`** calls `deriveEmployeeModeFromSchedule` + `formatDayKeyLocal`
  *    with `Date.now()` / poll tick and schedule query results to drive countdown and copy.
  * 3. Backend remains authoritative; this module only previews windows so users see “unlocks in …”
  *    before the next `GET /auth/me` refresh grants `canLogAsEmployee`.
  */
 export const EMPLOYEE_LOGIN_EARLY_MS = 5 * 60 * 1000;
-
-export type ScheduleShiftEntry = {
-  vacation: boolean;
-  startTime: string;
-  endTime: string;
-};
 
 export type EmployeeModeScheduleDerived = {
   /**
@@ -54,7 +50,7 @@ export function isWithinEmployeeLoginWindow(
  */
 export function deriveEmployeeModeFromSchedule(
   nowMs: number,
-  entries: ScheduleShiftEntry[],
+  entries: IScheduleShiftEntry[],
 ): EmployeeModeScheduleDerived {
   const shifts = entries
     .filter((e) => !e.vacation)

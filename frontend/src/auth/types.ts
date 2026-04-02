@@ -1,6 +1,6 @@
 /**
  * **`src/auth`** — shared **TypeScript contracts** for JWT session payloads and auth UI state.
- * See `auth/index.ts` for how these connect to `api.ts` and `AuthContext`.
+ * Used by `api.ts` and `store/AuthContext.tsx`.
  *
  * Shapes mirror **`backend/src/auth/types.ts`** where noted — keep in sync when the API changes.
  */

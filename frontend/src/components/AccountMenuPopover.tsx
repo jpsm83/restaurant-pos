@@ -1,32 +1,29 @@
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { CreditCard, KeyRound, MapPin, User } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import type { AuthSession } from "@/auth/types";
-import { logout, setAccessToken, useAuth } from "@/auth";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { logout, setAccessToken } from "@/auth/api";
+import { useAuth } from "@/auth/store/AuthContext";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   canonicalBusinessProfilePath,
+  canonicalBusinessSettingsAddressPath,
+  canonicalBusinessSettingsCredentialsPath,
+  canonicalBusinessSettingsSubscriptionsPath,
   canonicalUserCustomerProfilePath,
 } from "@/routes/canonicalPaths";
-import { Button } from "./ui/button";
 
-const itemClass =
-  "flex w-full cursor-pointer items-center rounded-sm py-2 text-left text-sm text-neutral-700 outline-none hover:bg-neutral-100 focus-visible:bg-neutral-100";
-
-function accountMenuPaths(session: AuthSession) {
-  if (session.type === "business") {
-    return {
-      profile: canonicalBusinessProfilePath(session),
-    };
-  }
-  return {
-    profile: canonicalUserCustomerProfilePath(session),
-  };
+function profilePathForSession(session: AuthSession): string {
+  return session.type === "business"
+    ? canonicalBusinessProfilePath(session)
+    : canonicalUserCustomerProfilePath(session);
 }
 
 function initialsFromEmail(email: string): string {
@@ -47,13 +44,10 @@ type AccountMenuPopoverProps = {
 
 export function AccountMenuPopover({ session }: AccountMenuPopoverProps) {
   const { t } = useTranslation("nav");
-  const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { dispatch } = useAuth();
-  const paths = accountMenuPaths(session);
-
-  const close = () => setOpen(false);
+  const profileTo = profilePathForSession(session);
 
   const userShell =
     session.type === "user"
@@ -70,7 +64,6 @@ export function AccountMenuPopover({ session }: AccountMenuPopoverProps) {
         : t("account.actorType.customer");
 
   const handleLogout = async () => {
-    close();
     await logout();
     setAccessToken(null);
     localStorage.removeItem("auth_had_session");
@@ -79,8 +72,8 @@ export function AccountMenuPopover({ session }: AccountMenuPopoverProps) {
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
         <button
           type="button"
           className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:ring-offset-2"
@@ -98,43 +91,81 @@ export function AccountMenuPopover({ session }: AccountMenuPopoverProps) {
             </span>
           </div>
         </button>
-      </PopoverTrigger>
-      <PopoverContent className="p-3">
-        <div className="flex flex-row justify-between items-center">
-          <div>
-            <p className="truncate text-md font-bold text-neutral-700 cursor-default">
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="end"
+        sideOffset={8}
+        className="min-w-[240px] max-w-sm p-2"
+      >
+        <div
+          className="flex flex-row items-center justify-between gap-2 px-1.5 pb-2 pt-0.5"
+          onPointerDown={(e) => e.preventDefault()}
+        >
+          <div className="min-w-0 flex-1 cursor-default">
+            <p className="truncate text-sm font-semibold text-neutral-900">
               {actorTypeLabel}
             </p>
-            <p className="truncate text-xs text-neutral-500 cursor-default">
+            <p className="truncate text-xs text-muted-foreground">
               {session.email}
             </p>
           </div>
-          <div className="flex h-full w-full justify-end">
-            <LanguageSwitcher />
+          <div className="shrink-0" onPointerDown={(e) => e.preventDefault()}>
+            <LanguageSwitcher nestedInDropdown />
           </div>
         </div>
-        <hr className="mb-2 mt-4" />
-
-        <Button
-          variant="ghost"
-          size="sm"
-          className={`${itemClass} justify-start`}
-          onClick={() => {
-            navigate(paths.profile);
-            close();
-          }}
-        >
-          {t("account.profile")}
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className={`${itemClass} justify-start`}
-          onClick={() => void handleLogout()}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={() => navigate(profileTo)} className="cursor-pointer">
+          <User
+            className="text-muted-foreground group-focus/dropdown-menu-item:text-accent-foreground"
+            aria-hidden
+          />
+          {t("settings.profile")}
+        </DropdownMenuItem>
+        {session.type === "business" ? (
+          <>
+            <DropdownMenuItem
+              onSelect={() =>
+                navigate(canonicalBusinessSettingsAddressPath(session))
+              }
+            >
+              <MapPin
+                className="text-muted-foreground group-focus/dropdown-menu-item:text-accent-foreground"
+                aria-hidden
+              />
+              {t("settings.address")}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={() =>
+                navigate(canonicalBusinessSettingsSubscriptionsPath(session))
+              }
+            >
+              <CreditCard
+                className="text-muted-foreground group-focus/dropdown-menu-item:text-accent-foreground"
+                aria-hidden
+              />
+              {t("settings.subscriptions")}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={() =>
+                navigate(canonicalBusinessSettingsCredentialsPath(session))
+              }
+            >
+              <KeyRound
+                className="text-muted-foreground group-focus/dropdown-menu-item:text-accent-foreground"
+                aria-hidden
+              />
+              {t("settings.credentials")}
+            </DropdownMenuItem>
+          </>
+        ) : null}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          variant="destructive"
+          onSelect={() => void handleLogout()}
         >
           {t("account.logOut")}
-        </Button>
-      </PopoverContent>
-    </Popover>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

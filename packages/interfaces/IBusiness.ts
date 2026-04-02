@@ -1,5 +1,5 @@
 import { Types } from "mongoose";
-import { IAddress } from "./IAddress";
+import type { IAddress } from "./IAddress";
 
 export interface IsupplierGoodWastePercentage {
   veryLowBudgetImpact: number;
@@ -65,3 +65,21 @@ export interface IBusiness {
   deliveryOpeningWindows?: IDeliveryOpeningWindow[];
   reportingConfig?: IReportingConfig;
 }
+
+/**
+ * API-safe business profile payload shared across backend and frontend.
+ * Mirrors GET `/api/v1/business/:businessId` response shape (`password` excluded).
+ */
+export interface IBusinessProfileDto
+  extends Omit<IBusiness, "_id" | "password" | "reportingConfig"> {
+  _id: string;
+  reportingConfig?: Partial<IReportingConfig>;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/**
+ * Shared aliases for clearer frontend/backend type imports.
+ */
+export type IBusinessProfileAddress = IAddress;
+export type IBusinessMetrics = IMetrics;

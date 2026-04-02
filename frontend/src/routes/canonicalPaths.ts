@@ -8,11 +8,12 @@
  * ## Who imports this
  * - `AuthRouteGuards.tsx` — redirects when `:userId` / `:businessId` do not match the session.
  * - `auth/postLoginRedirect.ts` — first URL after login / signup (`getPostLoginDestination`).
- * - `components/AccountMenuPopover.tsx` — account menu targets (profile by actor type).
+ * - `components/AccountMenuPopover.tsx` — account menu (profile; business stubs: subscriptions, address, credentials).
  * - `pages/SelectUserModePage.tsx` — navigate to customer or employee **dashboard** after mode selection.
  *
  * ## How it wires to the router
- * `appRoutes.tsx` declares concrete `<Route path="…">` segments (`dashboard`, `profile`, …). Those
+ * `appRoutes.tsx` declares concrete `<Route path="…">` segments (`dashboard`,
+ * `settings/profile`, `settings/subscriptions`, `settings/address`, …). Those
  * paths must match what the `canonical*` helpers build (e.g. tenant landing is
  * `/business/:id/dashboard`, not the bare `/business/:id`). If you add a new shell segment, add a
  * helper here and use it in guards + post-login + any feature navigation.
@@ -56,7 +57,7 @@ export function matchesSessionBusinessId(
   return paramBusinessId === user.id;
 }
 
-/** Tenant base: `/business/:businessId` (child routes: `dashboard`, `profile`, …). */
+/** Tenant base: `/business/:businessId` (child routes: `dashboard`, `settings/profile`, …). */
 export function canonicalBusinessDashboardPath(user: AuthSession): string {
   return `/business/${user.id}`;
 }
@@ -66,7 +67,31 @@ export function canonicalBusinessDashboardRoutePath(user: AuthSession): string {
 }
 
 export function canonicalBusinessProfilePath(user: AuthSession): string {
-  return `${canonicalBusinessDashboardPath(user)}/profile`;
+  return `${canonicalBusinessDashboardPath(user)}/settings/profile`;
+}
+
+export function canonicalBusinessSettingsDeliveryPath(user: AuthSession): string {
+  return `${canonicalBusinessDashboardPath(user)}/settings/delivery`;
+}
+
+export function canonicalBusinessSettingsMetricsPath(user: AuthSession): string {
+  return `${canonicalBusinessDashboardPath(user)}/settings/metrics`;
+}
+
+export function canonicalBusinessSettingsSubscriptionsPath(user: AuthSession): string {
+  return `${canonicalBusinessDashboardPath(user)}/settings/subscriptions`;
+}
+
+export function canonicalBusinessSettingsAddressPath(user: AuthSession): string {
+  return `${canonicalBusinessDashboardPath(user)}/settings/address`;
+}
+
+export function canonicalBusinessSettingsOpenHoursPath(user: AuthSession): string {
+  return `${canonicalBusinessDashboardPath(user)}/settings/open-hours`;
+}
+
+export function canonicalBusinessSettingsCredentialsPath(user: AuthSession): string {
+  return `${canonicalBusinessDashboardPath(user)}/settings/credentials`;
 }
 
 export function canonicalUserCustomerPath(user: AuthSession): string {

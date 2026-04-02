@@ -18,7 +18,8 @@ export type CommunicationsEventName =
   | "RESERVATION_DECIDED"
   | "LOW_STOCK_ALERT"
   | "MONTHLY_REPORT_READY"
-  | "WEEKLY_REPORT_READY";
+  | "WEEKLY_REPORT_READY"
+  | "BUSINESS_PROFILE_UPDATED";
 
 export interface OrderConfirmedEventPayload {
   businessId: Types.ObjectId;
@@ -79,6 +80,26 @@ export interface WeeklyReportReadyEventPayload {
   weekLabel: string;
 }
 
+export interface BusinessProfileUpdatedEventPayload {
+  businessId: Types.ObjectId;
+  actor: {
+    userId?: Types.ObjectId;
+    employeeId?: Types.ObjectId;
+    email?: string;
+    role?: string;
+    source: "businessOwner" | "manager" | "system";
+  };
+  changedFields: string[];
+  changedFieldCount: number;
+  occurredAt: Date;
+  context?: {
+    correlationId?: string;
+    operationId?: string;
+    requestPath?: string;
+    requestMethod?: string;
+  };
+}
+
 export interface CommunicationsEventPayloadMap {
   ORDER_CONFIRMED: OrderConfirmedEventPayload;
   RESERVATION_PENDING: ReservationPendingEventPayload;
@@ -86,6 +107,7 @@ export interface CommunicationsEventPayloadMap {
   LOW_STOCK_ALERT: LowStockAlertEventPayload;
   MONTHLY_REPORT_READY: MonthlyReportReadyEventPayload;
   WEEKLY_REPORT_READY: WeeklyReportReadyEventPayload;
+  BUSINESS_PROFILE_UPDATED: BusinessProfileUpdatedEventPayload;
 }
 
 export type CommunicationsEventPayload<E extends CommunicationsEventName> =

@@ -2,10 +2,11 @@
  * Unit tests for `businessService.ts` — mocks `./http` and `@/auth/api.setAccessToken`.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createBusiness } from "./businessService";
+import { createBusiness, updateBusinessProfile } from "./businessService";
 
-const { mockPost, mockSetAccessToken } = vi.hoisted(() => ({
+const { mockPost, mockPatch, mockSetAccessToken } = vi.hoisted(() => ({
   mockPost: vi.fn(),
+  mockPatch: vi.fn(),
   mockSetAccessToken: vi.fn(),
 }));
 
@@ -16,6 +17,7 @@ vi.mock("@/auth/api", () => ({
 vi.mock("./http", () => ({
   http: {
     post: (...args: unknown[]) => mockPost(...args),
+    patch: (...args: unknown[]) => mockPatch(...args),
   },
 }));
 
@@ -46,6 +48,7 @@ function minimalFormData() {
 describe("createBusiness (Phase 4.3.1)", () => {
   beforeEach(() => {
     mockPost.mockReset();
+    mockPatch.mockReset();
     mockSetAccessToken.mockReset();
   });
 
@@ -82,5 +85,69 @@ describe("createBusiness (Phase 4.3.1)", () => {
     expect(mockSetAccessToken).toHaveBeenCalledWith("access-jwt");
     expect(result.user.type).toBe("business");
     expect(result.user.email).toBe("owner@demo.test");
+  });
+
+  it("PATCHes profile with idempotency/correlation headers and syncs token", async () => {
+    mockPatch.mockResolvedValue({
+      data: {
+        message: "Business updated",
+        accessToken: "refreshed-token",
+        user: {
+          id: "507f1f77bcf86cd799439011",
+          email: "owner@demo.test",
+          type: "business",
+        },
+      },
+    });
+
+    const fd = minimalFormData();
+    const result = await updateBusinessProfile(
+      "507f1f77bcf86cd799439011",
+      fd,
+      { operationId: "op-123" },
+    );
+
+    expect(mockPatch).toHaveBeenCalledTimes(1);
+    const [url, body, config] = mockPatch.mock.calls[0] as [
+      string,
+      FormData,
+      { headers?: Record<string, string> },
+    ];
+    expect(url).toBe("/api/v1/business/507f1f77bcf86cd799439011");
+    expect(body).toBe(fd);
+    expect(config.headers?.["X-Idempotency-Key"]).toBe("op-123");
+    expect(config.headers?.["X-Correlation-Id"]).toBe("op-123");
+
+    expect(mockSetAccessToken).toHaveBeenCalledWith("refreshed-token");
+    expect(result.user?.type).toBe("business");
+  });
+
+  it("coalesces concurrent profile updates for the same business", async () => {
+    let resolver: ((value: unknown) => void) | null = null;
+    const pending = new Promise((resolve) => {
+      resolver = resolve;
+    });
+    mockPatch.mockReturnValue(pending);
+
+    const fd1 = minimalFormData();
+    const fd2 = minimalFormData();
+    const p1 = updateBusinessProfile("507f1f77bcf86cd799439011", fd1);
+    const p2 = updateBusinessProfile("507f1f77bcf86cd799439011", fd2);
+
+    expect(p1).toBe(p2);
+    expect(mockPatch).toHaveBeenCalledTimes(1);
+
+    resolver?.({
+      data: {
+        message: "Business updated",
+        user: {
+          id: "507f1f77bcf86cd799439011",
+          email: "owner@demo.test",
+          type: "business",
+        },
+      },
+    });
+
+    await expect(p1).resolves.toMatchObject({ message: "Business updated" });
   });
 });

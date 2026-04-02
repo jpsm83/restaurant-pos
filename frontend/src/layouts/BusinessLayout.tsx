@@ -5,7 +5,10 @@
  *
  * ## Flow
  * Column shell with **`Navbar`** (shared with customer/employee layouts) and **`<Outlet />`** for
- * nested tenant pages (`home`, `dashboard`, `profile`, …). No footer — see `PublicLayout`.
+ * nested tenant pages (`dashboard`, `settings/profile`, `settings/delivery`, `settings/metrics`,
+ * `settings/open-hours`). Account menu links to other settings stubs (`subscriptions`, `address`,
+ * `credentials`) — see `AccountMenuPopover`.
+ * No footer — see `PublicLayout`.
  *
  * Folder overview: `PublicLayout`, `CustomerLayout`, `EmployeeLayout` — all wired from `appRoutes.tsx`.
  */
@@ -14,12 +17,15 @@ import ActorSidebar from "@/components/ActorSidebar";
 import {
   SidebarInset,
 } from "@/components/ui/sidebar";
-import { useAuth } from "@/auth";
+import { useAuth } from "@/auth/store/AuthContext";
 import { useTranslation } from "react-i18next";
 import { useLocation } from "react-router-dom";
-import { LayoutDashboard } from "lucide-react";
+import { BarChart3, Clock, LayoutDashboard, Truck } from "lucide-react";
 import {
   canonicalBusinessDashboardRoutePath,
+  canonicalBusinessSettingsDeliveryPath,
+  canonicalBusinessSettingsMetricsPath,
+  canonicalBusinessSettingsOpenHoursPath,
 } from "@/routes/canonicalPaths";
 
 export default function BusinessLayout() {
@@ -31,6 +37,9 @@ export default function BusinessLayout() {
   if (!session || session.type !== "business") return null;
 
   const dashboardTo = canonicalBusinessDashboardRoutePath(session);
+  const deliveryTo = canonicalBusinessSettingsDeliveryPath(session);
+  const metricsTo = canonicalBusinessSettingsMetricsPath(session);
+  const openHoursTo = canonicalBusinessSettingsOpenHoursPath(session);
 
   const items = [
     {
@@ -42,9 +51,33 @@ export default function BusinessLayout() {
     },
   ];
 
+  const settingsItems = [
+    {
+      key: "settings-delivery",
+      label: t("settings.delivery"),
+      to: deliveryTo,
+      icon: Truck,
+      isActive: pathname === deliveryTo,
+    },
+    {
+      key: "settings-metrics",
+      label: t("settings.metrics"),
+      to: metricsTo,
+      icon: BarChart3,
+      isActive: pathname === metricsTo,
+    },
+    {
+      key: "settings-open-hours",
+      label: t("settings.openHours"),
+      to: openHoursTo,
+      icon: Clock,
+      isActive: pathname === openHoursTo,
+    },
+  ];
+
   return (
     <>
-      <ActorSidebar items={items} />
+      <ActorSidebar items={items} settingsItems={settingsItems} />
       <SidebarInset>
         <div className="flex min-h-0 w-full flex-1 flex-col bg-neutral-100">
           <Outlet />

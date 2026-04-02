@@ -6,6 +6,8 @@ import User from "../../src/models/user.ts";
 import Employee from "../../src/models/employee.ts";
 import Notification from "../../src/models/notification.ts";
 import dispatchEvent from "../../src/communications/dispatchEvent.ts";
+import emailChannel from "../../src/communications/channels/emailChannel.ts";
+import inAppChannel from "../../src/communications/channels/inAppChannel.ts";
 import resolveEmployeeUserRecipients from "../../src/communications/recipientResolvers/resolveEmployeeUserRecipients.ts";
 import notificationRepository from "../../src/communications/repositories/notificationRepository.ts";
 import notificationService from "../../src/communications/services/notificationService.ts";
@@ -18,6 +20,11 @@ import {
   buildMonthlyReportReadyTemplate,
   buildWeeklyReportReadyTemplate,
 } from "../../src/communications/templates/reportReadyTemplate.ts";
+import {
+  buildBusinessProfileUpdatedEmailBody,
+  buildBusinessProfileUpdatedInAppMessage,
+  partitionBusinessProfileChangedFields,
+} from "../../src/communications/templates/businessProfileUpdatedTemplate.ts";
 
 const validAddress = {
   country: "USA",
@@ -155,6 +162,112 @@ describe("Communications Core - Dispatcher Event Routing", () => {
       )
     ).rejects.toThrow("Unsupported event handler");
   });
+
+  it("routes BUSINESS_PROFILE_UPDATED to managers via in-app and email channels", async () => {
+    const previousEmailToggle = process.env.COMMUNICATIONS_EMAIL_ENABLED;
+    const previousInAppToggle = process.env.COMMUNICATIONS_INAPP_ENABLED;
+    process.env.COMMUNICATIONS_EMAIL_ENABLED = "true";
+    process.env.COMMUNICATIONS_INAPP_ENABLED = "true";
+
+    const businessId = new Types.ObjectId();
+    const managerOneUser = await createTestUser("profile-updated-mgr-1");
+    const managerTwoUser = await createTestUser("profile-updated-mgr-2");
+    const managerOne = await createTestEmployee({
+      businessId,
+      userId: managerOneUser._id,
+      taxSuffix: "bp1",
+    });
+    await createTestEmployee({
+      businessId,
+      userId: managerTwoUser._id,
+      taxSuffix: "bp2",
+    });
+
+    const inAppSpy = vi.spyOn(inAppChannel, "send");
+    const emailSpy = vi.spyOn(emailChannel, "send").mockResolvedValue({
+      channel: "email",
+      success: true,
+      sentCount: 2,
+    });
+
+    const result = await dispatchEvent(
+      "BUSINESS_PROFILE_UPDATED",
+      {
+        businessId,
+        actor: {
+          source: "manager",
+          role: "Owner",
+          email: "owner@example.com",
+          userId: managerOneUser._id,
+          employeeId: managerOne._id,
+        },
+        changedFields: ["businessName", "credentials.password", "address.city"],
+        changedFieldCount: 3,
+        occurredAt: new Date("2026-04-02T18:30:00.000Z"),
+        context: { correlationId: "corr-biz-profile-updated" },
+      },
+      {
+        fireAndForget: true,
+        idempotencyKey: "biz-profile-update-001",
+        idempotencyWindowMs: 60_000,
+      }
+    );
+
+    expect(result.success).toBe(true);
+    expect(inAppSpy).toHaveBeenCalled();
+    expect(emailSpy).toHaveBeenCalledTimes(1);
+    const emailPayload = emailSpy.mock.calls[0][0];
+    expect(Array.isArray(emailPayload.to)).toBe(true);
+    expect((emailPayload.to as string[]).length).toBe(2);
+    expect(emailPayload.text).not.toContain("credentials.password");
+    expect(emailPayload.text).toContain("Protected account fields");
+
+    emailSpy.mockRestore();
+    inAppSpy.mockRestore();
+
+    if (previousEmailToggle === undefined) delete process.env.COMMUNICATIONS_EMAIL_ENABLED;
+    else process.env.COMMUNICATIONS_EMAIL_ENABLED = previousEmailToggle;
+
+    if (previousInAppToggle === undefined) delete process.env.COMMUNICATIONS_INAPP_ENABLED;
+    else process.env.COMMUNICATIONS_INAPP_ENABLED = previousInAppToggle;
+  });
+
+  it("skips BUSINESS_PROFILE_UPDATED channels when no managers are resolved", async () => {
+    const previousEmailToggle = process.env.COMMUNICATIONS_EMAIL_ENABLED;
+    const previousInAppToggle = process.env.COMMUNICATIONS_INAPP_ENABLED;
+    process.env.COMMUNICATIONS_EMAIL_ENABLED = "true";
+    process.env.COMMUNICATIONS_INAPP_ENABLED = "true";
+
+    const businessId = new Types.ObjectId();
+    const inAppSpy = vi.spyOn(inAppChannel, "send");
+    const emailSpy = vi.spyOn(emailChannel, "send");
+
+    const result = await dispatchEvent(
+      "BUSINESS_PROFILE_UPDATED",
+      {
+        businessId,
+        actor: { source: "businessOwner", email: "owner@example.com" },
+        changedFields: ["tradeName"],
+        changedFieldCount: 1,
+        occurredAt: new Date("2026-04-02T19:00:00.000Z"),
+      },
+      { fireAndForget: true }
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.channels.length).toBe(0);
+    expect(inAppSpy).not.toHaveBeenCalled();
+    expect(emailSpy).not.toHaveBeenCalled();
+
+    emailSpy.mockRestore();
+    inAppSpy.mockRestore();
+
+    if (previousEmailToggle === undefined) delete process.env.COMMUNICATIONS_EMAIL_ENABLED;
+    else process.env.COMMUNICATIONS_EMAIL_ENABLED = previousEmailToggle;
+
+    if (previousInAppToggle === undefined) delete process.env.COMMUNICATIONS_INAPP_ENABLED;
+    else process.env.COMMUNICATIONS_INAPP_ENABLED = previousInAppToggle;
+  });
 });
 
 describe("Communications Core - Recipient Resolvers", () => {
@@ -218,6 +331,49 @@ describe("Communications Core - Template Builders", () => {
     expect(reservation).toContain("Status: Pending");
     expect(reservation).toContain("Guests: 4");
     expect(lowStock).toBe("Low stock: Tomato (2/5), Cheese (1/3)");
+  });
+
+  it("partitions sensitive profile field paths out of display lists", () => {
+    const partitioned = partitionBusinessProfileChangedFields([
+      "businessName",
+      "credentials.newPassword",
+      "address.city",
+      "refreshToken",
+    ]);
+    expect(partitioned.safeLabels).toEqual(["businessName", "address.city"]);
+    expect(partitioned.sensitiveFieldCount).toBe(2);
+  });
+
+  it("builds in-app and email profile update messages without sensitive field names", () => {
+    const businessId = new Types.ObjectId();
+    const payload = {
+      businessId,
+      actor: {
+        source: "manager" as const,
+        role: "Owner",
+        email: "owner@example.com",
+      },
+      changedFields: ["businessName", "credentials.password", "address.city"],
+      changedFieldCount: 3,
+      occurredAt: new Date("2026-04-02T16:00:00.000Z"),
+      context: { correlationId: "op-123" },
+    };
+
+    const inApp = buildBusinessProfileUpdatedInAppMessage(payload);
+    expect(inApp).toContain("Business profile updated");
+    expect(inApp).toContain("businessName");
+    expect(inApp).toContain("address.city");
+    expect(inApp).not.toContain("password");
+    expect(inApp).toContain("Protected account fields");
+
+    const email = buildBusinessProfileUpdatedEmailBody(payload);
+    expect(email).toContain(businessId.toString());
+    expect(email).toContain("2026-04-02T16:00:00.000Z");
+    expect(email).toContain("op-123");
+    expect(email).toContain("- businessName");
+    expect(email).toContain("- address.city");
+    expect(email).not.toContain("credentials.password");
+    expect(email).not.toContain("password");
   });
 });
 

@@ -65,9 +65,11 @@ async function parseJson<T>(response: Response): Promise<T | null> {
   }
 }
 
-function getAuthHeaders(headers?: HeadersInit): HeadersInit {
+function getAuthHeaders(headers?: HeadersInit, hasBody = false): HeadersInit {
   const nextHeaders = new Headers(headers);
-  nextHeaders.set("Content-Type", "application/json");
+  if (hasBody && !nextHeaders.has("Content-Type")) {
+    nextHeaders.set("Content-Type", "application/json");
+  }
 
   if (accessToken) {
     nextHeaders.set("Authorization", `Bearer ${accessToken}`);
@@ -81,9 +83,10 @@ async function authRequest<T>(
   options?: RequestInit,
   retryOnUnauthorized = true
 ): Promise<{ ok: true; data: T | null } | { ok: false; error: string }> {
+  const hasBody = options?.body !== undefined && options?.body !== null;
   const response = await fetch(`${API_BASE_URL}${path}`, {
     credentials: "include",
-    headers: getAuthHeaders(options?.headers),
+    headers: getAuthHeaders(options?.headers, hasBody),
     ...options,
   });
 

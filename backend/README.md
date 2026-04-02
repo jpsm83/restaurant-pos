@@ -49,6 +49,7 @@ npm --prefix backend run start
 | `COMMUNICATIONS_INAPP_ENABLED` | No | Enable/disable persisted in-app channel (`false` disables) |
 | `COMMUNICATIONS_INAPP_LIVE_ENABLED` | No | Enable/disable live WS push bridge and `/notifications/live` route |
 | `COMMUNICATIONS_IDEMPOTENCY_WINDOW_MS` | No | Default dispatch idempotency suppression window in milliseconds |
+| `BUSINESS_PROFILE_UPDATED_MANAGER_POLICY` | No | Manager recipient mode for profile-update notifications: `allManagers` (default) or `onDutyManagers` (same pattern as `MONTHLY_REPORT_MANAGER_POLICY`, etc.) |
 
 Failed dispatch persistence policy (initial version):
 - failed attempts are logged/metriced for observability
@@ -85,6 +86,7 @@ Current backend notification design uses a single write boundary for both domain
 
 - Domain-triggered flow:
   - domain module -> `dispatchEvent` -> `inAppChannel.send` -> `notificationService.createAndDeliver`
+  - **Business profile:** authenticated `PATCH /api/v1/business/:businessId` emits `BUSINESS_PROFILE_UPDATED` when there are real field changes (templates + manager resolver in `src/communications`; details in `src/communications/README.md`)
 - Manual admin flow:
   - `POST /api/v1/notifications` -> `notificationService.createAndDeliver`
 - Shared persistence path:

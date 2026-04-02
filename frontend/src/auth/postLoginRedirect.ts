@@ -1,6 +1,5 @@
 /**
- * Post-login **routing helper** (`src/auth`) — pure function for guards and pages. See `auth/index.ts`
- * for the full auth folder map.
+ * Post-login **routing helper** (`src/auth`) — pure function for guards and pages.
  *
  * **`getPostLoginDestination`** — first URL after login/signup or when bouncing an authenticated user
  * off a public-only route: business → `/business/:id/dashboard`; staff-linked user → `/:id/mode`; else

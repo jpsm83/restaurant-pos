@@ -9,7 +9,7 @@ import "./i18n/i18n";
 import "./index.css";
 import App from "./App.tsx";
 import { ErrorBoundary } from "./components/ErrorBoundary";
-import { AuthProvider } from "./auth";
+import { AuthProvider } from "./auth/store/AuthContext";
 import Navbar from "./components/Navbar";
 import { queryClient } from "./services/queryClient";
 import { SidebarProvider } from "./components/ui/sidebar";
@@ -21,9 +21,9 @@ createRoot(document.getElementById("root")!).render(
       <AuthProvider>
         <ErrorBoundary>
           <BrowserRouter>
-            <SidebarProvider className="flex-col">
+            <SidebarProvider defaultOpen={false} className="flex-col">
               <Navbar />
-              <div className="flex min-h-0 w-full flex-1 pt-12">
+              <div className="flex min-h-0 w-full flex-1 pt-14">
                 <App />
               </div>
             </SidebarProvider>

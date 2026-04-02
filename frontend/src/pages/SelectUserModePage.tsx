@@ -2,7 +2,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
-import { getCurrentUser, useAuth } from "@/auth";
+import { getCurrentUser } from "@/auth/api";
+import { useAuth } from "@/auth/store/AuthContext";
 import type { AuthUser } from "@/auth/types";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useAuthMode } from "@/auth";
+import { useAuthMode } from "@/context/AuthModeContext";
 import { useNextShiftForEmployee } from "@/services/schedulesService";
 import {
   deriveEmployeeModeFromSchedule,

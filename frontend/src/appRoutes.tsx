@@ -26,7 +26,6 @@ import {
   SessionLoading,
   UserSessionRouteShell,
 } from "@/routes/AuthRouteGuards";
-import BusinessProfilePage from "./pages/business/BusinessProfilePage";
 import {
   canonicalDefaultDashboardPath,
 } from "./routes/canonicalPaths";
@@ -35,6 +34,27 @@ import BusinessRegisterPage from "./pages/business/BusinessRegisterPage";
 const LoginPage = lazy(() => import("@/pages/LoginPage"));
 const SignUpPage = lazy(() => import("@/pages/SignUpPage"));
 const BusinessDashboardPage = lazy(() => import("@/pages/business/BusinessDashboardPage"));
+const BusinessDeliverySettingsPage = lazy(
+  () => import("@/pages/business/BusinessDeliverySettingsPage"),
+);
+const BusinessMetricsSettingsPage = lazy(
+  () => import("@/pages/business/BusinessMetricsSettingsPage"),
+);
+const BusinessSubscriptionsSettingsPage = lazy(
+  () => import("@/pages/business/BusinessSubscriptionsSettingsPage"),
+);
+const BusinessAddressSettingsPage = lazy(
+  () => import("@/pages/business/BusinessAddressSettingsPage"),
+);
+const BusinessOpenHoursSettingsPage = lazy(
+  () => import("@/pages/business/BusinessOpenHoursSettingsPage"),
+);
+const BusinessCredentialsSettingsPage = lazy(
+  () => import("@/pages/business/BusinessCredentialsSettingsPage"),
+);
+const BusinessProfileSettingsPage = lazy(
+  () => import("@/pages/business/BusinessProfileSettingsPage"),
+);
 const CustomerProfilePage = lazy(() => import("@/pages/customer/CustomerProfilePage"));
 const CustomerFavoritesPage = lazy(() => import("@/pages/customer/CustomerFavoritesPage"));
 const CustomerDashboardPage = lazy(() => import("@/pages/customer/CustomerDashboardPage"));
@@ -145,7 +165,31 @@ export function AppRoutes() {
           >
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<BusinessDashboardPage />} />
-            <Route path="profile" element={<BusinessProfilePage />} />
+            <Route
+              path="settings/profile"
+              element={<BusinessProfileSettingsPage />}
+            />
+            <Route
+              path="settings/delivery"
+              element={<BusinessDeliverySettingsPage />}
+            />
+            <Route
+              path="settings/metrics"
+              element={<BusinessMetricsSettingsPage />}
+            />
+            <Route
+              path="settings/subscriptions"
+              element={<BusinessSubscriptionsSettingsPage />}
+            />
+            <Route path="settings/address" element={<BusinessAddressSettingsPage />} />
+            <Route
+              path="settings/open-hours"
+              element={<BusinessOpenHoursSettingsPage />}
+            />
+            <Route
+              path="settings/credentials"
+              element={<BusinessCredentialsSettingsPage />}
+            />
           </Route>
 
           <Route

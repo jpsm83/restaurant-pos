@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
 import { hash } from "bcrypt";
+import dispatchEvent from "../../communications/dispatchEvent.ts";
 import Business from "../../models/business.ts";
 import BusinessGood from "../../models/businessGood.ts";
 import DailySalesReport from "../../models/dailySalesReport.ts";
@@ -70,6 +71,30 @@ const reqSupplierGoodWastePercentage = [
   "hightBudgetImpact",
   "veryHightBudgetImpact",
 ];
+
+const flattenChangedFieldPaths = (
+  value: unknown,
+  prefix?: string,
+): string[] => {
+  if (Array.isArray(value)) {
+    // Arrays are treated as one changed branch to keep notifications concise.
+    return prefix ? [prefix] : [];
+  }
+
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>);
+    if (entries.length === 0) return prefix ? [prefix] : [];
+
+    const nested = entries.flatMap(([key, nestedValue]) => {
+      const path = prefix ? `${prefix}.${key}` : key;
+      return flattenChangedFieldPaths(nestedValue, path);
+    });
+
+    return nested.length > 0 ? nested : prefix ? [prefix] : [];
+  }
+
+  return prefix ? [prefix] : [];
+};
 
 function haversineKm(
   lon1: number,
@@ -805,6 +830,59 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
 
     if (!updatedBusiness) {
       return reply.code(404).send({ message: "Business to update not found!" });
+    }
+
+    const changedFields = flattenChangedFieldPaths(updateBusinessObj);
+    if (changedFields.length > 0) {
+      const authSession = req.authSession;
+      const correlationIdHeader = req.headers["x-correlation-id"];
+      const operationIdHeader = req.headers["x-idempotency-key"];
+      const correlationId =
+        typeof correlationIdHeader === "string"
+          ? correlationIdHeader
+          : undefined;
+      const operationId =
+        typeof operationIdHeader === "string" ? operationIdHeader : undefined;
+
+      // Fail-soft dispatch: persistence and API response remain successful even if
+      // communications channels fail. This keeps profile updates non-blocking.
+      dispatchEvent(
+        "BUSINESS_PROFILE_UPDATED",
+        {
+          businessId: new Types.ObjectId(businessId),
+          actor: {
+            source: authSession?.type === "business" ? "businessOwner" : "system",
+            email: authSession?.email,
+          },
+          changedFields,
+          changedFieldCount: changedFields.length,
+          occurredAt: new Date(),
+          context: {
+            correlationId,
+            operationId,
+            requestPath: req.routeOptions.url,
+            requestMethod: req.method,
+          },
+        },
+        {
+          fireAndForget: true,
+          correlationId,
+          idempotencyKey: operationId,
+        },
+      ).catch((error: unknown) => {
+        req.log.warn(
+          {
+            scope: "business.profileUpdate.dispatch",
+            businessId,
+            changedFieldCount: changedFields.length,
+            error:
+              error instanceof Error
+                ? error.message
+                : "Unknown dispatch error",
+          },
+          "BUSINESS_PROFILE_UPDATED dispatch failed (fail-soft)",
+        );
+      });
     }
 
     const session: AuthBusiness = {

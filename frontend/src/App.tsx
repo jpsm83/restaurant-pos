@@ -11,7 +11,7 @@
  *
  * Route elements: **`appRoutes.tsx`** (`AppRoutes`). Guards: **`routes/AuthRouteGuards.tsx`**.
  */
-import { AuthModeProvider } from "@/auth";
+import { AuthModeProvider } from "@/context/AuthModeContext";
 import { AppRoutes } from "@/appRoutes";
 
 export { AppRoutes };

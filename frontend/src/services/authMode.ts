@@ -12,31 +12,36 @@
  * Depends on: `./http`, `./queryKeys`.
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import axios, { type AxiosError } from "axios";
+import type {
+  IAuthMode,
+  IAuthModeResponse,
+  ISetAuthModeBody,
+} from "@packages/interfaces/IAuth.ts";
 import { http } from "./http";
 import { queryKeys } from "./queryKeys";
+import { toServiceRequestError } from "./serviceErrors";
 
-export type AuthMode = "customer" | "employee";
+export type AuthMode = IAuthMode;
 
 /** UI fallback when `POST /auth/set-mode` returns 403 without a body message (Phase 3.1.3). */
 export const EMPLOYEE_MODE_NOT_ALLOWED_MESSAGE = "Employee mode not allowed";
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function messageFromAxiosError(error: AxiosError): string {
-  const data = error.response?.data;
-  if (isRecord(data) && typeof data.message === "string") {
-    return data.message;
-  }
-  return error.message;
-}
-
 /** `GET /api/v1/auth/mode` — reads `auth_mode` cookie (defaults to `customer`). */
-export async function getAuthMode(): Promise<AuthMode> {
-  const { data } = await http.get<{ mode?: string }>("/api/v1/auth/mode");
-  return data.mode === "employee" ? "employee" : "customer";
+export async function getAuthMode(signal?: AbortSignal): Promise<AuthMode> {
+  try {
+    const { data } = await http.get<IAuthModeResponse>("/api/v1/auth/mode", {
+      signal,
+    });
+    return data.mode === "employee" ? "employee" : "customer";
+  } catch (e) {
+    throw toServiceRequestError(e, {
+      fallback: "Failed to fetch auth mode",
+      byStatus: {
+        401: "Please sign in to access workspace mode.",
+        403: "You do not have permission to access workspace mode.",
+      },
+    });
+  }
 }
 
 /**
@@ -45,24 +50,24 @@ export async function getAuthMode(): Promise<AuthMode> {
  */
 export async function setAuthMode(mode: AuthMode): Promise<void> {
   try {
-    await http.post("/api/v1/auth/set-mode", { mode });
+    const body: ISetAuthModeBody = { mode };
+    await http.post("/api/v1/auth/set-mode", body);
   } catch (e) {
-    if (axios.isAxiosError(e)) {
-      const status = e.response?.status;
-      const msg = messageFromAxiosError(e);
-      if (status === 403) {
-        throw new Error(msg.trim() || EMPLOYEE_MODE_NOT_ALLOWED_MESSAGE);
-      }
-      throw new Error(msg.trim() || "Failed to set auth mode");
-    }
-    throw e;
+    const mapped = toServiceRequestError(e, {
+      fallback: "Failed to set auth mode",
+      byStatus: {
+        401: "Please sign in to set workspace mode.",
+        403: EMPLOYEE_MODE_NOT_ALLOWED_MESSAGE,
+      },
+    });
+    throw new Error(mapped.message);
   }
 }
 
 export function useAuthModeQuery(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: queryKeys.auth.mode(),
-    queryFn: getAuthMode,
+    queryFn: ({ signal }) => getAuthMode(signal),
     enabled: options?.enabled ?? true,
   });
 }

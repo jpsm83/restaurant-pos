@@ -11,6 +11,7 @@ const POLICY_BY_EVENT: Partial<Record<CommunicationsEventName, ManagerRecipientP
   LOW_STOCK_ALERT: "onDutyManagers",
   MONTHLY_REPORT_READY: "allManagers",
   WEEKLY_REPORT_READY: "allManagers",
+  BUSINESS_PROFILE_UPDATED: "allManagers",
 };
 
 const POLICY_OVERRIDE_ENV_BY_EVENT: Partial<Record<CommunicationsEventName, string>> =
@@ -19,6 +20,7 @@ const POLICY_OVERRIDE_ENV_BY_EVENT: Partial<Record<CommunicationsEventName, stri
     LOW_STOCK_ALERT: "LOW_STOCK_MANAGER_POLICY",
     MONTHLY_REPORT_READY: "MONTHLY_REPORT_MANAGER_POLICY",
     WEEKLY_REPORT_READY: "WEEKLY_REPORT_MANAGER_POLICY",
+    BUSINESS_PROFILE_UPDATED: "BUSINESS_PROFILE_UPDATED_MANAGER_POLICY",
   };
 
 const getPolicyOverride = (

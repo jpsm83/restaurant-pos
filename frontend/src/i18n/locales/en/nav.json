@@ -24,12 +24,21 @@
     },
     "home": "Home",
     "dashboard": "Dashboard",
-    "profile": "Profile",
     "favorites": "Favorites",
     "employeeArea": "Employee area",
     "customerHome": "Customer home",
     "language": "Language",
     "logOut": "Log out"
+  },
+  "settings": {
+    "title": "Settings",
+    "profile": "Profile",
+    "subscriptions": "Subscriptions",
+    "address": "Address",
+    "openHours": "Open hours",
+    "credentials": "Credentials",
+    "delivery": "Delivery",
+    "metrics": "Metrics"
   },
   "sidebar": {
     "openMenu": "Open menu",

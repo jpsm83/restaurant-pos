@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useLocation } from "react-router-dom";
-import { useAuth } from "@/auth";
+import { useAuth } from "@/auth/store/AuthContext";
 import { AccountMenuPopover } from "@/components/AccountMenuPopover";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { Button } from "@/components/ui/button";
@@ -47,7 +47,7 @@ export default function Navbar() {
 
   return (
     <nav
-      className="fixed left-0 right-0 top-0 z-50 h-12 shrink-0 border-b border-neutral-200 bg-white"
+      className="fixed left-0 right-0 top-0 z-50 h-14 shrink-0 border-b border-neutral-200 bg-white"
       aria-label={t("mainNav.ariaLabel")}
     >
       <div className="flex h-full w-full items-center justify-between gap-3 px-6 sm:px-8">

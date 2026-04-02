@@ -8,16 +8,13 @@
  *    **`SelectUserModePage`** when JWT disallows employee mode until shift; page invalidates this
  *    query when countdown completes.
  *
- * Depends on: `./http`, `./queryKeys`, types from `@/lib/employeeModeSchedule`.
+ * Depends on: `./http`, `./queryKeys`, shared schedule contracts from `@packages/interfaces`.
  */
 import { useQuery } from "@tanstack/react-query";
+import type { IDailyEmployeeScheduleResponse } from "@packages/interfaces/ISchedule.ts";
 import { http } from "./http";
 import { queryKeys } from "./queryKeys";
-import type { ScheduleShiftEntry } from "@/lib/employeeModeSchedule";
-
-export type DailyEmployeeScheduleResponse = {
-  entries: ScheduleShiftEntry[];
-};
+import { toServiceRequestError } from "./serviceErrors";
 
 /**
  * Authenticated user's shift rows for a calendar day (`dayKey=YYYY-MM-DD`) at the given business.
@@ -26,12 +23,24 @@ export type DailyEmployeeScheduleResponse = {
 export async function fetchDailyEmployeeSchedule(
   businessId: string,
   dayKey: string,
-): Promise<DailyEmployeeScheduleResponse> {
-  const { data } = await http.get<DailyEmployeeScheduleResponse>(
-    `/api/v1/schedules/business/${businessId}/daily`,
-    { params: { dayKey } },
-  );
-  return data;
+  signal?: AbortSignal,
+): Promise<IDailyEmployeeScheduleResponse> {
+  try {
+    const { data } = await http.get<IDailyEmployeeScheduleResponse>(
+      `/api/v1/schedules/business/${businessId}/daily`,
+      { params: { dayKey }, signal },
+    );
+    return data;
+  } catch (e) {
+    throw toServiceRequestError(e, {
+      fallback: "Failed to fetch employee schedule",
+      byStatus: {
+        401: "Please sign in to view employee schedule.",
+        403: "You do not have permission to view this employee schedule.",
+        404: "Schedule data was not found for this day.",
+      },
+    });
+  }
 }
 
 export type UseNextShiftForEmployeeOptions = {
@@ -53,8 +62,9 @@ export function useNextShiftForEmployee(options: UseNextShiftForEmployeeOptions)
     queryKey:
       businessId && employeeId
         ? queryKeys.schedules.employeeDay(businessId, employeeId, dayKey)
-        : ["schedules", "employeeDay", "pending"],
-    queryFn: () => fetchDailyEmployeeSchedule(businessId!, dayKey),
+        : queryKeys.schedules.employeeDayPending(),
+    queryFn: ({ signal }) =>
+      fetchDailyEmployeeSchedule(businessId!, dayKey, signal),
     enabled: canRun,
   });
 }

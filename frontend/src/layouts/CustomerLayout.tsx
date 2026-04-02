@@ -15,7 +15,7 @@ import ActorSidebar from "@/components/ActorSidebar";
 import {
   SidebarInset,
 } from "@/components/ui/sidebar";
-import { useAuth } from "@/auth";
+import { useAuth } from "@/auth/store/AuthContext";
 import { useTranslation } from "react-i18next";
 import { useLocation } from "react-router-dom";
 import { LayoutDashboard, Star, User, UsersRound } from "lucide-react";
@@ -48,7 +48,7 @@ export default function CustomerLayout() {
     },
     {
       key: "profile",
-      label: t("account.profile"),
+      label: t("settings.profile"),
       to: profileTo,
       icon: User,
       isActive: pathname === profileTo,

@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
-import { useAuth } from "@/auth";
+import { useAuth } from "@/auth/store/AuthContext";
 import {
   Card,
   CardContent,
