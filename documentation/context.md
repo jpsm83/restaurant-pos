@@ -1,3 +1,25 @@
+<a id="critical-engineering-rules"></a>
+
+## Critical — engineering rules (entire project)
+
+> **Read this block first.** These rules are **binding for the whole repository**—every contributor and every automated coding pass—**before** any source file is added or edited. They override convenience habits when there is a conflict. If a change must break a rule, document **why** in the PR or task (rare exceptions only).
+
+1. **React.js best practices** — Follow **current, mainstream React** discipline: correct hooks usage, clear component boundaries, predictable state and effects, accessibility, and sensible performance (avoid unnecessary work). Frontend work must stay aligned with how **professional** React applications are structured and reviewed.
+
+2. **Professional-grade patterns** — Prefer patterns and structure seen in **serious, widely maintained** projects (clear separation of concerns without ceremony, consistent error and data boundaries, typing where the repo already uses it). **Do not** invent parallel architectures or novel abstractions when an established pattern already fits.
+
+3. **No overcomplication** — **Absolutely do not** overcomplicate code, APIs, or user-visible flows. Favor **direct, readable, robust** solutions. If a reviewer cannot follow the path from entry to outcome quickly, the design is probably wrong.
+
+4. **Minimal files and layers** — **Do not** create extra files, wrappers, or indirection **unless strictly necessary** for the task. Avoid new “layers” (config cascades, generic helpers used once, shared schema god-files) that exist only to look organized. **Colocate** with the feature that owns the behavior; expand surface area only when reuse or complexity **demands** it.
+
+5. **Use shadcn/ui primitives first** — When building UI, always prefer components from `frontend/src/components/ui` (e.g. `Button`, `Input`, `Select`, `Label`, `Alert`, etc.). Do **not** recreate existing “wheels”. Only create personal components when a suitable shadcn/ui component does not exist or cannot meet the requirement.
+
+6. **Robust code + concise comments** — Code must be **robust and reliable**. Every non-trivial block (complex function logic, validation rules, state transitions, branching decisions) must include **concise comments** explaining the intent and the reasoning behind the implementation.
+
+7. **Forms must match the backend model** — For any form work, ensure the **Zod validation schema** matches the backend form/model rules in `backend/src/models` (field names, required vs optional, types, constraints). When in doubt, reference the backend model in comments and keep the frontend schema synchronized.
+
+---
+
 ## Source of truth — Restaurant POS context
 
 This file (`documentation/context.md`) is the **canonical entry point** and **bridge document** for how the Restaurant POS is supposed to work. Treat it as the **first place to read** for product intent and how subsystems connect; then open the focused docs below (or the code-adjacent READMEs) for depth.
@@ -17,13 +39,15 @@ These files sit alongside `context.md` under `documentation/`. They are the **au
 | [`../FRONTEND_AUTH_NAVIGATION_IMPLEMENTATION_PLAN.md`](../FRONTEND_AUTH_NAVIGATION_IMPLEMENTATION_PLAN.md) | **Web app shell**: public marketing, auth partitions, mode selection — phased tasks, route/guard work, lazy loading/error boundary polish, and tests; companion to the strategy doc above. |
 | [`frontend-authentication-and-navigation.md`](./frontend-authentication-and-navigation.md) | **Frontend (implemented)**: detailed **auth + navigation** behavior in `frontend/src` — session types, `getPostLoginDestination`, guards, `auth_mode`, schedule countdown, route map, and file index. |
 | [`frontend-i18n.md`](./frontend-i18n.md) | **Frontend i18n (implemented)**: `i18next` + `react-i18next` in `frontend/src/i18n`, **`en` + `es`** namespaces, how to add strings, `renderWithI18n`, language persistence, navbar switcher, **`npm run i18n:check-parity`**. |
+| [`frontend-third-party-libraries.md`](./frontend-third-party-libraries.md) | **Frontend npm stack**: major dependencies by layer (routing, Query, RHF+Zod forms, Radix/shadcn UI, i18n, etc.) and **conventions for adding packages**. |
 | [`i18n-implementation-plan.md`](./i18n-implementation-plan.md) | **Frontend i18n status/backlog**: completed locale work (Mar 2026), optional next steps (`Intl`, i18next-parser) — companion to `frontend-i18n.md`. |
 | [`i18n-locale-coverage-todo.md`](./i18n-locale-coverage-todo.md) | **Presentation × namespace inventory** and completed blocks 0–9 audit (wiring + Spanish for all listed TSX). |
 
-**Reading order suggestion:** skim `context.md` (this file) → `user-flow.md` for the story → [`authentication-and-session.md`](./authentication-and-session.md) when wiring login, cookies, or guards → [`frontend-i18n.md`](./frontend-i18n.md) when changing **web UI copy or locales** → `sales-point-sales-instance-orders.md` for table/order mechanics → `daily-sales-report-feature.md` when working on reporting → `business-metrics-formulas.md` when interpreting or changing KPI outputs.
+**Reading order suggestion:** skim `context.md` (this file) → `user-flow.md` for the story → [`authentication-and-session.md`](./authentication-and-session.md) when wiring login, cookies, or guards → [`frontend-i18n.md`](./frontend-i18n.md) when changing **web UI copy or locales** → [`frontend-third-party-libraries.md`](./frontend-third-party-libraries.md) when adding **frontend npm dependencies** or **forms (RHF + Zod)** → `sales-point-sales-instance-orders.md` for table/order mechanics → `daily-sales-report-feature.md` when working on reporting → `business-metrics-formulas.md` when interpreting or changing KPI outputs.
 
 ### Entry point for AI-assisted coding
 
+- Obey **[Critical — engineering rules](#critical-engineering-rules)** at the top of this file **before** proposing or applying code changes.
 - Start here for **product shape** and **cross-cutting rules**.
 - Use the **companion docs** above for **how the app is supposed to work** in detail (users, auth sessions, POS/session model, DSR, metrics).
 - Use the **READMEs** listed later for **implementation** next to code (API domains, models, validation, transactions).

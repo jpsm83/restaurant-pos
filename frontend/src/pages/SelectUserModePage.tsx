@@ -4,7 +4,6 @@ import { useTranslation } from "react-i18next";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { getCurrentUser, useAuth } from "@/auth";
 import type { AuthUser } from "@/auth/types";
-import Navbar from "@/components/Navbar";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,7 +19,10 @@ import {
   deriveEmployeeModeFromSchedule,
   formatDayKeyLocal,
 } from "@/lib/employeeModeSchedule";
-import { canonicalUserCustomerHomePath, canonicalUserEmployeeHomePath } from "@/routes/canonicalPaths";
+import {
+  canonicalUserCustomerDashboardPath,
+  canonicalUserEmployeeDashboardPath,
+} from "@/routes/canonicalPaths";
 
 function formatRemaining(totalSeconds: number): string {
   const s = Math.max(0, Math.floor(totalSeconds));
@@ -82,9 +84,13 @@ function EmployeeModeCountdown({
   }, [targetMs]);
 
   return (
-    <p className={className} role="status" aria-live="polite">
+    <CardDescription
+      className={className}
+      role="status"
+      aria-live="polite"
+    >
       {t("countdown.unlocksIn", { time: label })}
-    </p>
+    </CardDescription>
   );
 }
 
@@ -171,7 +177,7 @@ export default function SelectUserModePage() {
   }
 
   if (!linked || !sessionUser) {
-    return <Navigate to={`/${userId}/customer/home`} replace />;
+    return <Navigate to={`/${userId}/customer/dashboard`} replace />;
   }
 
   const showCountdown =
@@ -187,7 +193,7 @@ export default function SelectUserModePage() {
     setError(null);
     try {
       await setModeAndRefresh("customer");
-      navigate(canonicalUserCustomerHomePath(sessionUser), { replace: true });
+      navigate(canonicalUserCustomerDashboardPath(sessionUser), { replace: true });
     } catch (e) {
       setError(e instanceof Error ? e.message : t("errors.generic"));
     }
@@ -198,7 +204,7 @@ export default function SelectUserModePage() {
     setError(null);
     try {
       await setModeAndRefresh("employee");
-      navigate(canonicalUserEmployeeHomePath(sessionUser), { replace: true });
+      navigate(canonicalUserEmployeeDashboardPath(sessionUser), { replace: true });
     } catch (e) {
       setError(e instanceof Error ? e.message : t("errors.generic"));
     }
@@ -206,7 +212,6 @@ export default function SelectUserModePage() {
 
   return (
     <div className="flex min-h-0 w-full flex-1 flex-col bg-neutral-100">
-      <Navbar />
       <main className="flex min-h-0 flex-1 flex-col items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
         <Card className="w-full max-w-md">
           <CardHeader>
@@ -225,7 +230,7 @@ export default function SelectUserModePage() {
               {t("continueCustomer")}
             </Button>
             <div className="space-y-2 border-t border-neutral-200 pt-4">
-              <p className="text-sm text-neutral-600">{employeeDescription}</p>
+              <CardDescription>{employeeDescription}</CardDescription>
               {showCountdown && derived.countdownTargetMs !== null ? (
                 <EmployeeModeCountdown
                   targetMs={derived.countdownTargetMs}

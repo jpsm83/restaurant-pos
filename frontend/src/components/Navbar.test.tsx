@@ -3,11 +3,15 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import * as i18nModule from "@/i18n/i18n";
-import { SiteAudienceProvider } from "@/context/SiteAudienceContext";
 import { renderWithI18n } from "@/test/i18nTestUtils";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import Navbar from "./Navbar";
 
 const mockDispatch = vi.fn();
+
+vi.mock("@/hooks/use-mobile", () => ({
+  useIsMobile: () => false,
+}));
 
 vi.mock("@/auth/store/AuthContext", () => ({
   useAuth: () => ({
@@ -25,7 +29,7 @@ describe("Navbar", () => {
     const user = userEvent.setup();
     await renderWithI18n(
       <MemoryRouter initialEntries={["/"]}>
-        <SiteAudienceProvider>
+        <SidebarProvider>
           <Routes>
             <Route
               path="/"
@@ -38,7 +42,7 @@ describe("Navbar", () => {
             />
             <Route path="/business" element={<div>Business page</div>} />
           </Routes>
-        </SiteAudienceProvider>
+        </SidebarProvider>
       </MemoryRouter>,
     );
 
@@ -52,7 +56,7 @@ describe("Navbar", () => {
     const user = userEvent.setup();
     await renderWithI18n(
       <MemoryRouter initialEntries={["/business"]}>
-        <SiteAudienceProvider>
+        <SidebarProvider>
           <Routes>
             <Route
               path="/business"
@@ -63,22 +67,22 @@ describe("Navbar", () => {
                 </>
               }
             />
-            <Route path="/" element={<div>Customer home</div>} />
+            <Route path="/" element={<div>Customer page</div>} />
           </Routes>
-        </SiteAudienceProvider>
+        </SidebarProvider>
       </MemoryRouter>,
     );
 
     const userLink = screen.getByRole("link", { name: /switch to user/i });
     await user.click(userLink);
-    expect(await screen.findByText("Customer home")).toBeInTheDocument();
+    expect(await screen.findByText("Customer page")).toBeInTheDocument();
   });
 
   // Phase 1.5.2 — Sign in preserves audience=business when path is /business.
   it("links Sign in with audience query on business path", async () => {
     await renderWithI18n(
       <MemoryRouter initialEntries={["/business"]}>
-        <SiteAudienceProvider>
+        <SidebarProvider>
           <Routes>
             <Route
               path="/business"
@@ -90,7 +94,7 @@ describe("Navbar", () => {
               }
             />
           </Routes>
-        </SiteAudienceProvider>
+        </SidebarProvider>
       </MemoryRouter>,
     );
 
@@ -101,7 +105,7 @@ describe("Navbar", () => {
   it("links Sign up to business register when on business audience", async () => {
     await renderWithI18n(
       <MemoryRouter initialEntries={["/business"]}>
-        <SiteAudienceProvider>
+        <SidebarProvider>
           <Routes>
             <Route
               path="/business"
@@ -113,7 +117,7 @@ describe("Navbar", () => {
               }
             />
           </Routes>
-        </SiteAudienceProvider>
+        </SidebarProvider>
       </MemoryRouter>,
     );
 
@@ -132,7 +136,7 @@ describe("Navbar", () => {
 
     await renderWithI18n(
       <MemoryRouter initialEntries={["/"]}>
-        <SiteAudienceProvider>
+        <SidebarProvider>
           <Routes>
             <Route
               path="/"
@@ -144,7 +148,7 @@ describe("Navbar", () => {
               }
             />
           </Routes>
-        </SiteAudienceProvider>
+        </SidebarProvider>
       </MemoryRouter>,
     );
 

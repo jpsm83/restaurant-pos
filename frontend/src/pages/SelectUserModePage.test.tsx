@@ -68,11 +68,11 @@ async function renderAtMode(path = "/u1/mode", client?: QueryClient) {
       <Routes>
         <Route path="/:userId/mode" element={<SelectUserModePage />} />
         <Route
-          path="/:userId/customer/home"
+          path="/:userId/customer/dashboard"
           element={<div data-testid="customer-shell">Customer shell</div>}
         />
         <Route
-          path="/:userId/employee/home"
+          path="/:userId/employee/dashboard"
           element={<div data-testid="employee-shell">Employee shell</div>}
         />
       </Routes>

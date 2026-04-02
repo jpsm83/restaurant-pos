@@ -45,9 +45,11 @@ describe("LoginPage", () => {
 
     await user.click(screen.getByRole("button", { name: /sign in/i }));
 
-    expect(
-      screen.getByText("Email and password are required."),
-    ).toBeInTheDocument();
+    const requiredMsgs = screen.getAllByText(
+      "Email and password are required.",
+    );
+    // The form shows the required message for both empty `email` and `password`.
+    expect(requiredMsgs.length).toBeGreaterThanOrEqual(2);
   });
 
   it("shows backend error on failed login", async () => {
@@ -70,7 +72,7 @@ describe("LoginPage", () => {
     expect(screen.getByText("Invalid credentials")).toBeInTheDocument();
   });
 
-  it("navigates to /business/:id/home after business login", async () => {
+  it("navigates to /business/:id/dashboard after business login", async () => {
     const user = userEvent.setup();
     mockLogin.mockResolvedValue({
       ok: true,
@@ -88,8 +90,8 @@ describe("LoginPage", () => {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route
-            path="/business/:businessId/home"
-            element={<div>Business tenant home</div>}
+            path="/business/:businessId/dashboard"
+            element={<div>Business tenant dashboard</div>}
           />
         </Routes>
       </MemoryRouter>,
@@ -100,11 +102,11 @@ describe("LoginPage", () => {
     await user.click(screen.getByRole("button", { name: /sign in/i }));
 
     await waitFor(() => {
-      expect(screen.getByText("Business tenant home")).toBeInTheDocument();
+      expect(screen.getByText("Business tenant dashboard")).toBeInTheDocument();
     });
   });
 
-  it("navigates to /:userId/customer/home after user login without employee", async () => {
+  it("navigates to /:userId/customer/dashboard after user login without employee", async () => {
     const user = userEvent.setup();
     mockLogin.mockResolvedValue({
       ok: true,
@@ -122,8 +124,8 @@ describe("LoginPage", () => {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route
-            path="/:userId/customer/home"
-            element={<div>User customer shell</div>}
+            path="/:userId/customer/dashboard"
+            element={<div>User customer dashboard</div>}
           />
         </Routes>
       </MemoryRouter>,
@@ -134,7 +136,7 @@ describe("LoginPage", () => {
     await user.click(screen.getByRole("button", { name: /sign in/i }));
 
     await waitFor(() => {
-      expect(screen.getByText("User customer shell")).toBeInTheDocument();
+      expect(screen.getByText("User customer dashboard")).toBeInTheDocument();
     });
   });
 });

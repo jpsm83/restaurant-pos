@@ -1,8 +1,12 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
+import { z } from "zod";
 import { getPostLoginDestination, login } from "@/auth";
 import { useAuth } from "@/auth/store/AuthContext";
+import { FieldError } from "@/components/FieldError";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,13 +19,36 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+function buildLoginSchema(requiredMsg: string) {
+  return z.object({
+    // Backend checks only for "presence" (truthy) and normalizes email on submit.
+    // Keep this validation lightweight and show required errors on the correct field.
+    email: z.string().min(1, requiredMsg),
+    password: z.string().min(1, requiredMsg),
+  });
+}
+
+type LoginFormValues = z.infer<ReturnType<typeof buildLoginSchema>>;
+
 export default function LoginPage() {
   const { t } = useTranslation("auth");
   const navigate = useNavigate();
   const { state, dispatch } = useAuth();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const schema = useMemo(
+    () => buildLoginSchema(t("login.errors.required")),
+    [t],
+  );
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { email: "", password: "" },
+  });
 
   useEffect(() => {
     const shouldShowExpiredNotice =
@@ -36,20 +63,13 @@ export default function LoginPage() {
 
   const isSubmitting = state.status === "loading";
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    if (!email.trim() || !password.trim()) {
-      setSubmitError(t("login.errors.required"));
-      return;
-    }
-
+  const onSubmit = async (data: LoginFormValues) => {
     setSubmitError(null);
     dispatch({ type: "AUTH_LOADING" });
 
     const result = await login({
-      email: email.trim(),
-      password,
+      email: data.email.trim(),
+      password: data.password,
     });
 
     if (!result.ok || !result.data?.user) {
@@ -76,31 +96,38 @@ export default function LoginPage() {
           <CardDescription>{t("login.description")}</CardDescription>
         </CardHeader>
         <CardContent>
-          <form className="space-y-4" onSubmit={handleSubmit}>
+          <form
+            className="space-y-4"
+            onSubmit={(e) => void handleSubmit(onSubmit)(e)}
+          >
             <div className="space-y-2">
-              <Label htmlFor="email">{t("login.emailLabel")}</Label>
+              <Label htmlFor="login-email">{t("login.emailLabel")}</Label>
               <Input
-                id="email"
+                id="login-email"
                 type="email"
                 autoComplete="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
                 placeholder={t("login.emailPlaceholder")}
+                aria-invalid={errors.email ? true : undefined}
+                {...register("email")}
               />
+              <FieldError message={errors.email?.message} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">{t("login.passwordLabel")}</Label>
+              <Label htmlFor="login-password">{t("login.passwordLabel")}</Label>
               <Input
-                id="password"
+                id="login-password"
                 type="password"
                 autoComplete="current-password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
                 placeholder={t("login.passwordPlaceholder")}
+                aria-invalid={errors.password ? true : undefined}
+                {...register("password")}
               />
+              <FieldError message={errors.password?.message} />
             </div>
 
-            {(submitError || state.error) && <Alert>{submitError || state.error}</Alert>}
+            {(submitError || state.error) && (
+              <Alert>{submitError || state.error}</Alert>
+            )}
 
             <Button type="submit" className="w-full" disabled={isSubmitting}>
               {isSubmitting ? t("login.submitting") : t("login.submit")}

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { renderWithI18n } from "@/test/i18nTestUtils";
 import BusinessDashboardPage from "./BusinessDashboardPage";
@@ -45,13 +45,23 @@ function renderBusinessDashboard() {
 }
 
 describe("BusinessDashboardPage advanced table integration", () => {
-  it("renders integrated advanced table controls on real route", async () => {
+  it("renders dashboard shell and advanced table section for tenant", async () => {
     await renderBusinessDashboard();
 
-    expect(screen.getByText(/advanced table integration target/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /edit table config/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /business dashboard/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /advanced table integration target/i }),
+    ).toBeInTheDocument();
     expect(screen.getByText(/business id: 64b000000000000000000001/i)).toBeInTheDocument();
     expect(screen.getByText(/business email: owner@restaurant.com/i)).toBeInTheDocument();
-    expect(screen.getByText(/loading table data/i)).toBeInTheDocument();
+
+    await waitFor(
+      () => {
+        expect(screen.queryByText(/loading table data/i)).not.toBeInTheDocument();
+      },
+      { timeout: 10_000 },
+    );
+
+    expect(screen.getByRole("columnheader", { name: /ticket/i })).toBeInTheDocument();
   });
 });

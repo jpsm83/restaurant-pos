@@ -17,12 +17,12 @@ vi.mock("@/auth", async (importOriginal) => {
   };
 });
 
-describe("AccountMenuPopover business navigation", () => {
-  it("shows separate Home and Dashboard links for business", async () => {
+describe("AccountMenuPopover (actor summary)", () => {
+  it("shows actor type, email, language switcher, profile, and log out", async () => {
     const user = userEvent.setup();
 
     await renderWithI18n(
-      <MemoryRouter initialEntries={["/business/64b000000000000000000001/home"]}>
+      <MemoryRouter initialEntries={["/business/64b000000000000000000001/dashboard"]}>
         <AccountMenuPopover
           session={{
             id: "64b000000000000000000001",
@@ -34,15 +34,14 @@ describe("AccountMenuPopover business navigation", () => {
     );
 
     await user.click(screen.getByRole("button"));
-    const homeLink = await screen.findByRole("link", { name: /home/i });
-    const dashboardLink = await screen.findByRole("link", { name: /dashboard/i });
-    expect(homeLink).toHaveAttribute(
-      "href",
-      "/business/64b000000000000000000001/home",
-    );
-    expect(dashboardLink).toHaveAttribute(
-      "href",
-      "/business/64b000000000000000000001/dashboard",
-    );
+
+    expect(screen.getByText(/business/i)).toBeInTheDocument();
+    expect(screen.getByText("owner@restaurant.com")).toBeInTheDocument();
+
+    // Language flag button (aria-label is in `common` namespace).
+    expect(screen.getByRole("button", { name: /language/i })).toBeInTheDocument();
+
+    expect(screen.getByRole("button", { name: /profile/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /log out/i })).toBeInTheDocument();
   });
 });

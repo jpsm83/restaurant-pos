@@ -1,8 +1,12 @@
-import { Link, useNavigate } from "react-router-dom";
-import { useState, type FormEvent } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
+import { Link, useNavigate } from "react-router-dom";
+import { z } from "zod";
 import { getPostLoginDestination, signup } from "@/auth";
 import { useAuth } from "@/auth/store/AuthContext";
+import { FieldError } from "@/components/FieldError";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,41 +19,79 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { isValidPassword } from "@packages/utils/passwordPolicy.ts";
+import emailRegex from "@packages/utils/emailRegex.ts";
+
+function buildSignUpSchema(messages: {
+  allRequired: string;
+  invalidEmail: string;
+  passwordMismatch: string;
+  passwordPolicy: string;
+}) {
+  return z
+    .object({
+      email: z
+        .string()
+        .trim()
+        .min(1, messages.allRequired)
+        .regex(emailRegex, messages.invalidEmail),
+      password: z.string().min(1, messages.allRequired),
+      confirmPassword: z.string().min(1, messages.allRequired),
+    })
+    .refine((data) => data.password === data.confirmPassword, {
+      message: messages.passwordMismatch,
+      path: ["confirmPassword"],
+    })
+    .refine(
+      (data) =>
+        data.password !== data.confirmPassword ||
+        isValidPassword(data.password),
+      {
+        message: messages.passwordPolicy,
+        path: ["password"],
+      },
+    );
+}
+
+type SignUpFormValues = z.infer<ReturnType<typeof buildSignUpSchema>>;
 
 export default function SignUpPage() {
   const { t } = useTranslation("auth");
   const navigate = useNavigate();
   const { state, dispatch } = useAuth();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [message, setMessage] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const isSubmitting = state.status === "loading";
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const schema = useMemo(
+    () =>
+      buildSignUpSchema({
+        allRequired: t("signup.errors.allRequired"),
+        invalidEmail: t("signup.errors.invalidEmail"),
+        passwordMismatch: t("signup.errors.passwordMismatch"),
+        passwordPolicy: t("signup.errors.passwordPolicy"),
+      }),
+    [t],
+  );
 
-    if (!email.trim() || !password.trim() || !confirmPassword.trim()) {
-      setMessage(t("signup.errors.allRequired"));
-      return;
-    }
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<SignUpFormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      email: "",
+      password: "",
+      confirmPassword: "",
+    },
+  });
 
-    if (password !== confirmPassword) {
-      setMessage(t("signup.errors.passwordMismatch"));
-      return;
-    }
-
-    if (!isValidPassword(password)) {
-      setMessage(t("signup.errors.passwordPolicy"));
-      return;
-    }
-
-    setMessage(null);
+  const onSubmit = async (data: SignUpFormValues) => {
+    setSubmitError(null);
     dispatch({ type: "AUTH_LOADING" });
 
     const result = await signup({
-      email: email.trim(),
-      password,
+      email: data.email.trim(),
+      password: data.password,
     });
 
     if (!result.ok || !result.data?.user) {
@@ -57,7 +99,7 @@ export default function SignUpPage() {
         ? t("signup.errors.signUpFailed")
         : result.error;
       dispatch({ type: "AUTH_ERROR", payload: errorMessage });
-      setMessage(errorMessage);
+      setSubmitError(errorMessage);
       return;
     }
 
@@ -75,17 +117,21 @@ export default function SignUpPage() {
           <CardDescription>{t("signup.description")}</CardDescription>
         </CardHeader>
         <CardContent>
-          <form className="space-y-4" onSubmit={handleSubmit}>
+          <form
+            className="space-y-4"
+            onSubmit={(e) => void handleSubmit(onSubmit)(e)}
+          >
             <div className="space-y-2">
               <Label htmlFor="signup-email">{t("signup.emailLabel")}</Label>
               <Input
                 id="signup-email"
                 type="email"
                 autoComplete="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
                 placeholder={t("signup.emailPlaceholder")}
+                aria-invalid={errors.email ? true : undefined}
+                {...register("email")}
               />
+              <FieldError message={errors.email?.message} />
             </div>
 
             <div className="space-y-2">
@@ -94,10 +140,11 @@ export default function SignUpPage() {
                 id="signup-password"
                 type="password"
                 autoComplete="new-password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
                 placeholder={t("signup.passwordPlaceholder")}
+                aria-invalid={errors.password ? true : undefined}
+                {...register("password")}
               />
+              <FieldError message={errors.password?.message} />
             </div>
 
             <div className="space-y-2">
@@ -108,13 +155,14 @@ export default function SignUpPage() {
                 id="signup-confirm-password"
                 type="password"
                 autoComplete="new-password"
-                value={confirmPassword}
-                onChange={(event) => setConfirmPassword(event.target.value)}
                 placeholder={t("signup.confirmPasswordPlaceholder")}
+                aria-invalid={errors.confirmPassword ? true : undefined}
+                {...register("confirmPassword")}
               />
+              <FieldError message={errors.confirmPassword?.message} />
             </div>
 
-            {message && <Alert>{message}</Alert>}
+            {submitError && <Alert>{submitError}</Alert>}
 
             <Button type="submit" className="w-full" disabled={isSubmitting}>
               {isSubmitting ? t("signup.submitting") : t("signup.submit")}

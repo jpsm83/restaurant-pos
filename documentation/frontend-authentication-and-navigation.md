@@ -92,19 +92,19 @@ This split is **intentional** during migration: new server I/O is supposed to go
 
 | Path | Layout / guard | Purpose |
 |------|----------------|---------|
-| `/` | `PublicLayout` | Customer marketing home. |
-| `/business` | `PublicLayout` | Business marketing home. |
+| `/` | `PublicLayout` | Customer marketing page (anonymous). Authenticated users are redirected to their dashboard landing. |
+| `/business` | `PublicLayout` | Business marketing page (anonymous). Authenticated users are redirected to their dashboard landing. |
 | `/login`, `/signup` | `PublicLayout` + **`PublicOnlyRoute`** | Auth forms; bounce authenticated users to **`getPostLoginDestination`**. |
 | `/business/register` | `PublicLayout` + **`PublicOnlyRoute`** | Tenant signup (multipart API). |
 | `/access-denied` | None of the partition guards | Wrong session **type** for a route. Registered **before** `/:userId/*`. |
 | `/business/:businessId` | **`ProtectedRoute`** → **`RequireBusinessSession`** → **`BusinessIdRouteGuard`** → **`BusinessLayout`** | Tenant dashboard shell. |
 | `/:userId/mode` | **`ProtectedRoute`** → **`RequireUserSession`** → **`UserIdRouteGuard`** | Staff chooses customer vs employee (`set-mode` + navigate). |
-| `/:userId/customer` | Same stack + **`CustomerLayout`** + nested **`PostLoginPage`** | Person “customer” app shell. |
-| `/:userId/employee` | Same stack + **`RequireEmployeeAuthMode`** + **`EmployeeLayout`** + index **`EmployeeHomePage`** | Staff workspace; requires **`auth_mode=employee`**. |
+| `/:userId/customer` | Same stack + **`CustomerLayout`** + index redirect → `dashboard` | Person “customer” app shell. |
+| `/:userId/employee` | Same stack + **`RequireEmployeeAuthMode`** + **`EmployeeLayout`** + index redirect → `dashboard` | Staff workspace; requires **`auth_mode=employee`**. |
 | `/app` | **`ProtectedRoute`** + **`LegacyAppRedirect`** | Redirects to canonical business or user customer path. |
 | `*` | **`CatchAllRedirect`** | Anonymous → `/`; authenticated → **`getPostLoginDestination`**. |
 
-**Lazy-loaded pages** (`App.tsx` / `AppRoutes`: ErrorBoundary + Suspense + `AppPendingShell` `route`): login, signup, business register, business dashboard, mode selection, post-login customer home.
+**Lazy-loaded pages** (`App.tsx` / `AppRoutes`: ErrorBoundary + Suspense + `AppPendingShell` `route`): login, signup, business register, business dashboard, mode selection, customer dashboard, employee dashboard.
 
 ---
 
@@ -120,19 +120,28 @@ Dynamic segments **`/:userId/...`** could swallow words like `login` if they wer
 
 ## 6. Marketing (anonymous) experience
 
-### 6.1 `SiteAudienceProvider` (`frontend/src/context/SiteAudienceContext.tsx`)
+### 6.1 `Navbar` audience logic
 
-- **`useSiteAudience()`** returns `"customer"` \| `"business"`.
-- **Rule:** If pathname is exactly `/business` or starts with `/business/`, audience is **`business`**; otherwise **`customer`** (covers `/`, `/login`, `/signup`, etc.).
+- Audience for unauthenticated CTAs is derived from pathname in `Navbar`.
+- `/business`, `/business/register`, `/business/signup` map to business audience; all other public paths map to customer audience.
 - Used for **Sign in** / **Sign up** targets and for the toggle; **not** used for authorization.
 
-### 6.2 `PublicLayout` + `Navbar`
+### 6.2 `PublicLayout` + global `Navbar`
 
-- **`PublicLayout`** wraps children with **`SiteAudienceProvider`**, **`Navbar`**, and **`Outlet`**.
+- `Navbar` is mounted once in `main.tsx` (fixed global top bar).
+- `PublicLayout` renders `Outlet` plus `Footer` (footer is public-only).
 - **When session is loading or unauthenticated:** show **Customer | Business** links (`NavLink` to `/` and `/business`).
 - **Sign in** → `/login?audience=customer` or `?audience=business` from current audience.
 - **Sign up** → `/signup?audience=customer` for customer audience, or **`/business/register`** for business audience.
-- **When authenticated:** toggle is **hidden**; navbar shows email, **Open app** (href **`getPostLoginDestination(user)`**), and **Log out**.
+- **When authenticated:** toggle is **hidden**; navbar shows the account menu (actor type, email, language, profile, logout).
+
+### 6.3 Auth forms (validation and UI)
+
+- **`LoginPage`**, **`SignUpPage`**, and **`BusinessRegisterPage`** use **React Hook Form** with **Zod** and **`@hookform/resolvers/zod`**. Each page **colocates** its schema (for example `buildLoginSchema` / `buildSignUpSchema` / `buildBusinessRegisterSchema`) and uses **`register`** on **`Input`** fields and **`Controller`** on native **`<select>`**s where needed.
+- Field errors use **`formState.errors`** with the small **`FieldError`** helper (`frontend/src/components/FieldError.tsx`) plus **`Label`** / **`Input`** from **`@/components/ui`**. **Password policy** refinements align with **`@packages/utils/passwordPolicy.ts`**.
+- **Non-field failures** (wrong credentials, session-expired notice, business registration API errors) still appear in **`Alert`** components, separate from Zod field messages.
+
+See [`frontend-third-party-libraries.md`](./frontend-third-party-libraries.md) for the wider frontend dependency map.
 
 ---
 
@@ -141,9 +150,9 @@ Dynamic segments **`/:userId/...`** could swallow words like `login` if they wer
 **Source:** `frontend/src/auth/postLoginRedirect.ts`.
 
 ```
-if type === "business"     → /business/{id}
+if type === "business"                    → /business/{id}/dashboard
 if type === "user" && employeeId (non-empty) → /{id}/mode
-else (user, no employee link)               → /{id}/customer
+else (user, no employee link)             → /{id}/customer/dashboard
 ```
 
 So **every person with an employee link** hits **mode selection** first, even if **`canLogAsEmployee`** is false—they can still pick **Continue as customer**; the employee button is disabled or countdown-gated on that page.
@@ -175,7 +184,7 @@ All guards are **UX and consistency**; **security remains on the API**.
 ### 8.4 `UserIdRouteGuard` / `BusinessIdRouteGuard`
 
 - Ensure URL **`userId`** / **`businessId`** **equals** **`state.user.id`** for the matching type.
-- Mismatch → redirect to **canonical** path for that session (`canonicalUserCustomerPath` / `canonicalBusinessDashboardPath`) so bookmarks with wrong ids self-correct.
+- Mismatch → redirect to canonical dashboard path for that session (`canonicalUserCustomerDashboardPath` / `canonicalBusinessDashboardRoutePath`) so bookmarks with wrong ids self-correct.
 
 **Helpers** (`frontend/src/routes/canonicalPaths.ts`): `matchesSessionUserId`, `matchesSessionBusinessId`, canonical path builders, optional **`isLikelyMongoObjectIdString`** for future stricter validation.
 
@@ -207,8 +216,8 @@ All guards are **UX and consistency**; **security remains on the API**.
 **User-level flow:**
 
 1. User lands on **`/:userId/mode`** (after login if they have **`employeeId`**).
-2. **Continue as customer** → `setModeAndRefresh("customer")` → navigate to **`/:userId/customer`**.
-3. **Continue as employee** (only when allowed) → `setModeAndRefresh("employee")` → navigate to **`/:userId/employee`**.
+2. **Continue as customer** → `setModeAndRefresh("customer")` → navigate to **`/:userId/customer/dashboard`**.
+3. **Continue as employee** (only when allowed) → `setModeAndRefresh("employee")` → navigate to **`/:userId/employee/dashboard`**.
 4. Opening **`/:userId/employee`** with cookie still **customer** → guard sends them back to **`/:userId/mode`**.
 
 ---
@@ -226,22 +235,23 @@ All guards are **UX and consistency**; **security remains on the API**.
 
 ## 11. Person shell layouts
 
-### 11.1 Customer branch: `CustomerLayout` + `PostLoginPage`
+### 11.1 Customer branch: `CustomerLayout`
 
 - Route **`/:userId/customer`** uses **`UserCustomerShell`** (guards + **`CustomerLayout`**).
-- Header: branding, **Employee** link to **`/${userId}/employee`** only if **`employeeId`** and **`canLogAsEmployee === true`**, **Log out**.
-- **Log out:** `logout()`, `setAccessToken(null)`, clear **`auth_had_session`**, `AUTH_CLEAR`, navigate `/`.
-- **`PostLoginPage`** is the index child: welcome placeholder (customer home).
+- Sidebar links: favorites, profile, dashboard, and optional employee area switch.
+- Account actions (language/profile/logout) live in the global navbar account menu.
+- Index child redirects to **`dashboard`** (dashboard is actor “home”).
 
-### 11.2 Employee branch: `EmployeeLayout` + `EmployeeHomePage`
+### 11.2 Employee branch: `EmployeeLayout` + `EmployeeDashboardPage`
 
-- **`UserEmployeeShell`** (guards + **`EmployeeLayout`**) with nested index **`EmployeeHomePage`** (home view).
-- Minimal placeholder for future POS; reached only through **`RequireEmployeeAuthMode`**.
+- **`UserEmployeeShell`** (guards + **`EmployeeLayout`**) redirects index → **`dashboard`**.
+- Dashboard is the employee landing page (future POS navigation grows from there).
 - Future POS navigation: prefer a **small static list** of routes/labels (colocated with the employee shell or under `navigation/`) instead of a dynamic module registry.
 
-### 11.3 Business shell: `BusinessDashboardPage`
+### 11.3 Business shell: `BusinessLayout`
 
-- **`/business/:businessId`**: tenant placeholder UI, logout, session email for business type.
+- **`/business/:businessId`** provides business sidebar navigation (dashboard/profile).
+- Account actions (language/profile/logout) live in the global navbar account menu.
 
 ---
 
@@ -249,7 +259,7 @@ All guards are **UX and consistency**; **security remains on the API**.
 
 - **`BusinessRegisterPage`** builds **`FormData`** for **`POST /api/v1/business`** via **`createBusiness`** in **`businessService.ts`**.
 - Axios must **not** force `Content-Type` for multipart (transform strips it so the browser sets boundary).
-- On success: **`setAccessToken`**, **`dispatch(AUTH_SUCCESS, user)`**, **`navigate(getPostLoginDestination(user))`** → **`/business/:id`**.
+- On success: **`setAccessToken`**, **`dispatch(AUTH_SUCCESS, user)`**, **`navigate(getPostLoginDestination(user))`** → **`/business/:id/dashboard`**.
 
 ---
 
@@ -295,20 +305,20 @@ Toggle only switches **marketing** URLs; it does not log anyone in.
 
 1. Submit email/password → **`POST /auth/login`**.
 2. Response includes **access token** + **`user.type === "business"`**.
-3. **`AUTH_SUCCESS`**, navigate **`/business/{user.id}`**.
+3. **`AUTH_SUCCESS`**, navigate **`/business/{user.id}/dashboard`**.
 4. Guards ensure only that tenant id stays in the URL.
 
 ### 16.3 Login as person without staff link
 
 1. **`user.type === "user"`**, no **`employeeId`**.
-2. Navigate **`/{user.id}/customer`**.
+2. Navigate **`/{user.id}/customer/dashboard`**.
 3. **`CustomerLayout`** — no Employee link unless later **`me`** gains employee fields.
 
 ### 16.4 Login as person with staff link
 
 1. Navigate **`/{user.id}/mode`**.
-2. Choose **customer** → set cookie **`customer`** → **`/{user.id}/customer`**.
-3. Choose **employee** when allowed → set **`employee`** → **`/{user.id}/employee`**.
+2. Choose **customer** → set cookie **`customer`** → **`/{user.id}/customer/dashboard`**.
+3. Choose **employee** when allowed → set **`employee`** → **`/{user.id}/employee/dashboard`**.
 4. If **`canLogAsEmployee`** is false, UI may show **countdown** until window; at zero, refetch **schedule** and **`me`**.
 
 ### 16.5 Deep link to employee URL while in customer mode
@@ -323,22 +333,23 @@ Toggle only switches **marketing** URLs; it does not log anyone in.
 
 | Concern | Location |
 |---------|----------|
-| Route tree | `frontend/src/App.tsx` |
+| Route tree | `frontend/src/appRoutes.tsx` |
 | Session types | `frontend/src/auth/types.ts` |
 | Auth reducer + bootstrap | `frontend/src/auth/store/AuthContext.tsx` |
 | fetch auth API | `frontend/src/auth/api.ts` |
 | First URL after auth | `frontend/src/auth/postLoginRedirect.ts` |
 | Guards | `frontend/src/routes/AuthRouteGuards.tsx` |
 | Param matching | `frontend/src/routes/canonicalPaths.ts` |
-| Marketing audience | `frontend/src/context/SiteAudienceContext.tsx` (barrel: `context/index.ts`) |
 | Auth mode query + actions | `frontend/src/context/AuthModeContext.tsx` (re-exported from `auth/index.ts`), `frontend/src/services/authMode.ts` |
 | Public chrome | `frontend/src/layouts/PublicLayout.tsx`, `frontend/src/components/Navbar.tsx` |
 | Mode + countdown UI | `frontend/src/pages/SelectUserModePage.tsx` |
 | Schedule API + query | `frontend/src/services/schedulesService.ts` |
-| Schedule math | `frontend/src/utils/employeeModeSchedule.ts` |
+| Schedule math | `frontend/src/lib/employeeModeSchedule.ts` |
 | Axios client | `frontend/src/services/http.ts` |
 | Query client / keys | `frontend/src/services/queryClient.ts`, `frontend/src/services/queryKeys.ts` |
 | Business signup API | `frontend/src/services/businessService.ts` |
+| Auth form examples (RHF + Zod colocated) | `LoginPage.tsx`, `SignUpPage.tsx`, `BusinessRegisterPage.tsx` |
+| Shared field error line | `frontend/src/components/FieldError.tsx` |
 | App bootstrap | `frontend/src/main.tsx` |
 | Account menu deep links | `frontend/src/navigation/accountPaths.ts` |
 
@@ -346,6 +357,7 @@ Toggle only switches **marketing** URLs; it does not log anyone in.
 
 ## 18. Related documentation
 
+- Frontend dependency conventions (including forms): [`documentation/frontend-third-party-libraries.md`](./frontend-third-party-libraries.md).
 - Backend cookies, JWT, and endpoints: [`documentation/authentication-and-session.md`](./authentication-and-session.md).
 - Narrative user journey: [`documentation/user-flow.md`](./user-flow.md).
 - Strategy and phased delivery: [`FRONTEND_AUTHENTICATION_AND_NAVIGATION_STRATEGY.md`](../FRONTEND_AUTHENTICATION_AND_NAVIGATION_STRATEGY.md), [`FRONTEND_AUTH_NAVIGATION_IMPLEMENTATION_PLAN.md`](../FRONTEND_AUTH_NAVIGATION_IMPLEMENTATION_PLAN.md).

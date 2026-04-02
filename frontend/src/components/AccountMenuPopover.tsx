@@ -1,29 +1,31 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import type { AuthSession } from "@/auth/types";
 import { logout, setAccessToken, useAuth } from "@/auth";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
-import { canonicalBusinessDashboardPath, canonicalBusinessHomePath, canonicalUserCustomerHomePath, canonicalUserCustomerPath, canonicalUserEmployeeHomePath } from "@/routes/canonicalPaths";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import {
+  canonicalBusinessProfilePath,
+  canonicalUserCustomerProfilePath,
+} from "@/routes/canonicalPaths";
+import { Button } from "./ui/button";
 
 const itemClass =
-  "flex w-full cursor-pointer items-center rounded-sm px-2 py-2 text-left text-sm text-neutral-700 outline-none hover:bg-neutral-100 focus-visible:bg-neutral-100";
+  "flex w-full cursor-pointer items-center rounded-sm py-2 text-left text-sm text-neutral-700 outline-none hover:bg-neutral-100 focus-visible:bg-neutral-100";
 
 function accountMenuPaths(session: AuthSession) {
   if (session.type === "business") {
-    const base = canonicalBusinessDashboardPath(session);
     return {
-      dashboard: `${base}/dashboard`,
-      profile: `${base}/profile`,
-      favorites: `${base}/favorites`,
+      profile: canonicalBusinessProfilePath(session),
     };
   }
-  const base = canonicalUserCustomerPath(session);
   return {
-    dashboard: canonicalUserCustomerHomePath(session),
-    profile: `${base}/profile`,
-    favorites: `${base}/favorites`,
+    profile: canonicalUserCustomerProfilePath(session),
   };
 }
 
@@ -56,12 +58,16 @@ export function AccountMenuPopover({ session }: AccountMenuPopoverProps) {
   const userShell =
     session.type === "user"
       ? {
-          customer: canonicalUserCustomerHomePath(session),
-          employee: canonicalUserEmployeeHomePath(session),
-          onCustomer: pathname.includes(`/${session.id}/customer`),
           onEmployee: pathname.includes(`/${session.id}/employee`),
         }
       : null;
+
+  const actorTypeLabel =
+    session.type === "business"
+      ? t("account.actorType.business")
+      : userShell?.onEmployee
+        ? t("account.actorType.employee")
+        : t("account.actorType.customer");
 
   const handleLogout = async () => {
     close();
@@ -77,10 +83,7 @@ export function AccountMenuPopover({ session }: AccountMenuPopoverProps) {
       <PopoverTrigger asChild>
         <button
           type="button"
-          className={cn(
-            "rounded-full outline-none",
-            "focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:ring-offset-2",
-          )}
+          className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:ring-offset-2"
           aria-label={t("account.menuAriaLabel")}
         >
           <div
@@ -96,38 +99,41 @@ export function AccountMenuPopover({ session }: AccountMenuPopoverProps) {
           </div>
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="p-1">
-        <p className="truncate px-2 py-1.5 text-xs text-neutral-500">{session.email}</p>
-        {session.type === "business" ? (
-          <Link to={canonicalBusinessHomePath(session)} className={itemClass} onClick={close}>
-            {t("account.home")}
-          </Link>
-        ) : null}
-        <Link to={paths.dashboard} className={itemClass} onClick={close}>
-          {t("account.dashboard")}
-        </Link>
-        <Link to={paths.profile} className={itemClass} onClick={close}>
+      <PopoverContent className="p-3">
+        <div className="flex flex-row justify-between items-center">
+          <div>
+            <p className="truncate text-md font-bold text-neutral-700 cursor-default">
+              {actorTypeLabel}
+            </p>
+            <p className="truncate text-xs text-neutral-500 cursor-default">
+              {session.email}
+            </p>
+          </div>
+          <div className="flex h-full w-full justify-end">
+            <LanguageSwitcher />
+          </div>
+        </div>
+        <hr className="mb-2 mt-4" />
+
+        <Button
+          variant="ghost"
+          size="sm"
+          className={`${itemClass} justify-start`}
+          onClick={() => {
+            navigate(paths.profile);
+            close();
+          }}
+        >
           {t("account.profile")}
-        </Link>
-        <Link to={paths.favorites} className={itemClass} onClick={close}>
-          {t("account.favorites")}
-        </Link>
-        {session.type === "user" &&
-        session.canLogAsEmployee &&
-        userShell &&
-        !userShell.onEmployee ? (
-          <Link to={userShell.employee} className={itemClass} onClick={close}>
-            {t("account.employeeArea")}
-          </Link>
-        ) : null}
-        {userShell?.onEmployee ? (
-          <Link to={userShell.customer} className={itemClass} onClick={close}>
-            {t("account.customerHome")}
-          </Link>
-        ) : null}
-        <button type="button" className={itemClass} onClick={() => void handleLogout()}>
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className={`${itemClass} justify-start`}
+          onClick={() => void handleLogout()}
+        >
           {t("account.logOut")}
-        </button>
+        </Button>
       </PopoverContent>
     </Popover>
   );

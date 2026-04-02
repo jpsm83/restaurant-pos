@@ -8,6 +8,7 @@ Developer guide for **i18next** + **react-i18next** in `frontend/`.
 |----------|------|
 | [`i18n-implementation-plan.md`](./i18n-implementation-plan.md) | **Status and backlog**: what is done (`en`/`es`, namespaces, parity script), what is optional next (Intl, i18next-parser). |
 | [`i18n-locale-coverage-todo.md`](./i18n-locale-coverage-todo.md) | **Inventory**: which TSX files use which namespace; blocks 0–9 completed Mar 2026. |
+| [`frontend-third-party-libraries.md`](./frontend-third-party-libraries.md) | **Forms + npm stack**: React Hook Form + Zod schemas usually take **`t("…")` message strings** in the **same file as the form**; add matching keys under `auth` (and other namespaces) in **`en`/`es`**. |
 
 ---
 

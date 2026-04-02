@@ -12,12 +12,69 @@
  * Folder overview: see `PublicLayout.tsx` module doc for how layouts relate.
  */
 import { Outlet } from "react-router-dom";
-import Navbar from "@/components/Navbar";
+import ActorSidebar from "@/components/ActorSidebar";
+import {
+  SidebarInset,
+} from "@/components/ui/sidebar";
+import { useAuth } from "@/auth";
+import { useTranslation } from "react-i18next";
+import { useLocation } from "react-router-dom";
+import { Home, LayoutDashboard, User } from "lucide-react";
+import {
+  canonicalUserCustomerDashboardPath,
+  canonicalUserEmployeeDashboardPath,
+  canonicalUserEmployeeProfilePath,
+} from "@/routes/canonicalPaths";
+
 export default function EmployeeLayout() {
+  const { state } = useAuth();
+  const { t } = useTranslation("nav");
+  const { pathname } = useLocation();
+
+  const session = state.status === "authenticated" ? state.user : null;
+  if (!session || session.type !== "user") return null;
+
+  const dashboardTo = canonicalUserEmployeeDashboardPath(session);
+  const profileTo = canonicalUserEmployeeProfilePath(session);
+
+  const items = [
+    {
+      key: "profile",
+      label: t("account.profile"),
+      to: profileTo,
+      icon: User,
+      isActive: pathname === profileTo,
+    },
+    {
+      key: "dashboard",
+      label: t("account.dashboard"),
+      to: dashboardTo,
+      icon: LayoutDashboard,
+      isActive: pathname === dashboardTo,
+    },
+  ];
+
+  const modeSwitchItems =
+    session.canLogAsEmployee === true
+      ? [
+          {
+            key: "customerHome",
+            label: t("account.customerHome"),
+            to: canonicalUserCustomerDashboardPath(session),
+            icon: Home,
+            isActive: pathname === canonicalUserCustomerDashboardPath(session),
+          },
+        ]
+      : [];
+
   return (
-    <div className="flex min-h-0 w-full flex-1 flex-col bg-neutral-100">
-      <Navbar />
-      <Outlet />
-    </div>
+    <>
+      <ActorSidebar items={items} modeSwitchItems={modeSwitchItems} />
+      <SidebarInset>
+        <div className="flex min-h-0 w-full flex-1 flex-col bg-neutral-100">
+          <Outlet />
+        </div>
+      </SidebarInset>
+    </>
   );
 }

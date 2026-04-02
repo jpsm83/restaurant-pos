@@ -1,7 +1,11 @@
-import { Link, useNavigate } from "react-router-dom";
-import { useState, type FormEvent } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useMemo, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
+import { Link, useNavigate } from "react-router-dom";
+import { z } from "zod";
 import { getPostLoginDestination, useAuth } from "@/auth";
+import { FieldError } from "@/components/FieldError";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,16 +17,67 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCreateBusinessMutation } from "@/services/businessService";
-import { cn } from "@/lib/utils";
 import { currenctyEnums, subscriptionEnums } from "@packages/enums.ts";
 import { isValidPassword } from "@packages/utils/passwordPolicy.ts";
+import emailRegex from "@packages/utils/emailRegex.ts";
 
-const selectClassName = cn(
-  "flex h-10 w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900",
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400",
-  "disabled:cursor-not-allowed disabled:opacity-50",
-);
+const selectClassName = "flex h-10 w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 disabled:cursor-not-allowed disabled:opacity-50";
+
+const subscriptionTuple = subscriptionEnums as [string, ...string[]];
+const currencyTuple = currenctyEnums as [string, ...string[]];
+
+function buildBusinessRegisterSchema(messages: {
+  requiredField: string;
+  invalidEmail: string;
+  passwordMismatch: string;
+  passwordPolicy: string;
+  invalidSubscription: string;
+  invalidCurrency: string;
+}) {
+  return z
+    .object({
+      tradeName: z.string().trim().min(1, messages.requiredField),
+      legalName: z.string().trim().min(1, messages.requiredField),
+      email: z
+        .string()
+        .trim()
+        .min(1, messages.requiredField)
+        .regex(emailRegex, messages.invalidEmail),
+      password: z.string().min(1, messages.requiredField),
+      confirmPassword: z.string().min(1, messages.requiredField),
+      phoneNumber: z.string().trim().min(1, messages.requiredField),
+      taxNumber: z.string().trim().min(1, messages.requiredField),
+      subscription: z.enum(subscriptionTuple, messages.invalidSubscription),
+      currencyTrade: z.enum(currencyTuple, messages.invalidCurrency),
+      contactPerson: z.string(),
+      country: z.string().trim().min(1, messages.requiredField),
+      state: z.string().trim().min(1, messages.requiredField),
+      city: z.string().trim().min(1, messages.requiredField),
+      street: z.string().trim().min(1, messages.requiredField),
+      buildingNumber: z.string().trim().min(1, messages.requiredField),
+      postCode: z.string().trim().min(1, messages.requiredField),
+      region: z.string(),
+    })
+    .refine((data) => data.password === data.confirmPassword, {
+      message: messages.passwordMismatch,
+      path: ["confirmPassword"],
+    })
+    .refine(
+      (data) =>
+        data.password !== data.confirmPassword ||
+        isValidPassword(data.password),
+      {
+        message: messages.passwordPolicy,
+        path: ["password"],
+      },
+    );
+}
+
+type BusinessRegisterFormValues = z.infer<
+  ReturnType<typeof buildBusinessRegisterSchema>
+>;
 
 /**
  * Multipart **`POST /api/v1/business`** — required fields match **`backend/src/routes/v1/business.ts`** (Phase 4.2).
@@ -32,104 +87,74 @@ export default function BusinessRegisterPage() {
   const navigate = useNavigate();
   const { dispatch } = useAuth();
   const mutation = useCreateBusinessMutation();
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const [tradeName, setTradeName] = useState("");
-  const [legalName, setLegalName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [taxNumber, setTaxNumber] = useState("");
-  const [subscription, setSubscription] = useState(subscriptionEnums[0] ?? "Free");
-  const [currencyTrade, setCurrencyTrade] = useState(currenctyEnums[0] ?? "USD");
-  const [contactPerson, setContactPerson] = useState("");
+  const schema = useMemo(
+    () =>
+      buildBusinessRegisterSchema({
+        requiredField: t("businessRegister.errors.requiredFields"),
+        invalidEmail: t("businessRegister.errors.invalidEmail"),
+        passwordMismatch: t("businessRegister.errors.passwordMismatch"),
+        passwordPolicy: t("businessRegister.errors.passwordPolicy"),
+        invalidSubscription: t("businessRegister.errors.invalidSubscription"),
+        invalidCurrency: t("businessRegister.errors.invalidCurrency"),
+      }),
+    [t],
+  );
 
-  const [country, setCountry] = useState("");
-  const [state, setState] = useState("");
-  const [city, setCity] = useState("");
-  const [street, setStreet] = useState("");
-  const [buildingNumber, setBuildingNumber] = useState("");
-  const [postCode, setPostCode] = useState("");
-  const [region, setRegion] = useState("");
+  const {
+    register,
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<BusinessRegisterFormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      tradeName: "",
+      legalName: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+      phoneNumber: "",
+      taxNumber: "",
+      subscription: subscriptionEnums[0] ?? "Free",
+      currencyTrade: currenctyEnums[0] ?? "USD",
+      contactPerson: "",
+      country: "",
+      state: "",
+      city: "",
+      street: "",
+      buildingNumber: "",
+      postCode: "",
+      region: "",
+    },
+  });
 
-  const [message, setMessage] = useState<string | null>(null);
-
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setMessage(null);
-
-    const tTrade = tradeName.trim();
-    const tLegal = legalName.trim();
-    const tEmail = email.trim();
-    const tPhone = phoneNumber.trim();
-    const tTax = taxNumber.trim();
-    const tCountry = country.trim();
-    const tState = state.trim();
-    const tCity = city.trim();
-    const tStreet = street.trim();
-    const tBuilding = buildingNumber.trim();
-    const tPost = postCode.trim();
-
-    if (
-      !tTrade ||
-      !tLegal ||
-      !tEmail ||
-      !password ||
-      !tPhone ||
-      !tTax ||
-      !tCountry ||
-      !tState ||
-      !tCity ||
-      !tStreet ||
-      !tBuilding ||
-      !tPost
-    ) {
-      setMessage(t("businessRegister.errors.requiredFields"));
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setMessage(t("businessRegister.errors.passwordMismatch"));
-      return;
-    }
-
-    if (!isValidPassword(password)) {
-      setMessage(t("businessRegister.errors.passwordPolicy"));
-      return;
-    }
-
-    if (!subscriptionEnums.includes(subscription)) {
-      setMessage(t("businessRegister.errors.invalidSubscription"));
-      return;
-    }
-
-    if (!currenctyEnums.includes(currencyTrade)) {
-      setMessage(t("businessRegister.errors.invalidCurrency"));
-      return;
-    }
+  const onSubmit = async (data: BusinessRegisterFormValues) => {
+    setSubmitError(null);
 
     const address: Record<string, string> = {
-      country: tCountry,
-      state: tState,
-      city: tCity,
-      street: tStreet,
-      buildingNumber: tBuilding,
-      postCode: tPost,
+      country: data.country.trim(),
+      state: data.state.trim(),
+      city: data.city.trim(),
+      street: data.street.trim(),
+      buildingNumber: data.buildingNumber.trim(),
+      postCode: data.postCode.trim(),
     };
-    const r = region.trim();
+    const r = data.region.trim();
     if (r) address.region = r;
 
     const formData = new FormData();
-    formData.append("tradeName", tTrade);
-    formData.append("legalName", tLegal);
-    formData.append("email", tEmail);
-    formData.append("password", password);
-    formData.append("phoneNumber", tPhone);
-    formData.append("taxNumber", tTax);
-    formData.append("subscription", subscription);
-    formData.append("currencyTrade", currencyTrade);
+    formData.append("tradeName", data.tradeName.trim());
+    formData.append("legalName", data.legalName.trim());
+    formData.append("email", data.email.trim());
+    formData.append("password", data.password);
+    formData.append("phoneNumber", data.phoneNumber.trim());
+    formData.append("taxNumber", data.taxNumber.trim());
+    formData.append("subscription", data.subscription);
+    formData.append("currencyTrade", data.currencyTrade);
     formData.append("address", JSON.stringify(address));
-    const cp = contactPerson.trim();
+    const cp = data.contactPerson.trim();
     if (cp) formData.append("contactPerson", cp);
 
     try {
@@ -138,7 +163,7 @@ export default function BusinessRegisterPage() {
       dispatch({ type: "AUTH_SUCCESS", payload: result.user });
       navigate(getPostLoginDestination(result.user), { replace: true });
     } catch (e) {
-      setMessage(
+      setSubmitError(
         e instanceof Error ? e.message : t("businessRegister.errors.registrationFailed"),
       );
     }
@@ -152,8 +177,11 @@ export default function BusinessRegisterPage() {
           <CardDescription>{t("businessRegister.description")}</CardDescription>
         </CardHeader>
         <CardContent>
-          <form className="space-y-6" onSubmit={(e) => void handleSubmit(e)}>
-            {message ? <Alert>{message}</Alert> : null}
+          <form
+            className="space-y-6"
+            onSubmit={(e) => void handleSubmit(onSubmit)(e)}
+          >
+            {submitError ? <Alert>{submitError}</Alert> : null}
 
             <section className="space-y-3">
               <h2 className="text-sm font-semibold text-neutral-900">
@@ -164,18 +192,20 @@ export default function BusinessRegisterPage() {
                   <Label htmlFor="br-trade">{t("businessRegister.labels.tradeName")}</Label>
                   <Input
                     id="br-trade"
-                    value={tradeName}
-                    onChange={(e) => setTradeName(e.target.value)}
                     autoComplete="organization"
+                    aria-invalid={errors.tradeName ? true : undefined}
+                    {...register("tradeName")}
                   />
+                  <FieldError message={errors.tradeName?.message} />
                 </div>
                 <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="br-legal">{t("businessRegister.labels.legalName")}</Label>
                   <Input
                     id="br-legal"
-                    value={legalName}
-                    onChange={(e) => setLegalName(e.target.value)}
+                    aria-invalid={errors.legalName ? true : undefined}
+                    {...register("legalName")}
                   />
+                  <FieldError message={errors.legalName?.message} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="br-email">{t("businessRegister.labels.email")}</Label>
@@ -183,9 +213,10 @@ export default function BusinessRegisterPage() {
                     id="br-email"
                     type="email"
                     autoComplete="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    aria-invalid={errors.email ? true : undefined}
+                    {...register("email")}
                   />
+                  <FieldError message={errors.email?.message} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="br-phone">{t("businessRegister.labels.phoneNumber")}</Label>
@@ -193,55 +224,92 @@ export default function BusinessRegisterPage() {
                     id="br-phone"
                     type="tel"
                     autoComplete="tel"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    aria-invalid={errors.phoneNumber ? true : undefined}
+                    {...register("phoneNumber")}
                   />
+                  <FieldError message={errors.phoneNumber?.message} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="br-tax">{t("businessRegister.labels.taxNumber")}</Label>
                   <Input
                     id="br-tax"
-                    value={taxNumber}
-                    onChange={(e) => setTaxNumber(e.target.value)}
+                    aria-invalid={errors.taxNumber ? true : undefined}
+                    {...register("taxNumber")}
                   />
+                  <FieldError message={errors.taxNumber?.message} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="br-contact">{t("businessRegister.labels.contactPerson")}</Label>
                   <Input
                     id="br-contact"
-                    value={contactPerson}
-                    onChange={(e) => setContactPerson(e.target.value)}
+                    aria-invalid={errors.contactPerson ? true : undefined}
+                    {...register("contactPerson")}
                   />
+                  <FieldError message={errors.contactPerson?.message} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="br-sub">{t("businessRegister.labels.subscription")}</Label>
-                  <select
-                    id="br-sub"
-                    className={selectClassName}
-                    value={subscription}
-                    onChange={(e) => setSubscription(e.target.value)}
-                  >
-                    {subscriptionEnums.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
+                  <Controller
+                    name="subscription"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                      >
+                        <SelectTrigger
+                          id="br-sub"
+                          className={selectClassName}
+                          aria-invalid={errors.subscription ? true : undefined}
+                        >
+                          <SelectValue
+                            placeholder={t("businessRegister.labels.subscription")}
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {subscriptionEnums.map((s) => (
+                            <SelectItem key={s} value={s}>
+                              {s}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  <FieldError message={errors.subscription?.message} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="br-currency">{t("businessRegister.labels.currency")}</Label>
-                  <select
-                    id="br-currency"
-                    className={selectClassName}
-                    value={currencyTrade}
-                    onChange={(e) => setCurrencyTrade(e.target.value)}
-                  >
-                    {currenctyEnums.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
+                  <Controller
+                    name="currencyTrade"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                      >
+                        <SelectTrigger
+                          id="br-currency"
+                          className={selectClassName}
+                          aria-invalid={
+                            errors.currencyTrade ? true : undefined
+                          }
+                        >
+                          <SelectValue
+                            placeholder={t("businessRegister.labels.currency")}
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {currenctyEnums.map((c) => (
+                            <SelectItem key={c} value={c}>
+                              {c}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  <FieldError message={errors.currencyTrade?.message} />
                 </div>
               </div>
             </section>
@@ -257,9 +325,10 @@ export default function BusinessRegisterPage() {
                     id="br-password"
                     type="password"
                     autoComplete="new-password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    aria-invalid={errors.password ? true : undefined}
+                    {...register("password")}
                   />
+                  <FieldError message={errors.password?.message} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="br-confirm">
@@ -269,9 +338,10 @@ export default function BusinessRegisterPage() {
                     id="br-confirm"
                     type="password"
                     autoComplete="new-password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    aria-invalid={errors.confirmPassword ? true : undefined}
+                    {...register("confirmPassword")}
                   />
+                  <FieldError message={errors.confirmPassword?.message} />
                 </div>
               </div>
             </section>
@@ -286,36 +356,40 @@ export default function BusinessRegisterPage() {
                   <Input
                     id="br-country"
                     autoComplete="country-name"
-                    value={country}
-                    onChange={(e) => setCountry(e.target.value)}
+                    aria-invalid={errors.country ? true : undefined}
+                    {...register("country")}
                   />
+                  <FieldError message={errors.country?.message} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="br-state">{t("businessRegister.labels.stateRegion")}</Label>
                   <Input
                     id="br-state"
                     autoComplete="address-level1"
-                    value={state}
-                    onChange={(e) => setState(e.target.value)}
+                    aria-invalid={errors.state ? true : undefined}
+                    {...register("state")}
                   />
+                  <FieldError message={errors.state?.message} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="br-city">{t("businessRegister.labels.city")}</Label>
                   <Input
                     id="br-city"
                     autoComplete="address-level2"
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
+                    aria-invalid={errors.city ? true : undefined}
+                    {...register("city")}
                   />
+                  <FieldError message={errors.city?.message} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="br-street">{t("businessRegister.labels.street")}</Label>
                   <Input
                     id="br-street"
                     autoComplete="street-address"
-                    value={street}
-                    onChange={(e) => setStreet(e.target.value)}
+                    aria-invalid={errors.street ? true : undefined}
+                    {...register("street")}
                   />
+                  <FieldError message={errors.street?.message} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="br-building">
@@ -323,18 +397,20 @@ export default function BusinessRegisterPage() {
                   </Label>
                   <Input
                     id="br-building"
-                    value={buildingNumber}
-                    onChange={(e) => setBuildingNumber(e.target.value)}
+                    aria-invalid={errors.buildingNumber ? true : undefined}
+                    {...register("buildingNumber")}
                   />
+                  <FieldError message={errors.buildingNumber?.message} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="br-post">{t("businessRegister.labels.postCode")}</Label>
                   <Input
                     id="br-post"
                     autoComplete="postal-code"
-                    value={postCode}
-                    onChange={(e) => setPostCode(e.target.value)}
+                    aria-invalid={errors.postCode ? true : undefined}
+                    {...register("postCode")}
                   />
+                  <FieldError message={errors.postCode?.message} />
                 </div>
                 <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="br-region-extra">
@@ -342,10 +418,11 @@ export default function BusinessRegisterPage() {
                   </Label>
                   <Input
                     id="br-region-extra"
-                    value={region}
-                    onChange={(e) => setRegion(e.target.value)}
                     placeholder={t("businessRegister.placeholders.regionOptional")}
+                    aria-invalid={errors.region ? true : undefined}
+                    {...register("region")}
                   />
+                  <FieldError message={errors.region?.message} />
                 </div>
               </div>
             </section>

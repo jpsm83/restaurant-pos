@@ -17,15 +17,47 @@
   },
   "account": {
     "menuAriaLabel": "Menú de cuenta",
+    "actorType": {
+      "business": "Empresa",
+      "customer": "Cliente",
+      "employee": "Empleado"
+    },
     "home": "Inicio",
     "dashboard": "Panel",
     "profile": "Perfil",
     "favorites": "Favoritos",
     "employeeArea": "Área de empleado",
     "customerHome": "Inicio cliente",
+    "language": "Idioma",
     "logOut": "Cerrar sesión"
+  },
+  "sidebar": {
+    "openMenu": "Abrir menú",
+    "closeMenu": "Cerrar menú"
   },
   "footer": {
     "srOnly": "Pie de página"
+  },
+  "marketing": {
+    "customer": {
+      "title": "Para clientes",
+      "description": "Descubre restaurantes, haz pedidos rapido y sigue tu servicio en un solo lugar.",
+      "highlights": {
+        "explore": "Explora negocios y elige donde quieres pedir.",
+        "selfOrder": "Usa autoservicio cuando este disponible y sigue el estado del pedido en tiempo real.",
+        "notifications": "Recibe confirmaciones y actualizaciones directamente en la app."
+      },
+      "footer": "Crea tu cuenta para guardar tu perfil y pedir mas rapido."
+    },
+    "business": {
+      "title": "Para restaurantes y bares",
+      "description": "Gestiona la operacion diaria desde una sola plataforma POS pensada para velocidad y control.",
+      "highlights": {
+        "pos": "Administra mesas, sesiones y pedidos con un flujo POS en tiempo real.",
+        "inventory": "Controla inventario, compras y proveedores conectados con lo que vendes.",
+        "reports": "Monitorea el rendimiento con paneles de reportes diarios y mensuales."
+      },
+      "footer": "Crea tu cuenta de negocio para centralizar operaciones, flujo del personal y reportes."
+    }
   }
 }

@@ -2,11 +2,10 @@
  * Route tree — see `App.tsx` for high-level map. Export **`AppRoutes`** for tests (`MemoryRouter`).
  *
  * Shells use guards from `routes/AuthRouteGuards.tsx` (documented there). Redirect helpers for
- * legacy `/app` and catch-all use `routes/canonicalPaths.ts` so URLs match the `home` segments here.
+ * legacy `/app` and catch-all use `routes/canonicalPaths.ts` so URLs stay dashboard-first.
  */
 import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
-import { getPostLoginDestination } from "@/auth/postLoginRedirect";
 import { useAuth } from "@/auth/store/AuthContext";
 import { AppPendingShell } from "@/components/AppPendingShell";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -15,10 +14,10 @@ import CustomerLayout from "@/layouts/CustomerLayout";
 import EmployeeLayout from "@/layouts/EmployeeLayout";
 import PublicLayout from "@/layouts/PublicLayout";
 import AccessDenied from "@/pages/AccessDenied";
-import BusinessHomePage from "@/pages/business/BusinessHomePage";
-import CustomerHomePage from "@/pages/customer/CustomerHomePage";
-import EmployeeHomePage from "@/pages/employee/EmployeeHomePage";
+import NotFoundPage from "@/pages/NotFoundPage";
 import SelectUserModePage from "@/pages/SelectUserModePage";
+import CustomerMarketingPage from "@/pages/marketing/CustomerMarketingPage";
+import BusinessMarketingPage from "@/pages/marketing/BusinessMarketingPage";
 import {
   BusinessSessionRouteShell,
   ProtectedRoute,
@@ -28,11 +27,13 @@ import {
   UserSessionRouteShell,
 } from "@/routes/AuthRouteGuards";
 import BusinessProfilePage from "./pages/business/BusinessProfilePage";
-import { canonicalBusinessHomePath, canonicalUserCustomerHomePath } from "./routes/canonicalPaths";
+import {
+  canonicalDefaultDashboardPath,
+} from "./routes/canonicalPaths";
+import BusinessRegisterPage from "./pages/business/BusinessRegisterPage";
 
 const LoginPage = lazy(() => import("@/pages/LoginPage"));
 const SignUpPage = lazy(() => import("@/pages/SignUpPage"));
-const BusinessRegisterPage = lazy(() => import("@/pages/business/BusinessRegisterPage"));
 const BusinessDashboardPage = lazy(() => import("@/pages/business/BusinessDashboardPage"));
 const CustomerProfilePage = lazy(() => import("@/pages/customer/CustomerProfilePage"));
 const CustomerFavoritesPage = lazy(() => import("@/pages/customer/CustomerFavoritesPage"));
@@ -45,10 +46,7 @@ function LegacyAppRedirect() {
   if (!state.user) {
     return <Navigate to="/login" replace />;
   }
-  if (state.user.type === "business") {
-    return <Navigate to={canonicalBusinessHomePath(state.user)} replace />;
-  }
-  return <Navigate to={canonicalUserCustomerHomePath(state.user)} replace />;
+  return <Navigate to={canonicalDefaultDashboardPath(state.user)} replace />;
 }
 
 function CatchAllRedirect() {
@@ -58,11 +56,38 @@ function CatchAllRedirect() {
     return <SessionLoading />;
   }
 
-  if (state.status === "authenticated" && state.user) {
-    return <Navigate to={getPostLoginDestination(state.user)} replace />;
+  // Unknown URL: show the dedicated 404 page instead of redirecting.
+  return <NotFoundPage />;
+}
+
+function PublicIndexRoute() {
+  const { state } = useAuth();
+
+  if (state.status === "loading" || state.status === "idle") {
+    return <SessionLoading />;
   }
 
-  return <Navigate to="/" replace />;
+  // Once authenticated, `/` is not a stable landing page for the app shell.
+  // Send the user to their actor dashboard instead.
+  if (state.status === "authenticated" && state.user) {
+    return <Navigate to={canonicalDefaultDashboardPath(state.user)} replace />;
+  }
+
+  return <CustomerMarketingPage />;
+}
+
+function PublicBusinessRoute() {
+  const { state } = useAuth();
+
+  if (state.status === "loading" || state.status === "idle") {
+    return <SessionLoading />;
+  }
+
+  if (state.status === "authenticated" && state.user) {
+    return <Navigate to={canonicalDefaultDashboardPath(state.user)} replace />;
+  }
+
+  return <BusinessMarketingPage />;
 }
 
 /** Compose with `BrowserRouter` (app) or `MemoryRouter` (tests). */
@@ -72,7 +97,7 @@ export function AppRoutes() {
       <Suspense fallback={<AppPendingShell variant="route" />}>
         <Routes>
           <Route path="/" element={<PublicLayout />}>
-            <Route index element={<CustomerHomePage />} />
+            <Route index element={<PublicIndexRoute />} />
             <Route
               path="login"
               element={
@@ -89,9 +114,17 @@ export function AppRoutes() {
                 </PublicOnlyRoute>
               }
             />
-            <Route path="business" element={<BusinessHomePage />} />
+            <Route path="business" element={<PublicBusinessRoute />} />
             <Route
               path="business/register"
+              element={
+                <PublicOnlyRoute>
+                  <BusinessRegisterPage />
+                </PublicOnlyRoute>
+              }
+            />
+            <Route
+              path="business/signup"
               element={
                 <PublicOnlyRoute>
                   <BusinessRegisterPage />
@@ -110,8 +143,7 @@ export function AppRoutes() {
               </BusinessSessionRouteShell>
             }
           >
-            <Route index element={<Navigate to="home" replace />} />
-            <Route path="home" element={<BusinessHomePage />} />
+            <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<BusinessDashboardPage />} />
             <Route path="profile" element={<BusinessProfilePage />} />
           </Route>
@@ -133,8 +165,7 @@ export function AppRoutes() {
               </UserSessionRouteShell>
             }
           >
-            <Route index element={<Navigate to="home" replace />} />
-            <Route path="home" element={<CustomerHomePage />} />
+            <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="profile" element={<CustomerProfilePage />} />
             <Route path="favorites" element={<CustomerFavoritesPage />} />
             <Route path="dashboard" element={<CustomerDashboardPage />} />
@@ -150,8 +181,7 @@ export function AppRoutes() {
               </UserSessionRouteShell>
             }
           >
-            <Route index element={<Navigate to="home" replace />} />
-            <Route path="home" element={<EmployeeHomePage />} />
+            <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="profile" element={<EmployeeProfilePage />} />
             <Route path="dashboard" element={<EmployeeDashboardPage />} />
           </Route>

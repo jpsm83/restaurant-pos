@@ -355,19 +355,6 @@ export default function BusinessAdvancedTableSection({
                 : undefined
             }
             localOnlyFilterColumnIds={enableDateToolbarFilter ? ["createdAt"] : undefined}
-            onClearFilters={
-              enableDateToolbarFilter
-                ? () => {
-                    const [defaultStart, defaultEnd] = getQuickRange("lastHour");
-                    setSearchParams((previous) => {
-                      const params = new URLSearchParams(previous);
-                      params.set("start-date", defaultStart);
-                      params.set("end-date", defaultEnd);
-                      return params;
-                    });
-                  }
-                : undefined
-            }
             toolbar={
               enableDateToolbarFilter ? (
                 <GenericSearchBar

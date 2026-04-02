@@ -8,20 +8,20 @@
  * ## Who imports this
  * - `AuthRouteGuards.tsx` — redirects when `:userId` / `:businessId` do not match the session.
  * - `auth/postLoginRedirect.ts` — first URL after login / signup (`getPostLoginDestination`).
- * - `components/AccountMenuPopover.tsx` — account menu targets (home / profile / favorites).
- * - `pages/SelectUserModePage.tsx` — navigate to customer or employee **home** after mode selection.
+ * - `components/AccountMenuPopover.tsx` — account menu targets (profile by actor type).
+ * - `pages/SelectUserModePage.tsx` — navigate to customer or employee **dashboard** after mode selection.
  *
  * ## How it wires to the router
- * `appRoutes.tsx` declares concrete `<Route path="…">` segments (`home`, `profile`, …). Those
+ * `appRoutes.tsx` declares concrete `<Route path="…">` segments (`dashboard`, `profile`, …). Those
  * paths must match what the `canonical*` helpers build (e.g. tenant landing is
- * `/business/:id/home`, not the bare `/business/:id`). If you add a new shell segment, add a
+ * `/business/:id/dashboard`, not the bare `/business/:id`). If you add a new shell segment, add a
  * helper here and use it in guards + post-login + any feature navigation.
  *
  * ## Flow (typical)
- * 1. User signs in → `getPostLoginDestination` uses `canonicalBusinessHomePath` /
- *    `canonicalUserCustomerHomePath` / `canonicalUserModePath` depending on session shape.
+ * 1. User signs in → `getPostLoginDestination` uses `canonicalBusinessDashboardRoutePath` /
+ *    `canonicalUserCustomerDashboardPath` / `canonicalUserModePath` depending on session shape.
  * 2. Guards on `/:userId/*` and `/business/:id/*` use `matchesSession*`; on mismatch they
- *    `Navigate` to the canonical **home** for that session type.
+ *    `Navigate` to the canonical **dashboard** for that session type.
  * 3. Feature pages (mode picker, menu) navigate using the same helpers so URL and session stay aligned.
  */
 import type { AuthSession } from "@/auth/types";
@@ -56,21 +56,33 @@ export function matchesSessionBusinessId(
   return paramBusinessId === user.id;
 }
 
-/** Tenant base: `/business/:businessId` (child routes: `home`, `profile`, …). */
+/** Tenant base: `/business/:businessId` (child routes: `dashboard`, `profile`, …). */
 export function canonicalBusinessDashboardPath(user: AuthSession): string {
   return `/business/${user.id}`;
 }
 
-export function canonicalBusinessHomePath(user: AuthSession): string {
-  return `${canonicalBusinessDashboardPath(user)}/home`;
+export function canonicalBusinessDashboardRoutePath(user: AuthSession): string {
+  return `${canonicalBusinessDashboardPath(user)}/dashboard`;
+}
+
+export function canonicalBusinessProfilePath(user: AuthSession): string {
+  return `${canonicalBusinessDashboardPath(user)}/profile`;
 }
 
 export function canonicalUserCustomerPath(user: AuthSession): string {
   return `/${user.id}/customer`;
 }
 
-export function canonicalUserCustomerHomePath(user: AuthSession): string {
-  return `${canonicalUserCustomerPath(user)}/home`;
+export function canonicalUserCustomerDashboardPath(user: AuthSession): string {
+  return `${canonicalUserCustomerPath(user)}/dashboard`;
+}
+
+export function canonicalUserCustomerProfilePath(user: AuthSession): string {
+  return `${canonicalUserCustomerPath(user)}/profile`;
+}
+
+export function canonicalUserCustomerFavoritesPath(user: AuthSession): string {
+  return `${canonicalUserCustomerPath(user)}/favorites`;
 }
 
 export function canonicalUserModePath(user: AuthSession): string {
@@ -81,6 +93,18 @@ export function canonicalUserEmployeePath(user: AuthSession): string {
   return `/${user.id}/employee`;
 }
 
-export function canonicalUserEmployeeHomePath(user: AuthSession): string {
-  return `${canonicalUserEmployeePath(user)}/home`;
+export function canonicalUserEmployeeDashboardPath(user: AuthSession): string {
+  return `${canonicalUserEmployeePath(user)}/dashboard`;
+}
+
+export function canonicalUserEmployeeProfilePath(user: AuthSession): string {
+  return `${canonicalUserEmployeePath(user)}/profile`;
+}
+
+/** Default dashboard for a session when no explicit mode-choice step is required. */
+export function canonicalDefaultDashboardPath(user: AuthSession): string {
+  if (user.type === "business") {
+    return canonicalBusinessDashboardRoutePath(user);
+  }
+  return canonicalUserCustomerDashboardPath(user);
 }

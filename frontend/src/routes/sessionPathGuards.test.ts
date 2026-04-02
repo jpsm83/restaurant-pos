@@ -4,11 +4,11 @@
 import { describe, expect, it } from "vitest";
 import {
   canonicalBusinessDashboardPath,
-  canonicalBusinessHomePath,
-  canonicalUserCustomerHomePath,
+  canonicalBusinessDashboardRoutePath,
   canonicalUserCustomerPath,
-  canonicalUserEmployeeHomePath,
+  canonicalUserCustomerDashboardPath,
   canonicalUserEmployeePath,
+  canonicalUserEmployeeDashboardPath,
   canonicalUserModePath,
   isLikelyMongoObjectIdString,
   matchesSessionBusinessId,
@@ -81,12 +81,12 @@ describe("canonicalPaths", () => {
     it("builds business path", () => {
       const b = { id: "b1", email: "b@test.local", type: "business" as const };
       expect(canonicalBusinessDashboardPath(b)).toBe("/business/b1");
-      expect(canonicalBusinessHomePath(b)).toBe("/business/b1/home");
+      expect(canonicalBusinessDashboardRoutePath(b)).toBe("/business/b1/dashboard");
     });
-    it("builds user home paths", () => {
+    it("builds user dashboard paths", () => {
       const u = { id: "u1", email: "u@test.local", type: "user" as const };
-      expect(canonicalUserCustomerHomePath(u)).toBe("/u1/customer/home");
-      expect(canonicalUserEmployeeHomePath(u)).toBe("/u1/employee/home");
+      expect(canonicalUserCustomerDashboardPath(u)).toBe("/u1/customer/dashboard");
+      expect(canonicalUserEmployeeDashboardPath(u)).toBe("/u1/employee/dashboard");
     });
   });
 });

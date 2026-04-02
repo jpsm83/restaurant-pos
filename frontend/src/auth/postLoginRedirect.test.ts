@@ -14,7 +14,7 @@ describe("getPostLoginDestination", () => {
         email: "b@test.local",
         type: "business",
       },
-      expected: "/business/b1/home",
+      expected: "/business/b1/dashboard",
     },
     {
       name: "user without employee link",
@@ -23,7 +23,7 @@ describe("getPostLoginDestination", () => {
         email: "u@test.local",
         type: "user",
       },
-      expected: "/u1/customer/home",
+      expected: "/u1/customer/dashboard",
     },
     {
       name: "user with employee link (mode selection)",

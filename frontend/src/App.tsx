@@ -11,7 +11,6 @@
  *
  * Route elements: **`appRoutes.tsx`** (`AppRoutes`). Guards: **`routes/AuthRouteGuards.tsx`**.
  */
-import { BrowserRouter } from "react-router-dom";
 import { AuthModeProvider } from "@/auth";
 import { AppRoutes } from "@/appRoutes";
 
@@ -19,12 +18,8 @@ export { AppRoutes };
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AuthModeProvider>
-        <div className="flex min-h-0 w-full flex-1 flex-col">
-          <AppRoutes />
-        </div>
-      </AuthModeProvider>
-    </BrowserRouter>
+    <AuthModeProvider>
+      <AppRoutes />
+    </AuthModeProvider>
   );
 }

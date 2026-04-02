@@ -31,7 +31,12 @@ import { getPostLoginDestination } from "@/auth/postLoginRedirect";
 import { useAuth } from "@/auth/store/AuthContext";
 import { useAuthMode } from "@/auth";
 import { AppPendingShell } from "@/components/AppPendingShell";
-import { canonicalBusinessHomePath, canonicalUserCustomerHomePath, matchesSessionBusinessId, matchesSessionUserId } from "./canonicalPaths";
+import {
+  canonicalBusinessDashboardRoutePath,
+  canonicalUserCustomerDashboardPath,
+  matchesSessionBusinessId,
+  matchesSessionUserId,
+} from "./canonicalPaths";
 
 /** Static path for session-type partition violations (`RequireUserSession` / `RequireBusinessSession`). */
 export const ACCESS_DENIED_PATH = "/access-denied";
@@ -151,7 +156,7 @@ export function UserIdRouteGuard({ children }: { children: ReactElement }) {
   }
 
   if (!matchesSessionUserId(userId, user)) {
-    return <Navigate to={canonicalUserCustomerHomePath(user)} replace />;
+    return <Navigate to={canonicalUserCustomerDashboardPath(user)} replace />;
   }
 
   return children;
@@ -197,7 +202,7 @@ export function BusinessIdRouteGuard({ children }: { children: ReactElement }) {
   }
 
   if (!matchesSessionBusinessId(businessId, user)) {
-    return <Navigate to={canonicalBusinessHomePath(user)} replace />;
+    return <Navigate to={canonicalBusinessDashboardRoutePath(user)} replace />;
   }
 
   return children;

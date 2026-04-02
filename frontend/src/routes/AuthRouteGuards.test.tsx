@@ -65,7 +65,7 @@ describe("Auth route guards", () => {
     await renderWithI18n(
       <MemoryRouter initialEntries={["/login"]}>
         <Routes>
-          <Route path="/u1/customer/home" element={<div>User customer shell</div>} />
+          <Route path="/u1/customer/dashboard" element={<div>User customer shell</div>} />
           <Route
             path="/login"
             element={
@@ -168,7 +168,7 @@ describe("Auth route guards", () => {
       <MemoryRouter initialEntries={["/wrong-user/customer"]}>
         <Routes>
           <Route
-            path="/u1/customer/home"
+            path="/u1/customer/dashboard"
             element={<div>Canonical user shell</div>}
           />
           <Route
@@ -204,7 +204,7 @@ describe("Auth route guards", () => {
       <MemoryRouter initialEntries={["/business/wrong-tenant"]}>
         <Routes>
           <Route
-            path="/business/b1/home"
+            path="/business/b1/dashboard"
             element={<div>Canonical business shell</div>}
           />
           <Route
