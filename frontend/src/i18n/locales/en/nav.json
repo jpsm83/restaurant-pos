@@ -38,7 +38,8 @@
     "openHours": "Open hours",
     "credentials": "Credentials",
     "delivery": "Delivery",
-    "metrics": "Metrics"
+    "metrics": "Metrics",
+    "settings": "Settings"
   },
   "sidebar": {
     "openMenu": "Open menu",

@@ -4,26 +4,24 @@
  * **`UserSessionRouteShell`** (authenticated person + URL `:userId` matches session) before this layout.
  *
  * ## Flow
- * **`Navbar`** + **`<Outlet />`** for customer shell children (`home`, `profile`, `favorites`,
- * `dashboard`). Employee mode is chosen elsewhere (`/:userId/mode`); account menu can link to
- * employee **home** when allowed.
+ * **Sidebar** + **`SidebarInset`** ( **`SidebarProvider`** is in **`main.tsx`**). **`<Outlet />`** for
+ * customer shell children
+ * (`home`, `profile`, `favorites`, `dashboard`). Employee mode is chosen elsewhere (`/:userId/mode`);
+ * account menu can link to employee **home** when allowed.
  *
  * Folder overview: see `PublicLayout.tsx` module doc for how layouts relate.
  */
 import { Outlet } from "react-router-dom";
 import ActorSidebar from "@/components/ActorSidebar";
-import {
-  SidebarInset,
-} from "@/components/ui/sidebar";
+import { Sidebar, SidebarRail } from "@/components/ui/sidebar";
 import { useAuth } from "@/auth/store/AuthContext";
 import { useTranslation } from "react-i18next";
 import { useLocation } from "react-router-dom";
-import { LayoutDashboard, Star, User, UsersRound } from "lucide-react";
+import { LayoutDashboard, Star, User } from "lucide-react";
 import {
   canonicalUserCustomerDashboardPath,
   canonicalUserCustomerFavoritesPath,
   canonicalUserCustomerProfilePath,
-  canonicalUserEmployeeDashboardPath,
 } from "@/routes/canonicalPaths";
 
 export default function CustomerLayout() {
@@ -38,7 +36,7 @@ export default function CustomerLayout() {
   const dashboardTo = canonicalUserCustomerDashboardPath(session);
   const profileTo = canonicalUserCustomerProfilePath(session);
 
-  const items = [
+  const pages = [
     {
       key: "favorites",
       label: t("account.favorites"),
@@ -62,27 +60,13 @@ export default function CustomerLayout() {
     },
   ];
 
-  const showEmployeeArea = session.canLogAsEmployee === true;
-  const modeSwitchItems = showEmployeeArea
-    ? [
-        {
-          key: "employeeArea",
-          label: t("account.employeeArea"),
-          to: canonicalUserEmployeeDashboardPath(session),
-          icon: UsersRound,
-          isActive: pathname === canonicalUserEmployeeDashboardPath(session),
-        },
-      ]
-    : [];
-
   return (
     <>
-      <ActorSidebar items={items} modeSwitchItems={modeSwitchItems} />
-      <SidebarInset>
-        <div className="flex min-h-0 w-full flex-1 flex-col bg-neutral-100">
-          <Outlet />
-        </div>
-      </SidebarInset>
+      <Sidebar collapsible="icon" variant="sidebar">
+        <ActorSidebar pages={pages} />
+        <SidebarRail />
+      </Sidebar>
+      <Outlet />
     </>
   );
 }

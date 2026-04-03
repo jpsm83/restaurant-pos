@@ -4,7 +4,6 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import * as i18nModule from "@/i18n/i18n";
 import { renderWithI18n } from "@/test/i18nTestUtils";
-import { SidebarProvider } from "@/components/ui/sidebar";
 import Navbar from "./Navbar";
 
 const mockDispatch = vi.fn();
@@ -29,20 +28,18 @@ describe("Navbar", () => {
     const user = userEvent.setup();
     await renderWithI18n(
       <MemoryRouter initialEntries={["/"]}>
-        <SidebarProvider>
-          <Routes>
-            <Route
-              path="/"
-              element={
-                <>
-                  <Navbar />
-                  <div>Page</div>
-                </>
-              }
-            />
-            <Route path="/business" element={<div>Business page</div>} />
-          </Routes>
-        </SidebarProvider>
+        <Routes>
+          <Route
+            path="/"
+            element={
+              <>
+                <Navbar />
+                <div>Page</div>
+              </>
+            }
+          />
+          <Route path="/business" element={<div>Business page</div>} />
+        </Routes>
       </MemoryRouter>,
     );
 
@@ -56,20 +53,18 @@ describe("Navbar", () => {
     const user = userEvent.setup();
     await renderWithI18n(
       <MemoryRouter initialEntries={["/business"]}>
-        <SidebarProvider>
-          <Routes>
-            <Route
-              path="/business"
-              element={
-                <>
-                  <Navbar />
-                  <div>Business page</div>
-                </>
-              }
-            />
-            <Route path="/" element={<div>Customer page</div>} />
-          </Routes>
-        </SidebarProvider>
+        <Routes>
+          <Route
+            path="/business"
+            element={
+              <>
+                <Navbar />
+                <div>Business page</div>
+              </>
+            }
+          />
+          <Route path="/" element={<div>Customer page</div>} />
+        </Routes>
       </MemoryRouter>,
     );
 
@@ -82,19 +77,17 @@ describe("Navbar", () => {
   it("links Sign in with audience query on business path", async () => {
     await renderWithI18n(
       <MemoryRouter initialEntries={["/business"]}>
-        <SidebarProvider>
-          <Routes>
-            <Route
-              path="/business"
-              element={
-                <>
-                  <Navbar />
-                  <div>Page</div>
-                </>
-              }
-            />
-          </Routes>
-        </SidebarProvider>
+        <Routes>
+          <Route
+            path="/business"
+            element={
+              <>
+                <Navbar />
+                <div>Page</div>
+              </>
+            }
+          />
+        </Routes>
       </MemoryRouter>,
     );
 
@@ -105,19 +98,17 @@ describe("Navbar", () => {
   it("links Sign up to business register when on business audience", async () => {
     await renderWithI18n(
       <MemoryRouter initialEntries={["/business"]}>
-        <SidebarProvider>
-          <Routes>
-            <Route
-              path="/business"
-              element={
-                <>
-                  <Navbar />
-                  <div>Page</div>
-                </>
-              }
-            />
-          </Routes>
-        </SidebarProvider>
+        <Routes>
+          <Route
+            path="/business"
+            element={
+              <>
+                <Navbar />
+                <div>Page</div>
+              </>
+            }
+          />
+        </Routes>
       </MemoryRouter>,
     );
 
@@ -136,19 +127,17 @@ describe("Navbar", () => {
 
     await renderWithI18n(
       <MemoryRouter initialEntries={["/"]}>
-        <SidebarProvider>
-          <Routes>
-            <Route
-              path="/"
-              element={
-                <>
-                  <Navbar />
-                  <div>Page</div>
-                </>
-              }
-            />
-          </Routes>
-        </SidebarProvider>
+        <Routes>
+          <Route
+            path="/"
+            element={
+              <>
+                <Navbar />
+                <div>Page</div>
+              </>
+            }
+          />
+        </Routes>
       </MemoryRouter>,
     );
 
@@ -156,7 +145,7 @@ describe("Navbar", () => {
       screen.getByRole("button", { name: /change language/i }),
     );
     await user.click(
-      await screen.findByRole("button", { name: /^Español$/ }),
+      await screen.findByRole("menuitemradio", { name: /^Español$/ }),
     );
 
     expect(spy).toHaveBeenCalledWith("es");

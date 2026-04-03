@@ -13,6 +13,7 @@ import {
   BusinessServiceError,
   type BusinessProfileDto,
 } from "@/services/businessService";
+import BusinessCredentialsSettingsPage from "./BusinessCredentialsSettingsPage";
 import BusinessProfileSettingsPage from "./BusinessProfileSettingsPage";
 
 const mockDispatch = vi.fn();
@@ -196,7 +197,7 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
     expect(screen.getByLabelText("Phone number")).toHaveValue("+10000000000");
   });
 
-  it("renders all Phase 3.2 sections and expands credentials panel", async () => {
+  it("renders profile-only sections and omits other settings slices", async () => {
     mockUseBusinessProfileQuery.mockReturnValue({
       data: makeBusinessProfileDto(),
       isLoading: false,
@@ -204,7 +205,6 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
       error: null,
       refetch: vi.fn(),
     });
-    const user = userEvent.setup();
 
     await renderWithI18n(
       <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
@@ -217,20 +217,13 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText("Subscription")).toBeInTheDocument();
     expect(screen.getByText("Logo")).toBeInTheDocument();
     expect(screen.getByText("Core business info")).toBeInTheDocument();
-    expect(screen.getByText("Address")).toBeInTheDocument();
-    expect(screen.getByText("Discovery and delivery")).toBeInTheDocument();
-    expect(screen.getByText("Metrics")).toBeInTheDocument();
-    expect(screen.getByText("Opening hours and delivery windows")).toBeInTheDocument();
-    expect(screen.getByText("Credentials")).toBeInTheDocument();
-    expect(screen.getByRole("radiogroup", { name: "Subscription plan" })).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Update credentials" }));
-    expect(screen.getByLabelText("Confirm email")).toBeInTheDocument();
-    expect(screen.getByLabelText("New password")).toBeInTheDocument();
-    expect(screen.getByLabelText("Confirm password")).toBeInTheDocument();
+    expect(screen.getByText("Discovery")).toBeInTheDocument();
+    expect(screen.queryByText("Subscription")).not.toBeInTheDocument();
+    expect(screen.queryByText("Address")).not.toBeInTheDocument();
+    expect(screen.queryByText("Metrics")).not.toBeInTheDocument();
+    expect(screen.queryByRole("radiogroup", { name: "Subscription plan" })).not.toBeInTheDocument();
   });
 
   it("uses backend cloud image URL, hides manual URL field, and previews uploaded file state", async () => {
@@ -393,11 +386,11 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
     const user = userEvent.setup();
 
     await renderWithI18n(
-      <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
+      <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/credentials"]}>
         <Routes>
           <Route
-            path="/business/:businessId/settings/profile"
-            element={<BusinessProfileSettingsPage />}
+            path="/business/:businessId/settings/credentials"
+            element={<BusinessCredentialsSettingsPage />}
           />
           <Route path="/login" element={<div>Login page</div>} />
         </Routes>
@@ -446,11 +439,8 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
       </MemoryRouter>,
     );
 
-    await user.click(screen.getByRole("button", { name: "Update credentials" }));
     await user.clear(screen.getByLabelText("Business email"));
     await user.type(screen.getByLabelText("Business email"), "newowner@demo.test");
-    await user.clear(screen.getByLabelText("Confirm email"));
-    await user.type(screen.getByLabelText("Confirm email"), "newowner@demo.test");
     await user.click(screen.getByRole("button", { name: "Save changes" }));
 
     expect(mutateAsync).toHaveBeenCalledTimes(1);

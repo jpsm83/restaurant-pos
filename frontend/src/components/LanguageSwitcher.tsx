@@ -9,6 +9,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Button } from "./ui/button";
 
 function isEs(code: string): boolean {
   return (code.split("-")[0]?.toLowerCase() ?? "") === "es";
@@ -68,36 +69,27 @@ function CircularFlag({
   );
 }
 
-export type LanguageSwitcherProps = {
-  /**
-   * When the switcher sits inside another `DropdownMenu` (e.g. account menu), Radix should not
-   * use a modal layer so focus and dismissal match nested-menu behavior.
-   */
-  nestedInDropdown?: boolean;
-};
-
-export function LanguageSwitcher({
-  nestedInDropdown = false,
-}: LanguageSwitcherProps = {}) {
+export function LanguageSwitcher() {
   const { t, i18n } = useTranslation("common");
   const options = useLanguageOptions();
   const active = activeCode(i18n.language);
 
   return (
-    <DropdownMenu modal={nestedInDropdown ? false : undefined}>
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          className="flex cursor-pointer items-center justify-center rounded-full shadow-sm outline-none hover:shadow-md focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:ring-offset-2"
+        <Button
+          variant={null}
+          className="hover:bg-transparent hover:cursor-pointer"
           aria-label={t("languageSwitcher.ariaLabel")}
         >
           <CircularFlag code={active} sizeClass="h-6 w-6" />
-        </button>
+        </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
         sideOffset={8}
         className="min-w-[180px] max-w-sm p-2"
+        onFocusOutside={(e: Event) => e.preventDefault() }
       >
         <DropdownMenuRadioGroup
           value={active}

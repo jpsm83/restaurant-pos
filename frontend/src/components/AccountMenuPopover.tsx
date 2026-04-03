@@ -72,7 +72,7 @@ export function AccountMenuPopover({ session }: AccountMenuPopoverProps) {
   };
 
   return (
-    <DropdownMenu>
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <button
           type="button"
@@ -110,7 +110,7 @@ export function AccountMenuPopover({ session }: AccountMenuPopoverProps) {
             </p>
           </div>
           <div className="shrink-0" onPointerDown={(e) => e.preventDefault()}>
-            <LanguageSwitcher nestedInDropdown />
+            <LanguageSwitcher />
           </div>
         </div>
         <DropdownMenuSeparator />

@@ -32,17 +32,21 @@ export function UnsavedChangesDialog({
   return (
     <DialogPrimitive.Root
       open={open}
+      // Non-modal avoids `react-remove-scroll` on the document (modal overlay locks body scroll
+      // and hides the scrollbar, which shifts fixed-width layouts). Backdrop is a plain layer below.
+      modal={false}
       onOpenChange={(nextOpen) => {
         // Dismiss (escape / outside click) maps to "stay" to keep navigation intent explicit.
         if (!nextOpen) onStay();
       }}
     >
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/35" />
+        {/* Radix omits `Dialog.Overlay` when `modal={false}`; this div does not use RemoveScroll. */}
+        <div className="fixed inset-0 z-50 bg-black/35" aria-hidden />
         <DialogPrimitive.Content
           aria-describedby="unsaved-changes-description"
           className={cn(
-            "fixed left-1/2 top-1/2 z-50 w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-md border border-neutral-200 bg-white p-5 shadow-lg outline-none",
+            "fixed left-1/2 top-1/2 z-51 w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-md border border-neutral-200 bg-white p-5 shadow-lg outline-none",
             className,
           )}
         >

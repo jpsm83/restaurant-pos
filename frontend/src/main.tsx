@@ -13,6 +13,7 @@ import { AuthProvider } from "./auth/store/AuthContext";
 import Navbar from "./components/Navbar";
 import { queryClient } from "./services/queryClient";
 import { SidebarProvider } from "./components/ui/sidebar";
+import { TooltipProvider } from "./components/ui/tooltip";
 
 // Provider order: QueryClient outside Auth — token for `services/http` comes from `auth/api` module, not Context; Query stays mounted across auth transitions.
 createRoot(document.getElementById("root")!).render(
@@ -21,12 +22,19 @@ createRoot(document.getElementById("root")!).render(
       <AuthProvider>
         <ErrorBoundary>
           <BrowserRouter>
-            <SidebarProvider defaultOpen={false} className="flex-col">
-              <Navbar />
-              <div className="flex min-h-0 w-full flex-1 pt-14">
-                <App />
+            <TooltipProvider>
+              <div className="flex min-h-svh flex-col">
+                <Navbar />
+                <SidebarProvider
+                  defaultOpen={false}
+                  className="flex min-h-0 min-w-0 w-full flex-1 [&_[data-slot=sidebar-container]]:top-14 [&_[data-slot=sidebar-container]]:bottom-0 [&_[data-slot=sidebar-container]]:h-auto"
+                >
+                  <div className="flex min-h-0 w-full min-w-0 flex-1 pt-14">
+                    <App />
+                  </div>
+                </SidebarProvider>
               </div>
-            </SidebarProvider>
+            </TooltipProvider>
           </BrowserRouter>
         </ErrorBoundary>
       </AuthProvider>

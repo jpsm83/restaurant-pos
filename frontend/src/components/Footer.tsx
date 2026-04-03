@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 
 /**
  * Public marketing + auth shell only (`PublicLayout`). Matches `Navbar` row rhythm.
+ * Not used in tenant layouts (sidebar + main live under global `Navbar` in `main.tsx`).
  */
 export default function Footer() {
   const { t } = useTranslation("nav");

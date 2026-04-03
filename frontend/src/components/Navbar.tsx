@@ -6,17 +6,16 @@ import { AccountMenuPopover } from "@/components/AccountMenuPopover";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 
 /**
  * App-wide top bar. Public routes: audience switch + auth CTAs (`SiteAudienceProvider`).
  * Authenticated shells: account popover with actor-specific links.
+ * Sidebar chrome lives in tenant layouts only — no `SidebarProvider` / trigger here.
  */
 export default function Navbar() {
   const { t } = useTranslation("nav");
   const { state } = useAuth();
   const { pathname } = useLocation();
-  const { state: sidebarState } = useSidebar();
   const isAuthenticated =
     state.status === "authenticated" && Boolean(state.user);
   const isLoading = state.status === "loading" || state.status === "idle";
@@ -29,15 +28,6 @@ export default function Navbar() {
     pathname === "/business/signup"
       ? "business"
       : "customer";
-
-  const showSidebarTrigger =
-    isAuthenticated &&
-    (pathname.startsWith("/business/") ||
-      /\/customer(\/|$)/.test(pathname) ||
-      /\/employee(\/|$)/.test(pathname));
-
-  const sidebarToggleAriaLabel =
-    sidebarState === "expanded" ? t("sidebar.closeMenu") : t("sidebar.openMenu");
 
   const loginHref = `/login?audience=${audience}`;
   const signUpHref =
@@ -52,11 +42,6 @@ export default function Navbar() {
     >
       <div className="flex h-full w-full items-center justify-between gap-3 px-6 sm:px-8">
         <div className="flex items-center gap-3">
-          {showSidebarTrigger ? (
-            <div className="shrink-0 md:hidden">
-              <SidebarTrigger aria-label={sidebarToggleAriaLabel} />
-            </div>
-          ) : null}
           <Link to="/" className="flex items-center gap-3">
             <img
               src="/imperium.png"

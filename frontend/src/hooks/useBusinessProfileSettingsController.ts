@@ -1,0 +1,319 @@
+import { useEffect, useMemo, useState, type ChangeEvent } from "react";
+import {
+  useForm,
+  useWatch,
+  type Control,
+  type UseFormHandleSubmit,
+  type UseFormRegister,
+  type UseFormReset,
+  type UseFormSetValue,
+} from "react-hook-form";
+import { useNavigate, useParams } from "react-router-dom";
+import { toast } from "sonner";
+import { logout, setAccessToken } from "@/auth/api";
+import { useAuth } from "@/auth/store/AuthContext";
+import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
+import type { UseMutationResult, UseQueryResult } from "@tanstack/react-query";
+import {
+  businessDtoToFormValues,
+  formValuesToUpdatePayload,
+  type BusinessProfileDto,
+  type BusinessProfileFormValues,
+  type UpdateBusinessProfileSuccess,
+  useBusinessProfileQuery,
+  useUpdateBusinessProfileMutation,
+} from "@/services/businessService";
+
+/** RHF defaults for business profile PATCH; must stay aligned with `businessDtoToFormValues` shape. */
+const EMPTY_PROFILE_FORM_VALUES: BusinessProfileFormValues = {
+  subscription: "",
+  imageUrl: "",
+  imageFile: null,
+  tradeName: "",
+  legalName: "",
+  email: "",
+  confirmEmail: "",
+  password: "",
+  confirmPassword: "",
+  phoneNumber: "",
+  taxNumber: "",
+  currencyTrade: "",
+  address: {
+    country: "",
+    state: "",
+    city: "",
+    street: "",
+    buildingNumber: "",
+    postCode: "",
+    region: "",
+  },
+  contactPerson: "",
+  cuisineType: "",
+  categories: [],
+  acceptsDelivery: false,
+  deliveryRadius: null,
+  minOrder: null,
+  metrics: {
+    foodCostPercentage: 30,
+    beverageCostPercentage: 20,
+    laborCostPercentage: 30,
+    fixedCostPercentage: 20,
+    supplierGoodWastePercentage: {
+      veryLowBudgetImpact: 9,
+      lowBudgetImpact: 7,
+      mediumBudgetImpact: 5,
+      hightBudgetImpact: 3,
+      veryHightBudgetImpact: 1,
+    },
+  },
+  businessOpeningHours: [],
+  deliveryOpeningWindows: [],
+  reportingConfig: {
+    weeklyReportStartDay: null,
+  },
+};
+
+/** Weekday labels for opening hours / delivery / reporting selects (shared across settings pages). */
+export const DAY_OPTIONS = [
+  { value: 0, label: "Sunday" },
+  { value: 1, label: "Monday" },
+  { value: 2, label: "Tuesday" },
+  { value: 3, label: "Wednesday" },
+  { value: 4, label: "Thursday" },
+  { value: 5, label: "Friday" },
+  { value: 6, label: "Saturday" },
+] as const;
+
+export type BusinessProfileSettingsBlockedKind =
+  | "wrong-session"
+  | "no-business-id"
+  | "loading"
+  | "error"
+  | "no-data";
+
+export type BusinessProfileSettingsReady = {
+  kind: "ready";
+  businessId: string;
+  profileQuery: UseQueryResult<BusinessProfileDto, Error>;
+  register: UseFormRegister<BusinessProfileFormValues>;
+  control: Control<BusinessProfileFormValues>;
+  setValue: UseFormSetValue<BusinessProfileFormValues>;
+  handleSubmit: UseFormHandleSubmit<BusinessProfileFormValues>;
+  reset: UseFormReset<BusinessProfileFormValues>;
+  isDirty: boolean;
+  updateMutation: UseMutationResult<
+    UpdateBusinessProfileSuccess,
+    Error,
+    { businessId: string; formData: FormData }
+  >;
+  submitError: string | null;
+  setSubmitError: (value: string | null) => void;
+  onSubmit: (values: BusinessProfileFormValues) => Promise<void>;
+  handleResetToLastSaved: () => void;
+  handleImageUpload: (event: ChangeEvent<HTMLInputElement>) => void;
+  imagePreviewUrl: string | null;
+  imageUrl: string;
+  imageFile: File | null;
+  unsavedChangesGuard: ReturnType<typeof useUnsavedChangesGuard>;
+  navigationBypassAfterSave: boolean;
+  onFormChangeCapture: () => void;
+};
+
+export type BusinessProfileSettingsController =
+  | {
+      kind: Exclude<BusinessProfileSettingsBlockedKind, "error">;
+      message?: string;
+    }
+  | { kind: "error"; message?: string; refetch: () => Promise<unknown> }
+  | BusinessProfileSettingsReady;
+
+/**
+ * Shared business profile form controller for split settings routes.
+ * Each route keeps the full `BusinessProfileFormValues` so `formValuesToUpdatePayload` stays correct on save.
+ */
+export function useBusinessProfileSettingsController(): BusinessProfileSettingsController {
+  const navigate = useNavigate();
+  const { businessId } = useParams<{ businessId: string }>();
+  const { state, dispatch } = useAuth();
+  const session = state.user;
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [navigationBypassAfterSave, setNavigationBypassAfterSave] = useState(false);
+
+  const canLoadProfile = Boolean(
+    businessId && session && session.type === "business",
+  );
+  const profileQuery = useBusinessProfileQuery(
+    canLoadProfile ? businessId : undefined,
+    canLoadProfile,
+  );
+  const updateMutation = useUpdateBusinessProfileMutation();
+
+  const {
+    register,
+    reset,
+    setValue,
+    control,
+    handleSubmit,
+    formState: { isDirty },
+  } = useForm<BusinessProfileFormValues>({
+    defaultValues: EMPTY_PROFILE_FORM_VALUES,
+  });
+
+  const unsavedChangesGuard = useUnsavedChangesGuard({
+    isDirty,
+    isSubmitting: updateMutation.isPending,
+    enabled: !navigationBypassAfterSave,
+  });
+
+  const imageUrl = useWatch({ control, name: "imageUrl" });
+  const imageFile = useWatch({ control, name: "imageFile" });
+  const imagePreviewUrl = useMemo(
+    () => (imageFile ? URL.createObjectURL(imageFile) : null),
+    [imageFile],
+  );
+
+  useEffect(() => {
+    if (!profileQuery.data) return;
+    reset(businessDtoToFormValues(profileQuery.data));
+  }, [profileQuery.data, reset]);
+
+  useEffect(() => {
+    return () => {
+      if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+    };
+  }, [imagePreviewUrl]);
+
+  if (!session || session.type !== "business") {
+    return { kind: "wrong-session" };
+  }
+
+  if (!businessId) {
+    return { kind: "no-business-id" };
+  }
+
+  if (profileQuery.isLoading) {
+    return { kind: "loading" };
+  }
+
+  if (profileQuery.isError) {
+    const message =
+      profileQuery.error instanceof Error
+        ? profileQuery.error.message
+        : undefined;
+    return {
+      kind: "error",
+      message,
+      refetch: () => profileQuery.refetch(),
+    };
+  }
+
+  if (!profileQuery.data) {
+    return { kind: "no-data" };
+  }
+
+  const handleImageUpload = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    setValue("imageFile", file, { shouldDirty: true });
+  };
+
+  const shouldForceLogoutAfterSave = (values: BusinessProfileFormValues) => {
+    const emailChanged = values.email.trim() !== session.email.trim();
+    const passwordChanged = values.password.trim().length > 0;
+    return emailChanged || passwordChanged;
+  };
+
+  const handleForcedLogout = async () => {
+    await logout();
+    setAccessToken(null);
+    localStorage.removeItem("auth_had_session");
+    dispatch({ type: "AUTH_CLEAR" });
+    navigate("/login", { replace: true });
+  };
+
+  const onSubmit = async (values: BusinessProfileFormValues) => {
+    setSubmitError(null);
+    const forceLogoutAfterSave = shouldForceLogoutAfterSave(values);
+    const payload = formValuesToUpdatePayload(values);
+
+    try {
+      await updateMutation.mutateAsync({
+        businessId,
+        formData: payload,
+      });
+
+      const refreshed = await profileQuery.refetch();
+      if (refreshed.data) {
+        reset(businessDtoToFormValues(refreshed.data), {
+          keepDirty: false,
+          keepTouched: false,
+        });
+      } else {
+        reset(
+          {
+            ...values,
+            imageFile: null,
+            password: "",
+            confirmPassword: "",
+            confirmEmail: values.email.trim(),
+          },
+          {
+            keepDirty: false,
+            keepTouched: false,
+          },
+        );
+      }
+
+      if (forceLogoutAfterSave) {
+        toast.success(
+          "Profile saved. Please sign in again to continue with updated credentials.",
+        );
+        await handleForcedLogout();
+        return;
+      }
+
+      setNavigationBypassAfterSave(true);
+      toast.success("Business profile saved successfully.");
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error
+          ? error.message
+          : "Failed to save business profile changes.",
+      );
+      toast.error("Failed to save business profile.");
+    }
+  };
+
+  const handleResetToLastSaved = () => {
+    if (!profileQuery.data) return;
+    setSubmitError(null);
+    reset(businessDtoToFormValues(profileQuery.data));
+  };
+
+  const onFormChangeCapture = () => {
+    if (navigationBypassAfterSave) setNavigationBypassAfterSave(false);
+  };
+
+  return {
+    kind: "ready",
+    businessId,
+    profileQuery,
+    register,
+    control,
+    setValue,
+    handleSubmit,
+    reset,
+    isDirty,
+    updateMutation,
+    submitError,
+    setSubmitError,
+    onSubmit,
+    handleResetToLastSaved,
+    handleImageUpload,
+    imagePreviewUrl,
+    imageUrl,
+    imageFile: imageFile ?? null,
+    unsavedChangesGuard,
+    navigationBypassAfterSave,
+    onFormChangeCapture,
+  };
+}
