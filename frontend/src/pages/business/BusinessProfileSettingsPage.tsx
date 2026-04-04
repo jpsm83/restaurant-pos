@@ -4,7 +4,74 @@ import { useTranslation } from "react-i18next";
 import { Building2, Camera } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { BusinessProfileSettingsFormShell } from "../../components/BusinessProfileSettingsFormShell";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  BusinessProfileSettingsFormShell,
+  BusinessProfileSettingsLoadingCard,
+} from "../../components/BusinessProfileSettingsFormShell";
+
+function ProfileSettingsLoadingBody() {
+  return (
+    <>
+      <section className="space-y-3">
+        <Skeleton className="h-4 w-16" aria-hidden />
+        <div className="flex flex-wrap items-center gap-4">
+          <Skeleton className="h-28 w-28 shrink-0 rounded-full" aria-hidden />
+          <div className="min-w-[220px] flex-1 space-y-2">
+            <Skeleton className="h-4 w-full" aria-hidden />
+            <Skeleton className="h-4 w-full max-w-xs" aria-hidden />
+          </div>
+        </div>
+      </section>
+      <section className="space-y-4">
+        <Skeleton className="h-4 w-40" aria-hidden />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2 sm:col-span-2">
+            <Skeleton className="h-4 w-24" aria-hidden />
+            <Skeleton className="h-10 w-full" aria-hidden />
+          </div>
+          <div className="space-y-2 sm:col-span-2">
+            <Skeleton className="h-4 w-24" aria-hidden />
+            <Skeleton className="h-10 w-full" aria-hidden />
+          </div>
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-28" aria-hidden />
+            <Skeleton className="h-10 w-full" aria-hidden />
+          </div>
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-28" aria-hidden />
+            <Skeleton className="h-10 w-full" aria-hidden />
+          </div>
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-24" aria-hidden />
+            <Skeleton className="h-10 w-full" aria-hidden />
+          </div>
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-24" aria-hidden />
+            <Skeleton className="h-10 w-full" aria-hidden />
+          </div>
+          <div className="space-y-2 sm:col-span-2">
+            <Skeleton className="h-4 w-32" aria-hidden />
+            <Skeleton className="h-10 w-full" aria-hidden />
+          </div>
+        </div>
+      </section>
+      <section className="space-y-4">
+        <Skeleton className="h-4 w-28" aria-hidden />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-28" aria-hidden />
+            <Skeleton className="h-10 w-full" aria-hidden />
+          </div>
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-44" aria-hidden />
+            <Skeleton className="h-10 w-full" aria-hidden />
+          </div>
+        </div>
+      </section>
+    </>
+  );
+}
 
 /** Logo, core business fields, cuisine type, and discovery categories (`/business/:id/settings/profile`). */
 export default function BusinessProfileSettingsPage() {
@@ -19,6 +86,11 @@ export default function BusinessProfileSettingsPage() {
         defaultValue:
           "Update your public-facing business identity, logo, and how customers discover you.",
       })}
+      loadingSlot={
+        <BusinessProfileSettingsLoadingCard>
+          <ProfileSettingsLoadingBody />
+        </BusinessProfileSettingsLoadingCard>
+      }
     >
       {(ctx) => (
         <BusinessProfileSections ctx={ctx} />

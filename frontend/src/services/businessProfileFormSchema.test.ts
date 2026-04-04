@@ -23,6 +23,8 @@ function makeBusinessDto(overrides?: Partial<BusinessProfileDto>): BusinessProfi
       city: " Lisbon ",
       street: " Main St ",
       buildingNumber: " 10 ",
+      doorNumber: " 2 ",
+      complement: " Floor 1 ",
       postCode: " 1000-100 ",
       region: " Center ",
     },
@@ -66,6 +68,8 @@ describe("Business profile schema + mappers", () => {
     expect(formValues.email).toBe("owner@imperium.test");
     expect(formValues.confirmEmail).toBe("owner@imperium.test");
     expect(formValues.categories).toEqual(["pizza", "pasta"]);
+    expect(formValues.address.doorNumber).toBe("2");
+    expect(formValues.address.complement).toBe("Floor 1");
     expect(formValues.password).toBe("");
     expect(formValues.confirmPassword).toBe("");
     expect(formValues.reportingConfig.weeklyReportStartDay).toBe(1);
@@ -86,6 +90,8 @@ describe("Business profile schema + mappers", () => {
     const address = JSON.parse(String(payload.get("address"))) as Record<string, string>;
     expect(address.country).toBe("PT");
     expect(address.city).toBe("Lisbon");
+    expect(address.doorNumber).toBe("2");
+    expect(address.complement).toBe("Floor 1");
 
     const categories = JSON.parse(String(payload.get("categories"))) as string[];
     expect(categories).toEqual(["pizza", "pasta"]);

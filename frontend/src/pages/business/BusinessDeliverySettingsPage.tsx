@@ -4,11 +4,51 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { BusinessProfileFormValues } from "@/services/businessService";
-import { BusinessProfileSettingsFormShell } from "../../components/BusinessProfileSettingsFormShell";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  BusinessProfileSettingsFormShell,
+  BusinessProfileSettingsLoadingCard,
+} from "../../components/BusinessProfileSettingsFormShell";
 import {
   DAY_OPTIONS,
   type BusinessProfileSettingsReady,
 } from "@/hooks/useBusinessProfileSettingsController";
+
+function DeliverySettingsLoadingBody() {
+  return (
+    <>
+      <section className="space-y-4">
+        <Skeleton className="h-4 w-36" aria-hidden />
+        <div className="grid gap-4 sm:grid-cols-2">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="space-y-2">
+              <Skeleton className="h-4 w-32" aria-hidden />
+              <Skeleton className="h-10 w-full" aria-hidden />
+            </div>
+          ))}
+        </div>
+      </section>
+      <section className="space-y-3 rounded-md border border-neutral-200 p-4">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-5 w-52" aria-hidden />
+          <Skeleton className="h-8 w-36" aria-hidden />
+        </div>
+        <Skeleton className="h-4 w-full max-w-lg" aria-hidden />
+        <div className="space-y-3">
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-16" aria-hidden />
+            <Skeleton className="h-10 max-w-xs w-full" aria-hidden />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+            <Skeleton className="h-10 w-full" aria-hidden />
+            <Skeleton className="h-10 w-full" aria-hidden />
+            <Skeleton className="h-10 w-24" aria-hidden />
+          </div>
+        </div>
+      </section>
+    </>
+  );
+}
 
 /** Delivery flags, radius, minimum order, and per-day delivery windows. */
 export default function BusinessDeliverySettingsPage() {
@@ -18,6 +58,11 @@ export default function BusinessDeliverySettingsPage() {
     <BusinessProfileSettingsFormShell
       pageTitle={tNav("settings.delivery")}
       cardDescription="Control whether you offer delivery, limits, and when couriers may accept orders."
+      loadingSlot={
+        <BusinessProfileSettingsLoadingCard>
+          <DeliverySettingsLoadingBody />
+        </BusinessProfileSettingsLoadingCard>
+      }
     >
       {(ctx) => <DeliverySections ctx={ctx} />}
     </BusinessProfileSettingsFormShell>

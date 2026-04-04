@@ -23,6 +23,8 @@ export function fakeAddress() {
     city: faker.location.city(),
     street: faker.location.street(),
     buildingNumber: faker.location.buildingNumber(),
+    doorNumber: String(faker.number.int({ min: 1, max: 99 })),
+    complement: `Apt ${faker.number.int({ min: 1, max: 50 })}`,
     postCode: faker.location.zipCode(),
   };
 }

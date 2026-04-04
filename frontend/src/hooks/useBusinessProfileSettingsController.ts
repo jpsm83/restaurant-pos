@@ -44,6 +44,8 @@ const EMPTY_PROFILE_FORM_VALUES: BusinessProfileFormValues = {
     city: "",
     street: "",
     buildingNumber: "",
+    doorNumber: "",
+    complement: "",
     postCode: "",
     region: "",
   },
@@ -191,7 +193,22 @@ export function useBusinessProfileSettingsController(): BusinessProfileSettingsC
     return { kind: "no-business-id" };
   }
 
-  if (profileQuery.isLoading) {
+  // No DTO yet: show skeleton while the first request is in flight (or pending). Include `isPending`/`isFetching`
+  // alongside `isLoading` so we stay correct if one flag leads the other by a tick; tests may mock only `isLoading`.
+  const {
+    data: profileData,
+    isError: profileIsError,
+    isLoading: profileIsLoading,
+    isPending: profileIsPending,
+    isFetching: profileIsFetching,
+  } = profileQuery;
+
+  const isAwaitingProfileData =
+    !profileData &&
+    !profileIsError &&
+    (profileIsLoading || profileIsPending || profileIsFetching);
+
+  if (isAwaitingProfileData) {
     return { kind: "loading" };
   }
 

@@ -32,6 +32,7 @@ This document explains **how the Restaurant POS web app (`frontend/`) relies on 
 | **Notifications** | `sonner` | Toasts / non-blocking feedback where wired. |
 | **OAuth (optional)** | `@react-oauth/google` | Google sign-in integration when enabled in app config. |
 | **Icons / assets** | `lucide-react`, `country-flag-icons` | Icons and language switcher flags. |
+| **Maps / geocoding** | `leaflet`, `react-leaflet`, `leaflet-control-geocoder` | Tenant **address** settings: OSM tiles + Nominatim geocode for the location preview (**`BusinessAddressLocationMap`**). Types: `@types/leaflet`. |
 
 Auth **password rules** for **setting** passwords are shared with the monorepo via `@packages/utils/passwordPolicy.ts`; Zod schemas in the frontend should stay aligned with that helper (see below).
 
@@ -60,6 +61,8 @@ Auth **password rules** for **setting** passwords are shared with the monorepo v
 2. **Install from `frontend/`:** `npm install <package>` (or `npm install -D` for build/test-only tools).
 3. **Verify:** `npm run build` and `npm run test` (and `npm run lint` if you touch ESLint-affected areas).
 4. **Document:** For **cross-cutting** or **non-obvious** packages, add a row or bullet in **section 2** or **3** of this file and, if relevant, link from [`context.md`](./context.md) companion table.
+
+**Maps stack (address preview):** Geocoding runs in the browser through **`leaflet-control-geocoder`**’s Nominatim integration; do not hammer the public endpoint. For production-scale traffic, plan a **self-hosted Nominatim** or another geocoder with proper licensing and quotas. Behavior (immediate first geocode, **3s** debounce on later edits, query field rules) is documented under **Shared physical address** in [`context.md`](./context.md).
 
 ---
 

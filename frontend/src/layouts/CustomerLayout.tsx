@@ -61,12 +61,17 @@ export default function CustomerLayout() {
   ];
 
   return (
-    <>
+    <div className="flex min-h-0 min-w-0 w-full flex-1 flex-row">
       <Sidebar collapsible="icon" variant="sidebar">
         <ActorSidebar pages={pages} />
         <SidebarRail />
       </Sidebar>
-      <Outlet />
-    </>
+      <div
+        data-slot="sidebar-inset"
+        className="relative flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-y-auto bg-background"
+      >
+        <Outlet />
+      </div>
+    </div>
   );
 }

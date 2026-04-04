@@ -54,7 +54,13 @@ const reqAddressFields = [
   "buildingNumber",
   "postCode",
 ];
-const nonReqAddressFields = ["region", "additionalDetails", "coordinates"];
+const nonReqAddressFields = [
+  "region",
+  "doorNumber",
+  "complement",
+  "additionalDetails",
+  "coordinates",
+];
 
 const reqMetrics = [
   "foodCostPercentage",

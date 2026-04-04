@@ -41,7 +41,7 @@ import {
 /** Static path for session-type partition violations (`RequireUserSession` / `RequireBusinessSession`). */
 export const ACCESS_DENIED_PATH = "/access-denied";
 
-/** Auth / guard pending state — same shell as route loading, different copy (see `AppPendingShell`). */
+/** Auth / guard pending state — same skeleton shell as route loading; status text is sr-only (see `AppPendingShell`). */
 export function SessionLoading(props?: { message?: string }) {
   const { t } = useTranslation("common");
   const message = props?.message ?? t("loading.session");

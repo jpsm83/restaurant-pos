@@ -7,7 +7,7 @@
  * prevent malformed data and to return clear, user-facing error messages.
  */
 
-import { IAddress } from "../interface/IAddress.ts";
+import type { IAddress } from "../interfaces/IAddress.ts";
 
 /**
  * Validates an address object. Returns true if valid, or a string error message.
@@ -23,6 +23,8 @@ const addressValidation = (address: IAddress) => {
     "city",
     "street",
     "buildingNumber",
+    "doorNumber",
+    "complement",
     "postCode",
     "region",
     "additionalDetails",

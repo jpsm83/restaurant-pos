@@ -21,6 +21,10 @@ npm --prefix backend run dev
 npm --prefix backend run start
 ```
 
+## Address model (shared)
+
+Business, supplier, and user `personalDetails` embed **`addressSchema`** (`src/models/address.ts`). Optional fields include **`doorNumber`** and **`complement`** (plus `region`, `additionalDetails`, `coordinates`). See **`packages/interfaces/IAddress.ts`** and `documentation/context.md` (Shared physical address).
+
 ## Server Details
 
 - **Default port**: `4000` (override with `PORT` env var)

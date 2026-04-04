@@ -23,13 +23,15 @@ createRoot(document.getElementById("root")!).render(
         <ErrorBoundary>
           <BrowserRouter>
             <TooltipProvider>
-              <div className="flex min-h-svh flex-col">
+              {/* Explicit viewport height: provider tree may not pass height to children; scroll stays in the pane below Navbar. */}
+              <div className="flex h-dvh max-h-dvh min-h-0 w-full flex-col overflow-hidden">
                 <Navbar />
                 <SidebarProvider
                   defaultOpen={false}
-                  className="flex min-h-0 min-w-0 w-full flex-1 [&_[data-slot=sidebar-container]]:top-14 [&_[data-slot=sidebar-container]]:bottom-0 [&_[data-slot=sidebar-container]]:h-auto"
+                  className="flex min-h-0 min-w-0 w-full flex-1 flex-row overflow-hidden [&_[data-slot=sidebar-container]]:top-14 [&_[data-slot=sidebar-container]]:bottom-0 [&_[data-slot=sidebar-container]]:h-auto"
                 >
-                  <div className="flex min-h-0 w-full min-w-0 flex-1 pt-14">
+                  {/* Row: sidebar layouts render [Sidebar gap + fixed rail | scrollable main]. Public routes are a single flex-1 column with their own overflow-y. */}
+                  <div className="flex min-h-0 w-full min-w-0 flex-1 flex-row overflow-hidden overscroll-y-contain pt-14">
                     <App />
                   </div>
                 </SidebarProvider>

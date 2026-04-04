@@ -5,7 +5,8 @@
  *
  * ## Flow
  * **`SidebarProvider`** wraps routed content in **`main.tsx`**. This layout adds **Sidebar** +
- * **`SidebarInset`**; **`<Outlet />`** renders tenant pages in **`SidebarInset`** (`dashboard`,
+ * **main column** (same flex role as shadcn `SidebarInset`, but a **`div`** so child pages may use `<main>`); **`<Outlet />`** (in **`Suspense`**) renders tenant pages in the main
+ * column (`dashboard`,
  * `settings/profile`, `settings/subscriptions`, `settings/address`, `settings/open-hours`,
  * `settings/delivery`, `settings/metrics`, `settings/credentials`). Deeper links also appear in
  * `AccountMenuPopover`.
@@ -13,7 +14,9 @@
  *
  * Folder overview: `PublicLayout`, `CustomerLayout`, `EmployeeLayout` — all wired from `appRoutes.tsx`.
  */
+import { Suspense } from "react";
 import { Outlet } from "react-router-dom";
+import { AppPendingShell } from "@/components/AppPendingShell";
 import ActorSidebar from "@/components/ActorSidebar";
 import { Sidebar, SidebarRail } from "@/components/ui/sidebar";
 import { useAuth } from "@/auth/store/AuthContext";
@@ -87,12 +90,20 @@ export default function BusinessLayout() {
   ];
 
   return (
-    <>
+    <div className="flex min-h-0 min-w-0 w-full flex-1 flex-row">
       <Sidebar collapsible="icon" variant="sidebar">
         <ActorSidebar pages={pages} subPages={subPages} />
         <SidebarRail />
       </Sidebar>
-      <Outlet />
-    </>
+      {/* Inset scrolls independently; `peer` + gap from Sidebar reserve horizontal space beside fixed rail. */}
+      <div
+        data-slot="sidebar-inset"
+        className="relative flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-y-auto bg-background"
+      >
+        <Suspense key={pathname} fallback={<AppPendingShell variant="route" />}>
+          <Outlet />
+        </Suspense>
+      </div>
+    </div>
   );
 }

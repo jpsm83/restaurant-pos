@@ -37,7 +37,13 @@ const reqAddressFields = [
   "postCode",
 ];
 
-const nonReqAddressFields = ["region", "additionalDetails", "coordinates"];
+const nonReqAddressFields = [
+  "region",
+  "doorNumber",
+  "complement",
+  "additionalDetails",
+  "coordinates",
+];
 
 export const usersRoutes: FastifyPluginAsync = async (app) => {
   // GET /users - list all

@@ -80,6 +80,8 @@ function makeBusinessProfileDto(): BusinessProfileDto {
       city: "San Diego",
       street: "Main St",
       buildingNumber: "10",
+      doorNumber: "",
+      complement: "",
       postCode: "92101",
       region: "",
     },
@@ -141,7 +143,10 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText("Loading business profile...")).toBeInTheDocument();
+    expect(
+      screen.getByRole("status", { name: "Loading business profile..." }),
+    ).toBeInTheDocument();
+    expect(document.querySelectorAll('[data-slot="skeleton"]').length).toBeGreaterThan(0);
   });
 
   it("renders explicit error state and retries on click", async () => {

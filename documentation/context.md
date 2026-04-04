@@ -28,6 +28,8 @@
 
 12. **Test every touched file before progressing** — Every file created or updated must have relevant tests executed and passing before moving to the next task. If automated coverage is missing for a touched area, add/update tests or explicitly document the temporary gap and mitigation.
 
+13. **Loading UI — centralized skeleton** — Use the shadcn **`Skeleton`** component at `frontend/src/components/ui/skeleton.tsx` as the **single source** for loading-placeholder styling (pulse + fill). Do not recreate one-off pulsing gray boxes. **App-wide** session bootstrap and lazy-route suspense use **`AppPendingShell`**, which composes only that `Skeleton`. **Per-page** loading (e.g. React Query pending) should compose the same `Skeleton` into layouts that mirror the real page structure. Split business settings routes use **`BusinessProfileSettingsFormShell`** with optional **`loadingSlot`** (and shared **`BusinessProfileSettingsLoadingCard`**) so each settings page owns its loading shape while the shell keeps query/error/ready orchestration. **Direction:** every route should show an appropriate skeleton while session or data is loading; roll out incrementally where gaps remain.
+
 ---
 
 ## Source of truth — Restaurant POS context
@@ -80,6 +82,24 @@ This is a **complete, real-time POS system** for **bars and restaurants**, desig
 - **Reservations** (booking layer: customer requests + staff approval; links to tables/sales instances)
 
 Everything is designed to work **in live time**, where the POS state (open tables/sales instances, order status, stock movement, etc.) is continuously updated and reflected across the UI and APIs.
+
+### Shared physical address (`IAddress` / `addressSchema`)
+
+Structured addresses are shared across **Business**, **Supplier**, **User `personalDetails`**, and delivery flows. Mongoose shape lives in **`backend/src/models/address.ts`**; the TypeScript contract is **`packages/interfaces/IAddress.ts`**.
+
+- **Required:** `country`, `state`, `city`, `street`, `buildingNumber`, `postCode`.
+- **Optional:** `doorNumber` (unit / door / apartment id), `complement` (second line: floor, wing, etc.), `region`, `additionalDetails`, `coordinates` (`[longitude, latitude]`).
+
+Multipart **business** and **user** profile routes validate address JSON with **`objDefaultValidation`** (`reqAddressFields` + `nonReqAddressFields` in the relevant route files). **`packages/utils/addressValidation.ts`** whitelists the same keys for other callers. The business settings **address** page and **business registration** form must stay aligned with this model (RHF + Zod on the frontend).
+
+#### Business address settings — location preview (map)
+
+The tenant **postal address** editor lives at **`/business/:businessId/settings/address`** (**`BusinessAddressSettingsPage`** in `frontend/src/pages/business/BusinessAddressSettingsPage.tsx`). It uses the same split-settings shell as other business profile slices (**`BusinessProfileSettingsFormShell`** + **`useBusinessProfileSettingsController`**) so address fields are part of the full profile form and save with **`PATCH /api/v1/business/:businessId`**.
+
+- **Location preview:** **`BusinessAddressLocationMap`** (`frontend/src/components/BusinessAddressLocationMap.tsx`) shows an **OpenStreetMap** tile layer and geocodes a free-text query with **Nominatim** via **`leaflet-control-geocoder`** (public service; respect OSM usage policy in production).
+- **Query string:** Built locally with **`buildAddressGeocodeQuery`** on the address page: **street-first** parts joined with commas (`street`, `buildingNumber`, `city`, `state`, `postCode`, `region`, `country`). **`doorNumber`** and **`complement`** are **omitted** from the geocode string only (they remain on the saved profile); unit-level text often prevents Nominatim from matching.
+- **When the map refetches:** The first time a **non-empty** trimmed query reaches the map (length ≥ **3**), geocoding runs **immediately** so the pin appears on load. **Later** changes to the query (after that first scheduled run) are **debounced by 3 seconds** before another Nominatim request. While the query is too short, the map shows the default world view and a short hint.
+- **Form vs saved data:** If the user has not dirtied the form, the preview can fall back to the **saved** address from the profile query when live `useWatch` values are still empty (e.g. before `reset` applies on the first tick).
 
 ---
 

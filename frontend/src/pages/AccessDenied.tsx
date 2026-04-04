@@ -28,7 +28,7 @@ export default function AccessDenied() {
   };
 
   return (
-    <div className="flex min-h-0 w-full flex-1 flex-col bg-neutral-100">
+    <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-y-auto bg-neutral-100">
       <main className="flex min-h-0 flex-1 flex-col items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">

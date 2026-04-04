@@ -90,6 +90,8 @@ export type BusinessProfileFormValues = {
     city: string;
     street: string;
     buildingNumber: string;
+    doorNumber: string;
+    complement: string;
     postCode: string;
     region: string;
   };
@@ -348,6 +350,8 @@ export function businessDtoToFormValues(
       city: asTrimmedString(dto.address?.city),
       street: asTrimmedString(dto.address?.street),
       buildingNumber: asTrimmedString(dto.address?.buildingNumber),
+      doorNumber: asTrimmedString(dto.address?.doorNumber),
+      complement: asTrimmedString(dto.address?.complement),
       postCode: asTrimmedString(dto.address?.postCode),
       region: asTrimmedString(dto.address?.region),
     },
@@ -429,20 +433,21 @@ export function formValuesToUpdatePayload(
   formData.append("currencyTrade", asTrimmedString(values.currencyTrade));
   formData.append("subscription", asTrimmedString(values.subscription));
 
-  formData.append(
-    "address",
-    JSON.stringify({
-      country: asTrimmedString(values.address.country),
-      state: asTrimmedString(values.address.state),
-      city: asTrimmedString(values.address.city),
-      street: asTrimmedString(values.address.street),
-      buildingNumber: asTrimmedString(values.address.buildingNumber),
-      postCode: asTrimmedString(values.address.postCode),
-      ...(asOptionalTrimmedString(values.address.region)
-        ? { region: asTrimmedString(values.address.region) }
-        : {}),
-    }),
-  );
+  const addressPayload: Record<string, unknown> = {
+    country: asTrimmedString(values.address.country),
+    state: asTrimmedString(values.address.state),
+    city: asTrimmedString(values.address.city),
+    street: asTrimmedString(values.address.street),
+    buildingNumber: asTrimmedString(values.address.buildingNumber),
+    postCode: asTrimmedString(values.address.postCode),
+  };
+  const region = asOptionalTrimmedString(values.address.region);
+  if (region) addressPayload.region = region;
+  const doorNumber = asOptionalTrimmedString(values.address.doorNumber);
+  if (doorNumber) addressPayload.doorNumber = doorNumber;
+  const complement = asOptionalTrimmedString(values.address.complement);
+  if (complement) addressPayload.complement = complement;
+  formData.append("address", JSON.stringify(addressPayload));
 
   formData.append(
     "metrics",

@@ -3,11 +3,33 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { BusinessProfileSettingsFormShell } from "../../components/BusinessProfileSettingsFormShell";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  BusinessProfileSettingsFormShell,
+  BusinessProfileSettingsLoadingCard,
+} from "../../components/BusinessProfileSettingsFormShell";
 import {
   DAY_OPTIONS,
   type BusinessProfileSettingsReady,
 } from "@/hooks/useBusinessProfileSettingsController";
+
+function OpenHoursSettingsLoadingBody() {
+  return (
+    <section className="space-y-3 rounded-md border border-neutral-200 p-4">
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-5 w-56" aria-hidden />
+        <Skeleton className="h-8 w-36" aria-hidden />
+      </div>
+      <Skeleton className="h-4 w-full max-w-md" aria-hidden />
+      <div className="grid gap-3 sm:grid-cols-[1fr_1fr_1fr_auto]">
+        <Skeleton className="h-10 w-full" aria-hidden />
+        <Skeleton className="h-10 w-full" aria-hidden />
+        <Skeleton className="h-10 w-full" aria-hidden />
+        <Skeleton className="h-10 w-20" aria-hidden />
+      </div>
+    </section>
+  );
+}
 
 /** In-venue business opening hours (self-order gating uses this schedule). */
 export default function BusinessOpenHoursSettingsPage() {
@@ -17,6 +39,11 @@ export default function BusinessOpenHoursSettingsPage() {
     <BusinessProfileSettingsFormShell
       pageTitle={tNav("settings.openHours")}
       cardDescription="Define when the business is open for service and customer self-ordering eligibility."
+      loadingSlot={
+        <BusinessProfileSettingsLoadingCard>
+          <OpenHoursSettingsLoadingBody />
+        </BusinessProfileSettingsLoadingCard>
+      }
     >
       {(ctx) => <OpenHoursSection ctx={ctx} />}
     </BusinessProfileSettingsFormShell>

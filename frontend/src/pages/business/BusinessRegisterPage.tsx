@@ -58,6 +58,8 @@ function buildBusinessRegisterSchema(messages: {
       city: z.string().trim().min(1, messages.requiredField),
       street: z.string().trim().min(1, messages.requiredField),
       buildingNumber: z.string().trim().min(1, messages.requiredField),
+      doorNumber: z.string(),
+      complement: z.string(),
       postCode: z.string().trim().min(1, messages.requiredField),
       region: z.string(),
     })
@@ -126,6 +128,8 @@ export default function BusinessRegisterPage() {
       city: "",
       street: "",
       buildingNumber: "",
+      doorNumber: "",
+      complement: "",
       postCode: "",
       region: "",
     },
@@ -144,6 +148,10 @@ export default function BusinessRegisterPage() {
     };
     const r = data.region.trim();
     if (r) address.region = r;
+    const d = data.doorNumber.trim();
+    if (d) address.doorNumber = d;
+    const c = data.complement.trim();
+    if (c) address.complement = c;
 
     const formData = new FormData();
     formData.append("tradeName", data.tradeName.trim());
@@ -402,6 +410,26 @@ export default function BusinessRegisterPage() {
                     {...register("buildingNumber")}
                   />
                   <FieldError message={errors.buildingNumber?.message} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="br-door">{t("businessRegister.labels.doorNumber")}</Label>
+                  <Input
+                    id="br-door"
+                    placeholder={t("businessRegister.placeholders.doorNumber")}
+                    aria-invalid={errors.doorNumber ? true : undefined}
+                    {...register("doorNumber")}
+                  />
+                  <FieldError message={errors.doorNumber?.message} />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="br-complement">{t("businessRegister.labels.complement")}</Label>
+                  <Input
+                    id="br-complement"
+                    placeholder={t("businessRegister.placeholders.complement")}
+                    aria-invalid={errors.complement ? true : undefined}
+                    {...register("complement")}
+                  />
+                  <FieldError message={errors.complement?.message} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="br-post">{t("businessRegister.labels.postCode")}</Label>

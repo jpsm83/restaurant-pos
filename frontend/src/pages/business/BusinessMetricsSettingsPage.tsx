@@ -2,11 +2,42 @@ import { Controller } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { BusinessProfileSettingsFormShell } from "../../components/BusinessProfileSettingsFormShell";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  BusinessProfileSettingsFormShell,
+  BusinessProfileSettingsLoadingCard,
+} from "../../components/BusinessProfileSettingsFormShell";
 import {
   DAY_OPTIONS,
   type BusinessProfileSettingsReady,
 } from "@/hooks/useBusinessProfileSettingsController";
+
+function MetricsSettingsLoadingBody() {
+  return (
+    <>
+      <section className="space-y-4">
+        <Skeleton className="h-4 w-24" aria-hidden />
+        <div className="grid gap-4 sm:grid-cols-2">
+          {Array.from({ length: 9 }).map((_, i) => (
+            <div key={i} className="space-y-2">
+              <Skeleton className="h-4 w-40" aria-hidden />
+              <Skeleton className="h-10 w-full" aria-hidden />
+            </div>
+          ))}
+        </div>
+      </section>
+      <section className="space-y-4">
+        <Skeleton className="h-4 w-28" aria-hidden />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-48" aria-hidden />
+            <Skeleton className="h-10 w-full" aria-hidden />
+          </div>
+        </div>
+      </section>
+    </>
+  );
+}
 
 /** Cost and waste target metrics plus weekly report start day. */
 export default function BusinessMetricsSettingsPage() {
@@ -16,6 +47,11 @@ export default function BusinessMetricsSettingsPage() {
     <BusinessProfileSettingsFormShell
       pageTitle={tNav("settings.metrics")}
       cardDescription="Targets feed monthly reporting comparisons; weekly start day configures report buckets."
+      loadingSlot={
+        <BusinessProfileSettingsLoadingCard>
+          <MetricsSettingsLoadingBody />
+        </BusinessProfileSettingsLoadingCard>
+      }
     >
       {(ctx) => <MetricsSections ctx={ctx} />}
     </BusinessProfileSettingsFormShell>

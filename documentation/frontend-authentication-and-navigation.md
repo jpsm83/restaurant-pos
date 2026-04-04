@@ -97,14 +97,14 @@ This split is **intentional** during migration: new server I/O is supposed to go
 | `/login`, `/signup` | `PublicLayout` + **`PublicOnlyRoute`** | Auth forms; bounce authenticated users to **`getPostLoginDestination`**. |
 | `/business/register` | `PublicLayout` + **`PublicOnlyRoute`** | Tenant signup (multipart API). |
 | `/access-denied` | None of the partition guards | Wrong session **type** for a route. Registered **before** `/:userId/*`. |
-| `/business/:businessId` | **`ProtectedRoute`** → **`RequireBusinessSession`** → **`BusinessIdRouteGuard`** → **`BusinessLayout`** | Tenant shell; index redirects to **`dashboard`**. Nested routes include **`settings/profile`** (business profile editor, lazy **`BusinessProfileSettingsPage`**), **`settings/delivery`**, **`settings/metrics`**, **`settings/open-hours`**, and account-menu-only stubs (**`settings/subscriptions`**, **`settings/address`**, **`settings/credentials`**). Canonical URLs for navigation live in **`canonicalPaths.ts`** (e.g. **`canonicalBusinessProfilePath`** → **`…/settings/profile`**). |
+| `/business/:businessId` | **`ProtectedRoute`** → **`RequireBusinessSession`** → **`BusinessIdRouteGuard`** → **`BusinessLayout`** | Tenant shell; index redirects to **`dashboard`**. Nested **`settings/*`** routes include **`settings/profile`** (lazy **`BusinessProfileSettingsPage`**), **`settings/delivery`**, **`settings/metrics`**, **`settings/open-hours`**, **`settings/subscriptions`**, **`settings/address`** (lazy **`BusinessAddressSettingsPage`** — postal address + OSM map preview), **`settings/credentials`**, each backed by **`BusinessProfileSettingsFormShell`**. Canonical URLs live in **`canonicalPaths.ts`** (e.g. **`canonicalBusinessProfilePath`** → **`…/settings/profile`**). |
 | `/:userId/mode` | **`ProtectedRoute`** → **`RequireUserSession`** → **`UserIdRouteGuard`** | Staff chooses customer vs employee (`set-mode` + navigate). |
 | `/:userId/customer` | Same stack + **`CustomerLayout`** + index redirect → `dashboard` | Person “customer” app shell. |
 | `/:userId/employee` | Same stack + **`RequireEmployeeAuthMode`** + **`EmployeeLayout`** + index redirect → `dashboard` | Staff workspace; requires **`auth_mode=employee`**. |
 | `/app` | **`ProtectedRoute`** + **`LegacyAppRedirect`** | Redirects to canonical business or user customer path. |
 | `*` | **`CatchAllRedirect`** | Anonymous → `/`; authenticated → **`getPostLoginDestination`**. |
 
-**Lazy-loaded pages** (`App.tsx` / `AppRoutes`: ErrorBoundary + Suspense + `AppPendingShell` `route`): login, signup, business register, business dashboard, business profile settings (**`settings/profile`**), other business settings stubs, mode selection, customer dashboard, employee dashboard.
+**Lazy-loaded pages** (`App.tsx` / `AppRoutes`: ErrorBoundary + Suspense + `AppPendingShell` `route`): login, signup, business register, business dashboard, business profile and split settings routes under **`settings/*`** (profile, delivery, metrics, open hours, subscriptions, **address**, credentials), mode selection, customer dashboard, employee dashboard.
 
 ---
 
@@ -252,7 +252,7 @@ All guards are **UX and consistency**; **security remains on the API**.
 ### 11.3 Business shell: `BusinessLayout`
 
 - **`/business/:businessId`** provides business **`ActorSidebar`**: primary item **Dashboard**; a collapsible **Settings** group (**`settings.title`**) for **Delivery**, **Metrics**, and **Open hours** (routes under **`settings/delivery`**, **`settings/metrics`**, **`settings/open-hours`**). Labels use **`nav`** keys **`settings.delivery`**, **`settings.metrics`**, **`settings.openHours`**.
-- The full **business profile** editor is **not** in the sidebar; it lives at **`/business/:businessId/settings/profile`** and is linked from **`AccountMenuPopover`** (**Profile**) together with **Address**, **Subscriptions**, and **Credentials** stubs.
+- The full **business profile** editor is **not** in the sidebar; it lives at **`/business/:businessId/settings/profile`** and is linked from **`AccountMenuPopover`** (**Profile**) together with **Address** (**`/settings/address`** — structured address fields and map preview; see [`context.md`](./context.md) *Business address settings — location preview*), **Subscriptions**, and **Credentials**.
 - Sidebar starts collapsed by default (`SidebarProvider` uses `defaultOpen={false}` in `main.tsx`). Expand-on-any-sidebar-icon behavior matches §11.1.
 - Account menu: **`AccountMenuPopover`** — **`LanguageSwitcher`**, **`settings.profile`**, business-only settings shortcuts (with Lucide icons: user, map pin, card, key), **`account.logOut`**.
 - **`BusinessProfileSettingsPage`** (**`/business/:businessId/settings/profile`**) ships the full profile editor wired to `useBusinessProfileQuery` / `useUpdateBusinessProfileMutation` with explicit loading/error/retry states, route-id-aware `react-hook-form` hydration, and sectioned layout (subscription, logo upload, core info, address, discovery/delivery, metrics, opening windows, expandable credentials). A successful save triggers backend **`BUSINESS_PROFILE_UPDATED`**: management staff get persisted **in-app** notifications and **email** (when enabled), independent of the tenant UI toast; the client sends **`X-Idempotency-Key`** / **`X-Correlation-Id`** on PATCH (via `businessService`) so backend dispatch logs align with one logical save.
@@ -355,6 +355,7 @@ Toggle only switches **marketing** URLs; it does not log anyone in.
 | Axios client | `frontend/src/services/http.ts` |
 | Query client / keys | `frontend/src/services/queryClient.ts`, `frontend/src/services/queryKeys.ts` |
 | Business signup API | `frontend/src/services/businessService.ts` |
+| Tenant address settings + OSM map preview | `frontend/src/pages/business/BusinessAddressSettingsPage.tsx`, `frontend/src/components/BusinessAddressLocationMap.tsx`, `frontend/src/hooks/useBusinessProfileSettingsController.ts` |
 | Auth form examples (RHF + Zod colocated) | `LoginPage.tsx`, `SignUpPage.tsx`, `BusinessRegisterPage.tsx` |
 | Shared field error line | `frontend/src/components/FieldError.tsx` |
 | App bootstrap | `frontend/src/main.tsx` |

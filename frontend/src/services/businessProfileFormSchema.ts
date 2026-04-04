@@ -85,6 +85,8 @@ export function buildBusinessProfileSchema(
         city: requiredString,
         street: requiredString,
         buildingNumber: requiredString,
+        doorNumber: z.string(),
+        complement: z.string(),
         postCode: requiredString,
         region: z.string(),
       }),

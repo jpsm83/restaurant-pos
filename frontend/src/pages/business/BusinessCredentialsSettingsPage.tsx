@@ -3,8 +3,24 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { BusinessProfileSettingsFormShell } from "../../components/BusinessProfileSettingsFormShell";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  BusinessProfileSettingsFormShell,
+  BusinessProfileSettingsLoadingCard,
+} from "../../components/BusinessProfileSettingsFormShell";
 import type { BusinessProfileSettingsReady } from "../../hooks/useBusinessProfileSettingsController";
+
+function CredentialsSettingsLoadingBody() {
+  return (
+    <section className="space-y-4">
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-4 w-32" aria-hidden />
+        <Skeleton className="h-9 w-40" aria-hidden />
+      </div>
+      <Skeleton className="h-4 w-full max-w-xl" aria-hidden />
+    </section>
+  );
+}
 
 /** Login email confirmation and optional password rotation for the business account. */
 export default function BusinessCredentialsSettingsPage() {
@@ -14,6 +30,11 @@ export default function BusinessCredentialsSettingsPage() {
     <BusinessProfileSettingsFormShell
       pageTitle={tNav("settings.credentials")}
       cardDescription="Changing email or password may require signing in again after save."
+      loadingSlot={
+        <BusinessProfileSettingsLoadingCard>
+          <CredentialsSettingsLoadingBody />
+        </BusinessProfileSettingsLoadingCard>
+      }
     >
       {(ctx) => <CredentialsSection ctx={ctx} />}
     </BusinessProfileSettingsFormShell>

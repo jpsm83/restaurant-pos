@@ -10,6 +10,8 @@ export const addressSchema = new Schema({
     type: String,
     required: [true, "Building number is required!"],
   }, // building number
+  doorNumber: { type: String }, // unit / door / apartment identifier (optional)
+  complement: { type: String }, // extra address line (floor, wing, etc.; optional)
   postCode: { type: String, required: [true, "Postcode is required!"] }, // local post code
 
   // optional fields

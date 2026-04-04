@@ -21,7 +21,7 @@ import { Outlet } from "react-router-dom";
 import Footer from "@/components/Footer";
 export default function PublicLayout() {
   return (
-    <div className="flex min-h-0 w-full flex-1 flex-col bg-neutral-100">
+    <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-y-auto bg-neutral-100">
       <div className="flex min-h-0 flex-1 flex-col">
         <Outlet />
       </div>

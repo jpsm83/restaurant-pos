@@ -16,6 +16,8 @@
       "city": "Lisbon",
       "street": "Rua Central",
       "buildingNumber": "100",
+      "doorNumber": "2",
+      "complement": "2º andar",
       "postCode": "1000-001",
       "region": "Lisbon Metropolitan Area",
       "additionalDetails": "Near central station",

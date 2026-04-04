@@ -1,8 +1,25 @@
 import { useTranslation } from "react-i18next";
 import { useWatch } from "react-hook-form";
 import { subscriptionEnums } from "@packages/enums.ts";
-import { BusinessProfileSettingsFormShell } from "../../components/BusinessProfileSettingsFormShell";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  BusinessProfileSettingsFormShell,
+  BusinessProfileSettingsLoadingCard,
+} from "../../components/BusinessProfileSettingsFormShell";
 import type { BusinessProfileSettingsReady } from "../../hooks/useBusinessProfileSettingsController";
+
+function SubscriptionsSettingsLoadingBody() {
+  return (
+    <section className="space-y-3">
+      <Skeleton className="h-4 w-32" aria-hidden />
+      <div className="grid gap-3 sm:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Skeleton key={i} className="h-28 w-full rounded-lg" aria-hidden />
+        ))}
+      </div>
+    </section>
+  );
+}
 
 /** Subscription plan selection for the business tenant. */
 export default function BusinessSubscriptionsSettingsPage() {
@@ -12,6 +29,11 @@ export default function BusinessSubscriptionsSettingsPage() {
     <BusinessProfileSettingsFormShell
       pageTitle={tNav("settings.subscriptions")}
       cardDescription="Choose the subscription tier for this business."
+      loadingSlot={
+        <BusinessProfileSettingsLoadingCard>
+          <SubscriptionsSettingsLoadingBody />
+        </BusinessProfileSettingsLoadingCard>
+      }
     >
       {(ctx) => <SubscriptionSection ctx={ctx} />}
     </BusinessProfileSettingsFormShell>
