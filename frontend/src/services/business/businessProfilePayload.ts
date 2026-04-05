@@ -79,6 +79,10 @@ export function formValuesToUpdatePayload(
   const password = asOptionalTrimmedString(values.password);
   if (password) {
     formData.append("password", password);
+    const currentPassword = asOptionalTrimmedString(values.currentPassword);
+    if (currentPassword) {
+      formData.append("currentPassword", currentPassword);
+    }
   }
 
   formData.append("contactPerson", asTrimmedString(values.contactPerson));

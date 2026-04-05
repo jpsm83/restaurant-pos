@@ -140,6 +140,7 @@ export function businessDtoToFormValues(
     legalName: asTrimmedString(dto.legalName),
     email: asTrimmedString(dto.email),
     confirmEmail: asTrimmedString(dto.email),
+    currentPassword: "",
     password: "",
     confirmPassword: "",
     phoneNumber: asTrimmedString(dto.phoneNumber),

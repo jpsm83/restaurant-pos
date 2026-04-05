@@ -19,6 +19,8 @@ type BusinessProfileSchemaMessages = {
   emailMismatch: string;
   passwordMismatch: string;
   passwordPolicy: string;
+  /** Shown when `password` is non-empty but `currentPassword` is missing (credentials flow). */
+  currentPasswordRequired: string;
   invalidSubscription: string;
   invalidCurrency: string;
   invalidTime: string;
@@ -33,6 +35,8 @@ const defaultMessages: BusinessProfileSchemaMessages = {
   emailMismatch: "Email confirmation does not match.",
   passwordMismatch: "Password confirmation does not match.",
   passwordPolicy: PASSWORD_POLICY_MESSAGE,
+  currentPasswordRequired:
+    "Enter your current password to set a new sign-in password.",
   invalidSubscription: "Invalid subscription.",
   invalidCurrency: "Invalid currency.",
   invalidTime: "Time must be in HH:MM format.",
@@ -80,7 +84,8 @@ export function buildBusinessProfileSchema(
       tradeName: requiredString,
       legalName: requiredString,
       email: requiredString.regex(emailRegex, m.invalidEmail),
-      confirmEmail: requiredString,
+      confirmEmail: requiredString.regex(emailRegex, m.invalidEmail),
+      currentPassword: z.string(),
       password: z.string(),
       confirmPassword: z.string(),
       phoneNumber: requiredString,
@@ -213,6 +218,16 @@ export function buildBusinessProfileSchema(
       {
         message: m.passwordPolicy,
         path: ["password"],
+      },
+    )
+    .refine(
+      (data) => {
+        if (!data.password.trim()) return true;
+        return data.currentPassword.trim().length > 0;
+      },
+      {
+        message: m.currentPasswordRequired,
+        path: ["currentPassword"],
       },
     );
 }

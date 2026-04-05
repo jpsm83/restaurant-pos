@@ -4,6 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
+import { hash } from "bcrypt";
 import { Types } from "mongoose";
 import { getTestApp, generateTestToken } from "../setup.ts";
 import Business from "../../src/models/business.ts";
@@ -889,6 +890,128 @@ describe("Business Routes", () => {
       } else {
         process.env.COMMUNICATIONS_EMAIL_ENABLED = previousEmailToggle;
       }
+    });
+
+    it("returns 400 when a new password is sent without current password", async () => {
+      const app = await getTestApp();
+      const pwdHash = await hash("OldPass1!a", 4);
+      const business = await Business.create({
+        tradeName: "Pwd Gate Business",
+        legalName: "Pwd Gate Business LLC",
+        email: "pwdgate@business.com",
+        password: pwdHash,
+        phoneNumber: "1234567890",
+        taxNumber: `TAX-PWD-GATE-${Date.now()}`,
+        currencyTrade: "USD",
+        subscription: "Free",
+        address: validAddress,
+      });
+
+      const auth = await generateTestToken({
+        id: business._id.toString(),
+        email: "pwdgate@business.com",
+        type: "business",
+      });
+
+      const boundary = "----formdata";
+      const payload = [
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="tradeName"\r\n\r\nPwd Gate Business',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="legalName"\r\n\r\nPwd Gate Business LLC',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="email"\r\n\r\npwdgate@business.com',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="phoneNumber"\r\n\r\n1234567890',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="taxNumber"\r\n\r\n' +
+          String(business.taxNumber),
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="subscription"\r\n\r\nFree',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="currencyTrade"\r\n\r\nUSD',
+        `--${boundary}`,
+        `Content-Disposition: form-data; name="address"\r\n\r\n${JSON.stringify(validAddress)}`,
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="password"\r\n\r\nNewPass1!b',
+        `--${boundary}--`,
+      ].join("\r\n");
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/business/${business._id}`,
+        headers: {
+          "content-type": `multipart/form-data; boundary=${boundary}`,
+          authorization: auth,
+        },
+        payload,
+      });
+
+      expect(response.statusCode).toBe(400);
+      const body = JSON.parse(response.body) as { message?: string };
+      expect(body.message).toContain("Current password is required");
+    });
+
+    it("returns 401 when current password is wrong for a password change", async () => {
+      const app = await getTestApp();
+      const pwdHash = await hash("OldPass1!a", 4);
+      const business = await Business.create({
+        tradeName: "Pwd Wrong Business",
+        legalName: "Pwd Wrong Business LLC",
+        email: "pwdwrong@business.com",
+        password: pwdHash,
+        phoneNumber: "1234567890",
+        taxNumber: `TAX-PWD-WRONG-${Date.now()}`,
+        currencyTrade: "USD",
+        subscription: "Free",
+        address: validAddress,
+      });
+
+      const auth = await generateTestToken({
+        id: business._id.toString(),
+        email: "pwdwrong@business.com",
+        type: "business",
+      });
+
+      const boundary = "----formdata";
+      const payload = [
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="tradeName"\r\n\r\nPwd Wrong Business',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="legalName"\r\n\r\nPwd Wrong Business LLC',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="email"\r\n\r\npwdwrong@business.com',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="phoneNumber"\r\n\r\n1234567890',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="taxNumber"\r\n\r\n' +
+          String(business.taxNumber),
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="subscription"\r\n\r\nFree',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="currencyTrade"\r\n\r\nUSD',
+        `--${boundary}`,
+        `Content-Disposition: form-data; name="address"\r\n\r\n${JSON.stringify(validAddress)}`,
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="currentPassword"\r\n\r\nWrongPass1!z',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="password"\r\n\r\nNewPass1!b',
+        `--${boundary}--`,
+      ].join("\r\n");
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/business/${business._id}`,
+        headers: {
+          "content-type": `multipart/form-data; boundary=${boundary}`,
+          authorization: auth,
+        },
+        payload,
+      });
+
+      expect(response.statusCode).toBe(401);
+      const body = JSON.parse(response.body) as { message?: string };
+      expect(body.message).toContain("incorrect");
     });
   });
 

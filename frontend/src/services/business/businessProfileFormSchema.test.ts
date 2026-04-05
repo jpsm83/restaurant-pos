@@ -71,6 +71,7 @@ describe("Business profile schema + mappers", () => {
     expect(formValues.cuisineType).toEqual(["Italian"]);
     expect(formValues.address.doorNumber).toBe("2");
     expect(formValues.address.complement).toBe("Floor 1");
+    expect(formValues.currentPassword).toBe("");
     expect(formValues.password).toBe("");
     expect(formValues.confirmPassword).toBe("");
     expect(formValues.reportingConfig.weeklyReportStartDay).toBe(1);
@@ -80,12 +81,14 @@ describe("Business profile schema + mappers", () => {
     const values = businessDtoToFormValues(makeBusinessDto());
     values.password = "Valid1!Password";
     values.confirmPassword = "Valid1!Password";
+    values.currentPassword = "OldPass1!a";
     const payload = formValuesToUpdatePayload(values);
 
     expect(payload.get("tradeName")).toBe("Imperium Kitchen");
     expect(payload.get("legalName")).toBe("Imperium Kitchen LLC");
     expect(payload.get("email")).toBe("owner@imperium.test");
     expect(payload.get("password")).toBe("Valid1!Password");
+    expect(payload.get("currentPassword")).toBe("OldPass1!a");
     expect(payload.get("subscription")).toBe("Free");
 
     const address = JSON.parse(String(payload.get("address"))) as Record<string, string>;
@@ -140,11 +143,28 @@ describe("Business profile schema + mappers", () => {
     const values = businessDtoToFormValues(makeBusinessDto());
     values.password = "weak";
     values.confirmPassword = "weak";
+    values.currentPassword = "x";
     const parsed = schema.safeParse(values);
 
     expect(parsed.success).toBe(false);
     if (!parsed.success) {
       expect(parsed.error.issues.some((i) => i.path.join(".") === "password")).toBe(true);
+    }
+  });
+
+  it("rejects new password without current password", () => {
+    const schema = buildBusinessProfileSchema();
+    const values = businessDtoToFormValues(makeBusinessDto());
+    values.password = "Valid1!Password";
+    values.confirmPassword = "Valid1!Password";
+    values.currentPassword = "";
+    const parsed = schema.safeParse(values);
+
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      expect(
+        parsed.error.issues.some((i) => i.path.join(".") === "currentPassword"),
+      ).toBe(true);
     }
   });
 

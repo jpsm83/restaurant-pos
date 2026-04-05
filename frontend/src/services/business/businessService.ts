@@ -64,6 +64,8 @@ export type BusinessProfileFormValues = {
   legalName: string;
   email: string;
   confirmEmail: string;
+  /** Credentials page only; sent with PATCH when setting a new password. */
+  currentPassword: string;
   password: string;
   confirmPassword: string;
   phoneNumber: string;

@@ -8,7 +8,22 @@
   },
   "profile": {
     "title": "Business profile",
-    "notBuiltYet": "This page is not built yet."
+    "notBuiltYet": "This page is not built yet.",
+    "validationSummary": "Fix the highlighted fields before saving."
+  },
+  "profileForm": {
+    "validation": {
+      "required": "This field is required.",
+      "invalidEmail": "Please enter a valid email address.",
+      "emailMismatch": "Email confirmation does not match.",
+      "passwordMismatch": "Password confirmation does not match.",
+      "invalidSubscription": "Invalid subscription.",
+      "invalidCurrency": "Invalid currency.",
+      "invalidTime": "Time must be in HH:MM format.",
+      "invalidDayOfWeek": "Day of week must be an integer from 0 to 6.",
+      "invalidNonNegative": "Value must be a non-negative number.",
+      "invalidWeeklyStartDay": "Weekly report start day must be between 0 and 6."
+    }
   },
   "profileSettings": {
     "cardDescription": "Update your public-facing business identity, logo, and how customers discover you.",
@@ -161,6 +176,24 @@
       "doorNumber": "Door number",
       "complement": "Complement",
       "complementPlaceholder": "Floor, wing, unit details…"
+    }
+  },
+  "credentialsSettings": {
+    "cardDescription": "Update sign-in email and password. You may need to sign in again after saving.",
+    "sectionTitle": "Sign-in credentials",
+    "sectionDescription": "Emails use the same format rules as elsewhere. Match both email fields. For a new password, match both password fields and enter your current password. Leave new password blank to keep the existing one.",
+    "columnHintEmail": "The business sign-in email is filled from your profile. Change it here if needed; both boxes must match.",
+    "columnHintPassword": "Optional new password. Leave both blank to keep your current password; if you set one, both must match.",
+    "fields": {
+      "note": "Note",
+      "email": "Business email",
+      "confirmEmail": "Confirm email",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm new password",
+      "currentPassword": "Current password"
+    },
+    "validation": {
+      "currentPasswordRequired": "Enter your current password to set a new sign-in password."
     }
   }
 }

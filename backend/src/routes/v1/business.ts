@@ -1,6 +1,6 @@
 import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
-import { hash } from "bcrypt";
+import { compare, hash } from "bcrypt";
 import dispatchEvent from "../../communications/dispatchEvent.ts";
 import Business from "../../models/business.ts";
 import BusinessGood from "../../models/businessGood.ts";
@@ -721,6 +721,27 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
     const business = await Business.findById(businessId).lean();
     if (!business) {
       return reply.code(404).send({ message: "Business not found!" });
+    }
+
+    if (password) {
+      const currentPasswordRaw = String(fields.currentPassword ?? "").trim();
+      if (!currentPasswordRaw) {
+        return reply.code(400).send({
+          message: "Current password is required to set a new sign-in password.",
+        });
+      }
+      const storedHash = (business as Record<string, unknown>).password as
+        | string
+        | undefined;
+      if (!storedHash) {
+        return reply
+          .code(500)
+          .send({ message: "Business password state is invalid." });
+      }
+      const passwordOk = await compare(currentPasswordRaw, storedHash);
+      if (!passwordOk) {
+        return reply.code(401).send({ message: "Current password is incorrect." });
+      }
     }
 
     const updateBusinessObj: Record<string, unknown> = {};

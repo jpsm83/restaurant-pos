@@ -58,6 +58,7 @@ vi.mock("@/auth/store/AuthContext", () => ({
 vi.mock("@/auth/api", () => ({
   logout: (...args: unknown[]) => mockLogout(...args),
   setAccessToken: (...args: unknown[]) => mockSetAccessToken(...args),
+  getAccessToken: () => "test-access-token",
 }));
 
 vi.mock("sonner", () => ({
@@ -69,7 +70,7 @@ vi.mock("sonner", () => ({
 
 const mockFetchManagementContactOptions = vi.fn();
 
-vi.mock("@/services/businessService", async (importOriginal) => {
+vi.mock("@/services/business/businessService", async (importOriginal) => {
   const actual =
     await importOriginal<typeof import("@/services/business/businessService")>();
   return {
@@ -246,9 +247,6 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
 
     expect(
       screen.getByRole("heading", { level: 2, name: "Core business info" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { level: 2, name: "Contact, tax & discovery" }),
     ).toBeInTheDocument();
     expect(screen.getByLabelText("Cuisine type")).toBeInTheDocument();
     expect(screen.queryByText("Subscription")).not.toBeInTheDocument();
@@ -431,9 +429,9 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
       </MemoryRouter>,
     );
 
-    await user.click(screen.getByRole("button", { name: "Update credentials" }));
     await user.type(screen.getByLabelText("New password"), "Valid1!Password");
-    await user.type(screen.getByLabelText("Confirm password"), "Valid1!Password");
+    await user.type(screen.getByLabelText("Confirm new password"), "Valid1!Password");
+    await user.type(screen.getByLabelText("Current password"), "old-sign-in-pass");
     await user.click(screen.getByRole("button", { name: "Save changes" }));
 
     expect(mutateAsync).toHaveBeenCalledTimes(1);

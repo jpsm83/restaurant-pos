@@ -98,7 +98,7 @@ Keep these rules in service hooks so behavior stays consistent across pages.
 
 ## 4.3 Profile fetch/save diagnostics (busy-time baseline)
 
-For **business profile** fetch/save operations (**`BusinessProfileSettingsPage`**, route **`/business/:businessId/settings/profile`**; HTTP + logs live in **`frontend/src/services/business/businessProfileApi.ts`**, re-exported from the **`businessService`** barrel), keep diagnostics lightweight and structured:
+For **business profile** fetch/save operations (split settings pages that share **`useBusinessProfileQuery`** / **`useUpdateBusinessProfileMutation`**, e.g. **`BusinessProfileSettingsPage`** at **`/settings/profile`**, **`BusinessCredentialsSettingsPage`** at **`/settings/credentials`**, **`BusinessAddressSettingsPage`** at **`/settings/address`**; HTTP + logs live in **`frontend/src/services/business/businessProfileApi.ts`**, re-exported from the **`businessService`** barrel), keep diagnostics lightweight and structured:
 
 - emit one structured log object per request outcome with:
   - `scope` (`services.businessProfile`)

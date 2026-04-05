@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState, type ChangeEvent } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   useForm,
   useWatch,
   type Control,
+  type FieldErrors,
   type UseFormHandleSubmit,
   type UseFormRegister,
   type UseFormReset,
   type UseFormSetValue,
 } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { logout, setAccessToken } from "@/auth/api";
@@ -27,6 +30,7 @@ import {
   useUpdateBusinessProfileMutation,
 } from "@/services/business/businessService";
 import { queryKeys } from "@/services/queryKeys";
+import { buildBusinessProfileSchema } from "@/services/business/businessProfileFormSchema";
 
 /** RHF defaults for business profile PATCH; must stay aligned with `businessDtoToFormValues` shape. */
 const EMPTY_PROFILE_FORM_VALUES: BusinessProfileFormValues = {
@@ -37,6 +41,7 @@ const EMPTY_PROFILE_FORM_VALUES: BusinessProfileFormValues = {
   legalName: "",
   email: "",
   confirmEmail: "",
+  currentPassword: "",
   password: "",
   confirmPassword: "",
   phoneNumber: "",
@@ -107,6 +112,9 @@ export type BusinessProfileSettingsReady = {
   handleSubmit: UseFormHandleSubmit<BusinessProfileFormValues>;
   reset: UseFormReset<BusinessProfileFormValues>;
   isDirty: boolean;
+  errors: FieldErrors<BusinessProfileFormValues>;
+  isSubmitted: boolean;
+  isValid: boolean;
   updateMutation: UseMutationResult<
     UpdateBusinessProfileSuccess,
     Error,
@@ -143,8 +151,31 @@ export function useBusinessProfileSettingsController(): BusinessProfileSettingsC
   const { businessId } = useParams<{ businessId: string }>();
   const { state, dispatch } = useAuth();
   const session = state.user;
+  const { t } = useTranslation("business");
+  const { t: tAuth } = useTranslation("auth");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [navigationBypassAfterSave, setNavigationBypassAfterSave] = useState(false);
+
+  const profileSchema = useMemo(
+    () =>
+      buildBusinessProfileSchema({
+        required: t("profileForm.validation.required"),
+        invalidEmail: t("profileForm.validation.invalidEmail"),
+        emailMismatch: t("profileForm.validation.emailMismatch"),
+        passwordMismatch: t("profileForm.validation.passwordMismatch"),
+        passwordPolicy: tAuth("signup.errors.passwordPolicy"),
+        currentPasswordRequired: t(
+          "credentialsSettings.validation.currentPasswordRequired",
+        ),
+        invalidSubscription: t("profileForm.validation.invalidSubscription"),
+        invalidCurrency: t("profileForm.validation.invalidCurrency"),
+        invalidTime: t("profileForm.validation.invalidTime"),
+        invalidDayOfWeek: t("profileForm.validation.invalidDayOfWeek"),
+        invalidNonNegative: t("profileForm.validation.invalidNonNegative"),
+        invalidWeeklyStartDay: t("profileForm.validation.invalidWeeklyStartDay"),
+      }),
+    [t, tAuth],
+  );
 
   const canLoadProfile = Boolean(
     businessId && session && session.type === "business",
@@ -179,8 +210,9 @@ export function useBusinessProfileSettingsController(): BusinessProfileSettingsC
     setValue,
     control,
     handleSubmit,
-    formState: { isDirty },
+    formState: { errors, isDirty, isSubmitted, isValid },
   } = useForm<BusinessProfileFormValues>({
+    resolver: zodResolver(profileSchema),
     // RHF uses `defaultValues` for the initial snapshot (`defaultValues || values`); keep it aligned with the
     // loaded profile so Radix Select never mounts with `currencyTrade: ""` and flips `isDirty` before `values` syncs.
     defaultValues: profileFormValues ?? EMPTY_PROFILE_FORM_VALUES,
@@ -302,6 +334,7 @@ export function useBusinessProfileSettingsController(): BusinessProfileSettingsC
           {
             ...values,
             imageFile: null,
+            currentPassword: "",
             password: "",
             confirmPassword: "",
             confirmEmail: values.email.trim(),
@@ -353,6 +386,9 @@ export function useBusinessProfileSettingsController(): BusinessProfileSettingsC
     handleSubmit,
     reset,
     isDirty,
+    errors,
+    isSubmitted,
+    isValid,
     updateMutation,
     submitError,
     setSubmitError,

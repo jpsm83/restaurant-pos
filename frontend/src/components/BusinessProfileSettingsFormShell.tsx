@@ -163,6 +163,8 @@ export function BusinessProfileSettingsFormShell({
     submitError,
     unsavedChangesGuard,
     onFormChangeCapture,
+    isSubmitted,
+    isValid,
   } = ctrl;
 
   return (
@@ -175,6 +177,9 @@ export function BusinessProfileSettingsFormShell({
       >
         <div className="min-w-0 space-y-8">
           {children(ctrl)}
+          {isSubmitted && !isValid ? (
+            <Alert>{t("profile.validationSummary")}</Alert>
+          ) : null}
           {submitError ? <Alert>{submitError}</Alert> : null}
         </div>
         <section className="relative z-10 flex flex-wrap items-center justify-end gap-3 pt-5">

@@ -12,7 +12,7 @@ This folder contains the **frontend business domain layer** for registration, pr
 | `businessProfileApi.ts` | **Transport + TanStack Query**: Axios calls, `BusinessServiceError`, multipart config, profile-update dedupe, diagnostics, React Query hooks. |
 | `businessProfileMapper.ts` | **Server → UI**: `businessDtoToFormValues` and normalizers for opening hours / delivery windows / enums. |
 | `businessProfilePayload.ts` | **UI → server**: `formValuesToUpdatePayload` builds `FormData` for `PATCH`. |
-| `businessProfileFormSchema.ts` | **Validation**: `buildBusinessProfileSchema()` (Zod) aligned with the form shape; used in tests today, ready for RHF `resolver`. |
+| `businessProfileFormSchema.ts` | **Validation**: `buildBusinessProfileSchema()` (Zod) aligned with the form shape; composed with i18n messages in **`useBusinessProfileSettingsController`** via **`zodResolver`**. |
 | `*.test.ts` | Vitest coverage for API behavior, schema rules, and coalescing. |
 
 ---
@@ -30,7 +30,7 @@ The barrel exports:
 - **Hooks**: `useBusinessProfileQuery`, `useCreateBusinessMutation`, `useUpdateBusinessProfileMutation`.
 - **Errors**: `BusinessServiceError`.
 
-`businessProfileFormSchema.ts` is **not** re-exported from the barrel; import it directly when wiring Zod to a form (e.g. `import { buildBusinessProfileSchema } from "@/services/business/businessProfileFormSchema"`).
+`businessProfileFormSchema.ts` is **not** re-exported from the barrel; the settings shell controller imports it to build the **`zodResolver`** (other callers, e.g. tests, import the module directly).
 
 ---
 
@@ -148,12 +148,12 @@ Builds the **multipart PATCH** body expected by the backend:
 - **Scalar fields**: `tradeName`, `legalName`, `email`, `phoneNumber`, `taxNumber`, `currencyTrade`, `subscription`, `contactPerson`, `acceptsDelivery` (boolean as string).
 - **Nested JSON as strings**: `address`, `metrics`, `cuisineType`, `categories`, `businessOpeningHours`, `deliveryOpeningWindows`, `reportingConfig` (only if `weeklyReportStartDay` is a finite number).
 - **Optional address keys**: `region`, `doorNumber`, `complement` omitted when empty after trim.
-- **Password**: only appended if non-empty (optional update).
+- **Password**: `password` only appended if non-empty (optional update). When present, **`currentPassword`** is appended for backend verification (same field is only collected on **`BusinessCredentialsSettingsPage`** among business settings routes).
 - **Delivery**: `deliveryRadius` / `minOrder` only if finite numbers (nullable skipped when null).
 - **Enums on write**: `filterToAllowedEnums` restricts `cuisineType` and `categories` to known enum values before `JSON.stringify`.
 - **Image**: if `imageFile` is set and `size > 0`, appends file as `imageUrl` (field name matches backend convention for uploads).
 
-**Important:** This function does not perform Zod validation; callers should validate (schema or UI) before building the payload.
+**Important:** This function does not perform Zod validation; **`useBusinessProfileSettingsController`** validates with **`zodResolver(buildBusinessProfileSchema(…))`** before calling the mutation.
 
 ---
 
@@ -164,14 +164,14 @@ Builds the **multipart PATCH** body expected by the backend:
 Returns a Zod object schema whose shape mirrors **`BusinessProfileFormValues`**:
 
 - Subscription and currency enums from `@packages/enums.ts`.
-- Email regex and confirm-email match.
-- Optional password flow: empty both ok; if either set, both required, must match, and `isValidPassword` from `@packages/utils/passwordPolicy.ts`.
+- **`email`** and **`confirmEmail`**: required, both must match **`emailRegex`** from `@packages/utils/emailRegex.ts`, and must equal each other after trim.
+- Optional new-password flow: empty both ok; if either new-password field is set, both required, must match, `isValidPassword` from `@packages/utils/passwordPolicy.ts`, and **`currentPassword`** must be non-empty (credentials page + multipart PATCH).
 - Opening hours and delivery windows: `HH:MM` regex, `closeTime` after `openTime`, day 0–6.
 - Metrics and non-negative numbers for delivery radius / min order (nullable).
 
 Exported types: `BusinessProfileSchema`, `BusinessProfileSchemaValues`.
 
-**Current usage:** exercised in `businessProfileFormSchema.test.ts`. The profile settings controller/page can adopt `zodResolver(buildBusinessProfileSchema(i18nMessages))` without changing the payload/mapper contracts.
+**Usage:** `useBusinessProfileSettingsController` builds the schema with **`business.profileForm.validation.*`** / **`credentialsSettings.validation.*`** (and **`auth.signup.errors.passwordPolicy`**) and passes it to **`zodResolver`**. **`BusinessProfileSettingsFormShell`** shows a short summary **`Alert`** when submit validation fails. Vitest coverage lives in `businessProfileFormSchema.test.ts`.
 
 ---
 
@@ -195,8 +195,9 @@ Exported types: `BusinessProfileSchema`, `BusinessProfileSchemaValues`.
 
 - **`BusinessProfileSettingsPage`**: one **`section`** with header, logo column + two name fields, then the seven-cell grid (phone, tax, currency, email, cuisine, categories, contact).
 - **`BusinessAddressSettingsPage`**: **`section`** + **`header`**, address grid with full-width rows for street and complement, map column with title + map-sized skeleton.
+- **`BusinessCredentialsSettingsPage`**: two-column credentials layout + full-width current-password row (see **`documentation/context.md`** *Business credentials settings*).
 
-Repository rule **§13** in **`documentation/context.md`** documents the general skeleton policy; the two pages above are the reference implementation for profile/address.
+Repository rule **§13** in **`documentation/context.md`** documents the general skeleton policy; the pages above are reference implementations for profile, address, and credentials.
 
 ## Typical consumers in this codebase
 

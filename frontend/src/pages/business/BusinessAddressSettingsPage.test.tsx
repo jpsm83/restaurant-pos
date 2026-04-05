@@ -27,7 +27,7 @@ vi.mock("@/auth/store/AuthContext", () => ({
   }),
 }));
 
-vi.mock("@/services/businessService", async (importOriginal) => {
+vi.mock("@/services/business/businessService", async (importOriginal) => {
   const actual =
     await importOriginal<typeof import("@/services/business/businessService")>();
   return {

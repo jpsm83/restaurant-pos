@@ -207,6 +207,7 @@ function BusinessProfileSections({
   const {
     register,
     control,
+    setValue,
     handleImageUpload,
     imagePreviewUrl,
     imageUrl,
@@ -337,7 +338,15 @@ function BusinessProfileSections({
               id="bp-email"
               type="email"
               autoComplete="email"
-              {...register("email")}
+              {...register("email", {
+                onChange: (e: ChangeEvent<HTMLInputElement>) => {
+                  // Single email field here: keep confirmEmail aligned for Zod (credentials page uses two fields).
+                  setValue("confirmEmail", e.target.value, {
+                    shouldDirty: true,
+                    shouldValidate: true,
+                  });
+                },
+              })}
             />
           </div>
           <Controller

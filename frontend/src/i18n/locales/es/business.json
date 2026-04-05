@@ -8,7 +8,22 @@
   },
   "profile": {
     "title": "Perfil del negocio",
-    "notBuiltYet": "Esta página aún no está disponible."
+    "notBuiltYet": "Esta página aún no está disponible.",
+    "validationSummary": "Corrige los campos marcados antes de guardar."
+  },
+  "profileForm": {
+    "validation": {
+      "required": "Este campo es obligatorio.",
+      "invalidEmail": "Introduce un correo electrónico válido.",
+      "emailMismatch": "La confirmación del correo no coincide.",
+      "passwordMismatch": "La confirmación de la contraseña no coincide.",
+      "invalidSubscription": "Suscripción no válida.",
+      "invalidCurrency": "Moneda no válida.",
+      "invalidTime": "La hora debe tener formato HH:MM.",
+      "invalidDayOfWeek": "El día de la semana debe ser un entero de 0 a 6.",
+      "invalidNonNegative": "El valor debe ser un número no negativo.",
+      "invalidWeeklyStartDay": "El inicio de semana del informe debe estar entre 0 y 6."
+    }
   },
   "profileSettings": {
     "cardDescription": "Actualiza la identidad pública del negocio, el logotipo y cómo te encuentran los clientes.",
@@ -161,6 +176,24 @@
       "doorNumber": "Puerta / interior",
       "complement": "Complemento",
       "complementPlaceholder": "Piso, ala, unidad…"
+    }
+  },
+  "credentialsSettings": {
+    "cardDescription": "Actualiza el correo y la contraseña de acceso. Es posible que debas iniciar sesión de nuevo tras guardar.",
+    "sectionTitle": "Credenciales de acceso",
+    "sectionDescription": "Los correos siguen las mismas reglas de formato que en el resto de la app. Los dos correos deben coincidir. Para una contraseña nueva, las dos deben coincidir y debes indicar la contraseña actual. Deja la nueva en blanco para no cambiarla.",
+    "columnHintEmail": "El correo de acceso del negocio viene de tu perfil. Cámbialo aquí si hace falta; ambos campos deben coincidir.",
+    "columnHintPassword": "Nueva contraseña opcional. Deja ambos en blanco para mantener la actual; si escribes una, ambos deben coincidir.",
+    "fields": {
+      "note": "Nota",
+      "email": "Correo del negocio",
+      "confirmEmail": "Confirmar correo",
+      "newPassword": "Nueva contraseña",
+      "confirmPassword": "Confirmar nueva contraseña",
+      "currentPassword": "Contraseña actual"
+    },
+    "validation": {
+      "currentPasswordRequired": "Introduce tu contraseña actual para definir una nueva contraseña de acceso."
     }
   }
 }

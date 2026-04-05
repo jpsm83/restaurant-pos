@@ -58,10 +58,10 @@ These standards are always active and must be applied before and during every ch
     - [x] non-editable/system-managed
   - [x] Keep `subscription` editable and place it at the top of the page.
   - [x] Define subscription UI as 4 selectable cards (`Free`, `Basic`, `Premium`, `Enterprise`) with short descriptions and clear selected state.
-  - [x] Keep credentials (email/password) in this page inside a hidden/expandable section toggled by an `Update credentials` button.
-  - [x] For credentials:
-    - [x] email change requires confirm email field
-    - [x] password change requires confirm password field
+  - [x] **Superseded:** credentials were originally an expandable block on the profile page; **current product** uses a dedicated route **`/business/:businessId/settings/credentials`** (**`BusinessCredentialsSettingsPage`**) for sign-in email (with confirm), new password (with confirm), and **current password** (only on that page among business settings). The profile page keeps a single **email** field; **`confirmEmail`** stays in sync on change for full-form Zod on save.
+  - [x] For credentials (credentials settings page + shared PATCH):
+    - [x] email change requires confirm email field (two visible fields on credentials page; profile syncs hidden confirm for schema)
+    - [x] password change requires confirm password field; **current password** required when setting a new password
     - [x] use shared email validation utility from `packages/utils/emailRegex.ts`
     - [x] on successful email/password change, force logout and require new login
   - [x] Define image UX requirements:
@@ -70,7 +70,7 @@ These standards are always active and must be applied before and during every ch
     - [x] hover overlay ("Change image") with click-to-upload behavior
     - [x] Cloudinary path stays backend-managed through existing endpoints
   - Scope lock notes:
-    - Editable now (profile form): `subscription`, `imageUrl` (via upload), `tradeName`, `legalName`, `email` (with confirm email), `password` (with confirm password), `phoneNumber`, `taxNumber`, `currencyTrade`, `address`, `metrics`, `contactPerson`, `cuisineType`, `categories`, `acceptsDelivery`, `deliveryRadius`, `minOrder`, `businessOpeningHours`, `deliveryOpeningWindows`, `reportingConfig.weeklyReportStartDay`.
+    - Editable now (profile + split settings): same multipart form model across **`BusinessProfileSettingsPage`**, **`BusinessCredentialsSettingsPage`**, **`BusinessAddressSettingsPage`**, etc. **Password / current password / confirm password** are edited only on **`BusinessCredentialsSettingsPage`**; profile page edits **`email`** only (with **`confirmEmail`** mirrored for validation). Fields: `subscription`, `imageUrl` (via upload), `tradeName`, `legalName`, `email`, `password` (credentials route), `phoneNumber`, `taxNumber`, `currencyTrade`, `address`, `metrics`, `contactPerson`, `cuisineType`, `categories`, `acceptsDelivery`, `deliveryRadius`, `minOrder`, `businessOpeningHours`, `deliveryOpeningWindows`, `reportingConfig.weeklyReportStartDay`.
     - Non-editable/system-managed on this page: `_id`, `createdAt`, `updatedAt`, and rating cache fields (`averageRating`, `ratingCount`) because they are computed by the ratings domain.
     - Credential-change policy locked: if `email` or `password` changes successfully, clear session and force re-authentication.
     - Data-source note: `subscription` options are fixed to `subscriptionEnums` in `packages/enums.ts`.
@@ -283,13 +283,13 @@ These standards are always active and must be applied before and during every ch
   - [x] Discovery/delivery section.
   - [x] Metrics section.
   - [x] Opening hours and delivery windows section.
-  - [x] Expandable credentials section (`Update credentials` button).
+  - [x] **Superseded:** expandable credentials on profile → replaced by **`BusinessCredentialsSettingsPage`** (account menu → Credentials); profile layout no longer includes that toggle.
   - Implementation notes:
     - Expanded `BusinessProfileSettingsPage.tsx` into the full phase layout sequence while preserving the existing query->RHF hydration flow from task `3.1`.
     - Added interactive subscription cards bound to `subscription`, image avatar upload interaction (`imageFile` + hover overlay), and full grouped sections for core info, address, discovery/delivery, and metrics.
     - Added dynamic `useFieldArray` UI for `businessOpeningHours` and `deliveryOpeningWindows` (including nested delivery windows per day) to align with backend model structure.
-    - Added credentials panel toggle (`Update credentials`) with confirm email/password inputs hidden until expanded.
-    - Extended page tests in `BusinessProfileSettingsPage.test.tsx` to validate section rendering and credentials expansion behavior.
+    - **Follow-up:** credentials UI moved to `BusinessCredentialsSettingsPage.tsx` (two-column email / new-password stacks, full-width current password); Zod resolver on **`useBusinessProfileSettingsController`**; see `documentation/context.md` *Business credentials settings*.
+    - Page tests: profile tests cover core sections; credentials flow is covered by schema tests and credentials page tests as applicable.
 
 - [x] **3.3 Save controls and submit flow**
   - [x] Add bottom save area with `Save changes` (+ optional reset).

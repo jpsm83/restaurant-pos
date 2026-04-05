@@ -103,6 +103,14 @@ The tenant **postal address** editor lives at **`/business/:businessId/settings/
 - **When the map refetches:** The first time a **non-empty** trimmed query reaches the map (length ≥ **3**), geocoding runs **immediately** so the pin appears on load. **Later** changes to the query (after that first scheduled run) are **debounced by 3 seconds** before another Nominatim request. While the query is too short, the map shows the default world view and a short hint.
 - **Form vs saved data:** If the user has not dirtied the form, the preview can fall back to the **saved** address from the profile query when live `useWatch` values are still empty (e.g. before `reset` applies on the first tick).
 
+#### Business credentials settings (sign-in email / password)
+
+The tenant **sign-in credentials** editor lives at **`/business/:businessId/settings/credentials`** (**`BusinessCredentialsSettingsPage`** in `frontend/src/pages/business/BusinessCredentialsSettingsPage.tsx`). It uses the same **`BusinessProfileSettingsFormShell`** + **`useBusinessProfileSettingsController`** as other split settings routes. **Among business settings pages, only this route** exposes **current password** (plus optional new password pair); login/sign-up flows are separate.
+
+- **Layout:** Two columns on medium+ viewports — **left:** column note, **business email**, **confirm email** (stacked); **right:** column note, **new password**, **confirm new password** (stacked). **Current password** is a **full-width** row **below** both columns. Copy and validation messages use **`business`** i18n keys under **`credentialsSettings`** and **`profileForm.validation`**.
+- **Load state:** Email and confirm email are hydrated from the profile DTO (same values until the user edits).
+- **Save validation:** **`zodResolver(buildBusinessProfileSchema(…))`** on the shared controller validates the **full** profile shape on **Save** (emails use **`packages/utils/emailRegex.ts`**; new password uses **`packages/utils/passwordPolicy.ts`**). If a **new password** is entered, **`currentPassword`** is required on the client and verified on **`PATCH`** (see [`authentication-and-session.md`](./authentication-and-session.md)). **`BusinessProfileSettingsPage`** keeps **`confirmEmail`** in sync when the single **email** field changes so Zod’s email match still passes when editing email only from the profile screen.
+
 ---
 
 ## What the app can do — Solution for bars and restaurants
@@ -173,7 +181,7 @@ Communication delivery is centralized in `backend/src/communications` using a si
 - **Email** uses one SMTP provider path (Nodemailer transport singleton).
 - **In-app** notifications are persisted first (source of truth) and then fanned out to user inbox state.
 - **Live in-app** uses WebSocket push as an acceleration layer; persisted inbox remains the fallback when users are offline.
-- **Domain modules** (orders, reservations, inventory alerts, weekly/monthly report-ready, **business profile updates** after authenticated `PATCH /api/v1/business/:businessId`) trigger communication by dispatching typed events, not by calling channels directly. Profile changes emit `BUSINESS_PROFILE_UPDATED` (manager in-app + manager email via `dispatchEvent`; see `backend/src/communications/README.md`). The tenant web editor is **`BusinessProfileSettingsPage`** at **`/business/:businessId/settings/profile`** (see `documentation/frontend-authentication-and-navigation.md`).
+- **Domain modules** (orders, reservations, inventory alerts, weekly/monthly report-ready, **business profile updates** after authenticated `PATCH /api/v1/business/:businessId`) trigger communication by dispatching typed events, not by calling channels directly. Profile changes emit `BUSINESS_PROFILE_UPDATED` (manager in-app + manager email via `dispatchEvent`; see `backend/src/communications/README.md`). Tenant web editors that PATCH the same profile include **`BusinessProfileSettingsPage`** (**`/settings/profile`**), **`BusinessCredentialsSettingsPage`** (**`/settings/credentials`**), **`BusinessAddressSettingsPage`** (**`/settings/address`**), and other split settings routes (see `documentation/frontend-authentication-and-navigation.md`).
 - **Reliability** uses fire-and-forget defaults for non-blocking business flows, idempotency/noise controls for repeated events, and retry logic for transient SMTP failures.
 
 Core environment controls:
