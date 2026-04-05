@@ -18,6 +18,10 @@ export const queryKeys = {
     detail: (businessId: string) => ["business", "detail", businessId] as const,
     detailPending: () => ["business", "detail", "pending"] as const,
   },
+  employees: {
+    managementContacts: (businessId: string) =>
+      ["employees", "managementContacts", businessId] as const,
+  },
   schedules: {
     byBusiness: (businessId: string, dayKey?: string) =>
       ["schedules", "business", businessId, dayKey ?? "current"] as const,

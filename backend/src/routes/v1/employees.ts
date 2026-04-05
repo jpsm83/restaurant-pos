@@ -19,7 +19,7 @@ import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
 import * as enums from "../../../../packages/enums.ts";
 import { UploadInputFile } from "../../../../packages/interfaces/ICloudinary.ts";
 
-const { userRolesEnums } = enums;
+const { userRolesEnums, managementRolesEnums } = enums;
 
 const reqSalaryFields = ["payFrequency", "grossSalary", "netSalary"];
 
@@ -32,6 +32,62 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
       return reply.code(404).send({ message: "No employees found" });
     }
     return reply.code(200).send(employees);
+  });
+
+  // GET /employees/business/:businessId/management-contacts — profile contact dropdown (before generic /business/:id).
+  app.get("/business/:businessId/management-contacts", async (req, reply) => {
+    const params = req.params as { businessId?: string };
+    const businessId = params.businessId;
+
+    if (!businessId || isObjectIdValid([businessId]) !== true) {
+      return reply.code(400).send({ message: "Invalid business ID!" });
+    }
+
+    const employees = await Employee.find({
+      businessId: new Types.ObjectId(businessId),
+      active: { $ne: false },
+    }).lean();
+
+    const managers = employees.filter((e) => {
+      const roles = e.allEmployeeRoles;
+      if (!Array.isArray(roles)) return false;
+      return roles.some((r) =>
+        (managementRolesEnums as readonly string[]).includes(r),
+      );
+    });
+
+    if (managers.length === 0) {
+      return reply.code(200).send([]);
+    }
+
+    const userIds = managers.map((m) => m.userId).filter(Boolean);
+
+    const users = await User.find({
+      _id: { $in: userIds.map((id) => new Types.ObjectId(String(id))) },
+    })
+      .select(
+        "personalDetails.firstName personalDetails.lastName personalDetails.email",
+      )
+      .lean();
+
+    const userLabel = new Map<string, string>();
+    for (const u of users) {
+      const pd = u.personalDetails as
+        | Record<string, string | undefined>
+        | undefined;
+      const first = pd?.firstName?.trim() ?? "";
+      const last = pd?.lastName?.trim() ?? "";
+      const name = `${first} ${last}`.trim();
+      const email = pd?.email?.trim() ?? "";
+      userLabel.set(String(u._id), name.length > 0 ? name : email || "—");
+    }
+
+    const out = managers.map((m) => ({
+      employeeId: String(m._id),
+      displayName: userLabel.get(String(m.userId)) ?? "—",
+    }));
+
+    return reply.code(200).send(out);
   });
 
   // POST /employees - create (formData with image, transaction)
@@ -616,11 +672,6 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
       businessId: new Types.ObjectId(businessId),
     }).lean();
 
-    if (!employees.length) {
-      return reply.code(404).send({
-        message: "No employees found within the business id!",
-      });
-    }
     return reply.code(200).send(employees);
   });
 };

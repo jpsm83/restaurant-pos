@@ -5,52 +5,68 @@ import { BusinessAddressLocationMap } from "@/components/BusinessAddressLocation
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { businessDtoToFormValues } from "@/services/businessService";
+import { businessDtoToFormValues } from "@/services/business/businessService";
 import {
   BusinessProfileSettingsFormShell,
   BusinessProfileSettingsLoadingCard,
 } from "../../components/BusinessProfileSettingsFormShell";
 import type { BusinessProfileSettingsReady } from "../../hooks/useBusinessProfileSettingsController";
 
+/** Mirrors `AddressSection`: section header, address grid (9 cells, street + complement full width), map column. */
 function AddressSettingsLoadingBody() {
+  /** Same column spans as loaded fields: street (6th) and complement (9th) span full row on sm+. */
+  const fullWidthRow = [false, false, false, false, false, true, false, false, true];
+
   return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-      <div className="space-y-4 lg:col-span-2">
-        <Skeleton className="h-4 w-24" aria-hidden />
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {Array.from({ length: 9 }).map((_, i) => (
-            <div
-              key={i}
-              className={
-                i === 4 ? "space-y-2 sm:col-span-2 xl:col-span-3" : "space-y-2"
-              }
-            >
-              <Skeleton className="h-4 w-20" aria-hidden />
-              <Skeleton className="h-10 w-full" aria-hidden />
-            </div>
-          ))}
+    <section className="space-y-4">
+      <header className="space-y-1.5">
+        <Skeleton className="h-4 w-40" aria-hidden />
+        <Skeleton className="h-3 w-full max-w-lg" aria-hidden />
+      </header>
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="min-w-0 space-y-4 lg:col-span-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {fullWidthRow.map((fullWidth, i) => (
+              <div
+                key={i}
+                className={
+                  fullWidth
+                    ? "space-y-2 sm:col-span-2 xl:col-span-3"
+                    : "space-y-2"
+                }
+              >
+                <Skeleton className="h-4 w-20" aria-hidden />
+                <Skeleton className="h-10 w-full" aria-hidden />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="flex min-h-0 min-w-0 flex-col gap-2 lg:col-span-1">
+          <div
+            className="text-sm font-semibold text-neutral-800"
+            aria-hidden
+          >
+            <Skeleton className="h-4 w-36" />
+          </div>
+          <Skeleton
+            className="h-64 min-h-64 w-full rounded-lg md:h-[min(50vh,22rem)] md:min-h-72"
+            aria-hidden
+          />
         </div>
       </div>
-      <div className="flex min-h-0 flex-col gap-2 lg:col-span-1">
-        <Skeleton className="h-4 w-36" aria-hidden />
-        <Skeleton
-          className="h-64 min-h-64 w-full rounded-lg md:h-[min(50vh,22rem)] md:min-h-72"
-          aria-hidden
-        />
-        <Skeleton className="h-3 w-full max-w-sm" aria-hidden />
-      </div>
-    </div>
+    </section>
   );
 }
 
 /** Street address and region fields for the business profile. */
 export default function BusinessAddressSettingsPage() {
   const { t: tNav } = useTranslation("nav");
+  const { t } = useTranslation("business");
 
   return (
     <BusinessProfileSettingsFormShell
       pageTitle={tNav("settings.address")}
-      cardDescription="Postal and location details used on records and discovery."
+      cardDescription={t("addressSettings.cardDescription")}
       loadingSlot={
         <BusinessProfileSettingsLoadingCard>
           <AddressSettingsLoadingBody />
@@ -93,6 +109,7 @@ function buildAddressGeocodeQuery(
 }
 
 function AddressSection({ ctx }: { ctx: BusinessProfileSettingsReady }) {
+  const { t } = useTranslation("business");
   const { register, control, isDirty, profileQuery } = ctx;
   const watched = useWatch({ control, name: "address" });
 
@@ -113,48 +130,62 @@ function AddressSection({ ctx }: { ctx: BusinessProfileSettingsReady }) {
     <section className="space-y-4">
       <header className="space-y-1.5">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-700">
-          Address
+          {t("addressSettings.sectionTitle")}
         </h2>
         <p className="text-sm text-neutral-600">
-          Postal and location details used on records and delivery orders.
+          {t("addressSettings.sectionDescription")}
         </p>
       </header>
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
         <div className="min-w-0 space-y-4 lg:col-span-2">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <div className="space-y-2">
-              <Label htmlFor="bp-country">Country</Label>
+              <Label htmlFor="bp-country">
+                {t("addressSettings.fields.country")}
+              </Label>
               <Input id="bp-country" {...register("address.country")} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="bp-state">State</Label>
+              <Label htmlFor="bp-state">
+                {t("addressSettings.fields.state")}
+              </Label>
               <Input id="bp-state" {...register("address.state")} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="bp-region">Region</Label>
+              <Label htmlFor="bp-region">
+                {t("addressSettings.fields.region")}
+              </Label>
               <Input id="bp-region" {...register("address.region")} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="bp-city">City</Label>
+              <Label htmlFor="bp-city">{t("addressSettings.fields.city")}</Label>
               <Input id="bp-city" {...register("address.city")} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="bp-post-code">Post code</Label>
+              <Label htmlFor="bp-post-code">
+                {t("addressSettings.fields.postCode")}
+              </Label>
               <Input id="bp-post-code" {...register("address.postCode")} />
             </div>
             <div className="space-y-2 sm:col-span-2 xl:col-span-3">
-              <Label htmlFor="bp-street">Street</Label>
+              <Label htmlFor="bp-street">
+                {t("addressSettings.fields.street")}
+              </Label>
               <Input id="bp-street" {...register("address.street")} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="bp-building-number">Building number</Label>
+              <Label htmlFor="bp-building-number">
+                {t("addressSettings.fields.buildingNumber")}
+              </Label>
               <Input
                 id="bp-building-number"
                 {...register("address.buildingNumber")}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="bp-door-number">Door number</Label>
+              <Label htmlFor="bp-door-number">
+                {t("addressSettings.fields.doorNumber")}
+              </Label>
               <Input
                 id="bp-door-number"
                 {...register("address.doorNumber")}
@@ -162,10 +193,12 @@ function AddressSection({ ctx }: { ctx: BusinessProfileSettingsReady }) {
               />
             </div>
             <div className="space-y-2 sm:col-span-2 xl:col-span-3">
-              <Label htmlFor="bp-complement">Complement</Label>
+              <Label htmlFor="bp-complement">
+                {t("addressSettings.fields.complement")}
+              </Label>
               <Input
                 id="bp-complement"
-                placeholder="Floor, wing, unit details…"
+                placeholder={t("addressSettings.fields.complementPlaceholder")}
                 {...register("address.complement")}
               />
             </div>
@@ -173,7 +206,7 @@ function AddressSection({ ctx }: { ctx: BusinessProfileSettingsReady }) {
         </div>
         <div className="flex min-h-0 min-w-0 flex-col gap-2 lg:col-span-1">
           <h3 className="text-sm font-semibold text-neutral-800">
-            Location preview
+            {t("addressSettings.locationPreview")}
           </h3>
           <BusinessAddressLocationMap addressQuery={addressQuery} />
         </div>

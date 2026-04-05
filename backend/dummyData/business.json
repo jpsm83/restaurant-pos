@@ -37,8 +37,8 @@
       }
     },
     "contactPerson": "Demo Manager",
-    "cuisineType": "International",
-    "categories": ["burgers", "pizza", "beverages"],
+    "cuisineType": ["Fusion", "Mediterranean"],
+    "categories": ["Burgers", "Pizza", "Salad"],
     "averageRating": 4.6,
     "ratingCount": 4,
     "acceptsDelivery": true,

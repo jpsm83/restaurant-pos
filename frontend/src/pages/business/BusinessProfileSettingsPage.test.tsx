@@ -1,6 +1,8 @@
+import type { ReactElement } from "react";
 import { screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Link,
   MemoryRouter,
@@ -12,9 +14,23 @@ import { renderWithI18n } from "@/test/i18nTestUtils";
 import {
   BusinessServiceError,
   type BusinessProfileDto,
-} from "@/services/businessService";
+} from "@/services/business/businessService";
 import BusinessCredentialsSettingsPage from "./BusinessCredentialsSettingsPage";
 import BusinessProfileSettingsPage from "./BusinessProfileSettingsPage";
+
+async function renderWithQueryClient(ui: ReactElement) {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: 0 },
+    },
+  });
+  return renderWithI18n(ui, {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    ),
+  });
+}
 
 const mockDispatch = vi.fn();
 const mockUseBusinessProfileQuery = vi.fn();
@@ -51,15 +67,19 @@ vi.mock("sonner", () => ({
   },
 }));
 
+const mockFetchManagementContactOptions = vi.fn();
+
 vi.mock("@/services/businessService", async (importOriginal) => {
   const actual =
-    await importOriginal<typeof import("@/services/businessService")>();
+    await importOriginal<typeof import("@/services/business/businessService")>();
   return {
     ...actual,
     useBusinessProfileQuery: (...args: unknown[]) =>
       mockUseBusinessProfileQuery(...args),
     useUpdateBusinessProfileMutation: (...args: unknown[]) =>
       mockUseUpdateBusinessProfileMutation(...args),
+    fetchManagementContactOptions: (...args: unknown[]) =>
+      mockFetchManagementContactOptions(...args),
   };
 });
 
@@ -85,9 +105,9 @@ function makeBusinessProfileDto(): BusinessProfileDto {
       postCode: "92101",
       region: "",
     },
-    contactPerson: "Owner",
-    cuisineType: "Italian",
-    categories: ["Restaurant"],
+    contactPerson: "",
+    cuisineType: ["Italian"],
+    categories: ["Pizza"],
     acceptsDelivery: false,
     metrics: {
       foodCostPercentage: 30,
@@ -117,6 +137,8 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
     mockSetAccessToken.mockReset();
     mockToastSuccess.mockReset();
     mockToastError.mockReset();
+    mockFetchManagementContactOptions.mockReset();
+    mockFetchManagementContactOptions.mockResolvedValue([]);
     mockUseUpdateBusinessProfileMutation.mockReturnValue({
       mutateAsync: vi.fn().mockResolvedValue({ message: "Business updated" }),
       isPending: false,
@@ -132,7 +154,7 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
       refetch: vi.fn(),
     });
 
-    await renderWithI18n(
+    await renderWithQueryClient(
       <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
         <Routes>
           <Route
@@ -160,7 +182,7 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
     });
     const user = userEvent.setup();
 
-    await renderWithI18n(
+    await renderWithQueryClient(
       <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
         <Routes>
           <Route
@@ -185,7 +207,7 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
       refetch: vi.fn(),
     });
 
-    await renderWithI18n(
+    await renderWithQueryClient(
       <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
         <Routes>
           <Route
@@ -211,7 +233,7 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
       refetch: vi.fn(),
     });
 
-    await renderWithI18n(
+    await renderWithQueryClient(
       <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
         <Routes>
           <Route
@@ -222,9 +244,13 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText("Logo")).toBeInTheDocument();
-    expect(screen.getByText("Core business info")).toBeInTheDocument();
-    expect(screen.getByText("Discovery")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Core business info" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Contact, tax & discovery" }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Cuisine type")).toBeInTheDocument();
     expect(screen.queryByText("Subscription")).not.toBeInTheDocument();
     expect(screen.queryByText("Address")).not.toBeInTheDocument();
     expect(screen.queryByText("Metrics")).not.toBeInTheDocument();
@@ -241,7 +267,7 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
     });
     const user = userEvent.setup();
 
-    const view = await renderWithI18n(
+    const view = await renderWithQueryClient(
       <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
         <Routes>
           <Route
@@ -267,7 +293,10 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
       type: "image/png",
     });
     await user.upload(fileInput!, nextLogo);
-    expect(screen.getByText("Selected file: updated-logo.png")).toBeInTheDocument();
+    await waitFor(() => {
+      const preview = screen.getByAltText("Business logo");
+      expect(preview.getAttribute("src")).toMatch(/^blob:/);
+    });
   });
 
   it("disables save while form is pristine and enables it after changes", async () => {
@@ -280,7 +309,7 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
     });
     const user = userEvent.setup();
 
-    await renderWithI18n(
+    await renderWithQueryClient(
       <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
         <Routes>
           <Route
@@ -314,7 +343,7 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
     });
     const user = userEvent.setup();
 
-    await renderWithI18n(
+    await renderWithQueryClient(
       <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
         <Routes>
           <Route
@@ -348,7 +377,7 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
     });
     const user = userEvent.setup();
 
-    await renderWithI18n(
+    await renderWithQueryClient(
       <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
         <Routes>
           <Route
@@ -390,7 +419,7 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
     });
     const user = userEvent.setup();
 
-    await renderWithI18n(
+    await renderWithQueryClient(
       <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/credentials"]}>
         <Routes>
           <Route
@@ -432,7 +461,7 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
     });
     const user = userEvent.setup();
 
-    await renderWithI18n(
+    await renderWithQueryClient(
       <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
         <Routes>
           <Route
@@ -467,7 +496,7 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
     });
     const user = userEvent.setup();
 
-    await renderWithI18n(
+    await renderWithQueryClient(
       <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
         <Routes>
           <Route
@@ -513,7 +542,7 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
     });
     const user = userEvent.setup();
 
-    await renderWithI18n(
+    await renderWithQueryClient(
       <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
         <Routes>
           <Route
@@ -569,7 +598,7 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
       });
       const user = userEvent.setup();
 
-      await renderWithI18n(
+      await renderWithQueryClient(
         <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
           <Routes>
             <Route
@@ -608,7 +637,7 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
       });
       const user = userEvent.setup();
 
-      await renderWithI18n(
+      await renderWithQueryClient(
         <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
           <Routes>
             <Route
@@ -645,7 +674,7 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
       });
       const user = userEvent.setup();
 
-      await renderWithI18n(
+      await renderWithQueryClient(
         <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
           <Routes>
             <Route
@@ -679,7 +708,7 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
       });
       const user = userEvent.setup();
 
-      await renderWithI18n(
+      await renderWithQueryClient(
         <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
           <Routes>
             <Route
@@ -713,7 +742,7 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
       });
       const user = userEvent.setup();
 
-      await renderWithI18n(
+      await renderWithQueryClient(
         <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
           <Routes>
             <Route
@@ -724,15 +753,15 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
         </MemoryRouter>,
       );
 
-      await user.clear(screen.getByLabelText("Cuisine type"));
-      await user.type(screen.getByLabelText("Cuisine type"), "Fusion");
+      await user.clear(screen.getByLabelText("Phone number"));
+      await user.type(screen.getByLabelText("Phone number"), "+19995558888");
       await user.click(screen.getByRole("button", { name: "Save changes" }));
 
       await waitFor(() => {
         expect(mockToastError).toHaveBeenCalledWith("Failed to save business profile.");
       });
       expect(screen.getByText("Network request failed")).toBeInTheDocument();
-      expect(screen.getByLabelText("Cuisine type")).toHaveValue("Fusion");
+      expect(screen.getByLabelText("Phone number")).toHaveValue("+19995558888");
     });
   });
 });

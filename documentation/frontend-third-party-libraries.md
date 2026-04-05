@@ -98,7 +98,7 @@ Keep these rules in service hooks so behavior stays consistent across pages.
 
 ## 4.3 Profile fetch/save diagnostics (busy-time baseline)
 
-For **business profile** fetch/save operations (**`BusinessProfileSettingsPage`**, route **`/business/:businessId/settings/profile`** via `businessService`), keep diagnostics lightweight and structured:
+For **business profile** fetch/save operations (**`BusinessProfileSettingsPage`**, route **`/business/:businessId/settings/profile`**; HTTP + logs live in **`frontend/src/services/business/businessProfileApi.ts`**, re-exported from the **`businessService`** barrel), keep diagnostics lightweight and structured:
 
 - emit one structured log object per request outcome with:
   - `scope` (`services.businessProfile`)
@@ -131,5 +131,6 @@ For **business profile** fetch/save operations (**`BusinessProfileSettingsPage`*
 | [`frontend-i18n.md`](./frontend-i18n.md) | Translating validation and labels used in Zod factories. |
 | [`advanced-table-usage.md`](./advanced-table-usage.md) | TanStack Table patterns in dashboards. |
 | [`authentication-and-session.md`](./authentication-and-session.md) | Backend contracts for auth (not npm-specific, but pairs with auth client code). |
+| [`../frontend/src/services/business/README.md`](../frontend/src/services/business/README.md) | Tenant **business profile/register** frontend services (multipart PATCH, React Query, mappers); pairs with **§4.3** diagnostics. |
 
 When the **standard form stack** or a **major dependency category** changes, update **this file** and the **companion row** in [`context.md`](./context.md).

@@ -10,6 +10,47 @@
     "title": "Perfil del negocio",
     "notBuiltYet": "Esta página aún no está disponible."
   },
+  "profileSettings": {
+    "cardDescription": "Actualiza la identidad pública del negocio, el logotipo y cómo te encuentran los clientes.",
+    "logo": {
+      "sectionTitle": "Logotipo",
+      "sectionDescription": "Se muestra en descubrimiento, recibos y otras superficies visibles para el cliente.",
+      "uploadLabel": "Subir",
+      "logoAlt": "Logotipo del negocio",
+      "hintSelectedFile": "Archivo seleccionado: {{fileName}}",
+      "hintCurrentCloud": "El logotipo actual proviene de la última URL de imagen guardada en la nube.",
+      "hintDefault": "Pasa el cursor o toca el área del logotipo y sube un archivo de imagen."
+    },
+    "selects": {
+      "currencyPlaceholder": "Seleccionar moneda",
+      "contactNone": "Sin contacto principal",
+      "contactPlaceholder": "Seleccionar un responsable",
+      "multiEmpty": "Seleccionar…",
+      "multiSummary": "{{count}} seleccionados",
+      "noneSelected": "Nada seleccionado"
+    },
+    "core": {
+      "sectionTitle": "Datos principales del negocio",
+      "sectionDescription": "Datos legales y de contacto usados para facturación, soporte y registros de la cuenta.",
+      "fields": {
+        "tradeName": "Nombre comercial",
+        "legalName": "Razón social",
+        "email": "Correo del negocio",
+        "phoneNumber": "Teléfono",
+        "taxNumber": "NIF / RFC / identificación fiscal",
+        "currencyTrade": "Moneda",
+        "contactPerson": "Persona de contacto"
+      }
+    },
+    "discovery": {
+      "sectionTitle": "Descubrimiento",
+      "sectionDescription": "Ayuda a los clientes a encontrarte al explorar o buscar.",
+      "fields": {
+        "cuisineType": "Tipo de cocina",
+        "categories": "Categorías (separadas por comas)"
+      }
+    }
+  },
   "advancedTable": {
     "section": {
       "title": "Objetivo de integración de tabla avanzada",
@@ -95,6 +136,31 @@
     "body": {
       "emptyMessage": "No se encontraron datos",
       "emptySubMessage": "Intenta ajustar tus filtros"
+    }
+  },
+  "addressMap": {
+    "geoNotFound": "No se encontró esa dirección en el mapa.",
+    "geoFailed": "Falló la geocodificación. Inténtalo de nuevo más tarde.",
+    "loadingAriaLabel": "Cargando ubicación en el mapa",
+    "shortQueryHint": "Añade un poco más de detalle de la dirección para ubicarla en el mapa.",
+    "footerNotice": "Datos del mapa © colaboradores de OpenStreetMap. La geocodificación usa el servicio público Nominatim—úsalo con moderación en producción o aloja tu propia instancia."
+  },
+  "addressSettings": {
+    "cardDescription": "Datos postales y de ubicación usados en registros y descubrimiento.",
+    "sectionTitle": "Dirección",
+    "sectionDescription": "Datos postales y de ubicación usados en registros y pedidos a domicilio.",
+    "locationPreview": "Vista previa de ubicación",
+    "fields": {
+      "country": "País",
+      "state": "Estado / provincia",
+      "region": "Región",
+      "city": "Ciudad",
+      "postCode": "Código postal",
+      "street": "Calle",
+      "buildingNumber": "Número",
+      "doorNumber": "Puerta / interior",
+      "complement": "Complemento",
+      "complementPlaceholder": "Piso, ala, unidad…"
     }
   }
 }

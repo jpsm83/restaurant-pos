@@ -334,7 +334,7 @@ describe("Employees Routes", () => {
       expect(body.message).toBe("Invalid business ID!");
     });
 
-    it("returns 404 when no employees for business", async () => {
+    it("returns 200 with an empty list when no employees for business", async () => {
       const app = await getTestApp();
       const otherBusinessId = new Types.ObjectId();
 
@@ -343,9 +343,10 @@ describe("Employees Routes", () => {
         url: `/api/v1/employees/business/${otherBusinessId}`,
       });
 
-      expect(response.statusCode).toBe(404);
+      expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-      expect(body.message).toBe("No employees found within the business id!");
+      expect(Array.isArray(body)).toBe(true);
+      expect(body.length).toBe(0);
     });
   });
 

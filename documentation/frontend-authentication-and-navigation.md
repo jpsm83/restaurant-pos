@@ -255,14 +255,14 @@ All guards are **UX and consistency**; **security remains on the API**.
 - The full **business profile** editor is **not** in the sidebar; it lives at **`/business/:businessId/settings/profile`** and is linked from **`AccountMenuPopover`** (**Profile**) together with **Address** (**`/settings/address`** — structured address fields and map preview; see [`context.md`](./context.md) *Business address settings — location preview*), **Subscriptions**, and **Credentials**.
 - Sidebar starts collapsed by default (`SidebarProvider` uses `defaultOpen={false}` in `main.tsx`). Expand-on-any-sidebar-icon behavior matches §11.1.
 - Account menu: **`AccountMenuPopover`** — **`LanguageSwitcher`**, **`settings.profile`**, business-only settings shortcuts (with Lucide icons: user, map pin, card, key), **`account.logOut`**.
-- **`BusinessProfileSettingsPage`** (**`/business/:businessId/settings/profile`**) ships the full profile editor wired to `useBusinessProfileQuery` / `useUpdateBusinessProfileMutation` with explicit loading/error/retry states, route-id-aware `react-hook-form` hydration, and sectioned layout (subscription, logo upload, core info, address, discovery/delivery, metrics, opening windows, expandable credentials). A successful save triggers backend **`BUSINESS_PROFILE_UPDATED`**: management staff get persisted **in-app** notifications and **email** (when enabled), independent of the tenant UI toast; the client sends **`X-Idempotency-Key`** / **`X-Correlation-Id`** on PATCH (via `businessService`) so backend dispatch logs align with one logical save.
+- **`BusinessProfileSettingsPage`** (**`/business/:businessId/settings/profile`**) ships the full profile editor wired to `useBusinessProfileQuery` / `useUpdateBusinessProfileMutation` with explicit loading/error/retry states, route-id-aware `react-hook-form` hydration, and sectioned layout (subscription, logo upload, core info, address, discovery/delivery, metrics, opening windows, expandable credentials). While the profile query is pending, **`loadingSlot`** skeletons mirror the same DOM structure as the loaded core section (header, logo row, two name fields, seven-cell grid). A successful save triggers backend **`BUSINESS_PROFILE_UPDATED`**: management staff get persisted **in-app** notifications and **email** (when enabled), independent of the tenant UI toast; the client sends **`X-Idempotency-Key`** / **`X-Correlation-Id`** on PATCH (via **`frontend/src/services/business/businessProfileApi.ts`**, re-exported from the **`businessService`** barrel) so backend dispatch logs align with one logical save.
 
 ---
 
 ## 12. Tenant registration (business)
 
-- **`BusinessRegisterPage`** builds **`FormData`** for **`POST /api/v1/business`** via **`createBusiness`** in **`businessService.ts`**.
-- `businessService.ts` exposes tenant profile I/O (`getBusinessById`, `updateBusinessProfile`) with typed errors, operation ids on save, and headers that correlate with backend `BUSINESS_PROFILE_UPDATED` dispatch after PATCH.
+- **`BusinessRegisterPage`** builds **`FormData`** for **`POST /api/v1/business`** via **`createBusiness`** from **`@/services/business/businessService`** (barrel under **`frontend/src/services/business/`**).
+- The **`businessService.ts`** barrel in that folder re-exports tenant profile I/O (`getBusinessById`, `updateBusinessProfile`, React Query hooks, mappers, payload builder) with typed errors, operation ids on save, and headers that correlate with backend `BUSINESS_PROFILE_UPDATED` dispatch after PATCH. Module layout and data flow are documented in **`frontend/src/services/business/README.md`**.
 - Axios must **not** force `Content-Type` for multipart (transform strips it so the browser sets boundary).
 - On success: **`setAccessToken`**, **`dispatch(AUTH_SUCCESS, user)`**, **`navigate(getPostLoginDestination(user))`** → **`/business/:id/dashboard`**.
 
@@ -354,7 +354,7 @@ Toggle only switches **marketing** URLs; it does not log anyone in.
 | Schedule math | `frontend/src/lib/employeeModeSchedule.ts` |
 | Axios client | `frontend/src/services/http.ts` |
 | Query client / keys | `frontend/src/services/queryClient.ts`, `frontend/src/services/queryKeys.ts` |
-| Business signup API | `frontend/src/services/businessService.ts` |
+| Business profile / signup services | `frontend/src/services/business/` (barrel `businessService.ts`; see `README.md` there) |
 | Tenant address settings + OSM map preview | `frontend/src/pages/business/BusinessAddressSettingsPage.tsx`, `frontend/src/components/BusinessAddressLocationMap.tsx`, `frontend/src/hooks/useBusinessProfileSettingsController.ts` |
 | Auth form examples (RHF + Zod colocated) | `LoginPage.tsx`, `SignUpPage.tsx`, `BusinessRegisterPage.tsx` |
 | Shared field error line | `frontend/src/components/FieldError.tsx` |
@@ -371,4 +371,4 @@ Toggle only switches **marketing** URLs; it does not log anyone in.
 
 When you change routes, guards, or auth flows, update **this file** and the **user-flow** / **strategy** docs as needed so reviewers and contributors see one story.
 
-Import policy note: use direct module imports (for example `@/auth/api`, `@/auth/store/AuthContext`, `@/context/AuthModeContext`, `@/services/businessService`) and avoid `index.ts` barrel imports.
+Import policy note: use direct module imports (for example `@/auth/api`, `@/auth/store/AuthContext`, `@/context/AuthModeContext`, `@/services/business/businessService`) and avoid `index.ts` barrel imports.

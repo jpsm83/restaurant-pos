@@ -13,16 +13,20 @@ import { toast } from "sonner";
 import { logout, setAccessToken } from "@/auth/api";
 import { useAuth } from "@/auth/store/AuthContext";
 import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
+import { useQuery } from "@tanstack/react-query";
 import type { UseMutationResult, UseQueryResult } from "@tanstack/react-query";
 import {
   businessDtoToFormValues,
+  fetchManagementContactOptions,
   formValuesToUpdatePayload,
   type BusinessProfileDto,
   type BusinessProfileFormValues,
+  type ManagementContactOption,
   type UpdateBusinessProfileSuccess,
   useBusinessProfileQuery,
   useUpdateBusinessProfileMutation,
-} from "@/services/businessService";
+} from "@/services/business/businessService";
+import { queryKeys } from "@/services/queryKeys";
 
 /** RHF defaults for business profile PATCH; must stay aligned with `businessDtoToFormValues` shape. */
 const EMPTY_PROFILE_FORM_VALUES: BusinessProfileFormValues = {
@@ -50,7 +54,7 @@ const EMPTY_PROFILE_FORM_VALUES: BusinessProfileFormValues = {
     region: "",
   },
   contactPerson: "",
-  cuisineType: "",
+  cuisineType: [],
   categories: [],
   acceptsDelivery: false,
   deliveryRadius: null,
@@ -116,6 +120,7 @@ export type BusinessProfileSettingsReady = {
   imagePreviewUrl: string | null;
   imageUrl: string;
   imageFile: File | null;
+  managementContactRows: ManagementContactOption[];
   unsavedChangesGuard: ReturnType<typeof useUnsavedChangesGuard>;
   navigationBypassAfterSave: boolean;
   onFormChangeCapture: () => void;
@@ -149,6 +154,24 @@ export function useBusinessProfileSettingsController(): BusinessProfileSettingsC
     canLoadProfile,
   );
   const updateMutation = useUpdateBusinessProfileMutation();
+  const managementContactsQuery = useQuery({
+    queryKey: businessId
+      ? queryKeys.employees.managementContacts(businessId)
+      : ["employees", "managementContacts", "pending"],
+    queryFn: ({ signal }) =>
+      fetchManagementContactOptions(businessId ?? "", signal),
+    enabled: Boolean(businessId && canLoadProfile),
+    // Keep stable shape while loading so select rendering doesn't thrash.
+    initialData: [] as ManagementContactOption[],
+  });
+
+  const profileFormValues = useMemo(
+    () =>
+      profileQuery.data
+        ? businessDtoToFormValues(profileQuery.data)
+        : undefined,
+    [profileQuery.data],
+  );
 
   const {
     register,
@@ -158,7 +181,10 @@ export function useBusinessProfileSettingsController(): BusinessProfileSettingsC
     handleSubmit,
     formState: { isDirty },
   } = useForm<BusinessProfileFormValues>({
-    defaultValues: EMPTY_PROFILE_FORM_VALUES,
+    // RHF uses `defaultValues` for the initial snapshot (`defaultValues || values`); keep it aligned with the
+    // loaded profile so Radix Select never mounts with `currencyTrade: ""` and flips `isDirty` before `values` syncs.
+    defaultValues: profileFormValues ?? EMPTY_PROFILE_FORM_VALUES,
+    ...(profileFormValues ? { values: profileFormValues } : {}),
   });
 
   const unsavedChangesGuard = useUnsavedChangesGuard({
@@ -169,15 +195,22 @@ export function useBusinessProfileSettingsController(): BusinessProfileSettingsC
 
   const imageUrl = useWatch({ control, name: "imageUrl" });
   const imageFile = useWatch({ control, name: "imageFile" });
+  const contactPersonValue = useWatch({ control, name: "contactPerson" }) ?? "";
   const imagePreviewUrl = useMemo(
     () => (imageFile ? URL.createObjectURL(imageFile) : null),
     [imageFile],
   );
-
-  useEffect(() => {
-    if (!profileQuery.data) return;
-    reset(businessDtoToFormValues(profileQuery.data));
-  }, [profileQuery.data, reset]);
+  const managementContactRows = useMemo(() => {
+    const rows = [...(managementContactsQuery.data ?? [])];
+    const ids = new Set(rows.map((row) => row.employeeId));
+    if (contactPersonValue && !ids.has(contactPersonValue)) {
+      rows.unshift({
+        employeeId: contactPersonValue,
+        displayName: contactPersonValue,
+      });
+    }
+    return rows;
+  }, [managementContactsQuery.data, contactPersonValue]);
 
   useEffect(() => {
     return () => {
@@ -329,6 +362,7 @@ export function useBusinessProfileSettingsController(): BusinessProfileSettingsC
     imagePreviewUrl,
     imageUrl,
     imageFile: imageFile ?? null,
+    managementContactRows,
     unsavedChangesGuard,
     navigationBypassAfterSave,
     onFormChangeCapture,

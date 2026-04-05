@@ -53,8 +53,11 @@ export interface IBusiness {
   subscription: string;
   address: IAddress;
   metrics?: IMetrics;
+  /** Optional primary contact: employee id (hex) chosen from management staff, or legacy free text. */
   contactPerson?: string;
-  cuisineType?: string;
+  /** Discovery cuisines; persisted as string array (legacy single string normalized on read). */
+  cuisineType?: string[];
+  /** Discovery food subcategories; labels from `foodSubCategoryEnums`. */
   categories?: string[];
   averageRating?: number;
   ratingCount?: number;

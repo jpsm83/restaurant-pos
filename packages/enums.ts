@@ -16,6 +16,34 @@ export const paymentMethodsEnums = ["Cash", "Card", "Crypto", "Other"] as string
 
 export const currenctyEnums = ["USD", "EUR", "CHF", "AUD", "CAD", "GBP", "JPY"] as string[];
 
+/** Discovery filter: one or more cuisines per business (`Business.cuisineType` as string[]). */
+export const cuisineTypeEnums = [
+  "Italian",
+  "Japanese",
+  "Mexican",
+  "American",
+  "French",
+  "Spanish",
+  "Greek",
+  "Thai",
+  "Chinese",
+  "Indian",
+  "Korean",
+  "Vietnamese",
+  "Mediterranean",
+  "Middle Eastern",
+  "Brazilian",
+  "Portuguese",
+  "German",
+  "British",
+  "Fusion",
+  "Caribbean",
+  "African",
+  "Turkish",
+  "Lebanese",
+  "Other",
+] as string[];
+
 export const creditCardEnums = [
   "Visa",
   "Mastercard",

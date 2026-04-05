@@ -29,8 +29,8 @@ function makeBusinessDto(overrides?: Partial<BusinessProfileDto>): BusinessProfi
       region: " Center ",
     },
     contactPerson: " John ",
-    cuisineType: " Italian ",
-    categories: [" Pizza ", "pasta", "PIZZA", ""],
+    cuisineType: ["Italian"],
+    categories: ["Pizza", "Pasta"],
     acceptsDelivery: true,
     deliveryRadius: 5,
     minOrder: 12,
@@ -67,7 +67,8 @@ describe("Business profile schema + mappers", () => {
     expect(formValues.legalName).toBe("Imperium Kitchen LLC");
     expect(formValues.email).toBe("owner@imperium.test");
     expect(formValues.confirmEmail).toBe("owner@imperium.test");
-    expect(formValues.categories).toEqual(["pizza", "pasta"]);
+    expect(formValues.categories).toEqual(["Pizza", "Pasta"]);
+    expect(formValues.cuisineType).toEqual(["Italian"]);
     expect(formValues.address.doorNumber).toBe("2");
     expect(formValues.address.complement).toBe("Floor 1");
     expect(formValues.password).toBe("");
@@ -94,7 +95,10 @@ describe("Business profile schema + mappers", () => {
     expect(address.complement).toBe("Floor 1");
 
     const categories = JSON.parse(String(payload.get("categories"))) as string[];
-    expect(categories).toEqual(["pizza", "pasta"]);
+    expect(categories).toEqual(["Pizza", "Pasta"]);
+    const cuisinePayload = JSON.parse(String(payload.get("cuisineType"))) as string[];
+    expect(cuisinePayload).toEqual(["Italian"]);
+    expect(payload.get("contactPerson")).toBe("John");
     // Existing cloudinary URL is server-managed and must not be sent as a manual text field.
     expect(payload.get("imageUrl")).toBeNull();
   });

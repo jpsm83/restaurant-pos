@@ -10,6 +10,47 @@
     "title": "Business profile",
     "notBuiltYet": "This page is not built yet."
   },
+  "profileSettings": {
+    "cardDescription": "Update your public-facing business identity, logo, and how customers discover you.",
+    "logo": {
+      "sectionTitle": "Logo",
+      "sectionDescription": "Shown in discovery, receipts, and other customer-facing surfaces.",
+      "uploadLabel": "Upload",
+      "logoAlt": "Business logo",
+      "hintSelectedFile": "Selected file: {{fileName}}",
+      "hintCurrentCloud": "Current logo comes from the last saved cloud image URL.",
+      "hintDefault": "Hover or tap the logo area and upload an image file."
+    },
+    "selects": {
+      "currencyPlaceholder": "Select currency",
+      "contactNone": "No primary contact",
+      "contactPlaceholder": "Select a manager",
+      "multiEmpty": "Select…",
+      "multiSummary": "{{count}} selected",
+      "noneSelected": "None selected"
+    },
+    "core": {
+      "sectionTitle": "Core business info",
+      "sectionDescription": "Legal and contact details used for billing, support, and account records.",
+      "fields": {
+        "tradeName": "Trade name",
+        "legalName": "Legal name",
+        "email": "Business email",
+        "phoneNumber": "Phone number",
+        "taxNumber": "Tax number",
+        "currencyTrade": "Currency",
+        "contactPerson": "Contact person"
+      }
+    },
+    "discovery": {
+      "sectionTitle": "Discovery",
+      "sectionDescription": "Help customers find you when browsing or searching.",
+      "fields": {
+        "cuisineType": "Cuisine type",
+        "categories": "Categories (comma separated)"
+      }
+    }
+  },
   "advancedTable": {
     "section": {
       "title": "Advanced table integration target",
@@ -95,6 +136,31 @@
     "body": {
       "emptyMessage": "No data found",
       "emptySubMessage": "Try adjusting your filters"
+    }
+  },
+  "addressMap": {
+    "geoNotFound": "Could not find that address on the map.",
+    "geoFailed": "Geocoding request failed. Try again later.",
+    "loadingAriaLabel": "Loading map location",
+    "shortQueryHint": "Add a bit more address detail to locate on the map.",
+    "footerNotice": "Map data © OpenStreetMap contributors. Geocoding uses the public Nominatim service—use sparingly in production or host your own instance."
+  },
+  "addressSettings": {
+    "cardDescription": "Postal and location details used on records and discovery.",
+    "sectionTitle": "Address",
+    "sectionDescription": "Postal and location details used on records and delivery orders.",
+    "locationPreview": "Location preview",
+    "fields": {
+      "country": "Country",
+      "state": "State",
+      "region": "Region",
+      "city": "City",
+      "postCode": "Post code",
+      "street": "Street",
+      "buildingNumber": "Building number",
+      "doorNumber": "Door number",
+      "complement": "Complement",
+      "complementPlaceholder": "Floor, wing, unit details…"
     }
   }
 }

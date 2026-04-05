@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import L from "leaflet";
 import { MapContainer, Marker, TileLayer, useMap } from "react-leaflet";
 import { geocoders } from "leaflet-control-geocoder";
@@ -6,13 +6,16 @@ import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
 import "leaflet/dist/leaflet.css";
+import type { TFunction } from "i18next";
+import { useTranslation } from "react-i18next";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useDebounce } from "@/hooks/useDebounce";
 import { cn } from "@/lib/utils";
 
 const DEFAULT_CENTER: L.LatLngTuple = [20, 0];
 const DEFAULT_ZOOM = 2;
 const PIN_ZOOM = 16;
-/** After the first geocode for this mount, wait this long before re-querying when the address string changes. */
+/** After the first geocode run for this mount, wait this long before the next one when `query` changes. */
 const GEOCODE_DEBOUNCE_MS = 3000;
 /** Nominatim needs a minimal string; short saved values (e.g. city + country) still geocode. */
 const MIN_QUERY_LEN = 3;
@@ -44,6 +47,64 @@ function MapViewSync({
   return null;
 }
 
+type GeocodeMapState = {
+  position: L.LatLngTuple | null;
+  geoHint: string | null;
+  /** True while `query` is geocodable and we have not finished geocoding it yet (debounce + request). */
+  isMapLoading: boolean;
+};
+
+/** Nominatim geocode + map UI state for a trimmed address string. */
+function useGeocodeMapState(
+  query: string,
+  t: TFunction<"business">,
+): GeocodeMapState {
+  const [position, setPosition] = useState<L.LatLngTuple | null>(null);
+  const [geoHint, setGeoHint] = useState<string | null>(null);
+  const [settledQuery, setSettledQuery] = useState<string | null>(null);
+
+  const isMapLoading = query.length >= MIN_QUERY_LEN && query !== settledQuery;
+
+  useDebounce(
+    [query],
+    ({ cancelled }) => {
+      void nominatimGeocoder.geocode(query).then(
+        (results) => {
+          if (cancelled) return;
+          const first = results[0];
+          if (first?.center) {
+            const { lat, lng } = first.center;
+            setPosition([lat, lng]);
+            setGeoHint(null);
+          } else {
+            setPosition(null);
+            setGeoHint(t("addressMap.geoNotFound"));
+          }
+          setSettledQuery(query);
+        },
+        () => {
+          if (cancelled) return;
+          setPosition(null);
+          setGeoHint(t("addressMap.geoFailed"));
+          setSettledQuery(query);
+        },
+      );
+    },
+    {
+      debounceMs: GEOCODE_DEBOUNCE_MS,
+      leadingDelayMs: 0,
+      active: query.length >= MIN_QUERY_LEN,
+      onInactive: () => {
+        setPosition(null);
+        setGeoHint(null);
+        setSettledQuery(null);
+      },
+    },
+  );
+
+  return { position, geoHint, isMapLoading };
+}
+
 type MapBodyProps = {
   addressQuery: string;
   className?: string;
@@ -55,73 +116,9 @@ function AddressPreviewMapBody({
   className,
   mapContainerClassName,
 }: MapBodyProps) {
+  const { t } = useTranslation("business");
   const query = addressQuery.trim();
-  const [position, setPosition] = useState<L.LatLngTuple | null>(null);
-  const [geoHint, setGeoHint] = useState<string | null>(null);
-  /** Last query we finished geocoding (success, empty result, or error); `null` if never settled or cleared. */
-  const [settledQuery, setSettledQuery] = useState<string | null>(null);
-
-  const isMapLoading =
-    query.length >= MIN_QUERY_LEN && query !== settledQuery;
-  /**
-   * First time we schedule a geocode for a non-empty query (page load / saved address), run immediately.
-   * Any later change to `addressQuery` is debounced. Ref is consumed when scheduling, not when the request finishes,
-   * so edits before the first response still debounce correctly.
-   */
-  const initialGeocodePassRef = useRef(true);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    if (query.length < MIN_QUERY_LEN) {
-      const timer = window.setTimeout(() => {
-        if (cancelled) return;
-        setPosition(null);
-        setGeoHint(null);
-        setSettledQuery(null);
-      }, 0);
-      return () => {
-        cancelled = true;
-        window.clearTimeout(timer);
-      };
-    }
-
-    const useDebounce = !initialGeocodePassRef.current;
-    if (initialGeocodePassRef.current) {
-      initialGeocodePassRef.current = false;
-    }
-    const delay = useDebounce ? GEOCODE_DEBOUNCE_MS : 0;
-
-    const timer = window.setTimeout(() => {
-      if (cancelled) return;
-      void nominatimGeocoder.geocode(query).then(
-        (results) => {
-          if (cancelled) return;
-          const first = results[0];
-          if (first?.center) {
-            const { lat, lng } = first.center;
-            setPosition([lat, lng]);
-            setGeoHint(null);
-          } else {
-            setPosition(null);
-            setGeoHint("Could not find that address on the map.");
-          }
-          setSettledQuery(query);
-        },
-        () => {
-          if (cancelled) return;
-          setPosition(null);
-          setGeoHint("Geocoding request failed. Try again later.");
-          setSettledQuery(query);
-        },
-      );
-    }, delay);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, [query]);
+  const { position, geoHint, isMapLoading } = useGeocodeMapState(query, t);
 
   const center: L.LatLngTuple = position ?? DEFAULT_CENTER;
   const zoom = position ? PIN_ZOOM : DEFAULT_ZOOM;
@@ -129,11 +126,7 @@ function AddressPreviewMapBody({
   return (
     <div className={cn("flex min-h-0 flex-col gap-2", className)}>
       {/* Clip Leaflet panes (high z-index); without this, tiles can paint over the form action bar. */}
-      <div
-        className={cn(
-          "relative isolate z-0 h-64 w-full min-h-0 overflow-hidden rounded-lg border border-neutral-200 md:h-[min(50vh,22rem)] md:min-h-72",
-        )}
-      >
+      <div className="relative isolate z-0 h-64 w-full min-h-0 overflow-hidden rounded-lg border border-neutral-200 md:h-[min(50vh,22rem)] md:min-h-72">
         <MapContainer
           center={center}
           zoom={zoom}
@@ -158,7 +151,7 @@ function AddressPreviewMapBody({
             className="pointer-events-none absolute inset-0 z-2000 flex bg-white/75"
             aria-busy="true"
             aria-live="polite"
-            aria-label="Loading map location"
+            aria-label={t("addressMap.loadingAriaLabel")}
             role="status"
           >
             <Skeleton className="size-full rounded-lg border-0 shadow-none ring-0" />
@@ -167,7 +160,7 @@ function AddressPreviewMapBody({
       </div>
       {query.length > 0 && query.length < MIN_QUERY_LEN ? (
         <p className="text-xs text-neutral-500">
-          Add a bit more address detail to locate on the map.
+          {t("addressMap.shortQueryHint")}
         </p>
       ) : null}
       {geoHint ? (
@@ -176,8 +169,7 @@ function AddressPreviewMapBody({
         </p>
       ) : null}
       <p className="text-[11px] leading-snug text-neutral-400">
-        Map data © OpenStreetMap contributors. Geocoding uses the public Nominatim
-        service—use sparingly in production or host your own instance.
+        {t("addressMap.footerNotice")}
       </p>
     </div>
   );
@@ -193,6 +185,11 @@ export type BusinessAddressLocationMapProps = {
 
 /**
  * Geocodes `addressQuery` with Nominatim (via leaflet-control-geocoder) and shows a pin on an OSM map.
+ *
+ * A plain function component is enough here: `useCallback`/`useMemo` are for stabilizing values inside
+ * a component or its parent, not a substitute for `memo`. If a parent re-renders often with the same
+ * props and the Leaflet subtree becomes costly, wrap this export in `memo()` or have the parent pass
+ * stable props (e.g. `useCallback` only when passing function props).
  */
 export function BusinessAddressLocationMap({
   addressQuery,

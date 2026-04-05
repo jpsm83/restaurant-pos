@@ -28,13 +28,13 @@
 
 12. **Test every touched file before progressing** — Every file created or updated must have relevant tests executed and passing before moving to the next task. If automated coverage is missing for a touched area, add/update tests or explicitly document the temporary gap and mitigation.
 
-13. **Loading UI — centralized skeleton** — Use the shadcn **`Skeleton`** component at `frontend/src/components/ui/skeleton.tsx` as the **single source** for loading-placeholder styling (pulse + fill). Do not recreate one-off pulsing gray boxes. **App-wide** session bootstrap and lazy-route suspense use **`AppPendingShell`**, which composes only that `Skeleton`. **Per-page** loading (e.g. React Query pending) should compose the same `Skeleton` into layouts that mirror the real page structure. Split business settings routes use **`BusinessProfileSettingsFormShell`** with optional **`loadingSlot`** (and shared **`BusinessProfileSettingsLoadingCard`**) so each settings page owns its loading shape while the shell keeps query/error/ready orchestration. **Direction:** every route should show an appropriate skeleton while session or data is loading; roll out incrementally where gaps remain.
+13. **Loading UI — centralized skeleton** — Use the shadcn **`Skeleton`** component at `frontend/src/components/ui/skeleton.tsx` as the **single source** for loading-placeholder styling (pulse + fill). Do not recreate one-off pulsing gray boxes. **App-wide** session bootstrap and lazy-route suspense use **`AppPendingShell`**, which composes only that `Skeleton`. **Per-page** loading (e.g. React Query pending) should compose the same `Skeleton` into layouts that mirror the real page structure. Split business settings routes use **`BusinessProfileSettingsFormShell`** with optional **`loadingSlot`** (and shared **`BusinessProfileSettingsLoadingCard`**) so each settings page owns its loading shape while the shell keeps query/error/ready orchestration. Concretely, **`BusinessProfileSettingsPage`** and **`BusinessAddressSettingsPage`** align their skeleton markup with the same **`section` / `header` / grid / map column** structure as their loaded content so layout does not jump when data arrives. **Direction:** every route should show an appropriate skeleton while session or data is loading; roll out incrementally where gaps remain.
 
 ---
 
 ## Source of truth — Restaurant POS context
 
-This file (`documentation/context.md`) is the **canonical entry point** and **bridge document** for how the Restaurant POS is supposed to work. Treat it as the **first place to read** for product intent and how subsystems connect; then open the focused docs below (or the code-adjacent READMEs) for depth.
+This file (`documentation/context.md`) is the **canonical entry point** and **bridge document** for how the Restaurant POS is supposed to work. Treat it as the **first place to read** for product intent and how subsystems connect; then open the focused docs below (or the code-adjacent READMEs) for depth. For the **tenant business profile/register frontend layer** (multipart PATCH, React Query, DTO ↔ form mappers), use **[`frontend/src/services/business/README.md`](../frontend/src/services/business/README.md)**.
 
 ### Companion documentation (reference map)
 
@@ -52,16 +52,18 @@ These files sit alongside `context.md` under `documentation/`. They are the **au
 | [`frontend-authentication-and-navigation.md`](./frontend-authentication-and-navigation.md) | **Frontend (implemented)**: detailed **auth + navigation** behavior in `frontend/src` — session types, `getPostLoginDestination`, guards, `auth_mode`, schedule countdown, route map, and file index. |
 | [`frontend-i18n.md`](./frontend-i18n.md) | **Frontend i18n (implemented)**: `i18next` + `react-i18next` in `frontend/src/i18n`, **`en` + `es`** namespaces, how to add strings, `renderWithI18n`, language persistence, navbar switcher, **`npm run i18n:check-parity`**. |
 | [`frontend-third-party-libraries.md`](./frontend-third-party-libraries.md) | **Frontend npm stack**: major dependencies by layer (routing, Query, RHF+Zod forms, Radix/shadcn UI, i18n, etc.) and **conventions for adding packages**. |
+| [`../frontend/src/services/business/README.md`](../frontend/src/services/business/README.md) | **Tenant business services (frontend)**: HTTP + React Query (`businessProfileApi`), DTO ↔ form mappers, multipart `FormData` payload, Zod schema; import barrel **`businessService.ts`**. |
 | [`i18n-implementation-plan.md`](./i18n-implementation-plan.md) | **Frontend i18n status/backlog**: completed locale work (Mar 2026), optional next steps (`Intl`, i18next-parser) — companion to `frontend-i18n.md`. |
 | [`i18n-locale-coverage-todo.md`](./i18n-locale-coverage-todo.md) | **Presentation × namespace inventory** and completed blocks 0–9 audit (wiring + Spanish for all listed TSX). |
 
-**Reading order suggestion:** skim `context.md` (this file) → `user-flow.md` for the story → [`authentication-and-session.md`](./authentication-and-session.md) when wiring login, cookies, or guards → [`frontend-i18n.md`](./frontend-i18n.md) when changing **web UI copy or locales** → [`frontend-third-party-libraries.md`](./frontend-third-party-libraries.md) when adding **frontend npm dependencies** or **forms (RHF + Zod)** → `sales-point-sales-instance-orders.md` for table/order mechanics → `daily-sales-report-feature.md` when working on reporting → `business-metrics-formulas.md` when interpreting or changing KPI outputs.
+**Reading order suggestion:** skim `context.md` (this file) → `user-flow.md` for the story → [`authentication-and-session.md`](./authentication-and-session.md) when wiring login, cookies, or guards → [`frontend-i18n.md`](./frontend-i18n.md) when changing **web UI copy or locales** → [`frontend-third-party-libraries.md`](./frontend-third-party-libraries.md) when adding **frontend npm dependencies** or **forms (RHF + Zod)** → [`../frontend/src/services/business/README.md`](../frontend/src/services/business/README.md) when changing **tenant business profile, registration multipart, or profile PATCH client layer** → `sales-point-sales-instance-orders.md` for table/order mechanics → `daily-sales-report-feature.md` when working on reporting → `business-metrics-formulas.md` when interpreting or changing KPI outputs.
 
 ### Entry point for AI-assisted coding
 
 - Obey **[Critical — engineering rules](#critical-engineering-rules)** at the top of this file **before** proposing or applying code changes.
 - Start here for **product shape** and **cross-cutting rules**.
 - Use the **companion docs** above for **how the app is supposed to work** in detail (users, auth sessions, POS/session model, DSR, metrics).
+- For **tenant business profile/register** client code paths, see **[`frontend/src/services/business/README.md`](../frontend/src/services/business/README.md)** (module map, `FormData` contract, hooks, errors).
 - Use the **READMEs** listed later for **implementation** next to code (API domains, models, validation, transactions).
 - As the app grows, **every major area should have its own README** (or documentation file), and this file should **link** to it.
 
@@ -94,7 +96,7 @@ Multipart **business** and **user** profile routes validate address JSON with **
 
 #### Business address settings — location preview (map)
 
-The tenant **postal address** editor lives at **`/business/:businessId/settings/address`** (**`BusinessAddressSettingsPage`** in `frontend/src/pages/business/BusinessAddressSettingsPage.tsx`). It uses the same split-settings shell as other business profile slices (**`BusinessProfileSettingsFormShell`** + **`useBusinessProfileSettingsController`**) so address fields are part of the full profile form and save with **`PATCH /api/v1/business/:businessId`**.
+The tenant **postal address** editor lives at **`/business/:businessId/settings/address`** (**`BusinessAddressSettingsPage`** in `frontend/src/pages/business/BusinessAddressSettingsPage.tsx`). It uses the same split-settings shell as other business profile slices (**`BusinessProfileSettingsFormShell`** + **`useBusinessProfileSettingsController`**) so address fields are part of the full profile form and save with **`PATCH /api/v1/business/:businessId`**. Its **`loadingSlot`** mirrors the loaded layout: **`section`** + **`header`**, address field grid with the same column spans as street/complement full-width rows, and the map column (**`h3`**-style title + map placeholder).
 
 - **Location preview:** **`BusinessAddressLocationMap`** (`frontend/src/components/BusinessAddressLocationMap.tsx`) shows an **OpenStreetMap** tile layer and geocodes a free-text query with **Nominatim** via **`leaflet-control-geocoder`** (public service; respect OSM usage policy in production).
 - **Query string:** Built locally with **`buildAddressGeocodeQuery`** on the address page: **street-first** parts joined with commas (`street`, `buildingNumber`, `city`, `state`, `postCode`, `region`, `country`). **`doorNumber`** and **`complement`** are **omitted** from the geocode string only (they remain on the saved profile); unit-level text often prevents Nominatim from matching.
@@ -198,10 +200,12 @@ Core environment controls:
 
 ## READMEs (subsystem documentation)
 
-At the moment, there are **20 READMEs** in the app. This list will grow over time and should be kept up to date.
+At the moment, there are **21 READMEs** in the app. This list will grow over time and should be kept up to date.
 
 - **Business domain (tenant root, onboarding, cascade delete, and app-wide coupling)**  
   - `app/api/v1/business/README.md`
+- **Business profile & registration (web client — services next to `frontend/src`)**  
+  - [`frontend/src/services/business/README.md`](../frontend/src/services/business/README.md) — HTTP + TanStack Query, DTO ↔ form mappers, multipart `FormData` for create/PATCH; pairs with `app/api/v1/business` and [`frontend-authentication-and-navigation.md`](./frontend-authentication-and-navigation.md).
 - **Suppliers (vendors per business, supply chain, one-time purchase, and link to supplier goods / purchases / inventory)**  
   - `app/api/v1/suppliers/README.md`
 - **Supplier goods (catalog of products per supplier, inventory sync, business-good ingredients, purchases, images)**  
@@ -247,7 +251,7 @@ At the moment, there are **20 READMEs** in the app. This list will grow over tim
 
 When you add a new subsystem or make a meaningful change to an existing one:
 
-- Create or update the subsystem’s README close to the code (example: `app/api/v1/<domain>/README.md`).
+- Create or update the subsystem’s README close to the code (example: `app/api/v1/<domain>/README.md`, or a focused module README under `frontend/src/...` such as [`frontend/src/services/business/README.md`](../frontend/src/services/business/README.md)).
 - Add it to the list above.
 - If the change affects **user-visible flow**, **authentication or session behavior**, **POS/session/order behavior**, **DSR**, or **reporting formulas**, update the matching file under `documentation/` ([`user-flow.md`](./user-flow.md), [`authentication-and-session.md`](./authentication-and-session.md), [`frontend-authentication-and-navigation.md`](./frontend-authentication-and-navigation.md) for **frontend** route/guard/auth changes, [`sales-point-sales-instance-orders.md`](./sales-point-sales-instance-orders.md), [`daily-sales-report-feature.md`](./daily-sales-report-feature.md), [`business-metrics-formulas.md`](./business-metrics-formulas.md)) and, if needed, one line in the **Companion documentation** table at the top of this file.
 - Keep READMEs and companion docs focused on **flow**, **boundaries**, **patterns**, and **why it matters**, not just endpoint lists.

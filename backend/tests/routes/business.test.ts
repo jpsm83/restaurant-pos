@@ -76,7 +76,7 @@ describe("Business Routes", () => {
           taxNumber: "TAX-IT-001",
           currencyTrade: "USD",
           address: validAddress,
-          cuisineType: "Italian",
+          cuisineType: ["Italian"],
         },
         {
           tradeName: "Mexican Place",
@@ -87,7 +87,7 @@ describe("Business Routes", () => {
           taxNumber: "TAX-MX-001",
           currencyTrade: "USD",
           address: validAddress,
-          cuisineType: "Mexican",
+          cuisineType: ["Mexican"],
         },
       ]);
 
@@ -99,7 +99,7 @@ describe("Business Routes", () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.length).toBe(1);
-      expect(body[0].cuisineType).toBe("Italian");
+      expect(body[0].cuisineType).toEqual(["Italian"]);
     });
 
     it("filters by name (tradeName)", async () => {

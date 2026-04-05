@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { currenctyEnums, subscriptionEnums } from "@packages/enums.ts";
+import {
+  currenctyEnums,
+  cuisineTypeEnums,
+  foodSubCategoryEnums,
+  subscriptionEnums,
+} from "@packages/enums.ts";
 import emailRegex from "@packages/utils/emailRegex.ts";
 import {
   isValidPassword,
@@ -38,6 +43,8 @@ const defaultMessages: BusinessProfileSchemaMessages = {
 
 const subscriptionTuple = subscriptionEnums as [string, ...string[]];
 const currencyTuple = currenctyEnums as [string, ...string[]];
+const foodSubCategoryTuple = foodSubCategoryEnums as [string, ...string[]];
+const cuisineTypeTuple = cuisineTypeEnums as [string, ...string[]];
 
 function toMinutes(hhmm: string): number {
   const [hours, minutes] = hhmm.split(":").map(Number);
@@ -91,8 +98,8 @@ export function buildBusinessProfileSchema(
         region: z.string(),
       }),
       contactPerson: z.string(),
-      cuisineType: z.string(),
-      categories: z.array(z.string().trim().min(1, m.required)),
+      cuisineType: z.array(z.enum(cuisineTypeTuple)),
+      categories: z.array(z.enum(foodSubCategoryTuple)),
       acceptsDelivery: z.boolean(),
       deliveryRadius: z
         .number({ error: m.invalidNonNegative })

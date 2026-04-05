@@ -14,7 +14,7 @@ vi.mock("@/auth/api", () => ({
   setAccessToken: (token: string | null) => mockSetAccessToken(token),
 }));
 
-vi.mock("./http", () => ({
+vi.mock("../http", () => ({
   http: {
     post: (...args: unknown[]) => mockPost(...args),
     patch: (...args: unknown[]) => mockPatch(...args),

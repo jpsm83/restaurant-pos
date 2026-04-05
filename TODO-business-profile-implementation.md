@@ -4,6 +4,8 @@
 
 Turn `frontend/src/pages/business/BusinessProfileSettingsPage.tsx` (**route:** **`/business/:businessId/settings/profile`**, lazy-loaded from **`appRoutes.tsx`**) into a full editable form for business data, aligned with `backend/src/models/business.ts`, with:
 
+> **Where the frontend services live:** HTTP, React Query hooks, DTO ↔ form mappers, multipart payload builder, and Zod schema are under **`frontend/src/services/business/`** (import the public barrel as **`@/services/business/businessService`**). See **[`frontend/src/services/business/README.md`](frontend/src/services/business/README.md)** for how those modules fit together.
+
 1. Save button at the bottom.
 2. Unsaved-changes navigation warning popup (reusable component/hook).
 3. On successful save: frontend toast + backend email + in-app notifications to management employees.
@@ -142,7 +144,7 @@ These standards are always active and must be applied before and during every ch
   - [x] Add `formValuesToUpdatePayload` mapper with JSON stringification for nested fields.
   - [x] Keep normalization deterministic (trim strings, numeric conversion rules, empty-to-undefined policy).
   - Implementation notes:
-    - Added typed form model and nested supporting types in `frontend/src/services/businessService.ts`.
+    - Added typed form model and nested supporting types in `frontend/src/services/business/businessService.ts` (barrel).
     - Added deterministic mapper `businessDtoToFormValues(dto)` with explicit defaults (including metrics defaults and normalized array fields).
     - Added deterministic mapper `formValuesToUpdatePayload(values)` that emits backend-compatible multipart payload and stringifies nested JSON fields.
     - Mapping helpers normalize trims, optional text handling, numeric coercion/defaults, and category normalization consistently.
@@ -156,16 +158,16 @@ These standards are always active and must be applied before and during every ch
     - [x] time windows/day-of-week validity
   - [x] Add unit tests for mappers + schema.
   - Implementation notes:
-    - Added `frontend/src/services/businessProfileFormSchema.ts` with `buildBusinessProfileSchema(...)`.
+    - Added `frontend/src/services/business/businessProfileFormSchema.ts` with `buildBusinessProfileSchema(...)`.
     - Schema enforces backend-parity required fields and enums (`subscription`, `currencyTrade`), non-negative numeric constraints, and structured nested objects.
     - Credentials validations included: confirm email match, optional password change with confirm password match, and password policy check.
     - Time/dow validations included for opening hours and delivery windows (`HH:MM`, dayOfWeek 0..6, closeTime after openTime).
-    - Added mapper+schema unit tests in `frontend/src/services/businessProfileFormSchema.test.ts`.
+    - Added mapper+schema unit tests in `frontend/src/services/business/businessProfileFormSchema.test.ts`.
 
 - [x] **1.4 Rule compliance gate**
   - [x] Validate consistency with existing app form patterns and TanStack Query best practices.
   - Compliance notes:
-    - Form foundation matches project standards: `react-hook-form` + `zod` schema builder pattern and backend-parity validation constraints are in place **in `businessProfileFormSchema.ts` (unit-tested)**.
+    - Form foundation matches project standards: `react-hook-form` + `zod` schema builder pattern and backend-parity validation constraints are in place **in `frontend/src/services/business/businessProfileFormSchema.ts` (unit-tested)**.
     - **Source audit:** `BusinessProfileSettingsPage.tsx` currently uses `useForm({ defaultValues })` **without** `zodResolver(buildBusinessProfileSchema(...))`. Client-side submit blocking for schema rules is therefore **not** active on the page; invalid shapes are rejected primarily by the **backend** and surfaced via `BusinessServiceError` / `Alert` (see Phase 6.3). Wiring the resolver into the page remains optional UX hardening.
     - Data access follows TanStack usage already established in the app: stable query keys, dedicated query/mutation hooks, and side effects isolated to service layer.
     - Multipart handling is consistent and robust (no forced JSON `Content-Type` for `FormData` requests).
@@ -202,7 +204,7 @@ These standards are always active and must be applied before and during every ch
     - Added shared service error utility `frontend/src/services/serviceErrors.ts` with:
       - `ServiceRequestError`
       - `toServiceRequestError(...)` status-aware normalization for axios/network errors
-    - Refactored `businessService.ts` to use shared normalization while keeping `BusinessServiceError` as feature-specific error type.
+    - Refactored the business service layer (`frontend/src/services/business/businessProfileApi.ts` + barrel) to use shared normalization while keeping `BusinessServiceError` as feature-specific error type.
     - Refactored `authMode.ts` and `schedulesService.ts` to use shared error normalization and deterministic status-message mapping.
     - Added stable fallback keys in `queryKeys.ts` (`business.detailPending`, `schedules.employeeDayPending`) and replaced ad-hoc inline pending keys in service hooks.
 
@@ -244,9 +246,9 @@ These standards are always active and must be applied before and during every ch
     - [x] include correlation/idempotency identifiers for backend dispatch debugging
   - [x] Add a short runbook note for busy-time triage (what to inspect first).
   - Implementation notes:
-    - Added lightweight structured diagnostics events in `frontend/src/services/businessService.ts` for profile fetch/save outcomes (`success`, `error`, `coalesced`) with `businessId`, `durationMs`, `status`, and `operationId` context.
+    - Added lightweight structured diagnostics events in `frontend/src/services/business/businessProfileApi.ts` for profile fetch/save outcomes (`success`, `error`, `coalesced`) with `businessId`, `durationMs`, `status`, and `operationId` context.
     - Save diagnostics and request headers now share the same operation identifier (`X-Idempotency-Key` + `X-Correlation-Id`) for deterministic backend dispatch tracing.
-    - Added/updated tests in `frontend/src/services/businessService.test.ts` validating idempotency headers and single-flight request coalescing behavior under concurrent save attempts.
+    - Added/updated tests in `frontend/src/services/business/businessService.test.ts` validating idempotency headers and single-flight request coalescing behavior under concurrent save attempts.
     - Added runbook guidance in `documentation/frontend-third-party-libraries.md` (section `4.3`) covering first-line busy-time triage checks and status-class interpretation.
 
 - [x] **2.6 Rule compliance gate**
@@ -271,6 +273,7 @@ These standards are always active and must be applied before and during every ch
     - Added explicit render states for invalid route id, loading, error (with retry action), and empty/no-data response.
     - Added initial form scaffold fields (trade/legal name, email, phone, tax, currency, country/city) to establish query-to-form wiring before section expansion tasks.
     - Added page tests in `frontend/src/pages/business/BusinessProfileSettingsPage.test.tsx` covering loading/error+retry states and successful default-value hydration.
+    - Loading UI: `loadingSlot` skeleton structure mirrors the loaded core profile section (see `documentation/context.md` §13 and `frontend/src/services/business/README.md`).
 
 - [x] **3.2 Section layout (top-to-bottom as defined)**
   - [x] Subscription card selector at top.
@@ -480,7 +483,7 @@ These standards are always active and must be applied before and during every ch
   - [x] Run lint and type-check for modified files.
   - Implementation / verification notes:
     - **Frontend tests**
-      - Command: `npm run test -- src/pages/business/BusinessProfileSettingsPage.test.tsx src/hooks/useUnsavedChangesGuard.test.tsx src/components/UnsavedChangesDialog.test.tsx src/services/businessProfileFormSchema.test.ts src/services/businessService.test.ts`
+      - Command: `npm run test -- src/pages/business/BusinessProfileSettingsPage.test.tsx src/hooks/useUnsavedChangesGuard.test.tsx src/components/UnsavedChangesDialog.test.tsx src/services/business/businessProfileFormSchema.test.ts src/services/business/businessService.test.ts`
       - Result: **5 files, 34 tests passed**.
     - **Backend tests**
       - Command: `npm run test -- tests/routes/business.test.ts tests/communications/communicationsCore.test.ts tests/communications/standardizedBehaviors.test.ts tests/integration/communicationsDomainFlows.test.ts`
@@ -488,10 +491,10 @@ These standards are always active and must be applied before and during every ch
     - **Lint**
       - `npm run lint` (whole frontend) currently reports **3 ESLint errors** in unrelated UI/table files (`button.tsx`, `sidebar.tsx`, `TableConfigManager.tsx`) plus a TanStack Table warning in `useEnhancedTable.ts` — **not introduced by the business profile slice**.
       - Scoped lint on profile-related sources/tests:  
-        `npx eslint src/pages/business/BusinessProfileSettingsPage.tsx src/pages/business/BusinessProfileSettingsPage.test.tsx src/services/businessService.ts src/services/businessService.test.ts src/services/businessProfileFormSchema.ts src/services/businessProfileFormSchema.test.ts src/services/http.ts src/services/queryClient.ts src/services/queryKeys.ts src/services/serviceErrors.ts src/hooks/useUnsavedChangesGuard.ts src/hooks/useUnsavedChangesGuard.test.tsx src/components/UnsavedChangesDialog.tsx src/components/UnsavedChangesDialog.test.tsx`  
+        `npx eslint src/pages/business/BusinessProfileSettingsPage.tsx src/pages/business/BusinessProfileSettingsPage.test.tsx src/services/business/businessService.ts src/services/business/businessService.test.ts src/services/business/businessProfileFormSchema.ts src/services/business/businessProfileFormSchema.test.ts src/services/http.ts src/services/queryClient.ts src/services/queryKeys.ts src/services/serviceErrors.ts src/hooks/useUnsavedChangesGuard.ts src/hooks/useUnsavedChangesGuard.test.tsx src/components/UnsavedChangesDialog.tsx src/components/UnsavedChangesDialog.test.tsx`  
         → **clean exit**.
     - **Type-check**
-      - Frontend: `npx tsc -b --noEmit` still fails on **other** tests/modules (e.g. `@/auth` barrel removal in several `*.test.tsx`, `businessService.test.ts` typing). **`BusinessProfileSettingsPage.test.tsx`** fixture was aligned with `IBusinessProfileDto` (optional `deliveryRadius` / `minOrder` — omit instead of `null`) so that file no longer contributes a TS2352 on save.
+      - Frontend: `npx tsc -b --noEmit` still fails on **other** tests/modules (e.g. `@/auth` barrel removal in several `*.test.tsx`, `src/services/business/businessService.test.ts` typing). **`BusinessProfileSettingsPage.test.tsx`** fixture was aligned with `IBusinessProfileDto` (optional `deliveryRadius` / `minOrder` — omit instead of `null`) so that file no longer contributes a TS2352 on save.
       - Backend: `npx tsc --noEmit` reports existing issues (`dispatchEvent.ts` recipient typing, `packages/interfaces` extension hints under `NodeNext`) — **outside the Phase 6.4 test commands**, which are green.
 
 ---
@@ -507,7 +510,7 @@ These standards are always active and must be applied before and during every ch
 
 **Frontend nuance:**
 
-- **Zod** — `businessProfileFormSchema.ts` and tests exist; **`BusinessProfileSettingsPage` does not use `zodResolver`**, so rich client validation is not enforced on submit (API errors drive failure UX).
+- **Zod** — `frontend/src/services/business/businessProfileFormSchema.ts` and tests exist; **`BusinessProfileSettingsPage` does not use `zodResolver`**, so rich client validation is not enforced on submit (API errors drive failure UX).
 
 **Tooling nuance:**
 
@@ -522,8 +525,8 @@ These standards are always active and must be applied before and during every ch
   - `frontend/src/services/queryClient.ts`
   - `frontend/src/services/queryKeys.ts`
   - `frontend/src/services/http.ts`
-  - `frontend/src/services/businessService.ts` (or `frontend/src/services/businessProfileService.ts`)
-  - `frontend/src/services/businessProfileFormSchema.ts`
+  - `frontend/src/services/business/` (barrel `businessService.ts`; see `README.md` in that folder)
+  - `frontend/src/services/business/businessProfileFormSchema.ts`
   - `frontend/src/components/UnsavedChangesDialog.tsx`
   - `frontend/src/hooks/useUnsavedChangesGuard.ts`
   - `frontend/src/locales/*`

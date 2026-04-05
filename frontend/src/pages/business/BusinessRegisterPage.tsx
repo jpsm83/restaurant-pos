@@ -19,7 +19,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useCreateBusinessMutation } from "@/services/businessService";
+import { useCreateBusinessMutation } from "@/services/business/businessService";
 import { currenctyEnums, subscriptionEnums } from "@packages/enums.ts";
 import { isValidPassword } from "@packages/utils/passwordPolicy.ts";
 import emailRegex from "@packages/utils/emailRegex.ts";

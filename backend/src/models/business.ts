@@ -89,7 +89,7 @@ const businessSchema = new Schema(
     contactPerson: { type: String }, // Contact person of the company
 
     // discovery and delivery (optional)
-    cuisineType: { type: String }, // e.g. Italian, Japanese
+    cuisineType: { type: [String], default: undefined }, // discovery cuisines (enum-backed on API)
     categories: { type: [String], default: undefined }, // e.g. ["pizza", "pasta", "burgers"] for filter
     averageRating: { type: Number, default: undefined }, // 0–5, cached from Rating documents
     ratingCount: { type: Number, default: undefined }, // count of ratings

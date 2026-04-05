@@ -40,7 +40,30 @@ import {
 } from "../../../../packages/utils/passwordPolicy.ts";
 import * as enums from "../../../../packages/enums.ts";
 
-const { subscriptionEnums, currenctyEnums } = enums;
+const {
+  subscriptionEnums,
+  currenctyEnums,
+  foodSubCategoryEnums,
+  cuisineTypeEnums,
+} = enums;
+
+function normalizeCuisineTypeForResponse(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.filter((x): x is string => typeof x === "string");
+  }
+  if (typeof value === "string" && value.trim()) {
+    return [value.trim()];
+  }
+  return [];
+}
+
+function filterStringsByEnum(
+  values: string[],
+  allowed: readonly string[],
+): string[] {
+  const allow = new Set(allowed);
+  return Array.from(new Set(values.filter((v) => allow.has(v))));
+}
 
 const DEFAULT_DISCOVERY_LIMIT = 50;
 
@@ -148,14 +171,17 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
     } else {
       const filter: Record<string, unknown> = {};
 
-      if (cuisineType) filter.cuisineType = cuisineType;
+      if (cuisineType) {
+        filter.cuisineType = { $in: [cuisineType] };
+      }
 
       if (categoriesParam) {
         const categories = categoriesParam
           .split(",")
-          .map((s) => s.trim().toLowerCase())
+          .map((s) => s.trim())
           .filter(Boolean);
-        if (categories.length > 0) filter.categories = { $in: categories };
+        const allowed = filterStringsByEnum(categories, foodSubCategoryEnums);
+        if (allowed.length > 0) filter.categories = { $in: allowed };
       }
 
       if (name) {
@@ -250,7 +276,14 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
       return reply.code(404).send({ message: "No business found!" });
     }
 
-    return reply.code(200).send(business);
+    const payload = {
+      ...business,
+      cuisineType: normalizeCuisineTypeForResponse(
+        (business as Record<string, unknown>).cuisineType,
+      ),
+    };
+
+    return reply.code(200).send(payload);
   });
 
   app.post("/", async (req, reply) => {
@@ -376,15 +409,39 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
       contactPerson: contactPerson || undefined,
     };
 
-    if (cuisineType) newBusiness.cuisineType = cuisineType;
+    if (cuisineType) {
+      const raw = String(cuisineType).trim();
+      try {
+        if (raw.startsWith("[")) {
+          const parsed = JSON.parse(raw) as unknown;
+          if (
+            Array.isArray(parsed) &&
+            parsed.every((x) => typeof x === "string")
+          ) {
+            newBusiness.cuisineType = filterStringsByEnum(
+              parsed.map((s) => String(s).trim()).filter(Boolean),
+              cuisineTypeEnums,
+            );
+          }
+        } else if ((cuisineTypeEnums as readonly string[]).includes(raw)) {
+          newBusiness.cuisineType = [raw];
+        }
+      } catch {
+        // ignore invalid JSON
+      }
+    }
 
     if (categoriesStr) {
       try {
-        const parsed = JSON.parse(categoriesStr) as string[];
-        if (Array.isArray(parsed)) {
-          newBusiness.categories = parsed
-            .map((s) => s.trim().toLowerCase())
-            .filter(Boolean);
+        const parsed = JSON.parse(categoriesStr) as unknown;
+        if (
+          Array.isArray(parsed) &&
+          parsed.every((x) => typeof x === "string")
+        ) {
+          newBusiness.categories = filterStringsByEnum(
+            parsed.map((s) => String(s).trim()).filter(Boolean),
+            foodSubCategoryEnums,
+          );
         }
       } catch {
         // ignore invalid JSON
@@ -516,8 +573,6 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
     const currencyTrade = fields.currencyTrade;
     const subscription = fields.subscription;
     const password = fields.password || undefined;
-    const contactPerson = fields.contactPerson || undefined;
-    const cuisineType = fields.cuisineType || undefined;
     const categoriesStr = fields.categories || undefined;
     const averageRatingStr = fields.averageRating || undefined;
     const ratingCountStr = fields.ratingCount || undefined;
@@ -684,23 +739,66 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
       updateBusinessObj.currencyTrade = currencyTrade;
     if (subscription !== (business as Record<string, unknown>).subscription)
       updateBusinessObj.subscription = subscription;
-    if (
-      contactPerson &&
-      contactPerson !== (business as Record<string, unknown>).contactPerson
-    )
-      updateBusinessObj.contactPerson = contactPerson;
+    if (Object.prototype.hasOwnProperty.call(fields, "contactPerson")) {
+      const cp = String(fields.contactPerson ?? "").trim();
+      const prev = String(
+        (business as Record<string, unknown>).contactPerson ?? "",
+      ).trim();
+      const next = cp.length > 0 ? cp : null;
+      const prevNorm = prev.length > 0 ? prev : null;
+      if (next !== prevNorm) {
+        updateBusinessObj.contactPerson = next;
+      }
+    }
 
-    if (cuisineType !== undefined)
-      updateBusinessObj.cuisineType = cuisineType || undefined;
+    if (Object.prototype.hasOwnProperty.call(fields, "cuisineType")) {
+      const raw = String(fields.cuisineType ?? "").trim();
+      let next: string[];
+      if (raw === "" || raw === "[]") {
+        next = [];
+      } else {
+        try {
+          const parsed = JSON.parse(raw) as unknown;
+          if (
+            !Array.isArray(parsed) ||
+            !parsed.every((x) => typeof x === "string")
+          ) {
+            return reply.code(400).send({
+              message: "cuisineType must be a JSON array of strings!",
+            });
+          }
+          next = filterStringsByEnum(
+            parsed.map((s) => String(s).trim()).filter(Boolean),
+            cuisineTypeEnums,
+          );
+        } catch {
+          return reply.code(400).send({
+            message: "cuisineType must be a valid JSON array of strings!",
+          });
+        }
+      }
+      updateBusinessObj.cuisineType = next;
+    }
+
     if (categoriesStr !== undefined) {
       try {
-        const parsed = JSON.parse(categoriesStr) as string[];
-        if (Array.isArray(parsed))
-          updateBusinessObj.categories = parsed
-            .map((s) => String(s).trim().toLowerCase())
-            .filter(Boolean);
+        const parsed = JSON.parse(categoriesStr) as unknown;
+        if (
+          !Array.isArray(parsed) ||
+          !parsed.every((x) => typeof x === "string")
+        ) {
+          return reply.code(400).send({
+            message: "categories must be an array of strings!",
+          });
+        }
+        updateBusinessObj.categories = filterStringsByEnum(
+          parsed.map((s) => String(s).trim()).filter(Boolean),
+          foodSubCategoryEnums,
+        );
       } catch {
-        // leave unchanged
+        return reply.code(400).send({
+          message: "categories must be a valid JSON array of strings!",
+        });
       }
     }
     if (averageRatingStr !== undefined && averageRatingStr !== "") {
