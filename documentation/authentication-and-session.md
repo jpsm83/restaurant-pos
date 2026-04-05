@@ -10,7 +10,8 @@ This document describes how **identity**, **credentials**, **JWT sessions**, **c
 | JWT + cookies (app wiring) | `backend/src/server.ts` |
 | Session types and config | `backend/src/auth/types.ts`, `backend/src/auth/config.ts` |
 | Route guards | `backend/src/auth/middleware.ts` |
-| Mint access + refresh + refresh cookie | `backend/src/auth/issueSession.ts` (`issueSessionWithRefreshCookie`, `buildAuthUserSessionFromUserId`, `buildAuthBusinessSessionFromId`) |
+| Mint access + refresh + refresh cookie | `backend/src/auth/issueSession.ts` (`issueSessionWithRefreshCookie`, `buildAuthUserSessionFromUserId`, `buildAuthBusinessSessionFromId`, refresh **`v`**) |
+| Auth email (confirm / reset / resend) | `backend/src/auth/requestEmailConfirmation.ts`, `requestPasswordReset.ts`, `confirmEmail.ts`, `resetPassword.ts`, `resendEmailConfirmation.ts`, `authEmailSend.ts`, `authEmailRateLimit.ts`, `emailLinks.ts`, `emailToken.ts`, `emailTemplates.ts`, `verificationIntent*.ts`, `verificationIntentAudit.ts`, `authEmailMetrics.ts` |
 | Schedule / “can use employee mode” | `backend/src/auth/canLogAsEmployee.ts` |
 | Domain “employee vs customer” at request time | `backend/src/auth/getEffectiveUserRoleAtTime.ts` |
 | Tenant (business) credentials | `backend/src/models/business.ts`, `backend/src/routes/v1/business.ts` |
@@ -91,7 +92,9 @@ Authorization: Bearer <accessToken>
 
 **Refresh token** is **not** returned in the body; it is set via `Set-Cookie` on login, signup, business create/update (when tokens are issued), and user self PATCH. `@fastify/cookie` is registered with `secret: REFRESH_SECRET` (used for cookie signing options, distinct from JWT `key` used in `jwt.sign(..., { key: REFRESH_SECRET })` for refresh JWTs).
 
-**Refresh flow** (`POST /auth/refresh`): reads `refresh_token` from cookies, verifies with **refresh secret**, reloads `Business` or `User` from DB, rebuilds full session (including recomputing `canLogAsEmployee` for linked employees), returns new **access token** in JSON. Invalid refresh → cookie cleared + `401`.
+**Refresh flow** (`POST /auth/refresh`): reads `refresh_token` from cookies, verifies with **refresh secret**, reloads `Business` or `User` from DB, compares **`refreshSessionVersion`** on the document to the refresh JWT claim **`v`** (defaults treated as **0** if absent). On mismatch → cookie cleared + **`401`** (same message as invalid refresh). Otherwise rebuilds full session (including recomputing `canLogAsEmployee` for linked employees) and returns new **access token** in JSON. Invalid signature / expiry → cookie cleared + **`401`**.
+
+**Refresh invalidation:** `User` and `Business` store **`refreshSessionVersion`** (number). Successful **password reset via email link** and **authenticated password change** on **`PATCH /business/:id`** / **`PATCH /users/:id`** increment it so existing refresh cookies stop working.
 
 **Logout** (`POST /auth/logout`): clears `refresh_token` and `auth_mode` cookies (`path: "/"`). Does not invalidate access JWT until expiry (short TTL).
 
@@ -106,12 +109,14 @@ Types are documented to **match legacy NextAuth session shape** for parity with 
 - `id` — stringified `Business._id`
 - `email`
 - `type: "business"`
+- `emailVerified` — mirrors **`Business.emailVerified`** (drives client banners / resend UX)
 
 ### `AuthUser`
 
 - `id` — stringified `User._id`
 - `email` — from `personalDetails.email`
 - `type: "user"`
+- `emailVerified` — mirrors **`User.emailVerified`**
 - Optional (only when user is linked to an **active**, **non-terminated** employee):
   - `employeeId` — stringified `User.employeeDetails`
   - `businessId` — from `Employee.businessId`
@@ -121,7 +126,7 @@ If the user has **no** `employeeDetails`, or employee is inactive/terminated, th
 
 ### `RefreshTokenPayload`
 
-Minimal: `{ id, type }` only — enough to reload the full session from the database on refresh.
+`{ id, type, v? }` — **`id`** and **`type`** reload the account; **`v`** is the **`refreshSessionVersion`** snapshot at issue time. Refresh rejects when **`(payload.v ?? 0) !==`** current DB version.
 
 ---
 
@@ -180,15 +185,20 @@ The access JWT **does not** embed `mode`; mode is **cookie-only** for the client
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| `POST` | `/auth/signup` | None | Create **User** (customer path). Conflicts if email exists on Business or User. Returns `201` + `accessToken` + `user`; sets refresh cookie. |
+| `POST` | `/auth/signup` | None | Create **User** (customer path). Conflicts if email exists on Business or User. Returns `201` + `accessToken` + `user`; sets refresh cookie. **Non-blocking:** may enqueue **email confirmation** (see [`auth-email-security-flows.md`](./auth-email-security-flows.md)). |
 | `POST` | `/auth/login` | None | Business-first, then User. Returns `accessToken` + `user`; sets refresh cookie. |
 | `POST` | `/auth/refresh` | Cookie `refresh_token` | New access token + rebuilt `user`. |
 | `POST` | `/auth/logout` | None | Clears refresh + `auth_mode` cookies. |
 | `GET` | `/auth/me` | Bearer access | Returns `{ user: session }` from JWT. |
 | `POST` | `/auth/set-mode` | Bearer access | Sets `auth_mode` cookie (users only). |
 | `GET` | `/auth/mode` | Cookie optional | Reads `auth_mode`. |
+| `POST` | `/auth/request-email-confirmation` | None | Body `{ email }`. **Anti-enumeration:** always **`200`** + generic message when validation passes; sends only if account exists and is unverified (subject to per-email rate cap). |
+| `POST` | `/auth/request-password-reset` | None | Same response shape; issues **reset** email when applicable. |
+| `POST` | `/auth/confirm-email` | None | Body `{ token }` (opaque link token). One-time verify. |
+| `POST` | `/auth/reset-password` | None | Body `{ token, newPassword }`. Clears reset token; **increments** `refreshSessionVersion`. |
+| `POST` | `/auth/resend-email-confirmation` | Bearer | Resend for **session** account’s DB email; **IP** rate limit may return **`429`**. |
 
-**Common errors:** `400` validation, `401` invalid credentials / missing token / bad refresh, `403` employee mode not allowed, `409` signup conflict.
+**Common errors:** `400` validation, `401` invalid credentials / missing token / bad refresh (including **refresh version mismatch**), `403` employee mode not allowed, `409` signup conflict, `429` auth-email **IP** rate limit.
 
 ---
 
@@ -220,11 +230,11 @@ Individual route modules may apply additional checks (e.g. manager-only actions 
 
 Session minting uses **`issueSessionWithRefreshCookie`** from `issueSession.ts` (same shape as **`/auth/login`** for `type: "business"`).
 
-- **`POST /business`** — Multipart form. Validates email/password, address, enums, duplicates. After create: **`201`** with `message`, **`accessToken`**, **`user`** (`type: "business"`), and **refresh cookie** set — no separate login call required.
+- **`POST /business`** — Multipart form. Validates email/password, address, enums, duplicates. After create: **`201`** with `message`, **`accessToken`**, **`user`** (`type: "business"`), and **refresh cookie** set — no separate login call required. **Non-blocking:** may enqueue **email confirmation** for the new tenant (see [`auth-email-security-flows.md`](./auth-email-security-flows.md)).
 - **`GET /business`** — Unauthenticated listing/discovery; **`password` excluded**.
 - **`GET /business/:businessId`** — Unauthenticated; no password in response.
-- **`PATCH /business/:businessId`** — **`preValidation`:** valid `:businessId`, **`Authorization: Bearer`**, session must be **business** and **`session.id === :businessId`**. Updates fields; optional password change. When sending a **new `password`**, multipart field **`currentPassword`** must match the stored hash (**`400`** if missing, **`401`** if wrong). The split settings shell validates the bound form on **Save** with Zod; **`email`** / **`confirmEmail`** use the same **`emailRegex`** as server-side checks on this route (**`packages/utils/emailRegex.ts`**). Response **`200`:** `message`, fresh **`accessToken`**, **`user`** (current email from DB), and **refresh cookie** re-set.
-  - **Communications (non-blocking):** when the persistence layer actually changes at least one field, the route emits **`BUSINESS_PROFILE_UPDATED`** through `dispatchEvent` (fail-soft: profile save still returns **`200`** if dispatch fails). Optional request headers **`X-Correlation-Id`** and **`X-Idempotency-Key`** are forwarded into dispatch for tracing and process-local idempotency. Management employees receive **in-app** notifications and **email** (if channels enabled) per `backend/src/communications/README.md`. The main profile editor is **`BusinessProfileSettingsPage`** (**`/business/:businessId/settings/profile`**); **sign-in email / password** (including **`currentPassword`** when changing password) is **`BusinessCredentialsSettingsPage`** (**`/settings/credentials`**); **postal address** (and map preview) is **`/business/:businessId/settings/address`** — all use the same multipart PATCH via the split settings shell — see **`documentation/context.md`** (*Business credentials settings*, *Business address settings — location preview*) and **`documentation/frontend-authentication-and-navigation.md`**.
+- **`PATCH /business/:businessId`** — **`preValidation`:** valid `:businessId`, **`Authorization: Bearer`**, session must be **business** and **`session.id === :businessId`**. Updates fields; optional password change. When sending a **new `password`**, multipart field **`currentPassword`** must match the stored hash (**`400`** if missing, **`401`** if wrong). Successful password change **increments** **`refreshSessionVersion`** (invalidates prior refresh cookies). The split settings shell validates the bound form on **Save** with Zod; **`email`** / **`confirmEmail`** use the same **`emailRegex`** as server-side checks on this route (**`packages/utils/emailRegex.ts`**). Response **`200`:** `message`, fresh **`accessToken`**, **`user`** (current email from DB), and **refresh cookie** re-set.
+  - **Communications (non-blocking):** when the persistence layer actually changes at least one field, the route emits **`BUSINESS_PROFILE_UPDATED`** through `dispatchEvent` (fail-soft: profile save still returns **`200`** if dispatch fails). Optional request headers **`X-Correlation-Id`** and **`X-Idempotency-Key`** are forwarded into dispatch for tracing and process-local idempotency. Management employees receive **in-app** notifications and **email** (if channels enabled) per `backend/src/communications/README.md`. The main profile editor is **`BusinessProfileSettingsPage`** (**`/business/:businessId/settings/profile`**); **postal address** (and map preview) is **`/business/:businessId/settings/address`** — both use multipart **`PATCH`** via the split settings form shell. **Tenant password change** in the web app is **`BusinessCredentialsSettingsPage`** (**`/settings/credentials`**) → **`POST /auth/request-password-reset`** → link to **`/reset-password`** (not inline **`PATCH`** password fields). Optional **`password`** + **`currentPassword`** on **`PATCH /business/:id`** remain for API clients. See **`documentation/context.md`** and **`documentation/auth-email-security-flows.md`**.
 - **`DELETE /business/:businessId`** — Still unauthenticated in the current code (transactional cascade + Cloudinary); tighten with auth in a follow-up if needed.
 
 ---
@@ -240,7 +250,7 @@ Session minting uses **`issueSessionWithRefreshCookie`** from `issueSession.ts` 
 | Response | `accessToken` + session | Message only — **no tokens** (admin provisioning; user signs in via **`/auth/login`** or future invite flow) |
 | Typical use | Self-service customer registration | Admin/onboarding tooling |
 
-**`PATCH /users/:userId`** — **Self only:** `preValidation` requires valid `userId`, **`Authorization: Bearer`**, and **`session.type === "user"`** with **`session.id === :userId`**. On success: **`200`** with `message`, fresh **`accessToken`**, **`user`** (rebuilt with `canLogAsEmployee` from DB), and **refresh cookie** re-set.
+**`PATCH /users/:userId`** — **Self only:** `preValidation` requires valid `userId`, **`Authorization: Bearer`**, and **`session.type === "user"`** with **`session.id === :userId`**. On success: **`200`** with `message`, fresh **`accessToken`**, **`user`** (rebuilt with `canLogAsEmployee` from DB), and **refresh cookie** re-set. If **`password`** was updated, **`refreshSessionVersion`** is incremented server-side.
 
 **Security note:** `GET` / `POST` / `DELETE` on `users` remain without `createAuthHook` in the current code; deployment should limit exposure as appropriate.
 
@@ -280,6 +290,7 @@ Returns true only if **every** id in the array is a valid `ObjectId` string. Use
 | `JWT_SECRET` / `AUTH_SECRET` | Access token signing |
 | `REFRESH_SECRET` | Refresh JWT signing; cookie plugin secret |
 | `NODE_ENV` | `production` → `secure` cookies |
+| Auth email / SMTP / rate limits | See **`backend/README.md`** (Auth email env table) and [`auth-email-security-flows.md`](./auth-email-security-flows.md) §10–11 |
 
 `server.ts` calls `validateEnv()` so missing secrets fail fast at startup (after defaults from `AUTH_CONFIG` — production should override dev defaults).
 
@@ -287,6 +298,7 @@ Returns true only if **every** id in the array is a valid `ObjectId` string. Use
 
 ## 15. Related documentation
 
+- **Email confirmation, password reset, rate limits, audit/metrics:** [`auth-email-security-flows.md`](./auth-email-security-flows.md).
 - Product-level login and routing: [`context.md`](./context.md) → **Login and flow routing**, **People and operations**.
 - Operational employee vs customer at the table: [`sales-point-sales-instance-orders.md`](./sales-point-sales-instance-orders.md) (references `getEffectiveUserRoleAtTime`).
 - User journey narrative: [`user-flow.md`](./user-flow.md).

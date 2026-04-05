@@ -29,6 +29,10 @@ import {
 } from "../../auth/middleware.ts";
 import { issueSessionWithRefreshCookie } from "../../auth/issueSession.ts";
 import type { AuthBusiness } from "../../auth/types.ts";
+import {
+  handleRequestEmailConfirmation,
+  normalizeRequestEmail,
+} from "../../auth/requestEmailConfirmation.ts";
 import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
 import deleteFilesCloudinary from "../../cloudinary/deleteFilesCloudinary.ts";
 import deleteFolderCloudinary from "../../cloudinary/deleteFolderCloudinary.ts";
@@ -39,6 +43,10 @@ import {
   PASSWORD_POLICY_MESSAGE,
 } from "../../../../packages/utils/passwordPolicy.ts";
 import * as enums from "../../../../packages/enums.ts";
+
+/** Public JSON must omit password and auth-email secrets (see `TODO-auth-email-security-flows-implementation.md`). */
+const BUSINESS_PUBLIC_LEAN_SELECT =
+  "-password -emailVerificationTokenHash -passwordResetTokenHash -emailVerificationExpiresAt -passwordResetExpiresAt";
 
 const {
   subscriptionEnums,
@@ -167,7 +175,9 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
     let businesses: unknown[];
 
     if (!hasFilters) {
-      businesses = await Business.find().select("-password").lean();
+      businesses = await Business.find()
+        .select(BUSINESS_PUBLIC_LEAN_SELECT)
+        .lean();
     } else {
       const filter: Record<string, unknown> = {};
 
@@ -204,7 +214,7 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
         : DEFAULT_DISCOVERY_LIMIT;
 
       businesses = await Business.find(filter)
-        .select("-password")
+        .select(BUSINESS_PUBLIC_LEAN_SELECT)
         .limit(limit)
         .lean();
     }
@@ -269,7 +279,7 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
     }
 
     const business = await Business.findById(businessId)
-      .select("-password")
+      .select(BUSINESS_PUBLIC_LEAN_SELECT)
       .lean();
 
     if (!business) {
@@ -364,6 +374,8 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
       return reply.code(400).send({ message: "Invalid email format!" });
     }
 
+    const registrationEmail = normalizeRequestEmail(email);
+
     if (!isValidPassword(password)) {
       return reply.code(400).send({ message: PASSWORD_POLICY_MESSAGE });
     }
@@ -384,11 +396,11 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
     }
 
     const duplicateBusiness = await Business.exists({
-      $or: [{ legalName }, { email }, { taxNumber }],
+      $or: [{ legalName }, { email: registrationEmail }, { taxNumber }],
     });
     if (duplicateBusiness) {
       return reply.code(409).send({
-        message: `Business ${legalName}, ${email} or ${taxNumber} already exists!`,
+        message: `Business ${legalName}, ${registrationEmail} or ${taxNumber} already exists!`,
       });
     }
 
@@ -399,7 +411,7 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
       _id: businessId,
       tradeName,
       legalName,
-      email,
+      email: registrationEmail,
       password: hashedPassword,
       phoneNumber,
       taxNumber,
@@ -509,14 +521,30 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
 
     const session: AuthBusiness = {
       id: String(businessId),
-      email,
+      email: registrationEmail,
       type: "business",
+      emailVerified: false,
     };
     const { accessToken, user } = issueSessionWithRefreshCookie(
       app,
       reply,
       session,
+      { refreshSessionVersion: 0 },
     );
+
+    // Phase 4.2: confirmation email (non-blocking; session unchanged).
+    handleRequestEmailConfirmation(registrationEmail)
+      .then((result) => {
+        if (result.kind === "server_error_500") {
+          req.log.error(
+            { errHint: "business_registration_confirmation_send" },
+            result.message,
+          );
+        }
+      })
+      .catch((err) => {
+        req.log.error({ err }, "Business registration confirmation email failed");
+      });
 
     return reply.code(201).send({
       message: `Business ${legalName} created`,
@@ -947,9 +975,16 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
       updateBusinessObj.password = await hash(password, 10);
     }
 
+    const updateOps: mongoose.UpdateQuery<Record<string, unknown>> = {
+      $set: updateBusinessObj,
+    };
+    if (password) {
+      updateOps.$inc = { refreshSessionVersion: 1 };
+    }
+
     const updatedBusiness = await Business.findByIdAndUpdate(
       businessId,
-      { $set: updateBusinessObj },
+      updateOps,
       { new: true, lean: true },
     );
 
@@ -1014,11 +1049,17 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
       id: String(updatedBusiness._id),
       email: updatedBusiness.email,
       type: "business",
+      emailVerified: updatedBusiness.emailVerified === true,
     };
     const { accessToken, user } = issueSessionWithRefreshCookie(
       app,
       reply,
       session,
+      {
+        refreshSessionVersion:
+          (updatedBusiness as { refreshSessionVersion?: number })
+            .refreshSessionVersion ?? 0,
+      },
     );
 
     return reply.code(200).send({

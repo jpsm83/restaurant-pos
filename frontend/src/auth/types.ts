@@ -14,6 +14,8 @@ export interface AuthBusiness {
   id: string;
   email: string;
   type: "business";
+  /** From login / refresh / registration; drives verification UI. */
+  emailVerified?: boolean;
 }
 
 /**
@@ -24,6 +26,8 @@ export interface AuthUser {
   id: string;
   email: string;
   type: "user";
+  /** From login / refresh / signup; drives verification UI. */
+  emailVerified?: boolean;
   /** Present when linked to an active Employee (`User.employeeDetails`). */
   employeeId?: string;
   /** Employing tenant when `employeeId` is set. */

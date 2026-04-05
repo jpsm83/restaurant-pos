@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { z } from "zod";
 import { signup } from "@/auth/api";
 import { getPostLoginDestination } from "@/auth/postLoginRedirect";
@@ -107,6 +108,9 @@ export default function SignUpPage() {
     localStorage.setItem("auth_had_session", "1");
     const sessionUser = result.data.user;
     dispatch({ type: "AUTH_SUCCESS", payload: sessionUser });
+    if (sessionUser.emailVerified === false) {
+      toast.info(t("signup.verifyEmailToast"));
+    }
     navigate(getPostLoginDestination(sessionUser), { replace: true });
   };
 
@@ -172,6 +176,15 @@ export default function SignUpPage() {
             <Button asChild variant="outline" className="w-full">
               <Link to="/login">{t("signup.backToSignIn")}</Link>
             </Button>
+
+            <p className="text-center text-sm text-neutral-600">
+              <Link
+                to="/request-email-confirmation"
+                className="font-medium text-neutral-800 underline-offset-4 hover:underline"
+              >
+                {t("signup.resendConfirmationLink")}
+              </Link>
+            </p>
           </form>
         </CardContent>
       </Card>

@@ -11,14 +11,15 @@ const mockSetModeAndRefresh = vi.fn();
 const mockUseAuth = vi.fn();
 const mockGetCurrentUser = vi.fn();
 
-vi.mock("@/auth", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/auth")>();
+vi.mock("@/auth/store/AuthContext", () => ({
+  useAuth: () => mockUseAuth(),
+}));
+
+vi.mock("@/auth/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/auth/api")>();
   return {
     ...actual,
-    useAuth: () => mockUseAuth(),
     getCurrentUser: (...args: unknown[]) => mockGetCurrentUser(...args),
-    logout: vi.fn().mockResolvedValue({ ok: true }),
-    setAccessToken: vi.fn(),
   };
 });
 

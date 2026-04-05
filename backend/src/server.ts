@@ -1,18 +1,23 @@
 // Load environment variables from .env file in project root
 import { config } from "dotenv";
-import { resolve } from "path";
-config({ path: resolve(process.cwd(), "..", ".env") });
+import { dirname, resolve } from "path";
+import { fileURLToPath } from "url";
+
+const currentFileDir = dirname(fileURLToPath(import.meta.url));
+config({ path: resolve(currentFileDir, "..", "..", ".env") });
 
 import Fastify, { type FastifyInstance } from "fastify";
 import multipart from "@fastify/multipart";
 import jwt from "@fastify/jwt";
 import cookie from "@fastify/cookie";
+import cors from "@fastify/cors";
 import websocket from "@fastify/websocket";
 
 import connectDb from "./db/connectDb.ts";
 import { registerV1Routes } from "./routes/v1/index.ts";
 import { toHttpError, type HttpErrorShape } from "./utils/httpError.ts";
 import { AUTH_CONFIG } from "./auth/config.ts";
+import { buildCorsOptions } from "./config/cors.ts";
 import liveConnectionRegistry from "./communications/live/connectionRegistry.ts";
 import { registerLiveInAppBridge } from "./communications/live/liveBridge.ts";
 
@@ -76,6 +81,8 @@ export async function buildApp(
       secure: process.env.NODE_ENV === "production",
     },
   });
+
+  await server.register(cors, buildCorsOptions(process.env));
 
   await server.register(multipart, {
     limits: {

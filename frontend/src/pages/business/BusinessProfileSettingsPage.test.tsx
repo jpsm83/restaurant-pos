@@ -15,7 +15,6 @@ import {
   BusinessServiceError,
   type BusinessProfileDto,
 } from "@/services/business/businessService";
-import BusinessCredentialsSettingsPage from "./BusinessCredentialsSettingsPage";
 import BusinessProfileSettingsPage from "./BusinessProfileSettingsPage";
 
 async function renderWithQueryClient(ui: ReactElement) {
@@ -399,48 +398,6 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
     await waitFor(() => {
       expect(screen.getByLabelText("Trade name")).toHaveValue("Demo Bistro");
     });
-  });
-
-  it("forces logout when credentials change after successful save", async () => {
-    const mutateAsync = vi.fn().mockResolvedValue({ message: "Business updated" });
-    mockUseUpdateBusinessProfileMutation.mockReturnValue({
-      mutateAsync,
-      isPending: false,
-    });
-    mockLogout.mockResolvedValue({ ok: true });
-    mockUseBusinessProfileQuery.mockReturnValue({
-      data: makeBusinessProfileDto(),
-      isLoading: false,
-      isError: false,
-      error: null,
-      refetch: vi.fn().mockResolvedValue({ data: makeBusinessProfileDto() }),
-    });
-    const user = userEvent.setup();
-
-    await renderWithQueryClient(
-      <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/credentials"]}>
-        <Routes>
-          <Route
-            path="/business/:businessId/settings/credentials"
-            element={<BusinessCredentialsSettingsPage />}
-          />
-          <Route path="/login" element={<div>Login page</div>} />
-        </Routes>
-      </MemoryRouter>,
-    );
-
-    await user.type(screen.getByLabelText("New password"), "Valid1!Password");
-    await user.type(screen.getByLabelText("Confirm new password"), "Valid1!Password");
-    await user.type(screen.getByLabelText("Current password"), "old-sign-in-pass");
-    await user.click(screen.getByRole("button", { name: "Save changes" }));
-
-    expect(mutateAsync).toHaveBeenCalledTimes(1);
-    expect(mockLogout).toHaveBeenCalledTimes(1);
-    expect(mockSetAccessToken).toHaveBeenCalledWith(null);
-    expect(mockDispatch).toHaveBeenCalledWith({ type: "AUTH_CLEAR" });
-    expect(mockToastSuccess).toHaveBeenCalledWith(
-      "Profile saved. Please sign in again to continue with updated credentials.",
-    );
   });
 
   it("forces logout when business email changes after successful save", async () => {

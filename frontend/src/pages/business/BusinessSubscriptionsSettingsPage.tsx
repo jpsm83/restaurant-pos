@@ -1,4 +1,3 @@
-import { useTranslation } from "react-i18next";
 import { useWatch } from "react-hook-form";
 import { subscriptionEnums } from "@packages/enums.ts";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,12 +22,8 @@ function SubscriptionsSettingsLoadingBody() {
 
 /** Subscription plan selection for the business tenant. */
 export default function BusinessSubscriptionsSettingsPage() {
-  const { t: tNav } = useTranslation("nav");
-
   return (
     <BusinessProfileSettingsFormShell
-      pageTitle={tNav("settings.subscriptions")}
-      cardDescription="Choose the subscription tier for this business."
       loadingSlot={
         <BusinessProfileSettingsLoadingCard>
           <SubscriptionsSettingsLoadingBody />

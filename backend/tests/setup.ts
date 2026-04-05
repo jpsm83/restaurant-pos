@@ -9,11 +9,13 @@ import { config } from "dotenv";
 import { resolve } from "path";
 config({ path: resolve(process.cwd(), "..", ".env") });
 
+/** Suppress Phase 6 audit JSON lines during tests (opt-in per file via env). */
+process.env.SILENCE_VERIFICATION_INTENT_AUDIT ??= "1";
+
 import { MongoMemoryReplSet } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import { beforeAll, afterAll, afterEach } from "vitest";
 import type { FastifyInstance } from "fastify";
-import { buildApp } from "../src/server.ts";
 import type { AuthSession } from "../src/auth/types.ts";
 
 let mongoReplSet: MongoMemoryReplSet | null = null;
@@ -59,6 +61,8 @@ async function waitForReplicaSetPrimary(
  */
 export async function getTestApp(): Promise<FastifyInstance> {
   if (!testApp) {
+    // Dynamic import so `vi.mock` on communications modules runs before the server graph loads.
+    const { buildApp } = await import("../src/server.ts");
     testApp = await buildApp({ logger: false, skipDb: true });
   }
   return testApp;

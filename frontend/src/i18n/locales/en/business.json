@@ -179,21 +179,31 @@
     }
   },
   "credentialsSettings": {
-    "cardDescription": "Update sign-in email and password. You may need to sign in again after saving.",
+    "cardDescription": "Change your sign-in password using a secure link we send to your business email. To update the email itself, edit it on the profile page (you will sign in again after saving).",
     "sectionTitle": "Sign-in credentials",
-    "sectionDescription": "Emails use the same format rules as elsewhere. Match both email fields. For a new password, match both password fields and enter your current password. Leave new password blank to keep the existing one.",
-    "columnHintEmail": "The business sign-in email is filled from your profile. Change it here if needed; both boxes must match.",
-    "columnHintPassword": "Optional new password. Leave both blank to keep your current password; if you set one, both must match.",
-    "fields": {
-      "note": "Note",
-      "email": "Business email",
-      "confirmEmail": "Confirm email",
-      "newPassword": "New password",
-      "confirmPassword": "Confirm new password",
-      "currentPassword": "Current password"
-    },
+    "sectionDescription": "Confirm your business email if prompted, then use the action column to receive a time-limited link. Edit the sign-in email from the profile settings page.",
+    "actionsColumnTitle": "Password reset",
     "validation": {
       "currentPasswordRequired": "Enter your current password to set a new sign-in password."
+    },
+    "emailVerify": {
+      "bannerTitle": "Confirm your business email",
+      "bannerDescription": "We sent a link to your sign-in email. Resend if you did not receive it (rate limits may apply).",
+      "resendButton": "Resend confirmation email",
+      "resendSending": "Sending…",
+      "resendSuccessFallback": "If an account needs verification, we sent instructions."
+    },
+    "passwordChangeEmail": {
+      "introBody": "For security, we do not collect a new password on this screen. Use the button in the right column to send one email to your current business sign-in address with a time-limited link.",
+      "stepCheckInbox": "Open your inbox (and spam folder) for that address.",
+      "stepOpenLink": "Use the link in the email — it opens a dedicated page in this app.",
+      "stepChoosePassword": "On that page, choose a strong new password and submit. The link works once and expires after a short time.",
+      "signInEmailLabel": "We will send the link to: {{email}}",
+      "button": "Email me a link to change password",
+      "sending": "Sending…",
+      "successFallback": "If an account exists for that address, we sent reset instructions.",
+      "errorFallback": "Could not send the email. Try again later.",
+      "missingEmail": "No sign-in email is available for this session."
     }
   }
 }

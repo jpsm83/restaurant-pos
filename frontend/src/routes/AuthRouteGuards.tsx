@@ -13,8 +13,9 @@
  *   `/:userId/employee` so params and cookie mode check apply).
  *
  * ## Wiring (`appRoutes.tsx`)
- * - Public routes: `PublicOnlyRoute` on `/login`, `/signup`, `/business/register` — if already
- *   authenticated, redirect via `getPostLoginDestination` (auth/postLoginRedirect.ts).
+ * - Public routes: `PublicOnlyRoute` on `/login`, `/signup`, `/forgot-password`, `/request-email-confirmation`, `/business/register`
+ *   — if already authenticated, redirect via `getPostLoginDestination` (auth/postLoginRedirect.ts).
+ *   `/reset-password` and `/confirm-email` stay reachable with an existing session (email links).
  * - `/business/:businessId/*` → `BusinessSessionRouteShell` + `BusinessLayout`.
  * - `/:userId/mode` → `UserSessionRouteShell` + mode page.
  * - `/:userId/customer/*` → `UserSessionRouteShell` + `CustomerLayout`.

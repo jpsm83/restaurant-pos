@@ -123,9 +123,17 @@ describe("createBusiness (Phase 4.3.1)", () => {
   });
 
   it("coalesces concurrent profile updates for the same business", async () => {
-    let resolver: ((value: unknown) => void) | null = null;
-    const pending = new Promise((resolve) => {
-      resolver = resolve;
+    type MockAxiosPatchResult = {
+      data: {
+        message: string;
+        user: { id: string; email: string; type: "business" };
+      };
+    };
+    const deferred: {
+      resolve?: (value: MockAxiosPatchResult) => void;
+    } = {};
+    const pending = new Promise<MockAxiosPatchResult>((resolve) => {
+      deferred.resolve = resolve;
     });
     mockPatch.mockReturnValue(pending);
 
@@ -137,7 +145,7 @@ describe("createBusiness (Phase 4.3.1)", () => {
     expect(p1).toBe(p2);
     expect(mockPatch).toHaveBeenCalledTimes(1);
 
-    resolver?.({
+    deferred.resolve?.({
       data: {
         message: "Business updated",
         user: {

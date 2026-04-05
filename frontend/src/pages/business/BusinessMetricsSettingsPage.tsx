@@ -1,5 +1,4 @@
 import { Controller } from "react-hook-form";
-import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -41,12 +40,8 @@ function MetricsSettingsLoadingBody() {
 
 /** Cost and waste target metrics plus weekly report start day. */
 export default function BusinessMetricsSettingsPage() {
-  const { t: tNav } = useTranslation("nav");
-
   return (
     <BusinessProfileSettingsFormShell
-      pageTitle={tNav("settings.metrics")}
-      cardDescription="Targets feed monthly reporting comparisons; weekly start day configures report buckets."
       loadingSlot={
         <BusinessProfileSettingsLoadingCard>
           <MetricsSettingsLoadingBody />

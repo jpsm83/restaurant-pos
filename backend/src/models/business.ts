@@ -64,6 +64,21 @@ const businessSchema = new Schema(
       type: String,
       required: [true, "Password is required!"],
     },
+    /**
+     * Tenant sign-in email (`email`) lifecycle: verification + password reset tokens.
+     * Hashed token values only. See `TODO-auth-email-security-flows-implementation.md`.
+     * Legacy documents without `emailVerified`: backfill or treat as verified in app logic.
+     */
+    emailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    emailVerificationTokenHash: { type: String, default: undefined },
+    emailVerificationExpiresAt: { type: Date, default: undefined },
+    passwordResetTokenHash: { type: String, default: undefined },
+    passwordResetExpiresAt: { type: Date, default: undefined },
+    /** Increment on password reset / password change to invalidate outstanding refresh JWTs. */
+    refreshSessionVersion: { type: Number, default: 0 },
     phoneNumber: {
       type: String,
       required: [true, "Phone number is required!"],
@@ -113,6 +128,13 @@ const businessSchema = new Schema(
     timestamps: true,
   }
 );
+
+// Auth-email: lookup by stored token digest (sparse — most tenants have no active token).
+businessSchema.index(
+  { emailVerificationTokenHash: 1 },
+  { sparse: true },
+);
+businessSchema.index({ passwordResetTokenHash: 1 }, { sparse: true });
 
 const Business = mongoose.models.Business || model("Business", businessSchema);
 export default Business;

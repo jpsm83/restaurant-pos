@@ -3,14 +3,18 @@ import nodemailer, { type Transporter } from "nodemailer";
 interface SmtpConfig {
   host: string;
   port: number;
-  user: string;
-  pass: string;
+  user?: string;
+  pass?: string;
   from?: string;
 }
 
 export interface SmtpProviderState {
   enabled: boolean;
-  reason?: "missing_config" | "invalid_port" | "transport_init_failed";
+  reason?:
+    | "missing_config"
+    | "invalid_port"
+    | "invalid_auth_config"
+    | "transport_init_failed";
   fromAddress?: string;
   transport?: Transporter;
 }
@@ -23,8 +27,8 @@ const LOG_PREFIX = "[communications][smtpProvider]";
 const readRawConfig = () => {
   const host = process.env.SMTP_HOST?.trim() ?? "";
   const portRaw = process.env.SMTP_PORT?.trim() ?? "";
-  const user = process.env.SMTP_USER?.trim() ?? "";
-  const pass = process.env.SMTP_PASS?.trim() ?? "";
+  const user = process.env.SMTP_USER?.trim() || undefined;
+  const pass = process.env.SMTP_PASS?.trim() || undefined;
   const from = process.env.SMTP_FROM?.trim() || undefined;
 
   return { host, portRaw, user, pass, from };
@@ -33,8 +37,14 @@ const readRawConfig = () => {
 const buildConfig = (): { config?: SmtpConfig; reason?: SmtpProviderState["reason"] } => {
   const raw = readRawConfig();
 
-  if (!raw.host || !raw.portRaw || !raw.user || !raw.pass) {
+  if (!raw.host || !raw.portRaw) {
     return { reason: "missing_config" };
+  }
+
+  const hasUser = typeof raw.user === "string";
+  const hasPass = typeof raw.pass === "string";
+  if (hasUser !== hasPass) {
+    return { reason: "invalid_auth_config" };
   }
 
   const parsedPort = Number(raw.portRaw);
@@ -56,13 +66,20 @@ const buildConfig = (): { config?: SmtpConfig; reason?: SmtpProviderState["reaso
 const warnDisabled = (reason: Exclude<SmtpProviderState["reason"], undefined>) => {
   if (reason === "missing_config") {
     console.warn(
-      `${LOG_PREFIX} SMTP disabled: missing SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASS.`
+      `${LOG_PREFIX} SMTP disabled: missing SMTP_HOST/SMTP_PORT.`
     );
     return;
   }
 
   if (reason === "invalid_port") {
     console.warn(`${LOG_PREFIX} SMTP disabled: SMTP_PORT is invalid.`);
+    return;
+  }
+
+  if (reason === "invalid_auth_config") {
+    console.warn(
+      `${LOG_PREFIX} SMTP disabled: SMTP_USER and SMTP_PASS must both be set or both be empty.`
+    );
     return;
   }
 
@@ -95,13 +112,15 @@ export const getSmtpProviderState = (): SmtpProviderState => {
         host: config.host,
         port: config.port,
         secure: config.port === 465,
-        auth: { user: config.user, pass: config.pass },
+        ...(config.user && config.pass
+          ? { auth: { user: config.user, pass: config.pass } }
+          : {}),
       });
 
     cachedState = {
       enabled: true,
       transport: cachedTransport,
-      fromAddress: config.from ?? config.user,
+      fromAddress: config.from ?? config.user ?? "no-reply@localhost",
     };
     return cachedState;
   } catch (error) {

@@ -179,21 +179,31 @@
     }
   },
   "credentialsSettings": {
-    "cardDescription": "Actualiza el correo y la contraseña de acceso. Es posible que debas iniciar sesión de nuevo tras guardar.",
+    "cardDescription": "Cambia la contraseña de acceso con un enlace seguro que enviamos al correo del negocio. Para cambiar el correo, edítalo en la página de perfil (tendrás que iniciar sesión de nuevo al guardar).",
     "sectionTitle": "Credenciales de acceso",
-    "sectionDescription": "Los correos siguen las mismas reglas de formato que en el resto de la app. Los dos correos deben coincidir. Para una contraseña nueva, las dos deben coincidir y debes indicar la contraseña actual. Deja la nueva en blanco para no cambiarla.",
-    "columnHintEmail": "El correo de acceso del negocio viene de tu perfil. Cámbialo aquí si hace falta; ambos campos deben coincidir.",
-    "columnHintPassword": "Nueva contraseña opcional. Deja ambos en blanco para mantener la actual; si escribes una, ambos deben coincidir.",
-    "fields": {
-      "note": "Nota",
-      "email": "Correo del negocio",
-      "confirmEmail": "Confirmar correo",
-      "newPassword": "Nueva contraseña",
-      "confirmPassword": "Confirmar nueva contraseña",
-      "currentPassword": "Contraseña actual"
-    },
+    "sectionDescription": "Confirma el correo del negocio si se indica; luego usa la columna de acción para recibir un enlace temporal. El correo de acceso se edita en la página de perfil.",
+    "actionsColumnTitle": "Restablecer contraseña",
     "validation": {
       "currentPasswordRequired": "Introduce tu contraseña actual para definir una nueva contraseña de acceso."
+    },
+    "emailVerify": {
+      "bannerTitle": "Confirma el correo del negocio",
+      "bannerDescription": "Enviamos un enlace a tu correo de acceso. Vuelve a enviar si no lo recibiste (pueden aplicarse límites).",
+      "resendButton": "Reenviar correo de confirmación",
+      "resendSending": "Enviando…",
+      "resendSuccessFallback": "Si la cuenta necesita verificación, enviamos instrucciones."
+    },
+    "passwordChangeEmail": {
+      "introBody": "Por seguridad no pedimos la nueva contraseña en esta pantalla. Usa el botón de la columna derecha para enviar un correo a tu dirección de acceso actual con un enlace de un solo uso.",
+      "stepCheckInbox": "Revisa la bandeja de entrada (y spam) de esa dirección.",
+      "stepOpenLink": "Abre el enlace del correo: te lleva a una página dedicada de la app.",
+      "stepChoosePassword": "En esa página elige una contraseña nueva segura y confírmala. El enlace solo sirve una vez y caduca en poco tiempo.",
+      "signInEmailLabel": "Enviaremos el enlace a: {{email}}",
+      "button": "Enviarme un enlace para cambiar la contraseña",
+      "sending": "Enviando…",
+      "successFallback": "Si existe una cuenta con esa dirección, enviamos instrucciones para restablecer la contraseña.",
+      "errorFallback": "No se pudo enviar el correo. Inténtalo más tarde.",
+      "missingEmail": "No hay correo de acceso disponible para esta sesión."
     }
   }
 }

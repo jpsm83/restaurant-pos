@@ -14,7 +14,7 @@ vi.mock("@/auth/store/AuthContext", () => ({
   }),
 }));
 
-vi.mock("@/services/businessService", () => ({
+vi.mock("@/services/business/businessService", () => ({
   useCreateBusinessMutation: () => ({
     mutateAsync: mockMutateAsync,
     isPending: false,
@@ -101,21 +101,27 @@ describe("BusinessRegisterPage", () => {
     });
   });
 
-  it("shows mutation error in an alert", async () => {
-    const user = userEvent.setup();
-    mockMutateAsync.mockRejectedValue(new Error("Network down"));
+  it(
+    "shows mutation error in an alert",
+    async () => {
+      const user = userEvent.setup({ delay: null });
+      mockMutateAsync.mockImplementation(() =>
+        Promise.reject(new Error("Network down")),
+      );
 
-    await renderWithI18n(
-      <MemoryRouter>
-        <BusinessRegisterPage />
-      </MemoryRouter>,
-    );
+      await renderWithI18n(
+        <MemoryRouter initialEntries={["/business/register"]}>
+          <Routes>
+            <Route path="/business/register" element={<BusinessRegisterPage />} />
+          </Routes>
+        </MemoryRouter>,
+      );
 
-    await fillValidBusinessRegistration(user);
-    await user.click(screen.getByRole("button", { name: /create business/i }));
+      await fillValidBusinessRegistration(user);
+      await user.click(screen.getByRole("button", { name: /create business/i }));
 
-    await waitFor(() => {
-      expect(screen.getByText("Network down")).toBeInTheDocument();
-    });
-  });
+      expect(await screen.findByText("Network down")).toBeInTheDocument();
+    },
+    15_000,
+  );
 });

@@ -180,13 +180,8 @@ function ProfileEnumMultiSelect<T extends string>({
 
 /** Logo, core business fields, cuisine type, and discovery categories (`/business/:id/settings/profile`). */
 export default function BusinessProfileSettingsPage() {
-  const { t } = useTranslation("business");
-  const { t: tNav } = useTranslation("nav");
-
   return (
     <BusinessProfileSettingsFormShell
-      pageTitle={tNav("settings.profile")}
-      cardDescription={t("profileSettings.cardDescription")}
       loadingSlot={
         <BusinessProfileSettingsLoadingCard>
           <ProfileSettingsLoadingBody />

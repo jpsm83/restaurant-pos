@@ -1,5 +1,4 @@
 import { Controller, useFieldArray } from "react-hook-form";
-import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,12 +32,8 @@ function OpenHoursSettingsLoadingBody() {
 
 /** In-venue business opening hours (self-order gating uses this schedule). */
 export default function BusinessOpenHoursSettingsPage() {
-  const { t: tNav } = useTranslation("nav");
-
   return (
     <BusinessProfileSettingsFormShell
-      pageTitle={tNav("settings.openHours")}
-      cardDescription="Define when the business is open for service and customer self-ordering eligibility."
       loadingSlot={
         <BusinessProfileSettingsLoadingCard>
           <OpenHoursSettingsLoadingBody />

@@ -198,6 +198,56 @@ describe("Auth Routes", () => {
       const body = JSON.parse(response.body);
       expect(body.message).toBe("Invalid or expired refresh token");
     });
+
+    it("returns 200 with new access token when refresh cookie matches session version", async () => {
+      const app = await getTestApp();
+
+      await Business.create({
+        tradeName: "Refresh OK Biz",
+        legalName: "Refresh OK Biz Legal",
+        email: "refresh-ok-biz@test.com",
+        password: hashedPassword,
+        taxNumber: "TAX-REFRESH-OK",
+        phoneNumber: "1234567890",
+        currencyTrade: "USD",
+        address: {
+          country: "USA",
+          state: "CA",
+          city: "LA",
+          street: "Main St",
+          buildingNumber: "123",
+          postCode: "90001",
+        },
+      });
+
+      const loginRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: { email: "refresh-ok-biz@test.com", password: testPassword },
+      });
+      expect(loginRes.statusCode).toBe(200);
+
+      const setCookie = loginRes.headers["set-cookie"];
+      const lines = Array.isArray(setCookie) ? setCookie : setCookie ? [setCookie] : [];
+      const refreshLine = lines.find((l) => l.startsWith("refresh_token="));
+      expect(refreshLine).toBeDefined();
+      const prefix = "refresh_token=";
+      const afterPrefix = refreshLine!.slice(prefix.length);
+      const semi = afterPrefix.indexOf(";");
+      const refreshVal =
+        semi >= 0 ? afterPrefix.slice(0, semi) : afterPrefix;
+
+      const refreshRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/refresh",
+        headers: { cookie: `refresh_token=${refreshVal}` },
+      });
+
+      expect(refreshRes.statusCode).toBe(200);
+      const body = JSON.parse(refreshRes.body);
+      expect(body.accessToken).toBeDefined();
+      expect(body.user?.type).toBe("business");
+    });
   });
 
   describe("GET /api/v1/auth/me", () => {

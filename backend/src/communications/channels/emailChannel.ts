@@ -8,6 +8,23 @@ const LOG_PREFIX = "[communications][emailChannel]";
 const DEFAULT_RETRY_ATTEMPTS = 2;
 const DEFAULT_RETRY_BASE_DELAY_MS = 250;
 
+const isDevEmailSinkEnabled = (): boolean =>
+  process.env.AUTH_EMAIL_DEV_SINK_ENABLED === "true" &&
+  process.env.NODE_ENV !== "production";
+
+const logDevEmailSink = (
+  payload: EmailSendInput,
+  recipients: string[],
+  fallbackReason: string,
+) => {
+  console.warn(
+    `${LOG_PREFIX} DEV sink accepted email (not sent via SMTP) reason=${fallbackReason} to=${recipients.join(",")} correlationId=${payload.correlationId ?? "N/A"}`,
+  );
+  console.info(
+    `${LOG_PREFIX} DEV sink preview subject="${payload.subject.trim()}" text="${(payload.text ?? "").trim()}"`,
+  );
+};
+
 const getRetryAttempts = (): number => {
   const raw = Number(process.env.COMMUNICATIONS_EMAIL_RETRY_ATTEMPTS ?? DEFAULT_RETRY_ATTEMPTS);
   if (!Number.isFinite(raw)) return DEFAULT_RETRY_ATTEMPTS;
@@ -88,6 +105,18 @@ const send = async (payload: EmailSendInput): Promise<CommunicationsChannelResul
 
   const smtpState = getSmtpProviderState();
   if (!smtpState.enabled || !smtpState.transport || !smtpState.fromAddress) {
+    if (isDevEmailSinkEnabled()) {
+      logDevEmailSink(
+        payload,
+        recipients,
+        `smtp_unavailable:${smtpState.reason ?? "unknown"}`,
+      );
+      return {
+        channel: "email",
+        success: true,
+        sentCount: recipientCount,
+      };
+    }
     return {
       channel: "email",
       success: false,
@@ -148,6 +177,15 @@ const send = async (payload: EmailSendInput): Promise<CommunicationsChannelResul
     sentCount: 0,
     error: message,
   };
+
+  if (isDevEmailSinkEnabled()) {
+    logDevEmailSink(payload, recipients, `smtp_send_error:${message}`);
+    return {
+      channel: "email",
+      success: true,
+      sentCount: recipientCount,
+    };
+  }
 
   if (payload.fireAndForget) {
     return result;

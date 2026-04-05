@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { z } from "zod";
 import { login } from "@/auth/api";
 import { getPostLoginDestination } from "@/auth/postLoginRedirect";
@@ -86,6 +87,9 @@ export default function LoginPage() {
     localStorage.setItem("auth_had_session", "1");
     const sessionUser = result.data.user;
     dispatch({ type: "AUTH_SUCCESS", payload: sessionUser });
+    if (sessionUser.emailVerified === false) {
+      toast.info(t("login.verifyEmailToast"));
+    }
     navigate(getPostLoginDestination(sessionUser), { replace: true });
   };
 
@@ -114,7 +118,15 @@ export default function LoginPage() {
               <FieldError message={errors.email?.message} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="login-password">{t("login.passwordLabel")}</Label>
+              <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+                <Label htmlFor="login-password">{t("login.passwordLabel")}</Label>
+                <Link
+                  to="/forgot-password"
+                  className="text-sm font-medium text-neutral-700 underline-offset-4 hover:underline"
+                >
+                  {t("login.forgotPasswordLink")}
+                </Link>
+              </div>
               <Input
                 id="login-password"
                 type="password"
@@ -137,6 +149,15 @@ export default function LoginPage() {
             <Button asChild variant="outline" className="w-full">
               <Link to="/signup">{t("login.createAccountLink")}</Link>
             </Button>
+
+            <p className="text-center text-sm text-neutral-600">
+              <Link
+                to="/request-email-confirmation"
+                className="font-medium text-neutral-800 underline-offset-4 hover:underline"
+              >
+                {t("login.resendConfirmationLink")}
+              </Link>
+            </p>
           </form>
         </CardContent>
       </Card>

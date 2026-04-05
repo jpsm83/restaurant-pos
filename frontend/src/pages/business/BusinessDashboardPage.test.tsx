@@ -4,23 +4,19 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { renderWithI18n } from "@/test/i18nTestUtils";
 import BusinessDashboardPage from "./BusinessDashboardPage";
 
-vi.mock("@/auth", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/auth")>();
-  return {
-    ...actual,
-    useAuth: () => ({
-      state: {
-        user: {
-          id: "507f1f77bcf86cd799439011",
-          email: "owner@restaurant.com",
-          type: "business" as const,
-        },
-        status: "authenticated" as const,
-        error: null,
+vi.mock("@/auth/store/AuthContext", () => ({
+  useAuth: () => ({
+    state: {
+      user: {
+        id: "507f1f77bcf86cd799439011",
+        email: "owner@restaurant.com",
+        type: "business" as const,
       },
-    }),
-  };
-});
+      status: "authenticated" as const,
+      error: null,
+    },
+  }),
+}));
 
 function renderBusinessDashboard() {
   const queryClient = new QueryClient({

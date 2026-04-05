@@ -33,6 +33,12 @@ import BusinessRegisterPage from "./pages/business/BusinessRegisterPage";
 
 const LoginPage = lazy(() => import("@/pages/LoginPage"));
 const SignUpPage = lazy(() => import("@/pages/SignUpPage"));
+const ForgotPasswordPage = lazy(() => import("@/pages/ForgotPasswordPage"));
+const ResetPasswordPage = lazy(() => import("@/pages/ResetPasswordPage"));
+const ConfirmEmailPage = lazy(() => import("@/pages/ConfirmEmailPage"));
+const RequestEmailConfirmationPage = lazy(
+  () => import("@/pages/RequestEmailConfirmationPage"),
+);
 const BusinessDashboardPage = lazy(() => import("@/pages/business/BusinessDashboardPage"));
 const BusinessDeliverySettingsPage = lazy(
   () => import("@/pages/business/BusinessDeliverySettingsPage"),
@@ -131,6 +137,25 @@ export function AppRoutes() {
               element={
                 <PublicOnlyRoute>
                   <SignUpPage />
+                </PublicOnlyRoute>
+              }
+            />
+            <Route
+              path="forgot-password"
+              element={
+                <PublicOnlyRoute>
+                  <ForgotPasswordPage />
+                </PublicOnlyRoute>
+              }
+            />
+            {/** Token links from email; must work even when a session exists. */}
+            <Route path="reset-password" element={<ResetPasswordPage />} />
+            <Route path="confirm-email" element={<ConfirmEmailPage />} />
+            <Route
+              path="request-email-confirmation"
+              element={
+                <PublicOnlyRoute>
+                  <RequestEmailConfirmationPage />
                 </PublicOnlyRoute>
               }
             />

@@ -22,7 +22,7 @@ This document explains **how the Restaurant POS web app (`frontend/`) relies on 
 | **Routing** | `react-router-dom` | URL-driven layouts, lazy routes, `Navigate` redirects. |
 | **Server / async state** | `@tanstack/react-query` | Queries and mutations (caching, keys in `frontend/src/services/queryKeys.ts`, busy-time defaults in `frontend/src/services/queryClient.ts`). |
 | **HTTP** | `axios` | Authenticated API calls via `frontend/src/services/http.ts` (Bearer from auth module). |
-| **Auth (browser)** | `fetch` in `frontend/src/auth/api.ts` | Login, signup, refresh, `me`, logout; cookies + token; see [`authentication-and-session.md`](./authentication-and-session.md). |
+| **Auth (browser)** | `fetch` in `frontend/src/auth/api.ts` | Login, signup, refresh, `me`, logout, **email security** (request confirm/reset, confirm, reset, resend); cookies + token; see [`authentication-and-session.md`](./authentication-and-session.md) and [`auth-email-security-flows.md`](./auth-email-security-flows.md). |
 | **Forms + validation** | `react-hook-form`, `zod`, `@hookform/resolvers` | All **interactive forms** use RHF for state and Zod for schema validation; see **section 3**. |
 | **UI primitives** | `radix-ui` / `@radix-ui/*`, `class-variance-authority`, `clsx`, `tailwind-merge` | Accessible primitives and **shadcn-style** components under `frontend/src/components/ui/`. |
 | **Styling** | `tailwindcss`, `@tailwindcss/postcss`, `tw-animate-css` | Utility-first layout and motion tokens. |
@@ -98,7 +98,7 @@ Keep these rules in service hooks so behavior stays consistent across pages.
 
 ## 4.3 Profile fetch/save diagnostics (busy-time baseline)
 
-For **business profile** fetch/save operations (split settings pages that share **`useBusinessProfileQuery`** / **`useUpdateBusinessProfileMutation`**, e.g. **`BusinessProfileSettingsPage`** at **`/settings/profile`**, **`BusinessCredentialsSettingsPage`** at **`/settings/credentials`**, **`BusinessAddressSettingsPage`** at **`/settings/address`**; HTTP + logs live in **`frontend/src/services/business/businessProfileApi.ts`**, re-exported from the **`businessService`** barrel), keep diagnostics lightweight and structured:
+For **business profile** fetch/save diagnostics (pages that call **`useUpdateBusinessProfileMutation`** / multipart PATCH: **`BusinessProfileSettingsPage`** (**`/settings/profile`**) and **`BusinessAddressSettingsPage`** (**`/settings/address`**); both use **`useBusinessProfileQuery`**. **`BusinessCredentialsSettingsPage`** (**`/settings/credentials`**) only uses the profile **query** via **`useBusinessProfileSettingsGate`** for loading context and triggers password reset through **`@/auth/api`** — it does **not** emit **`services.businessProfile`** save diagnostics. HTTP + logs for PATCH live in **`frontend/src/services/business/businessProfileApi.ts`**, re-exported from the **`businessService`** barrel), keep diagnostics lightweight and structured:
 
 - emit one structured log object per request outcome with:
   - `scope` (`services.businessProfile`)
@@ -127,10 +127,11 @@ For **business profile** fetch/save operations (split settings pages that share 
 
 | Document | Relevance |
 |----------|-----------|
-| [`frontend-authentication-and-navigation.md`](./frontend-authentication-and-navigation.md) | Auth routes; where login, signup, and business register live. |
+| [`frontend-authentication-and-navigation.md`](./frontend-authentication-and-navigation.md) | Auth routes; where login, signup, business register, and **email security** pages live. |
 | [`frontend-i18n.md`](./frontend-i18n.md) | Translating validation and labels used in Zod factories. |
 | [`advanced-table-usage.md`](./advanced-table-usage.md) | TanStack Table patterns in dashboards. |
 | [`authentication-and-session.md`](./authentication-and-session.md) | Backend contracts for auth (not npm-specific, but pairs with auth client code). |
+| [`auth-email-security-flows.md`](./auth-email-security-flows.md) | Auth-email endpoints, security patterns, and client `auth/api` helpers. |
 | [`../frontend/src/services/business/README.md`](../frontend/src/services/business/README.md) | Tenant **business profile/register** frontend services (multipart PATCH, React Query, mappers); pairs with **§4.3** diagnostics. |
 
 When the **standard form stack** or a **major dependency category** changes, update **this file** and the **companion row** in [`context.md`](./context.md).

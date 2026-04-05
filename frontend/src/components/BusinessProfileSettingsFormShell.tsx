@@ -5,7 +5,12 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { BusinessProfileSettingsReady } from "../hooks/useBusinessProfileSettingsController";
-import { useBusinessProfileSettingsController } from "../hooks/useBusinessProfileSettingsController";
+import {
+  useBusinessProfileSettingsController,
+  useBusinessProfileSettingsGate,
+  type BusinessProfileSettingsGateReady,
+  type BusinessProfileSettingsPageBlocked,
+} from "../hooks/useBusinessProfileSettingsController";
 
 /** Default “generic form” blocks when a page omits `loadingSlot`. */
 function GenericSettingsFieldSkeletonBlocks() {
@@ -42,8 +47,11 @@ function FormActionsSkeletonRow() {
  */
 export function BusinessProfileSettingsLoadingCard({
   children,
+  showFormActionsSkeleton = true,
 }: {
   children?: ReactNode;
+  /** Split settings pages with no Save/Reset bar (e.g. credentials email flow) omit the bottom row. */
+  showFormActionsSkeleton?: boolean;
 }) {
   return (
     <div className="flex w-full min-w-0 flex-col gap-8">
@@ -51,15 +59,12 @@ export function BusinessProfileSettingsLoadingCard({
       <div className="space-y-8">
         {children ?? <GenericSettingsFieldSkeletonBlocks />}
       </div>
-      <FormActionsSkeletonRow />
+      {showFormActionsSkeleton ? <FormActionsSkeletonRow /> : null}
     </div>
   );
 }
 
 type BusinessProfileSettingsFormShellProps = {
-  /** Page `<h1>` (and default section title if `cardTitle` omitted). */
-  pageTitle: string;
-  cardDescription?: string;
   /**
    * Replaces the default loading body; use {@link BusinessProfileSettingsLoadingCard} with custom
    * children so each settings route mirrors its own form shape.
@@ -68,19 +73,18 @@ type BusinessProfileSettingsFormShellProps = {
   children: (ctx: BusinessProfileSettingsReady) => ReactNode;
 };
 
-/**
- * Shared layout for split business settings routes: query gate, RHF submit bar, unsaved navigation guard.
- * Full-width page content (no card); typography matches former card title/description.
- */
-export function BusinessProfileSettingsFormShell({
-  pageTitle,
-  loadingSlot,
-  children,
-}: BusinessProfileSettingsFormShellProps) {
-  const { t } = useTranslation("business");
-  const ctrl = useBusinessProfileSettingsController();
+type BusinessProfileSettingsStaticShellProps = {
+  loadingSlot?: ReactNode;
+  /** No RHF, no Save/Reset — only profile gate + your content (e.g. email-based password change). */
+  children: (ctx: BusinessProfileSettingsGateReady) => ReactNode;
+};
 
-  if (ctrl.kind === "loading") {
+function renderProfileSettingsBlockedMain(
+  loadingSlot: ReactNode | undefined,
+  blocked: BusinessProfileSettingsPageBlocked,
+  t: (key: string, options?: { defaultValue?: string }) => string,
+): ReactNode {
+  if (blocked.kind === "loading") {
     const loadingLabel = t("profile.loadingTitle", {
       defaultValue: "Loading business profile...",
     });
@@ -92,25 +96,19 @@ export function BusinessProfileSettingsFormShell({
         aria-busy="true"
         aria-label={loadingLabel}
       >
-        <h1 className="mb-6 text-xl font-semibold tracking-tight text-neutral-900">
-          {pageTitle}
-        </h1>
         {loadingSlot ?? <BusinessProfileSettingsLoadingCard />}
       </main>
     );
   }
 
-  if (ctrl.kind === "error") {
+  if (blocked.kind === "error") {
     const message =
-      ctrl.message ??
+      blocked.message ??
       t("profile.loadError", {
         defaultValue: "Failed to load business profile.",
       });
     return (
       <main className="w-full min-w-0 p-6">
-        <h1 className="mb-6 text-xl font-semibold tracking-tight text-neutral-900">
-          {pageTitle}
-        </h1>
         <div className="max-w-2xl space-y-4">
           <h2 className="text-xl font-semibold tracking-tight text-neutral-900">
             {t("profile.errorTitle", {
@@ -126,7 +124,7 @@ export function BusinessProfileSettingsFormShell({
           <Button
             type="button"
             variant="outline"
-            onClick={() => void ctrl.refetch()}
+            onClick={() => void blocked.refetch()}
           >
             {t("profile.retry", { defaultValue: "Retry" })}
           </Button>
@@ -135,12 +133,9 @@ export function BusinessProfileSettingsFormShell({
     );
   }
 
-  if (ctrl.kind === "no-data") {
+  if (blocked.kind === "no-data") {
     return (
       <main className="w-full min-w-0 p-6">
-        <h1 className="mb-6 text-xl font-semibold tracking-tight text-neutral-900">
-          {pageTitle}
-        </h1>
         <Alert>
           {t("profile.noData", {
             defaultValue: "No profile data was returned. Please retry.",
@@ -150,8 +145,44 @@ export function BusinessProfileSettingsFormShell({
     );
   }
 
+  return null;
+}
+
+/**
+ * Read-only split settings shell: same load/error UX as {@link BusinessProfileSettingsFormShell}
+ * without RHF, Save/Reset, or unsaved navigation guard.
+ */
+export function BusinessProfileSettingsStaticShell({
+  loadingSlot,
+  children,
+}: BusinessProfileSettingsStaticShellProps) {
+  const { t } = useTranslation("business");
+  const gate = useBusinessProfileSettingsGate();
+
+  if (gate.kind !== "ready") {
+    return renderProfileSettingsBlockedMain(loadingSlot, gate, t);
+  }
+
+  return (
+    <main className="w-full min-w-0 p-6">
+      <div className="min-w-0">{children(gate)}</div>
+    </main>
+  );
+}
+
+/**
+ * Shared layout for split business settings routes: query gate, RHF submit bar, unsaved navigation guard.
+ * Page chrome (titles) live inside each route’s **`children`** content.
+ */
+export function BusinessProfileSettingsFormShell({
+  loadingSlot,
+  children,
+}: BusinessProfileSettingsFormShellProps) {
+  const { t } = useTranslation("business");
+  const ctrl = useBusinessProfileSettingsController();
+
   if (ctrl.kind !== "ready") {
-    return null;
+    return renderProfileSettingsBlockedMain(loadingSlot, ctrl, t);
   }
 
   const {
@@ -191,10 +222,7 @@ export function BusinessProfileSettingsFormShell({
           >
             Reset changes
           </Button>
-          <Button
-            type="submit"
-            disabled={updateMutation.isPending || !isDirty}
-          >
+          <Button type="submit" disabled={updateMutation.isPending || !isDirty}>
             {updateMutation.isPending ? "Saving..." : "Save changes"}
           </Button>
         </section>

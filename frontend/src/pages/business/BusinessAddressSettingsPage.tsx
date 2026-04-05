@@ -60,13 +60,8 @@ function AddressSettingsLoadingBody() {
 
 /** Street address and region fields for the business profile. */
 export default function BusinessAddressSettingsPage() {
-  const { t: tNav } = useTranslation("nav");
-  const { t } = useTranslation("business");
-
   return (
     <BusinessProfileSettingsFormShell
-      pageTitle={tNav("settings.address")}
-      cardDescription={t("addressSettings.cardDescription")}
       loadingSlot={
         <BusinessProfileSettingsLoadingCard>
           <AddressSettingsLoadingBody />

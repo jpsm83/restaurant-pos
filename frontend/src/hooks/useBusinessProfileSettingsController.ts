@@ -95,12 +95,93 @@ export const DAY_OPTIONS = [
   { value: 6, label: "Saturday" },
 ] as const;
 
-export type BusinessProfileSettingsBlockedKind =
-  | "wrong-session"
-  | "no-business-id"
-  | "loading"
-  | "error"
-  | "no-data";
+/** Profile loaded; same React Query cache key as {@link useBusinessProfileSettingsController}. */
+export type BusinessProfileSettingsGateReady = {
+  kind: "ready";
+  businessId: string;
+  profile: BusinessProfileDto;
+  profileQuery: UseQueryResult<BusinessProfileDto, Error>;
+};
+
+export type BusinessProfileSettingsGateResult =
+  | { kind: "wrong-session" }
+  | { kind: "no-business-id" }
+  | { kind: "loading" }
+  | { kind: "error"; message?: string; refetch: () => Promise<unknown> }
+  | { kind: "no-data" }
+  | BusinessProfileSettingsGateReady;
+
+/** Non-ready states returned before the full RHF + mutation controller is built. */
+export type BusinessProfileSettingsPageBlocked = Exclude<
+  BusinessProfileSettingsGateResult,
+  BusinessProfileSettingsGateReady
+>;
+
+/**
+ * Session + route + **`useBusinessProfileQuery`** only (no RHF, no PATCH).
+ * Used by **`BusinessProfileSettingsStaticShell`** and internally by {@link useBusinessProfileSettingsController}.
+ */
+export function useBusinessProfileSettingsGate(): BusinessProfileSettingsGateResult {
+  const { businessId } = useParams<{ businessId: string }>();
+  const { state } = useAuth();
+  const session = state.user;
+
+  const canLoadProfile = Boolean(
+    businessId && session && session.type === "business",
+  );
+  const profileQuery = useBusinessProfileQuery(
+    canLoadProfile ? businessId : undefined,
+    canLoadProfile,
+  );
+
+  if (!session || session.type !== "business") {
+    return { kind: "wrong-session" };
+  }
+
+  if (!businessId) {
+    return { kind: "no-business-id" };
+  }
+
+  const {
+    data: profileData,
+    isError: profileIsError,
+    isLoading: profileIsLoading,
+    isPending: profileIsPending,
+    isFetching: profileIsFetching,
+  } = profileQuery;
+
+  const isAwaitingProfileData =
+    !profileData &&
+    !profileIsError &&
+    (profileIsLoading || profileIsPending || profileIsFetching);
+
+  if (isAwaitingProfileData) {
+    return { kind: "loading" };
+  }
+
+  if (profileQuery.isError) {
+    const message =
+      profileQuery.error instanceof Error
+        ? profileQuery.error.message
+        : undefined;
+    return {
+      kind: "error",
+      message,
+      refetch: () => profileQuery.refetch(),
+    };
+  }
+
+  if (!profileQuery.data) {
+    return { kind: "no-data" };
+  }
+
+  return {
+    kind: "ready",
+    businessId,
+    profile: profileQuery.data,
+    profileQuery,
+  };
+}
 
 export type BusinessProfileSettingsReady = {
   kind: "ready";
@@ -135,11 +216,7 @@ export type BusinessProfileSettingsReady = {
 };
 
 export type BusinessProfileSettingsController =
-  | {
-      kind: Exclude<BusinessProfileSettingsBlockedKind, "error">;
-      message?: string;
-    }
-  | { kind: "error"; message?: string; refetch: () => Promise<unknown> }
+  | BusinessProfileSettingsPageBlocked
   | BusinessProfileSettingsReady;
 
 /**
@@ -148,9 +225,8 @@ export type BusinessProfileSettingsController =
  */
 export function useBusinessProfileSettingsController(): BusinessProfileSettingsController {
   const navigate = useNavigate();
-  const { businessId } = useParams<{ businessId: string }>();
-  const { state, dispatch } = useAuth();
-  const session = state.user;
+  const gate = useBusinessProfileSettingsGate();
+  const { dispatch } = useAuth();
   const { t } = useTranslation("business");
   const { t: tAuth } = useTranslation("auth");
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -177,31 +253,25 @@ export function useBusinessProfileSettingsController(): BusinessProfileSettingsC
     [t, tAuth],
   );
 
-  const canLoadProfile = Boolean(
-    businessId && session && session.type === "business",
-  );
-  const profileQuery = useBusinessProfileQuery(
-    canLoadProfile ? businessId : undefined,
-    canLoadProfile,
-  );
   const updateMutation = useUpdateBusinessProfileMutation();
+  const contactsBusinessId =
+    gate.kind === "ready" ? gate.businessId : null;
   const managementContactsQuery = useQuery({
-    queryKey: businessId
-      ? queryKeys.employees.managementContacts(businessId)
+    queryKey: contactsBusinessId
+      ? queryKeys.employees.managementContacts(contactsBusinessId)
       : ["employees", "managementContacts", "pending"],
     queryFn: ({ signal }) =>
-      fetchManagementContactOptions(businessId ?? "", signal),
-    enabled: Boolean(businessId && canLoadProfile),
+      fetchManagementContactOptions(contactsBusinessId ?? "", signal),
+    enabled: Boolean(contactsBusinessId),
     // Keep stable shape while loading so select rendering doesn't thrash.
     initialData: [] as ManagementContactOption[],
   });
 
+  const readyProfile = gate.kind === "ready" ? gate.profile : undefined;
   const profileFormValues = useMemo(
     () =>
-      profileQuery.data
-        ? businessDtoToFormValues(profileQuery.data)
-        : undefined,
-    [profileQuery.data],
+      readyProfile ? businessDtoToFormValues(readyProfile) : undefined,
+    [readyProfile],
   );
 
   const {
@@ -250,48 +320,12 @@ export function useBusinessProfileSettingsController(): BusinessProfileSettingsC
     };
   }, [imagePreviewUrl]);
 
-  if (!session || session.type !== "business") {
-    return { kind: "wrong-session" };
+  if (gate.kind !== "ready") {
+    return gate;
   }
 
-  if (!businessId) {
-    return { kind: "no-business-id" };
-  }
-
-  // No DTO yet: show skeleton while the first request is in flight (or pending). Include `isPending`/`isFetching`
-  // alongside `isLoading` so we stay correct if one flag leads the other by a tick; tests may mock only `isLoading`.
-  const {
-    data: profileData,
-    isError: profileIsError,
-    isLoading: profileIsLoading,
-    isPending: profileIsPending,
-    isFetching: profileIsFetching,
-  } = profileQuery;
-
-  const isAwaitingProfileData =
-    !profileData &&
-    !profileIsError &&
-    (profileIsLoading || profileIsPending || profileIsFetching);
-
-  if (isAwaitingProfileData) {
-    return { kind: "loading" };
-  }
-
-  if (profileQuery.isError) {
-    const message =
-      profileQuery.error instanceof Error
-        ? profileQuery.error.message
-        : undefined;
-    return {
-      kind: "error",
-      message,
-      refetch: () => profileQuery.refetch(),
-    };
-  }
-
-  if (!profileQuery.data) {
-    return { kind: "no-data" };
-  }
+  const { businessId, profileQuery } = gate;
+  const savedProfileEmailTrimmed = gate.profile.email.trim();
 
   const handleImageUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null;
@@ -299,7 +333,7 @@ export function useBusinessProfileSettingsController(): BusinessProfileSettingsC
   };
 
   const shouldForceLogoutAfterSave = (values: BusinessProfileFormValues) => {
-    const emailChanged = values.email.trim() !== session.email.trim();
+    const emailChanged = values.email.trim() !== savedProfileEmailTrimmed;
     const passwordChanged = values.password.trim().length > 0;
     return emailChanged || passwordChanged;
   };

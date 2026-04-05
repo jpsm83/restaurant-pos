@@ -8,7 +8,7 @@
  *
  * ## Wiring
  * - **`AuthProvider`** (`store/AuthContext.tsx`) calls `loadPersistedAccessToken`, `getCurrentUser`, `refreshSession`, `setAccessToken` on bootstrap.
- * - **Pages** use `login`, `signup`, `logout`, `getCurrentUser` from **`@/auth`** (barrel).
+ * - **Pages** use `login`, `signup`, `logout`, `getCurrentUser`, and public email/password flows from **`@/auth/api`**.
  * - **`businessService.createBusiness`** calls **`setAccessToken`** when registration returns a token.
  * - **`logout`** clears token and **`queryClient.removeQueries`** for `auth.mode` (TanStack cache); broader invalidation can be added here if needed.
  *
@@ -23,8 +23,49 @@ import type {
 import { queryClient } from "@/services/queryClient";
 import { queryKeys } from "@/services/queryKeys";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
 const ACCESS_TOKEN_STORAGE_KEY = "restaurant_pos_auth_access";
+
+/**
+ * Resolves the origin/base for auth `fetch` calls.
+ *
+ * In **Vite dev**, if `VITE_API_BASE_URL` targets another origin (e.g. `http://localhost:4000` while
+ * the SPA is on `http://localhost:5173`), we use **relative** `/api/...` so the dev server **proxy**
+ * forwards to Fastify. That avoids **CORS** failures and keeps the refresh cookie **first-party**
+ * (see `frontend/.env.example`).
+ *
+ * In **production**, when the API host matches the page host, use the configured base; when they
+ * differ, the configured full URL is used and the API must allow the app origin via **`CORS_ORIGINS`**.
+ */
+function resolveAuthFetchBaseUrl(): string {
+  const raw = import.meta.env.VITE_API_BASE_URL;
+  const configured =
+    typeof raw === "string" ? raw.trim().replace(/\/$/, "") : "";
+
+  if (typeof window === "undefined") {
+    return configured;
+  }
+
+  if (!configured) {
+    return "";
+  }
+
+  let apiOrigin: string;
+  try {
+    apiOrigin = new URL(configured).origin;
+  } catch {
+    return configured;
+  }
+
+  if (window.location.origin === apiOrigin) {
+    return configured;
+  }
+
+  if (import.meta.env.DEV) {
+    return "";
+  }
+
+  return configured;
+}
 
 let accessToken: string | null = null;
 
@@ -57,6 +98,9 @@ interface AuthTokenResponseBody {
   message?: string;
 }
 
+/** Many unauthenticated auth routes return `{ message }` (success, generic, or error copy). */
+type AuthMessageResponseBody = { message?: string };
+
 async function parseJson<T>(response: Response): Promise<T | null> {
   try {
     return (await response.json()) as T;
@@ -83,31 +127,37 @@ async function authRequest<T>(
   options?: RequestInit,
   retryOnUnauthorized = true
 ): Promise<{ ok: true; data: T | null } | { ok: false; error: string }> {
-  const hasBody = options?.body !== undefined && options?.body !== null;
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    credentials: "include",
-    headers: getAuthHeaders(options?.headers, hasBody),
-    ...options,
-  });
+  try {
+    const hasBody = options?.body !== undefined && options?.body !== null;
+    const response = await fetch(`${resolveAuthFetchBaseUrl()}${path}`, {
+      credentials: "include",
+      headers: getAuthHeaders(options?.headers, hasBody),
+      ...options,
+    });
 
-  const payload = await parseJson<{ message?: string } & T>(response);
+    const payload = await parseJson<{ message?: string } & T>(response);
 
-  if (response.status === 401 && retryOnUnauthorized) {
-    const refreshed = await refreshSession();
+    if (response.status === 401 && retryOnUnauthorized) {
+      const refreshed = await refreshSession();
 
-    if (refreshed.ok) {
-      return authRequest<T>(path, options, false);
+      if (refreshed.ok) {
+        return authRequest<T>(path, options, false);
+      }
     }
-  }
 
-  if (!response.ok) {
-    return {
-      ok: false,
-      error: payload?.message ?? "Request failed",
-    };
-  }
+    if (!response.ok) {
+      return {
+        ok: false,
+        error: payload?.message ?? "Request failed",
+      };
+    }
 
-  return { ok: true, data: payload };
+    return { ok: true, data: payload };
+  } catch (e) {
+    const message =
+      e instanceof Error ? e.message : "Could not reach the server.";
+    return { ok: false, error: message };
+  }
 }
 
 export async function login(credentials: LoginCredentials) {
@@ -192,6 +242,65 @@ export async function getCurrentUser() {
   }
 
   return result;
+}
+
+/** Unauthenticated: request a sign-in email verification message (anti-enumeration; **200** + generic message). */
+export async function requestEmailConfirmation(email: string) {
+  return authRequest<AuthMessageResponseBody>(
+    "/api/v1/auth/request-email-confirmation",
+    {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    },
+    false,
+  );
+}
+
+/** Unauthenticated: consume email verification **token** from the link (one-time). */
+export async function confirmEmail(token: string) {
+  return authRequest<AuthMessageResponseBody>(
+    "/api/v1/auth/confirm-email",
+    {
+      method: "POST",
+      body: JSON.stringify({ token }),
+    },
+    false,
+  );
+}
+
+/** Unauthenticated: request a password-reset email (same generic **200** body as confirmation request). */
+export async function requestPasswordReset(email: string) {
+  return authRequest<AuthMessageResponseBody>(
+    "/api/v1/auth/request-password-reset",
+    {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    },
+    false,
+  );
+}
+
+/** Unauthenticated: set a new password using the reset **token** from the email link. */
+export async function resetPassword(token: string, newPassword: string) {
+  return authRequest<AuthMessageResponseBody>(
+    "/api/v1/auth/reset-password",
+    {
+      method: "POST",
+      body: JSON.stringify({ token, newPassword }),
+    },
+    false,
+  );
+}
+
+/** Authenticated: resend sign-in email confirmation for the current account (server uses DB email). */
+export async function resendEmailConfirmation() {
+  return authRequest<AuthMessageResponseBody>(
+    "/api/v1/auth/resend-email-confirmation",
+    {
+      method: "POST",
+      body: JSON.stringify({}),
+    },
+  );
 }
 
 export async function logout() {

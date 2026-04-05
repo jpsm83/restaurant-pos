@@ -5,7 +5,14 @@
     "emailFallback": "usuario"
   },
   "profile": {
-    "title": "Perfil"
+    "title": "Perfil",
+    "emailVerify": {
+      "bannerTitle": "Confirma tu correo",
+      "bannerDescription": "Enviamos un enlace a tu correo de acceso. Vuelve a enviar si no lo recibiste (pueden aplicarse límites).",
+      "resendButton": "Reenviar correo de confirmación",
+      "resendSending": "Enviando…",
+      "resendSuccessFallback": "Si la cuenta necesita verificación, enviamos instrucciones."
+    }
   },
   "favorites": {
     "title": "Favoritos"

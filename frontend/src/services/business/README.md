@@ -148,7 +148,7 @@ Builds the **multipart PATCH** body expected by the backend:
 - **Scalar fields**: `tradeName`, `legalName`, `email`, `phoneNumber`, `taxNumber`, `currencyTrade`, `subscription`, `contactPerson`, `acceptsDelivery` (boolean as string).
 - **Nested JSON as strings**: `address`, `metrics`, `cuisineType`, `categories`, `businessOpeningHours`, `deliveryOpeningWindows`, `reportingConfig` (only if `weeklyReportStartDay` is a finite number).
 - **Optional address keys**: `region`, `doorNumber`, `complement` omitted when empty after trim.
-- **Password**: `password` only appended if non-empty (optional update). When present, **`currentPassword`** is appended for backend verification (same field is only collected on **`BusinessCredentialsSettingsPage`** among business settings routes).
+- **Password**: `password` only appended if non-empty (optional update). When present, **`currentPassword`** is appended for backend verification. The web app’s **`BusinessCredentialsSettingsPage`** does **not** use this path for tenants — it triggers **`requestPasswordReset(email)`** instead (email link → **`/reset-password`**).
 - **Delivery**: `deliveryRadius` / `minOrder` only if finite numbers (nullable skipped when null).
 - **Enums on write**: `filterToAllowedEnums` restricts `cuisineType` and `categories` to known enum values before `JSON.stringify`.
 - **Image**: if `imageFile` is set and `size > 0`, appends file as `imageUrl` (field name matches backend convention for uploads).
@@ -165,13 +165,15 @@ Returns a Zod object schema whose shape mirrors **`BusinessProfileFormValues`**:
 
 - Subscription and currency enums from `@packages/enums.ts`.
 - **`email`** and **`confirmEmail`**: required, both must match **`emailRegex`** from `@packages/utils/emailRegex.ts`, and must equal each other after trim.
-- Optional new-password flow: empty both ok; if either new-password field is set, both required, must match, `isValidPassword` from `@packages/utils/passwordPolicy.ts`, and **`currentPassword`** must be non-empty (credentials page + multipart PATCH).
+- Optional new-password flow: empty both ok; if either new-password field is set, both required, must match, `isValidPassword` from `@packages/utils/passwordPolicy.ts`, and **`currentPassword`** must be non-empty (multipart PATCH when those fields are present on a form).
 - Opening hours and delivery windows: `HH:MM` regex, `closeTime` after `openTime`, day 0–6.
 - Metrics and non-negative numbers for delivery radius / min order (nullable).
 
 Exported types: `BusinessProfileSchema`, `BusinessProfileSchemaValues`.
 
 **Usage:** `useBusinessProfileSettingsController` builds the schema with **`business.profileForm.validation.*`** / **`credentialsSettings.validation.*`** (and **`auth.signup.errors.passwordPolicy`**) and passes it to **`zodResolver`**. **`BusinessProfileSettingsFormShell`** shows a short summary **`Alert`** when submit validation fails. Vitest coverage lives in `businessProfileFormSchema.test.ts`.
+
+**Gate-only settings:** `useBusinessProfileSettingsGate` (exported from **`useBusinessProfileSettingsController.ts`**) powers **`BusinessProfileSettingsStaticShell`** (e.g. credentials page) with a single profile query and no RHF/mutation.
 
 ---
 
@@ -191,17 +193,17 @@ Exported types: `BusinessProfileSchema`, `BusinessProfileSchemaValues`.
 
 ## Loading UI (split business settings)
 
-**`BusinessProfileSettingsFormShell`** passes a **`loadingSlot`** while the profile query is pending. These pages use the shared **`BusinessProfileSettingsLoadingCard`** and compose **`Skeleton`** so the placeholder **matches the loaded DOM** (same `section` / `header` / grid structure), avoiding layout shift:
+**`BusinessProfileSettingsFormShell`** / **`BusinessProfileSettingsStaticShell`** pass a **`loadingSlot`** while the profile query is pending. These pages use the shared **`BusinessProfileSettingsLoadingCard`** and compose **`Skeleton`** so the placeholder **matches the loaded DOM**, avoiding layout shift:
 
 - **`BusinessProfileSettingsPage`**: one **`section`** with header, logo column + two name fields, then the seven-cell grid (phone, tax, currency, email, cuisine, categories, contact).
 - **`BusinessAddressSettingsPage`**: **`section`** + **`header`**, address grid with full-width rows for street and complement, map column with title + map-sized skeleton.
-- **`BusinessCredentialsSettingsPage`**: two-column credentials layout + full-width current-password row (see **`documentation/context.md`** *Business credentials settings*).
+- **`BusinessCredentialsSettingsPage`**: same **`section` / `header` / `grid`** (`lg:col-span-2` + `lg:col-span-1`) skeleton pattern as address; **`LoadingCard`** omits the Save/Reset skeleton row (`showFormActionsSkeleton={false}`).
 
 Repository rule **§13** in **`documentation/context.md`** documents the general skeleton policy; the pages above are reference implementations for profile, address, and credentials.
 
 ## Typical consumers in this codebase
 
-- **`useBusinessProfileSettingsController`**: imports hooks and helpers from `@/services/business/businessService` (query, mutations, mapper, payload, management contacts).
+- **`useBusinessProfileSettingsController`**: imports hooks and helpers from `@/services/business/businessService` (query, mutations, mapper, payload, management contacts). Colocated in the same module: **`useBusinessProfileSettingsGate`** (profile fetch gate only) so the query is not duplicated and static settings pages avoid mounting RHF.
 - **`BusinessAddressSettingsPage`**: `businessDtoToFormValues` for local form initialization patterns.
 - **`BusinessRegisterPage`**: `useCreateBusinessMutation`.
 - **`BusinessDeliverySettingsPage`**: type-only import of `BusinessProfileFormValues`.

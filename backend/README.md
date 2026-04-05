@@ -42,6 +42,43 @@ Business, supplier, and user `personalDetails` embed **`addressSchema`** (`src/m
 | `CLOUDINARY_API_KEY` | Yes | Cloudinary API key |
 | `CLOUDINARY_API_SECRET` | Yes | Cloudinary API secret |
 | `PORT` | No | Server port (default: 4000) |
+| `CORS_ORIGINS` | No (required for cross-origin SPA in prod) | Comma-separated allowed **`Origin`** values for browser `fetch`/`XHR` with credentials (e.g. `https://app.example.com`). If unset in **production**, cross-origin browser calls are denied. In **non-production**, `http(s)://localhost` and `127.0.0.1` (any port) are allowed when this is unset. |
+
+### Auth email (magic links, TTL, rate limits)
+
+Used by `POST /api/v1/auth/request-email-confirmation`, `request-password-reset`, `confirm-email`, `reset-password`, `resend-email-confirmation`, and related handlers under `src/auth/`. Link targets in the SPA are **`/confirm-email?token=…`** and **`/reset-password?token=…`**.
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `APP_BASE_URL` | **Yes in production** (for sending links) | Public origin (and optional path prefix) of the web app, e.g. `https://app.example.com` or `https://example.com/my-app`. Trimmed; no trailing slash. **First match wins** in this order: `APP_BASE_URL` → `PUBLIC_APP_URL` → `FRONTEND_URL` → `VITE_APP_BASE_URL`. If none are valid `http:`/`https:` URLs with a hostname, building email links throws (see `src/auth/emailLinks.ts`). |
+| `PUBLIC_APP_URL` | No | Fallback when `APP_BASE_URL` is unset. Same format as above. |
+| `FRONTEND_URL` | No | Fallback when the above are unset. |
+| `VITE_APP_BASE_URL` | No | Last fallback; only if present in **server** process env (e.g. copied from deploy config). |
+| `AUTH_EMAIL_CONFIRM_TTL_MS` | No | Lifetime in ms for **email verification** tokens (default **86400000** = 24h). Invalid or non-positive values fall back to default (`src/auth/emailToken.ts`). |
+| `AUTH_RESET_TTL_MS` | No | Lifetime in ms for **password reset** tokens (default **3600000** = 1h). Same parsing rules as above. |
+| `AUTH_EMAIL_TOKEN_PEPPER` | No | Optional secret concatenated before hashing raw link tokens (SHA-256). Empty/unset means no pepper. |
+| `AUTH_EMAIL_RATE_LIMIT_IP_MAX` | No | Max auth-email **send attempts per IP per route** in the sliding window (default **30**). Routes are separate buckets: `request-email-confirmation`, `request-password-reset`, `resend-email-confirmation`. |
+| `AUTH_EMAIL_RATE_LIMIT_IP_WINDOW_MS` | No | IP window length in ms (default **900000** = 15 minutes). |
+| `AUTH_EMAIL_RATE_LIMIT_EMAIL_MAX` | No | Max **sends per verification intent + normalized email** in the email window (default **5**). Intents are separate (e.g. confirmation vs password reset). Over cap → **200** generic body, **no** email (anti-abuse; see `src/auth/authEmailRateLimit.ts`). |
+| `AUTH_EMAIL_RATE_LIMIT_EMAIL_WINDOW_MS` | No | Email cap window in ms (default **3600000** = 1 hour). |
+| `SMTP_HOST` | Yes (for real email delivery) | SMTP host used by auth-email transactional sends. |
+| `SMTP_PORT` | Yes (for real email delivery) | SMTP port. `465` uses secure transport; other ports use STARTTLS/plain based on server. |
+| `SMTP_USER` | No | SMTP auth username. Optional for local relays that do not require auth (e.g. Mailpit). |
+| `SMTP_PASS` | No | SMTP auth password. Must be set together with `SMTP_USER` when auth is required. |
+| `SMTP_FROM` | No | Sender address override. Defaults to `SMTP_USER` (or `no-reply@localhost` when auth is not configured). |
+| `AUTH_EMAIL_DEV_SINK_ENABLED` | No (development only) | When `true` and `NODE_ENV` is not production, auth email sends use a **console sink fallback** if SMTP is unavailable/fails. Routes return success and logs include a preview. Keep `false` in production. |
+
+**Local dev:** point `APP_BASE_URL` at the Vite dev origin (often `http://localhost:5173`) so links in Mailpit open the SPA. The frontend usually leaves `VITE_API_BASE_URL` empty so `/api` proxies to the backend (see `frontend/.env.example`).
+
+**Scaling:** IP and email limits are **in-memory per process**; document expectations if you run multiple backend instances.
+
+**Documentation:** end-to-end behavior, sequence diagrams, frontend routes, and a **support runbook** (resend, expired links, SMTP triage) live in **`documentation/auth-email-security-flows.md`** at the repo root.
+
+#### Auth email observability (logs + in-process metrics)
+
+- **Fastify (Pino):** each auth-email HTTP route emits `auth_email_http_response` with structured fields `authEmail.route`, `authEmail.httpStatus`, and optional `authEmail.reason` (e.g. `rate_limited`, `validation`, `consume_rejected`). Implemented in `src/routes/v1/auth.ts`.
+- **Audit stream (stdout):** `logVerificationIntentAudit` in `src/auth/verificationIntentAudit.ts` writes one JSON object per line (`scope: "verification_intent_audit"`). Phases include **`token_persisted`** (token issued to DB), **`delivered`** / **`delivery_failed`** (SMTP path outcome), **`consumed`** / **`consume_rejected`** / **`consume_failed`** (link consumption). Optional **`rejectReason`**: `invalid_token`, `not_found_or_expired`, `server`. Raw link tokens and passwords are never logged. Set `SILENCE_VERIFICATION_INTENT_AUDIT=1` to suppress audit lines (e.g. noisy tests).
+- **Counters:** `getAuthEmailMetricsSnapshot()` in `src/auth/authEmailMetrics.ts` returns HTTP counts by route (requests received, 2xx / 4xx / 5xx / 429), transactional **`dispatch.successes` / `dispatch.failures`** (auth emails only), and token consume tallies by intent (`email_confirmation`, `password_reset`). Same per-process caveat as communications metrics — wire an admin or `/health` extension in your deployment if you need remote scraping.
 
 ### Communications reliability env vars
 
@@ -179,7 +216,7 @@ The backend uses JWT-based authentication with:
 ### Token Strategy
 
 - **Access Token**: Short-lived (15 min), sent in `Authorization: Bearer <token>` header
-- **Refresh Token**: Long-lived (7 days), stored in httpOnly cookie
+- **Refresh Token**: Long-lived (7 days), stored in httpOnly cookie; JWT payload includes **`v`** = `User.refreshSessionVersion` or `Business.refreshSessionVersion` (default **0**). **`POST /auth/refresh`** rejects when `v` does not match the DB (legacy cookies without `v` are treated as **0**). The version **`$inc`** on **email password reset** and on **authenticated password change** (`PATCH` business / user) revokes other devices’ refresh cookies without rotating `REFRESH_SECRET`.
 
 ## Project Structure
 

@@ -47,6 +47,14 @@ export interface IBusiness {
   imageUrl?: string;
   email: string;
   password: string;
+  /** When true, tenant `email` is treated as verified for auth-email flows. */
+  emailVerified?: boolean;
+  /** Digest of the raw email-confirmation token; never expose in public DTOs. */
+  emailVerificationTokenHash?: string;
+  emailVerificationExpiresAt?: Date;
+  /** Digest of the raw password-reset token; never expose in public DTOs. */
+  passwordResetTokenHash?: string;
+  passwordResetExpiresAt?: Date;
   phoneNumber: string;
   taxNumber: string;
   currencyTrade: string;
@@ -74,7 +82,16 @@ export interface IBusiness {
  * Mirrors GET `/api/v1/business/:businessId` response shape (`password` excluded).
  */
 export interface IBusinessProfileDto
-  extends Omit<IBusiness, "_id" | "password" | "reportingConfig"> {
+  extends Omit<
+    IBusiness,
+    | "_id"
+    | "password"
+    | "reportingConfig"
+    | "emailVerificationTokenHash"
+    | "emailVerificationExpiresAt"
+    | "passwordResetTokenHash"
+    | "passwordResetExpiresAt"
+  > {
   _id: string;
   reportingConfig?: Partial<IReportingConfig>;
   createdAt?: string;

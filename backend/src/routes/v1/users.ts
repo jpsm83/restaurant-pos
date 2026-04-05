@@ -419,11 +419,17 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
         updateUserObj["personalDetails.imageUrl"] = cloudinaryUploadResponse[0];
       }
 
-      const updatedUser = await User.findByIdAndUpdate(
-        userId,
-        { $set: updateUserObj },
-        { new: true, lean: true },
-      );
+      const userUpdate: mongoose.UpdateQuery<Record<string, unknown>> = {
+        $set: updateUserObj,
+      };
+      if (password) {
+        userUpdate.$inc = { refreshSessionVersion: 1 };
+      }
+
+      const updatedUser = await User.findByIdAndUpdate(userId, userUpdate, {
+        new: true,
+        lean: true,
+      });
 
       if (!updatedUser) {
         return reply.code(404).send({ message: "User not found!" });
@@ -437,6 +443,11 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
         app,
         reply,
         session,
+        {
+          refreshSessionVersion:
+            (updatedUser as { refreshSessionVersion?: number })
+              .refreshSessionVersion ?? 0,
+        },
       );
 
       return reply.code(200).send({

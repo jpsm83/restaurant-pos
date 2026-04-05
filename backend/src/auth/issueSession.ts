@@ -18,6 +18,11 @@ import type {
   RefreshTokenPayload,
 } from "./types.ts";
 
+export type IssueSessionOptions = {
+  /** Must match `User.refreshSessionVersion` / `Business.refreshSessionVersion` in DB. */
+  refreshSessionVersion?: number;
+};
+
 export function signAccessToken(
   app: FastifyInstance,
   session: AuthSession,
@@ -31,11 +36,14 @@ export function issueSessionWithRefreshCookie(
   app: FastifyInstance,
   reply: FastifyReply,
   session: AuthSession,
+  options?: IssueSessionOptions,
 ): { accessToken: string; user: AuthSession } {
   const accessToken = signAccessToken(app, session);
+  const refreshSessionVersion = options?.refreshSessionVersion ?? 0;
   const refreshPayload: RefreshTokenPayload = {
     id: session.id,
     type: session.type,
+    v: refreshSessionVersion,
   };
   const refreshToken = app.jwt.sign(refreshPayload, {
     expiresIn: AUTH_CONFIG.REFRESH_TOKEN_EXPIRES_IN,
@@ -51,15 +59,43 @@ export function issueSessionWithRefreshCookie(
   return { accessToken, user: session };
 }
 
+/** `null` if the account document is missing. */
+export async function readRefreshSessionVersionForAccount(
+  type: "business" | "user",
+  id: string,
+): Promise<number | null> {
+  if (type === "business") {
+    const doc = (await Business.findById(id)
+      .select("refreshSessionVersion")
+      .lean()) as { refreshSessionVersion?: number } | null;
+    if (!doc) return null;
+    return doc.refreshSessionVersion ?? 0;
+  }
+  const doc = (await User.findById(id)
+    .select("refreshSessionVersion")
+    .lean()) as { refreshSessionVersion?: number } | null;
+  if (!doc) return null;
+  return doc.refreshSessionVersion ?? 0;
+}
+
+export function refreshTokenPayloadVersionMatchesDb(
+  payload: RefreshTokenPayload,
+  dbVersion: number,
+): boolean {
+  const tokenVersion = payload.v ?? 0;
+  return tokenVersion === dbVersion;
+}
+
 export async function buildAuthUserSessionFromUserId(
   userId: string,
 ): Promise<AuthUser | null> {
   const user = (await User.findById(userId)
-    .select("_id personalDetails.email employeeDetails")
+    .select("_id personalDetails.email employeeDetails emailVerified")
     .lean()) as {
     _id: unknown;
     personalDetails: { email?: string };
     employeeDetails?: unknown;
+    emailVerified?: boolean;
   } | null;
 
   if (!user) return null;
@@ -73,6 +109,7 @@ export async function buildAuthUserSessionFromUserId(
     id: String(user._id),
     email: userEmail,
     type: "user",
+    emailVerified: user.emailVerified === true,
   };
 
   if (user.employeeDetails) {
@@ -101,12 +138,17 @@ export async function buildAuthBusinessSessionFromId(
   businessId: string,
 ): Promise<AuthBusiness | null> {
   const business = (await Business.findById(businessId)
-    .select("_id email")
-    .lean()) as { _id: unknown; email: string } | null;
+    .select("_id email emailVerified")
+    .lean()) as {
+    _id: unknown;
+    email: string;
+    emailVerified?: boolean;
+  } | null;
   if (!business) return null;
   return {
     id: String(business._id),
     email: business.email,
     type: "business",
+    emailVerified: business.emailVerified === true,
   };
 }

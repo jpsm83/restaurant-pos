@@ -14,7 +14,7 @@
  *    sign-in / sign-up links (`useSiteAudience` throws outside this tree; other layouts use
  *    `useOptionalSiteAudience` in `Navbar`).
  * 2. **`Navbar`** — public CTAs or account popover when authenticated on a public child.
- * 3. **`<Outlet />`** — index marketing, `/login`, `/signup`, `/business`, `/business/register`.
+ * 3. **`<Outlet />`** — index marketing, `/login`, `/signup`, `/forgot-password`, `/request-email-confirmation`, `/reset-password`, `/confirm-email`, `/business`, `/business/register`.
  * 4. **`Footer`** — **only** on this shell; tenant / user shells omit it.
  */
 import { Outlet } from "react-router-dom";

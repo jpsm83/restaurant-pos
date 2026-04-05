@@ -18,13 +18,13 @@ vi.mock("@/auth/store/AuthContext", () => ({
   }),
 }));
 
-vi.mock("@/auth", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/auth")>();
-  return {
-    ...actual,
-    login: (...args: unknown[]) => mockLogin(...args),
-  };
-});
+vi.mock("sonner", () => ({
+  toast: { info: vi.fn(), success: vi.fn(), error: vi.fn() },
+}));
+
+vi.mock("@/auth/api", () => ({
+  login: (...args: unknown[]) => mockLogin(...args),
+}));
 
 describe("LoginPage", () => {
   beforeEach(() => {

@@ -5,7 +5,7 @@
  * Matches legacy NextAuth session structure for full parity.
  */
 
-import type { FastifyPluginAsync } from "fastify";
+import type { FastifyPluginAsync, FastifyRequest } from "fastify";
 import bcrypt from "bcrypt";
 import Business from "../../models/business.ts";
 import User from "../../models/user.ts";
@@ -16,6 +16,7 @@ import {
   isValidPassword,
   PASSWORD_POLICY_MESSAGE,
 } from "../../../../packages/utils/passwordPolicy.ts";
+import { VerificationIntent } from "../../../../packages/authVerificationIntent.ts";
 import type {
   AuthSession,
   AuthBusiness,
@@ -26,8 +27,35 @@ import {
   buildAuthBusinessSessionFromId,
   buildAuthUserSessionFromUserId,
   issueSessionWithRefreshCookie,
+  readRefreshSessionVersionForAccount,
+  refreshTokenPayloadVersionMatchesDb,
   signAccessToken,
 } from "../../auth/issueSession.ts";
+import { checkAuthEmailIpRate } from "../../auth/authEmailRateLimit.ts";
+import {
+  CONFIRM_EMAIL_MISSING_TOKEN_MESSAGE,
+  isValidConfirmEmailTokenInput,
+} from "../../auth/confirmEmail.ts";
+import {
+  GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE,
+  handleRequestEmailConfirmation,
+  isValidRequestEmailConfirmationInput,
+  normalizeRequestEmail,
+} from "../../auth/requestEmailConfirmation.ts";
+import { handleRequestPasswordReset } from "../../auth/requestPasswordReset.ts";
+import { handleResendEmailConfirmationForAuthenticatedAccount } from "../../auth/resendEmailConfirmation.ts";
+import {
+  isValidResetPasswordNewPasswordInput,
+  isValidResetPasswordTokenInput,
+  RESET_PASSWORD_MISSING_NEW_PASSWORD_MESSAGE,
+  RESET_PASSWORD_MISSING_TOKEN_MESSAGE,
+} from "../../auth/resetPassword.ts";
+import {
+  recordAuthEmailHttpRequestReceived,
+  recordAuthEmailHttpResponse,
+  type AuthEmailHttpRoute,
+} from "../../auth/authEmailMetrics.ts";
+import { consumeVerificationIntent } from "../../auth/verificationIntentConsume.ts";
 
 interface LoginBody {
   email: string;
@@ -44,6 +72,32 @@ interface SignupBody {
 
 interface SetModeBody {
   mode: "customer" | "employee";
+}
+
+interface RequestEmailConfirmationBody {
+  email?: string;
+}
+
+interface ConfirmEmailBody {
+  token?: string;
+}
+
+interface ResetPasswordBody {
+  token?: string;
+  newPassword?: string;
+}
+
+function logAuthEmailHttp(
+  req: FastifyRequest,
+  route: AuthEmailHttpRoute,
+  statusCode: number,
+  extra?: Record<string, string | undefined>,
+) {
+  recordAuthEmailHttpResponse(route, statusCode);
+  req.log.info(
+    { authEmail: { route, httpStatus: statusCode, ...extra } },
+    "auth_email_http_response",
+  );
 }
 
 export const authRoutes: FastifyPluginAsync = async (app) => {
@@ -110,18 +164,253 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       id: String(createdUser._id),
       email: normalizedEmail,
       type: "user",
+      emailVerified: createdUser.emailVerified === true,
     };
 
     const { accessToken, user } = issueSessionWithRefreshCookie(
       app,
       reply,
       session,
+      { refreshSessionVersion: createdUser.refreshSessionVersion ?? 0 },
     );
+
+    // Phase 4.1: issue confirmation email without blocking signup (session unchanged).
+    handleRequestEmailConfirmation(normalizedEmail)
+      .then((result) => {
+        if (result.kind === "server_error_500") {
+          req.log.error(
+            { errHint: "signup_confirmation_send" },
+            result.message,
+          );
+        }
+      })
+      .catch((err) => {
+        req.log.error({ err }, "Signup confirmation email failed");
+      });
 
     return reply.code(201).send({
       accessToken,
       user,
     });
+  });
+
+  /**
+   * POST /auth/request-email-confirmation
+   * Unauthenticated: request a sign-in email verification message (anti-enumeration response).
+   */
+  app.post<{ Body: RequestEmailConfirmationBody }>(
+    "/request-email-confirmation",
+    async (req, reply) => {
+      const route: AuthEmailHttpRoute = "request-email-confirmation";
+      recordAuthEmailHttpRequestReceived(route);
+      const ipAllowed = checkAuthEmailIpRate(
+        "request-email-confirmation",
+        req.ip,
+      );
+      if (!ipAllowed.allowed) {
+        logAuthEmailHttp(req, route, 429, { reason: "rate_limited" });
+        return reply.code(429).send({
+          message: "Too many requests. Please try again later.",
+        });
+      }
+
+      const { email } = req.body ?? {};
+      if (!isValidRequestEmailConfirmationInput(email)) {
+        logAuthEmailHttp(req, route, 400, { reason: "validation" });
+        return reply.code(400).send({
+          message: "Please provide a valid email address",
+        });
+      }
+
+      const normalized = normalizeRequestEmail(email);
+      const result = await handleRequestEmailConfirmation(normalized);
+
+      if (result.kind === "server_error_500") {
+        logAuthEmailHttp(req, route, 500, { reason: "handler_error" });
+        return reply.code(500).send({ message: result.message });
+      }
+
+      logAuthEmailHttp(req, route, 200);
+      return reply.code(200).send({
+        message: GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE,
+      });
+    },
+  );
+
+  /**
+   * POST /auth/request-password-reset
+   * Unauthenticated: request a password reset email (anti-enumeration response; same generic body as confirmation request).
+   */
+  app.post<{ Body: RequestEmailConfirmationBody }>(
+    "/request-password-reset",
+    async (req, reply) => {
+      const route: AuthEmailHttpRoute = "request-password-reset";
+      recordAuthEmailHttpRequestReceived(route);
+      const ipAllowed = checkAuthEmailIpRate(
+        "request-password-reset",
+        req.ip,
+      );
+      if (!ipAllowed.allowed) {
+        logAuthEmailHttp(req, route, 429, { reason: "rate_limited" });
+        return reply.code(429).send({
+          message: "Too many requests. Please try again later.",
+        });
+      }
+
+      const { email } = req.body ?? {};
+      if (!isValidRequestEmailConfirmationInput(email)) {
+        logAuthEmailHttp(req, route, 400, { reason: "validation" });
+        return reply.code(400).send({
+          message: "Please provide a valid email address",
+        });
+      }
+
+      const normalized = normalizeRequestEmail(email);
+      const result = await handleRequestPasswordReset(normalized);
+
+      if (result.kind === "server_error_500") {
+        logAuthEmailHttp(req, route, 500, { reason: "handler_error" });
+        return reply.code(500).send({ message: result.message });
+      }
+
+      logAuthEmailHttp(req, route, 200);
+      return reply.code(200).send({
+        message: GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE,
+      });
+    },
+  );
+
+  /**
+   * POST /auth/confirm-email
+   * Unauthenticated: consume email verification token (one-time).
+   */
+  app.post<{ Body: ConfirmEmailBody }>("/confirm-email", async (req, reply) => {
+    const route: AuthEmailHttpRoute = "confirm-email";
+    recordAuthEmailHttpRequestReceived(route);
+    const { token } = req.body ?? {};
+    if (!isValidConfirmEmailTokenInput(token)) {
+      logAuthEmailHttp(req, route, 400, { reason: "missing_token" });
+      return reply.code(400).send({ message: CONFIRM_EMAIL_MISSING_TOKEN_MESSAGE });
+    }
+
+    const result = await consumeVerificationIntent(
+      VerificationIntent.EmailConfirmation,
+      { token },
+    );
+
+    if (!result.ok) {
+      if (result.kind === "client_error") {
+        logAuthEmailHttp(req, route, 400, { reason: "consume_rejected" });
+        return reply.code(400).send({ message: result.message });
+      }
+      logAuthEmailHttp(req, route, 500, { reason: "consume_error" });
+      return reply.code(500).send({ message: result.message });
+    }
+
+    logAuthEmailHttp(req, route, 200);
+    return reply.code(200).send({ message: result.message });
+  });
+
+  /**
+   * POST /auth/reset-password
+   * Unauthenticated: consume password-reset token and set a new password (one-time).
+   */
+  app.post<{ Body: ResetPasswordBody }>(
+    "/reset-password",
+    async (req, reply) => {
+      const route: AuthEmailHttpRoute = "reset-password";
+      recordAuthEmailHttpRequestReceived(route);
+      const { token, newPassword } = req.body ?? {};
+
+      if (!isValidResetPasswordTokenInput(token)) {
+        logAuthEmailHttp(req, route, 400, { reason: "missing_token" });
+        return reply
+          .code(400)
+          .send({ message: RESET_PASSWORD_MISSING_TOKEN_MESSAGE });
+      }
+
+      if (!isValidResetPasswordNewPasswordInput(newPassword)) {
+        logAuthEmailHttp(req, route, 400, { reason: "missing_password" });
+        return reply
+          .code(400)
+          .send({ message: RESET_PASSWORD_MISSING_NEW_PASSWORD_MESSAGE });
+      }
+
+      if (!isValidPassword(newPassword)) {
+        logAuthEmailHttp(req, route, 400, { reason: "password_policy" });
+        return reply.code(400).send({ message: PASSWORD_POLICY_MESSAGE });
+      }
+
+      const result = await consumeVerificationIntent(
+        VerificationIntent.PasswordReset,
+        { token, newPassword },
+      );
+
+      if (!result.ok) {
+        if (result.kind === "client_error") {
+          logAuthEmailHttp(req, route, 400, { reason: "consume_rejected" });
+          return reply.code(400).send({ message: result.message });
+        }
+        logAuthEmailHttp(req, route, 500, { reason: "consume_error" });
+        return reply.code(500).send({ message: result.message });
+      }
+
+      logAuthEmailHttp(req, route, 200);
+      return reply.code(200).send({ message: result.message });
+    },
+  );
+
+  /**
+   * POST /auth/resend-email-confirmation
+   * Authenticated: resend sign-in email confirmation for the current session account (DB email only).
+   */
+  app.post("/resend-email-confirmation", async (req, reply) => {
+    const route: AuthEmailHttpRoute = "resend-email-confirmation";
+    recordAuthEmailHttpRequestReceived(route);
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader?.startsWith("Bearer ")) {
+      logAuthEmailHttp(req, route, 401, { reason: "no_bearer" });
+      return reply.code(401).send({ message: "No access token provided" });
+    }
+
+    const token = authHeader.slice(7);
+
+    let session: AuthSession;
+    try {
+      session = app.jwt.verify<AuthSession>(token);
+    } catch {
+      logAuthEmailHttp(req, route, 401, { reason: "invalid_access_jwt" });
+      return reply
+        .code(401)
+        .send({ message: "Invalid or expired access token" });
+    }
+
+    const ipAllowed = checkAuthEmailIpRate(
+      "resend-email-confirmation",
+      req.ip,
+    );
+    if (!ipAllowed.allowed) {
+      logAuthEmailHttp(req, route, 429, { reason: "rate_limited" });
+      return reply.code(429).send({
+        message: "Too many requests. Please try again later.",
+      });
+    }
+
+    const result =
+      await handleResendEmailConfirmationForAuthenticatedAccount(session);
+
+    if (result.kind === "account_not_found") {
+      logAuthEmailHttp(req, route, 401, { reason: "account_not_found" });
+      return reply.code(401).send({ message: "Account not found." });
+    }
+    if (result.kind === "server_error_500") {
+      logAuthEmailHttp(req, route, 500, { reason: "handler_error" });
+      return reply.code(500).send({ message: result.message });
+    }
+
+    logAuthEmailHttp(req, route, 200);
+    return reply.code(200).send({ message: result.message });
   });
 
   /**
@@ -147,8 +436,14 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
 
     // 1. Check Business collection first
     const business = (await Business.findOne({ email: normalizedEmail })
-      .select("_id email password")
-      .lean()) as { _id: unknown; email: string; password: string } | null;
+      .select("_id email password emailVerified refreshSessionVersion")
+      .lean()) as {
+      _id: unknown;
+      email: string;
+      password: string;
+      emailVerified?: boolean;
+      refreshSessionVersion?: number;
+    } | null;
 
     if (business) {
       const passwordMatch = await bcrypt.compare(password, business.password);
@@ -160,12 +455,16 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         id: String(business._id),
         email: business.email,
         type: "business",
+        emailVerified: business.emailVerified === true,
       };
 
       const { accessToken, user } = issueSessionWithRefreshCookie(
         app,
         reply,
         session,
+        {
+          refreshSessionVersion: business.refreshSessionVersion ?? 0,
+        },
       );
 
       return reply.code(200).send({
@@ -179,12 +478,14 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       "personalDetails.email": normalizedEmail,
     })
       .select(
-        "_id personalDetails.email personalDetails.password employeeDetails",
+        "_id personalDetails.email personalDetails.password employeeDetails emailVerified refreshSessionVersion",
       )
       .lean()) as {
       _id: unknown;
       personalDetails: { email?: string; password?: string };
       employeeDetails?: unknown;
+      emailVerified?: boolean;
+      refreshSessionVersion?: number;
     } | null;
 
     if (!user?.personalDetails?.password) {
@@ -208,6 +509,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       id: String(user._id),
       email: userEmail,
       type: "user",
+      emailVerified: user.emailVerified === true,
     };
 
     // 3. Check employee link if present
@@ -235,6 +537,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       app,
       reply,
       session,
+      { refreshSessionVersion: user.refreshSessionVersion ?? 0 },
     );
 
     return reply.code(200).send({
@@ -261,6 +564,24 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         key: AUTH_CONFIG.REFRESH_SECRET,
       });
     } catch {
+      reply.clearCookie(AUTH_CONFIG.REFRESH_COOKIE_NAME, { path: "/" });
+      return reply
+        .code(401)
+        .send({ message: "Invalid or expired refresh token" });
+    }
+
+    const dbVersion = await readRefreshSessionVersionForAccount(
+      payload.type,
+      payload.id,
+    );
+    if (dbVersion === null) {
+      reply.clearCookie(AUTH_CONFIG.REFRESH_COOKIE_NAME, { path: "/" });
+      return reply.code(401).send({
+        message:
+          payload.type === "business" ? "Business not found" : "User not found",
+      });
+    }
+    if (!refreshTokenPayloadVersionMatchesDb(payload, dbVersion)) {
       reply.clearCookie(AUTH_CONFIG.REFRESH_COOKIE_NAME, { path: "/" });
       return reply
         .code(401)

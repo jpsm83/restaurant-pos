@@ -15,7 +15,7 @@ vi.mock("@/auth/store/AuthContext", () => ({
   }),
 }));
 
-vi.mock("@/services/businessService", () => ({
+vi.mock("@/services/business/businessService", () => ({
   useCreateBusinessMutation: () => ({
     mutateAsync: vi.fn(),
     isPending: false,
@@ -68,6 +68,54 @@ describe("App public routing (Phase 1.5.1)", () => {
 
     expect(
       await screen.findByRole("heading", { name: /register your business/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders ForgotPasswordPage for `/forgot-password`", async () => {
+    await renderWithI18n(
+      <MemoryRouter initialEntries={["/forgot-password"]}>
+        <AppRoutes />
+      </MemoryRouter>,
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: /^forgot password$/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders ResetPasswordPage for `/reset-password`", async () => {
+    await renderWithI18n(
+      <MemoryRouter initialEntries={["/reset-password"]}>
+        <AppRoutes />
+      </MemoryRouter>,
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: /set a new password/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders ConfirmEmailPage for `/confirm-email`", async () => {
+    await renderWithI18n(
+      <MemoryRouter initialEntries={["/confirm-email"]}>
+        <AppRoutes />
+      </MemoryRouter>,
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: /confirm your email/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders RequestEmailConfirmationPage for `/request-email-confirmation`", async () => {
+    await renderWithI18n(
+      <MemoryRouter initialEntries={["/request-email-confirmation"]}>
+        <AppRoutes />
+      </MemoryRouter>,
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: /resend confirmation email/i }),
     ).toBeInTheDocument();
   });
 });

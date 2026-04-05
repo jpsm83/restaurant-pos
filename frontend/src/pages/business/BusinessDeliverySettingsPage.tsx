@@ -1,5 +1,4 @@
 import { Controller, useFieldArray, type Control } from "react-hook-form";
-import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -52,12 +51,8 @@ function DeliverySettingsLoadingBody() {
 
 /** Delivery flags, radius, minimum order, and per-day delivery windows. */
 export default function BusinessDeliverySettingsPage() {
-  const { t: tNav } = useTranslation("nav");
-
   return (
     <BusinessProfileSettingsFormShell
-      pageTitle={tNav("settings.delivery")}
-      cardDescription="Control whether you offer delivery, limits, and when couriers may accept orders."
       loadingSlot={
         <BusinessProfileSettingsLoadingCard>
           <DeliverySettingsLoadingBody />
