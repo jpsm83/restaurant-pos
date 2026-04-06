@@ -25,37 +25,32 @@ export type ConfirmEmailResult =
 export async function handleConfirmEmail(
   token: string,
 ): Promise<ConfirmEmailResult> {
-  const verificationToken = token.trim();
+  // Stored tokens are lowercase hex; normalize so links still work if the client uppercases the query param.
+  const verificationToken = token.trim().toLowerCase();
 
   try {
-    const business = await Business.findOneAndUpdate(
-      {
-        verificationToken,
-      },
+    const businessResult = await Business.updateOne(
+      { verificationToken },
       {
         $set: { emailVerified: true },
         $unset: { verificationToken: "" },
       },
-      { returnDocument: "after" },
-    ).lean();
+    );
 
-    if (business) {
+    if (businessResult.matchedCount > 0) {
       return { kind: "success_200", message: CONFIRM_EMAIL_SUCCESS_MESSAGE };
     }
 
-    const user = await User.findOneAndUpdate(
-      {
-        verificationToken,
-      },
+    const userResult = await User.updateOne(
+      { verificationToken },
       {
         // Keep root mirror for backward compatibility while `personalDetails.emailVerified` is canonical.
         $set: { "personalDetails.emailVerified": true, emailVerified: true },
         $unset: { verificationToken: "" },
       },
-      { returnDocument: "after" },
-    ).lean();
+    );
 
-    if (user) {
+    if (userResult.matchedCount > 0) {
       return { kind: "success_200", message: CONFIRM_EMAIL_SUCCESS_MESSAGE };
     }
 

@@ -148,6 +148,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       emailVerified:
         createdUser.personalDetails?.emailVerified === true ||
         createdUser.emailVerified === true,
+      role: "Customer",
     };
 
     const { accessToken, user } = issueSessionWithRefreshCookie(
@@ -375,6 +376,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         email: business.email,
         type: "business",
         emailVerified: business.emailVerified === true,
+        role: "Tenant",
       };
 
       const { accessToken, user } = issueSessionWithRefreshCookie(
@@ -430,16 +432,18 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       type: "user",
       emailVerified:
         user.personalDetails?.emailVerified === true || user.emailVerified === true,
+      role: "Customer",
     };
 
     // 3. Check employee link if present
     if (user.employeeDetails) {
       const employee = (await Employee.findById(user.employeeDetails)
-        .select("businessId active terminatedDate")
+        .select("businessId active terminatedDate allEmployeeRoles")
         .lean()) as {
         businessId: unknown;
         active?: boolean;
         terminatedDate?: unknown;
+        allEmployeeRoles?: string[];
       } | null;
 
       if (employee && employee.active && !employee.terminatedDate) {
@@ -450,6 +454,11 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         session.employeeId = String(user.employeeDetails);
         session.businessId = String(employee.businessId);
         session.canLogAsEmployee = canLog;
+        const primaryRole = employee.allEmployeeRoles?.[0];
+        session.role =
+          typeof primaryRole === "string" && primaryRole.trim()
+            ? primaryRole
+            : "Employee";
       }
     }
 

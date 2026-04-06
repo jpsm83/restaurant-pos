@@ -352,7 +352,7 @@ export const suppliersRoutes: FastifyPluginAsync = async (app) => {
       const updatedSupplier = await Supplier.findByIdAndUpdate(
         supplierId,
         { $set: updateSupplierObj },
-        { new: true, lean: true },
+        { returnDocument: 'after', lean: true },
       );
 
       if (!updatedSupplier) {

@@ -52,6 +52,19 @@ describe("LoginPage", () => {
     expect(requiredMsgs.length).toBeGreaterThanOrEqual(2);
   });
 
+  it("renders forgot password link to recovery route", async () => {
+    await renderWithI18n(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+    );
+
+    const forgotPasswordLink = screen.getByRole("link", {
+      name: /forgot password\?/i,
+    });
+    expect(forgotPasswordLink).toHaveAttribute("href", "/forgot-password");
+  });
+
   it("shows backend error on failed login", async () => {
     const user = userEvent.setup();
     mockLogin.mockResolvedValue({

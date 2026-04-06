@@ -1,7 +1,16 @@
 import { type ChangeEvent, useMemo, useState } from "react";
 import { Controller } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import { Building2, Camera, ChevronDown } from "lucide-react";
+import {
+  Building2,
+  Camera,
+  ChevronDown,
+  CircleCheck,
+  Mail,
+} from "lucide-react";
+import { toast } from "sonner";
+import { refreshSession, resendEmailConfirmation } from "@/auth/api";
+import { useAuth } from "@/auth/store/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -32,18 +41,18 @@ import type { BusinessProfileSettingsReady } from "../../hooks/useBusinessProfil
 
 const CONTACT_SELECT_NONE = "__none__";
 
-/** Loading layout mirrors `BusinessProfileSections`: one section, header, logo + two fields, then the 7-cell grid. */
+/** Loading layout mirrors `BusinessProfileSections`: header, logo+fields grid (1 / 2 / 3 cols), then the 6-cell grid. */
 function ProfileSettingsLoadingBody() {
   const fieldSkeleton = (
     <div className="min-w-0 space-y-2">
-      <Skeleton className="h-4 w-28" aria-hidden />
-      <Skeleton className="h-10 w-full" aria-hidden />
+      <Skeleton className="h-4 w-28" />
+      <Skeleton className="h-10 w-full" />
     </div>
   );
   const selectSkeleton = (
     <div className="min-w-0 space-y-2">
-      <Skeleton className="h-4 w-28" aria-hidden />
-      <Skeleton className="h-8 w-full" aria-hidden />
+      <Skeleton className="h-4 w-28" />
+      <Skeleton className="h-8 w-full" />
     </div>
   );
 
@@ -51,32 +60,35 @@ function ProfileSettingsLoadingBody() {
     <>
       <section className="space-y-4">
         <header className="space-y-1.5">
-          <Skeleton className="h-4 w-40" aria-hidden />
-          <Skeleton className="h-3 w-full max-w-lg" aria-hidden />
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="h-3 w-full max-w-lg" />
         </header>
 
-        <div className="flex flex-col gap-6 md:flex-row md:items-center md:gap-8">
-          <div className="flex shrink-0 flex-col items-center gap-2">
-            <div
-              className="text-sm font-semibold text-neutral-800 md:sr-only"
-              aria-hidden
-            >
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 md:gap-8 lg:items-start">
+          <div className="flex min-w-0 flex-col items-center gap-2 justify-self-center md:justify-self-start lg:justify-self-center">
+            <div className="text-sm font-semibold text-neutral-800 md:sr-only">
               <Skeleton className="h-4 w-32" />
             </div>
-            <Skeleton
-              className="h-28 w-36 max-w-full rounded-lg border border-neutral-300 sm:w-44"
-              aria-hidden
-            />
+            <Skeleton className="h-44 w-full max-w-54 rounded-lg border border-neutral-300 md:max-w-60 lg:max-w-68" />
           </div>
 
-          <div className="min-w-0 flex-1 space-y-4">
+          <div className="min-w-0 space-y-4 md:col-span-1 lg:col-span-2">
             <div className="min-w-0 space-y-2">
-              <Skeleton className="h-4 w-24" aria-hidden />
-              <Skeleton className="h-10 w-full" aria-hidden />
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-10 w-full" />
             </div>
             <div className="min-w-0 space-y-2">
-              <Skeleton className="h-4 w-24" aria-hidden />
-              <Skeleton className="h-10 w-full" aria-hidden />
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-4">
+              <div className="min-w-0 flex-1 space-y-2">
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+              <div className="flex shrink-0 justify-start sm:justify-end sm:pb-0.5">
+                <Skeleton className="h-9 w-40" />
+              </div>
             </div>
           </div>
         </div>
@@ -137,7 +149,7 @@ function ProfileEnumMultiSelect<T extends string>({
             aria-describedby={showSelectedSummary ? summaryId : undefined}
           >
             <span className="truncate text-left">{triggerText}</span>
-            <ChevronDown className="size-4 shrink-0 opacity-60" aria-hidden />
+            <ChevronDown className="size-4 shrink-0 opacity-60" />
           </Button>
         </PopoverTrigger>
         <PopoverContent
@@ -199,6 +211,7 @@ function BusinessProfileSections({
   ctx: BusinessProfileSettingsReady;
 }) {
   const { t } = useTranslation("business");
+  const { dispatch } = useAuth();
   const {
     register,
     control,
@@ -207,9 +220,21 @@ function BusinessProfileSections({
     imagePreviewUrl,
     imageUrl,
     managementContactRows,
+    profileQuery,
   } = ctx;
 
   const hasImage = Boolean(imagePreviewUrl || imageUrl);
+  // Profile GET is authoritative for `emailVerified`; JWT can lag until refresh/login.
+  const emailVerified = profileQuery.data?.emailVerified === true;
+  const [resendPending, setResendPending] = useState(false);
+
+  async function syncSessionAndProfileAfterEmailFlow() {
+    const refreshed = await refreshSession();
+    if (refreshed.ok && refreshed.data?.user) {
+      dispatch({ type: "AUTH_SUCCESS", payload: refreshed.data.user });
+    }
+    await profileQuery.refetch();
+  }
 
   return (
     <>
@@ -223,30 +248,32 @@ function BusinessProfileSections({
           </p>
         </header>
 
-        <div className="flex flex-col gap-6 md:flex-row md:items-center md:gap-8">
-          <div className="flex shrink-0 flex-col items-center gap-2">
-            <h3 className="text-sm font-semibold text-neutral-800 md:sr-only">
-              {t("profileSettings.logo.sectionTitle")}
-            </h3>
-            <div className="group relative flex h-28 w-fit max-w-full items-center justify-center overflow-hidden rounded-lg border border-neutral-300 bg-neutral-100">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 md:gap-8 lg:items-start">
+
+          {/* Logo section */}
+          <div className="flex flex-col items-center gap-2 justify-self-center h-auto w-auto">
+            <div
+              className="group relative flex items-center justify-center overflow-hidden rounded-lg border border-neutral-300 bg-neutral-100"
+            >
               {hasImage ? (
                 <img
                   src={imagePreviewUrl ?? imageUrl}
                   alt={t("profileSettings.logo.logoAlt")}
-                  className="h-full w-auto max-w-[min(100%,20rem)] object-contain"
+                  className="object-contain"
+                  style={{ display: "block" }}
                 />
               ) : (
-                <div className="flex h-full min-w-28 items-center justify-center px-6 text-neutral-500">
-                  <Building2 className="h-10 w-10 shrink-0" aria-hidden />
+                <div className="flex items-center justify-center text-neutral-500">
+                  <Building2 className="h-14 w-14 shrink-0" />
                 </div>
               )}
-              <label
+              <Label
                 htmlFor="bp-image-file"
                 className="absolute inset-0 flex cursor-pointer items-center justify-center bg-black/50 text-xs font-medium text-white opacity-0 transition-opacity group-hover:opacity-100"
               >
-                <Camera className="mr-1 h-4 w-4 shrink-0" aria-hidden />
+                <Camera className="mr-1 h-4 w-4 shrink-0" />
                 {t("profileSettings.logo.uploadLabel")}
-              </label>
+              </Label>
             </div>
             <Input
               id="bp-image-file"
@@ -259,7 +286,8 @@ function BusinessProfileSections({
             />
           </div>
 
-          <div className="min-w-0 flex-1 space-y-4">
+          {/* Core business info section */}
+          <div className="min-w-0 space-y-4 md:col-span-1 lg:col-span-2">
             <div className="min-w-0 space-y-2">
               <Label htmlFor="bp-trade-name">
                 {t("profileSettings.core.fields.tradeName")}
@@ -275,6 +303,79 @@ function BusinessProfileSections({
                 {t("profileSettings.core.fields.legalName")}
               </Label>
               <Input id="bp-legal-name" {...register("legalName")} />
+            </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-4">
+              <div className="min-w-0 flex-1 space-y-2">
+                <Label htmlFor="bp-email">
+                  {t("profileSettings.core.fields.email")}
+                </Label>
+                <Input
+                  id="bp-email"
+                  type="email"
+                  autoComplete="email"
+                  {...register("email", {
+                    onChange: (e: ChangeEvent<HTMLInputElement>) => {
+                      setValue("confirmEmail", e.target.value, {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      });
+                    },
+                  })}
+                />
+              </div>
+              <div className="flex shrink-0 flex-col items-stretch justify-end sm:items-end sm:pb-0.5">
+                {emailVerified ? (
+                  <div className="flex items-center gap-2 text-sm font-medium text-green-700">
+                    <CircleCheck
+                      className="size-4 shrink-0 text-green-700"
+                      aria-hidden
+                    />
+                    <span>
+                      {t("profileSettings.core.emailVerification.confirmed")}
+                    </span>
+                  </div>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="h-auto min-h-0 justify-start gap-2 px-2 py-2 bg-red-200 text-sm font-medium text-red-700 no-underline hover:no-underline hover:cursor-pointer hover:text-red-700 disabled:opacity-60 hover:bg-red-100 sm:justify-end"
+                    disabled={resendPending}
+                    onClick={() => {
+                      setResendPending(true);
+                      void (async () => {
+                        try {
+                          const result = await resendEmailConfirmation();
+                          if (result.ok) {
+                            toast.success(
+                              result.data?.message ??
+                                t(
+                                  "credentialsSettings.emailVerify.resendSuccessFallback",
+                                ),
+                            );
+                            await syncSessionAndProfileAfterEmailFlow();
+                            return;
+                          }
+                          if (/already verified/i.test(result.error)) {
+                            toast.success(result.error);
+                            await syncSessionAndProfileAfterEmailFlow();
+                            return;
+                          }
+                          toast.error(result.error);
+                        } finally {
+                          setResendPending(false);
+                        }
+                      })();
+                    }}
+                  >
+                    <Mail
+                      className="size-4 shrink-0 text-red-700"
+                      aria-hidden
+                    />
+                    {t("profileSettings.core.emailVerification.confirmCta")}
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -303,7 +404,11 @@ function BusinessProfileSections({
               name="currencyTrade"
               control={control}
               render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange}>
+                <Select
+                  key={`bp-currency-${profileQuery.dataUpdatedAt}`}
+                  value={field.value}
+                  onValueChange={field.onChange}
+                >
                   <SelectTrigger
                     id="bp-currency"
                     className="h-8 w-full min-w-0"
@@ -323,25 +428,6 @@ function BusinessProfileSections({
                   </SelectContent>
                 </Select>
               )}
-            />
-          </div>
-          <div className="min-w-0 space-y-2">
-            <Label htmlFor="bp-email">
-              {t("profileSettings.core.fields.email")}
-            </Label>
-            <Input
-              id="bp-email"
-              type="email"
-              autoComplete="email"
-              {...register("email", {
-                onChange: (e: ChangeEvent<HTMLInputElement>) => {
-                  // Single email field here: keep confirmEmail aligned for Zod (credentials page uses two fields).
-                  setValue("confirmEmail", e.target.value, {
-                    shouldDirty: true,
-                    shouldValidate: true,
-                  });
-                },
-              })}
             />
           </div>
           <Controller
@@ -374,7 +460,7 @@ function BusinessProfileSections({
               />
             )}
           />
-                    <div className="min-w-0 space-y-2">
+          <div className="min-w-0 space-y-2">
             <Label htmlFor="bp-contact-person">
               {t("profileSettings.core.fields.contactPerson")}
             </Label>

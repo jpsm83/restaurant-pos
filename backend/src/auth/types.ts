@@ -10,6 +10,8 @@ export interface AuthBusiness {
   type: "business";
   /** Present when issued by login / refresh / signup; drives verification UI. */
   emailVerified?: boolean;
+  /** Tenant sign-in actor; use for future route guards (not `User` employee role enums). */
+  role: "Tenant";
 }
 
 export interface AuthUser {
@@ -21,6 +23,10 @@ export interface AuthUser {
   employeeId?: string;
   businessId?: string;
   canLogAsEmployee?: boolean;
+  /**
+   * `Customer` when not linked as staff; otherwise primary entry from `Employee.allEmployeeRoles`.
+   */
+  role: string;
 }
 
 export type AuthSession = AuthBusiness | AuthUser;
@@ -33,6 +39,7 @@ export interface JwtPayload {
   employeeId?: string;
   businessId?: string;
   canLogAsEmployee?: boolean;
+  role?: string;
   iat?: number;
   exp?: number;
 }

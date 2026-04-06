@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { confirmEmail } from "@/auth/api";
+import { confirmEmail, refreshSession } from "@/auth/api";
 import { useAuth } from "@/auth/store/AuthContext";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,7 @@ type ConfirmFormValues = Record<string, never>;
 export default function ConfirmEmailPage() {
   const { t } = useTranslation(["auth", "nav"]);
   const navigate = useNavigate();
-  const { state } = useAuth();
+  const { state, dispatch } = useAuth();
   const [searchParams] = useSearchParams();
   const token = (searchParams.get("token") ?? "").trim();
 
@@ -45,7 +45,16 @@ export default function ConfirmEmailPage() {
 
     const result = await confirmEmail(token);
     if (result.ok) {
+      // Confirm-email does not mint a new access token; refresh reads `emailVerified` from the DB into the JWT.
       if (state.user) {
+        const refreshed = await refreshSession();
+        if (refreshed.ok && refreshed.data?.user) {
+          dispatch({ type: "AUTH_SUCCESS", payload: refreshed.data.user });
+          navigate(canonicalDefaultDashboardPath(refreshed.data.user), {
+            replace: true,
+          });
+          return;
+        }
         navigate(canonicalDefaultDashboardPath(state.user), { replace: true });
         return;
       }

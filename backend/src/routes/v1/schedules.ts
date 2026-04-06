@@ -212,7 +212,7 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
     const updatedSchedule = await Schedule.findByIdAndUpdate(
       scheduleId,
       { $set: updateSchedule },
-      { new: true, lean: true },
+      { returnDocument: 'after', lean: true },
     );
 
     if (!updatedSchedule) {
@@ -385,14 +385,14 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
             totalEmployeesVacation: vacation ? 1 : 0,
           },
         },
-        { new: true, lean: true, session },
+        { returnDocument: 'after', lean: true, session },
       );
 
       if (updatedSchedule && vacation) {
         const updatedEmployee = await Employee.findByIdAndUpdate(
           employeeId,
           { $inc: { vacationDaysLeft: -1 } },
-          { new: true, lean: true, session },
+          { returnDocument: 'after', lean: true, session },
         );
 
         if (!updatedEmployee) {
@@ -482,14 +482,14 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
             totalDayEmployeesCost: -(scheduleToDelete?.employeeCost ?? 0),
           },
         },
-        { new: true, lean: true },
+        { returnDocument: 'after', lean: true },
       );
 
       if (updatedSchedule && scheduleToDelete?.vacation === true) {
         const updatedEmployee = await Employee.findByIdAndUpdate(
           employeeId,
           { $inc: { vacationDaysLeft: 1 } },
-          { new: true, lean: true },
+          { returnDocument: 'after', lean: true },
         );
 
         if (!updatedEmployee) {
@@ -657,7 +657,7 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
                   : 0,
           },
         },
-        { new: true, lean: true, session },
+        { returnDocument: 'after', lean: true, session },
       );
 
       if (updatedSchedule) {
@@ -673,7 +673,7 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
                     : 0,
             },
           },
-          { new: true, lean: true, session },
+          { returnDocument: 'after', lean: true, session },
         );
 
         if (!updatedEmployee) {

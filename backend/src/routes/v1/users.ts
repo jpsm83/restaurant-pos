@@ -427,7 +427,7 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
       }
 
       const updatedUser = await User.findByIdAndUpdate(userId, userUpdate, {
-        new: true,
+        returnDocument: 'after',
         lean: true,
       });
 
@@ -546,7 +546,7 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
             "notifications.$.readFlag": true,
           },
         },
-        { new: true, lean: true, session },
+        { returnDocument: 'after', lean: true, session },
       );
 
       if (!updatedCustomer) {
@@ -600,7 +600,7 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
           "notifications.notificationId": notificationId,
         },
         { $set: { "notifications.$.readFlag": true } },
-        { new: true, lean: true },
+        { returnDocument: 'after', lean: true },
       );
 
       if (!updatedCustomer) {

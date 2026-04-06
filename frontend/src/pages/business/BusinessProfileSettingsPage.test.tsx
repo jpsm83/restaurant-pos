@@ -46,6 +46,8 @@ vi.mock("@/auth/store/AuthContext", () => ({
         id: "64b000000000000000000001",
         email: "owner@demo.test",
         type: "business",
+        emailVerified: true,
+        role: "Tenant",
       },
       status: "authenticated",
       error: null,
@@ -54,10 +56,16 @@ vi.mock("@/auth/store/AuthContext", () => ({
   }),
 }));
 
+const mockResendEmailConfirmation = vi.fn();
+const mockRefreshSession = vi.fn();
+
 vi.mock("@/auth/api", () => ({
   logout: (...args: unknown[]) => mockLogout(...args),
   setAccessToken: (...args: unknown[]) => mockSetAccessToken(...args),
   getAccessToken: () => "test-access-token",
+  resendEmailConfirmation: (...args: unknown[]) =>
+    mockResendEmailConfirmation(...args),
+  refreshSession: (...args: unknown[]) => mockRefreshSession(...args),
 }));
 
 vi.mock("sonner", () => ({
@@ -125,6 +133,7 @@ function makeBusinessProfileDto(): BusinessProfileDto {
     businessOpeningHours: [],
     deliveryOpeningWindows: [],
     reportingConfig: { weeklyReportStartDay: 1 },
+    emailVerified: true,
   };
 }
 
@@ -138,6 +147,21 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
     mockToastSuccess.mockReset();
     mockToastError.mockReset();
     mockFetchManagementContactOptions.mockReset();
+    mockResendEmailConfirmation.mockReset();
+    mockRefreshSession.mockReset();
+    mockRefreshSession.mockResolvedValue({
+      ok: true,
+      data: {
+        accessToken: "refreshed",
+        user: {
+          id: "64b000000000000000000001",
+          email: "owner@demo.test",
+          type: "business",
+          emailVerified: true,
+          role: "Tenant",
+        },
+      },
+    });
     mockFetchManagementContactOptions.mockResolvedValue([]);
     mockUseUpdateBusinessProfileMutation.mockReturnValue({
       mutateAsync: vi.fn().mockResolvedValue({ message: "Business updated" }),
@@ -196,6 +220,71 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
     expect(screen.getByText("Could not load profile")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Retry" }));
     expect(retry).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows email confirmed when profile emailVerified is true", async () => {
+    mockUseBusinessProfileQuery.mockReturnValue({
+      data: { ...makeBusinessProfileDto(), emailVerified: true },
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    await renderWithQueryClient(
+      <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
+        <Routes>
+          <Route
+            path="/business/:businessId/settings/profile"
+            element={<BusinessProfileSettingsPage />}
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("Email confirmed")).toBeInTheDocument();
+  });
+
+  it("offers resend confirmation when profile emailVerified is false", async () => {
+    const refetch = vi.fn().mockResolvedValue({ data: makeBusinessProfileDto() });
+    mockResendEmailConfirmation.mockResolvedValue({ ok: true, data: { message: "Sent." } });
+    mockUseBusinessProfileQuery.mockReturnValue({
+      data: { ...makeBusinessProfileDto(), emailVerified: false },
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch,
+    });
+    const user = userEvent.setup();
+
+    await renderWithQueryClient(
+      <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
+        <Routes>
+          <Route
+            path="/business/:businessId/settings/profile"
+            element={<BusinessProfileSettingsPage />}
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: "Click to confirm email" }),
+    );
+    expect(mockResendEmailConfirmation).toHaveBeenCalledTimes(1);
+    expect(mockToastSuccess).toHaveBeenCalledWith("Sent.");
+    expect(mockRefreshSession).toHaveBeenCalledTimes(1);
+    expect(mockDispatch).toHaveBeenCalledWith({
+      type: "AUTH_SUCCESS",
+      payload: {
+        id: "64b000000000000000000001",
+        email: "owner@demo.test",
+        type: "business",
+        emailVerified: true,
+        role: "Tenant",
+      },
+    });
+    expect(refetch).toHaveBeenCalledTimes(1);
   });
 
   it("hydrates form defaults from the fetched business profile", async () => {
@@ -400,19 +489,42 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
     });
   });
 
-  it("forces logout when business email changes after successful save", async () => {
-    const mutateAsync = vi.fn().mockResolvedValue({ message: "Business updated" });
-    mockUseUpdateBusinessProfileMutation.mockReturnValue({
-      mutateAsync,
-      isPending: false,
+  it("keeps session and shows re-verification after business email changes on save", async () => {
+    const newEmail = "newowner@demo.test";
+    const updatedDto: BusinessProfileDto = {
+      ...makeBusinessProfileDto(),
+      email: newEmail,
+      emailVerified: false,
+    };
+    const profileRef: { current: BusinessProfileDto } = {
+      current: makeBusinessProfileDto(),
+    };
+    const refetch = vi.fn(async () => {
+      profileRef.current = updatedDto;
+      return { data: updatedDto };
     });
-    mockLogout.mockResolvedValue({ ok: true });
-    mockUseBusinessProfileQuery.mockReturnValue({
-      data: makeBusinessProfileDto(),
+    mockUseBusinessProfileQuery.mockImplementation(() => ({
+      get data() {
+        return profileRef.current;
+      },
       isLoading: false,
       isError: false,
       error: null,
-      refetch: vi.fn().mockResolvedValue({ data: makeBusinessProfileDto() }),
+      refetch,
+    }));
+    const mutateAsync = vi.fn().mockResolvedValue({
+      message: "Business updated",
+      user: {
+        id: "64b000000000000000000001",
+        email: newEmail,
+        type: "business" as const,
+        emailVerified: false,
+        role: "Tenant" as const,
+      },
+    });
+    mockUseUpdateBusinessProfileMutation.mockReturnValue({
+      mutateAsync,
+      isPending: false,
     });
     const user = userEvent.setup();
 
@@ -423,22 +535,33 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
             path="/business/:businessId/settings/profile"
             element={<BusinessProfileSettingsPage />}
           />
-          <Route path="/login" element={<div>Login page</div>} />
         </Routes>
       </MemoryRouter>,
     );
 
     await user.clear(screen.getByLabelText("Business email"));
-    await user.type(screen.getByLabelText("Business email"), "newowner@demo.test");
+    await user.type(screen.getByLabelText("Business email"), newEmail);
     await user.click(screen.getByRole("button", { name: "Save changes" }));
 
     expect(mutateAsync).toHaveBeenCalledTimes(1);
-    expect(mockLogout).toHaveBeenCalledTimes(1);
-    expect(mockSetAccessToken).toHaveBeenCalledWith(null);
-    expect(mockDispatch).toHaveBeenCalledWith({ type: "AUTH_CLEAR" });
+    expect(mockLogout).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(mockDispatch).toHaveBeenCalledWith({
+        type: "AUTH_SUCCESS",
+        payload: expect.objectContaining({
+          email: newEmail,
+          emailVerified: false,
+        }),
+      });
+    });
     expect(mockToastSuccess).toHaveBeenCalledWith(
-      "Profile saved. Please sign in again to continue with updated credentials.",
+      "Business profile saved successfully.",
     );
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Click to confirm email" }),
+      ).toBeInTheDocument();
+    });
   });
 
   it("shows unsaved-changes dialog on dirty navigation and respects stay/leave actions", async () => {

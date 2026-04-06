@@ -16,6 +16,8 @@ export interface AuthBusiness {
   type: "business";
   /** From login / refresh / registration; drives verification UI. */
   emailVerified?: boolean;
+  /** Tenant sign-in; mirrors backend `AuthBusiness.role`. */
+  role: "Tenant";
 }
 
 /**
@@ -34,6 +36,8 @@ export interface AuthUser {
   businessId?: string;
   /** From backend `canLogAsEmployee` (schedule + role); drives employee mode eligibility. */
   canLogAsEmployee?: boolean;
+  /** `Customer` or primary `Employee.allEmployeeRoles` entry from backend. */
+  role: string;
 }
 
 /**

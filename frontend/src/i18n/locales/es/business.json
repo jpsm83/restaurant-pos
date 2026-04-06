@@ -47,6 +47,10 @@
     "core": {
       "sectionTitle": "Datos principales del negocio",
       "sectionDescription": "Datos legales y de contacto usados para facturación, soporte y registros de la cuenta.",
+      "emailVerification": {
+        "confirmed": "Correo confirmado",
+        "confirmCta": "Haz clic para confirmar el correo"
+      },
       "fields": {
         "tradeName": "Nombre comercial",
         "legalName": "Razón social",

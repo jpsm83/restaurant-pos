@@ -270,7 +270,7 @@ export const printersRoutes: FastifyPluginAsync = async (app) => {
       const updatedPrinter = await Printer.findByIdAndUpdate(
         printerId,
         { $set: updatePrinterObj },
-        { new: true, lean: true },
+        { returnDocument: 'after', lean: true },
       );
 
       if (!updatedPrinter) {
@@ -418,7 +418,7 @@ export const printersRoutes: FastifyPluginAsync = async (app) => {
             },
           },
         },
-        { new: true, lean: true },
+        { returnDocument: 'after', lean: true },
       );
 
       if (!updatedPrinter) {
@@ -462,7 +462,7 @@ export const printersRoutes: FastifyPluginAsync = async (app) => {
               configurationSetupToPrintOrders: { _id: configId },
             },
           },
-          { new: true, lean: true },
+          { returnDocument: 'after', lean: true },
         );
 
         if (!updatedPrinter) {
@@ -574,7 +574,7 @@ export const printersRoutes: FastifyPluginAsync = async (app) => {
                 subCategories || [],
             },
           },
-          { new: true, lean: true },
+          { returnDocument: 'after', lean: true },
         );
 
         if (!updatedPrinter) {

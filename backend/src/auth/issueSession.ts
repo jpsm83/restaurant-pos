@@ -113,15 +113,17 @@ export async function buildAuthUserSessionFromUserId(
     type: "user",
     emailVerified:
       user.personalDetails?.emailVerified === true || user.emailVerified === true,
+    role: "Customer",
   };
 
   if (user.employeeDetails) {
     const employee = (await Employee.findById(user.employeeDetails)
-      .select("businessId active terminatedDate")
+      .select("businessId active terminatedDate allEmployeeRoles")
       .lean()) as {
       businessId: unknown;
       active?: boolean;
       terminatedDate?: unknown;
+      allEmployeeRoles?: string[];
     } | null;
 
     if (employee && employee.active && !employee.terminatedDate) {
@@ -131,6 +133,11 @@ export async function buildAuthUserSessionFromUserId(
       userSession.employeeId = String(user.employeeDetails);
       userSession.businessId = String(employee.businessId);
       userSession.canLogAsEmployee = canLog;
+      const primaryRole = employee.allEmployeeRoles?.[0];
+      userSession.role =
+        typeof primaryRole === "string" && primaryRole.trim()
+          ? primaryRole
+          : "Employee";
     }
   }
 
@@ -153,5 +160,6 @@ export async function buildAuthBusinessSessionFromId(
     email: business.email,
     type: "business",
     emailVerified: business.emailVerified === true,
+    role: "Tenant",
   };
 }

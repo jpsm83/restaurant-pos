@@ -1,5 +1,9 @@
 import type { IBusinessMetrics } from "@packages/interfaces/IBusiness.ts";
-import { cuisineTypeEnums, foodSubCategoryEnums } from "@packages/enums.ts";
+import {
+  currenctyEnums,
+  cuisineTypeEnums,
+  foodSubCategoryEnums,
+} from "@packages/enums.ts";
 import type {
   BusinessOpeningHourFormValue,
   BusinessProfileDto,
@@ -44,6 +48,11 @@ function canonicalizeAgainstEnum(
   if (!t) return null;
   const found = allowed.find((a) => a.toLowerCase() === t.toLowerCase());
   return found ?? null;
+}
+
+function normalizeCurrencyTrade(value: unknown): string {
+  const c = canonicalizeAgainstEnum(asTrimmedString(value), currenctyEnums);
+  return c ?? "";
 }
 
 /** Maps API categories to canonical `foodSubCategoryEnums` labels (drops unknown legacy values). */
@@ -145,7 +154,7 @@ export function businessDtoToFormValues(
     confirmPassword: "",
     phoneNumber: asTrimmedString(dto.phoneNumber),
     taxNumber: asTrimmedString(dto.taxNumber),
-    currencyTrade: asTrimmedString(dto.currencyTrade),
+    currencyTrade: normalizeCurrencyTrade(dto.currencyTrade),
     address: {
       country: asTrimmedString(dto.address?.country),
       state: asTrimmedString(dto.address?.state),

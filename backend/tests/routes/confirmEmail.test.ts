@@ -117,6 +117,27 @@ describe("POST /api/v1/auth/confirm-email", () => {
     expect(body.message).toBe(CONFIRM_EMAIL_SUCCESS_MESSAGE);
 
     const updated = await User.findById(user._id)
+      .select("emailVerified personalDetails.emailVerified verificationToken")
+      .lean();
+    expect(updated?.emailVerified).toBe(true);
+    expect(updated?.personalDetails?.emailVerified).toBe(true);
+    expect(updated?.verificationToken).toBeFalsy();
+  });
+
+  it("accepts uppercase hex token matching stored verificationToken", async () => {
+    const app = await getTestApp();
+    const biz = await createTestBusiness("confirm-biz-upper@example.com");
+    const raw = randomToken();
+    await Business.updateOne({ _id: biz._id }, { $set: { verificationToken: raw } });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/confirm-email",
+      payload: { token: raw.toUpperCase() },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const updated = await Business.findById(biz._id)
       .select("emailVerified verificationToken")
       .lean();
     expect(updated?.emailVerified).toBe(true);

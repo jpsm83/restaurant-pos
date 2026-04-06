@@ -91,7 +91,7 @@ export const inventoriesRoutes: FastifyPluginAsync = async (app) => {
         {
           $set: { setFinalCount: true },
         },
-        { new: true, session },
+        { returnDocument: 'after', session },
       ).lean();
 
       const supplierGoods = await SupplierGood.find({

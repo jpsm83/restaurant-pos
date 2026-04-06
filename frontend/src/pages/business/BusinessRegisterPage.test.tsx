@@ -67,6 +67,8 @@ describe("BusinessRegisterPage", () => {
         id: "507f1f77bcf86cd799439011",
         email: "owner@demo.test",
         type: "business",
+        emailVerified: false,
+        role: "Tenant",
       },
     });
 
@@ -97,6 +99,8 @@ describe("BusinessRegisterPage", () => {
         id: "507f1f77bcf86cd799439011",
         email: "owner@demo.test",
         type: "business",
+        emailVerified: false,
+        role: "Tenant",
       },
     });
   });

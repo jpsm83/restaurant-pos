@@ -24,7 +24,7 @@ const deleteSupplierGoodFromInventory = async (
           },
         },
       },
-      { new: true, lean: true, session }
+      { returnDocument: 'after', lean: true, session }
     );
 
     if (!updateInventory) {

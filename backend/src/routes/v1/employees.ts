@@ -240,7 +240,7 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
         const updateUser = await User.findOneAndUpdate(
           { _id: user._id },
           { $set: { employeeDetails: employeeId } },
-          { new: true, lean: true, session },
+          { returnDocument: 'after', lean: true, session },
         );
 
         if (!createEmployee || !updateUser) {
@@ -470,12 +470,12 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
           const updatedOldUser = await User.findOneAndUpdate(
             { _id: (employee.userId as IUser)._id },
             { $unset: { employeeDetails: null } },
-            { new: true, lean: true, session },
+            { returnDocument: 'after', lean: true, session },
           );
           const updateNewUser = await User.findOneAndUpdate(
             { _id: user._id },
             { $set: { employeeDetails: employeeId } },
-            { new: true, lean: true, session },
+            { returnDocument: 'after', lean: true, session },
           );
 
           if (!updatedOldUser || !updateNewUser) {
@@ -518,7 +518,7 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
         const updatedEmployee = await Employee.findOneAndUpdate(
           { _id: employeeId },
           { $set: updateEmployeeObj },
-          { new: true, lean: true, session },
+          { returnDocument: 'after', lean: true, session },
         );
 
         if (active === false) {
@@ -620,7 +620,7 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
       const updateUser = await User.findOneAndUpdate(
         { employeeDetails: employeeId },
         { $unset: { employeeDetails: null } },
-        { new: true, lean: true, session },
+        { returnDocument: 'after', lean: true, session },
       );
 
       if (!deletedEmployee || !updatePrinter || !updateUser) {

@@ -355,7 +355,7 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
               documentsUrl: cloudinaryUploadResponse,
             },
           },
-          { new: true, lean: true },
+          { returnDocument: 'after', lean: true },
         );
 
         if (!updatedPurchase) {
@@ -389,7 +389,7 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
       const updatedPurchase = await Purchase.findByIdAndUpdate(
         purchaseId,
         { $set: updatePurchaseObj },
-        { new: true, lean: true }
+        { returnDocument: 'after', lean: true }
       );
 
       if (!updatedPurchase) {
@@ -512,7 +512,7 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
           },
           $inc: { totalAmount: purchasePrice },
         },
-        { new: true, session }
+        { returnDocument: 'after', session }
       ).lean()) as unknown as IPurchase | null;
 
       if (!updatePurchase) {
@@ -531,7 +531,7 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
             "inventoryGoods.$.dynamicSystemCount": quantityPurchased,
           },
         },
-        { new: true, lean: true, session }
+        { returnDocument: 'after', lean: true, session }
       );
 
       if (!updatedInventory) {
@@ -603,7 +603,7 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
           $pull: { purchaseInventoryItems: { _id: purchaseInventoryItemsId } },
           $inc: { totalAmount: -quantityPurchased },
         },
-        { new: true, lean: true, session },
+        { returnDocument: 'after', lean: true, session },
       ).select("businessId");
 
       const updatedInventory = await Inventory.findOneAndUpdate(
@@ -618,7 +618,7 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
             "inventoryGoods.$.dynamicSystemCount": -quantityPurchased,
           },
         },
-        { new: true, lean: true, session },
+        { returnDocument: 'after', lean: true, session },
       );
 
       if (!updatePurchase) {
@@ -759,7 +759,7 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
               totalAmount: (newPurchasePrice ?? 0) - previousPrice,
             },
           },
-          { new: true, lean: true, session },
+          { returnDocument: 'after', lean: true, session },
         ).select("businessId");
 
         if (!updatePurchase) {
@@ -783,7 +783,7 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
                 (newQuantityPurchased ?? 0) - previousQuantity,
             },
           },
-          { new: true, lean: true, session },
+          { returnDocument: 'after', lean: true, session },
         );
 
         if (!updatedInventory) {

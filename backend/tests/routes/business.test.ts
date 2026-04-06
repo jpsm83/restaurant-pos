@@ -12,6 +12,7 @@ import User from "../../src/models/user.ts";
 import Employee from "../../src/models/employee.ts";
 import Notification from "../../src/models/notification.ts";
 import emailChannel from "../../src/communications/channels/emailChannel.ts";
+import * as requestEmailConfirmation from "../../src/auth/requestEmailConfirmation.ts";
 
 describe("Business Routes", () => {
   const validAddress = {
@@ -544,6 +545,84 @@ describe("Business Routes", () => {
 
       const updated = await Business.findById(business._id);
       expect(updated?.tradeName).toBe("Updated Business");
+    });
+
+    it("resets emailVerified and returns unverified session user when PATCH changes email", async () => {
+      const app = await getTestApp();
+      const confirmSpy = vi
+        .spyOn(requestEmailConfirmation, "handleRequestEmailConfirmation")
+        .mockResolvedValue({
+          kind: "success_200",
+          message: requestEmailConfirmation.EMAIL_CONFIRMATION_SENT_MESSAGE,
+        });
+
+      try {
+        const business = await Business.create({
+          tradeName: "Verified Co",
+          legalName: "Verified Co LLC",
+          email: "verified-patch@business.com",
+          emailVerified: true,
+          password: "hashedpassword",
+          phoneNumber: "1234567890",
+          taxNumber: "TAX-EMAIL-CHANGE-001",
+          currencyTrade: "USD",
+          address: validAddress,
+        });
+
+        const auth = await generateTestToken({
+          id: business._id.toString(),
+          email: "verified-patch@business.com",
+          type: "business",
+        });
+
+        const boundary = "----formdata";
+        const payload = [
+          `--${boundary}`,
+          'Content-Disposition: form-data; name="tradeName"\r\n\r\nVerified Co',
+          `--${boundary}`,
+          'Content-Disposition: form-data; name="legalName"\r\n\r\nVerified Co LLC',
+          `--${boundary}`,
+          'Content-Disposition: form-data; name="email"\r\n\r\nnew-verified-patch@business.com',
+          `--${boundary}`,
+          'Content-Disposition: form-data; name="phoneNumber"\r\n\r\n1234567890',
+          `--${boundary}`,
+          'Content-Disposition: form-data; name="taxNumber"\r\n\r\nTAX-EMAIL-CHANGE-001',
+          `--${boundary}`,
+          'Content-Disposition: form-data; name="subscription"\r\n\r\nFree',
+          `--${boundary}`,
+          'Content-Disposition: form-data; name="currencyTrade"\r\n\r\nUSD',
+          `--${boundary}`,
+          `Content-Disposition: form-data; name="address"\r\n\r\n${JSON.stringify(validAddress)}`,
+          `--${boundary}--`,
+        ].join("\r\n");
+
+        const response = await app.inject({
+          method: "PATCH",
+          url: `/api/v1/business/${business._id}`,
+          headers: {
+            "content-type": `multipart/form-data; boundary=${boundary}`,
+            authorization: auth,
+          },
+          payload,
+        });
+
+        expect(response.statusCode).toBe(200);
+        const body = JSON.parse(response.body);
+        expect(body.user?.email).toBe("new-verified-patch@business.com");
+        expect(body.user?.emailVerified).toBe(false);
+
+        const updated = await Business.findById(business._id).lean();
+        expect(updated?.email).toBe("new-verified-patch@business.com");
+        expect(updated?.emailVerified).toBe(false);
+
+        await vi.waitFor(() => {
+          expect(confirmSpy).toHaveBeenCalledWith(
+            "new-verified-patch@business.com",
+          );
+        });
+      } finally {
+        confirmSpy.mockRestore();
+      }
     });
 
     it("dispatches BUSINESS_PROFILE_UPDATED to manager recipients after successful patch", async () => {

@@ -47,6 +47,10 @@
     "core": {
       "sectionTitle": "Core business info",
       "sectionDescription": "Legal and contact details used for billing, support, and account records.",
+      "emailVerification": {
+        "confirmed": "Email confirmed",
+        "confirmCta": "Click to confirm email"
+      },
       "fields": {
         "tradeName": "Trade name",
         "legalName": "Legal name",

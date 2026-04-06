@@ -325,18 +325,14 @@ export function useBusinessProfileSettingsController(): BusinessProfileSettingsC
   }
 
   const { businessId, profileQuery } = gate;
-  const savedProfileEmailTrimmed = gate.profile.email.trim();
 
   const handleImageUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null;
     setValue("imageFile", file, { shouldDirty: true });
   };
 
-  const shouldForceLogoutAfterSave = (values: BusinessProfileFormValues) => {
-    const emailChanged = values.email.trim() !== savedProfileEmailTrimmed;
-    const passwordChanged = values.password.trim().length > 0;
-    return emailChanged || passwordChanged;
-  };
+  const shouldForceLogoutAfterSave = (values: BusinessProfileFormValues) =>
+    values.password.trim().length > 0;
 
   const handleForcedLogout = async () => {
     await logout();
@@ -352,10 +348,14 @@ export function useBusinessProfileSettingsController(): BusinessProfileSettingsC
     const payload = formValuesToUpdatePayload(values);
 
     try {
-      await updateMutation.mutateAsync({
+      const updateResult = await updateMutation.mutateAsync({
         businessId,
         formData: payload,
       });
+
+      if (updateResult.user) {
+        dispatch({ type: "AUTH_SUCCESS", payload: updateResult.user });
+      }
 
       const refreshed = await profileQuery.refetch();
       if (refreshed.data) {

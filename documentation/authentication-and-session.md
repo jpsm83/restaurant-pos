@@ -110,6 +110,7 @@ Types are documented to **match legacy NextAuth session shape** for parity with 
 - `email`
 - `type: "business"`
 - `emailVerified` — mirrors **`Business.emailVerified`** (drives client banners / resend UX)
+- `role: "Tenant"` — stable label for tenant sign-in (future route guards; not an `Employee` role enum)
 
 ### `AuthUser`
 
@@ -117,6 +118,7 @@ Types are documented to **match legacy NextAuth session shape** for parity with 
 - `email` — from `personalDetails.email`
 - `type: "user"`
 - `emailVerified` — mirrors **`User.personalDetails.emailVerified`** (legacy root mirror may still exist for compatibility)
+- `role` — **`"Customer"`** when not staff-linked; when linked to an active employee, first entry of **`Employee.allEmployeeRoles`** (or **`"Employee"`** if missing)
 - Optional (only when user is linked to an **active**, **non-terminated** employee):
   - `employeeId` — stringified `User.employeeDetails`
   - `businessId` — from `Employee.businessId`

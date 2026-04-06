@@ -605,7 +605,7 @@ export const businessGoodsRoutes: FastifyPluginAsync = async (app) => {
       const updateBusinessGood = await BusinessGood.findByIdAndUpdate(
         businessGoodId,
         { $set: updatedBusinessGoodObj },
-        { new: true, lean: true },
+        { returnDocument: 'after', lean: true },
       );
 
       if (!updateBusinessGood) {

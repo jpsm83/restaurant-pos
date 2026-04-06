@@ -1,3 +1,4 @@
+- review all the pages for mobile first
 - review files on backend/src/comunications
 - review logic cors backend/src/config
 

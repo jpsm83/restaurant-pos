@@ -205,6 +205,7 @@ describe("Auth Helpers", () => {
         id: businessId.toString(),
         email: "test@example.com",
         type: "business",
+        role: "Tenant",
       };
       const token = app.jwt.sign(payload);
 
@@ -235,6 +236,7 @@ describe("Auth Helpers", () => {
         id: testBusinessId,
         email: "business@example.com",
         type: "business",
+        role: "Tenant",
       };
 
       expect(hasBusinessAccess(session, testBusinessId)).toBe(true);
@@ -245,6 +247,7 @@ describe("Auth Helpers", () => {
         id: new Types.ObjectId().toString(),
         email: "business@example.com",
         type: "business",
+        role: "Tenant",
       };
 
       expect(hasBusinessAccess(session, testBusinessId)).toBe(false);
@@ -258,6 +261,7 @@ describe("Auth Helpers", () => {
         employeeId: new Types.ObjectId().toString(),
         businessId: testBusinessId,
         canLogAsEmployee: true,
+        role: "Waiter",
       };
 
       expect(hasBusinessAccess(session, testBusinessId)).toBe(true);
@@ -271,6 +275,7 @@ describe("Auth Helpers", () => {
         employeeId: new Types.ObjectId().toString(),
         businessId: testBusinessId,
         canLogAsEmployee: false,
+        role: "Waiter",
       };
 
       expect(hasBusinessAccess(session, testBusinessId)).toBe(false);

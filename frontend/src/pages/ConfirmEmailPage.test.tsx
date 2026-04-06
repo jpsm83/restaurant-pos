@@ -5,10 +5,13 @@ import { renderWithI18n } from "@/test/i18nTestUtils";
 import ConfirmEmailPage from "./ConfirmEmailPage";
 
 const mockConfirmEmail = vi.fn();
+const mockRefreshSession = vi.fn();
 const mockUseAuth = vi.fn();
+const mockDispatch = vi.fn();
 
 vi.mock("@/auth/api", () => ({
   confirmEmail: (...args: unknown[]) => mockConfirmEmail(...args),
+  refreshSession: (...args: unknown[]) => mockRefreshSession(...args),
 }));
 
 vi.mock("@/auth/store/AuthContext", () => ({
@@ -33,8 +36,11 @@ function renderAt(path: string) {
 describe("ConfirmEmailPage", () => {
   beforeEach(() => {
     mockConfirmEmail.mockReset();
+    mockRefreshSession.mockReset();
+    mockDispatch.mockReset();
     mockUseAuth.mockReturnValue({
       state: { user: null, status: "unauthenticated", error: null },
+      dispatch: mockDispatch,
     });
   });
 
@@ -70,22 +76,44 @@ describe("ConfirmEmailPage", () => {
 
   it("redirects to actor dashboard after successful confirm when a session exists", async () => {
     const user = userEvent.setup();
+    const sessionUser = {
+      id: "507f1f77bcf86cd799439011",
+      email: "u@test.com",
+      type: "user" as const,
+      emailVerified: true,
+      role: "Customer",
+    };
     mockUseAuth.mockReturnValue({
       state: {
-        user: { id: "507f1f77bcf86cd799439011", email: "u@test.com", type: "user" },
+        user: {
+          id: sessionUser.id,
+          email: sessionUser.email,
+          type: "user",
+          role: "Customer",
+        },
         status: "authenticated",
         error: null,
       },
+      dispatch: mockDispatch,
     });
     mockConfirmEmail.mockResolvedValue({
       ok: true,
       data: { message: "Email verified." },
+    });
+    mockRefreshSession.mockResolvedValue({
+      ok: true,
+      data: { accessToken: "new-access", user: sessionUser },
     });
 
     await renderAt("/confirm-email?token=abc");
     await user.click(screen.getByRole("button", { name: /confirm email/i }));
 
     await waitFor(() => {
+      expect(mockRefreshSession).toHaveBeenCalledTimes(1);
+      expect(mockDispatch).toHaveBeenCalledWith({
+        type: "AUTH_SUCCESS",
+        payload: sessionUser,
+      });
       expect(screen.getByText("Customer Dashboard")).toBeInTheDocument();
     });
   });

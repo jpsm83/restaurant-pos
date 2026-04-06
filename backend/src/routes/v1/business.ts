@@ -524,6 +524,7 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
       email: registrationEmail,
       type: "business",
       emailVerified: false,
+      role: "Tenant",
     };
     const { accessToken, user } = issueSessionWithRefreshCookie(
       app,
@@ -645,6 +646,8 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
       return reply.code(400).send({ message: "Invalid email format!" });
     }
 
+    const patchEmail = normalizeRequestEmail(email);
+
     if (password && !isValidPassword(password)) {
       return reply.code(400).send({ message: PASSWORD_POLICY_MESSAGE });
     }
@@ -738,7 +741,7 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
 
     const duplicateBusiness = await Business.exists({
       _id: { $ne: businessId },
-      $or: [{ legalName }, { email }, { taxNumber }],
+      $or: [{ legalName }, { email: patchEmail }, { taxNumber }],
     });
     if (duplicateBusiness) {
       return reply.code(409).send({
@@ -773,13 +776,22 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
     }
 
     const updateBusinessObj: Record<string, unknown> = {};
+    let businessEmailChangedForConfirmation = false;
 
     if (tradeName !== (business as Record<string, unknown>).tradeName)
       updateBusinessObj.tradeName = tradeName;
     if (legalName !== (business as Record<string, unknown>).legalName)
       updateBusinessObj.legalName = legalName;
-    if (email !== (business as Record<string, unknown>).email)
-      updateBusinessObj.email = email;
+    {
+      const prevEmailNorm = normalizeRequestEmail(
+        String((business as Record<string, unknown>).email ?? ""),
+      );
+      if (patchEmail !== prevEmailNorm) {
+        updateBusinessObj.email = patchEmail;
+        updateBusinessObj.emailVerified = false;
+        businessEmailChangedForConfirmation = true;
+      }
+    }
     if (phoneNumber !== (business as Record<string, unknown>).phoneNumber)
       updateBusinessObj.phoneNumber = phoneNumber;
     if (taxNumber !== (business as Record<string, unknown>).taxNumber)
@@ -985,7 +997,7 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
     const updatedBusiness = await Business.findByIdAndUpdate(
       businessId,
       updateOps,
-      { new: true, lean: true },
+      { returnDocument: 'after', lean: true },
     );
 
     if (!updatedBusiness) {
@@ -1050,6 +1062,7 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
       email: updatedBusiness.email,
       type: "business",
       emailVerified: updatedBusiness.emailVerified === true,
+      role: "Tenant",
     };
     const { accessToken, user } = issueSessionWithRefreshCookie(
       app,
@@ -1061,6 +1074,27 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
             .refreshSessionVersion ?? 0,
       },
     );
+
+    if (businessEmailChangedForConfirmation) {
+      handleRequestEmailConfirmation(patchEmail)
+        .then((result) => {
+          if (
+            result.kind === "server_error_500" ||
+            result.kind === "already_verified_400"
+          ) {
+            req.log.error(
+              { errHint: "business_profile_email_change_confirmation" },
+              result.message,
+            );
+          }
+        })
+        .catch((err) => {
+          req.log.error(
+            { err },
+            "Business profile email change confirmation email failed",
+          );
+        });
+    }
 
     return reply.code(200).send({
       message: "Business updated successfully",
