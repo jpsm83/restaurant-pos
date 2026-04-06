@@ -1,5 +1,8 @@
 # Auth email flows: confirmation, forgot password, reset password
 
+> Legacy reference from a Next.js prototype. This is **not** the current `restaurant-pos` implementation.  
+> Use `documentation/auth-email-security-flows.md` for the active Fastify + React flow.
+
 This document describes how this **Next.js** app implements transactional emails for **email confirmation**, **forgot password**, and **reset password**, including frameworks, file layout, wiring between UI and backend, URL generation, and templates. Use it as a blueprint when porting the same pattern to another application.
 
 ---

@@ -2,7 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { requestEmailConfirmation } from "@/auth/api";
 import { FieldError } from "@/components/FieldError";
@@ -31,8 +31,7 @@ type FormValues = { email: string };
 
 export default function RequestEmailConfirmationPage() {
   const { t } = useTranslation("auth");
-  const [done, setDone] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const navigate = useNavigate();
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -71,10 +70,7 @@ export default function RequestEmailConfirmationPage() {
         setSubmitError(result.error);
         return;
       }
-      setSuccessMessage(
-        result.data?.message ?? t("requestEmailConfirmation.successMessage"),
-      );
-      setDone(true);
+      navigate("/", { replace: true });
     } finally {
       setSubmitting(false);
     }
@@ -90,48 +86,37 @@ export default function RequestEmailConfirmationPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {done ? (
-            <div className="space-y-4">
-              <p className="text-sm text-neutral-700">
-                {successMessage ?? t("requestEmailConfirmation.successMessage")}
-              </p>
-              <Button asChild variant="outline" className="w-full">
-                <Link to="/login">{t("requestEmailConfirmation.backToSignIn")}</Link>
-              </Button>
+          <form
+            className="space-y-4"
+            onSubmit={(e) => void handleSubmit(onSubmit)(e)}
+          >
+            <div className="space-y-2">
+              <Label htmlFor="req-confirm-email">
+                {t("requestEmailConfirmation.emailLabel")}
+              </Label>
+              <Input
+                id="req-confirm-email"
+                type="email"
+                autoComplete="email"
+                placeholder={t("requestEmailConfirmation.emailPlaceholder")}
+                aria-invalid={errors.email ? true : undefined}
+                {...register("email")}
+              />
+              <FieldError message={errors.email?.message} />
             </div>
-          ) : (
-            <form
-              className="space-y-4"
-              onSubmit={(e) => void handleSubmit(onSubmit)(e)}
-            >
-              <div className="space-y-2">
-                <Label htmlFor="req-confirm-email">
-                  {t("requestEmailConfirmation.emailLabel")}
-                </Label>
-                <Input
-                  id="req-confirm-email"
-                  type="email"
-                  autoComplete="email"
-                  placeholder={t("requestEmailConfirmation.emailPlaceholder")}
-                  aria-invalid={errors.email ? true : undefined}
-                  {...register("email")}
-                />
-                <FieldError message={errors.email?.message} />
-              </div>
 
-              {submitError ? <Alert>{submitError}</Alert> : null}
+            {submitError ? <Alert>{submitError}</Alert> : null}
 
-              <Button type="submit" className="w-full" disabled={submitting}>
-                {submitting
-                  ? t("requestEmailConfirmation.submitting")
-                  : t("requestEmailConfirmation.submit")}
-              </Button>
+            <Button type="submit" className="w-full" disabled={submitting}>
+              {submitting
+                ? t("requestEmailConfirmation.submitting")
+                : t("requestEmailConfirmation.submit")}
+            </Button>
 
-              <Button asChild variant="outline" className="w-full">
-                <Link to="/login">{t("requestEmailConfirmation.backToSignIn")}</Link>
-              </Button>
-            </form>
-          )}
+            <Button asChild variant="outline" className="w-full">
+              <Link to="/login">{t("requestEmailConfirmation.backToSignIn")}</Link>
+            </Button>
+          </form>
         </CardContent>
       </Card>
     </main>

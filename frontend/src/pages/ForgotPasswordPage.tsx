@@ -2,7 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { requestPasswordReset } from "@/auth/api";
 import { FieldError } from "@/components/FieldError";
@@ -30,9 +30,8 @@ function buildSchema(messages: { required: string; invalidEmail: string }) {
 type FormValues = { email: string };
 
 export default function ForgotPasswordPage() {
-  const { t } = useTranslation("auth");
-  const [done, setDone] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const { t } = useTranslation(["auth", "nav"]);
+  const navigate = useNavigate();
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -71,10 +70,7 @@ export default function ForgotPasswordPage() {
         setSubmitError(result.error);
         return;
       }
-      setSuccessMessage(
-        result.data?.message ?? t("forgotPassword.successMessage"),
-      );
-      setDone(true);
+      navigate("/login", { replace: true });
     } finally {
       setSubmitting(false);
     }
@@ -84,50 +80,52 @@ export default function ForgotPasswordPage() {
     <main className="flex min-h-0 flex-1 flex-col items-center justify-center bg-neutral-100 px-4 py-8 sm:px-6 lg:px-8">
       <Card className="w-full max-w-md">
         <CardHeader>
+          <div className="flex flex-col items-center justify-center gap-2">
+            <img
+              src="/imperium.png"
+              alt={t("nav:brand.logoAlt")}
+              className="h-10 w-12 object-contain"
+              width={48}
+              height={40}
+            />
+            <span className="text-base font-semibold text-neutral-800">
+              {t("nav:brand.title")}
+            </span>
+          </div>
+          <hr className="my-4 w-full border-0 border-t border-neutral-200" />
           <CardTitle>{t("forgotPassword.title")}</CardTitle>
           <CardDescription>{t("forgotPassword.description")}</CardDescription>
         </CardHeader>
         <CardContent>
-          {done ? (
-            <div className="space-y-4">
-              <p className="text-sm text-neutral-700">
-                {successMessage ?? t("forgotPassword.successMessage")}
-              </p>
-              <Button asChild variant="outline" className="w-full">
-                <Link to="/login">{t("forgotPassword.backToSignIn")}</Link>
-              </Button>
+          <form
+            className="space-y-4"
+            onSubmit={(e) => void handleSubmit(onSubmit)(e)}
+          >
+            <div className="space-y-2">
+              <Label htmlFor="forgot-email">{t("forgotPassword.emailLabel")}</Label>
+              <Input
+                id="forgot-email"
+                type="email"
+                autoComplete="email"
+                placeholder={t("forgotPassword.emailPlaceholder")}
+                aria-invalid={errors.email ? true : undefined}
+                {...register("email")}
+              />
+              <FieldError message={errors.email?.message} />
             </div>
-          ) : (
-            <form
-              className="space-y-4"
-              onSubmit={(e) => void handleSubmit(onSubmit)(e)}
-            >
-              <div className="space-y-2">
-                <Label htmlFor="forgot-email">{t("forgotPassword.emailLabel")}</Label>
-                <Input
-                  id="forgot-email"
-                  type="email"
-                  autoComplete="email"
-                  placeholder={t("forgotPassword.emailPlaceholder")}
-                  aria-invalid={errors.email ? true : undefined}
-                  {...register("email")}
-                />
-                <FieldError message={errors.email?.message} />
-              </div>
 
-              {submitError ? <Alert>{submitError}</Alert> : null}
+            {submitError ? <Alert>{submitError}</Alert> : null}
 
-              <Button type="submit" className="w-full" disabled={submitting}>
-                {submitting
-                  ? t("forgotPassword.submitting")
-                  : t("forgotPassword.submit")}
-              </Button>
+            <Button type="submit" className="w-full" disabled={submitting}>
+              {submitting
+                ? t("forgotPassword.submitting")
+                : t("forgotPassword.submit")}
+            </Button>
 
-              <Button asChild variant="outline" className="w-full">
-                <Link to="/login">{t("forgotPassword.backToSignIn")}</Link>
-              </Button>
-            </form>
-          )}
+            <Button asChild variant="outline" className="w-full">
+              <Link to="/login">{t("forgotPassword.backToSignIn")}</Link>
+            </Button>
+          </form>
         </CardContent>
       </Card>
     </main>

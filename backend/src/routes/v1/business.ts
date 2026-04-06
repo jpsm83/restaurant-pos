@@ -46,7 +46,7 @@ import * as enums from "../../../../packages/enums.ts";
 
 /** Public JSON must omit password and auth-email secrets (see `TODO-auth-email-security-flows-implementation.md`). */
 const BUSINESS_PUBLIC_LEAN_SELECT =
-  "-password -emailVerificationTokenHash -passwordResetTokenHash -emailVerificationExpiresAt -passwordResetExpiresAt";
+  "-password -verificationToken -resetPasswordToken -resetPasswordExpires";
 
 const {
   subscriptionEnums,
@@ -535,7 +535,7 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
     // Phase 4.2: confirmation email (non-blocking; session unchanged).
     handleRequestEmailConfirmation(registrationEmail)
       .then((result) => {
-        if (result.kind === "server_error_500") {
+        if (result.kind === "server_error_500" || result.kind === "already_verified_400") {
           req.log.error(
             { errHint: "business_registration_confirmation_send" },
             result.message,

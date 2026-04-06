@@ -32,6 +32,7 @@ The client mirrors backend session payloads:
 
 - **`AuthBusiness`**: `{ id, email, type: "business", emailVerified? }`.
 - **`AuthUser`**: `{ id, email, type: "user", emailVerified?, employeeId?, businessId?, canLogAsEmployee? }`.
+  - For users, `emailVerified` is sourced from backend `User.personalDetails.emailVerified` (legacy root mirror may still be present).
   - **`employeeId` / `businessId`**: present when the person is linked to an employee record.
   - **`canLogAsEmployee`**: from the backend (schedule + role rules). When `true`, the server considers employee mode **currently allowed** (e.g. management bypass or inside the shift window).
 
@@ -94,11 +95,10 @@ This split is **intentional** during migration: new server I/O is supposed to go
 |------|----------------|---------|
 | `/` | `PublicLayout` | Customer marketing page (anonymous). Authenticated users are redirected to their dashboard landing. |
 | `/business` | `PublicLayout` | Business marketing page (anonymous). Authenticated users are redirected to their dashboard landing. |
-| `/login`, `/signup` | `PublicLayout` + **`PublicOnlyRoute`** | Auth forms; bounce authenticated users to **`getPostLoginDestination`**. Login links to **`/forgot-password`** and (when unverified) resend paths. |
-| `/forgot-password` | `PublicLayout` + **`PublicOnlyRoute`** | **`POST /auth/request-password-reset`**; always shows generic success after submit (anti-enumeration). |
-| `/request-email-confirmation` | `PublicLayout` + **`PublicOnlyRoute`** | Unauthenticated “request confirmation email” form (**`POST /auth/request-email-confirmation`**). |
-| `/reset-password?token=` | `PublicLayout` only (no **`PublicOnlyRoute`**) | User may land from email while still logged in; **`ResetPasswordPage`** reads **`token`** from the query string. |
-| `/confirm-email?token=` | `PublicLayout` only | **`ConfirmEmailPage`** — user confirms with **`POST /auth/confirm-email`**. |
+| `/login`, `/signup` | `PublicLayout` + **`PublicOnlyRoute`** | Auth forms; bounce authenticated users to **`getPostLoginDestination`**. Login links to **`/forgot-password`** only (no public resend-confirmation link). |
+| `/forgot-password` | **`RecoveryLayout`** + **`PublicOnlyRoute`** | Minimal recovery chrome (no global navbar/footer). Calls **`POST /auth/request-password-reset`** then redirects to **`/login`** on success. |
+| `/reset-password?token=` | **`RecoveryLayout`** (no **`PublicOnlyRoute`**) | Token link route that works even with an existing session; on success redirects to **`/login`** (no intermediate success page). |
+| `/confirm-email?token=` | **`RecoveryLayout`** (no **`PublicOnlyRoute`**) | Token link route that works with/without session; on success redirects to the actor dashboard when logged in, otherwise to **`/login`**. |
 | `/business/register` | `PublicLayout` + **`PublicOnlyRoute`** | Tenant signup (multipart API). |
 | `/access-denied` | None of the partition guards | Wrong session **type** for a route. Registered **before** `/:userId/*`. |
 | `/business/:businessId` | **`ProtectedRoute`** → **`RequireBusinessSession`** → **`BusinessIdRouteGuard`** → **`BusinessLayout`** | Tenant shell; index redirects to **`dashboard`**. Nested **`settings/*`** routes include **`settings/profile`** (lazy **`BusinessProfileSettingsPage`**) and **`settings/address`** (lazy **`BusinessAddressSettingsPage`**) using **`BusinessProfileSettingsFormShell`** + full profile controller; **`settings/credentials`** (**`BusinessCredentialsSettingsPage`**) uses **`BusinessProfileSettingsStaticShell`** (profile gate only, password change via email link). Other **`settings/*`** routes as listed in **`appRoutes.tsx`**. Canonical URLs live in **`canonicalPaths.ts`**. |
@@ -106,9 +106,9 @@ This split is **intentional** during migration: new server I/O is supposed to go
 | `/:userId/customer` | Same stack + **`CustomerLayout`** + index redirect → `dashboard` | Person “customer” app shell. |
 | `/:userId/employee` | Same stack + **`RequireEmployeeAuthMode`** + **`EmployeeLayout`** + index redirect → `dashboard` | Staff workspace; requires **`auth_mode=employee`**. |
 | `/app` | **`ProtectedRoute`** + **`LegacyAppRedirect`** | Redirects to canonical business or user customer path. |
-| `*` | **`CatchAllRedirect`** | Anonymous → `/`; authenticated → **`getPostLoginDestination`**. |
+| `*` | **`CatchAllRedirect`** | Unknown URL renders `NotFoundPage` (after session loading state resolves). |
 
-**Lazy-loaded pages** (`App.tsx` / `AppRoutes`: ErrorBoundary + Suspense + `AppPendingShell` `route`): login, signup, **forgot-password**, **request-email-confirmation**, **reset-password**, **confirm-email**, business register, business dashboard, business profile and split settings routes under **`settings/*`** (profile, delivery, metrics, open hours, subscriptions, **address**, credentials), mode selection, customer dashboard, employee dashboard.
+**Lazy-loaded pages** (`App.tsx` / `AppRoutes`: ErrorBoundary + Suspense + `AppPendingShell` `route`): login, signup, **forgot-password**, **reset-password**, **confirm-email**, business register, business dashboard, business profile and split settings routes under **`settings/*`** (profile, delivery, metrics, open hours, subscriptions, **address**, credentials), mode selection, customer dashboard, employee dashboard.
 
 ---
 
@@ -116,7 +116,7 @@ This split is **intentional** during migration: new server I/O is supposed to go
 
 Dynamic segments **`/:userId/...`** could swallow words like `login` if they were registered **before** static paths. The tree therefore:
 
-1. Nests **marketing and auth** under **`path="/"`** with explicit children (`login`, `signup`, `forgot-password`, `request-email-confirmation`, `reset-password`, `confirm-email`, `business`, `business/register`).
+1. Nests **marketing and public auth** under **`path="/"`** with explicit children (`login`, `signup`, `business`, `business/register`); recovery/email-link routes are defined separately under **`RecoveryLayout`**.
 2. Declares **`/access-denied`** before any **`/:userId/...`** route.
 3. Declares **`/business/:businessId`** before **`/:userId/...`** (business id is not confused with user id at the same path level).
 
@@ -132,7 +132,8 @@ Dynamic segments **`/:userId/...`** could swallow words like `login` if they wer
 
 ### 6.2 `PublicLayout` + global `Navbar`
 
-- `Navbar` is mounted once in `main.tsx` (fixed global top bar).
+- `Navbar` is mounted by **`AppRootShell`** in `main.tsx` (fixed global top bar for normal routes).
+- `AppRootShell` omits navbar and top offset on recovery/email-link routes (`/forgot-password`, `/reset-password`, `/confirm-email`) to avoid empty reserved space.
 - `PublicLayout` renders `Outlet` plus `Footer` (footer is public-only).
 - **When session is loading or unauthenticated:** show **Customer | Business** links (`NavLink` to `/` and `/business`).
 - **Sign in** → `/login?audience=customer` or `?audience=business` from current audience.
@@ -276,7 +277,7 @@ All guards are **UX and consistency**; **security remains on the API**.
 ## 13. Access denied and unknown URLs
 
 - **`/access-denied`**: e.g. business user tried a **user-only** route (or vice versa). Offers **Open your workspace** → **`getPostLoginDestination`** when authenticated.
-- **`*`**: **`CatchAllRedirect`** — if authenticated, send to **`getPostLoginDestination`**; else `/`.
+- **`*`**: **`CatchAllRedirect`** — after session loading resolves, unknown URLs show **Not Found** (no automatic redirect).
 
 ---
 
@@ -362,7 +363,7 @@ Toggle only switches **marketing** URLs; it does not log anyone in.
 | Business profile / signup services | `frontend/src/services/business/` (barrel `businessService.ts`; see `README.md` there) |
 | Split business settings shells + profile hook | `frontend/src/components/BusinessProfileSettingsFormShell.tsx` (**`BusinessProfileSettingsFormShell`**, **`BusinessProfileSettingsStaticShell`**, **`BusinessProfileSettingsLoadingCard`**), `frontend/src/hooks/useBusinessProfileSettingsController.ts` (**`useBusinessProfileSettingsController`**, **`useBusinessProfileSettingsGate`** — same module) |
 | Tenant profile / address / credentials pages | `frontend/src/pages/business/BusinessProfileSettingsPage.tsx`, `BusinessAddressSettingsPage.tsx`, `BusinessCredentialsSettingsPage.tsx`; map: `BusinessAddressLocationMap.tsx` |
-| Auth form examples (RHF + Zod colocated) + email security pages | `LoginPage.tsx`, `SignUpPage.tsx`, `BusinessRegisterPage.tsx`, `ForgotPasswordPage.tsx`, `RequestEmailConfirmationPage.tsx`, `ResetPasswordPage.tsx`, `ConfirmEmailPage.tsx` |
+| Auth form examples (RHF + Zod colocated) + email security pages | `LoginPage.tsx`, `SignUpPage.tsx`, `BusinessRegisterPage.tsx`, `ForgotPasswordPage.tsx`, `ResetPasswordPage.tsx`, `ConfirmEmailPage.tsx` |
 | Shared field error line | `frontend/src/components/FieldError.tsx` |
 | App bootstrap | `frontend/src/main.tsx` |
 

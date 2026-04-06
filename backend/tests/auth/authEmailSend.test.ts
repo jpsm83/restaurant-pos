@@ -1,9 +1,15 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-const sendMock = vi.fn();
+const { sendMailMock, createTransportMock } = vi.hoisted(() => {
+  const sendMail = vi.fn();
+  const createTransport = vi.fn(() => ({ sendMail }));
+  return { sendMailMock: sendMail, createTransportMock: createTransport };
+});
 
-vi.mock("../../src/communications/channels/emailChannel.ts", () => ({
-  default: { send: (...args: unknown[]) => sendMock(...args) },
+vi.mock("nodemailer", () => ({
+  default: {
+    createTransport: createTransportMock,
+  },
 }));
 
 import {
@@ -20,15 +26,19 @@ const sampleContent: AuthEmailTemplateContent = {
 
 describe("authEmailSend", () => {
   beforeEach(() => {
-    sendMock.mockReset();
+    sendMailMock.mockReset();
+    createTransportMock.mockClear();
+    createTransportMock.mockImplementation(() => ({ sendMail: sendMailMock }));
+    vi.stubEnv("EMAIL_USER", "sender@test.com");
+    vi.stubEnv("EMAIL_PASSWORD", "secret");
   });
 
-  it("sendAuthTransactionalEmail calls emailChannel with fireAndForget true and trimmed to", async () => {
-    sendMock.mockResolvedValue({
-      channel: "email",
-      success: true,
-      sentCount: 1,
-    });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("sendAuthTransactionalEmail trims recipient and calls sendMail with Gmail transport", async () => {
+    sendMailMock.mockResolvedValue(undefined);
 
     await sendAuthTransactionalEmail({
       to: "  user@test.com  ",
@@ -36,14 +46,17 @@ describe("authEmailSend", () => {
       correlationId: "corr-1",
     });
 
-    expect(sendMock).toHaveBeenCalledTimes(1);
-    expect(sendMock).toHaveBeenCalledWith({
+    expect(createTransportMock).toHaveBeenCalledWith({
+      service: "gmail",
+      auth: { user: "sender@test.com", pass: "secret" },
+    });
+    expect(sendMailMock).toHaveBeenCalledTimes(1);
+    expect(sendMailMock).toHaveBeenCalledWith({
+      from: '"Restaurant POS" <sender@test.com>',
       to: "user@test.com",
       subject: sampleContent.subject,
       text: sampleContent.text,
       html: sampleContent.html,
-      correlationId: "corr-1",
-      fireAndForget: true,
     });
   });
 
@@ -51,32 +64,32 @@ describe("authEmailSend", () => {
     await expect(
       sendAuthTransactionalEmail({ to: "   ", content: sampleContent }),
     ).rejects.toThrow("Recipient email is required");
-    expect(sendMock).not.toHaveBeenCalled();
+    expect(sendMailMock).not.toHaveBeenCalled();
   });
 
-  it("throws when channel reports failure", async () => {
-    sendMock.mockResolvedValue({
-      channel: "email",
-      success: false,
-      sentCount: 0,
-      error: "SMTP unavailable (missing_config)",
-    });
-
-    await expect(
-      sendAuthTransactionalEmail({
-        to: "a@test.com",
-        content: sampleContent,
-      }),
-    ).rejects.toThrow("SMTP unavailable (missing_config)");
+  it("throws when EMAIL_USER or EMAIL_PASSWORD is missing", async () => {
+    const prevUser = process.env.EMAIL_USER;
+    const prevPass = process.env.EMAIL_PASSWORD;
+    delete process.env.EMAIL_USER;
+    delete process.env.EMAIL_PASSWORD;
+    try {
+      await expect(
+        sendAuthTransactionalEmail({
+          to: "a@test.com",
+          content: sampleContent,
+        }),
+      ).rejects.toThrow(
+        "Email configuration is missing. Please set EMAIL_USER and EMAIL_PASSWORD environment variables.",
+      );
+    } finally {
+      if (prevUser !== undefined) process.env.EMAIL_USER = prevUser;
+      if (prevPass !== undefined) process.env.EMAIL_PASSWORD = prevPass;
+    }
+    expect(sendMailMock).not.toHaveBeenCalled();
   });
 
-  it("sendAuthTransactionalEmailWithRollback runs rollback then rethrows", async () => {
-    sendMock.mockResolvedValue({
-      channel: "email",
-      success: false,
-      sentCount: 0,
-      error: "send failed",
-    });
+  it("sendAuthTransactionalEmailWithRollback runs rollback then rethrows on send failure", async () => {
+    sendMailMock.mockRejectedValue(new Error("SMTP failed"));
 
     const rollback = vi.fn().mockResolvedValue(undefined);
 
@@ -86,17 +99,13 @@ describe("authEmailSend", () => {
         content: sampleContent,
         rollback,
       }),
-    ).rejects.toThrow("send failed");
+    ).rejects.toThrow("SMTP failed");
 
     expect(rollback).toHaveBeenCalledTimes(1);
   });
 
   it("sendAuthTransactionalEmailWithRollback does not rollback on success", async () => {
-    sendMock.mockResolvedValue({
-      channel: "email",
-      success: true,
-      sentCount: 1,
-    });
+    sendMailMock.mockResolvedValue(undefined);
 
     const rollback = vi.fn();
 

@@ -10,12 +10,8 @@
  * use `PublicOnlyRoute` where login/signup should reject an existing session).
  *
  * ## Flow
- * 1. **`SiteAudienceProvider`** — marketing audience from URL (`/` vs `/business/*`) for `Navbar`
- *    sign-in / sign-up links (`useSiteAudience` throws outside this tree; other layouts use
- *    `useOptionalSiteAudience` in `Navbar`).
- * 2. **`Navbar`** — public CTAs or account popover when authenticated on a public child.
- * 3. **`<Outlet />`** — index marketing, `/login`, `/signup`, `/forgot-password`, `/request-email-confirmation`, `/reset-password`, `/confirm-email`, `/business`, `/business/register`.
- * 4. **`Footer`** — **only** on this shell; tenant / user shells omit it.
+ * 1. **`<Outlet />`** — marketing, `/login`, `/signup`, `/business`, etc.
+ * 2. **`Footer`** — **only** on this shell. Email recovery routes use **`RecoveryLayout`** (no footer; see `AppRootShell` for navbar).
  */
 import { Outlet } from "react-router-dom";
 import Footer from "@/components/Footer";

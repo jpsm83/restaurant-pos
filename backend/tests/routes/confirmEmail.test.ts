@@ -1,17 +1,13 @@
 /**
- * POST /api/v1/auth/confirm-email (Phase 3.2)
+ * POST /api/v1/auth/confirm-email
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import crypto from "crypto";
 import bcrypt from "bcrypt";
 import { getTestApp, resetTestApp } from "../setup.ts";
 import User from "../../src/models/user.ts";
 import Business from "../../src/models/business.ts";
-import {
-  computeEmailVerificationExpiry,
-  generateRawEmailToken,
-  hashEmailToken,
-} from "../../src/auth/emailToken.ts";
 import {
   CONFIRM_EMAIL_CONSUMPTION_ERROR_MESSAGE,
   CONFIRM_EMAIL_MISSING_TOKEN_MESSAGE,
@@ -19,6 +15,10 @@ import {
 } from "../../src/auth/confirmEmail.ts";
 
 const testPassword = "TestPassword123!";
+
+function randomToken(): string {
+  return crypto.randomBytes(32).toString("hex");
+}
 
 async function createTestUser(email: string) {
   const hashedPassword = await bcrypt.hash(testPassword, 10);
@@ -44,7 +44,6 @@ async function createTestUser(email: string) {
       idType: "Passport",
       username: "testuser",
     },
-    allUserRoles: ["Customer"],
     emailVerified: false,
   });
 }
@@ -101,20 +100,11 @@ describe("POST /api/v1/auth/confirm-email", () => {
     expect(missing.statusCode).toBe(400);
   });
 
-  it("verifies user email and clears token fields", async () => {
+  it("verifies user email and clears verificationToken", async () => {
     const app = await getTestApp();
     const user = await createTestUser("confirm-user@example.com");
-    const raw = generateRawEmailToken();
-    const tokenHash = hashEmailToken(raw);
-    await User.updateOne(
-      { _id: user._id },
-      {
-        $set: {
-          emailVerificationTokenHash: tokenHash,
-          emailVerificationExpiresAt: computeEmailVerificationExpiry(),
-        },
-      },
-    );
+    const raw = randomToken();
+    await User.updateOne({ _id: user._id }, { $set: { verificationToken: raw } });
 
     const response = await app.inject({
       method: "POST",
@@ -127,11 +117,10 @@ describe("POST /api/v1/auth/confirm-email", () => {
     expect(body.message).toBe(CONFIRM_EMAIL_SUCCESS_MESSAGE);
 
     const updated = await User.findById(user._id)
-      .select("emailVerified emailVerificationTokenHash emailVerificationExpiresAt")
+      .select("emailVerified verificationToken")
       .lean();
     expect(updated?.emailVerified).toBe(true);
-    expect(updated?.emailVerificationTokenHash).toBeFalsy();
-    expect(updated?.emailVerificationExpiresAt).toBeFalsy();
+    expect(updated?.verificationToken).toBeFalsy();
   });
 
   it("returns 400 for wrong token", async () => {
@@ -141,34 +130,7 @@ describe("POST /api/v1/auth/confirm-email", () => {
     const response = await app.inject({
       method: "POST",
       url: "/api/v1/auth/confirm-email",
-      payload: { token: generateRawEmailToken() },
-    });
-
-    expect(response.statusCode).toBe(400);
-    expect(JSON.parse(response.body).message).toBe(
-      CONFIRM_EMAIL_CONSUMPTION_ERROR_MESSAGE,
-    );
-  });
-
-  it("returns 400 when token is expired", async () => {
-    const app = await getTestApp();
-    const user = await createTestUser("expired@example.com");
-    const raw = generateRawEmailToken();
-    const tokenHash = hashEmailToken(raw);
-    await User.updateOne(
-      { _id: user._id },
-      {
-        $set: {
-          emailVerificationTokenHash: tokenHash,
-          emailVerificationExpiresAt: new Date(Date.now() - 60_000),
-        },
-      },
-    );
-
-    const response = await app.inject({
-      method: "POST",
-      url: "/api/v1/auth/confirm-email",
-      payload: { token: raw },
+      payload: { token: randomToken() },
     });
 
     expect(response.statusCode).toBe(400);
@@ -180,17 +142,8 @@ describe("POST /api/v1/auth/confirm-email", () => {
   it("returns 400 on second use (replay)", async () => {
     const app = await getTestApp();
     const user = await createTestUser("replay@example.com");
-    const raw = generateRawEmailToken();
-    const tokenHash = hashEmailToken(raw);
-    await User.updateOne(
-      { _id: user._id },
-      {
-        $set: {
-          emailVerificationTokenHash: tokenHash,
-          emailVerificationExpiresAt: computeEmailVerificationExpiry(),
-        },
-      },
-    );
+    const raw = randomToken();
+    await User.updateOne({ _id: user._id }, { $set: { verificationToken: raw } });
 
     const first = await app.inject({
       method: "POST",
@@ -213,17 +166,8 @@ describe("POST /api/v1/auth/confirm-email", () => {
   it("updates business when token matches business row", async () => {
     const app = await getTestApp();
     const biz = await createTestBusiness("confirm-biz@example.com");
-    const raw = generateRawEmailToken();
-    const tokenHash = hashEmailToken(raw);
-    await Business.updateOne(
-      { _id: biz._id },
-      {
-        $set: {
-          emailVerificationTokenHash: tokenHash,
-          emailVerificationExpiresAt: computeEmailVerificationExpiry(),
-        },
-      },
-    );
+    const raw = randomToken();
+    await Business.updateOne({ _id: biz._id }, { $set: { verificationToken: raw } });
 
     const response = await app.inject({
       method: "POST",
@@ -234,38 +178,26 @@ describe("POST /api/v1/auth/confirm-email", () => {
     expect(response.statusCode).toBe(200);
 
     const updated = await Business.findById(biz._id)
-      .select("emailVerified emailVerificationTokenHash emailVerificationExpiresAt")
+      .select("emailVerified verificationToken")
       .lean();
     expect(updated?.emailVerified).toBe(true);
-    expect(updated?.emailVerificationTokenHash).toBeFalsy();
+    expect(updated?.verificationToken).toBeFalsy();
   });
 
-  it("does not consume user token when business has the same hash (business wins)", async () => {
+  it("does not consume user token when business has the same token (business wins)", async () => {
     const app = await getTestApp();
-    const sharedRaw = generateRawEmailToken();
-    const tokenHash = hashEmailToken(sharedRaw);
-    const expiresAt = computeEmailVerificationExpiry();
+    const sharedRaw = randomToken();
 
     const biz = await createTestBusiness("biz-wins@example.com");
     await Business.updateOne(
       { _id: biz._id },
-      {
-        $set: {
-          emailVerificationTokenHash: tokenHash,
-          emailVerificationExpiresAt: expiresAt,
-        },
-      },
+      { $set: { verificationToken: sharedRaw } },
     );
 
-    const usr = await createTestUser("user-same-hash@example.com");
+    const usr = await createTestUser("user-same-token@example.com");
     await User.updateOne(
       { _id: usr._id },
-      {
-        $set: {
-          emailVerificationTokenHash: tokenHash,
-          emailVerificationExpiresAt: expiresAt,
-        },
-      },
+      { $set: { verificationToken: sharedRaw } },
     );
 
     const response = await app.inject({
@@ -276,15 +208,15 @@ describe("POST /api/v1/auth/confirm-email", () => {
     expect(response.statusCode).toBe(200);
 
     const bizAfter = await Business.findById(biz._id)
-      .select("emailVerified emailVerificationTokenHash")
+      .select("emailVerified verificationToken")
       .lean();
     expect(bizAfter?.emailVerified).toBe(true);
-    expect(bizAfter?.emailVerificationTokenHash).toBeFalsy();
+    expect(bizAfter?.verificationToken).toBeFalsy();
 
     const usrAfter = await User.findById(usr._id)
-      .select("emailVerified emailVerificationTokenHash")
+      .select("emailVerified verificationToken")
       .lean();
     expect(usrAfter?.emailVerified).toBe(false);
-    expect(usrAfter?.emailVerificationTokenHash).toBe(tokenHash);
+    expect(usrAfter?.verificationToken).toBe(sharedRaw);
   });
 });

@@ -18,6 +18,11 @@ export const personalDetailsSchema = new Schema(
       ],
       lowercase: true,
     }, // email
+    /** True once `personalDetails.email` is confirmed through auth email flow. */
+    emailVerified: {
+      type: Boolean,
+      default: false,
+    },
     password: {
       type: String,
       required: [true, "Password is required!"],

@@ -1,5 +1,5 @@
 /**
- * Phase 1.1 — User auth-email fields persist and are queryable.
+ * User auth-email fields persist and are queryable.
  */
 import { describe, it, expect } from "vitest";
 import User from "../../src/models/user.ts";
@@ -27,36 +27,31 @@ const minimalPersonalDetails = {
 };
 
 describe("User email security schema", () => {
-  it("defaults emailVerified to false and stores token hashes and expiries", async () => {
-    const expiresConfirm = new Date(Date.now() + 86_400_000);
+  it("defaults emailVerified to false and stores verification + reset tokens", async () => {
     const expiresReset = new Date(Date.now() + 3_600_000);
 
     const created = await User.create({
       personalDetails: minimalPersonalDetails,
-      emailVerificationTokenHash: "confirm-hash-test",
-      emailVerificationExpiresAt: expiresConfirm,
-      passwordResetTokenHash: "reset-hash-test",
-      passwordResetExpiresAt: expiresReset,
+      verificationToken: "confirm-token-test",
+      resetPasswordToken: "reset-token-test",
+      resetPasswordExpires: expiresReset,
     });
 
     expect(created.refreshSessionVersion ?? 0).toBe(0);
     expect(created.emailVerified).toBe(false);
-    expect(created.emailVerificationTokenHash).toBe("confirm-hash-test");
-    expect(created.emailVerificationExpiresAt?.getTime()).toBe(
-      expiresConfirm.getTime(),
-    );
-    expect(created.passwordResetTokenHash).toBe("reset-hash-test");
-    expect(created.passwordResetExpiresAt?.getTime()).toBe(
-      expiresReset.getTime(),
-    );
+    expect(created.personalDetails.emailVerified).toBe(false);
+    expect(created.verificationToken).toBe("confirm-token-test");
+    expect(created.resetPasswordToken).toBe("reset-token-test");
+    expect(created.resetPasswordExpires?.getTime()).toBe(expiresReset.getTime());
 
     const fromDb = await User.findById(created._id).lean();
     expect(fromDb?.emailVerified).toBe(false);
-    expect(fromDb?.emailVerificationTokenHash).toBe("confirm-hash-test");
-    expect(fromDb?.passwordResetTokenHash).toBe("reset-hash-test");
+    expect(fromDb?.personalDetails?.emailVerified).toBe(false);
+    expect(fromDb?.verificationToken).toBe("confirm-token-test");
+    expect(fromDb?.resetPasswordToken).toBe("reset-token-test");
   });
 
-  it("finds user by emailVerificationTokenHash", async () => {
+  it("finds user by verificationToken", async () => {
     await User.create({
       personalDetails: {
         ...minimalPersonalDetails,
@@ -64,12 +59,11 @@ describe("User email security schema", () => {
         username: "findbyconfirm",
         idNumber: "ID-SCHEMA-002",
       },
-      emailVerificationTokenHash: "unique-confirm-hash",
-      emailVerificationExpiresAt: new Date(Date.now() + 60_000),
+      verificationToken: "unique-confirm-token",
     });
 
     const found = await User.findOne({
-      emailVerificationTokenHash: "unique-confirm-hash",
+      verificationToken: "unique-confirm-token",
     }).lean();
     expect(found?.personalDetails?.email).toBe("find-by-confirm@example.com");
   });
@@ -82,19 +76,16 @@ describe("User email security schema", () => {
         username: "cleartokens",
         idNumber: "ID-SCHEMA-003",
       },
-      emailVerificationTokenHash: "to-clear",
-      emailVerificationExpiresAt: new Date(),
+      verificationToken: "to-clear",
     });
 
     await User.findByIdAndUpdate(doc._id, {
       $unset: {
-        emailVerificationTokenHash: "",
-        emailVerificationExpiresAt: "",
+        verificationToken: "",
       },
     });
 
     const after = await User.findById(doc._id).lean();
-    expect(after?.emailVerificationTokenHash).toBeUndefined();
-    expect(after?.emailVerificationExpiresAt).toBeUndefined();
+    expect(after?.verificationToken).toBeUndefined();
   });
 });

@@ -1,5 +1,5 @@
 /**
- * POST /api/v1/auth/request-password-reset (Phase 3.3)
+ * POST /api/v1/auth/request-password-reset
  */
 
 import {
@@ -13,18 +13,17 @@ import {
 } from "vitest";
 import bcrypt from "bcrypt";
 
-const sendWithRollbackMock = vi.fn();
+const sendEmailMock = vi.hoisted(() =>
+  vi.fn().mockResolvedValue(undefined),
+);
 
 vi.mock("../../src/auth/authEmailSend.ts", () => ({
-  sendAuthTransactionalEmail: vi.fn(),
-  sendAuthTransactionalEmailWithRollback: (...args: unknown[]) =>
-    sendWithRollbackMock(...args),
+  sendAuthTransactionalEmail: sendEmailMock,
 }));
 
 import { getTestApp, resetTestApp } from "../setup.ts";
 import User from "../../src/models/user.ts";
 import Business from "../../src/models/business.ts";
-import { __resetAuthEmailRateLimitsForTests } from "../../src/auth/authEmailRateLimit.ts";
 import { GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE } from "../../src/auth/requestEmailConfirmation.ts";
 
 const testPassword = "TestPassword123!";
@@ -56,7 +55,6 @@ async function createTestUser(
       idType: "Passport",
       username: "testuser",
     },
-    allUserRoles: ["Customer"],
     ...(overrides?.emailVerified !== undefined
       ? { emailVerified: overrides.emailVerified }
       : {}),
@@ -98,13 +96,8 @@ describe("POST /api/v1/auth/request-password-reset", () => {
   });
 
   beforeEach(() => {
-    sendWithRollbackMock.mockReset();
-    sendWithRollbackMock.mockResolvedValue(undefined);
-    __resetAuthEmailRateLimitsForTests();
-    delete process.env.AUTH_EMAIL_RATE_LIMIT_IP_MAX;
-    delete process.env.AUTH_EMAIL_RATE_LIMIT_IP_WINDOW_MS;
-    delete process.env.AUTH_EMAIL_RATE_LIMIT_EMAIL_MAX;
-    delete process.env.AUTH_EMAIL_RATE_LIMIT_EMAIL_WINDOW_MS;
+    sendEmailMock.mockReset();
+    sendEmailMock.mockResolvedValue(undefined);
   });
 
   it("returns 400 for invalid email", async () => {
@@ -118,7 +111,7 @@ describe("POST /api/v1/auth/request-password-reset", () => {
     expect(JSON.parse(response.body).message).toBe(
       "Please provide a valid email address",
     );
-    expect(sendWithRollbackMock).not.toHaveBeenCalled();
+    expect(sendEmailMock).not.toHaveBeenCalled();
   });
 
   it("returns 200 generic when no account exists", async () => {
@@ -132,10 +125,10 @@ describe("POST /api/v1/auth/request-password-reset", () => {
     expect(JSON.parse(response.body).message).toBe(
       GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE,
     );
-    expect(sendWithRollbackMock).not.toHaveBeenCalled();
+    expect(sendEmailMock).not.toHaveBeenCalled();
   });
 
-  it("sends reset for verified user (unlike confirmation request)", async () => {
+  it("sends reset for verified user", async () => {
     const app = await getTestApp();
     await createTestUser("verified-reset@example.com", {
       emailVerified: true,
@@ -148,17 +141,17 @@ describe("POST /api/v1/auth/request-password-reset", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(sendWithRollbackMock).toHaveBeenCalledTimes(1);
+    expect(sendEmailMock).toHaveBeenCalledTimes(1);
     const updated = await User.findOne({
       "personalDetails.email": "verified-reset@example.com",
     })
-      .select("passwordResetTokenHash passwordResetExpiresAt")
+      .select("resetPasswordToken resetPasswordExpires")
       .lean();
-    expect(updated?.passwordResetTokenHash).toBeTruthy();
-    expect(updated?.passwordResetExpiresAt).toBeTruthy();
+    expect(updated?.resetPasswordToken).toBeTruthy();
+    expect(updated?.resetPasswordExpires).toBeTruthy();
   });
 
-  it("issues reset token and sends email for user", async () => {
+  it("issues reset token and sends email for unverified user", async () => {
     const app = await getTestApp();
     await createTestUser("user-reset@example.com", { emailVerified: false });
 
@@ -169,25 +162,20 @@ describe("POST /api/v1/auth/request-password-reset", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(sendWithRollbackMock).toHaveBeenCalledTimes(1);
+    expect(sendEmailMock).toHaveBeenCalledTimes(1);
     const updated = await User.findOne({
       "personalDetails.email": "user-reset@example.com",
     })
-      .select("passwordResetTokenHash passwordResetExpiresAt")
+      .select("resetPasswordToken resetPasswordExpires")
       .lean();
-    expect(updated?.passwordResetTokenHash).toBeTruthy();
-    expect(updated?.passwordResetExpiresAt).toBeTruthy();
+    expect(updated?.resetPasswordToken).toBeTruthy();
+    expect(updated?.resetPasswordExpires).toBeTruthy();
   });
 
   it("clears reset token and returns 500 when send fails", async () => {
     const app = await getTestApp();
     await createTestUser("fail-reset@example.com");
-    sendWithRollbackMock.mockImplementation(
-      async (options: { rollback: () => Promise<void> }) => {
-        await options.rollback();
-        throw new Error("SMTP down");
-      },
-    );
+    sendEmailMock.mockRejectedValue(new Error("SMTP down"));
 
     const response = await app.inject({
       method: "POST",
@@ -199,72 +187,10 @@ describe("POST /api/v1/auth/request-password-reset", () => {
     const updated = await User.findOne({
       "personalDetails.email": "fail-reset@example.com",
     })
-      .select("passwordResetTokenHash passwordResetExpiresAt")
+      .select("resetPasswordToken resetPasswordExpires")
       .lean();
-    expect(updated?.passwordResetTokenHash).toBeFalsy();
-    expect(updated?.passwordResetExpiresAt).toBeFalsy();
-  });
-
-  it("returns 429 on its own IP bucket (not shared with confirmation)", async () => {
-    process.env.AUTH_EMAIL_RATE_LIMIT_IP_MAX = "2";
-    process.env.AUTH_EMAIL_RATE_LIMIT_IP_WINDOW_MS = "3600000";
-
-    const app = await getTestApp();
-
-    const resetOpts = {
-      method: "POST" as const,
-      url: "/api/v1/auth/request-password-reset",
-      payload: { email: "ghost@example.com" },
-      remoteAddress: "10.20.30.40",
-    };
-
-    expect((await app.inject(resetOpts)).statusCode).toBe(200);
-    expect((await app.inject(resetOpts)).statusCode).toBe(200);
-    const third = await app.inject(resetOpts);
-    expect(third.statusCode).toBe(429);
-
-    const confirmOpts = {
-      method: "POST" as const,
-      url: "/api/v1/auth/request-email-confirmation",
-      payload: { email: "ghost@example.com" },
-      remoteAddress: "10.20.30.40",
-    };
-    expect((await app.inject(confirmOpts)).statusCode).toBe(200);
-  });
-
-  it("uses a separate per-email send cap from confirmation (Phase 6 intents)", async () => {
-    process.env.AUTH_EMAIL_RATE_LIMIT_EMAIL_MAX = "2";
-    process.env.AUTH_EMAIL_RATE_LIMIT_EMAIL_WINDOW_MS = "3600000";
-
-    const app = await getTestApp();
-    await createTestUser("combo-cap@example.com");
-
-    await app.inject({
-      method: "POST",
-      url: "/api/v1/auth/request-email-confirmation",
-      payload: { email: "combo-cap@example.com" },
-    });
-    await app.inject({
-      method: "POST",
-      url: "/api/v1/auth/request-email-confirmation",
-      payload: { email: "combo-cap@example.com" },
-    });
-    expect(sendWithRollbackMock).toHaveBeenCalledTimes(2);
-
-    const resetResponse = await app.inject({
-      method: "POST",
-      url: "/api/v1/auth/request-password-reset",
-      payload: { email: "combo-cap@example.com" },
-    });
-    expect(resetResponse.statusCode).toBe(200);
-    expect(sendWithRollbackMock).toHaveBeenCalledTimes(3);
-
-    const updated = await User.findOne({
-      "personalDetails.email": "combo-cap@example.com",
-    })
-      .select("passwordResetTokenHash")
-      .lean();
-    expect(updated?.passwordResetTokenHash).toBeTruthy();
+    expect(updated?.resetPasswordToken).toBeFalsy();
+    expect(updated?.resetPasswordExpires).toBeFalsy();
   });
 
   it("prefers business over user for the same email", async () => {
@@ -280,19 +206,15 @@ describe("POST /api/v1/auth/request-password-reset", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(sendWithRollbackMock).toHaveBeenCalledTimes(1);
-    const firstCall = sendWithRollbackMock.mock.calls[0]?.[0] as {
-      correlationId?: string;
-    };
-    expect(firstCall.correlationId).toMatch(/^pwd-reset-business:/);
+    expect(sendEmailMock).toHaveBeenCalledTimes(1);
 
     const biz = await Business.findOne({ email })
-      .select("passwordResetTokenHash")
+      .select("resetPasswordToken")
       .lean();
     const usr = await User.findOne({ "personalDetails.email": email })
-      .select("passwordResetTokenHash")
+      .select("resetPasswordToken")
       .lean();
-    expect(biz?.passwordResetTokenHash).toBeTruthy();
-    expect(usr?.passwordResetTokenHash).toBeFalsy();
+    expect(biz?.resetPasswordToken).toBeTruthy();
+    expect(usr?.resetPasswordToken).toBeFalsy();
   });
 });

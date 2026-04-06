@@ -9,9 +9,6 @@ import { config } from "dotenv";
 import { resolve } from "path";
 config({ path: resolve(process.cwd(), "..", ".env") });
 
-/** Suppress Phase 6 audit JSON lines during tests (opt-in per file via env). */
-process.env.SILENCE_VERIFICATION_INTENT_AUDIT ??= "1";
-
 import { MongoMemoryReplSet } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import { beforeAll, afterAll, afterEach } from "vitest";

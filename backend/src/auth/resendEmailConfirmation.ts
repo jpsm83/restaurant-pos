@@ -47,7 +47,7 @@ export async function handleResendEmailConfirmationForAuthenticatedAccount(
   }
 
   const u = await User.findById(session.id)
-    .select("emailVerified personalDetails.email")
+    .select("emailVerified personalDetails.email personalDetails.emailVerified")
     .lean();
   if (!u) {
     return { kind: "account_not_found" };
@@ -56,7 +56,7 @@ export async function handleResendEmailConfirmationForAuthenticatedAccount(
   if (typeof rawEmail !== "string" || !rawEmail.trim()) {
     return { kind: "account_not_found" };
   }
-  if (u.emailVerified === true) {
+  if (u.personalDetails?.emailVerified === true || u.emailVerified === true) {
     return {
       kind: "already_verified",
       message: RESEND_EMAIL_ALREADY_VERIFIED_MESSAGE,

@@ -13,6 +13,7 @@ import BusinessLayout from "@/layouts/BusinessLayout";
 import CustomerLayout from "@/layouts/CustomerLayout";
 import EmployeeLayout from "@/layouts/EmployeeLayout";
 import PublicLayout from "@/layouts/PublicLayout";
+import RecoveryLayout from "@/layouts/RecoveryLayout";
 import AccessDenied from "@/pages/AccessDenied";
 import NotFoundPage from "@/pages/NotFoundPage";
 import SelectUserModePage from "@/pages/SelectUserModePage";
@@ -36,9 +37,6 @@ const SignUpPage = lazy(() => import("@/pages/SignUpPage"));
 const ForgotPasswordPage = lazy(() => import("@/pages/ForgotPasswordPage"));
 const ResetPasswordPage = lazy(() => import("@/pages/ResetPasswordPage"));
 const ConfirmEmailPage = lazy(() => import("@/pages/ConfirmEmailPage"));
-const RequestEmailConfirmationPage = lazy(
-  () => import("@/pages/RequestEmailConfirmationPage"),
-);
 const BusinessDashboardPage = lazy(() => import("@/pages/business/BusinessDashboardPage"));
 const BusinessDeliverySettingsPage = lazy(
   () => import("@/pages/business/BusinessDeliverySettingsPage"),
@@ -140,25 +138,6 @@ export function AppRoutes() {
                 </PublicOnlyRoute>
               }
             />
-            <Route
-              path="forgot-password"
-              element={
-                <PublicOnlyRoute>
-                  <ForgotPasswordPage />
-                </PublicOnlyRoute>
-              }
-            />
-            {/** Token links from email; must work even when a session exists. */}
-            <Route path="reset-password" element={<ResetPasswordPage />} />
-            <Route path="confirm-email" element={<ConfirmEmailPage />} />
-            <Route
-              path="request-email-confirmation"
-              element={
-                <PublicOnlyRoute>
-                  <RequestEmailConfirmationPage />
-                </PublicOnlyRoute>
-              }
-            />
             <Route path="business" element={<PublicBusinessRoute />} />
             <Route
               path="business/register"
@@ -176,6 +155,23 @@ export function AppRoutes() {
                 </PublicOnlyRoute>
               }
             />
+          </Route>
+
+          {/**
+           * Email / recovery flows: no `PublicLayout` footer; global navbar omitted via `AppRootShell`.
+           * Reset + confirm must work even when a session cookie exists.
+           */}
+          <Route element={<RecoveryLayout />}>
+            <Route
+              path="forgot-password"
+              element={
+                <PublicOnlyRoute>
+                  <ForgotPasswordPage />
+                </PublicOnlyRoute>
+              }
+            />
+            <Route path="reset-password" element={<ResetPasswordPage />} />
+            <Route path="confirm-email" element={<ConfirmEmailPage />} />
           </Route>
 
           <Route path="/access-denied" element={<AccessDenied />} />

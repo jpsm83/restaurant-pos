@@ -150,14 +150,6 @@ export default function LoginPage() {
               <Link to="/signup">{t("login.createAccountLink")}</Link>
             </Button>
 
-            <p className="text-center text-sm text-neutral-600">
-              <Link
-                to="/request-email-confirmation"
-                className="font-medium text-neutral-800 underline-offset-4 hover:underline"
-              >
-                {t("login.resendConfirmationLink")}
-              </Link>
-            </p>
           </form>
         </CardContent>
       </Card>

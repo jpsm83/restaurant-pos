@@ -1,17 +1,13 @@
 /**
- * POST /api/v1/auth/reset-password (Phase 3.4)
+ * POST /api/v1/auth/reset-password
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import crypto from "crypto";
 import bcrypt from "bcrypt";
 import { getTestApp, resetTestApp } from "../setup.ts";
 import User from "../../src/models/user.ts";
 import Business from "../../src/models/business.ts";
-import {
-  computePasswordResetExpiry,
-  generateRawEmailToken,
-  hashEmailToken,
-} from "../../src/auth/emailToken.ts";
 import { CONFIRM_EMAIL_CONSUMPTION_ERROR_MESSAGE } from "../../src/auth/confirmEmail.ts";
 import {
   RESET_PASSWORD_MISSING_NEW_PASSWORD_MESSAGE,
@@ -22,6 +18,14 @@ import { PASSWORD_POLICY_MESSAGE } from "../../../packages/utils/passwordPolicy.
 
 const oldPassword = "TestPassword123!";
 const newPassword = "NewPassword456!";
+
+function randomToken(): string {
+  return crypto.randomBytes(32).toString("hex");
+}
+
+function futureResetExpiry(): Date {
+  return new Date(Date.now() + 3_600_000);
+}
 
 async function createTestUser(email: string) {
   const hashedPassword = await bcrypt.hash(oldPassword, 10);
@@ -47,7 +51,6 @@ async function createTestUser(email: string) {
       idType: "Passport",
       username: "testuser",
     },
-    allUserRoles: ["Customer"],
     emailVerified: true,
   });
 }
@@ -75,14 +78,13 @@ async function createTestBusiness(email: string) {
 }
 
 async function setUserResetToken(userId: unknown) {
-  const raw = generateRawEmailToken();
-  const tokenHash = hashEmailToken(raw);
+  const raw = randomToken();
   await User.updateOne(
     { _id: userId },
     {
       $set: {
-        passwordResetTokenHash: tokenHash,
-        passwordResetExpiresAt: computePasswordResetExpiry(),
+        resetPasswordToken: raw,
+        resetPasswordExpires: futureResetExpiry(),
       },
     },
   );
@@ -90,14 +92,13 @@ async function setUserResetToken(userId: unknown) {
 }
 
 async function setBusinessResetToken(businessId: unknown) {
-  const raw = generateRawEmailToken();
-  const tokenHash = hashEmailToken(raw);
+  const raw = randomToken();
   await Business.updateOne(
     { _id: businessId },
     {
       $set: {
-        passwordResetTokenHash: tokenHash,
-        passwordResetExpiresAt: computePasswordResetExpiry(),
+        resetPasswordToken: raw,
+        resetPasswordExpires: futureResetExpiry(),
       },
     },
   );
@@ -105,10 +106,10 @@ async function setBusinessResetToken(businessId: unknown) {
 }
 
 function refreshCookieValueFromLoginResponse(res: {
-  headers: Record<string, string | string[] | undefined>;
+  headers: Record<string, unknown>;
 }): string | undefined {
   const raw = res.headers["set-cookie"];
-  const lines = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  const lines = Array.isArray(raw) ? raw : raw != null ? [String(raw)] : [];
   const prefix = "refresh_token=";
   for (const line of lines) {
     if (line.startsWith(prefix)) {
@@ -178,12 +179,12 @@ describe("POST /api/v1/auth/reset-password", () => {
     expect(JSON.parse(res.body).message).toBe(PASSWORD_POLICY_MESSAGE);
 
     const unchanged = await User.findById(user._id)
-      .select("personalDetails.password passwordResetTokenHash")
+      .select("personalDetails.password resetPasswordToken")
       .lean();
     expect(
       await bcrypt.compare(oldPassword, unchanged!.personalDetails!.password!),
     ).toBe(true);
-    expect(unchanged?.passwordResetTokenHash).toBeTruthy();
+    expect(unchanged?.resetPasswordToken).toBeTruthy();
   });
 
   it("resets user password and clears reset fields", async () => {
@@ -203,9 +204,9 @@ describe("POST /api/v1/auth/reset-password", () => {
     );
 
     const updated = await User.findById(user._id)
-      .select("personalDetails.password passwordResetTokenHash")
+      .select("personalDetails.password resetPasswordToken")
       .lean();
-    expect(updated?.passwordResetTokenHash).toBeFalsy();
+    expect(updated?.resetPasswordToken).toBeFalsy();
     expect(
       await bcrypt.compare(newPassword, updated!.personalDetails!.password!),
     ).toBe(true);
@@ -218,7 +219,7 @@ describe("POST /api/v1/auth/reset-password", () => {
     expect(login.statusCode).toBe(200);
   });
 
-  it("rejects prior refresh JWT after successful password reset (Phase 3.4)", async () => {
+  it("rejects prior refresh JWT after successful password reset", async () => {
     const app = await getTestApp();
     const user = await createTestUser("refresh-invalidate@example.com");
 
@@ -228,7 +229,9 @@ describe("POST /api/v1/auth/reset-password", () => {
       payload: { email: "refresh-invalidate@example.com", password: oldPassword },
     });
     expect(loginRes.statusCode).toBe(200);
-    const refreshVal = refreshCookieValueFromLoginResponse(loginRes);
+    const refreshVal = refreshCookieValueFromLoginResponse({
+      headers: loginRes.headers as Record<string, unknown>,
+    });
     expect(refreshVal).toBeDefined();
 
     const refreshOk = await app.inject({
@@ -264,7 +267,7 @@ describe("POST /api/v1/auth/reset-password", () => {
     const wrong = await app.inject({
       method: "POST",
       url: "/api/v1/auth/reset-password",
-      payload: { token: generateRawEmailToken(), newPassword },
+      payload: { token: randomToken(), newPassword },
     });
     expect(wrong.statusCode).toBe(400);
     expect(JSON.parse(wrong.body).message).toBe(
@@ -272,14 +275,13 @@ describe("POST /api/v1/auth/reset-password", () => {
     );
 
     const user = await createTestUser("expired@example.com");
-    const raw = generateRawEmailToken();
-    const tokenHash = hashEmailToken(raw);
+    const raw = randomToken();
     await User.updateOne(
       { _id: user._id },
       {
         $set: {
-          passwordResetTokenHash: tokenHash,
-          passwordResetExpiresAt: new Date(Date.now() - 60_000),
+          resetPasswordToken: raw,
+          resetPasswordExpires: new Date(Date.now() - 60_000),
         },
       },
     );
@@ -325,9 +327,9 @@ describe("POST /api/v1/auth/reset-password", () => {
     expect(response.statusCode).toBe(200);
 
     const updated = await Business.findById(biz._id)
-      .select("password passwordResetTokenHash")
+      .select("password resetPasswordToken")
       .lean();
-    expect(updated?.passwordResetTokenHash).toBeFalsy();
+    expect(updated?.resetPasswordToken).toBeFalsy();
     expect(await bcrypt.compare(newPassword, updated!.password)).toBe(true);
 
     const login = await app.inject({
@@ -338,19 +340,18 @@ describe("POST /api/v1/auth/reset-password", () => {
     expect(login.statusCode).toBe(200);
   });
 
-  it("updates business only when both accounts share the same reset hash", async () => {
+  it("updates business only when both accounts share the same reset token", async () => {
     const app = await getTestApp();
-    const sharedRaw = generateRawEmailToken();
-    const tokenHash = hashEmailToken(sharedRaw);
-    const expiresAt = computePasswordResetExpiry();
+    const sharedRaw = randomToken();
+    const expiresAt = futureResetExpiry();
 
     const biz = await createTestBusiness("biz-hash@example.com");
     await Business.updateOne(
       { _id: biz._id },
       {
         $set: {
-          passwordResetTokenHash: tokenHash,
-          passwordResetExpiresAt: expiresAt,
+          resetPasswordToken: sharedRaw,
+          resetPasswordExpires: expiresAt,
         },
       },
     );
@@ -360,8 +361,8 @@ describe("POST /api/v1/auth/reset-password", () => {
       { _id: usr._id },
       {
         $set: {
-          passwordResetTokenHash: tokenHash,
-          passwordResetExpiresAt: expiresAt,
+          resetPasswordToken: sharedRaw,
+          resetPasswordExpires: expiresAt,
         },
       },
     );
@@ -374,17 +375,17 @@ describe("POST /api/v1/auth/reset-password", () => {
     expect(response.statusCode).toBe(200);
 
     const bizAfter = await Business.findById(biz._id)
-      .select("password passwordResetTokenHash")
+      .select("password resetPasswordToken")
       .lean();
     expect(await bcrypt.compare(newPassword, bizAfter!.password)).toBe(true);
-    expect(bizAfter?.passwordResetTokenHash).toBeFalsy();
+    expect(bizAfter?.resetPasswordToken).toBeFalsy();
 
     const usrAfter = await User.findById(usr._id)
-      .select("personalDetails.password passwordResetTokenHash")
+      .select("personalDetails.password resetPasswordToken")
       .lean();
     expect(
       await bcrypt.compare(oldPassword, usrAfter!.personalDetails!.password!),
     ).toBe(true);
-    expect(usrAfter?.passwordResetTokenHash).toBe(tokenHash);
+    expect(usrAfter?.resetPasswordToken).toBe(sharedRaw);
   });
 });

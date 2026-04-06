@@ -11,7 +11,7 @@ This document describes how **identity**, **credentials**, **JWT sessions**, **c
 | Session types and config | `backend/src/auth/types.ts`, `backend/src/auth/config.ts` |
 | Route guards | `backend/src/auth/middleware.ts` |
 | Mint access + refresh + refresh cookie | `backend/src/auth/issueSession.ts` (`issueSessionWithRefreshCookie`, `buildAuthUserSessionFromUserId`, `buildAuthBusinessSessionFromId`, refresh **`v`**) |
-| Auth email (confirm / reset / resend) | `backend/src/auth/requestEmailConfirmation.ts`, `requestPasswordReset.ts`, `confirmEmail.ts`, `resetPassword.ts`, `resendEmailConfirmation.ts`, `authEmailSend.ts`, `authEmailRateLimit.ts`, `emailLinks.ts`, `emailToken.ts`, `emailTemplates.ts`, `verificationIntent*.ts`, `verificationIntentAudit.ts`, `authEmailMetrics.ts` |
+| Auth email (confirm / reset / resend) | `backend/src/auth/requestEmailConfirmation.ts`, `requestPasswordReset.ts`, `confirmEmail.ts`, `resetPassword.ts`, `resendEmailConfirmation.ts`, `authEmailSend.ts`, `emailLinks.ts`, `emailTemplates.ts` |
 | Schedule / “can use employee mode” | `backend/src/auth/canLogAsEmployee.ts` |
 | Domain “employee vs customer” at request time | `backend/src/auth/getEffectiveUserRoleAtTime.ts` |
 | Tenant (business) credentials | `backend/src/models/business.ts`, `backend/src/routes/v1/business.ts` |
@@ -116,7 +116,7 @@ Types are documented to **match legacy NextAuth session shape** for parity with 
 - `id` — stringified `User._id`
 - `email` — from `personalDetails.email`
 - `type: "user"`
-- `emailVerified` — mirrors **`User.emailVerified`**
+- `emailVerified` — mirrors **`User.personalDetails.emailVerified`** (legacy root mirror may still exist for compatibility)
 - Optional (only when user is linked to an **active**, **non-terminated** employee):
   - `employeeId` — stringified `User.employeeDetails`
   - `businessId` — from `Employee.businessId`
@@ -192,7 +192,7 @@ The access JWT **does not** embed `mode`; mode is **cookie-only** for the client
 | `GET` | `/auth/me` | Bearer access | Returns `{ user: session }` from JWT. |
 | `POST` | `/auth/set-mode` | Bearer access | Sets `auth_mode` cookie (users only). |
 | `GET` | `/auth/mode` | Cookie optional | Reads `auth_mode`. |
-| `POST` | `/auth/request-email-confirmation` | None | Body `{ email }`. **Anti-enumeration:** always **`200`** + generic message when validation passes; sends only if account exists and is unverified (subject to per-email rate cap). |
+| `POST` | `/auth/request-email-confirmation` | None | Body `{ email }`. **Anti-enumeration:** generic success response for unknown addresses; sends only when an account exists and is not verified. |
 | `POST` | `/auth/request-password-reset` | None | Same response shape; issues **reset** email when applicable. |
 | `POST` | `/auth/confirm-email` | None | Body `{ token }` (opaque link token). One-time verify. |
 | `POST` | `/auth/reset-password` | None | Body `{ token, newPassword }`. Clears reset token; **increments** `refreshSessionVersion`. |

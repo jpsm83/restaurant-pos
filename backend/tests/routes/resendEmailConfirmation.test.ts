@@ -1,5 +1,5 @@
 /**
- * POST /api/v1/auth/resend-email-confirmation (Phase 4.3)
+ * POST /api/v1/auth/resend-email-confirmation
  */
 
 import {
@@ -14,24 +14,26 @@ import {
 import bcrypt from "bcrypt";
 import { Types } from "mongoose";
 
-const sendWithRollbackMock = vi.fn();
+const sendEmailMock = vi.hoisted(() =>
+  vi.fn().mockResolvedValue(undefined),
+);
 
 vi.mock("../../src/auth/authEmailSend.ts", () => ({
-  sendAuthTransactionalEmail: vi.fn(),
-  sendAuthTransactionalEmailWithRollback: (...args: unknown[]) =>
-    sendWithRollbackMock(...args),
+  sendAuthTransactionalEmail: sendEmailMock,
 }));
 
 import { generateTestToken, getTestApp, resetTestApp } from "../setup.ts";
 import User from "../../src/models/user.ts";
 import Business from "../../src/models/business.ts";
-import { __resetAuthEmailRateLimitsForTests } from "../../src/auth/authEmailRateLimit.ts";
 import { GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE } from "../../src/auth/requestEmailConfirmation.ts";
 import { RESEND_EMAIL_ALREADY_VERIFIED_MESSAGE } from "../../src/auth/resendEmailConfirmation.ts";
 
 const testPassword = "TestPassword123!";
 
-async function createTestUser(email: string, overrides?: { emailVerified?: boolean }) {
+async function createTestUser(
+  email: string,
+  overrides?: { emailVerified?: boolean },
+) {
   const hashedPassword = await bcrypt.hash(testPassword, 10);
   return User.create({
     personalDetails: {
@@ -55,7 +57,6 @@ async function createTestUser(email: string, overrides?: { emailVerified?: boole
       idType: "Passport",
       username: "testuser",
     },
-    allUserRoles: ["Customer"],
     ...(overrides?.emailVerified !== undefined
       ? { emailVerified: overrides.emailVerified }
       : {}),
@@ -100,13 +101,8 @@ describe("POST /api/v1/auth/resend-email-confirmation", () => {
   });
 
   beforeEach(() => {
-    sendWithRollbackMock.mockReset();
-    sendWithRollbackMock.mockResolvedValue(undefined);
-    __resetAuthEmailRateLimitsForTests();
-    delete process.env.AUTH_EMAIL_RATE_LIMIT_IP_MAX;
-    delete process.env.AUTH_EMAIL_RATE_LIMIT_IP_WINDOW_MS;
-    delete process.env.AUTH_EMAIL_RATE_LIMIT_EMAIL_MAX;
-    delete process.env.AUTH_EMAIL_RATE_LIMIT_EMAIL_WINDOW_MS;
+    sendEmailMock.mockReset();
+    sendEmailMock.mockResolvedValue(undefined);
   });
 
   it("returns 401 without Bearer token", async () => {
@@ -143,10 +139,10 @@ describe("POST /api/v1/auth/resend-email-confirmation", () => {
     expect(response.statusCode).toBe(401);
     const body = JSON.parse(response.body);
     expect(body.message).toBe("Account not found.");
-    expect(sendWithRollbackMock).not.toHaveBeenCalled();
+    expect(sendEmailMock).not.toHaveBeenCalled();
   });
 
-  it("returns 200 already verified for user without sending", async () => {
+  it("returns 400 already verified for user without sending", async () => {
     const app = await getTestApp();
     const u = await createTestUser("verified-resend@example.com", {
       emailVerified: true,
@@ -161,10 +157,10 @@ describe("POST /api/v1/auth/resend-email-confirmation", () => {
       url: "/api/v1/auth/resend-email-confirmation",
       headers: { authorization: token },
     });
-    expect(response.statusCode).toBe(200);
+    expect(response.statusCode).toBe(400);
     const body = JSON.parse(response.body);
     expect(body.message).toBe(RESEND_EMAIL_ALREADY_VERIFIED_MESSAGE);
-    expect(sendWithRollbackMock).not.toHaveBeenCalled();
+    expect(sendEmailMock).not.toHaveBeenCalled();
   });
 
   it("returns 200 and sends for unverified user", async () => {
@@ -185,10 +181,10 @@ describe("POST /api/v1/auth/resend-email-confirmation", () => {
     expect(response.statusCode).toBe(200);
     const body = JSON.parse(response.body);
     expect(body.message).toBe(GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE);
-    expect(sendWithRollbackMock).toHaveBeenCalledTimes(1);
+    expect(sendEmailMock).toHaveBeenCalledTimes(1);
   });
 
-  it("returns 200 already verified for business without sending", async () => {
+  it("returns 400 already verified for business without sending", async () => {
     const app = await getTestApp();
     const b = await createTestBusiness("biz-verified@example.com", {
       emailVerified: true,
@@ -203,10 +199,10 @@ describe("POST /api/v1/auth/resend-email-confirmation", () => {
       url: "/api/v1/auth/resend-email-confirmation",
       headers: { authorization: token },
     });
-    expect(response.statusCode).toBe(200);
+    expect(response.statusCode).toBe(400);
     const body = JSON.parse(response.body);
     expect(body.message).toBe(RESEND_EMAIL_ALREADY_VERIFIED_MESSAGE);
-    expect(sendWithRollbackMock).not.toHaveBeenCalled();
+    expect(sendEmailMock).not.toHaveBeenCalled();
   });
 
   it("returns 200 and sends for unverified business", async () => {
@@ -225,39 +221,6 @@ describe("POST /api/v1/auth/resend-email-confirmation", () => {
       headers: { authorization: token },
     });
     expect(response.statusCode).toBe(200);
-    expect(sendWithRollbackMock).toHaveBeenCalledTimes(1);
-    const firstCall = sendWithRollbackMock.mock.calls[0]?.[0] as {
-      correlationId?: string;
-    };
-    expect(firstCall.correlationId).toMatch(/^email-confirm-business:/);
-  });
-
-  it("returns 429 when IP rate limit exceeded for this route", async () => {
-    process.env.AUTH_EMAIL_RATE_LIMIT_IP_MAX = "2";
-    process.env.AUTH_EMAIL_RATE_LIMIT_IP_WINDOW_MS = "3600000";
-
-    const app = await getTestApp();
-    const u = await createTestUser("rate-resend@example.com", {
-      emailVerified: false,
-    });
-    const token = await generateTestToken({
-      id: String(u._id),
-      email: "rate-resend@example.com",
-      type: "user",
-    });
-
-    const opts = {
-      method: "POST" as const,
-      url: "/api/v1/auth/resend-email-confirmation",
-      headers: { authorization: token },
-      remoteAddress: "10.44.44.44",
-    };
-
-    expect((await app.inject(opts)).statusCode).toBe(200);
-    expect((await app.inject(opts)).statusCode).toBe(200);
-    const third = await app.inject(opts);
-    expect(third.statusCode).toBe(429);
-    const body = JSON.parse(third.body);
-    expect(body.message).toBe("Too many requests. Please try again later.");
+    expect(sendEmailMock).toHaveBeenCalledTimes(1);
   });
 });

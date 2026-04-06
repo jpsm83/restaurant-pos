@@ -107,7 +107,7 @@ describe("App public routing (Phase 1.5.1)", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders RequestEmailConfirmationPage for `/request-email-confirmation`", async () => {
+  it("renders NotFoundPage for `/request-email-confirmation`", async () => {
     await renderWithI18n(
       <MemoryRouter initialEntries={["/request-email-confirmation"]}>
         <AppRoutes />
@@ -115,7 +115,7 @@ describe("App public routing (Phase 1.5.1)", () => {
     );
 
     expect(
-      await screen.findByRole("heading", { name: /resend confirmation email/i }),
+      await screen.findByRole("heading", { name: /page not found/i }),
     ).toBeInTheDocument();
   });
 });

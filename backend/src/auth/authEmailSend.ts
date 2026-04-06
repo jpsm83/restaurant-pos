@@ -1,16 +1,8 @@
-import emailChannel from "../communications/channels/emailChannel.ts";
-import {
-  recordAuthEmailDispatchFailure,
-  recordAuthEmailDispatchSuccess,
-} from "./authEmailMetrics.ts";
+import nodemailer from "nodemailer";
 import type { AuthEmailTemplateContent } from "./emailTemplates.ts";
 
 /**
- * Sends a transactional auth email through the shared communications SMTP path.
- * Uses `fireAndForget: true` on the channel so we always get a result object, then throws if send failed
- * (SMTP disabled, validation error, or transport error after retries).
- *
- * On failure, callers that already persisted tokens should run their **rollback** (see {@link sendAuthTransactionalEmailWithRollback}).
+ * Health-style auth email sender: simple Gmail transporter using EMAIL_USER/EMAIL_PASSWORD.
  */
 export async function sendAuthTransactionalEmail(options: {
   to: string;
@@ -22,24 +14,28 @@ export async function sendAuthTransactionalEmail(options: {
     throw new Error("Recipient email is required");
   }
 
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+    throw new Error(
+      "Email configuration is missing. Please set EMAIL_USER and EMAIL_PASSWORD environment variables.",
+    );
+  }
+
   const { subject, text, html } = options.content;
-  const result = await emailChannel.send({
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASSWORD,
+    },
+  });
+
+  await transporter.sendMail({
+    from: `"Restaurant POS" <${process.env.EMAIL_USER}>`,
     to,
     subject,
     text,
     html,
-    correlationId: options.correlationId,
-    // Avoid throws inside emailChannel so we always branch on `success` and surface one error type to callers.
-    fireAndForget: true,
   });
-
-  if (!result.success) {
-    recordAuthEmailDispatchFailure();
-    throw new Error(
-      result.error ?? "Failed to send transactional email",
-    );
-  }
-  recordAuthEmailDispatchSuccess();
 }
 
 /**
@@ -55,7 +51,6 @@ export async function sendAuthTransactionalEmailWithRollback(options: {
     await sendAuthTransactionalEmail({
       to: options.to,
       content: options.content,
-      correlationId: options.correlationId,
     });
   } catch (error) {
     await options.rollback();

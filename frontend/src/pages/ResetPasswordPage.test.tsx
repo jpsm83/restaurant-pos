@@ -15,6 +15,7 @@ function renderAt(path: string) {
     <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/login" element={<div>Login Screen</div>} />
       </Routes>
     </MemoryRouter>,
   );
@@ -81,7 +82,7 @@ describe("ResetPasswordPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows success after API ok", async () => {
+  it("redirects to login after API ok", async () => {
     const user = userEvent.setup();
     mockResetPassword.mockResolvedValue({ ok: true, data: { message: "OK" } });
 
@@ -95,11 +96,7 @@ describe("ResetPasswordPage", () => {
     await user.click(screen.getByRole("button", { name: /update password/i }));
 
     await waitFor(() => {
-      expect(
-        screen.getByText(
-          "Your password has been updated. You can sign in with your new password.",
-        ),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Login Screen")).toBeInTheDocument();
     });
     expect(mockResetPassword).toHaveBeenCalledWith(
       "secret-token",

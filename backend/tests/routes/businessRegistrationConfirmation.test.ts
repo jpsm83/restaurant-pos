@@ -1,5 +1,5 @@
 /**
- * POST /api/v1/business — Phase 4.2 confirmation email after registration
+ * POST /api/v1/business — confirmation email after registration
  */
 
 import {
@@ -12,17 +12,16 @@ import {
   afterAll,
 } from "vitest";
 
-const sendWithRollbackMock = vi.fn();
+const sendEmailMock = vi.hoisted(() =>
+  vi.fn().mockResolvedValue(undefined),
+);
 
 vi.mock("../../src/auth/authEmailSend.ts", () => ({
-  sendAuthTransactionalEmail: vi.fn(),
-  sendAuthTransactionalEmailWithRollback: (...args: unknown[]) =>
-    sendWithRollbackMock(...args),
+  sendAuthTransactionalEmail: sendEmailMock,
 }));
 
 import { getTestApp, resetTestApp } from "../setup.ts";
 import Business from "../../src/models/business.ts";
-import { __resetAuthEmailRateLimitsForTests } from "../../src/auth/authEmailRateLimit.ts";
 
 const validAddress = {
   country: "USA",
@@ -69,19 +68,17 @@ function buildCreateBusinessPayload(params: {
 async function waitForBusinessVerificationToken(email: string): Promise<void> {
   const maxAttempts = 280;
   for (let i = 0; i < maxAttempts; i++) {
-    const row = await Business.findOne({ email })
-      .select("emailVerificationTokenHash")
-      .lean();
-    if (row?.emailVerificationTokenHash) return;
+    const row = await Business.findOne({ email }).select("verificationToken").lean();
+    if (row?.verificationToken) return;
     await new Promise((r) => setTimeout(r, 15));
   }
-  throw new Error("timeout waiting for business emailVerificationTokenHash");
+  throw new Error("timeout waiting for business verificationToken");
 }
 
 async function waitForSendMockCalls(count: number): Promise<void> {
   const maxAttempts = 280;
   for (let i = 0; i < maxAttempts; i++) {
-    if (sendWithRollbackMock.mock.calls.length >= count) return;
+    if (sendEmailMock.mock.calls.length >= count) return;
     await new Promise((r) => setTimeout(r, 15));
   }
   throw new Error(`timeout waiting for ${count} send mock call(s)`);
@@ -100,12 +97,11 @@ describe("POST /api/v1/business (registration confirmation email)", () => {
   });
 
   beforeEach(() => {
-    sendWithRollbackMock.mockReset();
-    sendWithRollbackMock.mockResolvedValue(undefined);
-    __resetAuthEmailRateLimitsForTests();
+    sendEmailMock.mockReset();
+    sendEmailMock.mockResolvedValue(undefined);
   });
 
-  it("returns 201 with session and stores verification token (business correlation)", async () => {
+  it("returns 201 with session and stores verification token after send", async () => {
     const app = await getTestApp();
     const boundary = "----brreg1";
     const tax = `TAX-BR-${Date.now()}`;
@@ -133,11 +129,7 @@ describe("POST /api/v1/business (registration confirmation email)", () => {
     expect(body.user?.email).toBe(emailLower);
 
     await waitForBusinessVerificationToken(emailLower);
-    expect(sendWithRollbackMock).toHaveBeenCalledTimes(1);
-    const firstCall = sendWithRollbackMock.mock.calls[0]?.[0] as {
-      correlationId?: string;
-    };
-    expect(firstCall.correlationId).toMatch(/^email-confirm-business:/);
+    expect(sendEmailMock).toHaveBeenCalledTimes(1);
   });
 
   it("normalizes email for storage and confirmation", async () => {
@@ -172,18 +164,13 @@ describe("POST /api/v1/business (registration confirmation email)", () => {
     await waitForBusinessVerificationToken(expected);
   });
 
-  it("still returns 201 when confirmation send fails (token rolled back)", async () => {
+  it("still returns 201 when confirmation send fails (token cleared)", async () => {
     const app = await getTestApp();
     const boundary = "----brreg3";
     const tax = `TAX-BR3-${Date.now()}`;
     const email = `rollback-biz-${Date.now()}@example.com`;
 
-    sendWithRollbackMock.mockImplementation(
-      async (options: { rollback: () => Promise<void> }) => {
-        await options.rollback();
-        throw new Error("SMTP down");
-      },
-    );
+    sendEmailMock.mockRejectedValue(new Error("SMTP down"));
 
     const res = await app.inject({
       method: "POST",
@@ -202,9 +189,9 @@ describe("POST /api/v1/business (registration confirmation email)", () => {
 
     expect(res.statusCode).toBe(201);
     await waitForSendMockCalls(1);
-    const row = await Business.findOne({ email })
-      .select("emailVerificationTokenHash")
-      .lean();
-    expect(row?.emailVerificationTokenHash).toBeFalsy();
+    expect(sendEmailMock).toHaveBeenCalledTimes(1);
+
+    const row = await Business.findOne({ email }).select("verificationToken").lean();
+    expect(row?.verificationToken).toBeFalsy();
   });
 });

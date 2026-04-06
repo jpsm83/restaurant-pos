@@ -82,7 +82,10 @@ const getUserEmails = async (userIds: Types.ObjectId[]): Promise<string[]> => {
   })
     .select("personalDetails.email")
     .lean()) as Array<{ personalDetails?: { email?: string } }>;
-  return [...new Set(rows.map((entry) => entry?.personalDetails?.email?.trim()).filter(Boolean))];
+  const emails = rows
+    .map((entry) => entry?.personalDetails?.email?.trim())
+    .filter((e): e is string => typeof e === "string" && e.length > 0);
+  return [...new Set(emails)];
 };
 
 const shouldUseChannel = (

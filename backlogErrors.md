@@ -1,3 +1,6 @@
+- review files on backend/src/comunications
+- review logic cors backend/src/config
+
 - NOT FOR NOW BUT VERY CRITICAL
     "
     Checking how in-app and live delivery work in this codebase so we can answer precisely.

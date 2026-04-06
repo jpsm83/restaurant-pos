@@ -1,6 +1,6 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { renderWithI18n } from "@/test/i18nTestUtils";
 import RequestEmailConfirmationPage from "./RequestEmailConfirmationPage";
 
@@ -16,13 +16,23 @@ describe("RequestEmailConfirmationPage", () => {
     mockRequestEmailConfirmation.mockReset();
   });
 
-  it("shows required validation when email is empty", async () => {
-    const user = userEvent.setup();
-    await renderWithI18n(
-      <MemoryRouter>
-        <RequestEmailConfirmationPage />
+  function renderPage() {
+    return renderWithI18n(
+      <MemoryRouter initialEntries={["/request-email-confirmation"]}>
+        <Routes>
+          <Route
+            path="/request-email-confirmation"
+            element={<RequestEmailConfirmationPage />}
+          />
+          <Route path="/" element={<div>Home Screen</div>} />
+        </Routes>
       </MemoryRouter>,
     );
+  }
+
+  it("shows required validation when email is empty", async () => {
+    const user = userEvent.setup();
+    await renderPage();
 
     await user.click(
       screen.getByRole("button", { name: /send confirmation email/i }),
@@ -33,11 +43,7 @@ describe("RequestEmailConfirmationPage", () => {
 
   it("shows invalid email when format is wrong", async () => {
     const user = userEvent.setup();
-    await renderWithI18n(
-      <MemoryRouter>
-        <RequestEmailConfirmationPage />
-      </MemoryRouter>,
-    );
+    await renderPage();
 
     await user.type(screen.getByLabelText(/email/i), "me@you.c");
     await user.click(
@@ -49,18 +55,14 @@ describe("RequestEmailConfirmationPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows success state after API ok", async () => {
+  it("redirects to home after API ok", async () => {
     const user = userEvent.setup();
     mockRequestEmailConfirmation.mockResolvedValue({
       ok: true,
       data: { message: "Check your inbox" },
     });
 
-    await renderWithI18n(
-      <MemoryRouter>
-        <RequestEmailConfirmationPage />
-      </MemoryRouter>,
-    );
+    await renderPage();
 
     await user.type(screen.getByLabelText(/email/i), "u@example.com");
     await user.click(
@@ -68,7 +70,7 @@ describe("RequestEmailConfirmationPage", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Check your inbox")).toBeInTheDocument();
+      expect(screen.getByText("Home Screen")).toBeInTheDocument();
     });
     expect(mockRequestEmailConfirmation).toHaveBeenCalledWith("u@example.com");
   });
@@ -80,11 +82,7 @@ describe("RequestEmailConfirmationPage", () => {
       error: "Something went wrong",
     });
 
-    await renderWithI18n(
-      <MemoryRouter>
-        <RequestEmailConfirmationPage />
-      </MemoryRouter>,
-    );
+    await renderPage();
 
     await user.type(screen.getByLabelText(/email/i), "u@example.com");
     await user.click(

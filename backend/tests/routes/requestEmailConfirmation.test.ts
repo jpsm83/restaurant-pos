@@ -1,5 +1,5 @@
 /**
- * POST /api/v1/auth/request-email-confirmation (Phase 3.1)
+ * POST /api/v1/auth/request-email-confirmation
  */
 
 import {
@@ -13,23 +13,28 @@ import {
 } from "vitest";
 import bcrypt from "bcrypt";
 
-const sendWithRollbackMock = vi.fn();
+const sendEmailMock = vi.hoisted(() =>
+  vi.fn().mockResolvedValue(undefined),
+);
 
 vi.mock("../../src/auth/authEmailSend.ts", () => ({
-  sendAuthTransactionalEmail: vi.fn(),
-  sendAuthTransactionalEmailWithRollback: (...args: unknown[]) =>
-    sendWithRollbackMock(...args),
+  sendAuthTransactionalEmail: sendEmailMock,
 }));
 
 import { getTestApp, resetTestApp } from "../setup.ts";
 import User from "../../src/models/user.ts";
 import Business from "../../src/models/business.ts";
-import { __resetAuthEmailRateLimitsForTests } from "../../src/auth/authEmailRateLimit.ts";
-import { GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE } from "../../src/auth/requestEmailConfirmation.ts";
+import {
+  EMAIL_CONFIRMATION_SENT_MESSAGE,
+  GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE,
+} from "../../src/auth/requestEmailConfirmation.ts";
 
 const testPassword = "TestPassword123!";
 
-async function createTestUser(email: string, overrides?: { emailVerified?: boolean }) {
+async function createTestUser(
+  email: string,
+  overrides?: { emailVerified?: boolean },
+) {
   const hashedPassword = await bcrypt.hash(testPassword, 10);
   return User.create({
     personalDetails: {
@@ -53,7 +58,6 @@ async function createTestUser(email: string, overrides?: { emailVerified?: boole
       idType: "Passport",
       username: "testuser",
     },
-    allUserRoles: ["Customer"],
     ...(overrides?.emailVerified !== undefined
       ? { emailVerified: overrides.emailVerified }
       : {}),
@@ -98,13 +102,8 @@ describe("POST /api/v1/auth/request-email-confirmation", () => {
   });
 
   beforeEach(() => {
-    sendWithRollbackMock.mockReset();
-    sendWithRollbackMock.mockResolvedValue(undefined);
-    __resetAuthEmailRateLimitsForTests();
-    delete process.env.AUTH_EMAIL_RATE_LIMIT_IP_MAX;
-    delete process.env.AUTH_EMAIL_RATE_LIMIT_IP_WINDOW_MS;
-    delete process.env.AUTH_EMAIL_RATE_LIMIT_EMAIL_MAX;
-    delete process.env.AUTH_EMAIL_RATE_LIMIT_EMAIL_WINDOW_MS;
+    sendEmailMock.mockReset();
+    sendEmailMock.mockResolvedValue(undefined);
   });
 
   it("returns 400 for invalid email", async () => {
@@ -117,7 +116,7 @@ describe("POST /api/v1/auth/request-email-confirmation", () => {
     expect(response.statusCode).toBe(400);
     const body = JSON.parse(response.body);
     expect(body.message).toBe("Please provide a valid email address");
-    expect(sendWithRollbackMock).not.toHaveBeenCalled();
+    expect(sendEmailMock).not.toHaveBeenCalled();
   });
 
   it("returns 200 generic message when no account exists", async () => {
@@ -132,10 +131,10 @@ describe("POST /api/v1/auth/request-email-confirmation", () => {
     expect(response.statusCode).toBe(200);
     const body = JSON.parse(response.body);
     expect(body.message).toBe(GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE);
-    expect(sendWithRollbackMock).not.toHaveBeenCalled();
+    expect(sendEmailMock).not.toHaveBeenCalled();
   });
 
-  it("returns 200 generic when already verified (no email sent)", async () => {
+  it("returns 400 when email is already verified (no send)", async () => {
     const app = await getTestApp();
     await createTestUser("verified@example.com", { emailVerified: true });
 
@@ -145,11 +144,12 @@ describe("POST /api/v1/auth/request-email-confirmation", () => {
       payload: { email: "verified@example.com" },
     });
 
-    expect(response.statusCode).toBe(200);
-    expect(sendWithRollbackMock).not.toHaveBeenCalled();
+    expect(response.statusCode).toBe(400);
+    expect(JSON.parse(response.body).message).toBe("Email is already verified.");
+    expect(sendEmailMock).not.toHaveBeenCalled();
   });
 
-  it("issues token and sends email for unverified user", async () => {
+  it("issues verificationToken and sends email for unverified user", async () => {
     const app = await getTestApp();
     await createTestUser("pending@example.com", { emailVerified: false });
 
@@ -160,26 +160,21 @@ describe("POST /api/v1/auth/request-email-confirmation", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(sendWithRollbackMock).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(response.body).message).toBe(EMAIL_CONFIRMATION_SENT_MESSAGE);
+    expect(sendEmailMock).toHaveBeenCalledTimes(1);
 
     const updated = await User.findOne({
       "personalDetails.email": "pending@example.com",
     })
-      .select("emailVerificationTokenHash emailVerificationExpiresAt")
+      .select("verificationToken")
       .lean();
-    expect(updated?.emailVerificationTokenHash).toBeTruthy();
-    expect(updated?.emailVerificationExpiresAt).toBeTruthy();
+    expect(updated?.verificationToken).toBeTruthy();
   });
 
   it("clears token and returns 500 when send fails", async () => {
     const app = await getTestApp();
     await createTestUser("failsend@example.com", { emailVerified: false });
-    sendWithRollbackMock.mockImplementation(
-      async (options: { rollback: () => Promise<void> }) => {
-        await options.rollback();
-        throw new Error("SMTP down");
-      },
-    );
+    sendEmailMock.mockRejectedValue(new Error("SMTP down"));
 
     const response = await app.inject({
       method: "POST",
@@ -191,72 +186,9 @@ describe("POST /api/v1/auth/request-email-confirmation", () => {
     const updated = await User.findOne({
       "personalDetails.email": "failsend@example.com",
     })
-      .select("emailVerificationTokenHash emailVerificationExpiresAt")
+      .select("verificationToken")
       .lean();
-    expect(updated?.emailVerificationTokenHash).toBeFalsy();
-    expect(updated?.emailVerificationExpiresAt).toBeFalsy();
-  });
-
-  it("returns 429 when IP rate limit exceeded", async () => {
-    process.env.AUTH_EMAIL_RATE_LIMIT_IP_MAX = "2";
-    process.env.AUTH_EMAIL_RATE_LIMIT_IP_WINDOW_MS = "3600000";
-
-    const app = await getTestApp();
-
-    const opts = {
-      method: "POST" as const,
-      url: "/api/v1/auth/request-email-confirmation",
-      payload: { email: "nobody@example.com" },
-      remoteAddress: "192.168.55.55",
-    };
-
-    expect((await app.inject(opts)).statusCode).toBe(200);
-    expect((await app.inject(opts)).statusCode).toBe(200);
-    const third = await app.inject(opts);
-    expect(third.statusCode).toBe(429);
-    const body = JSON.parse(third.body);
-    expect(body.message).toBe("Too many requests. Please try again later.");
-  });
-
-  it("returns 200 without rotating token when per-email send cap is reached", async () => {
-    process.env.AUTH_EMAIL_RATE_LIMIT_EMAIL_MAX = "2";
-    process.env.AUTH_EMAIL_RATE_LIMIT_EMAIL_WINDOW_MS = "3600000";
-
-    const app = await getTestApp();
-    await createTestUser("throttled@example.com", { emailVerified: false });
-
-    await app.inject({
-      method: "POST",
-      url: "/api/v1/auth/request-email-confirmation",
-      payload: { email: "throttled@example.com" },
-    });
-    await app.inject({
-      method: "POST",
-      url: "/api/v1/auth/request-email-confirmation",
-      payload: { email: "throttled@example.com" },
-    });
-
-    const afterSecond = await User.findOne({
-      "personalDetails.email": "throttled@example.com",
-    })
-      .select("emailVerificationTokenHash")
-      .lean();
-    const hashAfterSecond = afterSecond?.emailVerificationTokenHash;
-
-    const third = await app.inject({
-      method: "POST",
-      url: "/api/v1/auth/request-email-confirmation",
-      payload: { email: "throttled@example.com" },
-    });
-    expect(third.statusCode).toBe(200);
-    expect(sendWithRollbackMock).toHaveBeenCalledTimes(2);
-
-    const afterThird = await User.findOne({
-      "personalDetails.email": "throttled@example.com",
-    })
-      .select("emailVerificationTokenHash")
-      .lean();
-    expect(afterThird?.emailVerificationTokenHash).toBe(hashAfterSecond);
+    expect(updated?.verificationToken).toBeFalsy();
   });
 
   it("prefers business over user for the same email", async () => {
@@ -272,17 +204,13 @@ describe("POST /api/v1/auth/request-email-confirmation", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(sendWithRollbackMock).toHaveBeenCalledTimes(1);
-    const firstCall = sendWithRollbackMock.mock.calls[0]?.[0] as {
-      correlationId?: string;
-    };
-    expect(firstCall.correlationId).toMatch(/^email-confirm-business:/);
+    expect(sendEmailMock).toHaveBeenCalledTimes(1);
 
-    const biz = await Business.findOne({ email }).select("emailVerificationTokenHash").lean();
+    const biz = await Business.findOne({ email }).select("verificationToken").lean();
     const usr = await User.findOne({ "personalDetails.email": email })
-      .select("emailVerificationTokenHash")
+      .select("verificationToken")
       .lean();
-    expect(biz?.emailVerificationTokenHash).toBeTruthy();
-    expect(usr?.emailVerificationTokenHash).toBeFalsy();
+    expect(biz?.verificationToken).toBeTruthy();
+    expect(usr?.verificationToken).toBeFalsy();
   });
 });

@@ -1,17 +1,16 @@
-import type { Types } from "mongoose";
+import crypto from "crypto";
 import emailRegex from "../../../packages/utils/emailRegex.ts";
-import { VerificationIntent } from "../../../packages/authVerificationIntent.ts";
 import Business from "../models/business.ts";
 import User from "../models/user.ts";
-import { sendAuthTransactionalEmailWithRollback } from "./authEmailSend.ts";
-import { tryConsumeVerificationIntentEmailSlot } from "./authEmailRateLimit.ts";
+import { sendAuthTransactionalEmail } from "./authEmailSend.ts";
 import { buildConfirmEmailLink } from "./emailLinks.ts";
 import { buildEmailConfirmationContent } from "./emailTemplates.ts";
-import { logVerificationIntentAudit } from "./verificationIntentAudit.ts";
-import { createIntentTokenForVerificationIntent } from "./verificationIntentToken.ts";
 
 export const GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE =
   "If an account exists for this email, you will receive instructions shortly.";
+
+export const EMAIL_CONFIRMATION_SENT_MESSAGE =
+  "Email confirmation sent successfully. Please check your email.";
 
 export function isValidRequestEmailConfirmationInput(
   email: unknown,
@@ -26,220 +25,124 @@ export function normalizeRequestEmail(email: string): string {
 }
 
 export type RequestEmailConfirmationHandlerResult =
-  | { kind: "generic_200" }
+  | { kind: "success_200"; message: string }
+  | { kind: "already_verified_400"; message: string }
   | {
       kind: "server_error_500";
       message: string;
     };
 
-const EMAIL_CONFIRM_INTENT = VerificationIntent.EmailConfirmation;
-
-/**
- * Looks up **business first**, then **user** (same priority as login). Issues confirmation token + sends email when needed.
- */
 export async function handleRequestEmailConfirmation(
   normalizedEmail: string,
 ): Promise<RequestEmailConfirmationHandlerResult> {
   const business = await Business.findOne({ email: normalizedEmail })
-    .select(
-      "_id tradeName email emailVerified emailVerificationTokenHash emailVerificationExpiresAt",
-    )
+    .select("_id tradeName email emailVerified")
     .lean();
 
   const user =
     business == null
       ? await User.findOne({ "personalDetails.email": normalizedEmail })
           .select(
-            "_id personalDetails.username personalDetails.firstName personalDetails.email emailVerified emailVerificationTokenHash emailVerificationExpiresAt",
+            "_id personalDetails.username personalDetails.firstName personalDetails.emailVerified emailVerified",
           )
           .lean()
       : null;
 
   if (!business && !user) {
-    logVerificationIntentAudit({
-      intent: EMAIL_CONFIRM_INTENT,
-      phase: "issue_skipped",
-      skipReason: "no_account",
-    });
-    return { kind: "generic_200" };
+    return { kind: "success_200", message: GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE };
   }
 
   if (business?.emailVerified === true) {
-    logVerificationIntentAudit({
-      intent: EMAIL_CONFIRM_INTENT,
-      phase: "issue_skipped",
-      skipReason: "already_verified",
-      subjectKind: "business",
-      subjectId: String(business._id),
-    });
-    return { kind: "generic_200" };
+    // return { kind: "already_verified_400", message: "Email is already verified." };
   }
-  if (user?.emailVerified === true) {
-    logVerificationIntentAudit({
-      intent: EMAIL_CONFIRM_INTENT,
-      phase: "issue_skipped",
-      skipReason: "already_verified",
-      subjectKind: "user",
-      subjectId: String(user._id),
-    });
-    return { kind: "generic_200" };
+  const userEmailVerified =
+    user?.personalDetails?.emailVerified === true || user?.emailVerified === true;
+  if (userEmailVerified) {
+    return { kind: "already_verified_400", message: "Email is already verified." };
   }
 
-  if (!tryConsumeVerificationIntentEmailSlot(EMAIL_CONFIRM_INTENT, normalizedEmail)) {
-    logVerificationIntentAudit({
-      intent: EMAIL_CONFIRM_INTENT,
-      phase: "issue_skipped",
-      skipReason: "rate_limited",
-    });
-    return { kind: "generic_200" };
-  }
-
-  const { rawToken, tokenHash, expiresAt } =
-    createIntentTokenForVerificationIntent(EMAIL_CONFIRM_INTENT);
+  const verificationToken = crypto.randomBytes(32).toString("hex");
 
   if (business) {
-    const businessId = business._id as Types.ObjectId;
-    const correlationId = `email-confirm-business:${String(businessId)}`;
     await Business.updateOne(
-      { _id: businessId },
+      { _id: business._id },
       {
         $set: {
-          emailVerificationTokenHash: tokenHash,
-          emailVerificationExpiresAt: expiresAt,
+          verificationToken,
         },
       },
     );
 
-    logVerificationIntentAudit({
-      intent: EMAIL_CONFIRM_INTENT,
-      phase: "token_persisted",
-      correlationId,
-      subjectKind: "business",
-      subjectId: String(businessId),
-    });
-
-    const rollbackBusinessVerificationFields = async () => {
-      await Business.updateOne(
-        { _id: businessId },
-        {
-          $unset: {
-            emailVerificationTokenHash: "",
-            emailVerificationExpiresAt: "",
-          },
-        },
-      );
-    };
-
     try {
-      const confirmUrl = buildConfirmEmailLink(rawToken);
+      const confirmUrl = buildConfirmEmailLink(verificationToken);
       const trade = business.tradeName?.trim();
       const content = buildEmailConfirmationContent({
         confirmUrl,
         greetingName: trade || undefined,
       });
-      await sendAuthTransactionalEmailWithRollback({
+      await sendAuthTransactionalEmail({
         to: normalizedEmail,
         content,
-        correlationId,
-        rollback: rollbackBusinessVerificationFields,
-      });
-      logVerificationIntentAudit({
-        intent: EMAIL_CONFIRM_INTENT,
-        phase: "delivered",
-        correlationId,
-        subjectKind: "business",
-        subjectId: String(businessId),
       });
     } catch {
-      logVerificationIntentAudit({
-        intent: EMAIL_CONFIRM_INTENT,
-        phase: "delivery_failed",
-        correlationId,
-        subjectKind: "business",
-        subjectId: String(businessId),
-      });
-      await rollbackBusinessVerificationFields();
+      await Business.updateOne(
+        { _id: business._id },
+        {
+          $unset: { verificationToken: "" },
+        },
+      );
       return {
         kind: "server_error_500",
-        message:
-          "Unable to complete this request. Please try again later.",
+        message: "Failed to send confirmation email. Please try again later.",
       };
     }
 
-    return { kind: "generic_200" };
+    return {
+      kind: "success_200",
+      message: EMAIL_CONFIRMATION_SENT_MESSAGE,
+    };
   }
 
-  const userId = user!._id as Types.ObjectId;
   const pd = user!.personalDetails as
     | { username?: string; firstName?: string }
     | undefined;
   const greetingName =
     pd?.username?.trim() || pd?.firstName?.trim() || undefined;
 
-  const userCorrelationId = `email-confirm-user:${String(userId)}`;
   await User.updateOne(
-    { _id: userId },
+    { _id: user!._id },
     {
       $set: {
-        emailVerificationTokenHash: tokenHash,
-        emailVerificationExpiresAt: expiresAt,
+        verificationToken,
       },
     },
   );
 
-  logVerificationIntentAudit({
-    intent: EMAIL_CONFIRM_INTENT,
-    phase: "token_persisted",
-    correlationId: userCorrelationId,
-    subjectKind: "user",
-    subjectId: String(userId),
-  });
-
-  const rollbackUserVerificationFields = async () => {
-    await User.updateOne(
-      { _id: userId },
-      {
-        $unset: {
-          emailVerificationTokenHash: "",
-          emailVerificationExpiresAt: "",
-        },
-      },
-    );
-  };
-
   try {
-    const confirmUrl = buildConfirmEmailLink(rawToken);
+    const confirmUrl = buildConfirmEmailLink(verificationToken);
     const content = buildEmailConfirmationContent({
       confirmUrl,
       greetingName,
     });
-    await sendAuthTransactionalEmailWithRollback({
+    await sendAuthTransactionalEmail({
       to: normalizedEmail,
       content,
-      correlationId: userCorrelationId,
-      rollback: rollbackUserVerificationFields,
-    });
-    logVerificationIntentAudit({
-      intent: EMAIL_CONFIRM_INTENT,
-      phase: "delivered",
-      correlationId: userCorrelationId,
-      subjectKind: "user",
-      subjectId: String(userId),
     });
   } catch {
-    logVerificationIntentAudit({
-      intent: EMAIL_CONFIRM_INTENT,
-      phase: "delivery_failed",
-      correlationId: userCorrelationId,
-      subjectKind: "user",
-      subjectId: String(userId),
-    });
-    await rollbackUserVerificationFields();
+    await User.updateOne(
+      { _id: user!._id },
+      {
+        $unset: { verificationToken: "" },
+      },
+    );
     return {
       kind: "server_error_500",
-      message: "Unable to complete this request. Please try again later.",
+      message: "Failed to send confirmation email. Please try again later.",
     };
   }
 
-  return { kind: "generic_200" };
+  return {
+    kind: "success_200",
+    message: EMAIL_CONFIRMATION_SENT_MESSAGE,
+  };
 }

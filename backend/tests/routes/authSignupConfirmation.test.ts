@@ -1,5 +1,5 @@
 /**
- * POST /api/v1/auth/signup — Phase 4.1 confirmation email trigger
+ * POST /api/v1/auth/signup — confirmation email trigger
  */
 
 import {
@@ -12,17 +12,16 @@ import {
   afterAll,
 } from "vitest";
 
-const sendWithRollbackMock = vi.fn();
+const sendEmailMock = vi.hoisted(() =>
+  vi.fn().mockResolvedValue(undefined),
+);
 
 vi.mock("../../src/auth/authEmailSend.ts", () => ({
-  sendAuthTransactionalEmail: vi.fn(),
-  sendAuthTransactionalEmailWithRollback: (...args: unknown[]) =>
-    sendWithRollbackMock(...args),
+  sendAuthTransactionalEmail: sendEmailMock,
 }));
 
 import { getTestApp, resetTestApp } from "../setup.ts";
 import User from "../../src/models/user.ts";
-import { __resetAuthEmailRateLimitsForTests } from "../../src/auth/authEmailRateLimit.ts";
 
 async function waitForUserVerificationToken(
   email: string,
@@ -32,15 +31,15 @@ async function waitForUserVerificationToken(
   const maxAttempts = 280;
   for (let i = 0; i < maxAttempts; i++) {
     const row = await User.findOne({ "personalDetails.email": email })
-      .select("emailVerificationTokenHash")
+      .select("verificationToken")
       .lean();
-    const has = Boolean(row?.emailVerificationTokenHash);
+    const has = Boolean(row?.verificationToken);
     if (expectPresent ? has : !has) return;
     await new Promise((r) => setTimeout(r, 15));
   }
   throw new Error(
     expectPresent
-      ? "timeout waiting for emailVerificationTokenHash"
+      ? "timeout waiting for verificationToken"
       : "timeout waiting for token to stay cleared",
   );
 }
@@ -48,7 +47,7 @@ async function waitForUserVerificationToken(
 async function waitForSendMockCalls(count: number): Promise<void> {
   const maxAttempts = 280;
   for (let i = 0; i < maxAttempts; i++) {
-    if (sendWithRollbackMock.mock.calls.length >= count) return;
+    if (sendEmailMock.mock.calls.length >= count) return;
     await new Promise((r) => setTimeout(r, 15));
   }
   throw new Error(`timeout waiting for ${count} send mock call(s)`);
@@ -67,9 +66,8 @@ describe("POST /api/v1/auth/signup (confirmation email)", () => {
   });
 
   beforeEach(() => {
-    sendWithRollbackMock.mockReset();
-    sendWithRollbackMock.mockResolvedValue(undefined);
-    __resetAuthEmailRateLimitsForTests();
+    sendEmailMock.mockReset();
+    sendEmailMock.mockResolvedValue(undefined);
   });
 
   it("returns 201 with session immediately and persists verification token after send", async () => {
@@ -94,24 +92,14 @@ describe("POST /api/v1/auth/signup (confirmation email)", () => {
     expect(body.user?.email).toBe(email);
 
     await waitForUserVerificationToken(email);
-    expect(sendWithRollbackMock).toHaveBeenCalledTimes(1);
-
-    const firstCall = sendWithRollbackMock.mock.calls[0]?.[0] as {
-      correlationId?: string;
-    };
-    expect(firstCall.correlationId).toMatch(/^email-confirm-user:/);
+    expect(sendEmailMock).toHaveBeenCalledTimes(1);
   });
 
-  it("still returns 201 when confirmation send fails (token rolled back)", async () => {
+  it("still returns 201 when confirmation send fails (token cleared)", async () => {
     const app = await getTestApp();
     const email = `rollback-${Date.now()}@example.com`;
 
-    sendWithRollbackMock.mockImplementation(
-      async (options: { rollback: () => Promise<void> }) => {
-        await options.rollback();
-        throw new Error("SMTP down");
-      },
-    );
+    sendEmailMock.mockRejectedValue(new Error("SMTP down"));
 
     const res = await app.inject({
       method: "POST",
@@ -124,11 +112,11 @@ describe("POST /api/v1/auth/signup (confirmation email)", () => {
 
     expect(res.statusCode).toBe(201);
     await waitForSendMockCalls(1);
-    expect(sendWithRollbackMock).toHaveBeenCalledTimes(1);
+    expect(sendEmailMock).toHaveBeenCalledTimes(1);
 
     const row = await User.findOne({ "personalDetails.email": email })
-      .select("emailVerificationTokenHash")
+      .select("verificationToken")
       .lean();
-    expect(row?.emailVerificationTokenHash).toBeFalsy();
+    expect(row?.verificationToken).toBeFalsy();
   });
 });

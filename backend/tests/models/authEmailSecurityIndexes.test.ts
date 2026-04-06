@@ -1,5 +1,5 @@
 /**
- * Phase 1.3 — Sparse indexes on auth-email token hash fields (User + Business).
+ * Sparse indexes on auth-email token fields (User + Business).
  */
 import { describe, it, expect, beforeAll } from "vitest";
 import User from "../../src/models/user.ts";
@@ -29,16 +29,10 @@ describe("Auth email security indexes", () => {
     await Business.syncIndexes();
   });
 
-  it("User defines sparse indexes on emailVerificationTokenHash and passwordResetTokenHash", async () => {
+  it("User defines sparse indexes on verificationToken and resetPasswordToken", async () => {
     const indexes = await listIndexSpecs(User.collection);
-    const confirmIx = findSparseSingleFieldIndex(
-      indexes,
-      "emailVerificationTokenHash",
-    );
-    const resetIx = findSparseSingleFieldIndex(
-      indexes,
-      "passwordResetTokenHash",
-    );
+    const confirmIx = findSparseSingleFieldIndex(indexes, "verificationToken");
+    const resetIx = findSparseSingleFieldIndex(indexes, "resetPasswordToken");
 
     expect(confirmIx).toBeDefined();
     expect(confirmIx?.sparse).toBe(true);
@@ -46,16 +40,10 @@ describe("Auth email security indexes", () => {
     expect(resetIx?.sparse).toBe(true);
   });
 
-  it("Business defines sparse indexes on emailVerificationTokenHash and passwordResetTokenHash", async () => {
+  it("Business defines sparse indexes on verificationToken and resetPasswordToken", async () => {
     const indexes = await listIndexSpecs(Business.collection);
-    const confirmIx = findSparseSingleFieldIndex(
-      indexes,
-      "emailVerificationTokenHash",
-    );
-    const resetIx = findSparseSingleFieldIndex(
-      indexes,
-      "passwordResetTokenHash",
-    );
+    const confirmIx = findSparseSingleFieldIndex(indexes, "verificationToken");
+    const resetIx = findSparseSingleFieldIndex(indexes, "resetPasswordToken");
 
     expect(confirmIx).toBeDefined();
     expect(confirmIx?.sparse).toBe(true);

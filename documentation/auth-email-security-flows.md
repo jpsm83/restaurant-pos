@@ -12,12 +12,12 @@ This document is the **authoritative technical reference** for **email-driven ac
 
 | Goal | Behavior |
 |------|----------|
-| **Verify sign-in email** | Opaque **one-time** link; **hashed** token in MongoDB; **expiry** enforced. |
-| **Reset forgotten password** | Same token model; **shorter TTL** than confirmation. |
+| **Verify sign-in email** | Opaque **one-time** token (`verificationToken`) stored on account and cleared on consume. |
+| **Reset forgotten password** | Opaque token (`resetPasswordToken`) with expiry (`resetPasswordExpires`). |
 | **Actors** | Both **`User`** (person) and **`Business`** (tenant) — same priority as login (**business first**, then user). |
 | **Login before verify** | **Allowed** — `emailVerified` on session drives UI (banner, resend); login is **not** blocked for unverified accounts in V1. |
 | **Enumeration resistance** | Request endpoints return **HTTP 200** + **generic** body whether or not the address exists. |
-| **SMTP** | Reuse **`backend/src/communications/channels/emailChannel.ts`** (nodemailer path); auth emails use **`sendAuthTransactionalEmail`** / **`sendAuthTransactionalEmailWithRollback`**. |
+| **SMTP** | Auth emails use `authEmailSend.ts` (Nodemailer Gmail with `EMAIL_USER` / `EMAIL_PASSWORD`). |
 | **Refresh sessions after password change** | **`refreshSessionVersion`** on `User` / `Business`; refresh JWT carries **`v`**; mismatch → **`401`** on **`POST /auth/refresh`**. |
 
 **Explicitly out of V1 (per plan):** email confirmation gate on **tenant credential PATCH** (business settings password change still uses **current password** only, no separate email link).
@@ -31,7 +31,6 @@ flowchart TB
   subgraph client [React SPA]
     LP[LoginPage / SignUpPage]
     FEC[ForgotPasswordPage]
-    RPC[RequestEmailConfirmationPage]
     CP[ConfirmEmailPage]
     RP[ResetPasswordPage]
     API[auth/api.ts fetch]
@@ -52,13 +51,9 @@ flowchart TB
     RPW[resetPassword.ts]
     RES_H[resendEmailConfirmation.ts]
     LINK[emailLinks.ts]
-    TOK[emailToken.ts]
     TPL[emailTemplates.ts]
     SEND[authEmailSend.ts]
-    RL[authEmailRateLimit.ts]
-    AUD[verificationIntentAudit.ts]
-    MET[authEmailMetrics.ts]
-    VI[verificationIntent* Phase 6]
+    MET[route/app logs]
   end
 
   subgraph comm [communications]
@@ -72,7 +67,6 @@ flowchart TB
 
   LP --> API
   FEC --> API
-  RPC --> API
   CP --> API
   RP --> API
   API --> REQ_C & REQ_R & CONF & RST & RES
@@ -81,8 +75,8 @@ flowchart TB
   CONF --> CE
   RST --> RPW
   RES --> RES_H
-  HRC & HPR & RES_H --> LINK & TOK & TPL & SEND & RL & AUD & VI
-  CE & RPW --> TOK & AUD & MET
+  HRC & HPR & RES_H --> LINK & TPL & SEND
+  CE & RPW --> MET
   SEND --> CH
   HRC & HPR & RES_H --> U & B
   CE & RPW --> U & B
@@ -92,11 +86,11 @@ flowchart TB
 
 ## 3. Security patterns (non-negotiables)
 
-### 3.1 Token storage: hash only
+### 3.1 Token storage (opaque raw token)
 
-- **Raw** token is generated once (**64 hex chars**, 32 random bytes — `generateRawEmailToken`).
-- **Stored** value is **`SHA-256` hex** of `rawToken + AUTH_EMAIL_TOKEN_PEPPER` (`hashEmailToken`). Optional **`AUTH_EMAIL_TOKEN_PEPPER`** hardens DB leaks.
-- Lookup is always **`findOne({ *TokenHash: digest })`** with **expiry** and **business rules** in the same query / atomic update.
+- Tokens are generated with `crypto.randomBytes(32).toString("hex")`.
+- `verificationToken` and `resetPasswordToken` are stored directly on `User` / `Business`.
+- Reset flow validates `resetPasswordExpires` and clears token+expiry on consume.
 
 ### 3.2 Anti-enumeration
 
@@ -106,24 +100,20 @@ flowchart TB
   - or **per-email rate cap** is exceeded (still **no send**, still **200**).
 - **429** is reserved for **per-IP** sliding-window limits on those routes (and resend).
 
-### 3.3 Rate limiting (process-local)
+### 3.3 Rate limiting
 
-- **Per IP** — separate counters per route: `request-email-confirmation`, `request-password-reset`, `resend-email-confirmation`. Env: **`AUTH_EMAIL_RATE_LIMIT_IP_MAX`** (default 30), **`AUTH_EMAIL_RATE_LIMIT_IP_WINDOW_MS`** (default 15 min).
-- **Per intent + normalized email** — **`tryConsumeVerificationIntentEmailSlot`** keys by **`${VerificationIntent}:${email}`** so confirmation vs reset do not share one bucket. Env: **`AUTH_EMAIL_RATE_LIMIT_EMAIL_MAX`** (default 5 / window), **`AUTH_EMAIL_RATE_LIMIT_EMAIL_WINDOW_MS`** (default 1 h).
-- **Scaling note:** maps live **in memory per Node process**; horizontal scale requires ops awareness (sticky sessions do not fix this — consider Redis later if needed).
+Dedicated auth-email in-process limiter modules were removed from the active implementation.
 
 ### 3.4 TTLs
 
-| Token kind | Env override | Default |
-|------------|--------------|---------|
-| Email confirmation | `AUTH_EMAIL_CONFIRM_TTL_MS` | **24 h** |
-| Password reset | `AUTH_RESET_TTL_MS` | **1 h** |
+| Token kind | Source |
+|------------|--------|
+| Email confirmation | `verificationToken` (one-time consume). |
+| Password reset | `resetPasswordToken` + `resetPasswordExpires` (1 hour default). |
 
-Parsed in **`emailToken.ts`**; invalid / non-positive env falls back to defaults.
+### 3.5 Link base URL
 
-### 3.5 Link base URL (no host guessing from request)
-
-- Links are built only from **trusted env** (`APP_BASE_URL` → `PUBLIC_APP_URL` → `FRONTEND_URL` → `VITE_APP_BASE_URL` on server). See **`emailLinks.ts`** and **`backend/README.md`** (Auth email env table).
+- Links are built from trusted env (`APP_BASE_URL` → `PUBLIC_APP_URL` → `FRONTEND_URL` → `VITE_APP_BASE_URL`) in `emailLinks.ts`.
 
 ### 3.6 Refresh session invalidation
 
@@ -140,9 +130,9 @@ Parsed in **`emailToken.ts`**; invalid / non-positive env falls back to defaults
 
 | Field | Purpose |
 |--------|---------|
-| `emailVerified` | Boolean; drives session `emailVerified` and UI. |
-| `emailVerificationTokenHash` / `emailVerificationExpiresAt` | Confirmation flow (sparse indexes). |
-| `passwordResetTokenHash` / `passwordResetExpiresAt` | Reset flow (sparse indexes). |
+| `personalDetails.emailVerified` | Boolean; canonical user verification state driving session `emailVerified` and UI. |
+| `verificationToken` | Confirmation flow token (sparse index). |
+| `resetPasswordToken` / `resetPasswordExpires` | Reset flow token + expiry (sparse token index). |
 | `refreshSessionVersion` | Invalidates refresh JWTs after password change / reset. |
 
 ### 4.2 `Business` (`backend/src/models/business.ts`)
@@ -151,18 +141,10 @@ Same field names at **top level** (tenant `email` is sign-in identity).
 
 ---
 
-## 5. Verification intent framework (Phase 6)
+## 5. Verification intent framework
 
-Shared package: **`packages/authVerificationIntent.ts`** — enum **`VerificationIntent`** (`email_confirmation`, `password_reset`, extensible).
-
-| Module | Role |
-|--------|------|
-| **`verificationIntentToken.ts`** | Create **raw** token + **hash** + **expiry** for an intent. |
-| **`verificationIntentConsume.ts`** | Dispatch **consume** to **`confirmEmail`** / **`resetPassword`**. |
-| **`verificationIntentAudit.ts`** | **Stdout JSON** audit lines (`scope: "verification_intent_audit"`) — **never** log raw tokens. |
-| **`verificationIntentContract.ts`** | Typed **consume** result for routes. |
-
-**Audit phases:** `issue_skipped`, `token_persisted`, `delivered`, `delivery_failed`, `consumed`, `consume_rejected`, `consume_failed`; optional **`rejectReason`**: `invalid_token`, `not_found_or_expired`, `server`.
+Legacy verification-intent modules were removed. Current flow is direct route handler orchestration in:
+`requestEmailConfirmation.ts`, `requestPasswordReset.ts`, `confirmEmail.ts`, and `resetPassword.ts`.
 
 ---
 
@@ -172,7 +154,7 @@ All paths below are under **`/api/v1/auth`**.
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| `POST` | `/request-email-confirmation` | None | Body `{ email }`. Validates email; **200** + generic message. Sends only if account exists, needs verify, passes email-slot rate limit. |
+| `POST` | `/request-email-confirmation` | None | Body `{ email }`. Validates email; **200** generic style response. Sends only if account exists and needs verification. |
 | `POST` | `/request-password-reset` | None | Same shape/response style; issues **reset** token + email when applicable. |
 | `POST` | `/confirm-email` | None | Body `{ token }`. **400** if token missing; otherwise **one-time** verify or generic consumption error copy. |
 | `POST` | `/reset-password` | None | Body `{ token, newPassword }`. Policy + **400** paths for weak/missing fields; success clears reset fields and **increments** `refreshSessionVersion`. |
@@ -221,8 +203,7 @@ Calls **`emailChannel.send`** with **`fireAndForget: true`**, inspects **`succes
 
 | Path | Guard | Page |
 |------|-------|------|
-| `/forgot-password` | `PublicOnlyRoute` | `ForgotPasswordPage` |
-| `/request-email-confirmation` | `PublicOnlyRoute` | `RequestEmailConfirmationPage` |
+| `/forgot-password` | `PublicOnlyRoute` (under `RecoveryLayout`) | `ForgotPasswordPage` |
 | `/reset-password?token=` | **None** (email links may arrive while logged in) | `ResetPasswordPage` |
 | `/confirm-email?token=` | **None** | `ConfirmEmailPage` |
 
@@ -240,7 +221,7 @@ All use **`credentials: "include"`**; email flows pass **`retryOnUnauthorized: f
 
 ### 8.3 UX / i18n
 
-Copy lives in **`frontend/src/i18n/locales/*/auth.json`** (`forgotPassword`, `resetPassword`, `confirmEmail`, `requestEmailConfirmation`). **Login** links to forgot + resend confirmation paths.
+Copy lives in **`frontend/src/i18n/locales/*/auth.json`** (`forgotPassword`, `resetPassword`, `confirmEmail`, `requestEmailConfirmation`). Public login/signup no longer expose resend-confirmation links; resend is actor-only from authenticated areas.
 
 **Business tenant:** **`BusinessCredentialsSettingsPage`** (**`/business/:id/settings/credentials`**) calls **`requestPasswordReset`** with the **session business email** so staff get the same reset link flow while signed in (plus **`resendEmailConfirmation`** when **`emailVerified`** is false). Copy: **`business.credentialsSettings.passwordChangeEmail.*`**.
 
@@ -250,9 +231,7 @@ Copy lives in **`frontend/src/i18n/locales/*/auth.json`** (`forgotPassword`, `re
 
 | Mechanism | Location |
 |-----------|----------|
-| **Pino** | `auth_email_http_response` on auth-email routes (`auth.ts`) — `authEmail.route`, `httpStatus`, `reason`. |
-| **Audit JSON lines** | `verificationIntentAudit.ts` → stdout; **`SILENCE_VERIFICATION_INTENT_AUDIT=1`** to mute in tests. |
-| **In-process metrics** | `authEmailMetrics.ts` — `getAuthEmailMetricsSnapshot()` (HTTP buckets, dispatch success/fail, token consume tallies). |
+| **Route status + app logs** | Auth route handlers in `backend/src/routes/v1/auth.ts` and auth modules under `backend/src/auth`. |
 
 ---
 
@@ -261,14 +240,8 @@ Copy lives in **`frontend/src/i18n/locales/*/auth.json`** (`forgotPassword`, `re
 | Variable | Role |
 |----------|------|
 | `APP_BASE_URL` (+ fallbacks) | Absolute links in emails. |
-| `AUTH_EMAIL_CONFIRM_TTL_MS`, `AUTH_RESET_TTL_MS` | Token lifetimes. |
-| `AUTH_EMAIL_TOKEN_PEPPER` | Optional HMAC pepper for hashing. |
-| `AUTH_EMAIL_RATE_LIMIT_*` | IP + email/intent caps. |
-| `SMTP_HOST`, `SMTP_PORT` | SMTP transport endpoint for auth-email delivery. |
-| `SMTP_USER`, `SMTP_PASS` | Optional SMTP auth credentials; when one is set, both must be set. |
-| `SMTP_FROM` | Optional sender override (`From` header). |
-| `AUTH_EMAIL_DEV_SINK_ENABLED` | Dev-only fallback: when `true` (and not production), auth-email send path accepts to a console sink if SMTP is unavailable, so forgot/reset/request-confirmation flows stay testable locally. |
-| `COMMUNICATIONS_EMAIL_ENABLED`, SMTP settings | See **`backend/src/communications/README.md`** and env table in **`backend/README.md`**. |
+| `EMAIL_USER`, `EMAIL_PASSWORD` | Gmail credentials used by `authEmailSend.ts`. |
+| `COMMUNICATIONS_EMAIL_ENABLED` | Channel-level communications toggle (independent of auth-email sender). |
 
 ---
 
@@ -293,14 +266,14 @@ The SPA calls the same **`POST /api/v1/auth/request-password-reset`** as **`Forg
    - **SMTP path**: channel disabled, misconfigured transport, or provider error after token was written — handler rolls back token fields and returns **500** (see **`authEmailSend.ts`** / **`emailChannel.ts`**).  
    - **Missing app base for links**: **`resolveAppBaseUrl()`** in **`emailLinks.ts`** throws if **no** valid **`APP_BASE_URL`** (or **`PUBLIC_APP_URL`** / **`FRONTEND_URL`** / server **`VITE_APP_BASE_URL`**) is set. Link building and send are handled in one **`try`/`catch`** with **rollback** of verification/reset token fields so the account is not left with a unusable hash without mail.
 
-3. **HTTP 429**  
-   Per-IP cap on **`request-password-reset`** — wait for the window or adjust **`AUTH_EMAIL_RATE_LIMIT_IP_*`** for dev.
+3. **Repeated requests / provider throttling**  
+   If SMTP provider limits are hit, check provider dashboard and app logs; no dedicated in-app auth-email limiter is currently active.
 
 ### 11.2 “Link says invalid or expired”
 
-1. **TTL**: confirmation **24h**, reset **1h** by default — user may need a **new** request.
+1. **TTL**: reset link expires in about **1 hour** by default; confirmation links are one-time and replaced when a new token is issued.
 2. **One-time use**: successful **confirm** or **reset** clears token; **reuse** returns consumption error.
-3. **Wrong actor**: rare **hash collision** across user/business is not expected; wrong link copied/truncated is more common.
+3. **Wrong actor/token**: most cases are copied/truncated/old links or already-consumed tokens.
 
 ### 11.3 Resend confirmation (authenticated)
 
@@ -318,13 +291,11 @@ The SPA calls the same **`POST /api/v1/auth/request-password-reset`** as **`Forg
 
 | Area | Tests |
 |------|--------|
-| Token / links / templates | `backend/tests/auth/emailToken.test.ts`, `emailLinks.test.ts`, `emailTemplates.test.ts` |
-| Rate limit | `backend/tests/auth/authEmailRateLimit.test.ts` |
-| Send + rollback | `backend/tests/auth/authEmailSend.test.ts` |
+| Links / templates / sender | `backend/tests/auth/emailLinks.test.ts`, `emailTemplates.test.ts`, `authEmailSend.test.ts` |
 | Routes | `requestEmailConfirmation`, `confirmEmail`, `requestPasswordReset`, `resetPassword`, `resendEmailConfirmation`, `auth-email.test.ts` |
 | Refresh invalidation after reset | `backend/tests/routes/resetPassword.test.ts` |
 | Schema | `userEmailSecuritySchema.test.ts`, `businessEmailSecuritySchema.test.ts` |
-| Frontend | `ForgotPasswordPage.test.tsx`, `ResetPasswordPage.test.tsx`, `ConfirmEmailPage.test.tsx`, `RequestEmailConfirmationPage.test.tsx`, `auth/api.test.ts`, `App.routing.test.tsx` |
+| Frontend | `ForgotPasswordPage.test.tsx`, `ResetPasswordPage.test.tsx`, `ConfirmEmailPage.test.tsx`, `auth/api.test.ts`, `App.routing.test.tsx` |
 
 ---
 
@@ -334,12 +305,10 @@ The SPA calls the same **`POST /api/v1/auth/request-password-reset`** as **`Forg
 |------|--------|
 | `backend/src/routes/v1/auth.ts` | All auth-email routes + login/signup/refresh with **`v`**. |
 | `backend/src/auth/issueSession.ts` | **`issueSessionWithRefreshCookie`**, **`readRefreshSessionVersionForAccount`**. |
-| `backend/src/communications/channels/emailChannel.ts` | Shared SMTP send. |
-| `packages/authVerificationIntent.ts` | Intent enum (shared). |
+| `backend/src/auth/authEmailSend.ts` | Auth-email sender (Nodemailer Gmail). |
 | `frontend/src/pages/ForgotPasswordPage.tsx` | … |
 | `frontend/src/pages/ResetPasswordPage.tsx` | Reads **`token`** from query string. |
-| `frontend/src/pages/ConfirmEmailPage.tsx` | Manual confirm button after landing with token. |
-| `frontend/src/pages/RequestEmailConfirmationPage.tsx` | Unauthenticated resend request form. |
+| `frontend/src/pages/ConfirmEmailPage.tsx` | Confirm submit with token; redirects on success. |
 | `frontend/src/pages/business/BusinessCredentialsSettingsPage.tsx` | Authenticated tenant: **`requestPasswordReset(session email)`** + optional **`resendEmailConfirmation()`**; uses **`BusinessProfileSettingsStaticShell`** and **`useBusinessProfileSettingsGate`** (exported from **`useBusinessProfileSettingsController.ts`**). |
 
 ---

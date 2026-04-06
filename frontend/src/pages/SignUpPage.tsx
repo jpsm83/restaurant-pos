@@ -177,14 +177,6 @@ export default function SignUpPage() {
               <Link to="/login">{t("signup.backToSignIn")}</Link>
             </Button>
 
-            <p className="text-center text-sm text-neutral-600">
-              <Link
-                to="/request-email-confirmation"
-                className="font-medium text-neutral-800 underline-offset-4 hover:underline"
-              >
-                {t("signup.resendConfirmationLink")}
-              </Link>
-            </p>
           </form>
         </CardContent>
       </Card>

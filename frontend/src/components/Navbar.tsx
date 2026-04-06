@@ -16,6 +16,7 @@ export default function Navbar() {
   const { t } = useTranslation("nav");
   const { state } = useAuth();
   const { pathname } = useLocation();
+
   const isAuthenticated =
     state.status === "authenticated" && Boolean(state.user);
   const isLoading = state.status === "loading" || state.status === "idle";

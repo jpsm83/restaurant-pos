@@ -54,31 +54,18 @@ Used by `POST /api/v1/auth/request-email-confirmation`, `request-password-reset`
 | `PUBLIC_APP_URL` | No | Fallback when `APP_BASE_URL` is unset. Same format as above. |
 | `FRONTEND_URL` | No | Fallback when the above are unset. |
 | `VITE_APP_BASE_URL` | No | Last fallback; only if present in **server** process env (e.g. copied from deploy config). |
-| `AUTH_EMAIL_CONFIRM_TTL_MS` | No | Lifetime in ms for **email verification** tokens (default **86400000** = 24h). Invalid or non-positive values fall back to default (`src/auth/emailToken.ts`). |
-| `AUTH_RESET_TTL_MS` | No | Lifetime in ms for **password reset** tokens (default **3600000** = 1h). Same parsing rules as above. |
-| `AUTH_EMAIL_TOKEN_PEPPER` | No | Optional secret concatenated before hashing raw link tokens (SHA-256). Empty/unset means no pepper. |
-| `AUTH_EMAIL_RATE_LIMIT_IP_MAX` | No | Max auth-email **send attempts per IP per route** in the sliding window (default **30**). Routes are separate buckets: `request-email-confirmation`, `request-password-reset`, `resend-email-confirmation`. |
-| `AUTH_EMAIL_RATE_LIMIT_IP_WINDOW_MS` | No | IP window length in ms (default **900000** = 15 minutes). |
-| `AUTH_EMAIL_RATE_LIMIT_EMAIL_MAX` | No | Max **sends per verification intent + normalized email** in the email window (default **5**). Intents are separate (e.g. confirmation vs password reset). Over cap → **200** generic body, **no** email (anti-abuse; see `src/auth/authEmailRateLimit.ts`). |
-| `AUTH_EMAIL_RATE_LIMIT_EMAIL_WINDOW_MS` | No | Email cap window in ms (default **3600000** = 1 hour). |
-| `SMTP_HOST` | Yes (for real email delivery) | SMTP host used by auth-email transactional sends. |
-| `SMTP_PORT` | Yes (for real email delivery) | SMTP port. `465` uses secure transport; other ports use STARTTLS/plain based on server. |
-| `SMTP_USER` | No | SMTP auth username. Optional for local relays that do not require auth (e.g. Mailpit). |
-| `SMTP_PASS` | No | SMTP auth password. Must be set together with `SMTP_USER` when auth is required. |
-| `SMTP_FROM` | No | Sender address override. Defaults to `SMTP_USER` (or `no-reply@localhost` when auth is not configured). |
-| `AUTH_EMAIL_DEV_SINK_ENABLED` | No (development only) | When `true` and `NODE_ENV` is not production, auth email sends use a **console sink fallback** if SMTP is unavailable/fails. Routes return success and logs include a preview. Keep `false` in production. |
+| `EMAIL_USER` | Yes (for auth-email delivery) | Gmail account used by `src/auth/authEmailSend.ts` as sender and SMTP auth user. |
+| `EMAIL_PASSWORD` | Yes (for auth-email delivery) | Gmail app password for `EMAIL_USER`. |
 
 **Local dev:** point `APP_BASE_URL` at the Vite dev origin (often `http://localhost:5173`) so links in Mailpit open the SPA. The frontend usually leaves `VITE_API_BASE_URL` empty so `/api` proxies to the backend (see `frontend/.env.example`).
 
-**Scaling:** IP and email limits are **in-memory per process**; document expectations if you run multiple backend instances.
+**Scaling:** no auth-email in-process rate-limit module is active currently; if introduced, document process-local behavior explicitly.
 
 **Documentation:** end-to-end behavior, sequence diagrams, frontend routes, and a **support runbook** (resend, expired links, SMTP triage) live in **`documentation/auth-email-security-flows.md`** at the repo root.
 
-#### Auth email observability (logs + in-process metrics)
+#### Auth email observability
 
-- **Fastify (Pino):** each auth-email HTTP route emits `auth_email_http_response` with structured fields `authEmail.route`, `authEmail.httpStatus`, and optional `authEmail.reason` (e.g. `rate_limited`, `validation`, `consume_rejected`). Implemented in `src/routes/v1/auth.ts`.
-- **Audit stream (stdout):** `logVerificationIntentAudit` in `src/auth/verificationIntentAudit.ts` writes one JSON object per line (`scope: "verification_intent_audit"`). Phases include **`token_persisted`** (token issued to DB), **`delivered`** / **`delivery_failed`** (SMTP path outcome), **`consumed`** / **`consume_rejected`** / **`consume_failed`** (link consumption). Optional **`rejectReason`**: `invalid_token`, `not_found_or_expired`, `server`. Raw link tokens and passwords are never logged. Set `SILENCE_VERIFICATION_INTENT_AUDIT=1` to suppress audit lines (e.g. noisy tests).
-- **Counters:** `getAuthEmailMetricsSnapshot()` in `src/auth/authEmailMetrics.ts` returns HTTP counts by route (requests received, 2xx / 4xx / 5xx / 429), transactional **`dispatch.successes` / `dispatch.failures`** (auth emails only), and token consume tallies by intent (`email_confirmation`, `password_reset`). Same per-process caveat as communications metrics — wire an admin or `/health` extension in your deployment if you need remote scraping.
+Auth-email flow currently relies on route status codes and standard app logging in handlers/routes. Legacy verification-intent audit and auth-email metrics modules are not part of the active implementation.
 
 ### Communications reliability env vars
 

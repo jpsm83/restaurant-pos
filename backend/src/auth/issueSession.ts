@@ -90,10 +90,12 @@ export async function buildAuthUserSessionFromUserId(
   userId: string,
 ): Promise<AuthUser | null> {
   const user = (await User.findById(userId)
-    .select("_id personalDetails.email employeeDetails emailVerified")
+    .select(
+      "_id personalDetails.email personalDetails.emailVerified employeeDetails emailVerified",
+    )
     .lean()) as {
     _id: unknown;
-    personalDetails: { email?: string };
+    personalDetails: { email?: string; emailVerified?: boolean };
     employeeDetails?: unknown;
     emailVerified?: boolean;
   } | null;
@@ -109,7 +111,8 @@ export async function buildAuthUserSessionFromUserId(
     id: String(user._id),
     email: userEmail,
     type: "user",
-    emailVerified: user.emailVerified === true,
+    emailVerified:
+      user.personalDetails?.emailVerified === true || user.emailVerified === true,
   };
 
   if (user.employeeDetails) {

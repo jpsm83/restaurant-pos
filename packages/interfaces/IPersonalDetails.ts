@@ -3,6 +3,7 @@ import { IAddress } from "./IAddress";
 export interface IPersonalDetails {
   username: string;
   email: string;
+  emailVerified?: boolean;
   password: string;
   idType: string;
   idNumber: string;

@@ -5,7 +5,7 @@
  * Matches legacy NextAuth session structure for full parity.
  */
 
-import type { FastifyPluginAsync, FastifyRequest } from "fastify";
+import type { FastifyPluginAsync } from "fastify";
 import bcrypt from "bcrypt";
 import Business from "../../models/business.ts";
 import User from "../../models/user.ts";
@@ -16,7 +16,6 @@ import {
   isValidPassword,
   PASSWORD_POLICY_MESSAGE,
 } from "../../../../packages/utils/passwordPolicy.ts";
-import { VerificationIntent } from "../../../../packages/authVerificationIntent.ts";
 import type {
   AuthSession,
   AuthBusiness,
@@ -31,8 +30,8 @@ import {
   refreshTokenPayloadVersionMatchesDb,
   signAccessToken,
 } from "../../auth/issueSession.ts";
-import { checkAuthEmailIpRate } from "../../auth/authEmailRateLimit.ts";
 import {
+  handleConfirmEmail,
   CONFIRM_EMAIL_MISSING_TOKEN_MESSAGE,
   isValidConfirmEmailTokenInput,
 } from "../../auth/confirmEmail.ts";
@@ -45,17 +44,12 @@ import {
 import { handleRequestPasswordReset } from "../../auth/requestPasswordReset.ts";
 import { handleResendEmailConfirmationForAuthenticatedAccount } from "../../auth/resendEmailConfirmation.ts";
 import {
+  handleResetPassword,
   isValidResetPasswordNewPasswordInput,
   isValidResetPasswordTokenInput,
   RESET_PASSWORD_MISSING_NEW_PASSWORD_MESSAGE,
   RESET_PASSWORD_MISSING_TOKEN_MESSAGE,
 } from "../../auth/resetPassword.ts";
-import {
-  recordAuthEmailHttpRequestReceived,
-  recordAuthEmailHttpResponse,
-  type AuthEmailHttpRoute,
-} from "../../auth/authEmailMetrics.ts";
-import { consumeVerificationIntent } from "../../auth/verificationIntentConsume.ts";
 
 interface LoginBody {
   email: string;
@@ -85,19 +79,6 @@ interface ConfirmEmailBody {
 interface ResetPasswordBody {
   token?: string;
   newPassword?: string;
-}
-
-function logAuthEmailHttp(
-  req: FastifyRequest,
-  route: AuthEmailHttpRoute,
-  statusCode: number,
-  extra?: Record<string, string | undefined>,
-) {
-  recordAuthEmailHttpResponse(route, statusCode);
-  req.log.info(
-    { authEmail: { route, httpStatus: statusCode, ...extra } },
-    "auth_email_http_response",
-  );
 }
 
 export const authRoutes: FastifyPluginAsync = async (app) => {
@@ -164,7 +145,9 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       id: String(createdUser._id),
       email: normalizedEmail,
       type: "user",
-      emailVerified: createdUser.emailVerified === true,
+      emailVerified:
+        createdUser.personalDetails?.emailVerified === true ||
+        createdUser.emailVerified === true,
     };
 
     const { accessToken, user } = issueSessionWithRefreshCookie(
@@ -177,7 +160,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     // Phase 4.1: issue confirmation email without blocking signup (session unchanged).
     handleRequestEmailConfirmation(normalizedEmail)
       .then((result) => {
-        if (result.kind === "server_error_500") {
+        if (result.kind === "server_error_500" || result.kind === "already_verified_400") {
           req.log.error(
             { errHint: "signup_confirmation_send" },
             result.message,
@@ -201,22 +184,8 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
   app.post<{ Body: RequestEmailConfirmationBody }>(
     "/request-email-confirmation",
     async (req, reply) => {
-      const route: AuthEmailHttpRoute = "request-email-confirmation";
-      recordAuthEmailHttpRequestReceived(route);
-      const ipAllowed = checkAuthEmailIpRate(
-        "request-email-confirmation",
-        req.ip,
-      );
-      if (!ipAllowed.allowed) {
-        logAuthEmailHttp(req, route, 429, { reason: "rate_limited" });
-        return reply.code(429).send({
-          message: "Too many requests. Please try again later.",
-        });
-      }
-
       const { email } = req.body ?? {};
       if (!isValidRequestEmailConfirmationInput(email)) {
-        logAuthEmailHttp(req, route, 400, { reason: "validation" });
         return reply.code(400).send({
           message: "Please provide a valid email address",
         });
@@ -225,14 +194,15 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       const normalized = normalizeRequestEmail(email);
       const result = await handleRequestEmailConfirmation(normalized);
 
+      if (result.kind === "already_verified_400") {
+        return reply.code(400).send({ message: result.message });
+      }
       if (result.kind === "server_error_500") {
-        logAuthEmailHttp(req, route, 500, { reason: "handler_error" });
         return reply.code(500).send({ message: result.message });
       }
 
-      logAuthEmailHttp(req, route, 200);
       return reply.code(200).send({
-        message: GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE,
+        message: result.message || GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE,
       });
     },
   );
@@ -244,22 +214,8 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
   app.post<{ Body: RequestEmailConfirmationBody }>(
     "/request-password-reset",
     async (req, reply) => {
-      const route: AuthEmailHttpRoute = "request-password-reset";
-      recordAuthEmailHttpRequestReceived(route);
-      const ipAllowed = checkAuthEmailIpRate(
-        "request-password-reset",
-        req.ip,
-      );
-      if (!ipAllowed.allowed) {
-        logAuthEmailHttp(req, route, 429, { reason: "rate_limited" });
-        return reply.code(429).send({
-          message: "Too many requests. Please try again later.",
-        });
-      }
-
       const { email } = req.body ?? {};
       if (!isValidRequestEmailConfirmationInput(email)) {
-        logAuthEmailHttp(req, route, 400, { reason: "validation" });
         return reply.code(400).send({
           message: "Please provide a valid email address",
         });
@@ -269,13 +225,11 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       const result = await handleRequestPasswordReset(normalized);
 
       if (result.kind === "server_error_500") {
-        logAuthEmailHttp(req, route, 500, { reason: "handler_error" });
         return reply.code(500).send({ message: result.message });
       }
 
-      logAuthEmailHttp(req, route, 200);
       return reply.code(200).send({
-        message: GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE,
+        message: result.message || GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE,
       });
     },
   );
@@ -285,29 +239,20 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
    * Unauthenticated: consume email verification token (one-time).
    */
   app.post<{ Body: ConfirmEmailBody }>("/confirm-email", async (req, reply) => {
-    const route: AuthEmailHttpRoute = "confirm-email";
-    recordAuthEmailHttpRequestReceived(route);
     const { token } = req.body ?? {};
     if (!isValidConfirmEmailTokenInput(token)) {
-      logAuthEmailHttp(req, route, 400, { reason: "missing_token" });
       return reply.code(400).send({ message: CONFIRM_EMAIL_MISSING_TOKEN_MESSAGE });
     }
 
-    const result = await consumeVerificationIntent(
-      VerificationIntent.EmailConfirmation,
-      { token },
-    );
+    const result = await handleConfirmEmail(token);
 
-    if (!result.ok) {
-      if (result.kind === "client_error") {
-        logAuthEmailHttp(req, route, 400, { reason: "consume_rejected" });
-        return reply.code(400).send({ message: result.message });
-      }
-      logAuthEmailHttp(req, route, 500, { reason: "consume_error" });
+    if (result.kind === "client_error") {
+      return reply.code(400).send({ message: result.message });
+    }
+    if (result.kind === "server_error_500") {
       return reply.code(500).send({ message: result.message });
     }
 
-    logAuthEmailHttp(req, route, 200);
     return reply.code(200).send({ message: result.message });
   });
 
@@ -318,44 +263,33 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
   app.post<{ Body: ResetPasswordBody }>(
     "/reset-password",
     async (req, reply) => {
-      const route: AuthEmailHttpRoute = "reset-password";
-      recordAuthEmailHttpRequestReceived(route);
       const { token, newPassword } = req.body ?? {};
 
       if (!isValidResetPasswordTokenInput(token)) {
-        logAuthEmailHttp(req, route, 400, { reason: "missing_token" });
         return reply
           .code(400)
           .send({ message: RESET_PASSWORD_MISSING_TOKEN_MESSAGE });
       }
 
       if (!isValidResetPasswordNewPasswordInput(newPassword)) {
-        logAuthEmailHttp(req, route, 400, { reason: "missing_password" });
         return reply
           .code(400)
           .send({ message: RESET_PASSWORD_MISSING_NEW_PASSWORD_MESSAGE });
       }
 
       if (!isValidPassword(newPassword)) {
-        logAuthEmailHttp(req, route, 400, { reason: "password_policy" });
         return reply.code(400).send({ message: PASSWORD_POLICY_MESSAGE });
       }
 
-      const result = await consumeVerificationIntent(
-        VerificationIntent.PasswordReset,
-        { token, newPassword },
-      );
+      const result = await handleResetPassword(token, newPassword);
 
-      if (!result.ok) {
-        if (result.kind === "client_error") {
-          logAuthEmailHttp(req, route, 400, { reason: "consume_rejected" });
-          return reply.code(400).send({ message: result.message });
-        }
-        logAuthEmailHttp(req, route, 500, { reason: "consume_error" });
+      if (result.kind === "client_error") {
+        return reply.code(400).send({ message: result.message });
+      }
+      if (result.kind === "server_error_500") {
         return reply.code(500).send({ message: result.message });
       }
 
-      logAuthEmailHttp(req, route, 200);
       return reply.code(200).send({ message: result.message });
     },
   );
@@ -365,12 +299,9 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
    * Authenticated: resend sign-in email confirmation for the current session account (DB email only).
    */
   app.post("/resend-email-confirmation", async (req, reply) => {
-    const route: AuthEmailHttpRoute = "resend-email-confirmation";
-    recordAuthEmailHttpRequestReceived(route);
     const authHeader = req.headers.authorization;
 
     if (!authHeader?.startsWith("Bearer ")) {
-      logAuthEmailHttp(req, route, 401, { reason: "no_bearer" });
       return reply.code(401).send({ message: "No access token provided" });
     }
 
@@ -380,36 +311,24 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     try {
       session = app.jwt.verify<AuthSession>(token);
     } catch {
-      logAuthEmailHttp(req, route, 401, { reason: "invalid_access_jwt" });
       return reply
         .code(401)
         .send({ message: "Invalid or expired access token" });
-    }
-
-    const ipAllowed = checkAuthEmailIpRate(
-      "resend-email-confirmation",
-      req.ip,
-    );
-    if (!ipAllowed.allowed) {
-      logAuthEmailHttp(req, route, 429, { reason: "rate_limited" });
-      return reply.code(429).send({
-        message: "Too many requests. Please try again later.",
-      });
     }
 
     const result =
       await handleResendEmailConfirmationForAuthenticatedAccount(session);
 
     if (result.kind === "account_not_found") {
-      logAuthEmailHttp(req, route, 401, { reason: "account_not_found" });
       return reply.code(401).send({ message: "Account not found." });
     }
+    if (result.kind === "already_verified") {
+      return reply.code(400).send({ message: result.message });
+    }
     if (result.kind === "server_error_500") {
-      logAuthEmailHttp(req, route, 500, { reason: "handler_error" });
       return reply.code(500).send({ message: result.message });
     }
 
-    logAuthEmailHttp(req, route, 200);
     return reply.code(200).send({ message: result.message });
   });
 
@@ -478,11 +397,11 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       "personalDetails.email": normalizedEmail,
     })
       .select(
-        "_id personalDetails.email personalDetails.password employeeDetails emailVerified refreshSessionVersion",
+        "_id personalDetails.email personalDetails.password personalDetails.emailVerified employeeDetails emailVerified refreshSessionVersion",
       )
       .lean()) as {
       _id: unknown;
-      personalDetails: { email?: string; password?: string };
+      personalDetails: { email?: string; password?: string; emailVerified?: boolean };
       employeeDetails?: unknown;
       emailVerified?: boolean;
       refreshSessionVersion?: number;
@@ -509,7 +428,8 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       id: String(user._id),
       email: userEmail,
       type: "user",
-      emailVerified: user.emailVerified === true,
+      emailVerified:
+        user.personalDetails?.emailVerified === true || user.emailVerified === true,
     };
 
     // 3. Check employee link if present

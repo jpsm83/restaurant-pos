@@ -77,7 +77,10 @@ function CredentialsContent({
   const [resetEmailPending, setResetEmailPending] = useState(false);
 
   const profile = ctx.profile;
-  const showEmailVerifyBanner = profile.emailVerified === false;
+  const sessionNeedsVerification =
+    session?.type === "business" ? session.emailVerified !== true : false;
+  const showEmailVerifyBanner =
+    sessionNeedsVerification && profile.emailVerified === false;
   const signInEmail =
     session?.type === "business" ? session.email.trim() : profile.email.trim();
 

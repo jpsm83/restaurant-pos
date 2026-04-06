@@ -1,5 +1,8 @@
 # Auth Email Security Flows Implementation Plan
 
+> Status: historical implementation checklist. Some sections document superseded designs (hash/rate-limit/verification-intent phases).  
+> Canonical current behavior lives in `documentation/auth-email-security-flows.md`, `documentation/authentication-and-session.md`, and `documentation/frontend-authentication-and-navigation.md`.
+
 ## Goal
 
 Implement secure email-driven verification flows in this app (Fastify backend + React frontend) so critical account actions are confirmed through inbox links/tokens, including:

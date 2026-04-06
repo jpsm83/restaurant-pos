@@ -2,7 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import { resetPassword } from "@/auth/api";
 import { FieldError } from "@/components/FieldError";
@@ -47,12 +47,12 @@ function buildResetSchema(messages: {
 type FormValues = z.infer<ReturnType<typeof buildResetSchema>>;
 
 export default function ResetPasswordPage() {
-  const { t } = useTranslation("auth");
+  const { t } = useTranslation(["auth", "nav"]);
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const token = (searchParams.get("token") ?? "").trim();
 
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [done, setDone] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const schema = useMemo(
@@ -84,7 +84,7 @@ export default function ResetPasswordPage() {
         setSubmitError(result.error);
         return;
       }
-      setDone(true);
+      navigate("/login", { replace: true });
     } finally {
       setSubmitting(false);
     }
@@ -96,6 +96,19 @@ export default function ResetPasswordPage() {
     <main className="flex min-h-0 flex-1 flex-col items-center justify-center bg-neutral-100 px-4 py-8 sm:px-6 lg:px-8">
       <Card className="w-full max-w-md">
         <CardHeader>
+          <div className="flex flex-col items-center justify-center gap-2">
+            <img
+              src="/imperium.png"
+              alt={t("nav:brand.logoAlt")}
+              className="h-10 w-12 object-contain"
+              width={48}
+              height={40}
+            />
+            <span className="text-base font-semibold text-neutral-800">
+              {t("nav:brand.title")}
+            </span>
+          </div>
+          <hr className="my-4 w-full border-0 border-t border-neutral-200" />
           <CardTitle>{t("resetPassword.title")}</CardTitle>
           <CardDescription>{t("resetPassword.description")}</CardDescription>
         </CardHeader>
@@ -104,16 +117,7 @@ export default function ResetPasswordPage() {
             <Alert>{t("resetPassword.errors.missingToken")}</Alert>
           ) : null}
 
-          {done ? (
-            <div className="space-y-4">
-              <p className="text-sm text-neutral-700">
-                {t("resetPassword.successMessage")}
-              </p>
-              <Button asChild className="w-full">
-                <Link to="/login">{t("resetPassword.continueToSignIn")}</Link>
-              </Button>
-            </div>
-          ) : !missingToken ? (
+          {!missingToken ? (
             <form
               className="space-y-4"
               onSubmit={(e) => void handleSubmit(onSubmit)(e)}
@@ -157,11 +161,9 @@ export default function ResetPasswordPage() {
             </form>
           ) : null}
 
-          {!done ? (
-            <Button asChild variant="outline" className="w-full">
-              <Link to="/login">{t("resetPassword.backToSignIn")}</Link>
-            </Button>
-          ) : null}
+          <Button asChild variant="outline" className="w-full">
+            <Link to="/login">{t("resetPassword.backToSignIn")}</Link>
+          </Button>
         </CardContent>
       </Card>
     </main>
