@@ -97,20 +97,30 @@ const shouldUseChannel = (
   return options.preferredChannels.includes(channel);
 };
 
-const appendResult = (
-  results: CommunicationsChannelResult[],
-  result: CommunicationsChannelResult
-) => {
-  results.push(result);
+const logChannelResult = (input: {
+  eventName: CommunicationsEventName;
+  correlationId: string;
+  businessId?: Types.ObjectId;
+  result: CommunicationsChannelResult;
+}): void => {
+  console.info({
+    scope: DISPATCH_SCOPE,
+    stage: "channel_result",
+    eventName: input.eventName,
+    correlationId: input.correlationId,
+    channel: input.result.channel,
+    success: input.result.success,
+    sentCount: input.result.sentCount ?? 0,
+    error: input.result.error,
+    businessId: input.businessId?.toString(),
+  });
 };
 
 interface DispatchContext {
   eventName: CommunicationsEventName;
-  options?: CommunicationsDispatchOptions;
   correlationId: string;
   fireAndForget: boolean;
   businessId?: Types.ObjectId;
-  channelResults: CommunicationsChannelResult[];
   safeInAppSend: (input: {
     message: string;
     notificationType?: NotificationType;
@@ -320,7 +330,7 @@ const handleBusinessProfileUpdated: EventHandler<"BUSINESS_PROFILE_UPDATED"> = a
     text: buildBusinessProfileUpdatedEmailBody(p),
     businessId: p.businessId,
   });
-  };
+};
 
 const eventHandlers: {
   [K in CommunicationsEventName]: EventHandler<K>;
@@ -349,6 +359,8 @@ export const dispatchEvent = async <E extends CommunicationsEventName>(
     rawIdempotencyKey && rawIdempotencyKey.length > 0
       ? `${eventName}::${businessId?.toString() ?? "N/A"}::${rawIdempotencyKey}`
       : null;
+  const canUseInAppChannel = shouldUseChannel("inApp", options);
+  const canUseEmailChannel = shouldUseChannel("email", options);
 
   recordDispatchAttempt(eventName);
   console.info({
@@ -363,6 +375,7 @@ export const dispatchEvent = async <E extends CommunicationsEventName>(
 
   if (idempotencyKey) {
     const now = Date.now();
+    // Keep the in-memory idempotency map bounded by dropping stale keys first.
     cleanupExpiredIdempotencyEntries(now, idempotencyWindowMs);
     const lastRunAt = recentDispatches.get(idempotencyKey);
     if (lastRunAt && now - lastRunAt < idempotencyWindowMs) {
@@ -395,26 +408,16 @@ export const dispatchEvent = async <E extends CommunicationsEventName>(
       employeeUserIds?: Types.ObjectId[];
     };
   }) => {
-    if (!shouldUseChannel("inApp", options)) return;
+    if (!canUseInAppChannel) return;
     const result = await inAppChannel.send({
       ...input,
       eventName,
       correlationId,
       fireAndForget,
     });
-    appendResult(channelResults, result);
+    channelResults.push(result);
     recordChannelResult(eventName, result.channel, result.success);
-    console.info({
-      scope: DISPATCH_SCOPE,
-      stage: "channel_result",
-      eventName,
-      correlationId,
-      channel: result.channel,
-      success: result.success,
-      sentCount: result.sentCount ?? 0,
-      error: result.error,
-      businessId: businessId?.toString(),
-    });
+    logChannelResult({ eventName, correlationId, businessId, result });
   };
 
   const safeEmailSend = async (input: {
@@ -423,26 +426,16 @@ export const dispatchEvent = async <E extends CommunicationsEventName>(
     text: string;
     businessId: Types.ObjectId;
   }) => {
-    if (!shouldUseChannel("email", options)) return;
+    if (!canUseEmailChannel) return;
     const result = await emailChannel.send({
       ...input,
       eventName,
       correlationId,
       fireAndForget,
     });
-    appendResult(channelResults, result);
+    channelResults.push(result);
     recordChannelResult(eventName, result.channel, result.success);
-    console.info({
-      scope: DISPATCH_SCOPE,
-      stage: "channel_result",
-      eventName,
-      correlationId,
-      channel: result.channel,
-      success: result.success,
-      sentCount: result.sentCount ?? 0,
-      error: result.error,
-      businessId: businessId?.toString(),
-    });
+    logChannelResult({ eventName, correlationId, businessId, result });
   };
 
   const handler = eventHandlers[eventName];
@@ -451,11 +444,9 @@ export const dispatchEvent = async <E extends CommunicationsEventName>(
   }
   await handler(payload as CommunicationsEventPayloadMap[E], {
     eventName,
-    options,
     correlationId,
     fireAndForget,
     businessId,
-    channelResults,
     safeInAppSend,
     safeEmailSend,
   });

@@ -43,7 +43,8 @@
   },
   "sidebar": {
     "openMenu": "Open menu",
-    "closeMenu": "Close menu"
+    "closeMenu": "Close menu",
+    "toggleSidebar": "Toggle sidebar"
   },
   "footer": {
     "srOnly": "Footer"

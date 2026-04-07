@@ -1,4 +1,5 @@
 import { useWatch } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 import { subscriptionEnums } from "@packages/enums.ts";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -37,14 +38,19 @@ export default function BusinessSubscriptionsSettingsPage() {
 
 function SubscriptionSection({ ctx }: { ctx: BusinessProfileSettingsReady }) {
   const { control, setValue } = ctx;
+  const { t } = useTranslation("business");
   const selectedSubscription = useWatch({ control, name: "subscription" });
 
   return (
     <section className="space-y-3">
       <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-700">
-        Subscription
+        {t("subscriptionSettings.sectionTitle")}
       </h2>
-      <div role="radiogroup" aria-label="Subscription plan" className="grid gap-3 sm:grid-cols-3">
+      <div
+        role="radiogroup"
+        aria-label={t("subscriptionSettings.planGroupAriaLabel")}
+        className="grid gap-3 sm:grid-cols-3"
+      >
         {subscriptionEnums.map((plan) => {
           const isSelected = selectedSubscription === plan;
           return (
@@ -53,7 +59,7 @@ function SubscriptionSection({ ctx }: { ctx: BusinessProfileSettingsReady }) {
               type="button"
               role="radio"
               aria-checked={isSelected}
-              aria-label={`Select ${plan} plan`}
+              aria-label={t("subscriptionSettings.selectPlanAriaLabel", { plan })}
               className={`rounded-lg border p-4 text-left transition ${
                 isSelected
                   ? "border-neutral-900 bg-neutral-900 text-white"
@@ -67,7 +73,7 @@ function SubscriptionSection({ ctx }: { ctx: BusinessProfileSettingsReady }) {
                   isSelected ? "text-neutral-200" : "text-neutral-500"
                 }`}
               >
-                Selected plan for this business.
+                {t("subscriptionSettings.selectedPlanDescription")}
               </p>
             </button>
           );

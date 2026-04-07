@@ -13,8 +13,12 @@ export const emitLiveInAppNotification = (
 
 export const onLiveInAppNotification = (
   listener: (payload: LiveInAppNotificationEvent) => void
-): void => {
+): (() => void) => {
   liveInAppEvents.on(LIVE_EVENT_NAME, listener);
+  // Return unsubscribe so server/test lifecycles can remove listeners on close.
+  return () => {
+    liveInAppEvents.off(LIVE_EVENT_NAME, listener);
+  };
 };
 
 export default liveInAppEvents;

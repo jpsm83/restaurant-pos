@@ -45,6 +45,7 @@ It consolidates architecture, API contracts, WebSocket contracts, runbook operat
 ### 4) Live bridge ownership
 
 - `liveBridge` subscribes to persisted-notification events.
+- The bridge unsubscribes its EventEmitter listener on Fastify `onClose` to avoid listener buildup across repeated app lifecycles (tests/dev restarts).
 - Live route (`notificationsLive.ts`) only handles connection/auth/registry.
 - Bridge/channel handle push orchestration.
 
@@ -401,7 +402,7 @@ Current snapshots:
 - latest rolling:
   - `backend/src/communications/NOTIFICATIONS_PERFORMANCE_BASELINE_SNAPSHOT.json`
 - date-stamped history:
-  - `backend/src/communications/NOTIFICATIONS_PERFORMANCE_BASELINE_SNAPSHOT_2026-03-24.json`
+  - no dated snapshot is currently checked in.
 
 Notes:
 
@@ -420,6 +421,9 @@ Notes:
 - full backend closure proof:
   - `npm --prefix backend test`
   - result: `40` files, `605` tests passed.
+- dispatcher maintenance pass (no behavior change):
+  - `npm --prefix backend test -- tests/communications/communicationsCore.test.ts tests/communications/emailChannel.test.ts tests/integration/communicationsDomainFlows.test.ts`
+  - result: `3` files, `25` tests passed.
 
 ## Related implementation paths
 

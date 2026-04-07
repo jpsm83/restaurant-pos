@@ -103,6 +103,11 @@
       "typeToFilter": "Escribe para filtrar",
       "pressEnterToFilter": "Presiona Enter para filtrar"
     },
+    "header": {
+      "dragToReorder": "Arrastra para reordenar la columna",
+      "sortRowsByColumn": "Ordenar filas por esta columna",
+      "sortByAriaLabel": "Ordenar por {{column}}"
+    },
     "pagination": {
       "selectedCount": "{{selected}} de {{total}} seleccionados",
       "pageLabel": "Página {{page}} de {{totalPages}}",
@@ -209,5 +214,11 @@
       "errorFallback": "No se pudo enviar el correo. Inténtalo más tarde.",
       "missingEmail": "No hay correo de acceso disponible para esta sesión."
     }
+  },
+  "subscriptionSettings": {
+    "sectionTitle": "Suscripción",
+    "planGroupAriaLabel": "Plan de suscripción",
+    "selectPlanAriaLabel": "Seleccionar plan {{plan}}",
+    "selectedPlanDescription": "Plan seleccionado para este negocio."
   }
 }

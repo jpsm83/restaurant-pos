@@ -103,6 +103,11 @@
       "typeToFilter": "Type to filter",
       "pressEnterToFilter": "Press Enter to filter"
     },
+    "header": {
+      "dragToReorder": "Drag to reorder column",
+      "sortRowsByColumn": "Sort rows by this column",
+      "sortByAriaLabel": "Sort by {{column}}"
+    },
     "pagination": {
       "selectedCount": "{{selected}} of {{total}} selected",
       "pageLabel": "Page {{page}} of {{totalPages}}",
@@ -209,5 +214,11 @@
       "errorFallback": "Could not send the email. Try again later.",
       "missingEmail": "No sign-in email is available for this session."
     }
+  },
+  "subscriptionSettings": {
+    "sectionTitle": "Subscription",
+    "planGroupAriaLabel": "Subscription plan",
+    "selectPlanAriaLabel": "Select {{plan}} plan",
+    "selectedPlanDescription": "Selected plan for this business."
   }
 }

@@ -43,7 +43,8 @@
   },
   "sidebar": {
     "openMenu": "Abrir menú",
-    "closeMenu": "Cerrar menú"
+    "closeMenu": "Cerrar menú",
+    "toggleSidebar": "Alternar barra lateral"
   },
   "footer": {
     "srOnly": "Pie de página"

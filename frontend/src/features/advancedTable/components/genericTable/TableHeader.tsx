@@ -1,5 +1,6 @@
 import { flexRender, type Header, type HeaderGroup, type Table } from "@tanstack/react-table";
 import { ArrowDown, ArrowUp, ArrowUpDown, GripVertical } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 
 export interface StandaloneTableHeaderProps<TData> {
@@ -24,6 +25,7 @@ export const TableHeader = <TData,>({
   children,
   config,
 }: StandaloneTableHeaderProps<TData>) => {
+  const { t } = useTranslation("business");
   const {
     isDraggable = false,
     draggedColumn = null,
@@ -67,7 +69,7 @@ export const TableHeader = <TData,>({
                   {canDragColumn && (
                     <span
                       className="cursor-grab opacity-100"
-                      title="Drag to reorder column"
+                      title={t("advancedTable.header.dragToReorder")}
                     >
                       <GripVertical className="h-4 w-4 text-muted-foreground" />
                     </span>
@@ -77,8 +79,8 @@ export const TableHeader = <TData,>({
                       variant="ghost"
                       size="sm"
                       className="flex h-auto flex-1 items-center justify-between gap-2 rounded px-1 py-0.5 text-left hover:bg-card"
-                      aria-label={`Sort by ${columnId}`}
-                      title="Sort rows by this column"
+                      aria-label={t("advancedTable.header.sortByAriaLabel", { column: columnId })}
+                      title={t("advancedTable.header.sortRowsByColumn")}
                       onClick={(event) => {
                         event.stopPropagation();
                         header.column.toggleSorting(sortDirection === "asc");

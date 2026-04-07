@@ -6,7 +6,7 @@ Developer guide for **i18next** + **react-i18next** in `frontend/`.
 
 | Document | Role |
 |----------|------|
-| [`i18n-implementation-plan.md`](./i18n-implementation-plan.md) | **Status and backlog**: what is done (`en`/`es`, namespaces, parity script), what is optional next (Intl, i18next-parser). |
+| [`i18n-implementation-plan.md`](./i18n-implementation-plan.md) | **Status and backlog**: what is done (`en`/`es`, namespaces), what is optional next (Intl, i18next-parser). |
 | [`i18n-locale-coverage-todo.md`](./i18n-locale-coverage-todo.md) | **Inventory**: which TSX files use which namespace; blocks 0–9 completed Mar 2026. |
 | [`frontend-third-party-libraries.md`](./frontend-third-party-libraries.md) | **Forms + npm stack**: React Hook Form + Zod schemas usually take **`t("…")` message strings** in the **same file as the form**; add matching keys under `auth` (and other namespaces) in **`en`/`es`**. |
 | [`auth-email-security-flows.md`](./auth-email-security-flows.md) | **Auth email UI copy**: forgot/reset/confirm/request-confirmation pages use the **`auth`** namespace (`forgotPassword`, `resetPassword`, `confirmEmail`, `requestEmailConfirmation`, etc.); keep **`en`/`es`** in lockstep when changing those flows. |
@@ -20,7 +20,6 @@ Developer guide for **i18next** + **react-i18next** in `frontend/`.
 | [`frontend/src/i18n/i18n.ts`](../frontend/src/i18n/i18n.ts) | **Only TS entry:** i18next bootstrap (glob of locale JSON, `init`, `changeAppLanguage`, storage key, `react.useSuspense: false`). `main.tsx` side-imports `./i18n/i18n` before render; app code imports `@/i18n/i18n` when it needs the singleton or helpers. |
 | `frontend/src/i18n/locales/<lang>/<namespace>.json` | One file per **namespace** per **language** (`en`, `es` only). |
 | [`frontend/src/test/i18nTestUtils.tsx`](../frontend/src/test/i18nTestUtils.tsx) | Tests: `createTestI18n()`, `renderWithI18n()` (isolated instance + `I18nextProvider`). |
-| [`frontend/scripts/check-i18n-locale-parity.mjs`](../frontend/scripts/check-i18n-locale-parity.mjs) | **`npm run i18n:check-parity`** — fails CI if `en` and `es` differ in leaf key paths for any namespace. |
 
 **Namespaces** (must match `NAMESPACES` in `i18n.ts`): `common`, `nav`, `auth`, `marketing`, `business`, `customer`, `employee`, `mode`, `errors`.
 
@@ -31,7 +30,7 @@ Adding a **new namespace** requires: a new entry in `NAMESPACES`, `<namespace>.j
 ## Locale coverage (March 2026)
 
 - **Spanish (`es`)** is **fully keyed and translated** for all nine namespaces, matching the [presentation inventory](./i18n-locale-coverage-todo.md).
-- Run **`npm run i18n:check-parity`** from **`frontend/`** before merge when touching locale JSON.
+- Before merge when touching locale JSON, verify that `frontend/src/i18n/locales/en` and `frontend/src/i18n/locales/es` keep the same namespace files and key paths.
 
 ---
 
@@ -56,8 +55,14 @@ Adding a **new namespace** requires: a new entry in `NAMESPACES`, `<namespace>.j
 - **`settings.*`** — Labels for **settings destinations** shared by the **sidebar** and **`AccountMenuPopover`**: `title`, `profile`, `address`, `subscriptions`, `credentials`, `delivery`, `metrics`, `openHours`. Use `t("settings.profile")`, `t("settings.delivery")`, etc. with `useTranslation("nav")`. This keeps copy aligned whether the link appears in the business sidebar or the account dropdown. **`settings.address`** is the page title for **`/business/:businessId/settings/address`** (structured postal address + map preview; see [`context.md`](./context.md) *Business address settings — location preview*). **`settings.credentials`** titles the credentials route; explainer + **password reset by email** copy lives in **`business.credentialsSettings.*`** (e.g. **`passwordChangeEmail.*`**). Profile save validation strings stay under **`profileForm.validation.*`** plus **`profile.validationSummary`**.
 - **`account.*`** — **Account menu** and actor chrome that are **not** tied to a `/settings/…` route: `menuAriaLabel`, `actorType.*`, `dashboard`, `favorites`, `home`, `logOut`, `language`, mode-switch labels (`employeeArea`, `customerHome`), etc.
 - **`sidebar.*`** — **Sidebar chrome only**: `openMenu`, `closeMenu` (tooltips for expand/collapse).
+  Shared sidebar primitives in `frontend/src/components/ui/sidebar.tsx` also consume `sidebar.toggleSidebar` for trigger/rail screen-reader labels and tooltips.
 
 Do **not** reintroduce `sidebar.settings.*` or `account.profile`; both were folded into **`settings.profile`** for consistency.
+
+`business` namespace additions used by TSX pages/components:
+
+- `business.subscriptionSettings.*` powers `BusinessSubscriptionsSettingsPage` labels/aria copy.
+- `business.advancedTable.header.*` powers generic table header drag/sort tooltip+aria text.
 
 ---
 
@@ -67,7 +72,7 @@ Do **not** reintroduce `sidebar.settings.*` or `account.profile`; both were fold
 2. **Edit** `frontend/src/i18n/locales/en/<namespace>.json` — add or adjust nested keys and English value.
 3. **Spanish:** Add the **same key paths** under `es/<namespace>.json` with translated values. Missing keys fall back to **`en`** via `fallbackLng`.
 4. **Component:** `useTranslation("<namespace>")` and `t("your.key")`, or `<Trans i18nKey="…" ns="…" />` as needed.
-5. **Verify:** `npm run i18n:check-parity` from `frontend/`.
+5. **Verify:** ensure `en/<namespace>.json` and `es/<namespace>.json` have the same key tree for every namespace you touched.
 6. **Tests** that assert visible text: prefer **`renderWithI18n`** from `@/test/i18nTestUtils` instead of importing `@/i18n/i18n` (avoids mutating the app singleton). Spying **`changeAppLanguage`** may still require importing `@/i18n/i18n` (see `Navbar.test.tsx`).
 
 ---
@@ -83,7 +88,7 @@ Do **not** reintroduce `sidebar.settings.*` or `account.profile`; both were fold
 
 ## Supported languages
 
-Codes: **`en`**, **`es`** only. Flags: **US** (English), **ES** (Spanish). To add more languages later: new folder under `locales/`, extend `SUPPORTED_LANGUAGES` in `i18n/i18n.ts` and `useLanguageOptions.ts`, add `languages.<code>` in **`en`** and **`es`** `common.json`, and extend the parity script’s expectations (still one `es` mirror per namespace, or generalize the script).
+Codes: **`en`**, **`es`** only. Flags: **US** (English), **ES** (Spanish). To add more languages later: new folder under `locales/`, extend `SUPPORTED_LANGUAGES` in `i18n/i18n.ts` and `useLanguageOptions.ts`, add `languages.<code>` in **`en`** and **`es`** `common.json`, and keep locale key trees synchronized across supported languages.
 
 ---
 

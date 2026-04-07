@@ -7,7 +7,7 @@ const isLiveInAppEnabled = (): boolean =>
   process.env.COMMUNICATIONS_INAPP_LIVE_ENABLED !== "false";
 
 export const registerLiveInAppBridge = (app: FastifyInstance): void => {
-  onLiveInAppNotification(async (payload) => {
+  const unsubscribe = onLiveInAppNotification(async (payload) => {
     if (!isLiveInAppEnabled()) return;
 
     const result = await liveInAppChannel.send(payload, app.log);
@@ -34,6 +34,11 @@ export const registerLiveInAppBridge = (app: FastifyInstance): void => {
       connectedUsers: liveMetrics.connectedUsers,
       connectedSockets: liveMetrics.connectedSockets,
     });
+  });
+
+  // Ensure test/server shutdown does not leak global EventEmitter listeners.
+  app.addHook("onClose", async () => {
+    unsubscribe();
   });
 };
 
