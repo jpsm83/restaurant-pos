@@ -2,9 +2,7 @@
 
 # dependencies — ignore installed packages in the root and every child folder
 node_modules/
-**/node_modules/
-**/node_modules/**
-/.pnp
+.pnp
 .pnp.*
 .yarn/*
 !.yarn/patches
@@ -13,19 +11,24 @@ node_modules/
 !.yarn/versions
 
 # testing
-/coverage
+coverage/
 
 # next.ts
-/.next/
-/out/
+.next/
+out/
 
 # production
-/build
+build/
 dist/
 
 # misc
 .DS_Store
 *.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
 
 # debug
 npm-debug.log*

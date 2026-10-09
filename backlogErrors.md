@@ -1,3 +1,4 @@
+- add zod to backend
 - review all the pages for mobile first
 
 - NOT FOR NOW BUT VERY CRITICAL
