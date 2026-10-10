@@ -16,7 +16,7 @@ vi.mock("../../src/inventories/updateDynamicCountSupplierGood.ts", () => ({
   default: vi.fn(async () => true as const),
 }));
 
-describe.sequential("createOrders validation", () => {
+describe("createOrders validation", () => {
   let businessId: Types.ObjectId;
   let otherBusinessId: Types.ObjectId;
   let salesPointId: Types.ObjectId;

@@ -1,6 +1,8 @@
 import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
+import { z } from "zod";
 import type { NotificationType } from "../../communications/types.ts";
+import { coercedIntSchema } from "../../../../packages/schemas/primitives.ts";
 
 import isObjectIdValid from "../../utils/isObjectIdValid.ts";
 import Notification from "../../models/notification.ts";
@@ -64,68 +66,40 @@ type NotificationUpdateBody = {
   customersRecipientsIds?: Types.ObjectId[];
 };
 
-const paginationQuerystringSchema = {
-  type: "object",
-  properties: {
-    page: { type: "integer", minimum: 1 },
-    limit: { type: "integer", minimum: 1, maximum: MAX_LIMIT },
-    includeRecipients: { type: "string", enum: ["true", "false"] },
-  },
-  additionalProperties: false,
-} as const;
+const paginationQuerystringSchema = z.strictObject({
+  page: coercedIntSchema.min(1).optional(),
+  limit: coercedIntSchema.min(1).max(MAX_LIMIT).optional(),
+  includeRecipients: z.enum(["true", "false"]).optional(),
+});
 
-const notificationIdParamsSchema = {
-  type: "object",
-  required: ["notificationId"],
-  properties: {
-    notificationId: { type: "string", minLength: 1 },
-  },
-  additionalProperties: false,
-} as const;
+const notificationIdParamsSchema = z.strictObject({
+  notificationId: z.string().min(1),
+});
 
-const businessIdParamsSchema = {
-  type: "object",
-  required: ["businessId"],
-  properties: {
-    businessId: { type: "string", minLength: 1 },
-  },
-  additionalProperties: false,
-} as const;
+const businessIdParamsSchema = z.strictObject({
+  businessId: z.string().min(1),
+});
 
-const userIdParamsSchema = {
-  type: "object",
-  required: ["userId"],
-  properties: {
-    userId: { type: "string", minLength: 1 },
-  },
-  additionalProperties: false,
-} as const;
+const userIdParamsSchema = z.strictObject({
+  userId: z.string().min(1),
+});
 
-const createNotificationBodySchema = {
-  type: "object",
-  required: ["notificationType", "message", "businessId"],
-  properties: {
-    notificationType: { type: "string", minLength: 1 },
-    message: { type: "string", minLength: 1 },
-    businessId: { type: "string", minLength: 1 },
-    senderId: { type: "string" },
-    employeesRecipientsIds: { type: "array", items: { type: "string" } },
-    customersRecipientsIds: { type: "array", items: { type: "string" } },
-  },
-  additionalProperties: false,
-} as const;
+const createNotificationBodySchema = z.strictObject({
+  notificationType: z.string().min(1),
+  message: z.string().min(1),
+  businessId: z.string().min(1),
+  senderId: z.string().optional(),
+  employeesRecipientsIds: z.array(z.string()).optional(),
+  customersRecipientsIds: z.array(z.string()).optional(),
+});
 
-const patchNotificationBodySchema = {
-  type: "object",
-  properties: {
-    notificationType: { type: "string", minLength: 1 },
-    message: { type: "string", minLength: 1 },
-    senderId: { type: "string" },
-    employeesRecipientsIds: { type: "array", items: { type: "string" } },
-    customersRecipientsIds: { type: "array", items: { type: "string" } },
-  },
-  additionalProperties: false,
-} as const;
+const patchNotificationBodySchema = z.strictObject({
+  notificationType: z.string().min(1).optional(),
+  message: z.string().min(1).optional(),
+  senderId: z.string().optional(),
+  employeesRecipientsIds: z.array(z.string()).optional(),
+  customersRecipientsIds: z.array(z.string()).optional(),
+});
 
 export const notificationsRoutes: FastifyPluginAsync = async (app) => {
   // Route boundary:

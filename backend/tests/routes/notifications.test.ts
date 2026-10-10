@@ -146,8 +146,20 @@ describe("Notifications Routes", () => {
       });
 
       expect(response.statusCode).toBe(400);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
       const body = JSON.parse(response.body);
-      expect(body.message).toContain("required");
+      expect(body.type).toBe(
+        "https://restaurant-pos.app/errors/validation",
+      );
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          { path: "notificationType", message: expect.any(String) },
+          { path: "message", message: expect.any(String) },
+          { path: "businessId", message: expect.any(String) },
+        ]),
+      );
     });
 
     it("returns 400 for empty recipients array", async () => {

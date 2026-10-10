@@ -676,7 +676,7 @@ describe("Purchases Routes", () => {
     });
   });
 
-  describe.sequential("Transaction Tests - PATCH editSupplierGood", () => {
+  describe("Transaction Tests - PATCH editSupplierGood", () => {
     it("edits supplier good quantity and syncs inventory", async () => {
       const app = await getTestApp();
 

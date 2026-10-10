@@ -12,10 +12,14 @@ import jwt from "@fastify/jwt";
 import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
 import websocket from "@fastify/websocket";
+import {
+  serializerCompiler,
+  validatorCompiler,
+} from "@fastify/type-provider-zod";
 
 import connectDb from "./db/connectDb.ts";
 import { registerV1Routes } from "./routes/v1/index.ts";
-import { toHttpError, type HttpErrorShape } from "./utils/httpError.ts";
+import { registerProblemDetailsHandler } from "./errors/problemDetails.ts";
 import { AUTH_CONFIG } from "./auth/config.ts";
 import { buildCorsOptions } from "./config/cors.ts";
 import liveConnectionRegistry from "./communications/live/connectionRegistry.ts";
@@ -53,18 +57,16 @@ export async function buildApp(
   const server = Fastify({ logger });
 
   /**
-   * Global error handler
+   * zod is the single boundary validator: route schemas compile to the
+   * validator and serializer for every route.
    */
-  server.setErrorHandler((err, _req, reply) => {
-    const httpErr: HttpErrorShape = toHttpError(err);
+  server.setValidatorCompiler(validatorCompiler);
+  server.setSerializerCompiler(serializerCompiler);
 
-    server.log.error(err);
-
-    reply
-      .code(httpErr.statusCode)
-      .type("application/json")
-      .send({ message: httpErr.message });
-  });
+  /**
+   * Global error handler — emits RFC 9457 application/problem+json.
+   */
+  registerProblemDetailsHandler(server);
 
   /**
    * Register plugins

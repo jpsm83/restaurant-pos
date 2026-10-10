@@ -106,7 +106,7 @@ async function createCustomerActor() {
   return { user, token };
 }
 
-describe.sequential("SalesInstances flows (Task 12)", () => {
+describe("SalesInstances flows (Task 12)", () => {
   let app: Awaited<ReturnType<typeof getTestApp>>;
   let businessId: Types.ObjectId;
   let salesPointId: Types.ObjectId;

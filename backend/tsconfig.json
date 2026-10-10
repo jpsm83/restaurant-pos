@@ -13,17 +13,14 @@
       "vitest/globals"
     ],
     "noEmit": true,
-    "baseUrl": ".",
-    "allowImportingTsExtensions": true,
-    "paths": {
-      "@lib/*": ["../lib/*"]
-    },
+    "allowImportingTsExtensions": true
   },
   "include": [
     "src/**/*.ts",
     "scripts/**/*.ts",
     "tests/**/*.ts",
     "../packages/shared/src/**/*.ts",
+    "../packages/schemas/**/*.ts",
     "../packages/utils/isBusinessOpenNow.ts",
     "../packages/enums.ts"
 , "scripts/importDummyData.ts"  ]
