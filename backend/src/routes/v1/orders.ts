@@ -129,6 +129,8 @@ export const ordersRoutes: FastifyPluginAsync = async (app) => {
         const PRICE_TOLERANCE = 0.01;
         for (let i = 0; i < pricedOrders.length; i++) {
           const backend = pricedOrders[i];
+          // `discountPercentage` is not client-settable, so it is absent from
+          // the DTO. The cast keeps the pre-existing tolerance check verbatim.
           const client = ordersArr[i] as {
             orderNetPrice?: number;
             promotionApplyed?: string;
@@ -173,7 +175,7 @@ export const ordersRoutes: FastifyPluginAsync = async (app) => {
         await session.commitTransaction();
         return reply.code(201).send({ message: "Order created" });
       } catch (e) {
-        await session.abortTransaction();
+        await session.abortTransaction().catch(() => undefined);
         throw e;
       } finally {
         session.endSession();
@@ -271,7 +273,7 @@ export const ordersRoutes: FastifyPluginAsync = async (app) => {
 
         return reply.code(200).send({ message: "Order deleted successfully!" });
       } catch (error) {
-        await session.abortTransaction();
+        await session.abortTransaction().catch(() => undefined);
         throw error;
       } finally {
         session.endSession();

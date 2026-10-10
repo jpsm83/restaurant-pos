@@ -4,10 +4,11 @@
  *
  * Strict (unknown keys rejected) and client-settable only: the server-owned
  * fields (`createdByUserId`, `createdAsRole`, `billingStatus`, `orderStatus`,
- * the promotion-derived `discountPercentage`) never appear in a DTO. ObjectIds
- * inside the order array are validated with the shared ObjectId schema; the
- * key whitelist, price/cost presence and price-tolerance rules stay as named
- * post-parse checks in the route.
+ * the promotion-derived `discountPercentage`) never appear in a DTO, so a
+ * client that sends them gets a `400`. ObjectIds inside the order array are
+ * validated with the shared ObjectId schema; the per-order key whitelist is
+ * enforced here by `z.strictObject`, while `ordersArrValidation` and the
+ * price-tolerance check stay in the route as named post-parse checks.
  */
 import { z } from "zod";
 
