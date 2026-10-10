@@ -1,5 +1,5 @@
 import { Types } from "mongoose";
-import type { IAddress } from "./IAddress";
+import type { IAddress } from "./IAddress.ts";
 
 export interface IsupplierGoodWastePercentage {
   veryLowBudgetImpact: number;

@@ -70,6 +70,7 @@ describe("DailySalesReports routes - Task T2 integration", () => {
       id: user._id.toString(),
       email: user.personalDetails.email,
       type: "user",
+      role: "Manager",
     });
   };
 

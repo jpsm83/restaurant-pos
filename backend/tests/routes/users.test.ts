@@ -225,6 +225,7 @@ describe("Users Routes", () => {
         id: user._id.toString(),
         email: "patchuser@test.com",
         type: "user",
+        role: "Customer",
       });
 
       const form = new FormData();
@@ -252,6 +253,7 @@ describe("Users Routes", () => {
         id: fakeId.toString(),
         email: "ghost@test.com",
         type: "user",
+        role: "Customer",
       });
 
       const form = new FormData();

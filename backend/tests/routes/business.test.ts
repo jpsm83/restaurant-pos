@@ -407,6 +407,7 @@ describe("Business Routes", () => {
         id: fakeId.toString(),
         email: "ghost@business.com",
         type: "business",
+        role: "Tenant",
       });
 
       const boundary = "----formdata";
@@ -505,6 +506,7 @@ describe("Business Routes", () => {
         id: business._id.toString(),
         email: "original@business.com",
         type: "business",
+        role: "Tenant",
       });
 
       const boundary = "----formdata";
@@ -573,6 +575,7 @@ describe("Business Routes", () => {
           id: business._id.toString(),
           email: "verified-patch@business.com",
           type: "business",
+          role: "Tenant",
         });
 
         const boundary = "----formdata";
@@ -676,6 +679,7 @@ describe("Business Routes", () => {
         id: business._id.toString(),
         email: "notify@business.com",
         type: "business",
+        role: "Tenant",
       });
 
       const boundary = "----formdata";
@@ -793,6 +797,7 @@ describe("Business Routes", () => {
         id: business._id.toString(),
         email: "emaildispatch@business.com",
         type: "business",
+        role: "Tenant",
       });
 
       const emailSpy = vi.spyOn(emailChannel, "send").mockResolvedValue({
@@ -911,6 +916,7 @@ describe("Business Routes", () => {
         id: business._id.toString(),
         email: "nochange@business.com",
         type: "business",
+        role: "Tenant",
       });
 
       const boundary = "----formdata";
@@ -990,6 +996,7 @@ describe("Business Routes", () => {
         id: business._id.toString(),
         email: "pwdgate@business.com",
         type: "business",
+        role: "Tenant",
       });
 
       const boundary = "----formdata";
@@ -1050,6 +1057,7 @@ describe("Business Routes", () => {
         id: business._id.toString(),
         email: "pwdwrong@business.com",
         type: "business",
+        role: "Tenant",
       });
 
       const boundary = "----formdata";

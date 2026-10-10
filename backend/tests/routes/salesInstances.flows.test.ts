@@ -76,6 +76,7 @@ async function createManagerActor(businessId: Types.ObjectId) {
     id: user._id.toString(),
     email: user.personalDetails.email,
     type: "user",
+    role: "Manager",
   });
   return { user, employee, token };
 }
@@ -102,6 +103,7 @@ async function createCustomerActor() {
     id: user._id.toString(),
     email: user.personalDetails.email,
     type: "user",
+    role: "Customer",
   });
   return { user, token };
 }

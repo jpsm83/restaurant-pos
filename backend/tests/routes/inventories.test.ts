@@ -635,6 +635,7 @@ describe("Inventories Routes", () => {
         employeeId: employee._id.toString(),
         businessId: businessId.toString(),
         canLogAsEmployee: true,
+        role: "Manager",
       });
 
       const response = await app.inject({

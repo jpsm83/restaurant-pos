@@ -130,6 +130,7 @@ describe("POST /api/v1/auth/resend-email-confirmation", () => {
       id: new Types.ObjectId().toString(),
       email: "ghost@example.com",
       type: "user",
+      role: "Customer",
     });
     const response = await app.inject({
       method: "POST",
@@ -151,6 +152,7 @@ describe("POST /api/v1/auth/resend-email-confirmation", () => {
       id: String(u._id),
       email: "verified-resend@example.com",
       type: "user",
+      role: "Customer",
     });
     const response = await app.inject({
       method: "POST",
@@ -172,6 +174,7 @@ describe("POST /api/v1/auth/resend-email-confirmation", () => {
       id: String(u._id),
       email: "pending-resend@example.com",
       type: "user",
+      role: "Customer",
     });
     const response = await app.inject({
       method: "POST",
@@ -193,6 +196,7 @@ describe("POST /api/v1/auth/resend-email-confirmation", () => {
       id: String(b._id),
       email: "biz-verified@example.com",
       type: "business",
+      role: "Tenant",
     });
     const response = await app.inject({
       method: "POST",
@@ -214,6 +218,7 @@ describe("POST /api/v1/auth/resend-email-confirmation", () => {
       id: String(b._id),
       email: "biz-pending@example.com",
       type: "business",
+      role: "Tenant",
     });
     const response = await app.inject({
       method: "POST",

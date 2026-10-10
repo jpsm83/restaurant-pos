@@ -746,6 +746,7 @@ describe("Purchases Routes", () => {
         type: "user",
         businessId: businessId.toString(),
         canLogAsEmployee: true,
+        role: "Manager",
       });
 
       // Edit: change quantity from 10 to 25 (difference: +15)

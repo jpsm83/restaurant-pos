@@ -417,6 +417,7 @@ describe("Reservations Routes", () => {
         id: user._id.toString(),
         email: "rescustomer@test.com",
         type: "user",
+        role: "Customer",
       });
 
       const futureDate = new Date();
@@ -508,6 +509,7 @@ describe("Reservations Routes", () => {
         type: "user",
         businessId: business._id.toString(),
         canLogAsEmployee: true,
+        role: "Admin",
       });
 
       const futureDate = new Date();
@@ -595,6 +597,7 @@ describe("Reservations Routes", () => {
         type: "user",
         businessId: business._id.toString(),
         canLogAsEmployee: true,
+        role: "Host",
       });
 
       const response = await app.inject({

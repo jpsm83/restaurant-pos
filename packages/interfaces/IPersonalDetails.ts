@@ -1,4 +1,4 @@
-import { IAddress } from "./IAddress";
+import { IAddress } from "./IAddress.ts";
 
 export interface IPersonalDetails {
   username: string;

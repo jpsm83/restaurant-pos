@@ -1,5 +1,5 @@
 import { Types } from "mongoose";
-import { IAddress } from "./IAddress";
+import { IAddress } from "./IAddress.ts";
 
 export interface ISupplier {
   _id?: Types.ObjectId | string;
