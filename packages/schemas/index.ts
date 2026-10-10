@@ -5,3 +5,4 @@
  */
 export * from "./primitives.ts";
 export * from "./auth.ts";
+export * from "./ratings.ts";
