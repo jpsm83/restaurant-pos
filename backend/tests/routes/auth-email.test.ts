@@ -182,7 +182,7 @@ describe("auth-email routes (checklist)", () => {
         payload: { token: randomToken() },
       });
       expect(res.statusCode).toBe(400);
-      expect(JSON.parse(res.body).message).toBe(
+      expect(JSON.parse(res.body).detail).toBe(
         CONFIRM_EMAIL_CONSUMPTION_ERROR_MESSAGE,
       );
     });
@@ -212,7 +212,7 @@ describe("auth-email routes (checklist)", () => {
         payload: { token: raw },
       });
       expect(second.statusCode).toBe(400);
-      expect(JSON.parse(second.body).message).toBe(
+      expect(JSON.parse(second.body).detail).toBe(
         CONFIRM_EMAIL_CONSUMPTION_ERROR_MESSAGE,
       );
     });
@@ -293,7 +293,7 @@ describe("auth-email routes (checklist)", () => {
         payload: { token: raw, newPassword: "short" },
       });
       expect(res.statusCode).toBe(400);
-      expect(JSON.parse(res.body).message).toBe(PASSWORD_POLICY_MESSAGE);
+      expect(JSON.parse(res.body).errors[0].message).toBe(PASSWORD_POLICY_MESSAGE);
 
       const row = await User.findById(user._id)
         .select("resetPasswordToken")

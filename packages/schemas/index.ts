@@ -4,3 +4,4 @@
  * sanitization.
  */
 export * from "./primitives.ts";
+export * from "./auth.ts";

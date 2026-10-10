@@ -98,3 +98,6 @@ export const notFound = (detail = "Not Found"): AppError =>
 
 export const conflict = (detail = "Conflict"): AppError =>
   new AppError(detail, { statusCode: 409 });
+
+export const internal = (detail = "Internal Server Error"): AppError =>
+  new AppError(detail, { statusCode: 500 });

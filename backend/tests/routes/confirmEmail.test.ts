@@ -88,7 +88,7 @@ describe("POST /api/v1/auth/confirm-email", () => {
       payload: { token: "" },
     });
     expect(empty.statusCode).toBe(400);
-    expect(JSON.parse(empty.body).message).toBe(
+    expect(JSON.parse(empty.body).errors[0].message).toBe(
       CONFIRM_EMAIL_MISSING_TOKEN_MESSAGE,
     );
 
@@ -155,7 +155,7 @@ describe("POST /api/v1/auth/confirm-email", () => {
     });
 
     expect(response.statusCode).toBe(400);
-    expect(JSON.parse(response.body).message).toBe(
+    expect(JSON.parse(response.body).detail).toBe(
       CONFIRM_EMAIL_CONSUMPTION_ERROR_MESSAGE,
     );
   });
@@ -179,7 +179,7 @@ describe("POST /api/v1/auth/confirm-email", () => {
       payload: { token: raw },
     });
     expect(second.statusCode).toBe(400);
-    expect(JSON.parse(second.body).message).toBe(
+    expect(JSON.parse(second.body).detail).toBe(
       CONFIRM_EMAIL_CONSUMPTION_ERROR_MESSAGE,
     );
   });

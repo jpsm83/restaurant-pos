@@ -127,8 +127,12 @@ describe("Auth Routes", () => {
       });
 
       expect(response.statusCode).toBe(401);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid credentials");
+      const body = response.json();
+      expect(body.type).toBe("https://restaurant-pos.app/errors/unauthorized");
+      expect(body.detail).toBe("Invalid credentials");
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
     });
 
     it("returns 400 for missing email/password", async () => {
@@ -141,6 +145,15 @@ describe("Auth Routes", () => {
       });
 
       expect(response.statusCode).toBe(400);
+      const body = response.json();
+      expect(body.type).toBe("https://restaurant-pos.app/errors/validation");
+      expect(body.detail).toBe("Request body is invalid");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: "email" }),
+          expect.objectContaining({ path: "password" }),
+        ]),
+      );
     });
 
     it("returns 401 for non-existent user", async () => {
@@ -181,8 +194,9 @@ describe("Auth Routes", () => {
       });
 
       expect(response.statusCode).toBe(401);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("No refresh token provided");
+      const body = response.json();
+      expect(body.type).toBe("https://restaurant-pos.app/errors/unauthorized");
+      expect(body.detail).toBe("No refresh token provided");
     });
 
     it("returns 401 for invalid refresh token", async () => {
@@ -195,8 +209,9 @@ describe("Auth Routes", () => {
       });
 
       expect(response.statusCode).toBe(401);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid or expired refresh token");
+      const body = response.json();
+      expect(body.type).toBe("https://restaurant-pos.app/errors/unauthorized");
+      expect(body.detail).toBe("Invalid or expired refresh token");
     });
 
     it("returns 200 with new access token when refresh cookie matches session version", async () => {
@@ -301,8 +316,9 @@ describe("Auth Routes", () => {
       });
 
       expect(response.statusCode).toBe(401);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("No access token provided");
+      const body = response.json();
+      expect(body.type).toBe("https://restaurant-pos.app/errors/unauthorized");
+      expect(body.detail).toBe("No access token provided");
     });
 
     it("returns 401 for invalid token", async () => {
@@ -315,8 +331,9 @@ describe("Auth Routes", () => {
       });
 
       expect(response.statusCode).toBe(401);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid or expired access token");
+      const body = response.json();
+      expect(body.type).toBe("https://restaurant-pos.app/errors/unauthorized");
+      expect(body.detail).toBe("Invalid or expired access token");
     });
   });
 
@@ -440,6 +457,81 @@ describe("Auth Routes", () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.mode).toBe("customer");
+    });
+  });
+
+  describe("request DTO contract", () => {
+    it("rejects unknown keys with a validation problem document", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: { email: "a@b.com", password: "x", isAdmin: true },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      const body = response.json();
+      expect(body.type).toBe("https://restaurant-pos.app/errors/validation");
+      expect(body.detail).toBe("Request body is invalid");
+    });
+
+    it("rejects server-owned fields on signup", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/signup",
+        payload: {
+          email: "server-owned@example.com",
+          password: "TestPassword123!",
+          emailVerified: true,
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+      const body = response.json();
+      expect(body.type).toBe("https://restaurant-pos.app/errors/validation");
+    });
+
+    it("normalizes the login email (trim + lowercase)", async () => {
+      const app = await getTestApp();
+
+      await User.create({
+        personalDetails: {
+          email: "normalized@test.com",
+          password: hashedPassword,
+          firstName: "Norm",
+          lastName: "Alized",
+          phoneNumber: "1234567890",
+          birthDate: new Date("1990-01-01"),
+          gender: "Man",
+          nationality: "USA",
+          address: {
+            country: "USA",
+            state: "CA",
+            city: "LA",
+            street: "Main St",
+            buildingNumber: "123",
+            postCode: "90001",
+          },
+          idNumber: "ID-NORM",
+          idType: "Passport",
+          username: "normalized",
+        },
+        allUserRoles: ["Customer"],
+      });
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: { email: "  Normalized@Test.COM ", password: testPassword },
+      });
+
+      expect(response.statusCode).toBe(200);
     });
   });
 });

@@ -138,7 +138,7 @@ describe("POST /api/v1/auth/resend-email-confirmation", () => {
     });
     expect(response.statusCode).toBe(401);
     const body = JSON.parse(response.body);
-    expect(body.message).toBe("Account not found.");
+    expect(body.detail).toBe("Account not found.");
     expect(sendEmailMock).not.toHaveBeenCalled();
   });
 
@@ -159,7 +159,7 @@ describe("POST /api/v1/auth/resend-email-confirmation", () => {
     });
     expect(response.statusCode).toBe(400);
     const body = JSON.parse(response.body);
-    expect(body.message).toBe(RESEND_EMAIL_ALREADY_VERIFIED_MESSAGE);
+    expect(body.detail).toBe(RESEND_EMAIL_ALREADY_VERIFIED_MESSAGE);
     expect(sendEmailMock).not.toHaveBeenCalled();
   });
 
@@ -201,7 +201,7 @@ describe("POST /api/v1/auth/resend-email-confirmation", () => {
     });
     expect(response.statusCode).toBe(400);
     const body = JSON.parse(response.body);
-    expect(body.message).toBe(RESEND_EMAIL_ALREADY_VERIFIED_MESSAGE);
+    expect(body.detail).toBe(RESEND_EMAIL_ALREADY_VERIFIED_MESSAGE);
     expect(sendEmailMock).not.toHaveBeenCalled();
   });
 

@@ -1,5 +1,4 @@
 import crypto from "crypto";
-import emailRegex from "../../../packages/utils/emailRegex.ts";
 import Business from "../models/business.ts";
 import User from "../models/user.ts";
 import { sendAuthTransactionalEmail } from "./authEmailSend.ts";
@@ -11,14 +10,6 @@ export const GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE =
 
 export const EMAIL_CONFIRMATION_SENT_MESSAGE =
   "Email confirmation sent successfully. Please check your email.";
-
-export function isValidRequestEmailConfirmationInput(
-  email: unknown,
-): email is string {
-  if (typeof email !== "string") return false;
-  const normalized = email.toLowerCase().trim();
-  return normalized.length > 0 && emailRegex.test(normalized);
-}
 
 export function normalizeRequestEmail(email: string): string {
   return email.toLowerCase().trim();

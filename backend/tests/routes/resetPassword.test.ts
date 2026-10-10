@@ -139,7 +139,7 @@ describe("POST /api/v1/auth/reset-password", () => {
       payload: { token: "", newPassword: newPassword },
     });
     expect(empty.statusCode).toBe(400);
-    expect(JSON.parse(empty.body).message).toBe(
+    expect(JSON.parse(empty.body).errors[0].message).toBe(
       RESET_PASSWORD_MISSING_TOKEN_MESSAGE,
     );
 
@@ -160,7 +160,7 @@ describe("POST /api/v1/auth/reset-password", () => {
       payload: { token: "some-token", newPassword: "" },
     });
     expect(res.statusCode).toBe(400);
-    expect(JSON.parse(res.body).message).toBe(
+    expect(JSON.parse(res.body).errors[0].message).toBe(
       RESET_PASSWORD_MISSING_NEW_PASSWORD_MESSAGE,
     );
   });
@@ -176,7 +176,7 @@ describe("POST /api/v1/auth/reset-password", () => {
       payload: { token: raw, newPassword: "short" },
     });
     expect(res.statusCode).toBe(400);
-    expect(JSON.parse(res.body).message).toBe(PASSWORD_POLICY_MESSAGE);
+    expect(JSON.parse(res.body).errors[0].message).toBe(PASSWORD_POLICY_MESSAGE);
 
     const unchanged = await User.findById(user._id)
       .select("personalDetails.password resetPasswordToken")
@@ -255,7 +255,7 @@ describe("POST /api/v1/auth/reset-password", () => {
       headers: { cookie: `refresh_token=${refreshVal}` },
     });
     expect(refreshAfter.statusCode).toBe(401);
-    expect(JSON.parse(refreshAfter.body).message).toBe(
+    expect(JSON.parse(refreshAfter.body).detail).toBe(
       "Invalid or expired refresh token",
     );
   });
@@ -270,7 +270,7 @@ describe("POST /api/v1/auth/reset-password", () => {
       payload: { token: randomToken(), newPassword },
     });
     expect(wrong.statusCode).toBe(400);
-    expect(JSON.parse(wrong.body).message).toBe(
+    expect(JSON.parse(wrong.body).detail).toBe(
       CONFIRM_EMAIL_CONSUMPTION_ERROR_MESSAGE,
     );
 

@@ -12,18 +12,6 @@ export const RESET_PASSWORD_MISSING_TOKEN_MESSAGE =
 export const RESET_PASSWORD_MISSING_NEW_PASSWORD_MESSAGE =
   "Please provide a new password.";
 
-export function isValidResetPasswordTokenInput(
-  token: unknown,
-): token is string {
-  return typeof token === "string" && token.trim().length > 0;
-}
-
-export function isValidResetPasswordNewPasswordInput(
-  newPassword: unknown,
-): newPassword is string {
-  return typeof newPassword === "string" && newPassword.trim().length > 0;
-}
-
 export type ResetPasswordResult =
   | { kind: "success_200"; message: string }
   | { kind: "client_error"; message: string }

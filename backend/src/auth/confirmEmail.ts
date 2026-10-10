@@ -11,12 +11,6 @@ export const CONFIRM_EMAIL_CONSUMPTION_ERROR_MESSAGE =
 export const CONFIRM_EMAIL_MISSING_TOKEN_MESSAGE =
   "Please provide a confirmation token.";
 
-export function isValidConfirmEmailTokenInput(
-  token: unknown,
-): token is string {
-  return typeof token === "string" && token.trim().length > 0;
-}
-
 export type ConfirmEmailResult =
   | { kind: "success_200"; message: string }
   | { kind: "client_error"; message: string }

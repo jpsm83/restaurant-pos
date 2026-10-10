@@ -115,7 +115,10 @@ describe("POST /api/v1/auth/request-email-confirmation", () => {
     });
     expect(response.statusCode).toBe(400);
     const body = JSON.parse(response.body);
-    expect(body.message).toBe("Please provide a valid email address");
+    expect(body.type).toBe("https://restaurant-pos.app/errors/validation");
+    expect(body.errors).toEqual(
+      expect.arrayContaining([expect.objectContaining({ path: "email" })]),
+    );
     expect(sendEmailMock).not.toHaveBeenCalled();
   });
 
@@ -145,7 +148,7 @@ describe("POST /api/v1/auth/request-email-confirmation", () => {
     });
 
     expect(response.statusCode).toBe(400);
-    expect(JSON.parse(response.body).message).toBe("Email is already verified.");
+    expect(JSON.parse(response.body).detail).toBe("Email is already verified.");
     expect(sendEmailMock).not.toHaveBeenCalled();
   });
 
