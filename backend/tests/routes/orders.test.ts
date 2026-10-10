@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach } from "vitest";
 import { Types } from "mongoose";
-import { getTestApp } from "../setup.ts";
+import { getTestApp, generateTestToken } from "../setup.ts";
 import Order from "../../src/models/order.ts";
 import Business from "../../src/models/business.ts";
 import BusinessGood from "../../src/models/businessGood.ts";
@@ -15,12 +15,56 @@ import SalesPoint from "../../src/models/salesPoint.ts";
 import User from "../../src/models/user.ts";
 import sendOrderConfirmation from "../../src/orderConfirmation/sendOrderConfirmation.ts";
 
+const expectProblem = (
+  response: {
+    statusCode: number;
+    headers: Record<string, unknown>;
+    json: () => any;
+  },
+  status: number,
+  typeSlug: string,
+) => {
+  expect(response.statusCode).toBe(status);
+  expect(response.headers["content-type"]).toContain("application/problem+json");
+  const body = response.json();
+  expect(body.type).toBe(`https://restaurant-pos.app/errors/${typeSlug}`);
+  expect(body.status).toBe(status);
+  return body;
+};
+
+const hasErrorPath = (
+  body: { errors?: Array<{ path: string }> },
+  fragment: string,
+) => body.errors?.some((issue) => issue.path.includes(fragment)) ?? false;
+
 describe("Orders Routes", () => {
   let businessId: Types.ObjectId;
   let businessGoodId: Types.ObjectId;
   let salesInstanceId: Types.ObjectId;
   let salesPointId: Types.ObjectId;
   let userId: Types.ObjectId;
+
+  const authFor = (id: Types.ObjectId) =>
+    generateTestToken({
+      id: String(id),
+      email: "user@test.com",
+      type: "user",
+      role: "Customer",
+    });
+
+  const validOrderItem = () => ({
+    businessGoodId: businessGoodId.toString(),
+    orderGrossPrice: 12.99,
+    orderNetPrice: 12.99,
+    orderCostPrice: 4,
+  });
+
+  const validBody = () => ({
+    ordersArr: [validOrderItem()],
+    salesInstanceId: salesInstanceId.toString(),
+    businessId: businessId.toString(),
+    dailyReferenceNumber: 1,
+  });
 
   beforeEach(async () => {
     const business = await Business.create({
@@ -125,7 +169,7 @@ describe("Orders Routes", () => {
       expect(body.length).toBe(1);
     });
 
-    it("returns 404 when no orders exist", async () => {
+    it("returns a not-found problem when no orders exist", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
@@ -133,7 +177,8 @@ describe("Orders Routes", () => {
         url: "/api/v1/orders",
       });
 
-      expect(response.statusCode).toBe(404);
+      const body = expectProblem(response, 404, "not-found");
+      expect(body.detail).toBe("No orders found!");
     });
   });
 
@@ -164,7 +209,7 @@ describe("Orders Routes", () => {
       expect(body.orderGrossPrice).toBe(12.99);
     });
 
-    it("returns 400 for invalid ID format", async () => {
+    it("returns a validation problem for invalid ID format", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
@@ -172,12 +217,11 @@ describe("Orders Routes", () => {
         url: "/api/v1/orders/invalid-id",
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("OrderId not valid!");
+      const body = expectProblem(response, 400, "validation");
+      expect(hasErrorPath(body, "orderId")).toBe(true);
     });
 
-    it("returns 404 for non-existent order", async () => {
+    it("returns a not-found problem for non-existent order", async () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
@@ -186,7 +230,8 @@ describe("Orders Routes", () => {
         url: `/api/v1/orders/${fakeId}`,
       });
 
-      expect(response.statusCode).toBe(404);
+      const body = expectProblem(response, 404, "not-found");
+      expect(body.detail).toBe("Order not found!");
     });
   });
 
@@ -197,28 +242,127 @@ describe("Orders Routes", () => {
       const response = await app.inject({
         method: "POST",
         url: "/api/v1/orders",
-        payload: {
-          ordersArr: [],
-          salesInstanceId: salesInstanceId.toString(),
-          businessId: businessId.toString(),
-          dailyReferenceNumber: "1",
-        },
+        payload: validBody(),
       });
 
       expect(response.statusCode).toBe(401);
     });
 
-    it("returns 400 for missing required fields", async () => {
+    it("returns 401 with an invalid token", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
         method: "POST",
         url: "/api/v1/orders",
         headers: { authorization: "Bearer invalid-token" },
-        payload: {},
+        payload: validBody(),
       });
 
       expect(response.statusCode).toBe(401);
+    });
+
+    it("returns a validation problem for missing required fields", async () => {
+      const app = await getTestApp();
+      const auth = await authFor(userId);
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/orders",
+        headers: { authorization: auth },
+        payload: {},
+      });
+
+      const body = expectProblem(response, 400, "validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: "ordersArr" }),
+          expect.objectContaining({ path: "salesInstanceId" }),
+          expect.objectContaining({ path: "businessId" }),
+          expect.objectContaining({ path: "dailyReferenceNumber" }),
+        ]),
+      );
+    });
+
+    it("returns a validation problem for an empty ordersArr", async () => {
+      const app = await getTestApp();
+      const auth = await authFor(userId);
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/orders",
+        headers: { authorization: auth },
+        payload: { ...validBody(), ordersArr: [] },
+      });
+
+      const body = expectProblem(response, 400, "validation");
+      expect(hasErrorPath(body, "ordersArr")).toBe(true);
+    });
+
+    it("returns a validation problem for a malformed businessGoodId", async () => {
+      const app = await getTestApp();
+      const auth = await authFor(userId);
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/orders",
+        headers: { authorization: auth },
+        payload: {
+          ...validBody(),
+          ordersArr: [{ ...validOrderItem(), businessGoodId: "invalid-id" }],
+        },
+      });
+
+      const body = expectProblem(response, 400, "validation");
+      expect(hasErrorPath(body, "businessGoodId")).toBe(true);
+    });
+
+    it("rejects unknown keys", async () => {
+      const app = await getTestApp();
+      const auth = await authFor(userId);
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/orders",
+        headers: { authorization: auth },
+        payload: { ...validBody(), isAdmin: true },
+      });
+
+      expectProblem(response, 400, "validation");
+    });
+
+    it("rejects a server-owned order field", async () => {
+      const app = await getTestApp();
+      const auth = await authFor(userId);
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/orders",
+        headers: { authorization: auth },
+        payload: {
+          ...validBody(),
+          ordersArr: [{ ...validOrderItem(), billingStatus: "Paid" }],
+        },
+      });
+
+      expectProblem(response, 400, "validation");
+    });
+
+    it("preserves the ordersArrValidation price-presence post-parse check", async () => {
+      const app = await getTestApp();
+      const auth = await authFor(userId);
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/orders",
+        headers: { authorization: auth },
+        payload: {
+          ...validBody(),
+          ordersArr: [{ ...validOrderItem(), orderGrossPrice: 0 }],
+        },
+      });
+
+      const body = expectProblem(response, 400, "bad-request");
+      expect(body.detail).toBe("orderGrossPrice must have a value!");
     });
   });
 
@@ -244,6 +388,20 @@ describe("Orders Routes", () => {
       });
 
       expect(response.statusCode).toBe(401);
+    });
+
+    it("returns a validation problem for an invalid orderId when authenticated", async () => {
+      const app = await getTestApp();
+      const auth = await authFor(userId);
+
+      const response = await app.inject({
+        method: "DELETE",
+        url: "/api/v1/orders/invalid-id",
+        headers: { authorization: auth },
+      });
+
+      const body = expectProblem(response, 400, "validation");
+      expect(hasErrorPath(body, "orderId")).toBe(true);
     });
   });
 
@@ -274,7 +432,7 @@ describe("Orders Routes", () => {
       expect(body.length).toBe(1);
     });
 
-    it("returns 400 for invalid salesInstanceId", async () => {
+    it("returns a validation problem for invalid salesInstanceId", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
@@ -282,12 +440,11 @@ describe("Orders Routes", () => {
         url: "/api/v1/orders/salesInstance/invalid-id",
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("SalesInstanceId is not valid!");
+      const body = expectProblem(response, 400, "validation");
+      expect(hasErrorPath(body, "salesInstanceId")).toBe(true);
     });
 
-    it("returns 404 when no orders found", async () => {
+    it("returns a not-found problem when no orders found", async () => {
       const app = await getTestApp();
       const emptySalesInstanceId = new Types.ObjectId();
 
@@ -296,7 +453,8 @@ describe("Orders Routes", () => {
         url: `/api/v1/orders/salesInstance/${emptySalesInstanceId}`,
       });
 
-      expect(response.statusCode).toBe(404);
+      const body = expectProblem(response, 404, "not-found");
+      expect(body.detail).toBe("No orders found!");
     });
   });
 
@@ -327,7 +485,7 @@ describe("Orders Routes", () => {
       expect(body.length).toBe(1);
     });
 
-    it("returns 400 for invalid userId", async () => {
+    it("returns a validation problem for invalid userId", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
@@ -335,12 +493,11 @@ describe("Orders Routes", () => {
         url: "/api/v1/orders/user/invalid-id",
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid userId");
+      const body = expectProblem(response, 400, "validation");
+      expect(hasErrorPath(body, "userId")).toBe(true);
     });
 
-    it("returns 404 when user has no orders", async () => {
+    it("returns a not-found problem when user has no orders", async () => {
       const app = await getTestApp();
       const emptyUserId = new Types.ObjectId();
 
@@ -349,7 +506,7 @@ describe("Orders Routes", () => {
         url: `/api/v1/orders/user/${emptyUserId}`,
       });
 
-      expect(response.statusCode).toBe(404);
+      expectProblem(response, 404, "not-found");
     });
   });
 
