@@ -10,3 +10,4 @@ export * from "./orders.ts";
 export * from "./salesPoints.ts";
 export * from "./promotions.ts";
 export * from "./reservations.ts";
+export * from "./schedules.ts";

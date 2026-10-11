@@ -2,6 +2,10 @@
  * Schedules Routes Tests - Phase 1 Module 12 + Phase 4 Task 4.5
  * Tests for schedules CRUD endpoints with transaction verification
  * Phase 4: Full transaction tests for vacation day sync (requires replica set)
+ *
+ * Every error response is an RFC 9457 `application/problem+json` document
+ * produced by the global handler, so assertions are on the problem-details
+ * shape rather than a bare `{ message }`.
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
@@ -11,6 +15,26 @@ import Schedule from "../../src/models/schedule.ts";
 import Employee from "../../src/models/employee.ts";
 import Business from "../../src/models/business.ts";
 import User from "../../src/models/user.ts";
+
+const expectProblem = (
+  response: {
+    statusCode: number;
+    headers: Record<string, unknown>;
+    json: () => any;
+  },
+  status: number,
+  typeSlug: string,
+) => {
+  expect(response.statusCode).toBe(status);
+  expect(response.headers["content-type"]).toContain("application/problem+json");
+  const body = response.json();
+  expect(body.type).toBe(`https://restaurant-pos.app/errors/${typeSlug}`);
+  expect(body.status).toBe(status);
+  return body;
+};
+
+const fieldPaths = (body: { errors?: Array<{ path: string }> }): string[] =>
+  (body.errors ?? []).map((e) => e.path);
 
 describe("Schedules Routes", () => {
   let businessId: Types.ObjectId;
@@ -104,9 +128,8 @@ describe("Schedules Routes", () => {
         url: "/api/v1/schedules",
       });
 
-      expect(response.statusCode).toBe(404);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("No schedules found!");
+      const body = expectProblem(response, 404, "not-found");
+      expect(body.detail).toBe("No schedules found!");
     });
   });
 
@@ -123,9 +146,8 @@ describe("Schedules Routes", () => {
         },
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid business ID!");
+      const body = expectProblem(response, 400, "validation");
+      expect(fieldPaths(body)).toContain("businessId");
     });
 
     it("returns 400 for missing date", async () => {
@@ -139,9 +161,24 @@ describe("Schedules Routes", () => {
         },
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Date is required!");
+      const body = expectProblem(response, 400, "validation");
+      expect(fieldPaths(body)).toContain("date");
+    });
+
+    it("rejects server-owned fields", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/schedules",
+        payload: {
+          businessId: businessId.toString(),
+          date: new Date().toISOString(),
+          weekNumber: 99,
+        },
+      });
+
+      expectProblem(response, 400, "validation");
     });
 
     it("creates schedule successfully", async () => {
@@ -183,9 +220,8 @@ describe("Schedules Routes", () => {
         },
       });
 
-      expect(response.statusCode).toBe(409);
-      const body = JSON.parse(response.body);
-      expect(body.message).toContain("already exists");
+      const body = expectProblem(response, 409, "conflict");
+      expect(body.detail).toContain("already exists");
     });
   });
 
@@ -217,9 +253,8 @@ describe("Schedules Routes", () => {
         url: "/api/v1/schedules/invalid-id",
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid schedule ID!");
+      const body = expectProblem(response, 400, "validation");
+      expect(fieldPaths(body)).toContain("scheduleId");
     });
 
     it("returns 404 for non-existent schedule", async () => {
@@ -231,9 +266,8 @@ describe("Schedules Routes", () => {
         url: `/api/v1/schedules/${fakeId}`,
       });
 
-      expect(response.statusCode).toBe(404);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("No schedule found!");
+      const body = expectProblem(response, 404, "not-found");
+      expect(body.detail).toBe("No schedule found!");
     });
   });
 
@@ -247,9 +281,8 @@ describe("Schedules Routes", () => {
         payload: { comments: "Updated" },
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid schedule ID!");
+      const body = expectProblem(response, 400, "validation");
+      expect(fieldPaths(body)).toContain("scheduleId");
     });
 
     it("updates schedule successfully", async () => {
@@ -282,9 +315,8 @@ describe("Schedules Routes", () => {
         url: "/api/v1/schedules/invalid-id",
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid schedule ID!");
+      const body = expectProblem(response, 400, "validation");
+      expect(fieldPaths(body)).toContain("scheduleId");
     });
 
     it("returns 404 for non-existent schedule", async () => {
@@ -296,9 +328,8 @@ describe("Schedules Routes", () => {
         url: `/api/v1/schedules/${fakeId}`,
       });
 
-      expect(response.statusCode).toBe(404);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Schedule not found!");
+      const body = expectProblem(response, 404, "not-found");
+      expect(body.detail).toBe("Schedule not found!");
     });
 
     it("returns 400 when deleting past schedule", async () => {
@@ -317,9 +348,8 @@ describe("Schedules Routes", () => {
         url: `/api/v1/schedules/${schedule._id}`,
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Cannot delete past or current schedules!");
+      const body = expectProblem(response, 400, "bad-request");
+      expect(body.detail).toBe("Cannot delete past or current schedules!");
     });
   });
 
@@ -342,9 +372,8 @@ describe("Schedules Routes", () => {
         },
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid schedule Id!");
+      const body = expectProblem(response, 400, "validation");
+      expect(fieldPaths(body)).toContain("scheduleId");
     });
   });
 
@@ -354,16 +383,16 @@ describe("Schedules Routes", () => {
 
       const response = await app.inject({
         method: "PATCH",
-        url: "/api/v1/schedules/invalid-id/deleteEmployee",
+        url: `/api/v1/schedules/${new Types.ObjectId()}/deleteEmployee`,
         payload: {
           employeeId: "invalid",
           employeeScheduleId: "invalid",
         },
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toContain("Invalid");
+      const body = expectProblem(response, 400, "validation");
+      expect(fieldPaths(body)).toContain("employeeId");
+      expect(fieldPaths(body)).toContain("employeeScheduleId");
     });
   });
 
@@ -387,9 +416,8 @@ describe("Schedules Routes", () => {
         },
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid schedule Id!");
+      const body = expectProblem(response, 400, "validation");
+      expect(fieldPaths(body)).toContain("scheduleId");
     });
   });
 
@@ -422,9 +450,8 @@ describe("Schedules Routes", () => {
         url: "/api/v1/schedules/business/invalid-id",
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid business Id!");
+      const body = expectProblem(response, 400, "validation");
+      expect(fieldPaths(body)).toContain("businessId");
     });
 
     it("returns 404 when no schedules for business", async () => {
@@ -436,9 +463,8 @@ describe("Schedules Routes", () => {
         url: `/api/v1/schedules/business/${otherBusinessId}`,
       });
 
-      expect(response.statusCode).toBe(404);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("No schedules found!");
+      const body = expectProblem(response, 404, "not-found");
+      expect(body.detail).toBe("No schedules found!");
     });
   });
 
@@ -451,9 +477,8 @@ describe("Schedules Routes", () => {
         url: "/api/v1/schedules/user/invalid-id",
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid user Id!");
+      const body = expectProblem(response, 400, "validation");
+      expect(fieldPaths(body)).toContain("userId");
     });
 
     it("returns 404 when user has no employee details", async () => {
@@ -485,9 +510,8 @@ describe("Schedules Routes", () => {
         url: `/api/v1/schedules/user/${newUser._id}`,
       });
 
-      expect(response.statusCode).toBe(404);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("User not found or not linked to an employee!");
+      const body = expectProblem(response, 404, "not-found");
+      expect(body.detail).toBe("User not found or not linked to an employee!");
     });
 
     it("returns 404 when no schedules for user", async () => {
@@ -498,9 +522,8 @@ describe("Schedules Routes", () => {
         url: `/api/v1/schedules/user/${userId}`,
       });
 
-      expect(response.statusCode).toBe(404);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("No schedules found!");
+      const body = expectProblem(response, 404, "not-found");
+      expect(body.detail).toBe("No schedules found!");
     });
   });
 
@@ -649,9 +672,8 @@ describe("Schedules Routes", () => {
         },
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toContain("overlaps");
+      const body = expectProblem(response, 400, "bad-request");
+      expect(body.detail).toContain("overlaps");
     });
 
     it("prevents adding vacation when employee already has working schedule", async () => {
@@ -704,9 +726,8 @@ describe("Schedules Routes", () => {
         },
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Employee already scheduled!");
+      const body = expectProblem(response, 400, "bad-request");
+      expect(body.detail).toBe("Employee already scheduled!");
     });
   });
 

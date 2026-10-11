@@ -1,3 +1,13 @@
+/**
+ * Schedules Routes - Schedule CRUD and employee-shift management.
+ *
+ * Every route declares its body/params/query as a strict zod DTO from
+ * `packages/schemas/schedules.ts`; validation and sanitization happen at the
+ * boundary and every error is raised as an `AppError` so the global handler
+ * emits RFC 9457 `application/problem+json`. Cross-field and database-dependent
+ * rules stay as named post-parse checks: `employeesValidation` and the
+ * `isScheduleOverlapping` overlap rule.
+ */
 import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
 import type {
@@ -6,7 +16,6 @@ import type {
 } from "../../../../packages/interfaces/ISchedule.ts";
 import type { IEmployee } from "../../../../packages/interfaces/IEmployee.ts";
 
-import isObjectIdValid from "../../utils/isObjectIdValid.ts";
 import getWeekNumber from "../../schedules/getWeekNumber.ts";
 import employeesValidation from "../../schedules/employeesValidation.ts";
 import isScheduleOverlapping from "../../schedules/isScheduleOverlapping.ts";
@@ -15,11 +24,35 @@ import calculateEmployeeCost from "../../schedules/calculateEmployeeCost.ts";
 import Schedule from "../../models/schedule.ts";
 import Employee from "../../models/employee.ts";
 import User from "../../models/user.ts";
-import {
-  createAuthHook,
-  requireValidObjectIdParamHook,
-} from "../../auth/middleware.ts";
+import { createAuthHook } from "../../auth/middleware.ts";
 import type { AuthUser } from "../../auth/types.ts";
+import {
+  badRequest,
+  conflict,
+  forbidden,
+  internal,
+  notFound,
+} from "../../errors/appError.ts";
+import {
+  addEmployeeBodySchema,
+  createScheduleBodySchema,
+  dailyScheduleQuerySchema,
+  deleteEmployeeBodySchema,
+  scheduleBusinessParamsSchema,
+  scheduleIdParamsSchema,
+  scheduleUserParamsSchema,
+  updateEmployeeBodySchema,
+  updateScheduleBodySchema,
+  type AddEmployeeBody,
+  type CreateScheduleBody,
+  type DailyScheduleQuery,
+  type DeleteEmployeeBody,
+  type ScheduleBusinessParams,
+  type ScheduleIdParams,
+  type ScheduleUserParams,
+  type UpdateEmployeeBody,
+  type UpdateScheduleBody,
+} from "../../../../packages/schemas/schedules.ts";
 
 export const schedulesRoutes: FastifyPluginAsync = async (app) => {
   const authHook = createAuthHook(app);
@@ -30,27 +63,31 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
    *
    * Query: `dayKey=YYYY-MM-DD` (optional; server-local calendar day when omitted).
    */
-  app.get(
+  app.get<{ Params: ScheduleBusinessParams; Querystring: DailyScheduleQuery }>(
     "/business/:businessId/daily",
     {
-      preValidation: [requireValidObjectIdParamHook("businessId"), authHook],
+      preValidation: [authHook],
+      schema: {
+        params: scheduleBusinessParamsSchema,
+        querystring: dailyScheduleQuerySchema,
+      },
     },
     async (req, reply) => {
-      const businessId = (req.params as { businessId: string }).businessId;
+      const { businessId } = req.params;
       const session = req.authSession;
       if (!session || session.type !== "user") {
-        return reply.code(403).send({ message: "Forbidden" });
+        throw forbidden();
       }
       const u = session as AuthUser;
       if (!u.employeeId || u.businessId !== businessId) {
-        return reply.code(403).send({ message: "Forbidden" });
+        throw forbidden();
       }
 
-      const rawDay = (req.query as { dayKey?: string }).dayKey;
+      const { dayKey } = req.query;
       let startOfDay: Date;
       let endOfDay: Date;
-      if (typeof rawDay === "string" && /^\d{4}-\d{2}-\d{2}$/.test(rawDay)) {
-        const [y, m, d] = rawDay.split("-").map(Number);
+      if (dayKey) {
+        const [y, m, d] = dayKey.split("-").map(Number);
         startOfDay = new Date(y, m - 1, d, 0, 0, 0, 0);
         endOfDay = new Date(y, m - 1, d + 1, 0, 0, 0, 0);
       } else {
@@ -106,23 +143,17 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
       .lean();
 
     if (!schedules.length) {
-      return reply.code(404).send({ message: "No schedules found!" });
+      throw notFound("No schedules found!");
     }
     return reply.code(200).send(schedules);
   });
 
   // POST /schedules - create
-  app.post("/", async (req, reply) => {
-    try {
-      const { date, businessId, comments } = req.body as ISchedule;
-
-      if (!businessId || isObjectIdValid([businessId]) !== true) {
-        return reply.code(400).send({ message: "Invalid business ID!" });
-      }
-
-      if (!date) {
-        return reply.code(400).send({ message: "Date is required!" });
-      }
+  app.post<{ Body: CreateScheduleBody }>(
+    "/",
+    { schema: { body: createScheduleBodySchema } },
+    async (req, reply) => {
+      const { date, businessId, comments } = req.body;
 
       const weekNumber = getWeekNumber(new Date(date));
 
@@ -143,11 +174,11 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
       });
 
       if (duplicateSchedule) {
-        return reply.code(409).send({
-          message: `Schedule for ${year}/${
+        throw conflict(
+          `Schedule for ${year}/${
             month > 9 ? month : "0" + month
           }/${day} already exists for business ${businessId}`,
-        });
+        );
       }
 
       const newSchedule = {
@@ -162,283 +193,257 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
       return reply
         .code(201)
         .send({ message: `Schedule ${newSchedule.date} created!` });
-    } catch (error) {
-      return reply.code(500).send({
-        message: "Create schedule failed!",
-        error: error instanceof Error ? error.message : error,
-      });
-    }
-  });
+    },
+  );
 
   // GET /schedules/:scheduleId - get by ID
-  app.get("/:scheduleId", async (req, reply) => {
-    const params = req.params as { scheduleId?: string };
-    const scheduleId = params.scheduleId;
+  app.get<{ Params: ScheduleIdParams }>(
+    "/:scheduleId",
+    { schema: { params: scheduleIdParamsSchema } },
+    async (req, reply) => {
+      const { scheduleId } = req.params;
 
-    if (!scheduleId || isObjectIdValid([scheduleId]) !== true) {
-      return reply.code(400).send({ message: "Invalid schedule ID!" });
-    }
-
-    const schedule = await Schedule.findById(scheduleId)
-      .populate({
-        path: "employeesSchedules.employeeId",
-        select: "employeeName allEmployeeRoles",
-        model: Employee,
-      })
-      .lean();
-
-    if (!schedule) {
-      return reply.code(404).send({ message: "No schedule found!" });
-    }
-    return reply.code(200).send(schedule);
-  });
-
-  // PATCH /schedules/:scheduleId - update
-  app.patch("/:scheduleId", async (req, reply) => {
-    const params = req.params as { scheduleId?: string };
-    const scheduleId = params.scheduleId;
-
-    if (!scheduleId || isObjectIdValid([scheduleId]) !== true) {
-      return reply.code(400).send({ message: "Invalid schedule ID!" });
-    }
-
-    const { comments } = req.body as ISchedule;
-
-    const updateSchedule: Partial<ISchedule> = {};
-    if (comments) {
-      updateSchedule.comments = comments;
-    }
-
-    const updatedSchedule = await Schedule.findByIdAndUpdate(
-      scheduleId,
-      { $set: updateSchedule },
-      { returnDocument: 'after', lean: true },
-    );
-
-    if (!updatedSchedule) {
-      return reply.code(404).send({ message: "Schedule not found!" });
-    }
-
-    return reply.code(200).send({ message: "Schedule updated" });
-  });
-
-  // DELETE /schedules/:scheduleId - delete
-  app.delete("/:scheduleId", async (req, reply) => {
-    const params = req.params as { scheduleId?: string };
-    const scheduleId = params.scheduleId;
-
-    if (!scheduleId || isObjectIdValid([scheduleId]) !== true) {
-      return reply.code(400).send({ message: "Invalid schedule ID!" });
-    }
-
-    const schedule = (await Schedule.findById(
-      scheduleId,
-    ).lean()) as unknown as ISchedule | null;
-    if (!schedule) {
-      return reply.code(404).send({ message: "Schedule not found!" });
-    }
-
-    const scheduleDate = new Date(schedule.date);
-    const currentDate = new Date();
-
-    scheduleDate.setHours(0, 0, 0, 0);
-    currentDate.setHours(0, 0, 0, 0);
-
-    if (scheduleDate <= currentDate) {
-      return reply
-        .code(400)
-        .send({ message: "Cannot delete past or current schedules!" });
-    }
-
-    const result = await Schedule.deleteOne({ _id: scheduleId });
-
-    if (result.deletedCount === 0) {
-      return reply.code(404).send({ message: "Schedule not found!" });
-    }
-
-    return reply.code(200).send({ message: `Schedule ${scheduleId} deleted` });
-  });
-
-  // PATCH /schedules/:scheduleId/addEmployee - add employee (transaction)
-  app.patch("/:scheduleId/addEmployee", async (req, reply) => {
-    const params = req.params as { scheduleId?: string };
-    const scheduleId = params.scheduleId;
-    const { employeeSchedule } = req.body as {
-      employeeSchedule: IEmployeeSchedule;
-    };
-
-    const { employeeId, role, timeRange, vacation } = employeeSchedule;
-    const startTime = new Date(timeRange.startTime);
-    const endTime = new Date(timeRange.endTime);
-
-    if (!scheduleId || isObjectIdValid([scheduleId]) !== true) {
-      return reply.code(400).send({ message: "Invalid schedule Id!" });
-    }
-
-    const validEmployees = employeesValidation(employeeSchedule);
-    if (validEmployees !== true) {
-      return reply.code(404).send({ message: validEmployees });
-    }
-
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
-    try {
-      const schedule = (await Schedule.findById(scheduleId)
-        .select(
-          "employeesSchedules.employeeId employeesSchedules.vacation employeesSchedules.timeRange",
-        )
-        .session(session)
-        .lean()) as unknown as ISchedule | null;
+      const schedule = await Schedule.findById(scheduleId)
+        .populate({
+          path: "employeesSchedules.employeeId",
+          select: "employeeName allEmployeeRoles",
+          model: Employee,
+        })
+        .lean();
 
       if (!schedule) {
-        await session.abortTransaction();
-        return reply.code(404).send({ message: "Schedule not found!" });
+        throw notFound("No schedule found!");
       }
+      return reply.code(200).send(schedule);
+    },
+  );
 
-      const employeeAlreadyScheduled = (
-        schedule.employeesSchedules || []
-      ).filter((emp) => emp.employeeId.toString() === employeeId.toString());
+  // PATCH /schedules/:scheduleId - update
+  app.patch<{ Params: ScheduleIdParams; Body: UpdateScheduleBody }>(
+    "/:scheduleId",
+    {
+      schema: {
+        params: scheduleIdParamsSchema,
+        body: updateScheduleBodySchema,
+      },
+    },
+    async (req, reply) => {
+      const { scheduleId } = req.params;
+      const { comments } = req.body;
 
-      // Check if employee is already on vacation for this day
-      if (
-        employeeAlreadyScheduled.length > 0 &&
-        employeeAlreadyScheduled.some((el) => el.vacation)
-      ) {
-        await session.abortTransaction();
-        return reply.code(400).send({ message: "Employee on vacation!" });
+      const updateSchedule: Partial<ISchedule> = {};
+      if (comments) {
+        updateSchedule.comments = comments;
       }
-
-      // If trying to add vacation, check if employee already has schedules
-      if (vacation && employeeAlreadyScheduled.length > 0) {
-        if (employeeAlreadyScheduled.some((el) => el.vacation)) {
-          await session.abortTransaction();
-          return reply
-            .code(400)
-            .send({ message: "Employee already on vacation!" });
-        }
-        await session.abortTransaction();
-        return reply.code(400).send({ message: "Employee already scheduled!" });
-      }
-
-      const timeRangeArr = employeeAlreadyScheduled.map((el) => ({
-        startTime: new Date(el.timeRange.startTime),
-        endTime: new Date(el.timeRange.endTime),
-      }));
-
-      if (timeRangeArr.length > 0) {
-        if (isScheduleOverlapping(startTime, endTime, timeRangeArr) === true) {
-          await session.abortTransaction();
-          return reply.code(400).send({
-            message: "Employee scheduled overlaps existing one!",
-          });
-        }
-      }
-
-      const employeeEmployee = (await Employee.findById(employeeId)
-        .select("salary.grossSalary salary.payFrequency")
-        .session(session)
-        .lean()) as unknown as IEmployee | null;
-
-      if (!employeeEmployee) {
-        await session.abortTransaction();
-        return reply.code(404).send({ message: "Employee not found!" });
-      }
-
-      const shiftDurationMs = endTime.getTime() - startTime.getTime();
-      const weekdaysInMonth = getWeekdaysInMonth(
-        new Date().getFullYear(),
-        new Date().getMonth(),
-      );
-      let employeeCost = 0;
-
-      if (employeeEmployee?.salary) {
-        employeeCost = calculateEmployeeCost(
-          employeeEmployee.salary,
-          shiftDurationMs,
-          weekdaysInMonth,
-        );
-      }
-
-      const addEmployeeSchedule = {
-        employeeId,
-        role,
-        timeRange: { startTime, endTime },
-        vacation: vacation !== undefined ? vacation : false,
-        shiftHours: shiftDurationMs,
-        employeeCost,
-      };
-
-      // Only increment total if this is the first schedule entry for this employee
-      const totalEmployeesScheduledIncrement =
-        employeeAlreadyScheduled.length > 0 ? 0 : 1;
 
       const updatedSchedule = await Schedule.findByIdAndUpdate(
         scheduleId,
-        {
-          $push: { employeesSchedules: addEmployeeSchedule },
-          $inc: {
-            totalDayEmployeesCost: employeeCost,
-            totalEmployeesScheduled: vacation
-              ? 0
-              : totalEmployeesScheduledIncrement,
-            totalEmployeesVacation: vacation ? 1 : 0,
-          },
-        },
-        { returnDocument: 'after', lean: true, session },
+        { $set: updateSchedule },
+        { returnDocument: "after", lean: true },
       );
 
-      if (updatedSchedule && vacation) {
-        const updatedEmployee = await Employee.findByIdAndUpdate(
+      if (!updatedSchedule) {
+        throw notFound("Schedule not found!");
+      }
+
+      return reply.code(200).send({ message: "Schedule updated" });
+    },
+  );
+
+  // DELETE /schedules/:scheduleId - delete
+  app.delete<{ Params: ScheduleIdParams }>(
+    "/:scheduleId",
+    { schema: { params: scheduleIdParamsSchema } },
+    async (req, reply) => {
+      const { scheduleId } = req.params;
+
+      const schedule = (await Schedule.findById(
+        scheduleId,
+      ).lean()) as unknown as ISchedule | null;
+      if (!schedule) {
+        throw notFound("Schedule not found!");
+      }
+
+      const scheduleDate = new Date(schedule.date);
+      const currentDate = new Date();
+
+      scheduleDate.setHours(0, 0, 0, 0);
+      currentDate.setHours(0, 0, 0, 0);
+
+      if (scheduleDate <= currentDate) {
+        throw badRequest("Cannot delete past or current schedules!");
+      }
+
+      const result = await Schedule.deleteOne({ _id: scheduleId });
+
+      if (result.deletedCount === 0) {
+        throw notFound("Schedule not found!");
+      }
+
+      return reply.code(200).send({ message: `Schedule ${scheduleId} deleted` });
+    },
+  );
+
+  // PATCH /schedules/:scheduleId/addEmployee - add employee (transaction)
+  app.patch<{ Params: ScheduleIdParams; Body: AddEmployeeBody }>(
+    "/:scheduleId/addEmployee",
+    {
+      schema: {
+        params: scheduleIdParamsSchema,
+        body: addEmployeeBodySchema,
+      },
+    },
+    async (req, reply) => {
+      const { scheduleId } = req.params;
+      const { employeeSchedule } = req.body;
+
+      const validEmployees = employeesValidation(
+        employeeSchedule as unknown as IEmployeeSchedule,
+      );
+      if (validEmployees !== true) {
+        throw notFound(validEmployees);
+      }
+
+      const { employeeId, role, timeRange, vacation } = employeeSchedule;
+      const startTime = new Date(timeRange.startTime);
+      const endTime = new Date(timeRange.endTime);
+
+      const session = await mongoose.startSession();
+      session.startTransaction();
+
+      try {
+        const schedule = (await Schedule.findById(scheduleId)
+          .select(
+            "employeesSchedules.employeeId employeesSchedules.vacation employeesSchedules.timeRange",
+          )
+          .session(session)
+          .lean()) as unknown as ISchedule | null;
+
+        if (!schedule) {
+          throw notFound("Schedule not found!");
+        }
+
+        const employeeAlreadyScheduled = (
+          schedule.employeesSchedules || []
+        ).filter((emp) => emp.employeeId.toString() === employeeId.toString());
+
+        // Check if employee is already on vacation for this day
+        if (
+          employeeAlreadyScheduled.length > 0 &&
+          employeeAlreadyScheduled.some((el) => el.vacation)
+        ) {
+          throw badRequest("Employee on vacation!");
+        }
+
+        // If trying to add vacation, check if employee already has schedules
+        if (vacation && employeeAlreadyScheduled.length > 0) {
+          if (employeeAlreadyScheduled.some((el) => el.vacation)) {
+            throw badRequest("Employee already on vacation!");
+          }
+          throw badRequest("Employee already scheduled!");
+        }
+
+        const timeRangeArr = employeeAlreadyScheduled.map((el) => ({
+          startTime: new Date(el.timeRange.startTime),
+          endTime: new Date(el.timeRange.endTime),
+        }));
+
+        if (timeRangeArr.length > 0) {
+          if (isScheduleOverlapping(startTime, endTime, timeRangeArr) === true) {
+            throw badRequest("Employee scheduled overlaps existing one!");
+          }
+        }
+
+        const employeeEmployee = (await Employee.findById(employeeId)
+          .select("salary.grossSalary salary.payFrequency")
+          .session(session)
+          .lean()) as unknown as IEmployee | null;
+
+        if (!employeeEmployee) {
+          throw notFound("Employee not found!");
+        }
+
+        const shiftDurationMs = endTime.getTime() - startTime.getTime();
+        const weekdaysInMonth = getWeekdaysInMonth(
+          new Date().getFullYear(),
+          new Date().getMonth(),
+        );
+        let employeeCost = 0;
+
+        if (employeeEmployee?.salary) {
+          employeeCost = calculateEmployeeCost(
+            employeeEmployee.salary,
+            shiftDurationMs,
+            weekdaysInMonth,
+          );
+        }
+
+        const addEmployeeSchedule = {
           employeeId,
-          { $inc: { vacationDaysLeft: -1 } },
-          { returnDocument: 'after', lean: true, session },
+          role,
+          timeRange: { startTime, endTime },
+          vacation: vacation !== undefined ? vacation : false,
+          shiftHours: shiftDurationMs,
+          employeeCost,
+        };
+
+        // Only increment total if this is the first schedule entry for this employee
+        const totalEmployeesScheduledIncrement =
+          employeeAlreadyScheduled.length > 0 ? 0 : 1;
+
+        const updatedSchedule = await Schedule.findByIdAndUpdate(
+          scheduleId,
+          {
+            $push: { employeesSchedules: addEmployeeSchedule },
+            $inc: {
+              totalDayEmployeesCost: employeeCost,
+              totalEmployeesScheduled: vacation
+                ? 0
+                : totalEmployeesScheduledIncrement,
+              totalEmployeesVacation: vacation ? 1 : 0,
+            },
+          },
+          { returnDocument: "after", lean: true, session },
         );
 
-        if (!updatedEmployee) {
-          await session.abortTransaction();
-          return reply.code(500).send({
-            message:
+        if (updatedSchedule && vacation) {
+          const updatedEmployee = await Employee.findByIdAndUpdate(
+            employeeId,
+            { $inc: { vacationDaysLeft: -1 } },
+            { returnDocument: "after", lean: true, session },
+          );
+
+          if (!updatedEmployee) {
+            throw internal(
               "Update employee vacation days left failed upon adding employee to schedule!",
-          });
+            );
+          }
         }
+
+        await session.commitTransaction();
+
+        return reply.code(201).send({ message: "Employee added to schedule!" });
+      } catch (error) {
+        await session.abortTransaction().catch(() => undefined);
+        throw error;
+      } finally {
+        session.endSession();
       }
-
-      await session.commitTransaction();
-
-      return reply.code(201).send({ message: "Employee added to schedule!" });
-    } catch (error) {
-      await session.abortTransaction();
-      return reply.code(500).send({
-        message: "Adding employee to schedule failed!",
-        error: error instanceof Error ? error.message : error,
-      });
-    } finally {
-      session.endSession();
-    }
-  });
+    },
+  );
 
   // PATCH /schedules/:scheduleId/deleteEmployee - remove employee
-  app.patch("/:scheduleId/deleteEmployee", async (req, reply) => {
-    try {
-      const params = req.params as { scheduleId?: string };
-      const scheduleId = params.scheduleId;
-
-      const { employeeId, employeeScheduleId } = req.body as {
-        employeeId?: string;
-        employeeScheduleId?: string;
-      };
-
-      if (
-        !scheduleId ||
-        !employeeId ||
-        !employeeScheduleId ||
-        isObjectIdValid([scheduleId, employeeId, employeeScheduleId]) !== true
-      ) {
-        return reply.code(400).send({
-          message: "Invalid schedule, employee or employeeSchedule Id!",
-        });
-      }
+  app.patch<{ Params: ScheduleIdParams; Body: DeleteEmployeeBody }>(
+    "/:scheduleId/deleteEmployee",
+    {
+      schema: {
+        params: scheduleIdParamsSchema,
+        body: deleteEmployeeBodySchema,
+      },
+    },
+    async (req, reply) => {
+      const { scheduleId } = req.params;
+      const { employeeId, employeeScheduleId } = req.body;
 
       const schedule = (await Schedule.findById({
         _id: scheduleId,
@@ -448,7 +453,7 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
         .lean()) as unknown as ISchedule | null;
 
       if (!schedule) {
-        return reply.code(404).send({ message: "Schedule not found!" });
+        throw notFound("Schedule not found!");
       }
 
       const employeeSchedule: IEmployeeSchedule | null =
@@ -459,9 +464,7 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
         ) || null;
 
       if (!employeeSchedule) {
-        return reply
-          .code(404)
-          .send({ message: "Employee not found in schedule!" });
+        throw notFound("Employee not found in schedule!");
       }
 
       const scheduleToDelete = (schedule.employeesSchedules || []).find(
@@ -482,267 +485,239 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
             totalDayEmployeesCost: -(scheduleToDelete?.employeeCost ?? 0),
           },
         },
-        { returnDocument: 'after', lean: true },
+        { returnDocument: "after", lean: true },
       );
 
       if (updatedSchedule && scheduleToDelete?.vacation === true) {
         const updatedEmployee = await Employee.findByIdAndUpdate(
           employeeId,
           { $inc: { vacationDaysLeft: 1 } },
-          { returnDocument: 'after', lean: true },
+          { returnDocument: "after", lean: true },
         );
 
         if (!updatedEmployee) {
-          return reply.code(500).send({
-            message:
-              "Update employee vacation days left failed upon employee schedule deletation!",
-          });
+          throw internal(
+            "Update employee vacation days left failed upon employee schedule deletation!",
+          );
         }
       }
 
       return reply
         .code(200)
         .send({ message: "Employee deleted from schedule!" });
-    } catch (error) {
-      return reply.code(500).send({
-        message: "Delete employee from schedule failed!",
-        error: error instanceof Error ? error.message : error,
-      });
-    }
-  });
+    },
+  );
 
   // PATCH /schedules/:scheduleId/updateEmployee - update employee (transaction)
-  app.patch("/:scheduleId/updateEmployee", async (req, reply) => {
-    const params = req.params as { scheduleId?: string };
-    const scheduleId = params.scheduleId;
+  app.patch<{ Params: ScheduleIdParams; Body: UpdateEmployeeBody }>(
+    "/:scheduleId/updateEmployee",
+    {
+      schema: {
+        params: scheduleIdParamsSchema,
+        body: updateEmployeeBodySchema,
+      },
+    },
+    async (req, reply) => {
+      const { scheduleId } = req.params;
+      const { employeeSchedule, employeeScheduleId } = req.body;
 
-    const { employeeSchedule, employeeScheduleId } = req.body as {
-      employeeSchedule: IEmployeeSchedule;
-      employeeScheduleId?: string;
-    };
-
-    if (!scheduleId || isObjectIdValid([scheduleId]) !== true) {
-      return reply.code(400).send({ message: "Invalid schedule Id!" });
-    }
-
-    if (!employeeScheduleId || isObjectIdValid([employeeScheduleId]) !== true) {
-      return reply.code(400).send({ message: "Invalid employee schedule Id!" });
-    }
-
-    const validEmployees = employeesValidation(employeeSchedule);
-    if (validEmployees !== true) {
-      return reply.code(400).send({ message: validEmployees });
-    }
-
-    const { employeeId, role, timeRange, vacation } = employeeSchedule;
-    const startTime = new Date(timeRange.startTime);
-    const endTime = new Date(timeRange.endTime);
-
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
-    try {
-      const schedule = await Schedule.findById(scheduleId)
-        .select(
-          "employeesSchedules._id employeesSchedules.employeeId employeesSchedules.vacation employeesSchedules.timeRange employeesSchedules.employeeCost",
-        )
-        .session(session)
-        .lean<ISchedule | null>();
-
-      const employee = await Employee.findById(employeeId)
-        .select("salary.grossSalary salary.payFrequency")
-        .session(session)
-        .lean<IEmployee | null>();
-
-      if (!schedule) {
-        await session.abortTransaction();
-        return reply.code(404).send({ message: "Schedule not found!" });
-      }
-
-      if (!employee) {
-        await session.abortTransaction();
-        return reply.code(404).send({ message: "Employee not found!" });
-      }
-
-      const employeeScheduleToUpdate = (schedule.employeesSchedules || []).find(
-        (empSch) => empSch._id?.toString() === employeeScheduleId,
+      const validEmployees = employeesValidation(
+        employeeSchedule as unknown as IEmployeeSchedule,
       );
-
-      if (!employeeScheduleToUpdate) {
-        await session.abortTransaction();
-        return reply
-          .code(404)
-          .send({ message: "Employee schedule not found!" });
+      if (validEmployees !== true) {
+        throw badRequest(validEmployees);
       }
 
-      const employeeAlreadyScheduled = (
-        schedule.employeesSchedules || []
-      ).filter(
-        (emp) =>
-          emp.employeeId.toString() === employeeId.toString() &&
-          emp._id?.toString() !== employeeScheduleId,
-      );
+      const { employeeId, role, timeRange, vacation } = employeeSchedule;
+      const startTime = new Date(timeRange.startTime);
+      const endTime = new Date(timeRange.endTime);
 
-      if (employeeAlreadyScheduled.length > 0 && vacation) {
-        await session.abortTransaction();
-        return reply.code(400).send({
-          message: "Employee has multiple schedules, can't be on vacation!",
-        });
-      }
+      const session = await mongoose.startSession();
+      session.startTransaction();
 
-      const timeRangeArr = employeeAlreadyScheduled.map((el) => ({
-        startTime: new Date(el.timeRange.startTime),
-        endTime: new Date(el.timeRange.endTime),
-      }));
+      try {
+        const schedule = await Schedule.findById(scheduleId)
+          .select(
+            "employeesSchedules._id employeesSchedules.employeeId employeesSchedules.vacation employeesSchedules.timeRange employeesSchedules.employeeCost",
+          )
+          .session(session)
+          .lean<ISchedule | null>();
 
-      if (timeRangeArr.length > 0) {
-        if (isScheduleOverlapping(startTime, endTime, timeRangeArr)) {
-          await session.abortTransaction();
-          return reply.code(400).send({
-            message: "Employee scheduled overlaps existing one!",
-          });
+        const employee = await Employee.findById(employeeId)
+          .select("salary.grossSalary salary.payFrequency")
+          .session(session)
+          .lean<IEmployee | null>();
+
+        if (!schedule) {
+          throw notFound("Schedule not found!");
         }
-      }
 
-      const shiftDurationMs = endTime.getTime() - startTime.getTime();
-      const weekdaysInMonth = getWeekdaysInMonth(
-        new Date().getFullYear(),
-        new Date().getMonth(),
-      );
-      let employeeCost = 0;
+        if (!employee) {
+          throw notFound("Employee not found!");
+        }
 
-      if (employee?.salary) {
-        employeeCost = calculateEmployeeCost(
-          employee.salary,
-          shiftDurationMs,
-          weekdaysInMonth,
+        const employeeScheduleToUpdate = (schedule.employeesSchedules || []).find(
+          (empSch) => empSch._id?.toString() === employeeScheduleId,
         );
-      }
 
-      // Calculate cost difference (subtract old cost, add new cost)
-      const oldEmployeeCost = employeeScheduleToUpdate.employeeCost ?? 0;
-      const costDifference = employeeCost - oldEmployeeCost;
+        if (!employeeScheduleToUpdate) {
+          throw notFound("Employee schedule not found!");
+        }
 
-      // Update individual fields to avoid timestamps conflict
-      const updatedSchedule = await Schedule.findOneAndUpdate(
-        {
-          _id: scheduleId,
-          "employeesSchedules._id": employeeScheduleId,
-        },
-        {
-          $set: {
-            "employeesSchedules.$.employeeId": new Types.ObjectId(
-              employeeId.toString(),
-            ),
-            "employeesSchedules.$.role": role,
-            "employeesSchedules.$.timeRange": { startTime, endTime },
-            "employeesSchedules.$.vacation":
-              vacation !== undefined ? vacation : false,
-            "employeesSchedules.$.shiftHours": shiftDurationMs,
-            "employeesSchedules.$.employeeCost": employeeCost,
-          },
-          $inc: {
-            totalDayEmployeesCost: costDifference,
-            totalEmployeesScheduled:
-              employeeScheduleToUpdate?.vacation && !vacation
-                ? 1
-                : employeeScheduleToUpdate?.vacation === false && vacation
-                  ? -1
-                  : 0,
-            totalEmployeesVacation:
-              employeeScheduleToUpdate?.vacation && !vacation
-                ? -1
-                : employeeScheduleToUpdate?.vacation === false && vacation
-                  ? 1
-                  : 0,
-          },
-        },
-        { returnDocument: 'after', lean: true, session },
-      );
+        const employeeAlreadyScheduled = (
+          schedule.employeesSchedules || []
+        ).filter(
+          (emp) =>
+            emp.employeeId.toString() === employeeId.toString() &&
+            emp._id?.toString() !== employeeScheduleId,
+        );
 
-      if (updatedSchedule) {
-        const updatedEmployee = await Employee.findByIdAndUpdate(
-          employeeId,
+        if (employeeAlreadyScheduled.length > 0 && vacation) {
+          throw badRequest(
+            "Employee has multiple schedules, can't be on vacation!",
+          );
+        }
+
+        const timeRangeArr = employeeAlreadyScheduled.map((el) => ({
+          startTime: new Date(el.timeRange.startTime),
+          endTime: new Date(el.timeRange.endTime),
+        }));
+
+        if (timeRangeArr.length > 0) {
+          if (isScheduleOverlapping(startTime, endTime, timeRangeArr)) {
+            throw badRequest("Employee scheduled overlaps existing one!");
+          }
+        }
+
+        const shiftDurationMs = endTime.getTime() - startTime.getTime();
+        const weekdaysInMonth = getWeekdaysInMonth(
+          new Date().getFullYear(),
+          new Date().getMonth(),
+        );
+        let employeeCost = 0;
+
+        if (employee?.salary) {
+          employeeCost = calculateEmployeeCost(
+            employee.salary,
+            shiftDurationMs,
+            weekdaysInMonth,
+          );
+        }
+
+        // Calculate cost difference (subtract old cost, add new cost)
+        const oldEmployeeCost = employeeScheduleToUpdate.employeeCost ?? 0;
+        const costDifference = employeeCost - oldEmployeeCost;
+
+        // Update individual fields to avoid timestamps conflict
+        const updatedSchedule = await Schedule.findOneAndUpdate(
           {
+            _id: scheduleId,
+            "employeesSchedules._id": employeeScheduleId,
+          },
+          {
+            $set: {
+              "employeesSchedules.$.employeeId": new Types.ObjectId(
+                employeeId.toString(),
+              ),
+              "employeesSchedules.$.role": role,
+              "employeesSchedules.$.timeRange": { startTime, endTime },
+              "employeesSchedules.$.vacation":
+                vacation !== undefined ? vacation : false,
+              "employeesSchedules.$.shiftHours": shiftDurationMs,
+              "employeesSchedules.$.employeeCost": employeeCost,
+            },
             $inc: {
-              vacationDaysLeft:
+              totalDayEmployeesCost: costDifference,
+              totalEmployeesScheduled:
                 employeeScheduleToUpdate?.vacation && !vacation
                   ? 1
-                  : !employeeScheduleToUpdate?.vacation && vacation
+                  : employeeScheduleToUpdate?.vacation === false && vacation
                     ? -1
+                    : 0,
+              totalEmployeesVacation:
+                employeeScheduleToUpdate?.vacation && !vacation
+                  ? -1
+                  : employeeScheduleToUpdate?.vacation === false && vacation
+                    ? 1
                     : 0,
             },
           },
-          { returnDocument: 'after', lean: true, session },
+          { returnDocument: "after", lean: true, session },
         );
 
-        if (!updatedEmployee) {
-          await session.abortTransaction();
-          return reply.code(500).send({
-            message:
+        if (updatedSchedule) {
+          const updatedEmployee = await Employee.findByIdAndUpdate(
+            employeeId,
+            {
+              $inc: {
+                vacationDaysLeft:
+                  employeeScheduleToUpdate?.vacation && !vacation
+                    ? 1
+                    : !employeeScheduleToUpdate?.vacation && vacation
+                      ? -1
+                      : 0,
+              },
+            },
+            { returnDocument: "after", lean: true, session },
+          );
+
+          if (!updatedEmployee) {
+            throw internal(
               "Update employee vacation days left failed upon adding employee to schedule!",
-          });
+            );
+          }
         }
+
+        await session.commitTransaction();
+
+        return reply.code(201).send({ message: "Employee schedule updated" });
+      } catch (error) {
+        await session.abortTransaction().catch(() => undefined);
+        throw error;
+      } finally {
+        session.endSession();
       }
-
-      await session.commitTransaction();
-
-      return reply.code(201).send({ message: "Employee schedule updated" });
-    } catch (error) {
-      await session.abortTransaction();
-      return reply.code(500).send({
-        message: "Updating employee to schedule failed!",
-        error: error instanceof Error ? error.message : error,
-      });
-    } finally {
-      session.endSession();
-    }
-  });
+    },
+  );
 
   // GET /schedules/business/:businessId - get by business
-  app.get("/business/:businessId", async (req, reply) => {
-    const params = req.params as { businessId?: string };
-    const businessId = params.businessId;
+  app.get<{ Params: ScheduleBusinessParams }>(
+    "/business/:businessId",
+    { schema: { params: scheduleBusinessParamsSchema } },
+    async (req, reply) => {
+      const { businessId } = req.params;
 
-    if (!businessId || isObjectIdValid([businessId]) !== true) {
-      return reply.code(400).send({ message: "Invalid business Id!" });
-    }
-
-    const schedules = await Schedule.find({
-      businessId: new Types.ObjectId(businessId),
-    })
-      .populate({
-        path: "employeesSchedules.employeeId",
-        select: "employeeName allEmployeeRoles",
-        model: Employee,
+      const schedules = await Schedule.find({
+        businessId: new Types.ObjectId(businessId),
       })
-      .lean();
+        .populate({
+          path: "employeesSchedules.employeeId",
+          select: "employeeName allEmployeeRoles",
+          model: Employee,
+        })
+        .lean();
 
-    if (!schedules.length) {
-      return reply.code(404).send({ message: "No schedules found!" });
-    }
-    return reply.code(200).send(schedules);
-  });
+      if (!schedules.length) {
+        throw notFound("No schedules found!");
+      }
+      return reply.code(200).send(schedules);
+    },
+  );
 
   // GET /schedules/user/:userId - get by user
-  app.get("/user/:userId", async (req, reply) => {
-    const params = req.params as { userId?: string };
-    const userId = params.userId;
+  app.get<{ Params: ScheduleUserParams }>(
+    "/user/:userId",
+    { schema: { params: scheduleUserParamsSchema } },
+    async (req, reply) => {
+      const { userId } = req.params;
 
-    if (!userId || isObjectIdValid([userId]) !== true) {
-      return reply.code(400).send({ message: "Invalid user Id!" });
-    }
-
-    try {
       const user = (await User.findById(userId)
         .select("employeeDetails")
         .lean()) as {
         employeeDetails?: unknown;
       } | null;
       if (!user?.employeeDetails) {
-        return reply.code(404).send({
-          message: "User not found or not linked to an employee!",
-        });
+        throw notFound("User not found or not linked to an employee!");
       }
 
       const employeeId = user.employeeDetails as Types.ObjectId;
@@ -758,14 +733,9 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
         .lean();
 
       if (!schedules.length) {
-        return reply.code(404).send({ message: "No schedules found!" });
+        throw notFound("No schedules found!");
       }
       return reply.code(200).send(schedules);
-    } catch (error) {
-      return reply.code(500).send({
-        message: "Get schedule by employee id failed!",
-        error: error instanceof Error ? error.message : error,
-      });
-    }
-  });
+    },
+  );
 };
