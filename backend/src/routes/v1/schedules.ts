@@ -14,7 +14,10 @@ import type {
   ISchedule,
   IEmployeeSchedule,
 } from "../../../../packages/interfaces/ISchedule.ts";
-import type { IEmployee } from "../../../../packages/interfaces/IEmployee.ts";
+import type {
+  IEmployee,
+  ISalary,
+} from "../../../../packages/interfaces/IEmployee.ts";
 
 import getWeekNumber from "../../schedules/getWeekNumber.ts";
 import employeesValidation from "../../schedules/employeesValidation.ts";
@@ -53,6 +56,47 @@ import {
   type UpdateEmployeeBody,
   type UpdateScheduleBody,
 } from "../../../../packages/schemas/schedules.ts";
+
+/** A shift time range used by the overlap post-parse check. */
+interface ShiftTimeRange {
+  startTime: Date;
+  endTime: Date;
+}
+
+/**
+ * Cross-field post-parse check: the proposed shift must not overlap any of the
+ * employee's existing shifts for the same day.
+ */
+const assertNoScheduleOverlap = (
+  newStartTime: Date,
+  newEndTime: Date,
+  existingTimeRanges: ShiftTimeRange[],
+): void => {
+  if (existingTimeRanges.length === 0) return;
+  if (isScheduleOverlapping(newStartTime, newEndTime, existingTimeRanges)) {
+    throw badRequest("Employee scheduled overlaps existing one!");
+  }
+};
+
+/** A shift's duration in milliseconds. */
+const getShiftDurationMs = (startTime: Date, endTime: Date): number =>
+  endTime.getTime() - startTime.getTime();
+
+/**
+ * The employee cost for a shift, from the salary's pay frequency and the
+ * weekdays in the current month. Zero when the employee has no salary on file.
+ */
+const calculateShiftEmployeeCost = (
+  salary: ISalary | undefined,
+  durationMs: number,
+): number => {
+  if (!salary) return 0;
+  const weekdaysInMonth = getWeekdaysInMonth(
+    new Date().getFullYear(),
+    new Date().getMonth(),
+  );
+  return calculateEmployeeCost(salary, durationMs, weekdaysInMonth);
+};
 
 export const schedulesRoutes: FastifyPluginAsync = async (app) => {
   const authHook = createAuthHook(app);
@@ -297,9 +341,7 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
       const { scheduleId } = req.params;
       const { employeeSchedule } = req.body;
 
-      const validEmployees = employeesValidation(
-        employeeSchedule as unknown as IEmployeeSchedule,
-      );
+      const validEmployees = employeesValidation(employeeSchedule);
       if (validEmployees !== true) {
         throw notFound(validEmployees);
       }
@@ -348,35 +390,22 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
           endTime: new Date(el.timeRange.endTime),
         }));
 
-        if (timeRangeArr.length > 0) {
-          if (isScheduleOverlapping(startTime, endTime, timeRangeArr) === true) {
-            throw badRequest("Employee scheduled overlaps existing one!");
-          }
-        }
+        assertNoScheduleOverlap(startTime, endTime, timeRangeArr);
 
-        const employeeEmployee = (await Employee.findById(employeeId)
+        const employeeDoc = (await Employee.findById(employeeId)
           .select("salary.grossSalary salary.payFrequency")
           .session(session)
           .lean()) as unknown as IEmployee | null;
 
-        if (!employeeEmployee) {
+        if (!employeeDoc) {
           throw notFound("Employee not found!");
         }
 
-        const shiftDurationMs = endTime.getTime() - startTime.getTime();
-        const weekdaysInMonth = getWeekdaysInMonth(
-          new Date().getFullYear(),
-          new Date().getMonth(),
+        const shiftDurationMs = getShiftDurationMs(startTime, endTime);
+        const employeeCost = calculateShiftEmployeeCost(
+          employeeDoc.salary,
+          shiftDurationMs,
         );
-        let employeeCost = 0;
-
-        if (employeeEmployee?.salary) {
-          employeeCost = calculateEmployeeCost(
-            employeeEmployee.salary,
-            shiftDurationMs,
-            weekdaysInMonth,
-          );
-        }
 
         const addEmployeeSchedule = {
           employeeId,
@@ -521,9 +550,7 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
       const { scheduleId } = req.params;
       const { employeeSchedule, employeeScheduleId } = req.body;
 
-      const validEmployees = employeesValidation(
-        employeeSchedule as unknown as IEmployeeSchedule,
-      );
+      const validEmployees = employeesValidation(employeeSchedule);
       if (validEmployees !== true) {
         throw badRequest(validEmployees);
       }
@@ -583,26 +610,13 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
           endTime: new Date(el.timeRange.endTime),
         }));
 
-        if (timeRangeArr.length > 0) {
-          if (isScheduleOverlapping(startTime, endTime, timeRangeArr)) {
-            throw badRequest("Employee scheduled overlaps existing one!");
-          }
-        }
+        assertNoScheduleOverlap(startTime, endTime, timeRangeArr);
 
-        const shiftDurationMs = endTime.getTime() - startTime.getTime();
-        const weekdaysInMonth = getWeekdaysInMonth(
-          new Date().getFullYear(),
-          new Date().getMonth(),
+        const shiftDurationMs = getShiftDurationMs(startTime, endTime);
+        const employeeCost = calculateShiftEmployeeCost(
+          employee?.salary,
+          shiftDurationMs,
         );
-        let employeeCost = 0;
-
-        if (employee?.salary) {
-          employeeCost = calculateEmployeeCost(
-            employee.salary,
-            shiftDurationMs,
-            weekdaysInMonth,
-          );
-        }
 
         // Calculate cost difference (subtract old cost, add new cost)
         const oldEmployeeCost = employeeScheduleToUpdate.employeeCost ?? 0;

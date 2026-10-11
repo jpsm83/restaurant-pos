@@ -6,7 +6,11 @@ import {
   employeeScheduleSchema,
   updateScheduleBodySchema,
 } from "../../../packages/schemas/schedules.ts";
-import { scheduleDtoSchemas } from "../helpers/scheduleDtos.ts";
+import {
+  employeeScheduleServerOwnedFields,
+  scheduleDtoSchemas,
+  scheduleServerOwnedFields,
+} from "../helpers/scheduleDtos.ts";
 
 /**
  * Parity between the schedules DTOs and the Schedule model (the domain source of
@@ -54,15 +58,7 @@ describe("schedules DTO ↔ model parity", () => {
   });
 
   it("server-owned fields are owned by Schedule but accepted by no DTO", () => {
-    for (const field of [
-      "weekNumber",
-      "employeesSchedules",
-      "totalEmployeesScheduled",
-      "totalEmployeesVacation",
-      "totalDayEmployeesCost",
-      "createdAt",
-      "updatedAt",
-    ]) {
+    for (const field of scheduleServerOwnedFields) {
       expect(scheduleOwns(field), `${field} should be owned by Schedule`).toBe(
         true,
       );
@@ -76,7 +72,7 @@ describe("schedules DTO ↔ model parity", () => {
   });
 
   it("computed employeeSchedule fields are owned by Schedule but accepted by no DTO", () => {
-    for (const field of ["shiftHours", "employeeCost"]) {
+    for (const field of employeeScheduleServerOwnedFields) {
       expect(
         scheduleOwns(`employeesSchedules.${field}`),
         `${field} should be owned by Schedule`,

@@ -28,3 +28,20 @@ export const scheduleDtoSchemas: Record<string, z.ZodObject> = {
   updateEmployeeBodySchema,
   deleteEmployeeBodySchema,
 };
+
+/** Server-owned top-level Schedule fields a client must never set. */
+export const scheduleServerOwnedFields = [
+  "weekNumber",
+  "employeesSchedules",
+  "totalEmployeesScheduled",
+  "totalEmployeesVacation",
+  "totalDayEmployeesCost",
+  "createdAt",
+  "updatedAt",
+] as const;
+
+/** Server-owned fields inside each `employeesSchedules` entry. */
+export const employeeScheduleServerOwnedFields = [
+  "shiftHours",
+  "employeeCost",
+] as const;

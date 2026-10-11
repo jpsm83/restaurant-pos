@@ -12,7 +12,11 @@ import {
   updateEmployeeBodySchema,
   updateScheduleBodySchema,
 } from "../../../packages/schemas/schedules.ts";
-import { scheduleDtoSchemas } from "../helpers/scheduleDtos.ts";
+import {
+  employeeScheduleServerOwnedFields,
+  scheduleDtoSchemas,
+  scheduleServerOwnedFields,
+} from "../helpers/scheduleDtos.ts";
 
 const VALID_ID = "507f1f77bcf86cd799439011";
 const SECOND_ID = "507f1f77bcf86cd799439022";
@@ -374,15 +378,8 @@ describe("schedule employee-management body schemas", () => {
 
 describe("server-owned fields are excluded from every schedules DTO", () => {
   const serverOwned = [
-    "weekNumber",
-    "employeesSchedules",
-    "totalEmployeesScheduled",
-    "totalEmployeesVacation",
-    "totalDayEmployeesCost",
-    "shiftHours",
-    "employeeCost",
-    "createdAt",
-    "updatedAt",
+    ...scheduleServerOwnedFields,
+    ...employeeScheduleServerOwnedFields,
   ];
 
   it.each(Object.entries(scheduleDtoSchemas))(

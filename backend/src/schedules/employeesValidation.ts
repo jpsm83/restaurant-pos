@@ -1,6 +1,20 @@
-import type { IEmployeeSchedule } from "../../../packages/interfaces/ISchedule.ts";
+/**
+ * The client-settable shape this guard inspects. It is deliberately permissive:
+ * the route calls the guard *after* the zod DTO has parsed, so the DTO owns
+ * field presence, types and unknown-key rejection. The guard's job is the
+ * cross-field `startTime <= endTime` rule (and keeping the legacy invalid-key
+ * defence for any non-HTTP caller).
+ */
+export interface EmployeeScheduleInput {
+  employeeId?: unknown;
+  role?: unknown;
+  timeRange?: { startTime?: unknown; endTime?: unknown };
+  vacation?: unknown;
+}
 
-const employeesValidation = (employee: IEmployeeSchedule): true | string => {
+const employeesValidation = (
+  employee: EmployeeScheduleInput,
+): true | string => {
   if (typeof employee !== "object" || employee === undefined) {
     return "Invalid employee object";
   }
@@ -8,7 +22,7 @@ const employeesValidation = (employee: IEmployeeSchedule): true | string => {
   const validKeys = ["employeeId", "role", "timeRange"];
 
   for (const key of validKeys) {
-    const value = employee[key as keyof IEmployeeSchedule];
+    const value = (employee as Record<string, unknown>)[key];
     if (!value) {
       return `${key} must have a value!`;
     }
@@ -16,17 +30,18 @@ const employeesValidation = (employee: IEmployeeSchedule): true | string => {
 
   for (const key of Object.keys(employee)) {
     if (key !== "vacation") {
-      if (!validKeys.includes(key as keyof IEmployeeSchedule)) {
+      if (!validKeys.includes(key)) {
         return `Invalid key: ${key}`;
       }
     }
   }
 
+  const timeRange = employee.timeRange;
   if (
-    !employee.timeRange.startTime ||
-    !employee.timeRange.endTime ||
-    typeof employee.timeRange !== "object" ||
-    employee.timeRange.startTime > employee.timeRange.endTime
+    !timeRange?.startTime ||
+    !timeRange?.endTime ||
+    typeof timeRange !== "object" ||
+    (timeRange.startTime as Date) > (timeRange.endTime as Date)
   ) {
     return "Invalid timeRange object";
   }
