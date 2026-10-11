@@ -12,6 +12,11 @@ import BusinessGood from "../../src/models/businessGood.ts";
 import WeeklyBusinessReport from "../../src/models/weeklyBusinessReport.ts";
 import MonthlyBusinessReport from "../../src/models/monthlyBusinessReport.ts";
 import { buildReconciledDailyPayload } from "../../src/dailySalesReports/reconciliationCore.ts";
+import {
+  resolveLocalDate,
+  resolveWeekBounds,
+  resolveMonthBounds,
+} from "../../src/utils/timezoneResolver.ts";
 
 /**
  * Every error response is an RFC 9457 `application/problem+json` document
@@ -1015,6 +1020,212 @@ describe("DailySalesReports routes - Task T2 integration", () => {
       });
 
       expect(response.statusCode).toBe(401);
+    });
+  });
+
+  describe("business-local rollup boundaries", () => {
+    const seedClosedReport = (
+      businessId: Types.ObjectId,
+      dailyReferenceNumber: number,
+      createdAt: Date,
+      netPaid: number,
+    ) =>
+      DailySalesReport.create({
+        businessId,
+        dailyReferenceNumber,
+        isDailyReportOpen: false,
+        timeCountdownToClose: Date.now() + 86400000,
+        dailyTotalSalesBeforeAdjustments: netPaid,
+        dailyNetPaidAmount: netPaid,
+        businessPaymentMethods: [],
+        dailySoldGoods: [],
+        dailyVoidedGoods: [],
+        dailyInvitedGoods: [],
+        createdAt,
+      });
+
+    const createOpenTriggerReport = (
+      businessId: Types.ObjectId,
+      dailyReferenceNumber: number,
+    ) =>
+      DailySalesReport.create({
+        businessId,
+        dailyReferenceNumber,
+        isDailyReportOpen: true,
+        timeCountdownToClose: Date.now() + 86400000,
+        employeesDailySalesReport: [],
+        selfOrderingSalesReport: [],
+        businessPaymentMethods: [],
+        dailySoldGoods: [],
+        dailyVoidedGoods: [],
+        dailyInvitedGoods: [],
+      });
+
+    /**
+     * Seeds four closed reports straddling a period's UTC bounds (just before
+     * the start, exactly at the start, exactly at the end, just after the end)
+     * plus one open trigger report used to drive the rollup through the route.
+     * The two interior reports are the ones the period should contain.
+     */
+    const seedPeriodAndTrigger = async (
+      businessId: Types.ObjectId,
+      bounds: { start: Date; end: Date },
+      numbers: [number, number, number, number, number],
+    ) => {
+      await Promise.all([
+        seedClosedReport(
+          businessId,
+          numbers[0],
+          new Date(bounds.start.getTime() - 1),
+          1000,
+        ),
+        seedClosedReport(businessId, numbers[1], bounds.start, 2000),
+        seedClosedReport(businessId, numbers[2], bounds.end, 4000),
+        seedClosedReport(
+          businessId,
+          numbers[3],
+          new Date(bounds.end.getTime() + 1),
+          8000,
+        ),
+      ]);
+      return createOpenTriggerReport(businessId, numbers[4]);
+    };
+
+    const closeReport = (
+      app: Awaited<ReturnType<typeof getTestApp>>,
+      reportId: Types.ObjectId,
+      token: string,
+    ) =>
+      app.inject({
+        method: "PATCH",
+        url: `/api/v1/dailySalesReports/${reportId}/close`,
+        headers: { authorization: token },
+      });
+
+    it("buckets a week on business-local boundaries east of UTC", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness({ timezone: "Asia/Tokyo" });
+      const businessId = business._id as Types.ObjectId;
+      const token = await createManagerToken(businessId);
+
+      const bounds = resolveWeekBounds(
+        resolveLocalDate(new Date(), "Asia/Tokyo"),
+        "Asia/Tokyo",
+        1,
+      );
+      const trigger = await seedPeriodAndTrigger(businessId, bounds, [
+        9101, 9102, 9103, 9104, 9105,
+      ]);
+
+      const response = await closeReport(
+        app,
+        trigger._id as Types.ObjectId,
+        token,
+      );
+      expect(response.statusCode, response.body).toBe(200);
+
+      const weekly = await WeeklyBusinessReport.findOne({ businessId }).lean();
+      expect(weekly?.financialSummary?.totalSalesForWeek).toBe(6000);
+      expect(weekly?.financialSummary?.totalNetRevenue).toBe(6000);
+    });
+
+    it("honors the configured weekly start day", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness({
+        timezone: "Asia/Tokyo",
+        reportingConfig: { weeklyReportStartDay: 0 },
+      });
+      const businessId = business._id as Types.ObjectId;
+      const token = await createManagerToken(businessId);
+
+      const bounds = resolveWeekBounds(
+        resolveLocalDate(new Date(), "Asia/Tokyo"),
+        "Asia/Tokyo",
+        0,
+      );
+      const trigger = await seedPeriodAndTrigger(businessId, bounds, [
+        9201, 9202, 9203, 9204, 9205,
+      ]);
+
+      const response = await closeReport(
+        app,
+        trigger._id as Types.ObjectId,
+        token,
+      );
+      expect(response.statusCode, response.body).toBe(200);
+
+      const weekly = await WeeklyBusinessReport.findOne({ businessId }).lean();
+      expect(weekly?.financialSummary?.totalSalesForWeek).toBe(6000);
+    });
+
+    it("falls back to UTC week boundaries when the business has no timezone", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      const businessId = business._id as Types.ObjectId;
+      const token = await createManagerToken(businessId);
+
+      const bounds = resolveWeekBounds(resolveLocalDate(new Date(), "UTC"), "UTC", 1);
+      const trigger = await seedPeriodAndTrigger(businessId, bounds, [
+        9301, 9302, 9303, 9304, 9305,
+      ]);
+
+      const response = await closeReport(
+        app,
+        trigger._id as Types.ObjectId,
+        token,
+      );
+      expect(response.statusCode, response.body).toBe(200);
+
+      const weekly = await WeeklyBusinessReport.findOne({ businessId }).lean();
+      expect(weekly?.financialSummary?.totalSalesForWeek).toBe(6000);
+    });
+
+    it("buckets a month on business-local boundaries west of UTC", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness({ timezone: "America/Bogota" });
+      const businessId = business._id as Types.ObjectId;
+      const token = await createManagerToken(businessId);
+
+      const bounds = resolveMonthBounds(
+        resolveLocalDate(new Date(), "America/Bogota"),
+        "America/Bogota",
+      );
+      const trigger = await seedPeriodAndTrigger(businessId, bounds, [
+        9401, 9402, 9403, 9404, 9405,
+      ]);
+
+      const response = await closeReport(
+        app,
+        trigger._id as Types.ObjectId,
+        token,
+      );
+      expect(response.statusCode, response.body).toBe(200);
+
+      const monthly = await MonthlyBusinessReport.findOne({ businessId }).lean();
+      expect(monthly?.financialSummary?.totalSalesForMonth).toBe(6000);
+      expect(monthly?.financialSummary?.totalNetRevenue).toBe(6000);
+    });
+
+    it("falls back to UTC month boundaries when the business has no timezone", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      const businessId = business._id as Types.ObjectId;
+      const token = await createManagerToken(businessId);
+
+      const bounds = resolveMonthBounds(resolveLocalDate(new Date(), "UTC"), "UTC");
+      const trigger = await seedPeriodAndTrigger(businessId, bounds, [
+        9501, 9502, 9503, 9504, 9505,
+      ]);
+
+      const response = await closeReport(
+        app,
+        trigger._id as Types.ObjectId,
+        token,
+      );
+      expect(response.statusCode, response.body).toBe(200);
+
+      const monthly = await MonthlyBusinessReport.findOne({ businessId }).lean();
+      expect(monthly?.financialSummary?.totalSalesForMonth).toBe(6000);
     });
   });
 });

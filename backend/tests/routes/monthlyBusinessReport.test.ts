@@ -17,9 +17,7 @@ vi.mock("../../src/monthlyBusinessReport/sendMonthlyReportReadyNotification.ts",
 }));
 
 describe("MonthlyBusinessReport Routes", () => {
-  const createTestBusiness = async (
-    overrides: Record<string, unknown> = {},
-  ) => {
+  const createTestBusiness = async () => {
     return await Business.create({
       tradeName: "Test Restaurant",
       legalName: "Test Restaurant LLC",
@@ -37,7 +35,6 @@ describe("MonthlyBusinessReport Routes", () => {
         buildingNumber: "123",
         postCode: "90001",
       },
-      ...overrides,
     });
   };
 
@@ -418,69 +415,6 @@ describe("MonthlyBusinessReport Routes", () => {
       ).toBeCloseTo(3.3333, 3);
       expect(created?.financialSummary?.breakEvenSales).toBeCloseTo(100, 6);
       expect(created?.financialSummary?.minimumDailySalesTarget).toBeGreaterThan(0);
-    });
-  });
-
-  describe("business-local rollup boundaries", () => {
-    const seedDailyReport = (
-      businessId: Types.ObjectId,
-      dailyReferenceNumber: number,
-      createdAt: string,
-      netPaid: number,
-    ) =>
-      DailySalesReport.create({
-        businessId,
-        dailyReferenceNumber,
-        isDailyReportOpen: false,
-        timeCountdownToClose: Date.now() + 86400000,
-        dailyTotalSalesBeforeAdjustments: netPaid,
-        dailyNetPaidAmount: netPaid,
-        businessPaymentMethods: [],
-        dailySoldGoods: [],
-        dailyVoidedGoods: [],
-        dailyInvitedGoods: [],
-        createdAt: new Date(createdAt),
-      });
-
-    it("groups reports by the business-local month (west of UTC)", async () => {
-      const business = await createTestBusiness({ timezone: "America/Bogota" });
-      const businessId = business._id as Types.ObjectId;
-
-      // Bogota is UTC-5; local October 2026 is the UTC interval
-      // [2026-10-01T05:00Z, 2026-11-01T04:59:59.999Z].
-      await seedDailyReport(businessId, 9401, "2026-10-01T04:59:59.999Z", 1000); // Sep 30 23:59 - previous month
-      await seedDailyReport(businessId, 9402, "2026-10-01T05:00:00.000Z", 2000); // Oct 1 00:00 - this month
-      await seedDailyReport(businessId, 9403, "2026-11-01T04:59:59.999Z", 4000); // Oct 31 23:59 - this month
-      await seedDailyReport(businessId, 9404, "2026-11-01T05:00:00.000Z", 8000); // Nov 1 00:00 - next month
-
-      await aggregateDailyReportsIntoMonthly(
-        businessId,
-        new Date("2026-10-15T12:00:00.000Z"),
-      );
-
-      const report = await MonthlyBusinessReport.findOne({ businessId }).lean();
-      expect(report?.financialSummary?.totalSalesForMonth).toBe(6000);
-      expect(report?.financialSummary?.totalNetRevenue).toBe(6000);
-    });
-
-    it("falls back to UTC when the business has no timezone", async () => {
-      const business = await createTestBusiness();
-      const businessId = business._id as Types.ObjectId;
-
-      // UTC October 2026 is the interval
-      // [2026-10-01T00:00Z, 2026-10-31T23:59:59.999Z].
-      await seedDailyReport(businessId, 9501, "2026-09-30T23:59:59.999Z", 1000); // previous month
-      await seedDailyReport(businessId, 9502, "2026-10-01T00:00:00.000Z", 2000); // this month
-      await seedDailyReport(businessId, 9503, "2026-10-31T23:59:59.999Z", 4000); // this month
-      await seedDailyReport(businessId, 9504, "2026-11-01T00:00:00.000Z", 8000); // next month
-
-      await aggregateDailyReportsIntoMonthly(
-        businessId,
-        new Date("2026-10-15T12:00:00.000Z"),
-      );
-
-      const report = await MonthlyBusinessReport.findOne({ businessId }).lean();
-      expect(report?.financialSummary?.totalSalesForMonth).toBe(6000);
     });
   });
 });
