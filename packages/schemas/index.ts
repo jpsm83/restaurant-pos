@@ -8,3 +8,4 @@ export * from "./auth.ts";
 export * from "./ratings.ts";
 export * from "./orders.ts";
 export * from "./salesPoints.ts";
+export * from "./promotions.ts";
