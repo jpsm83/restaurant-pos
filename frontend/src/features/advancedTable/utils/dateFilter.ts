@@ -1,12 +1,7 @@
+const CALENDAR_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 const DATE_TIME_PATTERN = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})$/;
-const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d):([0-5]\d)$/;
 
-export const DEFAULT_TIMES = {
-  start: "00:00:00",
-  end: "23:59:59",
-} as const;
-
-export type QuickRangeOption = "lastHour" | "today" | "thisWeek" | "thisMonth";
+export type QuickRangeOption = "today" | "thisWeek" | "thisMonth";
 
 export interface QuickRangeConfig {
   /**
@@ -14,6 +9,11 @@ export interface QuickRangeConfig {
    * 0 = Sunday, 1 = Monday, ... 6 = Saturday.
    */
   weekStartsOn?: number;
+}
+
+export interface CalendarDateBounds {
+  startMs: number;
+  endMs: number;
 }
 
 function clampWeekStartsOn(value: number | undefined): number {
@@ -36,7 +36,7 @@ function getStartOfWeek(date: Date, weekStartsOn: number): Date {
   return start;
 }
 
-export type LegacyQuickRangeOption =
+type LegacyQuickRangeOption =
   | "last15min"
   | "lastHour"
   | "lastDay"
@@ -45,35 +45,69 @@ export type LegacyQuickRangeOption =
 
 function normalizeQuickRangeOption(option: string): QuickRangeOption | null {
   const legacyToCurrent: Record<LegacyQuickRangeOption, QuickRangeOption> = {
-    last15min: "lastHour",
-    lastHour: "lastHour",
+    last15min: "today",
+    lastHour: "today",
     lastDay: "today",
     lastWeek: "thisWeek",
     lastMonth: "thisMonth",
   };
   return (
     legacyToCurrent[option as LegacyQuickRangeOption] ??
-    (["lastHour", "today", "thisWeek", "thisMonth"].includes(option)
+    (["today", "thisWeek", "thisMonth"].includes(option)
       ? (option as QuickRangeOption)
       : null)
   );
 }
 
-export function formatLocalDateTime(date: Date): string {
+/**
+ * Formats a `Date` as a plain `YYYY-MM-DD` calendar date using its browser-local
+ * date components. No time or offset is emitted.
+ */
+export function formatCalendarDate(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  const seconds = String(date.getSeconds()).padStart(2, "0");
-
-  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+  return `${year}-${month}-${day}`;
 }
 
-export function isValidTimeString(time: string): boolean {
-  return TIME_PATTERN.test(time);
+/** True when `value` is a real `YYYY-MM-DD` calendar date (no time, no offset). */
+export function isValidCalendarDate(value: string): boolean {
+  const match = CALENDAR_DATE_PATTERN.exec(value);
+  if (!match) return false;
+
+  const [, year, month, day] = match;
+  const date = createCalendarDate(Number(year), Number(month), Number(day));
+  return (
+    date.getFullYear() === Number(year) &&
+    date.getMonth() === Number(month) - 1 &&
+    date.getDate() === Number(day)
+  );
 }
 
+function createCalendarDate(year: number, month: number, day: number): Date {
+  // `new Date(year, ...)` maps years 0-99 to 1900-1999, so set the full year
+  // explicitly to preserve four-digit calendar years.
+  const date = new Date(0);
+  date.setFullYear(year, month - 1, day);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+/**
+ * Parses a plain `YYYY-MM-DD` calendar date into a browser-local `Date` at
+ * midnight. Returns `null` for any other shape, including date-times.
+ */
+export function parseCalendarDate(value: string): Date | null {
+  if (!isValidCalendarDate(value)) return null;
+  const [year, month, day] = value.split("-").map(Number);
+  return createCalendarDate(year, month, day);
+}
+
+/**
+ * Resolves a quick range to a pair of plain `YYYY-MM-DD` calendar dates.
+ * Sub-day legacy options collapse to `today`; the end is always the current
+ * calendar date.
+ */
 export function getQuickRange(
   option: string,
   nowDate: Date = new Date(),
@@ -85,9 +119,6 @@ export function getQuickRange(
   const now = new Date(nowDate.getTime());
   let start: Date;
   switch (normalizedOption) {
-    case "lastHour":
-      start = new Date(now.getTime() - 60 * 60 * 1000);
-      break;
     case "today":
       start = getStartOfDay(now);
       break;
@@ -101,7 +132,7 @@ export function getQuickRange(
       return ["", ""];
   }
 
-  return [formatLocalDateTime(start), formatLocalDateTime(now)];
+  return [formatCalendarDate(start), formatCalendarDate(now)];
 }
 
 export function resolveQuickRangeSelection(
@@ -109,32 +140,56 @@ export function resolveQuickRangeSelection(
   endDateStr: string,
   config: QuickRangeConfig = {},
 ): QuickRangeOption | "" {
-  const parsedStart = parseDateTime(startDateStr);
-  const parsedEnd = parseDateTime(endDateStr);
-  if (!parsedStart || !parsedEnd) return "";
+  const start = parseCalendarDate(startDateStr);
+  const end = parseCalendarDate(endDateStr);
+  if (!start || !end) return "";
 
-  const start = parsedStart.date;
-  const end = parsedEnd.date;
-  const startKey = formatLocalDateTime(start);
+  const startKey = formatCalendarDate(start);
 
   // "Today", "This week", and "This month" are anchored by period start.
-  const todayStartKey = formatLocalDateTime(getStartOfDay(end));
-  const weekStartKey = formatLocalDateTime(
+  const todayStartKey = formatCalendarDate(getStartOfDay(end));
+  const weekStartKey = formatCalendarDate(
     getStartOfWeek(end, clampWeekStartsOn(config.weekStartsOn)),
   );
-  const monthStartKey = formatLocalDateTime(getStartOfMonth(end));
+  const monthStartKey = formatCalendarDate(getStartOfMonth(end));
 
   if (startKey === monthStartKey) return "thisMonth";
   if (startKey === weekStartKey) return "thisWeek";
   if (startKey === todayStartKey) return "today";
 
-  // Last hour is duration-based relative to selected range.
-  const diffMs = end.getTime() - start.getTime();
-  if (diffMs === 60 * 60 * 1000) return "lastHour";
-
   return "";
 }
 
+/**
+ * Resolves a date-only range to inclusive browser-local `[start, end]` day
+ * bounds for client-side filtering. Business-local resolution to UTC bounds is
+ * owned by the backend; this is the local-mode fallback.
+ */
+export function resolveCalendarDateBounds(
+  startDateStr: string,
+  endDateStr: string,
+): CalendarDateBounds | null {
+  const start = parseCalendarDate(startDateStr);
+  const end = parseCalendarDate(endDateStr);
+  if (!start || !end) return null;
+
+  const endOfDay = new Date(
+    end.getFullYear(),
+    end.getMonth(),
+    end.getDate(),
+    23,
+    59,
+    59,
+    999,
+  );
+  return { startMs: start.getTime(), endMs: endOfDay.getTime() };
+}
+
+/**
+ * Parses a backend date-time string into a `Date` plus its browser-local wall
+ * time. Used to display and locally compare record timestamps; business-local
+ * display is out of scope for the date-only filter contract.
+ */
 export function parseDateTime(
   dateTimeStr: string,
 ): { date: Date; time: string } | null {
@@ -177,37 +232,17 @@ export function parseDateTime(
   return { date, time: `${hh}:${mm}:${ss}` };
 }
 
-export function buildDateTimeFromDateAndTime(
-  date: Date,
-  time: string,
-  fallbackTime: string,
-): string {
-  const safeTime = isValidTimeString(time) ? time : fallbackTime;
-  const [hours, minutes, seconds] = safeTime.split(":").map(Number);
-  const merged = new Date(
-    date.getFullYear(),
-    date.getMonth(),
-    date.getDate(),
-    hours,
-    minutes,
-    seconds,
-  );
-  return formatLocalDateTime(merged);
-}
-
-export function formatReadableDateTime(
-  dateTimeStr: string,
+/** Formats a `YYYY-MM-DD` value or `Date` for display, returning the input when invalid. */
+export function formatReadableDate(
+  value: string | Date,
   locale = "es-ES",
 ): string {
-  const parsed = parseDateTime(dateTimeStr);
-  if (!parsed) return dateTimeStr;
+  const date = value instanceof Date ? value : parseCalendarDate(value);
+  if (!date) return String(value);
 
-  return parsed.date.toLocaleString(locale, {
+  return date.toLocaleDateString(locale, {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
   });
 }

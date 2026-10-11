@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
-import type { Table } from "@tanstack/react-table";
+import type { RowData, Table } from "@tanstack/react-table";
 import type { FilterConfig, FilterOption } from "@/features/advancedTable/types/tableContracts";
+import type { AdvancedTableFeatures } from "@/features/advancedTable/hooks/useEnhancedTable";
 
 export interface DropdownFilterState {
   selectedValues: string[];
@@ -63,8 +64,8 @@ function toOptionsMap(filterConfigs: FilterConfig[]): Map<string, FilterOption[]
   );
 }
 
-export function useTableFilters<TData = Record<string, unknown>>(
-  table: Table<TData>,
+export function useTableFilters<TData extends RowData = Record<string, unknown>>(
+  table: Table<AdvancedTableFeatures, TData>,
   filterConfigs: FilterConfig[] = []
 ) {
   const [filterInputs, setFilterInputs] = useState<Record<string, string>>({});

@@ -5,67 +5,99 @@ import GenericSearchBar from "@/features/advancedTable/components/GenericSearchB
 import { renderWithI18n } from "@/test/i18nTestUtils";
 
 describe("GenericSearchBar", () => {
-  it("reads initial date range from props and updates rendered state on rerender", async () => {
+  it("shows a date-only summary and updates it on rerender", async () => {
     const onDateChange = vi.fn();
-    const firstStart = "2026-03-27T08:00:00";
-    const firstEnd = "2026-03-27T09:00:00";
     const { rerender } = await renderWithI18n(
       <GenericSearchBar
-        startDate={firstStart}
-        endDate={firstEnd}
+        startDate="2026-03-10"
+        endDate="2026-03-20"
         onDateChange={onDateChange}
       />
     );
 
     const summaryLabel = document.querySelector("label");
     expect(summaryLabel).toBeInTheDocument();
-    expect(summaryLabel).toHaveTextContent(/last hour|from/i);
+    expect(summaryLabel).toHaveTextContent(/from/i);
+    expect(summaryLabel).toHaveTextContent(/until/i);
+    expect(summaryLabel?.textContent ?? "").not.toMatch(/\d{1,2}:\d{2}:\d{2}/);
 
-    const nextStart = "2026-03-27T09:15:42";
-    const nextEnd = "2026-03-27T11:15:42";
     rerender(
       <GenericSearchBar
-        startDate={nextStart}
-        endDate={nextEnd}
+        startDate="2026-04-05"
+        endDate="2026-04-15"
         onDateChange={onDateChange}
       />
     );
 
     const dateDisplay = document.querySelector("label");
     expect(dateDisplay).toBeInTheDocument();
-    expect(dateDisplay).toHaveTextContent("09:15:42");
-    expect(dateDisplay).toHaveTextContent("11:15:42");
+    expect(dateDisplay).toHaveTextContent(/from/i);
   });
 
-  it("calls onDateChange when applying custom date range", async () => {
+  it("emits date-only values when selecting a quick range", async () => {
     const user = userEvent.setup();
     const onDateChange = vi.fn();
     await renderWithI18n(
       <GenericSearchBar
-        startDate="2026-03-27T08:00:00"
-        endDate="2026-03-27T09:00:00"
+        startDate="2026-03-10"
+        endDate="2026-03-20"
         onDateChange={onDateChange}
       />
     );
 
-    const filterButton = screen.getByRole("button", { name: /filter by date/i });
-    await user.click(filterButton);
+    await user.click(screen.getByRole("button", { name: /filter by date/i }));
+    await user.click(screen.getByRole("combobox"));
+    await user.click(await screen.findByRole("option", { name: /today/i }));
 
-    const timeInputs = Array.from(
-      document.querySelectorAll('input[type="time"]')
-    ) as HTMLInputElement[];
-    expect(timeInputs.length).toBeGreaterThanOrEqual(2);
-    await user.clear(timeInputs[0] as HTMLInputElement);
-    await user.type(timeInputs[0] as HTMLInputElement, "07:00:00");
-    await user.clear(timeInputs[1] as HTMLInputElement);
-    await user.type(timeInputs[1] as HTMLInputElement, "08:30:00");
+    expect(onDateChange).toHaveBeenCalledTimes(1);
+    const [startArg, endArg] = onDateChange.mock.calls[0] as [string, string];
+    expect(startArg).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(endArg).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  }, 15000);
+
+  it("emits date-only values when applying a custom date range", async () => {
+    const user = userEvent.setup();
+    const onDateChange = vi.fn();
+    const now = new Date();
+    const pad = (value: number) => String(value).padStart(2, "0");
+    const month = `${now.getFullYear()}-${pad(now.getMonth() + 1)}`;
+    const startIso = `${month}-10`;
+    const endIso = `${month}-20`;
+
+    await renderWithI18n(
+      <GenericSearchBar
+        startDate={`${month}-02`}
+        endDate={`${month}-04`}
+        onDateChange={onDateChange}
+      />
+    );
+
+    await user.click(screen.getByRole("button", { name: /filter by date/i }));
+    expect(document.querySelectorAll('input[type="time"]')).toHaveLength(0);
+
+    await user.click(screen.getByRole("button", { name: /start date/i }));
+    const startDay = document.querySelector(
+      `td[data-day="${startIso}"] button`,
+    ) as HTMLButtonElement | null;
+    expect(startDay).not.toBeNull();
+    if (!startDay) return;
+    await user.click(startDay);
+
+    await user.click(screen.getByRole("button", { name: /end date/i }));
+    const endDay = document.querySelector(
+      `td[data-day="${endIso}"] button`,
+    ) as HTMLButtonElement | null;
+    expect(endDay).not.toBeNull();
+    if (!endDay) return;
+    await user.click(endDay);
+
     await user.click(screen.getByRole("button", { name: "Apply date range" }));
 
     expect(onDateChange).toHaveBeenCalledTimes(1);
     const [startArg, endArg] = onDateChange.mock.calls[0] as [string, string];
-    expect(startArg).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/);
-    expect(endArg).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/);
-  });
+    expect(startArg).toBe(startIso);
+    expect(endArg).toBe(endIso);
+  }, 15000);
 
   it("keeps children and action buttons working while date props change", async () => {
     const user = userEvent.setup();
@@ -73,8 +105,8 @@ describe("GenericSearchBar", () => {
     const onExport = vi.fn(async () => undefined);
     const { rerender } = await renderWithI18n(
       <GenericSearchBar
-        startDate="2026-03-27T08:00:00"
-        endDate="2026-03-27T09:00:00"
+        startDate="2026-03-10"
+        endDate="2026-03-20"
         onDateChange={onDateChange}
         onExport={onExport}
       >
@@ -88,8 +120,8 @@ describe("GenericSearchBar", () => {
 
     rerender(
       <GenericSearchBar
-        startDate="2026-03-27T09:00:00"
-        endDate="2026-03-27T10:00:00"
+        startDate="2026-03-15"
+        endDate="2026-03-25"
         onDateChange={onDateChange}
         onExport={onExport}
       >
@@ -105,8 +137,8 @@ describe("GenericSearchBar", () => {
     const user = userEvent.setup();
     await renderWithI18n(
       <GenericSearchBar
-        startDate="2026-03-27T08:00:00"
-        endDate="2026-03-27T09:00:00"
+        startDate="2026-03-10"
+        endDate="2026-03-20"
         onDateChange={vi.fn()}
       />,
     );
@@ -123,8 +155,8 @@ describe("GenericSearchBar", () => {
     const user = userEvent.setup();
     await renderWithI18n(
       <GenericSearchBar
-        startDate="2026-03-27T08:00:00"
-        endDate="2026-03-27T09:00:00"
+        startDate="2026-03-10"
+        endDate="2026-03-20"
         onDateChange={vi.fn()}
       />,
     );
@@ -147,8 +179,8 @@ describe("GenericSearchBar", () => {
 
     await renderWithI18n(
       <GenericSearchBar
-        startDate="2026-03-27T08:00:00"
-        endDate="2026-03-27T09:00:00"
+        startDate="2026-03-10"
+        endDate="2026-03-20"
         onDateChange={vi.fn()}
         onConfigClick={onConfigClick}
         showConfigButton

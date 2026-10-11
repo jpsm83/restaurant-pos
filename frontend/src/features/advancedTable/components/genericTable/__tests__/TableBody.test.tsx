@@ -12,7 +12,7 @@ vi.mock("react-i18next", () => ({
 describe("TableBody", () => {
   it("renders empty state when there are no rows", () => {
     const table = {
-      getPaginationRowModel: () => ({ rows: [] }),
+      getPaginatedRowModel: () => ({ rows: [] }),
     } as never;
 
     render(<table><TableBody table={table} columns={[{}]} /></table>);
@@ -36,7 +36,7 @@ describe("TableBody", () => {
       ],
     };
     const table = {
-      getPaginationRowModel: () => ({ rows: [row] }),
+      getPaginatedRowModel: () => ({ rows: [row] }),
     } as never;
 
     render(

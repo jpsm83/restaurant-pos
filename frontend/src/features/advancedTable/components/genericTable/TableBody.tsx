@@ -1,8 +1,15 @@
-import { flexRender, type Cell, type Row, type Table } from "@tanstack/react-table";
+import {
+  flexRender,
+  type Cell,
+  type Row,
+  type RowData,
+  type Table,
+} from "@tanstack/react-table";
 import { useTranslation } from "react-i18next";
+import type { AdvancedTableFeatures } from "@/features/advancedTable/hooks/useEnhancedTable";
 
-export interface StandaloneTableBodyProps<TData> {
-  table: Table<TData>;
+export interface StandaloneTableBodyProps<TData extends RowData> {
+  table: Table<AdvancedTableFeatures, TData>;
   columns: Array<unknown>;
   emptyStateMessage?: string;
   emptyStateSubMessage?: string;
@@ -16,7 +23,7 @@ function isRowSelected(rowId: string, selectedRowId?: string | null): boolean {
   return String(rowId) === String(selectedRowId);
 }
 
-export const TableBody = <TData,>({
+export const TableBody = <TData extends RowData,>({
   table,
   columns,
   emptyStateMessage,
@@ -26,7 +33,7 @@ export const TableBody = <TData,>({
   rowHeightPx,
 }: StandaloneTableBodyProps<TData>) => {
   const { t } = useTranslation("business");
-  const rows = table.getPaginationRowModel().rows;
+  const rows = table.getPaginatedRowModel().rows;
   const resolvedEmptyMessage =
     emptyStateMessage ?? t("advancedTable.body.emptyMessage", { defaultValue: "No data found" });
   const resolvedEmptySubMessage =
@@ -36,7 +43,7 @@ export const TableBody = <TData,>({
   return (
     <tbody className="h-full">
       {rows.length > 0 ? (
-        rows.map((row: Row<TData>) => {
+        rows.map((row: Row<AdvancedTableFeatures, TData>) => {
           const selected = isRowSelected(row.id, selectedRowId);
           return (
             <tr
@@ -56,7 +63,7 @@ export const TableBody = <TData,>({
               }
               onDoubleClick={onRowClick ? () => onRowClick(row.original) : undefined}
             >
-              {row.getVisibleCells().map((cell: Cell<TData, unknown>) => (
+              {row.getVisibleCells().map((cell: Cell<AdvancedTableFeatures, TData, unknown>) => (
                 <td key={cell.id} className="px-2 py-1">
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </td>

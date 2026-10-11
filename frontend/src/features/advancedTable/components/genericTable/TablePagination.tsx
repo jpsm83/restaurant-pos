@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Column, Table } from "@tanstack/react-table";
+import type { Column, RowData, Table } from "@tanstack/react-table";
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Download, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import type { AdvancedTableFeatures } from "@/features/advancedTable/hooks/useEnhancedTable";
 
 const PAGE_SIZES = [25, 50, 100, 150] as const;
 
@@ -20,15 +21,15 @@ function getPageLabel(pageIndex: number, pageCount: number): string {
   return `Page ${pageIndex + 1} of ${pageCount}`;
 }
 
-export interface StandaloneTablePaginationProps<TData> {
-  table: Table<TData>;
+export interface StandaloneTablePaginationProps<TData extends RowData> {
+  table: Table<AdvancedTableFeatures, TData>;
   onClearFilters?: () => void;
   onResetColumns?: () => void;
   onExport?: () => Promise<void> | void;
   enabledColumnIds?: string[];
 }
 
-export const TablePagination = <TData,>({
+export const TablePagination = <TData extends RowData,>({
   table,
   onClearFilters,
   onResetColumns,
@@ -41,7 +42,7 @@ export const TablePagination = <TData,>({
   const columnMenuRef = useRef<HTMLDivElement | null>(null);
 
   const hideableColumns = useMemo(() => {
-    const all = table.getAllColumns().filter((column: Column<TData, unknown>) => column.getCanHide());
+    const all = table.getAllColumns().filter((column: Column<AdvancedTableFeatures, TData, unknown>) => column.getCanHide());
     if (enabledColumnIds?.length) {
       return all.filter((column) => enabledColumnIds.includes(column.id));
     }
@@ -112,8 +113,8 @@ export const TablePagination = <TData,>({
         </Button>
         <span className="text-sm font-medium">
           {t("advancedTable.pagination.pageLabel", {
-            defaultValue: getPageLabel(table.getState().pagination.pageIndex, table.getPageCount()),
-            page: table.getState().pagination.pageIndex + 1,
+            defaultValue: getPageLabel(table.state.pagination.pageIndex, table.getPageCount()),
+            page: table.state.pagination.pageIndex + 1,
             totalPages: table.getPageCount(),
           })}
         </span>
@@ -141,7 +142,7 @@ export const TablePagination = <TData,>({
 
       <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
         <Select
-          value={String(table.getState().pagination.pageSize)}
+          value={String(table.state.pagination.pageSize)}
           onValueChange={(value) => table.setPageSize(Number(value))}
         >
           <SelectTrigger className="h-8 w-[84px]">

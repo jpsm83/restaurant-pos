@@ -1,30 +1,66 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
+  columnFilteringFeature,
+  columnOrderingFeature,
+  columnVisibilityFeature,
+  constructFilterFn,
+  createFilteredRowModel,
+  createPaginatedRowModel,
+  createSortedRowModel,
+  rowPaginationFeature,
+  rowSelectionFeature,
+  rowSortingFeature,
+  tableFeatures,
+  useTable,
   type ColumnFiltersState,
   type ColumnOrderState,
-  type FilterFn,
+  type RowData,
   type SortingState,
   type Table as TanStackTable,
   type TableOptions,
-  useReactTable,
   type VisibilityState,
 } from "@tanstack/react-table";
 import { toast } from "sonner";
 import type { TableRowData } from "@/features/advancedTable/types/tableContracts";
 
-declare module "@tanstack/react-table" {
-  interface FilterFns {
-    includesString: FilterFn<unknown>;
-  }
-}
+const includesStringFilterFn = constructFilterFn({
+  filter: (dataValue, filterValue) => {
+    if (!filterValue || String(filterValue).trim() === "") return true;
 
-export interface UseEnhancedTableConfig<TData> {
+    if (Array.isArray(filterValue)) {
+      if (filterValue.length === 0) return true;
+      if (dataValue == null) return false;
+      const cellValue = String(dataValue).toLowerCase();
+      return filterValue.some(
+        (candidate) => cellValue === String(candidate).toLowerCase()
+      );
+    }
+
+    if (dataValue == null) return false;
+    return String(dataValue)
+      .toLowerCase()
+      .includes(String(filterValue).toLowerCase().trim());
+  },
+});
+
+export const advancedTableFeatures = tableFeatures({
+  columnFilteringFeature,
+  columnOrderingFeature,
+  columnVisibilityFeature,
+  rowPaginationFeature,
+  rowSelectionFeature,
+  rowSortingFeature,
+  filteredRowModel: createFilteredRowModel(),
+  sortedRowModel: createSortedRowModel(),
+  paginatedRowModel: createPaginatedRowModel(),
+  filterFns: { includesString: includesStringFilterFn },
+});
+
+export type AdvancedTableFeatures = typeof advancedTableFeatures;
+
+export interface UseEnhancedTableConfig<TData extends RowData> {
   data: TData[];
-  columns: TableOptions<TData>["columns"];
+  columns: TableOptions<AdvancedTableFeatures, TData>["columns"];
   getRowId?: (row: TData, index: number) => string;
   defaultColumnVisibility?: VisibilityState;
   defaultColumnOrder?: ColumnOrderState;
@@ -41,8 +77,8 @@ export interface UseEnhancedTableConfig<TData> {
   onResetColumnState?: () => void;
 }
 
-export interface UseEnhancedTableReturn<TData> {
-  table: TanStackTable<TData>;
+export interface UseEnhancedTableReturn<TData extends RowData> {
+  table: TanStackTable<AdvancedTableFeatures, TData>;
   draggedColumn: string | null;
   handleDragStart: (e: React.DragEvent, columnId: string) => void;
   handleDragOver: (e: React.DragEvent) => void;
@@ -96,7 +132,7 @@ export function buildReorderedColumns(
   return next;
 }
 
-export const useEnhancedTable = <TData = TableRowData>({
+export const useEnhancedTable = <TData extends RowData = TableRowData>({
   data,
   columns,
   getRowId,
@@ -113,6 +149,7 @@ export const useEnhancedTable = <TData = TableRowData>({
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize });
+  const [previousPageSize, setPreviousPageSize] = useState(pageSize);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() =>
     resolveInitialColumnVisibility(initialColumnVisibility, defaultColumnVisibility)
   );
@@ -124,6 +161,11 @@ export const useEnhancedTable = <TData = TableRowData>({
   const mountedOrderRef = useRef(false);
   const mountedVisibilityRef = useRef(false);
 
+  if (previousPageSize !== pageSize) {
+    setPreviousPageSize(pageSize);
+    setPagination((prev) => ({ ...prev, pageSize }));
+  }
+
   useEffect(() => {
     if (!mountedOrderRef.current) {
       mountedOrderRef.current = true;
@@ -131,10 +173,6 @@ export const useEnhancedTable = <TData = TableRowData>({
     }
     onColumnOrderChange?.(columnOrder);
   }, [columnOrder, onColumnOrderChange]);
-
-  useEffect(() => {
-    setPagination((prev) => ({ ...prev, pageSize }));
-  }, [pageSize]);
 
   useEffect(() => {
     onTableStateChange?.({ sorting, columnFilters, pagination });
@@ -148,7 +186,8 @@ export const useEnhancedTable = <TData = TableRowData>({
     onColumnVisibilityChange?.(columnVisibility);
   }, [columnVisibility, onColumnVisibilityChange]);
 
-  const table = useReactTable<TData>({
+  const table = useTable<AdvancedTableFeatures, TData>({
+    features: advancedTableFeatures,
     data,
     columns,
     autoResetPageIndex: false,
@@ -158,31 +197,6 @@ export const useEnhancedTable = <TData = TableRowData>({
     onPaginationChange: setPagination,
     onColumnOrderChange: setColumnOrder,
     onColumnVisibilityChange: setColumnVisibility,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    filterFns: {
-      includesString: ((row, columnId, filterValue) => {
-        if (!filterValue || String(filterValue).trim() === "") return true;
-
-        if (Array.isArray(filterValue)) {
-          if (filterValue.length === 0) return true;
-          const value = row.getValue(columnId);
-          if (value == null) return false;
-          const cellValue = String(value).toLowerCase();
-          return filterValue.some(
-            (candidate) => cellValue === String(candidate).toLowerCase()
-          );
-        }
-
-        const value = row.getValue(columnId);
-        if (value == null) return false;
-        return String(value)
-          .toLowerCase()
-          .includes(String(filterValue).toLowerCase().trim());
-      }) as FilterFn<TData>,
-    } as Record<string, FilterFn<TData>>,
     state: {
       sorting,
       columnFilters,

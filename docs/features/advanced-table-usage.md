@@ -166,7 +166,7 @@ Mode rule:
 
 - row source: `data ?? []`
 - filtering/sorting/pagination are client-side (TanStack state)
-- optional date-range filter is applied in memory (`parseDateTime`-based)
+- optional date-range filter is applied in memory (`resolveCalendarDateBounds`-based, browser-local day bounds)
 
 ### Fetch mode
 
@@ -219,9 +219,9 @@ Implemented URL strategy:
 - canonical query params:
   - `start-date`
   - `end-date`
-- normalized value format: `YYYY-MM-DDTHH:mm:ss` (local datetime string)
+- normalized value format: `YYYY-MM-DD` (plain calendar date, no time, no offset)
 - URL is source of truth for selected date range in business integration
-- invalid/missing URL values are healed to default quick range
+- invalid/missing URL values are healed to default quick range (`today`)
 - toolbar is presentation + callback; container owns URL mutation
 
 ### 8.1 Scope and target column
@@ -234,13 +234,18 @@ Implemented URL strategy:
 
 - Start boundary is inclusive.
 - End boundary is inclusive.
-- Effective semantics: `createdAt >= start-date` and `createdAt <= end-date`.
+- Effective semantics: the `createdAt` business-local calendar day is within
+  `start-date`..`end-date` inclusive.
 
 ### 8.3 Timezone rules
 
-- UI displays date/time in local browser timezone.
-- URL keeps local wall-time selection format (`YYYY-MM-DDTHH:mm:ss`).
-- Fetch payload mapping uses URL-derived values without mutating selected wall time.
+- The filter value is a plain calendar date interpreted in the **business
+  timezone**; the backend resolves each date to that business day's UTC bounds.
+- The client never applies a browser-local offset to the emitted value.
+- Browser-local display of timestamps is out of scope for this contract; record
+  timestamps keep their current display behaviour.
+- Local (in-memory) mode is a browser-local fallback that resolves the range to
+  the browser-local start-of-day / end-of-day instants.
 
 ### 8.4 Invalid or partial URL handling
 
@@ -265,12 +270,14 @@ Implemented URL strategy:
 
 Quick ranges currently supported in `dateFilter.ts`:
 
-- `lastHour`
 - `today`
 - `thisWeek` (supports `weekStartsOn`)
 - `thisMonth`
 
-Note: the historical contract file contains earlier options/defaults (`last15min`, `lastDay`, `lastWeek`, `lastMonth`). The current implementation is the list above and should be treated as canonical unless contract versioning reintroduces legacy values.
+Legacy quick-range keys are normalized to the date-only set:
+`last15min`/`lastHour`/`lastDay` -> `today`, `lastWeek` -> `thisWeek`,
+`lastMonth` -> `thisMonth`. Sub-day ranges are no longer part of the contract
+because a date-only value cannot express them.
 
 ---
 

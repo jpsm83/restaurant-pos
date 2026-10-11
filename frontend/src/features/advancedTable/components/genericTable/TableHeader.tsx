@@ -1,10 +1,17 @@
-import { flexRender, type Header, type HeaderGroup, type Table } from "@tanstack/react-table";
+import {
+  flexRender,
+  type Header,
+  type HeaderGroup,
+  type RowData,
+  type Table,
+} from "@tanstack/react-table";
 import { ArrowDown, ArrowUp, ArrowUpDown, GripVertical } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import type { AdvancedTableFeatures } from "@/features/advancedTable/hooks/useEnhancedTable";
 
-export interface StandaloneTableHeaderProps<TData> {
-  table: Table<TData>;
+export interface StandaloneTableHeaderProps<TData extends RowData> {
+  table: Table<AdvancedTableFeatures, TData>;
   children?: React.ReactNode;
   config?: {
     isDraggable?: boolean;
@@ -20,7 +27,7 @@ function getHeaderDragClass(isDragging: boolean): string {
   return isDragging ? "opacity-50" : "";
 }
 
-export const TableHeader = <TData,>({
+export const TableHeader = <TData extends RowData,>({
   table,
   children,
   config,
@@ -37,9 +44,9 @@ export const TableHeader = <TData,>({
 
   return (
     <thead className="sticky top-0 z-10 bg-muted/70 shadow-sm">
-      {table.getHeaderGroups().map((headerGroup: HeaderGroup<TData>) => (
+      {table.getHeaderGroups().map((headerGroup: HeaderGroup<AdvancedTableFeatures, TData>) => (
         <tr key={headerGroup.id}>
-          {headerGroup.headers.map((header: Header<TData, unknown>) => {
+          {headerGroup.headers.map((header: Header<AdvancedTableFeatures, TData, unknown>) => {
             const columnId = header.column.id;
             const isDragging = draggedColumn === columnId;
             const canDragColumn = isDraggable && !header.isPlaceholder;

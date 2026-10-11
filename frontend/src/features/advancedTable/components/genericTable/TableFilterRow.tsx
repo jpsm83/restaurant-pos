@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import type { Column, Table } from "@tanstack/react-table";
+import type { Column, RowData, Table } from "@tanstack/react-table";
 import { ChevronDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -8,9 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { FilterConfig } from "@/features/advancedTable/types/tableContracts";
 import type { DropdownFilterState } from "@/features/advancedTable/hooks/useTableFilters";
+import type { AdvancedTableFeatures } from "@/features/advancedTable/hooks/useEnhancedTable";
 
-export interface StandaloneTableFilterRowProps<TData> {
-  table: Table<TData>;
+export interface StandaloneTableFilterRowProps<TData extends RowData> {
+  table: Table<AdvancedTableFeatures, TData>;
   filterConfigs?: FilterConfig[];
   getFilterValue?: (columnId: string) => string;
   setFilterInputs?: React.Dispatch<React.SetStateAction<Record<string, string>>>;
@@ -30,7 +31,7 @@ function getFilterDisplayText(selectedValues: string[] | undefined, total: numbe
   return `${selectedCount} selected`;
 }
 
-export const TableFilterRow = <TData,>({
+export const TableFilterRow = <TData extends RowData,>({
   table,
   filterConfigs = [],
   getFilterValue,
@@ -59,7 +60,7 @@ export const TableFilterRow = <TData,>({
     return () => window.removeEventListener("mousedown", onPointerDown);
   }, [hasOpenDropdown, onCloseAllDropdowns]);
 
-  const renderInputFilter = (columnId: string, column: Column<TData, unknown>) => {
+  const renderInputFilter = (columnId: string, column: Column<AdvancedTableFeatures, TData, unknown>) => {
     const isRealtime = isRealtimeFilterColumn?.(columnId) ?? false;
     return (
       <Input
@@ -89,7 +90,7 @@ export const TableFilterRow = <TData,>({
     );
   };
 
-  const renderDropdownFilter = (columnId: string, column: Column<TData, unknown>, config: FilterConfig) => {
+  const renderDropdownFilter = (columnId: string, column: Column<AdvancedTableFeatures, TData, unknown>, config: FilterConfig) => {
     const options = config.options ?? [];
     const selectedValues =
       dropdownState?.[columnId]?.selectedValues ??

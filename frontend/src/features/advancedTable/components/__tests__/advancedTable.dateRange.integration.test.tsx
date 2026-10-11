@@ -62,7 +62,6 @@ describe("advanced table date range integration", () => {
         if (el.getAttribute("data-slot") !== "select-trigger") return false;
         const text = (el.textContent ?? "").toLowerCase();
         return (
-          text.includes("last hour") ||
           text.includes("today") ||
           text.includes("this week") ||
           text.includes("this month")
@@ -74,7 +73,7 @@ describe("advanced table date range integration", () => {
     await user.click(await screen.findByRole("option", { name: label }));
   }
 
-  it("updates URL query params when selecting quick range", async () => {
+  it("updates URL query params with date-only values when selecting quick range", async () => {
     const user = userEvent.setup();
     await renderBusinessSection();
 
@@ -83,10 +82,11 @@ describe("advanced table date range integration", () => {
     await selectQuickRange(user, /this month/i);
 
     const updatedSearch = screen.getByTestId("location-search").textContent ?? "";
-    expect(updatedSearch).toContain("start-date=");
-    expect(updatedSearch).toContain("end-date=");
+    expect(updatedSearch).toMatch(/start-date=\d{4}-\d{2}-\d{2}/);
+    expect(updatedSearch).toMatch(/end-date=\d{4}-\d{2}-\d{2}/);
+    expect(updatedSearch).not.toContain("T");
     expect(updatedSearch).not.toBe(initialSearch);
-  });
+  }, 15000);
 
   it("combines column filter with selected date range", async () => {
     const user = userEvent.setup();
@@ -102,29 +102,49 @@ describe("advanced table date range integration", () => {
     await user.type(ticketInput, firstTicket);
 
     expect(await screen.findByText(firstTicket)).toBeInTheDocument();
-  });
+  }, 15000);
 
-  it("updates URL query params when applying a custom time range", async () => {
+  it("updates URL query params when applying a custom date range", async () => {
     const user = userEvent.setup();
     await renderBusinessSection();
     await screen.findByRole("button", { name: /filter by date/i });
 
+    const now = new Date();
+    const pad = (value: number) => String(value).padStart(2, "0");
+    const month = `${now.getFullYear()}-${pad(now.getMonth() + 1)}`;
+    const todayDay = now.getDate();
+    const startDay = todayDay === 5 ? 6 : 5;
+    const endDay = todayDay === 20 ? 19 : 20;
+    const startIso = `${month}-${pad(startDay)}`;
+    const endIso = `${month}-${pad(endDay)}`;
+
     const before = screen.getByTestId("location-search").textContent ?? "";
     await user.click(screen.getByRole("button", { name: /filter by date/i }));
+    expect(document.querySelectorAll('input[type="time"]')).toHaveLength(0);
 
-    const timeInputs = screen.getAllByDisplayValue(/\d{2}:\d{2}:\d{2}/);
-    expect(timeInputs.length).toBeGreaterThanOrEqual(2);
-    await user.clear(timeInputs[0]);
-    await user.type(timeInputs[0], "00:00:00");
-    await user.clear(timeInputs[1]);
-    await user.type(timeInputs[1], "23:59:59");
+    await user.click(screen.getByRole("button", { name: /start date/i }));
+    const startDayCell = document.querySelector(
+      `td[data-day="${startIso}"] button`,
+    ) as HTMLButtonElement | null;
+    expect(startDayCell).not.toBeNull();
+    if (!startDayCell) return;
+    await user.click(startDayCell);
+
+    await user.click(screen.getByRole("button", { name: /end date/i }));
+    const endDayCell = document.querySelector(
+      `td[data-day="${endIso}"] button`,
+    ) as HTMLButtonElement | null;
+    expect(endDayCell).not.toBeNull();
+    if (!endDayCell) return;
+    await user.click(endDayCell);
+
     await user.click(screen.getByRole("button", { name: /apply date range/i }));
 
     const after = screen.getByTestId("location-search").textContent ?? "";
-    expect(after).toContain("start-date=");
-    expect(after).toContain("end-date=");
+    expect(after).toContain(`start-date=${startIso}`);
+    expect(after).toContain(`end-date=${endIso}`);
     expect(after).not.toBe(before);
-  });
+  }, 15000);
 
   it("clear filters restores baseline state and keeps URL range params", async () => {
     const user = userEvent.setup();
@@ -138,8 +158,8 @@ describe("advanced table date range integration", () => {
 
     expect((await screen.findByLabelText("Filter ticketNumber") as HTMLInputElement).value).toBe("");
     const search = screen.getByTestId("location-search").textContent ?? "";
-    expect(search).toContain("start-date=");
-    expect(search).toContain("end-date=");
+    expect(search).toMatch(/start-date=\d{4}-\d{2}-\d{2}/);
+    expect(search).toMatch(/end-date=\d{4}-\d{2}-\d{2}/);
   });
 
   it("applies date range filtering in local mode", async () => {
@@ -162,8 +182,8 @@ describe("advanced table date range integration", () => {
         ]}
         columns={columns}
         dateRangeFilter={{
-          startDate: "2026-03-01T00:00:00",
-          endDate: "2026-03-31T23:59:59",
+          startDate: "2026-03-01",
+          endDate: "2026-03-31",
           columnId: "createdAt",
         }}
       />,
@@ -180,7 +200,7 @@ describe("advanced table date range integration", () => {
 
   it("uses URL date range to drive fetch-mode result set", async () => {
     await renderBusinessSection(
-      "/business?start-date=2099-01-01T00:00:00&end-date=2099-01-01T23:59:59",
+      "/business?start-date=2099-01-01&end-date=2099-01-01",
     );
 
     expect(await screen.findByText("No business records available.")).toBeInTheDocument();

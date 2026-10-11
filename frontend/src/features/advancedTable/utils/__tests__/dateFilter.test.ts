@@ -1,52 +1,78 @@
 import { describe, expect, it } from "vitest";
 import {
-  buildDateTimeFromDateAndTime,
-  formatLocalDateTime,
-  formatReadableDateTime,
+  formatCalendarDate,
+  formatReadableDate,
   getQuickRange,
-  isValidTimeString,
+  isValidCalendarDate,
+  parseCalendarDate,
   parseDateTime,
+  resolveCalendarDateBounds,
+  resolveQuickRangeSelection,
 } from "../dateFilter";
 
 describe("dateFilter utils", () => {
-  it("builds quick ranges for lastHour/today/thisWeek/thisMonth", () => {
+  it("builds date-only quick ranges for today/thisWeek/thisMonth", () => {
     const now = new Date(2026, 2, 27, 10, 15, 42); // local 2026-03-27 10:15:42
 
-    const [lastHourStart, lastHourEnd] = getQuickRange("lastHour", now);
-    const [todayStart, todayEnd] = getQuickRange("today", now);
-    const [thisWeekStart, thisWeekEnd] = getQuickRange("thisWeek", now, {
-      weekStartsOn: 1,
-    });
-    const [thisMonthStart, thisMonthEnd] = getQuickRange("thisMonth", now);
-
-    expect(lastHourStart).toBe("2026-03-27T09:15:42");
-    expect(lastHourEnd).toBe("2026-03-27T10:15:42");
-
-    expect(todayStart).toBe("2026-03-27T00:00:00");
-    expect(todayEnd).toBe("2026-03-27T10:15:42");
-
-    expect(thisWeekStart).toBe("2026-03-23T00:00:00");
-    expect(thisWeekEnd).toBe("2026-03-27T10:15:42");
-
-    expect(thisMonthStart).toBe("2026-03-01T00:00:00");
-    expect(thisMonthEnd).toBe("2026-03-27T10:15:42");
+    expect(getQuickRange("today", now)).toEqual(["2026-03-27", "2026-03-27"]);
+    expect(getQuickRange("thisWeek", now, { weekStartsOn: 1 })).toEqual([
+      "2026-03-23",
+      "2026-03-27",
+    ]);
+    expect(getQuickRange("thisMonth", now)).toEqual(["2026-03-01", "2026-03-27"]);
   });
 
-  it("supports legacy quick range keys for compatibility", () => {
+  it("maps legacy quick range keys to date-only ranges", () => {
     const now = new Date(2026, 2, 27, 10, 15, 42);
-    const [start, end] = getQuickRange("lastDay", now);
-    expect(start).toBe("2026-03-27T00:00:00");
-    expect(end).toBe("2026-03-27T10:15:42");
+    expect(getQuickRange("lastDay", now)).toEqual(["2026-03-27", "2026-03-27"]);
+    expect(getQuickRange("lastHour", now)).toEqual(["2026-03-27", "2026-03-27"]);
+    expect(getQuickRange("lastWeek", now, { weekStartsOn: 1 })).toEqual([
+      "2026-03-23",
+      "2026-03-27",
+    ]);
+    expect(getQuickRange("lastMonth", now)).toEqual(["2026-03-01", "2026-03-27"]);
+    expect(getQuickRange("unknown", now)).toEqual(["", ""]);
   });
 
-  it("round-trips local date time format and parse", () => {
-    const value = formatLocalDateTime(new Date(2026, 2, 27, 10, 15, 42));
-    expect(value).toBe("2026-03-27T10:15:42");
+  it("formats and parses plain calendar dates only", () => {
+    expect(formatCalendarDate(new Date(2026, 2, 27, 10, 15, 42))).toBe("2026-03-27");
 
-    const parsed = parseDateTime(value);
-    expect(parsed).not.toBeNull();
-    expect(parsed?.time).toBe("10:15:42");
-    expect(formatLocalDateTime(parsed?.date as Date)).toBe(value);
+    expect(isValidCalendarDate("2026-03-27")).toBe(true);
+    expect(isValidCalendarDate("2026-02-30")).toBe(false);
+    expect(isValidCalendarDate("2026-13-01")).toBe(false);
+    expect(isValidCalendarDate("2026-03-27T10:15:42")).toBe(false);
+    expect(isValidCalendarDate("2026-03-27T10:15:42Z")).toBe(false);
+
+    expect(isValidCalendarDate("0099-01-01")).toBe(true);
+    expect(parseCalendarDate("0099-01-01")?.getFullYear()).toBe(99);
+
+    const parsed = parseCalendarDate("2026-03-27");
+    expect(parsed?.getFullYear()).toBe(2026);
+    expect(parsed?.getMonth()).toBe(2);
+    expect(parsed?.getDate()).toBe(27);
+    expect(parseCalendarDate("not-a-date")).toBeNull();
+  });
+
+  it("resolves the active quick range from date-only values", () => {
+    expect(resolveQuickRangeSelection("2026-03-01", "2026-03-27")).toBe(
+      "thisMonth",
+    );
+    expect(
+      resolveQuickRangeSelection("2026-03-23", "2026-03-27", { weekStartsOn: 1 }),
+    ).toBe("thisWeek");
+    expect(resolveQuickRangeSelection("2026-03-27", "2026-03-27")).toBe("today");
+    expect(resolveQuickRangeSelection("2026-03-10", "2026-03-27")).toBe("");
+    expect(resolveQuickRangeSelection("bad", "2026-03-27")).toBe("");
+  });
+
+  it("resolves inclusive browser-local day bounds for local filtering", () => {
+    const bounds = resolveCalendarDateBounds("2026-03-01", "2026-03-31");
+    expect(bounds).not.toBeNull();
+    expect(bounds?.startMs).toBe(new Date(2026, 2, 1, 0, 0, 0, 0).getTime());
+    expect(bounds?.endMs).toBe(new Date(2026, 2, 31, 23, 59, 59, 999).getTime());
+
+    expect(resolveCalendarDateBounds("bad", "2026-03-31")).toBeNull();
+    expect(resolveCalendarDateBounds("2026-03-01", "2026-03-31T00:00:00")).toBeNull();
   });
 
   it("parses backend ISO date-time with milliseconds and timezone", () => {
@@ -56,22 +82,12 @@ describe("dateFilter utils", () => {
     expect(parsed?.time).toMatch(/^\d{2}:\d{2}:\d{2}$/);
   });
 
-  it("guards invalid date and malformed times", () => {
+  it("guards invalid date-time values", () => {
     expect(parseDateTime("not-a-date")).toBeNull();
     expect(parseDateTime("2026-13-99T77:88:99")).toBeNull();
-
-    expect(isValidTimeString("12:34:56")).toBe(true);
-    expect(isValidTimeString("99:99:99")).toBe(false);
-
-    const merged = buildDateTimeFromDateAndTime(
-      new Date(2026, 2, 27, 0, 0, 0),
-      "invalid",
-      "23:59:59",
-    );
-    expect(merged).toBe("2026-03-27T23:59:59");
   });
 
-  it("returns input when formatting readable invalid values", () => {
-    expect(formatReadableDateTime("invalid")).toBe("invalid");
+  it("returns input when formatting readable invalid dates", () => {
+    expect(formatReadableDate("invalid")).toBe("invalid");
   });
 });

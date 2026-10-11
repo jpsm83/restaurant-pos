@@ -16,7 +16,12 @@ import {
   createPersistenceAdapter,
 } from "@/features/advancedTable/services/persistenceService";
 import { queryKeys } from "@/services/queryKeys";
-import { getQuickRange, parseDateTime } from "@/features/advancedTable/utils/dateFilter";
+import {
+  getQuickRange,
+  isValidCalendarDate,
+  parseDateTime,
+  resolveCalendarDateBounds,
+} from "@/features/advancedTable/utils/dateFilter";
 
 interface BusinessAdvancedTableSectionProps {
   businessId?: string;
@@ -88,11 +93,11 @@ export default function BusinessAdvancedTableSection({
 
   useEffect(() => {
     if (!enableDateToolbarFilter) return;
-    const hasValidStart = Boolean(startDate) && Boolean(parseDateTime(startDate));
-    const hasValidEnd = Boolean(endDate) && Boolean(parseDateTime(endDate));
+    const hasValidStart = Boolean(startDate) && isValidCalendarDate(startDate);
+    const hasValidEnd = Boolean(endDate) && isValidCalendarDate(endDate);
     if (hasValidStart && hasValidEnd) return;
 
-    const [defaultStart, defaultEnd] = getQuickRange("lastHour");
+    const [defaultStart, defaultEnd] = getQuickRange("today");
     const nextParams = new URLSearchParams(searchParams);
     nextParams.set("start-date", defaultStart);
     nextParams.set("end-date", defaultEnd);
@@ -239,16 +244,16 @@ export default function BusinessAdvancedTableSection({
         const endDateFilterValue =
           params.endDate ??
           filters.find((filter) => filter?.id === "end-date")?.value;
-        const parsedStartDate = parseDateTime(String(startDateFilterValue ?? ""));
-        const parsedEndDate = parseDateTime(String(endDateFilterValue ?? ""));
-        if (parsedStartDate && parsedEndDate) {
-          const startMs = parsedStartDate.date.getTime();
-          const endMs = parsedEndDate.date.getTime();
+        const bounds = resolveCalendarDateBounds(
+          String(startDateFilterValue ?? ""),
+          String(endDateFilterValue ?? ""),
+        );
+        if (bounds) {
           rows = rows.filter((row) => {
             const parsedCreatedAt = parseDateTime(row.createdAt);
             if (!parsedCreatedAt) return false;
             const createdAtMs = parsedCreatedAt.date.getTime();
-            return createdAtMs >= startMs && createdAtMs <= endMs;
+            return createdAtMs >= bounds.startMs && createdAtMs <= bounds.endMs;
           });
         }
 

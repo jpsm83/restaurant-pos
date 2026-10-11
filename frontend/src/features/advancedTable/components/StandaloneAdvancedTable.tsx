@@ -5,7 +5,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { VisibilityState } from "@tanstack/react-table";
+import type { RowData, VisibilityState } from "@tanstack/react-table";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import type {
@@ -30,7 +30,7 @@ import { TableHeader } from "@/features/advancedTable/components/genericTable/Ta
 import { TablePagination } from "@/features/advancedTable/components/genericTable/TablePagination";
 import { RecordDetailsModal } from "@/features/advancedTable/components/RecordDetailsModal";
 import type { TableExportOptions } from "@/features/advancedTable/types/tableContracts";
-import { parseDateTime } from "@/features/advancedTable/utils/dateFilter";
+import { parseDateTime, resolveCalendarDateBounds } from "@/features/advancedTable/utils/dateFilter";
 
 const START_DATE_FILTER_ID = "start-date";
 const END_DATE_FILTER_ID = "end-date";
@@ -125,7 +125,7 @@ function resolveDateValue(row: unknown, columnId: string): string | null {
   return String(value);
 }
 
-export interface StandaloneAdvancedTableProps<TData = TableRowData> {
+export interface StandaloneAdvancedTableProps<TData extends RowData = TableRowData> {
   data?: TData[];
   fetchConfig?: UseDynamicTableDataConfig<TData>;
   columns: TableColumnConfig<TData>[];
@@ -168,7 +168,7 @@ export interface StandaloneAdvancedTableProps<TData = TableRowData> {
   };
 }
 
-export const StandaloneAdvancedTable = <TData = TableRowData,>({
+export const StandaloneAdvancedTable = <TData extends RowData = TableRowData,>({
   data,
   fetchConfig,
   columns,
@@ -315,19 +315,19 @@ export const StandaloneAdvancedTable = <TData = TableRowData,>({
     const targetColumnId = dateRangeFilter?.columnId ?? "createdAt";
     if (!normalizedStartDate || !normalizedEndDate) return tableRows;
 
-    const parsedStart = parseDateTime(normalizedStartDate);
-    const parsedEnd = parseDateTime(normalizedEndDate);
-    if (!parsedStart || !parsedEnd) return tableRows;
+    const bounds = resolveCalendarDateBounds(
+      normalizedStartDate,
+      normalizedEndDate,
+    );
+    if (!bounds) return tableRows;
 
-    const startMs = parsedStart.date.getTime();
-    const endMs = parsedEnd.date.getTime();
     return tableRows.filter((row) => {
       const dateValue = resolveDateValue(row, targetColumnId);
       if (!dateValue) return false;
       const parsedValue = parseDateTime(dateValue);
       if (!parsedValue) return false;
       const valueMs = parsedValue.date.getTime();
-      return valueMs >= startMs && valueMs <= endMs;
+      return valueMs >= bounds.startMs && valueMs <= bounds.endMs;
     });
   }, [
     dateRangeFilter?.columnId,

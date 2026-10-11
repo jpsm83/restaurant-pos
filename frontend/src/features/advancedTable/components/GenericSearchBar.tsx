@@ -11,7 +11,6 @@ import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -27,11 +26,11 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
-  DEFAULT_TIMES,
-  buildDateTimeFromDateAndTime,
-  formatReadableDateTime,
+  formatCalendarDate,
+  formatReadableDate,
   getQuickRange,
-  parseDateTime,
+  isValidCalendarDate,
+  parseCalendarDate,
   resolveQuickRangeSelection,
 } from "@/features/advancedTable/utils/dateFilter";
 
@@ -40,7 +39,7 @@ export interface GenericSearchBarProps {
   startDate: string;
   endDate: string;
   onDateChange: (startDate: string, endDate: string) => void;
-  defaultQuickRange?: "lastHour" | "today" | "thisWeek" | "thisMonth";
+  defaultQuickRange?: "today" | "thisWeek" | "thisMonth";
   weekStartsOn?: number;
   searchLabel?: string;
   disableExport?: boolean;
@@ -50,8 +49,6 @@ export interface GenericSearchBarProps {
   showConfigButton?: boolean;
   children?: React.ReactNode; // Search fields specific to each table (type selector, custom inputs, etc.)
 }
-
-const DATE_TIME_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/;
 
 function DateRangeFilter({
   startDate,
@@ -70,12 +67,6 @@ function DateRangeFilter({
 }) {
   const { t } = useTranslation("business");
   const quickOptions = [
-    {
-      value: "lastHour",
-      label: t("dateFilter.quickOptions.lastHour", {
-        defaultValue: "Last hour",
-      }),
-    },
     {
       value: "today",
       label: t("dateFilter.quickOptions.today", { defaultValue: "Today" }),
@@ -101,8 +92,8 @@ function DateRangeFilter({
   const [startDateOpen, setStartDateOpen] = useState(false);
   const [endDateOpen, setEndDateOpen] = useState(false);
 
-  const parsedStart = startDate ? parseDateTime(startDate) : null;
-  const parsedEnd = endDate ? parseDateTime(endDate) : null;
+  const parsedStart = startDate ? parseCalendarDate(startDate) : null;
+  const parsedEnd = endDate ? parseCalendarDate(endDate) : null;
 
   const selectedQuickOption = (() => {
     if (!startDate || !endDate) return "";
@@ -116,30 +107,20 @@ function DateRangeFilter({
   const activeQuickOption = selectedQuickOption || defaultQuickRange;
 
   const [localStartDate, setLocalStartDate] = useState<Date | undefined>(
-    () => parsedStart?.date,
+    () => parsedStart ?? undefined,
   );
   const [localEndDate, setLocalEndDate] = useState<Date | undefined>(
-    () => parsedEnd?.date,
-  );
-  const [localStartTime, setLocalStartTime] = useState<string>(
-    () => parsedStart?.time ?? DEFAULT_TIMES.start,
-  );
-  const [localEndTime, setLocalEndTime] = useState<string>(
-    () => parsedEnd?.time ?? DEFAULT_TIMES.end,
+    () => parsedEnd ?? undefined,
   );
 
   const syncDraftFromCurrent = () => {
     if (parsedStart && parsedEnd) {
-      setLocalStartDate(parsedStart.date);
-      setLocalEndDate(parsedEnd.date);
-      setLocalStartTime(parsedStart.time);
-      setLocalEndTime(parsedEnd.time);
+      setLocalStartDate(parsedStart);
+      setLocalEndDate(parsedEnd);
       return;
     }
     setLocalStartDate(undefined);
     setLocalEndDate(undefined);
-    setLocalStartTime(DEFAULT_TIMES.start);
-    setLocalEndTime(DEFAULT_TIMES.end);
   };
 
   const handleFilterPopoverOpenChange = (open: boolean) => {
@@ -166,31 +147,15 @@ function DateRangeFilter({
 
   const hasDateRangeChanged = (() => {
     if (!localStartDate || !localEndDate) return false;
-    const nextStart = buildDateTimeFromDateAndTime(
-      localStartDate,
-      localStartTime,
-      DEFAULT_TIMES.start,
-    );
-    const nextEnd = buildDateTimeFromDateAndTime(
-      localEndDate,
-      localEndTime,
-      DEFAULT_TIMES.end,
-    );
+    const nextStart = formatCalendarDate(localStartDate);
+    const nextEnd = formatCalendarDate(localEndDate);
     return nextStart !== startDate || nextEnd !== endDate;
   })();
 
   const applyCustomRange = () => {
     if (!localStartDate || !localEndDate) return;
-    const nextStart = buildDateTimeFromDateAndTime(
-      localStartDate,
-      localStartTime,
-      DEFAULT_TIMES.start,
-    );
-    const nextEnd = buildDateTimeFromDateAndTime(
-      localEndDate,
-      localEndTime,
-      DEFAULT_TIMES.end,
-    );
+    const nextStart = formatCalendarDate(localStartDate);
+    const nextEnd = formatCalendarDate(localEndDate);
     if (nextStart === startDate && nextEnd === endDate) {
       setFilterPopoverOpen(false);
       return;
@@ -259,112 +224,85 @@ function DateRangeFilter({
                 })}
               </Label>
               <div className="flex gap-4">
-                <div className="flex gap-4 border-r-2 border-gray-300 pr-4">
-                  <div className="flex flex-col gap-3">
-                    <Label className="px-1">
-                      {t("dateFilter.startDate", {
-                        defaultValue: "Start date",
-                      })}
-                    </Label>
-                    <Popover
-                      open={startDateOpen}
-                      onOpenChange={setStartDateOpen}
+                <div className="flex flex-col gap-3">
+                  <Label className="px-1">
+                    {t("dateFilter.startDate", {
+                      defaultValue: "Start date",
+                    })}
+                  </Label>
+                  <Popover open={startDateOpen} onOpenChange={setStartDateOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-32 justify-between font-normal"
+                        aria-label={t("dateFilter.startDate", {
+                          defaultValue: "Start date",
+                        })}
+                      >
+                        {localStartDate
+                          ? formatReadableDate(localStartDate)
+                          : t("dateFilter.selectDate", {
+                              defaultValue: "Select date",
+                            })}
+                        <CalendarIcon className="h-4 w-4" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      className="w-auto overflow-hidden p-0 bg-white"
+                      align="start"
                     >
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="w-32 justify-between font-normal"
-                        >
-                          {localStartDate
-                            ? localStartDate.toLocaleDateString()
-                            : t("dateFilter.selectDate", {
-                                defaultValue: "Select date",
-                              })}
-                          <CalendarIcon className="h-4 w-4" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent
-                        className="w-auto overflow-hidden p-0 bg-white"
-                        align="start"
-                      >
-                        <Calendar
-                          mode="single"
-                          selected={localStartDate}
-                          onSelect={(selected) => {
-                            if (!selected) return;
-                            setLocalStartDate(selected);
-                            setStartDateOpen(false);
-                          }}
-                          className="rounded-md border shadow-md"
-                          captionLayout="dropdown"
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                  <div className="flex flex-col gap-3">
-                    <Label className="px-1">
-                      {t("dateFilter.time", { defaultValue: "Time" })}
-                    </Label>
-                    <Input
-                      type="time"
-                      step="1"
-                      value={localStartTime}
-                      onChange={(event) =>
-                        setLocalStartTime(event.target.value)
-                      }
-                      className="bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
-                    />
-                  </div>
+                      <Calendar
+                        mode="single"
+                        selected={localStartDate}
+                        onSelect={(selected) => {
+                          if (!selected) return;
+                          setLocalStartDate(selected);
+                          setStartDateOpen(false);
+                        }}
+                        className="rounded-md border shadow-md"
+                        captionLayout="dropdown"
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
-                <div className="flex gap-4">
-                  <div className="flex flex-col gap-3">
-                    <Label className="px-1">
-                      {t("dateFilter.endDate", { defaultValue: "End date" })}
-                    </Label>
-                    <Popover open={endDateOpen} onOpenChange={setEndDateOpen}>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="w-32 justify-between font-normal"
-                        >
-                          {localEndDate
-                            ? localEndDate.toLocaleDateString()
-                            : t("dateFilter.selectDate", {
-                                defaultValue: "Select date",
-                              })}
-                          <CalendarIcon className="h-4 w-4" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent
-                        className="w-auto overflow-hidden p-0 bg-white"
-                        align="start"
+                <div className="flex flex-col gap-3">
+                  <Label className="px-1">
+                    {t("dateFilter.endDate", { defaultValue: "End date" })}
+                  </Label>
+                  <Popover open={endDateOpen} onOpenChange={setEndDateOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-32 justify-between font-normal"
+                        aria-label={t("dateFilter.endDate", {
+                          defaultValue: "End date",
+                        })}
                       >
-                        <Calendar
-                          mode="single"
-                          selected={localEndDate}
-                          onSelect={(selected) => {
-                            if (!selected) return;
-                            setLocalEndDate(selected);
-                            setEndDateOpen(false);
-                          }}
-                          className="rounded-md border shadow-md"
-                          captionLayout="dropdown"
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                  <div className="flex flex-col gap-3">
-                    <Label className="px-1">
-                      {t("dateFilter.time", { defaultValue: "Time" })}
-                    </Label>
-                    <Input
-                      type="time"
-                      step="1"
-                      value={localEndTime}
-                      onChange={(event) => setLocalEndTime(event.target.value)}
-                      className="bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
-                    />
-                  </div>
+                        {localEndDate
+                          ? formatReadableDate(localEndDate)
+                          : t("dateFilter.selectDate", {
+                              defaultValue: "Select date",
+                            })}
+                        <CalendarIcon className="h-4 w-4" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      className="w-auto overflow-hidden p-0 bg-white"
+                      align="start"
+                    >
+                      <Calendar
+                        mode="single"
+                        selected={localEndDate}
+                        onSelect={(selected) => {
+                          if (!selected) return;
+                          setLocalEndDate(selected);
+                          setEndDateOpen(false);
+                        }}
+                        className="rounded-md border shadow-md"
+                        captionLayout="dropdown"
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </div>
               <Button
@@ -394,11 +332,11 @@ function DateRangeFilter({
               <span className="text-gray-600">
                 {t("dateFilter.from", { defaultValue: "From" })}
               </span>{" "}
-              {formatReadableDateTime(startDate)}{" "}
+              {formatReadableDate(startDate)}{" "}
               <span className="text-gray-600">
                 {t("dateFilter.until", { defaultValue: "Until" })}
               </span>{" "}
-              {formatReadableDateTime(endDate)}
+              {formatReadableDate(endDate)}
             </>
           )}
         </Label>
@@ -418,7 +356,7 @@ const GenericSearchBar: React.FC<GenericSearchBarProps> = ({
   startDate,
   endDate,
   onDateChange,
-  defaultQuickRange = "lastHour",
+  defaultQuickRange = "today",
   weekStartsOn = 1,
   searchLabel,
   disableExport,
@@ -453,8 +391,8 @@ const GenericSearchBar: React.FC<GenericSearchBarProps> = ({
     (nextStartDate: string, nextEndDate: string) => {
       // Guard invalid date payloads before delegating URL updates to parent.
       if (
-        !DATE_TIME_PATTERN.test(nextStartDate) ||
-        !DATE_TIME_PATTERN.test(nextEndDate)
+        !isValidCalendarDate(nextStartDate) ||
+        !isValidCalendarDate(nextEndDate)
       ) {
         return;
       }

@@ -30,7 +30,7 @@ describe("TablePagination", () => {
       setPageIndex: vi.fn(),
       previousPage: vi.fn(),
       nextPage: vi.fn(),
-      getState: () => ({ pagination: { pageIndex: 0, pageSize: 25 } }),
+      state: { pagination: { pageIndex: 0, pageSize: 25 } },
       getPageCount: () => 3,
       setPageSize: vi.fn(),
       getAllColumns: () => [],

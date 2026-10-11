@@ -17,7 +17,7 @@ function renderSection(
     defaultOptions: { queries: { retry: false }, mutations: { retry: 0 } },
   });
   return renderWithI18n(
-    <MemoryRouter initialEntries={["/?start-date=2025-01-01T00:00:00&end-date=2025-01-01T23:59:59"]}>
+    <MemoryRouter initialEntries={["/?start-date=2025-01-01&end-date=2025-01-01"]}>
       <QueryClientProvider client={client}>
         <BusinessAdvancedTableSection
           businessId={props.businessId ?? "64b000000000000000000001"}
