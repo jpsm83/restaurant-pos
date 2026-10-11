@@ -19,6 +19,11 @@ import createDailySalesReport from "../../dailySalesReports/createDailySalesRepo
 import createSalesInstance from "../../salesInstances/createSalesInstance.ts";
 import { pointBusyForEmployee } from "../../salesInstances/salesInstanceConflicts.ts";
 import {
+  applyReservationDateRange,
+  listReservations,
+  type ReservationFilter,
+} from "../../reservations/reservationFilters.ts";
+import {
   sendReservationPendingFlow,
   sendReservationDecisionFlow,
 } from "../../reservations/sendReservationCustomerFlow.ts";
@@ -45,6 +50,7 @@ import {
   updateReservationBodySchema,
   type CreateReservationBody,
   type ReservationIdParams,
+  type ReservationStatus,
   type ReservationsByBusinessParams,
   type ReservationsByBusinessQuery,
   type ReservationsQuery,
@@ -53,8 +59,6 @@ import {
 import * as enums from "../../../../packages/enums.ts";
 
 const { managementRolesEnums } = enums;
-
-type ReservationStatus = NonNullable<IReservation["status"]>;
 
 /**
  * Allowed status transitions. `Pending` is the implicit starting status; a
@@ -91,39 +95,18 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
     async (req, reply) => {
       const { businessId, startDate, endDate, status } = req.query;
 
-      const filter: {
-        businessId?: Types.ObjectId;
-        reservationStart?: { $gte?: Date; $lte?: Date };
-        status?: string;
-      } = {};
+      const filter: ReservationFilter = {};
 
       if (businessId) {
         filter.businessId = new Types.ObjectId(businessId);
       }
-
-      if (startDate || endDate) {
-        filter.reservationStart = {};
-        if (startDate) filter.reservationStart.$gte = startDate;
-        if (endDate) filter.reservationStart.$lte = endDate;
-        if (startDate && endDate && startDate > endDate) {
-          throw badRequest(
-            "Invalid date range, startDate must be before endDate!",
-          );
-        }
-      }
-
       if (status) {
         filter.status = status;
       }
 
-      const reservations = await Reservation.find(filter).sort({
-        reservationStart: 1,
-      });
+      applyReservationDateRange(filter, startDate, endDate);
 
-      if (!reservations?.length) {
-        throw notFound("No reservations found!");
-      }
-      return reply.code(200).send(reservations);
+      return reply.code(200).send(await listReservations(filter));
     },
   );
 
@@ -254,7 +237,6 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
         guestCount,
         description,
         employeeResponsableByUserId,
-        salesInstanceId,
       } = req.body;
 
       const session = await mongoose.startSession();
@@ -322,7 +304,7 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
           }
         }
 
-        const updated: Partial<IReservation> & { status?: string } = {};
+        const updated: Partial<IReservation> = {};
 
         if (typeof guestCount === "number") updated.guestCount = guestCount;
         if (description !== undefined) updated.description = description;
@@ -336,13 +318,9 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
 
         if (salesPointId)
           updated.salesPointId = new Types.ObjectId(salesPointId);
-        if (salesInstanceId)
-          updated.salesInstanceId = new Types.ObjectId(salesInstanceId);
 
         if (status) {
-          const nextStatus = status as ReservationStatus;
-
-          if (!canTransitionReservationStatus(reservation.status, nextStatus)) {
+          if (!canTransitionReservationStatus(reservation.status, status)) {
             throw badRequest(
               `Invalid status transition from ${reservation.status ?? "Pending"} to ${status}!`,
             );
@@ -356,7 +334,7 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
             throw badRequest("salesPointId is required to set status Seated!");
           }
 
-          updated.status = nextStatus;
+          updated.status = status;
 
           if (
             (status === "Confirmed" ||
@@ -410,11 +388,7 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
           }
         }
 
-        if (
-          status === "Seated" &&
-          !reservation.salesInstanceId &&
-          !updated.salesInstanceId
-        ) {
+        if (status === "Seated" && !reservation.salesInstanceId) {
           const effectiveSalesPointId = salesPointId
             ? new Types.ObjectId(salesPointId)
             : (reservation.salesPointId as Types.ObjectId | undefined);
@@ -568,33 +542,15 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
       const { businessId } = req.params;
       const { startDate, endDate, status } = req.query;
 
-      const filter: {
-        businessId: Types.ObjectId;
-        reservationStart?: { $gte?: Date; $lte?: Date };
-        status?: string;
-      } = { businessId: new Types.ObjectId(businessId) };
-
-      if (startDate || endDate) {
-        filter.reservationStart = {};
-        if (startDate) filter.reservationStart.$gte = startDate;
-        if (endDate) filter.reservationStart.$lte = endDate;
-        if (startDate && endDate && startDate > endDate) {
-          throw badRequest(
-            "Invalid date range, startDate must be before endDate!",
-          );
-        }
-      }
+      const filter: ReservationFilter = {
+        businessId: new Types.ObjectId(businessId),
+      };
 
       if (status) filter.status = status;
 
-      const reservations = await Reservation.find(filter).sort({
-        reservationStart: 1,
-      });
+      applyReservationDateRange(filter, startDate, endDate);
 
-      if (!reservations?.length) {
-        throw notFound("No reservations found!");
-      }
-      return reply.code(200).send(reservations);
+      return reply.code(200).send(await listReservations(filter));
     },
   );
 };

@@ -1,16 +1,12 @@
 import { describe, it, expect } from "vitest";
-import type { z } from "zod";
 
 import Reservation from "../../src/models/reservation.ts";
 import { reservationStatusEnums } from "../../../packages/enums.ts";
 import {
   createReservationBodySchema,
-  reservationIdParamsSchema,
-  reservationsByBusinessParamsSchema,
-  reservationsByBusinessQuerySchema,
-  reservationsQuerySchema,
   updateReservationBodySchema,
 } from "../../../packages/schemas/reservations.ts";
+import { reservationDtoSchemas } from "../helpers/reservationDtos.ts";
 
 /**
  * Parity between the reservations DTOs and the Reservation model (the domain
@@ -22,15 +18,6 @@ const VALID_ID = "507f1f77bcf86cd799439011";
 
 const reservationOwns = (field: string): boolean =>
   Boolean(Reservation.schema.path(field));
-
-const allDtos: Record<string, z.ZodObject> = {
-  createReservationBodySchema,
-  reservationIdParamsSchema,
-  updateReservationBodySchema,
-  reservationsQuerySchema,
-  reservationsByBusinessParamsSchema,
-  reservationsByBusinessQuerySchema,
-};
 
 describe("reservations DTO ↔ model parity", () => {
   it("every create-reservation field maps to a Reservation model field", () => {
@@ -55,6 +42,7 @@ describe("reservations DTO ↔ model parity", () => {
     for (const field of [
       "createdByUserId",
       "createdByRole",
+      "salesInstanceId",
       "createdAt",
       "updatedAt",
     ]) {
@@ -62,7 +50,7 @@ describe("reservations DTO ↔ model parity", () => {
         reservationOwns(field),
         `${field} should be owned by Reservation`,
       ).toBe(true);
-      for (const [name, schema] of Object.entries(allDtos)) {
+      for (const [name, schema] of Object.entries(reservationDtoSchemas)) {
         expect(
           Object.keys(schema.shape),
           `${name} should not accept ${field}`,
@@ -99,7 +87,6 @@ describe("reservations DTO ↔ model parity", () => {
       "businessId",
       "employeeResponsableByUserId",
       "salesPointId",
-      "salesInstanceId",
     ]) {
       expect(
         reservationOwns(field),

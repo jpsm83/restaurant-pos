@@ -1,5 +1,4 @@
 import { describe, it, expect } from "vitest";
-import type { z } from "zod";
 
 import {
   createReservationBodySchema,
@@ -7,9 +6,11 @@ import {
   reservationsByBusinessParamsSchema,
   reservationsByBusinessQuerySchema,
   reservationsQuerySchema,
+  reservationStatusValues,
   updateReservationBodySchema,
 } from "../../../packages/schemas/reservations.ts";
 import { reservationStatusEnums } from "../../../packages/enums.ts";
+import { reservationDtoSchemas } from "../helpers/reservationDtos.ts";
 
 const VALID_ID = "507f1f77bcf86cd799439011";
 
@@ -144,12 +145,17 @@ describe("updateReservationBodySchema", () => {
   it("accepts client-settable ObjectId relations", () => {
     const parsed = updateReservationBodySchema.parse({
       salesPointId: VALID_ID,
-      salesInstanceId: VALID_ID,
       employeeResponsableByUserId: VALID_ID,
     });
     expect(parsed.salesPointId).toBe(VALID_ID);
-    expect(parsed.salesInstanceId).toBe(VALID_ID);
     expect(parsed.employeeResponsableByUserId).toBe(VALID_ID);
+  });
+
+  it("rejects a salesInstanceId (server-owned during the seat flow)", () => {
+    expect(
+      updateReservationBodySchema.safeParse({ salesInstanceId: VALID_ID })
+        .success,
+    ).toBe(false);
   });
 
   it("rejects a malformed ObjectId relation", () => {
@@ -302,17 +308,16 @@ describe("reservationsByBusinessQuerySchema", () => {
   });
 });
 
-describe("server-owned fields are excluded from every reservations DTO", () => {
-  const dtoSchemas: Record<string, z.ZodObject> = {
-    createReservationBodySchema,
-    reservationIdParamsSchema,
-    updateReservationBodySchema,
-    reservationsQuerySchema,
-    reservationsByBusinessParamsSchema,
-    reservationsByBusinessQuerySchema,
-  };
+describe("reservationStatusValues", () => {
+  it("matches the shared reservationStatusEnums (no drift)", () => {
+    expect([...reservationStatusValues].sort()).toEqual(
+      [...reservationStatusEnums].sort(),
+    );
+  });
+});
 
-  it.each(Object.entries(dtoSchemas))(
+describe("server-owned fields are excluded from every reservations DTO", () => {
+  it.each(Object.entries(reservationDtoSchemas))(
     "%s has no server-owned key",
     (_name, schema) => {
       const keys = Object.keys(schema.shape);
@@ -321,6 +326,7 @@ describe("server-owned fields are excluded from every reservations DTO", () => {
       expect(keys).not.toContain("updatedAt");
       expect(keys).not.toContain("createdByUserId");
       expect(keys).not.toContain("createdByRole");
+      expect(keys).not.toContain("salesInstanceId");
     },
   );
 });

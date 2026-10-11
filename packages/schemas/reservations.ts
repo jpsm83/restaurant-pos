@@ -3,26 +3,43 @@
  * routes accept.
  *
  * Strict (unknown keys rejected) and client-settable only: the server-owned
- * `createdByUserId`, `createdByRole` and the timestamps never appear in a DTO,
- * so a client that sends them gets a `400`. The DTOs own per-field shape and
- * types — the `reservationStatusEnums` membership, ObjectId relations, the guest
- * count and date coercion. Cross-field and database-dependent rules stay in the
- * route as named post-parse checks: `reservationEnd > reservationStart`, the
- * allowed status transitions, and the employee/management role guards.
+ * `createdByUserId`, `createdByRole`, `salesInstanceId` and the timestamps never
+ * appear in a DTO, so a client that sends them gets a `400`. The DTOs own
+ * per-field shape and types — the `reservationStatusValues` membership, ObjectId
+ * relations, the guest count and date coercion. Cross-field and
+ * database-dependent rules stay in the route as named post-parse checks: the
+ * `reservationEnd > reservationStart` period rule, the allowed status
+ * transitions, and the employee/management role guards.
  */
 import { z } from "zod";
 
-import { reservationStatusEnums } from "../enums.ts";
-import {
-  coercedIntSchema,
-  freeTextString,
-  objectIdSchema,
-} from "./primitives.ts";
+import { coercedIntSchema, freeTextString, objectIdSchema } from "./primitives.ts";
 
-/** A reservation status from the shared enum. */
+/**
+ * The reservation statuses. Pinned locally so `z.enum` carries the literal
+ * union into `z.infer`; the parity test asserts these match the shared
+ * `reservationStatusEnums` so the two cannot drift.
+ */
+export const reservationStatusValues = [
+  "Pending",
+  "Confirmed",
+  "Arrived",
+  "Seated",
+  "Cancelled",
+  "NoShow",
+  "Completed",
+] as const;
+
+export type ReservationStatus = (typeof reservationStatusValues)[number];
+
 const reservationStatusSchema = z.enum(
-  reservationStatusEnums as [string, ...string[]],
+  reservationStatusValues,
   "Invalid status value!",
+);
+
+/** A positive integer guest count. */
+const guestCountSchema = coercedIntSchema.positive(
+  "GuestCount must be greater than 0!",
 );
 
 /** An optional query date; an empty string is treated as "not provided". */
@@ -32,13 +49,6 @@ const optionalDateSchema = z.preprocess(
   z.coerce.date().optional(),
 );
 
-/** The filters shared by `GET /reservations` and `GET /reservations/business/:businessId`. */
-const reservationFiltersSchema = z.strictObject({
-  status: reservationStatusSchema.optional(),
-  startDate: optionalDateSchema,
-  endDate: optionalDateSchema,
-});
-
 /**
  * Body for `POST /reservations`. `createdByUserId` and `createdByRole` are
  * derived from the authenticated session, not the body. The default
@@ -47,7 +57,7 @@ const reservationFiltersSchema = z.strictObject({
  */
 export const createReservationBodySchema = z.strictObject({
   businessId: objectIdSchema,
-  guestCount: coercedIntSchema.positive("GuestCount must be greater than 0!"),
+  guestCount: guestCountSchema,
   reservationStart: z.coerce.date(),
   reservationEnd: z.coerce.date().optional(),
   description: freeTextString().optional(),
@@ -60,24 +70,34 @@ export const reservationIdParamsSchema = z.strictObject({
 
 /**
  * Body for `PATCH /reservations/:reservationId` — every field is optional and
- * client-settable. `businessId`, `createdByUserId` and `createdByRole` are not.
+ * client-settable. `businessId`, `createdByUserId`, `createdByRole` and
+ * `salesInstanceId` are server-owned and not accepted.
  */
 export const updateReservationBodySchema = z.strictObject({
   status: reservationStatusSchema.optional(),
   salesPointId: objectIdSchema.optional(),
   reservationStart: z.coerce.date().optional(),
   reservationEnd: z.coerce.date().optional(),
-  guestCount: coercedIntSchema.positive("GuestCount must be greater than 0!").optional(),
+  guestCount: guestCountSchema.optional(),
   description: freeTextString().optional(),
   employeeResponsableByUserId: objectIdSchema.optional(),
-  salesInstanceId: objectIdSchema.optional(),
+});
+
+/**
+ * Query for `GET /reservations/business/:businessId`. The date-range rule
+ * (`startDate <= endDate`) is enforced in the route.
+ */
+export const reservationsByBusinessQuerySchema = z.strictObject({
+  status: reservationStatusSchema.optional(),
+  startDate: optionalDateSchema,
+  endDate: optionalDateSchema,
 });
 
 /**
  * Query for `GET /reservations`. The date-range rule (`startDate <= endDate`) is
  * enforced in the route.
  */
-export const reservationsQuerySchema = reservationFiltersSchema.extend({
+export const reservationsQuerySchema = reservationsByBusinessQuerySchema.extend({
   businessId: objectIdSchema.optional(),
 });
 
@@ -85,12 +105,6 @@ export const reservationsQuerySchema = reservationFiltersSchema.extend({
 export const reservationsByBusinessParamsSchema = z.strictObject({
   businessId: objectIdSchema,
 });
-
-/**
- * Query for `GET /reservations/business/:businessId`. The date-range rule
- * (`startDate <= endDate`) is enforced in the route.
- */
-export const reservationsByBusinessQuerySchema = reservationFiltersSchema;
 
 export type CreateReservationBody = z.infer<typeof createReservationBodySchema>;
 export type UpdateReservationBody = z.infer<typeof updateReservationBodySchema>;

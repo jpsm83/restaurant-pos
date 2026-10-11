@@ -410,6 +410,26 @@ describe("Reservations Routes", () => {
 
       expectProblem(response, 400, "validation");
     });
+
+    it("rejects a client-supplied salesInstanceId (server-owned)", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/reservations/${new Types.ObjectId()}`,
+        headers: { authorization: await userToken() },
+        payload: { salesInstanceId: new Types.ObjectId().toString() },
+      });
+
+      const body = expectProblem(response, 400, "validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            message: expect.stringContaining("salesInstanceId"),
+          }),
+        ]),
+      );
+    });
   });
 
   describe("DELETE /api/v1/reservations/:reservationId", () => {
