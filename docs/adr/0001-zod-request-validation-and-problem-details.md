@@ -38,6 +38,10 @@ Concretely:
 - Every route declares body/params/query as a strict DTO (unknown keys
   rejected) that excludes server-owned fields. Request types are inferred from
   the schema with `z.infer`, so types and validation cannot drift.
+  - **Documented exception:** the delivery and self-ordering flows accept a
+    client-supplied `paymentId` as a stable idempotency key, so a retried
+    payment resolves to the same SalesInstance. It is the only `paymentId` a
+    client may set; every other server-owned field stays excluded.
 - **Sanitization** (normalization + markup stripping) happens once at the
   boundary. No HTML-entity escaping at input; escaping stays at render time.
 - Rules that depend on more than one field or on the database stay as named

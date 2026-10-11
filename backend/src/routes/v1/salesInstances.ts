@@ -1,3 +1,15 @@
+/**
+ * SalesInstances Routes — POS/employee CRUD plus the delivery and
+ * self-ordering flows.
+ *
+ * Every route declares its body/params as a strict zod DTO from
+ * `packages/schemas/salesInstances.ts`; validation and sanitization happen at
+ * the boundary and every error is raised as an `AppError` so the global handler
+ * emits RFC 9457 `application/problem+json`. Cross-field and business rules —
+ * `ordersArrValidation`, `validatePaymentMethodArray`, the paid>=total check,
+ * ownership/role guards and the `paymentId` idempotency guards — stay in the
+ * route as named post-parse checks.
+ */
 import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
 import type {
@@ -9,7 +21,6 @@ import type { IOrder } from "../../../../packages/interfaces/IOrder.ts";
 import type { IAddress } from "../../../../packages/interfaces/IAddress.ts";
 import type { IBusiness } from "../../../../packages/interfaces/IBusiness.ts";
 
-import isObjectIdValid from "../../utils/isObjectIdValid.ts";
 import {
   badRequest,
   conflict,
@@ -19,16 +30,24 @@ import {
   type AppError,
 } from "../../errors/appError.ts";
 import {
+  createDeliveryOrderBodySchema,
   createSalesInstanceBodySchema,
+  createSelfOrderBodySchema,
+  openSelfOrderingTableBodySchema,
   salesInstanceIdParamsSchema,
   salesInstancesByBusinessParamsSchema,
   salesInstancesByUserParamsSchema,
+  selfOrderingLocationIdParamsSchema,
   transferSalesPointBodySchema,
   updateSalesInstanceBodySchema,
+  type CreateDeliveryOrderBody,
   type CreateSalesInstanceBody,
+  type CreateSelfOrderBody,
+  type OpenSelfOrderingTableBody,
   type SalesInstanceIdParams,
   type SalesInstancesByBusinessParams,
   type SalesInstancesByUserParams,
+  type SelfOrderingLocationIdParams,
   type TransferSalesPointBody,
   type UpdateSalesInstanceBody,
 } from "../../../../packages/schemas/salesInstances.ts";
@@ -888,31 +907,26 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
     },
   );
 
-  app.post(
+  app.post<{
+    Params: SelfOrderingLocationIdParams;
+    Body: OpenSelfOrderingTableBody;
+  }>(
     "/selfOrderingLocation/:selfOrderingLocationId/openTable",
-    { preValidation: [createAuthHook(app)] },
+    {
+      preValidation: [createAuthHook(app)],
+      schema: {
+        params: selfOrderingLocationIdParamsSchema,
+        body: openSelfOrderingTableBodySchema,
+      },
+    },
     async (req, reply) => {
-      const params = req.params as { selfOrderingLocationId?: string };
-      const selfOrderingLocationId = params.selfOrderingLocationId;
-
       if (!req.authSession || req.authSession.type !== "user") {
-        return reply.code(401).send({ message: "Unauthorized" });
+        throw unauthorized("Unauthorized");
       }
       const openedByUserId = new Types.ObjectId(req.authSession.id);
 
-      const body = req.body as { businessId?: string; guests?: number };
-      const businessId = body?.businessId;
-      const guests = body?.guests ?? 1;
-
-      if (!businessId) {
-        return reply.code(400).send({ message: "businessId is required" });
-      }
-
-      if (isObjectIdValid([selfOrderingLocationId!, businessId]) !== true) {
-        return reply
-          .code(400)
-          .send({ message: "Invalid selfOrderingLocationId or businessId" });
-      }
+      const { selfOrderingLocationId } = req.params;
+      const { businessId, guests } = req.body;
 
       const salesPoint = (await SalesPoint.findById(selfOrderingLocationId)
         .select("businessId")
@@ -921,7 +935,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
       } | null;
 
       if (!salesPoint) {
-        return reply.code(404).send({ message: "Sales point not found" });
+        throw notFound("Sales point not found");
       }
 
       const salesPointBusinessId =
@@ -932,9 +946,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
           : (salesPoint.businessId as Types.ObjectId);
 
       if (salesPointBusinessId.toString() !== businessId.toString()) {
-        return reply
-          .code(400)
-          .send({ message: "Sales point does not belong to this business" });
+        throw badRequest("Sales point does not belong to this business");
       }
 
       const effectiveRole = await getEffectiveUserRoleAtTime({
@@ -942,9 +954,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
         businessId: new Types.ObjectId(businessId),
       });
       if (effectiveRole !== "employee") {
-        return reply.code(403).send({
-          message: "Employee must be on duty to open a table from QR",
-        });
+        throw forbidden("Employee must be on duty to open a table from QR");
       }
 
       type OpenTableTxnOutcome = Extract<
@@ -1025,45 +1035,26 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
       })) as OpenTableTxnOutcome;
 
       if (openOutcome.kind === "response") {
-        return reply.code(openOutcome.status).send(openOutcome.body);
+        throw employeeTxnError(openOutcome.body, openOutcome.status);
       }
       return reply.code(201).send(openOutcome.doc);
     },
   );
 
-  app.post(
+  app.post<{ Body: CreateDeliveryOrderBody }>(
     "/delivery",
-    { preValidation: [createAuthHook(app)] },
+    {
+      preValidation: [createAuthHook(app)],
+      schema: { body: createDeliveryOrderBodySchema },
+    },
     async (req, reply) => {
       if (!req.authSession || req.authSession.type !== "user") {
-        return reply.code(401).send({ message: "Unauthorized" });
+        throw unauthorized("Unauthorized");
       }
       const userId = new Types.ObjectId(req.authSession.id);
 
-      const body = req.body as {
-        businessId: Types.ObjectId;
-        ordersArr: IOrder[];
-        paymentMethodArr: IPaymentMethod[];
-        deliveryAddress?: IAddress;
-        // Stable idempotency key (front provides) for payment acceptance retries.
-        paymentId?: string;
-      };
-
       const { businessId, ordersArr, paymentMethodArr, deliveryAddress, paymentId } =
-        body ?? {};
-
-      if (!businessId || !ordersArr || !paymentMethodArr) {
-        return reply.code(400).send({
-          message:
-            "businessId, ordersArr and paymentMethodArr are required for delivery orders!",
-        });
-      }
-
-      if (!paymentId || typeof paymentId !== "string") {
-        return reply.code(400).send({
-          message: "paymentId is required for delivery idempotency!",
-        });
-      }
+        req.body;
 
       // Idempotency: if this payment was already accepted and processed, return the existing SalesInstance.
       const existingSalesInstanceForPayment = await SalesInstance.findOne({
@@ -1102,7 +1093,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
             ),
           )?.orderCode ?? existingSalesInstanceDoc?.salesGroup?.[0]?.orderCode;
 
-        sendOrderConfirmation(userId, businessId as Types.ObjectId, {
+        sendOrderConfirmation(userId, new Types.ObjectId(businessId), {
           dailyReferenceNumber:
             existingSalesInstanceDoc?.dailyReferenceNumber ??
             (existingSalesInstanceForPayment as any).dailyReferenceNumber,
@@ -1120,34 +1111,23 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
       }
 
       if (existingSalesInstanceForPayment) {
-        return reply.code(409).send({
-          message:
-            "Delivery payment acceptance is already in progress for this paymentId.",
-        });
+        throw conflict(
+          "Delivery payment acceptance is already in progress for this paymentId.",
+        );
       }
 
-      const objectIds = [
-        businessId,
-        ...ordersArr.flatMap((order) => [
-          order.businessGoodId!,
-          ...(order.addOns ?? []),
-        ]),
-      ];
-
-      if (isObjectIdValid(objectIds as Types.ObjectId[]) !== true) {
-        return reply.code(400).send({
-          message: "businessId or ordersArr's IDs not valid!",
-        });
-      }
-
-      const ordersArrValidationResult = ordersArrValidation(ordersArr);
+      const ordersArrValidationResult = ordersArrValidation(
+        ordersArr as unknown as Partial<IOrder>[],
+      );
       if (ordersArrValidationResult !== true) {
-        return reply.code(400).send({ message: ordersArrValidationResult });
+        throw badRequest(ordersArrValidationResult);
       }
 
-      const validPaymentMethods = validatePaymentMethodArray(paymentMethodArr);
+      const validPaymentMethods = validatePaymentMethodArray(
+        paymentMethodArr as unknown as IPaymentMethod[],
+      );
       if (validPaymentMethods !== true) {
-        return reply.code(400).send({ message: validPaymentMethods });
+        throw badRequest(validPaymentMethods);
       }
 
       const [business, user] = await Promise.all([
@@ -1162,23 +1142,19 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
       const businessDoc = business as unknown as IBusiness | null;
 
       if (!businessDoc) {
-        return reply.code(404).send({ message: "Business not found." });
+        throw notFound("Business not found.");
       }
 
       if (!businessDoc.acceptsDelivery) {
-        return reply
-          .code(400)
-          .send({ message: "This business does not accept delivery." });
+        throw badRequest("This business does not accept delivery.");
       }
 
       if (!isDeliveryOpenNow(businessDoc)) {
-        return reply
-          .code(403)
-          .send({ message: "Delivery is currently unavailable." });
+        throw forbidden("Delivery is currently unavailable.");
       }
 
       if (!user) {
-        return reply.code(404).send({ message: "User not found!" });
+        throw notFound("User not found!");
       }
 
       const resolvedDeliveryAddress: IAddress | undefined =
@@ -1192,9 +1168,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
         .lean()) as { _id: Types.ObjectId } | null;
 
       if (!deliverySalesPoint?._id) {
-        return reply.code(400).send({
-          message: "Delivery sales point not configured for this business.",
-        });
+        throw badRequest("Delivery sales point not configured for this business.");
       }
 
       const session = await mongoose.startSession();
@@ -1224,15 +1198,14 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
         let dailyReferenceNumber = dailySalesReport?.dailyReferenceNumber;
 
         const ordersWithPromotions = await applyPromotionsToOrders({
-          businessId: businessId as Types.ObjectId,
+          businessId: new Types.ObjectId(businessId),
           ordersArr: ordersArr as any,
           flow: "delivery",
           session,
         });
 
         if (typeof ordersWithPromotions === "string") {
-          await session.abortTransaction();
-          return reply.code(400).send({ message: ordersWithPromotions });
+          throw badRequest(ordersWithPromotions);
         }
 
         const totalOrderNetPrice = (ordersWithPromotions as IOrder[]).reduce(
@@ -1245,22 +1218,19 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
         );
 
         if (totalPaid < totalOrderNetPrice) {
-          await session.abortTransaction();
-          return reply.code(400).send({
-            message:
-              "Total amount paid is lower than the total price of the orders!",
-          });
+          throw badRequest(
+            "Total amount paid is lower than the total price of the orders!",
+          );
         }
 
         // Only now we create daily reference/report persistence (if needed) and persist SalesInstance/Orders.
         if (dailyReferenceNumber === undefined) {
           const createdDailyReferenceNumber = await createDailySalesReport(
-            businessId as Types.ObjectId,
+            new Types.ObjectId(businessId),
             session,
           );
           if (typeof createdDailyReferenceNumber === "string") {
-            await session.abortTransaction();
-            return reply.code(400).send({ message: createdDailyReferenceNumber });
+            throw badRequest(createdDailyReferenceNumber);
           }
           dailyReferenceNumber = createdDailyReferenceNumber;
         }
@@ -1272,7 +1242,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
           salesInstanceStatus: "Occupied",
           openedByUserId: userId,
           openedAsRole: "customer",
-          businessId: businessId as Types.ObjectId,
+          businessId: new Types.ObjectId(businessId),
           clientName,
           responsibleByUserId: userId,
           paymentId,
@@ -1325,7 +1295,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
               )?.orderCode ??
               existingSalesInstanceDoc?.salesGroup?.[0]?.orderCode;
 
-            sendOrderConfirmation(userId, businessId as Types.ObjectId, {
+            sendOrderConfirmation(userId, new Types.ObjectId(businessId), {
               dailyReferenceNumber:
                 existingSalesInstanceDoc?.dailyReferenceNumber ??
                 (existing as any).dailyReferenceNumber,
@@ -1342,7 +1312,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
             });
           }
 
-          return reply.code(400).send({ message: salesInstance });
+          throw badRequest(salesInstance);
         }
 
         const createdOrders = (await createOrders(
@@ -1351,13 +1321,12 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
           userId,
           "customer",
           (salesInstance as ISalesInstance)._id as Types.ObjectId,
-          businessId as Types.ObjectId,
+          new Types.ObjectId(businessId),
           session,
         )) as IOrder[] | string;
 
         if (typeof createdOrders === "string") {
-          await session.abortTransaction();
-          return reply.code(400).send({ message: createdOrders });
+          throw badRequest(createdOrders);
         }
 
         const closeOrdersResult = await closeOrders(
@@ -1368,13 +1337,12 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
         );
 
         if (typeof closeOrdersResult === "string") {
-          await session.abortTransaction();
-          return reply.code(400).send({ message: closeOrdersResult });
+          throw badRequest(closeOrdersResult);
         }
 
         await session.commitTransaction();
 
-        checkLowStockAndNotify(businessId as Types.ObjectId).catch(() => {});
+        checkLowStockAndNotify(new Types.ObjectId(businessId)).catch(() => {});
 
         // Idea doc §9: ensure receipts reference the correct batch `orderCode`.
         const createdOrderIds = createdOrders.map(
@@ -1400,7 +1368,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
           0,
         );
 
-        sendOrderConfirmation(userId, businessId as Types.ObjectId, {
+        sendOrderConfirmation(userId, new Types.ObjectId(businessId), {
           dailyReferenceNumber,
           totalNetPaidAmount,
           orderCount: createdOrders.length,
@@ -1417,57 +1385,34 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
           deliveryAddress: resolvedDeliveryAddress,
         });
       } catch (error) {
-        if (session.inTransaction()) {
-          await session.abortTransaction();
-        }
-        return reply.code(500).send({
-          message: "Create delivery order failed!",
-          error: error instanceof Error ? error.message : error,
-        });
+        await session.abortTransaction().catch(() => undefined);
+        throw error;
       } finally {
         session.endSession();
       }
     },
   );
 
-  app.post(
+  app.post<{
+    Params: SelfOrderingLocationIdParams;
+    Body: CreateSelfOrderBody;
+  }>(
     "/selfOrderingLocation/:selfOrderingLocationId",
-    { preValidation: [createAuthHook(app)] },
+    {
+      preValidation: [createAuthHook(app)],
+      schema: {
+        params: selfOrderingLocationIdParamsSchema,
+        body: createSelfOrderBodySchema,
+      },
+    },
     async (req, reply) => {
-      const params = req.params as { selfOrderingLocationId?: string };
-      const selfOrderingLocationId = params.selfOrderingLocationId;
-
       if (!req.authSession || req.authSession.type !== "user") {
-        return reply.code(401).send({ message: "Unauthorized" });
+        throw unauthorized("Unauthorized");
       }
       const userId = new Types.ObjectId(req.authSession.id);
 
-      const body = req.body as Partial<ISalesInstance> & {
-        ordersArr: IOrder[];
-        paymentMethodArr: IPaymentMethod[];
-        // Stable idempotency key (front provides) for payment acceptance retries.
-        paymentId?: string;
-      };
-
-      const { businessId, ordersArr, paymentMethodArr, paymentId } = body ?? {};
-
-      if (
-        !selfOrderingLocationId ||
-        !businessId ||
-        !ordersArr ||
-        !paymentMethodArr
-      ) {
-        return reply.code(400).send({
-          message:
-            "SelfOrderingLocationId, ordersArr, paymentMethodArr and businessId are required!",
-        });
-      }
-
-      if (!paymentId || typeof paymentId !== "string") {
-        return reply.code(400).send({
-          message: "paymentId is required for self-order idempotency!",
-        });
-      }
+      const { selfOrderingLocationId } = req.params;
+      const { businessId, ordersArr, paymentMethodArr, paymentId } = req.body;
 
       // Idempotency: if this payment was already accepted and processed, return the existing SalesInstance.
       const existingSalesInstanceForPayment = await SalesInstance.findOne({
@@ -1506,7 +1451,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
             ),
           )?.orderCode ?? existingSalesInstanceDoc?.salesGroup?.[0]?.orderCode;
 
-        sendOrderConfirmation(userId, businessId as Types.ObjectId, {
+        sendOrderConfirmation(userId, new Types.ObjectId(businessId), {
           dailyReferenceNumber:
             existingSalesInstanceDoc?.dailyReferenceNumber ??
             (existingSalesInstanceForPayment as any).dailyReferenceNumber,
@@ -1524,36 +1469,23 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
       }
 
       if (existingSalesInstanceForPayment) {
-        return reply.code(409).send({
-          message:
-            "Self-order payment acceptance is already in progress for this paymentId.",
-        });
+        throw conflict(
+          "Self-order payment acceptance is already in progress for this paymentId.",
+        );
       }
 
-      const objectIds = [
-        ...ordersArr.flatMap((order) => [
-          order.businessGoodId!,
-          ...(order.addOns ?? []),
-        ]),
-        businessId,
-        selfOrderingLocationId,
-      ];
-
-      if (isObjectIdValid(objectIds as Types.ObjectId[]) !== true) {
-        return reply.code(400).send({
-          message:
-            "BusinessId, selfOrderingLocationId or ordersArr's IDs not valid!",
-        });
-      }
-
-      const ordersArrValidationResult = ordersArrValidation(ordersArr);
+      const ordersArrValidationResult = ordersArrValidation(
+        ordersArr as unknown as Partial<IOrder>[],
+      );
       if (ordersArrValidationResult !== true) {
-        return reply.code(400).send({ message: ordersArrValidationResult });
+        throw badRequest(ordersArrValidationResult);
       }
 
-      const validPaymentMethods = validatePaymentMethodArray(paymentMethodArr);
+      const validPaymentMethods = validatePaymentMethodArray(
+        paymentMethodArr as unknown as IPaymentMethod[],
+      );
       if (validPaymentMethods !== true) {
-        return reply.code(400).send({ message: validPaymentMethods });
+        throw badRequest(validPaymentMethods);
       }
 
       const salesPoint = (await SalesPoint.findById(selfOrderingLocationId)
@@ -1564,9 +1496,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
       } | null;
 
       if (!salesPoint || salesPoint.selfOrdering !== true) {
-        return reply.code(400).send({
-          message: "Self-ordering is not available at this table.",
-        });
+        throw badRequest("Self-ordering is not available at this table.");
       }
 
       const salesPointBusinessId =
@@ -1577,21 +1507,17 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
           : (salesPoint.businessId as Types.ObjectId);
 
       if (salesPointBusinessId.toString() !== businessId.toString()) {
-        return reply
-          .code(400)
-          .send({ message: "Sales point does not belong to this business." });
+        throw badRequest("Sales point does not belong to this business.");
       }
 
       const business = (await Business.findById(
         businessId,
       ).lean()) as unknown as IBusiness | null;
       if (!business) {
-        return reply.code(404).send({ message: "Business not found." });
+        throw notFound("Business not found.");
       }
       if (!isBusinessOpenNow(business)) {
-        return reply.code(403).send({
-          message: "Business is currently closed for service.",
-        });
+        throw forbidden("Business is currently closed for service.");
       }
 
       const effectiveRole = await getEffectiveUserRoleAtTime({
@@ -1600,10 +1526,9 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
       });
 
       if (effectiveRole === "employee") {
-        return reply.code(403).send({
-          message:
-            "On-duty employees cannot start customer self-order via QR. Use the employee open/occupy flow instead.",
-        });
+        throw forbidden(
+          "On-duty employees cannot start customer self-order via QR. Use the employee open/occupy flow instead.",
+        );
       }
 
       const existingEmployeeOpenInstance =
@@ -1613,10 +1538,9 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
         });
 
       if (existingEmployeeOpenInstance) {
-        return reply.code(409).send({
-          message:
-            "Table is being served by staff. Self-ordering is not available until the table is closed.",
-        });
+        throw conflict(
+          "Table is being served by staff. Self-ordering is not available until the table is closed.",
+        );
       }
 
       const userDoc = (await User.findById(userId)
@@ -1627,7 +1551,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
       } | null;
 
       if (!userDoc) {
-        return reply.code(404).send({ message: "User not found!" });
+        throw notFound("User not found!");
       }
 
       const clientName =
@@ -1661,14 +1585,19 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
         });
 
         if (typeof pricedOrders === "string") {
-          await session.abortTransaction();
-          return reply.code(400).send({ message: pricedOrders });
+          throw badRequest(pricedOrders);
         }
 
         const PRICE_TOLERANCE = 0.01;
         for (let i = 0; i < pricedOrders.length; i++) {
           const backend = pricedOrders[i];
-          const client = ordersArr[i];
+          // `discountPercentage` is not client-settable, so it is absent from
+          // the DTO; the cast keeps the pre-existing tolerance check verbatim.
+          const client = ordersArr[i] as {
+            orderNetPrice?: number;
+            promotionApplyed?: string;
+            discountPercentage?: number;
+          };
           if (
             Math.abs(
               (client.orderNetPrice ?? 0) - (backend.orderNetPrice ?? 0),
@@ -1685,11 +1614,9 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
                 (backend.discountPercentage ?? 0),
             ) > PRICE_TOLERANCE
           ) {
-            await session.abortTransaction();
-            return reply.code(400).send({
-              message:
-                "Order price or promotion does not match server calculation",
-            });
+            throw badRequest(
+              "Order price or promotion does not match server calculation",
+            );
           }
         }
 
@@ -1704,24 +1631,19 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
           0,
         );
         if (totalPaid < totalOrderNetPrice) {
-          await session.abortTransaction();
-          return reply.code(400).send({
-            message:
-              "Total amount paid is lower than the total price of the orders!",
-          });
+          throw badRequest(
+            "Total amount paid is lower than the total price of the orders!",
+          );
         }
 
         // payment-first contract: only persist DailySalesReport/SalesInstance/Orders after totals validation
         if (dailyReferenceNumber === undefined) {
           const createdDailyReferenceNumber = await createDailySalesReport(
-            businessId as Types.ObjectId,
+            new Types.ObjectId(businessId),
             session,
           );
           if (typeof createdDailyReferenceNumber === "string") {
-            await session.abortTransaction();
-            return reply.code(400).send({
-              message: createdDailyReferenceNumber,
-            });
+            throw badRequest(createdDailyReferenceNumber);
           }
           dailyReferenceNumber = createdDailyReferenceNumber;
         }
@@ -1785,7 +1707,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
               )?.orderCode ??
               existingSalesInstanceDoc?.salesGroup?.[0]?.orderCode;
 
-            sendOrderConfirmation(userId, businessId as Types.ObjectId, {
+            sendOrderConfirmation(userId, new Types.ObjectId(businessId), {
               dailyReferenceNumber:
                 existingSalesInstanceDoc?.dailyReferenceNumber ??
                 (dailyReferenceNumber as any),
@@ -1802,14 +1724,14 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
             });
           }
 
-          return reply.code(400).send({ message: salesInstanceResult });
+          throw badRequest(salesInstanceResult);
         }
 
         const salesInstance = salesInstanceResult;
 
         const createdOrders = await createOrders(
           String(dailyReferenceNumber),
-          ordersArr,
+          ordersArr as unknown as Partial<IOrder>[],
           userId,
           "customer",
           salesInstance._id as Types.ObjectId,
@@ -1818,8 +1740,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
         );
 
         if (typeof createdOrders === "string") {
-          await session.abortTransaction();
-          return reply.code(400).send({ message: createdOrders });
+          throw badRequest(createdOrders);
         }
 
         const createdOrdersIds: Types.ObjectId[] = (
@@ -1834,8 +1755,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
         );
 
         if (closeOrdersResult !== true) {
-          await session.abortTransaction();
-          return reply.code(400).send({ message: closeOrdersResult });
+          throw badRequest(closeOrdersResult);
         }
 
         await session.commitTransaction();
@@ -1880,13 +1800,8 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
           .code(201)
           .send({ message: "Customer self ordering created" });
       } catch (error) {
-        if (session.inTransaction()) {
-          await session.abortTransaction();
-        }
-        return reply.code(500).send({
-          message: "Create salesInstance failed!",
-          error: error instanceof Error ? error.message : error,
-        });
+        await session.abortTransaction().catch(() => undefined);
+        throw error;
       } finally {
         session.endSession();
       }

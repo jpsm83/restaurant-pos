@@ -1,13 +1,18 @@
 import { describe, it, expect } from "vitest";
 
 import SalesInstance from "../../src/models/salesInstance.ts";
+import { addressSchema } from "../../src/models/address.ts";
 import {
   billingStatusEnums,
   orderStatusEnums,
   salesInstanceStatusEnums,
 } from "../../../packages/enums.ts";
 import {
+  createDeliveryOrderBodySchema,
   createSalesInstanceBodySchema,
+  createSelfOrderBodySchema,
+  deliveryAddressSchema,
+  openSelfOrderingTableBodySchema,
   ordersNewBillingStatusValues,
   ordersNewStatusValues,
   salesInstanceIdParamsSchema,
@@ -156,5 +161,80 @@ describe("salesInstances DTO ↔ model parity", () => {
       expect(Object.keys(schema.shape)).not.toContain("paymentId");
       expect(Object.keys(schema.shape)).not.toContain("salesGroup");
     }
+  });
+
+  describe("delivery and self-ordering flow DTOs", () => {
+    /** Flow-body keys that are operation parameters, not SalesInstance fields. */
+    const FLOW_OPERATION_FIELDS = new Set([
+      "ordersArr",
+      "paymentMethodArr",
+      "deliveryAddress",
+    ]);
+
+    it("the openTable body maps to model fields", () => {
+      for (const key of Object.keys(openSelfOrderingTableBodySchema.shape)) {
+        expect(
+          salesInstanceOwns(key),
+          `openSelfOrderingTableBody.${key} should map to a model field`,
+        ).toBe(true);
+      }
+    });
+
+    it("delivery/self-order keys map to model fields or are flow operation params", () => {
+      for (const schema of [
+        createDeliveryOrderBodySchema,
+        createSelfOrderBodySchema,
+      ]) {
+        for (const key of Object.keys(schema.shape)) {
+          if (FLOW_OPERATION_FIELDS.has(key)) continue;
+          expect(
+            salesInstanceOwns(key),
+            `${key} should map to a model field`,
+          ).toBe(true);
+        }
+      }
+    });
+
+    it("the flows accept the intentionally client-settable paymentId key", () => {
+      expect(Object.keys(createDeliveryOrderBodySchema.shape)).toContain(
+        "paymentId",
+      );
+      expect(Object.keys(createSelfOrderBodySchema.shape)).toContain("paymentId");
+    });
+
+    it("server-owned fields other than paymentId are rejected by the flow bodies", () => {
+      const flowBodies = [
+        ["openSelfOrderingTable", openSelfOrderingTableBodySchema],
+        ["createDeliveryOrder", createDeliveryOrderBodySchema],
+        ["createSelfOrder", createSelfOrderBodySchema],
+      ] as const;
+
+      for (const ownedField of [
+        "dailyReferenceNumber",
+        "openedByUserId",
+        "openedAsRole",
+        "closedByUserId",
+        "closedAt",
+        "salesGroup",
+        "reservationId",
+        "salesInstanceStatus",
+      ]) {
+        for (const [name, schema] of flowBodies) {
+          expect(
+            Object.keys(schema.shape),
+            `${name} should not accept ${ownedField}`,
+          ).not.toContain(ownedField);
+        }
+      }
+    });
+
+    it("the delivery address DTO mirrors the Address model fields", () => {
+      for (const key of Object.keys(deliveryAddressSchema.shape)) {
+        expect(
+          Boolean(addressSchema.path(key)),
+          `deliveryAddress.${key} should map to an Address model field`,
+        ).toBe(true);
+      }
+    });
   });
 });

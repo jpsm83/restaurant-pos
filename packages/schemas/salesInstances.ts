@@ -1,14 +1,18 @@
 /**
  * SalesInstances DTOs — the request bodies and path params the core
- * `salesInstances` routes accept.
+ * `salesInstances` routes plus the delivery and self-ordering flows accept.
  *
  * Strict (unknown keys rejected) and client-settable only: the server-owned
  * `dailyReferenceNumber`, `openedByUserId`, `openedAsRole`, `closedByUserId`,
- * `closedAt`, `salesGroup`, `paymentId` and `reservationId` never appear in a
- * DTO, so a client that sends them gets a `400`. ObjectId relations, the status
- * enums and the guest/discount numbers are validated here; the
- * `ordersArrValidation`, ownership, role and billing-status guards stay in the
- * route as named post-parse checks.
+ * `closedAt`, `salesGroup` and `reservationId` never appear in a DTO, so a
+ * client that sends them gets a `400`. ObjectId relations, the status enums and
+ * the guest/discount numbers are validated here; the `ordersArrValidation`,
+ * `validatePaymentMethodArray`, ownership, role, billing-status, paid>=total
+ * and idempotency guards stay in the route as named post-parse checks.
+ *
+ * The delivery and self-ordering flows are the one exception to the
+ * `paymentId` rule: the client supplies it as a stable idempotency key so a
+ * retried payment resolves to the same SalesInstance.
  */
 import { z } from "zod";
 
@@ -19,7 +23,9 @@ import {
   freeTextString,
   objectIdSchema,
   sanitizedString,
+  trimmedString,
 } from "./primitives.ts";
+import { orderItemSchema } from "./orders.ts";
 
 /**
  * The salesInstance statuses. Pinned locally so `z.enum` carries the literal
@@ -132,6 +138,62 @@ export const transferSalesPointBodySchema = z.strictObject({
   salesPointId: objectIdSchema,
 });
 
+/**
+ * A delivery address. Mirrors the Address model's required/optional fields;
+ * every text field is sanitized at the boundary.
+ */
+export const deliveryAddressSchema = z.strictObject({
+  country: sanitizedString("Country is required!"),
+  state: sanitizedString("State is required!"),
+  city: sanitizedString("City is required!"),
+  street: sanitizedString("Street is required!"),
+  buildingNumber: sanitizedString("Building number is required!"),
+  doorNumber: sanitizedString().optional(),
+  complement: sanitizedString().optional(),
+  postCode: sanitizedString("Postcode is required!"),
+  region: sanitizedString().optional(),
+  additionalDetails: freeTextString().optional(),
+  coordinates: z.tuple([coercedNumberSchema, coercedNumberSchema]).optional(),
+});
+
+/** Path params for the self-ordering routes. */
+export const selfOrderingLocationIdParamsSchema = z.strictObject({
+  selfOrderingLocationId: objectIdSchema,
+});
+
+/**
+ * Body for `POST /salesInstances/selfOrderingLocation/:selfOrderingLocationId/openTable`.
+ * An on-duty employee opens a table scanned from a QR; `guests` defaults to 1.
+ */
+export const openSelfOrderingTableBodySchema = z.strictObject({
+  businessId: objectIdSchema,
+  guests: guestCountSchema.default(1),
+});
+
+/**
+ * Body for `POST /salesInstances/delivery`. `ordersArr` and `paymentMethodArr`
+ * are validated at the boundary; `ordersArrValidation`,
+ * `validatePaymentMethodArray` and the paid>=total check stay in the route.
+ */
+export const createDeliveryOrderBodySchema = z.strictObject({
+  businessId: objectIdSchema,
+  ordersArr: z.array(orderItemSchema),
+  paymentMethodArr: z.array(paymentMethodItemSchema),
+  deliveryAddress: deliveryAddressSchema.optional(),
+  paymentId: trimmedString("paymentId is required for delivery idempotency!"),
+});
+
+/**
+ * Body for `POST /salesInstances/selfOrderingLocation/:selfOrderingLocationId`
+ * (customer QR self-order). The same boundary/post-parse split as delivery.
+ */
+export const createSelfOrderBodySchema = z.strictObject({
+  businessId: objectIdSchema,
+  ordersArr: z.array(orderItemSchema),
+  paymentMethodArr: z.array(paymentMethodItemSchema),
+  paymentId: trimmedString("paymentId is required for self-order idempotency!"),
+});
+
 /** Path params for `GET /salesInstances/business/:businessId`. */
 export const salesInstancesByBusinessParamsSchema = z.strictObject({
   businessId: objectIdSchema,
@@ -152,6 +214,17 @@ export type SalesInstanceIdParams = z.infer<typeof salesInstanceIdParamsSchema>;
 export type TransferSalesPointBody = z.infer<
   typeof transferSalesPointBodySchema
 >;
+export type DeliveryAddress = z.infer<typeof deliveryAddressSchema>;
+export type SelfOrderingLocationIdParams = z.infer<
+  typeof selfOrderingLocationIdParamsSchema
+>;
+export type OpenSelfOrderingTableBody = z.infer<
+  typeof openSelfOrderingTableBodySchema
+>;
+export type CreateDeliveryOrderBody = z.infer<
+  typeof createDeliveryOrderBodySchema
+>;
+export type CreateSelfOrderBody = z.infer<typeof createSelfOrderBodySchema>;
 export type SalesInstancesByBusinessParams = z.infer<
   typeof salesInstancesByBusinessParamsSchema
 >;

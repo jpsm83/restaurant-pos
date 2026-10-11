@@ -255,6 +255,20 @@ describe("SalesInstances flows (Task 12)", () => {
 
       expect(second.statusCode).toBe(409);
     });
+
+    it("defaults guests to 1 when omitted", async () => {
+      const { token } = await createManagerActor(businessId);
+
+      const res = await app.inject({
+        method: "POST",
+        url: `/api/v1/salesInstances/selfOrderingLocation/${salesPointId}/openTable`,
+        headers: { authorization: token },
+        payload: { businessId: businessId.toString() },
+      });
+
+      expect(res.statusCode, res.body).toBe(201);
+      expect(JSON.parse(res.body).guests).toBe(1);
+    });
   });
 
   describe("POST .../selfOrderingLocation/:id (customer self-order)", () => {
@@ -326,8 +340,12 @@ describe("SalesInstances flows (Task 12)", () => {
       });
 
       expect(res.statusCode).toBe(403);
+      expect(res.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
       const body = JSON.parse(res.body);
-      expect(body.message).toMatch(/employees cannot start customer self-order/i);
+      expect(body.type).toBe("https://restaurant-pos.app/errors/forbidden");
+      expect(body.detail).toMatch(/employees cannot start customer self-order/i);
     });
 
     it("returns 409 when staff already has an employee-open instance on the table", async () => {
@@ -993,6 +1011,144 @@ describe("SalesInstances flows (Task 12)", () => {
       expect(
         (reportAfterSecond?.selfOrderingSalesReport?.[0] as any)?.totalInvitedValue,
       ).toBe(22);
+    });
+  });
+
+  describe("flow DTO validation (problem details)", () => {
+    const expectValidationProblem = (res: {
+      statusCode: number;
+      headers: Record<string, unknown>;
+      body: string;
+    }) => {
+      expect(res.statusCode).toBe(400);
+      expect(res.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      const body = JSON.parse(res.body);
+      expect(body.type).toBe("https://restaurant-pos.app/errors/validation");
+      expect(body.status).toBe(400);
+      expect(Array.isArray(body.errors)).toBe(true);
+      return body;
+    };
+
+    const validOrderLine = () => ({
+      businessGoodId: salesPointId.toString(),
+      orderGrossPrice: 1,
+      orderNetPrice: 1,
+      orderCostPrice: 1,
+    });
+
+    const validPaymentLine = () => ({
+      paymentMethodType: "Cash",
+      methodBranch: "Cash",
+      methodSalesTotal: 1,
+    });
+
+    it("rejects a delivery body that omits paymentId", async () => {
+      const { token } = await createCustomerActor();
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/salesInstances/delivery",
+        headers: { authorization: token },
+        payload: {
+          businessId: businessId.toString(),
+          ordersArr: [validOrderLine()],
+          paymentMethodArr: [validPaymentLine()],
+        },
+      });
+
+      const body = expectValidationProblem(res);
+      expect(body.errors.some((e: any) => e.path === "paymentId")).toBe(true);
+    });
+
+    it("rejects a delivery body with a malformed order id", async () => {
+      const { token } = await createCustomerActor();
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/salesInstances/delivery",
+        headers: { authorization: token },
+        payload: {
+          businessId: businessId.toString(),
+          ordersArr: [{ ...validOrderLine(), businessGoodId: "not-an-id" }],
+          paymentMethodArr: [validPaymentLine()],
+          paymentId: `pay-bad-${Date.now()}`,
+        },
+      });
+
+      expectValidationProblem(res);
+    });
+
+    it("rejects a delivery body carrying a server-owned field", async () => {
+      const { token } = await createCustomerActor();
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/salesInstances/delivery",
+        headers: { authorization: token },
+        payload: {
+          businessId: businessId.toString(),
+          ordersArr: [validOrderLine()],
+          paymentMethodArr: [validPaymentLine()],
+          paymentId: `pay-owned-${Date.now()}`,
+          openedByUserId: businessId.toString(),
+        },
+      });
+
+      expectValidationProblem(res);
+    });
+
+    it("rejects a self-order body missing ordersArr", async () => {
+      const { token } = await createCustomerActor();
+
+      const res = await app.inject({
+        method: "POST",
+        url: `/api/v1/salesInstances/selfOrderingLocation/${salesPointId}`,
+        headers: { authorization: token },
+        payload: {
+          businessId: businessId.toString(),
+          paymentMethodArr: [validPaymentLine()],
+          paymentId: `pay-self-${Date.now()}`,
+        },
+      });
+
+      expectValidationProblem(res);
+    });
+
+    it("rejects a non-ObjectId selfOrderingLocationId param", async () => {
+      const { token } = await createCustomerActor();
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/salesInstances/selfOrderingLocation/not-an-id",
+        headers: { authorization: token },
+        payload: {
+          businessId: businessId.toString(),
+          ordersArr: [validOrderLine()],
+          paymentMethodArr: [validPaymentLine()],
+          paymentId: `pay-param-${Date.now()}`,
+        },
+      });
+
+      expectValidationProblem(res);
+    });
+
+    it("rejects an openTable body carrying a server-owned field", async () => {
+      const { token } = await createManagerActor(businessId);
+
+      const res = await app.inject({
+        method: "POST",
+        url: `/api/v1/salesInstances/selfOrderingLocation/${salesPointId}/openTable`,
+        headers: { authorization: token },
+        payload: {
+          businessId: businessId.toString(),
+          guests: 2,
+          openedAsRole: "employee",
+        },
+      });
+
+      expectValidationProblem(res);
     });
   });
 });
