@@ -316,6 +316,13 @@ export const monthlyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
       }
       const monthEndDate = getMonthEnd(monthStart);
 
+      // `getWasteByBudgetImpactForMonth` keys off a canonical (UTC-midnight)
+      // month date, so hand it one derived from the requested month rather than
+      // the server-local `monthStart`.
+      const monthReferenceForWaste = new Date(
+        Date.UTC(monthStart.getFullYear(), monthStart.getMonth(), 1),
+      );
+
       const businessObjId = new Types.ObjectId(businessId);
 
       const [
@@ -348,7 +355,7 @@ export const monthlyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
             "isReportOpen costBreakdown.totalFixedOperatingCost costBreakdown.totalExtraCost",
           )
           .lean(),
-        getWasteByBudgetImpactForMonth(businessObjId, monthStart),
+        getWasteByBudgetImpactForMonth(businessObjId, monthReferenceForWaste),
         Business.findById(businessObjId).select("metrics").lean(),
       ]);
 

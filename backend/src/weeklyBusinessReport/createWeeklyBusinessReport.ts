@@ -7,25 +7,6 @@ import WeeklyBusinessReport from "../models/weeklyBusinessReport.ts";
 import isObjectIdValid from "../utils/isObjectIdValid.ts";
 import type { WeeklyReportOpen } from "../../../packages/interfaces/IWeeklyBusinessReport.ts";
 
-export function getWeekReference(
-  date: Date,
-  weeklyReportStartDay: number,
-): Date {
-  const start = new Date(
-    date.getFullYear(),
-    date.getMonth(),
-    date.getDate(),
-    0,
-    0,
-    0,
-    0,
-  );
-  const day = start.getDay();
-  const diff = (day - weeklyReportStartDay + 7) % 7;
-  start.setDate(start.getDate() - diff);
-  return start;
-}
-
 export async function createWeeklyBusinessReport(
   businessId: Types.ObjectId,
   weekReference: Date,

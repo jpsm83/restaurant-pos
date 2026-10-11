@@ -13,28 +13,22 @@ export interface MonthlyReportOpen {
   isReportOpen: boolean;
 };
 
-function getMonthStart(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0);
-}
-
 /**
- * Finds or creates the open monthly business report for the current month.
- * If no report exists for the current month, creates a new open report.
+ * Finds or creates the monthly business report for the supplied month
+ * reference. If no report exists for that month, creates a new open report.
  */
 export async function createMonthlyBusinessReport(
   businessId: Types.ObjectId,
+  monthReference: Date,
   session: ClientSession
 ): Promise<MonthlyReportOpen | null> {
   if (isObjectIdValid([businessId]) !== true) {
     return null;
   }
 
-  const now = new Date();
-  const monthStart = getMonthStart(now);
-
   const existing = (await MonthlyBusinessReport.findOne({
     businessId,
-    monthReference: monthStart,
+    monthReference,
   })
     .session(session)
     .lean()) as {
@@ -57,7 +51,7 @@ export async function createMonthlyBusinessReport(
     [
       {
         businessId,
-        monthReference: monthStart,
+        monthReference,
         isReportOpen: true,
       },
     ],

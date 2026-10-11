@@ -5,6 +5,10 @@ import {
   resolveLocalDate,
   resolveWeekBounds,
   resolveMonthBounds,
+  calendarDateToUtcMidnight,
+  addDaysToCalendarDate,
+  addMonthsToCalendarDate,
+  daysInCalendarMonth,
 } from "../../src/utils/timezoneResolver.ts";
 
 const iso = (date: Date): string => date.toISOString();
@@ -144,6 +148,30 @@ describe("resolveMonthBounds", () => {
     const bounds = resolveMonthBounds("2024-01-15", "Asia/Tokyo");
     expect(iso(bounds.start)).toBe("2023-12-31T15:00:00.000Z");
     expect(iso(bounds.end)).toBe("2024-01-31T14:59:59.999Z");
+  });
+});
+
+describe("calendar date helpers", () => {
+  it("converts a calendar date to its canonical UTC midnight instant", () => {
+    expect(iso(calendarDateToUtcMidnight("2024-03-10"))).toBe(
+      "2024-03-10T00:00:00.000Z",
+    );
+  });
+
+  it("shifts a calendar date by whole days across month and year ends", () => {
+    expect(addDaysToCalendarDate("2024-12-31", 1)).toBe("2025-01-01");
+    expect(addDaysToCalendarDate("2024-03-01", -1)).toBe("2024-02-29");
+  });
+
+  it("shifts a calendar date by whole months across year ends", () => {
+    expect(addMonthsToCalendarDate("2024-01-01", -1)).toBe("2023-12-01");
+    expect(addMonthsToCalendarDate("2024-12-01", 1)).toBe("2025-01-01");
+  });
+
+  it("counts the days in a calendar month, including leap February", () => {
+    expect(daysInCalendarMonth("2024-02-15")).toBe(29);
+    expect(daysInCalendarMonth("2023-02-15")).toBe(28);
+    expect(daysInCalendarMonth("2024-04-15")).toBe(30);
   });
 });
 

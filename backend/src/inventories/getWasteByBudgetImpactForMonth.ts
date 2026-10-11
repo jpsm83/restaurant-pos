@@ -61,18 +61,11 @@ const getWasteByBudgetImpactForMonth = async (
   businessId: Types.ObjectId,
   monthReference: Date,
 ): Promise<WasteByImpactPercentages> => {
-  const monthStart = new Date(
-    monthReference.getFullYear(),
-    monthReference.getMonth(),
-    1,
-    0,
-    0,
-    0,
-    0,
-  );
-
-  const year = monthStart.getFullYear();
-  const month = monthStart.getMonth() + 1;
+  // `monthReference` is a canonical month date (UTC midnight of the first of
+  // the month), so read it in UTC. This keeps the selected month independent of
+  // the server's OS timezone.
+  const year = monthReference.getUTCFullYear();
+  const month = monthReference.getUTCMonth() + 1;
 
   const varianceItems = await getVarianceReport(businessId, year, month);
   if (!varianceItems.length) return ZERO_WASTE;

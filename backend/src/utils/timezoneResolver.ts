@@ -238,3 +238,45 @@ export function resolveMonthBounds(
   };
   return localDateRange(start, end, timeZone);
 }
+
+/**
+ * The UTC instant at midnight for a plain calendar date. This is the canonical
+ * `Date` a calendar date is stored as: it is zone-independent, so a given date
+ * maps to the same instant wherever the process runs.
+ */
+export function calendarDateToUtcMidnight(
+  calendarDate: CalendarDate,
+): Date {
+  const civil = parseCalendarDate(calendarDate);
+  return new Date(Date.UTC(civil.year, civil.month - 1, civil.day));
+}
+
+/** Shift a plain calendar date by whole days. */
+export function addDaysToCalendarDate(
+  calendarDate: CalendarDate,
+  days: number,
+): CalendarDate {
+  return formatCalendarDate(addDays(parseCalendarDate(calendarDate), days));
+}
+
+/** Shift a plain calendar date by whole months. */
+export function addMonthsToCalendarDate(
+  calendarDate: CalendarDate,
+  months: number,
+): CalendarDate {
+  const civil = parseCalendarDate(calendarDate);
+  const shifted = new Date(
+    Date.UTC(civil.year, civil.month - 1 + months, civil.day),
+  );
+  return formatCalendarDate({
+    year: shifted.getUTCFullYear(),
+    month: shifted.getUTCMonth() + 1,
+    day: shifted.getUTCDate(),
+  });
+}
+
+/** The number of days in the zone-independent month of a calendar date. */
+export function daysInCalendarMonth(calendarDate: CalendarDate): number {
+  const civil = parseCalendarDate(calendarDate);
+  return daysInMonth(civil.year, civil.month);
+}

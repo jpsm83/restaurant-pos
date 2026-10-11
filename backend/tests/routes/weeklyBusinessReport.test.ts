@@ -17,7 +17,9 @@ vi.mock("../../src/weeklyBusinessReport/sendWeeklyReportReadyNotification.ts", (
 }));
 
 describe("WeeklyBusinessReport Routes", () => {
-  const createTestBusiness = async () => {
+  const createTestBusiness = async (
+    overrides: Record<string, unknown> = {},
+  ) => {
     return await Business.create({
       tradeName: "Test Restaurant",
       legalName: "Test Restaurant LLC",
@@ -35,6 +37,7 @@ describe("WeeklyBusinessReport Routes", () => {
         buildingNumber: "123",
         postCode: "90001",
       },
+      ...overrides,
     });
   };
 
@@ -306,6 +309,120 @@ describe("WeeklyBusinessReport Routes", () => {
         6,
       );
       expect(created?.averageSpendingPerCustomer).toBeCloseTo(22.5, 6);
+    });
+  });
+
+  describe("business-local rollup boundaries", () => {
+    const seedDailyReport = (
+      businessId: Types.ObjectId,
+      dailyReferenceNumber: number,
+      createdAt: string,
+      netPaid: number,
+    ) =>
+      DailySalesReport.create({
+        businessId,
+        dailyReferenceNumber,
+        isDailyReportOpen: false,
+        timeCountdownToClose: Date.now() + 86400000,
+        dailyTotalSalesBeforeAdjustments: netPaid,
+        dailyNetPaidAmount: netPaid,
+        businessPaymentMethods: [],
+        dailySoldGoods: [],
+        dailyVoidedGoods: [],
+        dailyInvitedGoods: [],
+        createdAt: new Date(createdAt),
+      });
+
+    it("groups reports by the business-local week (east of UTC)", async () => {
+      const business = await createTestBusiness({ timezone: "Asia/Tokyo" });
+      const businessId = business._id as Types.ObjectId;
+
+      // Monday-start local week containing Wed 2026-10-14 is
+      // Mon 2026-10-12 .. Sun 2026-10-18 (Japan, UTC+9), i.e. the UTC interval
+      // [2026-10-11T15:00Z, 2026-10-18T14:59:59.999Z].
+      await seedDailyReport(businessId, 9101, "2026-10-11T14:59:59.999Z", 1000); // Sun 23:59 JST - previous week
+      await seedDailyReport(businessId, 9102, "2026-10-11T15:00:00.000Z", 2000); // Mon 00:00 JST - this week
+      await seedDailyReport(businessId, 9103, "2026-10-18T14:59:59.999Z", 4000); // Sun 23:59 JST - this week
+      await seedDailyReport(businessId, 9104, "2026-10-18T15:00:00.000Z", 8000); // Mon 00:00 JST - next week
+
+      await aggregateDailyReportsIntoWeekly(
+        businessId,
+        new Date("2026-10-14T03:00:00.000Z"),
+        1,
+      );
+
+      const report = await WeeklyBusinessReport.findOne({ businessId }).lean();
+      expect(report?.financialSummary?.totalSalesForWeek).toBe(6000);
+      expect(report?.financialSummary?.totalNetRevenue).toBe(6000);
+    });
+
+    it("honors the configured weekly start day", async () => {
+      const business = await createTestBusiness({ timezone: "Asia/Tokyo" });
+      const businessId = business._id as Types.ObjectId;
+
+      // With a Sunday start, the week containing Wed 2026-10-14 is
+      // Sun 2026-10-11 .. Sat 2026-10-17 (Japan), i.e. the UTC interval
+      // [2026-10-10T15:00Z, 2026-10-17T14:59:59.999Z].
+      await seedDailyReport(businessId, 9201, "2026-10-10T14:59:59.999Z", 1000); // Sat 23:59 JST - previous week
+      await seedDailyReport(businessId, 9202, "2026-10-10T15:00:00.000Z", 2000); // Sun 00:00 JST - this week
+      await seedDailyReport(businessId, 9203, "2026-10-17T14:59:59.999Z", 4000); // Sat 23:59 JST - this week
+      await seedDailyReport(businessId, 9204, "2026-10-17T15:00:00.000Z", 8000); // Sun 00:00 JST - next week
+
+      await aggregateDailyReportsIntoWeekly(
+        businessId,
+        new Date("2026-10-14T03:00:00.000Z"),
+        0,
+      );
+
+      const report = await WeeklyBusinessReport.findOne({ businessId }).lean();
+      expect(report?.financialSummary?.totalSalesForWeek).toBe(6000);
+    });
+
+    it("groups a week that crosses a DST transition by local boundaries", async () => {
+      const business = await createTestBusiness({
+        timezone: "America/Los_Angeles",
+      });
+      const businessId = business._id as Types.ObjectId;
+
+      // The Monday-start week containing Wed 2026-03-11 runs Mon 2026-03-09 ..
+      // Sun 2026-03-15 local. US clocks spring forward on Sun 2026-03-08, so the
+      // week is entirely in PDT (UTC-7): the UTC interval
+      // [2026-03-09T07:00Z, 2026-03-16T06:59:59.999Z].
+      await seedDailyReport(businessId, 9401, "2026-03-09T06:59:59.999Z", 1000); // Sun 23:59 PDT - previous week
+      await seedDailyReport(businessId, 9402, "2026-03-09T07:00:00.000Z", 2000); // Mon 00:00 PDT - this week
+      await seedDailyReport(businessId, 9403, "2026-03-16T06:59:59.999Z", 4000); // Sun 23:59 PDT - this week
+      await seedDailyReport(businessId, 9404, "2026-03-16T07:00:00.000Z", 8000); // Mon 00:00 PDT - next week
+
+      await aggregateDailyReportsIntoWeekly(
+        businessId,
+        new Date("2026-03-11T18:00:00.000Z"),
+        1,
+      );
+
+      const report = await WeeklyBusinessReport.findOne({ businessId }).lean();
+      expect(report?.financialSummary?.totalSalesForWeek).toBe(6000);
+    });
+
+    it("falls back to UTC when the business has no timezone", async () => {
+      const business = await createTestBusiness();
+      const businessId = business._id as Types.ObjectId;
+
+      // Monday-start UTC week containing Wed 2026-10-14 is
+      // Mon 2026-10-12 .. Sun 2026-10-18, i.e. the UTC interval
+      // [2026-10-12T00:00Z, 2026-10-18T23:59:59.999Z].
+      await seedDailyReport(businessId, 9301, "2026-10-11T23:59:59.999Z", 1000); // previous week
+      await seedDailyReport(businessId, 9302, "2026-10-12T00:00:00.000Z", 2000); // this week
+      await seedDailyReport(businessId, 9303, "2026-10-18T23:59:59.999Z", 4000); // this week
+      await seedDailyReport(businessId, 9304, "2026-10-19T00:00:00.000Z", 8000); // next week
+
+      await aggregateDailyReportsIntoWeekly(
+        businessId,
+        new Date("2026-10-14T12:00:00.000Z"),
+        1,
+      );
+
+      const report = await WeeklyBusinessReport.findOne({ businessId }).lean();
+      expect(report?.financialSummary?.totalSalesForWeek).toBe(6000);
     });
   });
 });

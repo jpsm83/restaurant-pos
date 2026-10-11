@@ -32,6 +32,14 @@ import {
   getVariableCostsV1,
   mapDailyReportToCanonicalInputs,
 } from "../reports/businessMetrics/dataContract.ts";
+import { isSupportedTimezone } from "../../../packages/schemas/primitives.ts";
+import {
+  addMonthsToCalendarDate,
+  calendarDateToUtcMidnight,
+  daysInCalendarMonth,
+  resolveLocalDate,
+  resolveMonthBounds,
+} from "../utils/timezoneResolver.ts";
 
 interface IGoodsReduced {
   businessGoodId: Types.ObjectId;
@@ -57,26 +65,6 @@ interface IMetrics {
     hightBudgetImpact: number;
     veryHightBudgetImpact: number;
   };
-}
-
-function getMonthStart(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0);
-}
-
-function getPreviousMonthStart(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth() - 1, 1, 0, 0, 0, 0);
-}
-
-function getMonthEnd(monthStart: Date): Date {
-  return new Date(
-    monthStart.getFullYear(),
-    monthStart.getMonth() + 1,
-    0,
-    23,
-    59,
-    59,
-    999,
-  );
 }
 
 function mergeGoodsByBusinessGoodId(
@@ -135,13 +123,14 @@ function mergePaymentMethods(
 }
 
 /**
- * Aggregates calculated daily sales reports for the current month into the
- * open monthly business report. Also sums labour cost from Schedules.
- * Call this after calculateBusinessDailySalesReport.
+ * Aggregates calculated daily sales reports for the business-local month
+ * containing `anyDateInMonth` into the open monthly business report. Also sums
+ * labour cost from Schedules. Call this after calculateBusinessDailySalesReport.
  * Preserves totalFixedOperatingCost and totalExtraCost if already set on the report.
  */
 const aggregateDailyReportsIntoMonthly = async (
   businessId: Types.ObjectId,
+  anyDateInMonth: Date = new Date(),
 ): Promise<void> => {
   if (isObjectIdValid([businessId]) !== true) {
     return;
@@ -154,23 +143,47 @@ const aggregateDailyReportsIntoMonthly = async (
   let closedMonthLabel: string | null = null;
 
   try {
-    const report = await createMonthlyBusinessReport(businessId, session);
+    // The business timezone is the reference zone for every boundary below; a
+    // missing or invalid value falls back to UTC without error.
+    const businessDoc = await Business.findById(businessId)
+      .select("metrics timezone")
+      .session(session)
+      .lean();
+
+    const storedTimezone = (businessDoc as { timezone?: string } | null)
+      ?.timezone;
+    const timeZone = isSupportedTimezone(storedTimezone) ? storedTimezone : "UTC";
+
+    // Resolve the requested month in the business's local calendar, then to its
+    // inclusive UTC bounds. `monthReference` stays a plain local date so reports
+    // are keyed identically regardless of the server's OS timezone.
+    const localDate = resolveLocalDate(anyDateInMonth, timeZone);
+    const monthStartDate = `${localDate.slice(0, 7)}-01`;
+    const monthReference = calendarDateToUtcMidnight(monthStartDate);
+    const monthBounds = resolveMonthBounds(localDate, timeZone);
+
+    const report = await createMonthlyBusinessReport(
+      businessId,
+      monthReference,
+      session,
+    );
     if (!report) {
       await session.abortTransaction();
       return;
     }
 
     const reportId = (report as MonthlyReportOpen)._id;
-    const monthStart =
-      (report as MonthlyReportOpen).monthReference ?? getMonthStart(new Date());
-    const monthEnd = getMonthEnd(monthStart);
 
-    const previousMonthStart = getPreviousMonthStart(monthStart);
-    const previousMonthEnd = getMonthEnd(previousMonthStart);
+    const previousMonthStartDate = addMonthsToCalendarDate(monthStartDate, -1);
+    const previousMonthReference = calendarDateToUtcMidnight(previousMonthStartDate);
+    const previousMonthBounds = resolveMonthBounds(
+      previousMonthStartDate,
+      timeZone,
+    );
 
     const openPrevMonthReport = (await MonthlyBusinessReport.findOne({
       businessId,
-      monthReference: previousMonthStart,
+      monthReference: previousMonthReference,
       isReportOpen: true,
     })
       .select("_id monthReference isReportOpen")
@@ -184,7 +197,10 @@ const aggregateDailyReportsIntoMonthly = async (
     if (openPrevMonthReport) {
       const openDailyInPrevMonth = await DailySalesReport.exists({
         businessId,
-        createdAt: { $gte: previousMonthStart, $lte: previousMonthEnd },
+        createdAt: {
+          $gte: previousMonthBounds.start,
+          $lte: previousMonthBounds.end,
+        },
         isDailyReportOpen: true,
       }).session(session);
 
@@ -198,7 +214,7 @@ const aggregateDailyReportsIntoMonthly = async (
         // the previous monthly report (idempotent close gate).
         if (closeResult.modifiedCount === 1) {
           shouldSendReadyNotification = true;
-          closedMonthLabel = previousMonthStart.toISOString().slice(0, 7);
+          closedMonthLabel = previousMonthStartDate.slice(0, 7);
         }
       }
     }
@@ -206,7 +222,7 @@ const aggregateDailyReportsIntoMonthly = async (
     // Sequential reads on `session`: one ClientSession must not run operations in parallel.
     const dailyReports = await DailySalesReport.find({
       businessId,
-      createdAt: { $gte: monthStart, $lte: monthEnd },
+      createdAt: { $gte: monthBounds.start, $lte: monthBounds.end },
       dailyNetPaidAmount: { $exists: true, $ne: null },
     })
       .select(
@@ -217,7 +233,7 @@ const aggregateDailyReportsIntoMonthly = async (
 
     const schedules = await Schedule.find({
       businessId,
-      date: { $gte: monthStart, $lte: monthEnd },
+      date: { $gte: monthBounds.start, $lte: monthBounds.end },
     })
       .select("totalDayEmployeesCost")
       .session(session)
@@ -232,13 +248,8 @@ const aggregateDailyReportsIntoMonthly = async (
 
     const supplierWasteAnalysis = await getWasteByBudgetImpactForMonth(
       businessId,
-      monthStart,
+      monthReference,
     );
-
-    const businessDoc = await Business.findById(businessId)
-      .select("metrics")
-      .session(session)
-      .lean();
 
     let totalSalesForMonth = 0;
     let totalNetRevenue = 0;
@@ -339,7 +350,7 @@ const aggregateDailyReportsIntoMonthly = async (
       totalFixedOperatingCost + totalExtraCost,
       v1ContributionMarginRatio,
     );
-    const daysInMonth = monthEnd.getDate();
+    const daysInMonth = daysInCalendarMonth(localDate);
     const minimumDailySalesTargetValue = minimumDailySalesTarget(
       breakEvenSalesValue,
       daysInMonth,

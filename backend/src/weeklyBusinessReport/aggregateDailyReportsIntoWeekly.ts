@@ -11,11 +11,15 @@ import WeeklyBusinessReport from "../models/weeklyBusinessReport.ts";
 import Schedule from "../models/schedule.ts";
 import Business from "../models/business.ts";
 import isObjectIdValid from "../utils/isObjectIdValid.ts";
-import {
-  getWeekReference,
-  createWeeklyBusinessReport,
-} from "./createWeeklyBusinessReport.ts";
+import { createWeeklyBusinessReport } from "./createWeeklyBusinessReport.ts";
 import sendWeeklyReportReadyNotification from "./sendWeeklyReportReadyNotification.ts";
+import { isSupportedTimezone } from "../../../packages/schemas/primitives.ts";
+import {
+  addDaysToCalendarDate,
+  calendarDateToUtcMidnight,
+  resolveLocalDate,
+  resolveWeekBounds,
+} from "../utils/timezoneResolver.ts";
 import type {
   IMetrics,
   WeeklyReportOpen,
@@ -34,19 +38,6 @@ import {
   getVariableCostsV1,
   mapDailyReportToCanonicalInputs,
 } from "../reports/businessMetrics/dataContract.ts";
-
-function getWeekEnd(weekStart: Date): Date {
-  const end = new Date(weekStart);
-  end.setDate(end.getDate() + 6);
-  end.setHours(23, 59, 59, 999);
-  return end;
-}
-
-function getPreviousWeekStart(weekStart: Date): Date {
-  const prev = new Date(weekStart);
-  prev.setDate(prev.getDate() - 7);
-  return prev;
-}
 
 function mergeGoodsByBusinessGoodId(
   acc: IGoodsReduced[],
@@ -123,7 +114,29 @@ const aggregateDailyReportsIntoWeekly = async (
   let closedWeekLabel: string | null = null;
 
   try {
-    const weekReference = getWeekReference(anyDateInWeek, weeklyReportStartDay);
+    // The business timezone is the reference zone for every boundary below; a
+    // missing or invalid value falls back to UTC without error.
+    const businessDoc = await Business.findById(businessId)
+      .select("metrics timezone")
+      .session(session)
+      .lean();
+
+    const storedTimezone = (businessDoc as { timezone?: string } | null)
+      ?.timezone;
+    const timeZone = isSupportedTimezone(storedTimezone) ? storedTimezone : "UTC";
+
+    // Resolve the requested week in the business's local calendar, then to its
+    // inclusive UTC bounds. `weekReference` stays a plain local date so reports
+    // are keyed identically regardless of the server's OS timezone.
+    const localDate = resolveLocalDate(anyDateInWeek, timeZone);
+    const weekBounds = resolveWeekBounds(
+      localDate,
+      timeZone,
+      weeklyReportStartDay,
+    );
+    const weekStartDate = resolveLocalDate(weekBounds.start, timeZone);
+    const weekReference = calendarDateToUtcMidnight(weekStartDate);
+
     const report = await createWeeklyBusinessReport(
       businessId,
       weekReference,
@@ -135,14 +148,18 @@ const aggregateDailyReportsIntoWeekly = async (
     }
 
     const reportId = (report as WeeklyReportOpen)._id;
-    const weekStart = weekReference;
-    const weekEnd = getWeekEnd(weekStart);
-    const previousWeekStart = getPreviousWeekStart(weekStart);
-    const previousWeekEnd = getWeekEnd(previousWeekStart);
+
+    const previousWeekStartDate = addDaysToCalendarDate(weekStartDate, -7);
+    const previousWeekReference = calendarDateToUtcMidnight(previousWeekStartDate);
+    const previousWeekBounds = resolveWeekBounds(
+      previousWeekStartDate,
+      timeZone,
+      weeklyReportStartDay,
+    );
 
     const openPreviousWeekReport = (await WeeklyBusinessReport.findOne({
       businessId,
-      weekReference: previousWeekStart,
+      weekReference: previousWeekReference,
       isReportOpen: true,
     })
       .select("_id weekReference isReportOpen")
@@ -156,7 +173,10 @@ const aggregateDailyReportsIntoWeekly = async (
     if (openPreviousWeekReport) {
       const openDailyInPreviousWeek = await DailySalesReport.exists({
         businessId,
-        createdAt: { $gte: previousWeekStart, $lte: previousWeekEnd },
+        createdAt: {
+          $gte: previousWeekBounds.start,
+          $lte: previousWeekBounds.end,
+        },
         isDailyReportOpen: true,
       }).session(session);
 
@@ -170,7 +190,7 @@ const aggregateDailyReportsIntoWeekly = async (
         // the previous weekly report (idempotent close gate).
         if (closeResult.modifiedCount === 1) {
           shouldSendReadyNotification = true;
-          closedWeekLabel = previousWeekStart.toISOString().slice(0, 10);
+          closedWeekLabel = previousWeekStartDate;
         }
       }
     }
@@ -178,7 +198,7 @@ const aggregateDailyReportsIntoWeekly = async (
     // Sequential reads on `session`: one ClientSession must not run operations in parallel.
     const dailyReports = await DailySalesReport.find({
       businessId,
-      createdAt: { $gte: weekStart, $lte: weekEnd },
+      createdAt: { $gte: weekBounds.start, $lte: weekBounds.end },
       dailyNetPaidAmount: { $exists: true, $ne: null },
     })
       .select(
@@ -189,7 +209,7 @@ const aggregateDailyReportsIntoWeekly = async (
 
     const schedules = await Schedule.find({
       businessId,
-      date: { $gte: weekStart, $lte: weekEnd },
+      date: { $gte: weekBounds.start, $lte: weekBounds.end },
     })
       .select("totalDayEmployeesCost")
       .session(session)
@@ -197,13 +217,8 @@ const aggregateDailyReportsIntoWeekly = async (
 
     const supplierWasteAnalysis = await getWasteByBudgetImpactForMonth(
       businessId,
-      weekStart,
+      weekReference,
     );
-
-    const businessDoc = await Business.findById(businessId)
-      .select("metrics")
-      .session(session)
-      .lean();
 
     let totalSalesForWeek = 0;
     let totalNetRevenue = 0;
