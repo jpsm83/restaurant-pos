@@ -19,11 +19,12 @@
  */
 import { z } from "zod";
 
-import { coercedIntSchema, objectIdSchema } from "./primitives.ts";
-
-/** An empty query value is treated as "not provided". */
-const emptyToUndefined = (value: unknown): unknown =>
-  typeof value === "string" && value.trim() === "" ? undefined : value;
+import {
+  calendarDateSchema,
+  coercedIntSchema,
+  emptyToUndefined,
+  objectIdSchema,
+} from "./primitives.ts";
 
 /**
  * A plain calendar date (`YYYY-MM-DD`). An ambiguous date-time string — with or
@@ -31,27 +32,9 @@ const emptyToUndefined = (value: unknown): unknown =>
  * resolution to UTC day bounds needs an unambiguous date, and happens in the
  * route against the business's own timezone.
  */
-const CALENDAR_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
-
-const isCalendarDate = (value: string): boolean => {
-  const match = CALENDAR_DATE_PATTERN.exec(value);
-  if (!match) return false;
-  const [, year, month, day] = match;
-  const utc = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
-  return (
-    utc.getUTCFullYear() === Number(year) &&
-    utc.getUTCMonth() === Number(month) - 1 &&
-    utc.getUTCDate() === Number(day)
-  );
-};
-
-/** An optional `YYYY-MM-DD` query value; an empty string means "not provided". */
 const calendarDateQuerySchema = z.preprocess(
   emptyToUndefined,
-  z
-    .string()
-    .refine(isCalendarDate, "Invalid date, expected a YYYY-MM-DD calendar date")
-    .optional(),
+  calendarDateSchema.optional(),
 );
 
 /** An optional integer reference number; an empty string means "not provided". */

@@ -327,11 +327,15 @@ describe("updateMonthlyBusinessReportBodySchema", () => {
     ).toEqual({ totalFixedOperatingCost: 1500, totalExtraCost: 200 });
   });
 
-  it("coerces numeric strings", () => {
-    const parsed = updateMonthlyBusinessReportBodySchema.parse({
-      totalFixedOperatingCost: "1500",
-    });
-    expect(parsed.totalFixedOperatingCost).toBe(1500);
+  it("rejects a null or numeric-string cost rather than coercing it", () => {
+    for (const value of [null, "1500", "", true, []]) {
+      expect(
+        updateMonthlyBusinessReportBodySchema.safeParse({
+          totalFixedOperatingCost: value,
+        }).success,
+        `totalFixedOperatingCost=${JSON.stringify(value)} should be rejected`,
+      ).toBe(false);
+    }
   });
 
   it("accepts an empty body (the at-least-one rule is a post-parse check)", () => {

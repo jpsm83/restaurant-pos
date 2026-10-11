@@ -24,7 +24,7 @@ import {
   type WeeklyReportIdParams,
 } from "../../../../packages/schemas/businessReports.ts";
 
-/** The business-local midnight a `YYYY-MM-DD` week start resolves to. */
+/** The local midnight of a `YYYY-MM-DD` week start. */
 function parseWeekStart(dateStr: string): Date {
   const d = new Date(dateStr);
   d.setHours(0, 0, 0, 0);
@@ -37,6 +37,27 @@ function weekEnd(weekStart: Date): Date {
   end.setDate(end.getDate() + 6);
   end.setHours(23, 59, 59, 999);
   return end;
+}
+
+/**
+ * Post-parse check: turn a `startWeek`/`endWeek` pair into a `weekReference`
+ * bound, raising a `badRequest` when the ordering is invalid. Absent or
+ * incomplete pairs yield no filter, preserving "unbounded" behaviour.
+ */
+function weekReferenceFilter(
+  startWeek?: string,
+  endWeek?: string,
+): { $gte: Date; $lte: Date } | undefined {
+  if (!startWeek || !endWeek) return undefined;
+
+  const start = parseWeekStart(startWeek);
+  const end = parseWeekStart(endWeek);
+  if (start > weekEnd(end)) {
+    throw badRequest(
+      "Invalid week range, startWeek must be before or equal to endWeek.",
+    );
+  }
+  return { $gte: start, $lte: weekEnd(end) };
 }
 
 export const weeklyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
@@ -56,15 +77,9 @@ export const weeklyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
         filter.businessId = new Types.ObjectId(businessId);
       }
 
-      if (startWeek && endWeek) {
-        const start = parseWeekStart(startWeek);
-        const end = parseWeekStart(endWeek);
-        if (start > weekEnd(end)) {
-          throw badRequest(
-            "Invalid week range, startWeek must be before or equal to endWeek.",
-          );
-        }
-        filter.weekReference = { $gte: start, $lte: weekEnd(end) };
+      const weekReference = weekReferenceFilter(startWeek, endWeek);
+      if (weekReference) {
+        filter.weekReference = weekReference;
       }
 
       const reports = await WeeklyBusinessReport.find(filter)
@@ -119,15 +134,9 @@ export const weeklyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
         businessId: new Types.ObjectId(businessId),
       };
 
-      if (startWeek && endWeek) {
-        const start = parseWeekStart(startWeek);
-        const end = parseWeekStart(endWeek);
-        if (start > weekEnd(end)) {
-          throw badRequest(
-            "Invalid week range, startWeek must be before or equal to endWeek.",
-          );
-        }
-        filter.weekReference = { $gte: start, $lte: weekEnd(end) };
+      const weekReference = weekReferenceFilter(startWeek, endWeek);
+      if (weekReference) {
+        filter.weekReference = weekReference;
       }
 
       const reports = await WeeklyBusinessReport.find(filter)

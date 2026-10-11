@@ -48,6 +48,53 @@ export const emailSchema = z
   .pipe(z.email("Invalid email address"));
 
 /**
+ * An empty or whitespace-only string is treated as "not provided" — the value a
+ * blank query/form field carries. Wrap a schema with it before `.optional()`.
+ */
+export const emptyToUndefined = (value: unknown): unknown =>
+  typeof value === "string" && value.trim() === "" ? undefined : value;
+
+/**
+ * A plain calendar date (`YYYY-MM-DD`). An ambiguous date-time string — with or
+ * without an offset — is rejected rather than guessed, because turning a
+ * calendar date into a real instant needs an explicit timezone, which the
+ * caller resolves.
+ */
+const CALENDAR_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+const isCalendarDate = (value: string): boolean => {
+  const match = CALENDAR_DATE_PATTERN.exec(value);
+  if (!match) return false;
+  const [, year, month, day] = match;
+  const utc = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+  return (
+    utc.getUTCFullYear() === Number(year) &&
+    utc.getUTCMonth() === Number(month) - 1 &&
+    utc.getUTCDate() === Number(day)
+  );
+};
+
+/** A `YYYY-MM-DD` calendar date, rejecting date-time strings. */
+export const calendarDateSchema = z
+  .string()
+  .refine(isCalendarDate, "Invalid date, expected a YYYY-MM-DD calendar date");
+
+/** A calendar month (`YYYY-MM`), month 01–12. */
+const CALENDAR_MONTH_PATTERN = /^(\d{4})-(\d{2})$/;
+
+const isCalendarMonth = (value: string): boolean => {
+  const match = CALENDAR_MONTH_PATTERN.exec(value);
+  if (!match) return false;
+  const month = Number(match[2]);
+  return month >= 1 && month <= 12;
+};
+
+/** A `YYYY-MM` calendar month, rejecting day-precision and malformed values. */
+export const calendarMonthSchema = z
+  .string()
+  .refine(isCalendarMonth, "Invalid month, expected YYYY-MM");
+
+/**
  * A trimmed string with internal whitespace collapsed to single spaces.
  * Optionally enforces a non-empty message.
  */

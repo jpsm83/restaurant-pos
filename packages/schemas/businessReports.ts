@@ -15,57 +15,23 @@
  */
 import { z } from "zod";
 
-import { coercedNumberSchema, objectIdSchema } from "./primitives.ts";
-
-/** An empty query value is treated as "not provided". */
-const emptyToUndefined = (value: unknown): unknown =>
-  typeof value === "string" && value.trim() === "" ? undefined : value;
-
-/**
- * A plain calendar date (`YYYY-MM-DD`). An ambiguous date-time string is
- * rejected rather than guessed: the route resolves the week's local start from
- * an unambiguous date.
- */
-const CALENDAR_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
-
-const isCalendarDate = (value: string): boolean => {
-  const match = CALENDAR_DATE_PATTERN.exec(value);
-  if (!match) return false;
-  const [, year, month, day] = match;
-  const utc = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
-  return (
-    utc.getUTCFullYear() === Number(year) &&
-    utc.getUTCMonth() === Number(month) - 1 &&
-    utc.getUTCDate() === Number(day)
-  );
-};
-
-/** A calendar month (`YYYY-MM`), month 01–12. */
-const MONTH_PATTERN = /^(\d{4})-(\d{2})$/;
-
-const isCalendarMonth = (value: string): boolean => {
-  const match = MONTH_PATTERN.exec(value);
-  if (!match) return false;
-  const month = Number(match[2]);
-  return month >= 1 && month <= 12;
-};
+import {
+  calendarDateSchema,
+  calendarMonthSchema,
+  emptyToUndefined,
+  objectIdSchema,
+} from "./primitives.ts";
 
 /** An optional `YYYY-MM-DD` query value; an empty string means "not provided". */
 const calendarDateQuerySchema = z.preprocess(
   emptyToUndefined,
-  z
-    .string()
-    .refine(
-      isCalendarDate,
-      "Invalid date, expected a YYYY-MM-DD calendar date",
-    )
-    .optional(),
+  calendarDateSchema.optional(),
 );
 
 /** An optional `YYYY-MM` query value; an empty string means "not provided". */
 const monthQuerySchema = z.preprocess(
   emptyToUndefined,
-  z.string().refine(isCalendarMonth, "Invalid month, expected YYYY-MM").optional(),
+  calendarMonthSchema.optional(),
 );
 
 /** An optional ObjectId query value; an empty string means "not provided". */
@@ -144,11 +110,12 @@ export const calculateMonthlyReportQuerySchema = z.strictObject({
 /**
  * Body for `PATCH /monthlyBusinessReport/:monthlyReportId`. The two costs are
  * the only client-settable fields; the at-least-one rule stays in the route as a
- * post-parse check.
+ * post-parse check. A JSON body means a real number is required — a `null` or
+ * numeric string is rejected rather than coerced to `0`.
  */
 export const updateMonthlyBusinessReportBodySchema = z.strictObject({
-  totalFixedOperatingCost: coercedNumberSchema.optional(),
-  totalExtraCost: coercedNumberSchema.optional(),
+  totalFixedOperatingCost: z.number().optional(),
+  totalExtraCost: z.number().optional(),
 });
 
 export type WeeklyReportIdParams = z.infer<typeof weeklyReportIdParamsSchema>;

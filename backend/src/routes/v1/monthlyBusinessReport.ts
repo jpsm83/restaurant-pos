@@ -69,6 +69,27 @@ function getMonthEnd(monthStart: Date): Date {
   );
 }
 
+/**
+ * Post-parse check: turn a `startMonth`/`endMonth` pair into a `monthReference`
+ * bound, raising a `badRequest` when the ordering is invalid. Absent or
+ * incomplete pairs yield no filter, preserving "unbounded" behaviour.
+ */
+function monthReferenceFilter(
+  startMonth?: string,
+  endMonth?: string,
+): { $gte: Date; $lte: Date } | undefined {
+  if (!startMonth || !endMonth) return undefined;
+
+  const start = parseMonthStart(startMonth);
+  const end = parseMonthStart(endMonth);
+  if (start > monthEnd(end)) {
+    throw badRequest(
+      "Invalid month range, startMonth must be before or equal to endMonth.",
+    );
+  }
+  return { $gte: start, $lte: monthEnd(end) };
+}
+
 export const monthlyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
   // GET /monthlyBusinessReport - list all (with optional filters)
   app.get<{ Querystring: MonthlyBusinessReportListQuery }>(
@@ -86,15 +107,9 @@ export const monthlyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
         filter.businessId = new Types.ObjectId(businessId);
       }
 
-      if (startMonth && endMonth) {
-        const start = parseMonthStart(startMonth);
-        const end = parseMonthStart(endMonth);
-        if (start > monthEnd(end)) {
-          throw badRequest(
-            "Invalid month range, startMonth must be before or equal to endMonth.",
-          );
-        }
-        filter.monthReference = { $gte: start, $lte: monthEnd(end) };
+      const monthReference = monthReferenceFilter(startMonth, endMonth);
+      if (monthReference) {
+        filter.monthReference = monthReference;
       }
 
       const reports = await MonthlyBusinessReport.find(filter)
@@ -239,15 +254,9 @@ export const monthlyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
         businessId: new Types.ObjectId(businessId),
       };
 
-      if (startMonth && endMonth) {
-        const start = parseMonthStart(startMonth);
-        const end = parseMonthStart(endMonth);
-        if (start > monthEnd(end)) {
-          throw badRequest(
-            "Invalid month range, startMonth must be before or equal to endMonth.",
-          );
-        }
-        filter.monthReference = { $gte: start, $lte: monthEnd(end) };
+      const monthReference = monthReferenceFilter(startMonth, endMonth);
+      if (monthReference) {
+        filter.monthReference = monthReference;
       }
 
       const reports = await MonthlyBusinessReport.find(filter)
