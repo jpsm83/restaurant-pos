@@ -12,3 +12,4 @@ export * from "./salesInstances.ts";
 export * from "./promotions.ts";
 export * from "./reservations.ts";
 export * from "./schedules.ts";
+export * from "./dailySalesReports.ts";

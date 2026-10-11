@@ -1,3 +1,14 @@
+/**
+ * DailySalesReports Routes — report retrieval plus the calculate, close and
+ * reconcile flows.
+ *
+ * Every route declares its body/params/query as a strict zod DTO from
+ * `packages/schemas/dailySalesReports.ts`; validation and sanitization happen at
+ * the boundary and every error is raised as an `AppError` so the global handler
+ * emits RFC 9457 `application/problem+json`. Cross-field and database-dependent
+ * rules stay in the route as named post-parse checks: the manager/business-match
+ * guards and the date/reference-number range rules.
+ */
 import type { FastifyPluginAsync } from "fastify";
 import { Types } from "mongoose";
 import type {
@@ -8,7 +19,6 @@ import type {
 import type { IPaymentMethod } from "../../../../packages/interfaces/IPaymentMethod.ts";
 import type { IEmployee } from "../../../../packages/interfaces/IEmployee.ts";
 
-import isObjectIdValid from "../../utils/isObjectIdValid.ts";
 import reconcileEmployeesDailySalesReport from "../../dailySalesReports/updateEmployeeDailySalesReport.ts";
 import aggregateDailyReportsIntoWeekly from "../../weeklyBusinessReport/aggregateDailyReportsIntoWeekly.ts";
 import aggregateDailyReportsIntoMonthly from "../../monthlyBusinessReport/aggregateDailyReportsIntoMonthly.ts";
@@ -23,6 +33,23 @@ import { createAuthHook } from "../../auth/middleware.ts";
 import { isAggregateMismatchCheckEnabled } from "../../dailySalesReports/rolloutControls.ts";
 import { recordAggregateMismatchCheck } from "../../dailySalesReports/rolloutTelemetry.ts";
 import { buildReconciledDailyPayload } from "../../dailySalesReports/reconciliationCore.ts";
+import {
+  badRequest,
+  forbidden,
+  internal,
+  notFound,
+  unauthorized,
+} from "../../errors/appError.ts";
+import {
+  calculateUsersReportBodySchema,
+  dailySalesReportIdParamsSchema,
+  dailySalesReportsBusinessParamsSchema,
+  dailySalesReportsBusinessQuerySchema,
+  type CalculateUsersReportBody,
+  type DailySalesReportIdParams,
+  type DailySalesReportsBusinessParams,
+  type DailySalesReportsBusinessQuery,
+} from "../../../../packages/schemas/dailySalesReports.ts";
 import * as enums from "../../../../packages/enums.ts";
 
 const { managementRolesEnums } = enums;
@@ -148,14 +175,15 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
     );
   };
 
-  const resolveManagerBusinessId = async (
-    req: { authSession?: { type: string; id: string } },
-  ): Promise<
-    | { businessId: Types.ObjectId }
-    | { errorCode: number; message: string }
-  > => {
+  /**
+   * Post-parse guard: the caller must be an authenticated manager. Returns the
+   * manager's business id or raises `unauthorized`/`forbidden`.
+   */
+  const resolveManagerBusinessId = async (req: {
+    authSession?: { type: string; id: string };
+  }): Promise<Types.ObjectId> => {
     if (!req.authSession || req.authSession.type !== "user") {
-      return { errorCode: 401, message: "Unauthorized" };
+      throw unauthorized("Unauthorized");
     }
 
     const userObjectId = new Types.ObjectId(req.authSession.id);
@@ -172,87 +200,56 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
         (role) => employeeDoc.allEmployeeRoles?.includes(role),
       )
     ) {
-      return { errorCode: 403, message: "Forbidden" };
+      throw forbidden("Forbidden");
     }
 
-    const businessId =
-      typeof employeeDoc.businessId === "object" &&
+    return typeof employeeDoc.businessId === "object" &&
       employeeDoc.businessId !== null &&
       "_id" in employeeDoc.businessId
-        ? (employeeDoc.businessId as { _id: Types.ObjectId })._id
-        : new Types.ObjectId(String(employeeDoc.businessId));
-
-    return { businessId };
+      ? (employeeDoc.businessId as { _id: Types.ObjectId })._id
+      : new Types.ObjectId(String(employeeDoc.businessId));
   };
 
   // GET /dailySalesReports - list all
-  app.get(
-    "/",
-    { preValidation: [createAuthHook(app)] },
-    async (req, reply) => {
-    try {
-      const managerContext = await resolveManagerBusinessId(req);
-      if ("errorCode" in managerContext) {
-        return reply
-          .code(managerContext.errorCode)
-          .send({ message: managerContext.message });
-      }
+  app.get("/", { preValidation: [createAuthHook(app)] }, async (_req, reply) => {
+    const businessId = await resolveManagerBusinessId(_req);
 
-      const dailySalesReports = await DailySalesReport.find({
-        businessId: managerContext.businessId,
+    const dailySalesReports = await DailySalesReport.find({
+      businessId,
+    })
+      .populate({
+        path: "employeesDailySalesReport.userId",
+        select: "personalDetails.firstName personalDetails.lastName",
+        model: User,
       })
-        .populate({
-          path: "employeesDailySalesReport.userId",
-          select: "personalDetails.firstName personalDetails.lastName",
-          model: User,
-        })
-        .populate({
-          path: "deliveryDailySalesReport.userId",
-          select: "personalDetails.firstName personalDetails.lastName",
-          model: User,
-        })
-        .populate({
-          path: "selfOrderingSalesReport.userId",
-          select: "personalDetails.firstName personalDetails.lastName",
-          model: User,
-        })
-        .lean();
+      .populate({
+        path: "deliveryDailySalesReport.userId",
+        select: "personalDetails.firstName personalDetails.lastName",
+        model: User,
+      })
+      .populate({
+        path: "selfOrderingSalesReport.userId",
+        select: "personalDetails.firstName personalDetails.lastName",
+        model: User,
+      })
+      .lean();
 
-      if (!dailySalesReports.length) {
-        return reply.code(404).send({ message: "No daily reports found!" });
-      }
-      return reply.code(200).send(dailySalesReports);
-    } catch (error) {
-      return reply.code(500).send({
-        message: "Get daily sales reports tables failed!",
-        error: error instanceof Error ? error.message : error,
-      });
+    if (!dailySalesReports.length) {
+      throw notFound("No daily reports found!");
     }
-    },
-  );
+    return reply.code(200).send(dailySalesReports);
+  });
 
   // GET /dailySalesReports/:dailySalesReportId - get by ID
-  app.get(
+  app.get<{ Params: DailySalesReportIdParams }>(
     "/:dailySalesReportId",
-    { preValidation: [createAuthHook(app)] },
+    {
+      preValidation: [createAuthHook(app)],
+      schema: { params: dailySalesReportIdParamsSchema },
+    },
     async (req, reply) => {
-    try {
-      const managerContext = await resolveManagerBusinessId(req);
-      if ("errorCode" in managerContext) {
-        return reply
-          .code(managerContext.errorCode)
-          .send({ message: managerContext.message });
-      }
-
-      const params = req.params as { dailySalesReportId?: string };
-      const dailySalesReportId = params.dailySalesReportId;
-
-      if (
-        !dailySalesReportId ||
-        isObjectIdValid([dailySalesReportId]) !== true
-      ) {
-        return reply.code(400).send({ message: "Invalid daily report ID!" });
-      }
+      const managerBusinessId = await resolveManagerBusinessId(req);
+      const { dailySalesReportId } = req.params;
 
       const dailySalesReport = await DailySalesReport.findById(
         dailySalesReportId,
@@ -275,8 +272,9 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
         .lean();
 
       if (!dailySalesReport) {
-        return reply.code(404).send({ message: "Daily report not found!" });
+        throw notFound("Daily report not found!");
       }
+
       const reportBusinessId =
         typeof (dailySalesReport as { businessId?: Types.ObjectId }).businessId ===
           "object" &&
@@ -286,411 +284,339 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
           : undefined;
       if (
         !reportBusinessId ||
-        String(reportBusinessId) !== String(managerContext.businessId)
+        String(reportBusinessId) !== String(managerBusinessId)
       ) {
-        return reply.code(403).send({ message: "Forbidden" });
+        throw forbidden("Forbidden");
       }
 
       return reply.code(200).send(dailySalesReport);
-    } catch (error) {
-      return reply.code(500).send({
-        message: "Get daily sales report by its id failed!",
-        error: error instanceof Error ? error.message : error,
-      });
-    }
     },
   );
 
   // DELETE /dailySalesReports/:dailySalesReportId - delete
-  app.delete(
+  app.delete<{ Params: DailySalesReportIdParams }>(
     "/:dailySalesReportId",
-    { preValidation: [createAuthHook(app)] },
+    {
+      preValidation: [createAuthHook(app)],
+      schema: { params: dailySalesReportIdParamsSchema },
+    },
     async (req, reply) => {
-    try {
       if (process.env.NODE_ENV === "production") {
-        return reply.code(403).send({
-          message:
-            "Hard delete of financial reports is disabled in production.",
-        });
+        throw forbidden(
+          "Hard delete of financial reports is disabled in production.",
+        );
       }
 
-      const managerContext = await resolveManagerBusinessId(req);
-      if ("errorCode" in managerContext) {
-        return reply
-          .code(managerContext.errorCode)
-          .send({ message: managerContext.message });
-      }
-
-      const params = req.params as { dailySalesReportId?: string };
-      const dailySalesReportId = params.dailySalesReportId;
-
-      if (
-        !dailySalesReportId ||
-        isObjectIdValid([dailySalesReportId]) !== true
-      ) {
-        return reply.code(400).send({ message: "Invalid daily report ID!" });
-      }
+      const managerBusinessId = await resolveManagerBusinessId(req);
+      const { dailySalesReportId } = req.params;
 
       const result = await DailySalesReport.deleteOne({
         _id: dailySalesReportId,
-        businessId: managerContext.businessId,
+        businessId: managerBusinessId,
       });
 
       if (result.deletedCount === 0) {
-        return reply.code(404).send({ message: "Daily report not found!" });
+        throw notFound("Daily report not found!");
       }
 
       return reply.code(200).send(`Daily report ${dailySalesReportId} deleted`);
-    } catch (error) {
-      return reply.code(500).send({
-        message: "Delete daily sales report failed!",
-        error: error instanceof Error ? error.message : error,
-      });
-    }
     },
   );
 
   // PATCH /dailySalesReports/:dailySalesReportId/calculateBusinessReport - calculate business report
-  app.patch(
+  app.patch<{ Params: DailySalesReportIdParams }>(
     "/:dailySalesReportId/calculateBusinessReport",
-    { preValidation: [createAuthHook(app)] },
+    {
+      preValidation: [createAuthHook(app)],
+      schema: { params: dailySalesReportIdParamsSchema },
+    },
     async (req, reply) => {
-      try {
-        const managerContext = await resolveManagerBusinessId(req);
-        if ("errorCode" in managerContext) {
-          return reply
-            .code(managerContext.errorCode)
-            .send({ message: managerContext.message });
-        }
+      const managerBusinessId = await resolveManagerBusinessId(req);
+      const { dailySalesReportId } = req.params;
 
-        const params = req.params as { dailySalesReportId?: string };
-        const dailySalesReportId = params.dailySalesReportId;
+      const dailySalesReport = (await DailySalesReport.findOne({
+        _id: dailySalesReportId,
+      })
+        .select(
+          "dailyReferenceNumber businessId dailyTotalSalesBeforeAdjustments dailyNetPaidAmount dailyCostOfGoodsSold dailyTipsReceived dailyTotalVoidValue dailyTotalInvitedValue",
+        )
+        .lean()) as {
+        dailyReferenceNumber: number;
+        businessId: Types.ObjectId | { _id: Types.ObjectId };
+        dailyTotalSalesBeforeAdjustments?: number;
+        dailyNetPaidAmount?: number;
+        dailyCostOfGoodsSold?: number;
+        dailyTipsReceived?: number;
+        dailyTotalVoidValue?: number;
+        dailyTotalInvitedValue?: number;
+      } | null;
 
-        if (
-          !dailySalesReportId ||
-          isObjectIdValid([dailySalesReportId]) !== true
-        ) {
-          return reply
-            .code(400)
-            .send({ message: "Invalid dailySalesReport ID!" });
-        }
+      if (!dailySalesReport) {
+        throw notFound("Daily report not found!");
+      }
 
-        const dailySalesReport = (await DailySalesReport.findOne({
-          _id: dailySalesReportId,
+      const businessId =
+        typeof dailySalesReport.businessId === "object" &&
+        dailySalesReport.businessId !== null &&
+        "_id" in dailySalesReport.businessId
+          ? (dailySalesReport.businessId as { _id: Types.ObjectId })._id
+          : (dailySalesReport.businessId as Types.ObjectId);
+      if (String(businessId) !== String(managerBusinessId)) {
+        throw forbidden(
+          "You are not allowed to calculate the daily sales report!",
+        );
+      }
+
+      const dailyReportWithUsers = (await DailySalesReport.findOne({
+        _id: dailySalesReportId,
+      })
+        .select(
+          "_id dailyReferenceNumber employeesDailySalesReport deliveryDailySalesReport selfOrderingSalesReport businessId",
+        )
+        .populate({
+          path: "businessId",
+          select: "subscription reportingConfig.weeklyReportStartDay",
+          model: Business,
         })
-          .select(
-            "dailyReferenceNumber businessId dailyTotalSalesBeforeAdjustments dailyNetPaidAmount dailyCostOfGoodsSold dailyTipsReceived dailyTotalVoidValue dailyTotalInvitedValue",
-          )
-          .lean()) as {
-          dailyReferenceNumber: number;
-          businessId: Types.ObjectId | { _id: Types.ObjectId };
-          dailyTotalSalesBeforeAdjustments?: number;
-          dailyNetPaidAmount?: number;
-          dailyCostOfGoodsSold?: number;
-          dailyTipsReceived?: number;
-          dailyTotalVoidValue?: number;
-          dailyTotalInvitedValue?: number;
-        } | null;
+        .lean()) as {
+        _id: Types.ObjectId;
+        dailyReferenceNumber: number;
+        businessId:
+          | {
+              _id: Types.ObjectId;
+              subscription?: string;
+              reportingConfig?: { weeklyReportStartDay?: number };
+            }
+          | Types.ObjectId;
+        employeesDailySalesReport?: IActorDailySalesReport[];
+        deliveryDailySalesReport?: IActorDailySalesReport;
+        selfOrderingSalesReport?: IActorDailySalesReport[];
+      } | null;
 
-        if (!dailySalesReport) {
-          return reply.code(400).send({ message: "Daily report not found!" });
-        }
+      if (!dailyReportWithUsers) {
+        throw notFound("Daily report not found!");
+      }
 
-        const businessId =
-          typeof dailySalesReport.businessId === "object" &&
-          dailySalesReport.businessId !== null &&
-          "_id" in dailySalesReport.businessId
-            ? (dailySalesReport.businessId as { _id: Types.ObjectId })._id
-            : (dailySalesReport.businessId as Types.ObjectId);
-        if (String(businessId) !== String(managerContext.businessId)) {
-          return reply.code(403).send({
-            message: "You are not allowed to calculate the daily sales report!",
-          });
-        }
+      const businessGoodsReport = {
+        goodsSold: [] as IGoodsReduced[],
+        goodsVoid: [] as IGoodsReduced[],
+        goodsInvited: [] as IGoodsReduced[],
+      };
 
-        const dailyReportWithUsers = (await DailySalesReport.findOne({
-          _id: dailySalesReportId,
-        })
-          .select(
-            "_id dailyReferenceNumber employeesDailySalesReport deliveryDailySalesReport selfOrderingSalesReport businessId",
-          )
-          .populate({
-            path: "businessId",
-            select: "subscription reportingConfig.weeklyReportStartDay",
-            model: Business,
-          })
-          .lean()) as {
-          _id: Types.ObjectId;
-          dailyReferenceNumber: number;
-          businessId:
-            | {
-                _id: Types.ObjectId;
-                subscription?: string;
-                reportingConfig?: { weeklyReportStartDay?: number };
-              }
-            | Types.ObjectId;
-          employeesDailySalesReport?: IActorDailySalesReport[];
-          deliveryDailySalesReport?: IActorDailySalesReport;
-          selfOrderingSalesReport?: IActorDailySalesReport[];
-        } | null;
+      const dailySalesReportObj = {
+        businessPaymentMethods: [] as IPaymentMethod[],
+        dailyTotalSalesBeforeAdjustments: 0,
+        dailyNetPaidAmount: 0,
+        dailyTipsReceived: 0,
+        dailyCostOfGoodsSold: 0,
+        dailyProfit: 0,
+        dailyCustomersServed: 0,
+        dailyAverageCustomerExpenditure: 0,
+        dailySoldGoods: [] as IGoodsReduced[],
+        dailyVoidedGoods: [] as IGoodsReduced[],
+        dailyInvitedGoods: [] as IGoodsReduced[],
+        dailyTotalVoidValue: 0,
+        dailyTotalInvitedValue: 0,
+        dailyPosSystemCommission: 0,
+      };
 
-        if (!dailyReportWithUsers) {
-          return reply.code(400).send({ message: "Daily report not found!" });
-        }
-
-        const businessGoodsReport = {
-          goodsSold: [] as IGoodsReduced[],
-          goodsVoid: [] as IGoodsReduced[],
-          goodsInvited: [] as IGoodsReduced[],
-        };
-
-        const dailySalesReportObj = {
-          businessPaymentMethods: [] as IPaymentMethod[],
-          dailyTotalSalesBeforeAdjustments: 0,
-          dailyNetPaidAmount: 0,
-          dailyTipsReceived: 0,
-          dailyCostOfGoodsSold: 0,
-          dailyProfit: 0,
-          dailyCustomersServed: 0,
-          dailyAverageCustomerExpenditure: 0,
-          dailySoldGoods: [] as IGoodsReduced[],
-          dailyVoidedGoods: [] as IGoodsReduced[],
-          dailyInvitedGoods: [] as IGoodsReduced[],
-          dailyTotalVoidValue: 0,
-          dailyTotalInvitedValue: 0,
-          dailyPosSystemCommission: 0,
-        };
-
-        const mergeGoods = (array: IGoodsReduced[], businessGood: IGoodsReduced) => {
-          const existingGood = array.find(
-            (item) =>
-              (item.businessGoodId as Types.ObjectId)?.toString() ===
-              (businessGood.businessGoodId as Types.ObjectId)?.toString(),
-          );
-
-          if (existingGood) {
-            existingGood.quantity += businessGood.quantity ?? 1;
-            existingGood.totalPrice =
-              (existingGood.totalPrice ?? 0) + (businessGood.totalPrice ?? 0);
-            existingGood.totalCostPrice =
-              (existingGood.totalCostPrice ?? 0) +
-              (businessGood.totalCostPrice ?? 0);
-            return;
-          }
-
-          array.push({
-            businessGoodId: businessGood.businessGoodId,
-            quantity: businessGood.quantity ?? 1,
-            totalPrice: businessGood.totalPrice ?? 0,
-            totalCostPrice: businessGood.totalCostPrice ?? 0,
-          });
-        };
-
-        const aggregateActorRow = (row: IActorDailySalesReport | undefined) => {
-          if (!row) return;
-
-          if (row.employeePaymentMethods) {
-            row.employeePaymentMethods.forEach((payment: IPaymentMethod) => {
-              const existingPayment = dailySalesReportObj.businessPaymentMethods.find(
-                (p: IPaymentMethod) =>
-                  p.paymentMethodType === payment.paymentMethodType &&
-                  p.methodBranch === payment.methodBranch,
-              );
-
-              if (existingPayment) {
-                existingPayment.methodSalesTotal += payment.methodSalesTotal ?? 0;
-              } else {
-                dailySalesReportObj.businessPaymentMethods.push({
-                  paymentMethodType: payment.paymentMethodType,
-                  methodBranch: payment.methodBranch,
-                  methodSalesTotal: payment.methodSalesTotal ?? 0,
-                });
-              }
-            });
-          }
-
-          dailySalesReportObj.dailyTotalSalesBeforeAdjustments +=
-            row.totalSalesBeforeAdjustments ?? 0;
-          dailySalesReportObj.dailyNetPaidAmount += row.totalNetPaidAmount ?? 0;
-          dailySalesReportObj.dailyTipsReceived += row.totalTipsReceived ?? 0;
-          dailySalesReportObj.dailyCostOfGoodsSold += row.totalCostOfGoodsSold ?? 0;
-          dailySalesReportObj.dailyCustomersServed += row.totalCustomersServed ?? 0;
-
-          row.soldGoods?.forEach((businessGood) =>
-            mergeGoods(businessGoodsReport.goodsSold, businessGood),
-          );
-          row.voidedGoods?.forEach((businessGood) =>
-            mergeGoods(businessGoodsReport.goodsVoid, businessGood),
-          );
-          row.invitedGoods?.forEach((businessGood) =>
-            mergeGoods(businessGoodsReport.goodsInvited, businessGood),
-          );
-        };
-
-        (dailyReportWithUsers.employeesDailySalesReport ?? []).forEach((row) =>
-          aggregateActorRow(row),
+      const mergeGoods = (array: IGoodsReduced[], businessGood: IGoodsReduced) => {
+        const existingGood = array.find(
+          (item) =>
+            (item.businessGoodId as Types.ObjectId)?.toString() ===
+            (businessGood.businessGoodId as Types.ObjectId)?.toString(),
         );
 
-        if (Array.isArray(dailyReportWithUsers.selfOrderingSalesReport)) {
-          dailyReportWithUsers.selfOrderingSalesReport.forEach((selfOrderRow) => {
-            aggregateActorRow(selfOrderRow);
-          });
+        if (existingGood) {
+          existingGood.quantity += businessGood.quantity ?? 1;
+          existingGood.totalPrice =
+            (existingGood.totalPrice ?? 0) + (businessGood.totalPrice ?? 0);
+          existingGood.totalCostPrice =
+            (existingGood.totalCostPrice ?? 0) +
+            (businessGood.totalCostPrice ?? 0);
+          return;
         }
 
-        if (dailyReportWithUsers.deliveryDailySalesReport) {
-          aggregateActorRow(dailyReportWithUsers.deliveryDailySalesReport);
-        }
-
-        if (false) {
-          // Keep explicit partial-failure contract visible for future non-blocking
-          // downstream integrations that may return mixed success.
-          return reply.code(207).send({
-            message: "Some non-critical aggregation steps failed.",
-          });
-        }
-
-        dailySalesReportObj.dailyProfit =
-          dailySalesReportObj.dailyNetPaidAmount -
-          dailySalesReportObj.dailyCostOfGoodsSold;
-
-        dailySalesReportObj.dailyAverageCustomerExpenditure =
-          dailySalesReportObj.dailyCustomersServed > 0
-            ? dailySalesReportObj.dailyNetPaidAmount /
-              dailySalesReportObj.dailyCustomersServed
-            : 0;
-
-        dailySalesReportObj.dailySoldGoods = businessGoodsReport.goodsSold;
-        dailySalesReportObj.dailyVoidedGoods = businessGoodsReport.goodsVoid;
-        dailySalesReportObj.dailyInvitedGoods =
-          businessGoodsReport.goodsInvited;
-
-        dailySalesReportObj.dailyTotalVoidValue =
-          dailySalesReportObj.dailyVoidedGoods.reduce(
-            (acc, curr) => acc + (curr.totalPrice ?? 0),
-            0,
-          );
-
-        dailySalesReportObj.dailyTotalInvitedValue =
-          dailySalesReportObj.dailyInvitedGoods.reduce(
-            (acc, curr) => acc + (curr.totalPrice ?? 0),
-            0,
-          );
-
-        let comissionPercentage = 0;
-        const businessIdPayload = dailyReportWithUsers.businessId;
-        const subscription =
-          typeof businessIdPayload === "object" &&
-          businessIdPayload !== null &&
-          "subscription" in businessIdPayload
-            ? (businessIdPayload as { subscription?: string }).subscription
-            : undefined;
-
-        switch (subscription) {
-          case "Free":
-            comissionPercentage = 0;
-            break;
-          case "Basic":
-            comissionPercentage = 0.05;
-            break;
-          case "Premium":
-            comissionPercentage = 0.08;
-            break;
-          case "Enterprise":
-            comissionPercentage = 0.1;
-            break;
-          default:
-            comissionPercentage = 0;
-            break;
-        }
-
-        dailySalesReportObj.dailyPosSystemCommission =
-          dailySalesReportObj.dailyTotalSalesBeforeAdjustments *
-          comissionPercentage;
-
-        if (isAggregateMismatchCheckEnabled()) {
-          recordAggregateMismatchCheck(
-            hasAggregateMismatch(dailySalesReport, dailySalesReportObj),
-            {
-              route: "calculateBusinessReport",
-              dailySalesReportId,
-              businessId: String(businessId),
-            },
-          );
-        }
-
-        await DailySalesReport.updateOne(
-          { _id: dailySalesReportId },
-          dailySalesReportObj,
-        );
-
-        const businessIdForMonthly =
-          typeof dailyReportWithUsers.businessId === "object" &&
-          dailyReportWithUsers.businessId !== null
-            ? ((dailyReportWithUsers.businessId as { _id?: Types.ObjectId })
-                ._id ?? (dailyReportWithUsers.businessId as Types.ObjectId))
-            : new Types.ObjectId(String(dailyReportWithUsers.businessId));
-
-        const weeklyReportStartDay =
-          typeof dailyReportWithUsers.businessId === "object" &&
-          dailyReportWithUsers.businessId !== null &&
-          "reportingConfig" in dailyReportWithUsers.businessId
-            ? (dailyReportWithUsers.businessId as {
-                reportingConfig?: { weeklyReportStartDay?: number };
-              }).reportingConfig?.weeklyReportStartDay ?? 1
-            : 1;
-
-        const rollupRefresh = await refreshWeeklyAndMonthlyReports(
-          businessIdForMonthly,
-          new Date(),
-          weeklyReportStartDay,
-          "calculateBusinessReport",
-        );
-
-        return reply.code(200).send({
-          message: "Daily sales report updated",
-          rollupRefresh,
+        array.push({
+          businessGoodId: businessGood.businessGoodId,
+          quantity: businessGood.quantity ?? 1,
+          totalPrice: businessGood.totalPrice ?? 0,
+          totalCostPrice: businessGood.totalCostPrice ?? 0,
         });
-      } catch (error) {
-        return reply.code(500).send({
-          message: "Failed to update daily sales report!",
-          error: error instanceof Error ? error.message : error,
+      };
+
+      const aggregateActorRow = (row: IActorDailySalesReport | undefined) => {
+        if (!row) return;
+
+        if (row.employeePaymentMethods) {
+          row.employeePaymentMethods.forEach((payment: IPaymentMethod) => {
+            const existingPayment = dailySalesReportObj.businessPaymentMethods.find(
+              (p: IPaymentMethod) =>
+                p.paymentMethodType === payment.paymentMethodType &&
+                p.methodBranch === payment.methodBranch,
+            );
+
+            if (existingPayment) {
+              existingPayment.methodSalesTotal += payment.methodSalesTotal ?? 0;
+            } else {
+              dailySalesReportObj.businessPaymentMethods.push({
+                paymentMethodType: payment.paymentMethodType,
+                methodBranch: payment.methodBranch,
+                methodSalesTotal: payment.methodSalesTotal ?? 0,
+              });
+            }
+          });
+        }
+
+        dailySalesReportObj.dailyTotalSalesBeforeAdjustments +=
+          row.totalSalesBeforeAdjustments ?? 0;
+        dailySalesReportObj.dailyNetPaidAmount += row.totalNetPaidAmount ?? 0;
+        dailySalesReportObj.dailyTipsReceived += row.totalTipsReceived ?? 0;
+        dailySalesReportObj.dailyCostOfGoodsSold += row.totalCostOfGoodsSold ?? 0;
+        dailySalesReportObj.dailyCustomersServed += row.totalCustomersServed ?? 0;
+
+        row.soldGoods?.forEach((businessGood) =>
+          mergeGoods(businessGoodsReport.goodsSold, businessGood),
+        );
+        row.voidedGoods?.forEach((businessGood) =>
+          mergeGoods(businessGoodsReport.goodsVoid, businessGood),
+        );
+        row.invitedGoods?.forEach((businessGood) =>
+          mergeGoods(businessGoodsReport.goodsInvited, businessGood),
+        );
+      };
+
+      (dailyReportWithUsers.employeesDailySalesReport ?? []).forEach((row) =>
+        aggregateActorRow(row),
+      );
+
+      if (Array.isArray(dailyReportWithUsers.selfOrderingSalesReport)) {
+        dailyReportWithUsers.selfOrderingSalesReport.forEach((selfOrderRow) => {
+          aggregateActorRow(selfOrderRow);
         });
       }
+
+      if (dailyReportWithUsers.deliveryDailySalesReport) {
+        aggregateActorRow(dailyReportWithUsers.deliveryDailySalesReport);
+      }
+
+      dailySalesReportObj.dailyProfit =
+        dailySalesReportObj.dailyNetPaidAmount -
+        dailySalesReportObj.dailyCostOfGoodsSold;
+
+      dailySalesReportObj.dailyAverageCustomerExpenditure =
+        dailySalesReportObj.dailyCustomersServed > 0
+          ? dailySalesReportObj.dailyNetPaidAmount /
+            dailySalesReportObj.dailyCustomersServed
+          : 0;
+
+      dailySalesReportObj.dailySoldGoods = businessGoodsReport.goodsSold;
+      dailySalesReportObj.dailyVoidedGoods = businessGoodsReport.goodsVoid;
+      dailySalesReportObj.dailyInvitedGoods = businessGoodsReport.goodsInvited;
+
+      dailySalesReportObj.dailyTotalVoidValue =
+        dailySalesReportObj.dailyVoidedGoods.reduce(
+          (acc, curr) => acc + (curr.totalPrice ?? 0),
+          0,
+        );
+
+      dailySalesReportObj.dailyTotalInvitedValue =
+        dailySalesReportObj.dailyInvitedGoods.reduce(
+          (acc, curr) => acc + (curr.totalPrice ?? 0),
+          0,
+        );
+
+      let comissionPercentage = 0;
+      const businessIdPayload = dailyReportWithUsers.businessId;
+      const subscription =
+        typeof businessIdPayload === "object" &&
+        businessIdPayload !== null &&
+        "subscription" in businessIdPayload
+          ? (businessIdPayload as { subscription?: string }).subscription
+          : undefined;
+
+      switch (subscription) {
+        case "Free":
+          comissionPercentage = 0;
+          break;
+        case "Basic":
+          comissionPercentage = 0.05;
+          break;
+        case "Premium":
+          comissionPercentage = 0.08;
+          break;
+        case "Enterprise":
+          comissionPercentage = 0.1;
+          break;
+        default:
+          comissionPercentage = 0;
+          break;
+      }
+
+      dailySalesReportObj.dailyPosSystemCommission =
+        dailySalesReportObj.dailyTotalSalesBeforeAdjustments *
+        comissionPercentage;
+
+      if (isAggregateMismatchCheckEnabled()) {
+        recordAggregateMismatchCheck(
+          hasAggregateMismatch(dailySalesReport, dailySalesReportObj),
+          {
+            route: "calculateBusinessReport",
+            dailySalesReportId,
+            businessId: String(businessId),
+          },
+        );
+      }
+
+      await DailySalesReport.updateOne(
+        { _id: dailySalesReportId },
+        dailySalesReportObj,
+      );
+
+      const businessIdForMonthly =
+        typeof dailyReportWithUsers.businessId === "object" &&
+        dailyReportWithUsers.businessId !== null
+          ? ((dailyReportWithUsers.businessId as { _id?: Types.ObjectId })
+              ._id ?? (dailyReportWithUsers.businessId as Types.ObjectId))
+          : new Types.ObjectId(String(dailyReportWithUsers.businessId));
+
+      const weeklyReportStartDay =
+        typeof dailyReportWithUsers.businessId === "object" &&
+        dailyReportWithUsers.businessId !== null &&
+        "reportingConfig" in dailyReportWithUsers.businessId
+          ? (dailyReportWithUsers.businessId as {
+              reportingConfig?: { weeklyReportStartDay?: number };
+            }).reportingConfig?.weeklyReportStartDay ?? 1
+          : 1;
+
+      const rollupRefresh = await refreshWeeklyAndMonthlyReports(
+        businessIdForMonthly,
+        new Date(),
+        weeklyReportStartDay,
+        "calculateBusinessReport",
+      );
+
+      return reply.code(200).send({
+        message: "Daily sales report updated",
+        rollupRefresh,
+      });
     },
   );
 
   // PATCH /dailySalesReports/:dailySalesReportId/calculateUsersReport - reconciliation-only per-user rebuild
-  app.patch(
+  app.patch<{ Params: DailySalesReportIdParams; Body: CalculateUsersReportBody }>(
     "/:dailySalesReportId/calculateUsersReport",
-    { preValidation: [createAuthHook(app)] },
+    {
+      preValidation: [createAuthHook(app)],
+      schema: {
+        params: dailySalesReportIdParamsSchema,
+        body: calculateUsersReportBodySchema,
+      },
+    },
     async (req, reply) => {
-    try {
-      const managerContext = await resolveManagerBusinessId(req);
-      if ("errorCode" in managerContext) {
-        return reply
-          .code(managerContext.errorCode)
-          .send({ message: managerContext.message });
-      }
-
-      const params = req.params as { dailySalesReportId?: string };
-      const dailySalesReportId = params.dailySalesReportId;
-
-      const { userIds } = req.body as { userIds?: string[] };
-
-      if (!Array.isArray(userIds) || userIds.length === 0) {
-        return reply.code(400).send({
-          message: "User IDs must be a non-empty array!",
-        });
-      }
-
-      if (
-        !dailySalesReportId ||
-        isObjectIdValid([dailySalesReportId, ...userIds]) !== true
-      ) {
-        return reply.code(400).send({
-          message: "Invalid dailySalesReport or user ID!",
-        });
-      }
+      const managerBusinessId = await resolveManagerBusinessId(req);
+      const { dailySalesReportId } = req.params;
+      const { userIds } = req.body;
 
       const dailySalesReport = (await DailySalesReport.findById(
         dailySalesReportId,
@@ -699,9 +625,7 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
         .lean()) as Pick<IDailySalesReport, "dailyReferenceNumber"> | null;
 
       if (!dailySalesReport) {
-        return reply
-          .code(404)
-          .send({ message: "Daily sales report not found!" });
+        throw notFound("Daily sales report not found!");
       }
       const reportBusinessId =
         typeof (dailySalesReport as IDailySalesReport).businessId === "object" &&
@@ -711,8 +635,8 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
               _id: Types.ObjectId;
             })._id
           : ((dailySalesReport as IDailySalesReport).businessId as Types.ObjectId);
-      if (String(reportBusinessId) !== String(managerContext.businessId)) {
-        return reply.code(403).send({ message: "Forbidden" });
+      if (String(reportBusinessId) !== String(managerBusinessId)) {
+        throw forbidden("Forbidden");
       }
 
       const result = await reconcileEmployeesDailySalesReport(
@@ -720,6 +644,8 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
         dailySalesReport.dailyReferenceNumber,
       );
 
+      // 207 Multi-Status is a success-class (2xx) response reporting partial
+      // success, so it carries the per-user results rather than problem details.
       if (result.errors && result.errors.length > 0) {
         return reply.code(207).send({
           message: "Some errors occurred while updating employees!",
@@ -728,333 +654,300 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
       }
 
       return reply.code(200).send(result.updatedEmployees);
-    } catch (error) {
-      return reply.code(500).send({
-        message: "Get daily sales report by employee id failed!",
-        error: error instanceof Error ? error.message : error,
-      });
-    }
     },
   );
 
   // PATCH /dailySalesReports/:dailySalesReportId/close - close report
-  app.patch(
+  app.patch<{ Params: DailySalesReportIdParams }>(
     "/:dailySalesReportId/close",
-    { preValidation: [createAuthHook(app)] },
+    {
+      preValidation: [createAuthHook(app)],
+      schema: { params: dailySalesReportIdParamsSchema },
+    },
     async (req, reply) => {
-      try {
-        const managerContext = await resolveManagerBusinessId(req);
-        if ("errorCode" in managerContext) {
-          return reply
-            .code(managerContext.errorCode)
-            .send({ message: managerContext.message });
-        }
+      const managerBusinessId = await resolveManagerBusinessId(req);
+      const { dailySalesReportId } = req.params;
 
-        const params = req.params as { dailySalesReportId?: string };
-        const dailySalesReportId = params.dailySalesReportId;
+      const dailyReport = (await DailySalesReport.findById(dailySalesReportId)
+        .select(
+          "dailyReferenceNumber businessId dailyTotalSalesBeforeAdjustments dailyNetPaidAmount dailyCostOfGoodsSold dailyTipsReceived dailyTotalVoidValue dailyTotalInvitedValue",
+        )
+        .lean()) as IDailySalesReport | null;
 
-        if (
-          !dailySalesReportId ||
-          isObjectIdValid([dailySalesReportId]) !== true
-        ) {
-          return reply
-            .code(400)
-            .send({ message: "Invalid dailySalesReport ID!" });
-        }
-
-        const dailyReport = (await DailySalesReport.findById(dailySalesReportId)
-          .select(
-            "dailyReferenceNumber businessId dailyTotalSalesBeforeAdjustments dailyNetPaidAmount dailyCostOfGoodsSold dailyTipsReceived dailyTotalVoidValue dailyTotalInvitedValue",
-          )
-          .lean()) as IDailySalesReport | null;
-
-        if (!dailyReport) {
-          return reply
-            .code(404)
-            .send({ message: "Daily sales report not found!" });
-        }
-
-        const businessId =
-          typeof dailyReport.businessId === "object" &&
-          dailyReport.businessId !== null &&
-          "_id" in dailyReport.businessId
-            ? (dailyReport.businessId as { _id: Types.ObjectId })._id
-            : (dailyReport.businessId as Types.ObjectId);
-        if (String(businessId) !== String(managerContext.businessId)) {
-          return reply.code(403).send({
-            message: "You are not allowed to close the daily sales report!",
-          });
-        }
-
-        const openOrdersExist = await Order.exists({
-          businessId: managerContext.businessId,
-          billingStatus: "Open",
-          dailyReferenceNumber: dailyReport.dailyReferenceNumber,
-        });
-
-        if (openOrdersExist) {
-          return reply.code(400).send({
-            message:
-              "You can't close the daily sales because there are open orders!",
-          });
-        }
-
-        const dailyReportWithUsers = (await DailySalesReport.findOne({
-          _id: dailySalesReportId,
-        })
-          .select(
-            "_id dailyReferenceNumber employeesDailySalesReport deliveryDailySalesReport selfOrderingSalesReport businessId",
-          )
-          .populate({
-            path: "businessId",
-            select: "subscription reportingConfig.weeklyReportStartDay",
-            model: Business,
-          })
-          .lean()) as {
-          _id: Types.ObjectId;
-          dailyReferenceNumber: number;
-          businessId:
-            | {
-                _id: Types.ObjectId;
-                subscription?: string;
-                reportingConfig?: { weeklyReportStartDay?: number };
-              }
-            | Types.ObjectId;
-          employeesDailySalesReport?: IActorDailySalesReport[];
-          deliveryDailySalesReport?: IActorDailySalesReport;
-          selfOrderingSalesReport?: IActorDailySalesReport[];
-        } | null;
-
-        if (!dailyReportWithUsers) {
-          return reply.code(404).send({ message: "Daily report not found!" });
-        }
-
-        const businessGoodsReport = {
-          goodsSold: [] as IGoodsReduced[],
-          goodsVoid: [] as IGoodsReduced[],
-          goodsInvited: [] as IGoodsReduced[],
-        };
-
-        const dailySalesReportObj = {
-          businessPaymentMethods: [] as IPaymentMethod[],
-          dailyTotalSalesBeforeAdjustments: 0,
-          dailyNetPaidAmount: 0,
-          dailyTipsReceived: 0,
-          dailyCostOfGoodsSold: 0,
-          dailyProfit: 0,
-          dailyCustomersServed: 0,
-          dailyAverageCustomerExpenditure: 0,
-          dailySoldGoods: [] as IGoodsReduced[],
-          dailyVoidedGoods: [] as IGoodsReduced[],
-          dailyInvitedGoods: [] as IGoodsReduced[],
-          dailyTotalVoidValue: 0,
-          dailyTotalInvitedValue: 0,
-          dailyPosSystemCommission: 0,
-        };
-
-        const mergeGoods = (array: IGoodsReduced[], businessGood: IGoodsReduced) => {
-          const existingGood = array.find(
-            (item) =>
-              (item.businessGoodId as Types.ObjectId)?.toString() ===
-              (businessGood.businessGoodId as Types.ObjectId)?.toString(),
-          );
-
-          if (existingGood) {
-            existingGood.quantity += businessGood.quantity ?? 1;
-            existingGood.totalPrice =
-              (existingGood.totalPrice ?? 0) + (businessGood.totalPrice ?? 0);
-            existingGood.totalCostPrice =
-              (existingGood.totalCostPrice ?? 0) +
-              (businessGood.totalCostPrice ?? 0);
-            return;
-          }
-
-          array.push({
-            businessGoodId: businessGood.businessGoodId,
-            quantity: businessGood.quantity ?? 1,
-            totalPrice: businessGood.totalPrice ?? 0,
-            totalCostPrice: businessGood.totalCostPrice ?? 0,
-          });
-        };
-
-        const aggregateActorRow = (row: IActorDailySalesReport | undefined) => {
-          if (!row) return;
-
-          if (row.employeePaymentMethods) {
-            row.employeePaymentMethods.forEach((payment: IPaymentMethod) => {
-              const existingPayment = dailySalesReportObj.businessPaymentMethods.find(
-                (p: IPaymentMethod) =>
-                  p.paymentMethodType === payment.paymentMethodType &&
-                  p.methodBranch === payment.methodBranch,
-              );
-
-              if (existingPayment) {
-                existingPayment.methodSalesTotal += payment.methodSalesTotal ?? 0;
-              } else {
-                dailySalesReportObj.businessPaymentMethods.push({
-                  paymentMethodType: payment.paymentMethodType,
-                  methodBranch: payment.methodBranch,
-                  methodSalesTotal: payment.methodSalesTotal ?? 0,
-                });
-              }
-            });
-          }
-
-          dailySalesReportObj.dailyTotalSalesBeforeAdjustments +=
-            row.totalSalesBeforeAdjustments ?? 0;
-          dailySalesReportObj.dailyNetPaidAmount += row.totalNetPaidAmount ?? 0;
-          dailySalesReportObj.dailyTipsReceived += row.totalTipsReceived ?? 0;
-          dailySalesReportObj.dailyCostOfGoodsSold += row.totalCostOfGoodsSold ?? 0;
-          dailySalesReportObj.dailyCustomersServed += row.totalCustomersServed ?? 0;
-
-          row.soldGoods?.forEach((businessGood) =>
-            mergeGoods(businessGoodsReport.goodsSold, businessGood),
-          );
-          row.voidedGoods?.forEach((businessGood) =>
-            mergeGoods(businessGoodsReport.goodsVoid, businessGood),
-          );
-          row.invitedGoods?.forEach((businessGood) =>
-            mergeGoods(businessGoodsReport.goodsInvited, businessGood),
-          );
-        };
-
-        (dailyReportWithUsers.employeesDailySalesReport ?? []).forEach((row) =>
-          aggregateActorRow(row),
-        );
-        if (dailyReportWithUsers.deliveryDailySalesReport) {
-          aggregateActorRow(dailyReportWithUsers.deliveryDailySalesReport);
-        }
-        (dailyReportWithUsers.selfOrderingSalesReport ?? []).forEach((row) =>
-          aggregateActorRow(row),
-        );
-
-        dailySalesReportObj.dailyProfit =
-          dailySalesReportObj.dailyNetPaidAmount -
-          dailySalesReportObj.dailyCostOfGoodsSold;
-        dailySalesReportObj.dailyAverageCustomerExpenditure =
-          dailySalesReportObj.dailyCustomersServed > 0
-            ? dailySalesReportObj.dailyNetPaidAmount /
-              dailySalesReportObj.dailyCustomersServed
-            : 0;
-        dailySalesReportObj.dailySoldGoods = businessGoodsReport.goodsSold;
-        dailySalesReportObj.dailyVoidedGoods = businessGoodsReport.goodsVoid;
-        dailySalesReportObj.dailyInvitedGoods = businessGoodsReport.goodsInvited;
-        dailySalesReportObj.dailyTotalVoidValue =
-          dailySalesReportObj.dailyVoidedGoods.reduce(
-            (acc, curr) => acc + (curr.totalPrice ?? 0),
-            0,
-          );
-        dailySalesReportObj.dailyTotalInvitedValue =
-          dailySalesReportObj.dailyInvitedGoods.reduce(
-            (acc, curr) => acc + (curr.totalPrice ?? 0),
-            0,
-          );
-
-        let comissionPercentage = 0;
-        const businessIdPayload = dailyReportWithUsers.businessId;
-        const subscription =
-          typeof businessIdPayload === "object" &&
-          businessIdPayload !== null &&
-          "subscription" in businessIdPayload
-            ? (businessIdPayload as { subscription?: string }).subscription
-            : undefined;
-        switch (subscription) {
-          case "Free":
-            comissionPercentage = 0;
-            break;
-          case "Basic":
-            comissionPercentage = 0.05;
-            break;
-          case "Premium":
-            comissionPercentage = 0.08;
-            break;
-          case "Enterprise":
-            comissionPercentage = 0.1;
-            break;
-          default:
-            comissionPercentage = 0;
-            break;
-        }
-        dailySalesReportObj.dailyPosSystemCommission =
-          dailySalesReportObj.dailyTotalSalesBeforeAdjustments *
-          comissionPercentage;
-
-        if (isAggregateMismatchCheckEnabled()) {
-          recordAggregateMismatchCheck(
-            hasAggregateMismatch(
-              {
-                dailyTotalSalesBeforeAdjustments:
-                  dailyReport.dailyTotalSalesBeforeAdjustments,
-                dailyNetPaidAmount: dailyReport.dailyNetPaidAmount,
-                dailyCostOfGoodsSold: dailyReport.dailyCostOfGoodsSold,
-                dailyTipsReceived: dailyReport.dailyTipsReceived,
-                dailyTotalVoidValue: dailyReport.dailyTotalVoidValue,
-                dailyTotalInvitedValue: dailyReport.dailyTotalInvitedValue,
-              },
-              dailySalesReportObj,
-            ),
-            {
-              route: "closeDailyReport",
-              dailySalesReportId,
-              businessId: String(managerContext.businessId),
-            },
-          );
-        }
-
-        const updatedReport = await DailySalesReport.updateOne(
-          { _id: dailySalesReportId },
-          { $set: { ...dailySalesReportObj, isDailyReportOpen: false } },
-        );
-
-        if (updatedReport.matchedCount === 0) {
-          return reply.code(500).send({
-            message: "Failed to close the daily sales report!",
-          });
-        }
-
-        const businessIdForRollups =
-          typeof dailyReportWithUsers.businessId === "object" &&
-          dailyReportWithUsers.businessId !== null
-            ? ((dailyReportWithUsers.businessId as { _id?: Types.ObjectId })
-                ._id ?? (dailyReportWithUsers.businessId as Types.ObjectId))
-            : new Types.ObjectId(String(dailyReportWithUsers.businessId));
-
-        const weeklyReportStartDay =
-          typeof dailyReportWithUsers.businessId === "object" &&
-          dailyReportWithUsers.businessId !== null &&
-          "reportingConfig" in dailyReportWithUsers.businessId
-            ? (dailyReportWithUsers.businessId as {
-                reportingConfig?: { weeklyReportStartDay?: number };
-              }).reportingConfig?.weeklyReportStartDay ?? 1
-            : 1;
-
-        if (updatedReport.modifiedCount === 0) {
-          app.log.info(
-            {
-              dailySalesReportId,
-              businessId: String(businessIdForRollups),
-            },
-            "daily sales report close is idempotent no-op (already closed)",
-          );
-        }
-
-        const rollupRefresh = await refreshWeeklyAndMonthlyReports(
-          businessIdForRollups,
-          new Date(),
-          weeklyReportStartDay,
-          "closeDailyReport",
-        );
-
-        return reply.code(200).send({
-          message: "Daily sales report closed successfully",
-          rollupRefresh,
-        });
-      } catch (error) {
-        return reply.code(500).send({
-          message: "Failed to close daily sales report!",
-          error: error instanceof Error ? error.message : error,
-        });
+      if (!dailyReport) {
+        throw notFound("Daily sales report not found!");
       }
+
+      const businessId =
+        typeof dailyReport.businessId === "object" &&
+        dailyReport.businessId !== null &&
+        "_id" in dailyReport.businessId
+          ? (dailyReport.businessId as { _id: Types.ObjectId })._id
+          : (dailyReport.businessId as Types.ObjectId);
+      if (String(businessId) !== String(managerBusinessId)) {
+        throw forbidden("You are not allowed to close the daily sales report!");
+      }
+
+      const openOrdersExist = await Order.exists({
+        businessId: managerBusinessId,
+        billingStatus: "Open",
+        dailyReferenceNumber: dailyReport.dailyReferenceNumber,
+      });
+
+      if (openOrdersExist) {
+        throw badRequest(
+          "You can't close the daily sales because there are open orders!",
+        );
+      }
+
+      const dailyReportWithUsers = (await DailySalesReport.findOne({
+        _id: dailySalesReportId,
+      })
+        .select(
+          "_id dailyReferenceNumber employeesDailySalesReport deliveryDailySalesReport selfOrderingSalesReport businessId",
+        )
+        .populate({
+          path: "businessId",
+          select: "subscription reportingConfig.weeklyReportStartDay",
+          model: Business,
+        })
+        .lean()) as {
+        _id: Types.ObjectId;
+        dailyReferenceNumber: number;
+        businessId:
+          | {
+              _id: Types.ObjectId;
+              subscription?: string;
+              reportingConfig?: { weeklyReportStartDay?: number };
+            }
+          | Types.ObjectId;
+        employeesDailySalesReport?: IActorDailySalesReport[];
+        deliveryDailySalesReport?: IActorDailySalesReport;
+        selfOrderingSalesReport?: IActorDailySalesReport[];
+      } | null;
+
+      if (!dailyReportWithUsers) {
+        throw notFound("Daily report not found!");
+      }
+
+      const businessGoodsReport = {
+        goodsSold: [] as IGoodsReduced[],
+        goodsVoid: [] as IGoodsReduced[],
+        goodsInvited: [] as IGoodsReduced[],
+      };
+
+      const dailySalesReportObj = {
+        businessPaymentMethods: [] as IPaymentMethod[],
+        dailyTotalSalesBeforeAdjustments: 0,
+        dailyNetPaidAmount: 0,
+        dailyTipsReceived: 0,
+        dailyCostOfGoodsSold: 0,
+        dailyProfit: 0,
+        dailyCustomersServed: 0,
+        dailyAverageCustomerExpenditure: 0,
+        dailySoldGoods: [] as IGoodsReduced[],
+        dailyVoidedGoods: [] as IGoodsReduced[],
+        dailyInvitedGoods: [] as IGoodsReduced[],
+        dailyTotalVoidValue: 0,
+        dailyTotalInvitedValue: 0,
+        dailyPosSystemCommission: 0,
+      };
+
+      const mergeGoods = (array: IGoodsReduced[], businessGood: IGoodsReduced) => {
+        const existingGood = array.find(
+          (item) =>
+            (item.businessGoodId as Types.ObjectId)?.toString() ===
+            (businessGood.businessGoodId as Types.ObjectId)?.toString(),
+        );
+
+        if (existingGood) {
+          existingGood.quantity += businessGood.quantity ?? 1;
+          existingGood.totalPrice =
+            (existingGood.totalPrice ?? 0) + (businessGood.totalPrice ?? 0);
+          existingGood.totalCostPrice =
+            (existingGood.totalCostPrice ?? 0) +
+            (businessGood.totalCostPrice ?? 0);
+          return;
+        }
+
+        array.push({
+          businessGoodId: businessGood.businessGoodId,
+          quantity: businessGood.quantity ?? 1,
+          totalPrice: businessGood.totalPrice ?? 0,
+          totalCostPrice: businessGood.totalCostPrice ?? 0,
+        });
+      };
+
+      const aggregateActorRow = (row: IActorDailySalesReport | undefined) => {
+        if (!row) return;
+
+        if (row.employeePaymentMethods) {
+          row.employeePaymentMethods.forEach((payment: IPaymentMethod) => {
+            const existingPayment = dailySalesReportObj.businessPaymentMethods.find(
+              (p: IPaymentMethod) =>
+                p.paymentMethodType === payment.paymentMethodType &&
+                p.methodBranch === payment.methodBranch,
+            );
+
+            if (existingPayment) {
+              existingPayment.methodSalesTotal += payment.methodSalesTotal ?? 0;
+            } else {
+              dailySalesReportObj.businessPaymentMethods.push({
+                paymentMethodType: payment.paymentMethodType,
+                methodBranch: payment.methodBranch,
+                methodSalesTotal: payment.methodSalesTotal ?? 0,
+              });
+            }
+          });
+        }
+
+        dailySalesReportObj.dailyTotalSalesBeforeAdjustments +=
+          row.totalSalesBeforeAdjustments ?? 0;
+        dailySalesReportObj.dailyNetPaidAmount += row.totalNetPaidAmount ?? 0;
+        dailySalesReportObj.dailyTipsReceived += row.totalTipsReceived ?? 0;
+        dailySalesReportObj.dailyCostOfGoodsSold += row.totalCostOfGoodsSold ?? 0;
+        dailySalesReportObj.dailyCustomersServed += row.totalCustomersServed ?? 0;
+
+        row.soldGoods?.forEach((businessGood) =>
+          mergeGoods(businessGoodsReport.goodsSold, businessGood),
+        );
+        row.voidedGoods?.forEach((businessGood) =>
+          mergeGoods(businessGoodsReport.goodsVoid, businessGood),
+        );
+        row.invitedGoods?.forEach((businessGood) =>
+          mergeGoods(businessGoodsReport.goodsInvited, businessGood),
+        );
+      };
+
+      (dailyReportWithUsers.employeesDailySalesReport ?? []).forEach((row) =>
+        aggregateActorRow(row),
+      );
+      if (dailyReportWithUsers.deliveryDailySalesReport) {
+        aggregateActorRow(dailyReportWithUsers.deliveryDailySalesReport);
+      }
+      (dailyReportWithUsers.selfOrderingSalesReport ?? []).forEach((row) =>
+        aggregateActorRow(row),
+      );
+
+      dailySalesReportObj.dailyProfit =
+        dailySalesReportObj.dailyNetPaidAmount -
+        dailySalesReportObj.dailyCostOfGoodsSold;
+      dailySalesReportObj.dailyAverageCustomerExpenditure =
+        dailySalesReportObj.dailyCustomersServed > 0
+          ? dailySalesReportObj.dailyNetPaidAmount /
+            dailySalesReportObj.dailyCustomersServed
+          : 0;
+      dailySalesReportObj.dailySoldGoods = businessGoodsReport.goodsSold;
+      dailySalesReportObj.dailyVoidedGoods = businessGoodsReport.goodsVoid;
+      dailySalesReportObj.dailyInvitedGoods = businessGoodsReport.goodsInvited;
+      dailySalesReportObj.dailyTotalVoidValue =
+        dailySalesReportObj.dailyVoidedGoods.reduce(
+          (acc, curr) => acc + (curr.totalPrice ?? 0),
+          0,
+        );
+      dailySalesReportObj.dailyTotalInvitedValue =
+        dailySalesReportObj.dailyInvitedGoods.reduce(
+          (acc, curr) => acc + (curr.totalPrice ?? 0),
+          0,
+        );
+
+      let comissionPercentage = 0;
+      const businessIdPayload = dailyReportWithUsers.businessId;
+      const subscription =
+        typeof businessIdPayload === "object" &&
+        businessIdPayload !== null &&
+        "subscription" in businessIdPayload
+          ? (businessIdPayload as { subscription?: string }).subscription
+          : undefined;
+      switch (subscription) {
+        case "Free":
+          comissionPercentage = 0;
+          break;
+        case "Basic":
+          comissionPercentage = 0.05;
+          break;
+        case "Premium":
+          comissionPercentage = 0.08;
+          break;
+        case "Enterprise":
+          comissionPercentage = 0.1;
+          break;
+        default:
+          comissionPercentage = 0;
+          break;
+      }
+      dailySalesReportObj.dailyPosSystemCommission =
+        dailySalesReportObj.dailyTotalSalesBeforeAdjustments *
+        comissionPercentage;
+
+      if (isAggregateMismatchCheckEnabled()) {
+        recordAggregateMismatchCheck(
+          hasAggregateMismatch(
+            {
+              dailyTotalSalesBeforeAdjustments:
+                dailyReport.dailyTotalSalesBeforeAdjustments,
+              dailyNetPaidAmount: dailyReport.dailyNetPaidAmount,
+              dailyCostOfGoodsSold: dailyReport.dailyCostOfGoodsSold,
+              dailyTipsReceived: dailyReport.dailyTipsReceived,
+              dailyTotalVoidValue: dailyReport.dailyTotalVoidValue,
+              dailyTotalInvitedValue: dailyReport.dailyTotalInvitedValue,
+            },
+            dailySalesReportObj,
+          ),
+          {
+            route: "closeDailyReport",
+            dailySalesReportId,
+            businessId: String(managerBusinessId),
+          },
+        );
+      }
+
+      const updatedReport = await DailySalesReport.updateOne(
+        { _id: dailySalesReportId },
+        { $set: { ...dailySalesReportObj, isDailyReportOpen: false } },
+      );
+
+      if (updatedReport.matchedCount === 0) {
+        throw internal("Failed to close the daily sales report!");
+      }
+
+      const businessIdForRollups =
+        typeof dailyReportWithUsers.businessId === "object" &&
+        dailyReportWithUsers.businessId !== null
+          ? ((dailyReportWithUsers.businessId as { _id?: Types.ObjectId })
+              ._id ?? (dailyReportWithUsers.businessId as Types.ObjectId))
+          : new Types.ObjectId(String(dailyReportWithUsers.businessId));
+
+      const weeklyReportStartDay =
+        typeof dailyReportWithUsers.businessId === "object" &&
+        dailyReportWithUsers.businessId !== null &&
+        "reportingConfig" in dailyReportWithUsers.businessId
+          ? (dailyReportWithUsers.businessId as {
+              reportingConfig?: { weeklyReportStartDay?: number };
+            }).reportingConfig?.weeklyReportStartDay ?? 1
+          : 1;
+
+      if (updatedReport.modifiedCount === 0) {
+        app.log.info(
+          {
+            dailySalesReportId,
+            businessId: String(businessIdForRollups),
+          },
+          "daily sales report close is idempotent no-op (already closed)",
+        );
+      }
+
+      const rollupRefresh = await refreshWeeklyAndMonthlyReports(
+        businessIdForRollups,
+        new Date(),
+        weeklyReportStartDay,
+        "closeDailyReport",
+      );
+
+      return reply.code(200).send({
+        message: "Daily sales report closed successfully",
+        rollupRefresh,
+      });
     },
   );
 
@@ -1062,169 +955,108 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
   // Rebuilds actor rows + top-level totals from source orders.
   // This endpoint is intentionally separate from normal calculate flow.
   // Uses shared reconciliation core (not runtime incremental path).
-  app.patch(
+  app.patch<{ Params: DailySalesReportIdParams }>(
     "/:dailySalesReportId/reconcile",
-    { preValidation: [createAuthHook(app)] },
+    {
+      preValidation: [createAuthHook(app)],
+      schema: { params: dailySalesReportIdParamsSchema },
+    },
     async (req, reply) => {
-      try {
-        const managerContext = await resolveManagerBusinessId(req);
-        if ("errorCode" in managerContext) {
-          return reply
-            .code(managerContext.errorCode)
-            .send({ message: managerContext.message });
-        }
+      const managerBusinessId = await resolveManagerBusinessId(req);
+      const { dailySalesReportId } = req.params;
 
-        const params = req.params as { dailySalesReportId?: string };
-        const dailySalesReportId = params.dailySalesReportId;
-        if (
-          !dailySalesReportId ||
-          isObjectIdValid([dailySalesReportId]) !== true
-        ) {
-          return reply
-            .code(400)
-            .send({ message: "Invalid dailySalesReport ID!" });
-        }
+      const report = (await DailySalesReport.findById(dailySalesReportId)
+        .select("businessId dailyReferenceNumber")
+        .lean()) as
+        | {
+            businessId: Types.ObjectId | { _id: Types.ObjectId };
+            dailyReferenceNumber: number;
+          }
+        | null;
 
-        const report = (await DailySalesReport.findById(dailySalesReportId)
-          .select("businessId dailyReferenceNumber")
-          .lean()) as
-          | {
-              businessId: Types.ObjectId | { _id: Types.ObjectId };
-              dailyReferenceNumber: number;
-            }
-          | null;
-
-        if (!report) {
-          return reply.code(404).send({ message: "Daily report not found!" });
-        }
-
-        const reportBusinessId =
-          typeof report.businessId === "object" &&
-          report.businessId !== null &&
-          "_id" in report.businessId
-            ? (report.businessId as { _id: Types.ObjectId })._id
-            : (report.businessId as Types.ObjectId);
-
-        if (String(reportBusinessId) !== String(managerContext.businessId)) {
-          return reply.code(403).send({ message: "Forbidden" });
-        }
-
-        const reconciledPayload = await buildReconciledDailyReportPayload(
-          report.dailyReferenceNumber,
-          reportBusinessId,
-        );
-
-        const result = await DailySalesReport.updateOne(
-          { _id: dailySalesReportId },
-          { $set: reconciledPayload },
-        );
-
-        if (result.modifiedCount === 0) {
-          return reply.code(500).send({
-            message: "Reconciliation did not modify the report.",
-          });
-        }
-
-        return reply.code(200).send({
-          message:
-            "Daily report reconciled from source orders successfully.",
-        });
-      } catch (error) {
-        return reply.code(500).send({
-          message: "Failed to reconcile daily sales report!",
-          error: error instanceof Error ? error.message : error,
-        });
+      if (!report) {
+        throw notFound("Daily report not found!");
       }
+
+      const reportBusinessId =
+        typeof report.businessId === "object" &&
+        report.businessId !== null &&
+        "_id" in report.businessId
+          ? (report.businessId as { _id: Types.ObjectId })._id
+          : (report.businessId as Types.ObjectId);
+
+      if (String(reportBusinessId) !== String(managerBusinessId)) {
+        throw forbidden("Forbidden");
+      }
+
+      const reconciledPayload = await buildReconciledDailyReportPayload(
+        report.dailyReferenceNumber,
+        reportBusinessId,
+      );
+
+      const result = await DailySalesReport.updateOne(
+        { _id: dailySalesReportId },
+        { $set: reconciledPayload },
+      );
+
+      if (result.modifiedCount === 0) {
+        throw internal("Reconciliation did not modify the report.");
+      }
+
+      return reply.code(200).send({
+        message: "Daily report reconciled from source orders successfully.",
+      });
     },
   );
 
   // GET /dailySalesReports/business/:businessId - get by business
-  app.get(
+  app.get<{
+    Params: DailySalesReportsBusinessParams;
+    Querystring: DailySalesReportsBusinessQuery;
+  }>(
     "/business/:businessId",
-    { preValidation: [createAuthHook(app)] },
+    {
+      preValidation: [createAuthHook(app)],
+      schema: {
+        params: dailySalesReportsBusinessParamsSchema,
+        querystring: dailySalesReportsBusinessQuerySchema,
+      },
+    },
     async (req, reply) => {
-    try {
-      const managerContext = await resolveManagerBusinessId(req);
-      if ("errorCode" in managerContext) {
-        return reply
-          .code(managerContext.errorCode)
-          .send({ message: managerContext.message });
+      const managerBusinessId = await resolveManagerBusinessId(req);
+      const { businessId } = req.params;
+      if (String(managerBusinessId) !== String(businessId)) {
+        throw forbidden("Forbidden");
       }
 
-      const params = req.params as { businessId?: string };
-      const businessId = params.businessId;
-
-      if (!businessId || isObjectIdValid([businessId]) !== true) {
-        return reply.code(400).send({ message: "Invalid business ID!" });
-      }
-      if (String(managerContext.businessId) !== String(businessId)) {
-        return reply.code(403).send({ message: "Forbidden" });
-      }
-
-      const query = req.query as { startDate?: string; endDate?: string };
-      const startDate = query.startDate;
-      const endDate = query.endDate;
-      const queryWithOperationalDay = req.query as {
-        startDate?: string;
-        endDate?: string;
-        dailyReferenceNumber?: string;
-        dailyReferenceNumberFrom?: string;
-        dailyReferenceNumberTo?: string;
-      };
-      const dailyReferenceNumberRaw =
-        queryWithOperationalDay.dailyReferenceNumber;
-      const dailyReferenceNumberFromRaw =
-        queryWithOperationalDay.dailyReferenceNumberFrom;
-      const dailyReferenceNumberToRaw =
-        queryWithOperationalDay.dailyReferenceNumberTo;
-
-      const startOfDay = startDate
-        ? new Date(startDate.split("T")[0] + "T00:00:00.000Z")
-        : null;
-
-      const endOfDay = endDate
-        ? new Date(endDate.split("T")[0] + "T23:59:59.999Z")
-        : null;
+      const {
+        startDate,
+        endDate,
+        dailyReferenceNumber,
+        dailyReferenceNumberFrom,
+        dailyReferenceNumberTo,
+      } = req.query;
 
       const filter: {
         businessId: Types.ObjectId;
         dailyReferenceNumber?: number | { $gte?: number; $lte?: number };
-        createdAt?: { $gte?: Date | null; $lte?: Date | null };
+        createdAt?: { $gte?: Date; $lte?: Date };
       } = { businessId: new Types.ObjectId(businessId) };
 
       // Operational-day filtering for business-facing reporting.
-      if (dailyReferenceNumberRaw !== undefined) {
-        const dailyReferenceNumber = Number(dailyReferenceNumberRaw);
-        if (!Number.isInteger(dailyReferenceNumber)) {
-          return reply.code(400).send({
-            message: "dailyReferenceNumber must be an integer!",
-          });
-        }
+      if (dailyReferenceNumber !== undefined) {
         filter.dailyReferenceNumber = dailyReferenceNumber;
       } else if (
-        dailyReferenceNumberFromRaw !== undefined ||
-        dailyReferenceNumberToRaw !== undefined
+        dailyReferenceNumberFrom !== undefined ||
+        dailyReferenceNumberTo !== undefined
       ) {
         const range: { $gte?: number; $lte?: number } = {};
 
-        if (dailyReferenceNumberFromRaw !== undefined) {
-          const from = Number(dailyReferenceNumberFromRaw);
-          if (!Number.isInteger(from)) {
-            return reply.code(400).send({
-              message: "dailyReferenceNumberFrom must be an integer!",
-            });
-          }
-          range.$gte = from;
+        if (dailyReferenceNumberFrom !== undefined) {
+          range.$gte = dailyReferenceNumberFrom;
         }
-
-        if (dailyReferenceNumberToRaw !== undefined) {
-          const to = Number(dailyReferenceNumberToRaw);
-          if (!Number.isInteger(to)) {
-            return reply.code(400).send({
-              message: "dailyReferenceNumberTo must be an integer!",
-            });
-          }
-          range.$lte = to;
+        if (dailyReferenceNumberTo !== undefined) {
+          range.$lte = dailyReferenceNumberTo;
         }
 
         if (
@@ -1232,10 +1064,9 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
           range.$lte !== undefined &&
           range.$gte > range.$lte
         ) {
-          return reply.code(400).send({
-            message:
-              "Invalid dailyReferenceNumber range, from must be <= to!",
-          });
+          throw badRequest(
+            "Invalid dailyReferenceNumber range, from must be <= to!",
+          );
         }
 
         filter.dailyReferenceNumber = range;
@@ -1243,13 +1074,13 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
 
       if (startDate && endDate) {
         if (startDate > endDate) {
-          return reply.code(400).send({
-            message: "Invalid date range, start date must be before end date!",
-          });
+          throw badRequest(
+            "Invalid date range, start date must be before end date!",
+          );
         }
         filter.createdAt = {
-          $gte: startOfDay,
-          $lte: endOfDay,
+          $gte: startDate,
+          $lte: endDate,
         };
       }
 
@@ -1272,15 +1103,9 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
         .lean();
 
       if (!dailySalesReports.length) {
-        return reply.code(404).send({ message: "No daily reports found!" });
+        throw notFound("No daily reports found!");
       }
       return reply.code(200).send(dailySalesReports);
-    } catch (error) {
-      return reply.code(500).send({
-        message: "Get daily sales report by business id failed!",
-        error: error instanceof Error ? error.message : error,
-      });
-    }
     },
   );
 };

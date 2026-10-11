@@ -13,6 +13,31 @@ import WeeklyBusinessReport from "../../src/models/weeklyBusinessReport.ts";
 import MonthlyBusinessReport from "../../src/models/monthlyBusinessReport.ts";
 import { buildReconciledDailyPayload } from "../../src/dailySalesReports/reconciliationCore.ts";
 
+/**
+ * Every error response is an RFC 9457 `application/problem+json` document
+ * produced by the global handler, so assertions are on the problem-details
+ * shape rather than a bare `{ message }`.
+ */
+const expectProblem = (
+  response: {
+    statusCode: number;
+    headers: Record<string, unknown>;
+    json: () => any;
+  },
+  status: number,
+  typeSlug: string,
+) => {
+  expect(response.statusCode).toBe(status);
+  expect(response.headers["content-type"]).toContain("application/problem+json");
+  const body = response.json();
+  expect(body.type).toBe(`https://restaurant-pos.app/errors/${typeSlug}`);
+  expect(body.status).toBe(status);
+  return body;
+};
+
+const fieldPaths = (body: { errors?: Array<{ path: string }> }): string[] =>
+  (body.errors ?? []).map((e) => e.path);
+
 describe("DailySalesReports routes - Task T2 integration", () => {
   const addr = {
     country: "USA",
@@ -226,7 +251,10 @@ describe("DailySalesReports routes - Task T2 integration", () => {
       url: `/api/v1/dailySalesReports/${report._id}/close`,
       headers: { authorization: token },
     });
-    expect(blocked.statusCode).toBe(400);
+    const blockedBody = expectProblem(blocked, 400, "bad-request");
+    expect(blockedBody.detail).toBe(
+      "You can't close the daily sales because there are open orders!",
+    );
 
     await Order.updateOne({ _id: order._id }, { $set: { billingStatus: "Paid" } });
 
@@ -646,21 +674,26 @@ describe("DailySalesReports routes - Task T2 integration", () => {
       url: `/api/v1/dailySalesReports/business/${business._id}?dailyReferenceNumber=abc`,
       headers: { authorization: token },
     });
-    expect(invalidExact.statusCode).toBe(400);
+    const invalidExactBody = expectProblem(invalidExact, 400, "validation");
+    expect(fieldPaths(invalidExactBody)).toContain("dailyReferenceNumber");
 
     const invalidFrom = await app.inject({
       method: "GET",
       url: `/api/v1/dailySalesReports/business/${business._id}?dailyReferenceNumberFrom=1.2`,
       headers: { authorization: token },
     });
-    expect(invalidFrom.statusCode).toBe(400);
+    const invalidFromBody = expectProblem(invalidFrom, 400, "validation");
+    expect(fieldPaths(invalidFromBody)).toContain("dailyReferenceNumberFrom");
 
     const invalidRange = await app.inject({
       method: "GET",
       url: `/api/v1/dailySalesReports/business/${business._id}?dailyReferenceNumberFrom=2000&dailyReferenceNumberTo=1000`,
       headers: { authorization: token },
     });
-    expect(invalidRange.statusCode).toBe(400);
+    const invalidRangeBody = expectProblem(invalidRange, 400, "bad-request");
+    expect(invalidRangeBody.detail).toBe(
+      "Invalid dailyReferenceNumber range, from must be <= to!",
+    );
   });
 
   it("R4: date + operational-day filters combine and tenant scope is enforced", async () => {
@@ -706,6 +739,147 @@ describe("DailySalesReports routes - Task T2 integration", () => {
       url: `/api/v1/dailySalesReports/business/${business._id}?dailyReferenceNumber=${sameDayRef}`,
       headers: { authorization: otherToken },
     });
-    expect(crossTenant.statusCode).toBe(403);
+    const crossTenantBody = expectProblem(crossTenant, 403, "forbidden");
+    expect(crossTenantBody.detail).toBe("Forbidden");
+  });
+
+  describe("DTO validation and problem-details errors", () => {
+    it("returns 400 validation for a malformed report id", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      const token = await createManagerToken(business._id as Types.ObjectId);
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/dailySalesReports/not-an-object-id",
+        headers: { authorization: token },
+      });
+
+      const body = expectProblem(response, 400, "validation");
+      expect(fieldPaths(body)).toContain("dailySalesReportId");
+    });
+
+    it("returns 400 validation for a malformed business id", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      const token = await createManagerToken(business._id as Types.ObjectId);
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/dailySalesReports/business/not-an-object-id",
+        headers: { authorization: token },
+      });
+
+      const body = expectProblem(response, 400, "validation");
+      expect(fieldPaths(body)).toContain("businessId");
+    });
+
+    it("returns 400 validation when calculateUsersReport userIds are missing", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      const token = await createManagerToken(business._id as Types.ObjectId);
+      const report = await createActorSeededReport(business._id as Types.ObjectId);
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/dailySalesReports/${report._id}/calculateUsersReport`,
+        headers: { authorization: token },
+        payload: {},
+      });
+
+      const body = expectProblem(response, 400, "validation");
+      expect(fieldPaths(body)).toContain("userIds");
+    });
+
+    it("returns 400 validation when calculateUsersReport userIds are empty or malformed", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      const token = await createManagerToken(business._id as Types.ObjectId);
+      const report = await createActorSeededReport(business._id as Types.ObjectId);
+
+      const empty = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/dailySalesReports/${report._id}/calculateUsersReport`,
+        headers: { authorization: token },
+        payload: { userIds: [] },
+      });
+      const emptyBody = expectProblem(empty, 400, "validation");
+      expect(fieldPaths(emptyBody)).toContain("userIds");
+
+      const malformed = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/dailySalesReports/${report._id}/calculateUsersReport`,
+        headers: { authorization: token },
+        payload: { userIds: ["not-an-object-id"] },
+      });
+      const malformedBody = expectProblem(malformed, 400, "validation");
+      expect(
+        fieldPaths(malformedBody).some((path) => path.startsWith("userIds")),
+      ).toBe(true);
+    });
+
+    it("rejects server-owned or unknown body fields", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      const token = await createManagerToken(business._id as Types.ObjectId);
+      const report = await createActorSeededReport(business._id as Types.ObjectId);
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/dailySalesReports/${report._id}/calculateUsersReport`,
+        headers: { authorization: token },
+        payload: {
+          userIds: [new Types.ObjectId().toString()],
+          dailyReferenceNumber: 1234,
+        },
+      });
+
+      expectProblem(response, 400, "validation");
+    });
+
+    it("returns 404 when a report does not exist", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      const token = await createManagerToken(business._id as Types.ObjectId);
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/dailySalesReports/${new Types.ObjectId()}`,
+        headers: { authorization: token },
+      });
+
+      const body = expectProblem(response, 404, "not-found");
+      expect(body.detail).toBe("Daily report not found!");
+    });
+
+    it("returns 403 when a report belongs to another business", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      const otherBusiness = await createTestBusiness();
+      const token = await createManagerToken(business._id as Types.ObjectId);
+      const otherReport = await createActorSeededReport(
+        otherBusiness._id as Types.ObjectId,
+      );
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/dailySalesReports/${otherReport._id}`,
+        headers: { authorization: token },
+      });
+
+      const body = expectProblem(response, 403, "forbidden");
+      expect(body.detail).toBe("Forbidden");
+    });
+
+    it("returns 401 without authentication", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/dailySalesReports",
+      });
+
+      expect(response.statusCode).toBe(401);
+    });
   });
 });
