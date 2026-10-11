@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
 import { compare, hash } from "bcrypt";
+import { z } from "zod";
 import dispatchEvent from "../../communications/dispatchEvent.ts";
 import Business from "../../models/business.ts";
 import BusinessGood from "../../models/businessGood.ts";
@@ -36,12 +37,15 @@ import {
 import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
 import deleteFilesCloudinary from "../../cloudinary/deleteFilesCloudinary.ts";
 import deleteFolderCloudinary from "../../cloudinary/deleteFolderCloudinary.ts";
+import { badRequest } from "../../errors/appError.ts";
 import objDefaultValidation from "../../../../packages/utils/objDefaultValidation.ts";
 import type { ObjDefaultValidationType } from "../../../../packages/utils/objDefaultValidation.ts";
 import {
   isSupportedTimezone,
+  jsonField,
   timezoneSchema,
 } from "../../../../packages/schemas/index.ts";
+import type { IReportingConfig } from "../../../../packages/interfaces/IBusiness.ts";
 import {
   resolveTimezoneFromAddress,
   type AddressLike,
@@ -80,6 +84,18 @@ function filterStringsByEnum(
   const allow = new Set(allowed);
   return Array.from(new Set(values.filter((v) => allow.has(v))));
 }
+
+/**
+ * The `reportingConfig` multipart field is JSON. The weekly report start day is
+ * an integer 0-6 (0 = Sunday); parsing it through the shared JSON-field
+ * primitive keeps the rule in one place and lets the route raise a field-level
+ * problem-details error at the boundary.
+ */
+const reportingConfigFieldSchema = jsonField(
+  z.object({
+    weeklyReportStartDay: z.number().int().min(0).max(6),
+  }),
+);
 
 /**
  * Derive the business timezone from its address and validate it with the one
@@ -652,6 +668,28 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
       metrics = undefined;
     }
 
+    // `reportingConfig` is an optional JSON field; when present the weekly
+    // report start day must be an integer 0-6 (0 = Sunday). Invalid values are
+    // field-level problem-details errors so the client can map them to the form.
+    let reportingConfig: IReportingConfig | undefined = undefined;
+    if (fields.reportingConfig) {
+      const parsedReportingConfig = reportingConfigFieldSchema.safeParse(
+        fields.reportingConfig,
+      );
+      if (!parsedReportingConfig.success) {
+        throw badRequest(
+          "reportingConfig.weeklyReportStartDay must be an integer between 0 and 6",
+          [
+            {
+              path: "reportingConfig.weeklyReportStartDay",
+              message: "Must be an integer between 0 and 6",
+            },
+          ],
+        );
+      }
+      reportingConfig = parsedReportingConfig.data;
+    }
+
     if (
       !tradeName ||
       !legalName ||
@@ -993,6 +1031,17 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
           updatedSupplierGoodWastePercentage;
       if (Object.keys(updatedMetrics).length > 0)
         updateBusinessObj.metrics = updatedMetrics;
+    }
+
+    if (reportingConfig !== undefined) {
+      const previousReportingConfig = (business as Record<string, unknown>)
+        .reportingConfig as Partial<IReportingConfig> | undefined;
+      if (
+        previousReportingConfig?.weeklyReportStartDay !==
+        reportingConfig.weeklyReportStartDay
+      ) {
+        updateBusinessObj.reportingConfig = reportingConfig;
+      }
     }
 
     if (imageFile && imageFile.buffer.length > 0) {

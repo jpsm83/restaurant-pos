@@ -730,6 +730,171 @@ describe("Business Routes", () => {
     });
   });
 
+  describe("Business reporting config", () => {
+    async function createReportBusiness() {
+      const business = await Business.create({
+        tradeName: "Report Business",
+        legalName: "Report Business LLC",
+        email: "report@business.com",
+        password: "hashedpassword",
+        phoneNumber: "1234567890",
+        taxNumber: "TAX-REPORT-001",
+        currencyTrade: "USD",
+        address: validAddress,
+      });
+      const auth = await generateTestToken({
+        id: business._id.toString(),
+        email: "report@business.com",
+        type: "business",
+        role: "Tenant",
+      });
+      return { business, auth };
+    }
+
+    function reportPatchPayload(boundary: string, reportingConfig: string): string {
+      return [
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="tradeName"\r\n\r\nReport Business',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="legalName"\r\n\r\nReport Business LLC',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="email"\r\n\r\nreport@business.com',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="phoneNumber"\r\n\r\n1234567890',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="taxNumber"\r\n\r\nTAX-REPORT-001',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="subscription"\r\n\r\nFree',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="currencyTrade"\r\n\r\nUSD',
+        `--${boundary}`,
+        `Content-Disposition: form-data; name="address"\r\n\r\n${JSON.stringify(validAddress)}`,
+        `--${boundary}`,
+        `Content-Disposition: form-data; name="reportingConfig"\r\n\r\n${reportingConfig}`,
+        `--${boundary}--`,
+      ].join("\r\n");
+    }
+
+    it("persists the weekly report start day and returns it on profile read", async () => {
+      const app = await getTestApp();
+      const boundary = "----formdata";
+      const { business, auth } = await createReportBusiness();
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/business/${business._id}`,
+        headers: {
+          "content-type": `multipart/form-data; boundary=${boundary}`,
+          authorization: auth,
+        },
+        payload: reportPatchPayload(
+          boundary,
+          JSON.stringify({ weeklyReportStartDay: 3 }),
+        ),
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const stored = await Business.findById(business._id).lean();
+      expect(stored?.reportingConfig?.weeklyReportStartDay).toBe(3);
+
+      const read = await app.inject({
+        method: "GET",
+        url: `/api/v1/business/${business._id}`,
+      });
+      expect(read.statusCode).toBe(200);
+      const body = JSON.parse(read.body);
+      expect(body.reportingConfig?.weeklyReportStartDay).toBe(3);
+    });
+
+    it("rejects an out-of-range weekly report start day as a field-level problem", async () => {
+      const app = await getTestApp();
+      const boundary = "----formdata";
+      const { business, auth } = await createReportBusiness();
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/business/${business._id}`,
+        headers: {
+          "content-type": `multipart/form-data; boundary=${boundary}`,
+          authorization: auth,
+        },
+        payload: reportPatchPayload(
+          boundary,
+          JSON.stringify({ weeklyReportStartDay: 7 }),
+        ),
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      const body = JSON.parse(response.body);
+      expect(body.errors?.map((e: { path: string }) => e.path)).toContain(
+        "reportingConfig.weeklyReportStartDay",
+      );
+
+      const stored = await Business.findById(business._id).lean();
+      expect(stored?.reportingConfig?.weeklyReportStartDay).toBeUndefined();
+    });
+
+    it("rejects a non-integer weekly report start day as a field-level problem", async () => {
+      const app = await getTestApp();
+      const boundary = "----formdata";
+      const { business, auth } = await createReportBusiness();
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/business/${business._id}`,
+        headers: {
+          "content-type": `multipart/form-data; boundary=${boundary}`,
+          authorization: auth,
+        },
+        payload: reportPatchPayload(
+          boundary,
+          JSON.stringify({ weeklyReportStartDay: 1.5 }),
+        ),
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      const body = JSON.parse(response.body);
+      expect(body.errors?.map((e: { path: string }) => e.path)).toContain(
+        "reportingConfig.weeklyReportStartDay",
+      );
+    });
+
+    it("rejects a malformed reporting config as a field-level problem", async () => {
+      const app = await getTestApp();
+      const boundary = "----formdata";
+      const { business, auth } = await createReportBusiness();
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/business/${business._id}`,
+        headers: {
+          "content-type": `multipart/form-data; boundary=${boundary}`,
+          authorization: auth,
+        },
+        payload: reportPatchPayload(boundary, "{not json"),
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      const body = JSON.parse(response.body);
+      expect(body.errors?.map((e: { path: string }) => e.path)).toContain(
+        "reportingConfig.weeklyReportStartDay",
+      );
+
+      const stored = await Business.findById(business._id).lean();
+      expect(stored?.reportingConfig?.weeklyReportStartDay).toBeUndefined();
+    });
+  });
+
   describe("PATCH /api/v1/business/:businessId", () => {
     it("returns 400 for invalid businessId", async () => {
       const app = await getTestApp();
