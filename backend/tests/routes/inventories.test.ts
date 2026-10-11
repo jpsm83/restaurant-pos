@@ -2,6 +2,10 @@
  * Inventories Routes Tests - Phase 1 Module 9 + Phase 4 Task 4.2
  * Tests for inventories CRUD endpoints with transaction verification
  * Phase 4: Full transaction tests for inventory period creation (requires replica set)
+ *
+ * Every error response is an RFC 9457 `application/problem+json` document
+ * produced by the global handler, so assertions are on the problem-details
+ * shape rather than a bare `{ message }`.
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
@@ -13,6 +17,23 @@ import Supplier from "../../src/models/supplier.ts";
 import Business from "../../src/models/business.ts";
 import User from "../../src/models/user.ts";
 import Employee from "../../src/models/employee.ts";
+
+const expectProblem = (
+  response: {
+    statusCode: number;
+    headers: Record<string, unknown>;
+    json: () => any;
+  },
+  status: number,
+  typeSlug: string,
+) => {
+  expect(response.statusCode).toBe(status);
+  expect(response.headers["content-type"]).toContain("application/problem+json");
+  const body = response.json();
+  expect(body.type).toBe(`https://restaurant-pos.app/errors/${typeSlug}`);
+  expect(body.status).toBe(status);
+  return body;
+};
 
 describe("Inventories Routes", () => {
   let businessId: Types.ObjectId;
@@ -92,7 +113,7 @@ describe("Inventories Routes", () => {
       expect(body.length).toBe(1);
     });
 
-    it("returns 404 when no inventories exist", async () => {
+    it("returns a not-found problem when no inventories exist", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
@@ -100,14 +121,13 @@ describe("Inventories Routes", () => {
         url: "/api/v1/inventories",
       });
 
-      expect(response.statusCode).toBe(404);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("No inventories found");
+      const body = expectProblem(response, 404, "not-found");
+      expect(body.detail).toBe("No inventories found");
     });
   });
 
   describe("POST /api/v1/inventories", () => {
-    it("returns 400 for invalid businessId", async () => {
+    it("returns a validation problem for invalid businessId", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
@@ -116,12 +136,15 @@ describe("Inventories Routes", () => {
         payload: { businessId: "invalid-id" },
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid business ID");
+      const body = expectProblem(response, 400, "validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: "businessId" }),
+        ]),
+      );
     });
 
-    it("returns 400 for missing businessId", async () => {
+    it("returns a validation problem for missing businessId", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
@@ -130,9 +153,27 @@ describe("Inventories Routes", () => {
         payload: {},
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid business ID");
+      const body = expectProblem(response, 400, "validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: "businessId" }),
+        ]),
+      );
+    });
+
+    it("returns a validation problem for a server-owned key", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/inventories",
+        payload: {
+          businessId: businessId.toString(),
+          setFinalCount: true,
+        },
+      });
+
+      expectProblem(response, 400, "validation");
     });
   });
 
@@ -162,7 +203,7 @@ describe("Inventories Routes", () => {
       expect(body._id).toBe(inventory._id.toString());
     });
 
-    it("returns 400 for invalid ID format", async () => {
+    it("returns a validation problem for an invalid ID format", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
@@ -170,12 +211,15 @@ describe("Inventories Routes", () => {
         url: "/api/v1/inventories/invalid-id",
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Inventory ID not valid!");
+      const body = expectProblem(response, 400, "validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: "inventoryId" }),
+        ]),
+      );
     });
 
-    it("returns 404 for non-existent inventory", async () => {
+    it("returns a not-found problem for a non-existent inventory", async () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
@@ -184,14 +228,13 @@ describe("Inventories Routes", () => {
         url: `/api/v1/inventories/${fakeId}`,
       });
 
-      expect(response.statusCode).toBe(404);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("No inventory found");
+      const body = expectProblem(response, 404, "not-found");
+      expect(body.detail).toBe("No inventory found");
     });
   });
 
   describe("DELETE /api/v1/inventories/:inventoryId", () => {
-    it("returns 400 for invalid inventoryId", async () => {
+    it("returns a validation problem for an invalid inventoryId", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
@@ -199,12 +242,15 @@ describe("Inventories Routes", () => {
         url: "/api/v1/inventories/invalid-id",
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Inventory ID not valid!");
+      const body = expectProblem(response, 400, "validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: "inventoryId" }),
+        ]),
+      );
     });
 
-    it("returns 404 for non-existent inventory", async () => {
+    it("returns a not-found problem for a non-existent inventory", async () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
@@ -213,9 +259,8 @@ describe("Inventories Routes", () => {
         url: `/api/v1/inventories/${fakeId}`,
       });
 
-      expect(response.statusCode).toBe(404);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Inventory not found!");
+      const body = expectProblem(response, 404, "not-found");
+      expect(body.detail).toBe("Inventory not found!");
     });
 
     it("deletes inventory successfully", async () => {
@@ -268,7 +313,7 @@ describe("Inventories Routes", () => {
   });
 
   describe("GET /api/v1/inventories/:inventoryId/supplierGood/:supplierGoodId", () => {
-    it("returns 400 for invalid IDs", async () => {
+    it("returns a validation problem for invalid IDs", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
@@ -276,12 +321,16 @@ describe("Inventories Routes", () => {
         url: "/api/v1/inventories/invalid-id/supplierGood/invalid-id",
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Inventory or supplier good ID not valid!");
+      const body = expectProblem(response, 400, "validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: "inventoryId" }),
+          expect.objectContaining({ path: "supplierGoodId" }),
+        ]),
+      );
     });
 
-    it("returns 404 when supplier good not in inventory", async () => {
+    it("returns a not-found problem when supplier good not in inventory", async () => {
       const app = await getTestApp();
       const fakeInventoryId = new Types.ObjectId();
       const fakeSupplierGoodId = new Types.ObjectId();
@@ -291,14 +340,13 @@ describe("Inventories Routes", () => {
         url: `/api/v1/inventories/${fakeInventoryId}/supplierGood/${fakeSupplierGoodId}`,
       });
 
-      expect(response.statusCode).toBe(404);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("No inventories found!");
+      const body = expectProblem(response, 404, "not-found");
+      expect(body.detail).toBe("No inventories found!");
     });
   });
 
   describe("PATCH /api/v1/inventories/:inventoryId/supplierGood/:supplierGoodId/addCount", () => {
-    it("returns 400 for missing required fields", async () => {
+    it("returns a validation problem for missing required fields", async () => {
       const app = await getTestApp();
       const fakeInventoryId = new Types.ObjectId();
       const fakeSupplierGoodId = new Types.ObjectId();
@@ -309,23 +357,34 @@ describe("Inventories Routes", () => {
         payload: {},
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toContain("required");
+      const body = expectProblem(response, 400, "validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: "currentCountQuantity" }),
+          expect.objectContaining({ path: "countedByEmployeeId" }),
+        ]),
+      );
     });
 
-    it("returns 400 for invalid IDs", async () => {
+    it("returns a validation problem for invalid IDs", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
         method: "PATCH",
         url: "/api/v1/inventories/invalid-id/supplierGood/invalid-id/addCount",
-        payload: { currentCountQuantity: 50 },
+        payload: {
+          currentCountQuantity: 50,
+          countedByEmployeeId: new Types.ObjectId().toString(),
+        },
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toContain("not valid");
+      const body = expectProblem(response, 400, "validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: "inventoryId" }),
+          expect.objectContaining({ path: "supplierGoodId" }),
+        ]),
+      );
     });
   });
 
@@ -366,7 +425,7 @@ describe("Inventories Routes", () => {
       expect(body.length).toBe(1);
     });
 
-    it("returns 400 for invalid businessId", async () => {
+    it("returns a validation problem for an invalid businessId", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
@@ -374,12 +433,15 @@ describe("Inventories Routes", () => {
         url: "/api/v1/inventories/business/invalid-id",
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Business ID not valid!");
+      const body = expectProblem(response, 400, "validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: "businessId" }),
+        ]),
+      );
     });
 
-    it("returns 404 when no inventories for business", async () => {
+    it("returns a not-found problem when no inventories for business", async () => {
       const app = await getTestApp();
       const otherBusinessId = new Types.ObjectId();
 
@@ -388,14 +450,41 @@ describe("Inventories Routes", () => {
         url: `/api/v1/inventories/business/${otherBusinessId}`,
       });
 
-      expect(response.statusCode).toBe(404);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("No inventories found!");
+      const body = expectProblem(response, 404, "not-found");
+      expect(body.detail).toBe("No inventories found!");
+    });
+
+    it("coerces a valid monthDate query and scopes the lookup", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/inventories/business/${businessId}?monthDate=2024-06-15`,
+      });
+
+      const body = expectProblem(response, 404, "not-found");
+      expect(body.detail).toBe("No inventories found!");
+    });
+
+    it("returns a validation problem for an unparseable monthDate query", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/inventories/business/${businessId}?monthDate=not-a-date`,
+      });
+
+      const body = expectProblem(response, 400, "validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: "monthDate" }),
+        ]),
+      );
     });
   });
 
   describe("GET /api/v1/inventories/business/:businessId/lowStock", () => {
-    it("returns 400 for invalid businessId", async () => {
+    it("returns a validation problem for an invalid businessId", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
@@ -403,9 +492,12 @@ describe("Inventories Routes", () => {
         url: "/api/v1/inventories/business/invalid-id/lowStock",
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Business ID not valid!");
+      const body = expectProblem(response, 400, "validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: "businessId" }),
+        ]),
+      );
     });
 
     it("returns empty lowStock when no inventory", async () => {
@@ -423,7 +515,7 @@ describe("Inventories Routes", () => {
   });
 
   describe("GET /api/v1/inventories/business/:businessId/varianceReport", () => {
-    it("returns 400 for invalid businessId", async () => {
+    it("returns a validation problem for an invalid businessId", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
@@ -431,12 +523,15 @@ describe("Inventories Routes", () => {
         url: "/api/v1/inventories/business/invalid-id/varianceReport",
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Business ID is not valid!");
+      const body = expectProblem(response, 400, "validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: "businessId" }),
+        ]),
+      );
     });
 
-    it("returns 400 for invalid month format", async () => {
+    it("returns a validation problem for an invalid month format", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
@@ -444,9 +539,10 @@ describe("Inventories Routes", () => {
         url: `/api/v1/inventories/business/${businessId}/varianceReport?month=2024-13`,
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Month must be 01-12.");
+      const body = expectProblem(response, 400, "validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([expect.objectContaining({ path: "month" })]),
+      );
     });
 
     it("returns variance report", async () => {
@@ -523,9 +619,8 @@ describe("Inventories Routes", () => {
         },
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toContain("already exists");
+      const body = expectProblem(response, 400, "bad-request");
+      expect(body.detail).toContain("already exists");
     });
 
     it("closes previous month inventory when creating new period", async () => {

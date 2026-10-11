@@ -1,3 +1,12 @@
+/**
+ * Inventories Routes - Inventory CRUD and monthly count management.
+ *
+ * Every route declares its body/params/query as a strict zod DTO from
+ * `backend/src/schemas/inventories.ts`; validation and sanitization happen at
+ * the boundary and every error is raised as an `AppError` so the global handler
+ * emits RFC 9457 `application/problem+json`. The management-role, business-match
+ * and inventory-state guards span the database and stay as post-parse checks.
+ */
 import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
 import type {
@@ -7,7 +16,6 @@ import type {
 import type { ISupplierGood } from "../../../../packages/interfaces/ISupplierGood.ts";
 import type { IEmployee } from "../../../../packages/interfaces/IEmployee.ts";
 
-import isObjectIdValid from "../../utils/isObjectIdValid.ts";
 import Inventory from "../../models/inventory.ts";
 import SupplierGood from "../../models/supplierGood.ts";
 import Supplier from "../../models/supplier.ts";
@@ -15,213 +23,242 @@ import Employee from "../../models/employee.ts";
 import createNextPeriodInventory from "../../inventories/createNextPeriodInventory.ts";
 import getVarianceReport from "../../inventories/getVarianceReport.ts";
 import { createAuthHook } from "../../auth/middleware.ts";
+import {
+  badRequest,
+  forbidden,
+  internal,
+  notFound,
+  unauthorized,
+} from "../../errors/appError.ts";
+import {
+  addInventoryCountBodySchema,
+  businessIdParamsSchema,
+  createInventoryBodySchema,
+  inventoryIdParamsSchema,
+  inventoryMonthDateQuerySchema,
+  inventorySupplierGoodParamsSchema,
+  updateInventoryCountBodySchema,
+  varianceReportQuerySchema,
+  type AddInventoryCountBody,
+  type BusinessIdParams,
+  type CreateInventoryBody,
+  type InventoryIdParams,
+  type InventoryMonthDateQuery,
+  type InventorySupplierGoodParams,
+  type UpdateInventoryCountBody,
+  type VarianceReportQuery,
+} from "../../schemas/inventories.ts";
 import * as enums from "../../../../packages/enums.ts";
 
 const { managementRolesEnums } = enums;
+
+const INVENTORY_POPULATE = {
+  path: "inventoryGoods.supplierGoodId",
+  select:
+    "name mainCategory subCategory supplierId budgetImpact imageUrl inventorySchedule parLevel measurementUnit pricePerMeasurementUnit",
+  model: SupplierGood,
+  populate: {
+    path: "supplierId",
+    select: "tradeName",
+    model: Supplier,
+  },
+};
+
+/**
+ * Compute the inclusive [start, end] range for a `monthDate` query value: the
+ * first instant of the month through the last millisecond of its last day.
+ */
+const resolveMonthRange = (
+  monthDate: Date | undefined,
+): { startDate: Date; endDate: Date } | null => {
+  if (!monthDate) return null;
+  const startDate = new Date(monthDate);
+  startDate.setDate(1);
+  startDate.setHours(0, 0, 0, 0);
+  const endDate = new Date(
+    monthDate.getFullYear(),
+    monthDate.getMonth() + 1,
+    0,
+  );
+  endDate.setHours(23, 59, 59, 999);
+  return { startDate, endDate };
+};
 
 export const inventoriesRoutes: FastifyPluginAsync = async (app) => {
   // GET /inventories - list all
   app.get("/", async (_req, reply) => {
     const inventories = await Inventory.find()
-      .populate({
-        path: "inventoryGoods.supplierGoodId",
-        select:
-          "name mainCategory subCategory supplierId budgetImpact imageUrl inventorySchedule parLevel measurementUnit pricePerMeasurementUnit",
-        model: SupplierGood,
-        populate: {
-          path: "supplierId",
-          select: "tradeName",
-          model: Supplier,
-        },
-      })
+      .populate(INVENTORY_POPULATE)
       .lean();
 
     if (!inventories.length) {
-      return reply.code(404).send({ message: "No inventories found" });
+      throw notFound("No inventories found");
     }
     return reply.code(200).send(inventories);
   });
 
   // POST /inventories - create (transaction)
-  app.post("/", async (req, reply) => {
-    const { businessId } = req.body as { businessId?: string };
+  app.post<{ Body: CreateInventoryBody }>(
+    "/",
+    { schema: { body: createInventoryBodySchema } },
+    async (req, reply) => {
+      const { businessId } = req.body;
 
-    if (!businessId || isObjectIdValid([businessId]) !== true) {
-      return reply.code(400).send({ message: "Invalid business ID" });
-    }
+      const startOfCurrentMonth = new Date();
+      startOfCurrentMonth.setDate(1);
+      startOfCurrentMonth.setHours(0, 0, 0, 0);
 
-    const startOfCurrentMonth = new Date();
-    startOfCurrentMonth.setDate(1);
-    startOfCurrentMonth.setHours(0, 0, 0, 0);
+      const endOfCurrentMonth = new Date(startOfCurrentMonth);
+      endOfCurrentMonth.setMonth(endOfCurrentMonth.getMonth() + 1);
+      endOfCurrentMonth.setMilliseconds(-1);
 
-    const endOfCurrentMonth = new Date(startOfCurrentMonth);
-    endOfCurrentMonth.setMonth(endOfCurrentMonth.getMonth() + 1);
-    endOfCurrentMonth.setMilliseconds(-1);
+      const session = await mongoose.startSession();
+      session.startTransaction();
 
-    const session = await mongoose.startSession();
-    session.startTransaction();
+      try {
+        const currentMonthInventory: IInventory | null =
+          await Inventory.findOne({
+            businessId,
+            createdAt: { $gte: startOfCurrentMonth, $lte: endOfCurrentMonth },
+          })
+            .select("setFinalCount")
+            .session(session)
+            .lean();
 
-    try {
-      const currentMonthInventory: IInventory | null = await Inventory.findOne({
-        businessId,
-        createdAt: { $gte: startOfCurrentMonth, $lte: endOfCurrentMonth },
-      })
-        .select("setFinalCount")
-        .session(session)
-        .lean();
+        if (currentMonthInventory) {
+          throw badRequest("Inventory for the current month already exists!");
+        }
 
-      if (currentMonthInventory) {
-        await session.abortTransaction();
-        return reply.code(400).send({
-          message: "Inventory for the current month already exists!",
-        });
-      }
+        const startOfPreviousMonth = new Date(startOfCurrentMonth);
+        startOfPreviousMonth.setMonth(startOfPreviousMonth.getMonth() - 1);
 
-      const startOfPreviousMonth = new Date(startOfCurrentMonth);
-      startOfPreviousMonth.setMonth(startOfPreviousMonth.getMonth() - 1);
+        const endOfPreviousMonth = new Date(startOfCurrentMonth);
+        endOfPreviousMonth.setMilliseconds(-1);
 
-      const endOfPreviousMonth = new Date(startOfCurrentMonth);
-      endOfPreviousMonth.setMilliseconds(-1);
+        const lastInventory: IInventory | null =
+          await Inventory.findOneAndUpdate(
+            {
+              businessId,
+              createdAt: {
+                $gte: startOfPreviousMonth,
+                $lte: endOfPreviousMonth,
+              },
+            },
+            {
+              $set: { setFinalCount: true },
+            },
+            { returnDocument: "after", session },
+          ).lean();
 
-      const lastInventory: IInventory | null = await Inventory.findOneAndUpdate(
-        {
+        const supplierGoods = await SupplierGood.find({
           businessId,
-          createdAt: { $gte: startOfPreviousMonth, $lte: endOfPreviousMonth },
-        },
-        {
-          $set: { setFinalCount: true },
-        },
-        { returnDocument: 'after', session },
-      ).lean();
+          currentlyInUse: true,
+        })
+          .select("_id")
+          .session(session)
+          .lean();
 
-      const supplierGoods = await SupplierGood.find({
-        businessId,
-        currentlyInUse: true,
-      })
-        .select("_id")
-        .session(session)
-        .lean();
+        const inventoryGoodsArr = supplierGoods.map(
+          (supplierGood: { _id: Types.ObjectId }) => {
+            const lastInventoryGood = lastInventory?.inventoryGoods.find(
+              (good) =>
+                good.supplierGoodId.toString() === supplierGood._id.toString(),
+            );
 
-      const inventoryGoodsArr = supplierGoods.map(
-        (supplierGood: { _id: Types.ObjectId }) => {
-          const lastInventoryGood = lastInventory?.inventoryGoods.find(
-            (good) =>
-              good.supplierGoodId.toString() === supplierGood._id.toString(),
-          );
+            const dynamicSystemCount =
+              lastInventoryGood && lastInventoryGood.monthlyCounts.length > 0
+                ? lastInventoryGood.monthlyCounts.sort(
+                    (a, b) =>
+                      new Date(b.countedDate ?? "").getTime() -
+                      new Date(a.countedDate ?? "").getTime(),
+                  )[0]?.currentCountQuantity || 0
+                : 0;
 
-          const dynamicSystemCount =
-            lastInventoryGood && lastInventoryGood.monthlyCounts.length > 0
-              ? lastInventoryGood.monthlyCounts.sort(
-                  (a, b) =>
-                    new Date(b.countedDate ?? "").getTime() -
-                    new Date(a.countedDate ?? "").getTime(),
-                )[0]?.currentCountQuantity || 0
-              : 0;
+            return {
+              supplierGoodId: supplierGood._id,
+              monthlyCounts: [],
+              dynamicSystemCount,
+            };
+          },
+        );
 
-          return {
-            supplierGoodId: supplierGood._id,
-            monthlyCounts: [],
-            dynamicSystemCount,
-          };
-        },
-      );
+        const newInventory: IInventory = {
+          businessId: new Types.ObjectId(businessId),
+          setFinalCount: false,
+          inventoryGoods: inventoryGoodsArr,
+        };
 
-      const newInventory: IInventory = {
-        businessId: new Types.ObjectId(businessId),
-        setFinalCount: false,
-        inventoryGoods: inventoryGoodsArr,
-      };
+        const createdInventory = await Inventory.create([newInventory], {
+          session,
+        });
 
-      const createdInventory = await Inventory.create([newInventory], {
-        session,
-      });
+        if (!createdInventory) {
+          throw internal("Failed to create inventory");
+        }
 
-      if (!createdInventory) {
-        await session.abortTransaction();
-        return reply.code(500).send({ message: "Failed to create inventory" });
+        await session.commitTransaction();
+
+        return reply
+          .code(201)
+          .send({ message: "Inventory created successfully" });
+      } catch (error) {
+        await session.abortTransaction().catch(() => undefined);
+        throw error;
+      } finally {
+        session.endSession();
       }
-
-      await session.commitTransaction();
-
-      return reply
-        .code(201)
-        .send({ message: "Inventory created successfully" });
-    } catch (error) {
-      await session.abortTransaction();
-      return reply.code(500).send({
-        message: "Create inventory failed!",
-        error: error instanceof Error ? error.message : error,
-      });
-    } finally {
-      session.endSession();
-    }
-  });
+    },
+  );
 
   // GET /inventories/:inventoryId - get by ID
-  app.get("/:inventoryId", async (req, reply) => {
-    const params = req.params as { inventoryId?: string };
-    const inventoryId = params.inventoryId;
+  app.get<{ Params: InventoryIdParams }>(
+    "/:inventoryId",
+    { schema: { params: inventoryIdParamsSchema } },
+    async (req, reply) => {
+      const { inventoryId } = req.params;
 
-    if (!inventoryId || isObjectIdValid([inventoryId]) !== true) {
-      return reply.code(400).send({ message: "Inventory ID not valid!" });
-    }
+      const inventory = await Inventory.findById(inventoryId)
+        .populate(INVENTORY_POPULATE)
+        .lean();
 
-    const inventory = await Inventory.findById(inventoryId)
-      .populate({
-        path: "inventoryGoods.supplierGoodId",
-        select:
-          "name mainCategory subCategory supplierId budgetImpact imageUrl inventorySchedule parLevel measurementUnit pricePerMeasurementUnit",
-        model: SupplierGood,
-        populate: {
-          path: "supplierId",
-          select: "tradeName",
-          model: Supplier,
-        },
-      })
-      .lean();
-
-    if (!inventory) {
-      return reply.code(404).send({ message: "No inventory found" });
-    }
-    return reply.code(200).send(inventory);
-  });
+      if (!inventory) {
+        throw notFound("No inventory found");
+      }
+      return reply.code(200).send(inventory);
+    },
+  );
 
   // DELETE /inventories/:inventoryId - delete
-  app.delete("/:inventoryId", async (req, reply) => {
-    const params = req.params as { inventoryId?: string };
-    const inventoryId = params.inventoryId;
+  app.delete<{ Params: InventoryIdParams }>(
+    "/:inventoryId",
+    { schema: { params: inventoryIdParamsSchema } },
+    async (req, reply) => {
+      const { inventoryId } = req.params;
 
-    if (!inventoryId || isObjectIdValid([inventoryId]) !== true) {
-      return reply.code(400).send({ message: "Inventory ID not valid!" });
-    }
+      const result = await Inventory.deleteOne({ _id: inventoryId });
 
-    const result = await Inventory.deleteOne({ _id: inventoryId });
+      if (result.deletedCount === 0) {
+        throw notFound("Inventory not found!");
+      }
 
-    if (result.deletedCount === 0) {
-      return reply.code(404).send({ message: "Inventory not found!" });
-    }
-
-    return reply.code(200).send(`Inventory ${inventoryId} deleted`);
-  });
+      return reply.code(200).send(`Inventory ${inventoryId} deleted`);
+    },
+  );
 
   // PATCH /inventories/:inventoryId/close - close inventory (transaction)
-  app.patch(
+  app.patch<{ Params: InventoryIdParams }>(
     "/:inventoryId/close",
-    { preValidation: [createAuthHook(app)] },
+    {
+      preValidation: [createAuthHook(app)],
+      schema: { params: inventoryIdParamsSchema },
+    },
     async (req, reply) => {
-      const params = req.params as { inventoryId?: string };
-      const inventoryId = params.inventoryId;
+      const { inventoryId } = req.params;
 
       if (!req.authSession) {
-        return reply.code(401).send({ message: "Unauthorized" });
+        throw unauthorized();
       }
       const userIdObj = new Types.ObjectId(req.authSession.id);
-
-      if (!inventoryId || isObjectIdValid([inventoryId]) !== true) {
-        return reply
-          .code(400)
-          .send({ message: "Valid inventoryId is required" });
-      }
 
       const session = await mongoose.startSession();
       session.startTransaction();
@@ -233,8 +270,7 @@ export const inventoriesRoutes: FastifyPluginAsync = async (app) => {
           .session(session)) as IInventory | null;
 
         if (!inventory) {
-          await session.abortTransaction();
-          return reply.code(404).send({ message: "Inventory not found" });
+          throw notFound("Inventory not found");
         }
 
         const businessId = inventory.businessId as Types.ObjectId;
@@ -247,10 +283,7 @@ export const inventoriesRoutes: FastifyPluginAsync = async (app) => {
           .session(session)) as IEmployee | null;
 
         if (!employee) {
-          await session.abortTransaction();
-          return reply
-            .code(403)
-            .send({ message: "Employee not found for this business" });
+          throw forbidden("Employee not found for this business");
         }
 
         if (
@@ -258,24 +291,15 @@ export const inventoriesRoutes: FastifyPluginAsync = async (app) => {
             (role) => role === employee.currentShiftRole,
           )
         ) {
-          await session.abortTransaction();
-          return reply.code(403).send({
-            message: "You are not allowed to close the inventory!",
-          });
+          throw forbidden("You are not allowed to close the inventory!");
         }
 
         if (employee.businessId?.toString() !== businessId.toString()) {
-          await session.abortTransaction();
-          return reply
-            .code(403)
-            .send({ message: "Inventory does not belong to your business" });
+          throw forbidden("Inventory does not belong to your business");
         }
 
         if (inventory.setFinalCount) {
-          await session.abortTransaction();
-          return reply
-            .code(400)
-            .send({ message: "Inventory is already closed" });
+          throw badRequest("Inventory is already closed");
         }
 
         await Inventory.updateOne(
@@ -297,11 +321,8 @@ export const inventoriesRoutes: FastifyPluginAsync = async (app) => {
             "Inventory closed successfully and next period inventory created",
         });
       } catch (error) {
-        await session.abortTransaction();
-        return reply.code(500).send({
-          message: "Close inventory failed!",
-          error: error instanceof Error ? error.message : error,
-        });
+        await session.abortTransaction().catch(() => undefined);
+        throw error;
       } finally {
         session.endSession();
       }
@@ -309,488 +330,386 @@ export const inventoriesRoutes: FastifyPluginAsync = async (app) => {
   );
 
   // GET /inventories/:inventoryId/supplierGood/:supplierGoodId - get supplier good in inventory
-  app.get("/:inventoryId/supplierGood/:supplierGoodId", async (req, reply) => {
-    const params = req.params as {
-      inventoryId?: string;
-      supplierGoodId?: string;
-    };
-    const { inventoryId, supplierGoodId } = params;
-
-    if (
-      !inventoryId ||
-      !supplierGoodId ||
-      !isObjectIdValid([inventoryId, supplierGoodId])
-    ) {
-      return reply
-        .code(400)
-        .send({ message: "Inventory or supplier good ID not valid!" });
-    }
-
-    const query = req.query as { monthDate?: string };
-    const monthDateParams = query.monthDate;
-
-    const startDate = monthDateParams ? new Date(monthDateParams) : null;
-    let endDate = monthDateParams ? new Date(monthDateParams) : null;
-
-    if (startDate) {
-      startDate.setDate(1);
-      startDate.setHours(0, 0, 0, 0);
-    }
-
-    if (endDate) {
-      endDate = new Date(endDate.getFullYear(), endDate.getMonth() + 1, 0);
-      endDate.setHours(23, 59, 59, 999);
-    }
-
-    interface InventoryQuery {
-      _id: Types.ObjectId;
-      "inventoryGoods.supplierGoodId": Types.ObjectId;
-      createdAt?: { $gte: Date; $lte: Date };
-    }
-
-    const dbQuery: InventoryQuery = {
-      _id: new Types.ObjectId(inventoryId),
-      "inventoryGoods.supplierGoodId": new Types.ObjectId(supplierGoodId),
-    };
-
-    if (startDate && endDate) {
-      dbQuery.createdAt = { $gte: startDate, $lte: endDate };
-    }
-
-    const inventories = await Inventory.find(dbQuery)
-      .select("inventoryGoods.$")
-      .populate({
-        path: "inventoryGoods.supplierGoodId",
-        select:
-          "name mainCategory subCategory supplierId budgetImpact imageUrl inventorySchedule parLevel measurementUnit pricePerMeasurementUnit",
-        model: SupplierGood,
-        populate: {
-          path: "supplierId",
-          select: "tradeName",
-          model: Supplier,
-        },
-      })
-      .lean();
-
-    if (!inventories.length) {
-      return reply.code(404).send({ message: "No inventories found!" });
-    }
-    return reply.code(200).send(inventories);
-  });
-
-  // PATCH /inventories/:inventoryId/supplierGood/:supplierGoodId/addCount - add count
-  app.patch(
-    "/:inventoryId/supplierGood/:supplierGoodId/addCount",
+  app.get<{
+    Params: InventorySupplierGoodParams;
+    Querystring: InventoryMonthDateQuery;
+  }>(
+    "/:inventoryId/supplierGood/:supplierGoodId",
+    {
+      schema: {
+        params: inventorySupplierGoodParamsSchema,
+        querystring: inventoryMonthDateQuerySchema,
+      },
+    },
     async (req, reply) => {
-      const params = req.params as {
-        inventoryId?: string;
-        supplierGoodId?: string;
+      const { inventoryId, supplierGoodId } = req.params;
+
+      const range = resolveMonthRange(req.query.monthDate);
+
+      interface InventoryQuery {
+        _id: Types.ObjectId;
+        "inventoryGoods.supplierGoodId": Types.ObjectId;
+        createdAt?: { $gte: Date; $lte: Date };
+      }
+
+      const dbQuery: InventoryQuery = {
+        _id: new Types.ObjectId(inventoryId),
+        "inventoryGoods.supplierGoodId": new Types.ObjectId(supplierGoodId),
       };
-      const { inventoryId, supplierGoodId } = params;
 
-      const { currentCountQuantity, countedByEmployeeId, comments } =
-        req.body as {
-          currentCountQuantity?: number;
-          countedByEmployeeId?: string;
-          comments?: string;
+      if (range) {
+        dbQuery.createdAt = {
+          $gte: range.startDate,
+          $lte: range.endDate,
         };
-
-      if (!inventoryId || !supplierGoodId || !currentCountQuantity) {
-        return reply.code(400).send({
-          message:
-            "InventoryId, supplierGoodId and currentCountQuantity are required!",
-        });
       }
 
-      if (
-        !isObjectIdValid([
-          inventoryId,
-          supplierGoodId,
-          countedByEmployeeId || "",
-        ])
-      ) {
-        return reply
-          .code(400)
-          .send({ message: "InventoryId or supplierGoodId not valid!" });
+      const inventories = await Inventory.find(dbQuery)
+        .select("inventoryGoods.$")
+        .populate(INVENTORY_POPULATE)
+        .lean();
+
+      if (!inventories.length) {
+        throw notFound("No inventories found!");
       }
-
-      try {
-        const [inventory, supplierGood] = await Promise.all([
-          Inventory.findOne({
-            _id: inventoryId,
-            "inventoryGoods.supplierGoodId": supplierGoodId,
-          })
-            .select("setFinalCount inventoryGoods.$")
-            .lean() as Promise<IInventory | null>,
-          SupplierGood.findById(supplierGoodId)
-            .select("parLevel")
-            .lean() as Promise<ISupplierGood | null>,
-        ]);
-
-        if (!supplierGood || !inventory) {
-          const message = !supplierGood
-            ? "Supplier good not found!"
-            : "Inventory not found!";
-          return reply.code(400).send({ message });
-        }
-
-        if (inventory.setFinalCount) {
-          return reply.code(400).send({
-            message: "Inventory already set as final count! Cannot update!",
-          });
-        }
-
-        const inventoryGood = inventory.inventoryGoods[0];
-
-        if (currentCountQuantity === inventoryGood.dynamicSystemCount) {
-          return reply.code(200).send({
-            message: "Inventory count didn't change from last count!",
-          });
-        }
-
-        const newInventoryCount: IInventoryCount = {
-          currentCountQuantity,
-          quantityNeeded: (supplierGood.parLevel || 0) - currentCountQuantity,
-          countedByEmployeeId: new Types.ObjectId(countedByEmployeeId!),
-          deviationPercent:
-            ((inventoryGood.dynamicSystemCount - currentCountQuantity) /
-              (inventoryGood.dynamicSystemCount || 1)) *
-            100,
-          comments,
-        };
-
-        const totalDeviationPercent = inventoryGood.monthlyCounts.reduce(
-          (acc, count) => acc + (count.deviationPercent || 0),
-          0,
-        );
-
-        const monthlyCountsWithDeviation = inventoryGood.monthlyCounts.filter(
-          (count) => count.deviationPercent !== 0,
-        ).length;
-
-        const averageDeviationPercentCalculation =
-          (totalDeviationPercent + (newInventoryCount.deviationPercent ?? 0)) /
-          (monthlyCountsWithDeviation + 1);
-
-        await Promise.all([
-          Inventory.updateOne(
-            {
-              _id: inventoryId,
-              "inventoryGoods.supplierGoodId": supplierGoodId,
-              "inventoryGoods.monthlyCounts.lastCount": true,
-            },
-            {
-              $set: {
-                "inventoryGoods.$[elem].monthlyCounts.$[count].lastCount": false,
-              },
-            },
-            {
-              arrayFilters: [
-                { "elem.supplierGoodId": new Types.ObjectId(supplierGoodId) },
-                { "count.lastCount": true },
-              ],
-            },
-          ),
-
-          Inventory.updateOne(
-            {
-              _id: inventoryId,
-              "inventoryGoods.supplierGoodId": supplierGoodId,
-            },
-            {
-              $set: {
-                "inventoryGoods.$[elem].dynamicSystemCount":
-                  currentCountQuantity,
-                "inventoryGoods.$[elem].averageDeviationPercent":
-                  averageDeviationPercentCalculation,
-              },
-              $push: {
-                "inventoryGoods.$[elem].monthlyCounts": newInventoryCount,
-              },
-            },
-            {
-              arrayFilters: [
-                { "elem.supplierGoodId": new Types.ObjectId(supplierGoodId) },
-              ],
-            },
-          ),
-        ]);
-
-        return reply.code(200).send({ message: "Inventory count added!" });
-      } catch (error) {
-        return reply.code(500).send({
-          message: "Updated inventory failed!",
-          error: error instanceof Error ? error.message : error,
-        });
-      }
+      return reply.code(200).send(inventories);
     },
   );
 
-  // PATCH /inventories/:inventoryId/supplierGood/:supplierGoodId/updateCount - update count
-  app.patch(
-    "/:inventoryId/supplierGood/:supplierGoodId/updateCount",
-    { preValidation: [createAuthHook(app)] },
+  // PATCH /inventories/:inventoryId/supplierGood/:supplierGoodId/addCount - add count
+  app.patch<{ Params: InventorySupplierGoodParams; Body: AddInventoryCountBody }>(
+    "/:inventoryId/supplierGood/:supplierGoodId/addCount",
+    {
+      schema: {
+        params: inventorySupplierGoodParamsSchema,
+        body: addInventoryCountBodySchema,
+      },
+    },
     async (req, reply) => {
-      const params = req.params as {
-        inventoryId?: string;
-        supplierGoodId?: string;
-      };
-      const { inventoryId, supplierGoodId } = params;
+      const { inventoryId, supplierGoodId } = req.params;
+      const { currentCountQuantity, countedByEmployeeId, comments } = req.body;
 
-      if (!req.authSession) {
-        return reply.code(401).send({ message: "Unauthorized" });
+      const [inventory, supplierGood] = await Promise.all([
+        Inventory.findOne({
+          _id: inventoryId,
+          "inventoryGoods.supplierGoodId": supplierGoodId,
+        })
+          .select("setFinalCount inventoryGoods.$")
+          .lean() as Promise<IInventory | null>,
+        SupplierGood.findById(supplierGoodId)
+          .select("parLevel")
+          .lean() as Promise<ISupplierGood | null>,
+      ]);
+
+      if (!supplierGood || !inventory) {
+        throw badRequest(
+          !supplierGood ? "Supplier good not found!" : "Inventory not found!",
+        );
       }
-      const userIdObj = new Types.ObjectId(req.authSession.id);
 
-      const { currentCountQuantity, comments, countId, reason } = req.body as {
-        countId?: string;
-        reason?: string;
-        currentCountQuantity?: number;
-        comments?: string;
-      };
+      if (inventory.setFinalCount) {
+        throw badRequest(
+          "Inventory already set as final count! Cannot update!",
+        );
+      }
 
-      if (!inventoryId || !supplierGoodId || !countId || !reason) {
-        return reply.code(400).send({
-          message:
-            "inventoryId, supplierGoodId, countId and reason are required for re-edit!",
+      const inventoryGood = inventory.inventoryGoods[0];
+
+      if (currentCountQuantity === inventoryGood.dynamicSystemCount) {
+        return reply.code(200).send({
+          message: "Inventory count didn't change from last count!",
         });
       }
 
-      if (!isObjectIdValid([inventoryId, supplierGoodId, countId])) {
-        return reply
-          .code(400)
-          .send({ message: "One or more IDs are not valid!" });
-      }
+      const newInventoryCount: IInventoryCount = {
+        currentCountQuantity,
+        quantityNeeded: (supplierGood.parLevel || 0) - currentCountQuantity,
+        countedByEmployeeId: new Types.ObjectId(countedByEmployeeId),
+        deviationPercent:
+          ((inventoryGood.dynamicSystemCount - currentCountQuantity) /
+            (inventoryGood.dynamicSystemCount || 1)) *
+          100,
+        comments,
+      };
 
-      try {
-        const [inventory, supplierGood] = await Promise.all([
-          Inventory.findOne({
-            _id: inventoryId,
-            "inventoryGoods.supplierGoodId": supplierGoodId,
-          })
-            .select("businessId setFinalCount inventoryGoods")
-            .lean() as Promise<IInventory | null>,
-          SupplierGood.findById(supplierGoodId)
-            .select("parLevel")
-            .lean() as Promise<ISupplierGood | null>,
-        ]);
+      const totalDeviationPercent = inventoryGood.monthlyCounts.reduce(
+        (acc, count) => acc + (count.deviationPercent || 0),
+        0,
+      );
 
-        if (!supplierGood || !inventory) {
-          const message = !supplierGood
-            ? "Supplier good not found!"
-            : "Inventory not found!";
-          return reply.code(400).send({ message });
-        }
+      const monthlyCountsWithDeviation = inventoryGood.monthlyCounts.filter(
+        (count) => count.deviationPercent !== 0,
+      ).length;
 
-        const businessId = inventory.businessId as Types.ObjectId;
-        const employee = (await Employee.findOne({
-          userId: userIdObj,
-          businessId,
-        })
-          .select("_id currentShiftRole")
-          .lean()) as IEmployee | null;
+      const averageDeviationPercentCalculation =
+        (totalDeviationPercent + (newInventoryCount.deviationPercent ?? 0)) /
+        (monthlyCountsWithDeviation + 1);
 
-        if (
-          !employee ||
-          !managementRolesEnums.some(
-            (role) => role === employee.currentShiftRole,
-          )
-        ) {
-          return reply.code(403).send({
-            message:
-              "Only managers or supervisors can re-edit inventory counts!",
-          });
-        }
-
-        if (inventory.setFinalCount) {
-          return reply.code(400).send({
-            message: "Inventory already set as final count! Cannot update!",
-          });
-        }
-
-        const supplierGoodObject = inventory.inventoryGoods.find(
-          (good) => good.supplierGoodId.toString() === supplierGoodId,
-        );
-
-        if (!supplierGoodObject) {
-          return reply
-            .code(400)
-            .send({ message: "Supplier good not found in inventory!" });
-        }
-
-        const currentCountObject = supplierGoodObject.monthlyCounts.find(
-          (count) => count._id && count._id.toString() === countId,
-        );
-
-        if (!currentCountObject) {
-          return reply.code(404).send({ message: "Count not found!" });
-        }
-
-        const newQuantity =
-          currentCountQuantity !== undefined
-            ? currentCountQuantity
-            : currentCountObject.currentCountQuantity;
-
-        if (
-          currentCountQuantity !== undefined &&
-          currentCountObject.currentCountQuantity === currentCountQuantity
-        ) {
-          return reply
-            .code(200)
-            .send({ message: "Count is the same, no need to update!" });
-        }
-
-        let previewDynamicSystemCount = 0;
-        if (currentCountObject.deviationPercent !== 100) {
-          previewDynamicSystemCount =
-            currentCountObject.currentCountQuantity /
-            (1 - (currentCountObject.deviationPercent ?? 0) / 100);
-        }
-
-        const updateInventoryCount: IInventoryCount = {
-          _id: new Types.ObjectId(countId),
-          currentCountQuantity: newQuantity,
-          quantityNeeded: (supplierGood.parLevel || 0) - newQuantity,
-          countedByEmployeeId: currentCountObject.countedByEmployeeId,
-          deviationPercent:
-            ((previewDynamicSystemCount - newQuantity) /
-              (previewDynamicSystemCount || 1)) *
-            100,
-          comments,
-          reedited: {
-            reeditedByEmployeeId: employee._id as Types.ObjectId,
-            date: new Date(),
-            reason,
-            originalValues: {
-              currentCountQuantity: currentCountObject.currentCountQuantity,
-              deviationPercent: currentCountObject.deviationPercent ?? 0,
-              dynamicSystemCount: previewDynamicSystemCount,
-            },
-          },
-        };
-
-        const totalDeviationPercent =
-          supplierGoodObject.monthlyCounts.reduce(
-            (acc: number, count: IInventoryCount) =>
-              acc + (count.deviationPercent ?? 0),
-            0,
-          ) -
-          (currentCountObject.deviationPercent ?? 0) +
-          (updateInventoryCount.deviationPercent ?? 0);
-
-        const monthlyCountsWithDeviation =
-          supplierGoodObject.monthlyCounts.filter(
-            (count: IInventoryCount) => (count.deviationPercent ?? 0) !== 0,
-          ).length;
-
-        const averageDeviationPercentCalculation =
-          totalDeviationPercent / monthlyCountsWithDeviation;
-
-        await Inventory.updateOne(
+      await Promise.all([
+        Inventory.updateOne(
           {
             _id: inventoryId,
             "inventoryGoods.supplierGoodId": supplierGoodId,
-            "inventoryGoods.monthlyCounts._id": countId,
+            "inventoryGoods.monthlyCounts.lastCount": true,
           },
           {
             $set: {
-              "inventoryGoods.$[supplierGood].dynamicSystemCount": newQuantity,
-              "inventoryGoods.$[supplierGood].averageDeviationPercent":
-                averageDeviationPercentCalculation,
-              "inventoryGoods.$[supplierGood].monthlyCounts.$[count]":
-                updateInventoryCount,
+              "inventoryGoods.$[elem].monthlyCounts.$[count].lastCount": false,
             },
           },
           {
             arrayFilters: [
-              {
-                "supplierGood.supplierGoodId": new Types.ObjectId(
-                  supplierGoodId,
-                ),
-              },
-              { "count._id": new Types.ObjectId(countId) },
+              { "elem.supplierGoodId": new Types.ObjectId(supplierGoodId) },
+              { "count.lastCount": true },
             ],
           },
-        );
+        ),
 
-        return reply.code(200).send({ message: "Count updated successfully!" });
-      } catch (error) {
-        return reply.code(500).send({
-          message: "Updating count failed!",
-          error: error instanceof Error ? error.message : error,
-        });
+        Inventory.updateOne(
+          {
+            _id: inventoryId,
+            "inventoryGoods.supplierGoodId": supplierGoodId,
+          },
+          {
+            $set: {
+              "inventoryGoods.$[elem].dynamicSystemCount": currentCountQuantity,
+              "inventoryGoods.$[elem].averageDeviationPercent":
+                averageDeviationPercentCalculation,
+            },
+            $push: {
+              "inventoryGoods.$[elem].monthlyCounts": newInventoryCount,
+            },
+          },
+          {
+            arrayFilters: [
+              { "elem.supplierGoodId": new Types.ObjectId(supplierGoodId) },
+            ],
+          },
+        ),
+      ]);
+
+      return reply.code(200).send({ message: "Inventory count added!" });
+    },
+  );
+
+  // PATCH /inventories/:inventoryId/supplierGood/:supplierGoodId/updateCount - update count
+  app.patch<{
+    Params: InventorySupplierGoodParams;
+    Body: UpdateInventoryCountBody;
+  }>(
+    "/:inventoryId/supplierGood/:supplierGoodId/updateCount",
+    {
+      preValidation: [createAuthHook(app)],
+      schema: {
+        params: inventorySupplierGoodParamsSchema,
+        body: updateInventoryCountBodySchema,
+      },
+    },
+    async (req, reply) => {
+      const { inventoryId, supplierGoodId } = req.params;
+
+      if (!req.authSession) {
+        throw unauthorized();
       }
+      const userIdObj = new Types.ObjectId(req.authSession.id);
+
+      const { currentCountQuantity, comments, countId, reason } = req.body;
+
+      const [inventory, supplierGood] = await Promise.all([
+        Inventory.findOne({
+          _id: inventoryId,
+          "inventoryGoods.supplierGoodId": supplierGoodId,
+        })
+          .select("businessId setFinalCount inventoryGoods")
+          .lean() as Promise<IInventory | null>,
+        SupplierGood.findById(supplierGoodId)
+          .select("parLevel")
+          .lean() as Promise<ISupplierGood | null>,
+      ]);
+
+      if (!supplierGood || !inventory) {
+        throw badRequest(
+          !supplierGood ? "Supplier good not found!" : "Inventory not found!",
+        );
+      }
+
+      const businessId = inventory.businessId as Types.ObjectId;
+      const employee = (await Employee.findOne({
+        userId: userIdObj,
+        businessId,
+      })
+        .select("_id currentShiftRole")
+        .lean()) as IEmployee | null;
+
+      if (
+        !employee ||
+        !managementRolesEnums.some(
+          (role) => role === employee.currentShiftRole,
+        )
+      ) {
+        throw forbidden(
+          "Only managers or supervisors can re-edit inventory counts!",
+        );
+      }
+
+      if (inventory.setFinalCount) {
+        throw badRequest(
+          "Inventory already set as final count! Cannot update!",
+        );
+      }
+
+      const supplierGoodObject = inventory.inventoryGoods.find(
+        (good) => good.supplierGoodId.toString() === supplierGoodId,
+      );
+
+      if (!supplierGoodObject) {
+        throw badRequest("Supplier good not found in inventory!");
+      }
+
+      const currentCountObject = supplierGoodObject.monthlyCounts.find(
+        (count) => count._id && count._id.toString() === countId,
+      );
+
+      if (!currentCountObject) {
+        throw notFound("Count not found!");
+      }
+
+      const newQuantity =
+        currentCountQuantity !== undefined
+          ? currentCountQuantity
+          : currentCountObject.currentCountQuantity;
+
+      if (
+        currentCountQuantity !== undefined &&
+        currentCountObject.currentCountQuantity === currentCountQuantity
+      ) {
+        return reply
+          .code(200)
+          .send({ message: "Count is the same, no need to update!" });
+      }
+
+      let previewDynamicSystemCount = 0;
+      if (currentCountObject.deviationPercent !== 100) {
+        previewDynamicSystemCount =
+          currentCountObject.currentCountQuantity /
+          (1 - (currentCountObject.deviationPercent ?? 0) / 100);
+      }
+
+      const updateInventoryCount: IInventoryCount = {
+        _id: new Types.ObjectId(countId),
+        currentCountQuantity: newQuantity,
+        quantityNeeded: (supplierGood.parLevel || 0) - newQuantity,
+        countedByEmployeeId: currentCountObject.countedByEmployeeId,
+        deviationPercent:
+          ((previewDynamicSystemCount - newQuantity) /
+            (previewDynamicSystemCount || 1)) *
+          100,
+        comments,
+        reedited: {
+          reeditedByEmployeeId: employee._id as Types.ObjectId,
+          date: new Date(),
+          reason,
+          originalValues: {
+            currentCountQuantity: currentCountObject.currentCountQuantity,
+            deviationPercent: currentCountObject.deviationPercent ?? 0,
+            dynamicSystemCount: previewDynamicSystemCount,
+          },
+        },
+      };
+
+      const totalDeviationPercent =
+        supplierGoodObject.monthlyCounts.reduce(
+          (acc: number, count: IInventoryCount) =>
+            acc + (count.deviationPercent ?? 0),
+          0,
+        ) -
+        (currentCountObject.deviationPercent ?? 0) +
+        (updateInventoryCount.deviationPercent ?? 0);
+
+      const monthlyCountsWithDeviation = supplierGoodObject.monthlyCounts.filter(
+        (count: IInventoryCount) => (count.deviationPercent ?? 0) !== 0,
+      ).length;
+
+      const averageDeviationPercentCalculation =
+        totalDeviationPercent / monthlyCountsWithDeviation;
+
+      await Inventory.updateOne(
+        {
+          _id: inventoryId,
+          "inventoryGoods.supplierGoodId": supplierGoodId,
+          "inventoryGoods.monthlyCounts._id": countId,
+        },
+        {
+          $set: {
+            "inventoryGoods.$[supplierGood].dynamicSystemCount": newQuantity,
+            "inventoryGoods.$[supplierGood].averageDeviationPercent":
+              averageDeviationPercentCalculation,
+            "inventoryGoods.$[supplierGood].monthlyCounts.$[count]":
+              updateInventoryCount,
+          },
+        },
+        {
+          arrayFilters: [
+            {
+              "supplierGood.supplierGoodId": new Types.ObjectId(supplierGoodId),
+            },
+            { "count._id": new Types.ObjectId(countId) },
+          ],
+        },
+      );
+
+      return reply.code(200).send({ message: "Count updated successfully!" });
     },
   );
 
   // GET /inventories/business/:businessId - get by business
-  app.get("/business/:businessId", async (req, reply) => {
-    const params = req.params as { businessId?: string };
-    const businessId = params.businessId;
+  app.get<{ Params: BusinessIdParams; Querystring: InventoryMonthDateQuery }>(
+    "/business/:businessId",
+    {
+      schema: {
+        params: businessIdParamsSchema,
+        querystring: inventoryMonthDateQuerySchema,
+      },
+    },
+    async (req, reply) => {
+      const { businessId } = req.params;
 
-    if (!businessId || isObjectIdValid([businessId]) !== true) {
-      return reply.code(400).send({ message: "Business ID not valid!" });
-    }
+      const range = resolveMonthRange(req.query.monthDate);
 
-    const query = req.query as { monthDate?: string };
-    const monthDateParams = query.monthDate;
+      interface BusinessQuery {
+        businessId: Types.ObjectId;
+        createdAt?: { $gte: Date; $lte: Date };
+      }
 
-    const startDate = monthDateParams ? new Date(monthDateParams) : null;
-    let endDate = monthDateParams ? new Date(monthDateParams) : null;
+      const dbQuery: BusinessQuery = {
+        businessId: new Types.ObjectId(businessId),
+      };
 
-    if (startDate) {
-      startDate.setDate(1);
-      startDate.setHours(0, 0, 0, 0);
-    }
+      if (range) {
+        dbQuery.createdAt = {
+          $gte: range.startDate,
+          $lte: range.endDate,
+        };
+      }
 
-    if (endDate) {
-      endDate = new Date(endDate.getFullYear(), endDate.getMonth() + 1, 0);
-      endDate.setHours(23, 59, 59, 999);
-    }
+      const inventories = await Inventory.find(dbQuery)
+        .populate(INVENTORY_POPULATE)
+        .lean();
 
-    interface BusinessQuery {
-      businessId: Types.ObjectId;
-      createdAt?: { $gte: Date; $lte: Date };
-    }
-
-    const dbQuery: BusinessQuery = {
-      businessId: new Types.ObjectId(businessId),
-    };
-
-    if (startDate && endDate) {
-      dbQuery.createdAt = { $gte: startDate, $lte: endDate };
-    }
-
-    const inventories = await Inventory.find(dbQuery)
-      .populate({
-        path: "inventoryGoods.supplierGoodId",
-        select:
-          "name mainCategory subCategory supplierId budgetImpact imageUrl inventorySchedule parLevel measurementUnit pricePerMeasurementUnit",
-        model: SupplierGood,
-        populate: {
-          path: "supplierId",
-          select: "tradeName",
-          model: Supplier,
-        },
-      })
-      .lean();
-
-    if (!inventories.length) {
-      return reply.code(404).send({ message: "No inventories found!" });
-    }
-    return reply.code(200).send(inventories);
-  });
+      if (!inventories.length) {
+        throw notFound("No inventories found!");
+      }
+      return reply.code(200).send(inventories);
+    },
+  );
 
   // GET /inventories/business/:businessId/lowStock - low stock report
-  app.get("/business/:businessId/lowStock", async (req, reply) => {
-    const params = req.params as { businessId?: string };
-    const businessId = params.businessId;
+  app.get<{ Params: BusinessIdParams }>(
+    "/business/:businessId/lowStock",
+    { schema: { params: businessIdParamsSchema } },
+    async (req, reply) => {
+      const { businessId } = req.params;
 
-    if (!businessId || isObjectIdValid([businessId]) !== true) {
-      return reply.code(400).send({ message: "Business ID not valid!" });
-    }
-
-    try {
       interface InventoryWithGoods {
         inventoryGoods?: IInventory["inventoryGoods"];
       }
@@ -851,42 +770,26 @@ export const inventoriesRoutes: FastifyPluginAsync = async (app) => {
         });
 
       return reply.code(200).send({ lowStock });
-    } catch (error) {
-      return reply.code(500).send({
-        message: "Get low stock failed!",
-        error: error instanceof Error ? error.message : error,
-      });
-    }
-  });
+    },
+  );
 
   // GET /inventories/business/:businessId/varianceReport - variance report
-  app.get("/business/:businessId/varianceReport", async (req, reply) => {
-    const params = req.params as { businessId?: string };
-    const businessId = params.businessId;
+  app.get<{ Params: BusinessIdParams; Querystring: VarianceReportQuery }>(
+    "/business/:businessId/varianceReport",
+    {
+      schema: {
+        params: businessIdParamsSchema,
+        querystring: varianceReportQuerySchema,
+      },
+    },
+    async (req, reply) => {
+      const { businessId } = req.params;
+      const { month: monthParam } = req.query;
 
-    const query = req.query as { month?: string };
-    const monthParam = query.month;
-
-    if (!businessId || isObjectIdValid([businessId]) !== true) {
-      return reply.code(400).send({ message: "Business ID is not valid!" });
-    }
-
-    let year: number;
-    let month: number;
-    if (monthParam && /^\d{4}-\d{2}$/.test(monthParam)) {
-      const [y, m] = monthParam.split("-").map(Number);
-      if (m < 1 || m > 12) {
-        return reply.code(400).send({ message: "Month must be 01-12." });
-      }
-      year = y;
-      month = m;
-    } else {
       const now = new Date();
-      year = now.getFullYear();
-      month = now.getMonth() + 1;
-    }
+      const year = monthParam?.year ?? now.getFullYear();
+      const month = monthParam?.month ?? now.getMonth() + 1;
 
-    try {
       const report = await getVarianceReport(
         new Types.ObjectId(businessId),
         year,
@@ -915,11 +818,6 @@ export const inventoriesRoutes: FastifyPluginAsync = async (app) => {
       }));
 
       return reply.code(200).send({ varianceReport: payload });
-    } catch (error) {
-      return reply.code(500).send({
-        message: "Variance report failed!",
-        error: error instanceof Error ? error.message : error,
-      });
-    }
-  });
+    },
+  );
 };
