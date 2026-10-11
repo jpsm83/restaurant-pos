@@ -1,6 +1,10 @@
 /**
  * WeeklyBusinessReport Routes Tests - Phase 1 Module 16
  * Tests for weekly business report endpoints
+ *
+ * Every error response is an RFC 9457 `application/problem+json` document
+ * produced by the global handler, so assertions are on the problem-details
+ * shape rather than a bare `{ message }`.
  */
 
 import { describe, it, expect, vi } from "vitest";
@@ -15,6 +19,26 @@ import aggregateDailyReportsIntoWeekly from "../../src/weeklyBusinessReport/aggr
 vi.mock("../../src/weeklyBusinessReport/sendWeeklyReportReadyNotification.ts", () => ({
   default: vi.fn(async () => true),
 }));
+
+const expectProblem = (
+  response: {
+    statusCode: number;
+    headers: Record<string, unknown>;
+    json: () => any;
+  },
+  status: number,
+  typeSlug: string,
+) => {
+  expect(response.statusCode).toBe(status);
+  expect(response.headers["content-type"]).toContain("application/problem+json");
+  const body = response.json();
+  expect(body.type).toBe(`https://restaurant-pos.app/errors/${typeSlug}`);
+  expect(body.status).toBe(status);
+  return body;
+};
+
+const fieldPaths = (body: { errors?: Array<{ path: string }> }): string[] =>
+  (body.errors ?? []).map((e) => e.path);
 
 describe("WeeklyBusinessReport Routes", () => {
   const createTestBusiness = async () => {
@@ -76,9 +100,8 @@ describe("WeeklyBusinessReport Routes", () => {
         url: "/api/v1/weeklyBusinessReport",
       });
 
-      expect(response.statusCode).toBe(404);
-      const body = JSON.parse(response.body);
-      expect(body.message).toContain("No weekly reports");
+      const body = expectProblem(response, 404, "not-found");
+      expect(body.detail).toContain("No weekly reports");
     });
 
     it("returns 400 for invalid businessId filter", async () => {
@@ -89,9 +112,8 @@ describe("WeeklyBusinessReport Routes", () => {
         url: "/api/v1/weeklyBusinessReport?businessId=invalid-id",
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid business ID!");
+      const body = expectProblem(response, 400, "validation");
+      expect(fieldPaths(body)).toContain("businessId");
     });
 
     it("returns 400 for invalid week range", async () => {
@@ -102,9 +124,20 @@ describe("WeeklyBusinessReport Routes", () => {
         url: "/api/v1/weeklyBusinessReport?startWeek=2024-12-31&endWeek=2024-01-01",
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toContain("Invalid week range");
+      const body = expectProblem(response, 400, "bad-request");
+      expect(body.detail).toContain("Invalid week range");
+    });
+
+    it("returns 400 for a malformed week date", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/weeklyBusinessReport?startWeek=not-a-date&endWeek=2024-01-07",
+      });
+
+      const body = expectProblem(response, 400, "validation");
+      expect(fieldPaths(body)).toContain("startWeek");
     });
 
     it("filters by businessId", async () => {
@@ -132,9 +165,8 @@ describe("WeeklyBusinessReport Routes", () => {
         url: "/api/v1/weeklyBusinessReport/invalid-id",
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid weekly report ID!");
+      const body = expectProblem(response, 400, "validation");
+      expect(fieldPaths(body)).toContain("weeklyReportId");
     });
 
     it("returns 404 for non-existent report", async () => {
@@ -146,9 +178,8 @@ describe("WeeklyBusinessReport Routes", () => {
         url: `/api/v1/weeklyBusinessReport/${fakeId}`,
       });
 
-      expect(response.statusCode).toBe(404);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Weekly report not found!");
+      const body = expectProblem(response, 404, "not-found");
+      expect(body.detail).toBe("Weekly report not found!");
     });
 
     it("gets weekly report by ID", async () => {
@@ -176,9 +207,8 @@ describe("WeeklyBusinessReport Routes", () => {
         url: "/api/v1/weeklyBusinessReport/business/invalid-id",
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid business ID!");
+      const body = expectProblem(response, 400, "validation");
+      expect(fieldPaths(body)).toContain("businessId");
     });
 
     it("returns 404 when no reports for business", async () => {
@@ -190,9 +220,8 @@ describe("WeeklyBusinessReport Routes", () => {
         url: `/api/v1/weeklyBusinessReport/business/${fakeId}`,
       });
 
-      expect(response.statusCode).toBe(404);
-      const body = JSON.parse(response.body);
-      expect(body.message).toContain("No weekly reports");
+      const body = expectProblem(response, 404, "not-found");
+      expect(body.detail).toContain("No weekly reports");
     });
 
     it("returns 400 for invalid week range", async () => {
@@ -204,9 +233,8 @@ describe("WeeklyBusinessReport Routes", () => {
         url: `/api/v1/weeklyBusinessReport/business/${business._id}?startWeek=2024-12-31&endWeek=2024-01-01`,
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toContain("Invalid week range");
+      const body = expectProblem(response, 400, "bad-request");
+      expect(body.detail).toContain("Invalid week range");
     });
 
     it("lists weekly reports by business", async () => {

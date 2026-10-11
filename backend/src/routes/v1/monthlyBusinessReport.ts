@@ -1,20 +1,43 @@
+/**
+ * MonthlyBusinessReport Routes — report retrieval, the fixed/extra-cost PATCH
+ * and the on-demand calculation.
+ *
+ * Every route declares its params/query/body as a strict zod DTO from
+ * `packages/schemas/businessReports.ts`; validation happens at the boundary and
+ * every error is raised as an `AppError` so the global handler emits RFC 9457
+ * `application/problem+json`. The month-range ordering rule and the PATCH
+ * at-least-one-field rule stay in the route as named post-parse checks.
+ */
 import type { FastifyPluginAsync } from "fastify";
 import { Types } from "mongoose";
 import type { IGoodsReduced } from "../../../../packages/interfaces/IDailySalesReport.ts";
 import type { IPaymentMethod } from "../../../../packages/interfaces/IPaymentMethod.ts";
 import type { IMetrics } from "../../../../packages/interfaces/IBusiness.ts";
 
-import isObjectIdValid from "../../utils/isObjectIdValid.ts";
 import getWasteByBudgetImpactForMonth from "../../inventories/getWasteByBudgetImpactForMonth.ts";
 import MonthlyBusinessReport from "../../models/monthlyBusinessReport.ts";
 import DailySalesReport from "../../models/dailySalesReport.ts";
 import Schedule from "../../models/schedule.ts";
 import Business from "../../models/business.ts";
+import { badRequest, notFound } from "../../errors/appError.ts";
+import {
+  calculateMonthlyReportQuerySchema,
+  monthlyBusinessParamsSchema,
+  monthlyBusinessReportListQuerySchema,
+  monthlyBusinessReportRangeQuerySchema,
+  monthlyReportIdParamsSchema,
+  updateMonthlyBusinessReportBodySchema,
+  type CalculateMonthlyReportQuery,
+  type MonthlyBusinessParams,
+  type MonthlyBusinessReportListQuery,
+  type MonthlyBusinessReportRangeQuery,
+  type MonthlyReportIdParams,
+  type UpdateMonthlyBusinessReportBody,
+} from "../../../../packages/schemas/businessReports.ts";
 
-function parseMonthStart(ym: string): Date | null {
+/** The local midnight of a `YYYY-MM` month (the schema has validated it). */
+function parseMonthStart(ym: string): Date {
   const [y, m] = ym.split("-").map(Number);
-  if (!Number.isInteger(y) || !Number.isInteger(m) || m < 1 || m > 12)
-    return null;
   return new Date(y, m - 1, 1, 0, 0, 0, 0);
 }
 
@@ -48,40 +71,28 @@ function getMonthEnd(monthStart: Date): Date {
 
 export const monthlyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
   // GET /monthlyBusinessReport - list all (with optional filters)
-  app.get("/", async (req, reply) => {
-    try {
-      const queryParams = req.query as {
-        businessId?: string;
-        startMonth?: string;
-        endMonth?: string;
-      };
+  app.get<{ Querystring: MonthlyBusinessReportListQuery }>(
+    "/",
+    { schema: { querystring: monthlyBusinessReportListQuerySchema } },
+    async (req, reply) => {
+      const { businessId, startMonth, endMonth } = req.query;
 
       const filter: {
         businessId?: Types.ObjectId;
         monthReference?: { $gte: Date; $lte: Date };
       } = {};
 
-      if (queryParams.businessId) {
-        if (isObjectIdValid([queryParams.businessId]) !== true) {
-          return reply.code(400).send({ message: "Invalid business ID!" });
-        }
-        filter.businessId = new Types.ObjectId(queryParams.businessId);
+      if (businessId) {
+        filter.businessId = new Types.ObjectId(businessId);
       }
 
-      if (queryParams.startMonth && queryParams.endMonth) {
-        const start = parseMonthStart(queryParams.startMonth);
-        const end = parseMonthStart(queryParams.endMonth);
-        if (!start || !end) {
-          return reply.code(400).send({
-            message:
-              "Invalid month range. Use startMonth and endMonth as YYYY-MM.",
-          });
-        }
+      if (startMonth && endMonth) {
+        const start = parseMonthStart(startMonth);
+        const end = parseMonthStart(endMonth);
         if (start > monthEnd(end)) {
-          return reply.code(400).send({
-            message:
-              "Invalid month range, startMonth must be before or equal to endMonth.",
-          });
+          throw badRequest(
+            "Invalid month range, startMonth must be before or equal to endMonth.",
+          );
         }
         filter.monthReference = { $gte: start, $lte: monthEnd(end) };
       }
@@ -91,68 +102,54 @@ export const monthlyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
         .lean();
 
       if (!reports.length) {
-        return reply.code(404).send({ message: "No monthly reports found!" });
+        throw notFound("No monthly reports found!");
       }
 
       return reply.code(200).send(reports);
-    } catch (error) {
-      return reply.code(500).send({
-        message: "Get monthly business reports failed!",
-        error: error instanceof Error ? error.message : error,
-      });
-    }
-  });
+    },
+  );
 
   // GET /monthlyBusinessReport/:monthlyReportId - get by ID
-  app.get("/:monthlyReportId", async (req, reply) => {
-    try {
-      const params = req.params as { monthlyReportId?: string };
-      const monthlyReportId = params.monthlyReportId;
-
-      if (!monthlyReportId || isObjectIdValid([monthlyReportId]) !== true) {
-        return reply.code(400).send({ message: "Invalid monthly report ID!" });
-      }
+  app.get<{ Params: MonthlyReportIdParams }>(
+    "/:monthlyReportId",
+    { schema: { params: monthlyReportIdParamsSchema } },
+    async (req, reply) => {
+      const { monthlyReportId } = req.params;
 
       const report =
         await MonthlyBusinessReport.findById(monthlyReportId).lean();
 
       if (!report) {
-        return reply.code(404).send({ message: "Monthly report not found!" });
+        throw notFound("Monthly report not found!");
       }
 
       return reply.code(200).send(report);
-    } catch (error) {
-      return reply.code(500).send({
-        message: "Get monthly business report by id failed!",
-        error: error instanceof Error ? error.message : error,
-      });
-    }
-  });
+    },
+  );
 
   // PATCH /monthlyBusinessReport/:monthlyReportId - update
-  app.patch("/:monthlyReportId", async (req, reply) => {
-    try {
-      const params = req.params as { monthlyReportId?: string };
-      const monthlyReportId = params.monthlyReportId;
+  app.patch<{
+    Params: MonthlyReportIdParams;
+    Body: UpdateMonthlyBusinessReportBody;
+  }>(
+    "/:monthlyReportId",
+    {
+      schema: {
+        params: monthlyReportIdParamsSchema,
+        body: updateMonthlyBusinessReportBodySchema,
+      },
+    },
+    async (req, reply) => {
+      const { monthlyReportId } = req.params;
+      const { totalFixedOperatingCost, totalExtraCost } = req.body;
 
-      if (!monthlyReportId || isObjectIdValid([monthlyReportId]) !== true) {
-        return reply.code(400).send({ message: "Invalid monthly report ID!" });
-      }
-
-      const body = req.body as {
-        totalFixedOperatingCost?: number;
-        totalExtraCost?: number;
-      };
-
-      const { totalFixedOperatingCost, totalExtraCost } = body;
       if (
         totalFixedOperatingCost === undefined &&
         totalExtraCost === undefined
       ) {
-        return reply.code(400).send({
-          message:
-            "Provide at least one of totalFixedOperatingCost or totalExtraCost.",
-        });
+        throw badRequest(
+          "Provide at least one of totalFixedOperatingCost or totalExtraCost.",
+        );
       }
 
       const report = await MonthlyBusinessReport.findById(monthlyReportId)
@@ -160,13 +157,11 @@ export const monthlyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
         .lean();
 
       if (!report) {
-        return reply.code(404).send({ message: "Monthly report not found!" });
+        throw notFound("Monthly report not found!");
       }
 
       if (!(report as { isReportOpen?: boolean }).isReportOpen) {
-        return reply.code(400).send({
-          message: "Cannot update a closed monthly report.",
-        });
+        throw badRequest("Cannot update a closed monthly report.");
       }
 
       const cost = (report as { costBreakdown?: Record<string, unknown> })
@@ -218,28 +213,24 @@ export const monthlyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
       const updated =
         await MonthlyBusinessReport.findById(monthlyReportId).lean();
       return reply.code(200).send(updated);
-    } catch (error) {
-      return reply.code(500).send({
-        message: "Update monthly business report fixed/extra costs failed!",
-        error: error instanceof Error ? error.message : error,
-      });
-    }
-  });
+    },
+  );
 
   // GET /monthlyBusinessReport/business/:businessId - get by business
-  app.get("/business/:businessId", async (req, reply) => {
-    try {
-      const params = req.params as { businessId?: string };
-      const businessId = params.businessId;
-
-      if (!businessId || isObjectIdValid([businessId]) !== true) {
-        return reply.code(400).send({ message: "Invalid business ID!" });
-      }
-
-      const queryParams = req.query as {
-        startMonth?: string;
-        endMonth?: string;
-      };
+  app.get<{
+    Params: MonthlyBusinessParams;
+    Querystring: MonthlyBusinessReportRangeQuery;
+  }>(
+    "/business/:businessId",
+    {
+      schema: {
+        params: monthlyBusinessParamsSchema,
+        querystring: monthlyBusinessReportRangeQuerySchema,
+      },
+    },
+    async (req, reply) => {
+      const { businessId } = req.params;
+      const { startMonth, endMonth } = req.query;
 
       const filter: {
         businessId: Types.ObjectId;
@@ -248,20 +239,13 @@ export const monthlyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
         businessId: new Types.ObjectId(businessId),
       };
 
-      if (queryParams.startMonth && queryParams.endMonth) {
-        const start = parseMonthStart(queryParams.startMonth);
-        const end = parseMonthStart(queryParams.endMonth);
-        if (!start || !end) {
-          return reply.code(400).send({
-            message:
-              "Invalid month range. Use startMonth and endMonth as YYYY-MM.",
-          });
-        }
+      if (startMonth && endMonth) {
+        const start = parseMonthStart(startMonth);
+        const end = parseMonthStart(endMonth);
         if (start > monthEnd(end)) {
-          return reply.code(400).send({
-            message:
-              "Invalid month range, startMonth must be before or equal to endMonth.",
-          });
+          throw badRequest(
+            "Invalid month range, startMonth must be before or equal to endMonth.",
+          );
         }
         filter.monthReference = { $gte: start, $lte: monthEnd(end) };
       }
@@ -271,45 +255,34 @@ export const monthlyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
         .lean();
 
       if (!reports.length) {
-        return reply.code(404).send({ message: "No monthly reports found!" });
+        throw notFound("No monthly reports found!");
       }
 
       return reply.code(200).send(reports);
-    } catch (error) {
-      return reply.code(500).send({
-        message: "Get monthly business reports by business id failed!",
-        error: error instanceof Error ? error.message : error,
-      });
-    }
-  });
+    },
+  );
 
   // GET /monthlyBusinessReport/business/:businessId/calculateOnDemand - calculate on demand
-  app.get("/business/:businessId/calculateOnDemand", async (req, reply) => {
-    try {
-      const params = req.params as { businessId?: string };
-      const businessId = params.businessId;
-
-      if (!businessId || isObjectIdValid([businessId]) !== true) {
-        return reply.code(400).send({ message: "Invalid business ID!" });
-      }
-
-      const queryParams = req.query as { month?: string };
+  app.get<{
+    Params: MonthlyBusinessParams;
+    Querystring: CalculateMonthlyReportQuery;
+  }>(
+    "/business/:businessId/calculateOnDemand",
+    {
+      schema: {
+        params: monthlyBusinessParamsSchema,
+        querystring: calculateMonthlyReportQuerySchema,
+      },
+    },
+    async (req, reply) => {
+      const { businessId } = req.params;
+      const { month } = req.query;
 
       let monthStart: Date;
-      if (queryParams.month) {
-        const [yearStr, monthStr] = queryParams.month.split("-");
+      if (month) {
+        const [yearStr, monthStr] = month.split("-");
         const year = Number(yearStr);
         const monthIndex = Number(monthStr) - 1;
-        if (
-          !Number.isInteger(year) ||
-          !Number.isInteger(monthIndex) ||
-          monthIndex < 0 ||
-          monthIndex > 11
-        ) {
-          return reply.code(400).send({
-            message: "Invalid month query param. Use YYYY-MM (e.g. 2024-06).",
-          });
-        }
         monthStart = new Date(year, monthIndex, 1, 0, 0, 0, 0);
       } else {
         monthStart = getMonthStart(new Date());
@@ -627,11 +600,6 @@ export const monthlyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
       };
 
       return reply.code(200).send(responseBody);
-    } catch (error) {
-      return reply.code(500).send({
-        message: "On-demand monthly business report calculation failed!",
-        error: error instanceof Error ? error.message : error,
-      });
-    }
-  });
+    },
+  );
 };

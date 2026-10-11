@@ -1,6 +1,10 @@
 /**
  * MonthlyBusinessReport Routes Tests - Phase 1 Module 17
  * Tests for monthly business report endpoints
+ *
+ * Every error response is an RFC 9457 `application/problem+json` document
+ * produced by the global handler, so assertions are on the problem-details
+ * shape rather than a bare `{ message }`.
  */
 
 import { describe, it, expect, vi } from "vitest";
@@ -15,6 +19,26 @@ import aggregateDailyReportsIntoMonthly from "../../src/monthlyBusinessReport/ag
 vi.mock("../../src/monthlyBusinessReport/sendMonthlyReportReadyNotification.ts", () => ({
   default: vi.fn(async () => true),
 }));
+
+const expectProblem = (
+  response: {
+    statusCode: number;
+    headers: Record<string, unknown>;
+    json: () => any;
+  },
+  status: number,
+  typeSlug: string,
+) => {
+  expect(response.statusCode).toBe(status);
+  expect(response.headers["content-type"]).toContain("application/problem+json");
+  const body = response.json();
+  expect(body.type).toBe(`https://restaurant-pos.app/errors/${typeSlug}`);
+  expect(body.status).toBe(status);
+  return body;
+};
+
+const fieldPaths = (body: { errors?: Array<{ path: string }> }): string[] =>
+  (body.errors ?? []).map((e) => e.path);
 
 describe("MonthlyBusinessReport Routes", () => {
   const createTestBusiness = async () => {
@@ -86,9 +110,8 @@ describe("MonthlyBusinessReport Routes", () => {
         url: "/api/v1/monthlyBusinessReport",
       });
 
-      expect(response.statusCode).toBe(404);
-      const body = JSON.parse(response.body);
-      expect(body.message).toContain("No monthly reports");
+      const body = expectProblem(response, 404, "not-found");
+      expect(body.detail).toContain("No monthly reports");
     });
 
     it("returns 400 for invalid businessId filter", async () => {
@@ -99,9 +122,8 @@ describe("MonthlyBusinessReport Routes", () => {
         url: "/api/v1/monthlyBusinessReport?businessId=invalid-id",
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid business ID!");
+      const body = expectProblem(response, 400, "validation");
+      expect(fieldPaths(body)).toContain("businessId");
     });
 
     it("returns 400 for invalid month range", async () => {
@@ -112,9 +134,20 @@ describe("MonthlyBusinessReport Routes", () => {
         url: "/api/v1/monthlyBusinessReport?startMonth=2024-12&endMonth=2024-01",
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toContain("Invalid month range");
+      const body = expectProblem(response, 400, "bad-request");
+      expect(body.detail).toContain("Invalid month range");
+    });
+
+    it("returns 400 for a malformed month", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/monthlyBusinessReport?startMonth=2024-13&endMonth=2024-01",
+      });
+
+      const body = expectProblem(response, 400, "validation");
+      expect(fieldPaths(body)).toContain("startMonth");
     });
   });
 
@@ -127,9 +160,8 @@ describe("MonthlyBusinessReport Routes", () => {
         url: "/api/v1/monthlyBusinessReport/invalid-id",
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid monthly report ID!");
+      const body = expectProblem(response, 400, "validation");
+      expect(fieldPaths(body)).toContain("monthlyReportId");
     });
 
     it("returns 404 for non-existent report", async () => {
@@ -141,9 +173,8 @@ describe("MonthlyBusinessReport Routes", () => {
         url: `/api/v1/monthlyBusinessReport/${fakeId}`,
       });
 
-      expect(response.statusCode).toBe(404);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Monthly report not found!");
+      const body = expectProblem(response, 404, "not-found");
+      expect(body.detail).toBe("Monthly report not found!");
     });
 
     it("gets monthly report by ID", async () => {
@@ -172,9 +203,8 @@ describe("MonthlyBusinessReport Routes", () => {
         payload: { totalFixedOperatingCost: 1500 },
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid monthly report ID!");
+      const body = expectProblem(response, 400, "validation");
+      expect(fieldPaths(body)).toContain("monthlyReportId");
     });
 
     it("returns 400 when no update fields provided", async () => {
@@ -188,9 +218,8 @@ describe("MonthlyBusinessReport Routes", () => {
         payload: {},
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toContain("Provide at least one");
+      const body = expectProblem(response, 400, "bad-request");
+      expect(body.detail).toContain("Provide at least one");
     });
 
     it("returns 404 for non-existent report", async () => {
@@ -203,9 +232,8 @@ describe("MonthlyBusinessReport Routes", () => {
         payload: { totalFixedOperatingCost: 1500 },
       });
 
-      expect(response.statusCode).toBe(404);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Monthly report not found!");
+      const body = expectProblem(response, 404, "not-found");
+      expect(body.detail).toBe("Monthly report not found!");
     });
 
     it("returns 400 when updating closed report", async () => {
@@ -219,9 +247,8 @@ describe("MonthlyBusinessReport Routes", () => {
         payload: { totalFixedOperatingCost: 1500 },
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toContain("closed");
+      const body = expectProblem(response, 400, "bad-request");
+      expect(body.detail).toContain("closed");
     });
 
     it("updates report successfully", async () => {
@@ -248,9 +275,8 @@ describe("MonthlyBusinessReport Routes", () => {
         url: "/api/v1/monthlyBusinessReport/business/invalid-id",
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid business ID!");
+      const body = expectProblem(response, 400, "validation");
+      expect(fieldPaths(body)).toContain("businessId");
     });
 
     it("returns 404 when no reports for business", async () => {
@@ -262,9 +288,8 @@ describe("MonthlyBusinessReport Routes", () => {
         url: `/api/v1/monthlyBusinessReport/business/${fakeId}`,
       });
 
-      expect(response.statusCode).toBe(404);
-      const body = JSON.parse(response.body);
-      expect(body.message).toContain("No monthly reports");
+      const body = expectProblem(response, 404, "not-found");
+      expect(body.detail).toContain("No monthly reports");
     });
 
     it("returns 400 for invalid month range", async () => {
@@ -276,9 +301,8 @@ describe("MonthlyBusinessReport Routes", () => {
         url: `/api/v1/monthlyBusinessReport/business/${business._id}?startMonth=2024-12&endMonth=2024-01`,
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toContain("Invalid month range");
+      const body = expectProblem(response, 400, "bad-request");
+      expect(body.detail).toContain("Invalid month range");
     });
 
     it("lists monthly reports by business", async () => {
@@ -307,9 +331,8 @@ describe("MonthlyBusinessReport Routes", () => {
         url: "/api/v1/monthlyBusinessReport/business/invalid-id/calculateOnDemand",
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid business ID!");
+      const body = expectProblem(response, 400, "validation");
+      expect(fieldPaths(body)).toContain("businessId");
     });
 
     it("returns 400 for invalid month query", async () => {
@@ -321,9 +344,8 @@ describe("MonthlyBusinessReport Routes", () => {
         url: `/api/v1/monthlyBusinessReport/business/${business._id}/calculateOnDemand?month=invalid`,
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toContain("Invalid month query");
+      const body = expectProblem(response, 400, "validation");
+      expect(fieldPaths(body)).toContain("month");
     });
 
     it("calculates on demand successfully", async () => {

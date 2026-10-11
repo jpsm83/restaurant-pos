@@ -1,16 +1,37 @@
+/**
+ * WeeklyBusinessReport Routes — report retrieval with optional business and
+ * week-range filters.
+ *
+ * Every route declares its params/query as a strict zod DTO from
+ * `packages/schemas/businessReports.ts`; validation happens at the boundary and
+ * every error is raised as an `AppError` so the global handler emits RFC 9457
+ * `application/problem+json`. The week-range ordering rule stays in the route as
+ * a named post-parse check.
+ */
 import type { FastifyPluginAsync } from "fastify";
 import { Types } from "mongoose";
 
-import isObjectIdValid from "../../utils/isObjectIdValid.ts";
 import WeeklyBusinessReport from "../../models/weeklyBusinessReport.ts";
+import { badRequest, notFound } from "../../errors/appError.ts";
+import {
+  weeklyBusinessParamsSchema,
+  weeklyBusinessReportListQuerySchema,
+  weeklyBusinessReportRangeQuerySchema,
+  weeklyReportIdParamsSchema,
+  type WeeklyBusinessParams,
+  type WeeklyBusinessReportListQuery,
+  type WeeklyBusinessReportRangeQuery,
+  type WeeklyReportIdParams,
+} from "../../../../packages/schemas/businessReports.ts";
 
-function parseWeekStart(dateStr: string): Date | null {
+/** The business-local midnight a `YYYY-MM-DD` week start resolves to. */
+function parseWeekStart(dateStr: string): Date {
   const d = new Date(dateStr);
-  if (Number.isNaN(d.getTime())) return null;
   d.setHours(0, 0, 0, 0);
   return d;
 }
 
+/** The last instant of the week that starts at `weekStart`. */
 function weekEnd(weekStart: Date): Date {
   const end = new Date(weekStart);
   end.setDate(end.getDate() + 6);
@@ -20,40 +41,28 @@ function weekEnd(weekStart: Date): Date {
 
 export const weeklyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
   // GET /weeklyBusinessReport - list all (with optional filters)
-  app.get("/", async (req, reply) => {
-    try {
-      const queryParams = req.query as {
-        businessId?: string;
-        startWeek?: string;
-        endWeek?: string;
-      };
+  app.get<{ Querystring: WeeklyBusinessReportListQuery }>(
+    "/",
+    { schema: { querystring: weeklyBusinessReportListQuerySchema } },
+    async (req, reply) => {
+      const { businessId, startWeek, endWeek } = req.query;
 
       const filter: {
         businessId?: Types.ObjectId;
         weekReference?: { $gte: Date; $lte: Date };
       } = {};
 
-      if (queryParams.businessId) {
-        if (isObjectIdValid([queryParams.businessId]) !== true) {
-          return reply.code(400).send({ message: "Invalid business ID!" });
-        }
-        filter.businessId = new Types.ObjectId(queryParams.businessId);
+      if (businessId) {
+        filter.businessId = new Types.ObjectId(businessId);
       }
 
-      if (queryParams.startWeek && queryParams.endWeek) {
-        const start = parseWeekStart(queryParams.startWeek);
-        const end = parseWeekStart(queryParams.endWeek);
-        if (!start || !end) {
-          return reply.code(400).send({
-            message:
-              "Invalid week range. Use startWeek and endWeek as ISO dates (YYYY-MM-DD).",
-          });
-        }
+      if (startWeek && endWeek) {
+        const start = parseWeekStart(startWeek);
+        const end = parseWeekStart(endWeek);
         if (start > weekEnd(end)) {
-          return reply.code(400).send({
-            message:
-              "Invalid week range, startWeek must be before or equal to endWeek.",
-          });
+          throw badRequest(
+            "Invalid week range, startWeek must be before or equal to endWeek.",
+          );
         }
         filter.weekReference = { $gte: start, $lte: weekEnd(end) };
       }
@@ -63,57 +72,45 @@ export const weeklyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
         .lean();
 
       if (!reports.length) {
-        return reply.code(404).send({ message: "No weekly reports found!" });
+        throw notFound("No weekly reports found!");
       }
 
       return reply.code(200).send(reports);
-    } catch (error) {
-      return reply.code(500).send({
-        message: "Get weekly business reports failed!",
-        error: error instanceof Error ? error.message : error,
-      });
-    }
-  });
+    },
+  );
 
   // GET /weeklyBusinessReport/:weeklyReportId - get by ID
-  app.get("/:weeklyReportId", async (req, reply) => {
-    try {
-      const params = req.params as { weeklyReportId?: string };
-      const weeklyReportId = params.weeklyReportId;
-
-      if (!weeklyReportId || isObjectIdValid([weeklyReportId]) !== true) {
-        return reply.code(400).send({ message: "Invalid weekly report ID!" });
-      }
+  app.get<{ Params: WeeklyReportIdParams }>(
+    "/:weeklyReportId",
+    { schema: { params: weeklyReportIdParamsSchema } },
+    async (req, reply) => {
+      const { weeklyReportId } = req.params;
 
       const report = await WeeklyBusinessReport.findById(weeklyReportId).lean();
 
       if (!report) {
-        return reply.code(404).send({ message: "Weekly report not found!" });
+        throw notFound("Weekly report not found!");
       }
 
       return reply.code(200).send(report);
-    } catch (error) {
-      return reply.code(500).send({
-        message: "Get weekly business report by id failed!",
-        error: error instanceof Error ? error.message : error,
-      });
-    }
-  });
+    },
+  );
 
   // GET /weeklyBusinessReport/business/:businessId - get by business
-  app.get("/business/:businessId", async (req, reply) => {
-    try {
-      const params = req.params as { businessId?: string };
-      const businessId = params.businessId;
-
-      if (!businessId || isObjectIdValid([businessId]) !== true) {
-        return reply.code(400).send({ message: "Invalid business ID!" });
-      }
-
-      const queryParams = req.query as {
-        startWeek?: string;
-        endWeek?: string;
-      };
+  app.get<{
+    Params: WeeklyBusinessParams;
+    Querystring: WeeklyBusinessReportRangeQuery;
+  }>(
+    "/business/:businessId",
+    {
+      schema: {
+        params: weeklyBusinessParamsSchema,
+        querystring: weeklyBusinessReportRangeQuerySchema,
+      },
+    },
+    async (req, reply) => {
+      const { businessId } = req.params;
+      const { startWeek, endWeek } = req.query;
 
       const filter: {
         businessId: Types.ObjectId;
@@ -122,20 +119,13 @@ export const weeklyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
         businessId: new Types.ObjectId(businessId),
       };
 
-      if (queryParams.startWeek && queryParams.endWeek) {
-        const start = parseWeekStart(queryParams.startWeek);
-        const end = parseWeekStart(queryParams.endWeek);
-        if (!start || !end) {
-          return reply.code(400).send({
-            message:
-              "Invalid week range. Use startWeek and endWeek as YYYY-MM-DD.",
-          });
-        }
+      if (startWeek && endWeek) {
+        const start = parseWeekStart(startWeek);
+        const end = parseWeekStart(endWeek);
         if (start > weekEnd(end)) {
-          return reply.code(400).send({
-            message:
-              "Invalid week range, startWeek must be before or equal to endWeek.",
-          });
+          throw badRequest(
+            "Invalid week range, startWeek must be before or equal to endWeek.",
+          );
         }
         filter.weekReference = { $gte: start, $lte: weekEnd(end) };
       }
@@ -145,15 +135,10 @@ export const weeklyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
         .lean();
 
       if (!reports.length) {
-        return reply.code(404).send({ message: "No weekly reports found!" });
+        throw notFound("No weekly reports found!");
       }
 
       return reply.code(200).send(reports);
-    } catch (error) {
-      return reply.code(500).send({
-        message: "Get weekly business reports by business id failed!",
-        error: error instanceof Error ? error.message : error,
-      });
-    }
-  });
+    },
+  );
 };

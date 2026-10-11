@@ -13,3 +13,4 @@ export * from "./promotions.ts";
 export * from "./reservations.ts";
 export * from "./schedules.ts";
 export * from "./dailySalesReports.ts";
+export * from "./businessReports.ts";
