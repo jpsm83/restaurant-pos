@@ -1,14 +1,32 @@
+/**
+ * SalesPoints Routes - Sales point CRUD and listing.
+ *
+ * Every route declares its body/params as a strict zod DTO from
+ * `packages/schemas/salesPoints.ts`; validation and sanitization happen at the
+ * boundary and every error is raised as an `AppError` so the global handler
+ * emits RFC 9457 `application/problem+json`. The delivery-uniqueness and
+ * duplicate-name rules stay as named post-parse checks.
+ */
 import type { FastifyPluginAsync } from "fastify";
 import { Types } from "mongoose";
 import type { ISalesPoint } from "../../../../packages/interfaces/ISalesPoint.ts";
 
-import isObjectIdValid from "../../utils/isObjectIdValid.ts";
 import SalesPoint from "../../models/salesPoint.ts";
 import generateQrCode from "../../salesPoints/generateQrCode.ts";
 import deleteFilesCloudinary from "../../cloudinary/deleteFilesCloudinary.ts";
-import * as enums from "../../../../packages/enums.ts";
-
-const { salesPointTypeEnums } = enums;
+import {
+  conflict,
+  internal,
+  notFound,
+} from "../../errors/appError.ts";
+import {
+  createSalesPointBodySchema,
+  salesPointIdParamsSchema,
+  updateSalesPointBodySchema,
+  type CreateSalesPointBody,
+  type SalesPointIdParams,
+  type UpdateSalesPointBody,
+} from "../../../../packages/schemas/salesPoints.ts";
 
 export const salesPointsRoutes: FastifyPluginAsync = async (app) => {
   // GET /salesPoints - list all
@@ -16,89 +34,55 @@ export const salesPointsRoutes: FastifyPluginAsync = async (app) => {
     const salesPoints = await SalesPoint.find().lean();
 
     if (!salesPoints.length) {
-      return reply.code(400).send({ message: "No salesPoints found!" });
+      throw notFound("No salesPoints found!");
     }
     return reply.code(200).send(salesPoints);
   });
 
   // POST /salesPoints - create
-  app.post("/", async (req, reply) => {
-    try {
-      const body = req.body as ISalesPoint;
+  app.post<{ Body: CreateSalesPointBody }>(
+    "/",
+    { schema: { body: createSalesPointBodySchema } },
+    async (req, reply) => {
       const { salesPointName, salesPointType, selfOrdering, businessId } =
-        body ?? {};
+        req.body;
+      const businessObjectId = new Types.ObjectId(businessId);
 
-      if (!salesPointName || !businessId) {
-        return reply.code(400).send({
-          message: "SalesPointName and businessId are required!",
-        });
-      }
-
-      if (isObjectIdValid([businessId as unknown as string]) !== true) {
-        return reply.code(400).send({ message: "Invalid businessId!" });
-      }
-
-      if (
-        salesPointType !== undefined &&
-        salesPointType !== "" &&
-        !(salesPointTypeEnums as readonly string[]).includes(
-          salesPointType.toLowerCase(),
-        )
-      ) {
-        return reply.code(400).send({
-          message: `salesPointType must be one of: ${salesPointTypeEnums.join(", ")}`,
-        });
-      }
-
-      if (salesPointType?.toLowerCase() === "delivery") {
+      if (salesPointType === "delivery") {
         const existingDelivery = await SalesPoint.exists({
-          businessId,
+          businessId: businessObjectId,
           salesPointType: "delivery",
         });
         if (existingDelivery) {
-          return reply.code(400).send({
-            message: "This business already has a delivery sales point.",
-          });
+          throw conflict("This business already has a delivery sales point.");
         }
       }
 
       const duplicateSalesPoint = await SalesPoint.exists({
-        businessId,
+        businessId: businessObjectId,
         salesPointName,
       });
 
       if (duplicateSalesPoint) {
-        return reply.code(400).send({
-          message: "SalesPoint already exists!",
-        });
+        throw conflict("SalesPoint already exists!");
       }
 
-      const normalizedType = salesPointType
-        ? salesPointType.toLowerCase()
-        : undefined;
-
-      const newSalesPoint = {
+      const salesPointCreated = await SalesPoint.create({
         salesPointName,
-        salesPointType: normalizedType,
-        selfOrdering: selfOrdering !== undefined ? selfOrdering : false,
-        businessId,
-      };
+        salesPointType,
+        selfOrdering: selfOrdering ?? false,
+        businessId: businessObjectId,
+      });
 
-      const salesPointCreated = await SalesPoint.create(newSalesPoint);
-
-      const isDelivery = normalizedType === "delivery";
-
-      if (!isDelivery) {
+      if (salesPointType !== "delivery") {
         const qrCode = await generateQrCode(
-          businessId as unknown as Types.ObjectId,
+          businessObjectId,
           salesPointCreated._id,
         );
 
         if (!qrCode || qrCode.includes("Failed")) {
           await SalesPoint.deleteOne({ _id: salesPointCreated._id });
-          return reply.code(500).send({
-            message: "Failed to generate QR code, rollback applied",
-          });
+          throw internal("Failed to generate QR code, rollback applied");
         }
         await SalesPoint.updateOne(
           { _id: salesPointCreated._id },
@@ -107,79 +91,60 @@ export const salesPointsRoutes: FastifyPluginAsync = async (app) => {
       }
 
       return reply.code(201).send({ message: "Sales Point created" });
-    } catch (error) {
-      return reply.code(500).send({
-        message: "Sales location creation failed!",
-        error: error instanceof Error ? error.message : error,
-      });
-    }
-  });
+    },
+  );
 
   // GET /salesPoints/:salesPointId - get by ID
-  app.get("/:salesPointId", async (req, reply) => {
-    const params = req.params as { salesPointId?: string };
-    const salesPointId = params.salesPointId;
+  app.get<{ Params: SalesPointIdParams }>(
+    "/:salesPointId",
+    { schema: { params: salesPointIdParamsSchema } },
+    async (req, reply) => {
+      const { salesPointId } = req.params;
 
-    if (!salesPointId || isObjectIdValid([salesPointId]) !== true) {
-      return reply.code(400).send({ message: "Invalid salesPointId!" });
-    }
+      const salesPoint = await SalesPoint.findById(salesPointId).lean();
 
-    const salesPoint = await SalesPoint.findById(salesPointId).lean();
-
-    if (!salesPoint) {
-      return reply.code(400).send({ message: "No salesPoint found!" });
-    }
-    return reply.code(200).send(salesPoint);
-  });
+      if (!salesPoint) {
+        throw notFound("No salesPoint found!");
+      }
+      return reply.code(200).send(salesPoint);
+    },
+  );
 
   // PATCH /salesPoints/:salesPointId - update
-  app.patch("/:salesPointId", async (req, reply) => {
-    try {
-      const params = req.params as { salesPointId?: string };
-      const salesPointId = params.salesPointId;
-
-      const body = req.body as ISalesPoint;
-      const { salesPointName, salesPointType, selfOrdering } = body ?? {};
-
-      if (
-        salesPointType !== undefined &&
-        salesPointType !== "" &&
-        !(salesPointTypeEnums as readonly string[]).includes(
-          salesPointType.toLowerCase(),
-        )
-      ) {
-        return reply.code(400).send({
-          message: `salesPointType must be one of: ${salesPointTypeEnums.join(", ")}`,
-        });
-      }
-
-      if (!salesPointId || isObjectIdValid([salesPointId]) !== true) {
-        return reply.code(400).send({ message: "Invalid salesPointId!" });
-      }
+  app.patch<{ Params: SalesPointIdParams; Body: UpdateSalesPointBody }>(
+    "/:salesPointId",
+    {
+      schema: {
+        params: salesPointIdParamsSchema,
+        body: updateSalesPointBodySchema,
+      },
+    },
+    async (req, reply) => {
+      const { salesPointId } = req.params;
+      const { salesPointName, salesPointType, selfOrdering } = req.body;
 
       const salesPoint = await SalesPoint.findById(salesPointId);
 
       if (!salesPoint) {
-        return reply.code(404).send({ message: "SalesPoint not found!" });
+        throw notFound("SalesPoint not found!");
       }
 
-      const duplicateSalesPoint = await SalesPoint.exists({
-        salesPointName,
-        _id: { $ne: salesPointId },
-        businessId: salesPoint.businessId,
-      });
+      if (salesPointName) {
+        const duplicateSalesPoint = await SalesPoint.exists({
+          salesPointName,
+          _id: { $ne: salesPointId },
+          businessId: salesPoint.businessId,
+        });
 
-      if (duplicateSalesPoint) {
-        return reply
-          .code(400)
-          .send({ message: "SalesPointName already exists!" });
+        if (duplicateSalesPoint) {
+          throw conflict("SalesPointName already exists!");
+        }
       }
 
       const updatedSalesPoint: Partial<ISalesPoint> = {};
 
       if (salesPointName) updatedSalesPoint.salesPointName = salesPointName;
-      if (salesPointType)
-        updatedSalesPoint.salesPointType = salesPointType.toLowerCase();
+      if (salesPointType) updatedSalesPoint.salesPointType = salesPointType;
       if (selfOrdering !== undefined)
         updatedSalesPoint.selfOrdering = selfOrdering;
 
@@ -191,28 +156,20 @@ export const salesPointsRoutes: FastifyPluginAsync = async (app) => {
       return reply.code(200).send({
         message: "Sales point updated successfully!",
       });
-    } catch (error) {
-      return reply.code(500).send({
-        message: "Update salesPoint failed!",
-        error: error instanceof Error ? error.message : error,
-      });
-    }
-  });
+    },
+  );
 
   // DELETE /salesPoints/:salesPointId - delete
-  app.delete("/:salesPointId", async (req, reply) => {
-    try {
-      const params = req.params as { salesPointId?: string };
-      const salesPointId = params.salesPointId;
-
-      if (!salesPointId || isObjectIdValid([salesPointId]) !== true) {
-        return reply.code(400).send({ message: "Invalid salesPointId!" });
-      }
+  app.delete<{ Params: SalesPointIdParams }>(
+    "/:salesPointId",
+    { schema: { params: salesPointIdParamsSchema } },
+    async (req, reply) => {
+      const { salesPointId } = req.params;
 
       const salesPoint = await SalesPoint.findById(salesPointId);
 
       if (!salesPoint) {
-        return reply.code(404).send({ message: "SalesPoint not found!" });
+        throw notFound("SalesPoint not found!");
       }
 
       const qrCode = salesPoint.qrCode;
@@ -222,27 +179,20 @@ export const salesPointsRoutes: FastifyPluginAsync = async (app) => {
       });
 
       if (result.deletedCount === 0) {
-        return reply.code(404).send({
-          message: "Sales location not found or it has orders!",
-        });
+        throw notFound("Sales location not found or it has orders!");
       }
 
       if (qrCode) {
         const deleteResult = await deleteFilesCloudinary(qrCode);
 
         if (deleteResult !== true) {
-          return reply.code(500).send({ message: deleteResult });
+          throw internal(String(deleteResult));
         }
       }
 
       return reply.code(200).send({
         message: "Sales point deleted successfully",
       });
-    } catch (error) {
-      return reply.code(500).send({
-        message: "Delete business failed!",
-        error: error instanceof Error ? error.message : error,
-      });
-    }
-  });
+    },
+  );
 };
