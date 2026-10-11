@@ -163,18 +163,49 @@ describe("dailySalesReportsBusinessQuerySchema", () => {
     ).toBeUndefined();
   });
 
-  it("coerces startDate to the start of the UTC calendar day", () => {
+  it("accepts a plain calendar date and passes it through unchanged", () => {
     const parsed = dailySalesReportsBusinessQuerySchema.parse({
-      startDate: "2026-10-11T15:30:00.000Z",
+      startDate: "2026-10-11",
+      endDate: "2026-10-12",
     });
-    expect(parsed.startDate?.toISOString()).toBe("2026-10-11T00:00:00.000Z");
+    expect(parsed.startDate).toBe("2026-10-11");
+    expect(parsed.endDate).toBe("2026-10-12");
   });
 
-  it("coerces endDate to the end of the UTC calendar day", () => {
-    const parsed = dailySalesReportsBusinessQuerySchema.parse({
-      endDate: "2026-10-11T15:30:00.000Z",
-    });
-    expect(parsed.endDate?.toISOString()).toBe("2026-10-11T23:59:59.999Z");
+  it("rejects a date-time string with an offset", () => {
+    expect(
+      dailySalesReportsBusinessQuerySchema.safeParse({
+        startDate: "2026-10-11T15:30:00.000Z",
+      }).success,
+    ).toBe(false);
+    expect(
+      dailySalesReportsBusinessQuerySchema.safeParse({
+        endDate: "2026-10-11T15:30:00+02:00",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects an offset-less date-time string", () => {
+    expect(
+      dailySalesReportsBusinessQuerySchema.safeParse({
+        startDate: "2026-10-11T15:30:00",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects a malformed or impossible calendar date", () => {
+    for (const value of [
+      "not-a-date",
+      "2026-3-10",
+      "2026/10/11",
+      "2026-13-01",
+      "2026-02-30",
+    ]) {
+      expect(
+        dailySalesReportsBusinessQuerySchema.safeParse({ startDate: value })
+          .success,
+      ).toBe(false);
+    }
   });
 
   it("treats an empty date as not provided", () => {
@@ -184,14 +215,6 @@ describe("dailySalesReportsBusinessQuerySchema", () => {
     });
     expect(parsed.startDate).toBeUndefined();
     expect(parsed.endDate).toBeUndefined();
-  });
-
-  it("rejects an invalid date", () => {
-    expect(
-      dailySalesReportsBusinessQuerySchema.safeParse({
-        startDate: "not-a-date",
-      }).success,
-    ).toBe(false);
   });
 
   it("rejects unknown keys", () => {

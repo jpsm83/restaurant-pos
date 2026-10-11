@@ -51,6 +51,8 @@ import {
   type DailySalesReportsBusinessQuery,
 } from "../../../../packages/schemas/dailySalesReports.ts";
 import * as enums from "../../../../packages/enums.ts";
+import { isSupportedTimezone } from "../../../../packages/schemas/primitives.ts";
+import { resolveDayBounds } from "../../utils/timezoneResolver.ts";
 
 const { managementRolesEnums } = enums;
 
@@ -1072,15 +1074,27 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
         filter.dailyReferenceNumber = range;
       }
 
-      if (startDate && endDate) {
+      if (startDate !== undefined && endDate !== undefined) {
         if (startDate > endDate) {
           throw badRequest(
             "Invalid date range, start date must be before end date!",
           );
         }
+
+        // Resolve each date-only filter to its business-local day bounds,
+        // using the business's own timezone (falling back to UTC for a missing
+        // or invalid zone). The resolver is server-timezone independent.
+        const business = (await Business.findById(businessId)
+          .select("timezone")
+          .lean()) as { timezone?: string } | null;
+        const storedTimezone = business?.timezone;
+        const timeZone = isSupportedTimezone(storedTimezone)
+          ? storedTimezone
+          : "UTC";
+
         filter.createdAt = {
-          $gte: startDate,
-          $lte: endDate,
+          $gte: resolveDayBounds(startDate, timeZone).start,
+          $lte: resolveDayBounds(endDate, timeZone).end,
         };
       }
 

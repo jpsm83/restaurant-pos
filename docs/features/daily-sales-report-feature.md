@@ -230,8 +230,11 @@ Filter semantics (`GET /business/:businessId`):
 
 - `dailyReferenceNumber` exact
 - `dailyReferenceNumberFrom` / `dailyReferenceNumberTo` range
-- optional `startDate` / `endDate` on `createdAt`
-- validation for integer inputs and range sanity
+- optional `startDate` / `endDate` on `createdAt`, each a plain `YYYY-MM-DD`
+  calendar date resolved to that business-local day's UTC bounds using the
+  business's own timezone (UTC fallback when it is missing or invalid)
+- validation for integer inputs and range sanity; a date-time string is
+  rejected as a `400` rather than guessed
 
 ---
 

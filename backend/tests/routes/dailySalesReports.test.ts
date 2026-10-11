@@ -48,7 +48,9 @@ describe("DailySalesReports routes - Task T2 integration", () => {
     postCode: "90001",
   };
 
-  const createTestBusiness = async () =>
+  const createTestBusiness = async (
+    overrides: Record<string, unknown> = {},
+  ) =>
     Business.create({
       tradeName: "Test Restaurant",
       legalName: "Test Restaurant LLC",
@@ -59,6 +61,7 @@ describe("DailySalesReports routes - Task T2 integration", () => {
       currencyTrade: "USD",
       subscription: "Free",
       address: addr,
+      ...overrides,
     });
 
   const createManagerToken = async (businessId: Types.ObjectId) => {
@@ -741,6 +744,138 @@ describe("DailySalesReports routes - Task T2 integration", () => {
     });
     const crossTenantBody = expectProblem(crossTenant, 403, "forbidden");
     expect(crossTenantBody.detail).toBe("Forbidden");
+  });
+
+  describe("business-local date filters", () => {
+    const seedReportAt = (
+      businessId: Types.ObjectId,
+      dailyReferenceNumber: number,
+      createdAt: string,
+    ) =>
+      DailySalesReport.create({
+        businessId,
+        dailyReferenceNumber,
+        isDailyReportOpen: true,
+        timeCountdownToClose: Date.now() + 86400000,
+        employeesDailySalesReport: [],
+        selfOrderingSalesReport: [],
+        createdAt: new Date(createdAt),
+      });
+
+    const listByDay = (
+      app: Awaited<ReturnType<typeof getTestApp>>,
+      businessId: unknown,
+      token: string,
+      day: string,
+    ) =>
+      app.inject({
+        method: "GET",
+        url: `/api/v1/dailySalesReports/business/${businessId}?startDate=${day}&endDate=${day}`,
+        headers: { authorization: token },
+      });
+
+    it("resolves a day in the business's timezone, not the server's", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness({ timezone: "Asia/Tokyo" });
+      const token = await createManagerToken(business._id as Types.ObjectId);
+
+      // 2026-10-12 05:00 in Tokyo (2026-10-11 20:00 UTC).
+      await seedReportAt(
+        business._id as Types.ObjectId,
+        8001,
+        "2026-10-11T20:00:00.000Z",
+      );
+      // 2026-10-13 00:00 in Tokyo (2026-10-12 15:00 UTC).
+      await seedReportAt(
+        business._id as Types.ObjectId,
+        8002,
+        "2026-10-12T15:00:00.000Z",
+      );
+
+      const response = await listByDay(app, business._id, token, "2026-10-12");
+      expect(response.statusCode, response.body).toBe(200);
+      const body = JSON.parse(response.body) as Array<{
+        dailyReferenceNumber: number;
+      }>;
+      expect(body.map((r) => r.dailyReferenceNumber)).toEqual([8001]);
+    });
+
+    it("falls back to UTC when the business has no timezone", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      const token = await createManagerToken(business._id as Types.ObjectId);
+
+      await seedReportAt(
+        business._id as Types.ObjectId,
+        8101,
+        "2026-10-11T20:00:00.000Z",
+      );
+
+      const response = await listByDay(app, business._id, token, "2026-10-11");
+      expect(response.statusCode, response.body).toBe(200);
+      const body = JSON.parse(response.body) as Array<{
+        dailyReferenceNumber: number;
+      }>;
+      expect(body.map((r) => r.dailyReferenceNumber)).toEqual([8101]);
+    });
+
+    it("falls back to UTC without crashing when the stored timezone is invalid", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness({ timezone: "Not/AZone" });
+      const token = await createManagerToken(business._id as Types.ObjectId);
+
+      await seedReportAt(
+        business._id as Types.ObjectId,
+        8201,
+        "2026-10-11T20:00:00.000Z",
+      );
+
+      const response = await listByDay(app, business._id, token, "2026-10-11");
+      expect(response.statusCode, response.body).toBe(200);
+      const body = JSON.parse(response.body) as Array<{
+        dailyReferenceNumber: number;
+      }>;
+      expect(body.map((r) => r.dailyReferenceNumber)).toEqual([8201]);
+    });
+
+    it("rejects a date-time filter with a validation problem", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      const token = await createManagerToken(business._id as Types.ObjectId);
+
+      for (const value of [
+        "2026-10-11T15:30:00.000Z",
+        "2026-10-11T15:30:00",
+      ]) {
+        const response = await app.inject({
+          method: "GET",
+          url:
+            `/api/v1/dailySalesReports/business/${business._id}` +
+            `?startDate=${encodeURIComponent(value)}`,
+          headers: { authorization: token },
+        });
+        const body = expectProblem(response, 400, "validation");
+        expect(fieldPaths(body)).toContain("startDate");
+      }
+    });
+
+    it("rejects a reversed date range as a named cross-field problem", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      const token = await createManagerToken(business._id as Types.ObjectId);
+
+      const response = await app.inject({
+        method: "GET",
+        url:
+          `/api/v1/dailySalesReports/business/${business._id}` +
+          `?startDate=2026-10-12&endDate=2026-10-11`,
+        headers: { authorization: token },
+      });
+      const body = expectProblem(response, 400, "bad-request");
+      expect(body.detail).toBe(
+        "Invalid date range, start date must be before end date!",
+      );
+    });
   });
 
   describe("DTO validation and problem-details errors", () => {

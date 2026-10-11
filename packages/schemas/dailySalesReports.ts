@@ -9,10 +9,13 @@
  * and the timestamps — never appear as writable DTO fields, so a client that
  * sends them gets a `400`. The query DTO exposes `dailyReferenceNumber*` only as
  * read-only filters. The DTOs own per-field shape and types — ObjectId
- * relations, the `userIds` ObjectId array, and the date/reference-number query
- * coercion. Cross-field and database-dependent rules stay in the route as named
- * post-parse checks: the manager/business-match guards and the `startDate <=
- * endDate` / `dailyReferenceNumberFrom <= dailyReferenceNumberTo` range rules.
+ * relations, the `userIds` ObjectId array, the date-only query shape, and the
+ * reference-number query coercion. Cross-field and database-dependent rules
+ * stay in the route as named post-parse checks: the manager/business-match
+ * guards and the `startDate <= endDate` /
+ * `dailyReferenceNumberFrom <= dailyReferenceNumberTo` range rules. Resolving a
+ * date-only filter to business-local UTC bounds also happens in the route, not
+ * here.
  */
 import { z } from "zod";
 
@@ -22,24 +25,33 @@ import { coercedIntSchema, objectIdSchema } from "./primitives.ts";
 const emptyToUndefined = (value: unknown): unknown =>
   typeof value === "string" && value.trim() === "" ? undefined : value;
 
-/** The UTC instant at the start of the calendar day the client sent. */
-const startOfUtcDay = (date: Date): Date =>
-  new Date(`${date.toISOString().slice(0, 10)}T00:00:00.000Z`);
+/**
+ * A plain calendar date (`YYYY-MM-DD`). An ambiguous date-time string — with or
+ * without an offset — is rejected rather than guessed: the business-local
+ * resolution to UTC day bounds needs an unambiguous date, and happens in the
+ * route against the business's own timezone.
+ */
+const CALENDAR_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 
-/** The UTC instant at the end of the calendar day the client sent. */
-const endOfUtcDay = (date: Date): Date =>
-  new Date(`${date.toISOString().slice(0, 10)}T23:59:59.999Z`);
+const isCalendarDate = (value: string): boolean => {
+  const match = CALENDAR_DATE_PATTERN.exec(value);
+  if (!match) return false;
+  const [, year, month, day] = match;
+  const utc = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+  return (
+    utc.getUTCFullYear() === Number(year) &&
+    utc.getUTCMonth() === Number(month) - 1 &&
+    utc.getUTCDate() === Number(day)
+  );
+};
 
-/** An optional `startDate`, coerced to the start of that UTC calendar day. */
-const startDateQuerySchema = z.preprocess(
+/** An optional `YYYY-MM-DD` query value; an empty string means "not provided". */
+const calendarDateQuerySchema = z.preprocess(
   emptyToUndefined,
-  z.coerce.date().transform(startOfUtcDay).optional(),
-);
-
-/** An optional `endDate`, coerced to the end of that UTC calendar day. */
-const endDateQuerySchema = z.preprocess(
-  emptyToUndefined,
-  z.coerce.date().transform(endOfUtcDay).optional(),
+  z
+    .string()
+    .refine(isCalendarDate, "Invalid date, expected a YYYY-MM-DD calendar date")
+    .optional(),
 );
 
 /** An optional integer reference number; an empty string means "not provided". */
@@ -67,13 +79,14 @@ export const calculateUsersReportBodySchema = z.strictObject({
 });
 
 /**
- * Query for `GET /dailySalesReports/business/:businessId`. Dates are coerced to
- * the boundaries of the UTC calendar day and reference numbers to integers; the
- * two range rules stay in the route as post-parse checks.
+ * Query for `GET /dailySalesReports/business/:businessId`. Dates are plain
+ * `YYYY-MM-DD` calendar dates resolved to business-local UTC bounds in the
+ * route; reference numbers are coerced to integers. The two range rules stay in
+ * the route as post-parse checks.
  */
 export const dailySalesReportsBusinessQuerySchema = z.strictObject({
-  startDate: startDateQuerySchema,
-  endDate: endDateQuerySchema,
+  startDate: calendarDateQuerySchema,
+  endDate: calendarDateQuerySchema,
   dailyReferenceNumber: referenceNumberQuerySchema,
   dailyReferenceNumberFrom: referenceNumberQuerySchema,
   dailyReferenceNumberTo: referenceNumberQuerySchema,
