@@ -102,15 +102,18 @@ describe("Notifications Routes", () => {
         method: "POST",
         url: "/api/v1/notifications",
         payload: {
-          notificationType: "General",
+          notificationType: "Info",
           message: "Test message",
           businessId: business._id,
         },
       });
 
       expect(response.statusCode).toBe(400);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
       const body = JSON.parse(response.body);
-      expect(body.message).toContain("RecipientsIds");
+      expect(body.detail).toContain("RecipientsIds");
     });
 
     it("returns 400 for both employee and customer recipients", async () => {
@@ -121,7 +124,7 @@ describe("Notifications Routes", () => {
         method: "POST",
         url: "/api/v1/notifications",
         payload: {
-          notificationType: "General",
+          notificationType: "Info",
           message: "Test message",
           businessId: business._id,
           employeesRecipientsIds: [new Types.ObjectId()],
@@ -130,8 +133,11 @@ describe("Notifications Routes", () => {
       });
 
       expect(response.statusCode).toBe(400);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
       const body = JSON.parse(response.body);
-      expect(body.message).toContain("RecipientsIds");
+      expect(body.detail).toContain("RecipientsIds");
     });
 
     it("returns 400 for missing required fields", async () => {
@@ -170,7 +176,7 @@ describe("Notifications Routes", () => {
         method: "POST",
         url: "/api/v1/notifications",
         payload: {
-          notificationType: "General",
+          notificationType: "Info",
           message: "Test message",
           businessId: business._id,
           employeesRecipientsIds: [],
@@ -179,7 +185,7 @@ describe("Notifications Routes", () => {
 
       expect(response.statusCode).toBe(400);
       const body = JSON.parse(response.body);
-      expect(body.message).toContain("array");
+      expect(body.detail).toContain("array");
     });
 
     it("returns 400 for invalid IDs", async () => {
@@ -189,7 +195,7 @@ describe("Notifications Routes", () => {
         method: "POST",
         url: "/api/v1/notifications",
         payload: {
-          notificationType: "General",
+          notificationType: "Info",
           message: "Test message",
           businessId: "invalid-id",
           employeesRecipientsIds: ["invalid-id"],
@@ -197,8 +203,64 @@ describe("Notifications Routes", () => {
       });
 
       expect(response.statusCode).toBe(400);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
       const body = JSON.parse(response.body);
-      expect(body.message).toContain("Invalid");
+      expect(body.type).toBe("https://restaurant-pos.app/errors/validation");
+      const paths = body.errors.map((issue: { path: string }) => issue.path);
+      expect(paths).toContain("businessId");
+      expect(paths.some((path: string) => path.startsWith("employeesRecipientsIds"))).toBe(
+        true,
+      );
+    });
+
+    it("returns 400 when a recipient does not exist", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/notifications",
+        payload: {
+          notificationType: "Info",
+          message: "Test message",
+          businessId: business._id.toString(),
+          employeesRecipientsIds: [new Types.ObjectId().toString()],
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      const body = JSON.parse(response.body);
+      expect(body.type).toBe("https://restaurant-pos.app/errors/bad-request");
+      expect(body.detail).toBe("One or more recipients do not exist!");
+    });
+
+    it("returns 404 when the business does not exist", async () => {
+      const app = await getTestApp();
+      const user = await createTestUser(`notif-no-biz-${Date.now()}`);
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/notifications",
+        payload: {
+          notificationType: "Info",
+          message: "Test message",
+          businessId: new Types.ObjectId().toString(),
+          customersRecipientsIds: [user._id.toString()],
+        },
+      });
+
+      expect(response.statusCode).toBe(404);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      const body = JSON.parse(response.body);
+      expect(body.type).toBe("https://restaurant-pos.app/errors/not-found");
+      expect(body.detail).toBe("Business not found!");
     });
   });
 
@@ -212,8 +274,16 @@ describe("Notifications Routes", () => {
       });
 
       expect(response.statusCode).toBe(400);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
       const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid notification ID");
+      expect(body.type).toBe("https://restaurant-pos.app/errors/validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          { path: "notificationId", message: expect.any(String) },
+        ]),
+      );
     });
 
     it("returns 404 for non-existent notification", async () => {
@@ -227,7 +297,7 @@ describe("Notifications Routes", () => {
 
       expect(response.statusCode).toBe(404);
       const body = JSON.parse(response.body);
-      expect(body.message).toBe("Notification not found");
+      expect(body.detail).toBe("Notification not found");
     });
 
     it("gets notification by ID", async () => {
@@ -261,7 +331,7 @@ describe("Notifications Routes", () => {
 
       expect(response.statusCode).toBe(400);
       const body = JSON.parse(response.body);
-      expect(body.message).toContain("RecipientsIds");
+      expect(body.detail).toContain("RecipientsIds");
     });
 
     it("returns 400 for empty recipients array", async () => {
@@ -278,7 +348,7 @@ describe("Notifications Routes", () => {
 
       expect(response.statusCode).toBe(400);
       const body = JSON.parse(response.body);
-      expect(body.message).toContain("array");
+      expect(body.detail).toContain("array");
     });
 
     it("returns 400 for invalid IDs", async () => {
@@ -293,8 +363,13 @@ describe("Notifications Routes", () => {
       });
 
       expect(response.statusCode).toBe(400);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
       const body = JSON.parse(response.body);
-      expect(body.message).toContain("Invalid");
+      expect(body.type).toBe("https://restaurant-pos.app/errors/validation");
+      expect(Array.isArray(body.errors)).toBe(true);
+      expect(body.errors.length).toBeGreaterThan(0);
     });
   });
 
@@ -308,8 +383,16 @@ describe("Notifications Routes", () => {
       });
 
       expect(response.statusCode).toBe(400);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
       const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid notification ID");
+      expect(body.type).toBe("https://restaurant-pos.app/errors/validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          { path: "notificationId", message: expect.any(String) },
+        ]),
+      );
     });
   });
 
@@ -323,8 +406,16 @@ describe("Notifications Routes", () => {
       });
 
       expect(response.statusCode).toBe(400);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
       const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid business ID");
+      expect(body.type).toBe("https://restaurant-pos.app/errors/validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          { path: "businessId", message: expect.any(String) },
+        ]),
+      );
     });
 
     it("returns 200 with empty array when no notifications for business", async () => {
@@ -369,8 +460,16 @@ describe("Notifications Routes", () => {
       });
 
       expect(response.statusCode).toBe(400);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
       const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid user ID");
+      expect(body.type).toBe("https://restaurant-pos.app/errors/validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          { path: "userId", message: expect.any(String) },
+        ]),
+      );
     });
 
     it("returns 200 with empty array when no notifications for user", async () => {
