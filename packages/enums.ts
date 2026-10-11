@@ -72,7 +72,12 @@ export const otherPaymentEnums = [
   "Samsung Pay",
 ] as string[];
 
-export const allPaymentMethodsEnums = [...creditCardEnums, ...cryptoEnums, ...otherPaymentEnums] as string[];
+export const allPaymentMethodsEnums = [
+  ...creditCardEnums,
+  ...cryptoEnums,
+  ...otherPaymentEnums,
+  "Cash",
+] as string[];
 
 export const purchaseUnitEnums = [
   "Unit",

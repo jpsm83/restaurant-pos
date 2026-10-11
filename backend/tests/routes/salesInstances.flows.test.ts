@@ -13,6 +13,7 @@ import Employee from "../../src/models/employee.ts";
 import Order from "../../src/models/order.ts";
 import BusinessGood from "../../src/models/businessGood.ts";
 import DailySalesReport from "../../src/models/dailySalesReport.ts";
+import Promotion from "../../src/models/promotion.ts";
 
 vi.mock("../../src/inventories/updateDynamicCountSupplierGood.ts", () => ({
   default: vi.fn(async () => true as const),
@@ -372,6 +373,52 @@ describe("SalesInstances flows (Task 12)", () => {
       });
 
       expect(res.statusCode).toBe(409);
+    });
+
+    it("accepts a self-order that applies a promotion (server-generated discount is not client-settable)", async () => {
+      const { token } = await createCustomerActor();
+
+      await Promotion.create({
+        businessId,
+        promotionName: "Self half off",
+        promotionPeriod: {
+          start: new Date(Date.now() - 86400000),
+          end: new Date(Date.now() + 86400000),
+        },
+        weekDays: [...allWeekDays],
+        activePromotion: true,
+        promotionType: { discountPercent: 50 },
+        applyToDelivery: false,
+        businessGoodsToApplyIds: [goodId],
+      });
+
+      const res = await app.inject({
+        method: "POST",
+        url: `/api/v1/salesInstances/selfOrderingLocation/${selfPointId}`,
+        headers: { authorization: token },
+        payload: {
+          businessId: businessId.toString(),
+          paymentId: `pay-promo-${Date.now()}`,
+          ordersArr: [
+            {
+              businessGoodId: goodId.toString(),
+              orderGrossPrice: 10,
+              orderNetPrice: 5,
+              orderCostPrice: 3,
+              promotionApplyed: "Self half off",
+            },
+          ],
+          paymentMethodArr: [
+            {
+              paymentMethodType: "Cash",
+              methodBranch: "Cash",
+              methodSalesTotal: 5,
+            },
+          ],
+        },
+      });
+
+      expect(res.statusCode, res.body).toBe(201);
     });
 
   });

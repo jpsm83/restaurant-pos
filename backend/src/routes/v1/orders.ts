@@ -9,7 +9,6 @@
  */
 import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
-import type { IOrder } from "../../../../packages/interfaces/IOrder.ts";
 import Order from "../../models/order.ts";
 import SalesInstance from "../../models/salesInstance.ts";
 import User from "../../models/user.ts";
@@ -19,6 +18,8 @@ import Employee from "../../models/employee.ts";
 import ordersArrValidation from "../../orders/ordersArrValidation.ts";
 import createOrders from "../../orders/createOrders.ts";
 import cancelOrders from "../../orders/cancelOrders.ts";
+import toPreparedOrders from "../../orders/toPreparedOrders.ts";
+import orderPriceMatches from "../../orders/orderPriceMatches.ts";
 import applyPromotionsToOrders from "../../promotions/applyPromotions.ts";
 import { createAuthHook } from "../../auth/middleware.ts";
 import {
@@ -97,16 +98,7 @@ export const ordersRoutes: FastifyPluginAsync = async (app) => {
       const { ordersArr, salesInstanceId, businessId, dailyReferenceNumber } =
         req.body;
 
-      const preparedOrders: Partial<IOrder>[] = ordersArr.map((order) => ({
-        orderGrossPrice: order.orderGrossPrice,
-        orderNetPrice: order.orderNetPrice,
-        orderCostPrice: order.orderCostPrice,
-        businessGoodId: new Types.ObjectId(order.businessGoodId),
-        addOns: order.addOns?.map((addOnId) => new Types.ObjectId(addOnId)),
-        allergens: order.allergens,
-        promotionApplyed: order.promotionApplyed,
-        comments: order.comments,
-      }));
+      const preparedOrders = toPreparedOrders(ordersArr);
 
       const validation = ordersArrValidation(preparedOrders);
       if (validation !== true) {
@@ -126,32 +118,8 @@ export const ordersRoutes: FastifyPluginAsync = async (app) => {
           throw badRequest(pricedOrders);
         }
 
-        const PRICE_TOLERANCE = 0.01;
         for (let i = 0; i < pricedOrders.length; i++) {
-          const backend = pricedOrders[i];
-          // `discountPercentage` is not client-settable, so it is absent from
-          // the DTO. The cast keeps the pre-existing tolerance check verbatim.
-          const client = ordersArr[i] as {
-            orderNetPrice?: number;
-            promotionApplyed?: string;
-            discountPercentage?: number;
-          };
-          if (
-            Math.abs(
-              (client.orderNetPrice ?? 0) - (backend.orderNetPrice ?? 0),
-            ) > PRICE_TOLERANCE ||
-            (client.promotionApplyed !== undefined &&
-              backend.promotionApplyed !== undefined &&
-              client.promotionApplyed !== backend.promotionApplyed) ||
-            (client.promotionApplyed === undefined &&
-              backend.promotionApplyed !== undefined) ||
-            (client.promotionApplyed !== undefined &&
-              backend.promotionApplyed === undefined) ||
-            Math.abs(
-              (client.discountPercentage ?? 0) -
-                (backend.discountPercentage ?? 0),
-            ) > PRICE_TOLERANCE
-          ) {
+          if (!orderPriceMatches(preparedOrders[i], pricedOrders[i])) {
             throw badRequest(
               "Order price or promotion does not match server calculation",
             );

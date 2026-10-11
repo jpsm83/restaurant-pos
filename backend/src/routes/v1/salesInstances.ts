@@ -16,7 +16,6 @@ import type {
   IDailySalesReport,
 } from "../../../../packages/interfaces/IDailySalesReport.ts";
 import type { ISalesInstance } from "../../../../packages/interfaces/ISalesInstance.ts";
-import type { IPaymentMethod } from "../../../../packages/interfaces/IPaymentMethod.ts";
 import type { IOrder } from "../../../../packages/interfaces/IOrder.ts";
 import type { IAddress } from "../../../../packages/interfaces/IAddress.ts";
 import type { IBusiness } from "../../../../packages/interfaces/IBusiness.ts";
@@ -77,6 +76,8 @@ import finalizeOrdersBillingStatus from "../../orders/finalizeOrdersBillingStatu
 import validatePaymentMethodArray from "../../orders/validatePaymentMethodArray.ts";
 import ordersArrValidation from "../../orders/ordersArrValidation.ts";
 import createOrders from "../../orders/createOrders.ts";
+import toPreparedOrders from "../../orders/toPreparedOrders.ts";
+import orderPriceMatches from "../../orders/orderPriceMatches.ts";
 import applyPromotionsToOrders from "../../promotions/applyPromotions.ts";
 import checkLowStockAndNotify from "../../inventories/checkLowStockAndNotify.ts";
 import sendOrderConfirmation from "../../orderConfirmation/sendOrderConfirmation.ts";
@@ -1116,30 +1117,26 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
         );
       }
 
-      const ordersArrValidationResult = ordersArrValidation(
-        ordersArr as unknown as Partial<IOrder>[],
-      );
+      const preparedOrders = toPreparedOrders(ordersArr);
+
+      const ordersArrValidationResult = ordersArrValidation(preparedOrders);
       if (ordersArrValidationResult !== true) {
         throw badRequest(ordersArrValidationResult);
       }
 
-      const validPaymentMethods = validatePaymentMethodArray(
-        paymentMethodArr as unknown as IPaymentMethod[],
-      );
+      const validPaymentMethods = validatePaymentMethodArray(paymentMethodArr);
       if (validPaymentMethods !== true) {
         throw badRequest(validPaymentMethods);
       }
 
-      const [business, user] = await Promise.all([
-        Business.findById(businessId).lean(),
+      const [businessDoc, user] = await Promise.all([
+        Business.findById(businessId).lean<IBusiness>(),
         User.findById(userId)
           .select(
             "address personalDetails.firstName personalDetails.lastName username",
           )
           .lean(),
       ]);
-
-      const businessDoc = business as unknown as IBusiness | null;
 
       if (!businessDoc) {
         throw notFound("Business not found.");
@@ -1175,13 +1172,13 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
       session.startTransaction();
 
       try {
-        const dailySalesReport = (await DailySalesReport.findOne({
+        const dailySalesReport = await DailySalesReport.findOne({
           isDailyReportOpen: true,
           businessId,
         })
           .select("dailyReferenceNumber")
           .session(session)
-          .lean()) as unknown as IDailySalesReport | null;
+          .lean<IDailySalesReport>();
 
         const clientNameSource = user as {
           personalDetails?: { firstName?: string; lastName?: string };
@@ -1199,7 +1196,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
 
         const ordersWithPromotions = await applyPromotionsToOrders({
           businessId: new Types.ObjectId(businessId),
-          ordersArr: ordersArr as any,
+          ordersArr: preparedOrders,
           flow: "delivery",
           session,
         });
@@ -1474,16 +1471,14 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
         );
       }
 
-      const ordersArrValidationResult = ordersArrValidation(
-        ordersArr as unknown as Partial<IOrder>[],
-      );
+      const preparedOrders = toPreparedOrders(ordersArr);
+
+      const ordersArrValidationResult = ordersArrValidation(preparedOrders);
       if (ordersArrValidationResult !== true) {
         throw badRequest(ordersArrValidationResult);
       }
 
-      const validPaymentMethods = validatePaymentMethodArray(
-        paymentMethodArr as unknown as IPaymentMethod[],
-      );
+      const validPaymentMethods = validatePaymentMethodArray(paymentMethodArr);
       if (validPaymentMethods !== true) {
         throw badRequest(validPaymentMethods);
       }
@@ -1510,9 +1505,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
         throw badRequest("Sales point does not belong to this business.");
       }
 
-      const business = (await Business.findById(
-        businessId,
-      ).lean()) as unknown as IBusiness | null;
+      const business = await Business.findById(businessId).lean<IBusiness>();
       if (!business) {
         throw notFound("Business not found.");
       }
@@ -1563,13 +1556,13 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
       session.startTransaction();
 
       try {
-        const dailySalesReport = (await DailySalesReport.findOne({
+        const dailySalesReport = await DailySalesReport.findOne({
           isDailyReportOpen: true,
           businessId,
         })
           .select("dailyReferenceNumber")
           .session(session)
-          .lean()) as unknown as IDailySalesReport | null;
+          .lean<IDailySalesReport>();
 
         // payment-first contract: do not persist DailySalesReport/SalesInstance/Order
         // until payment totals are validated.
@@ -1579,7 +1572,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
 
         const pricedOrders = await applyPromotionsToOrders({
           businessId: new Types.ObjectId(businessId),
-          ordersArr: ordersArr as any,
+          ordersArr: preparedOrders,
           flow: "seated",
           session,
         });
@@ -1588,32 +1581,8 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
           throw badRequest(pricedOrders);
         }
 
-        const PRICE_TOLERANCE = 0.01;
         for (let i = 0; i < pricedOrders.length; i++) {
-          const backend = pricedOrders[i];
-          // `discountPercentage` is not client-settable, so it is absent from
-          // the DTO; the cast keeps the pre-existing tolerance check verbatim.
-          const client = ordersArr[i] as {
-            orderNetPrice?: number;
-            promotionApplyed?: string;
-            discountPercentage?: number;
-          };
-          if (
-            Math.abs(
-              (client.orderNetPrice ?? 0) - (backend.orderNetPrice ?? 0),
-            ) > PRICE_TOLERANCE ||
-            (client.promotionApplyed !== undefined &&
-              backend.promotionApplyed !== undefined &&
-              client.promotionApplyed !== backend.promotionApplyed) ||
-            (client.promotionApplyed === undefined &&
-              backend.promotionApplyed !== undefined) ||
-            (client.promotionApplyed !== undefined &&
-              backend.promotionApplyed === undefined) ||
-            Math.abs(
-              (client.discountPercentage ?? 0) -
-                (backend.discountPercentage ?? 0),
-            ) > PRICE_TOLERANCE
-          ) {
+          if (!orderPriceMatches(preparedOrders[i], pricedOrders[i])) {
             throw badRequest(
               "Order price or promotion does not match server calculation",
             );
@@ -1731,7 +1700,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
 
         const createdOrders = await createOrders(
           String(dailyReferenceNumber),
-          ordersArr as unknown as Partial<IOrder>[],
+          preparedOrders,
           userId,
           "customer",
           salesInstance._id as Types.ObjectId,

@@ -1,74 +1,6 @@
-<a id="critical-engineering-rules"></a>
+# Restaurant POS — product context
 
-## Critical — engineering rules (entire project)
-
-> **Read this block first.** These rules are **binding for the whole repository**—every contributor and every automated coding pass—**before** any source file is added or edited. They override convenience habits when there is a conflict. If a change must break a rule, document **why** in the PR or task (rare exceptions only).
-
-1. **React.js best practices** — Follow **current, mainstream React** discipline: correct hooks usage, clear component boundaries, predictable state and effects, accessibility, and sensible performance (avoid unnecessary work). Frontend work must stay aligned with how **professional** React applications are structured and reviewed.
-
-2. **Professional-grade patterns** — Prefer patterns and structure seen in **serious, widely maintained** projects (clear separation of concerns without ceremony, consistent error and data boundaries, typing where the repo already uses it). **Do not** invent parallel architectures or novel abstractions when an established pattern already fits.
-
-3. **No overcomplication** — **Absolutely do not** overcomplicate code, APIs, or user-visible flows. Favor **direct, readable, robust** solutions. If a reviewer cannot follow the path from entry to outcome quickly, the design is probably wrong.
-
-4. **Minimal files and layers** — **Do not** create extra files, wrappers, or indirection **unless strictly necessary** for the task. Avoid new “layers” (config cascades, generic helpers used once, shared schema god-files) that exist only to look organized. **Colocate** with the feature that owns the behavior; expand surface area only when reuse or complexity **demands** it.
-
-5. **Use shadcn/ui primitives first** — When building UI, always prefer components from `frontend/src/components/ui` (e.g. `Button`, `Input`, `Select`, `Label`, `Alert`, etc.). Do **not** recreate existing “wheels”. Only create personal components when a suitable shadcn/ui component does not exist or cannot meet the requirement.
-
-6. **Robust code + concise comments** — Code must be **robust and reliable**. Every non-trivial block (complex function logic, validation rules, state transitions, branching decisions) must include **concise comments** explaining the intent and the reasoning behind the implementation.
-
-7. **Forms must match the backend model** — For any form work, ensure the **Zod validation schema** matches the backend form/model rules in `backend/src/models` (field names, required vs optional, types, constraints). When in doubt, reference the backend model in comments and keep the frontend schema synchronized.
-
-8. **Shared types/contracts discipline** — Shared frontend/backend domain or API contracts must live in `packages/interfaces` when they are reused across layers. Keep feature-only UI/form types colocated with the owning frontend feature.
-
-9. **No barrel index centralization** — Do not create `index.ts` files to centralize exports for domains/features. Use direct module imports instead to keep dependencies explicit and avoid “god files”.
-
-10. **Preserve shared interface filenames** — When evolving `packages/interfaces`, do not rename existing interface files unless an explicit migration plan is approved. Add or update types inside existing files to avoid breaking imports.
-
-11. **Comment flow, logic, and patterns** — All source code creation or execution must include concise comments for non-trivial flow, logic, and pattern decisions so any developer can quickly understand the implementation and optimize work time.
-
-12. **Test every touched file before progressing** — Every file created or updated must have relevant tests executed and passing before moving to the next task. If automated coverage is missing for a touched area, add/update tests or explicitly document the temporary gap and mitigation.
-
-13. **Loading UI — centralized skeleton** — Use the shadcn **`Skeleton`** component at `frontend/src/components/ui/skeleton.tsx` as the **single source** for loading-placeholder styling (pulse + fill). Do not recreate one-off pulsing gray boxes. **App-wide** session bootstrap and lazy-route suspense use **`AppPendingShell`**, which composes only that `Skeleton`. **Per-page** loading (e.g. React Query pending) should compose the same `Skeleton` into layouts that mirror the real page structure. Split business settings routes use **`BusinessProfileSettingsLoadingCard`** and a shell: **`BusinessProfileSettingsFormShell`** (profile + address — Save/Reset, full **`useBusinessProfileSettingsController`**) or **`BusinessProfileSettingsStaticShell`** (credentials — **`useBusinessProfileSettingsGate`** only, exported from **`useBusinessProfileSettingsController.ts`**). Each page passes an optional **`loadingSlot`** so skeletons match loaded layout. Concretely, **`BusinessProfileSettingsPage`** and **`BusinessAddressSettingsPage`** mirror **`section` / `header` / grid / map column** structure; **`BusinessCredentialsSettingsPage`** uses the same **`section` / `header` / two-column grid** pattern as address (main column + side column with **`h3`** + primary action). **Direction:** every route should show an appropriate skeleton while session or data is loading; roll out incrementally where gaps remain.
-
----
-
-## Source of truth — Restaurant POS context
-
-This file (`documentation/context.md`) is the **canonical entry point** and **bridge document** for how the Restaurant POS is supposed to work. Treat it as the **first place to read** for product intent and how subsystems connect; then open the focused docs below (or the code-adjacent READMEs) for depth. For the **tenant business profile/register frontend layer** (multipart PATCH, React Query, DTO ↔ form mappers), use **[`frontend/src/services/business/README.md`](../frontend/src/services/business/README.md)**.
-
-### Companion documentation (reference map)
-
-These files sit alongside `context.md` under `documentation/`. They are the **authoritative expansions** for specific slices of behavior. When behavior or implementation changes, update the relevant companion doc **and** keep this bridge section accurate.
-
-| Document | Use it for |
-|----------|------------|
-| [`user-flow.md`](./user-flow.md) | **End-to-end user perspective**: onboarding, login/mode selection, reservations → service, orders, purchasing, inventory, daily/weekly/monthly reporting, notifications—narrative walkthrough aligned with this file. |
-| [`sales-point-sales-instance-orders.md`](./sales-point-sales-instance-orders.md) | **Operational core**: sales points vs sales instances vs orders; `dailyReferenceNumber`; employee vs customer flows; conflict rules; key routes (`salesInstances`, `orders`, self-order/delivery); promotions by flow; inventory hooks on create/cancel/close. |
-| [`daily-sales-report-feature.md`](./daily-sales-report-feature.md) | **Daily Sales Report (DSR)**: model and actor buckets; canonical attribution (`resolveFinalizationActorReportTarget`); incremental finalization vs reconcile; manager APIs; rollout/telemetry; link to weekly/monthly rollups. |
-| [`business-metrics-formulas.md`](./business-metrics-formulas.md) | **Weekly/monthly KPI math**: profitability, cost mix, break-even targets, operational efficiency; formulas match `backend/src/reports/businessMetrics/calculations.ts`. |
-| [`authentication-and-session.md`](./authentication-and-session.md) | **Auth stack (backend)**: Business vs User credentials, JWT access + refresh cookie (**`v`** / `refreshSessionVersion`), login/signup/logout/refresh/me/set-mode, tokens on **business create** and **authenticated business PATCH** / **self user PATCH**, `canLogAsEmployee` vs `getEffectiveUserRoleAtTime`, route middleware. |
-| [`auth-email-security-flows.md`](./auth-email-security-flows.md) | **Auth email security (full stack)**: sign-in email confirmation, forgot/reset password, resend, **anti-enumeration**, per-IP and per-intent+email rate limits, hashed tokens + TTLs, SMTP via communications `emailChannel`, **verification intent** audit/metrics, **refresh invalidation** after password change/reset, frontend routes and support runbook. |
-| [`../FRONTEND_AUTHENTICATION_AND_NAVIGATION_STRATEGY.md`](../FRONTEND_AUTHENTICATION_AND_NAVIGATION_STRATEGY.md) | **Web app shell (strategy)**: public marketing vs authenticated areas, URL/session partitions (business tenant vs person user), employee mode and navigation — decisions before implementation. |
-| [`../FRONTEND_AUTH_NAVIGATION_IMPLEMENTATION_PLAN.md`](../FRONTEND_AUTH_NAVIGATION_IMPLEMENTATION_PLAN.md) | **Web app shell**: public marketing, auth partitions, mode selection — phased tasks, route/guard work, lazy loading/error boundary polish, and tests; companion to the strategy doc above. |
-| [`frontend-authentication-and-navigation.md`](./frontend-authentication-and-navigation.md) | **Frontend (implemented)**: detailed **auth + navigation** behavior in `frontend/src` — session types (**`emailVerified`** on JWT/session), `getPostLoginDestination`, guards, `auth_mode`, schedule countdown, recovery routes (**forgot-password**, **reset/confirm-email**), and file index. |
-| [`frontend-i18n.md`](./frontend-i18n.md) | **Frontend i18n (implemented)**: `i18next` + `react-i18next` in `frontend/src/i18n`, **`en` + `es`** namespaces, how to add strings, `renderWithI18n`, language persistence, navbar switcher, and locale key parity guidance. |
-| [`frontend-third-party-libraries.md`](./frontend-third-party-libraries.md) | **Frontend npm stack**: major dependencies by layer (routing, Query, RHF+Zod forms, Radix/shadcn UI, i18n, etc.) and **conventions for adding packages**. |
-| [`../frontend/src/services/business/README.md`](../frontend/src/services/business/README.md) | **Tenant business services (frontend)**: HTTP + React Query (`businessProfileApi`), DTO ↔ form mappers, multipart `FormData` payload, Zod schema; import barrel **`businessService.ts`**. |
-| [`i18n-implementation-plan.md`](./i18n-implementation-plan.md) | **Frontend i18n status/backlog**: completed locale work (Mar 2026), optional next steps (`Intl`, i18next-parser) — companion to `frontend-i18n.md`. |
-| [`i18n-locale-coverage-todo.md`](./i18n-locale-coverage-todo.md) | **Presentation × namespace inventory** and completed blocks 0–9 audit (wiring + Spanish for all listed TSX). |
-
-**Reading order suggestion:** skim `context.md` (this file) → `user-flow.md` for the story → [`authentication-and-session.md`](./authentication-and-session.md) when wiring login, cookies, or guards → [`auth-email-security-flows.md`](./auth-email-security-flows.md) when changing **email confirmation, password reset, auth-email rate limits, or SMTP-related auth behavior** → [`frontend-i18n.md`](./frontend-i18n.md) when changing **web UI copy or locales** → [`frontend-third-party-libraries.md`](./frontend-third-party-libraries.md) when adding **frontend npm dependencies** or **forms (RHF + Zod)** → [`../frontend/src/services/business/README.md`](../frontend/src/services/business/README.md) when changing **tenant business profile, registration multipart, or profile PATCH client layer** → `sales-point-sales-instance-orders.md` for table/order mechanics → `daily-sales-report-feature.md` when working on reporting → `business-metrics-formulas.md` when interpreting or changing KPI outputs.
-
-### Entry point for AI-assisted coding
-
-- Obey **[Critical — engineering rules](#critical-engineering-rules)** at the top of this file **before** proposing or applying code changes.
-- Start here for **product shape** and **cross-cutting rules**.
-- Use the **companion docs** above for **how the app is supposed to work** in detail (users, auth sessions, POS/session model, DSR, metrics).
-- For **tenant business profile/register** client code paths, see **[`frontend/src/services/business/README.md`](../frontend/src/services/business/README.md)** (module map, `FormData` contract, hooks, errors).
-- Use the **READMEs** listed later for **implementation** next to code (API domains, models, validation, transactions).
-- As the app grows, **every major area should have its own README** (or documentation file), and this file should **link** to it.
-
----
+What the Restaurant POS is, what it does, and how the subsystems connect. This is the product-shape companion to the code and the focused docs listed in [`AGENTS.md`](../AGENTS.md); open those for depth.
 
 ## What this app is about
 
@@ -115,8 +47,6 @@ The tenant **sign-in credentials** screen lives at **`/business/:businessId/sett
 
 ## What the app can do — Solution for bars and restaurants
 
-This section summarizes **what the app can do** and **what solution it offers** to bars and restaurants. For the **full user journey** (onboarding through end-of-month), see [`user-flow.md`](./user-flow.md). For **tables, sessions, orders, QR, delivery/self-order mechanics**, see [`sales-point-sales-instance-orders.md`](./sales-point-sales-instance-orders.md). The READMEs below cover implementation next to the code.
-
 **The product is a full-stack, multi-tenant POS and operations platform** that lets a restaurant or bar run day-to-day service, manage its menu and supply chain, track stock and costs, and see daily and monthly performance — all from one place, with one business identity per location.
 
 ### Service and sales
@@ -154,7 +84,7 @@ Technical detail for JWT, cookies, endpoints, and middleware: [`authentication-a
 ### People and operations
 
 - **Employees** — **Employees** per business: name, role, documents, optional link to a **user** account. **Manager roles** (Owner, General Manager, Manager, Assistant Manager, MoD, Admin, Supervisor) can close daily/monthly reports and perform manager actions at any time (no on-duty requirement); **non‑manager** employees must be on duty for operational actions like opening tables. Attribution everywhere uses **userId** (ref User): sales instances store **openedByUserId**, **openedAsRole** (employee | customer), **responsibleByUserId**, **closedByUserId**; orders store **createdByUserId** and **createdAsRole**; daily reports store **userId** in employee and self-order sections. The app never uses employeeId for "who did it"; identity comes from session (userId).
-- **Schedules** — **Schedules** provide **day-level** shift planning: which employees work when, **labour cost**, vacation, overlap validation. Labour cost feeds **monthly business report** cost breakdown. Schedules are also used at **login** to determine whether a user who is an employee can choose “Continue as employee” (see **Schedule check at login** in `app/api/v1/schedules/README.md`).
+- **Schedules** — **Schedules** provide **day-level** shift planning: which employees work when, **labour cost**, vacation, overlap validation. Labour cost feeds **monthly business report** cost breakdown. Schedules are also used at **login** to determine whether a user who is an employee can choose “Continue as employee” (see **`canLogAsEmployee` (schedule gate for “employee mode”)** in [`authentication-and-session.md`](./authentication-and-session.md)).
 - **Users and notifications** — **Users** are app identities (e.g. linked to an employee). **User.employeeDetails** is the single optional reference to **Employee**, set only when the user is linked as staff and kept in sync by the employees API. There is no separate `Customer` persistence model; customer recipients are `User` ids. Effective role at runtime (`employee` vs `customer`) is derived from the user's employee link plus schedule/on-duty checks. Notification inbox state (read/deleted flags) is centralized on `User.notifications` for both customer and employee recipients.
 
 ### Reporting and analytics
@@ -181,7 +111,7 @@ Communication delivery is centralized in `backend/src/communications` using a si
 - **Email** uses one SMTP provider path (Nodemailer transport singleton).
 - **In-app** notifications are persisted first (source of truth) and then fanned out to user inbox state.
 - **Live in-app** uses WebSocket push as an acceleration layer; persisted inbox remains the fallback when users are offline.
-- **Domain modules** (orders, reservations, inventory alerts, weekly/monthly report-ready, **business profile updates** after authenticated `PATCH /api/v1/business/:businessId`) trigger communication by dispatching typed events, not by calling channels directly. Profile changes emit `BUSINESS_PROFILE_UPDATED` (manager in-app + manager email via `dispatchEvent`; see `backend/src/communications/README.md`). Tenant web editors that PATCH the profile include **`BusinessProfileSettingsPage`** (**`/settings/profile`**), **`BusinessAddressSettingsPage`** (**`/settings/address`**), and other split settings routes that share the profile form shell (**`/settings/credentials`** is read-only for password and does not PATCH). See `documentation/frontend-authentication-and-navigation.md`.
+- **Domain modules** (orders, reservations, inventory alerts, weekly/monthly report-ready, **business profile updates** after authenticated `PATCH /api/v1/business/:businessId`) trigger communication by dispatching typed events, not by calling channels directly. Profile changes emit `BUSINESS_PROFILE_UPDATED` (manager in-app + manager email via `dispatchEvent`; see [`backend/src/communications/README.md`](../backend/src/communications/README.md)). Tenant web editors that PATCH the profile include **`BusinessProfileSettingsPage`** (**`/settings/profile`**), **`BusinessAddressSettingsPage`** (**`/settings/address`**), and other split settings routes that share the profile form shell (**`/settings/credentials`** is read-only for password and does not PATCH). See [`frontend-authentication-and-navigation.md`](./frontend-authentication-and-navigation.md).
 - **Reliability** uses fire-and-forget defaults for non-blocking business flows, idempotency/noise controls for repeated events, and retry logic for transient SMTP failures.
 
 Core environment controls:
@@ -197,69 +127,9 @@ Core environment controls:
 
 - The system is **multi-tenant**: each restaurant/location is a **Business**.
 - Most domain data is scoped by `businessId`, which is the “thread” connecting orders, employees, sales points, inventories, suppliers, reports, notifications, and more.
-- The API is organized by domain under `app/api/v1/*`, with consistent patterns for:
+- The API is organized by domain under `backend/src/routes/v1/*`, with consistent patterns for:
   - DB connection initialization
   - ObjectId validation
   - request validation (including FormData when files are involved)
   - transactional writes for multi-step operations
   - consistent JSON error responses
-
----
-
-## READMEs (subsystem documentation)
-
-At the moment, there are **21 READMEs** in the app. This list will grow over time and should be kept up to date.
-
-- **Business domain (tenant root, onboarding, cascade delete, and app-wide coupling)**  
-  - `app/api/v1/business/README.md`
-- **Business profile & registration (web client — services next to `frontend/src`)**  
-  - [`frontend/src/services/business/README.md`](../frontend/src/services/business/README.md) — HTTP + TanStack Query, DTO ↔ form mappers, multipart `FormData` for create/PATCH; pairs with `app/api/v1/business` and [`frontend-authentication-and-navigation.md`](./frontend-authentication-and-navigation.md).
-- **Suppliers (vendors per business, supply chain, one-time purchase, and link to supplier goods / purchases / inventory)**  
-  - `app/api/v1/suppliers/README.md`
-- **Supplier goods (catalog of products per supplier, inventory sync, business-good ingredients, purchases, images)**  
-  - `app/api/v1/supplierGoods/README.md`
-- **Business goods (menu items, ingredients/set menus, costing+allergens, promotions coupling, and inventory consumption via orders)**  
-  - `app/api/v1/businessGoods/README.md`
-- **Purchases (receipts from suppliers, one purchase per receipt, inventory updates, add/edit/delete lines, one-time purchase flow)**  
-  - `app/api/v1/purchases/README.md`
-- **Inventories (monthly stock per business, dynamic counts from orders/purchases, physical counts and re-edits, supplier-good sync)**  
-  - `app/api/v1/inventories/README.md`
-- **Printers (print destinations per business, order routing by category/sales point, connection check, configuration setups)**  
-  - `app/api/v1/printers/README.md`
-- **Sales points (tables/rooms/bar per business, QR self-ordering, sales instance and order anchoring, printer routing)**  
-  - `app/api/v1/salesPoints/README.md`
-- **Sales instances (open table/session per sales point, daily report trigger, order grouping, self-order flow, PATCH order actions)**  
-  - `app/api/v1/salesInstances/README.md`
-- **Orders (billable items per sales instance: main product businessGoodId + optional addOns; inventory consumption via business-good ingredients; promotions apply to main product only; create/cancel/close/transfer, payment)**  
-  - `app/api/v1/orders/README.md`
-- **Daily sales reports (day-level report per business, created by first sales instance, employee/business totals, calculate and close flow)**  
-  - `app/api/v1/dailySalesReports/README.md`
-- **Monthly business reports (month-level KPIs per business, aggregate from daily reports, cost and supplier waste, break-even; API implemented)**  
-  - `app/api/v1/monthlyBusinessReport/README.md`
-- **Notifications (business-scoped events/messages, recipients inbox linking, read/deleted flags, transactional updates)**  
-  - `app/api/v1/notifications/README.md`
-- **Employees (staff per business, roles, user linkage, documents, printers coupling, vacation logic)**  
-  - `app/api/v1/employees/README.md`
-- **Schedules (day-level shift planning per business, employee shifts/vacation, labour cost, overlap validation)**  
-  - `app/api/v1/schedules/README.md`
-- **Users (app identity, personal details, employee link, notification inbox read/deleted flags)**  
-  - `app/api/v1/users/README.md`
-- **Promotions (business-scoped discount rules, validation helpers, and real-time pricing integration with orders)**  
-  - `app/api/v1/promotions/README.md`
-- **Ratings (user reviews 0–5 per business, Business averageRating/ratingCount, discovery filter and future rating emails)**  
-  - `app/api/v1/ratings/README.md`
-- **Reservations (table/booking per business, linked to sales points and sales instances; API implemented)**  
-  - `app/api/v1/reservations/README.md`
-- **Communications (unified dispatch orchestration, SMTP email, persisted in-app notifications, and live WebSocket push)**  
-  - `backend/src/communications/README.md`
-
----
-
-## How to keep this file useful (rule)
-
-When you add a new subsystem or make a meaningful change to an existing one:
-
-- Create or update the subsystem’s README close to the code (example: `app/api/v1/<domain>/README.md`, or a focused module README under `frontend/src/...` such as [`frontend/src/services/business/README.md`](../frontend/src/services/business/README.md)).
-- Add it to the list above.
-- If the change affects **user-visible flow**, **authentication or session behavior**, **POS/session/order behavior**, **DSR**, or **reporting formulas**, update the matching file under `documentation/` ([`user-flow.md`](./user-flow.md), [`authentication-and-session.md`](./authentication-and-session.md), [`frontend-authentication-and-navigation.md`](./frontend-authentication-and-navigation.md) for **frontend** route/guard/auth changes, [`sales-point-sales-instance-orders.md`](./sales-point-sales-instance-orders.md), [`daily-sales-report-feature.md`](./daily-sales-report-feature.md), [`business-metrics-formulas.md`](./business-metrics-formulas.md)) and, if needed, one line in the **Companion documentation** table at the top of this file.
-- Keep READMEs and companion docs focused on **flow**, **boundaries**, **patterns**, and **why it matters**, not just endpoint lists.

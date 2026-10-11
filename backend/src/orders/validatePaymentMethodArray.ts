@@ -1,10 +1,22 @@
-import type { IPaymentMethod } from "../../../packages/interfaces/IPaymentMethod.ts";
+/**
+ * Post-parse payment-method guard: the array must be non-empty, every line must
+ * carry a known method type/branch pair and a non-negative sales total. It
+ * accepts the client-settable payment DTO shape (`paymentMethodItemSchema`), not
+ * the full mongodb `IPaymentMethod` document, so callers pass DTO data without
+ * bridging casts.
+ */
 import * as enums from "../../../packages/enums.ts";
 
 const { paymentMethodsEnums, creditCardEnums, cryptoEnums, otherPaymentEnums } = enums;
 
+type PaymentMethodInput = {
+  paymentMethodType?: string;
+  methodBranch?: string;
+  methodSalesTotal?: number;
+};
+
 const validatePaymentMethodArray = (
-  paymentMethod: IPaymentMethod[]
+  paymentMethod: readonly PaymentMethodInput[]
 ): true | string => {
   if (!Array.isArray(paymentMethod) || paymentMethod.length === 0) {
     return "Payment method has to be an array!";

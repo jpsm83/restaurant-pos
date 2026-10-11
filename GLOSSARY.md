@@ -1,5 +1,7 @@
 # Glossary
 
+*Created by the skill setup-matt-pocock-skills*
+
 Shared vocabulary for the restaurant-pos codebase. Use these terms exactly;
 don't drift to synonyms the glossary avoids.
 

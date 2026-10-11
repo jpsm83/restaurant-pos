@@ -1,5 +1,7 @@
 # Issue tracker: GitHub
 
+*Created by the skill setup-matt-pocock-skills*
+
 Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all operations.
 
 ## Conventions
