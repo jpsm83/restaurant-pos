@@ -500,9 +500,9 @@ describe("Communications Core - Feature Flags", () => {
     try {
       const closedCode = await new Promise<number>((resolve) => {
         const socket = new WebSocket(wsUrl);
-        socket.on("unexpected-response", (_request, response) => {
+        socket.on("unexpected-response", (request, response) => {
           resolve(response.statusCode ?? 0);
-          socket.terminate();
+          request.destroy();
         });
         socket.on("close", (code) => resolve(code));
       });
