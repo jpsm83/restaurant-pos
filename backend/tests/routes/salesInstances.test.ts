@@ -1,6 +1,10 @@
 /**
  * SalesInstances Routes Tests - Phase 1 Module 5
  * Tests for sales instances CRUD endpoints
+ *
+ * Every error response is an RFC 9457 `application/problem+json` document
+ * produced by the global handler, so assertions are on the problem-details
+ * shape rather than a bare `{ message }`.
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
@@ -10,6 +14,25 @@ import SalesInstance from "../../src/models/salesInstance.ts";
 import SalesPoint from "../../src/models/salesPoint.ts";
 import Business from "../../src/models/business.ts";
 import User from "../../src/models/user.ts";
+
+const expectProblem = (
+  response: {
+    statusCode: number;
+    headers: Record<string, unknown>;
+    json: () => any;
+  },
+  status: number,
+  typeSlug: string,
+) => {
+  expect(response.statusCode).toBe(status);
+  expect(response.headers["content-type"]).toContain(
+    "application/problem+json",
+  );
+  const body = response.json();
+  expect(body.type).toBe(`https://restaurant-pos.app/errors/${typeSlug}`);
+  expect(body.status).toBe(status);
+  return body;
+};
 
 describe("SalesInstances Routes", () => {
   let businessId: Types.ObjectId;
@@ -137,9 +160,12 @@ describe("SalesInstances Routes", () => {
         url: "/api/v1/salesInstances/invalid-id",
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid salesInstanceId!");
+      const body = expectProblem(response, 400, "validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: "salesInstanceId" }),
+        ]),
+      );
     });
 
     it("returns 404 for non-existent sales instance", async () => {
@@ -151,7 +177,8 @@ describe("SalesInstances Routes", () => {
         url: `/api/v1/salesInstances/${fakeId}`,
       });
 
-      expect(response.statusCode).toBe(404);
+      const body = expectProblem(response, 404, "not-found");
+      expect(body.detail).toBe("SalesLocation not found!");
     });
   });
 
@@ -173,6 +200,54 @@ describe("SalesInstances Routes", () => {
     });
   });
 
+  describe("PATCH /api/v1/salesInstances/:salesInstanceId", () => {
+    it("returns a validation problem for a malformed salesInstanceId", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: "/api/v1/salesInstances/invalid-id",
+        payload: {},
+      });
+
+      const body = expectProblem(response, 400, "validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: "salesInstanceId" }),
+        ]),
+      );
+    });
+
+    it("rejects a malformed id inside ordersIdsArr", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/salesInstances/${new Types.ObjectId()}`,
+        payload: { ordersIdsArr: ["nope"] },
+      });
+
+      const body = expectProblem(response, 400, "validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: "ordersIdsArr.0" }),
+        ]),
+      );
+    });
+
+    it("rejects the server-owned openedAsRole as an unknown key", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/salesInstances/${new Types.ObjectId()}`,
+        payload: { openedAsRole: "employee" },
+      });
+
+      expectProblem(response, 400, "validation");
+    });
+  });
+
   describe("DELETE /api/v1/salesInstances/:salesInstanceId", () => {
     it("returns 400 for invalid salesInstanceId", async () => {
       const app = await getTestApp();
@@ -182,9 +257,12 @@ describe("SalesInstances Routes", () => {
         url: "/api/v1/salesInstances/invalid-id",
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid salesInstanceId");
+      const body = expectProblem(response, 400, "validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: "salesInstanceId" }),
+        ]),
+      );
     });
 
     it("deletes empty sales instance", async () => {
@@ -218,7 +296,8 @@ describe("SalesInstances Routes", () => {
         url: `/api/v1/salesInstances/${fakeId}`,
       });
 
-      expect(response.statusCode).toBe(404);
+      const body = expectProblem(response, 404, "not-found");
+      expect(body.detail).toBe("Sales instance not found or it has orders!");
     });
   });
 
@@ -253,7 +332,10 @@ describe("SalesInstances Routes", () => {
         url: "/api/v1/salesInstances/business/invalid-id",
       });
 
-      expect(response.statusCode).toBe(400);
+      const body = expectProblem(response, 400, "validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([expect.objectContaining({ path: "businessId" })]),
+      );
     });
 
     it("returns 404 when business has no sales instances", async () => {
@@ -265,7 +347,8 @@ describe("SalesInstances Routes", () => {
         url: `/api/v1/salesInstances/business/${emptyBusinessId}`,
       });
 
-      expect(response.statusCode).toBe(404);
+      const body = expectProblem(response, 404, "not-found");
+      expect(body.detail).toBe("No salesInstances found!");
     });
   });
 
@@ -300,9 +383,10 @@ describe("SalesInstances Routes", () => {
         url: "/api/v1/salesInstances/user/invalid-id",
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid userId!");
+      const body = expectProblem(response, 400, "validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([expect.objectContaining({ path: "userId" })]),
+      );
     });
 
     it("returns 404 when user has no sales instances", async () => {
@@ -314,7 +398,8 @@ describe("SalesInstances Routes", () => {
         url: `/api/v1/salesInstances/user/${emptyUserId}`,
       });
 
-      expect(response.statusCode).toBe(404);
+      const body = expectProblem(response, 404, "not-found");
+      expect(body.detail).toBe("No salesInstances found!");
     });
   });
 

@@ -10,6 +10,28 @@ import type { IAddress } from "../../../../packages/interfaces/IAddress.ts";
 import type { IBusiness } from "../../../../packages/interfaces/IBusiness.ts";
 
 import isObjectIdValid from "../../utils/isObjectIdValid.ts";
+import {
+  badRequest,
+  conflict,
+  forbidden,
+  notFound,
+  unauthorized,
+  type AppError,
+} from "../../errors/appError.ts";
+import {
+  createSalesInstanceBodySchema,
+  salesInstanceIdParamsSchema,
+  salesInstancesByBusinessParamsSchema,
+  salesInstancesByUserParamsSchema,
+  transferSalesPointBodySchema,
+  updateSalesInstanceBodySchema,
+  type CreateSalesInstanceBody,
+  type SalesInstanceIdParams,
+  type SalesInstancesByBusinessParams,
+  type SalesInstancesByUserParams,
+  type TransferSalesPointBody,
+  type UpdateSalesInstanceBody,
+} from "../../../../packages/schemas/salesInstances.ts";
 import SalesInstance from "../../models/salesInstance.ts";
 import SalesPoint from "../../models/salesPoint.ts";
 import User from "../../models/user.ts";
@@ -53,6 +75,19 @@ import * as enums from "../../../../packages/enums.ts";
 
 const { managementRolesEnums } = enums;
 
+/**
+ * Turn the HTTP-shaped result of the employee open-table transaction into a
+ * typed `AppError` so the global handler emits problem details.
+ */
+function employeeTxnError(
+  body: Record<string, unknown>,
+  status: number,
+): AppError {
+  const detail =
+    typeof body.message === "string" ? body.message : "Request failed";
+  return status === 409 ? conflict(detail) : badRequest(detail);
+}
+
 export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
   app.get("/", async (_req, reply) => {
     const salesInstances = await SalesInstance.find()
@@ -92,67 +127,55 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
       .lean();
 
     if (!salesInstances?.length) {
-      return reply.code(404).send({ message: "No salesInstances found!" });
+      throw notFound("No salesInstances found!");
     }
     return reply.code(200).send(salesInstances);
   });
 
-  app.post(
+  app.post<{ Body: CreateSalesInstanceBody }>(
     "/",
-    { preValidation: [createAuthHook(app)] },
+    {
+      preValidation: [createAuthHook(app)],
+      schema: { body: createSalesInstanceBodySchema },
+    },
     async (req, reply) => {
       if (!req.authSession || req.authSession.type !== "user") {
-        return reply.code(401).send({ message: "Unauthorized" });
+        throw unauthorized("Unauthorized");
       }
       const openedByUserId = new Types.ObjectId(req.authSession.id);
 
-      const body = req.body as Partial<ISalesInstance>;
       const {
         salesPointId,
         guests,
         salesInstanceStatus,
         businessId,
         clientName,
-      } = body ?? {};
-
-      if (!salesPointId || !guests || !businessId) {
-        return reply.code(400).send({
-          message: "SalesPointId, guests and businessId are required!",
-        });
-      }
-
-      if (isObjectIdValid([salesPointId as any, businessId as any]) !== true) {
-        return reply
-          .code(400)
-          .send({ message: "SalesPointId or businessId not valid!" });
-      }
+      } = req.body;
 
       const effectiveRole = await getEffectiveUserRoleAtTime({
         userId: openedByUserId,
-        businessId: businessId as Types.ObjectId,
+        businessId,
       });
       if (effectiveRole !== "employee") {
-        return reply.code(403).send({
-          message:
-            "You must be an on-duty employee to open a table from the POS.",
-        });
+        throw forbidden(
+          "You must be an on-duty employee to open a table from the POS.",
+        );
       }
 
       const salesPointExists = await SalesPoint.exists({
         _id: salesPointId,
-        businessId: businessId as Types.ObjectId,
+        businessId: new Types.ObjectId(businessId),
       });
       if (!salesPointExists) {
-        return reply.code(404).send({
-          message:
-            "Sales point does not belong to this business (or does not exist)!",
-        });
+        throw notFound(
+          "Sales point does not belong to this business (or does not exist)!",
+        );
       }
 
       const outcome = await runEmployeeSalesInstanceTxn(async (session) => {
         const dailySalesReport = (await DailySalesReport.findOne({
           isDailyReportOpen: true,
-          businessId: businessId as Types.ObjectId,
+          businessId: new Types.ObjectId(businessId),
         })
           .select("dailyReferenceNumber")
           .session(session)
@@ -216,7 +239,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
       });
 
       if (outcome.kind === "response") {
-        return reply.code(outcome.status).send(outcome.body);
+        throw employeeTxnError(outcome.body, outcome.status);
       }
       return reply
         .code(201)
@@ -224,84 +247,72 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
     },
   );
 
-  app.get("/:salesInstanceId", async (req, reply) => {
-    const params = req.params as { salesInstanceId?: string };
-    const salesInstanceId = params.salesInstanceId;
-
-    if (!salesInstanceId || isObjectIdValid([salesInstanceId]) !== true) {
-      return reply.code(400).send({ message: "Invalid salesInstanceId!" });
-    }
-
-    const salesInstance = await SalesInstance.findById(salesInstanceId)
-      .populate({
-        path: "salesPointId",
-        select: "salesPointName salesPointType selfOrdering",
-        model: SalesPoint,
-      })
-      .populate({
-        path: "openedByUserId",
-        select: "personalDetails.firstName personalDetails.lastName",
-        model: User,
-      })
-      .populate({
-        path: "responsibleByUserId closedByUserId",
-        select: "personalDetails.firstName personalDetails.lastName",
-        model: User,
-      })
-      .populate({
-        path: "salesGroup.ordersIds",
-        select:
-          "billingStatus orderStatus orderGrossPrice orderNetPrice paymentMethod allergens promotionApplyed discountPercentage createdAt businessGoodId addOns",
-        populate: [
-          {
-            path: "businessGoodId",
-            select: "name mainCategory subCategory allergens sellingPrice",
-            model: BusinessGood,
-          },
-          {
-            path: "addOns",
-            select: "name mainCategory subCategory allergens sellingPrice",
-            model: BusinessGood,
-          },
-        ],
-        model: Order,
-      })
-      .lean();
-
-    if (!salesInstance) {
-      return reply.code(404).send({ message: "SalesLocation not found!" });
-    }
-
-    return reply.code(200).send(salesInstance);
-  });
-
-  app.patch(
+  app.get<{ Params: SalesInstanceIdParams }>(
     "/:salesInstanceId",
-    { preValidation: [createOptionalAuthHook(app)] },
+    { schema: { params: salesInstanceIdParamsSchema } },
     async (req, reply) => {
-      const params = req.params as { salesInstanceId?: string };
-      const salesInstanceId = params.salesInstanceId;
+      const { salesInstanceId } = req.params;
+
+      const salesInstance = await SalesInstance.findById(salesInstanceId)
+        .populate({
+          path: "salesPointId",
+          select: "salesPointName salesPointType selfOrdering",
+          model: SalesPoint,
+        })
+        .populate({
+          path: "openedByUserId",
+          select: "personalDetails.firstName personalDetails.lastName",
+          model: User,
+        })
+        .populate({
+          path: "responsibleByUserId closedByUserId",
+          select: "personalDetails.firstName personalDetails.lastName",
+          model: User,
+        })
+        .populate({
+          path: "salesGroup.ordersIds",
+          select:
+            "billingStatus orderStatus orderGrossPrice orderNetPrice paymentMethod allergens promotionApplyed discountPercentage createdAt businessGoodId addOns",
+          populate: [
+            {
+              path: "businessGoodId",
+              select: "name mainCategory subCategory allergens sellingPrice",
+              model: BusinessGood,
+            },
+            {
+              path: "addOns",
+              select: "name mainCategory subCategory allergens sellingPrice",
+              model: BusinessGood,
+            },
+          ],
+          model: Order,
+        })
+        .lean();
+
+      if (!salesInstance) {
+        throw notFound("SalesLocation not found!");
+      }
+
+      return reply.code(200).send(salesInstance);
+    },
+  );
+
+  app.patch<{ Params: SalesInstanceIdParams; Body: UpdateSalesInstanceBody }>(
+    "/:salesInstanceId",
+    {
+      preValidation: [createOptionalAuthHook(app)],
+      schema: {
+        params: salesInstanceIdParamsSchema,
+        body: updateSalesInstanceBodySchema,
+      },
+    },
+    async (req, reply) => {
+      const { salesInstanceId } = req.params;
 
       const sessionUserId =
         req.authSession?.type === "user"
           ? new Types.ObjectId(req.authSession.id)
           : null;
-
-      const body = req.body as {
-        ordersIdsArr?: string[];
-        discountPercentage?: number;
-        comments?: string;
-        cancel?: boolean;
-        ordersNewBillingStatus?: string;
-        voidReason?: string;
-        ordersNewStatus?: string;
-        paymentMethodArr?: IPaymentMethod[];
-        toSalesInstanceId?: string;
-        guests?: number;
-        salesInstanceStatus?: string;
-        responsibleByUserId?: string;
-        clientName?: string;
-      };
 
       const {
         ordersIdsArr,
@@ -313,16 +324,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
         salesInstanceStatus,
         responsibleByUserId,
         clientName,
-      } = body;
-
-      const idsToValidate: (string | Types.ObjectId)[] = [salesInstanceId!];
-      if (responsibleByUserId) idsToValidate.push(responsibleByUserId);
-      if (ordersIdsArr) idsToValidate.push(...ordersIdsArr);
-      if (toSalesInstanceId) idsToValidate.push(toSalesInstanceId);
-
-      if (isObjectIdValid(idsToValidate as Types.ObjectId[]) !== true) {
-        return reply.code(400).send({ message: "Invalid IDs!" });
-      }
+      } = req.body;
 
       const session = await mongoose.startSession();
       session.startTransaction();
@@ -336,8 +338,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
           .lean()) as unknown as ISalesInstance | null;
 
         if (!salesInstance) {
-          await session.abortTransaction();
-          return reply.code(404).send({ message: "SalesInstance not found!" });
+          throw notFound("SalesInstance not found!");
         }
 
         const wantsCancel = Boolean(cancel && ordersIdsArr && ordersIdsArr.length > 0);
@@ -362,20 +363,16 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
 
         // Carve-out (idea doc §4/§E): customer-open/delivery/self-order sessions must not use these PATCH operations.
         if (wantsAnyRestrictedOperation && salesInstance.openedAsRole !== "employee") {
-          await session.abortTransaction();
-          return reply.code(409).send({
-            message:
-              'Operation not allowed: only employee-open SalesInstances can be cancelled, closed with payment, or have orders transferred via this endpoint.',
-          });
+          throw conflict(
+            'Operation not allowed: only employee-open SalesInstances can be cancelled, closed with payment, or have orders transferred via this endpoint.',
+          );
         }
 
         // Idea doc §4: close/transfer/cancel should require an auth session.
         if (wantsAnyRestrictedOperation && !sessionUserId) {
-          await session.abortTransaction();
-          return reply.code(401).send({
-            message:
-              "Unauthorized; authenticated employee session is required for this operation.",
-          });
+          throw unauthorized(
+            "Unauthorized; authenticated employee session is required for this operation.",
+          );
         }
 
         // Task 5 (idea doc): order-to-salesInstance integrity.
@@ -385,10 +382,9 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
         if (wantsAnyRestrictedOperation && ordersIdsArr && ordersIdsArr.length > 0) {
           const uniqueOrderIds = new Set(ordersIdsArr);
           if (uniqueOrderIds.size !== ordersIdsArr.length) {
-            await session.abortTransaction();
-            return reply.code(400).send({
-              message: "Invalid ordersIdsArr: duplicates are not allowed.",
-            });
+            throw badRequest(
+              "Invalid ordersIdsArr: duplicates are not allowed.",
+            );
           }
 
           const orderObjectIds = ordersIdsArr.map((id) => new Types.ObjectId(id));
@@ -409,38 +405,30 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
               .lean();
 
             if (!sourceSalesInstance) {
-              await session.abortTransaction();
-              return reply.code(404).send({
-                message:
-                  "Source salesInstance not found for transfer (toSalesInstanceId).",
-              });
+              throw notFound(
+                "Source salesInstance not found for transfer (toSalesInstanceId).",
+              );
             }
 
             if (
               sourceSalesInstance.businessId.toString() !==
               salesInstance.businessId.toString()
             ) {
-              await session.abortTransaction();
-              return reply.code(400).send({
-                message:
-                  "Source and receiver salesInstances must belong to the same business.",
-              });
+              throw badRequest(
+                "Source and receiver salesInstances must belong to the same business.",
+              );
             }
 
             if (sourceSalesInstance.openedAsRole !== "employee") {
-              await session.abortTransaction();
-              return reply.code(409).send({
-                message:
-                  "Operation not allowed: can only transfer orders from an employee-open SalesInstance.",
-              });
+              throw conflict(
+                "Operation not allowed: can only transfer orders from an employee-open SalesInstance.",
+              );
             }
 
             if (sourceSalesInstance.salesInstanceStatus === "Closed") {
-              await session.abortTransaction();
-              return reply.code(409).send({
-                message:
-                  "Operation not allowed: can not transfer from a closed source SalesInstance.",
-              });
+              throw conflict(
+                "Operation not allowed: can not transfer from a closed source SalesInstance.",
+              );
             }
           }
 
@@ -458,27 +446,21 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
           }>;
 
           if (!orders || orders.length !== ordersIdsArr.length) {
-            await session.abortTransaction();
-            return reply.code(404).send({
-              message:
-                "Some orders do not belong to this SalesInstance (or its business).",
-            });
+            throw notFound(
+              "Some orders do not belong to this SalesInstance (or its business).",
+            );
           }
 
           // Idea doc §4/§E: close/cancel/transfer should operate only on Open billing orders.
           if (orders.some((o) => o.billingStatus !== "Open")) {
-            await session.abortTransaction();
-            return reply.code(400).send({
-              message: "Only orders with billingStatus 'Open' can be closed, cancelled, or transferred.",
-            });
+            throw badRequest(
+              "Only orders with billingStatus 'Open' can be closed, cancelled, or transferred.",
+            );
           }
 
           // Cancel-specific rule: do not allow cancelling orders already completed in the order flow.
           if (wantsCancel && orders.some((o) => o.orderStatus === "Done")) {
-            await session.abortTransaction();
-            return reply.code(400).send({
-              message: "Cannot cancel orders with orderStatus 'Done'!",
-            });
+            throw badRequest("Cannot cancel orders with orderStatus 'Done'!");
           }
         }
 
@@ -494,27 +476,19 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
           );
 
           if (deleteResult.deletedCount === 0) {
-            await session.abortTransaction();
-            return reply
-              .code(404)
-              .send({ message: "Empty salesInstance not deleted!" });
+            throw notFound("Empty salesInstance not deleted!");
           }
         }
 
         if (responsibleByUserId && !sessionUserId) {
-          await session.abortTransaction();
-          return reply
-            .code(401)
-            .send({ message: "Unauthorized to set responsible user" });
+          throw unauthorized("Unauthorized to set responsible user");
         }
 
         if (cancel && ordersIdsArr && ordersIdsArr.length > 0) {
           if (!sessionUserId) {
-            await session.abortTransaction();
-            return reply.code(401).send({
-              message:
-                "Unauthorized; userId from session is required to cancel orders!",
-            });
+            throw unauthorized(
+              "Unauthorized; userId from session is required to cancel orders!",
+            );
           }
           const cancelEmployee = (await Employee.findOne({
             userId: sessionUserId,
@@ -530,10 +504,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
               cancelEmployee.allEmployeeRoles?.includes(role),
             )
           ) {
-            await session.abortTransaction();
-            return reply.code(403).send({
-              message: "Only on-duty management roles can cancel orders!",
-            });
+            throw forbidden("Only on-duty management roles can cancel orders!");
           }
 
           const cancelOrdersResult = await cancelOrders(
@@ -543,18 +514,15 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
           );
 
           if (cancelOrdersResult !== true) {
-            await session.abortTransaction();
-            return reply.code(400).send({ message: cancelOrdersResult });
+            throw badRequest(cancelOrdersResult);
           }
         }
 
         if (wantsFinalizeWithoutPayment && ordersIdsArr && ordersIdsArr.length > 0) {
           if (!sessionUserId) {
-            await session.abortTransaction();
-            return reply.code(401).send({
-              message:
-                "Unauthorized; authenticated management session is required to finalize orders as Void/Invitation.",
-            });
+            throw unauthorized(
+              "Unauthorized; authenticated management session is required to finalize orders as Void/Invitation.",
+            );
           }
 
           const managerEmployee = (await Employee.findOne({
@@ -571,11 +539,9 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
               managerEmployee.allEmployeeRoles?.includes(role),
             )
           ) {
-            await session.abortTransaction();
-            return reply.code(403).send({
-              message:
-                "Only management roles can finalize orders as Void/Invitation.",
-            });
+            throw forbidden(
+              "Only management roles can finalize orders as Void/Invitation.",
+            );
           }
 
           const status = ordersNewBillingStatus as "Void" | "Invitation";
@@ -587,8 +553,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
           );
 
           if (finalizeResult !== true) {
-            await session.abortTransaction();
-            return reply.code(400).send({ message: finalizeResult });
+            throw badRequest(finalizeResult);
           }
         }
 
@@ -596,8 +561,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
           const validPaymentMethods =
             validatePaymentMethodArray(paymentMethodArr);
           if (validPaymentMethods !== true) {
-            await session.abortTransaction();
-            return reply.code(400).send({ message: validPaymentMethods });
+            throw badRequest(validPaymentMethods);
           }
 
           const closeOrdersResult = await closeOrders(
@@ -608,8 +572,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
           );
 
           if (closeOrdersResult !== true) {
-            await session.abortTransaction();
-            return reply.code(400).send({ message: closeOrdersResult });
+            throw badRequest(closeOrdersResult);
           }
         }
 
@@ -624,8 +587,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
           );
 
           if (transferResult !== true) {
-            await session.abortTransaction();
-            return reply.code(400).send({ message: transferResult });
+            throw badRequest(transferResult);
           }
         }
 
@@ -651,8 +613,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
           updatedSalesInstance.modifiedCount === 0 &&
           Object.keys(updatedSalesInstanceObj).length > 0
         ) {
-          await session.abortTransaction();
-          return reply.code(404).send({ message: "SalesInstance not found!" });
+          throw notFound("SalesInstance not found!");
         }
 
         await session.commitTransaction();
@@ -661,63 +622,55 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
           .code(200)
           .send({ message: "SalesInstance updated successfully!" });
       } catch (error) {
-        await session.abortTransaction();
-        return reply.code(500).send({
-          message: "Update salesInstance failed!",
-          error: error instanceof Error ? error.message : error,
-        });
+        await session.abortTransaction().catch(() => undefined);
+        throw error;
       } finally {
         session.endSession();
       }
     },
   );
 
-  app.delete("/:salesInstanceId", async (req, reply) => {
-    const params = req.params as { salesInstanceId?: string };
-    const salesInstanceId = params.salesInstanceId;
-
-    if (!salesInstanceId || isObjectIdValid([salesInstanceId]) !== true) {
-      return reply.code(400).send({ message: "Invalid salesInstanceId" });
-    }
-
-    const result = await SalesInstance.deleteOne({
-      _id: salesInstanceId,
-      $or: [{ salesGroup: { $size: 0 } }, { salesGroup: { $exists: false } }],
-    });
-
-    if (result.deletedCount === 0) {
-      return reply.code(404).send({
-        message: "Sales instance not found or it has orders!",
-      });
-    }
-
-    return reply
-      .code(200)
-      .send({ message: "Sales instance deleted successfully!" });
-  });
-
-  app.patch(
-    "/:salesInstanceId/transferSalesPoint",
-    { preValidation: [createAuthHook(app)] },
+  app.delete<{ Params: SalesInstanceIdParams }>(
+    "/:salesInstanceId",
+    { schema: { params: salesInstanceIdParamsSchema } },
     async (req, reply) => {
-      const params = req.params as { salesInstanceId?: string };
-      const salesInstanceId = params.salesInstanceId;
+      const { salesInstanceId } = req.params;
+
+      const result = await SalesInstance.deleteOne({
+        _id: salesInstanceId,
+        $or: [{ salesGroup: { $size: 0 } }, { salesGroup: { $exists: false } }],
+      });
+
+      if (result.deletedCount === 0) {
+        throw notFound("Sales instance not found or it has orders!");
+      }
+
+      return reply
+        .code(200)
+        .send({ message: "Sales instance deleted successfully!" });
+    },
+  );
+
+  app.patch<
+    { Params: SalesInstanceIdParams; Body: TransferSalesPointBody }
+  >(
+    "/:salesInstanceId/transferSalesPoint",
+    {
+      preValidation: [createAuthHook(app)],
+      schema: {
+        params: salesInstanceIdParamsSchema,
+        body: transferSalesPointBodySchema,
+      },
+    },
+    async (req, reply) => {
+      const { salesInstanceId } = req.params;
 
       if (!req.authSession || req.authSession.type !== "user") {
-        return reply.code(401).send({ message: "Unauthorized" });
+        throw unauthorized("Unauthorized");
       }
       const sessionUserId = new Types.ObjectId(req.authSession.id);
 
-      const body = req.body as { salesPointId?: string };
-      const { salesPointId } = body;
-
-      if (!salesPointId) {
-        return reply.code(400).send({ message: "salesPointId is required!" });
-      }
-
-      if (isObjectIdValid([salesInstanceId!, salesPointId]) !== true) {
-        return reply.code(400).send({ message: "Invalid IDs!" });
-      }
+      const { salesPointId } = req.body;
 
       const session = await mongoose.startSession();
       session.startTransaction();
@@ -739,21 +692,17 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
         } | null;
 
         if (!salesInstance) {
-          await session.abortTransaction();
-          return reply.code(404).send({ message: "SalesInstance not found!" });
+          throw notFound("SalesInstance not found!");
         }
 
         if (salesInstance.salesInstanceStatus === "Closed") {
-          await session.abortTransaction();
-          return reply.code(409).send({ message: "SalesInstance is closed!" });
+          throw conflict("SalesInstance is closed!");
         }
 
         if (salesInstance.openedAsRole !== "employee") {
-          await session.abortTransaction();
-          return reply.code(409).send({
-            message:
-              "Operation not allowed: only employee-open SalesInstances can be transferred between sales points via this endpoint.",
-          });
+          throw conflict(
+            "Operation not allowed: only employee-open SalesInstances can be transferred between sales points via this endpoint.",
+          );
         }
 
         const employee = (await Employee.findOne({
@@ -771,8 +720,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
           );
 
         if (!isAllowed) {
-          await session.abortTransaction();
-          return reply.code(403).send({ message: "Forbidden" });
+          throw forbidden("Forbidden");
         }
 
         const sp = await SalesPoint.exists({
@@ -781,10 +729,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
         }).session(session);
 
         if (!sp) {
-          await session.abortTransaction();
-          return reply
-            .code(404)
-            .send({ message: "SalesPoint not found for this business!" });
+          throw notFound("SalesPoint not found for this business!");
         }
 
         const openConflict = await pointBusyForEmployee({
@@ -795,11 +740,9 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
         });
 
         if (openConflict) {
-          await session.abortTransaction();
-          return reply.code(409).send({
-            message:
-              "Cannot move to this salesPoint because it already has an open SalesInstance!",
-          });
+          throw conflict(
+            "Cannot move to this salesPoint because it already has an open SalesInstance!",
+          );
         }
 
         const moved = await SalesInstance.updateOne(
@@ -809,8 +752,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
         );
 
         if (moved.modifiedCount !== 1) {
-          await session.abortTransaction();
-          return reply.code(400).send({ message: "SalesInstance not moved!" });
+          throw badRequest("SalesInstance not moved!");
         }
 
         const reservation = (await Reservation.findOne({
@@ -836,120 +778,115 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
           .code(200)
           .send({ message: "SalesInstance transferred successfully!" });
       } catch (error) {
-        await session.abortTransaction();
-        return reply.code(500).send({
-          message: "Transfer SalesInstance salesPoint failed!",
-          error: error instanceof Error ? error.message : error,
-        });
+        await session.abortTransaction().catch(() => undefined);
+        throw error;
       } finally {
         session.endSession();
       }
     },
   );
 
-  app.get("/business/:businessId", async (req, reply) => {
-    const params = req.params as { businessId?: string };
-    const businessId = params.businessId;
+  app.get<{ Params: SalesInstancesByBusinessParams }>(
+    "/business/:businessId",
+    { schema: { params: salesInstancesByBusinessParamsSchema } },
+    async (req, reply) => {
+      const { businessId } = req.params;
 
-    if (!businessId || isObjectIdValid([businessId]) !== true) {
-      return reply.code(400).send({ message: "Invalid salesInstanceId!" });
-    }
+      const salesInstances = await SalesInstance.find({ businessId })
+        .populate({
+          path: "salesPointId",
+          select: "salesPointName salesPointType selfOrdering",
+          model: SalesPoint,
+        })
+        .populate({
+          path: "openedByUserId",
+          select: "personalDetails.firstName personalDetails.lastName",
+          model: User,
+        })
+        .populate({
+          path: "responsibleByUserId closedByUserId",
+          select: "personalDetails.firstName personalDetails.lastName",
+          model: User,
+        })
+        .populate({
+          path: "salesGroup.ordersIds",
+          select:
+            "billingStatus orderStatus orderGrossPrice orderNetPrice paymentMethod allergens promotionApplyed discountPercentage createdAt businessGoodId addOns",
+          populate: [
+            {
+              path: "businessGoodId",
+              select: "name mainCategory subCategory allergens sellingPrice",
+              model: BusinessGood,
+            },
+            {
+              path: "addOns",
+              select: "name mainCategory subCategory allergens sellingPrice",
+              model: BusinessGood,
+            },
+          ],
+          model: Order,
+        })
+        .lean();
 
-    const salesInstances = await SalesInstance.find({ businessId })
-      .populate({
-        path: "salesPointId",
-        select: "salesPointName salesPointType selfOrdering",
-        model: SalesPoint,
+      if (!salesInstances.length) {
+        throw notFound("No salesInstances found!");
+      }
+
+      return reply.code(200).send(salesInstances);
+    },
+  );
+
+  app.get<{ Params: SalesInstancesByUserParams }>(
+    "/user/:userId",
+    { schema: { params: salesInstancesByUserParamsSchema } },
+    async (req, reply) => {
+      const { userId } = req.params;
+
+      const salesInstances = await SalesInstance.find({
+        $or: [{ openedByUserId: userId }, { responsibleByUserId: userId }],
       })
-      .populate({
-        path: "openedByUserId",
-        select: "personalDetails.firstName personalDetails.lastName",
-        model: User,
-      })
-      .populate({
-        path: "responsibleByUserId closedByUserId",
-        select: "personalDetails.firstName personalDetails.lastName",
-        model: User,
-      })
-      .populate({
-        path: "salesGroup.ordersIds",
-        select:
-          "billingStatus orderStatus orderGrossPrice orderNetPrice paymentMethod allergens promotionApplyed discountPercentage createdAt businessGoodId addOns",
-        populate: [
-          {
-            path: "businessGoodId",
-            select: "name mainCategory subCategory allergens sellingPrice",
-            model: BusinessGood,
-          },
-          {
-            path: "addOns",
-            select: "name mainCategory subCategory allergens sellingPrice",
-            model: BusinessGood,
-          },
-        ],
-        model: Order,
-      })
-      .lean();
+        .populate({
+          path: "salesPointId",
+          select: "salesPointName salesPointType selfOrdering",
+          model: SalesPoint,
+        })
+        .populate({
+          path: "openedByUserId",
+          select: "personalDetails.firstName personalDetails.lastName",
+          model: User,
+        })
+        .populate({
+          path: "responsibleByUserId closedByUserId",
+          select: "personalDetails.firstName personalDetails.lastName",
+          model: User,
+        })
+        .populate({
+          path: "salesGroup.ordersIds",
+          select:
+            "billingStatus orderStatus orderGrossPrice orderNetPrice paymentMethod allergens promotionApplyed discountPercentage createdAt businessGoodId addOns",
+          populate: [
+            {
+              path: "businessGoodId",
+              select: "name mainCategory subCategory allergens sellingPrice",
+              model: BusinessGood,
+            },
+            {
+              path: "addOns",
+              select: "name mainCategory subCategory allergens sellingPrice",
+              model: BusinessGood,
+            },
+          ],
+          model: Order,
+        })
+        .lean();
 
-    if (!salesInstances.length) {
-      return reply.code(404).send({ message: "No salesInstances found!" });
-    }
+      if (!salesInstances.length) {
+        throw notFound("No salesInstances found!");
+      }
 
-    return reply.code(200).send(salesInstances);
-  });
-
-  app.get("/user/:userId", async (req, reply) => {
-    const params = req.params as { userId?: string };
-    const userId = params.userId;
-
-    if (!userId || isObjectIdValid([userId]) !== true) {
-      return reply.code(400).send({ message: "Invalid userId!" });
-    }
-
-    const salesInstances = await SalesInstance.find({
-      $or: [{ openedByUserId: userId }, { responsibleByUserId: userId }],
-    })
-      .populate({
-        path: "salesPointId",
-        select: "salesPointName salesPointType selfOrdering",
-        model: SalesPoint,
-      })
-      .populate({
-        path: "openedByUserId",
-        select: "personalDetails.firstName personalDetails.lastName",
-        model: User,
-      })
-      .populate({
-        path: "responsibleByUserId closedByUserId",
-        select: "personalDetails.firstName personalDetails.lastName",
-        model: User,
-      })
-      .populate({
-        path: "salesGroup.ordersIds",
-        select:
-          "billingStatus orderStatus orderGrossPrice orderNetPrice paymentMethod allergens promotionApplyed discountPercentage createdAt businessGoodId addOns",
-        populate: [
-          {
-            path: "businessGoodId",
-            select: "name mainCategory subCategory allergens sellingPrice",
-            model: BusinessGood,
-          },
-          {
-            path: "addOns",
-            select: "name mainCategory subCategory allergens sellingPrice",
-            model: BusinessGood,
-          },
-        ],
-        model: Order,
-      })
-      .lean();
-
-    if (!salesInstances.length) {
-      return reply.code(404).send({ message: "No salesInstances found!" });
-    }
-
-    return reply.code(200).send(salesInstances);
-  });
+      return reply.code(200).send(salesInstances);
+    },
+  );
 
   app.post(
     "/selfOrderingLocation/:selfOrderingLocationId/openTable",

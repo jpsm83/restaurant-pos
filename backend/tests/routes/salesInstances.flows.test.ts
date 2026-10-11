@@ -181,7 +181,49 @@ describe("SalesInstances flows (Task 12)", () => {
 
       expect(res.statusCode).toBe(404);
       const body = JSON.parse(res.body);
-      expect(body.message).toMatch(/does not belong to this business/i);
+      expect(body.detail).toMatch(/does not belong to this business/i);
+    });
+
+    it("rejects a server-owned field as a validation problem", async () => {
+      const { token } = await createManagerActor(businessId);
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/salesInstances",
+        headers: { authorization: token },
+        payload: {
+          salesPointId: salesPointId.toString(),
+          guests: 2,
+          businessId: businessId.toString(),
+          openedByUserId: "server-owned",
+        },
+      });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      expect(JSON.parse(res.body).type).toBe(
+        "https://restaurant-pos.app/errors/validation",
+      );
+    });
+  });
+
+  describe("PATCH /api/v1/salesInstances/:id/transferSalesPoint", () => {
+    it("rejects an invalid salesPointId as a validation problem", async () => {
+      const { token } = await createManagerActor(businessId);
+
+      const res = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/salesInstances/${salesPointId}/transferSalesPoint`,
+        headers: { authorization: token },
+        payload: { salesPointId: "not-an-id" },
+      });
+
+      expect(res.statusCode).toBe(400);
+      expect(JSON.parse(res.body).type).toBe(
+        "https://restaurant-pos.app/errors/validation",
+      );
     });
   });
 
@@ -379,7 +421,7 @@ describe("SalesInstances flows (Task 12)", () => {
 
       expect(res.statusCode).toBe(409);
       const body = JSON.parse(res.body);
-      expect(body.message).toMatch(/only employee-open SalesInstances/i);
+      expect(body.detail).toMatch(/only employee-open SalesInstances/i);
     });
 
     it("returns 404 when ordersIdsArr contains an order from another sales instance", async () => {
