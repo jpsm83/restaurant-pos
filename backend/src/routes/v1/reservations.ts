@@ -1,10 +1,20 @@
+/**
+ * Reservations Routes - Reservation CRUD, listing and seat/check-in flow.
+ *
+ * Every route declares its body/params/query as a strict zod DTO from
+ * `packages/schemas/reservations.ts`; validation and sanitization happen at the
+ * boundary and every error is raised as an `AppError` so the global handler
+ * emits RFC 9457 `application/problem+json`. Cross-field and role rules stay as
+ * named post-parse checks: `canTransitionReservationStatus`, the
+ * `reservationEnd > reservationStart` period rule, and the employee/management
+ * guards.
+ */
 import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
 import type { IReservation } from "../../../../packages/interfaces/IReservation.ts";
 import type { ISalesInstance } from "../../../../packages/interfaces/ISalesInstance.ts";
 import type { IDailySalesReport } from "../../../../packages/interfaces/IDailySalesReport.ts";
 
-import isObjectIdValid from "../../utils/isObjectIdValid.ts";
 import createDailySalesReport from "../../dailySalesReports/createDailySalesReport.ts";
 import createSalesInstance from "../../salesInstances/createSalesInstance.ts";
 import { pointBusyForEmployee } from "../../salesInstances/salesInstanceConflicts.ts";
@@ -19,40 +29,48 @@ import SalesPoint from "../../models/salesPoint.ts";
 import SalesInstance from "../../models/salesInstance.ts";
 import DailySalesReport from "../../models/dailySalesReport.ts";
 import { createAuthHook } from "../../auth/middleware.ts";
+import {
+  badRequest,
+  conflict,
+  forbidden,
+  notFound,
+  unauthorized,
+} from "../../errors/appError.ts";
+import {
+  createReservationBodySchema,
+  reservationIdParamsSchema,
+  reservationsByBusinessParamsSchema,
+  reservationsByBusinessQuerySchema,
+  reservationsQuerySchema,
+  updateReservationBodySchema,
+  type CreateReservationBody,
+  type ReservationIdParams,
+  type ReservationsByBusinessParams,
+  type ReservationsByBusinessQuery,
+  type ReservationsQuery,
+  type UpdateReservationBody,
+} from "../../../../packages/schemas/reservations.ts";
 import * as enums from "../../../../packages/enums.ts";
 
 const { managementRolesEnums } = enums;
 
-const RESERVATION_STATUS_VALUES = [
-  "Pending",
-  "Confirmed",
-  "Arrived",
-  "Seated",
-  "Cancelled",
-  "NoShow",
-  "Completed",
-] as const;
+type ReservationStatus = NonNullable<IReservation["status"]>;
 
-const isReservationStatus = (
-  value: unknown,
-): value is (typeof RESERVATION_STATUS_VALUES)[number] =>
-  typeof value === "string" &&
-  (RESERVATION_STATUS_VALUES as readonly string[]).includes(value);
-
+/**
+ * Allowed status transitions. `Pending` is the implicit starting status; a
+ * terminal status can never move again. Kept post-parse because the rule spans
+ * the stored status and the requested one.
+ */
 const canTransitionReservationStatus = (
   currentStatus: string | undefined,
-  nextStatus: (typeof RESERVATION_STATUS_VALUES)[number],
+  nextStatus: ReservationStatus,
 ) => {
-  const current = (currentStatus ??
-    "Pending") as (typeof RESERVATION_STATUS_VALUES)[number];
+  const current = (currentStatus ?? "Pending") as ReservationStatus;
 
   if (["Cancelled", "NoShow", "Completed"].includes(current)) return false;
   if (current === nextStatus) return true;
 
-  const allowed: Record<
-    (typeof RESERVATION_STATUS_VALUES)[number],
-    (typeof RESERVATION_STATUS_VALUES)[number][]
-  > = {
+  const allowed: Record<ReservationStatus, ReservationStatus[]> = {
     Pending: ["Confirmed", "Cancelled"],
     Confirmed: ["Arrived", "Cancelled", "NoShow"],
     Arrived: ["Seated", "Cancelled", "NoShow"],
@@ -67,14 +85,11 @@ const canTransitionReservationStatus = (
 
 export const reservationsRoutes: FastifyPluginAsync = async (app) => {
   // GET /reservations - list all (with optional filters)
-  app.get("/", async (req, reply) => {
-    try {
-      const query = req.query as {
-        businessId?: string;
-        startDate?: string;
-        endDate?: string;
-        status?: string;
-      };
+  app.get<{ Querystring: ReservationsQuery }>(
+    "/",
+    { schema: { querystring: reservationsQuerySchema } },
+    async (req, reply) => {
+      const { businessId, startDate, endDate, status } = req.query;
 
       const filter: {
         businessId?: Types.ObjectId;
@@ -82,32 +97,23 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
         status?: string;
       } = {};
 
-      if (query.businessId) {
-        if (isObjectIdValid([query.businessId]) !== true) {
-          return reply.code(400).send({ message: "Invalid businessId!" });
-        }
-        filter.businessId = new Types.ObjectId(query.businessId);
+      if (businessId) {
+        filter.businessId = new Types.ObjectId(businessId);
       }
 
-      if (query.startDate || query.endDate) {
+      if (startDate || endDate) {
         filter.reservationStart = {};
-        if (query.startDate)
-          filter.reservationStart.$gte = new Date(query.startDate);
-        if (query.endDate)
-          filter.reservationStart.$lte = new Date(query.endDate);
-        if (
-          query.startDate &&
-          query.endDate &&
-          query.startDate > query.endDate
-        ) {
-          return reply.code(400).send({
-            message: "Invalid date range, startDate must be before endDate!",
-          });
+        if (startDate) filter.reservationStart.$gte = startDate;
+        if (endDate) filter.reservationStart.$lte = endDate;
+        if (startDate && endDate && startDate > endDate) {
+          throw badRequest(
+            "Invalid date range, startDate must be before endDate!",
+          );
         }
       }
 
-      if (query.status) {
-        filter.status = query.status;
+      if (status) {
+        filter.status = status;
       }
 
       const reservations = await Reservation.find(filter).sort({
@@ -115,24 +121,22 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
       });
 
       if (!reservations?.length) {
-        return reply.code(404).send({ message: "No reservations found!" });
+        throw notFound("No reservations found!");
       }
       return reply.code(200).send(reservations);
-    } catch (error) {
-      return reply.code(500).send({
-        message: "Get all reservations failed!",
-        error: error instanceof Error ? error.message : error,
-      });
-    }
-  });
+    },
+  );
 
   // POST /reservations - create (transaction)
-  app.post(
+  app.post<{ Body: CreateReservationBody }>(
     "/",
-    { preValidation: [createAuthHook(app)] },
+    {
+      preValidation: [createAuthHook(app)],
+      schema: { body: createReservationBodySchema },
+    },
     async (req, reply) => {
       if (!req.authSession || req.authSession.type !== "user") {
-        return reply.code(401).send({ message: "Unauthorized" });
+        throw unauthorized("Unauthorized");
       }
 
       const createdByUserId = new Types.ObjectId(req.authSession.id);
@@ -143,18 +147,7 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
         reservationStart,
         reservationEnd,
         description,
-      } = req.body as Partial<IReservation>;
-
-      if (!businessId || !guestCount || !reservationStart) {
-        return reply.code(400).send({
-          message: "businessId, guestCount and reservationStart are required!",
-        });
-      }
-
-      const idsToValidate = [businessId];
-      if (isObjectIdValid(idsToValidate as Types.ObjectId[]) !== true) {
-        return reply.code(400).send({ message: "Invalid IDs!" });
-      }
+      } = req.body;
 
       const session = await mongoose.startSession();
       session.startTransaction();
@@ -162,25 +155,22 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
       try {
         const createdByRole = await getEffectiveUserRoleAtTime({
           userId: createdByUserId,
-          businessId: businessId as Types.ObjectId,
+          businessId,
           session,
         });
 
-        const effectiveReservationStart = new Date(reservationStart);
+        const effectiveReservationStart = reservationStart;
 
         const effectiveReservationEnd = reservationEnd
-          ? new Date(reservationEnd)
+          ? reservationEnd
           : new Date(effectiveReservationStart.getTime() + 120 * 60 * 1000);
 
         if (effectiveReservationEnd <= effectiveReservationStart) {
-          await session.abortTransaction();
-          return reply.code(400).send({
-            message: "reservationEnd must be after reservationStart!",
-          });
+          throw badRequest("reservationEnd must be after reservationStart!");
         }
 
         const newReservation: IReservation = {
-          businessId,
+          businessId: new Types.ObjectId(businessId),
           createdByUserId,
           createdByRole,
           employeeResponsableByUserId:
@@ -199,7 +189,7 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
         if (createdByRole === "customer" && created[0]?._id) {
           sendReservationPendingFlow({
             userId: createdByUserId,
-            businessId,
+            businessId: new Types.ObjectId(businessId),
             reservationId: created[0]._id as Types.ObjectId,
             reservationStart: effectiveReservationStart,
             guestCount,
@@ -214,11 +204,8 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
 
         return reply.code(201).send(created[0]);
       } catch (error) {
-        await session.abortTransaction();
-        return reply.code(500).send({
-          message: "Create reservation failed!",
-          error: error instanceof Error ? error.message : error,
-        });
+        await session.abortTransaction().catch(() => undefined);
+        throw error;
       } finally {
         session.endSession();
       }
@@ -226,41 +213,38 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
   );
 
   // GET /reservations/:reservationId - get by ID
-  app.get("/:reservationId", async (req, reply) => {
-    try {
-      const params = req.params as { reservationId?: string };
-      const reservationId = params.reservationId;
-
-      if (!reservationId || isObjectIdValid([reservationId]) !== true) {
-        return reply.code(400).send({ message: "Invalid reservationId!" });
-      }
+  app.get<{ Params: ReservationIdParams }>(
+    "/:reservationId",
+    { schema: { params: reservationIdParamsSchema } },
+    async (req, reply) => {
+      const { reservationId } = req.params;
 
       const reservation = await Reservation.findById(reservationId).lean();
 
       if (!reservation) {
-        return reply.code(404).send({ message: "Reservation not found!" });
+        throw notFound("Reservation not found!");
       }
       return reply.code(200).send(reservation);
-    } catch (error) {
-      return reply.code(500).send({
-        message: "Get reservation by id failed!",
-        error: error instanceof Error ? error.message : error,
-      });
-    }
-  });
+    },
+  );
 
   // PATCH /reservations/:reservationId - update
-  app.patch(
+  app.patch<{ Params: ReservationIdParams; Body: UpdateReservationBody }>(
     "/:reservationId",
-    { preValidation: [createAuthHook(app)] },
+    {
+      preValidation: [createAuthHook(app)],
+      schema: {
+        params: reservationIdParamsSchema,
+        body: updateReservationBodySchema,
+      },
+    },
     async (req, reply) => {
       if (!req.authSession || req.authSession.type !== "user") {
-        return reply.code(401).send({ message: "Unauthorized" });
+        throw unauthorized("Unauthorized");
       }
 
       const sessionUserId = new Types.ObjectId(req.authSession.id);
-      const params = req.params as { reservationId?: string };
-      const reservationId = params.reservationId;
+      const { reservationId } = req.params;
 
       const {
         status,
@@ -271,24 +255,7 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
         description,
         employeeResponsableByUserId,
         salesInstanceId,
-      } = req.body as Partial<IReservation>;
-
-      const idsToValidate: (Types.ObjectId | string)[] = [
-        reservationId as string,
-      ];
-      if (salesPointId) idsToValidate.push(salesPointId as unknown as string);
-      if (employeeResponsableByUserId)
-        idsToValidate.push(employeeResponsableByUserId as unknown as string);
-      if (salesInstanceId)
-        idsToValidate.push(salesInstanceId as unknown as string);
-
-      if (isObjectIdValid(idsToValidate as Types.ObjectId[]) !== true) {
-        return reply.code(400).send({ message: "Invalid IDs!" });
-      }
-
-      if (status && !isReservationStatus(status)) {
-        return reply.code(400).send({ message: "Invalid status value!" });
-      }
+      } = req.body;
 
       const session = await mongoose.startSession();
       session.startTransaction();
@@ -299,11 +266,8 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
           .lean()) as unknown as (IReservation & { status?: string }) | null;
 
         if (!reservation) {
-          await session.abortTransaction();
-          return reply.code(404).send({ message: "Reservation not found!" });
+          throw notFound("Reservation not found!");
         }
-
-        const previousStatus = reservation.status ?? "Pending";
 
         const isStatusOrTableChange =
           typeof status === "string" || typeof salesPointId !== "undefined";
@@ -316,8 +280,7 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
           });
 
           if (effectiveRole !== "employee") {
-            await session.abortTransaction();
-            return reply.code(403).send({ message: "Employee access required" });
+            throw forbidden("Employee access required");
           }
 
           const employee = (await Employee.findOne({
@@ -332,8 +295,7 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
           } | null;
 
           if (!employee) {
-            await session.abortTransaction();
-            return reply.code(403).send({ message: "Employee not found!" });
+            throw forbidden("Employee not found!");
           }
 
           const isAllowed =
@@ -343,8 +305,7 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
             );
 
           if (!isAllowed) {
-            await session.abortTransaction();
-            return reply.code(403).send({ message: "Forbidden" });
+            throw forbidden("Forbidden");
           }
         }
 
@@ -357,33 +318,34 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
             .session(session)
             .lean();
           if (!sp) {
-            await session.abortTransaction();
-            return reply.code(404).send({
-              message: "SalesPoint not found for this business!",
-            });
+            throw notFound("SalesPoint not found for this business!");
           }
         }
 
         const updated: Partial<IReservation> & { status?: string } = {};
 
         if (typeof guestCount === "number") updated.guestCount = guestCount;
-        if (typeof description === "string") updated.description = description;
+        if (description !== undefined) updated.description = description;
         if (employeeResponsableByUserId)
-          updated.employeeResponsableByUserId = employeeResponsableByUserId;
+          updated.employeeResponsableByUserId = new Types.ObjectId(
+            employeeResponsableByUserId,
+          );
 
-        if (reservationStart)
-          updated.reservationStart = new Date(reservationStart);
-        if (reservationEnd) updated.reservationEnd = new Date(reservationEnd);
+        if (reservationStart) updated.reservationStart = reservationStart;
+        if (reservationEnd) updated.reservationEnd = reservationEnd;
 
-        if (salesPointId) updated.salesPointId = salesPointId;
-        if (salesInstanceId) updated.salesInstanceId = salesInstanceId;
+        if (salesPointId)
+          updated.salesPointId = new Types.ObjectId(salesPointId);
+        if (salesInstanceId)
+          updated.salesInstanceId = new Types.ObjectId(salesInstanceId);
 
         if (status) {
-          if (!canTransitionReservationStatus(reservation.status, status)) {
-            await session.abortTransaction();
-            return reply.code(400).send({
-              message: `Invalid status transition from ${reservation.status ?? "Pending"} to ${status}!`,
-            });
+          const nextStatus = status as ReservationStatus;
+
+          if (!canTransitionReservationStatus(reservation.status, nextStatus)) {
+            throw badRequest(
+              `Invalid status transition from ${reservation.status ?? "Pending"} to ${status}!`,
+            );
           }
 
           if (
@@ -391,13 +353,10 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
             !salesPointId &&
             !reservation.salesPointId
           ) {
-            await session.abortTransaction();
-            return reply.code(400).send({
-              message: "salesPointId is required to set status Seated!",
-            });
+            throw badRequest("salesPointId is required to set status Seated!");
           }
 
-          updated.status = status;
+          updated.status = nextStatus;
 
           if (
             (status === "Confirmed" ||
@@ -420,45 +379,34 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
             .lean()) as unknown as ISalesInstance | null;
 
           if (!existingSalesInstance) {
-            await session.abortTransaction();
-            return reply
-              .code(404)
-              .send({ message: "Linked SalesInstance not found!" });
+            throw notFound("Linked SalesInstance not found!");
           }
 
           if (existingSalesInstance.salesInstanceStatus === "Closed") {
-            await session.abortTransaction();
-            return reply
-              .code(409)
-              .send({ message: "Cannot move a closed SalesInstance!" });
+            throw conflict("Cannot move a closed SalesInstance!");
           }
 
           const openConflict = await pointBusyForEmployee({
-            salesPointId: new Types.ObjectId(salesPointId as any),
+            salesPointId: new Types.ObjectId(salesPointId),
             businessId: existingSalesInstance.businessId as Types.ObjectId,
             session,
             excludeSalesInstanceId: existingSalesInstance._id as Types.ObjectId,
           });
 
           if (openConflict) {
-            await session.abortTransaction();
-            return reply.code(409).send({
-              message:
-                "Cannot move to this salesPoint because it already has an open SalesInstance!",
-            });
+            throw conflict(
+              "Cannot move to this salesPoint because it already has an open SalesInstance!",
+            );
           }
 
           const moved = await SalesInstance.updateOne(
             { _id: existingSalesInstance._id },
-            { $set: { salesPointId } },
+            { $set: { salesPointId: new Types.ObjectId(salesPointId) } },
             { session },
           );
 
           if (moved.modifiedCount !== 1) {
-            await session.abortTransaction();
-            return reply
-              .code(400)
-              .send({ message: "SalesInstance not moved!" });
+            throw badRequest("SalesInstance not moved!");
           }
         }
 
@@ -467,15 +415,12 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
           !reservation.salesInstanceId &&
           !updated.salesInstanceId
         ) {
-          const effectiveSalesPointId =
-            salesPointId ??
-            (reservation.salesPointId as Types.ObjectId | undefined);
+          const effectiveSalesPointId = salesPointId
+            ? new Types.ObjectId(salesPointId)
+            : (reservation.salesPointId as Types.ObjectId | undefined);
 
           if (!effectiveSalesPointId) {
-            await session.abortTransaction();
-            return reply.code(400).send({
-              message: "salesPointId is required to seat a reservation!",
-            });
+            throw badRequest("salesPointId is required to seat a reservation!");
           }
 
           const dailySalesReport = (await DailySalesReport.findOne({
@@ -494,22 +439,19 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
               );
 
           if (typeof dailyReferenceNumber === "string") {
-            await session.abortTransaction();
-            return reply.code(400).send({ message: dailyReferenceNumber });
+            throw badRequest(dailyReferenceNumber);
           }
 
           const existingOpen = await pointBusyForEmployee({
-            salesPointId: effectiveSalesPointId as Types.ObjectId,
+            salesPointId: effectiveSalesPointId,
             businessId: reservation.businessId as Types.ObjectId,
             session,
           });
 
           if (existingOpen) {
-            await session.abortTransaction();
-            return reply.code(409).send({
-              message:
-                "SalesInstance already exists for this salesPoint and it is not closed!",
-            });
+            throw conflict(
+              "SalesInstance already exists for this salesPoint and it is not closed!",
+            );
           }
 
           const newSalesInstanceObj: ISalesInstance = {
@@ -528,16 +470,12 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
             session,
           );
           if (typeof created === "string") {
-            await session.abortTransaction();
-            return reply.code(400).send({ message: created });
+            throw badRequest(created);
           }
 
           const createdDoc = Array.isArray(created) ? created[0] : created;
           if (!createdDoc?._id) {
-            await session.abortTransaction();
-            return reply
-              .code(400)
-              .send({ message: "Failed to create SalesInstance!" });
+            throw badRequest("Failed to create SalesInstance!");
           }
 
           updated.salesInstanceId = createdDoc._id as Types.ObjectId;
@@ -550,8 +488,7 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
         );
 
         if (result.modifiedCount !== 1) {
-          await session.abortTransaction();
-          return reply.code(400).send({ message: "Reservation not updated!" });
+          throw badRequest("Reservation not updated!");
         }
 
         await session.commitTransaction();
@@ -591,11 +528,8 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
 
         return reply.code(200).send({ message: "Reservation updated!" });
       } catch (error) {
-        await session.abortTransaction();
-        return reply.code(500).send({
-          message: "Update reservation failed!",
-          error: error instanceof Error ? error.message : error,
-        });
+        await session.abortTransaction().catch(() => undefined);
+        throw error;
       } finally {
         session.endSession();
       }
@@ -603,44 +537,36 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
   );
 
   // DELETE /reservations/:reservationId - delete
-  app.delete("/:reservationId", async (req, reply) => {
-    try {
-      const params = req.params as { reservationId?: string };
-      const reservationId = params.reservationId;
-
-      if (!reservationId || isObjectIdValid([reservationId]) !== true) {
-        return reply.code(400).send({ message: "Invalid reservationId!" });
-      }
+  app.delete<{ Params: ReservationIdParams }>(
+    "/:reservationId",
+    { schema: { params: reservationIdParamsSchema } },
+    async (req, reply) => {
+      const { reservationId } = req.params;
 
       const deleted = await Reservation.deleteOne({ _id: reservationId });
 
       if (deleted.deletedCount === 0) {
-        return reply.code(404).send({ message: "Reservation not found!" });
+        throw notFound("Reservation not found!");
       }
       return reply.code(200).send({ message: "Reservation deleted!" });
-    } catch (error) {
-      return reply.code(500).send({
-        message: "Delete reservation failed!",
-        error: error instanceof Error ? error.message : error,
-      });
-    }
-  });
+    },
+  );
 
   // GET /reservations/business/:businessId - get by business (with optional filters)
-  app.get("/business/:businessId", async (req, reply) => {
-    try {
-      const params = req.params as { businessId?: string };
-      const businessId = params.businessId;
-
-      if (!businessId || isObjectIdValid([businessId]) !== true) {
-        return reply.code(400).send({ message: "Invalid businessId!" });
-      }
-
-      const query = req.query as {
-        startDate?: string;
-        endDate?: string;
-        status?: string;
-      };
+  app.get<{
+    Params: ReservationsByBusinessParams;
+    Querystring: ReservationsByBusinessQuery;
+  }>(
+    "/business/:businessId",
+    {
+      schema: {
+        params: reservationsByBusinessParamsSchema,
+        querystring: reservationsByBusinessQuerySchema,
+      },
+    },
+    async (req, reply) => {
+      const { businessId } = req.params;
+      const { startDate, endDate, status } = req.query;
 
       const filter: {
         businessId: Types.ObjectId;
@@ -648,38 +574,27 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
         status?: string;
       } = { businessId: new Types.ObjectId(businessId) };
 
-      if (query.startDate || query.endDate) {
+      if (startDate || endDate) {
         filter.reservationStart = {};
-        if (query.startDate)
-          filter.reservationStart.$gte = new Date(query.startDate);
-        if (query.endDate)
-          filter.reservationStart.$lte = new Date(query.endDate);
-        if (
-          query.startDate &&
-          query.endDate &&
-          query.startDate > query.endDate
-        ) {
-          return reply.code(400).send({
-            message: "Invalid date range, startDate must be before endDate!",
-          });
+        if (startDate) filter.reservationStart.$gte = startDate;
+        if (endDate) filter.reservationStart.$lte = endDate;
+        if (startDate && endDate && startDate > endDate) {
+          throw badRequest(
+            "Invalid date range, startDate must be before endDate!",
+          );
         }
       }
 
-      if (query.status) filter.status = query.status;
+      if (status) filter.status = status;
 
       const reservations = await Reservation.find(filter).sort({
         reservationStart: 1,
       });
 
       if (!reservations?.length) {
-        return reply.code(404).send({ message: "No reservations found!" });
+        throw notFound("No reservations found!");
       }
       return reply.code(200).send(reservations);
-    } catch (error) {
-      return reply.code(500).send({
-        message: "Get reservations by businessId failed!",
-        error: error instanceof Error ? error.message : error,
-      });
-    }
-  });
+    },
+  );
 };

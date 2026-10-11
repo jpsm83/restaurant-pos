@@ -1,6 +1,11 @@
 /**
  * Reservations Routes Tests - Phase 1 Module 18 + Phase 4 Task 4.7
  * Tests for reservations CRUD endpoints with transaction verification
+ *
+ * Every error response is an RFC 9457 `application/problem+json` document
+ * produced by the global handler, so assertions are on the problem-details
+ * shape rather than a bare `{ message }`. Status-transition and role rules are
+ * exercised with authenticated requests.
  */
 
 import { describe, it, expect } from "vitest";
@@ -11,6 +16,23 @@ import Business from "../../src/models/business.ts";
 import SalesPoint from "../../src/models/salesPoint.ts";
 import User from "../../src/models/user.ts";
 import Employee from "../../src/models/employee.ts";
+
+const expectProblem = (
+  response: {
+    statusCode: number;
+    headers: Record<string, unknown>;
+    json: () => any;
+  },
+  status: number,
+  typeSlug: string,
+) => {
+  expect(response.statusCode).toBe(status);
+  expect(response.headers["content-type"]).toContain("application/problem+json");
+  const body = response.json();
+  expect(body.type).toBe(`https://restaurant-pos.app/errors/${typeSlug}`);
+  expect(body.status).toBe(status);
+  return body;
+};
 
 describe("Reservations Routes", () => {
   const createTestBusiness = async () => {
@@ -46,6 +68,14 @@ describe("Reservations Routes", () => {
     });
   };
 
+  const userToken = () =>
+    generateTestToken({
+      id: new Types.ObjectId().toString(),
+      email: "reservations@test.com",
+      type: "user",
+      role: "Customer",
+    });
+
   describe("GET /api/v1/reservations", () => {
     it("lists all reservations", async () => {
       const app = await getTestApp();
@@ -63,7 +93,7 @@ describe("Reservations Routes", () => {
       expect(body.length).toBeGreaterThanOrEqual(1);
     });
 
-    it("returns 404 when no reservations exist", async () => {
+    it("returns a not-found problem when no reservations exist", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
@@ -71,12 +101,11 @@ describe("Reservations Routes", () => {
         url: "/api/v1/reservations",
       });
 
-      expect(response.statusCode).toBe(404);
-      const body = JSON.parse(response.body);
-      expect(body.message).toContain("No reservations");
+      const body = expectProblem(response, 404, "not-found");
+      expect(body.detail).toBe("No reservations found!");
     });
 
-    it("returns 400 for invalid businessId filter", async () => {
+    it("returns a validation problem for an invalid businessId filter", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
@@ -84,12 +113,29 @@ describe("Reservations Routes", () => {
         url: "/api/v1/reservations?businessId=invalid-id",
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid businessId!");
+      const body = expectProblem(response, 400, "validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: "businessId" }),
+        ]),
+      );
     });
 
-    it("returns 400 for invalid date range", async () => {
+    it("returns a validation problem for an invalid status filter", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/reservations?status=Bogus",
+      });
+
+      const body = expectProblem(response, 400, "validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([expect.objectContaining({ path: "status" })]),
+      );
+    });
+
+    it("returns a bad-request problem for an invalid date range", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
@@ -97,9 +143,21 @@ describe("Reservations Routes", () => {
         url: "/api/v1/reservations?startDate=2024-12-31&endDate=2024-01-01",
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toContain("Invalid date range");
+      const body = expectProblem(response, 400, "bad-request");
+      expect(body.detail).toBe(
+        "Invalid date range, startDate must be before endDate!",
+      );
+    });
+
+    it("rejects an unknown query key", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/reservations?limit=10",
+      });
+
+      expectProblem(response, 400, "validation");
     });
   });
 
@@ -121,21 +179,114 @@ describe("Reservations Routes", () => {
       expect(response.statusCode).toBe(401);
     });
 
-    it("returns 400 for missing required fields", async () => {
+    it("returns a validation problem for missing required fields", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
         method: "POST",
         url: "/api/v1/reservations",
+        headers: { authorization: await userToken() },
         payload: { guestCount: 4 },
       });
 
-      expect(response.statusCode).toBe(401);
+      const body = expectProblem(response, 400, "validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: "businessId" }),
+          expect.objectContaining({ path: "reservationStart" }),
+        ]),
+      );
+    });
+
+    it("returns a validation problem for an invalid businessId", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/reservations",
+        headers: { authorization: await userToken() },
+        payload: {
+          businessId: "invalid-id",
+          guestCount: 4,
+          reservationStart: "2024-06-15T19:00:00Z",
+        },
+      });
+
+      const body = expectProblem(response, 400, "validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: "businessId" }),
+        ]),
+      );
+    });
+
+    it("returns a validation problem for a non-positive guestCount", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/reservations",
+        headers: { authorization: await userToken() },
+        payload: {
+          businessId: business._id.toString(),
+          guestCount: 0,
+          reservationStart: "2024-06-15T19:00:00Z",
+        },
+      });
+
+      const body = expectProblem(response, 400, "validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: "guestCount" }),
+        ]),
+      );
+    });
+
+    it("returns a bad-request problem when reservationEnd is not after reservationStart", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/reservations",
+        headers: { authorization: await userToken() },
+        payload: {
+          businessId: business._id.toString(),
+          guestCount: 2,
+          reservationStart: "2024-06-15T21:00:00Z",
+          reservationEnd: "2024-06-15T19:00:00Z",
+        },
+      });
+
+      const body = expectProblem(response, 400, "bad-request");
+      expect(body.detail).toBe(
+        "reservationEnd must be after reservationStart!",
+      );
+    });
+
+    it("rejects an unknown key", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/reservations",
+        headers: { authorization: await userToken() },
+        payload: {
+          businessId: business._id.toString(),
+          guestCount: 2,
+          reservationStart: "2024-06-15T19:00:00Z",
+          status: "Confirmed",
+        },
+      });
+
+      expectProblem(response, 400, "validation");
     });
   });
 
   describe("GET /api/v1/reservations/:reservationId", () => {
-    it("returns 400 for invalid ID", async () => {
+    it("returns a validation problem for an invalid ID", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
@@ -143,12 +294,15 @@ describe("Reservations Routes", () => {
         url: "/api/v1/reservations/invalid-id",
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid reservationId!");
+      const body = expectProblem(response, 400, "validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: "reservationId" }),
+        ]),
+      );
     });
 
-    it("returns 404 for non-existent reservation", async () => {
+    it("returns a not-found problem for a non-existent reservation", async () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
@@ -157,15 +311,16 @@ describe("Reservations Routes", () => {
         url: `/api/v1/reservations/${fakeId}`,
       });
 
-      expect(response.statusCode).toBe(404);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Reservation not found!");
+      const body = expectProblem(response, 404, "not-found");
+      expect(body.detail).toBe("Reservation not found!");
     });
 
     it("gets reservation by ID", async () => {
       const app = await getTestApp();
       const business = await createTestBusiness();
-      const reservation = await createTestReservation(business._id as Types.ObjectId);
+      const reservation = await createTestReservation(
+        business._id as Types.ObjectId,
+      );
 
       const response = await app.inject({
         method: "GET",
@@ -182,7 +337,9 @@ describe("Reservations Routes", () => {
     it("returns 401 without authentication", async () => {
       const app = await getTestApp();
       const business = await createTestBusiness();
-      const reservation = await createTestReservation(business._id as Types.ObjectId);
+      const reservation = await createTestReservation(
+        business._id as Types.ObjectId,
+      );
 
       const response = await app.inject({
         method: "PATCH",
@@ -193,33 +350,70 @@ describe("Reservations Routes", () => {
       expect(response.statusCode).toBe(401);
     });
 
-    it("returns 400 for invalid IDs", async () => {
+    it("returns a validation problem for an invalid reservationId", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
         method: "PATCH",
         url: "/api/v1/reservations/invalid-id",
+        headers: { authorization: await userToken() },
         payload: { guestCount: 6 },
       });
 
-      expect(response.statusCode).toBe(401);
+      const body = expectProblem(response, 400, "validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: "reservationId" }),
+        ]),
+      );
     });
 
-    it("returns 400 for invalid status value", async () => {
+    it("returns a validation problem for an invalid status value", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
         method: "PATCH",
         url: `/api/v1/reservations/${new Types.ObjectId()}`,
+        headers: { authorization: await userToken() },
         payload: { status: "InvalidStatus" },
       });
 
-      expect(response.statusCode).toBe(401);
+      const body = expectProblem(response, 400, "validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([expect.objectContaining({ path: "status" })]),
+      );
+    });
+
+    it("returns a not-found problem for a non-existent reservation", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/reservations/${new Types.ObjectId()}`,
+        headers: { authorization: await userToken() },
+        payload: { guestCount: 6 },
+      });
+
+      const body = expectProblem(response, 404, "not-found");
+      expect(body.detail).toBe("Reservation not found!");
+    });
+
+    it("rejects an unknown key", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/reservations/${new Types.ObjectId()}`,
+        headers: { authorization: await userToken() },
+        payload: { isAdmin: true },
+      });
+
+      expectProblem(response, 400, "validation");
     });
   });
 
   describe("DELETE /api/v1/reservations/:reservationId", () => {
-    it("returns 400 for invalid ID", async () => {
+    it("returns a validation problem for an invalid ID", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
@@ -227,12 +421,15 @@ describe("Reservations Routes", () => {
         url: "/api/v1/reservations/invalid-id",
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid reservationId!");
+      const body = expectProblem(response, 400, "validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: "reservationId" }),
+        ]),
+      );
     });
 
-    it("returns 404 for non-existent reservation", async () => {
+    it("returns a not-found problem for a non-existent reservation", async () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
@@ -241,15 +438,16 @@ describe("Reservations Routes", () => {
         url: `/api/v1/reservations/${fakeId}`,
       });
 
-      expect(response.statusCode).toBe(404);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Reservation not found!");
+      const body = expectProblem(response, 404, "not-found");
+      expect(body.detail).toBe("Reservation not found!");
     });
 
     it("deletes reservation successfully", async () => {
       const app = await getTestApp();
       const business = await createTestBusiness();
-      const reservation = await createTestReservation(business._id as Types.ObjectId);
+      const reservation = await createTestReservation(
+        business._id as Types.ObjectId,
+      );
 
       const response = await app.inject({
         method: "DELETE",
@@ -263,7 +461,7 @@ describe("Reservations Routes", () => {
   });
 
   describe("GET /api/v1/reservations/business/:businessId", () => {
-    it("returns 400 for invalid businessId", async () => {
+    it("returns a validation problem for an invalid businessId", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
@@ -271,12 +469,15 @@ describe("Reservations Routes", () => {
         url: "/api/v1/reservations/business/invalid-id",
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid businessId!");
+      const body = expectProblem(response, 400, "validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: "businessId" }),
+        ]),
+      );
     });
 
-    it("returns 404 when no reservations for business", async () => {
+    it("returns a not-found problem when no reservations for business", async () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
@@ -285,12 +486,11 @@ describe("Reservations Routes", () => {
         url: `/api/v1/reservations/business/${fakeId}`,
       });
 
-      expect(response.statusCode).toBe(404);
-      const body = JSON.parse(response.body);
-      expect(body.message).toContain("No reservations");
+      const body = expectProblem(response, 404, "not-found");
+      expect(body.detail).toBe("No reservations found!");
     });
 
-    it("returns 400 for invalid date range", async () => {
+    it("returns a bad-request problem for an invalid date range", async () => {
       const app = await getTestApp();
       const business = await createTestBusiness();
 
@@ -299,9 +499,25 @@ describe("Reservations Routes", () => {
         url: `/api/v1/reservations/business/${business._id}?startDate=2024-12-31&endDate=2024-01-01`,
       });
 
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toContain("Invalid date range");
+      const body = expectProblem(response, 400, "bad-request");
+      expect(body.detail).toBe(
+        "Invalid date range, startDate must be before endDate!",
+      );
+    });
+
+    it("returns a validation problem for an invalid status filter", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/reservations/business/${business._id}?status=Bogus`,
+      });
+
+      const body = expectProblem(response, 400, "validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([expect.objectContaining({ path: "status" })]),
+      );
     });
 
     it("lists reservations by business", async () => {
@@ -322,63 +538,10 @@ describe("Reservations Routes", () => {
   });
 
   // Phase 4 Task 4.7: Transaction Tests
-  // Note: POST and PATCH endpoints require JWT authentication (createAuthHook)
-  // Full transaction tests would require:
-  // 1. Creating a test user and employee
-  // 2. Generating a valid JWT token
-  // 3. Passing the token in Authorization header
-  // Current tests verify:
+  // POST and PATCH endpoints require JWT authentication (createAuthHook)
   // - POST/PATCH return 401 without authentication
   // - GET/DELETE endpoints work correctly
   // - SalesInstance creation on "Seated" status requires auth
-  
-  describe("Reservation Status Transitions (without auth)", () => {
-    it("reservation can be created directly in DB with different statuses", async () => {
-      const business = await createTestBusiness();
-      
-      // Create reservation with Confirmed status (simulating employee creation)
-      const confirmedReservation = await Reservation.create({
-        businessId: business._id,
-        createdByUserId: new Types.ObjectId(),
-        createdByRole: "employee",
-        guestCount: 4,
-        reservationStart: new Date("2024-07-15T19:00:00Z"),
-        reservationEnd: new Date("2024-07-15T21:00:00Z"),
-        status: "Confirmed",
-      });
-
-      expect(confirmedReservation.status).toBe("Confirmed");
-      expect(confirmedReservation.createdByRole).toBe("employee");
-    });
-
-    it("reservation with salesPoint can be seated with salesInstance", async () => {
-      const business = await createTestBusiness();
-      
-      // Create a sales point
-      const salesPoint = await SalesPoint.create({
-        businessId: business._id,
-        salesPointName: "Table 1",
-        salesPointNumber: 1,
-        maxGuests: 6,
-        qrCodeUrl: "https://example.com/qr",
-      });
-
-      // Create reservation with salesPoint
-      const reservation = await Reservation.create({
-        businessId: business._id,
-        createdByUserId: new Types.ObjectId(),
-        createdByRole: "employee",
-        guestCount: 4,
-        reservationStart: new Date("2024-07-16T19:00:00Z"),
-        reservationEnd: new Date("2024-07-16T21:00:00Z"),
-        status: "Arrived",
-        salesPointId: salesPoint._id,
-      });
-
-      expect(reservation.salesPointId?.toString()).toBe(salesPoint._id.toString());
-      expect(reservation.status).toBe("Arrived");
-    });
-  });
 
   const validAddress = {
     country: "USA",
@@ -394,7 +557,6 @@ describe("Reservations Routes", () => {
       const app = await getTestApp();
       const business = await createTestBusiness();
 
-      // Create user with all required fields
       const user = await User.create({
         personalDetails: {
           username: "rescustomer",
@@ -412,7 +574,6 @@ describe("Reservations Routes", () => {
         },
       });
 
-      // Generate token
       const token = await generateTestToken({
         id: user._id.toString(),
         email: "rescustomer@test.com",
@@ -440,8 +601,9 @@ describe("Reservations Routes", () => {
       expect(body._id).toBeDefined();
       expect(body.guestCount).toBe(4);
 
-      // Verify reservation was created
-      const reservation = await Reservation.findOne({ businessId: business._id }).lean();
+      const reservation = await Reservation.findOne({
+        businessId: business._id,
+      }).lean();
       expect(reservation).not.toBeNull();
       expect(reservation?.guestCount).toBe(4);
       expect(reservation?.createdByRole).toBe("customer");
@@ -467,7 +629,6 @@ describe("Reservations Routes", () => {
       const app = await getTestApp();
       const business = await createTestBusiness();
 
-      // Create user with all required fields
       const user = await User.create({
         personalDetails: {
           username: "resemployee",
@@ -485,7 +646,6 @@ describe("Reservations Routes", () => {
         },
       });
 
-      // Create employee on duty (Admin role bypasses schedule check in canLogAsEmployee)
       const employee = await Employee.create({
         businessId: business._id,
         userId: user._id,
@@ -500,7 +660,7 @@ describe("Reservations Routes", () => {
 
       await User.updateOne(
         { _id: user._id },
-        { $set: { employeeDetails: employee._id } }
+        { $set: { employeeDetails: employee._id } },
       );
 
       const token = await generateTestToken({
@@ -528,8 +688,9 @@ describe("Reservations Routes", () => {
 
       expect(response.statusCode).toBe(201);
 
-      // Verify created as employee
-      const reservation = await Reservation.findOne({ businessId: business._id }).lean();
+      const reservation = await Reservation.findOne({
+        businessId: business._id,
+      }).lean();
       expect(reservation?.createdByRole).toBe("employee");
 
       // Employee creation doesn't trigger the customer pending flow
@@ -540,15 +701,13 @@ describe("Reservations Routes", () => {
   });
 
   describe("Transaction Tests - PATCH with Auth", () => {
-    it("updates reservation status with authenticated employee", async () => {
-      const app = await getTestApp();
+    const createManagerContext = async () => {
       const business = await createTestBusiness();
 
-      // Create user with all required fields
       const user = await User.create({
         personalDetails: {
-          username: "resmanager",
-          email: "resmanager@test.com",
+          username: `resmanager${Date.now()}`,
+          email: `resmanager${Date.now()}@test.com`,
           password: "hashedpassword123",
           firstName: "Test",
           lastName: "Manager",
@@ -557,12 +716,11 @@ describe("Reservations Routes", () => {
           gender: "Man",
           nationality: "USA",
           idType: "National ID",
-          idNumber: "RES-MGR-001",
+          idNumber: `RES-MGR-${Date.now()}`,
           address: validAddress,
         },
       });
 
-      // Create employee (required for status changes)
       const employee = await Employee.create({
         businessId: business._id,
         userId: user._id,
@@ -577,19 +735,8 @@ describe("Reservations Routes", () => {
 
       await User.updateOne(
         { _id: user._id },
-        { $set: { employeeDetails: employee._id } }
+        { $set: { employeeDetails: employee._id } },
       );
-
-      // Create reservation
-      const reservation = await Reservation.create({
-        businessId: business._id,
-        createdByUserId: user._id,
-        createdByRole: "customer",
-        guestCount: 4,
-        reservationStart: new Date("2024-08-15T19:00:00Z"),
-        reservationEnd: new Date("2024-08-15T21:00:00Z"),
-        status: "Pending",
-      });
 
       const token = await generateTestToken({
         id: user._id.toString(),
@@ -598,6 +745,23 @@ describe("Reservations Routes", () => {
         businessId: business._id.toString(),
         canLogAsEmployee: true,
         role: "Host",
+      });
+
+      return { business, user, token };
+    };
+
+    it("updates reservation status with authenticated employee", async () => {
+      const app = await getTestApp();
+      const { business, user, token } = await createManagerContext();
+
+      const reservation = await Reservation.create({
+        businessId: business._id,
+        createdByUserId: user._id,
+        createdByRole: "customer",
+        guestCount: 4,
+        reservationStart: new Date("2024-08-15T19:00:00Z"),
+        reservationEnd: new Date("2024-08-15T21:00:00Z"),
+        status: "Pending",
       });
 
       const response = await app.inject({
@@ -611,8 +775,9 @@ describe("Reservations Routes", () => {
 
       expect(response.statusCode).toBe(200);
 
-      // Verify status was updated
-      const updatedReservation = await Reservation.findById(reservation._id).lean();
+      const updatedReservation = await Reservation.findById(
+        reservation._id,
+      ).lean();
       expect(updatedReservation?.status).toBe("Confirmed");
 
       // Decision flow is also fire-and-forget; wait briefly for inbox update
@@ -630,6 +795,33 @@ describe("Reservations Routes", () => {
 
       const finalUser = await User.findById(user._id).lean();
       expect(finalUser?.notifications?.length ?? 0).toBeGreaterThanOrEqual(1);
+    });
+
+    it("returns a bad-request problem for an invalid status transition", async () => {
+      const app = await getTestApp();
+      const { business, user, token } = await createManagerContext();
+
+      const reservation = await Reservation.create({
+        businessId: business._id,
+        createdByUserId: user._id,
+        createdByRole: "customer",
+        guestCount: 4,
+        reservationStart: new Date("2024-09-15T19:00:00Z"),
+        reservationEnd: new Date("2024-09-15T21:00:00Z"),
+        status: "Completed",
+      });
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/reservations/${reservation._id}`,
+        headers: { authorization: token },
+        payload: { status: "Confirmed" },
+      });
+
+      const body = expectProblem(response, 400, "bad-request");
+      expect(body.detail).toBe(
+        "Invalid status transition from Completed to Confirmed!",
+      );
     });
   });
 });

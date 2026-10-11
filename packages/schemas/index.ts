@@ -9,3 +9,4 @@ export * from "./ratings.ts";
 export * from "./orders.ts";
 export * from "./salesPoints.ts";
 export * from "./promotions.ts";
+export * from "./reservations.ts";
