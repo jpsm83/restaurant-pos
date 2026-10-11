@@ -23,7 +23,7 @@ npm --prefix backend run start
 
 ## Address model (shared)
 
-Business, supplier, and user `personalDetails` embed **`addressSchema`** (`src/models/address.ts`). Optional fields include **`doorNumber`** and **`complement`** (plus `region`, `additionalDetails`, `coordinates`). See **`packages/interfaces/IAddress.ts`** and `documentation/context.md` (Shared physical address).
+Business, supplier, and user `personalDetails` embed **`addressSchema`** (`src/models/address.ts`). Optional fields include **`doorNumber`** and **`complement`** (plus `region`, `additionalDetails`, `coordinates`). See **`packages/interfaces/IAddress.ts`** and [`docs/engineering/address.md`](../docs/engineering/address.md) (shared address model and business address settings).
 
 ## Server Details
 
@@ -61,7 +61,7 @@ Used by `POST /api/v1/auth/request-email-confirmation`, `request-password-reset`
 
 **Scaling:** no auth-email in-process rate-limit module is active currently; if introduced, document process-local behavior explicitly.
 
-**Documentation:** end-to-end behavior, sequence diagrams, frontend routes, and a **support runbook** (resend, expired links, SMTP triage) live in **`documentation/auth-email-security-flows.md`** at the repo root.
+**Documentation:** end-to-end behavior, sequence diagrams, frontend routes, and a **support runbook** (resend, expired links, SMTP triage) live in **`docs/engineering/auth-email-security-flows.md`** at the repo root.
 
 #### Auth email observability
 
@@ -204,6 +204,11 @@ The backend uses JWT-based authentication with:
 
 - **Access Token**: Short-lived (15 min), sent in `Authorization: Bearer <token>` header
 - **Refresh Token**: Long-lived (7 days), stored in httpOnly cookie; JWT payload includes **`v`** = `User.refreshSessionVersion` or `Business.refreshSessionVersion` (default **0**). **`POST /auth/refresh`** rejects when `v` does not match the DB (legacy cookies without `v` are treated as **0**). The version **`$inc`** on **email password reset** and on **authenticated password change** (`PATCH` business / user) revokes other devices’ refresh cookies without rotating `REFRESH_SECRET`.
+
+## Architecture
+
+- **Multi-tenant:** each restaurant/location is a **Business**; most domain data is scoped by `businessId`, the “thread” connecting orders, employees, sales points, inventories, suppliers, reports, and notifications.
+- **Routes by domain** under `backend/src/routes/v1/*` follow one set of patterns: DB connection initialization, ObjectId validation, request validation (including multipart `FormData`), transactional writes for multi-step operations, and consistent problem-details JSON error responses.
 
 ## Project Structure
 

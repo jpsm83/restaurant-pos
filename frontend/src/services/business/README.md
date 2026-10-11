@@ -199,7 +199,7 @@ Exported types: `BusinessProfileSchema`, `BusinessProfileSchemaValues`.
 - **`BusinessAddressSettingsPage`**: **`section`** + **`header`**, address grid with full-width rows for street and complement, map column with title + map-sized skeleton.
 - **`BusinessCredentialsSettingsPage`**: same **`section` / `header` / `grid`** (`lg:col-span-2` + `lg:col-span-1`) skeleton pattern as address; **`LoadingCard`** omits the Save/Reset skeleton row (`showFormActionsSkeleton={false}`).
 
-Repository rule **§13** in **`documentation/context.md`** documents the general skeleton policy; the pages above are reference implementations for profile, address, and credentials.
+The general skeleton policy lives in **`docs/conventions/building.md`**; the pages above are reference implementations for profile, address, and credentials.
 
 ## Typical consumers in this codebase
 

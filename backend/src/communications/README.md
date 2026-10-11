@@ -264,12 +264,31 @@ npm --prefix backend test -- tests/perf/notificationsReadPerf.test.ts
 
 ### Required environment controls
 
+Channel switches:
+
 - `COMMUNICATIONS_EMAIL_ENABLED`
 - `COMMUNICATIONS_INAPP_ENABLED`
 - `COMMUNICATIONS_INAPP_LIVE_ENABLED`
+
+SMTP transport (`email` channel; provider disables when host/port are missing):
+
+- `SMTP_HOST`, `SMTP_PORT`
+- `SMTP_USER` and `SMTP_PASS` (both set, or both empty)
+- `SMTP_FROM`
+
+Reliability tuning:
+
 - `COMMUNICATIONS_IDEMPOTENCY_WINDOW_MS`
 - `COMMUNICATIONS_EMAIL_RETRY_ATTEMPTS`
 - `COMMUNICATIONS_EMAIL_RETRY_BASE_DELAY_MS`
+
+Event policy overrides (`onDutyManagers` | `allManagers`):
+
+- `RESERVATION_PENDING_MANAGER_POLICY`
+- `LOW_STOCK_MANAGER_POLICY`
+- `MONTHLY_REPORT_MANAGER_POLICY`
+- `WEEKLY_REPORT_MANAGER_POLICY`
+- `BUSINESS_PROFILE_UPDATED_MANAGER_POLICY`
 
 Recommended local/staging baseline:
 

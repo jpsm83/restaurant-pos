@@ -1,6 +1,6 @@
 # Authentication, login, logout, and signup (backend)
 
-This document describes how **identity**, **credentials**, **JWT sessions**, **cookies**, and **employee vs customer mode** work in the Fastify backend. It is the technical companion to the product summary in [`context.md`](./context.md) (login and flow routing).
+This document describes how **identity**, **credentials**, **JWT sessions**, **cookies**, and **employee vs customer mode** work in the Fastify backend. It is the technical companion to the product-level login and flow routing in [`user-flow.md`](../product/user-flow.md).
 
 **Primary code locations**
 
@@ -24,7 +24,7 @@ API base path: **`/api/v1`**. Auth plugin prefix: **`/auth`** → full paths lik
 
 ### Frontend (web app) consumption
 
-The Vite/React client mirrors JWT **`type`** and **`id`** into path-based shells (**`/business/:businessId`**, **`/:userId/customer`**, **`/:userId/mode`**, **`/:userId/employee`**), route guards, and post-login redirects. Product-level URL rules and the ordered implementation checklist live in [**`FRONTEND_AUTHENTICATION_AND_NAVIGATION_STRATEGY.md`**](../FRONTEND_AUTHENTICATION_AND_NAVIGATION_STRATEGY.md) and [**`FRONTEND_AUTH_NAVIGATION_IMPLEMENTATION_PLAN.md`**](../FRONTEND_AUTH_NAVIGATION_IMPLEMENTATION_PLAN.md). Session payload shapes match **`backend/src/auth/types.ts`** (`AuthBusiness`, `AuthUser`, union `AuthSession`) — do not maintain a second field table in this doc. **Login/sign-up/mode UI strings** are translated on the client (**English / Spanish**) via **i18next** (`auth`, `mode`, `nav`, …); see [`frontend-i18n.md`](./frontend-i18n.md).
+The Vite/React client mirrors JWT **`type`** and **`id`** into path-based shells (**`/business/:businessId`**, **`/:userId/customer`**, **`/:userId/mode`**, **`/:userId/employee`**), route guards, and post-login redirects. Session payload shapes match **`backend/src/auth/types.ts`** (`AuthBusiness`, `AuthUser`, union `AuthSession`) — do not maintain a second field table in this doc. **Login/sign-up/mode UI strings** are translated on the client (**English / Spanish**) via **i18next** (`auth`, `mode`, `nav`, …); see [`frontend-i18n.md`](./frontend-i18n.md).
 
 ---
 
@@ -236,7 +236,7 @@ Session minting uses **`issueSessionWithRefreshCookie`** from `issueSession.ts` 
 - **`GET /business`** — Unauthenticated listing/discovery; **`password` excluded**.
 - **`GET /business/:businessId`** — Unauthenticated; no password in response.
 - **`PATCH /business/:businessId`** — **`preValidation`:** valid `:businessId`, **`Authorization: Bearer`**, session must be **business** and **`session.id === :businessId`**. Updates fields; optional password change. When sending a **new `password`**, multipart field **`currentPassword`** must match the stored hash (**`400`** if missing, **`401`** if wrong). Successful password change **increments** **`refreshSessionVersion`** (invalidates prior refresh cookies). The split settings shell validates the bound form on **Save** with Zod; **`email`** / **`confirmEmail`** use the same **`emailRegex`** as server-side checks on this route (**`packages/utils/emailRegex.ts`**). Response **`200`:** `message`, fresh **`accessToken`**, **`user`** (current email from DB), and **refresh cookie** re-set.
-  - **Communications (non-blocking):** when the persistence layer actually changes at least one field, the route emits **`BUSINESS_PROFILE_UPDATED`** through `dispatchEvent` (fail-soft: profile save still returns **`200`** if dispatch fails). Optional request headers **`X-Correlation-Id`** and **`X-Idempotency-Key`** are forwarded into dispatch for tracing and process-local idempotency. Management employees receive **in-app** notifications and **email** (if channels enabled) per `backend/src/communications/README.md`. The main profile editor is **`BusinessProfileSettingsPage`** (**`/business/:businessId/settings/profile`**); **postal address** (and map preview) is **`/business/:businessId/settings/address`** — both use multipart **`PATCH`** via the split settings form shell. **Tenant password change** in the web app is **`BusinessCredentialsSettingsPage`** (**`/settings/credentials`**) → **`POST /auth/request-password-reset`** → link to **`/reset-password`** (not inline **`PATCH`** password fields). Optional **`password`** + **`currentPassword`** on **`PATCH /business/:id`** remain for API clients. See **`documentation/context.md`** and **`documentation/auth-email-security-flows.md`**.
+  - **Communications (non-blocking):** when the persistence layer actually changes at least one field, the route emits **`BUSINESS_PROFILE_UPDATED`** through `dispatchEvent` (fail-soft: profile save still returns **`200`** if dispatch fails). Optional request headers **`X-Correlation-Id`** and **`X-Idempotency-Key`** are forwarded into dispatch for tracing and process-local idempotency. Management employees receive **in-app** notifications and **email** (if channels enabled) per `backend/src/communications/README.md`. The main profile editor is **`BusinessProfileSettingsPage`** (**`/business/:businessId/settings/profile`**); **postal address** (and map preview) is **`/business/:businessId/settings/address`** — both use multipart **`PATCH`** via the split settings form shell. **Tenant password change** in the web app is **`BusinessCredentialsSettingsPage`** (**`/settings/credentials`**) → **`POST /auth/request-password-reset`** → link to **`/reset-password`** (not inline **`PATCH`** password fields). Optional **`password`** + **`currentPassword`** on **`PATCH /business/:id`** remain for API clients. See **`docs/engineering/auth-email-security-flows.md`**.
 - **`DELETE /business/:businessId`** — Still unauthenticated in the current code (transactional cascade + Cloudinary); tighten with auth in a follow-up if needed.
 
 ---
@@ -301,6 +301,6 @@ Returns true only if **every** id in the array is a valid `ObjectId` string. Use
 ## 15. Related documentation
 
 - **Email confirmation, password reset, rate limits, audit/metrics:** [`auth-email-security-flows.md`](./auth-email-security-flows.md).
-- Product-level login and routing: [`context.md`](./context.md) → **Login and flow routing**, **People and operations**.
-- Operational employee vs customer at the table: [`sales-point-sales-instance-orders.md`](./sales-point-sales-instance-orders.md) (references `getEffectiveUserRoleAtTime`).
-- User journey narrative: [`user-flow.md`](./user-flow.md).
+- Product-level login and routing: [`user-flow.md`](../product/user-flow.md) → **Login and flow routing**, **People and operations**.
+- Operational employee vs customer at the table: [`sales-point-sales-instance-orders.md`](../features/sales-point-sales-instance-orders.md) (references `getEffectiveUserRoleAtTime`).
+- User journey narrative: [`user-flow.md`](../product/user-flow.md).

@@ -2,9 +2,9 @@
 
 This document is the **authoritative technical reference** for **email-driven account security** in Restaurant POS: **sign-in email confirmation**, **forgot / reset password**, **resend confirmation**, integration with **signup** and **business registration**, and how that work fits **JWT refresh invalidation**, **rate limits**, **SMTP**, and **audit/metrics**.
 
-**Companion docs:** backend session mechanics and middleware live in [`authentication-and-session.md`](./authentication-and-session.md). **Web routes, guards, and client session** live in [`frontend-authentication-and-navigation.md`](./frontend-authentication-and-navigation.md). **Product narrative** touches [`user-flow.md`](./user-flow.md) and the bridge [`context.md`](./context.md).
+**Companion docs:** backend session mechanics and middleware live in [`authentication-and-session.md`](./authentication-and-session.md). **Web routes, guards, and client session** live in [`frontend-authentication-and-navigation.md`](./frontend-authentication-and-navigation.md). **Product narrative** touches [`user-flow.md`](../product/user-flow.md).
 
-**Implementation plan / checklist:** [`TODO-auth-email-security-flows-implementation.md`](../TODO-auth-email-security-flows-implementation.md) (phases 0–9).
+**Implementation plan / checklist:** [`TODO-auth-email-security-flows-implementation.md`](../../TODO-auth-email-security-flows-implementation.md) (phases 0–9).
 
 ---
 
@@ -223,7 +223,11 @@ All use **`credentials: "include"`**; email flows pass **`retryOnUnauthorized: f
 
 Copy lives in **`frontend/src/i18n/locales/*/auth.json`** (`forgotPassword`, `resetPassword`, `confirmEmail`, `requestEmailConfirmation`). Public login/signup no longer expose resend-confirmation links; resend is actor-only from authenticated areas.
 
-**Business tenant:** **`BusinessCredentialsSettingsPage`** (**`/business/:id/settings/credentials`**) calls **`requestPasswordReset`** with the **session business email** so staff get the same reset link flow while signed in (plus **`resendEmailConfirmation`** when **`emailVerified`** is false). Copy: **`business.credentialsSettings.passwordChangeEmail.*`**.
+### 8.4 Business credentials settings (`/business/:id/settings/credentials`)
+
+**`BusinessCredentialsSettingsPage`** (`frontend/src/pages/business/BusinessCredentialsSettingsPage.tsx`) lets a tenant **change its sign-in password by email**. It uses **`BusinessProfileSettingsStaticShell`** + **`useBusinessProfileSettingsGate`** from **`useBusinessProfileSettingsController.ts`** (profile fetch only — no Save/Reset bar, no full RHF form). The destructive CTA calls **`requestPasswordReset`** with the **session business email**, so the tenant receives the same reset link as forgot-password, lands on **`/reset-password?token=…`**, and existing sessions are invalidated via **`refreshSessionVersion`** on success (see §3.6). When **`emailVerified`** is false, the page shows an email-verification banner with **`resendEmailConfirmation`**. Copy: **`business.credentialsSettings.*`** (including **`passwordChangeEmail.*`**).
+
+**Changing the business sign-in email** is done on **`BusinessProfileSettingsPage`** (**`/business/:id/settings/profile`**) via multipart **`PATCH`** (may force re-login after save). Optional inline **`password`** + **`currentPassword`** on **`PATCH /api/v1/business/:id`** remain supported for API clients; the web app's credentials route does not collect them.
 
 ---
 

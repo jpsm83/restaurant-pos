@@ -6,8 +6,6 @@ Developer guide for **i18next** + **react-i18next** in `frontend/`.
 
 | Document | Role |
 |----------|------|
-| [`i18n-implementation-plan.md`](./i18n-implementation-plan.md) | **Status and backlog**: what is done (`en`/`es`, namespaces), what is optional next (Intl, i18next-parser). |
-| [`i18n-locale-coverage-todo.md`](./i18n-locale-coverage-todo.md) | **Inventory**: which TSX files use which namespace; blocks 0–9 completed Mar 2026. |
 | [`frontend-third-party-libraries.md`](./frontend-third-party-libraries.md) | **Forms + npm stack**: React Hook Form + Zod schemas usually take **`t("…")` message strings** in the **same file as the form**; add matching keys under `auth` (and other namespaces) in **`en`/`es`**. |
 | [`auth-email-security-flows.md`](./auth-email-security-flows.md) | **Auth email UI copy**: forgot/reset/confirm/request-confirmation pages use the **`auth`** namespace (`forgotPassword`, `resetPassword`, `confirmEmail`, `requestEmailConfirmation`, etc.); keep **`en`/`es`** in lockstep when changing those flows. |
 
@@ -17,19 +15,19 @@ Developer guide for **i18next** + **react-i18next** in `frontend/`.
 
 | Path | Role |
 |------|------|
-| [`frontend/src/i18n/i18n.ts`](../frontend/src/i18n/i18n.ts) | **Only TS entry:** i18next bootstrap (glob of locale JSON, `init`, `changeAppLanguage`, storage key, `react.useSuspense: false`). `main.tsx` side-imports `./i18n/i18n` before render; app code imports `@/i18n/i18n` when it needs the singleton or helpers. |
+| [`frontend/src/i18n/i18n.ts`](../../frontend/src/i18n/i18n.ts) | **Only TS entry:** i18next bootstrap (glob of locale JSON, `init`, `changeAppLanguage`, storage key, `react.useSuspense: false`). `main.tsx` side-imports `./i18n/i18n` before render; app code imports `@/i18n/i18n` when it needs the singleton or helpers. |
 | `frontend/src/i18n/locales/<lang>/<namespace>.json` | One file per **namespace** per **language** (`en`, `es` only). |
-| [`frontend/src/test/i18nTestUtils.tsx`](../frontend/src/test/i18nTestUtils.tsx) | Tests: `createTestI18n()`, `renderWithI18n()` (isolated instance + `I18nextProvider`). |
+| [`frontend/src/test/i18nTestUtils.tsx`](../../frontend/src/test/i18nTestUtils.tsx) | Tests: `createTestI18n()`, `renderWithI18n()` (isolated instance + `I18nextProvider`). |
 
 **Namespaces** (must match `NAMESPACES` in `i18n.ts`): `common`, `nav`, `auth`, `marketing`, `business`, `customer`, `employee`, `mode`, `errors`.
 
-Adding a **new namespace** requires: a new entry in `NAMESPACES`, `<namespace>.json` under **`en`** and **`es`** with the **same key tree**, and updating [`i18n-locale-coverage-todo.md`](./i18n-locale-coverage-todo.md). New glob entries are picked up automatically.
+Adding a **new namespace** requires a new entry in `NAMESPACES` and `<namespace>.json` under **`en`** and **`es`** with the **same key tree**. New glob entries are picked up automatically.
 
 ---
 
 ## Locale coverage (March 2026)
 
-- **Spanish (`es`)** is **fully keyed and translated** for all nine namespaces, matching the [presentation inventory](./i18n-locale-coverage-todo.md).
+- **Spanish (`es`)** is **fully keyed and translated** for all nine namespaces.
 - Before merge when touching locale JSON, verify that `frontend/src/i18n/locales/en` and `frontend/src/i18n/locales/es` keep the same namespace files and key paths.
 
 ---
@@ -52,7 +50,7 @@ Adding a **new namespace** requires: a new entry in `NAMESPACES`, `<namespace>.j
 
 `frontend/src/i18n/locales/<lang>/nav.json` groups chrome strings as follows:
 
-- **`settings.*`** — Labels for **settings destinations** shared by the **sidebar** and **`AccountMenuPopover`**: `title`, `profile`, `address`, `subscriptions`, `credentials`, `delivery`, `metrics`, `openHours`. Use `t("settings.profile")`, `t("settings.delivery")`, etc. with `useTranslation("nav")`. This keeps copy aligned whether the link appears in the business sidebar or the account dropdown. **`settings.address`** is the page title for **`/business/:businessId/settings/address`** (structured postal address + map preview; see [`context.md`](./context.md) *Business address settings — location preview*). **`settings.credentials`** titles the credentials route; explainer + **password reset by email** copy lives in **`business.credentialsSettings.*`** (e.g. **`passwordChangeEmail.*`**). Profile save validation strings stay under **`profileForm.validation.*`** plus **`profile.validationSummary`**.
+- **`settings.*`** — Labels for **settings destinations** shared by the **sidebar** and **`AccountMenuPopover`**: `title`, `profile`, `address`, `subscriptions`, `credentials`, `delivery`, `metrics`, `openHours`. Use `t("settings.profile")`, `t("settings.delivery")`, etc. with `useTranslation("nav")`. This keeps copy aligned whether the link appears in the business sidebar or the account dropdown. **`settings.address`** is the page title for **`/business/:businessId/settings/address`** (structured postal address + map preview; see [`address.md`](./address.md)). **`settings.credentials`** titles the credentials route; explainer + **password reset by email** copy lives in **`business.credentialsSettings.*`** (e.g. **`passwordChangeEmail.*`**). Profile save validation strings stay under **`profileForm.validation.*`** plus **`profile.validationSummary`**.
 - **`account.*`** — **Account menu** and actor chrome that are **not** tied to a `/settings/…` route: `menuAriaLabel`, `actorType.*`, `dashboard`, `favorites`, `home`, `logOut`, `language`, mode-switch labels (`employeeArea`, `customerHome`), etc.
 - **`sidebar.*`** — **Sidebar chrome only**: `openMenu`, `closeMenu` (tooltips for expand/collapse).
   Shared sidebar primitives in `frontend/src/components/ui/sidebar.tsx` also consume `sidebar.toggleSidebar` for trigger/rail screen-reader labels and tooltips.
@@ -82,7 +80,7 @@ Do **not** reintroduce `sidebar.settings.*` or `account.profile`; both were fold
 - **Storage key:** `I18N_STORAGE_KEY` = `restaurant_pos_i18n_lng` (see `i18n.ts`).
 - **On load:** `lng` is chosen synchronously in `init`: valid value in `localStorage` first, else the first supported match from `navigator.language` / `navigator.languages` (e.g. `es-MX` → `es`), else **`en`**. That keeps first paint aligned with saved choice or browser preference.
 - **UI:** The navbar **LanguageSwitcher** calls **`changeAppLanguage(code)`** (validates against `SUPPORTED_LANGUAGES`, then `i18n.changeLanguage`). **Native language names** and switcher aria label live in **`common`** (`languages.*`, `languageSwitcher.ariaLabel`).
-- **Flags:** [`LanguageSwitcher`](../frontend/src/components/LanguageSwitcher.tsx) imports **`US`** / **`ES`** from **`country-flag-icons/react/1x1`** (square assets, **`preserveAspectRatio="xMidYMid slice"`** in the helper so circular triggers fill cleanly). [`useLanguageOptions`](../frontend/src/hooks/useLanguageOptions.ts) only supplies codes and translated labels.
+- **Flags:** [`LanguageSwitcher`](../../frontend/src/components/LanguageSwitcher.tsx) imports **`US`** / **`ES`** from **`country-flag-icons/react/1x1`** (square assets, **`preserveAspectRatio="xMidYMid slice"`** in the helper so circular triggers fill cleanly). [`useLanguageOptions`](../../frontend/src/hooks/useLanguageOptions.ts) only supplies codes and translated labels.
 
 ---
 
@@ -94,4 +92,4 @@ Codes: **`en`**, **`es`** only. Flags: **US** (English), **ES** (Spanish). To ad
 
 ## Dates and numbers
 
-User-visible **locale-aware** dates/times/currency are **not** centralized yet. Internal helpers (e.g. schedule **day keys**) use fixed formats, not `Intl`. When adding formatted dates or numbers to the UI, use **`Intl.*`** with an explicit locale derived from **`i18n.language`**, or add a small formatting helper — see [`i18n-implementation-plan.md`](./i18n-implementation-plan.md) backlog.
+User-visible **locale-aware** dates/times/currency are **not** centralized yet. Internal helpers (e.g. schedule **day keys**) use fixed formats, not `Intl`. When adding formatted dates or numbers to the UI, use **`Intl.*`** with an explicit locale derived from **`i18n.language`**, or add a small formatting helper.

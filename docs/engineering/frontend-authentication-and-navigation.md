@@ -1,8 +1,8 @@
 # Frontend authentication and navigation
 
-This document describes **how the Restaurant POS web app handles sign-in, session shape, and routing** for **person users** versus **business (tenant) accounts**, as implemented in `frontend/src`. It is the **frontend companion** to [`authentication-and-session.md`](./authentication-and-session.md) (backend contracts) and aligns with [`FRONTEND_AUTHENTICATION_AND_NAVIGATION_STRATEGY.md`](../FRONTEND_AUTHENTICATION_AND_NAVIGATION_STRATEGY.md) and [`FRONTEND_AUTH_NAVIGATION_IMPLEMENTATION_PLAN.md`](../FRONTEND_AUTH_NAVIGATION_IMPLEMENTATION_PLAN.md).
+This document describes **how the Restaurant POS web app handles sign-in, session shape, and routing** for **person users** versus **business (tenant) accounts**, as implemented in `frontend/src`. It is the **frontend companion** to [`authentication-and-session.md`](./authentication-and-session.md) (backend contracts).
 
-**Internationalization:** Sign-in, sign-up, business registration, mode selection, partition errors (**access denied** / **not found**), and global chrome (navbar, loading strings) use **i18next** namespaces (`auth`, `mode`, `errors`, `nav`, `common`, etc.). Supported UI languages: **English** and **Spanish** (navbar language control). See [`frontend-i18n.md`](./frontend-i18n.md) and [`i18n-locale-coverage-todo.md`](./i18n-locale-coverage-todo.md).
+**Internationalization:** Sign-in, sign-up, business registration, mode selection, partition errors (**access denied** / **not found**), and global chrome (navbar, loading strings) use **i18next** namespaces (`auth`, `mode`, `errors`, `nav`, `common`, etc.). Supported UI languages: **English** and **Spanish** (navbar language control). See [`frontend-i18n.md`](./frontend-i18n.md).
 
 ---
 
@@ -257,11 +257,11 @@ All guards are **UX and consistency**; **security remains on the API**.
 ### 11.3 Business shell: `BusinessLayout`
 
 - **`/business/:businessId`** provides business **`ActorSidebar`**: primary item **Dashboard**; a collapsible **Settings** group (**`settings.title`**) for **Delivery**, **Metrics**, and **Open hours** (routes under **`settings/delivery`**, **`settings/metrics`**, **`settings/open-hours`**). Labels use **`nav`** keys **`settings.delivery`**, **`settings.metrics`**, **`settings.openHours`**.
-- The full **business profile** editor is **not** in the sidebar; it lives at **`/business/:businessId/settings/profile`** and is linked from **`AccountMenuPopover`** (**Profile**) together with **Address** (**`/settings/address`** — structured address fields and map preview; see [`context.md`](./context.md) *Business address settings — location preview*), **Subscriptions**, and **Credentials**.
+- The full **business profile** editor is **not** in the sidebar; it lives at **`/business/:businessId/settings/profile`** and is linked from **`AccountMenuPopover`** (**Profile**) together with **Address** (**`/settings/address`** — structured address fields and map preview; see [`address.md`](./address.md)), **Subscriptions**, and **Credentials**.
 - Sidebar starts collapsed by default (`SidebarProvider` uses `defaultOpen={false}` in `main.tsx`). Expand-on-any-sidebar-icon behavior matches §11.1.
 - Account menu: **`AccountMenuPopover`** — **`LanguageSwitcher`**, **`settings.profile`**, business-only settings shortcuts (with Lucide icons: user, map pin, card, key), **`account.logOut`**.
 - **`BusinessProfileSettingsPage`** (**`/business/:businessId/settings/profile`**) ships the full profile editor wired to `useBusinessProfileQuery` / `useUpdateBusinessProfileMutation` with explicit loading/error/retry states, route-id-aware `react-hook-form` hydration, and sectioned layout (subscription, logo upload, core info, discovery/delivery, metrics, opening windows). The **business email** field updates hidden **`confirmEmail`** on change so full-form Zod validation on save stays consistent. While the profile query is pending, **`loadingSlot`** skeletons mirror the loaded core section (header, logo row, two name fields, seven-cell grid). A successful save triggers backend **`BUSINESS_PROFILE_UPDATED`**: management staff get persisted **in-app** notifications and **email** (when enabled), independent of the tenant UI toast; the client sends **`X-Idempotency-Key`** / **`X-Correlation-Id`** on PATCH (via **`frontend/src/services/business/businessProfileApi.ts`**, re-exported from the **`businessService`** barrel) so backend dispatch logs align with one logical save.
-- **`BusinessCredentialsSettingsPage`** (**`/business/:businessId/settings/credentials`**) explains **password change by email** and calls **`requestPasswordReset(session email)`**; optional **resend email confirmation** when **`emailVerified`** is false. See [`context.md`](./context.md) (*Business credentials settings*).
+- **`BusinessCredentialsSettingsPage`** (**`/business/:businessId/settings/credentials`**) explains **password change by email** and calls **`requestPasswordReset(session email)`**; optional **resend email confirmation** when **`emailVerified`** is false. See [`auth-email-security-flows.md`](./auth-email-security-flows.md) §8.4.
 
 ---
 
@@ -371,11 +371,10 @@ Toggle only switches **marketing** URLs; it does not log anyone in.
 
 ## 18. Related documentation
 
-- Frontend dependency conventions (including forms): [`documentation/frontend-third-party-libraries.md`](./frontend-third-party-libraries.md).
-- Backend cookies, JWT, and endpoints: [`documentation/authentication-and-session.md`](./authentication-and-session.md).
-- **Email confirmation, password reset, rate limits, observability:** [`documentation/auth-email-security-flows.md`](./auth-email-security-flows.md).
-- Narrative user journey: [`documentation/user-flow.md`](./user-flow.md).
-- Strategy and phased delivery: [`FRONTEND_AUTHENTICATION_AND_NAVIGATION_STRATEGY.md`](../FRONTEND_AUTHENTICATION_AND_NAVIGATION_STRATEGY.md), [`FRONTEND_AUTH_NAVIGATION_IMPLEMENTATION_PLAN.md`](../FRONTEND_AUTH_NAVIGATION_IMPLEMENTATION_PLAN.md).
+- Frontend dependency conventions (including forms): [`docs/engineering/frontend-third-party-libraries.md`](./frontend-third-party-libraries.md).
+- Backend cookies, JWT, and endpoints: [`docs/engineering/authentication-and-session.md`](./authentication-and-session.md).
+- **Email confirmation, password reset, rate limits, observability:** [`docs/engineering/auth-email-security-flows.md`](./auth-email-security-flows.md).
+- Narrative user journey: [`docs/product/user-flow.md`](../product/user-flow.md).
 
 When you change routes, guards, or auth flows, update **this file** and the **user-flow** / **strategy** docs as needed so reviewers and contributors see one story.
 

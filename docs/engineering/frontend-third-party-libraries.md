@@ -1,6 +1,6 @@
 # Frontend third-party libraries
 
-This document explains **how the Restaurant POS web app (`frontend/`) relies on external npm packages**, where each major concern lives in the stack, and **conventions for adding or extending** that stack. It complements [`context.md`](./context.md) (product bridge) and feature-specific docs such as [`frontend-i18n.md`](./frontend-i18n.md) and [`frontend-authentication-and-navigation.md`](./frontend-authentication-and-navigation.md).
+This document explains **how the Restaurant POS web app (`frontend/`) relies on external npm packages**, where each major concern lives in the stack, and **conventions for adding or extending** that stack. It complements [`overview.md`](../product/overview.md) (product shape) and feature-specific docs such as [`frontend-i18n.md`](./frontend-i18n.md) and [`frontend-authentication-and-navigation.md`](./frontend-authentication-and-navigation.md).
 
 **Source of truth for versions:** `frontend/package.json` (and the lockfile). Prefer **pinning compatible ranges** (`^`) and running **`npm install`** from `frontend/` when adding dependencies.
 
@@ -60,9 +60,9 @@ Auth **password rules** for **setting** passwords are shared with the monorepo v
 1. **Prefer existing stack:** Check sections 2–3 before introducing a second form library, a second HTTP client for the same surface, or ad hoc validation.
 2. **Install from `frontend/`:** `npm install <package>` (or `npm install -D` for build/test-only tools).
 3. **Verify:** `npm run build` and `npm run test` (and `npm run lint` if you touch ESLint-affected areas).
-4. **Document:** For **cross-cutting** or **non-obvious** packages, add a row or bullet in **section 2** or **3** of this file and, if relevant, link from [`context.md`](./context.md) companion table.
+4. **Document:** For **cross-cutting** or **non-obvious** packages, add a row or bullet in **section 2** or **3** of this file and, if relevant, add a pointer in [`AGENTS.md`](../../AGENTS.md).
 
-**Maps stack (address preview):** Geocoding runs in the browser through **`leaflet-control-geocoder`**’s Nominatim integration; do not hammer the public endpoint. For production-scale traffic, plan a **self-hosted Nominatim** or another geocoder with proper licensing and quotas. Behavior (immediate first geocode, **3s** debounce on later edits, query field rules) is documented under **Shared physical address** in [`context.md`](./context.md).
+**Maps stack (address preview):** Geocoding runs in the browser through **`leaflet-control-geocoder`**’s Nominatim integration; do not hammer the public endpoint. For production-scale traffic, plan a **self-hosted Nominatim** or another geocoder with proper licensing and quotas. Behavior (immediate first geocode, **3s** debounce on later edits, query field rules) is documented in [`address.md`](./address.md).
 
 ---
 
@@ -129,9 +129,9 @@ For **business profile** fetch/save diagnostics (pages that call **`useUpdateBus
 |----------|-----------|
 | [`frontend-authentication-and-navigation.md`](./frontend-authentication-and-navigation.md) | Auth routes; where login, signup, business register, and **email security** pages live. |
 | [`frontend-i18n.md`](./frontend-i18n.md) | Translating validation and labels used in Zod factories. |
-| [`advanced-table-usage.md`](./advanced-table-usage.md) | TanStack Table patterns in dashboards. |
+| [`advanced-table-usage.md`](../features/advanced-table-usage.md) | TanStack Table patterns in dashboards. |
 | [`authentication-and-session.md`](./authentication-and-session.md) | Backend contracts for auth (not npm-specific, but pairs with auth client code). |
 | [`auth-email-security-flows.md`](./auth-email-security-flows.md) | Auth-email endpoints, security patterns, and client `auth/api` helpers. |
-| [`../frontend/src/services/business/README.md`](../frontend/src/services/business/README.md) | Tenant **business profile/register** frontend services (multipart PATCH, React Query, mappers); pairs with **§4.3** diagnostics. |
+| [`frontend/src/services/business/README.md`](../../frontend/src/services/business/README.md) | Tenant **business profile/register** frontend services (multipart PATCH, React Query, mappers); pairs with **§4.3** diagnostics. |
 
-When the **standard form stack** or a **major dependency category** changes, update **this file** and the **companion row** in [`context.md`](./context.md).
+When the **standard form stack** or a **major dependency category** changes, update **this file** and its pointer in [`AGENTS.md`](../../AGENTS.md).
