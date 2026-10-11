@@ -226,6 +226,9 @@ function BusinessProfileSections({
   const hasImage = Boolean(imagePreviewUrl || imageUrl);
   // Profile GET is authoritative for `emailVerified`; JWT can lag until refresh/login.
   const emailVerified = profileQuery.data?.emailVerified === true;
+  // Timezone is derived server-side from the business address (read-only here).
+  const timezone = profileQuery.data?.timezone?.trim() || "UTC";
+  const timezoneIsDefault = profileQuery.data?.timezoneIsDefault === true;
   const [resendPending, setResendPending] = useState(false);
 
   async function syncSessionAndProfileAfterEmailFlow() {
@@ -429,6 +432,27 @@ function BusinessProfileSections({
                 </Select>
               )}
             />
+          </div>
+          <div className="min-w-0 space-y-2">
+            <Label htmlFor="bp-timezone">
+              {t("profileSettings.core.fields.timezone")}
+            </Label>
+            <Input
+              id="bp-timezone"
+              value={timezone}
+              readOnly
+              aria-describedby={
+                timezoneIsDefault ? "bp-timezone-hint" : undefined
+              }
+            />
+            {timezoneIsDefault ? (
+              <p
+                id="bp-timezone-hint"
+                className="text-xs leading-snug text-amber-700"
+              >
+                {t("profileSettings.core.timezoneDefaultHint")}
+              </p>
+            ) : null}
           </div>
           <Controller
             name="cuisineType"

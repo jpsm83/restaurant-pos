@@ -88,6 +88,31 @@ export function freeTextString(message?: string): z.ZodString {
   return message ? schema.min(1, message) : schema;
 }
 
+/**
+ * Canonical IANA zones the platform supports, plus `UTC` — the zone a business
+ * with no stored timezone resolves to. The list comes from the runtime's own
+ * zone database (`Intl.supportedValuesOf`), so validation reflects the ICU the
+ * process is running against rather than the host OS timezone.
+ */
+const PLATFORM_TIMEZONES = Intl.supportedValuesOf("timeZone");
+export const SUPPORTED_TIMEZONES: readonly string[] = [
+  ...PLATFORM_TIMEZONES,
+  "UTC",
+].sort();
+
+const SUPPORTED_TIMEZONE_SET = new Set(SUPPORTED_TIMEZONES);
+
+/** Whether a value is a canonical IANA zone name the platform can resolve. */
+export function isSupportedTimezone(value: unknown): value is string {
+  return typeof value === "string" && SUPPORTED_TIMEZONE_SET.has(value);
+}
+
+/** A canonical IANA zone name (e.g. `America/Bogota`), including `UTC`. */
+export const timezoneSchema = z
+  .string({ error: "Timezone is required" })
+  .trim()
+  .refine(isSupportedTimezone, "Invalid timezone");
+
 /** A number from a string or number input (multipart-friendly). */
 export const coercedNumberSchema = z.coerce.number();
 

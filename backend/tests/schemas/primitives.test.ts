@@ -7,9 +7,12 @@ import {
   coercedNumberSchema,
   emailSchema,
   freeTextString,
+  isSupportedTimezone,
   jsonField,
   objectIdSchema,
   sanitizedString,
+  SUPPORTED_TIMEZONES,
+  timezoneSchema,
   trimmedString,
 } from "../../../packages/schemas/index.ts";
 
@@ -112,6 +115,42 @@ describe("coercedBooleanSchema", () => {
   it("is absent when the field is not provided", () => {
     const schema = coercedBooleanSchema.optional();
     expect(schema.parse(undefined)).toBeUndefined();
+  });
+});
+
+describe("timezoneSchema", () => {
+  it.each(["America/Bogota", "Europe/Madrid", "Asia/Calcutta", "UTC"])(
+    "accepts the supported IANA zone %j",
+    (zone) => {
+      expect(timezoneSchema.parse(zone)).toBe(zone);
+    },
+  );
+
+  it("trims surrounding whitespace", () => {
+    expect(timezoneSchema.parse("  America/Bogota  ")).toBe("America/Bogota");
+  });
+
+  it.each([
+    "",
+    "Not/AZone",
+    "EST",
+    "+02:00",
+    "2026-10-11",
+    "2026-10-11T12:00:00Z",
+  ])("rejects the non-zone value %j", (value) => {
+    expect(timezoneSchema.safeParse(value).success).toBe(false);
+  });
+
+  it("exposes a platform-supported zone list that includes UTC", () => {
+    expect(SUPPORTED_TIMEZONES).toContain("UTC");
+    expect(SUPPORTED_TIMEZONES).toContain("America/Bogota");
+    expect(new Set(SUPPORTED_TIMEZONES).size).toBe(SUPPORTED_TIMEZONES.length);
+  });
+
+  it("isSupportedTimezone guards unknown values", () => {
+    expect(isSupportedTimezone("America/Bogota")).toBe(true);
+    expect(isSupportedTimezone("Not/AZone")).toBe(false);
+    expect(isSupportedTimezone(undefined)).toBe(false);
   });
 });
 

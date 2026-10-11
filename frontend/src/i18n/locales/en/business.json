@@ -58,8 +58,10 @@
         "phoneNumber": "Phone number",
         "taxNumber": "Tax number",
         "currencyTrade": "Currency",
-        "contactPerson": "Contact person"
-      }
+        "contactPerson": "Contact person",
+        "timezone": "Time zone"
+      },
+      "timezoneDefaultHint": "We couldn't determine your time zone from the business address. Update the address country and region to set it."
     },
     "discovery": {
       "sectionTitle": "Discovery",

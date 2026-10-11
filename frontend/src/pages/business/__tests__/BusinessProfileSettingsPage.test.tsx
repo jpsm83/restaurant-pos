@@ -313,6 +313,68 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
     expect(screen.getByLabelText("Phone number")).toHaveValue("+10000000000");
   });
 
+  it("shows the server-derived timezone as a read-only field", async () => {
+    mockUseBusinessProfileQuery.mockReturnValue({
+      data: {
+        ...makeBusinessProfileDto(),
+        timezone: "America/Los_Angeles",
+        timezoneIsDefault: false,
+      },
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    await renderWithQueryClient(
+      <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
+        <Routes>
+          <Route
+            path="/business/:businessId/settings/profile"
+            element={<BusinessProfileSettingsPage />}
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const timezoneInput = screen.getByLabelText("Time zone") as HTMLInputElement;
+    expect(timezoneInput).toHaveValue("America/Los_Angeles");
+    expect(timezoneInput).toHaveAttribute("readonly");
+    expect(
+      screen.queryByText(/couldn't determine your time zone/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("prompts to update the address when the timezone falls back to the default", async () => {
+    mockUseBusinessProfileQuery.mockReturnValue({
+      data: {
+        ...makeBusinessProfileDto(),
+        timezone: "UTC",
+        timezoneIsDefault: true,
+      },
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    await renderWithQueryClient(
+      <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
+        <Routes>
+          <Route
+            path="/business/:businessId/settings/profile"
+            element={<BusinessProfileSettingsPage />}
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByLabelText("Time zone")).toHaveValue("UTC");
+    expect(
+      screen.getByText(/couldn't determine your time zone/i),
+    ).toBeInTheDocument();
+  });
+
   it("renders profile-only sections and omits other settings slices", async () => {
     mockUseBusinessProfileQuery.mockReturnValue({
       data: makeBusinessProfileDto(),

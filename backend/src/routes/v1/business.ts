@@ -39,6 +39,14 @@ import deleteFolderCloudinary from "../../cloudinary/deleteFolderCloudinary.ts";
 import objDefaultValidation from "../../../../packages/utils/objDefaultValidation.ts";
 import type { ObjDefaultValidationType } from "../../../../packages/utils/objDefaultValidation.ts";
 import {
+  isSupportedTimezone,
+  timezoneSchema,
+} from "../../../../packages/schemas/index.ts";
+import {
+  resolveTimezoneFromAddress,
+  type AddressLike,
+} from "../../../../packages/utils/timezoneFromAddress.ts";
+import {
   isValidPassword,
   PASSWORD_POLICY_MESSAGE,
 } from "../../../../packages/utils/passwordPolicy.ts";
@@ -71,6 +79,16 @@ function filterStringsByEnum(
 ): string[] {
   const allow = new Set(allowed);
   return Array.from(new Set(values.filter((v) => allow.has(v))));
+}
+
+/**
+ * Derive the business timezone from its address and validate it with the one
+ * canonical rule, so only zones the platform supports are ever stored.
+ * Addresses that cannot be mapped yield `undefined`; reads then fall back to UTC.
+ */
+function deriveStoredTimezone(address: AddressLike): string | undefined {
+  const parsed = timezoneSchema.safeParse(resolveTimezoneFromAddress(address));
+  return parsed.success ? parsed.data : undefined;
 }
 
 const DEFAULT_DISCOVERY_LIMIT = 50;
@@ -286,11 +304,15 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
       return reply.code(404).send({ message: "No business found!" });
     }
 
+    const storedTimezone = (business as Record<string, unknown>).timezone;
+    const timezoneIsDefault = !isSupportedTimezone(storedTimezone);
     const payload = {
       ...business,
       cuisineType: normalizeCuisineTypeForResponse(
         (business as Record<string, unknown>).cuisineType,
       ),
+      timezone: timezoneIsDefault ? "UTC" : storedTimezone,
+      timezoneIsDefault,
     };
 
     return reply.code(200).send(payload);
@@ -387,6 +409,9 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
       return reply.code(400).send({ message: addressValidationResult });
     }
 
+    // The timezone is derived from the address, never supplied by the client.
+    const resolvedTimezone = deriveStoredTimezone(address as AddressLike);
+
     if (!(subscriptionEnums as readonly string[]).includes(subscription)) {
       return reply.code(400).send({ message: "Invalid subscription!" });
     }
@@ -417,6 +442,7 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
       taxNumber,
       currencyTrade,
       subscription,
+      timezone: resolvedTimezone,
       address,
       contactPerson: contactPerson || undefined,
     };
@@ -918,6 +944,23 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
     if (Object.keys(updatedAddress).length > 0)
       updateBusinessObj.address = updatedAddress;
 
+    // Keep the derived timezone in sync with the (possibly changed) address.
+    const addressChanged = Object.keys(updatedAddress).length > 0;
+    const resolvedTimezone = deriveStoredTimezone({
+      ...(businessAddress ?? {}),
+      ...address,
+    });
+    const storedTimezone = (business as Record<string, unknown>).timezone;
+    let clearTimezone = false;
+    if (resolvedTimezone !== undefined) {
+      if (resolvedTimezone !== storedTimezone)
+        updateBusinessObj.timezone = resolvedTimezone;
+    } else if (addressChanged && storedTimezone !== undefined) {
+      // The address moved somewhere we cannot map: drop the stale zone so the
+      // profile read falls back to UTC with `timezoneIsDefault`.
+      clearTimezone = true;
+    }
+
     if (metrics) {
       const businessMetrics = (business as Record<string, unknown>).metrics as
         | Record<string, unknown>
@@ -990,6 +1033,9 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
     const updateOps: mongoose.UpdateQuery<Record<string, unknown>> = {
       $set: updateBusinessObj,
     };
+    if (clearTimezone) {
+      updateOps.$unset = { timezone: 1 };
+    }
     if (password) {
       updateOps.$inc = { refreshSessionVersion: 1 };
     }

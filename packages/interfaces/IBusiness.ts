@@ -56,6 +56,11 @@ export interface IBusiness {
   taxNumber: string;
   currencyTrade: string;
   subscription: string;
+  /**
+   * Authoritative IANA timezone for the business (e.g. `America/Bogota`).
+   * `undefined` on legacy businesses; reads resolve a missing value to UTC.
+   */
+  timezone?: string;
   address: IAddress;
   metrics?: IMetrics;
   /** Optional primary contact: employee id (hex) chosen from management staff, or legacy free text. */
@@ -90,6 +95,8 @@ export interface IBusinessProfileDto
   > {
   _id: string;
   reportingConfig?: Partial<IReportingConfig>;
+  /** True when no valid zone is stored and the response fell back to `UTC`. */
+  timezoneIsDefault?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }

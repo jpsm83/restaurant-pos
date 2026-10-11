@@ -58,8 +58,10 @@
         "phoneNumber": "Teléfono",
         "taxNumber": "NIF / RFC / identificación fiscal",
         "currencyTrade": "Moneda",
-        "contactPerson": "Persona de contacto"
-      }
+        "contactPerson": "Persona de contacto",
+        "timezone": "Zona horaria"
+      },
+      "timezoneDefaultHint": "No pudimos determinar tu zona horaria a partir de la dirección del negocio. Actualiza el país y la región de la dirección para establecerla."
     },
     "discovery": {
       "sectionTitle": "Descubrimiento",

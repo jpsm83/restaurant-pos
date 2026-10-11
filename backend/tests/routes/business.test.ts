@@ -267,6 +267,7 @@ describe("Business Routes", () => {
         `--${boundary}`,
         'Content-Disposition: form-data; name="email"\r\n\r\ntest@business.com',
         `--${boundary}`,
+        `--${boundary}`,
         'Content-Disposition: form-data; name="password"\r\n\r\nweak',
         `--${boundary}`,
         'Content-Disposition: form-data; name="phoneNumber"\r\n\r\n1234567890',
@@ -383,6 +384,349 @@ describe("Business Routes", () => {
       });
 
       expect(response.statusCode).toBe(409);
+    });
+  });
+
+  describe("Business timezone", () => {
+    function registrationPayload(
+      boundary: string,
+      options: {
+        email: string;
+        taxNumber: string;
+        country: string;
+        state: string;
+      },
+    ): string {
+      const address = {
+        ...validAddress,
+        country: options.country,
+        state: options.state,
+      };
+      return [
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="tradeName"\r\n\r\nTZ Business',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="legalName"\r\n\r\nTZ Business LLC',
+        `--${boundary}`,
+        `Content-Disposition: form-data; name="email"\r\n\r\n${options.email}`,
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="password"\r\n\r\nPassword123!',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="phoneNumber"\r\n\r\n1234567890',
+        `--${boundary}`,
+        `Content-Disposition: form-data; name="taxNumber"\r\n\r\n${options.taxNumber}`,
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="subscription"\r\n\r\nFree',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="currencyTrade"\r\n\r\nUSD',
+        `--${boundary}`,
+        `Content-Disposition: form-data; name="address"\r\n\r\n${JSON.stringify(address)}`,
+        `--${boundary}--`,
+      ].join("\r\n");
+    }
+
+    function profilePatchPayload(
+      boundary: string,
+      business: {
+        email: string;
+        taxNumber: string;
+        country: string;
+        state: string;
+      },
+    ): string {
+      const address = {
+        ...validAddress,
+        country: business.country,
+        state: business.state,
+      };
+      return [
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="tradeName"\r\n\r\nTZ Business',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="legalName"\r\n\r\nTZ Business LLC',
+        `--${boundary}`,
+        `Content-Disposition: form-data; name="email"\r\n\r\n${business.email}`,
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="phoneNumber"\r\n\r\n1234567890',
+        `--${boundary}`,
+        `Content-Disposition: form-data; name="taxNumber"\r\n\r\n${business.taxNumber}`,
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="subscription"\r\n\r\nFree',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="currencyTrade"\r\n\r\nUSD',
+        `--${boundary}`,
+        `Content-Disposition: form-data; name="address"\r\n\r\n${JSON.stringify(address)}`,
+        `--${boundary}--`,
+      ].join("\r\n");
+    }
+
+    it("derives the timezone from the address at registration and returns it on the profile read", async () => {
+      const app = await getTestApp();
+      const boundary = "----formdata";
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/business",
+        headers: { "content-type": `multipart/form-data; boundary=${boundary}` },
+        payload: registrationPayload(boundary, {
+          email: "tz-create@business.com",
+          taxNumber: "TAX-TZ-CREATE",
+          country: "Colombia",
+          state: "Antioquia",
+        }),
+      });
+
+      expect(response.statusCode).toBe(201);
+
+      const created = await Business.findOne({ email: "tz-create@business.com" });
+      expect(created?.timezone).toBe("America/Bogota");
+
+      const read = await app.inject({
+        method: "GET",
+        url: `/api/v1/business/${created?._id}`,
+      });
+      expect(read.statusCode).toBe(200);
+      const body = JSON.parse(read.body);
+      expect(body.timezone).toBe("America/Bogota");
+      expect(body.timezoneIsDefault).toBe(false);
+    });
+
+    it("uses the state to disambiguate a multi-zone country at registration", async () => {
+      const app = await getTestApp();
+      const boundary = "----formdata";
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/business",
+        headers: { "content-type": `multipart/form-data; boundary=${boundary}` },
+        payload: registrationPayload(boundary, {
+          email: "tz-us@business.com",
+          taxNumber: "TAX-TZ-US",
+          country: "USA",
+          state: "California",
+        }),
+      });
+
+      expect(response.statusCode).toBe(201);
+      const created = await Business.findOne({ email: "tz-us@business.com" });
+      expect(created?.timezone).toBe("America/Los_Angeles");
+    });
+
+    it("falls back to UTC and flags the default when the address cannot be mapped", async () => {
+      const app = await getTestApp();
+      const boundary = "----formdata";
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/business",
+        headers: { "content-type": `multipart/form-data; boundary=${boundary}` },
+        payload: registrationPayload(boundary, {
+          email: "tz-unknown@business.com",
+          taxNumber: "TAX-TZ-UNKNOWN",
+          country: "Atlantis",
+          state: "Nowhere",
+        }),
+      });
+
+      expect(response.statusCode).toBe(201);
+      const created = await Business.findOne({ email: "tz-unknown@business.com" });
+      expect(created?.timezone).toBeUndefined();
+
+      const read = await app.inject({
+        method: "GET",
+        url: `/api/v1/business/${created?._id}`,
+      });
+      const body = JSON.parse(read.body);
+      expect(body.timezone).toBe("UTC");
+      expect(body.timezoneIsDefault).toBe(true);
+    });
+
+    it("resolves a business with no timezone to UTC and flags it as default", async () => {
+      const app = await getTestApp();
+      const business = await Business.create({
+        tradeName: "Legacy Business",
+        legalName: "Legacy Business LLC",
+        email: "legacy@business.com",
+        password: "hashedpassword",
+        phoneNumber: "1234567890",
+        taxNumber: "TAX-LEGACY-TZ",
+        currencyTrade: "USD",
+        address: validAddress,
+      });
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/business/${business._id}`,
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.timezone).toBe("UTC");
+      expect(body.timezoneIsDefault).toBe(true);
+    });
+
+    it("resolves an invalid stored timezone to UTC at read time", async () => {
+      const app = await getTestApp();
+      const business = await Business.create({
+        tradeName: "Bad Zone Business",
+        legalName: "Bad Zone Business LLC",
+        email: "badzone@business.com",
+        password: "hashedpassword",
+        phoneNumber: "1234567890",
+        taxNumber: "TAX-BADZONE-TZ",
+        currencyTrade: "USD",
+        timezone: "Not/AZone",
+        address: validAddress,
+      });
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/business/${business._id}`,
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.timezone).toBe("UTC");
+      expect(body.timezoneIsDefault).toBe(true);
+    });
+
+    it("recomputes the timezone when the address changes on profile update", async () => {
+      const app = await getTestApp();
+      const boundary = "----formdata";
+      const business = await Business.create({
+        tradeName: "TZ Business",
+        legalName: "TZ Business LLC",
+        email: "tz-update@business.com",
+        password: "hashedpassword",
+        phoneNumber: "1234567890",
+        taxNumber: "TAX-TZ-UPDATE",
+        currencyTrade: "USD",
+        timezone: "America/Bogota",
+        address: { ...validAddress, country: "Colombia", state: "Antioquia" },
+      });
+      const auth = await generateTestToken({
+        id: business._id.toString(),
+        email: "tz-update@business.com",
+        type: "business",
+        role: "Tenant",
+      });
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/business/${business._id}`,
+        headers: {
+          "content-type": `multipart/form-data; boundary=${boundary}`,
+          authorization: auth,
+        },
+        payload: profilePatchPayload(boundary, {
+          email: "tz-update@business.com",
+          taxNumber: "TAX-TZ-UPDATE",
+          country: "USA",
+          state: "New York",
+        }),
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const read = await app.inject({
+        method: "GET",
+        url: `/api/v1/business/${business._id}`,
+      });
+      const body = JSON.parse(read.body);
+      expect(body.timezone).toBe("America/New_York");
+      expect(body.timezoneIsDefault).toBe(false);
+    });
+
+    it("falls back to UTC when the address changes to an unmappable country", async () => {
+      const app = await getTestApp();
+      const boundary = "----formdata";
+      const business = await Business.create({
+        tradeName: "TZ Business",
+        legalName: "TZ Business LLC",
+        email: "tz-unmappable@business.com",
+        password: "hashedpassword",
+        phoneNumber: "1234567890",
+        taxNumber: "TAX-TZ-UNMAPPABLE",
+        currencyTrade: "USD",
+        timezone: "America/Bogota",
+        address: { ...validAddress, country: "Colombia", state: "Antioquia" },
+      });
+      const auth = await generateTestToken({
+        id: business._id.toString(),
+        email: "tz-unmappable@business.com",
+        type: "business",
+        role: "Tenant",
+      });
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/business/${business._id}`,
+        headers: {
+          "content-type": `multipart/form-data; boundary=${boundary}`,
+          authorization: auth,
+        },
+        payload: profilePatchPayload(boundary, {
+          email: "tz-unmappable@business.com",
+          taxNumber: "TAX-TZ-UNMAPPABLE",
+          country: "Atlantis",
+          state: "Nowhere",
+        }),
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const stored = await Business.findById(business._id).lean();
+      expect(stored?.timezone).toBeUndefined();
+
+      const read = await app.inject({
+        method: "GET",
+        url: `/api/v1/business/${business._id}`,
+      });
+      const body = JSON.parse(read.body);
+      expect(body.timezone).toBe("UTC");
+      expect(body.timezoneIsDefault).toBe(true);
+    });
+
+    it("leaves the timezone unchanged when the address is unchanged", async () => {
+      const app = await getTestApp();
+      const boundary = "----formdata";
+      const business = await Business.create({
+        tradeName: "TZ Business",
+        legalName: "TZ Business LLC",
+        email: "tz-same@business.com",
+        password: "hashedpassword",
+        phoneNumber: "1234567890",
+        taxNumber: "TAX-TZ-SAME",
+        currencyTrade: "USD",
+        timezone: "America/Bogota",
+        address: { ...validAddress, country: "Colombia", state: "Antioquia" },
+      });
+      const auth = await generateTestToken({
+        id: business._id.toString(),
+        email: "tz-same@business.com",
+        type: "business",
+        role: "Tenant",
+      });
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/business/${business._id}`,
+        headers: {
+          "content-type": `multipart/form-data; boundary=${boundary}`,
+          authorization: auth,
+        },
+        payload: profilePatchPayload(boundary, {
+          email: "tz-same@business.com",
+          taxNumber: "TAX-TZ-SAME",
+          country: "Colombia",
+          state: "Antioquia",
+        }),
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const stored = await Business.findById(business._id).lean();
+      expect(stored?.timezone).toBe("America/Bogota");
     });
   });
 
@@ -878,6 +1222,7 @@ describe("Business Routes", () => {
         taxNumber: "TAX-NOCHANGE-001",
         currencyTrade: "USD",
         subscription: "Free",
+        timezone: "America/Los_Angeles",
         address: validAddress,
       });
 

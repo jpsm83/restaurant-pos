@@ -94,6 +94,7 @@ const businessSchema = new Schema(
       enum: subscriptionEnums,
       default: "Free",
     }, // Subscription plan for the company
+    timezone: { type: String }, // Authoritative IANA zone (e.g. America/Bogota); legacy businesses may have none
     address: { type: addressSchema, required: [true, "Address is required!"] }, // Address of the company
     metrics: { type: metricsSchema }, // Metrics of the company
 
