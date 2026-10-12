@@ -1,15 +1,10 @@
 import mongoose, { Types } from "mongoose";
 import Supplier from "../models/supplier.ts";
-import isObjectIdValid from "../utils/isObjectIdValid.ts";
 
 const oneTimePurchaseSupplier = async (
   businessId: Types.ObjectId | string,
 ): Promise<Types.ObjectId | string> => {
   try {
-    if (!isObjectIdValid([businessId])) {
-      return "BusinessId not valid!";
-    }
-
     const supplier = await Supplier.findOne({
       businessId,
       tradeName: "One Time Purchase",

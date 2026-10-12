@@ -6,6 +6,7 @@
 import { describe, it, expect } from "vitest";
 import { Types } from "mongoose";
 import { getTestApp, generateTestToken } from "../setup.ts";
+import { detail, isProblemDetails } from "../helpers/problemDetails.ts";
 import Rating from "../../src/models/rating.ts";
 import Business from "../../src/models/business.ts";
 import User from "../../src/models/user.ts";
@@ -103,6 +104,8 @@ describe("Ratings Routes", () => {
       });
 
       expect(response.statusCode).toBe(401);
+      expect(isProblemDetails(response)).toBe(true);
+      expect(detail(response)).toBe("Authentication required");
     });
 
     it("creates a rating and caches the business average", async () => {

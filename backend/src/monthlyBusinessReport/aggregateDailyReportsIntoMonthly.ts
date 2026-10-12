@@ -10,7 +10,6 @@ import DailySalesReport from "../models/dailySalesReport.ts";
 import MonthlyBusinessReport from "../models/monthlyBusinessReport.ts";
 import Schedule from "../models/schedule.ts";
 import Business from "../models/business.ts";
-import isObjectIdValid from "../utils/isObjectIdValid.ts";
 import getWasteByBudgetImpactForMonth from "../inventories/getWasteByBudgetImpactForMonth.ts";
 import {
   createMonthlyBusinessReport,
@@ -132,10 +131,6 @@ const aggregateDailyReportsIntoMonthly = async (
   businessId: Types.ObjectId,
   anyDateInMonth: Date = new Date(),
 ): Promise<void> => {
-  if (isObjectIdValid([businessId]) !== true) {
-    return;
-  }
-
   const session = await mongoose.startSession();
   session.startTransaction();
 

@@ -4,7 +4,6 @@
 
 import { ClientSession, Types } from "mongoose";
 import MonthlyBusinessReport from "../models/monthlyBusinessReport.ts";
-import isObjectIdValid from "../utils/isObjectIdValid.ts";
 
 export interface MonthlyReportOpen {
   _id: Types.ObjectId;
@@ -22,10 +21,6 @@ export async function createMonthlyBusinessReport(
   monthReference: Date,
   session: ClientSession
 ): Promise<MonthlyReportOpen | null> {
-  if (isObjectIdValid([businessId]) !== true) {
-    return null;
-  }
-
   const existing = (await MonthlyBusinessReport.findOne({
     businessId,
     monthReference,

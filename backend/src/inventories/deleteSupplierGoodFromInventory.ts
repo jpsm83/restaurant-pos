@@ -1,5 +1,4 @@
 import { Types, ClientSession } from "mongoose";
-import isObjectIdValid from "../utils/isObjectIdValid.ts";
 import Inventory from "../models/inventory.ts";
 
 const deleteSupplierGoodFromInventory = async (
@@ -8,10 +7,6 @@ const deleteSupplierGoodFromInventory = async (
   session: ClientSession
 ) => {
   try {
-    if (!isObjectIdValid([supplierGoodId.toString(), businessId.toString()])) {
-      return "Invalid supplierGoodId or businessId";
-    }
-
     const updateInventory = await Inventory.findOneAndUpdate(
       {
         businessId: businessId,

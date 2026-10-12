@@ -1,5 +1,4 @@
 import { Types } from "mongoose";
-import isObjectIdValid from "../utils/isObjectIdValid.ts";
 import type {
   IActorDailySalesReport,
   IGoodsReduced,
@@ -55,15 +54,6 @@ const reconcileDeliveryDailySalesReport = async (
   const errors: string[] = [];
 
   try {
-    if (isObjectIdValid([deliverySalesPointId]) !== true) {
-      return {
-        deliveryDailySalesReport: {
-          userId: deliverySalesPointId,
-        } as IActorDailySalesReport,
-        errors: ["Invalid deliverySalesPointId!"],
-      };
-    }
-
     if (!dailyReferenceNumber) {
       return {
         deliveryDailySalesReport: {

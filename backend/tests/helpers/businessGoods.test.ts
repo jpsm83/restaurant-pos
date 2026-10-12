@@ -149,17 +149,6 @@ describe("BusinessGoods Helpers", () => {
       }
     });
 
-    it("returns error for missing required fields", async () => {
-      const ingredients = [
-        { measurementUnit: "kg", requiredQuantity: 1 }, // missing supplierGoodId
-      ];
-
-      const result = await calculateIngredientsCostPriceAndAllergies(ingredients as any);
-
-      expect(typeof result).toBe("string");
-      expect(result).toContain("supplierGoodId");
-    });
-
     it("returns error for non-existent supplier good", async () => {
       const fakeId = new Types.ObjectId();
       const ingredients = [

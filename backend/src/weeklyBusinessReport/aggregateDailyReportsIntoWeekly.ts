@@ -10,7 +10,6 @@ import DailySalesReport from "../models/dailySalesReport.ts";
 import WeeklyBusinessReport from "../models/weeklyBusinessReport.ts";
 import Schedule from "../models/schedule.ts";
 import Business from "../models/business.ts";
-import isObjectIdValid from "../utils/isObjectIdValid.ts";
 import { createWeeklyBusinessReport } from "./createWeeklyBusinessReport.ts";
 import sendWeeklyReportReadyNotification from "./sendWeeklyReportReadyNotification.ts";
 import { isSupportedTimezone } from "../../../packages/schemas/primitives.ts";
@@ -104,10 +103,6 @@ const aggregateDailyReportsIntoWeekly = async (
   anyDateInWeek: Date,
   weeklyReportStartDay: number,
 ): Promise<void> => {
-  if (isObjectIdValid([businessId]) !== true) {
-    return;
-  }
-
   const session = await mongoose.startSession();
   session.startTransaction();
   let shouldSendReadyNotification = false;

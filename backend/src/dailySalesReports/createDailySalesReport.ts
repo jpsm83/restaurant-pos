@@ -1,14 +1,11 @@
 import { ClientSession, Types } from "mongoose";
 import DailySalesReport from "../models/dailySalesReport.ts";
-import isObjectIdValid from "../utils/isObjectIdValid.ts";
 
 const createDailySalesReport = async (
   businessId: Types.ObjectId,
   session: ClientSession,
 ): Promise<number | string> => {
   try {
-    if (isObjectIdValid([businessId]) !== true) return "Business ID not valid!";
-
     const currentTimeUnix = Date.now();
     const millisecondsInADay = 24 * 60 * 60 * 1000;
     const countdownToClose = currentTimeUnix + millisecondsInADay;

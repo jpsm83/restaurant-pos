@@ -16,8 +16,8 @@ This document describes how **identity**, **credentials**, **JWT sessions**, **c
 | Domain “employee vs customer” at request time | `backend/src/auth/getEffectiveUserRoleAtTime.ts` |
 | Tenant (business) credentials | `backend/src/models/business.ts`, `backend/src/routes/v1/business.ts` |
 | Person credentials | `backend/src/models/user.ts`, `backend/src/models/personalDetails.ts`, `backend/src/routes/v1/users.ts` |
-| ID validation (users routes) | `backend/src/utils/isObjectIdValid.ts` |
-| HTTP error helpers | `backend/src/utils/httpError.ts` |
+| Request validation (zod DTOs) | `packages/schemas/`, `backend/src/schemas/` |
+| HTTP error helpers | `backend/src/errors/appError.ts`, `backend/src/errors/problemDetails.ts` |
 | Business open hours (self-order gating, not login) | `backend/src/business/isBusinessOpenNow.ts` |
 
 API base path: **`/api/v1`**. Auth plugin prefix: **`/auth`** → full paths like `POST /api/v1/auth/login`.
@@ -266,11 +266,11 @@ Session minting uses **`issueSessionWithRefreshCookie`** from `issueSession.ts` 
 
 ### `isObjectIdValid` (`backend/src/utils/isObjectIdValid.ts`)
 
-Returns true only if **every** id in the array is a valid `ObjectId` string. Used for `userId`, `notificationId`, etc., on users routes.
+Returns true only if **every** id in the array is a valid `ObjectId`. Now limited to the array-body case — post-parse checks over an array of ids taken from a request body; single ids are validated at the boundary by the shared zod `objectIdSchema`.
 
-### `httpError` (`backend/src/utils/httpError.ts`)
+### Error helpers (`backend/src/errors/appError.ts`, `backend/src/errors/problemDetails.ts`)
 
-`toHttpError`, `badRequest`, `unauthorized`, `forbidden`, `notFound` — used by the **global Fastify error handler** in `server.ts` to normalize error responses. Auth routes generally use `reply.code().send({ message })` directly.
+`AppError` plus the `badRequest`, `unauthorized`, `forbidden`, `notFound`, `conflict`, `internal` factories, formatted by the **global Fastify error handler** in `server.ts` as RFC 9457 `application/problem+json`. Route guards and hooks now `throw` these instead of sending `{ message }` directly.
 
 ---
 

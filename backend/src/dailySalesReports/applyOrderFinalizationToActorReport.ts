@@ -5,7 +5,6 @@ import type {
 } from "../../../packages/interfaces/IDailySalesReport.ts";
 import type { IPaymentMethod } from "../../../packages/interfaces/IPaymentMethod.ts";
 import DailySalesReport from "../models/dailySalesReport.ts";
-import isObjectIdValid from "../utils/isObjectIdValid.ts";
 
 export type ReportTargetBucket =
   | "employeesDailySalesReport"
@@ -194,10 +193,6 @@ const resolveRowIndex = (
 const applyOrderFinalizationToActorReport = async (
   input: ApplyOrderFinalizationToActorReportInput,
 ): Promise<{ applied: boolean; reason?: string }> => {
-  if (!isObjectIdValid([input.businessId, input.attribution.userId])) {
-    return { applied: false, reason: "Invalid businessId/userId." };
-  }
-
   if (
     input.targetBucket === "selfOrderingSalesReport" &&
     !input.attribution.salesPointId

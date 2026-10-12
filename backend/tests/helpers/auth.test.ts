@@ -145,7 +145,7 @@ describe("Auth Helpers", () => {
   });
 
   describe("createAuthHook", () => {
-    it("rejects missing token", async () => {
+    it("rejects missing token with a 401 AppError", async () => {
       const app = await getTestApp();
       const authHook = createAuthHook(app);
 
@@ -153,24 +153,16 @@ describe("Auth Helpers", () => {
         headers: {},
       } as any;
 
-      let sentResponse: any = null;
-      const mockReply = {
-        code: (statusCode: number) => ({
-          send: (body: any) => {
-            sentResponse = { statusCode, body };
-            return mockReply;
-          },
-        }),
-      } as any;
-
-      await authHook.call(app as any, mockReq, mockReply, () => {});
-
-      expect(sentResponse).not.toBeNull();
-      expect(sentResponse.statusCode).toBe(401);
-      expect(sentResponse.body.message).toBe("Authentication required");
+      await expect(
+        authHook.call(app as any, mockReq, {} as any, () => {}),
+      ).rejects.toMatchObject({
+        name: "AppError",
+        statusCode: 401,
+        message: "Authentication required",
+      });
     });
 
-    it("rejects invalid token", async () => {
+    it("rejects invalid token with a 401 AppError", async () => {
       const app = await getTestApp();
       const authHook = createAuthHook(app);
 
@@ -180,21 +172,13 @@ describe("Auth Helpers", () => {
         },
       } as any;
 
-      let sentResponse: any = null;
-      const mockReply = {
-        code: (statusCode: number) => ({
-          send: (body: any) => {
-            sentResponse = { statusCode, body };
-            return mockReply;
-          },
-        }),
-      } as any;
-
-      await authHook.call(app as any, mockReq, mockReply, () => {});
-
-      expect(sentResponse).not.toBeNull();
-      expect(sentResponse.statusCode).toBe(401);
-      expect(sentResponse.body.message).toBe("Invalid or expired access token");
+      await expect(
+        authHook.call(app as any, mockReq, {} as any, () => {}),
+      ).rejects.toMatchObject({
+        name: "AppError",
+        statusCode: 401,
+        message: "Invalid or expired access token",
+      });
     });
 
     it("accepts valid token and sets authSession", async () => {

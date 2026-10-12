@@ -1019,7 +1019,8 @@ describe("DailySalesReports routes - Task T2 integration", () => {
         url: "/api/v1/dailySalesReports",
       });
 
-      expect(response.statusCode).toBe(401);
+      const body = expectProblem(response, 401, "unauthorized");
+      expect(body.detail).toBe("Authentication required");
     });
   });
 

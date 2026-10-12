@@ -6,11 +6,10 @@
 
 import type {
   FastifyRequest,
-  FastifyReply,
   FastifyInstance,
   preValidationHookHandler,
 } from "fastify";
-import isObjectIdValid from "../utils/isObjectIdValid.ts";
+import { forbidden, unauthorized } from "../errors/appError.ts";
 import type { AuthSession, AuthUser } from "./types.ts";
 
 declare module "fastify" {
@@ -24,11 +23,11 @@ declare module "fastify" {
  * and attaches the decoded user to request.user.
  */
 export function createAuthHook(app: FastifyInstance): preValidationHookHandler {
-  return async (req: FastifyRequest, reply: FastifyReply) => {
+  return async (req: FastifyRequest) => {
     const authHeader = req.headers.authorization;
 
     if (!authHeader?.startsWith("Bearer ")) {
-      return reply.code(401).send({ message: "Authentication required" });
+      throw unauthorized("Authentication required");
     }
 
     const token = authHeader.slice(7);
@@ -37,9 +36,7 @@ export function createAuthHook(app: FastifyInstance): preValidationHookHandler {
       const decoded = app.jwt.verify<AuthSession>(token);
       req.authSession = decoded;
     } catch {
-      return reply
-        .code(401)
-        .send({ message: "Invalid or expired access token" });
+      throw unauthorized("Invalid or expired access token");
     }
   };
 }
@@ -75,13 +72,13 @@ export function createOptionalAuthHook(
  * Must be used after createAuthHook.
  */
 export function requireBusinessHook(): preValidationHookHandler {
-  return async (req: FastifyRequest, reply: FastifyReply) => {
+  return async (req: FastifyRequest) => {
     if (!req.authSession) {
-      return reply.code(401).send({ message: "Authentication required" });
+      throw unauthorized("Authentication required");
     }
 
     if (req.authSession.type !== "business") {
-      return reply.code(403).send({ message: "Business account required" });
+      throw forbidden("Business account required");
     }
   };
 }
@@ -92,9 +89,9 @@ export function requireBusinessHook(): preValidationHookHandler {
  * and employees with management roles.
  */
 export function requireManagementHook(): preValidationHookHandler {
-  return async (req: FastifyRequest, reply: FastifyReply) => {
+  return async (req: FastifyRequest) => {
     if (!req.authSession) {
-      return reply.code(401).send({ message: "Authentication required" });
+      throw unauthorized("Authentication required");
     }
 
     if (req.authSession.type === "business") {
@@ -103,7 +100,7 @@ export function requireManagementHook(): preValidationHookHandler {
 
     const userSession = req.authSession as AuthUser;
     if (!userSession.canLogAsEmployee) {
-      return reply.code(403).send({ message: "Employee access required" });
+      throw forbidden("Employee access required");
     }
   };
 }
@@ -113,18 +110,18 @@ export function requireManagementHook(): preValidationHookHandler {
  * Must be used after createAuthHook.
  */
 export function requireEmployeeHook(): preValidationHookHandler {
-  return async (req: FastifyRequest, reply: FastifyReply) => {
+  return async (req: FastifyRequest) => {
     if (!req.authSession) {
-      return reply.code(401).send({ message: "Authentication required" });
+      throw unauthorized("Authentication required");
     }
 
     if (req.authSession.type !== "user") {
-      return reply.code(403).send({ message: "User account required" });
+      throw forbidden("User account required");
     }
 
     const userSession = req.authSession as AuthUser;
     if (!userSession.employeeId || !userSession.canLogAsEmployee) {
-      return reply.code(403).send({ message: "Employee access required" });
+      throw forbidden("Employee access required");
     }
   };
 }
@@ -169,55 +166,34 @@ export function getSessionBusinessId(
   return userSession.businessId || null;
 }
 
-const PARAM_ID_MESSAGES: Record<string, string> = {
-  userId: "User ID is not valid!",
-  businessId: "Invalid businessId!",
-};
-
-/**
- * Validates `:userId` / `:businessId` (etc.) is a valid ObjectId before auth.
- */
-export function requireValidObjectIdParamHook(
-  paramName: keyof typeof PARAM_ID_MESSAGES,
-): preValidationHookHandler {
-  return async (req, reply) => {
-    const raw = (req.params as Record<string, string | undefined>)[paramName];
-    if (!raw || !isObjectIdValid([raw])) {
-      return reply
-        .code(400)
-        .send({ message: PARAM_ID_MESSAGES[paramName] ?? "Invalid id!" });
-    }
-  };
-}
-
 /** Business JWT must match `:businessId` in the URL. */
 export function requireBusinessIdMatchesSessionHook(): preValidationHookHandler {
-  return async (req, reply) => {
+  return async (req) => {
     if (!req.authSession) {
-      return reply.code(401).send({ message: "Authentication required" });
+      throw unauthorized("Authentication required");
     }
     if (req.authSession.type !== "business") {
-      return reply.code(403).send({ message: "Business account required" });
+      throw forbidden("Business account required");
     }
     const businessId = (req.params as { businessId?: string }).businessId;
     if (!businessId || req.authSession.id !== businessId) {
-      return reply.code(403).send({ message: "Forbidden" });
+      throw forbidden("Forbidden");
     }
   };
 }
 
 /** User JWT must match `:userId` in the URL (self-service updates). */
 export function requireUserIdMatchesSessionHook(): preValidationHookHandler {
-  return async (req, reply) => {
+  return async (req) => {
     if (!req.authSession) {
-      return reply.code(401).send({ message: "Authentication required" });
+      throw unauthorized("Authentication required");
     }
     if (req.authSession.type !== "user") {
-      return reply.code(403).send({ message: "User account required" });
+      throw forbidden("User account required");
     }
     const userId = (req.params as { userId?: string }).userId;
     if (!userId || req.authSession.id !== userId) {
-      return reply.code(403).send({ message: "Forbidden" });
+      throw forbidden("Forbidden");
     }
   };
 }

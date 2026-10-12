@@ -7,7 +7,7 @@ Structured addresses are shared across **Business**, **Supplier**, **User `perso
 - **Required:** `country`, `state`, `city`, `street`, `buildingNumber`, `postCode`.
 - **Optional:** `doorNumber` (unit / door / apartment id), `complement` (second line: floor, wing, etc.), `region`, `additionalDetails`, `coordinates` (`[longitude, latitude]`).
 
-Multipart **business** and **user** profile routes validate address JSON with **`objDefaultValidation`** (`reqAddressFields` + `nonReqAddressFields` in the relevant route files). **`packages/utils/addressValidation.ts`** whitelists the same keys for other callers. The business settings **address** page and **business registration** form must stay aligned with this model (RHF + Zod on the frontend).
+Multipart **business** and **user** profile routes validate address JSON with the shared zod address schema in **`packages/schemas/address.ts`**. The business settings **address** page and **business registration** form must stay aligned with this model (RHF + Zod on the frontend).
 
 ## Business address settings — location preview (map)
 

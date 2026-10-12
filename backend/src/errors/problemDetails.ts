@@ -12,6 +12,7 @@ import { hasZodFastifySchemaValidationErrors } from "@fastify/type-provider-zod"
 import {
   AppError,
   PROBLEM_TYPE_BASE,
+  notFound,
   slugForStatus,
   titleForStatus,
   type ProblemFieldError,
@@ -102,7 +103,16 @@ export function toProblemDetails(err: unknown, instance: string): ProblemDetails
   };
 }
 
-/** Register the global error handler that emits problem-details documents. */
+/** Serialize a problem-details document as the reply body. */
+function sendProblem(reply: FastifyReply, problem: ProblemDetails): void {
+  reply.status(problem.status).type("application/problem+json").send(problem);
+}
+
+/**
+ * Register the global error handler that emits problem-details documents, plus
+ * a not-found handler so unmatched routes use the same envelope instead of
+ * Fastify's default `{ message, error, statusCode }` body.
+ */
 export function registerProblemDetailsHandler(app: FastifyInstance): void {
   app.setErrorHandler(
     (err: unknown, req: FastifyRequest, reply: FastifyReply) => {
@@ -110,10 +120,14 @@ export function registerProblemDetailsHandler(app: FastifyInstance): void {
       if (problem.status >= 500) {
         req.log.error(err);
       }
-      reply
-        .status(problem.status)
-        .type("application/problem+json")
-        .send(problem);
+      sendProblem(reply, problem);
     },
   );
+
+  app.setNotFoundHandler((req: FastifyRequest, reply: FastifyReply) => {
+    sendProblem(
+      reply,
+      toProblemDetails(notFound(`Route ${req.method} ${req.url} not found`), req.url),
+    );
+  });
 }

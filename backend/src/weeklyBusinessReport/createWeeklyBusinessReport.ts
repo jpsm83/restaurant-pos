@@ -4,7 +4,6 @@
 
 import { ClientSession, Types } from "mongoose";
 import WeeklyBusinessReport from "../models/weeklyBusinessReport.ts";
-import isObjectIdValid from "../utils/isObjectIdValid.ts";
 import type { WeeklyReportOpen } from "../../../packages/interfaces/IWeeklyBusinessReport.ts";
 
 export async function createWeeklyBusinessReport(
@@ -12,10 +11,6 @@ export async function createWeeklyBusinessReport(
   weekReference: Date,
   session: ClientSession,
 ): Promise<WeeklyReportOpen | null> {
-  if (isObjectIdValid([businessId]) !== true) {
-    return null;
-  }
-
   const existing = (await WeeklyBusinessReport.findOne({
     businessId,
     weekReference,
