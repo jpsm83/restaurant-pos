@@ -114,9 +114,6 @@ describe("POST /api/v1/auth/signup (confirmation email)", () => {
     await waitForSendMockCalls(1);
     expect(sendEmailMock).toHaveBeenCalledTimes(1);
 
-    const row = await User.findOne({ "personalDetails.email": email })
-      .select("verificationToken")
-      .lean();
-    expect(row?.verificationToken).toBeFalsy();
+    await waitForUserVerificationToken(email, { expectPresent: false });
   });
 });
