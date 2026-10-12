@@ -5,6 +5,7 @@
  */
 export * from "./primitives.ts";
 export * from "./auth.ts";
+export * from "./business.ts";
 export * from "./ratings.ts";
 export * from "./orders.ts";
 export * from "./salesPoints.ts";

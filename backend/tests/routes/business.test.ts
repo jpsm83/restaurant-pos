@@ -61,8 +61,11 @@ describe("Business Routes", () => {
       });
 
       expect(response.statusCode).toBe(400);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
       const body = JSON.parse(response.body);
-      expect(body.message).toBe("No business found!");
+      expect(body.detail).toBe("No business found!");
     });
 
     it("filters by cuisineType", async () => {
@@ -177,8 +180,13 @@ describe("Business Routes", () => {
       });
 
       expect(response.statusCode).toBe(400);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
       const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid businessId!");
+      expect(body.errors?.map((e: { path: string }) => e.path)).toContain(
+        "businessId",
+      );
     });
 
     it("returns 404 for non-existent business", async () => {
@@ -191,8 +199,11 @@ describe("Business Routes", () => {
       });
 
       expect(response.statusCode).toBe(404);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
       const body = JSON.parse(response.body);
-      expect(body.message).toBe("No business found!");
+      expect(body.detail).toBe("No business found!");
     });
   });
 
@@ -251,8 +262,13 @@ describe("Business Routes", () => {
       });
 
       expect(response.statusCode).toBe(400);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
       const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid email format!");
+      expect(body.errors?.map((e: { path: string }) => e.path)).toContain(
+        "email",
+      );
     });
 
     it("returns 400 for weak password", async () => {
@@ -290,8 +306,13 @@ describe("Business Routes", () => {
       });
 
       expect(response.statusCode).toBe(400);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
       const body = JSON.parse(response.body);
-      expect(body.message).toContain("Password must be at least");
+      expect(body.errors?.map((e: { path: string }) => e.path)).toContain(
+        "password",
+      );
     });
 
     it("creates business with valid data", async () => {
@@ -337,6 +358,123 @@ describe("Business Routes", () => {
       const created = await Business.findOne({ email: "new@business.com" });
       expect(created).not.toBeNull();
       expect(created?.tradeName).toBe("New Business");
+    });
+
+    it("creates a business with JSON-encoded discovery fields", async () => {
+      const app = await getTestApp();
+
+      const boundary = "----formdata";
+      const openingHours = [
+        { dayOfWeek: 1, openTime: "09:00", closeTime: "18:00" },
+      ];
+      const deliveryWindows = [
+        { dayOfWeek: 2, windows: [{ openTime: "10:00", closeTime: "14:00" }] },
+      ];
+      const payload = [
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="tradeName"\r\n\r\nDiscovery Co',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="legalName"\r\n\r\nDiscovery Co LLC',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="email"\r\n\r\ndiscovery@business.com',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="password"\r\n\r\nPassword123!',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="phoneNumber"\r\n\r\n1234567890',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="taxNumber"\r\n\r\nTAX-DISCOVERY-001',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="subscription"\r\n\r\nFree',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="currencyTrade"\r\n\r\nUSD',
+        `--${boundary}`,
+        `Content-Disposition: form-data; name="address"\r\n\r\n${JSON.stringify(validAddress)}`,
+        `--${boundary}`,
+        `Content-Disposition: form-data; name="cuisineType"\r\n\r\n${JSON.stringify(["Italian"])}`,
+        `--${boundary}`,
+        `Content-Disposition: form-data; name="categories"\r\n\r\n${JSON.stringify(["Pizza"])}`,
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="acceptsDelivery"\r\n\r\ntrue',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="deliveryRadius"\r\n\r\n5',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="minOrder"\r\n\r\n10',
+        `--${boundary}`,
+        `Content-Disposition: form-data; name="businessOpeningHours"\r\n\r\n${JSON.stringify(openingHours)}`,
+        `--${boundary}`,
+        `Content-Disposition: form-data; name="deliveryOpeningWindows"\r\n\r\n${JSON.stringify(deliveryWindows)}`,
+        `--${boundary}--`,
+      ].join("\r\n");
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/business",
+        headers: { "content-type": `multipart/form-data; boundary=${boundary}` },
+        payload,
+      });
+
+      expect(response.statusCode).toBe(201);
+
+      const created = await Business.findOne({
+        email: "discovery@business.com",
+      }).lean();
+      expect(created?.cuisineType).toEqual(["Italian"]);
+      expect(created?.categories).toEqual(["Pizza"]);
+      expect(created?.acceptsDelivery).toBe(true);
+      expect(created?.deliveryRadius).toBe(5);
+      expect(created?.minOrder).toBe(10);
+      expect(created?.businessOpeningHours).toMatchObject(openingHours);
+      expect(created?.deliveryOpeningWindows).toMatchObject(deliveryWindows);
+    });
+
+    it("rejects server-owned fields on registration", async () => {
+      const app = await getTestApp();
+
+      const boundary = "----formdata";
+      const payload = [
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="tradeName"\r\n\r\nOwned Co',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="legalName"\r\n\r\nOwned Co LLC',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="email"\r\n\r\nowned@business.com',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="password"\r\n\r\nPassword123!',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="phoneNumber"\r\n\r\n1234567890',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="taxNumber"\r\n\r\nTAX-OWNED-001',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="subscription"\r\n\r\nFree',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="currencyTrade"\r\n\r\nUSD',
+        `--${boundary}`,
+        `Content-Disposition: form-data; name="address"\r\n\r\n${JSON.stringify(validAddress)}`,
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="averageRating"\r\n\r\n5',
+        `--${boundary}--`,
+      ].join("\r\n");
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/business",
+        headers: { "content-type": `multipart/form-data; boundary=${boundary}` },
+        payload,
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      const body = JSON.parse(response.body);
+      expect(
+        body.errors?.some((e: { message: string }) =>
+          e.message.includes("averageRating"),
+        ),
+      ).toBe(true);
+
+      const created = await Business.findOne({ email: "owned@business.com" });
+      expect(created).toBeNull();
     });
 
     it("returns 409 for duplicate business", async () => {
@@ -887,7 +1025,7 @@ describe("Business Routes", () => {
       );
       const body = JSON.parse(response.body);
       expect(body.errors?.map((e: { path: string }) => e.path)).toContain(
-        "reportingConfig.weeklyReportStartDay",
+        "reportingConfig",
       );
 
       const stored = await Business.findById(business._id).lean();
@@ -896,17 +1034,33 @@ describe("Business Routes", () => {
   });
 
   describe("PATCH /api/v1/business/:businessId", () => {
-    it("returns 400 for invalid businessId", async () => {
+    it("returns a validation problem for an invalid businessId", async () => {
       const app = await getTestApp();
+      const auth = await generateTestToken({
+        id: new Types.ObjectId().toString(),
+        email: "any@business.com",
+        type: "business",
+        role: "Tenant",
+      });
 
       const response = await app.inject({
         method: "PATCH",
         url: "/api/v1/business/invalid-id",
-        headers: { "content-type": "multipart/form-data; boundary=----formdata" },
+        headers: {
+          "content-type": "multipart/form-data; boundary=----formdata",
+          authorization: auth,
+        },
         payload: "------formdata--\r\n",
       });
 
       expect(response.statusCode).toBe(400);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      const body = JSON.parse(response.body);
+      expect(body.errors?.map((e: { path: string }) => e.path)).toContain(
+        "businessId",
+      );
     });
 
     it("returns 404 for non-existent business when JWT matches URL id", async () => {
@@ -1544,8 +1698,11 @@ describe("Business Routes", () => {
       });
 
       expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body) as { message?: string };
-      expect(body.message).toContain("Current password is required");
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      const body = JSON.parse(response.body) as { detail?: string };
+      expect(body.detail).toContain("Current password is required");
     });
 
     it("returns 401 when current password is wrong for a password change", async () => {
@@ -1607,8 +1764,11 @@ describe("Business Routes", () => {
       });
 
       expect(response.statusCode).toBe(401);
-      const body = JSON.parse(response.body) as { message?: string };
-      expect(body.message).toContain("incorrect");
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      const body = JSON.parse(response.body) as { detail?: string };
+      expect(body.detail).toContain("incorrect");
     });
   });
 
@@ -1622,8 +1782,13 @@ describe("Business Routes", () => {
       });
 
       expect(response.statusCode).toBe(400);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
       const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid businessId!");
+      expect(body.errors?.map((e: { path: string }) => e.path)).toContain(
+        "businessId",
+      );
     });
   });
 });
