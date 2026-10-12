@@ -12,8 +12,8 @@
  */
 import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
-import type { ISupplier } from "../../../../packages/interfaces/ISupplier.ts";
-import type { IAddress } from "../../../../packages/interfaces/IAddress.ts";
+import type { ISupplier } from "restaurant-pos-packages/interfaces/ISupplier";
+import type { IAddress } from "restaurant-pos-packages/interfaces/IAddress";
 
 import Supplier from "../../models/supplier.ts";
 import SupplierGood from "../../models/supplierGood.ts";
@@ -31,7 +31,7 @@ import {
   type CreateSupplierBody,
   type SupplierByBusinessParams,
   type SupplierIdParams,
-} from "../../../../packages/schemas/supplier.ts";
+} from "restaurant-pos-packages/schemas/supplier";
 
 /** The supplier identity fields the reserved-name rule applies to. */
 type SupplierIdentityFields = Pick<

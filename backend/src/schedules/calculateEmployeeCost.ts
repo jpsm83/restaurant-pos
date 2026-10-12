@@ -1,4 +1,4 @@
-import type { ISalary } from "../../../packages/interfaces/IEmployee.ts";
+import type { ISalary } from "restaurant-pos-packages/interfaces/IEmployee";
 
 const calculateEmployeeCost = (
   salary: ISalary,

@@ -1,5 +1,5 @@
 import { ClientSession, Types } from "mongoose";
-import type { ISalesInstance } from "../../../packages/interfaces/ISalesInstance.ts";
+import type { ISalesInstance } from "restaurant-pos-packages/interfaces/ISalesInstance";
 import SalesInstance from "../models/salesInstance.ts";
 import DailySalesReport from "../models/dailySalesReport.ts";
 import { isTransientMongoClusterError } from "../mongo/transientClusterError.ts";

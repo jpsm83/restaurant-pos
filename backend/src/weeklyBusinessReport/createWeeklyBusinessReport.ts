@@ -4,7 +4,7 @@
 
 import { ClientSession, Types } from "mongoose";
 import WeeklyBusinessReport from "../models/weeklyBusinessReport.ts";
-import type { WeeklyReportOpen } from "../../../packages/interfaces/IWeeklyBusinessReport.ts";
+import type { WeeklyReportOpen } from "restaurant-pos-packages/interfaces/IWeeklyBusinessReport";
 
 export async function createWeeklyBusinessReport(
   businessId: Types.ObjectId,

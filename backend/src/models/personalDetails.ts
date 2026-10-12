@@ -1,6 +1,6 @@
 import { Schema } from "mongoose";
 import { addressSchema } from "./address.ts";
-import * as enums from "../../../packages/enums.ts";
+import * as enums from "restaurant-pos-packages/enums";
 
 const { genderEnums, idEnums } = enums;
 

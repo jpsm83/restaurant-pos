@@ -54,7 +54,7 @@ import { parseMultipart } from "../../schemas/multipart.ts";
 import {
   isSupportedTimezone,
   timezoneSchema,
-} from "../../../../packages/schemas/index.ts";
+} from "restaurant-pos-packages/schemas";
 import {
   businessIdParamsSchema,
   createBusinessBodySchema,
@@ -62,13 +62,13 @@ import {
   updateBusinessBodySchema,
   type BusinessIdParams,
   type DiscoverBusinessesQuery,
-} from "../../../../packages/schemas/business.ts";
-import type { IReportingConfig } from "../../../../packages/interfaces/IBusiness.ts";
-import { foodSubCategoryEnums } from "../../../../packages/enums.ts";
+} from "restaurant-pos-packages/schemas/business";
+import type { IReportingConfig } from "restaurant-pos-packages/interfaces/IBusiness";
+import { foodSubCategoryEnums } from "restaurant-pos-packages/enums";
 import {
   resolveTimezoneFromAddress,
   type AddressLike,
-} from "../../../../packages/utils/timezoneFromAddress.ts";
+} from "restaurant-pos-packages/utils/timezoneFromAddress";
 
 /** Public JSON must omit password and auth-email secrets (see `TODO-auth-email-security-flows-implementation.md`). */
 const BUSINESS_PUBLIC_LEAN_SELECT =

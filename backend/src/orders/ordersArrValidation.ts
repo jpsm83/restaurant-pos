@@ -1,4 +1,4 @@
-import type { IOrder } from "../../../packages/interfaces/IOrder.ts";
+import type { IOrder } from "restaurant-pos-packages/interfaces/IOrder";
 import { Types } from "mongoose";
 import isObjectIdValid from "../utils/isObjectIdValid.ts";
 

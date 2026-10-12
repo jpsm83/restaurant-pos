@@ -17,7 +17,7 @@ import {
   coercedNumberSchema,
   freeTextString,
   objectIdSchema,
-} from "../../../packages/schemas/primitives.ts";
+} from "restaurant-pos-packages/schemas/primitives";
 
 /** Treat a blank string (an empty query value) as "not provided". */
 const emptyToUndefined = <T extends z.ZodType>(schema: T) =>

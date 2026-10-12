@@ -11,13 +11,13 @@
  */
 import { z } from "zod";
 
-import { mainCategoriesEnums } from "../../../packages/enums.ts";
+import { mainCategoriesEnums } from "restaurant-pos-packages/enums";
 import {
   coercedIntSchema,
   freeTextString,
   objectIdSchema,
   sanitizedString,
-} from "../../../packages/schemas/primitives.ts";
+} from "restaurant-pos-packages/schemas/primitives";
 
 /** A `mainCategory` from the shared enum. */
 export const mainCategorySchema = z.enum(

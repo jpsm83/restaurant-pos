@@ -10,7 +10,7 @@ import { Types } from "mongoose";
 
 import Reservation from "../models/reservation.ts";
 import { badRequest, notFound } from "../errors/appError.ts";
-import type { ReservationStatus } from "../../../packages/schemas/reservations.ts";
+import type { ReservationStatus } from "restaurant-pos-packages/schemas/reservations";
 
 export interface ReservationFilter {
   businessId?: Types.ObjectId;

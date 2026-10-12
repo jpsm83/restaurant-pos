@@ -1,6 +1,6 @@
 import { v2 as cloudinary } from "cloudinary";
 import configureCloudinary from "./cloudinaryConfig.ts";
-import type { UploadInputFile } from "../../../packages/interfaces/ICloudinary.ts";
+import type { UploadInputFile } from "restaurant-pos-packages/interfaces/ICloudinary";
 
 const uploadFilesCloudinary = async (params: {
   folder: string;

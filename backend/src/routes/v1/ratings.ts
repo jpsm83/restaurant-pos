@@ -8,7 +8,7 @@
  */
 import type { FastifyPluginAsync } from "fastify";
 import { Types } from "mongoose";
-import type { IRating } from "../../../../packages/interfaces/IRating.ts";
+import type { IRating } from "restaurant-pos-packages/interfaces/IRating";
 
 import Rating from "../../models/rating.ts";
 import Business from "../../models/business.ts";
@@ -24,7 +24,7 @@ import {
   type RatingIdParams,
   type RatingsByBusinessParams,
   type RatingsPaginationQuery,
-} from "../../../../packages/schemas/ratings.ts";
+} from "restaurant-pos-packages/schemas/ratings";
 
 const RATING_USER_SELECT =
   "personalDetails.firstName personalDetails.lastName username";

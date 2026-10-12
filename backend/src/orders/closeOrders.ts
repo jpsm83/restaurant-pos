@@ -1,8 +1,8 @@
 import { ClientSession, Types } from "mongoose";
-import type { IOrder } from "../../../packages/interfaces/IOrder.ts";
-import type { ISalesInstance } from "../../../packages/interfaces/ISalesInstance.ts";
-import type { IPaymentMethod } from "../../../packages/interfaces/IPaymentMethod.ts";
-import type { IGoodsReduced } from "../../../packages/interfaces/IDailySalesReport.ts";
+import type { IOrder } from "restaurant-pos-packages/interfaces/IOrder";
+import type { ISalesInstance } from "restaurant-pos-packages/interfaces/ISalesInstance";
+import type { IPaymentMethod } from "restaurant-pos-packages/interfaces/IPaymentMethod";
+import type { IGoodsReduced } from "restaurant-pos-packages/interfaces/IDailySalesReport";
 import Order from "../models/order.ts";
 import SalesInstance from "../models/salesInstance.ts";
 import SalesPoint from "../models/salesPoint.ts";

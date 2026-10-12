@@ -11,8 +11,8 @@
  */
 import type { FastifyPluginAsync } from "fastify";
 import { Types } from "mongoose";
-import type { IPromotion } from "../../../../packages/interfaces/IPromotion.ts";
-import type { PromotionType } from "../../../../packages/interfaces/IPromotion.ts";
+import type { IPromotion } from "restaurant-pos-packages/interfaces/IPromotion";
+import type { PromotionType } from "restaurant-pos-packages/interfaces/IPromotion";
 
 import validateDateAndTime from "../../promotions/validateDateAndTime.ts";
 import validateDaysOfTheWeek from "../../promotions/validateDaysOfTheWeek.ts";
@@ -31,7 +31,7 @@ import {
   type PromotionsByBusinessParams,
   type PromotionsByBusinessQuery,
   type UpdatePromotionBody,
-} from "../../../../packages/schemas/promotions.ts";
+} from "restaurant-pos-packages/schemas/promotions";
 
 const BUSINESS_GOODS_POPULATE = {
   path: "businessGoodsToApplyIds",

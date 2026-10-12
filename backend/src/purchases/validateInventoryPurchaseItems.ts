@@ -1,4 +1,4 @@
-import type { IPurchaseItem } from "../../../packages/interfaces/IPurchase.ts";
+import type { IPurchaseItem } from "restaurant-pos-packages/interfaces/IPurchase";
 import isObjectIdValid from "../utils/isObjectIdValid.ts";
 
 const validateInventoryPurchaseItems = (

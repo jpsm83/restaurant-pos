@@ -13,7 +13,7 @@
  */
 import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
-import type { IBusinessGood } from "../../../../packages/interfaces/IBusinessGood.ts";
+import type { IBusinessGood } from "restaurant-pos-packages/interfaces/IBusinessGood";
 
 import BusinessGood from "../../models/businessGood.ts";
 import SupplierGood from "../../models/supplierGood.ts";
@@ -33,7 +33,7 @@ import {
   type BusinessGoodByBusinessParams,
   type BusinessGoodIdParams,
   type Ingredient,
-} from "../../../../packages/schemas/businessGood.ts";
+} from "restaurant-pos-packages/schemas/businessGood";
 
 /** Files a good may hold in total; create and update enforce the same cap. */
 const MAX_IMAGE_FILES = 3;

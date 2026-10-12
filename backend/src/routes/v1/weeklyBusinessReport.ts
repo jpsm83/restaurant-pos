@@ -22,7 +22,7 @@ import {
   type WeeklyBusinessReportListQuery,
   type WeeklyBusinessReportRangeQuery,
   type WeeklyReportIdParams,
-} from "../../../../packages/schemas/businessReports.ts";
+} from "restaurant-pos-packages/schemas/businessReports";
 
 /** The local midnight of a `YYYY-MM-DD` week start. */
 function parseWeekStart(dateStr: string): Date {

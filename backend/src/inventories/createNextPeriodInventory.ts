@@ -1,5 +1,5 @@
 import { ClientSession, Types } from "mongoose";
-import type { IInventory } from "../../../packages/interfaces/IInventory.ts";
+import type { IInventory } from "restaurant-pos-packages/interfaces/IInventory";
 import Inventory from "../models/inventory.ts";
 import SupplierGood from "../models/supplierGood.ts";
 

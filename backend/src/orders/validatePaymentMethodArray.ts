@@ -5,7 +5,7 @@
  * the full mongodb `IPaymentMethod` document, so callers pass DTO data without
  * bridging casts.
  */
-import * as enums from "../../../packages/enums.ts";
+import * as enums from "restaurant-pos-packages/enums";
 
 const { paymentMethodsEnums, creditCardEnums, cryptoEnums, otherPaymentEnums } = enums;
 

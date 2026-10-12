@@ -13,8 +13,8 @@
  */
 import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
-import type { IEmployee } from "../../../../packages/interfaces/IEmployee.ts";
-import type { IUser } from "../../../../packages/interfaces/IUser.ts";
+import type { IEmployee } from "restaurant-pos-packages/interfaces/IEmployee";
+import type { IUser } from "restaurant-pos-packages/interfaces/IUser";
 
 import deleteFolderCloudinary from "../../cloudinary/deleteFolderCloudinary.ts";
 import calculateVacationProportional from "../../employees/calculateVacationProportional.ts";
@@ -23,7 +23,7 @@ import Employee from "../../models/employee.ts";
 import User from "../../models/user.ts";
 import Printer from "../../models/printer.ts";
 import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
-import * as enums from "../../../../packages/enums.ts";
+import * as enums from "restaurant-pos-packages/enums";
 import { badRequest, conflict, notFound } from "../../errors/appError.ts";
 import { parseMultipart, type MultipartFile } from "../../schemas/multipart.ts";
 import {
@@ -34,7 +34,7 @@ import {
   type CreateEmployeeBody,
   type EmployeeByBusinessParams,
   type EmployeeIdParams,
-} from "../../../../packages/schemas/employee.ts";
+} from "restaurant-pos-packages/schemas/employee";
 
 const { managementRolesEnums } = enums;
 
