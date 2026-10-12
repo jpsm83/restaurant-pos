@@ -1033,6 +1033,202 @@ describe("Business Routes", () => {
     });
   });
 
+  describe("PATCH /api/v1/business/:businessId profile fields", () => {
+    // Reuses the shared fixture plus one optional field, to prove optional
+    // address fields survive a partial address update.
+    const fullAddress = { ...validAddress, complement: "Suite 5" };
+
+    const fullMetrics = {
+      foodCostPercentage: 31,
+      beverageCostPercentage: 17,
+      laborCostPercentage: 29,
+      fixedCostPercentage: 23,
+      supplierGoodWastePercentage: {
+        veryLowBudgetImpact: 8,
+        lowBudgetImpact: 6,
+        mediumBudgetImpact: 4,
+        hightBudgetImpact: 2,
+        veryHightBudgetImpact: 1,
+      },
+    };
+
+    async function createProfileBusiness(
+      overrides: Record<string, unknown> = {},
+    ) {
+      const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const business = await Business.create({
+        tradeName: "Profile Fields Biz",
+        legalName: "Profile Fields Biz LLC",
+        email: `profile-fields-${suffix}@business.com`,
+        password: "hashedpassword",
+        phoneNumber: "1234567890",
+        taxNumber: `TAX-PF-${suffix}`,
+        currencyTrade: "USD",
+        subscription: "Free",
+        address: fullAddress,
+        ...overrides,
+      });
+      const auth = await generateTestToken({
+        id: business._id.toString(),
+        email: business.email,
+        type: "business",
+        role: "Tenant",
+      });
+      return { business, auth };
+    }
+
+    function profileFieldsPayload(
+      boundary: string,
+      business: { email: string; taxNumber: string },
+      options: { address?: unknown; metrics?: string } = {},
+    ): string {
+      const parts = [
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="tradeName"\r\n\r\nProfile Fields Biz',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="legalName"\r\n\r\nProfile Fields Biz LLC',
+        `--${boundary}`,
+        `Content-Disposition: form-data; name="email"\r\n\r\n${business.email}`,
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="phoneNumber"\r\n\r\n1234567890',
+        `--${boundary}`,
+        `Content-Disposition: form-data; name="taxNumber"\r\n\r\n${business.taxNumber}`,
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="subscription"\r\n\r\nFree',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="currencyTrade"\r\n\r\nUSD',
+        `--${boundary}`,
+        `Content-Disposition: form-data; name="address"\r\n\r\n${JSON.stringify(
+          options.address ?? fullAddress,
+        )}`,
+      ];
+      if (options.metrics !== undefined) {
+        parts.push(
+          `--${boundary}`,
+          `Content-Disposition: form-data; name="metrics"\r\n\r\n${options.metrics}`,
+        );
+      }
+      parts.push(`--${boundary}--`);
+      return parts.join("\r\n");
+    }
+
+    it("preserves unchanged address fields when part of the address changes", async () => {
+      const app = await getTestApp();
+      const boundary = "----formdata";
+      const { business, auth } = await createProfileBusiness();
+      const nextAddress = { ...fullAddress, country: "Canada", state: "Ontario" };
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/business/${business._id}`,
+        headers: {
+          "content-type": `multipart/form-data; boundary=${boundary}`,
+          authorization: auth,
+        },
+        payload: profileFieldsPayload(boundary, business, {
+          address: nextAddress,
+        }),
+      });
+
+      expect(response.statusCode).toBe(200);
+      const stored = await Business.findById(business._id).lean();
+      expect(stored?.address).toMatchObject(nextAddress);
+    });
+
+    it("preserves unchanged metrics when one metric changes", async () => {
+      const app = await getTestApp();
+      const boundary = "----formdata";
+      const { business, auth } = await createProfileBusiness({
+        metrics: fullMetrics,
+      });
+      const nextMetrics = { ...fullMetrics, foodCostPercentage: 42 };
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/business/${business._id}`,
+        headers: {
+          "content-type": `multipart/form-data; boundary=${boundary}`,
+          authorization: auth,
+        },
+        payload: profileFieldsPayload(boundary, business, {
+          metrics: JSON.stringify(nextMetrics),
+        }),
+      });
+
+      expect(response.statusCode).toBe(200);
+      const stored = await Business.findById(business._id).lean();
+      expect(stored?.metrics?.foodCostPercentage).toBe(42);
+      expect(stored?.metrics?.beverageCostPercentage).toBe(17);
+      expect(stored?.metrics?.laborCostPercentage).toBe(29);
+      expect(stored?.metrics?.supplierGoodWastePercentage?.lowBudgetImpact).toBe(
+        6,
+      );
+    });
+
+    it("returns a field-level problem for malformed metrics JSON", async () => {
+      const app = await getTestApp();
+      const boundary = "----formdata";
+      const { business, auth } = await createProfileBusiness({
+        metrics: fullMetrics,
+      });
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/business/${business._id}`,
+        headers: {
+          "content-type": `multipart/form-data; boundary=${boundary}`,
+          authorization: auth,
+        },
+        payload: profileFieldsPayload(boundary, business, { metrics: "{not json" }),
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      const body = JSON.parse(response.body);
+      expect(body.errors?.map((e: { path: string }) => e.path)).toContain(
+        "metrics",
+      );
+
+      const stored = await Business.findById(business._id).lean();
+      expect(stored?.metrics?.foodCostPercentage).toBe(31);
+    });
+
+    it("returns a field-level problem for an incomplete waste breakdown", async () => {
+      const app = await getTestApp();
+      const boundary = "----formdata";
+      const { business, auth } = await createProfileBusiness({
+        metrics: fullMetrics,
+      });
+      const { veryLowBudgetImpact: _drop, ...incompleteWaste } =
+        fullMetrics.supplierGoodWastePercentage;
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/business/${business._id}`,
+        headers: {
+          "content-type": `multipart/form-data; boundary=${boundary}`,
+          authorization: auth,
+        },
+        payload: profileFieldsPayload(boundary, business, {
+          metrics: JSON.stringify({
+            ...fullMetrics,
+            supplierGoodWastePercentage: incompleteWaste,
+          }),
+        }),
+      });
+
+      expect(response.statusCode).toBe(400);
+      const body = JSON.parse(response.body);
+      expect(
+        body.errors?.some((e: { path: string }) =>
+          e.path.startsWith("metrics.supplierGoodWastePercentage"),
+        ),
+      ).toBe(true);
+    });
+  });
+
   describe("PATCH /api/v1/business/:businessId", () => {
     it("returns a validation problem for an invalid businessId", async () => {
       const app = await getTestApp();

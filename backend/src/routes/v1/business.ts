@@ -520,17 +520,16 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
         | Record<string, unknown>
         | undefined;
       const address = fields.address;
-      const updatedAddress: Record<string, unknown> = {};
+      // Dotted `$set` paths preserve address fields not sent in this request.
+      let addressChanged = false;
       for (const [key, value] of Object.entries(address)) {
         if (value !== businessAddress?.[key]) {
-          updatedAddress[key] = value;
+          updateBusinessObj[`address.${key}`] = value;
+          addressChanged = true;
         }
       }
-      if (Object.keys(updatedAddress).length > 0)
-        updateBusinessObj.address = updatedAddress;
 
       // Keep the derived timezone in sync with the (possibly changed) address.
-      const addressChanged = Object.keys(updatedAddress).length > 0;
       const resolvedTimezone = deriveStoredTimezone({
         ...(businessAddress ?? {}),
         ...address,
@@ -550,37 +549,26 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
         const businessMetrics = businessRecord.metrics as
           | Record<string, unknown>
           | undefined;
-        const updatedMetrics: Record<string, unknown> = {};
-        const updatedSupplierGoodWastePercentage: Record<string, unknown> = {};
+        const businessSupplierWaste = (businessMetrics
+          ?.supplierGoodWastePercentage || {}) as Record<string, unknown>;
 
+        // Dotted `$set` paths preserve metrics not sent in this request.
         for (const [key, value] of Object.entries(fields.metrics)) {
           if (key !== "supplierGoodWastePercentage") {
             if (value !== businessMetrics?.[key]) {
-              updatedMetrics[key] = value;
+              updateBusinessObj[`metrics.${key}`] = value;
             }
           } else {
-            const metricsSupplierWaste =
-              fields.metrics.supplierGoodWastePercentage as Record<
-                string,
-                unknown
-              >;
-            const businessSupplierWaste =
-              (businessMetrics?.supplierGoodWastePercentage || {}) as Record<
-                string,
-                unknown
-              >;
+            const metricsSupplierWaste = value as Record<string, unknown>;
             for (const [wKey, wValue] of Object.entries(metricsSupplierWaste)) {
               if (wValue !== businessSupplierWaste[wKey]) {
-                updatedSupplierGoodWastePercentage[wKey] = wValue;
+                updateBusinessObj[
+                  `metrics.supplierGoodWastePercentage.${wKey}`
+                ] = wValue;
               }
             }
           }
         }
-        if (Object.keys(updatedSupplierGoodWastePercentage).length > 0)
-          updatedMetrics.supplierGoodWastePercentage =
-            updatedSupplierGoodWastePercentage;
-        if (Object.keys(updatedMetrics).length > 0)
-          updateBusinessObj.metrics = updatedMetrics;
       }
 
       if (fields.reportingConfig !== undefined) {
