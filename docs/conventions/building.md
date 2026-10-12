@@ -10,7 +10,7 @@ Use the latest stable syntax and best practices for the stack; prefer the framew
 
 ## Workspace
 
-- One `npm install` at the repo root installs all workspaces; root `npm run dev|test|typecheck|build|lint` fan out with `--workspace <name>` to target one project. See [workspace.md](../engineering/workspace.md).
+- One `npm install` at the repo root installs all workspaces; root `npm run test|typecheck|build|lint` run each workspace's matching script, and `--workspace <name>` targets one project. See [workspace.md](../engineering/workspace.md).
 
 ## How to build
 

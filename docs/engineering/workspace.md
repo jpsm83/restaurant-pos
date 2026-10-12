@@ -34,13 +34,14 @@ npm run dev --workspace frontend    # SPA on :5173 (proxies /api to :4000)
 
 ## Test, typecheck, build, lint
 
-Root scripts fan out across every workspace (`--workspaces --if-present`):
+Root scripts run the matching script in every workspace that defines it
+(`--workspaces --if-present`):
 
 ```sh
-npm test           # all workspaces
-npm run typecheck  # all workspaces
-npm run build      # all workspaces
-npm run lint       # all workspaces
+npm test           # backend, frontend, restaurant-pos-packages
+npm run typecheck  # backend, frontend
+npm run build      # frontend
+npm run lint       # frontend
 ```
 
 Scope one workspace by appending `--workspace <name>`:
