@@ -1,8 +1,19 @@
+/**
+ * SupplierGoods Routes — supplier good CRUD, per-supplier listing and inventory
+ * synchronisation.
+ *
+ * Multipart bodies (create and update) are buffered and validated by the shared
+ * multipart helper against strict zod DTOs from
+ * `packages/schemas/supplierGood.ts`; the JSON-encoded `allergens` field is
+ * parsed and validated there. The GET/PATCH/DELETE path params are validated by
+ * their DTOs. The database-dependent in-use delete guard stays here as a named
+ * post-parse check. Every error is raised as an `AppError` so the global handler
+ * emits RFC 9457 `application/problem+json`.
+ */
 import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
 import type { ISupplierGood } from "../../../../packages/interfaces/ISupplierGood.ts";
 
-import isObjectIdValid from "../../utils/isObjectIdValid.ts";
 import SupplierGood from "../../models/supplierGood.ts";
 import Supplier from "../../models/supplier.ts";
 import BusinessGood from "../../models/businessGood.ts";
@@ -11,305 +22,204 @@ import deleteFolderCloudinary from "../../cloudinary/deleteFolderCloudinary.ts";
 import addSupplierGoodToInventory from "../../inventories/addSupplierGoodToInventory.ts";
 import deleteSupplierGoodFromInventory from "../../inventories/deleteSupplierGoodFromInventory.ts";
 import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
-import type { UploadInputFile } from "../../../../packages/interfaces/ICloudinary.ts";
-import * as enums from "../../../../packages/enums.ts";
+import { badRequest, conflict, notFound } from "../../errors/appError.ts";
+import { parseMultipart } from "../../schemas/multipart.ts";
+import {
+  createSupplierGoodBodySchema,
+  supplierGoodBySupplierParamsSchema,
+  supplierGoodIdParamsSchema,
+  updateSupplierGoodBodySchema,
+  type CreateSupplierGoodBody,
+  type SupplierGoodBySupplierParams,
+  type SupplierGoodIdParams,
+} from "../../../../packages/schemas/supplierGood.ts";
 
-const { allergensEnums, mainCategoriesEnums } = enums;
+/** Files a supplier good may hold in total; create and update enforce the cap. */
+const MAX_IMAGE_FILES = 3;
+
+const SUPPLIER_POPULATE = {
+  path: "supplierId",
+  select: "tradeName",
+  model: Supplier,
+};
+
+/** Upload collected files to Cloudinary, raising a `400` on any failure. */
+async function uploadImages(
+  folder: string,
+  files: { buffer: Buffer; mimetype: string }[],
+): Promise<string[]> {
+  const response = await uploadFilesCloudinary({
+    folder,
+    filesArr: files.map((file) => ({
+      buffer: file.buffer,
+      mimeType: file.mimetype,
+    })),
+    onlyImages: true,
+  });
+
+  if (
+    typeof response === "string" ||
+    response.length === 0 ||
+    !response.every((str) => str.includes("https://"))
+  ) {
+    throw badRequest(`Error uploading image: ${response}`);
+  }
+
+  return response;
+}
+
+/** The fields a create request contributes to the stored supplier good. */
+function toNewSupplierGood(
+  supplierGoodId: Types.ObjectId,
+  fields: CreateSupplierGoodBody,
+): Partial<ISupplierGood> {
+  return {
+    _id: supplierGoodId,
+    name: fields.name,
+    keyword: fields.keyword,
+    mainCategory: fields.mainCategory,
+    currentlyInUse: true,
+    supplierId: new Types.ObjectId(fields.supplierId),
+    businessId: new Types.ObjectId(fields.businessId),
+    subCategory: fields.subCategory,
+    description: fields.description,
+    allergens:
+      fields.allergens && fields.allergens.length > 0
+        ? fields.allergens
+        : undefined,
+    budgetImpact: fields.budgetImpact,
+    inventorySchedule: fields.inventorySchedule,
+    minimumQuantityRequired: fields.minimumQuantityRequired || undefined,
+    parLevel: fields.parLevel || undefined,
+    purchaseUnit: fields.purchaseUnit,
+    measurementUnit: fields.measurementUnit,
+    quantityInMeasurementUnit: fields.quantityInMeasurementUnit || undefined,
+    totalPurchasePrice: fields.totalPurchasePrice || undefined,
+    pricePerMeasurementUnit:
+      fields.totalPurchasePrice && fields.quantityInMeasurementUnit
+        ? fields.totalPurchasePrice / fields.quantityInMeasurementUnit
+        : undefined,
+  };
+}
 
 export const supplierGoodsRoutes: FastifyPluginAsync = async (app) => {
   // GET /supplierGoods - list all
   app.get("/", async (_req, reply) => {
     const supplierGoods = await SupplierGood.find()
-      .populate({ path: "supplierId", select: "tradeName", model: Supplier })
+      .populate(SUPPLIER_POPULATE)
       .lean();
 
     if (!supplierGoods.length) {
-      return reply.code(404).send({ message: "No supplier goods found!!" });
+      throw notFound("No supplier goods found!");
     }
     return reply.code(200).send(supplierGoods);
   });
 
-  // POST /supplierGoods - create (formData with image)
+  // POST /supplierGoods - create (formData with images, transaction)
   app.post("/", async (req, reply) => {
+    if (typeof req.parts !== "function") {
+      throw badRequest("Expected multipart/form-data");
+    }
+
+    const { fields, files } = await parseMultipart(
+      req,
+      createSupplierGoodBodySchema,
+    );
+
+    if (files.length > MAX_IMAGE_FILES) {
+      throw badRequest(`Max file quantity is ${MAX_IMAGE_FILES}!`);
+    }
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     try {
-      const parts = req.parts();
-      const fields: Record<string, string> = {};
-      const files: UploadInputFile[] = [];
+      const duplicateSupplierGood = await SupplierGood.exists({
+        businessId: fields.businessId,
+        supplierId: fields.supplierId,
+        name: fields.name,
+      }).session(session);
 
-      for await (const part of parts) {
-        if (part.type === "file") {
-          if (part.filename) {
-            const chunks: Buffer[] = [];
-            for await (const chunk of part.file) {
-              chunks.push(chunk);
-            }
-            files.push({
-              buffer: Buffer.concat(chunks),
-              mimeType: part.mimetype,
-            });
-          }
-        } else {
-          fields[part.fieldname] = String(part.value);
-        }
+      if (duplicateSupplierGood) {
+        throw badRequest(`${fields.name} already exists on supplier goods!`);
       }
 
-      const name = fields.name;
-      const keyword = fields.keyword;
-      const mainCategory = fields.mainCategory;
-      const supplierId = fields.supplierId;
-      const businessId = fields.businessId;
+      const supplierGoodId = new mongoose.Types.ObjectId();
+      const newSupplierGood = toNewSupplierGood(supplierGoodId, fields);
 
-      const subCategory = fields.subCategory || undefined;
-      const description = fields.description || undefined;
-      const allergens = fields.allergens
-        ? (JSON.parse(fields.allergens) as string[])
-        : [];
-      const budgetImpact = fields.budgetImpact || undefined;
-      const inventorySchedule = fields.inventorySchedule || undefined;
-      const minimumQuantityRequired = fields.minimumQuantityRequired
-        ? Number(fields.minimumQuantityRequired)
-        : undefined;
-      const parLevel = fields.parLevel ? Number(fields.parLevel) : undefined;
-      const purchaseUnit = fields.purchaseUnit || undefined;
-      const measurementUnit = fields.measurementUnit || undefined;
-      const quantityInMeasurementUnit = fields.quantityInMeasurementUnit
-        ? Number(fields.quantityInMeasurementUnit)
-        : undefined;
-      const totalPurchasePrice = fields.totalPurchasePrice
-        ? Number(fields.totalPurchasePrice)
-        : undefined;
-
-      if (!name || !keyword || !mainCategory || !supplierId || !businessId) {
-        return reply.code(400).send({
-          message:
-            "Name, keyword, mainCategory, supplierId and businessId are required!",
-        });
+      if (files.length > 0) {
+        const folder = `/business/${fields.businessId}/suppliersGoods/${supplierGoodId}`;
+        newSupplierGood.imagesUrl = await uploadImages(folder, files);
       }
 
-      if (isObjectIdValid([businessId, supplierId]) !== true) {
-        return reply.code(400).send({
-          message: "Business or supplier ID is not valid!",
-        });
+      const [createdSupplierGood] = await SupplierGood.create(
+        [newSupplierGood],
+        { session },
+      );
+
+      if (!createdSupplierGood) {
+        throw badRequest("Supplier good creation failed!");
       }
 
-      if (files && files.length > 3) {
-        return reply.code(400).send({ message: "Max file quantity is 3!" });
-      }
+      const addToInventoryResult = await addSupplierGoodToInventory(
+        supplierGoodId,
+        fields.businessId,
+        session,
+      );
 
-      if (!(mainCategoriesEnums as readonly string[]).includes(mainCategory)) {
-        return reply.code(400).send({ message: "Invalid main category!" });
-      }
-
-      if (allergens.length > 0) {
-        for (const allergen of allergens) {
-          if (!(allergensEnums as readonly string[]).includes(allergen)) {
-            return reply.code(400).send({ message: "Invalid allergen!" });
-          }
-        }
-      }
-
-      const session = await mongoose.startSession();
-      session.startTransaction();
-
-      try {
-        const duplicateSupplierGood = await SupplierGood.exists({
-          businessId,
-          supplierId,
-          name,
-        }).session(session);
-
-        if (duplicateSupplierGood) {
-          await session.abortTransaction();
-          return reply.code(400).send({
-            message: `${name} already exists on supplier goods!`,
-          });
-        }
-
-        const supplierGoodId = new mongoose.Types.ObjectId();
-
-        const newSupplierGoodObj: Partial<ISupplierGood> = {
-          _id: supplierGoodId,
-          name,
-          keyword,
-          mainCategory,
-          currentlyInUse: true,
-          supplierId: new Types.ObjectId(supplierId),
-          businessId: new Types.ObjectId(businessId),
-          subCategory: subCategory || undefined,
-          description: description || undefined,
-          allergens: allergens.length > 0 ? allergens : undefined,
-          budgetImpact: budgetImpact || undefined,
-          inventorySchedule: inventorySchedule || undefined,
-          minimumQuantityRequired: minimumQuantityRequired || undefined,
-          parLevel: parLevel || undefined,
-          purchaseUnit: purchaseUnit || undefined,
-          measurementUnit: measurementUnit || undefined,
-          quantityInMeasurementUnit: quantityInMeasurementUnit || undefined,
-          totalPurchasePrice: totalPurchasePrice || undefined,
-          pricePerMeasurementUnit:
-            totalPurchasePrice && quantityInMeasurementUnit
-              ? totalPurchasePrice / quantityInMeasurementUnit
-              : undefined,
-        };
-
-        if (files.length > 0) {
-          const folder = `/business/${businessId}/suppliersGoods/${supplierGoodId}`;
-
-          const cloudinaryUploadResponse = await uploadFilesCloudinary({
-            folder,
-            filesArr: files,
-            onlyImages: true,
-          });
-
-          if (
-            typeof cloudinaryUploadResponse === "string" ||
-            cloudinaryUploadResponse.length === 0 ||
-            !cloudinaryUploadResponse.every((str) => str.includes("https://"))
-          ) {
-            await session.abortTransaction();
-            return reply.code(400).send({
-              message: `Error uploading image: ${cloudinaryUploadResponse}`,
-            });
-          }
-
-          newSupplierGoodObj.imagesUrl = cloudinaryUploadResponse;
-        }
-
-        const [newSupplierGood] = await SupplierGood.create(
-          [newSupplierGoodObj],
-          { session },
+      if (addToInventoryResult !== true) {
+        throw badRequest(
+          "Add supplier good to inventory failed! Error: " +
+            addToInventoryResult,
         );
-
-        if (!newSupplierGood) {
-          await session.abortTransaction();
-          return reply.code(400).send({
-            message: "Supplier good creation failed!",
-          });
-        }
-
-        const addSupplierGoodToInventoryResult =
-          await addSupplierGoodToInventory(supplierGoodId, businessId, session);
-
-        if (addSupplierGoodToInventoryResult !== true) {
-          await session.abortTransaction();
-          return reply.code(400).send({
-            message:
-              "Add supplier good to inventory failed! Error: " +
-              addSupplierGoodToInventoryResult,
-          });
-        }
-
-        await session.commitTransaction();
-
-        return reply.code(201).send({
-          message: `Supplier good created successfully!`,
-        });
-      } catch (error) {
-        await session.abortTransaction();
-        throw error;
-      } finally {
-        session.endSession();
       }
-    } catch (error) {
-      return reply.code(500).send({
-        message: "Create supplier good failed!",
-        error: error instanceof Error ? error.message : error,
+
+      await session.commitTransaction();
+
+      return reply.code(201).send({
+        message: `Supplier good created successfully!`,
       });
+    } catch (error) {
+      await session.abortTransaction().catch(() => undefined);
+      throw error;
+    } finally {
+      session.endSession();
     }
   });
 
   // GET /supplierGoods/:supplierGoodId - get by ID
-  app.get("/:supplierGoodId", async (req, reply) => {
-    const params = req.params as { supplierGoodId?: string };
-    const supplierGoodId = params.supplierGoodId;
+  app.get<{ Params: SupplierGoodIdParams }>(
+    "/:supplierGoodId",
+    { schema: { params: supplierGoodIdParamsSchema } },
+    async (req, reply) => {
+      const { supplierGoodId } = req.params;
 
-    if (!supplierGoodId || isObjectIdValid([supplierGoodId]) !== true) {
-      return reply.code(400).send({ message: "Invalid supplierGoodId!" });
-    }
+      const supplierGood = await SupplierGood.findById(supplierGoodId)
+        .populate(SUPPLIER_POPULATE)
+        .lean();
 
-    const supplierGood = await SupplierGood.findById(supplierGoodId)
-      .populate({ path: "supplierId", select: "tradeName", model: Supplier })
-      .lean();
+      if (!supplierGood) {
+        throw notFound("Supplier good not found!");
+      }
+      return reply.code(200).send(supplierGood);
+    },
+  );
 
-    if (!supplierGood) {
-      return reply.code(404).send({ message: "Supplier good not found!" });
-    }
-    return reply.code(200).send(supplierGood);
-  });
+  // PATCH /supplierGoods/:supplierGoodId - update (formData with images, transaction)
+  app.patch<{ Params: SupplierGoodIdParams }>(
+    "/:supplierGoodId",
+    { schema: { params: supplierGoodIdParamsSchema } },
+    async (req, reply) => {
+      const { supplierGoodId } = req.params;
 
-  // PATCH /supplierGoods/:supplierGoodId - update (formData with image, transaction)
-  app.patch("/:supplierGoodId", async (req, reply) => {
-    try {
-      const params = req.params as { supplierGoodId?: string };
-      const supplierGoodId = params.supplierGoodId;
-
-      if (!supplierGoodId || isObjectIdValid([supplierGoodId]) !== true) {
-        return reply.code(400).send({ message: "Invalid supplierGoodId!" });
+      if (typeof req.parts !== "function") {
+        throw badRequest("Expected multipart/form-data");
       }
 
-      const parts = req.parts();
-      const fields: Record<string, string> = {};
-      const files: UploadInputFile[] = [];
-
-      for await (const part of parts) {
-        if (part.type === "file") {
-          if (part.filename) {
-            const chunks: Buffer[] = [];
-            for await (const chunk of part.file) {
-              chunks.push(chunk);
-            }
-            files.push({
-              buffer: Buffer.concat(chunks),
-              mimeType: part.mimetype,
-            });
-          }
-        } else {
-          fields[part.fieldname] = String(part.value);
-        }
-      }
-
-      const name = fields.name;
-      const keyword = fields.keyword;
-      const mainCategory = fields.mainCategory;
-      const currentlyInUse = fields.currentlyInUse === "true";
-
-      const subCategory = fields.subCategory || undefined;
-      const description = fields.description || undefined;
-      const allergens = fields.allergens
-        ? (JSON.parse(fields.allergens) as string[])
-        : [];
-      const budgetImpact = fields.budgetImpact || undefined;
-      const inventorySchedule = fields.inventorySchedule || undefined;
-      const minimumQuantityRequired = fields.minimumQuantityRequired
-        ? Number(fields.minimumQuantityRequired)
-        : undefined;
-      const parLevel = fields.parLevel ? Number(fields.parLevel) : undefined;
-      const purchaseUnit = fields.purchaseUnit || undefined;
-      const measurementUnit = fields.measurementUnit || undefined;
-      const quantityInMeasurementUnit = fields.quantityInMeasurementUnit
-        ? Number(fields.quantityInMeasurementUnit)
-        : undefined;
-      const totalPurchasePrice = fields.totalPurchasePrice
-        ? Number(fields.totalPurchasePrice)
-        : undefined;
-
-      if (!name || !keyword || !mainCategory) {
-        return reply.code(400).send({
-          message: "Name, keyword and mainCategory are required!",
-        });
-      }
-
-      if (!(mainCategoriesEnums as readonly string[]).includes(mainCategory)) {
-        return reply.code(400).send({ message: "Invalid main category!" });
-      }
-
-      if (allergens.length > 0) {
-        for (const allergen of allergens) {
-          if (!(allergensEnums as readonly string[]).includes(allergen)) {
-            return reply.code(400).send({ message: "Invalid allergen!" });
-          }
-        }
-      }
+      const { fields, files } = await parseMultipart(
+        req,
+        updateSupplierGoodBodySchema,
+      );
 
       const session = await mongoose.startSession();
       session.startTransaction();
@@ -320,125 +230,121 @@ export const supplierGoodsRoutes: FastifyPluginAsync = async (app) => {
           .lean()) as unknown as ISupplierGood | null;
 
         if (!supplierGood) {
-          await session.abortTransaction();
-          return reply.code(404).send({ message: "Supplier good not found!" });
+          throw notFound("Supplier good not found!");
         }
 
         if (
-          files &&
-          files.length + (supplierGood?.imagesUrl?.length || 0) > 3
+          files.length + (supplierGood.imagesUrl?.length ?? 0) >
+          MAX_IMAGE_FILES
         ) {
-          await session.abortTransaction();
-          return reply.code(400).send({ message: "Max file quantity is 3!" });
+          throw badRequest(`Max file quantity is ${MAX_IMAGE_FILES}!`);
         }
 
         const duplicateSupplierGood = await SupplierGood.exists({
           _id: { $ne: supplierGoodId },
           businessId: supplierGood.businessId,
           supplierId: supplierGood.supplierId,
-          name,
+          name: fields.name,
         }).session(session);
 
         if (duplicateSupplierGood) {
-          await session.abortTransaction();
-          return reply.code(409).send({
-            message: `Supplier good ${name} already exists on this supplier!`,
-          });
+          throw conflict(
+            `Supplier good ${fields.name} already exists on this supplier!`,
+          );
         }
 
         const updateSupplierGood: Partial<ISupplierGood> = {};
 
-        if (name && name !== supplierGood.name) updateSupplierGood.name = name;
-        if (keyword && keyword !== supplierGood.keyword)
-          updateSupplierGood.keyword = keyword;
-        if (mainCategory && mainCategory !== supplierGood.mainCategory)
-          updateSupplierGood.mainCategory = mainCategory;
-        if (
-          currentlyInUse !== undefined &&
-          currentlyInUse !== supplierGood.currentlyInUse
-        )
-          updateSupplierGood.currentlyInUse = currentlyInUse;
+        if (fields.name !== supplierGood.name)
+          updateSupplierGood.name = fields.name;
+        if (fields.keyword !== supplierGood.keyword)
+          updateSupplierGood.keyword = fields.keyword;
+        if (fields.mainCategory !== supplierGood.mainCategory)
+          updateSupplierGood.mainCategory = fields.mainCategory;
+        if (fields.currentlyInUse !== supplierGood.currentlyInUse)
+          updateSupplierGood.currentlyInUse = fields.currentlyInUse;
 
-        if (subCategory && subCategory !== supplierGood.subCategory)
-          updateSupplierGood.subCategory = subCategory;
-        if (description && description !== supplierGood.description)
-          updateSupplierGood.description = description;
-        if (allergens && allergens !== supplierGood.allergens)
-          updateSupplierGood.allergens = allergens;
-        if (budgetImpact && budgetImpact !== supplierGood.budgetImpact)
-          updateSupplierGood.budgetImpact = budgetImpact;
         if (
-          inventorySchedule &&
-          inventorySchedule !== supplierGood.inventorySchedule
+          fields.subCategory !== undefined &&
+          fields.subCategory !== supplierGood.subCategory
         )
-          updateSupplierGood.inventorySchedule = inventorySchedule;
+          updateSupplierGood.subCategory = fields.subCategory;
         if (
-          minimumQuantityRequired &&
-          minimumQuantityRequired !== supplierGood.minimumQuantityRequired
+          fields.description !== undefined &&
+          fields.description !== supplierGood.description
         )
-          updateSupplierGood.minimumQuantityRequired = minimumQuantityRequired;
-        if (parLevel && parLevel !== supplierGood.parLevel)
-          updateSupplierGood.parLevel = parLevel;
-        if (purchaseUnit && purchaseUnit !== supplierGood.purchaseUnit)
-          updateSupplierGood.purchaseUnit = purchaseUnit;
-        if (measurementUnit && measurementUnit !== supplierGood.measurementUnit)
-          updateSupplierGood.measurementUnit = measurementUnit;
+          updateSupplierGood.description = fields.description;
+        if (fields.allergens !== undefined)
+          updateSupplierGood.allergens = fields.allergens;
         if (
-          quantityInMeasurementUnit &&
-          quantityInMeasurementUnit !== supplierGood.quantityInMeasurementUnit
+          fields.budgetImpact !== undefined &&
+          fields.budgetImpact !== supplierGood.budgetImpact
+        )
+          updateSupplierGood.budgetImpact = fields.budgetImpact;
+        if (
+          fields.inventorySchedule !== undefined &&
+          fields.inventorySchedule !== supplierGood.inventorySchedule
+        )
+          updateSupplierGood.inventorySchedule = fields.inventorySchedule;
+        if (
+          fields.minimumQuantityRequired !== undefined &&
+          fields.minimumQuantityRequired !== supplierGood.minimumQuantityRequired
+        )
+          updateSupplierGood.minimumQuantityRequired =
+            fields.minimumQuantityRequired;
+        if (
+          fields.parLevel !== undefined &&
+          fields.parLevel !== supplierGood.parLevel
+        )
+          updateSupplierGood.parLevel = fields.parLevel;
+        if (
+          fields.purchaseUnit !== undefined &&
+          fields.purchaseUnit !== supplierGood.purchaseUnit
+        )
+          updateSupplierGood.purchaseUnit = fields.purchaseUnit;
+        if (
+          fields.measurementUnit !== undefined &&
+          fields.measurementUnit !== supplierGood.measurementUnit
+        )
+          updateSupplierGood.measurementUnit = fields.measurementUnit;
+        if (
+          fields.quantityInMeasurementUnit !== undefined &&
+          fields.quantityInMeasurementUnit !==
+            supplierGood.quantityInMeasurementUnit
         )
           updateSupplierGood.quantityInMeasurementUnit =
-            quantityInMeasurementUnit;
+            fields.quantityInMeasurementUnit;
         if (
-          totalPurchasePrice &&
-          totalPurchasePrice !== supplierGood.totalPurchasePrice
+          fields.totalPurchasePrice !== undefined &&
+          fields.totalPurchasePrice !== supplierGood.totalPurchasePrice
         )
-          updateSupplierGood.totalPurchasePrice = totalPurchasePrice;
+          updateSupplierGood.totalPurchasePrice = fields.totalPurchasePrice;
 
         if (
           updateSupplierGood.totalPurchasePrice &&
           updateSupplierGood.quantityInMeasurementUnit
         )
           updateSupplierGood.pricePerMeasurementUnit =
-            (totalPurchasePrice ?? 0) / (quantityInMeasurementUnit ?? 0);
+            updateSupplierGood.totalPurchasePrice /
+            (updateSupplierGood.quantityInMeasurementUnit || 1);
 
         if (files.length > 0) {
           const folder = `/business/${supplierGood.businessId}/suppliersGoods/${supplierGoodId}`;
 
-          const cloudinaryUploadResponse = await uploadFilesCloudinary({
-            folder,
-            filesArr: files,
-            onlyImages: true,
-          });
-
-          if (
-            typeof cloudinaryUploadResponse === "string" ||
-            cloudinaryUploadResponse.length === 0 ||
-            !cloudinaryUploadResponse.every((str) => str.includes("https://"))
-          ) {
-            await session.abortTransaction();
-            return reply.code(400).send({
-              message: `Error uploading image: ${cloudinaryUploadResponse}`,
-            });
-          }
-
           updateSupplierGood.imagesUrl = [
-            ...(supplierGood?.imagesUrl || []),
-            ...cloudinaryUploadResponse,
+            ...(supplierGood.imagesUrl ?? []),
+            ...(await uploadImages(folder, files)),
           ];
         }
 
         const updatedSupplierGood = await SupplierGood.findByIdAndUpdate(
           supplierGoodId,
           { $set: updateSupplierGood },
-          { returnDocument: 'after', lean: true, session },
+          { returnDocument: "after", lean: true, session },
         );
 
         if (!updatedSupplierGood) {
-          await session.abortTransaction();
-          return reply
-            .code(404)
-            .send({ message: "Supplier good not updated!" });
+          throw notFound("Supplier good not updated!");
         }
 
         const startOfCurrentMonth = new Date();
@@ -456,23 +362,18 @@ export const supplierGoodsRoutes: FastifyPluginAsync = async (app) => {
           "inventoryGoods.supplierGoodId": supplierGoodId,
         }).session(session);
 
-        if (currentlyInUse === true) {
-          if (!isSupplierGoodInInventory) {
-            const addSupplierGoodToInventoryResult =
-              await addSupplierGoodToInventory(
-                supplierGoodId,
-                supplierGood.businessId as Types.ObjectId,
-                session,
-              );
+        if (fields.currentlyInUse === true && !isSupplierGoodInInventory) {
+          const addToInventoryResult = await addSupplierGoodToInventory(
+            supplierGoodId,
+            supplierGood.businessId as Types.ObjectId,
+            session,
+          );
 
-            if (addSupplierGoodToInventoryResult !== true) {
-              await session.abortTransaction();
-              return reply.code(400).send({
-                message:
-                  "Supplier good updated but fail to add to inventory! Error: " +
-                  addSupplierGoodToInventoryResult,
-              });
-            }
+          if (addToInventoryResult !== true) {
+            throw badRequest(
+              "Supplier good updated but fail to add to inventory! Error: " +
+                addToInventoryResult,
+            );
           }
         }
 
@@ -482,118 +383,102 @@ export const supplierGoodsRoutes: FastifyPluginAsync = async (app) => {
           message: "Supplier good updated successfully!",
         });
       } catch (error) {
-        await session.abortTransaction();
+        await session.abortTransaction().catch(() => undefined);
         throw error;
       } finally {
         session.endSession();
       }
-    } catch (error) {
-      return reply.code(500).send({
-        message: "Create supplier good failed!",
-        error: error instanceof Error ? error.message : error,
-      });
-    }
-  });
+    },
+  );
 
   // DELETE /supplierGoods/:supplierGoodId - delete (transaction)
-  app.delete("/:supplierGoodId", async (req, reply) => {
-    const params = req.params as { supplierGoodId?: string };
-    const supplierGoodId = params.supplierGoodId;
+  app.delete<{ Params: SupplierGoodIdParams }>(
+    "/:supplierGoodId",
+    { schema: { params: supplierGoodIdParamsSchema } },
+    async (req, reply) => {
+      const { supplierGoodId } = req.params;
 
-    if (!supplierGoodId || isObjectIdValid([supplierGoodId]) !== true) {
-      return reply.code(400).send({ message: "Invalid supplierGoodId!" });
-    }
+      const session = await mongoose.startSession();
+      session.startTransaction();
 
-    const session = await mongoose.startSession();
-    session.startTransaction();
+      try {
+        const supplierGood = (await SupplierGood.findById(supplierGoodId)
+          .select("businessId")
+          .session(session)
+          .lean()) as unknown as ISupplierGood | null;
 
-    try {
-      const supplierGood = (await SupplierGood.findById(supplierGoodId)
-        .select("businessId")
-        .session(session)
-        .lean()) as unknown as ISupplierGood | null;
+        if (!supplierGood) {
+          throw notFound("Supplier good not found!");
+        }
 
-      if (!supplierGood) {
-        await session.abortTransaction();
-        return reply.code(404).send({ message: "Supplier good not found!" });
-      }
+        const isInUse = await BusinessGood.exists({
+          businessId: supplierGood.businessId,
+          "ingredients.supplierGoodId": supplierGoodId,
+        }).session(session);
 
-      const isInUse = await BusinessGood.exists({
-        businessId: supplierGood.businessId,
-        "ingredients.supplierGoodId": supplierGoodId,
-      }).session(session);
+        if (isInUse) {
+          throw conflict("Supplier good is in use in some business goods!");
+        }
 
-      if (isInUse) {
-        await session.abortTransaction();
-        return reply.code(409).send({
-          message: "Supplier good is in use in some business goods!",
-        });
-      }
+        const deletedSupplierGood = await SupplierGood.findOneAndDelete(
+          { _id: supplierGoodId },
+          { session },
+        );
 
-      const deletedSupplierGood = await SupplierGood.findOneAndDelete(
-        { _id: supplierGoodId },
-        { session },
-      );
+        if (!deletedSupplierGood) {
+          throw notFound("Supplier good not found!");
+        }
 
-      if (!deletedSupplierGood) {
-        await session.abortTransaction();
-        return reply.code(404).send({ message: "Supplier good not found!" });
-      }
-
-      const deleteSupplierGoodFromInventoryResult =
-        await deleteSupplierGoodFromInventory(
+        const deleteFromInventoryResult = await deleteSupplierGoodFromInventory(
           supplierGoodId,
           supplierGood.businessId,
           session,
         );
 
-      if (deleteSupplierGoodFromInventoryResult !== true) {
-        await session.abortTransaction();
-        return reply.code(400).send({
-          message: deleteSupplierGoodFromInventoryResult,
+        if (deleteFromInventoryResult !== true) {
+          throw badRequest(deleteFromInventoryResult);
+        }
+
+        const folderPath = `/business/${deletedSupplierGood.businessId}/suppliersGoods/${supplierGoodId}`;
+
+        const deleteFolderCloudinaryResult =
+          await deleteFolderCloudinary(folderPath);
+
+        if (deleteFolderCloudinaryResult !== true) {
+          throw badRequest(
+            typeof deleteFolderCloudinaryResult === "string"
+              ? deleteFolderCloudinaryResult
+              : "DeleteCloudinaryFolder failed!",
+          );
+        }
+
+        await session.commitTransaction();
+
+        return reply.code(200).send({
+          message: `Supplier good deleted successfully!`,
         });
+      } catch (error) {
+        await session.abortTransaction().catch(() => undefined);
+        throw error;
+      } finally {
+        session.endSession();
       }
-
-      const folderPath = `/business/${deletedSupplierGood?.businessId}/suppliersGoods/${supplierGoodId}`;
-
-      const deleteFolderCloudinaryResult: string | boolean =
-        await deleteFolderCloudinary(folderPath);
-
-      if (deleteFolderCloudinaryResult !== true) {
-        await session.abortTransaction();
-        return reply.code(400).send({ message: deleteFolderCloudinaryResult });
-      }
-
-      await session.commitTransaction();
-
-      return reply.code(200).send({
-        message: `Supplier good deleted successfully!`,
-      });
-    } catch (error) {
-      await session.abortTransaction();
-      return reply.code(500).send({
-        message: "Delete business good failed!",
-        error: error instanceof Error ? error.message : error,
-      });
-    } finally {
-      session.endSession();
-    }
-  });
+    },
+  );
 
   // GET /supplierGoods/supplier/:supplierId - get by supplier
-  app.get("/supplier/:supplierId", async (req, reply) => {
-    const params = req.params as { supplierId?: string };
-    const supplierId = params.supplierId;
+  app.get<{ Params: SupplierGoodBySupplierParams }>(
+    "/supplier/:supplierId",
+    { schema: { params: supplierGoodBySupplierParamsSchema } },
+    async (req, reply) => {
+      const { supplierId } = req.params;
 
-    if (!supplierId || isObjectIdValid([supplierId]) !== true) {
-      return reply.code(400).send({ message: "Invalid supplierId!" });
-    }
+      const supplierGoods = await SupplierGood.find({ supplierId }).lean();
 
-    const supplierGoods = await SupplierGood.find({ supplierId }).lean();
-
-    if (!supplierGoods.length) {
-      return reply.code(404).send({ message: "No supplier goods found!" });
-    }
-    return reply.code(200).send(supplierGoods);
-  });
+      if (!supplierGoods.length) {
+        throw notFound("No supplier goods found!");
+      }
+      return reply.code(200).send(supplierGoods);
+    },
+  );
 };

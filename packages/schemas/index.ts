@@ -8,6 +8,7 @@ export * from "./auth.ts";
 export * from "./address.ts";
 export * from "./business.ts";
 export * from "./supplier.ts";
+export * from "./supplierGood.ts";
 export * from "./businessGood.ts";
 export * from "./ratings.ts";
 export * from "./orders.ts";
