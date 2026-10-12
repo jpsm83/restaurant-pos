@@ -7,7 +7,6 @@ const {
   mockUseMutation,
   mockUseQuery,
   mockSetAccessToken,
-  mockToServiceRequestError,
 } = vi.hoisted(() => ({
   mockHttpGet: vi.fn(),
   mockHttpPost: vi.fn(),
@@ -15,7 +14,6 @@ const {
   mockUseMutation: vi.fn(),
   mockUseQuery: vi.fn(),
   mockSetAccessToken: vi.fn(),
-  mockToServiceRequestError: vi.fn(),
 }));
 
 vi.mock("../../http", () => ({
@@ -36,14 +34,6 @@ vi.mock("@/auth/api", () => ({
   getAccessToken: () => null,
 }));
 
-vi.mock("../../serviceErrors", async () => {
-  const actual = await vi.importActual("../../serviceErrors");
-  return {
-    ...(actual as object),
-    toServiceRequestError: (...args: unknown[]) => mockToServiceRequestError(...args),
-  };
-});
-
 import {
   createBusiness,
   fetchManagementContactOptions,
@@ -61,7 +51,6 @@ describe("businessProfileApi", () => {
     mockUseMutation.mockReset();
     mockUseQuery.mockReset();
     mockSetAccessToken.mockReset();
-    mockToServiceRequestError.mockReset();
   });
 
   it("returns [] when management contacts response is not an array", async () => {
@@ -77,14 +66,40 @@ describe("businessProfileApi", () => {
     });
   });
 
-  it("maps createBusiness error into BusinessServiceError", async () => {
-    const mapped = { message: "mapped", status: 409 };
-    mockHttpPost.mockRejectedValueOnce(new Error("request failed"));
-    mockToServiceRequestError.mockReturnValueOnce(mapped);
+  it("maps createBusiness problem details into BusinessServiceError", async () => {
+    mockHttpPost.mockRejectedValueOnce({
+      isAxiosError: true,
+      message: "Request failed with status code 409",
+      response: {
+        status: 409,
+        data: {
+          type: "https://restaurant-pos.app/errors/conflict",
+          title: "Conflict",
+          status: 409,
+          detail: "A business with the same tax number already exists",
+          instance: "/api/v1/business",
+        },
+      },
+    });
+
     await expect(createBusiness(new FormData())).rejects.toMatchObject({
       name: "BusinessServiceError",
-      message: "mapped",
+      message: "A business with the same tax number already exists",
       status: 409,
+    });
+  });
+
+  it("maps getBusinessById problem details, then falls back to status copy", async () => {
+    mockHttpGet.mockRejectedValueOnce({
+      isAxiosError: true,
+      message: "Request failed with status code 404",
+      response: { status: 404, data: { status: 404, title: "Not Found" } },
+    });
+
+    await expect(getBusinessById("b-1")).rejects.toMatchObject({
+      name: "BusinessServiceError",
+      message: "Business profile was not found.",
+      status: 404,
     });
   });
 

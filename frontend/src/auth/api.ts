@@ -22,6 +22,7 @@ import type {
 } from "./types";
 import { queryClient } from "@/services/queryClient";
 import { queryKeys } from "@/services/queryKeys";
+import { extractProblemDetailsMessage } from "@/services/serviceErrors";
 
 const ACCESS_TOKEN_STORAGE_KEY = "restaurant_pos_auth_access";
 
@@ -148,7 +149,7 @@ async function authRequest<T>(
     if (!response.ok) {
       return {
         ok: false,
-        error: payload?.message ?? "Request failed",
+        error: extractProblemDetailsMessage(payload) ?? "Request failed",
       };
     }
 

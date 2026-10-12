@@ -15,10 +15,37 @@ export class ServiceRequestError extends Error {
   }
 }
 
-function getMessageFromUnknown(value: unknown): string | null {
+/** A field-level error carried in an RFC 9457 problem-details `errors[]`. */
+interface ProblemFieldError {
+  message?: string;
+}
+
+/** The fields of an RFC 9457 problem-details body this mapper reads. */
+interface ProblemDetailsBody {
+  detail?: string;
+  errors?: ProblemFieldError[];
+}
+
+/**
+ * Extracts a human-readable message from an RFC 9457 problem-details body,
+ * preferring `detail` and falling back to the field-level `errors[]`.
+ */
+export function extractProblemDetailsMessage(value: unknown): string | null {
   if (typeof value !== "object" || value === null) return null;
-  const message = (value as { message?: unknown }).message;
-  return typeof message === "string" ? message : null;
+
+  const { detail, errors } = value as ProblemDetailsBody;
+  if (typeof detail === "string" && detail.trim()) return detail.trim();
+
+  if (Array.isArray(errors)) {
+    const messages = errors
+      .map((error) =>
+        typeof error?.message === "string" ? error.message.trim() : "",
+      )
+      .filter(Boolean);
+    if (messages.length > 0) return messages.join("; ");
+  }
+
+  return null;
 }
 
 export function toServiceRequestError(
@@ -27,12 +54,12 @@ export function toServiceRequestError(
 ): ServiceRequestError {
   if (axios.isAxiosError(error)) {
     const status = error.response?.status;
-    const bodyMessage = getMessageFromUnknown(error.response?.data);
+    const bodyMessage = extractProblemDetailsMessage(error.response?.data);
     const mappedMessage =
       status !== undefined ? defaults.byStatus?.[status] : undefined;
 
     const message =
-      bodyMessage?.trim() || mappedMessage || defaults.fallback || error.message;
+      bodyMessage || mappedMessage || defaults.fallback || error.message;
     return new ServiceRequestError(message, status);
   }
 

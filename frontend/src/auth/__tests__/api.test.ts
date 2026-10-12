@@ -45,9 +45,18 @@ describe("auth api — email / password-reset endpoints", () => {
     expect(result).toEqual({ ok: true, data: { message: "OK" } });
   });
 
-  it("requestEmailConfirmation maps non-OK responses to error string", async () => {
+  it("requestEmailConfirmation reads the problem-details detail", async () => {
     fetchMock.mockResolvedValueOnce(
-      jsonResponse({ message: "Too many requests" }, 429),
+      jsonResponse(
+        {
+          type: "https://restaurant-pos.app/errors/conflict",
+          title: "Conflict",
+          status: 429,
+          detail: "Too many requests",
+          instance: "/api/v1/auth/request-email-confirmation",
+        },
+        429,
+      ),
     );
 
     const result = await requestEmailConfirmation("user@example.com");
@@ -55,7 +64,24 @@ describe("auth api — email / password-reset endpoints", () => {
     expect(result).toEqual({ ok: false, error: "Too many requests" });
   });
 
-  it("requestEmailConfirmation uses generic copy when body has no message", async () => {
+  it("requestEmailConfirmation falls back to errors[] when detail is absent", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(
+        {
+          title: "Bad Request",
+          status: 400,
+          errors: [{ path: "email", message: "Invalid email" }],
+        },
+        400,
+      ),
+    );
+
+    const result = await requestEmailConfirmation("user@example.com");
+
+    expect(result).toEqual({ ok: false, error: "Invalid email" });
+  });
+
+  it("requestEmailConfirmation uses generic copy when body has no problem details", async () => {
     fetchMock.mockResolvedValueOnce(new Response("", { status: 500 }));
 
     const result = await requestEmailConfirmation("user@example.com");
