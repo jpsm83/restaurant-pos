@@ -760,7 +760,6 @@ describe("BusinessGoods Routes", () => {
       form.append("onMenu", "true");
       form.append("available", "true");
       form.append("sellingPrice", "12.99");
-      form.append("businessId", businessId.toString());
       form.append("images", new Blob([pngBuffer], { type: "image/png" }), "additional.png");
 
       const response = await app.inject({

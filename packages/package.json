@@ -13,7 +13,7 @@
     "./utils/*": "./utils/*.ts"
   },
   "scripts": {
-    "test": "echo \"shared package: no tests yet\""
+    "test": "vitest run --passWithNoTests"
   },
   "repository": {
     "type": "git",
@@ -30,6 +30,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "mongoose": "^9.3.1"
+    "mongoose": "^9.3.1",
+    "vitest": "^5.0.3"
   }
 }

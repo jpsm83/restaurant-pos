@@ -8,6 +8,10 @@ Use the latest stable syntax and best practices for the stack; prefer the framew
 - **Frontend** (`frontend/`): React 19 + Vite, React Router, TanStack Query, React Hook Form + Zod, shadcn/ui + Tailwind, i18next.
 - **Shared** (`packages/`): interfaces, enums, schemas.
 
+## Workspace
+
+- One `npm install` at the repo root installs all workspaces; root `npm run dev|test|typecheck|build|lint` fan out with `--workspace <name>` to target one project. See [workspace.md](../engineering/workspace.md).
+
 ## How to build
 
 - **Thin backend HTTP layer.** Routes validate at the boundary, call domain logic, and return a response; business logic lives in the domain modules, persistence in the models.
