@@ -8,10 +8,12 @@
  */
 
 import { v2 as cloudinary } from "cloudinary";
-import configureCloudinary from "./cloudinaryConfig.ts";
+import configureCloudinary, {
+  CLOUDINARY_ROOT_FOLDER,
+} from "./cloudinaryConfig.ts";
 
 /**
- * Moves all files from oldFolder to newFolder under the restaurant-pos prefix.
+ * Moves all files from oldFolder to newFolder under the pos prefix.
  * Returns array of new secure URLs or an error string. Max 500 resources per call.
  */
 const moveFilesBetweenFolders = async ({
@@ -25,11 +27,9 @@ const moveFilesBetweenFolders = async ({
   configureCloudinary();
 
   try {
-    const uploadPreset = "restaurant-pos";
-
-    /** Cloudinary API expects full path including preset/prefix. */
-    const fullOldFolder = `${uploadPreset}/${oldFolder}`;
-    const fullNewFolder = `${uploadPreset}/${newFolder}`;
+    /** Cloudinary API expects full path including the root-folder prefix. */
+    const fullOldFolder = `${CLOUDINARY_ROOT_FOLDER}/${oldFolder}`;
+    const fullNewFolder = `${CLOUDINARY_ROOT_FOLDER}/${newFolder}`;
 
     const { resources } = await cloudinary.api.resources({
       type: "upload",

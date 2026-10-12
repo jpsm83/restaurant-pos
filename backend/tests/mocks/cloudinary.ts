@@ -5,14 +5,14 @@
 
 import { vi } from "vitest";
 
-const MOCK_CLOUDINARY_URL = "https://res.cloudinary.com/test/image/upload/v1/restaurant-pos";
+const MOCK_CLOUDINARY_URL = "https://res.cloudinary.com/test/image/upload/v1/pos";
 
 /**
  * Mock response for successful file upload
  */
 export const mockUploadResponse = (filename: string = "test-image") => ({
   secure_url: `${MOCK_CLOUDINARY_URL}/${filename}.jpg`,
-  public_id: `restaurant-pos/${filename}`,
+  public_id: `pos/${filename}`,
   version: "1234567890",
   signature: "mock-signature",
   width: 800,
@@ -22,7 +22,7 @@ export const mockUploadResponse = (filename: string = "test-image") => ({
   created_at: new Date().toISOString(),
   bytes: 12345,
   type: "upload",
-  url: `http://res.cloudinary.com/test/image/upload/v1/restaurant-pos/${filename}.jpg`,
+  url: `http://res.cloudinary.com/test/image/upload/v1/pos/${filename}.jpg`,
 });
 
 /**

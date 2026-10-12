@@ -1,5 +1,11 @@
 import { v2 as cloudinary } from "cloudinary";
 
+/** Cloudinary upload preset applied to every upload. */
+export const CLOUDINARY_UPLOAD_PRESET = "pos";
+
+/** Top-level Cloudinary folder that every asset is nested under. */
+export const CLOUDINARY_ROOT_FOLDER = "pos";
+
 let configured = false;
 
 /**

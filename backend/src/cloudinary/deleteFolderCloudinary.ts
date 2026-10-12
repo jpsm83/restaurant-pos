@@ -8,10 +8,12 @@
  */
 
 import { v2 as cloudinary } from "cloudinary";
-import configureCloudinary from "./cloudinaryConfig.ts";
+import configureCloudinary, {
+  CLOUDINARY_ROOT_FOLDER,
+} from "./cloudinaryConfig.ts";
 
 /**
- * Deletes all resources under restaurant-pos{folderPath}, then the folder.
+ * Deletes all resources under pos{folderPath}, then the folder.
  * Returns true on success, false on error (and logs to console).
  */
 const deleteFolderCloudinary = async (folderPath: string): Promise<boolean | string> => {
@@ -19,12 +21,12 @@ const deleteFolderCloudinary = async (folderPath: string): Promise<boolean | str
     // Configure cloudinary at runtime (after env vars are loaded)
     configureCloudinary();
 
-    const uploadPreset = "restaurant-pos";
+    const fullFolderPath = CLOUDINARY_ROOT_FOLDER + folderPath;
 
     /** Must delete assets first; delete_folder only removes empty folder structure. */
-    await cloudinary.api.delete_resources_by_prefix(uploadPreset + folderPath);
+    await cloudinary.api.delete_resources_by_prefix(fullFolderPath);
 
-    await cloudinary.api.delete_folder(uploadPreset + folderPath);
+    await cloudinary.api.delete_folder(fullFolderPath);
 
     return true;
   } catch (error: unknown) {

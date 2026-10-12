@@ -1,7 +1,10 @@
 import { Types } from "mongoose";
 import QRCode from "qrcode";
 import { v2 as cloudinary } from "cloudinary";
-import configureCloudinary from "../cloudinary/cloudinaryConfig.ts";
+import configureCloudinary, {
+  CLOUDINARY_ROOT_FOLDER,
+  CLOUDINARY_UPLOAD_PRESET,
+} from "../cloudinary/cloudinaryConfig.ts";
 
 const generateQrCode = async (
   businessId: Types.ObjectId | string,
@@ -21,13 +24,11 @@ const generateQrCode = async (
     const bytes = Buffer.from(qrCodeDataUrl.split(",")[1], "base64");
     const fileUri = `data:image/png;base64,${bytes.toString("base64")}`;
 
-    const uploadPreset = "restaurant-pos";
-
     const response = await cloudinary.uploader.upload(fileUri, {
       invalidate: true,
-      upload_preset: uploadPreset,
+      upload_preset: CLOUDINARY_UPLOAD_PRESET,
       public_id: salesPointIdStr,
-      folder: `restaurant-pos/business/${businessId}/salesLocationQrCodes`,
+      folder: `${CLOUDINARY_ROOT_FOLDER}/business/${businessId}/salesLocationQrCodes`,
     });
 
     return response.secure_url;

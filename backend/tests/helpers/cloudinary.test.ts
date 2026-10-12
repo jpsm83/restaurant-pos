@@ -113,7 +113,7 @@ describe("Cloudinary Helpers (Mocked)", () => {
       );
 
       const result = await deleteFilesCloudinary(
-        "https://res.cloudinary.com/test/image/upload/v1/restaurant-pos/folder/image.jpg"
+        "https://res.cloudinary.com/test/image/upload/v1/pos/folder/image.jpg"
       );
 
       expect(result).toBe(true);

@@ -1,5 +1,8 @@
 import { v2 as cloudinary } from "cloudinary";
-import configureCloudinary from "./cloudinaryConfig.ts";
+import configureCloudinary, {
+  CLOUDINARY_ROOT_FOLDER,
+  CLOUDINARY_UPLOAD_PRESET,
+} from "./cloudinaryConfig.ts";
 import type { UploadInputFile } from "restaurant-pos-packages/interfaces/ICloudinary";
 
 const uploadFilesCloudinary = async (params: {
@@ -9,8 +12,6 @@ const uploadFilesCloudinary = async (params: {
 }): Promise<string | string[]> => {
   // Configure cloudinary at runtime (after env vars are loaded)
   configureCloudinary();
-
-  const uploadPreset = "restaurant-pos";
 
   if (params.onlyImages) {
     for (const f of params.filesArr) {
@@ -24,8 +25,8 @@ const uploadFilesCloudinary = async (params: {
         const dataUri = `data:${f.mimeType};base64,${f.buffer.toString("base64")}`;
         const res = await cloudinary.uploader.upload(dataUri, {
           invalidate: true,
-          upload_preset: uploadPreset,
-          folder: `${uploadPreset}${params.folder}`,
+          upload_preset: CLOUDINARY_UPLOAD_PRESET,
+          folder: `${CLOUDINARY_ROOT_FOLDER}${params.folder}`,
           resource_type: "auto",
         });
         return res.secure_url;
