@@ -1,38 +1,65 @@
+/**
+ * Suppliers Routes — supplier CRUD and per-business listing.
+ *
+ * Multipart bodies (create and update) are buffered and validated by the shared
+ * multipart helper against strict zod DTOs from
+ * `packages/schemas/supplier.ts`; the JSON-encoded `address` field is parsed and
+ * validated there and `email` is normalized. The GET/PATCH/DELETE path params
+ * are validated by their DTOs. The reserved "One Time Purchase" rule and the
+ * database-dependent in-use delete guard stay here as named post-parse checks.
+ * Every error is raised as an `AppError` so the global handler emits RFC 9457
+ * `application/problem+json`.
+ */
 import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
 import type { ISupplier } from "../../../../packages/interfaces/ISupplier.ts";
 import type { IAddress } from "../../../../packages/interfaces/IAddress.ts";
 
-import isObjectIdValid from "../../utils/isObjectIdValid.ts";
 import Supplier from "../../models/supplier.ts";
 import SupplierGood from "../../models/supplierGood.ts";
 import BusinessGood from "../../models/businessGood.ts";
 import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
-import type { UploadInputFile } from "../../../../packages/interfaces/ICloudinary.ts";
 import deleteFilesCloudinary from "../../cloudinary/deleteFilesCloudinary.ts";
 import deleteFolderCloudinary from "../../cloudinary/deleteFolderCloudinary.ts";
-import objDefaultValidation, {
-  type ObjDefaultValidationType,
-} from "../../../../packages/utils/objDefaultValidation.ts";
+import { badRequest, conflict, notFound } from "../../errors/appError.ts";
+import { parseMultipart } from "../../schemas/multipart.ts";
+import {
+  createSupplierBodySchema,
+  supplierByBusinessParamsSchema,
+  supplierIdParamsSchema,
+  updateSupplierBodySchema,
+  type CreateSupplierBody,
+  type SupplierByBusinessParams,
+  type SupplierIdParams,
+} from "../../../../packages/schemas/supplier.ts";
 
-const emailRegex = /^[\w-]+(\.[\w-]+)*@([\w-]+\.)+[a-zA-Z]{2,7}$/;
+/** The supplier identity fields the reserved-name rule applies to. */
+type SupplierIdentityFields = Pick<
+  CreateSupplierBody,
+  "tradeName" | "legalName" | "phoneNumber" | "taxNumber"
+>;
 
-const reqAddressFields = [
-  "country",
-  "state",
-  "city",
-  "street",
-  "buildingNumber",
-  "postCode",
-];
+/** The sentinel used by ad-hoc purchases; no real supplier may take this name. */
+const RESERVED_SUPPLIER_NAME = "One Time Purchase";
 
-const nonReqAddressFields = [
-  "region",
-  "doorNumber",
-  "complement",
-  "additionalDetails",
-  "coordinates",
-];
+/**
+ * The reserved-name rule: the supplier identity fields may not be the sentinel
+ * "One Time Purchase" used for ad-hoc purchases. Post-parse because it spans
+ * several fields.
+ */
+function assertNotReservedName(fields: SupplierIdentityFields): void {
+  const names = [
+    fields.tradeName,
+    fields.legalName,
+    fields.phoneNumber,
+    fields.taxNumber,
+  ];
+  if (names.includes(RESERVED_SUPPLIER_NAME)) {
+    throw badRequest(
+      "TradeName, legalName, phoneNumber and taxNumber cannot be 'One Time Purchase', thas a reserve string!",
+    );
+  }
+}
 
 export const suppliersRoutes: FastifyPluginAsync = async (app) => {
   // GET /suppliers - list all
@@ -40,237 +67,115 @@ export const suppliersRoutes: FastifyPluginAsync = async (app) => {
     const suppliers = await Supplier.find().lean();
 
     if (!suppliers.length) {
-      return reply.code(404).send({ message: "No suppliers found!" });
+      throw notFound("No suppliers found!");
     }
     return reply.code(200).send(suppliers);
   });
 
   // POST /suppliers - create (formData with image)
   app.post("/", async (req, reply) => {
-    try {
-      const parts = req.parts();
-      const fields: Record<string, string> = {};
-      let imageFile: UploadInputFile | undefined;
-
-      for await (const part of parts) {
-        if (part.type === "file") {
-          if (part.filename && part.fieldname === "imageUrl") {
-            const chunks: Buffer[] = [];
-            for await (const chunk of part.file) {
-              chunks.push(chunk);
-            }
-            imageFile = {
-              buffer: Buffer.concat(chunks),
-              mimeType: part.mimetype,
-            };
-          }
-        } else {
-          fields[part.fieldname] = String(part.value);
-        }
-      }
-
-      const tradeName = fields.tradeName;
-      const legalName = fields.legalName;
-      const email = fields.email;
-      const phoneNumber = fields.phoneNumber;
-      const taxNumber = fields.taxNumber;
-      const businessId = fields.businessId;
-      const address = fields.address ? JSON.parse(fields.address) : undefined;
-      const currentlyInUse = fields.currentlyInUse === "true";
-      const contactPerson = fields.contactPerson || undefined;
-
-      if (
-        !tradeName ||
-        !legalName ||
-        !email ||
-        !phoneNumber ||
-        !taxNumber ||
-        currentlyInUse === undefined ||
-        !address ||
-        !businessId
-      ) {
-        return reply.code(400).send({
-          message:
-            "TradeName, legalName, email, phoneNumber, taxNumber, currentlyInUse, address and businessId are required!",
-        });
-      }
-
-      if (isObjectIdValid([businessId]) !== true) {
-        return reply.code(400).send({ message: "Business ID is not valid!" });
-      }
-
-      if (!emailRegex.test(email)) {
-        return reply.code(400).send({ message: "Invalid email format!" });
-      }
-
-      const addressValidationResult = (objDefaultValidation as unknown as ObjDefaultValidationType)(
-        address,
-        reqAddressFields,
-        nonReqAddressFields,
-      );
-
-      if (addressValidationResult !== true) {
-        return reply.code(400).send({ message: addressValidationResult });
-      }
-
-      if (
-        tradeName === "One Time Purchase" ||
-        legalName === "One Time Purchase" ||
-        phoneNumber === "One Time Purchase" ||
-        taxNumber === "One Time Purchase"
-      ) {
-        return reply.code(400).send({
-          message:
-            "TradeName, legalName, phoneNumber and taxNumber cannot be 'One Time Purchase', thas a reserve string!",
-        });
-      }
-
-      const duplicateSupplier = await Supplier.exists({
-        businessId: businessId,
-        $or: [{ legalName }, { email }, { taxNumber }],
-      });
-
-      if (duplicateSupplier) {
-        return reply.code(409).send({
-          message: `Supplier ${legalName}, ${email} or ${taxNumber} already exists!`,
-        });
-      }
-
-      const supplierId = new mongoose.Types.ObjectId();
-
-      const newSupplier: Partial<ISupplier> = {
-        _id: supplierId,
-        tradeName,
-        legalName,
-        email,
-        phoneNumber,
-        taxNumber,
-        currentlyInUse,
-        businessId: new Types.ObjectId(businessId),
-        address,
-        contactPerson: contactPerson || undefined,
-      };
-
-      if (imageFile) {
-        const folder = `/business/${businessId}/suppliers/${supplierId}`;
-
-        const cloudinaryUploadResponse = await uploadFilesCloudinary({
-          folder,
-          filesArr: [imageFile],
-          onlyImages: true,
-        });
-
-        if (
-          typeof cloudinaryUploadResponse === "string" ||
-          cloudinaryUploadResponse.length === 0 ||
-          !cloudinaryUploadResponse.every((str) => str.includes("https://"))
-        ) {
-          return reply.code(400).send({
-            message: `Error uploading image: ${cloudinaryUploadResponse}`,
-          });
-        }
-
-        newSupplier.imageUrl = cloudinaryUploadResponse[0];
-      }
-
-      await Supplier.create(newSupplier);
-
-      return reply.code(201).send({
-        message: `Supplier ${legalName} created successfully!`,
-      });
-    } catch (error) {
-      return reply.code(500).send({
-        message: "Create supplier failed!",
-        error: error instanceof Error ? error.message : error,
-      });
+    if (typeof req.parts !== "function") {
+      throw badRequest("Expected multipart/form-data");
     }
+
+    const { fields, files } = await parseMultipart(
+      req,
+      createSupplierBodySchema,
+    );
+
+    assertNotReservedName(fields);
+
+    const duplicateSupplier = await Supplier.exists({
+      businessId: fields.businessId,
+      $or: [
+        { legalName: fields.legalName },
+        { email: fields.email },
+        { taxNumber: fields.taxNumber },
+      ],
+    });
+
+    if (duplicateSupplier) {
+      throw conflict(
+        `Supplier ${fields.legalName}, ${fields.email} or ${fields.taxNumber} already exists!`,
+      );
+    }
+
+    const supplierId = new mongoose.Types.ObjectId();
+
+    const newSupplier: Partial<ISupplier> = {
+      _id: supplierId,
+      tradeName: fields.tradeName,
+      legalName: fields.legalName,
+      email: fields.email,
+      phoneNumber: fields.phoneNumber,
+      taxNumber: fields.taxNumber,
+      currentlyInUse: fields.currentlyInUse,
+      businessId: new Types.ObjectId(fields.businessId),
+      address: fields.address as IAddress,
+      contactPerson: fields.contactPerson,
+    };
+
+    const imageFile = files.find((file) => file.fieldname === "imageUrl");
+    if (imageFile && imageFile.buffer.length > 0) {
+      const folder = `/business/${fields.businessId}/suppliers/${supplierId}`;
+
+      const cloudinaryUploadResponse = await uploadFilesCloudinary({
+        folder,
+        filesArr: [
+          { buffer: imageFile.buffer, mimeType: imageFile.mimetype },
+        ],
+        onlyImages: true,
+      });
+
+      if (
+        typeof cloudinaryUploadResponse === "string" ||
+        cloudinaryUploadResponse.length === 0 ||
+        !cloudinaryUploadResponse.every((str) => str.includes("https://"))
+      ) {
+        throw badRequest(`Error uploading image: ${cloudinaryUploadResponse}`);
+      }
+
+      newSupplier.imageUrl = cloudinaryUploadResponse[0];
+    }
+
+    await Supplier.create(newSupplier);
+
+    return reply.code(201).send({
+      message: `Supplier ${fields.legalName} created successfully!`,
+    });
   });
 
   // GET /suppliers/:supplierId - get by ID
-  app.get("/:supplierId", async (req, reply) => {
-    const params = req.params as { supplierId?: string };
-    const supplierId = params.supplierId;
+  app.get<{ Params: SupplierIdParams }>(
+    "/:supplierId",
+    { schema: { params: supplierIdParamsSchema } },
+    async (req, reply) => {
+      const { supplierId } = req.params;
 
-    if (!supplierId || isObjectIdValid([supplierId]) !== true) {
-      return reply.code(400).send({ message: "Invalid supplier ID!" });
-    }
+      const supplier = await Supplier.findById(supplierId).lean();
 
-    const supplier = await Supplier.findById(supplierId).lean();
-
-    if (!supplier) {
-      return reply.code(404).send({ message: "No suppliers found!" });
-    }
-    return reply.code(200).send(supplier);
-  });
+      if (!supplier) {
+        throw notFound("No suppliers found!");
+      }
+      return reply.code(200).send(supplier);
+    },
+  );
 
   // PATCH /suppliers/:supplierId - update (formData with image)
-  app.patch("/:supplierId", async (req, reply) => {
-    try {
-      const params = req.params as { supplierId?: string };
-      const supplierId = params.supplierId;
+  app.patch<{ Params: SupplierIdParams }>(
+    "/:supplierId",
+    { schema: { params: supplierIdParamsSchema } },
+    async (req, reply) => {
+      const { supplierId } = req.params;
 
-      if (!supplierId || isObjectIdValid([supplierId]) !== true) {
-        return reply.code(400).send({ message: "Invalid supplier ID!" });
+      if (typeof req.parts !== "function") {
+        throw badRequest("Expected multipart/form-data");
       }
 
-      const parts = req.parts();
-      const fields: Record<string, string> = {};
-      let imageFile: UploadInputFile | undefined;
-
-      for await (const part of parts) {
-        if (part.type === "file") {
-          if (part.filename && part.fieldname === "imageUrl") {
-            const chunks: Buffer[] = [];
-            for await (const chunk of part.file) {
-              chunks.push(chunk);
-            }
-            imageFile = {
-              buffer: Buffer.concat(chunks),
-              mimeType: part.mimetype,
-            };
-          }
-        } else {
-          fields[part.fieldname] = String(part.value);
-        }
-      }
-
-      const tradeName = fields.tradeName;
-      const legalName = fields.legalName;
-      const email = fields.email;
-      const phoneNumber = fields.phoneNumber;
-      const taxNumber = fields.taxNumber;
-      const address = fields.address ? JSON.parse(fields.address) : undefined;
-      const currentlyInUse = fields.currentlyInUse === "true";
-      const contactPerson = fields.contactPerson || undefined;
-
-      if (
-        !tradeName ||
-        !legalName ||
-        !email ||
-        !phoneNumber ||
-        !taxNumber ||
-        currentlyInUse === undefined ||
-        !address
-      ) {
-        return reply.code(400).send({
-          message:
-            "TradeName, legalName, email, phoneNumber, taxNumber, currentlyInUse, address and businessId are required!",
-        });
-      }
-
-      if (!emailRegex.test(email)) {
-        return reply.code(400).send({ message: "Invalid email format!" });
-      }
-
-      const addressValidationResult = (objDefaultValidation as unknown as ObjDefaultValidationType)(
-        address,
-        reqAddressFields,
-        nonReqAddressFields,
+      const { fields, files } = await parseMultipart(
+        req,
+        updateSupplierBodySchema,
       );
-
-      if (addressValidationResult !== true) {
-        return reply.code(400).send({ message: addressValidationResult });
-      }
 
       const supplier = (await Supplier.findById(supplierId)
         .select(
@@ -279,53 +184,60 @@ export const suppliersRoutes: FastifyPluginAsync = async (app) => {
         .lean()) as unknown as ISupplier | null;
 
       if (!supplier) {
-        return reply.code(404).send({ message: "Supplier not found!" });
+        throw notFound("Supplier not found!");
       }
 
       const duplicateSupplier = await Supplier.exists({
         _id: { $ne: supplierId },
         businessId: supplier.businessId,
-        $or: [{ legalName }, { email }, { taxNumber }],
+        $or: [
+          { legalName: fields.legalName },
+          { email: fields.email },
+          { taxNumber: fields.taxNumber },
+        ],
       });
 
       if (duplicateSupplier) {
-        return reply.code(409).send({
-          message: `Supplier legalName, email or taxNumber already exists in the business!`,
-        });
+        throw conflict(
+          `Supplier legalName, email or taxNumber already exists in the business!`,
+        );
       }
 
-      const updateSupplierObj: Partial<ISupplier> = {};
+      const updateSupplierObj: Record<string, unknown> = {};
 
-      if (tradeName && supplier.tradeName !== tradeName)
-        updateSupplierObj.tradeName = tradeName;
-      if (legalName && supplier.legalName !== legalName)
-        updateSupplierObj.legalName = legalName;
-      if (email && supplier.email !== email) updateSupplierObj.email = email;
-      if (phoneNumber && supplier.phoneNumber !== phoneNumber)
-        updateSupplierObj.phoneNumber = phoneNumber;
-      if (taxNumber && supplier.taxNumber !== taxNumber)
-        updateSupplierObj.taxNumber = taxNumber;
-      if (currentlyInUse && supplier.currentlyInUse !== currentlyInUse)
-        updateSupplierObj.currentlyInUse = currentlyInUse;
-      if (contactPerson && supplier.contactPerson !== contactPerson)
-        updateSupplierObj.contactPerson = contactPerson;
+      if (supplier.tradeName !== fields.tradeName)
+        updateSupplierObj.tradeName = fields.tradeName;
+      if (supplier.legalName !== fields.legalName)
+        updateSupplierObj.legalName = fields.legalName;
+      if (supplier.email !== fields.email) updateSupplierObj.email = fields.email;
+      if (supplier.phoneNumber !== fields.phoneNumber)
+        updateSupplierObj.phoneNumber = fields.phoneNumber;
+      if (supplier.taxNumber !== fields.taxNumber)
+        updateSupplierObj.taxNumber = fields.taxNumber;
+      if (supplier.currentlyInUse !== fields.currentlyInUse)
+        updateSupplierObj.currentlyInUse = fields.currentlyInUse;
+      if (
+        fields.contactPerson !== undefined &&
+        supplier.contactPerson !== fields.contactPerson
+      )
+        updateSupplierObj.contactPerson = fields.contactPerson;
 
-      const updatedAddress: Partial<IAddress> = {};
-
-      for (const [key, value] of Object.entries(address)) {
+      // Dotted `$set` paths preserve address fields not sent in this request.
+      for (const [key, value] of Object.entries(fields.address)) {
         if (value !== supplier.address?.[key as keyof IAddress]) {
-          (updatedAddress as Record<string, unknown>)[key] = value;
+          updateSupplierObj[`address.${key}`] = value;
         }
       }
-      if (Object.keys(updatedAddress).length > 0)
-        updateSupplierObj.address = updatedAddress as IAddress;
 
-      if (imageFile) {
+      const imageFile = files.find((file) => file.fieldname === "imageUrl");
+      if (imageFile && imageFile.buffer.length > 0) {
         const folder = `/business/${supplier.businessId}/suppliers/${supplierId}`;
 
         const cloudinaryUploadResponse = await uploadFilesCloudinary({
           folder,
-          filesArr: [imageFile],
+          filesArr: [
+            { buffer: imageFile.buffer, mimeType: imageFile.mimetype },
+          ],
           onlyImages: true,
         });
 
@@ -334,16 +246,18 @@ export const suppliersRoutes: FastifyPluginAsync = async (app) => {
           cloudinaryUploadResponse.length === 0 ||
           !cloudinaryUploadResponse.every((str) => str.includes("https://"))
         ) {
-          return reply.code(400).send({
-            message: `Error uploading image: ${cloudinaryUploadResponse}`,
-          });
+          throw badRequest(`Error uploading image: ${cloudinaryUploadResponse}`);
         }
 
         const deleteFilesCloudinaryResult: string | boolean =
-          await deleteFilesCloudinary(supplier?.imageUrl || "");
+          await deleteFilesCloudinary(supplier.imageUrl || "");
 
         if (deleteFilesCloudinaryResult !== true) {
-          return reply.code(400).send({ message: deleteFilesCloudinaryResult });
+          throw badRequest(
+            typeof deleteFilesCloudinaryResult === "string"
+              ? deleteFilesCloudinaryResult
+              : "DeleteCloudinaryImage failed!",
+          );
         }
 
         updateSupplierObj.imageUrl = cloudinaryUploadResponse[0];
@@ -352,38 +266,28 @@ export const suppliersRoutes: FastifyPluginAsync = async (app) => {
       const updatedSupplier = await Supplier.findByIdAndUpdate(
         supplierId,
         { $set: updateSupplierObj },
-        { returnDocument: 'after', lean: true },
+        { returnDocument: "after", lean: true },
       );
 
       if (!updatedSupplier) {
-        return reply
-          .code(404)
-          .send({ message: "Business to update not found!" });
+        throw notFound("Supplier to update not found!");
       }
 
       return reply.code(200).send({
         message: "Supplier updated successfully!",
       });
-    } catch (error) {
-      return reply.code(500).send({
-        message: "Update supplier failed!",
-        error: error instanceof Error ? error.message : error,
-      });
-    }
-  });
+    },
+  );
 
   // DELETE /suppliers/:supplierId - delete
-  app.delete("/:supplierId", async (req, reply) => {
-    try {
-      const params = req.params as { supplierId?: string };
-      const supplierId = params.supplierId;
-
-      if (!supplierId || isObjectIdValid([supplierId]) !== true) {
-        return reply.code(400).send({ message: "Invalid supplier ID!" });
-      }
+  app.delete<{ Params: SupplierIdParams }>(
+    "/:supplierId",
+    { schema: { params: supplierIdParamsSchema } },
+    async (req, reply) => {
+      const { supplierId } = req.params;
 
       const supplierGoodIds = await SupplierGood.find({
-        supplierId: supplierId,
+        supplierId,
       }).distinct("_id");
 
       if (supplierGoodIds.length > 0) {
@@ -392,9 +296,7 @@ export const suppliersRoutes: FastifyPluginAsync = async (app) => {
         });
 
         if (isInUse) {
-          return reply.code(409).send({
-            message: "Supplier is in use in some business goods!",
-          });
+          throw conflict("Supplier is in use in some business goods!");
         }
       }
 
@@ -403,43 +305,41 @@ export const suppliersRoutes: FastifyPluginAsync = async (app) => {
       });
 
       if (!deletedSupplier) {
-        return reply.code(404).send({ message: "Business good not found!" });
+        throw notFound("Supplier not found!");
       }
 
-      const folderPath = `/business/${deletedSupplier?.businessId}/suppliers/${supplierId}`;
+      const folderPath = `/business/${deletedSupplier.businessId}/suppliers/${supplierId}`;
 
       const deleteFolderCloudinaryResult: string | boolean =
         await deleteFolderCloudinary(folderPath);
 
       if (deleteFolderCloudinaryResult !== true) {
-        return reply.code(400).send({ message: deleteFolderCloudinaryResult });
+        throw badRequest(
+          typeof deleteFolderCloudinaryResult === "string"
+            ? deleteFolderCloudinaryResult
+            : "DeleteCloudinaryFolder failed!",
+        );
       }
 
       return reply.code(200).send({
         message: `Supplier deleted successfully!`,
       });
-    } catch (error) {
-      return reply.code(500).send({
-        message: "Delete supplier failed!",
-        error: error instanceof Error ? error.message : error,
-      });
-    }
-  });
+    },
+  );
 
   // GET /suppliers/business/:businessId - get by business
-  app.get("/business/:businessId", async (req, reply) => {
-    const params = req.params as { businessId?: string };
-    const businessId = params.businessId;
+  app.get<{ Params: SupplierByBusinessParams }>(
+    "/business/:businessId",
+    { schema: { params: supplierByBusinessParamsSchema } },
+    async (req, reply) => {
+      const { businessId } = req.params;
 
-    if (!businessId || isObjectIdValid([businessId]) !== true) {
-      return reply.code(400).send({ message: "Invalid business ID!" });
-    }
+      const suppliers = await Supplier.find({ businessId }).lean();
 
-    const suppliers = await Supplier.find({ businessId }).lean();
-
-    if (!suppliers.length) {
-      return reply.code(404).send({ message: "No suppliers found!" });
-    }
-    return reply.code(200).send(suppliers);
-  });
+      if (!suppliers.length) {
+        throw notFound("No suppliers found!");
+      }
+      return reply.code(200).send(suppliers);
+    },
+  );
 };

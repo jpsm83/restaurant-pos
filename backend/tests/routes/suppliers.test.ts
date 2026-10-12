@@ -1,13 +1,34 @@
 /**
  * Suppliers Routes Tests - Phase 1 Module 7
- * Tests for suppliers CRUD endpoints
+ *
+ * Validation and error responses are asserted at the HTTP seam: failures are
+ * RFC 9457 `application/problem+json` documents, never `{ message }`.
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
 import { Types } from "mongoose";
 import { getTestApp } from "../setup.ts";
 import Supplier from "../../src/models/supplier.ts";
+import SupplierGood from "../../src/models/supplierGood.ts";
+import BusinessGood from "../../src/models/businessGood.ts";
 import Business from "../../src/models/business.ts";
+
+const isProblemDetails = (response: { headers: Record<string, unknown> }) =>
+  String(response.headers["content-type"]).includes("application/problem+json");
+
+const errorPaths = (response: { body: string }): string[] =>
+  (JSON.parse(response.body).errors ?? []).map((e: { path: string }) => e.path);
+
+const errorMessages = (response: { body: string }): string[] =>
+  (JSON.parse(response.body).errors ?? []).map(
+    (e: { message: string }) => e.message,
+  );
+
+const multipart = (fields: Record<string, string>): FormData => {
+  const form = new FormData();
+  for (const [name, value] of Object.entries(fields)) form.append(name, value);
+  return form;
+};
 
 describe("Suppliers Routes", () => {
   let businessId: Types.ObjectId;
@@ -20,6 +41,17 @@ describe("Suppliers Routes", () => {
     buildingNumber: "123",
     postCode: "90001",
   };
+
+  const validSupplierFields = () => ({
+    tradeName: "Test Supplier",
+    legalName: "Test Supplier LLC",
+    email: "test@supplier.com",
+    phoneNumber: "9999999999",
+    taxNumber: "TAX-999",
+    currentlyInUse: "true",
+    address: JSON.stringify(validAddress),
+    businessId: businessId.toString(),
+  });
 
   beforeEach(async () => {
     const business = await Business.create({
@@ -62,7 +94,7 @@ describe("Suppliers Routes", () => {
       expect(body[0].tradeName).toBe("Supplier A");
     });
 
-    it("returns 404 when no suppliers exist", async () => {
+    it("returns a problem-details 404 when no suppliers exist", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
@@ -71,106 +103,117 @@ describe("Suppliers Routes", () => {
       });
 
       expect(response.statusCode).toBe(404);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("No suppliers found!");
+      expect(isProblemDetails(response)).toBe(true);
+      expect(JSON.parse(response.body).detail).toBe("No suppliers found!");
     });
   });
 
   describe("POST /api/v1/suppliers", () => {
-    it("returns 400 for missing required fields", async () => {
+    it("returns a problem-details 400 for missing required fields", async () => {
       const app = await getTestApp();
-
-      const form = new FormData();
-      form.append("tradeName", "Test Supplier");
 
       const response = await app.inject({
         method: "POST",
         url: "/api/v1/suppliers",
-        payload: form,
+        payload: multipart({ tradeName: "Test Supplier" }),
         headers: { "content-type": "multipart/form-data" },
       });
 
       expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toContain("required");
+      expect(isProblemDetails(response)).toBe(true);
+      expect(errorPaths(response)).toContain("legalName");
     });
 
-    it("returns 400 for invalid businessId", async () => {
+    it("returns a problem-details 400 for an invalid businessId", async () => {
       const app = await getTestApp();
-
-      const form = new FormData();
-      form.append("tradeName", "Test Supplier");
-      form.append("legalName", "Test Supplier LLC");
-      form.append("email", "test@supplier.com");
-      form.append("phoneNumber", "9999999999");
-      form.append("taxNumber", "TAX-999");
-      form.append("currentlyInUse", "true");
-      form.append("address", JSON.stringify(validAddress));
-      form.append("businessId", "invalid-id");
 
       const response = await app.inject({
         method: "POST",
         url: "/api/v1/suppliers",
-        payload: form,
+        payload: multipart({
+          ...validSupplierFields(),
+          businessId: "invalid-id",
+        }),
         headers: { "content-type": "multipart/form-data" },
       });
 
       expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Business ID is not valid!");
+      expect(isProblemDetails(response)).toBe(true);
+      expect(errorPaths(response)).toContain("businessId");
     });
 
-    it("returns 400 for invalid email format", async () => {
+    it("returns a problem-details 400 for an invalid email", async () => {
       const app = await getTestApp();
-
-      const form = new FormData();
-      form.append("tradeName", "Test Supplier");
-      form.append("legalName", "Test Supplier LLC");
-      form.append("email", "invalid-email");
-      form.append("phoneNumber", "9999999999");
-      form.append("taxNumber", "TAX-999");
-      form.append("currentlyInUse", "true");
-      form.append("address", JSON.stringify(validAddress));
-      form.append("businessId", businessId.toString());
 
       const response = await app.inject({
         method: "POST",
         url: "/api/v1/suppliers",
-        payload: form,
+        payload: multipart({ ...validSupplierFields(), email: "invalid-email" }),
         headers: { "content-type": "multipart/form-data" },
       });
 
       expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid email format!");
+      expect(isProblemDetails(response)).toBe(true);
+      expect(errorPaths(response)).toContain("email");
     });
 
-    it("returns 400 for reserved 'One Time Purchase' values", async () => {
+    it("returns a problem-details 400 for an invalid address", async () => {
       const app = await getTestApp();
-
-      const form = new FormData();
-      form.append("tradeName", "One Time Purchase");
-      form.append("legalName", "Test Supplier LLC");
-      form.append("email", "test@supplier.com");
-      form.append("phoneNumber", "9999999999");
-      form.append("taxNumber", "TAX-999");
-      form.append("currentlyInUse", "true");
-      form.append("address", JSON.stringify(validAddress));
-      form.append("businessId", businessId.toString());
 
       const response = await app.inject({
         method: "POST",
         url: "/api/v1/suppliers",
-        payload: form,
+        payload: multipart({
+          ...validSupplierFields(),
+          address: JSON.stringify({ country: "USA" }),
+        }),
         headers: { "content-type": "multipart/form-data" },
       });
 
       expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toContain("One Time Purchase");
+      expect(isProblemDetails(response)).toBe(true);
+      expect(errorPaths(response)).toContain("address.city");
     });
 
-    it("returns 409 for duplicate supplier", async () => {
+    it("returns a problem-details 400 for the server-owned imageUrl field", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/suppliers",
+        payload: multipart({
+          ...validSupplierFields(),
+          imageUrl: "https://example.com/logo.png",
+        }),
+        headers: { "content-type": "multipart/form-data" },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(isProblemDetails(response)).toBe(true);
+      expect(errorMessages(response).some((m) => m.includes("imageUrl"))).toBe(
+        true,
+      );
+    });
+
+    it("returns a problem-details 400 for reserved 'One Time Purchase' values", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/suppliers",
+        payload: multipart({
+          ...validSupplierFields(),
+          tradeName: "One Time Purchase",
+        }),
+        headers: { "content-type": "multipart/form-data" },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(isProblemDetails(response)).toBe(true);
+      expect(JSON.parse(response.body).detail).toContain("One Time Purchase");
+    });
+
+    it("returns a problem-details 409 for a duplicate supplier", async () => {
       const app = await getTestApp();
 
       await Supplier.create({
@@ -184,26 +227,44 @@ describe("Suppliers Routes", () => {
         address: validAddress,
       });
 
-      const form = new FormData();
-      form.append("tradeName", "New Supplier");
-      form.append("legalName", "Existing Supplier LLC");
-      form.append("email", "new@supplier.com");
-      form.append("phoneNumber", "7777777777");
-      form.append("taxNumber", "NEW-001");
-      form.append("currentlyInUse", "true");
-      form.append("address", JSON.stringify(validAddress));
-      form.append("businessId", businessId.toString());
-
       const response = await app.inject({
         method: "POST",
         url: "/api/v1/suppliers",
-        payload: form,
+        payload: multipart({
+          ...validSupplierFields(),
+          legalName: "Existing Supplier LLC",
+        }),
         headers: { "content-type": "multipart/form-data" },
       });
 
       expect(response.statusCode).toBe(409);
-      const body = JSON.parse(response.body);
-      expect(body.message).toContain("already exists");
+      expect(isProblemDetails(response)).toBe(true);
+      expect(JSON.parse(response.body).detail).toContain("already exists");
+    });
+
+    it("creates a supplier, normalizing the email and parsing the address", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/suppliers",
+        payload: multipart({
+          ...validSupplierFields(),
+          tradeName: "  <b>Fresh</b>   Foods ",
+          email: "Sales@FreshFoods.com",
+        }),
+        headers: { "content-type": "multipart/form-data" },
+      });
+
+      expect(response.statusCode).toBe(201);
+      expect(JSON.parse(response.body).message).toBe(
+        "Supplier Test Supplier LLC created successfully!",
+      );
+
+      const created = await Supplier.findOne({ taxNumber: "TAX-999" }).lean();
+      expect(created?.email).toBe("sales@freshfoods.com");
+      expect(created?.tradeName).toBe("Fresh Foods");
+      expect(created?.address?.city).toBe("Los Angeles");
     });
   });
 
@@ -232,7 +293,7 @@ describe("Suppliers Routes", () => {
       expect(body.tradeName).toBe("Supplier B");
     });
 
-    it("returns 400 for invalid ID format", async () => {
+    it("returns a problem-details 400 for an invalid ID format", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
@@ -241,11 +302,11 @@ describe("Suppliers Routes", () => {
       });
 
       expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid supplier ID!");
+      expect(isProblemDetails(response)).toBe(true);
+      expect(errorPaths(response)).toContain("supplierId");
     });
 
-    it("returns 404 for non-existent supplier", async () => {
+    it("returns a problem-details 404 for a non-existent supplier", async () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
@@ -255,31 +316,28 @@ describe("Suppliers Routes", () => {
       });
 
       expect(response.statusCode).toBe(404);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("No suppliers found!");
+      expect(isProblemDetails(response)).toBe(true);
+      expect(JSON.parse(response.body).detail).toBe("No suppliers found!");
     });
   });
 
   describe("PATCH /api/v1/suppliers/:supplierId", () => {
-    it("returns 400 for invalid supplierId", async () => {
+    it("returns a problem-details 400 for an invalid supplierId", async () => {
       const app = await getTestApp();
-
-      const form = new FormData();
-      form.append("tradeName", "Updated Name");
 
       const response = await app.inject({
         method: "PATCH",
         url: "/api/v1/suppliers/invalid-id",
-        payload: form,
+        payload: multipart({ tradeName: "Updated Name" }),
         headers: { "content-type": "multipart/form-data" },
       });
 
       expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid supplier ID!");
+      expect(isProblemDetails(response)).toBe(true);
+      expect(errorPaths(response)).toContain("supplierId");
     });
 
-    it("returns 400 for missing required fields on update", async () => {
+    it("returns a problem-details 400 for missing required fields on update", async () => {
       const app = await getTestApp();
 
       const supplier = await Supplier.create({
@@ -293,47 +351,37 @@ describe("Suppliers Routes", () => {
         address: validAddress,
       });
 
-      const form = new FormData();
-      form.append("tradeName", "Updated Name");
-
       const response = await app.inject({
         method: "PATCH",
         url: `/api/v1/suppliers/${supplier._id}`,
-        payload: form,
+        payload: multipart({ tradeName: "Updated Name" }),
         headers: { "content-type": "multipart/form-data" },
       });
 
       expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toContain("required");
+      expect(isProblemDetails(response)).toBe(true);
+      expect(errorPaths(response)).toContain("legalName");
     });
 
-    it("returns 404 for non-existent supplier", async () => {
+    it("returns a problem-details 404 for a non-existent supplier", async () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
-      const form = new FormData();
-      form.append("tradeName", "Updated Name");
-      form.append("legalName", "Updated LLC");
-      form.append("email", "updated@supplier.com");
-      form.append("phoneNumber", "4444444444");
-      form.append("taxNumber", "UPD-001");
-      form.append("currentlyInUse", "true");
-      form.append("address", JSON.stringify(validAddress));
+      const { businessId: _omit, ...updateFields } = validSupplierFields();
 
       const response = await app.inject({
         method: "PATCH",
         url: `/api/v1/suppliers/${fakeId}`,
-        payload: form,
+        payload: multipart(updateFields),
         headers: { "content-type": "multipart/form-data" },
       });
 
       expect(response.statusCode).toBe(404);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Supplier not found!");
+      expect(isProblemDetails(response)).toBe(true);
+      expect(JSON.parse(response.body).detail).toBe("Supplier not found!");
     });
 
-    it("updates supplier successfully", async () => {
+    it("updates a supplier and toggles currentlyInUse off", async () => {
       const app = await getTestApp();
 
       const supplier = await Supplier.create({
@@ -347,33 +395,68 @@ describe("Suppliers Routes", () => {
         address: validAddress,
       });
 
-      const form = new FormData();
-      form.append("tradeName", "Updated Supplier");
-      form.append("legalName", "Original Supplier LLC");
-      form.append("email", "original@supplier.com");
-      form.append("phoneNumber", "3333333333");
-      form.append("taxNumber", "ORIG-001");
-      form.append("currentlyInUse", "true");
-      form.append("address", JSON.stringify(validAddress));
+      const { businessId: _omit, ...updateFields } = validSupplierFields();
 
       const response = await app.inject({
         method: "PATCH",
         url: `/api/v1/suppliers/${supplier._id}`,
-        payload: form,
+        payload: multipart({
+          ...updateFields,
+          tradeName: "Updated Supplier",
+          currentlyInUse: "false",
+        }),
         headers: { "content-type": "multipart/form-data" },
       });
 
       expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Supplier updated successfully!");
+      expect(JSON.parse(response.body).message).toBe(
+        "Supplier updated successfully!",
+      );
 
-      const updated = await Supplier.findById(supplier._id);
+      const updated = await Supplier.findById(supplier._id).lean();
       expect(updated?.tradeName).toBe("Updated Supplier");
+      expect(updated?.currentlyInUse).toBe(false);
+    });
+
+    it("preserves address fields not changed by the update", async () => {
+      const app = await getTestApp();
+
+      const supplier = await Supplier.create({
+        businessId,
+        tradeName: "Original Supplier",
+        legalName: "Original Supplier LLC",
+        email: "original@supplier.com",
+        phoneNumber: "3333333333",
+        taxNumber: "ORIG-001",
+        currentlyInUse: true,
+        address: { ...validAddress, region: "West" },
+      });
+
+      const { businessId: _omit, ...updateFields } = validSupplierFields();
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/suppliers/${supplier._id}`,
+        payload: multipart({
+          ...updateFields,
+          address: JSON.stringify({ ...validAddress, city: "San Diego" }),
+        }),
+        headers: { "content-type": "multipart/form-data" },
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const updated = await Supplier.findById(supplier._id).lean();
+      expect(updated?.address?.city).toBe("San Diego");
+      expect(updated?.address?.country).toBe("USA");
+      expect(updated?.address?.street).toBe("Main St");
+      expect(updated?.address?.postCode).toBe("90001");
+      expect(updated?.address?.region).toBe("West");
     });
   });
 
   describe("DELETE /api/v1/suppliers/:supplierId", () => {
-    it("returns 400 for invalid supplierId", async () => {
+    it("returns a problem-details 400 for an invalid supplierId", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
@@ -382,11 +465,11 @@ describe("Suppliers Routes", () => {
       });
 
       expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid supplier ID!");
+      expect(isProblemDetails(response)).toBe(true);
+      expect(errorPaths(response)).toContain("supplierId");
     });
 
-    it("returns 404 for non-existent supplier", async () => {
+    it("returns a problem-details 404 for a non-existent supplier", async () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
@@ -396,8 +479,57 @@ describe("Suppliers Routes", () => {
       });
 
       expect(response.statusCode).toBe(404);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Business good not found!");
+      expect(isProblemDetails(response)).toBe(true);
+      expect(JSON.parse(response.body).detail).toBe("Supplier not found!");
+    });
+
+    it("returns a problem-details 409 when the supplier's goods are in use", async () => {
+      const app = await getTestApp();
+
+      const supplier = await Supplier.create({
+        businessId,
+        tradeName: "In Use Supplier",
+        legalName: "In Use Supplier LLC",
+        email: "inuse@supplier.com",
+        phoneNumber: "6666666666",
+        taxNumber: "INUSE-001",
+        currentlyInUse: true,
+        address: validAddress,
+      });
+
+      const supplierGood = await SupplierGood.create({
+        businessId,
+        supplierId: supplier._id,
+        name: "Flour",
+        keyword: "flour",
+        mainCategory: "Food",
+      });
+
+      await BusinessGood.create({
+        businessId,
+        name: "Bread",
+        keyword: "bread",
+        mainCategory: "Food",
+        sellingPrice: 5,
+        ingredients: [
+          {
+            supplierGoodId: supplierGood._id,
+            measurementUnit: "g",
+            requiredQuantity: 500,
+          },
+        ],
+      });
+
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/suppliers/${supplier._id}`,
+      });
+
+      expect(response.statusCode).toBe(409);
+      expect(isProblemDetails(response)).toBe(true);
+      expect(JSON.parse(response.body).detail).toBe(
+        "Supplier is in use in some business goods!",
+      );
     });
   });
 
@@ -427,7 +559,7 @@ describe("Suppliers Routes", () => {
       expect(body.length).toBe(1);
     });
 
-    it("returns 400 for invalid businessId", async () => {
+    it("returns a problem-details 400 for an invalid businessId", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
@@ -436,11 +568,11 @@ describe("Suppliers Routes", () => {
       });
 
       expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid business ID!");
+      expect(isProblemDetails(response)).toBe(true);
+      expect(errorPaths(response)).toContain("businessId");
     });
 
-    it("returns 404 when no suppliers for business", async () => {
+    it("returns a problem-details 404 when the business has no suppliers", async () => {
       const app = await getTestApp();
       const otherBusinessId = new Types.ObjectId();
 
@@ -450,8 +582,8 @@ describe("Suppliers Routes", () => {
       });
 
       expect(response.statusCode).toBe(404);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("No suppliers found!");
+      expect(isProblemDetails(response)).toBe(true);
+      expect(JSON.parse(response.body).detail).toBe("No suppliers found!");
     });
   });
 });

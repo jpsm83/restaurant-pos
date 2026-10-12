@@ -20,6 +20,7 @@ import {
   subscriptionEnums,
 } from "../enums.ts";
 import { passwordSchema } from "./auth.ts";
+import { addressSchema } from "./address.ts";
 import {
   coercedBooleanSchema,
   coercedIntSchema,
@@ -60,20 +61,11 @@ const clockTimeSchema = z
 /** A `dayOfWeek` from 0 (Sunday) to 6 (Saturday). */
 const dayOfWeekSchema = coercedIntSchema.min(0).max(6);
 
-/** The address payload attached to a business (JSON-encoded over multipart). */
-export const businessAddressSchema = z.strictObject({
-  country: sanitizedString("Country is required!"),
-  state: sanitizedString("State is required!"),
-  city: sanitizedString("City is required!"),
-  street: sanitizedString("Street is required!"),
-  buildingNumber: sanitizedString("Building number is required!"),
-  postCode: sanitizedString("Postcode is required!"),
-  doorNumber: sanitizedString().optional(),
-  complement: sanitizedString().optional(),
-  region: sanitizedString().optional(),
-  additionalDetails: sanitizedString().optional(),
-  coordinates: z.array(coercedNumberSchema).optional(),
-});
+/**
+ * The address payload attached to a business (JSON-encoded over multipart).
+ * The shape is shared with every other address-owning entity.
+ */
+export const businessAddressSchema = addressSchema;
 
 /** One weekly opening-hours entry. */
 const businessOpeningHourSchema = z.strictObject({
