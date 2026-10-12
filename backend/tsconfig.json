@@ -19,9 +19,7 @@
     "src/**/*.ts",
     "scripts/**/*.ts",
     "tests/**/*.ts",
-    "../packages/shared/src/**/*.ts",
     "../packages/schemas/**/*.ts",
-    "../packages/utils/isBusinessOpenNow.ts",
     "../packages/enums.ts"
 , "scripts/importDummyData.ts"  ]
 }

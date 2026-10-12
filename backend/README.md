@@ -316,6 +316,6 @@ describe("Business Routes", () => {
 ## Migration Notes
 
 - This backend replaces the legacy Next.ts API routes that used to live under `app/api/`.
-- Shared types and interfaces are in `packages/shared/`
+- Shared types and interfaces live in the `restaurant-pos-packages` workspace package.
 - The legacy routes are kept for reference but not used
 - See `docs/migration/MIGRATION_PLAN.md` for complete migration history
