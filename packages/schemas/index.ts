@@ -10,6 +10,7 @@ export * from "./business.ts";
 export * from "./supplier.ts";
 export * from "./supplierGood.ts";
 export * from "./businessGood.ts";
+export * from "./employee.ts";
 export * from "./ratings.ts";
 export * from "./orders.ts";
 export * from "./salesPoints.ts";

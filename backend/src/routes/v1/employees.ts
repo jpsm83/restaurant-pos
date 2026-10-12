@@ -1,3 +1,16 @@
+/**
+ * Employees Routes — employee CRUD, per-business listing and management
+ * contacts.
+ *
+ * Multipart bodies (create and update) are buffered and validated by the shared
+ * multipart helper against strict zod DTOs from
+ * `packages/schemas/employee.ts`; the JSON-encoded `allEmployeeRoles` and
+ * `salary` fields are parsed there. The GET/PATCH/DELETE path params are
+ * validated by their DTOs. The `validateSalary` and `validateEmployeeDates`
+ * post-parse checks stay here, alongside the database-backed duplicate and user
+ * link guards. Every error is raised as an `AppError` so the global handler
+ * emits RFC 9457 `application/problem+json`.
+ */
 import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
 import type {
@@ -6,22 +19,80 @@ import type {
 } from "../../../../packages/interfaces/IEmployee.ts";
 import type { IUser } from "../../../../packages/interfaces/IUser.ts";
 
-import isObjectIdValid from "../../utils/isObjectIdValid.ts";
 import deleteFolderCloudinary from "../../cloudinary/deleteFolderCloudinary.ts";
 import calculateVacationProportional from "../../employees/calculateVacationProportional.ts";
-import objDefaultValidation, {
-  type ObjDefaultValidationType,
-} from "../../../../packages/utils/objDefaultValidation.ts";
+import validateEmployeeDates from "../../employees/validateEmployeeDates.ts";
+import validateSalary from "../../employees/validateSalary.ts";
 import Employee from "../../models/employee.ts";
 import User from "../../models/user.ts";
 import Printer from "../../models/printer.ts";
 import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
 import * as enums from "../../../../packages/enums.ts";
-import { UploadInputFile } from "../../../../packages/interfaces/ICloudinary.ts";
+import { badRequest, conflict, notFound } from "../../errors/appError.ts";
+import { parseMultipart, type MultipartFile } from "../../schemas/multipart.ts";
+import {
+  createEmployeeBodySchema,
+  employeeByBusinessParamsSchema,
+  employeeIdParamsSchema,
+  patchEmployeeBodySchema,
+  type CreateEmployeeBody,
+  type EmployeeByBusinessParams,
+  type EmployeeIdParams,
+} from "../../../../packages/schemas/employee.ts";
 
-const { userRolesEnums, managementRolesEnums } = enums;
+const { managementRolesEnums } = enums;
 
-const reqSalaryFields = ["payFrequency", "grossSalary", "netSalary"];
+/** Total documents an employee may hold; create and update enforce the cap. */
+const MAX_DOCUMENT_FILES = 10;
+
+/** Upload collected files to Cloudinary, raising a `400` on any failure. */
+async function uploadDocuments(
+  folder: string,
+  files: MultipartFile[],
+  onlyImages: boolean,
+): Promise<string[]> {
+  const response = await uploadFilesCloudinary({
+    folder,
+    filesArr: files.map((file) => ({
+      buffer: file.buffer,
+      mimeType: file.mimetype,
+    })),
+    onlyImages,
+  });
+
+  if (
+    typeof response === "string" ||
+    response.length === 0 ||
+    !response.every((str) => str.includes("https://"))
+  ) {
+    throw badRequest(
+      `Error uploading ${onlyImages ? "image" : "files"}: ${response}`,
+    );
+  }
+
+  return response;
+}
+
+/** The fields a create request contributes to the stored employee. */
+function toNewEmployee(
+  employeeId: Types.ObjectId,
+  fields: CreateEmployeeBody,
+): Partial<IEmployee> {
+  return {
+    _id: employeeId,
+    allEmployeeRoles: fields.allEmployeeRoles,
+    taxNumber: fields.taxNumber,
+    joinDate: fields.joinDate,
+    vacationDaysPerYear: fields.vacationDaysPerYear,
+    businessId: new Types.ObjectId(fields.businessId),
+    vacationDaysLeft: fields.vacationDaysPerYear,
+    contractHoursWeek: fields.contractHoursWeek || undefined,
+    salary: fields.salary
+      ? (fields.salary as unknown as ISalary)
+      : undefined,
+    comments: fields.comments || undefined,
+  };
+}
 
 export const employeesRoutes: FastifyPluginAsync = async (app) => {
   // GET /employees - list all
@@ -29,342 +100,197 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
     const employees = await Employee.find().lean();
 
     if (!employees?.length) {
-      return reply.code(404).send({ message: "No employees found" });
+      throw notFound("No employees found!");
     }
     return reply.code(200).send(employees);
   });
 
   // GET /employees/business/:businessId/management-contacts — profile contact dropdown (before generic /business/:id).
-  app.get("/business/:businessId/management-contacts", async (req, reply) => {
-    const params = req.params as { businessId?: string };
-    const businessId = params.businessId;
+  app.get<{ Params: EmployeeByBusinessParams }>(
+    "/business/:businessId/management-contacts",
+    { schema: { params: employeeByBusinessParamsSchema } },
+    async (req, reply) => {
+      const { businessId } = req.params;
 
-    if (!businessId || isObjectIdValid([businessId]) !== true) {
-      return reply.code(400).send({ message: "Invalid business ID!" });
-    }
+      const employees = await Employee.find({
+        businessId: new Types.ObjectId(businessId),
+        active: { $ne: false },
+      }).lean();
 
-    const employees = await Employee.find({
-      businessId: new Types.ObjectId(businessId),
-      active: { $ne: false },
-    }).lean();
-
-    const managers = employees.filter((e) => {
-      const roles = e.allEmployeeRoles;
-      if (!Array.isArray(roles)) return false;
-      return roles.some((r) =>
-        (managementRolesEnums as readonly string[]).includes(r),
-      );
-    });
-
-    if (managers.length === 0) {
-      return reply.code(200).send([]);
-    }
-
-    const userIds = managers.map((m) => m.userId).filter(Boolean);
-
-    const users = await User.find({
-      _id: { $in: userIds.map((id) => new Types.ObjectId(String(id))) },
-    })
-      .select(
-        "personalDetails.firstName personalDetails.lastName personalDetails.email",
-      )
-      .lean();
-
-    const userLabel = new Map<string, string>();
-    for (const u of users) {
-      const pd = u.personalDetails as
-        | Record<string, string | undefined>
-        | undefined;
-      const first = pd?.firstName?.trim() ?? "";
-      const last = pd?.lastName?.trim() ?? "";
-      const name = `${first} ${last}`.trim();
-      const email = pd?.email?.trim() ?? "";
-      userLabel.set(String(u._id), name.length > 0 ? name : email || "—");
-    }
-
-    const out = managers.map((m) => ({
-      employeeId: String(m._id),
-      displayName: userLabel.get(String(m.userId)) ?? "—",
-    }));
-
-    return reply.code(200).send(out);
-  });
-
-  // POST /employees - create (formData with image, transaction)
-  app.post("/", async (req, reply) => {
-    try {
-      const parts = req.parts();
-      const fields: Record<string, string> = {};
-      const files: UploadInputFile[] = [];
-
-      for await (const part of parts) {
-        if (part.type === "file") {
-          if (part.filename) {
-            const chunks: Buffer[] = [];
-            for await (const chunk of part.file) {
-              chunks.push(chunk);
-            }
-            files.push({
-              buffer: Buffer.concat(chunks),
-              mimeType: part.mimetype,
-            });
-          }
-        } else {
-          fields[part.fieldname] = String(part.value);
-        }
-      }
-
-      const allEmployeeRoles = fields.allEmployeeRoles
-        ? (JSON.parse(fields.allEmployeeRoles) as string[])
-        : [];
-      const taxNumber = fields.taxNumber;
-      const joinDate = fields.joinDate ? new Date(fields.joinDate) : null;
-      const vacationDaysPerYear = fields.vacationDaysPerYear
-        ? parseInt(fields.vacationDaysPerYear)
-        : 0;
-      const businessId = fields.businessId;
-      const userEmail = fields.userEmail;
-      const contractHoursWeek = fields.contractHoursWeek
-        ? Number(fields.contractHoursWeek)
-        : undefined;
-      const salary = fields.salary
-        ? (JSON.parse(fields.salary) as ISalary)
-        : undefined;
-      const comments = fields.comments || undefined;
-
-      if (
-        !allEmployeeRoles?.length ||
-        !taxNumber ||
-        !joinDate ||
-        !vacationDaysPerYear ||
-        !businessId ||
-        !userEmail
-      ) {
-        return reply.code(400).send({
-          message:
-            "AllEmployeeRoles, taxNumber, joinDate, vacationDaysPerYear, businessId and userEmail are required fields!",
-        });
-      }
-
-      if (isObjectIdValid([businessId]) !== true) {
-        return reply.code(400).send({ message: "Business ID is not valid!" });
-      }
-
-      if (files && files.length > 10) {
-        return reply.code(400).send({ message: "Max file quantity is 3!" });
-      }
-
-      for (const role of allEmployeeRoles) {
-        if (!(userRolesEnums as readonly string[]).includes(role)) {
-          return reply.code(400).send({ message: "Invalid subscription!" });
-        }
-      }
-
-      if (salary) {
-        const salaryValidationResult = (
-          objDefaultValidation as unknown as ObjDefaultValidationType
-        )(salary, reqSalaryFields, []);
-        if (salaryValidationResult !== true) {
-          return reply.code(400).send({ message: salaryValidationResult });
-        }
-      }
-
-      const session = await mongoose.startSession();
-      session.startTransaction();
-
-      try {
-        const user = await User.findOne({ "personalDetails.email": userEmail })
-          .select("_id")
-          .session(session)
-          .lean<IUser | null>();
-
-        if (!user) {
-          await session.abortTransaction();
-          return reply.code(409).send({ message: "User does not exist!" });
-        }
-
-        const employeeAlreadyExists = await Employee.exists({
-          businessId,
-          userId: user._id,
-        }).session(session);
-
-        if (employeeAlreadyExists) {
-          await session.abortTransaction();
-          return reply
-            .code(409)
-            .send({ message: "User is already an employee!" });
-        }
-
-        const employeeId = new mongoose.Types.ObjectId();
-
-        const newEmployee: Partial<IEmployee> = {
-          _id: employeeId,
-          allEmployeeRoles,
-          taxNumber,
-          joinDate,
-          vacationDaysPerYear,
-          businessId: new Types.ObjectId(businessId),
-          userId: user._id!,
-          vacationDaysLeft: vacationDaysPerYear,
-          contractHoursWeek: contractHoursWeek || undefined,
-          salary: salary || undefined,
-          comments: comments || undefined,
-        };
-
-        if (files.length > 0) {
-          const folder = `/business/${businessId}/employees/${employeeId}`;
-
-          const cloudinaryUploadResponse = await uploadFilesCloudinary({
-            folder,
-            filesArr: files,
-            onlyImages: false,
-          });
-
-          if (
-            typeof cloudinaryUploadResponse === "string" ||
-            cloudinaryUploadResponse.length === 0 ||
-            !cloudinaryUploadResponse.every((str) => str.includes("https://"))
-          ) {
-            await session.abortTransaction();
-            return reply.code(400).send({
-              message: `Error uploading files: ${cloudinaryUploadResponse}`,
-            });
-          }
-
-          newEmployee.documentsUrl = cloudinaryUploadResponse;
-        }
-
-        const createEmployee = await Employee.create([newEmployee], {
-          session,
-        });
-        const updateUser = await User.findOneAndUpdate(
-          { _id: user._id },
-          { $set: { employeeDetails: employeeId } },
-          { returnDocument: 'after', lean: true, session },
+      const managers = employees.filter((e) => {
+        const roles = e.allEmployeeRoles;
+        if (!Array.isArray(roles)) return false;
+        return roles.some((r) =>
+          (managementRolesEnums as readonly string[]).includes(r),
         );
-
-        if (!createEmployee || !updateUser) {
-          await session.abortTransaction();
-          const message = !createEmployee
-            ? `Error creating employee!`
-            : `Error updating user!`;
-          return reply.code(400).send({ message });
-        }
-
-        await session.commitTransaction();
-
-        return reply.code(201).send({
-          message: `New employee created successfully!`,
-        });
-      } catch (error) {
-        await session.abortTransaction();
-        throw error;
-      } finally {
-        session.endSession();
-      }
-    } catch (error) {
-      return reply.code(500).send({
-        message: "Create employee failed!",
-        error: error instanceof Error ? error.message : error,
       });
+
+      if (managers.length === 0) {
+        return reply.code(200).send([]);
+      }
+
+      const userIds = managers.map((m) => m.userId).filter(Boolean);
+
+      const users = await User.find({
+        _id: { $in: userIds.map((id) => new Types.ObjectId(String(id))) },
+      })
+        .select(
+          "personalDetails.firstName personalDetails.lastName personalDetails.email",
+        )
+        .lean();
+
+      const userLabel = new Map<string, string>();
+      for (const u of users) {
+        const pd = u.personalDetails as
+          | Record<string, string | undefined>
+          | undefined;
+        const first = pd?.firstName?.trim() ?? "";
+        const last = pd?.lastName?.trim() ?? "";
+        const name = `${first} ${last}`.trim();
+        const email = pd?.email?.trim() ?? "";
+        userLabel.set(String(u._id), name.length > 0 ? name : email || "—");
+      }
+
+      const out = managers.map((m) => ({
+        employeeId: String(m._id),
+        displayName: userLabel.get(String(m.userId)) ?? "—",
+      }));
+
+      return reply.code(200).send(out);
+    },
+  );
+
+  // POST /employees - create (formData with documents, transaction)
+  app.post("/", async (req, reply) => {
+    if (typeof req.parts !== "function") {
+      throw badRequest("Expected multipart/form-data");
+    }
+
+    const { fields, files } = await parseMultipart(
+      req,
+      createEmployeeBodySchema,
+    );
+
+    if (files.length > MAX_DOCUMENT_FILES) {
+      throw badRequest(`Max file quantity is ${MAX_DOCUMENT_FILES}!`);
+    }
+
+    if (fields.salary) {
+      const salaryResult = validateSalary(fields.salary);
+      if (salaryResult !== true) {
+        throw badRequest(salaryResult);
+      }
+    }
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      const user = await User.findOne({
+        "personalDetails.email": fields.userEmail,
+      })
+        .select("_id")
+        .session(session)
+        .lean<IUser | null>();
+
+      if (!user) {
+        throw conflict("User does not exist!");
+      }
+
+      const employeeAlreadyExists = await Employee.exists({
+        businessId: fields.businessId,
+        userId: user._id,
+      }).session(session);
+
+      if (employeeAlreadyExists) {
+        throw conflict("User is already an employee!");
+      }
+
+      const employeeId = new mongoose.Types.ObjectId();
+      const newEmployee = toNewEmployee(employeeId, fields);
+      newEmployee.userId = user._id!;
+
+      if (files.length > 0) {
+        const folder = `/business/${fields.businessId}/employees/${employeeId}`;
+        newEmployee.documentsUrl = await uploadDocuments(folder, files, false);
+      }
+
+      const createEmployee = await Employee.create([newEmployee], {
+        session,
+      });
+
+      if (!createEmployee) {
+        throw badRequest("Error creating employee!");
+      }
+
+      const updateUser = await User.findOneAndUpdate(
+        { _id: user._id },
+        { $set: { employeeDetails: employeeId } },
+        { returnDocument: "after", lean: true, session },
+      );
+
+      if (!updateUser) {
+        throw badRequest("Error updating user!");
+      }
+
+      await session.commitTransaction();
+
+      return reply.code(201).send({
+        message: `New employee created successfully!`,
+      });
+    } catch (error) {
+      await session.abortTransaction().catch(() => undefined);
+      throw error;
+    } finally {
+      session.endSession();
     }
   });
 
   // GET /employees/:employeeId - get by ID
-  app.get("/:employeeId", async (req, reply) => {
-    const params = req.params as { employeeId?: string };
-    const employeeId = params.employeeId;
+  app.get<{ Params: EmployeeIdParams }>(
+    "/:employeeId",
+    { schema: { params: employeeIdParamsSchema } },
+    async (req, reply) => {
+      const { employeeId } = req.params;
 
-    if (!employeeId || !isObjectIdValid([employeeId])) {
-      return reply.code(400).send({ message: "Invalid employee ID!" });
-    }
+      const employee = await Employee.findById(employeeId).lean();
 
-    const employee = await Employee.findById(employeeId).lean();
+      if (!employee) {
+        throw notFound("Employee not found!");
+      }
+      return reply.code(200).send(employee);
+    },
+  );
 
-    if (!employee) {
-      return reply.code(404).send({ message: "Employee not found!" });
-    }
-    return reply.code(200).send(employee);
-  });
+  // PATCH /employees/:employeeId - update (formData with documents, transaction)
+  app.patch<{ Params: EmployeeIdParams }>(
+    "/:employeeId",
+    { schema: { params: employeeIdParamsSchema } },
+    async (req, reply) => {
+      const { employeeId } = req.params;
 
-  // PATCH /employees/:employeeId - update (formData with image)
-  app.patch("/:employeeId", async (req, reply) => {
-    try {
-      const params = req.params as { employeeId?: string };
-      const employeeId = params.employeeId;
-
-      if (!employeeId || isObjectIdValid([employeeId]) !== true) {
-        return reply.code(400).send({ message: "Business ID is not valid!" });
+      if (typeof req.parts !== "function") {
+        throw badRequest("Expected multipart/form-data");
       }
 
-      const parts = req.parts();
-      const fields: Record<string, string> = {};
-      const files: UploadInputFile[] = [];
+      const { fields, files } = await parseMultipart(
+        req,
+        patchEmployeeBodySchema,
+      );
 
-      for await (const part of parts) {
-        if (part.type === "file") {
-          if (part.filename) {
-            const chunks: Buffer[] = [];
-            for await (const chunk of part.file) {
-              chunks.push(chunk);
-            }
-            files.push({
-              buffer: Buffer.concat(chunks),
-              mimeType: part.mimetype,
-            });
-          }
-        } else {
-          fields[part.fieldname] = String(part.value);
+      if (fields.salary) {
+        const salaryResult = validateSalary(fields.salary);
+        if (salaryResult !== true) {
+          throw badRequest(salaryResult);
         }
       }
 
-      const allEmployeeRoles = fields.allEmployeeRoles
-        ? (JSON.parse(fields.allEmployeeRoles) as string[])
-        : [];
-      const taxNumber = fields.taxNumber;
-      const joinDate = fields.joinDate ? new Date(fields.joinDate) : null;
-      const vacationDaysPerYear = fields.vacationDaysPerYear
-        ? parseInt(fields.vacationDaysPerYear)
-        : 0;
-      const userEmail = fields.userEmail;
-      const active = fields.active === "true";
-      const contractHoursWeek = fields.contractHoursWeek
-        ? Number(fields.contractHoursWeek)
-        : undefined;
-      const salary = fields.salary
-        ? (JSON.parse(fields.salary) as ISalary)
-        : undefined;
-      const terminatedDate = fields.terminatedDate
-        ? new Date(fields.terminatedDate)
-        : undefined;
-      const comments = fields.comments || undefined;
-
-      if (
-        !allEmployeeRoles?.length ||
-        !taxNumber ||
-        !joinDate ||
-        !vacationDaysPerYear ||
-        !userEmail
-      ) {
-        return reply.code(400).send({
-          message:
-            "AllEmployeeRoles, taxNumber, joinDate, vacationDaysPerYear, businessId and userEmail are required fields!",
-        });
-      }
-
-      for (const role of allEmployeeRoles) {
-        if (!(userRolesEnums as readonly string[]).includes(role)) {
-          return reply.code(400).send({ message: "Invalid subscription!" });
-        }
-      }
-
-      if (salary) {
-        const salaryValidationResult = (
-          objDefaultValidation as unknown as ObjDefaultValidationType
-        )(salary, reqSalaryFields, []);
-        if (salaryValidationResult !== true) {
-          return reply.code(400).send({ message: salaryValidationResult });
-        }
+      const datesResult = validateEmployeeDates(
+        fields.joinDate,
+        fields.terminatedDate,
+      );
+      if (datesResult !== true) {
+        throw badRequest(datesResult);
       }
 
       const session = await mongoose.startSession();
@@ -381,50 +307,48 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
           .lean()) as (IEmployee & { userId: IUser }) | null;
 
         if (!employee) {
-          await session.abortTransaction();
-          return reply.code(404).send({ message: "Employee not found!" });
+          throw notFound("Employee not found!");
         }
 
         if (
-          files &&
-          files.length + (employee?.documentsUrl?.length || 0) > 10
+          files.length + (employee.documentsUrl?.length ?? 0) >
+          MAX_DOCUMENT_FILES
         ) {
-          await session.abortTransaction();
-          return reply.code(400).send({ message: "Max file quantity is 10!" });
+          throw badRequest(`Max file quantity is ${MAX_DOCUMENT_FILES}!`);
         }
 
         const updateEmployeeObj: Partial<IEmployee> = {};
 
-        if (allEmployeeRoles && allEmployeeRoles !== employee.allEmployeeRoles)
-          updateEmployeeObj.allEmployeeRoles = allEmployeeRoles;
-        if (taxNumber && taxNumber !== employee.taxNumber)
-          updateEmployeeObj.taxNumber = taxNumber;
-        if (joinDate && joinDate.getTime() !== employee.joinDate?.getTime())
-          updateEmployeeObj.joinDate = joinDate;
+        if (fields.allEmployeeRoles !== employee.allEmployeeRoles)
+          updateEmployeeObj.allEmployeeRoles = fields.allEmployeeRoles;
+        if (fields.taxNumber !== employee.taxNumber)
+          updateEmployeeObj.taxNumber = fields.taxNumber;
+        if (fields.joinDate.getTime() !== employee.joinDate?.getTime())
+          updateEmployeeObj.joinDate = fields.joinDate;
+        if (fields.vacationDaysPerYear !== employee.vacationDaysPerYear)
+          updateEmployeeObj.vacationDaysPerYear = fields.vacationDaysPerYear;
+        if (fields.active !== employee.active)
+          updateEmployeeObj.active = fields.active;
         if (
-          vacationDaysPerYear &&
-          vacationDaysPerYear !== employee.vacationDaysPerYear
+          fields.contractHoursWeek !== undefined &&
+          fields.contractHoursWeek !== employee.contractHoursWeek
         )
-          updateEmployeeObj.vacationDaysPerYear = vacationDaysPerYear;
-        if (active !== undefined && active !== employee.active)
-          updateEmployeeObj.active = active;
+          updateEmployeeObj.contractHoursWeek = fields.contractHoursWeek;
         if (
-          contractHoursWeek &&
-          contractHoursWeek !== employee.contractHoursWeek
+          fields.terminatedDate &&
+          fields.terminatedDate.getTime() !== employee.terminatedDate?.getTime()
         )
-          updateEmployeeObj.contractHoursWeek = contractHoursWeek;
-        if (
-          terminatedDate &&
-          terminatedDate.getTime() !== employee.terminatedDate?.getTime()
-        )
-          updateEmployeeObj.terminatedDate = terminatedDate;
-        if (comments && comments !== employee.comments)
-          updateEmployeeObj.comments = comments;
+          updateEmployeeObj.terminatedDate = fields.terminatedDate;
+        if (fields.comments && fields.comments !== employee.comments)
+          updateEmployeeObj.comments = fields.comments;
 
-        if (salary) {
+        if (fields.salary) {
+          const existingSalary = employee.salary as
+            | Record<string, unknown>
+            | undefined;
           const updatedSalary: Partial<ISalary> = {};
-          for (const [key, value] of Object.entries(salary)) {
-            if (value !== employee.salary?.[key as keyof typeof salary]) {
+          for (const [key, value] of Object.entries(fields.salary)) {
+            if (value !== existingSalary?.[key]) {
               (updatedSalary as Record<string, unknown>)[key] = value;
             }
           }
@@ -433,26 +357,25 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
         }
 
         if (
-          vacationDaysPerYear !== employee.vacationDaysPerYear ||
-          (joinDate && joinDate.getTime() !== employee.joinDate?.getTime())
+          fields.vacationDaysPerYear !== employee.vacationDaysPerYear ||
+          fields.joinDate.getTime() !== employee.joinDate?.getTime()
         ) {
           updateEmployeeObj.vacationDaysLeft = calculateVacationProportional(
-            joinDate || employee.joinDate!,
-            vacationDaysPerYear || employee.vacationDaysPerYear,
+            fields.joinDate,
+            fields.vacationDaysPerYear,
           );
         }
 
-        if (userEmail !== employee?.userId?.personalDetails?.email) {
+        if (fields.userEmail !== employee.userId?.personalDetails?.email) {
           const user = await User.findOne({
-            "personalDetails.email": userEmail,
+            "personalDetails.email": fields.userEmail,
           })
             .select("_id")
             .session(session)
             .lean<IUser | null>();
 
           if (!user) {
-            await session.abortTransaction();
-            return reply.code(409).send({ message: "User does not exist!" });
+            throw conflict("User does not exist!");
           }
 
           const employeeAlreadyExists = await Employee.exists({
@@ -461,29 +384,26 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
           }).session(session);
 
           if (employeeAlreadyExists) {
-            await session.abortTransaction();
-            return reply
-              .code(409)
-              .send({ message: "User is already an employee!" });
+            throw conflict("User is already an employee!");
           }
 
           const updatedOldUser = await User.findOneAndUpdate(
             { _id: (employee.userId as IUser)._id },
             { $unset: { employeeDetails: null } },
-            { returnDocument: 'after', lean: true, session },
+            { returnDocument: "after", lean: true, session },
           );
           const updateNewUser = await User.findOneAndUpdate(
             { _id: user._id },
             { $set: { employeeDetails: employeeId } },
-            { returnDocument: 'after', lean: true, session },
+            { returnDocument: "after", lean: true, session },
           );
 
           if (!updatedOldUser || !updateNewUser) {
-            await session.abortTransaction();
-            const message = !updatedOldUser
-              ? "Old user not found or not updated"
-              : "New user not found or not updated";
-            return reply.code(200).send({ message });
+            throw badRequest(
+              !updatedOldUser
+                ? "Old user not found or not updated"
+                : "New user not found or not updated",
+            );
           }
 
           updateEmployeeObj.userId = user._id;
@@ -492,36 +412,19 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
         if (files.length > 0) {
           const folder = `/business/${employee.businessId}/employees/${employeeId}`;
 
-          const cloudinaryUploadResponse = await uploadFilesCloudinary({
-            folder,
-            filesArr: files,
-            onlyImages: true,
-          });
-
-          if (
-            typeof cloudinaryUploadResponse === "string" ||
-            cloudinaryUploadResponse.length === 0 ||
-            !cloudinaryUploadResponse.every((str) => str.includes("https://"))
-          ) {
-            await session.abortTransaction();
-            return reply.code(400).send({
-              message: `Error uploading image: ${cloudinaryUploadResponse}`,
-            });
-          }
-
           updateEmployeeObj.documentsUrl = [
-            ...(employee?.documentsUrl || []),
-            ...cloudinaryUploadResponse,
+            ...(employee.documentsUrl ?? []),
+            ...(await uploadDocuments(folder, files, true)),
           ];
         }
 
         const updatedEmployee = await Employee.findOneAndUpdate(
           { _id: employeeId },
           { $set: updateEmployeeObj },
-          { returnDocument: 'after', lean: true, session },
+          { returnDocument: "after", lean: true, session },
         );
 
-        if (active === false) {
+        if (fields.active === false) {
           await Printer.updateMany(
             {
               businessId: employee.businessId,
@@ -545,10 +448,7 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
         }
 
         if (!updatedEmployee) {
-          await session.abortTransaction();
-          return reply.code(200).send({
-            message: "Employee not found or not updated",
-          });
+          throw notFound("Employee not found or not updated");
         }
 
         await session.commitTransaction();
@@ -557,121 +457,108 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
           message: `Employee updated successfully!`,
         });
       } catch (error) {
-        await session.abortTransaction();
+        await session.abortTransaction().catch(() => undefined);
         throw error;
       } finally {
         session.endSession();
       }
-    } catch (error) {
-      return reply.code(500).send({
-        message: "Update employee failed!",
-        error: error instanceof Error ? error.message : error,
-      });
-    }
-  });
+    },
+  );
 
   // DELETE /employees/:employeeId - delete (transaction)
-  app.delete("/:employeeId", async (req, reply) => {
-    const params = req.params as { employeeId?: string };
-    const employeeId = params.employeeId;
+  app.delete<{ Params: EmployeeIdParams }>(
+    "/:employeeId",
+    { schema: { params: employeeIdParamsSchema } },
+    async (req, reply) => {
+      const { employeeId } = req.params;
 
-    if (!employeeId || !isObjectIdValid([employeeId])) {
-      return reply.code(400).send({ message: "Invalid employee ID!" });
-    }
+      const session = await mongoose.startSession();
+      session.startTransaction();
 
-    const session = await mongoose.startSession();
-    session.startTransaction();
+      try {
+        const employee = await Employee.findById(employeeId)
+          .session(session)
+          .lean<IEmployee>();
 
-    try {
-      const employee = await Employee.findById(employeeId)
-        .session(session)
-        .lean<IEmployee>();
+        if (!employee) {
+          throw notFound("Employee not found!");
+        }
 
-      if (!employee) {
-        await session.abortTransaction();
-        return reply.code(404).send({ message: "Employee not found!" });
-      }
+        const deletedEmployee = await Employee.findOneAndDelete(
+          { _id: employeeId },
+          { session },
+        );
 
-      const deletedEmployee = await Employee.findOneAndDelete(
-        { _id: employeeId },
-        { session },
-      );
+        if (!deletedEmployee) {
+          throw notFound("Employee not found!");
+        }
 
-      const updatePrinter = await Printer.updateMany(
-        {
-          businessId: employee.businessId,
-          $or: [
-            { employeesAllowedToPrintDataIds: employeeId },
-            {
-              "configurationSetupToPrintOrders.excludeemployeeIds": employeeId,
-            },
-          ],
-        },
-        {
-          $pull: {
-            employeesAllowedToPrintDataIds: employeeId,
-            "configurationSetupToPrintOrders.$[].excludeemployeeIds":
-              employeeId,
+        await Printer.updateMany(
+          {
+            businessId: employee.businessId,
+            $or: [
+              { employeesAllowedToPrintDataIds: employeeId },
+              {
+                "configurationSetupToPrintOrders.excludeemployeeIds":
+                  employeeId,
+              },
+            ],
           },
-        },
-        { session },
-      );
+          {
+            $pull: {
+              employeesAllowedToPrintDataIds: employeeId,
+              "configurationSetupToPrintOrders.$[].excludeemployeeIds":
+                employeeId,
+            },
+          },
+          { session },
+        );
 
-      const updateUser = await User.findOneAndUpdate(
-        { employeeDetails: employeeId },
-        { $unset: { employeeDetails: null } },
-        { returnDocument: 'after', lean: true, session },
-      );
+        await User.findOneAndUpdate(
+          { employeeDetails: employeeId },
+          { $unset: { employeeDetails: null } },
+          { returnDocument: "after", lean: true, session },
+        );
 
-      if (!deletedEmployee || !updatePrinter || !updateUser) {
-        await session.abortTransaction();
-        const message = !deletedEmployee
-          ? "Employee not found or not deleted"
-          : !updatePrinter
-            ? "Printer not updated"
-            : "User not found or not updated";
-        return reply.code(200).send({ message });
+        const folderPath = `/business/${employee.businessId}/employees/${employeeId}`;
+
+        const deleteFolderCloudinaryResult: string | boolean =
+          await deleteFolderCloudinary(folderPath);
+
+        if (deleteFolderCloudinaryResult !== true) {
+          throw badRequest(
+            typeof deleteFolderCloudinaryResult === "string"
+              ? deleteFolderCloudinaryResult
+              : "DeleteCloudinaryFolder failed!",
+          );
+        }
+
+        await session.commitTransaction();
+
+        return reply.code(200).send({
+          message: `Employee deleted successfully`,
+        });
+      } catch (error) {
+        await session.abortTransaction().catch(() => undefined);
+        throw error;
+      } finally {
+        session.endSession();
       }
-
-      const folderPath = `/business/${employee.businessId}/employees/${employeeId}`;
-
-      const deleteFolderCloudinaryResult: string | boolean =
-        await deleteFolderCloudinary(folderPath);
-
-      if (deleteFolderCloudinaryResult !== true) {
-        await session.abortTransaction();
-        return reply.code(400).send({ message: deleteFolderCloudinaryResult });
-      }
-
-      await session.commitTransaction();
-
-      return reply.code(200).send({
-        message: `Employee deleted successfully`,
-      });
-    } catch (error) {
-      await session.abortTransaction();
-      return reply.code(500).send({
-        message: "Delete employee failed!",
-        error: error instanceof Error ? error.message : error,
-      });
-    } finally {
-      session.endSession();
-    }
-  });
+    },
+  );
 
   // GET /employees/business/:businessId - get by business
-  app.get("/business/:businessId", async (req, reply) => {
-    const params = req.params as { businessId?: string };
-    const businessId = params.businessId;
+  app.get<{ Params: EmployeeByBusinessParams }>(
+    "/business/:businessId",
+    { schema: { params: employeeByBusinessParamsSchema } },
+    async (req, reply) => {
+      const { businessId } = req.params;
 
-    if (!businessId || isObjectIdValid([businessId]) !== true) {
-      return reply.code(400).send({ message: "Invalid business ID!" });
-    }
+      const employees = await Employee.find({
+        businessId: new Types.ObjectId(businessId),
+      }).lean();
 
-    const employees = await Employee.find({
-      businessId: new Types.ObjectId(businessId),
-    }).lean();
-
-    return reply.code(200).send(employees);
-  });
+      return reply.code(200).send(employees);
+    },
+  );
 };

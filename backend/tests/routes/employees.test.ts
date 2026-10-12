@@ -1,7 +1,9 @@
 /**
  * Employees Routes Tests - Phase 1 Module 11 + Phase 4 Task 4.4 + Phase 5 Task 5.2
- * Tests for employees CRUD endpoints with transaction verification
- * Phase 4: Full transaction tests for User sync (requires replica set)
+ *
+ * Validation and error responses are asserted at the HTTP seam: failures are
+ * RFC 9457 `application/problem+json` documents, never `{ message }`.
+ * Phase 4: Full transaction tests for User sync (requires replica set).
  * Phase 5: Cloudinary tests for document uploads (skipped - ESM mocking limitation)
  */
 
@@ -12,6 +14,26 @@ import Employee from "../../src/models/employee.ts";
 import Business from "../../src/models/business.ts";
 import User from "../../src/models/user.ts";
 import Printer from "../../src/models/printer.ts";
+
+const isProblemDetails = (response: { headers: Record<string, unknown> }) =>
+  String(response.headers["content-type"]).includes("application/problem+json");
+
+const errorPaths = (response: { body: string }): string[] =>
+  (JSON.parse(response.body).errors ?? []).map((e: { path: string }) => e.path);
+
+const errorMessages = (response: { body: string }): string[] =>
+  (JSON.parse(response.body).errors ?? []).map(
+    (e: { message: string }) => e.message,
+  );
+
+const detail = (response: { body: string }): string =>
+  JSON.parse(response.body).detail;
+
+const multipart = (fields: Record<string, string>): FormData => {
+  const form = new FormData();
+  for (const [name, value] of Object.entries(fields)) form.append(name, value);
+  return form;
+};
 
 describe("Employees Routes", () => {
   let businessId: Types.ObjectId;
@@ -62,6 +84,20 @@ describe("Employees Routes", () => {
     userId = user._id;
   });
 
+  const validCreateFields = () => ({
+    allEmployeeRoles: JSON.stringify(["Waiter"]),
+    taxNumber: `EMP-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    joinDate: "2024-01-15",
+    vacationDaysPerYear: "20",
+    businessId: businessId.toString(),
+    userEmail: "employeeuser@test.com",
+  });
+
+  const validUpdateFields = () => {
+    const { businessId: _omit, ...rest } = validCreateFields();
+    return { ...rest, active: "true" };
+  };
+
   describe("GET /api/v1/employees", () => {
     it("lists all employees", async () => {
       const app = await getTestApp();
@@ -87,7 +123,7 @@ describe("Employees Routes", () => {
       expect(body.length).toBe(1);
     });
 
-    it("returns 404 when no employees exist", async () => {
+    it("returns a problem-details 404 when no employees exist", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
@@ -96,74 +132,140 @@ describe("Employees Routes", () => {
       });
 
       expect(response.statusCode).toBe(404);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("No employees found");
+      expect(isProblemDetails(response)).toBe(true);
+      expect(detail(response)).toBe("No employees found!");
     });
   });
 
   describe("POST /api/v1/employees", () => {
-    it("returns 400 for missing required fields", async () => {
+    it("returns a problem-details 400 for missing required fields", async () => {
       const app = await getTestApp();
-
-      const form = new FormData();
-      form.append("taxNumber", "EMP-001");
 
       const response = await app.inject({
         method: "POST",
         url: "/api/v1/employees",
-        payload: form,
+        payload: multipart({ taxNumber: "EMP-001" }),
         headers: { "content-type": "multipart/form-data" },
       });
 
       expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toContain("required");
+      expect(isProblemDetails(response)).toBe(true);
+      for (const field of [
+        "allEmployeeRoles",
+        "joinDate",
+        "vacationDaysPerYear",
+        "businessId",
+        "userEmail",
+      ]) {
+        expect(errorPaths(response), field).toContain(field);
+      }
     });
 
-    it("returns 400 for invalid businessId", async () => {
+    it("returns a problem-details 400 for an invalid businessId", async () => {
       const app = await getTestApp();
-
-      const form = new FormData();
-      form.append("allEmployeeRoles", JSON.stringify(["Waiter"]));
-      form.append("taxNumber", "EMP-001");
-      form.append("joinDate", new Date().toISOString());
-      form.append("vacationDaysPerYear", "20");
-      form.append("businessId", "invalid-id");
-      form.append("userEmail", "test@test.com");
 
       const response = await app.inject({
         method: "POST",
         url: "/api/v1/employees",
-        payload: form,
+        payload: multipart({ ...validCreateFields(), businessId: "invalid-id" }),
         headers: { "content-type": "multipart/form-data" },
       });
 
       expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Business ID is not valid!");
+      expect(isProblemDetails(response)).toBe(true);
+      expect(errorPaths(response)).toContain("businessId");
     });
 
-    it("returns 400 for invalid employee role", async () => {
+    it("returns a problem-details 400 for an invalid employee role", async () => {
       const app = await getTestApp();
-
-      const form = new FormData();
-      form.append("allEmployeeRoles", JSON.stringify(["InvalidRole"]));
-      form.append("taxNumber", "EMP-001");
-      form.append("joinDate", new Date().toISOString());
-      form.append("vacationDaysPerYear", "20");
-      form.append("businessId", businessId.toString());
-      form.append("userEmail", "test@test.com");
 
       const response = await app.inject({
         method: "POST",
         url: "/api/v1/employees",
-        payload: form,
+        payload: multipart({
+          ...validCreateFields(),
+          allEmployeeRoles: JSON.stringify(["InvalidRole"]),
+        }),
         headers: { "content-type": "multipart/form-data" },
       });
 
       expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid subscription!");
+      expect(isProblemDetails(response)).toBe(true);
+      expect(errorPaths(response)).toContain("allEmployeeRoles.0");
+    });
+
+    it("returns a problem-details 400 for malformed JSON allEmployeeRoles", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/employees",
+        payload: multipart({
+          ...validCreateFields(),
+          allEmployeeRoles: "{not json",
+        }),
+        headers: { "content-type": "multipart/form-data" },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(isProblemDetails(response)).toBe(true);
+      expect(errorMessages(response)).toContain("Invalid JSON");
+    });
+
+    it("returns a problem-details 400 for an invalid salary", async () => {
+      const app = await getTestApp();
+
+      const missingField = await app.inject({
+        method: "POST",
+        url: "/api/v1/employees",
+        payload: multipart({
+          ...validCreateFields(),
+          salary: JSON.stringify({ payFrequency: "Hourly", grossSalary: 20 }),
+        }),
+        headers: { "content-type": "multipart/form-data" },
+      });
+
+      expect(missingField.statusCode).toBe(400);
+      expect(isProblemDetails(missingField)).toBe(true);
+      expect(detail(missingField)).toBe("Missing key: netSalary");
+
+      const badFrequency = await app.inject({
+        method: "POST",
+        url: "/api/v1/employees",
+        payload: multipart({
+          ...validCreateFields(),
+          salary: JSON.stringify({
+            payFrequency: "Fortnightly",
+            grossSalary: 20,
+            netSalary: 15,
+          }),
+        }),
+        headers: { "content-type": "multipart/form-data" },
+      });
+
+      expect(badFrequency.statusCode).toBe(400);
+      expect(isProblemDetails(badFrequency)).toBe(true);
+      expect(detail(badFrequency)).toBe("Invalid pay frequency!");
+    });
+
+    it("returns a problem-details 400 for a server-owned field", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/employees",
+        payload: multipart({
+          ...validCreateFields(),
+          documentsUrl: "https://example.com/doc.png",
+        }),
+        headers: { "content-type": "multipart/form-data" },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(isProblemDetails(response)).toBe(true);
+      expect(errorMessages(response).some((m) => m.includes("documentsUrl"))).toBe(
+        true,
+      );
     });
   });
 
@@ -191,7 +293,7 @@ describe("Employees Routes", () => {
       expect(body._id).toBe(employee._id.toString());
     });
 
-    it("returns 400 for invalid ID format", async () => {
+    it("returns a problem-details 400 for an invalid ID format", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
@@ -200,11 +302,11 @@ describe("Employees Routes", () => {
       });
 
       expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid employee ID!");
+      expect(isProblemDetails(response)).toBe(true);
+      expect(errorPaths(response)).toContain("employeeId");
     });
 
-    it("returns 404 for non-existent employee", async () => {
+    it("returns a problem-details 404 for a non-existent employee", async () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
@@ -214,31 +316,28 @@ describe("Employees Routes", () => {
       });
 
       expect(response.statusCode).toBe(404);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Employee not found!");
+      expect(isProblemDetails(response)).toBe(true);
+      expect(detail(response)).toBe("Employee not found!");
     });
   });
 
   describe("PATCH /api/v1/employees/:employeeId", () => {
-    it("returns 400 for invalid employeeId", async () => {
+    it("returns a problem-details 400 for an invalid employeeId", async () => {
       const app = await getTestApp();
-
-      const form = new FormData();
-      form.append("taxNumber", "EMP-002");
 
       const response = await app.inject({
         method: "PATCH",
         url: "/api/v1/employees/invalid-id",
-        payload: form,
+        payload: multipart(validUpdateFields()),
         headers: { "content-type": "multipart/form-data" },
       });
 
       expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Business ID is not valid!");
+      expect(isProblemDetails(response)).toBe(true);
+      expect(errorPaths(response)).toContain("employeeId");
     });
 
-    it("returns 400 for missing required fields on update", async () => {
+    it("returns a problem-details 400 for missing required fields", async () => {
       const app = await getTestApp();
 
       const employee = await Employee.create({
@@ -251,8 +350,70 @@ describe("Employees Routes", () => {
         allEmployeeRoles: ["Waiter"],
       });
 
-      const form = new FormData();
-      form.append("taxNumber", "EMP-UPDATED");
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/employees/${employee._id}`,
+        payload: multipart({ taxNumber: "EMP-UPDATED" }),
+        headers: { "content-type": "multipart/form-data" },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(isProblemDetails(response)).toBe(true);
+      expect(errorPaths(response)).toContain("joinDate");
+    });
+
+    it("returns a problem-details 400 when terminatedDate is not after joinDate", async () => {
+      const app = await getTestApp();
+
+      const employee = await Employee.create({
+        businessId,
+        userId,
+        taxNumber: "EMP-TAX-DATES",
+        joinDate: new Date("2024-06-01"),
+        vacationDaysPerYear: 20,
+        vacationDaysLeft: 20,
+        allEmployeeRoles: ["Waiter"],
+      });
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/employees/${employee._id}`,
+        payload: multipart({
+          ...validUpdateFields(),
+          joinDate: "2024-06-01",
+          terminatedDate: "2024-01-01",
+        }),
+        headers: { "content-type": "multipart/form-data" },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(isProblemDetails(response)).toBe(true);
+      expect(detail(response)).toBe("Terminate date must be after join date!");
+    });
+
+    it("returns a problem-details 400 for too many documents", async () => {
+      const app = await getTestApp();
+
+      const employee = await Employee.create({
+        businessId,
+        userId,
+        taxNumber: "EMP-TAX-FILES",
+        joinDate: new Date(),
+        vacationDaysPerYear: 20,
+        vacationDaysLeft: 20,
+        allEmployeeRoles: ["Waiter"],
+        documentsUrl: Array.from(
+          { length: 10 },
+          (_, i) => `https://example.com/doc-${i}.png`,
+        ),
+      });
+
+      const form = multipart(validUpdateFields());
+      form.append(
+        "documents",
+        new Blob([Buffer.from("data")], { type: "image/png" }),
+        "extra.png",
+      );
 
       const response = await app.inject({
         method: "PATCH",
@@ -262,13 +423,13 @@ describe("Employees Routes", () => {
       });
 
       expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toContain("required");
+      expect(isProblemDetails(response)).toBe(true);
+      expect(detail(response)).toBe("Max file quantity is 10!");
     });
   });
 
   describe("DELETE /api/v1/employees/:employeeId", () => {
-    it("returns 400 for invalid employeeId", async () => {
+    it("returns a problem-details 400 for an invalid employeeId", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
@@ -277,11 +438,11 @@ describe("Employees Routes", () => {
       });
 
       expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid employee ID!");
+      expect(isProblemDetails(response)).toBe(true);
+      expect(errorPaths(response)).toContain("employeeId");
     });
 
-    it("returns 404 for non-existent employee", async () => {
+    it("returns a problem-details 404 for a non-existent employee", async () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
@@ -291,8 +452,8 @@ describe("Employees Routes", () => {
       });
 
       expect(response.statusCode).toBe(404);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Employee not found!");
+      expect(isProblemDetails(response)).toBe(true);
+      expect(detail(response)).toBe("Employee not found!");
     });
   });
 
@@ -321,7 +482,7 @@ describe("Employees Routes", () => {
       expect(body.length).toBe(1);
     });
 
-    it("returns 400 for invalid businessId", async () => {
+    it("returns a problem-details 400 for an invalid businessId", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
@@ -330,8 +491,8 @@ describe("Employees Routes", () => {
       });
 
       expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Invalid business ID!");
+      expect(isProblemDetails(response)).toBe(true);
+      expect(errorPaths(response)).toContain("businessId");
     });
 
     it("returns 200 with an empty list when no employees for business", async () => {
@@ -355,18 +516,10 @@ describe("Employees Routes", () => {
     it("creates employee and updates user employeeDetails", async () => {
       const app = await getTestApp();
 
-      const form = new FormData();
-      form.append("allEmployeeRoles", JSON.stringify(["Waiter"]));
-      form.append("taxNumber", "EMP-NEW-001");
-      form.append("joinDate", new Date().toISOString());
-      form.append("vacationDaysPerYear", "20");
-      form.append("businessId", businessId.toString());
-      form.append("userEmail", "employeeuser@test.com");
-
       const response = await app.inject({
         method: "POST",
         url: "/api/v1/employees",
-        payload: form,
+        payload: multipart(validCreateFields()),
         headers: { "content-type": "multipart/form-data" },
       });
 
@@ -384,7 +537,7 @@ describe("Employees Routes", () => {
       // Verify user's employeeDetails was updated
       const updatedUser = await User.findById(userId).lean();
       expect(updatedUser?.employeeDetails?.toString()).toBe(
-        createdEmployee?._id?.toString()
+        createdEmployee?._id?.toString(),
       );
     });
 
@@ -402,24 +555,16 @@ describe("Employees Routes", () => {
         allEmployeeRoles: ["Waiter"],
       });
 
-      const form = new FormData();
-      form.append("allEmployeeRoles", JSON.stringify(["Waiter"]));
-      form.append("taxNumber", "EMP-DUPLICATE");
-      form.append("joinDate", new Date().toISOString());
-      form.append("vacationDaysPerYear", "20");
-      form.append("businessId", businessId.toString());
-      form.append("userEmail", "employeeuser@test.com");
-
       const response = await app.inject({
         method: "POST",
         url: "/api/v1/employees",
-        payload: form,
+        payload: multipart(validCreateFields()),
         headers: { "content-type": "multipart/form-data" },
       });
 
       expect(response.statusCode).toBe(409);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("User is already an employee!");
+      expect(isProblemDetails(response)).toBe(true);
+      expect(detail(response)).toBe("User is already an employee!");
     });
   });
 
@@ -454,18 +599,17 @@ describe("Employees Routes", () => {
       });
 
       // Deactivate employee
-      const form = new FormData();
-      form.append("allEmployeeRoles", JSON.stringify(["Waiter"]));
-      form.append("taxNumber", "EMP-ACTIVE");
-      form.append("joinDate", new Date().toISOString());
-      form.append("vacationDaysPerYear", "20");
-      form.append("userEmail", "employeeuser@test.com");
-      form.append("active", "false");
-
       const response = await app.inject({
         method: "PATCH",
         url: `/api/v1/employees/${employee._id}`,
-        payload: form,
+        payload: multipart({
+          allEmployeeRoles: JSON.stringify(["Waiter"]),
+          taxNumber: "EMP-ACTIVE",
+          joinDate: "2024-01-15",
+          vacationDaysPerYear: "20",
+          userEmail: "employeeuser@test.com",
+          active: "false",
+        }),
         headers: { "content-type": "multipart/form-data" },
       });
 
@@ -480,7 +624,7 @@ describe("Employees Routes", () => {
       // Verify printer no longer has employee
       const updatedPrinter = await Printer.findById(printer._id).lean();
       expect(updatedPrinter?.employeesAllowedToPrintDataIds).not.toContain(
-        employee._id.toString()
+        employee._id.toString(),
       );
     });
 
@@ -509,13 +653,7 @@ describe("Employees Routes", () => {
         "base64"
       );
 
-      const form = new FormData();
-      form.append("allEmployeeRoles", JSON.stringify(["Waiter"]));
-      form.append("taxNumber", `CLOUD-${Date.now()}`);
-      form.append("joinDate", new Date().toISOString());
-      form.append("vacationDaysPerYear", "20");
-      form.append("businessId", businessId.toString());
-      form.append("userEmail", "employeeuser@test.com");
+      const form = multipart(validCreateFields());
       form.append("documents", new Blob([pngBuffer], { type: "image/png" }), "test-doc.png");
 
       const response = await app.inject({
@@ -562,13 +700,10 @@ describe("Employees Routes", () => {
         "base64"
       );
 
-      const form = new FormData();
-      // Include all required fields
-      form.append("allEmployeeRoles", JSON.stringify(["Waiter"]));
-      form.append("taxNumber", taxNumber);
-      form.append("joinDate", new Date().toISOString());
-      form.append("vacationDaysPerYear", "20");
-      form.append("userEmail", "employeeuser@test.com");
+      const form = multipart({
+        ...validUpdateFields(),
+        taxNumber,
+      });
       form.append("documents", new Blob([pngBuffer], { type: "image/png" }), "additional-doc.png");
 
       const response = await app.inject({
@@ -600,13 +735,7 @@ describe("Employees Routes", () => {
         "base64"
       );
 
-      const createForm = new FormData();
-      createForm.append("allEmployeeRoles", JSON.stringify(["Waiter"]));
-      createForm.append("taxNumber", `EMP-DEL-${Date.now()}`);
-      createForm.append("joinDate", new Date().toISOString());
-      createForm.append("vacationDaysPerYear", "20");
-      createForm.append("businessId", businessId.toString());
-      createForm.append("userEmail", "employeeuser@test.com");
+      const createForm = multipart(validCreateFields());
       createForm.append("documents", new Blob([pngBuffer], { type: "image/png" }), "test-doc.png");
 
       const createResponse = await app.inject({
