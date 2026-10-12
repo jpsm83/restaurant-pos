@@ -22,7 +22,9 @@ export const addressSchema = z.strictObject({
   complement: sanitizedString().optional(),
   region: sanitizedString().optional(),
   additionalDetails: sanitizedString().optional(),
-  coordinates: z.array(coercedNumberSchema).optional(),
+  coordinates: z
+    .tuple([coercedNumberSchema, coercedNumberSchema])
+    .optional(),
 });
 
 export type Address = z.infer<typeof addressSchema>;

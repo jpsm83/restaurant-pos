@@ -1,443 +1,282 @@
+/**
+ * Users Routes — user CRUD and notification read/deleted flags.
+ *
+ * Multipart bodies (create and self update) are buffered and validated by the
+ * shared multipart helper against strict zod DTOs from
+ * `packages/schemas/user.ts`; the JSON-encoded `address` is parsed and validated
+ * there, the shared password policy is applied, and emails are normalized. The
+ * GET/PATCH/DELETE path params and the notification bodies are validated by
+ * their DTOs. The database-backed duplicate and employee guards stay in the
+ * route as named post-parse checks. Every error is raised as an `AppError` so
+ * the global handler emits RFC 9457 `application/problem+json`.
+ */
 import type { FastifyPluginAsync } from "fastify";
-import mongoose, { Types } from "mongoose";
+import mongoose from "mongoose";
 import { hash } from "bcrypt";
 import type { IUser } from "../../../../packages/interfaces/IUser.ts";
 import type { IEmployee } from "../../../../packages/interfaces/IEmployee.ts";
 
-import isObjectIdValid from "../../utils/isObjectIdValid.ts";
-import {
-  createAuthHook,
-  requireUserIdMatchesSessionHook,
-  requireValidObjectIdParamHook,
-} from "../../auth/middleware.ts";
+import { createOptionalAuthHook } from "../../auth/middleware.ts";
 import {
   buildAuthUserSessionFromUserId,
   issueSessionWithRefreshCookie,
 } from "../../auth/issueSession.ts";
-import objDefaultValidation, {
-  type ObjDefaultValidationType,
-} from "../../../../packages/utils/objDefaultValidation.ts";
-import {
-  isValidPassword,
-  PASSWORD_POLICY_MESSAGE,
-} from "../../../../packages/utils/passwordPolicy.ts";
 import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
 import deleteFilesCloudinary from "../../cloudinary/deleteFilesCloudinary.ts";
 import deleteFolderCloudinary from "../../cloudinary/deleteFolderCloudinary.ts";
 import User from "../../models/user.ts";
 import Employee from "../../models/employee.ts";
 import Notification from "../../models/notification.ts";
+import {
+  badRequest,
+  conflict,
+  forbidden,
+  notFound,
+  unauthorized,
+} from "../../errors/appError.ts";
+import { parseMultipart, type MultipartFile } from "../../schemas/multipart.ts";
+import {
+  createUserBodySchema,
+  markNotificationDeletedBodySchema,
+  updateUserBodySchema,
+  userIdParamsSchema,
+  userNotificationParamsSchema,
+  type CreateUserBody,
+  type MarkNotificationDeletedBody,
+  type UserIdParams,
+  type UserNotificationParams,
+} from "../../../../packages/schemas/user.ts";
 
-const reqAddressFields = [
-  "country",
-  "state",
-  "city",
-  "street",
-  "buildingNumber",
-  "postCode",
-];
+/** Upload the single profile image, raising a `400` on any failure. */
+async function uploadImage(
+  folder: string,
+  file: MultipartFile,
+): Promise<string> {
+  const response = await uploadFilesCloudinary({
+    folder,
+    filesArr: [{ buffer: file.buffer, mimeType: file.mimetype }],
+    onlyImages: true,
+  });
 
-const nonReqAddressFields = [
-  "region",
-  "doorNumber",
-  "complement",
-  "additionalDetails",
-  "coordinates",
-];
+  if (
+    typeof response === "string" ||
+    response.length === 0 ||
+    !response.every((str) => str.includes("https://"))
+  ) {
+    throw badRequest(`Error uploading image: ${response}`);
+  }
+
+  return response[0];
+}
+
+/** The multipart field name the profile image is sent under. */
+const IMAGE_FIELD = "imageUrl";
+
+/** Whether the duplicate username/email/idNumber belongs to another user. */
+async function assertNoDuplicateUser(
+  fields: Pick<CreateUserBody, "username" | "email" | "idNumber">,
+  excludeUserId?: string,
+): Promise<void> {
+  const query: Record<string, unknown> = {
+    $or: [
+      { "personalDetails.username": fields.username },
+      { "personalDetails.email": fields.email },
+      { "personalDetails.idNumber": fields.idNumber },
+    ],
+  };
+  if (excludeUserId) query._id = { $ne: excludeUserId };
+
+  const duplicate = await User.exists(query);
+  if (duplicate) {
+    throw conflict("User with username, email or idNumber already exists!");
+  }
+}
+
+/** The fields a create request contributes to the stored user. */
+function toNewUser(
+  userId: mongoose.Types.ObjectId,
+  fields: CreateUserBody,
+  hashedPassword: string,
+): IUser {
+  return {
+    _id: userId,
+    personalDetails: {
+      username: fields.username,
+      email: fields.email,
+      password: hashedPassword,
+      idType: fields.idType,
+      idNumber: fields.idNumber,
+      address: fields.address,
+      firstName: fields.firstName,
+      lastName: fields.lastName,
+      nationality: fields.nationality,
+      gender: fields.gender,
+      birthDate: fields.birthDate,
+      phoneNumber: fields.phoneNumber,
+    },
+  };
+}
 
 export const usersRoutes: FastifyPluginAsync = async (app) => {
   // GET /users - list all
   app.get("/", async (_req, reply) => {
-    try {
-      const users = await User.find(
-        {},
-        { "personalDetails.password": 0 },
-      ).lean();
+    const users = await User.find(
+      {},
+      { "personalDetails.password": 0 },
+    ).lean();
 
-      if (!users?.length) {
-        return reply.code(404).send({ message: "No users found" });
-      }
-      return reply.code(200).send(users);
-    } catch (error) {
-      return reply.code(500).send({
-        message: "Get all users failed!",
-        error: error instanceof Error ? error.message : error,
-      });
+    if (!users?.length) {
+      throw notFound("No users found!");
     }
+    return reply.code(200).send(users);
   });
 
   // POST /users - create (formData with image)
   app.post("/", async (req, reply) => {
-    try {
-      const fields: Record<string, string> = {};
-      let imageFile: {
-        buffer: Buffer;
-        filename: string;
-        mimeType: string;
-      } | null = null;
+    const { fields, files } = await parseMultipart(req, createUserBodySchema);
 
-      const parts = req.parts();
-      for await (const part of parts) {
-        if (part.type === "file") {
-          if (part.fieldname === "imageUrl") {
-            const buffer = await part.toBuffer();
-            imageFile = {
-              buffer,
-              filename: part.filename,
-              mimeType: part.mimetype,
-            };
-          }
-        } else {
-          fields[part.fieldname] = part.value as string;
-        }
-      }
+    await assertNoDuplicateUser(fields);
 
-      const username = fields.username;
-      const email = fields.email;
-      const password = fields.password;
-      const idType = fields.idType;
-      const idNumber = fields.idNumber;
-      const address = fields.address ? JSON.parse(fields.address) : null;
-      const firstName = fields.firstName;
-      const lastName = fields.lastName;
-      const nationality = fields.nationality;
-      const gender = fields.gender;
-      const birthDate = fields.birthDate;
-      const phoneNumber = fields.phoneNumber;
+    const userId = new mongoose.Types.ObjectId();
+    const newUser = toNewUser(
+      userId,
+      fields,
+      await hash(fields.password, 10),
+    );
 
-      if (
-        !username ||
-        !email ||
-        !password ||
-        !idType ||
-        !idNumber ||
-        !address ||
-        !firstName ||
-        !lastName ||
-        !nationality ||
-        !gender ||
-        !birthDate ||
-        !phoneNumber
-      ) {
-        return reply.code(400).send({
-          message:
-            "Username, email, password, idType, idNumber, address, firstName, lastName, nationality, gender, birthDate, phoneNumber are required!",
-        });
-      }
-
-      const addressValidationResult = (objDefaultValidation as unknown as ObjDefaultValidationType)(
-        address,
-        reqAddressFields,
-        nonReqAddressFields,
+    const imageFile = files.find((file) => file.fieldname === IMAGE_FIELD);
+    if (imageFile && imageFile.buffer.length > 0) {
+      newUser.personalDetails.imageUrl = await uploadImage(
+        `/users/${userId}`,
+        imageFile,
       );
-
-      if (addressValidationResult !== true) {
-        return reply.code(400).send({ message: addressValidationResult });
-      }
-
-      if (!isValidPassword(password)) {
-        return reply.code(400).send({ message: PASSWORD_POLICY_MESSAGE });
-      }
-
-      const duplicateUser = await User.exists({
-        $or: [
-          { "personalDetails.username": username },
-          { "personalDetails.email": email },
-          { "personalDetails.idNumber": idNumber },
-        ],
-      });
-
-      if (duplicateUser) {
-        return reply.code(409).send({
-          message: "User with username, email or idNumber already exists!",
-        });
-      }
-
-      const hashedPassword = await hash(password, 10);
-
-      const userId = new mongoose.Types.ObjectId();
-
-      const newUser: IUser = {
-        _id: userId,
-        personalDetails: {
-          username,
-          email,
-          password: hashedPassword,
-          idType,
-          idNumber,
-          address,
-          firstName,
-          lastName,
-          nationality,
-          gender,
-          birthDate,
-          phoneNumber,
-        },
-      };
-
-      if (imageFile && imageFile.buffer.length > 0) {
-        const folder = `/users/${userId}`;
-
-        const cloudinaryUploadResponse = await uploadFilesCloudinary({
-          folder,
-          filesArr: [imageFile],
-          onlyImages: true,
-        });
-
-        if (
-          typeof cloudinaryUploadResponse === "string" ||
-          cloudinaryUploadResponse.length === 0 ||
-          !cloudinaryUploadResponse.every((str) => str.includes("https://"))
-        ) {
-          return reply.code(400).send({
-            message: `Error uploading image: ${cloudinaryUploadResponse}`,
-          });
-        }
-
-        newUser.personalDetails.imageUrl = cloudinaryUploadResponse[0];
-      }
-
-      await User.create(newUser);
-
-      return reply.code(201).send({ message: "New user created successfully" });
-    } catch (error) {
-      return reply.code(500).send({
-        message: "Create user failed!",
-        error: error instanceof Error ? error.message : error,
-      });
     }
+
+    await User.create(newUser);
+
+    return reply.code(201).send({ message: "New user created successfully" });
   });
 
   // GET /users/:userId - get by ID
-  app.get("/:userId", async (req, reply) => {
-    try {
-      const params = req.params as { userId?: string };
-      const userId = params.userId;
-
-      if (!userId || !isObjectIdValid([userId])) {
-        return reply.code(400).send({ message: "Invalid user ID!" });
-      }
+  app.get<{ Params: UserIdParams }>(
+    "/:userId",
+    { schema: { params: userIdParamsSchema } },
+    async (req, reply) => {
+      const { userId } = req.params;
 
       const user = await User.findById(userId, {
         "personalDetails.password": 0,
       }).lean();
 
       if (!user) {
-        return reply.code(404).send({ message: "User not found!" });
+        throw notFound("User not found!");
       }
       return reply.code(200).send(user);
-    } catch (error) {
-      return reply.code(500).send({
-        message: "Get user by its id failed!",
-        error: error instanceof Error ? error.message : error,
-      });
-    }
-  });
+    },
+  );
 
   // PATCH /users/:userId - update (formData with image); authenticated self only
-  app.patch(
+  app.patch<{ Params: UserIdParams }>(
     "/:userId",
     {
-      preValidation: [
-        requireValidObjectIdParamHook("userId"),
-        createAuthHook(app),
-        requireUserIdMatchesSessionHook(),
-      ],
+      preValidation: [createOptionalAuthHook(app)],
+      schema: { params: userIdParamsSchema },
     },
     async (req, reply) => {
-    const params = req.params as { userId?: string };
-    const userId = params.userId!;
-
-    try {
-      const fields: Record<string, string> = {};
-      let imageFile: {
-        buffer: Buffer;
-        filename: string;
-        mimeType: string;
-      } | null = null;
-
-      const parts = req.parts();
-      for await (const part of parts) {
-        if (part.type === "file") {
-          if (part.fieldname === "imageUrl") {
-            const buffer = await part.toBuffer();
-            imageFile = {
-              buffer,
-              filename: part.filename,
-              mimeType: part.mimetype,
-            };
-          }
-        } else {
-          fields[part.fieldname] = part.value as string;
-        }
+      if (!req.authSession) {
+        throw unauthorized("Authentication required");
+      }
+      if (req.authSession.type !== "user") {
+        throw forbidden("User account required");
       }
 
-      const username = fields.username;
-      const email = fields.email;
-      const password = fields.password;
-      const idType = fields.idType;
-      const idNumber = fields.idNumber;
-      const address = fields.address ? JSON.parse(fields.address) : null;
-      const firstName = fields.firstName;
-      const lastName = fields.lastName;
-      const nationality = fields.nationality;
-      const gender = fields.gender;
-      const birthDate = fields.birthDate;
-      const phoneNumber = fields.phoneNumber;
-
-      if (
-        !username ||
-        !email ||
-        !idType ||
-        !idNumber ||
-        !address ||
-        !firstName ||
-        !lastName ||
-        !nationality ||
-        !gender ||
-        !birthDate ||
-        !phoneNumber
-      ) {
-        return reply.code(400).send({
-          message:
-            "Username, email, idType, idNumber, address, firstName, lastName, nationality, gender, birthDate, phoneNumber are required!",
-        });
+      const { userId } = req.params;
+      if (req.authSession.id !== userId) {
+        throw forbidden("Forbidden");
       }
 
-      const addressValidationResult = (objDefaultValidation as unknown as ObjDefaultValidationType)(
-        address,
-        reqAddressFields,
-        nonReqAddressFields,
-      );
+      const { fields, files } = await parseMultipart(req, updateUserBodySchema);
 
-      if (addressValidationResult !== true) {
-        return reply.code(400).send({ message: addressValidationResult });
-      }
-
-      if (password && !isValidPassword(password)) {
-        return reply.code(400).send({ message: PASSWORD_POLICY_MESSAGE });
-      }
-
-      const userDoc = await User.findById(userId);
-
+      const userDoc = await User.findById(userId).lean();
       if (!userDoc) {
-        return reply.code(404).send({ message: "User not found!" });
+        throw notFound("User not found!");
       }
 
-      const duplicateCustomer = await User.exists({
-        _id: { $ne: userId },
-        $or: [
-          { "personalDetails.username": username },
-          { "personalDetails.email": email },
-          { "personalDetails.idNumber": idNumber },
-        ],
-      });
-
-      if (duplicateCustomer) {
-        return reply.code(409).send({
-          message: "User with username, email or idNumber already exists!",
-        });
-      }
+      await assertNoDuplicateUser(fields, userId);
 
       const updateUserObj: Record<string, unknown> = {};
+      const personalDetails = userDoc.personalDetails;
 
-      if (username && username !== userDoc.personalDetails.username) {
-        updateUserObj["personalDetails.username"] = username;
-      }
-      if (email && email !== userDoc.personalDetails.email) {
-        updateUserObj["personalDetails.email"] = email;
-      }
-      if (idType && idType !== userDoc.personalDetails.idType) {
-        updateUserObj["personalDetails.idType"] = idType;
-      }
-      if (idNumber && idNumber !== userDoc.personalDetails.idNumber) {
-        updateUserObj["personalDetails.idNumber"] = idNumber;
-      }
-      if (firstName && firstName !== userDoc.personalDetails.firstName) {
-        updateUserObj["personalDetails.firstName"] = firstName;
-      }
-      if (lastName && lastName !== userDoc.personalDetails.lastName) {
-        updateUserObj["personalDetails.lastName"] = lastName;
-      }
-      if (nationality && nationality !== userDoc.personalDetails.nationality) {
-        updateUserObj["personalDetails.nationality"] = nationality;
-      }
-      if (gender && gender !== userDoc.personalDetails.gender) {
-        updateUserObj["personalDetails.gender"] = gender;
-      }
-      if (
-        birthDate &&
-        birthDate !== userDoc.personalDetails.birthDate?.toISOString()
-      ) {
-        updateUserObj["personalDetails.birthDate"] = birthDate;
-      }
-      if (phoneNumber && phoneNumber !== userDoc.personalDetails.phoneNumber) {
-        updateUserObj["personalDetails.phoneNumber"] = phoneNumber;
-      }
+      if (fields.username !== personalDetails.username)
+        updateUserObj["personalDetails.username"] = fields.username;
+      if (fields.email !== personalDetails.email)
+        updateUserObj["personalDetails.email"] = fields.email;
+      if (fields.idType !== personalDetails.idType)
+        updateUserObj["personalDetails.idType"] = fields.idType;
+      if (fields.idNumber !== personalDetails.idNumber)
+        updateUserObj["personalDetails.idNumber"] = fields.idNumber;
+      if (fields.firstName !== personalDetails.firstName)
+        updateUserObj["personalDetails.firstName"] = fields.firstName;
+      if (fields.lastName !== personalDetails.lastName)
+        updateUserObj["personalDetails.lastName"] = fields.lastName;
+      if (fields.nationality !== personalDetails.nationality)
+        updateUserObj["personalDetails.nationality"] = fields.nationality;
+      if (fields.gender !== personalDetails.gender)
+        updateUserObj["personalDetails.gender"] = fields.gender;
+      if (fields.birthDate.getTime() !== personalDetails.birthDate?.getTime())
+        updateUserObj["personalDetails.birthDate"] = fields.birthDate;
+      if (fields.phoneNumber !== personalDetails.phoneNumber)
+        updateUserObj["personalDetails.phoneNumber"] = fields.phoneNumber;
 
-      if (address) {
-        Object.keys(address).forEach((key) => {
-          if (
-            address[key] !==
-            (userDoc.personalDetails.address as Record<string, unknown>)?.[key]
-          ) {
-            updateUserObj[`personalDetails.address.${key}`] = address[key];
-          }
-        });
-      }
-
-      if (password) {
-        updateUserObj["personalDetails.password"] = await hash(password, 10);
-      }
-
-      if (imageFile && imageFile.buffer.length > 0) {
-        const folder = `/users/${userId}`;
-
-        const cloudinaryUploadResponse = await uploadFilesCloudinary({
-          folder,
-          filesArr: [imageFile],
-          onlyImages: true,
-        });
-
-        if (
-          typeof cloudinaryUploadResponse === "string" ||
-          cloudinaryUploadResponse.length === 0 ||
-          !cloudinaryUploadResponse.every((str) => str.includes("https://"))
-        ) {
-          return reply.code(400).send({
-            message: `Error uploading image: ${cloudinaryUploadResponse}`,
-          });
+      const storedAddress = personalDetails.address as
+        | Record<string, unknown>
+        | undefined;
+      for (const [key, value] of Object.entries(fields.address)) {
+        if (value !== storedAddress?.[key]) {
+          updateUserObj[`personalDetails.address.${key}`] = value;
         }
+      }
+
+      if (fields.password) {
+        updateUserObj["personalDetails.password"] = await hash(
+          fields.password,
+          10,
+        );
+      }
+
+      const imageFile = files.find((file) => file.fieldname === IMAGE_FIELD);
+      if (imageFile && imageFile.buffer.length > 0) {
+        const imageUrl = await uploadImage(`/users/${userId}`, imageFile);
 
         const deleteFilesCloudinaryResult: string | boolean =
-          await deleteFilesCloudinary(userDoc?.personalDetails.imageUrl || "");
+          await deleteFilesCloudinary(personalDetails.imageUrl || "");
 
         if (deleteFilesCloudinaryResult !== true) {
-          return reply.code(400).send({ message: deleteFilesCloudinaryResult });
+          throw badRequest(String(deleteFilesCloudinaryResult));
         }
 
-        updateUserObj["personalDetails.imageUrl"] = cloudinaryUploadResponse[0];
+        updateUserObj["personalDetails.imageUrl"] = imageUrl;
       }
 
       const userUpdate: mongoose.UpdateQuery<Record<string, unknown>> = {
         $set: updateUserObj,
       };
-      if (password) {
+      if (fields.password) {
         userUpdate.$inc = { refreshSessionVersion: 1 };
       }
 
       const updatedUser = await User.findByIdAndUpdate(userId, userUpdate, {
-        returnDocument: 'after',
+        returnDocument: "after",
         lean: true,
       });
 
       if (!updatedUser) {
-        return reply.code(404).send({ message: "User not found!" });
+        throw notFound("User not found!");
       }
 
       const session = await buildAuthUserSessionFromUserId(userId);
       if (!session) {
-        return reply.code(404).send({ message: "User not found!" });
+        throw notFound("User not found!");
       }
       const { accessToken, user: userOut } = issueSessionWithRefreshCookie(
         app,
@@ -455,39 +294,30 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
         accessToken,
         user: userOut,
       });
-    } catch (error) {
-      return reply.code(500).send({
-        message: "Update user failed!",
-        error: error instanceof Error ? error.message : error,
-      });
-    }
-  },
+    },
   );
 
   // DELETE /users/:userId - delete
-  app.delete("/:userId", async (req, reply) => {
-    try {
-      const params = req.params as { userId?: string };
-      const userId = params.userId;
-
-      if (!userId || !isObjectIdValid([userId])) {
-        return reply.code(400).send({ message: "Invalid user ID!" });
-      }
+  app.delete<{ Params: UserIdParams }>(
+    "/:userId",
+    { schema: { params: userIdParamsSchema } },
+    async (req, reply) => {
+      const { userId } = req.params;
 
       const employee = (await Employee.findOne({ userId })
         .select("terminatedDate")
         .lean()) as IEmployee | null;
 
       if (employee?.terminatedDate) {
-        return reply.code(400).send({
-          message: "User cannot be deleted because he/she is employeed!",
-        });
+        throw badRequest(
+          "User cannot be deleted because he/she is employeed!",
+        );
       }
 
       const deletedUser = await User.findOneAndDelete({ _id: userId });
 
       if (!deletedUser) {
-        return reply.code(404).send({ message: "User not found!" });
+        throw notFound("User not found!");
       }
 
       const folderPath = `/users/${userId}`;
@@ -496,127 +326,102 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
         await deleteFolderCloudinary(folderPath);
 
       if (deleteFolderCloudinaryResult !== true) {
-        return reply.code(400).send({ message: deleteFolderCloudinaryResult });
+        throw badRequest(
+          typeof deleteFolderCloudinaryResult === "string"
+            ? deleteFolderCloudinaryResult
+            : "DeleteCloudinaryFolder failed!",
+        );
       }
 
       return reply.code(200).send({ message: "User deleted successfully" });
-    } catch (error) {
-      return reply.code(500).send({
-        message: "Delete user failed!",
-        error: error instanceof Error ? error.message : error,
-      });
-    }
-  });
+    },
+  );
 
   // PATCH /users/:userId/markNotificationAsDeleted - mark notification deleted (transaction)
-  app.patch("/:userId/markNotificationAsDeleted", async (req, reply) => {
-    const params = req.params as { userId?: string };
-    const userId = params.userId;
+  app.patch<{ Params: UserIdParams; Body: MarkNotificationDeletedBody }>(
+    "/:userId/markNotificationAsDeleted",
+    {
+      schema: {
+        params: userIdParamsSchema,
+        body: markNotificationDeletedBodySchema,
+      },
+    },
+    async (req, reply) => {
+      const { userId } = req.params;
+      const { notificationId } = req.body;
 
-    const { notificationId } = req.body as { notificationId?: string };
+      const session = await mongoose.startSession();
+      session.startTransaction();
 
-    if (
-      !userId ||
-      !notificationId ||
-      !isObjectIdValid([userId, notificationId])
-    ) {
-      return reply.code(400).send({
-        message: "User or notification ID is not valid!",
-      });
-    }
+      try {
+        const notificationExists = await Notification.exists({
+          _id: notificationId,
+        }).session(session);
 
-    const session = await mongoose.startSession();
-    session.startTransaction();
+        if (!notificationExists) {
+          throw notFound("Notification not found!");
+        }
 
-    try {
-      const notificationExists = await Notification.exists({
-        _id: notificationId,
-      }).session(session);
-
-      if (!notificationExists) {
-        await session.abortTransaction();
-        return reply.code(404).send({ message: "Notification not found!" });
-      }
-
-      const updatedCustomer = await User.findOneAndUpdate(
-        { _id: userId, "notifications.notificationId": notificationId },
-        {
-          $set: {
-            "notifications.$.deletedFlag": true,
-            "notifications.$.readFlag": true,
+        const updatedUser = await User.findOneAndUpdate(
+          { _id: userId, "notifications.notificationId": notificationId },
+          {
+            $set: {
+              "notifications.$.deletedFlag": true,
+              "notifications.$.readFlag": true,
+            },
           },
-        },
-        { returnDocument: 'after', lean: true, session },
-      );
+          { returnDocument: "after", lean: true, session },
+        );
 
-      if (!updatedCustomer) {
-        await session.abortTransaction();
-        return reply.code(404).send({ message: "User not found!" });
+        if (!updatedUser) {
+          throw notFound("User not found!");
+        }
+
+        await session.commitTransaction();
+
+        return reply.code(200).send({
+          message: "User notification mark as deleted successfully!",
+        });
+      } catch (error) {
+        await session.abortTransaction().catch(() => undefined);
+        throw error;
+      } finally {
+        session.endSession();
       }
-
-      await session.commitTransaction();
-
-      return reply.code(200).send({
-        message: "User notification mark as deleted successfully!",
-      });
-    } catch (error) {
-      await session.abortTransaction();
-      return reply.code(500).send({
-        message: "Update notification read flag from user failed!",
-        error: error instanceof Error ? error.message : error,
-      });
-    } finally {
-      session.endSession();
-    }
-  });
+    },
+  );
 
   // PATCH /users/:userId/updateReadFlag/:notificationId - update read flag
-  app.patch("/:userId/updateReadFlag/:notificationId", async (req, reply) => {
-    try {
-      const params = req.params as { userId?: string; notificationId?: string };
-      const { userId, notificationId } = params;
-
-      if (
-        !userId ||
-        !notificationId ||
-        !isObjectIdValid([userId, notificationId])
-      ) {
-        return reply.code(400).send({
-          message: "User or notification ID is not valid!",
-        });
-      }
+  app.patch<{ Params: UserNotificationParams }>(
+    "/:userId/updateReadFlag/:notificationId",
+    { schema: { params: userNotificationParamsSchema } },
+    async (req, reply) => {
+      const { userId, notificationId } = req.params;
 
       const notificationExists = await Notification.exists({
         _id: notificationId,
       });
 
       if (!notificationExists) {
-        return reply.code(404).send({ message: "Notification not found!" });
+        throw notFound("Notification not found!");
       }
 
-      const updatedCustomer = await User.findOneAndUpdate(
+      const updatedUser = await User.findOneAndUpdate(
         {
           _id: userId,
           "notifications.notificationId": notificationId,
         },
         { $set: { "notifications.$.readFlag": true } },
-        { returnDocument: 'after', lean: true },
+        { returnDocument: "after", lean: true },
       );
 
-      if (!updatedCustomer) {
-        return reply
-          .code(404)
-          .send({ message: "User notification not updated!" });
+      if (!updatedUser) {
+        throw notFound("User notification not updated!");
       }
 
       return reply.code(200).send({
         message: "User notification updated successfully!",
       });
-    } catch (error) {
-      return reply.code(500).send({
-        message: "Update notification read flag from user failed!",
-        error: error instanceof Error ? error.message : error,
-      });
-    }
-  });
+    },
+  );
 };

@@ -135,6 +135,8 @@ export const subscriptionEnums = ["Free", "Basic", "Premium", "Enterprise"] as s
 
 export const idEnums = ["National ID", "Passport", "Driving License"] as string[];
 
+export const genderEnums = ["Man", "Woman", "Other"] as string[];
+
 export const userRolesEnums = [
   "Owner",
   "General Manager",
