@@ -2,7 +2,7 @@
 
 This document explains **how the Restaurant POS web app (`frontend/`) relies on external npm packages**, where each major concern lives in the stack, and **conventions for adding or extending** that stack. It complements [`overview.md`](../product/overview.md) (product shape) and feature-specific docs such as [`frontend-i18n.md`](./frontend-i18n.md) and [`frontend-authentication-and-navigation.md`](./frontend-authentication-and-navigation.md).
 
-**Source of truth for versions:** `frontend/package.json` (and the lockfile). Prefer **pinning compatible ranges** (`^`) and running **`npm install`** from `frontend/` when adding dependencies.
+**Source of truth for versions:** `frontend/package.json` for the frontend's own dependencies, resolved by the single root `package-lock.json`. Prefer **pinning compatible ranges** (`^`) and running **`npm install`** from the repo root when adding dependencies.
 
 ---
 
@@ -58,7 +58,7 @@ Auth **password rules** for **setting** passwords are shared with the monorepo v
 ## 4. Adding or upgrading a dependency
 
 1. **Prefer existing stack:** Check sections 2–3 before introducing a second form library, a second HTTP client for the same surface, or ad hoc validation.
-2. **Install from `frontend/`:** `npm install <package>` (or `npm install -D` for build/test-only tools).
+2. **Install from the repo root:** `npm install <package> -w frontend` (or `npm install -D <package> -w frontend` for build/test-only tools), then commit the updated root `package-lock.json`.
 3. **Verify:** `npm run build` and `npm run test` (and `npm run lint` if you touch ESLint-affected areas).
 4. **Document:** For **cross-cutting** or **non-obvious** packages, add a row or bullet in **section 2** or **3** of this file and, if relevant, add a pointer in [`AGENTS.md`](../../AGENTS.md).
 
