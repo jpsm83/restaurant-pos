@@ -3,9 +3,14 @@
   "private": true,
   "type": "module",
   "version": "1.0.0",
-  "main": "index.js",
-  "directories": {
-    "packages": "packages"
+  "exports": {
+    "./package.json": "./package.json",
+    "./enums": "./enums.ts",
+    "./interfaces/*": "./interfaces/*.ts",
+    "./schemas": "./schemas/index.ts",
+    "./schemas/primitives": "./schemas/primitives.ts",
+    "./schemas/*": "./schemas/*.ts",
+    "./utils/*": "./utils/*.ts"
   },
   "scripts": {
     "test": "echo \"shared package: no tests yet\""
