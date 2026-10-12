@@ -34,7 +34,7 @@ function dto(overrides?: Partial<BusinessProfileDto>): BusinessProfileDto {
     acceptsDelivery: 1 as unknown as boolean,
     deliveryRadius: 4,
     minOrder: 10,
-    metrics: {},
+    metrics: {} as BusinessProfileDto["metrics"],
     businessOpeningHours: [],
     deliveryOpeningWindows: [],
     reportingConfig: { weeklyReportStartDay: 1 },

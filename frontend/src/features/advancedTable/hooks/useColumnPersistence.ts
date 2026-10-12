@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import type { VisibilityState } from "@tanstack/react-table";
+import type { ColumnVisibilityState } from "@tanstack/react-table";
 import type { PersistenceAdapter } from "@/features/advancedTable/services/persistenceService";
 import { reconcileColumnState } from "@/features/advancedTable/utils/columnStateReconciliation";
 
@@ -14,9 +14,9 @@ export interface ColumnPersistenceConfig {
   keyPrefix?: string;
   availableColumnIds?: string[];
   initialColumnOrder?: string[];
-  initialColumnVisibility?: VisibilityState;
+  initialColumnVisibility?: ColumnVisibilityState;
   onColumnOrderChange?: (order: string[]) => void;
-  onColumnVisibilityChange?: (visibility: VisibilityState) => void;
+  onColumnVisibilityChange?: (visibility: ColumnVisibilityState) => void;
 }
 
 export function buildColumnPersistenceKeys(
@@ -32,15 +32,15 @@ export function readPersistedColumnState(
   adapter: PersistenceAdapter | undefined,
   keys: ColumnPersistenceKeys,
   fallbackOrder: string[],
-  fallbackVisibility: VisibilityState
-): { order: string[]; visibility: VisibilityState } {
+  fallbackVisibility: ColumnVisibilityState
+): { order: string[]; visibility: ColumnVisibilityState } {
   if (!adapter) {
     return { order: fallbackOrder, visibility: fallbackVisibility };
   }
 
   return {
     order: adapter.load<string[]>(keys.orderKey, fallbackOrder),
-    visibility: adapter.load<VisibilityState>(keys.visibilityKey, fallbackVisibility),
+    visibility: adapter.load<ColumnVisibilityState>(keys.visibilityKey, fallbackVisibility),
   };
 }
 
@@ -48,7 +48,7 @@ export function persistColumnState(
   adapter: PersistenceAdapter | undefined,
   keys: ColumnPersistenceKeys,
   order: string[],
-  visibility: VisibilityState
+  visibility: ColumnVisibilityState
 ): void {
   if (!adapter) return;
   adapter.save(keys.orderKey, order);
@@ -98,7 +98,7 @@ export function useColumnPersistence({
   );
 
   const handleColumnVisibilityChange = useCallback(
-    (visibility: VisibilityState) => {
+    (visibility: ColumnVisibilityState) => {
       if (enabled) {
         persistColumnState(adapter, keys, persisted.order, visibility);
       }

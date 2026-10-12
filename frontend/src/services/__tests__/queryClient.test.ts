@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { queryClient } from "../queryClient";
 
-function axiosLikeError(status?: number): unknown {
-  if (status === undefined) return { message: "Network error" };
-  return { response: { status } };
+function axiosLikeError(status?: number): Error {
+  if (status === undefined) return { message: "Network error" } as unknown as Error;
+  return { response: { status } } as unknown as Error;
 }
 
 describe("queryClient defaults", () => {

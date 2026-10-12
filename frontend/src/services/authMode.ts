@@ -60,7 +60,7 @@ export async function setAuthMode(mode: AuthMode): Promise<void> {
         403: EMPLOYEE_MODE_NOT_ALLOWED_MESSAGE,
       },
     });
-    throw new Error(mapped.message);
+    throw new Error(mapped.message, { cause: e });
   }
 }
 

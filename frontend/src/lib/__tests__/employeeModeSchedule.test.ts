@@ -7,7 +7,7 @@ import {
   deriveEmployeeModeFromSchedule,
   EMPLOYEE_LOGIN_EARLY_MS,
   isWithinEmployeeLoginWindow,
-} from "./employeeModeSchedule";
+} from "../employeeModeSchedule";
 
 describe("isWithinEmployeeLoginWindow", () => {
   it("allows login from five minutes before shift start through shift end", () => {

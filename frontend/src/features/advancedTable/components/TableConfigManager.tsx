@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- shouldDisableSave is a small pure helper colocated with its only consumer and imported by its test. */
 import React from "react";
 import { useTranslation } from "react-i18next";
 import {

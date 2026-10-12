@@ -18,9 +18,11 @@ vi.mock("@/hooks/use-mobile", () => ({
 }));
 
 const mockRender = vi.fn();
-const mockCreateRoot = vi.fn((_container: unknown) => ({
-  render: mockRender,
-}));
+const mockCreateRoot = vi.fn<(container: unknown) => { render: typeof mockRender }>(
+  () => ({
+    render: mockRender,
+  }),
+);
 
 vi.mock("react-dom/client", () => ({
   createRoot: (container: unknown) => mockCreateRoot(container),

@@ -282,11 +282,16 @@ export function updateBusinessProfile(
   })();
 
   inFlightProfileUpdates.set(businessId, requestPromise);
-  void requestPromise.finally(() => {
-    if (inFlightProfileUpdates.get(businessId) === requestPromise) {
-      inFlightProfileUpdates.delete(businessId);
-    }
-  });
+  void requestPromise
+    .catch(() => {
+      // Callers handle the rejection; swallow it here so the cleanup chain
+      // below does not surface a spurious unhandled rejection.
+    })
+    .finally(() => {
+      if (inFlightProfileUpdates.get(businessId) === requestPromise) {
+        inFlightProfileUpdates.delete(businessId);
+      }
+    });
   return requestPromise;
 }
 

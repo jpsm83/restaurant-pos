@@ -1,10 +1,11 @@
+import type { ReactNode } from "react";
 import { screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import { renderWithI18n } from "@/test/i18nTestUtils";
 import { ErrorBoundary } from "../ErrorBoundary";
 
-function ThrowingChild({ message = "boom" }: { message?: string }) {
+function ThrowingChild({ message = "boom" }: { message?: string }): ReactNode {
   throw new Error(message);
 }
 

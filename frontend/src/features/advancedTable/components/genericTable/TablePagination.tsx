@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Column, RowData, Table } from "@tanstack/react-table";
+import type { Column, ReactTable, RowData } from "@tanstack/react-table";
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Download, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -22,7 +22,7 @@ function getPageLabel(pageIndex: number, pageCount: number): string {
 }
 
 export interface StandaloneTablePaginationProps<TData extends RowData> {
-  table: Table<AdvancedTableFeatures, TData>;
+  table: ReactTable<AdvancedTableFeatures, TData>;
   onClearFilters?: () => void;
   onResetColumns?: () => void;
   onExport?: () => Promise<void> | void;

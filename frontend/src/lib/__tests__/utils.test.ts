@@ -3,9 +3,10 @@ import { cn } from "../utils";
 
 describe("cn", () => {
   it("joins class names from strings, arrays, and conditionals", () => {
+    const shouldHide = false;
     const value = cn(
       "inline-flex",
-      ["items-center", false && "hidden"],
+      ["items-center", shouldHide && "hidden"],
       { "font-semibold": true, "opacity-50": false },
     );
 

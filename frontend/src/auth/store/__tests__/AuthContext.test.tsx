@@ -12,7 +12,7 @@ const getCurrentUser = vi.fn();
 const refreshSession = vi.fn();
 const setAccessToken = vi.fn();
 
-vi.mock("../api", () => ({
+vi.mock("../../api", () => ({
   loadPersistedAccessToken: () => loadPersistedAccessToken(),
   getCurrentUser: () => getCurrentUser(),
   refreshSession: () => refreshSession(),

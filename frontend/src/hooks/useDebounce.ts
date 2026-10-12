@@ -42,8 +42,11 @@ export function useDebounce(
   const pastFirstFireRef = useRef(false);
   const runRef = useRef(run);
   const onInactiveRef = useRef(onInactive);
-  runRef.current = run;
-  onInactiveRef.current = onInactive;
+
+  useEffect(() => {
+    runRef.current = run;
+    onInactiveRef.current = onInactive;
+  });
 
   useEffect(() => {
     let cancelled = false;

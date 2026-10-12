@@ -1,5 +1,7 @@
 "use client"
 
+/* eslint-disable react-refresh/only-export-components -- SidebarProvider and the useSidebar hook share the same context; the generated shadcn structure keeps them colocated. */
+
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { useTranslation } from "react-i18next"

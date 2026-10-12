@@ -6,6 +6,7 @@ import {
   readPersistedColumnState,
   useColumnPersistence,
 } from "../useColumnPersistence";
+import type { PersistenceAdapter } from "@/features/advancedTable/services/persistenceService";
 
 describe("useColumnPersistence", () => {
   it("builds keys and reads/writes persisted state", () => {
@@ -16,10 +17,13 @@ describe("useColumnPersistence", () => {
     });
 
     const saved = new Map<string, unknown>();
-    const adapter = {
-      save: (key: string, value: unknown) => saved.set(key, value),
-      load: (key: string, fallback: unknown) => (saved.has(key) ? saved.get(key) : fallback),
-      remove: (_key: string) => undefined,
+    const adapter: PersistenceAdapter = {
+      save: (key, value) => {
+        saved.set(key, value);
+      },
+      load: (key, fallback) =>
+        saved.has(key) ? (saved.get(key) as typeof fallback) : fallback,
+      remove: () => undefined,
     };
 
     persistColumnState(adapter, keys, ["a"], { a: true });

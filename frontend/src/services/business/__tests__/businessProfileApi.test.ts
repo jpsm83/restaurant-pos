@@ -38,6 +38,7 @@ import {
   createBusiness,
   fetchManagementContactOptions,
   getBusinessById,
+  updateBusinessProfile,
   useBusinessProfileQuery,
   useCreateBusinessMutation,
   useUpdateBusinessProfileMutation,
@@ -100,6 +101,25 @@ describe("businessProfileApi", () => {
       name: "BusinessServiceError",
       message: "Business profile was not found.",
       status: 404,
+    });
+  });
+
+  it("maps updateBusinessProfile problem details", async () => {
+    mockHttpPatch.mockRejectedValueOnce({
+      isAxiosError: true,
+      message: "Request failed with status code 403",
+      response: {
+        status: 403,
+        data: { status: 403, detail: "You cannot edit this business" },
+      },
+    });
+
+    await expect(
+      updateBusinessProfile("b-1", new FormData()),
+    ).rejects.toMatchObject({
+      name: "BusinessServiceError",
+      message: "You cannot edit this business",
+      status: 403,
     });
   });
 

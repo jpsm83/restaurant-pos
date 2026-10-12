@@ -16,9 +16,9 @@ import {
   type ColumnOrderState,
   type RowData,
   type SortingState,
-  type Table as TanStackTable,
+  type ReactTable,
   type TableOptions,
-  type VisibilityState,
+  type ColumnVisibilityState,
 } from "@tanstack/react-table";
 import { toast } from "sonner";
 import type { TableRowData } from "@/features/advancedTable/types/tableContracts";
@@ -62,13 +62,13 @@ export interface UseEnhancedTableConfig<TData extends RowData> {
   data: TData[];
   columns: TableOptions<AdvancedTableFeatures, TData>["columns"];
   getRowId?: (row: TData, index: number) => string;
-  defaultColumnVisibility?: VisibilityState;
+  defaultColumnVisibility?: ColumnVisibilityState;
   defaultColumnOrder?: ColumnOrderState;
   pageSize?: number;
   initialColumnOrder?: ColumnOrderState;
-  initialColumnVisibility?: VisibilityState;
+  initialColumnVisibility?: ColumnVisibilityState;
   onColumnOrderChange?: (order: ColumnOrderState) => void;
-  onColumnVisibilityChange?: (visibility: VisibilityState) => void;
+  onColumnVisibilityChange?: (visibility: ColumnVisibilityState) => void;
   onTableStateChange?: (state: {
     sorting: SortingState;
     columnFilters: ColumnFiltersState;
@@ -78,7 +78,7 @@ export interface UseEnhancedTableConfig<TData extends RowData> {
 }
 
 export interface UseEnhancedTableReturn<TData extends RowData> {
-  table: TanStackTable<AdvancedTableFeatures, TData>;
+  table: ReactTable<AdvancedTableFeatures, TData>;
   draggedColumn: string | null;
   handleDragStart: (e: React.DragEvent, columnId: string) => void;
   handleDragOver: (e: React.DragEvent) => void;
@@ -87,8 +87,8 @@ export interface UseEnhancedTableReturn<TData extends RowData> {
   resetColumns: () => void;
   columnOrder: ColumnOrderState;
   setColumnOrder: React.Dispatch<React.SetStateAction<ColumnOrderState>>;
-  columnVisibility: VisibilityState;
-  setColumnVisibility: React.Dispatch<React.SetStateAction<VisibilityState>>;
+  columnVisibility: ColumnVisibilityState;
+  setColumnVisibility: React.Dispatch<React.SetStateAction<ColumnVisibilityState>>;
   pagination: { pageIndex: number; pageSize: number };
 }
 
@@ -101,9 +101,9 @@ function resolveStableRowId(row: unknown, index: number): string {
 }
 
 export function resolveInitialColumnVisibility(
-  initial?: VisibilityState,
-  fallback: VisibilityState = {}
-): VisibilityState {
+  initial?: ColumnVisibilityState,
+  fallback: ColumnVisibilityState = {}
+): ColumnVisibilityState {
   if (initial && Object.keys(initial).length > 0) return initial;
   return fallback;
 }
@@ -150,7 +150,7 @@ export const useEnhancedTable = <TData extends RowData = TableRowData>({
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize });
   const [previousPageSize, setPreviousPageSize] = useState(pageSize);
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() =>
+  const [columnVisibility, setColumnVisibility] = useState<ColumnVisibilityState>(() =>
     resolveInitialColumnVisibility(initialColumnVisibility, defaultColumnVisibility)
   );
   const [columnOrder, setColumnOrder] = useState<ColumnOrderState>(() =>
@@ -205,7 +205,7 @@ export const useEnhancedTable = <TData extends RowData = TableRowData>({
       pagination,
     },
     initialState: {
-      pagination: { pageSize },
+      pagination: { pageIndex: 0, pageSize },
     },
   });
 

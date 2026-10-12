@@ -38,7 +38,10 @@ describe("http service", () => {
   });
 
   it("attaches bearer token when access token exists", async () => {
-    let interceptor: ((config: Record<string, any>) => Record<string, any>) | undefined;
+    type TestRequestConfig = { headers: Record<string, string> };
+    let interceptor:
+      | ((config: TestRequestConfig) => TestRequestConfig)
+      | undefined;
     mockCreate.mockReturnValue({
       interceptors: {
         request: {
@@ -51,7 +54,7 @@ describe("http service", () => {
     mockGetAccessToken.mockReturnValue("jwt-token");
     await import("../http");
 
-    const config = { headers: {} as Record<string, string> };
+    const config: TestRequestConfig = { headers: {} };
     const result = interceptor?.(config);
     expect(result?.headers.Authorization).toBe("Bearer jwt-token");
   });

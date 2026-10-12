@@ -6,10 +6,12 @@ import {
   useTableExport,
 } from "../useTableExport";
 
-const mockExportRowsToExcel = vi.fn(async () => undefined);
+const { mockExportRowsToExcel } = vi.hoisted(() => ({
+  mockExportRowsToExcel: vi.fn(async () => undefined),
+}));
 
 vi.mock("@/features/advancedTable/services/exportService", () => ({
-  exportRowsToExcel: (...args: unknown[]) => mockExportRowsToExcel(...args),
+  exportRowsToExcel: mockExportRowsToExcel,
 }));
 
 describe("useTableExport", () => {

@@ -5,7 +5,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { RowData, VisibilityState } from "@tanstack/react-table";
+import type { ColumnVisibilityState, RowData } from "@tanstack/react-table";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import type {
@@ -131,12 +131,12 @@ export interface StandaloneAdvancedTableProps<TData extends RowData = TableRowDa
   columns: TableColumnConfig<TData>[];
   getRowId?: (row: TData, index: number) => string;
   pageSize?: number;
-  defaultColumnVisibility?: VisibilityState;
+  defaultColumnVisibility?: ColumnVisibilityState;
   defaultColumnOrder?: string[];
   initialColumnOrder?: string[];
-  initialColumnVisibility?: VisibilityState;
+  initialColumnVisibility?: ColumnVisibilityState;
   onColumnOrderChange?: (order: string[]) => void;
-  onColumnVisibilityChange?: (visibility: VisibilityState) => void;
+  onColumnVisibilityChange?: (visibility: ColumnVisibilityState) => void;
   onResetColumnState?: () => void;
   filterConfigs?: FilterConfig[];
   isRealtimeFilterColumn?: (columnId: string) => boolean;

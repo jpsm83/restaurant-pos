@@ -9,7 +9,7 @@ import type {
   TableExportOptions,
   TableFetchResponse,
   TableRowData,
-} from "./tableContracts";
+} from "../tableContracts";
 
 describe("tableContracts types", () => {
   it("keeps expected literal unions for filter and modal trigger contracts", () => {

@@ -28,12 +28,11 @@ function readyFormController(): BusinessProfileSettingsReady {
     register: vi.fn() as unknown as BusinessProfileSettingsReady["register"],
     control: {} as BusinessProfileSettingsReady["control"],
     setValue: vi.fn() as unknown as BusinessProfileSettingsReady["setValue"],
-    handleSubmit:
-      (fn: (data: unknown) => void | Promise<void>) =>
+    handleSubmit: ((fn: (data: unknown) => void | Promise<void>) =>
       (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         void fn({});
-      },
+      }) as unknown as BusinessProfileSettingsReady["handleSubmit"],
     reset: vi.fn() as unknown as BusinessProfileSettingsReady["reset"],
     isDirty: false,
     errors: {},
@@ -53,6 +52,7 @@ function readyFormController(): BusinessProfileSettingsReady {
     managementContactRows: [],
     unsavedChangesGuard: {
       isDialogOpen: false,
+      shouldGuard: false,
       stayOnPage: vi.fn(),
       leavePage: vi.fn(),
       isLeaving: false,
