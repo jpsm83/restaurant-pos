@@ -5,24 +5,20 @@
  * Multipart bodies (create and update) are buffered and validated by the shared
  * multipart helper against strict zod DTOs from
  * `packages/schemas/employee.ts`; the JSON-encoded `allEmployeeRoles` and
- * `salary` fields are parsed there. The GET/PATCH/DELETE path params are
- * validated by their DTOs. The `validateSalary` and `validateEmployeeDates`
- * post-parse checks stay here, alongside the database-backed duplicate and user
- * link guards. Every error is raised as an `AppError` so the global handler
- * emits RFC 9457 `application/problem+json`.
+ * `salary` fields are parsed and validated there. The GET/PATCH/DELETE path
+ * params are validated by their DTOs. The `terminatedDate > joinDate` rule
+ * stays here as a named post-parse check, alongside the database-backed
+ * duplicate, user-link and document-count guards. Every error is raised as an
+ * `AppError` so the global handler emits RFC 9457 `application/problem+json`.
  */
 import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
-import type {
-  IEmployee,
-  ISalary,
-} from "../../../../packages/interfaces/IEmployee.ts";
+import type { IEmployee } from "../../../../packages/interfaces/IEmployee.ts";
 import type { IUser } from "../../../../packages/interfaces/IUser.ts";
 
 import deleteFolderCloudinary from "../../cloudinary/deleteFolderCloudinary.ts";
 import calculateVacationProportional from "../../employees/calculateVacationProportional.ts";
 import validateEmployeeDates from "../../employees/validateEmployeeDates.ts";
-import validateSalary from "../../employees/validateSalary.ts";
 import Employee from "../../models/employee.ts";
 import User from "../../models/user.ts";
 import Printer from "../../models/printer.ts";
@@ -42,7 +38,11 @@ import {
 
 const { managementRolesEnums } = enums;
 
-/** Total documents an employee may hold; create and update enforce the cap. */
+/**
+ * Total documents an employee may hold. The multipart transport also caps a
+ * request at 10 files, so a create can never exceed the cap and only the update
+ * path needs to check the running total.
+ */
 const MAX_DOCUMENT_FILES = 10;
 
 /** Upload collected files to Cloudinary, raising a `400` on any failure. */
@@ -86,11 +86,9 @@ function toNewEmployee(
     vacationDaysPerYear: fields.vacationDaysPerYear,
     businessId: new Types.ObjectId(fields.businessId),
     vacationDaysLeft: fields.vacationDaysPerYear,
-    contractHoursWeek: fields.contractHoursWeek || undefined,
-    salary: fields.salary
-      ? (fields.salary as unknown as ISalary)
-      : undefined,
-    comments: fields.comments || undefined,
+    contractHoursWeek: fields.contractHoursWeek,
+    salary: fields.salary,
+    comments: fields.comments,
   };
 }
 
@@ -162,25 +160,10 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
 
   // POST /employees - create (formData with documents, transaction)
   app.post("/", async (req, reply) => {
-    if (typeof req.parts !== "function") {
-      throw badRequest("Expected multipart/form-data");
-    }
-
     const { fields, files } = await parseMultipart(
       req,
       createEmployeeBodySchema,
     );
-
-    if (files.length > MAX_DOCUMENT_FILES) {
-      throw badRequest(`Max file quantity is ${MAX_DOCUMENT_FILES}!`);
-    }
-
-    if (fields.salary) {
-      const salaryResult = validateSalary(fields.salary);
-      if (salaryResult !== true) {
-        throw badRequest(salaryResult);
-      }
-    }
 
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -215,13 +198,7 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
         newEmployee.documentsUrl = await uploadDocuments(folder, files, false);
       }
 
-      const createEmployee = await Employee.create([newEmployee], {
-        session,
-      });
-
-      if (!createEmployee) {
-        throw badRequest("Error creating employee!");
-      }
+      await Employee.create([newEmployee], { session });
 
       const updateUser = await User.findOneAndUpdate(
         { _id: user._id },
@@ -269,21 +246,10 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
     async (req, reply) => {
       const { employeeId } = req.params;
 
-      if (typeof req.parts !== "function") {
-        throw badRequest("Expected multipart/form-data");
-      }
-
       const { fields, files } = await parseMultipart(
         req,
         patchEmployeeBodySchema,
       );
-
-      if (fields.salary) {
-        const salaryResult = validateSalary(fields.salary);
-        if (salaryResult !== true) {
-          throw badRequest(salaryResult);
-        }
-      }
 
       const datesResult = validateEmployeeDates(
         fields.joinDate,
@@ -342,18 +308,14 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
         if (fields.comments && fields.comments !== employee.comments)
           updateEmployeeObj.comments = fields.comments;
 
-        if (fields.salary) {
-          const existingSalary = employee.salary as
-            | Record<string, unknown>
-            | undefined;
-          const updatedSalary: Partial<ISalary> = {};
-          for (const [key, value] of Object.entries(fields.salary)) {
-            if (value !== existingSalary?.[key]) {
-              (updatedSalary as Record<string, unknown>)[key] = value;
-            }
-          }
-          if (Object.keys(updatedSalary).length > 0)
-            updateEmployeeObj.salary = updatedSalary as ISalary;
+        const salary = fields.salary;
+        if (
+          salary &&
+          (salary.payFrequency !== employee.salary?.payFrequency ||
+            salary.grossSalary !== employee.salary?.grossSalary ||
+            salary.netSalary !== employee.salary?.netSalary)
+        ) {
+          updateEmployeeObj.salary = salary;
         }
 
         if (

@@ -92,6 +92,23 @@ describe("createEmployeeBodySchema", () => {
     ).toBe(false);
   });
 
+  it("rejects a partial, unknown-key, non-numeric or invalid-frequency salary", () => {
+    for (const salary of [
+      { payFrequency: "Hourly", grossSalary: 20 },
+      { payFrequency: "Hourly", grossSalary: 20, netSalary: 15, bonus: 1 },
+      { payFrequency: "Hourly", grossSalary: "20", netSalary: 15 },
+      { payFrequency: "Fortnightly", grossSalary: 20, netSalary: 15 },
+    ]) {
+      expect(
+        createEmployeeBodySchema.safeParse({
+          ...validCreate,
+          salary: JSON.stringify(salary),
+        }).success,
+        JSON.stringify(salary),
+      ).toBe(false);
+    }
+  });
+
   it("normalizes the email, sanitizes the tax number and strips markup from comments", () => {
     const parsed = createEmployeeBodySchema.parse({
       ...validCreate,

@@ -66,14 +66,19 @@ const toFieldValue = (value: unknown): unknown => {
 
 /**
  * Buffer `req.parts()`, JSON-parse the designated fields, collect files, and
- * validate the fields against `schema`. Throws an `AppError` (400) when a
- * designated field is malformed JSON or the DTO rejects the fields.
+ * validate the fields against `schema`. Throws an `AppError` (400) when the
+ * request is not multipart, a designated field is malformed JSON, or the DTO
+ * rejects the fields.
  */
 export async function parseMultipart<T>(
   req: FastifyRequest,
   schema: z.ZodType<T>,
   options: ParseMultipartOptions = {},
 ): Promise<MultipartResult<T>> {
+  if (typeof req.parts !== "function") {
+    throw new AppError("Expected multipart/form-data", { statusCode: 400 });
+  }
+
   const jsonFields = new Set(options.jsonFields ?? []);
   const raw: Record<string, unknown> = {};
   const files: MultipartFile[] = [];

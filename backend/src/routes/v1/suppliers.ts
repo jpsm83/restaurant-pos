@@ -74,10 +74,6 @@ export const suppliersRoutes: FastifyPluginAsync = async (app) => {
 
   // POST /suppliers - create (formData with image)
   app.post("/", async (req, reply) => {
-    if (typeof req.parts !== "function") {
-      throw badRequest("Expected multipart/form-data");
-    }
-
     const { fields, files } = await parseMultipart(
       req,
       createSupplierBodySchema,
@@ -167,10 +163,6 @@ export const suppliersRoutes: FastifyPluginAsync = async (app) => {
     { schema: { params: supplierIdParamsSchema } },
     async (req, reply) => {
       const { supplierId } = req.params;
-
-      if (typeof req.parts !== "function") {
-        throw badRequest("Expected multipart/form-data");
-      }
 
       const { fields, files } = await parseMultipart(
         req,

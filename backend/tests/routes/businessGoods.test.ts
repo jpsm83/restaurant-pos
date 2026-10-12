@@ -14,6 +14,7 @@ import BusinessGood from "../../src/models/businessGood.ts";
 import Business from "../../src/models/business.ts";
 import Supplier from "../../src/models/supplier.ts";
 import SupplierGood from "../../src/models/supplierGood.ts";
+import { isProblemDetails } from "../helpers/problemDetails.ts";
 
 const boundary = "----formdata";
 const multipartHeaders = {
@@ -27,9 +28,6 @@ const multipartPayload = (fields: Record<string, string>): string =>
         `--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`,
     )
     .join("") + `--${boundary}--\r\n`;
-
-const isProblemDetails = (response: { headers: Record<string, unknown> }) =>
-  String(response.headers["content-type"]).includes("application/problem+json");
 
 describe("BusinessGoods Routes", () => {
   let businessId: Types.ObjectId;

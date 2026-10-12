@@ -9,6 +9,12 @@
  */
 import { z } from "zod";
 
+/**
+ * The literal tuple `z.enum` needs to carry a `readonly string[]` constant into
+ * `z.infer` as a value union.
+ */
+export type EnumValues = [string, ...string[]];
+
 /** Mongo ObjectId serialized as a 24-character hex string. */
 const OBJECT_ID_PATTERN = /^[0-9a-fA-F]{24}$/;
 

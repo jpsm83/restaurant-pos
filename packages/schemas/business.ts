@@ -27,13 +27,11 @@ import {
   coercedNumberSchema,
   emailSchema,
   emptyToUndefined,
+  type EnumValues,
   jsonField,
   objectIdSchema,
   sanitizedString,
 } from "./primitives.ts";
-
-/** The literal tuple `z.enum` needs to carry the value union into `z.infer`. */
-type EnumValues = [string, ...string[]];
 
 /** An optional boolean field; a blank string is treated as "not provided". */
 const optionalBooleanSchema = z.preprocess(

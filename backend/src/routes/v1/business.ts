@@ -275,10 +275,6 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
   );
 
   app.post("/", async (req, reply) => {
-    if (typeof req.parts !== "function") {
-      throw badRequest("Expected multipart/form-data");
-    }
-
     const { fields, files } = await parseMultipart(req, createBusinessBodySchema);
 
     const duplicateBusiness = await Business.exists({
@@ -407,10 +403,6 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
       }
 
       const businessId = req.params.businessId;
-
-      if (typeof req.parts !== "function") {
-        throw badRequest("Expected multipart/form-data");
-      }
 
       const { fields, files } = await parseMultipart(
         req,

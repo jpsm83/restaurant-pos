@@ -22,14 +22,12 @@ import {
   coercedBooleanSchema,
   coercedNumberSchema,
   emptyToUndefined,
+  type EnumValues,
   freeTextString,
   jsonField,
   objectIdSchema,
   sanitizedString,
 } from "./primitives.ts";
-
-/** The literal tuple `z.enum` needs to carry the value union into `z.infer`. */
-type EnumValues = [string, ...string[]];
 
 /** An optional JSON-encoded field; a blank string is treated as "not provided". */
 const optionalJsonField = <T extends z.ZodType>(schema: T) =>

@@ -14,26 +14,13 @@ import Employee from "../../src/models/employee.ts";
 import Business from "../../src/models/business.ts";
 import User from "../../src/models/user.ts";
 import Printer from "../../src/models/printer.ts";
-
-const isProblemDetails = (response: { headers: Record<string, unknown> }) =>
-  String(response.headers["content-type"]).includes("application/problem+json");
-
-const errorPaths = (response: { body: string }): string[] =>
-  (JSON.parse(response.body).errors ?? []).map((e: { path: string }) => e.path);
-
-const errorMessages = (response: { body: string }): string[] =>
-  (JSON.parse(response.body).errors ?? []).map(
-    (e: { message: string }) => e.message,
-  );
-
-const detail = (response: { body: string }): string =>
-  JSON.parse(response.body).detail;
-
-const multipart = (fields: Record<string, string>): FormData => {
-  const form = new FormData();
-  for (const [name, value] of Object.entries(fields)) form.append(name, value);
-  return form;
-};
+import { multipart } from "../helpers/multipart.ts";
+import {
+  detail,
+  errorMessages,
+  errorPaths,
+  isProblemDetails,
+} from "../helpers/problemDetails.ts";
 
 describe("Employees Routes", () => {
   let businessId: Types.ObjectId;
@@ -227,7 +214,7 @@ describe("Employees Routes", () => {
 
       expect(missingField.statusCode).toBe(400);
       expect(isProblemDetails(missingField)).toBe(true);
-      expect(detail(missingField)).toBe("Missing key: netSalary");
+      expect(errorPaths(missingField)).toContain("salary.netSalary");
 
       const badFrequency = await app.inject({
         method: "POST",
@@ -245,7 +232,25 @@ describe("Employees Routes", () => {
 
       expect(badFrequency.statusCode).toBe(400);
       expect(isProblemDetails(badFrequency)).toBe(true);
-      expect(detail(badFrequency)).toBe("Invalid pay frequency!");
+      expect(errorMessages(badFrequency)).toContain("Invalid pay frequency!");
+    });
+
+    it("returns a problem-details 400 for malformed JSON salary", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/employees",
+        payload: multipart({
+          ...validCreateFields(),
+          salary: "{not json",
+        }),
+        headers: { "content-type": "multipart/form-data" },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(isProblemDetails(response)).toBe(true);
+      expect(errorMessages(response)).toContain("Invalid JSON");
     });
 
     it("returns a problem-details 400 for a server-owned field", async () => {
@@ -266,6 +271,29 @@ describe("Employees Routes", () => {
       expect(errorMessages(response).some((m) => m.includes("documentsUrl"))).toBe(
         true,
       );
+    });
+
+    it("rejects a create with more files than the transport allows", async () => {
+      const app = await getTestApp();
+
+      const form = multipart(validCreateFields());
+      for (let i = 0; i < 11; i++) {
+        form.append(
+          "documents",
+          new Blob([Buffer.from("data")], { type: "image/png" }),
+          `doc-${i}.png`,
+        );
+      }
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/employees",
+        payload: form,
+        headers: { "content-type": "multipart/form-data" },
+      });
+
+      expect(response.statusCode).toBe(413);
+      expect(isProblemDetails(response)).toBe(true);
     });
   });
 

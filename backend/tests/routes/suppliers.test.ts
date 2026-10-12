@@ -12,23 +12,12 @@ import Supplier from "../../src/models/supplier.ts";
 import SupplierGood from "../../src/models/supplierGood.ts";
 import BusinessGood from "../../src/models/businessGood.ts";
 import Business from "../../src/models/business.ts";
-
-const isProblemDetails = (response: { headers: Record<string, unknown> }) =>
-  String(response.headers["content-type"]).includes("application/problem+json");
-
-const errorPaths = (response: { body: string }): string[] =>
-  (JSON.parse(response.body).errors ?? []).map((e: { path: string }) => e.path);
-
-const errorMessages = (response: { body: string }): string[] =>
-  (JSON.parse(response.body).errors ?? []).map(
-    (e: { message: string }) => e.message,
-  );
-
-const multipart = (fields: Record<string, string>): FormData => {
-  const form = new FormData();
-  for (const [name, value] of Object.entries(fields)) form.append(name, value);
-  return form;
-};
+import { multipart } from "../helpers/multipart.ts";
+import {
+  errorMessages,
+  errorPaths,
+  isProblemDetails,
+} from "../helpers/problemDetails.ts";
 
 describe("Suppliers Routes", () => {
   let businessId: Types.ObjectId;

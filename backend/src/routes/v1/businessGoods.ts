@@ -174,10 +174,6 @@ export const businessGoodsRoutes: FastifyPluginAsync = async (app) => {
 
   // POST /businessGoods - create business good (formData with image)
   app.post("/", async (req, reply) => {
-    if (typeof req.parts !== "function") {
-      throw badRequest("Expected multipart/form-data");
-    }
-
     const { fields, files } = await parseMultipart(
       req,
       createBusinessGoodBodySchema,
@@ -302,10 +298,6 @@ export const businessGoodsRoutes: FastifyPluginAsync = async (app) => {
     { schema: { params: businessGoodIdParamsSchema } },
     async (req, reply) => {
       const { businessGoodId } = req.params;
-
-      if (typeof req.parts !== "function") {
-        throw badRequest("Expected multipart/form-data");
-      }
 
       const { fields, files } = await parseMultipart(
         req,

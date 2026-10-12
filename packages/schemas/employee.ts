@@ -8,26 +8,25 @@
  * sends them gets a `400`. The create and update bodies are consumed through
  * the shared multipart helper, so the JSON-encoded `allEmployeeRoles` and
  * `salary` fields are parsed here. `allEmployeeRoles` is validated against the
- * `userRolesEnums` from `packages/enums.ts`. The salary shape and the
- * `terminatedDate > joinDate` rule stay in the route as named post-parse checks.
+ * `userRolesEnums` and the salary shape against `employeePayFrequencyEnums`,
+ * both from `packages/enums.ts`. The `terminatedDate > joinDate` rule stays in
+ * the route as a named post-parse check, because it spans two fields.
  */
 import { z } from "zod";
 
-import { userRolesEnums } from "../enums.ts";
+import { employeePayFrequencyEnums, userRolesEnums } from "../enums.ts";
 import {
   coercedBooleanSchema,
   coercedIntSchema,
   coercedNumberSchema,
   emailSchema,
   emptyToUndefined,
+  type EnumValues,
   freeTextString,
   jsonField,
   objectIdSchema,
   sanitizedString,
 } from "./primitives.ts";
-
-/** The literal tuple `z.enum` needs to carry the value union into `z.infer`. */
-type EnumValues = [string, ...string[]];
 
 /** An optional JSON-encoded field; a blank string is treated as "not provided". */
 const optionalJsonField = <T extends z.ZodType>(schema: T) =>
@@ -55,10 +54,22 @@ const employeeRolesSchema = jsonField(
   z.array(employeeRoleSchema).min(1, "At least one employee role is required!"),
 );
 
+const payFrequencySchema = z.enum(
+  employeePayFrequencyEnums as EnumValues,
+  "Invalid pay frequency!",
+);
+
 /**
- * The fields a create and update request share. `salary` is JSON-parsed here
- * and its shape is checked by the route's `validateSalary` post-parse check.
+ * A salary, JSON-encoded in the multipart body. All three fields are required,
+ * so a partial object is rejected; unknown keys are rejected by `strictObject`.
  */
+const salarySchema = z.strictObject({
+  payFrequency: payFrequencySchema,
+  grossSalary: z.number("Gross salary must be a number!"),
+  netSalary: z.number("Net salary must be a number!"),
+});
+
+/** The fields a create and update request share. `salary` is JSON-parsed here. */
 const employeeFields = {
   allEmployeeRoles: employeeRolesSchema,
   taxNumber: sanitizedString("Tax number is required!"),
@@ -68,7 +79,7 @@ const employeeFields = {
   ),
   userEmail: emailSchema,
   contractHoursWeek: optionalNumberSchema,
-  salary: optionalJsonField(z.record(z.string(), z.unknown())),
+  salary: optionalJsonField(salarySchema),
   comments: z.preprocess(emptyToUndefined, freeTextString().optional()),
 };
 
