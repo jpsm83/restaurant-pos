@@ -2,6 +2,9 @@
  * Purchases Routes Tests - Phase 1 Module 10 + Phase 4 Task 4.1
  * Tests for purchases CRUD endpoints with transaction verification
  * Phase 4: Full transaction tests with inventory updates (requires replica set)
+ *
+ * Validation and error responses are asserted at the HTTP seam: failures are
+ * RFC 9457 `application/problem+json` documents, never `{ message }`.
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
@@ -14,6 +17,12 @@ import Business from "../../src/models/business.ts";
 import Employee from "../../src/models/employee.ts";
 import User from "../../src/models/user.ts";
 import Inventory from "../../src/models/inventory.ts";
+import { multipart } from "../helpers/multipart.ts";
+import {
+  detail,
+  errorPaths,
+  isProblemDetails,
+} from "../helpers/problemDetails.ts";
 
 describe("Purchases Routes", () => {
   let businessId: Types.ObjectId;
@@ -147,7 +156,7 @@ describe("Purchases Routes", () => {
       expect(body.length).toBe(1);
     });
 
-    it("returns 404 when no purchases exist", async () => {
+    it("returns a problem-details 404 when no purchases exist", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
@@ -156,11 +165,11 @@ describe("Purchases Routes", () => {
       });
 
       expect(response.statusCode).toBe(404);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("No purchases found");
+      expect(isProblemDetails(response)).toBe(true);
+      expect(detail(response)).toBe("No purchases found");
     });
 
-    it("returns 400 for invalid date range", async () => {
+    it("returns a problem-details 400 for an invalid date range", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
@@ -169,13 +178,26 @@ describe("Purchases Routes", () => {
       });
 
       expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toContain("Invalid date range");
+      expect(isProblemDetails(response)).toBe(true);
+      expect(detail(response)).toContain("Invalid date range");
+    });
+
+    it("returns a validation problem for a malformed date", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/purchases?startDate=not-a-date",
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(isProblemDetails(response)).toBe(true);
+      expect(errorPaths(response)).toContain("startDate");
     });
   });
 
   describe("POST /api/v1/purchases", () => {
-    it("returns 400 for missing required fields", async () => {
+    it("returns a validation problem for missing required fields", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
@@ -185,11 +207,19 @@ describe("Purchases Routes", () => {
       });
 
       expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toContain("required");
+      expect(isProblemDetails(response)).toBe(true);
+      expect(errorPaths(response)).toEqual(
+        expect.arrayContaining([
+          "purchaseDate",
+          "businessId",
+          "purchasedByEmployeeId",
+          "receiptId",
+          "purchaseInventoryItems",
+        ]),
+      );
     });
 
-    it("returns 400 for invalid businessId or employeeId", async () => {
+    it("returns a validation problem for an invalid businessId", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
@@ -206,11 +236,11 @@ describe("Purchases Routes", () => {
       });
 
       expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toContain("not valid");
+      expect(isProblemDetails(response)).toBe(true);
+      expect(errorPaths(response)).toContain("businessId");
     });
 
-    it("returns 400 for one time purchase without comment", async () => {
+    it("returns a problem-details 400 for one time purchase without comment", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
@@ -223,14 +253,41 @@ describe("Purchases Routes", () => {
           purchasedByEmployeeId: employeeId.toString(),
           receiptId: "REC-003",
           purchaseInventoryItems: [
-            { supplierGoodId: supplierGoodId.toString(), quantityPurchased: 5, purchasePrice: 50 },
+            {
+              supplierGoodId: supplierGoodId.toString(),
+              quantityPurchased: 5,
+              purchasePrice: 50,
+            },
           ],
         },
       });
 
       expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toContain("Comment is required");
+      expect(isProblemDetails(response)).toBe(true);
+      expect(detail(response)).toContain("Comment is required");
+    });
+
+    it("rejects unknown and server-owned fields", async () => {
+      const app = await getTestApp();
+
+      for (const field of ["totalAmount", "oneTimePurchase", "documentsUrl"]) {
+        const response = await app.inject({
+          method: "POST",
+          url: "/api/v1/purchases",
+          payload: {
+            supplierId: supplierId.toString(),
+            purchaseDate: new Date().toISOString(),
+            businessId: businessId.toString(),
+            purchasedByEmployeeId: employeeId.toString(),
+            receiptId: `REC-${field}`,
+            purchaseInventoryItems: [],
+            [field]: "x",
+          },
+        });
+
+        expect(response.statusCode, `${field}: ${response.body}`).toBe(400);
+        expect(isProblemDetails(response)).toBe(true);
+      }
     });
   });
 
@@ -258,7 +315,7 @@ describe("Purchases Routes", () => {
       expect(body._id).toBe(purchase._id.toString());
     });
 
-    it("returns 400 for invalid ID format", async () => {
+    it("returns a validation problem for an invalid ID format", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
@@ -267,11 +324,11 @@ describe("Purchases Routes", () => {
       });
 
       expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Purchase ID not valid!");
+      expect(isProblemDetails(response)).toBe(true);
+      expect(errorPaths(response)).toContain("purchaseId");
     });
 
-    it("returns 404 for non-existent purchase", async () => {
+    it("returns a problem-details 404 for a non-existent purchase", async () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
@@ -281,43 +338,45 @@ describe("Purchases Routes", () => {
       });
 
       expect(response.statusCode).toBe(404);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Purchase not found!");
+      expect(isProblemDetails(response)).toBe(true);
+      expect(detail(response)).toBe("Purchase not found!");
     });
   });
 
   describe("PATCH /api/v1/purchases/:purchaseId", () => {
-    it("returns 400 for missing businessId", async () => {
+    it("returns a validation problem for missing businessId", async () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
       const response = await app.inject({
         method: "PATCH",
         url: `/api/v1/purchases/${fakeId}`,
-        payload: { title: "Updated" },
+        payload: multipart({ title: "Updated" }),
+        headers: { "content-type": "multipart/form-data" },
       });
 
       expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Business ID is required!");
+      expect(isProblemDetails(response)).toBe(true);
+      expect(errorPaths(response)).toContain("businessId");
     });
 
-    it("returns 400 for invalid IDs", async () => {
+    it("returns a validation problem for invalid IDs", async () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
       const response = await app.inject({
         method: "PATCH",
         url: `/api/v1/purchases/${fakeId}`,
-        payload: {
+        payload: multipart({
           businessId: "invalid-id",
           purchasedByEmployeeId: employeeId.toString(),
-        },
+        }),
+        headers: { "content-type": "multipart/form-data" },
       });
 
       expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toContain("not valid");
+      expect(isProblemDetails(response)).toBe(true);
+      expect(errorPaths(response)).toContain("businessId");
     });
 
     it("updates purchase successfully", async () => {
@@ -337,21 +396,55 @@ describe("Purchases Routes", () => {
       const response = await app.inject({
         method: "PATCH",
         url: `/api/v1/purchases/${purchase._id}`,
-        payload: {
+        payload: multipart({
           businessId: businessId.toString(),
           purchasedByEmployeeId: employeeId.toString(),
           title: "Updated Title",
-        },
+        }),
+        headers: { "content-type": "multipart/form-data" },
       });
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.message).toBe("Purchase updated successfully!");
+
+      const updated = await Purchase.findById(purchase._id).lean();
+      expect(updated?.title).toBe("Updated Title");
+    });
+
+    it("accepts a JSON body as well as multipart", async () => {
+      const app = await getTestApp();
+
+      const purchase = await Purchase.create({
+        businessId,
+        supplierId,
+        purchasedByEmployeeId: employeeId,
+        purchaseDate: new Date(),
+        receiptId: "REC-JSON",
+        totalAmount: 75,
+        title: "Original Title",
+        purchaseInventoryItems: [],
+      });
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/purchases/${purchase._id}`,
+        payload: {
+          businessId: businessId.toString(),
+          purchasedByEmployeeId: employeeId.toString(),
+          title: "Renamed",
+        },
+      });
+
+      expect(response.statusCode, response.body).toBe(200);
+
+      const updated = await Purchase.findById(purchase._id).lean();
+      expect(updated?.title).toBe("Renamed");
     });
   });
 
   describe("DELETE /api/v1/purchases/:purchaseId", () => {
-    it("returns 400 for invalid purchaseId", async () => {
+    it("returns a validation problem for an invalid purchaseId", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
@@ -360,13 +453,13 @@ describe("Purchases Routes", () => {
       });
 
       expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Purchase ID not valid!");
+      expect(isProblemDetails(response)).toBe(true);
+      expect(errorPaths(response)).toContain("purchaseId");
     });
   });
 
   describe("PATCH /api/v1/purchases/:purchaseId/addSupplierGood", () => {
-    it("returns 400 for invalid supplierGoodId", async () => {
+    it("returns a validation problem for an invalid supplierGoodId", async () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
@@ -381,13 +474,13 @@ describe("Purchases Routes", () => {
       });
 
       expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toContain("not valid");
+      expect(isProblemDetails(response)).toBe(true);
+      expect(errorPaths(response)).toContain("supplierGoodId");
     });
   });
 
   describe("PATCH /api/v1/purchases/:purchaseId/deleteSupplierGood", () => {
-    it("returns 400 for invalid purchaseId", async () => {
+    it("returns a validation problem for an invalid purchaseId", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
@@ -397,29 +490,13 @@ describe("Purchases Routes", () => {
       });
 
       expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toContain("not valid");
+      expect(isProblemDetails(response)).toBe(true);
+      expect(errorPaths(response)).toContain("purchaseId");
     });
   });
 
   describe("PATCH /api/v1/purchases/:purchaseId/editSupplierGood", () => {
-    it("returns 401 without authentication", async () => {
-      const app = await getTestApp();
-      const fakeId = new Types.ObjectId();
-
-      const response = await app.inject({
-        method: "PATCH",
-        url: `/api/v1/purchases/${fakeId}/editSupplierGood`,
-        payload: {
-          purchaseInventoryItemsId: new Types.ObjectId().toString(),
-          newQuantityPurchased: 10,
-        },
-      });
-
-      expect(response.statusCode).toBe(401);
-    });
-
-    it("returns 401 for requests without valid auth even with valid payload", async () => {
+    it("returns a problem-details 401 without authentication", async () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
@@ -434,6 +511,8 @@ describe("Purchases Routes", () => {
       });
 
       expect(response.statusCode).toBe(401);
+      expect(isProblemDetails(response)).toBe(true);
+      expect(detail(response)).toBe("Authentication required");
     });
   });
 
@@ -462,7 +541,7 @@ describe("Purchases Routes", () => {
       expect(body.length).toBe(1);
     });
 
-    it("returns 400 for invalid supplierId", async () => {
+    it("returns a validation problem for an invalid supplierId", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
@@ -471,11 +550,11 @@ describe("Purchases Routes", () => {
       });
 
       expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Purchase ID not valid!");
+      expect(isProblemDetails(response)).toBe(true);
+      expect(errorPaths(response)).toContain("supplierId");
     });
 
-    it("returns 404 when no purchases for supplier", async () => {
+    it("returns a problem-details 404 when no purchases for supplier", async () => {
       const app = await getTestApp();
       const otherSupplierId = new Types.ObjectId();
 
@@ -485,8 +564,8 @@ describe("Purchases Routes", () => {
       });
 
       expect(response.statusCode).toBe(404);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Purchase not found!");
+      expect(isProblemDetails(response)).toBe(true);
+      expect(detail(response)).toBe("Purchase not found!");
     });
   });
 
@@ -515,7 +594,7 @@ describe("Purchases Routes", () => {
       expect(body.length).toBe(1);
     });
 
-    it("returns 400 for invalid userId", async () => {
+    it("returns a validation problem for an invalid userId", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
@@ -524,11 +603,11 @@ describe("Purchases Routes", () => {
       });
 
       expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("User ID not valid!");
+      expect(isProblemDetails(response)).toBe(true);
+      expect(errorPaths(response)).toContain("userId");
     });
 
-    it("returns 404 when no purchases for user", async () => {
+    it("returns a problem-details 404 when no purchases for user", async () => {
       const app = await getTestApp();
       const otherUserId = new Types.ObjectId();
 
@@ -538,8 +617,8 @@ describe("Purchases Routes", () => {
       });
 
       expect(response.statusCode).toBe(404);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Purchase not found!");
+      expect(isProblemDetails(response)).toBe(true);
+      expect(detail(response)).toBe("Purchase not found!");
     });
   });
 
@@ -550,7 +629,8 @@ describe("Purchases Routes", () => {
 
       // Get initial inventory count
       const initialInventory = await Inventory.findById(inventoryId).lean();
-      const initialCount = initialInventory?.inventoryGoods?.[0]?.dynamicSystemCount ?? 0;
+      const initialCount =
+        initialInventory?.inventoryGoods?.[0]?.dynamicSystemCount ?? 0;
 
       const response = await app.inject({
         method: "POST",
@@ -571,13 +651,14 @@ describe("Purchases Routes", () => {
         },
       });
 
-      expect(response.statusCode).toBe(201);
+      expect(response.statusCode, response.body).toBe(201);
       const body = JSON.parse(response.body);
       expect(body.message).toContain("Purchase created");
 
       // Verify inventory was updated
       const updatedInventory = await Inventory.findById(inventoryId).lean();
-      const updatedCount = updatedInventory?.inventoryGoods?.[0]?.dynamicSystemCount ?? 0;
+      const updatedCount =
+        updatedInventory?.inventoryGoods?.[0]?.dynamicSystemCount ?? 0;
       expect(updatedCount).toBe(initialCount + 25);
     });
   });
@@ -606,12 +687,13 @@ describe("Purchases Routes", () => {
       // Manually increment inventory (simulating what POST would do)
       await Inventory.findOneAndUpdate(
         { _id: inventoryId, "inventoryGoods.supplierGoodId": supplierGoodId },
-        { $inc: { "inventoryGoods.$.dynamicSystemCount": 15 } }
+        { $inc: { "inventoryGoods.$.dynamicSystemCount": 15 } },
       );
 
       // Get count before delete
       const beforeDelete = await Inventory.findById(inventoryId).lean();
-      const countBeforeDelete = beforeDelete?.inventoryGoods?.[0]?.dynamicSystemCount ?? 0;
+      const countBeforeDelete =
+        beforeDelete?.inventoryGoods?.[0]?.dynamicSystemCount ?? 0;
 
       const response = await app.inject({
         method: "DELETE",
@@ -626,7 +708,8 @@ describe("Purchases Routes", () => {
 
       // Verify inventory was rolled back
       const afterDelete = await Inventory.findById(inventoryId).lean();
-      const countAfterDelete = afterDelete?.inventoryGoods?.[0]?.dynamicSystemCount ?? 0;
+      const countAfterDelete =
+        afterDelete?.inventoryGoods?.[0]?.dynamicSystemCount ?? 0;
       expect(countAfterDelete).toBe(countBeforeDelete - 15);
     });
   });
@@ -648,7 +731,8 @@ describe("Purchases Routes", () => {
 
       // Get initial inventory count
       const initialInventory = await Inventory.findById(inventoryId).lean();
-      const initialCount = initialInventory?.inventoryGoods?.[0]?.dynamicSystemCount ?? 0;
+      const initialCount =
+        initialInventory?.inventoryGoods?.[0]?.dynamicSystemCount ?? 0;
 
       const response = await app.inject({
         method: "PATCH",
@@ -660,13 +744,14 @@ describe("Purchases Routes", () => {
         },
       });
 
-      expect(response.statusCode).toBe(200);
+      expect(response.statusCode, response.body).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.message).toContain("added");
 
       // Verify inventory was updated
       const updatedInventory = await Inventory.findById(inventoryId).lean();
-      const updatedCount = updatedInventory?.inventoryGoods?.[0]?.dynamicSystemCount ?? 0;
+      const updatedCount =
+        updatedInventory?.inventoryGoods?.[0]?.dynamicSystemCount ?? 0;
       expect(updatedCount).toBe(initialCount + 20);
 
       // Verify purchase was updated
@@ -732,7 +817,8 @@ describe("Purchases Routes", () => {
       });
 
       const initialInventory = await Inventory.findById(inventoryId).lean();
-      const initialCount = initialInventory?.inventoryGoods?.[0]?.dynamicSystemCount ?? 0;
+      const initialCount =
+        initialInventory?.inventoryGoods?.[0]?.dynamicSystemCount ?? 0;
       expect(initialCount).toBe(50);
 
       // Get the purchase item ID
@@ -762,18 +848,21 @@ describe("Purchases Routes", () => {
         },
       });
 
-      expect(response.statusCode).toBe(200);
+      expect(response.statusCode, response.body).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.message).toContain("updated");
 
       // Verify inventory was updated: 50 - 10 (old) + 25 (new) = 65
       const updatedInventory = await Inventory.findById(inventoryId).lean();
-      const updatedCount = updatedInventory?.inventoryGoods?.[0]?.dynamicSystemCount ?? 0;
+      const updatedCount =
+        updatedInventory?.inventoryGoods?.[0]?.dynamicSystemCount ?? 0;
       expect(updatedCount).toBe(65);
 
       // Verify purchase was updated
       const updatedPurchase = await Purchase.findById(purchase._id).lean();
-      expect(updatedPurchase?.purchaseInventoryItems?.[0]?.quantityPurchased).toBe(25);
+      expect(updatedPurchase?.purchaseInventoryItems?.[0]?.quantityPurchased).toBe(
+        25,
+      );
       expect(updatedPurchase?.totalAmount).toBe(250);
     });
   });

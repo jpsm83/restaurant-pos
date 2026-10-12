@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import type { FastifyRequest } from "fastify";
 import { z } from "zod";
 
-import { parseMultipart } from "../../src/schemas/multipart.ts";
+import { parseMultipart, validateFields } from "../../src/schemas/multipart.ts";
 import { AppError } from "../../src/errors/appError.ts";
 import { coercedBooleanSchema, coercedIntSchema, trimmedString } from "../../../packages/schemas/index.ts";
 
@@ -133,5 +133,39 @@ describe("parseMultipart", () => {
         { path: "address", message: "Invalid JSON" },
       ]);
     });
+  });
+});
+
+describe("validateFields", () => {
+  it("returns the parsed value when the DTO accepts it", () => {
+    const parsed = validateFields(
+      { name: "  Jane   Doe ", age: "34" },
+      schema.omit({ address: true }),
+    );
+    expect(parsed).toEqual({ name: "Jane Doe", age: 34 });
+  });
+
+  it("throws a 400 AppError with dotted paths when the DTO rejects it", () => {
+    expect(() =>
+      validateFields({ name: "", city: "" }, z.strictObject({ name: trimmedString("Required") })),
+    ).toThrow(AppError);
+
+    try {
+      validateFields(
+        { name: "", address: { city: "" } },
+        z.strictObject({
+          name: trimmedString("Required"),
+          address: z.strictObject({ city: z.string().min(1, "Required") }),
+        }),
+      );
+    } catch (error) {
+      expect((error as AppError).statusCode).toBe(400);
+      expect((error as AppError).errors).toEqual(
+        expect.arrayContaining([
+          { path: "name", message: "Required" },
+          { path: "address.city", message: "Required" },
+        ]),
+      );
+    }
   });
 });

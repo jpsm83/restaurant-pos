@@ -65,6 +65,27 @@ const toFieldValue = (value: unknown): unknown => {
 };
 
 /**
+ * Validate a plain field object against a DTO, raising a `400` `AppError` with
+ * dotted field paths when it fails. Multipart fields and — for the routes that
+ * accept both transports — a parsed JSON body go through the same check, so
+ * both produce the same problem-details document.
+ */
+export function validateFields<T>(raw: unknown, schema: z.ZodType<T>): T {
+  const result = schema.safeParse(raw);
+  if (!result.success) {
+    const errors: ProblemFieldError[] = result.error.issues.map((issue) => ({
+      path: issue.path.join("."),
+      message: issue.message,
+    }));
+    throw new AppError("Request body is invalid", {
+      statusCode: 400,
+      errors,
+    });
+  }
+  return result.data;
+}
+
+/**
  * Buffer `req.parts()`, JSON-parse the designated fields, collect files, and
  * validate the fields against `schema`. Throws an `AppError` (400) when the
  * request is not multipart, a designated field is malformed JSON, or the DTO
@@ -104,17 +125,5 @@ export async function parseMultipart<T>(
     );
   }
 
-  const result = schema.safeParse(raw);
-  if (!result.success) {
-    const errors: ProblemFieldError[] = result.error.issues.map((issue) => ({
-      path: issue.path.join("."),
-      message: issue.message,
-    }));
-    throw new AppError("Request body is invalid", {
-      statusCode: 400,
-      errors,
-    });
-  }
-
-  return { fields: result.data, files };
+  return { fields: validateFields(raw, schema), files };
 }
