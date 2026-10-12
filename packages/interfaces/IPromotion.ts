@@ -1,4 +1,4 @@
-import { Types } from "mongoose";
+import type { Types } from "mongoose";
 import type { ClientSession } from "mongoose";
 import { IOrder } from "./IOrder.ts";
 

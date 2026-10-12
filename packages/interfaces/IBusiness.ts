@@ -1,4 +1,4 @@
-import { Types } from "mongoose";
+import type { Types } from "mongoose";
 import type { IAddress } from "./IAddress.ts";
 
 export interface IsupplierGoodWastePercentage {

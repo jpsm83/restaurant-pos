@@ -1,4 +1,4 @@
-import { Types } from "mongoose";
+import type { Types } from "mongoose";
 import { IAddress } from "./IAddress.ts";
 
 export interface ISupplier {

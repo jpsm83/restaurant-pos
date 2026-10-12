@@ -1,4 +1,4 @@
-import { Types } from "mongoose";
+import type { Types } from "mongoose";
 import { IPaymentMethod } from "./IPaymentMethod.js";
 
 export interface IOrder {

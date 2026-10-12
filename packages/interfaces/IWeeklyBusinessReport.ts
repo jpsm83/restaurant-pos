@@ -1,4 +1,4 @@
-import { Types } from "mongoose";
+import type { Types } from "mongoose";
 import { IGoodsReduced } from "./IDailySalesReport.ts";
 import { IPaymentMethod } from "./IPaymentMethod.ts";
 

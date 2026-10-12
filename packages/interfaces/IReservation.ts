@@ -1,4 +1,4 @@
-import { Types } from "mongoose";
+import type { Types } from "mongoose";
 
 export interface IReservation {
   _id?: Types.ObjectId;
