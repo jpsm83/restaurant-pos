@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { z } from "zod";
 
-import { mainCategoriesEnums } from "../../../packages/enums.ts";
+import { mainCategoriesEnums } from "restaurant-pos-packages/enums";
 import {
   configurationSetupBodySchema,
   configurationSetupParamsSchema,

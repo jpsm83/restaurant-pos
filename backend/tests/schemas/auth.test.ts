@@ -9,8 +9,8 @@ import {
   resetPasswordBodySchema,
   setModeBodySchema,
   signupBodySchema,
-} from "../../../packages/schemas/auth.ts";
-import { PASSWORD_POLICY_MESSAGE } from "../../../packages/utils/passwordPolicy.ts";
+} from "restaurant-pos-packages/schemas/auth";
+import { PASSWORD_POLICY_MESSAGE } from "restaurant-pos-packages/utils/passwordPolicy";
 
 const SERVER_OWNED_FIELDS = [
   "verificationToken",

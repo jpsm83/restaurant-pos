@@ -5,7 +5,7 @@ import {
   createScheduleBodySchema,
   employeeScheduleSchema,
   updateScheduleBodySchema,
-} from "../../../packages/schemas/schedules.ts";
+} from "restaurant-pos-packages/schemas/schedules";
 import {
   employeeScheduleServerOwnedFields,
   scheduleDtoSchemas,

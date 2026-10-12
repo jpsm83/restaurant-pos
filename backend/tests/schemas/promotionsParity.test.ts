@@ -2,13 +2,13 @@ import { describe, it, expect } from "vitest";
 import type { z } from "zod";
 
 import Promotion from "../../src/models/promotion.ts";
-import { weekDaysEnums } from "../../../packages/enums.ts";
+import { weekDaysEnums } from "restaurant-pos-packages/enums";
 import {
   createPromotionBodySchema,
   promotionIdParamsSchema,
   promotionsByBusinessParamsSchema,
   updatePromotionBodySchema,
-} from "../../../packages/schemas/promotions.ts";
+} from "restaurant-pos-packages/schemas/promotions";
 
 /**
  * Parity between the promotions DTOs and the Promotion model (the domain source

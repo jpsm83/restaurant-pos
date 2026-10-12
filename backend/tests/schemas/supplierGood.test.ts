@@ -5,7 +5,7 @@ import {
   supplierGoodBySupplierParamsSchema,
   supplierGoodIdParamsSchema,
   updateSupplierGoodBodySchema,
-} from "../../../packages/schemas/supplierGood.ts";
+} from "restaurant-pos-packages/schemas/supplierGood";
 
 const VALID_ID = "507f1f77bcf86cd799439011";
 

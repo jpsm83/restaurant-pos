@@ -5,8 +5,8 @@ import {
   supplierByBusinessParamsSchema,
   supplierIdParamsSchema,
   updateSupplierBodySchema,
-} from "../../../packages/schemas/supplier.ts";
-import { addressSchema } from "../../../packages/schemas/address.ts";
+} from "restaurant-pos-packages/schemas/supplier";
+import { addressSchema } from "restaurant-pos-packages/schemas/address";
 
 const VALID_ID = "507f1f77bcf86cd799439011";
 

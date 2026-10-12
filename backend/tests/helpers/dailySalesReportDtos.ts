@@ -1,6 +1,6 @@
 import type { z } from "zod";
 
-import { calculateUsersReportBodySchema } from "../../../packages/schemas/dailySalesReports.ts";
+import { calculateUsersReportBodySchema } from "restaurant-pos-packages/schemas/dailySalesReports";
 
 /**
  * The dailySalesReports DTOs that shape a persisted document. The query DTO is

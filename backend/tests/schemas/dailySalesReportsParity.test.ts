@@ -6,7 +6,7 @@ import {
   dailySalesReportIdParamsSchema,
   dailySalesReportsBusinessParamsSchema,
   dailySalesReportsBusinessQuerySchema,
-} from "../../../packages/schemas/dailySalesReports.ts";
+} from "restaurant-pos-packages/schemas/dailySalesReports";
 import {
   dailySalesReportBodySchemas,
   dailySalesReportServerOwnedFields,

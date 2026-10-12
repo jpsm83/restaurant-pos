@@ -7,7 +7,7 @@ import {
   salesInstancesByUserParamsSchema,
   transferSalesPointBodySchema,
   updateSalesInstanceBodySchema,
-} from "../../../packages/schemas/salesInstances.ts";
+} from "restaurant-pos-packages/schemas/salesInstances";
 
 /**
  * Every core salesInstances DTO, keyed by name, for the shared server-owned

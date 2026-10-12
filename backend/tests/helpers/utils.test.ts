@@ -2,8 +2,8 @@ import { describe, it, expect } from "vitest";
 import { Types } from "mongoose";
 import isObjectIdValid from "../../src/utils/isObjectIdValid.ts";
 import { isBusinessOpenNow } from "../../src/business/isBusinessOpenNow.ts";
-import type { IBusiness } from "../../../packages/interfaces/IBusiness.ts";
-import * as enums from "../../../packages/enums.ts";
+import type { IBusiness } from "restaurant-pos-packages/interfaces/IBusiness";
+import * as enums from "restaurant-pos-packages/enums";
 
 const { managementRolesEnums } = enums;
 

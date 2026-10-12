@@ -7,7 +7,7 @@ import {
   employeeByBusinessParamsSchema,
   employeeIdParamsSchema,
   patchEmployeeBodySchema,
-} from "../../../packages/schemas/employee.ts";
+} from "restaurant-pos-packages/schemas/employee";
 
 /**
  * Parity between the employee DTOs and the Mongoose Employee model (the domain

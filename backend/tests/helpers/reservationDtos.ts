@@ -7,7 +7,7 @@ import {
   reservationsByBusinessQuerySchema,
   reservationsQuerySchema,
   updateReservationBodySchema,
-} from "../../../packages/schemas/reservations.ts";
+} from "restaurant-pos-packages/schemas/reservations";
 
 /**
  * Every reservations DTO, keyed by name, for the shared server-owned-field

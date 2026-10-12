@@ -12,7 +12,7 @@ import {
   purchaseIdParamsSchema,
   purchasesQuerySchema,
   updatePurchaseBodySchema,
-} from "../../../packages/schemas/purchase.ts";
+} from "restaurant-pos-packages/schemas/purchase";
 
 const VALID_ID = "507f1f77bcf86cd799439011";
 const OTHER_ID = "507f191e810c19729de860ea";

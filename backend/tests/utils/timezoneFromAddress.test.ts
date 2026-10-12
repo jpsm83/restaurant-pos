@@ -2,8 +2,8 @@ import { describe, it, expect } from "vitest";
 
 import {
   resolveTimezoneFromAddress,
-} from "../../../packages/utils/timezoneFromAddress.ts";
-import { isSupportedTimezone } from "../../../packages/schemas/index.ts";
+} from "restaurant-pos-packages/utils/timezoneFromAddress";
+import { isSupportedTimezone } from "restaurant-pos-packages/schemas";
 
 describe("resolveTimezoneFromAddress", () => {
   it("uses the state to disambiguate a multi-zone country", () => {
@@ -116,7 +116,7 @@ describe("resolveTimezoneFromAddress", () => {
 describe("timezone data integrity", () => {
   it("only emits zones the shared schema accepts", async () => {
     const { COUNTRY_PRIMARY_TIMEZONE, STATE_TIMEZONES } = await import(
-      "../../../packages/utils/timezoneData.ts"
+      "restaurant-pos-packages/utils/timezoneData"
     );
 
     for (const zone of Object.values(COUNTRY_PRIMARY_TIMEZONE)) {

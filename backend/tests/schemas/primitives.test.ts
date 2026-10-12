@@ -14,7 +14,7 @@ import {
   SUPPORTED_TIMEZONES,
   timezoneSchema,
   trimmedString,
-} from "../../../packages/schemas/index.ts";
+} from "restaurant-pos-packages/schemas";
 
 describe("objectIdSchema", () => {
   it("accepts a 24-character hex id", () => {

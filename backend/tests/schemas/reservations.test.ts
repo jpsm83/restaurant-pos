@@ -8,8 +8,8 @@ import {
   reservationsQuerySchema,
   reservationStatusValues,
   updateReservationBodySchema,
-} from "../../../packages/schemas/reservations.ts";
-import { reservationStatusEnums } from "../../../packages/enums.ts";
+} from "restaurant-pos-packages/schemas/reservations";
+import { reservationStatusEnums } from "restaurant-pos-packages/enums";
 import { reservationDtoSchemas } from "../helpers/reservationDtos.ts";
 
 const VALID_ID = "507f1f77bcf86cd799439011";

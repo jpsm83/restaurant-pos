@@ -5,8 +5,8 @@ import {
   createSalesPointBodySchema,
   salesPointIdParamsSchema,
   updateSalesPointBodySchema,
-} from "../../../packages/schemas/salesPoints.ts";
-import { salesPointTypeEnums } from "../../../packages/enums.ts";
+} from "restaurant-pos-packages/schemas/salesPoints";
+import { salesPointTypeEnums } from "restaurant-pos-packages/enums";
 
 const VALID_ID = "507f1f77bcf86cd799439011";
 

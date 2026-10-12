@@ -7,7 +7,7 @@ import {
   supplierByBusinessParamsSchema,
   supplierIdParamsSchema,
   updateSupplierBodySchema,
-} from "../../../packages/schemas/supplier.ts";
+} from "restaurant-pos-packages/schemas/supplier";
 
 /**
  * Parity between the supplier DTOs and the Mongoose Supplier model (the domain
