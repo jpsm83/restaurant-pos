@@ -9,7 +9,7 @@ const formatAddress = (address: IAddress): string =>
 
 /**
  * Workspace-boundary smoke test: the frontend resolves the shared package by
- * name through the root npm workspace, not the `@packages/*` alias.
+ * name through the root npm workspace, not a hand-maintained path alias.
  */
 describe("shared package resolution", () => {
   it("resolves enums, schemas/primitives, interfaces, and utils by package name", () => {

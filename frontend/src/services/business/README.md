@@ -69,7 +69,7 @@ flowchart LR
 
 This file is intentionally **mostly types and re-exports**:
 
-- Aligns the form model with **`IBusinessProfileDto`** / **`IBusinessProfileAddress`** from `@packages/interfaces/IBusiness.ts` via aliases (`BusinessProfileDto`, etc.).
+- Aligns the form model with **`IBusinessProfileDto`** / **`IBusinessProfileAddress`** from `restaurant-pos-packages/interfaces/IBusiness` via aliases (`BusinessProfileDto`, etc.).
 - Defines **`BusinessProfileFormValues`**, the canonical client-side shape for profile/register-style forms (subscription, credentials for register flows, address, cuisine/categories, delivery flags, metrics, opening hours, delivery windows, reporting).
 - Re-exports implementation from `businessProfileApi`, `businessProfileMapper`, and `businessProfilePayload`.
 
@@ -130,7 +130,7 @@ Maps `BusinessProfileDto` → `BusinessProfileFormValues`:
 - **Strings**: trimmed; missing fields become `""`.
 - **Security fields**: `password` / `confirmPassword` empty; `confirmEmail` mirrors `email` from API.
 - **Image**: `imageFile: null`; `imageUrl` from DTO.
-- **Cuisine**: `normalizeCuisineTypes` supports legacy **string** or **string[]** from API; values are matched case-insensitively against `cuisineTypeEnums` from `@packages/enums.ts`; unknown values dropped.
+- **Cuisine**: `normalizeCuisineTypes` supports legacy **string** or **string[]** from API; values are matched case-insensitively against `cuisineTypeEnums` from `restaurant-pos-packages/enums`; unknown values dropped.
 - **Categories**: `normalizeCategories` maps to `foodSubCategoryEnums`; deduped.
 - **Metrics**: nested `supplierGoodWastePercentage` and top-level percentages use **`DEFAULT_BUSINESS_METRICS`** when numbers are missing or non-finite.
 - **Opening hours / delivery windows**: `normalizeBusinessOpeningHours` and `normalizeDeliveryOpeningWindows` validate `dayOfWeek` (0–6), require `HH:MM` strings, and drop invalid rows.
@@ -163,9 +163,9 @@ Builds the **multipart PATCH** body expected by the backend:
 
 Returns a Zod object schema whose shape mirrors **`BusinessProfileFormValues`**:
 
-- Subscription and currency enums from `@packages/enums.ts`.
-- **`email`** and **`confirmEmail`**: required, both must match **`emailRegex`** from `@packages/utils/emailRegex.ts`, and must equal each other after trim.
-- Optional new-password flow: empty both ok; if either new-password field is set, both required, must match, `isValidPassword` from `@packages/utils/passwordPolicy.ts`, and **`currentPassword`** must be non-empty (multipart PATCH when those fields are present on a form).
+- Subscription and currency enums from `restaurant-pos-packages/enums`.
+- **`email`** and **`confirmEmail`**: required, both must match **`emailRegex`** from `restaurant-pos-packages/utils/emailRegex`, and must equal each other after trim.
+- Optional new-password flow: empty both ok; if either new-password field is set, both required, must match, `isValidPassword` from `restaurant-pos-packages/utils/passwordPolicy`, and **`currentPassword`** must be non-empty (multipart PATCH when those fields are present on a form).
 - Opening hours and delivery windows: `HH:MM` regex, `closeTime` after `openTime`, day 0–6.
 - Metrics and non-negative numbers for delivery radius / min order (nullable).
 
@@ -183,8 +183,8 @@ Exported types: `BusinessProfileSchema`, `BusinessProfileSchemaValues`.
 |------------|--------|
 | `@/auth/api` | `setAccessToken` after create/update when JWT returned. |
 | `@/auth/types` | `AuthBusiness`, `AuthSession` in response types. |
-| `@packages/interfaces/IBusiness.ts` | DTO/metrics shapes. |
-| `@packages/enums.ts` | Cuisine, food categories, subscription, currency (schema + mapper + payload). |
+| `restaurant-pos-packages/interfaces/IBusiness` | DTO/metrics shapes. |
+| `restaurant-pos-packages/enums` | Cuisine, food categories, subscription, currency (schema + mapper + payload). |
 | `../http` | Axios instance. |
 | `../queryKeys` | Stable React Query keys for business detail. |
 | `../serviceErrors.ts` | `ServiceRequestError`, `toServiceRequestError`. |

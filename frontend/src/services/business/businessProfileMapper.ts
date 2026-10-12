@@ -1,9 +1,9 @@
-import type { IBusinessMetrics } from "@packages/interfaces/IBusiness.ts";
+import type { IBusinessMetrics } from "restaurant-pos-packages/interfaces/IBusiness";
 import {
   currenctyEnums,
   cuisineTypeEnums,
   foodSubCategoryEnums,
-} from "@packages/enums.ts";
+} from "restaurant-pos-packages/enums";
 import type {
   BusinessOpeningHourFormValue,
   BusinessProfileDto,

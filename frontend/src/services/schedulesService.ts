@@ -8,10 +8,10 @@
  *    **`SelectUserModePage`** when JWT disallows employee mode until shift; page invalidates this
  *    query when countdown completes.
  *
- * Depends on: `./http`, `./queryKeys`, shared schedule contracts from `@packages/interfaces`.
+ * Depends on: `./http`, `./queryKeys`, shared schedule contracts from `restaurant-pos-packages/interfaces`.
  */
 import { useQuery } from "@tanstack/react-query";
-import type { IDailyEmployeeScheduleResponse } from "@packages/interfaces/ISchedule.ts";
+import type { IDailyEmployeeScheduleResponse } from "restaurant-pos-packages/interfaces/ISchedule";
 import { http } from "./http";
 import { queryKeys } from "./queryKeys";
 import { toServiceRequestError } from "./serviceErrors";

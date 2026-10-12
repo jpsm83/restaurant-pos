@@ -4,12 +4,12 @@ import {
   cuisineTypeEnums,
   foodSubCategoryEnums,
   subscriptionEnums,
-} from "@packages/enums.ts";
-import emailRegex from "@packages/utils/emailRegex.ts";
+} from "restaurant-pos-packages/enums";
+import emailRegex from "restaurant-pos-packages/utils/emailRegex";
 import {
   isValidPassword,
   PASSWORD_POLICY_MESSAGE,
-} from "@packages/utils/passwordPolicy.ts";
+} from "restaurant-pos-packages/utils/passwordPolicy";
 
 const HHMM_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
 

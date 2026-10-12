@@ -32,7 +32,7 @@ import {
   currenctyEnums,
   cuisineTypeEnums,
   foodSubCategoryEnums,
-} from "@packages/enums.ts";
+} from "restaurant-pos-packages/enums";
 import {
   BusinessProfileSettingsFormShell,
   BusinessProfileSettingsLoadingCard,

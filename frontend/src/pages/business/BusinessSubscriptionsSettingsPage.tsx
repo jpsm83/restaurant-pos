@@ -1,6 +1,6 @@
 import { useWatch } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import { subscriptionEnums } from "@packages/enums.ts";
+import { subscriptionEnums } from "restaurant-pos-packages/enums";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   BusinessProfileSettingsFormShell,

@@ -34,7 +34,7 @@ This document explains **how the Restaurant POS web app (`frontend/`) relies on 
 | **Icons / assets** | `lucide-react`, `country-flag-icons` | Icons and language switcher flags. |
 | **Maps / geocoding** | `leaflet`, `react-leaflet`, `leaflet-control-geocoder` | Tenant **address** settings: OSM tiles + Nominatim geocode for the location preview (**`BusinessAddressLocationMap`**). Types: `@types/leaflet`. |
 
-Auth **password rules** for **setting** passwords are shared with the monorepo via `@packages/utils/passwordPolicy.ts`; Zod schemas in the frontend should stay aligned with that helper (see below).
+Auth **password rules** for **setting** passwords are shared with the monorepo via `restaurant-pos-packages/utils/passwordPolicy`; Zod schemas in the frontend should stay aligned with that helper (see below).
 
 ---
 
@@ -51,7 +51,7 @@ Auth **password rules** for **setting** passwords are shared with the monorepo v
 
 **Server or auth errors** that are not field-level validation (failed login, session expired banner, mutation failures) may still use **local state** plus **`Alert`**, alongside **`formState.errors`** / **`FieldError`** for client-side field errors.
 
-**Password policy:** Use `isValidPassword` from `@packages/utils/passwordPolicy.ts` inside Zod **refinements** on signup / business registration so client rules match backend expectations.
+**Password policy:** Use `isValidPassword` from `restaurant-pos-packages/utils/passwordPolicy` inside Zod **refinements** on signup / business registration so client rules match backend expectations.
 
 ---
 

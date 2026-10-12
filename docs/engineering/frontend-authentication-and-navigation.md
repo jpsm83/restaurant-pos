@@ -143,7 +143,7 @@ Dynamic segments **`/:userId/...`** could swallow words like `login` if they wer
 ### 6.3 Auth forms (validation and UI)
 
 - **`LoginPage`**, **`SignUpPage`**, and **`BusinessRegisterPage`** use **React Hook Form** with **Zod** and **`@hookform/resolvers/zod`**. Each page **colocates** its schema (for example `buildLoginSchema` / `buildSignUpSchema` / `buildBusinessRegisterSchema`) and uses **`register`** on **`Input`** fields and **`Controller`** on native **`<select>`**s where needed.
-- Field errors use **`formState.errors`** with the small **`FieldError`** helper (`frontend/src/components/FieldError.tsx`) plus **`Label`** / **`Input`** from **`@/components/ui`**. **Password policy** refinements align with **`@packages/utils/passwordPolicy.ts`**.
+- Field errors use **`formState.errors`** with the small **`FieldError`** helper (`frontend/src/components/FieldError.tsx`) plus **`Label`** / **`Input`** from **`@/components/ui`**. **Password policy** refinements align with **`restaurant-pos-packages/utils/passwordPolicy`**.
 - **Non-field failures** (wrong credentials, session-expired notice, business registration API errors) still appear in **`Alert`** components, separate from Zod field messages.
 
 See [`frontend-third-party-libraries.md`](./frontend-third-party-libraries.md) for the wider frontend dependency map.

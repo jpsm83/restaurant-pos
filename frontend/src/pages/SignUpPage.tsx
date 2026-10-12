@@ -20,8 +20,8 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { isValidPassword } from "@packages/utils/passwordPolicy.ts";
-import emailRegex from "@packages/utils/emailRegex.ts";
+import { isValidPassword } from "restaurant-pos-packages/utils/passwordPolicy";
+import emailRegex from "restaurant-pos-packages/utils/emailRegex";
 
 function buildSignUpSchema(messages: {
   allRequired: string;
