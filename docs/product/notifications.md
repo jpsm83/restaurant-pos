@@ -36,7 +36,7 @@ It deliberately does **not** cover:
 - **Inbox entry** — the per-person record of one notification, carrying its **unread** and **deleted** state. State is per recipient: one person reading or deleting a notification never changes it for anyone else.
 - **Conversation** (thread) — a two-way exchange opened by a manager's **direct message**, pairing the manager and one person; replies are messages in the thread.
 - **Venue event** — a dated announcement a venue publishes: a name, a date, and details. Publishing it sends an **Event** message.
-- **Engagement mute** — a single per-person switch, on by default, that suppresses a venue's broadcast engagement messages to that person.
+- **Engagement mute** — a single per-person switch, off by default, that suppresses a venue's broadcast engagement messages to that person.
 
 ### Terms this subject introduces
 
@@ -124,7 +124,7 @@ Terms reused from the product overview's core vocabulary rather than defined her
 ### 3.8 The engagement mute
 
 - The **only notification preference** is the engagement mute. There is no per-event or per-channel tuning, and operational notifications cannot be turned off.
-- A person holds a single **engagement mute**, **on by default** and **global** across every venue; muting suppresses a venue's broadcasts to that person, both in-app and by email. Operational notifications are **mandatory**.
+- A person holds a single **engagement mute**, **off by default** and **global** across every venue; muting suppresses a venue's broadcasts to that person, both in-app and by email. Operational notifications are **mandatory**.
 
 ---
 
