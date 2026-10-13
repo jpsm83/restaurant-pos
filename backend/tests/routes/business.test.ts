@@ -1347,6 +1347,112 @@ describe("Business Routes", () => {
       expect(response.statusCode).toBe(401);
     });
 
+    it("returns 403 when PATCH business with a non-business session", async () => {
+      const app = await getTestApp();
+      const business = await Business.create({
+        tradeName: "Employee Patch",
+        legalName: "Employee Patch LLC",
+        email: "employee-patch@business.com",
+        password: "hashedpassword",
+        phoneNumber: "1234567890",
+        taxNumber: "TAX-EMP-PATCH-001",
+        currencyTrade: "USD",
+        address: validAddress,
+      });
+      const auth = await generateTestToken({
+        id: business._id.toString(),
+        email: "employee-patch@business.com",
+        type: "user",
+        role: "Manager",
+      });
+
+      const boundary = "----formdata";
+      const payload = [
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="tradeName"\r\n\r\nX',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="legalName"\r\n\r\nEmployee Patch LLC',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="email"\r\n\r\nemployee-patch@business.com',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="phoneNumber"\r\n\r\n1234567890',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="taxNumber"\r\n\r\nTAX-EMP-PATCH-001',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="subscription"\r\n\r\nFree',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="currencyTrade"\r\n\r\nUSD',
+        `--${boundary}`,
+        `Content-Disposition: form-data; name="address"\r\n\r\n${JSON.stringify(validAddress)}`,
+        `--${boundary}--`,
+      ].join("\r\n");
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/business/${business._id}`,
+        headers: {
+          "content-type": `multipart/form-data; boundary=${boundary}`,
+          authorization: auth,
+        },
+        payload,
+      });
+
+      expect(response.statusCode).toBe(403);
+    });
+
+    it("returns 403 when the business session id does not match the route param", async () => {
+      const app = await getTestApp();
+      const business = await Business.create({
+        tradeName: "Mismatch Patch",
+        legalName: "Mismatch Patch LLC",
+        email: "mismatch-patch@business.com",
+        password: "hashedpassword",
+        phoneNumber: "1234567890",
+        taxNumber: "TAX-MISMATCH-001",
+        currencyTrade: "USD",
+        address: validAddress,
+      });
+      const auth = await generateTestToken({
+        id: new Types.ObjectId().toString(),
+        email: "mismatch-patch@business.com",
+        type: "business",
+        role: "Tenant",
+      });
+
+      const boundary = "----formdata";
+      const payload = [
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="tradeName"\r\n\r\nX',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="legalName"\r\n\r\nMismatch Patch LLC',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="email"\r\n\r\nmismatch-patch@business.com',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="phoneNumber"\r\n\r\n1234567890',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="taxNumber"\r\n\r\nTAX-MISMATCH-001',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="subscription"\r\n\r\nFree',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="currencyTrade"\r\n\r\nUSD',
+        `--${boundary}`,
+        `Content-Disposition: form-data; name="address"\r\n\r\n${JSON.stringify(validAddress)}`,
+        `--${boundary}--`,
+      ].join("\r\n");
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/business/${business._id}`,
+        headers: {
+          "content-type": `multipart/form-data; boundary=${boundary}`,
+          authorization: auth,
+        },
+        payload,
+      });
+
+      expect(response.statusCode).toBe(403);
+    });
+
     it("updates business successfully", async () => {
       const app = await getTestApp();
 

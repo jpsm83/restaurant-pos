@@ -32,7 +32,10 @@ import Schedule from "../../models/schedule.ts";
 import SupplierGood from "../../models/supplierGood.ts";
 import Supplier from "../../models/supplier.ts";
 import User from "../../models/user.ts";
-import { createAuthHook } from "../../auth/middleware.ts";
+import {
+  createAuthHook,
+  requireBusinessIdMatchesSessionHook,
+} from "../../auth/middleware.ts";
 import { issueSessionWithRefreshCookie } from "../../auth/issueSession.ts";
 import type { AuthBusiness } from "../../auth/types.ts";
 import {
@@ -45,7 +48,6 @@ import deleteFolderCloudinary from "../../cloudinary/deleteFolderCloudinary.ts";
 import {
   badRequest,
   conflict,
-  forbidden,
   internal,
   notFound,
   unauthorized,
@@ -389,19 +391,10 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
     "/:businessId",
     {
       preValidation: [createAuthHook(app)],
+      preHandler: [requireBusinessIdMatchesSessionHook()],
       schema: { params: businessIdParamsSchema },
     },
     async (req, reply) => {
-      if (!req.authSession) {
-        throw unauthorized("Authentication required");
-      }
-      if (req.authSession.type !== "business") {
-        throw forbidden("Business account required");
-      }
-      if (req.authSession.id !== req.params.businessId) {
-        throw forbidden("Forbidden");
-      }
-
       const businessId = req.params.businessId;
 
       const { fields, files } = await parseMultipart(
