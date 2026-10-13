@@ -316,5 +316,6 @@ POS is **live by design**: sales points, sales instances, order status, stock mo
 
 - [`user-flow.md`](./user-flow.md) — the day-to-day journey from onboarding through service, purchasing, inventory, reporting, and the customer experience.
 - [`business-metrics-formulas.md`](./business-metrics-formulas.md) — the canonical formulas behind the weekly and monthly metrics.
+- [`features/_template.md`](./features/_template.md) — the shared template and conventions for the per-feature product documents.
 
 Architecture decisions are recorded as ADRs under [`docs/adr/`](../adr/); engineering vocabulary is in the root [`GLOSSARY.md`](../../GLOSSARY.md).
