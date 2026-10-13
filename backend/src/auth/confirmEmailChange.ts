@@ -1,6 +1,12 @@
+import type { FastifyBaseLogger } from "fastify";
 import Business from "../models/business.ts";
 import { CONFIRM_EMAIL_CONSUMPTION_ERROR_MESSAGE } from "./confirmEmail.ts";
 import { sendAuthTransactionalEmail } from "./authEmailSend.ts";
+import {
+  EMAIL_CHANGE_CONFIRM_EVENT,
+  logEmailChange,
+  type EmailChangeAuditOutcome,
+} from "./emailChangeAuditLog.ts";
 import { buildEmailChangeNoticeContent } from "./emailTemplates.ts";
 
 export const CONFIRM_EMAIL_CHANGE_SUCCESS_MESSAGE =
@@ -25,11 +31,21 @@ export type ConfirmEmailChangeResult =
  */
 export async function handleConfirmEmailChange(
   token: string,
+  logger?: FastifyBaseLogger,
 ): Promise<ConfirmEmailChangeResult> {
   // Stored tokens are lowercase hex; normalize so links still work if the
   // client uppercases the query param.
   const pendingEmailToken = token.trim().toLowerCase();
   const now = new Date();
+
+  // Known only once the pending record is found; a null id marks an unknown token.
+  let accountId: string | null = null;
+  const audit = (outcome: EmailChangeAuditOutcome) =>
+    logEmailChange(logger, {
+      event: EMAIL_CHANGE_CONFIRM_EVENT,
+      accountId,
+      outcome,
+    });
 
   try {
     const pending = await Business.findOne({
@@ -40,11 +56,14 @@ export async function handleConfirmEmailChange(
       .lean();
 
     if (!pending || !pending.pendingEmail) {
+      audit("invalid_token");
       return {
         kind: "client_error",
         message: CONFIRM_EMAIL_CONSUMPTION_ERROR_MESSAGE,
       };
     }
+
+    accountId = String(pending._id);
 
     const result = await Business.updateOne(
       {
@@ -58,12 +77,14 @@ export async function handleConfirmEmailChange(
           pendingEmail: "",
           pendingEmailToken: "",
           pendingEmailExpires: "",
+          pendingEmailRequestedAt: "",
         },
         $inc: { refreshSessionVersion: 1 },
       },
     );
 
     if (result.matchedCount === 0) {
+      audit("invalid_token");
       return {
         kind: "client_error",
         message: CONFIRM_EMAIL_CONSUMPTION_ERROR_MESSAGE,
@@ -83,11 +104,14 @@ export async function handleConfirmEmailChange(
       });
     }
 
+    audit("confirmed");
+
     return {
       kind: "success_200",
       message: CONFIRM_EMAIL_CHANGE_SUCCESS_MESSAGE,
     };
   } catch {
+    audit("error");
     return {
       kind: "server_error_500",
       message: "Unable to complete this request. Please try again later.",

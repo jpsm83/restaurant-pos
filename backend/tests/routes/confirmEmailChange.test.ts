@@ -91,6 +91,7 @@ describe("POST /api/v1/auth/confirm-email-change", () => {
       pendingEmail: newEmail,
       pendingEmailToken: token,
       pendingEmailExpires: futureExpiry(),
+      pendingEmailRequestedAt: new Date(),
       refreshSessionVersion: 0,
     });
 
@@ -111,6 +112,7 @@ describe("POST /api/v1/auth/confirm-email-change", () => {
     expect(stored?.pendingEmail).toBeUndefined();
     expect(stored?.pendingEmailToken).toBeUndefined();
     expect(stored?.pendingEmailExpires).toBeUndefined();
+    expect(stored?.pendingEmailRequestedAt).toBeUndefined();
     expect(stored?.refreshSessionVersion).toBe(1);
 
     expect(sendEmailMock).toHaveBeenCalledTimes(1);

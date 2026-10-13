@@ -28,7 +28,10 @@ vi.mock("../../src/auth/authEmailSend.ts", () => ({
 import { getTestApp, generateTestToken, resetTestApp } from "../setup.ts";
 import Business from "../../src/models/business.ts";
 import User from "../../src/models/user.ts";
-import { EMAIL_CHANGE_REQUESTED_MESSAGE } from "../../src/auth/requestEmailChange.ts";
+import {
+  EMAIL_CHANGE_REQUESTED_MESSAGE,
+  EMAIL_CHANGE_REQUEST_COOLDOWN_MS,
+} from "../../src/auth/requestEmailChange.ts";
 
 const testPassword = "TestPassword123!";
 const newEmail = "changed-to@example.com";
@@ -94,6 +97,20 @@ async function businessTokenFor(business: { _id: unknown; email: string }) {
     type: "business",
     role: "Tenant",
   });
+}
+
+/** Backdates the cooldown stamp so the next request is treated as a fresh send. */
+async function agePendingRequestCooldown(businessId: unknown): Promise<void> {
+  await Business.updateOne(
+    { _id: businessId },
+    {
+      $set: {
+        pendingEmailRequestedAt: new Date(
+          Date.now() - EMAIL_CHANGE_REQUEST_COOLDOWN_MS - 1_000,
+        ),
+      },
+    },
+  );
 }
 
 describe("POST /api/v1/auth/request-email-change", () => {
@@ -273,7 +290,7 @@ describe("POST /api/v1/auth/request-email-change", () => {
     expect(stored?.email).toBe("owner-sendfail@example.com");
   });
 
-  it("replaces the previous pending token on a new request", async () => {
+  it("replaces the previous pending token on a new request once the cooldown elapses", async () => {
     const app = await getTestApp();
     const business = await createBusiness("owner-replace@example.com");
     const auth = await businessTokenFor(business);
@@ -287,6 +304,8 @@ describe("POST /api/v1/auth/request-email-change", () => {
     expect(first.statusCode).toBe(200);
     const firstToken = (await Business.findById(business._id).lean())
       ?.pendingEmailToken;
+
+    await agePendingRequestCooldown(business._id);
 
     const second = await app.inject({
       method: "POST",
@@ -316,6 +335,8 @@ describe("POST /api/v1/auth/request-email-change", () => {
     expect(first.statusCode).toBe(200);
     const original = await Business.findById(business._id).lean();
 
+    await agePendingRequestCooldown(business._id);
+
     sendEmailMock.mockRejectedValue(new Error("SMTP down"));
     const second = await app.inject({
       method: "POST",
@@ -331,6 +352,66 @@ describe("POST /api/v1/auth/request-email-change", () => {
     expect(restored?.pendingEmailExpires?.getTime()).toBe(
       original?.pendingEmailExpires?.getTime(),
     );
+  });
+
+  it("throttles a second request inside the cooldown without sending another email", async () => {
+    const app = await getTestApp();
+    const business = await createBusiness("owner-throttle@example.com");
+    const auth = await businessTokenFor(business);
+
+    const first = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/request-email-change",
+      headers: { authorization: auth },
+      payload: { newEmail: "throttle-first@example.com", currentPassword: testPassword },
+    });
+    expect(first.statusCode).toBe(200);
+    const firstStored = await Business.findById(business._id).lean();
+
+    const second = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/request-email-change",
+      headers: { authorization: auth },
+      payload: { newEmail: "throttle-second@example.com", currentPassword: testPassword },
+    });
+
+    expect(second.statusCode).toBe(200);
+    expect(JSON.parse(second.body).message).toBe(EMAIL_CHANGE_REQUESTED_MESSAGE);
+    expect(sendEmailMock).toHaveBeenCalledTimes(1);
+
+    const stored = await Business.findById(business._id).lean();
+    expect(stored?.pendingEmail).toBe("throttle-first@example.com");
+    expect(stored?.pendingEmailToken).toBe(firstStored?.pendingEmailToken);
+    expect(stored?.pendingEmailExpires?.getTime()).toBe(
+      firstStored?.pendingEmailExpires?.getTime(),
+    );
+  });
+
+  it("sends again once the cooldown has elapsed", async () => {
+    const app = await getTestApp();
+    const business = await createBusiness("owner-cooldown-elapsed@example.com", {
+      pendingEmail: "stale-choice@example.com",
+      pendingEmailToken: "s".repeat(64),
+      pendingEmailExpires: new Date(Date.now() + 3_600_000),
+      pendingEmailRequestedAt: new Date(
+        Date.now() - EMAIL_CHANGE_REQUEST_COOLDOWN_MS - 1_000,
+      ),
+    });
+    const auth = await businessTokenFor(business);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/request-email-change",
+      headers: { authorization: auth },
+      payload: { newEmail: "fresh-choice@example.com", currentPassword: testPassword },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(sendEmailMock).toHaveBeenCalledTimes(1);
+
+    const stored = await Business.findById(business._id).lean();
+    expect(stored?.pendingEmail).toBe("fresh-choice@example.com");
+    expect(stored?.pendingEmailToken).not.toBe("s".repeat(64));
   });
 
   it("returns 400 for an invalid new email", async () => {

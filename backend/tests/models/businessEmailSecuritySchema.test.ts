@@ -85,6 +85,7 @@ describe("Business email security schema", () => {
 
   it("stores and clears the pending sign-in email change fields", async () => {
     const pendingExpires = new Date(Date.now() + 3_600_000);
+    const requestedAt = new Date();
 
     const created = await Business.create({
       ...minimalBusiness,
@@ -93,17 +94,20 @@ describe("Business email security schema", () => {
       pendingEmail: "biz-pending-new@example.com",
       pendingEmailToken: "biz-pending-token",
       pendingEmailExpires: pendingExpires,
+      pendingEmailRequestedAt: requestedAt,
     });
 
     expect(created.pendingEmail).toBe("biz-pending-new@example.com");
     expect(created.pendingEmailToken).toBe("biz-pending-token");
     expect(created.pendingEmailExpires?.getTime()).toBe(pendingExpires.getTime());
+    expect(created.pendingEmailRequestedAt?.getTime()).toBe(requestedAt.getTime());
 
     await Business.findByIdAndUpdate(created._id, {
       $unset: {
         pendingEmail: "",
         pendingEmailToken: "",
         pendingEmailExpires: "",
+        pendingEmailRequestedAt: "",
       },
     });
 
@@ -111,5 +115,6 @@ describe("Business email security schema", () => {
     expect(after?.pendingEmail).toBeUndefined();
     expect(after?.pendingEmailToken).toBeUndefined();
     expect(after?.pendingEmailExpires).toBeUndefined();
+    expect(after?.pendingEmailRequestedAt).toBeUndefined();
   });
 });

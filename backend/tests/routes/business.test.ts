@@ -159,6 +159,7 @@ describe("Business Routes", () => {
         pendingEmail: "gettest-new@business.com",
         pendingEmailToken: "gettest-pending-token",
         pendingEmailExpires: new Date(Date.now() + 3_600_000),
+        pendingEmailRequestedAt: new Date(),
       });
       const auth = await generateTestToken({
         id: business._id.toString(),
@@ -183,6 +184,7 @@ describe("Business Routes", () => {
       expect(body.pendingEmail).toBeUndefined();
       expect(body.pendingEmailToken).toBeUndefined();
       expect(body.pendingEmailExpires).toBeUndefined();
+      expect(body.pendingEmailRequestedAt).toBeUndefined();
     });
 
     it("returns 401 when GET business without auth", async () => {

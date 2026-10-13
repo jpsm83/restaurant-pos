@@ -21,7 +21,7 @@ _Avoid_: "request model", "payload schema".
 A value the server derives or controls and a client must never set:
 `password` on reads, `verificationToken`, `resetPasswordToken`,
 `resetPasswordExpires`, `pendingEmail`, `pendingEmailToken`,
-`pendingEmailExpires`, `refreshSessionVersion`, `emailVerified`,
+`pendingEmailExpires`, `pendingEmailRequestedAt`, `refreshSessionVersion`, `emailVerified`,
 `averageRating`, `ratingCount`, computed `totalAmount`, `qrCode`. Server-owned
 fields are excluded from every DTO; if a client sends one it is rejected as an
 unknown key.

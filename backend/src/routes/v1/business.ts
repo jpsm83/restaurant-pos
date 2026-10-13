@@ -70,7 +70,7 @@ import {
 
 /** Public JSON must omit password and auth-email secrets (see `TODO-auth-email-security-flows-implementation.md`). */
 const BUSINESS_PUBLIC_LEAN_SELECT =
-  "-password -verificationToken -resetPasswordToken -resetPasswordExpires -pendingEmail -pendingEmailToken -pendingEmailExpires";
+  "-password -verificationToken -resetPasswordToken -resetPasswordExpires -pendingEmail -pendingEmailToken -pendingEmailExpires -pendingEmailRequestedAt";
 
 const DEFAULT_DISCOVERY_LIMIT = 50;
 

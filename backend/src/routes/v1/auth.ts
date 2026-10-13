@@ -304,7 +304,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     },
     async (req, reply) => {
       const session = req.authSession as AuthBusiness;
-      const result = await handleRequestEmailChange(session, req.body);
+      const result = await handleRequestEmailChange(session, req.body, req.log);
 
       if (result.kind === "account_not_found") {
         throw unauthorized("Account not found.");
@@ -326,6 +326,9 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       if (result.kind === "email_taken") {
         throw conflict("That email is already used by another account.");
       }
+      if (result.kind === "throttled") {
+        return reply.code(200).send({ message: result.message });
+      }
       if (result.kind === "server_error_500") {
         throw internal(result.message);
       }
@@ -344,7 +347,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     "/confirm-email-change",
     { schema: { body: confirmEmailChangeBodySchema } },
     async (req, reply) => {
-      const result = await handleConfirmEmailChange(req.body.token);
+      const result = await handleConfirmEmailChange(req.body.token, req.log);
 
       if (result.kind === "client_error") {
         throw badRequest(result.message);
