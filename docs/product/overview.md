@@ -55,7 +55,6 @@ These terms are used with exactly these meanings throughout POS. Do not drift to
 | **Shift session** | The actual, recorded attendance for one employee on one shift (sign-in/out, breaks). |
 | **Daily / Weekly / Monthly report** | The aggregated sales and performance reports at each roll-up level. |
 | **Soft delete** | POS never hard-deletes domain documents: a server-owned deleted marker plus a timestamp are set, the document is retained and reactivatable, and uniqueness is enforced among active documents. Every model follows it. |
-| **Live** | A business that may be discovered by customers and can take customer orders and bookings. A **draft** is not live; a live business may be taken **offline**, which is not the same as **closing** it. |
 
 ---
 

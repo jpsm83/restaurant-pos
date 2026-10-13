@@ -35,7 +35,7 @@ It deliberately does **not** cover:
 
 ### Entities
 
-- **`Business`** — the tenant: **one venue** (one physical restaurant or bar). Owned by exactly one user through that user's `Owner`. Carries its own profile identity, address, currency, opening hours, delivery configuration, discovery fields, and **go-live state**. In the target it holds **no credentials** — sign-in credentials belong to the `User`; the business holds only its verified **contact email**.
+- **`Business`** — the tenant: **one venue** (one physical restaurant or bar). Owned by exactly one user through that user's `Owner`. Carries its own profile identity, address, currency, opening hours, delivery configuration, discovery fields, and **go-live state**. It holds **no credentials** — sign-in credentials belong to the `User`; the business holds only its verified **contact email**.
 - **`Owner`** — the portfolio account a business hangs off (one per user who owns businesses). Holds the businesses it controls and the **subscription**. A business **references its Owner's plan read-only**; it never stores a subscription of its own.
 - **`Address`** — the structured postal address (country, state, city, street, building number, optional unit, complement, post code, region, and details). Its **country and state derive the timezone**, and its **coordinates are the discovery origin**.
 - **`BusinessOpeningHours`** — the venue's weekly operating hours: **per weekday, zero or more time ranges**.
@@ -45,8 +45,7 @@ It deliberately does **not** cover:
 ### Terms this subject introduces
 
 - **Draft** — a business that has been registered and can be saved and edited, but is **not yet live**.
-- **Go-live** — making a business **live**: the server confirms the **go-live checklist** is complete and the contact email verified, then an admin/owner flips the **go-live toggle**.
-- **Live** — discoverable to customers and able to take customer orders and bookings.
+- **Go-live** — making a business **live**: the server confirms the **go-live checklist** is complete, then an admin/owner flips the **go-live toggle**.
 - **Offline** — a live business deliberately withdrawn from discovery and customer orders, retaining all its data and its Owner link. **Offline is not closure.**
 - **Go-live checklist** — the fields and conditions that must hold before a business may go live.
 - **Completeness signal** — the profile-read output naming which checklist items are still missing.
@@ -131,7 +130,7 @@ A business is **discoverable only while live**. Its discovery fields are:
 
 - **Trade name**, **logo**, **cuisine type(s)**, **categories**, **contact phone**, and **address** (with its coordinates as the geo origin).
 - **`averageRating` and `ratingCount` are server-owned cached aggregates**, published by the ratings-and-comments subject. A client never sets them.
-- **Cuisine type and categories are edited by managers and above** at the venue; they are the filters customers browse.
+- **Cuisine type and categories are edited by managers and above** at the venue; they are the filters customers browse. The identity discovery fields (trade name, logo, phone, address) are edited by admins/owners.
 - A customer's location search measures from the address coordinates.
 
 ### 3.9 Subscription pointer
@@ -144,7 +143,7 @@ A business is **discoverable only while live**. Its discovery fields are:
 
 A business's own state is server-owned and has three distinct forms.
 
-- **Ready to go live.** The server computes readiness as: the **go-live checklist is complete** *and* the **business contact email is verified**.
+- **Ready to go live.** The server computes readiness as: the **go-live checklist is complete** (which includes a **verified business contact email**).
 - **The go-live toggle.** When the server reports the business ready, an **admin/owner** flips the go-live toggle to make it **live**. The same toggle takes a live business **offline**.
 - **Live means** the business is **discoverable** and **able to take customer orders and bookings**.
 - **Not live means** the business is **absent from customer discovery** and **cannot take customer orders or bookings**. Staff can always work in the business app meanwhile — a draft and an offline business are fully usable internally.

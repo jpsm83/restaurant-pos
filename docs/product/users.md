@@ -137,7 +137,7 @@ A user comes into existence through one of three paths, and POS **never duplicat
 
 1. **Self sign-up** — a person signs up and becomes a customer user.
 2. **Managed employee** — a manager or above creates an employee membership by linking an **existing user by email**. If no user exists for that email, POS creates the user (a customer) first, then links the membership.
-3. **Business registration** — registering a business creates or links the registrant's user, creates the `Owner`, the `Business`, and the owner's membership.
+3. **Business registration** — a **signed-in user** registers a business; the registrant already exists as a user, and registration creates (or updates) their `Owner`, the `Business`, and the owner's membership.
 
 ### 3.12 Sessions
 
