@@ -15,3 +15,23 @@ services:
       - /app/backend/node_modules
       - /app/frontend/node_modules
       - /app/packages/node_modules
+
+  frontend:
+    build: .
+    # `--host` binds Vite to all interfaces so the published port is reachable
+    # from the host; it does not change the local `npm run dev` binding.
+    command: npm run dev --workspace frontend -- --host
+    ports:
+      - "5173:5173"
+    environment:
+      # Point the Vite proxy at the backend service by compose network name.
+      # This works because vite.config.ts loads env with an empty prefix, which
+      # applies process.env after `.env` — so the container value wins without
+      # touching the root `.env`.
+      VITE_PROXY_API_TARGET: http://backend:4000
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/backend/node_modules
+      - /app/frontend/node_modules
+      - /app/packages/node_modules
