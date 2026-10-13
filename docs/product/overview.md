@@ -54,6 +54,7 @@ These terms are used with exactly these meanings throughout POS. Do not drift to
 | **Gift card** | A bearer value token owned by a business, identified by a QR code, with an expiry date. |
 | **Shift session** | The actual, recorded attendance for one employee on one shift (sign-in/out, breaks). |
 | **Daily / Weekly / Monthly report** | The aggregated sales and performance reports at each roll-up level. |
+| **Soft delete** | POS never hard-deletes domain documents: a server-owned deleted marker plus a timestamp are set, the document is retained and reactivatable, and uniqueness is enforced among active documents. Every model follows it. |
 
 ---
 
@@ -110,7 +111,7 @@ Kiosk and QR ordering are not separate products — they are routes within the *
 Access control is **two-layer**:
 
 - **Base access layers (control).** Exactly four layers define what a user may do at the highest level: **admin**, **manager**, **employee**, and **customer**. Admin has full venue control; manager runs operations; employee serves (schedule-gated); customer consumes.
-- **Job roles (description).** A user's job is described by `userRolesEnum` (Owner, General Manager, Manager, Assistant Manager, MoD, Admin, Supervisor, Cashier, Floor Staff, Bartender, Barista, Waiter, Head Chef, Sous Chef, Line Cooks, Kitchen Porter, Cleaner, Security, Host, Runner, Entertainer, Other, …). The job role tells you *what the person is*; the base layer tells you *what they may do*.
+- **Job roles (description).** A user's job is described by `userRolesEnum` (Owner, General Manager, Manager, Assistant Manager, MoD, Admin, Operator, Employee, Cashier, Floor Staff, Bartender, Barista, Waiter, Head Chef, Sous Chef, Line Cooks, Kitchen Porter, Cleaner, Security, Host, Runner, Supervisor, Entertainer, Other, …). The job role tells you *what the person is*; the base layer tells you *what they may do*.
 - **Permission assignment UI.** **Managers and above** use a UI to assign job roles and **per-user capabilities** — granting or revoking individual powers on top of the base layer's defaults.
 
 **The mode chooser.** Because every user is a customer *and* may hold business roles, login routes by role:
@@ -122,9 +123,9 @@ Access control is **two-layer**:
 **Schedule gating.** The **schedule is the plan**; signing in as an employee is what puts a person **on duty**.
 
 - Employees (any job role) **must appear on the schedule**; the schedule is also how time control works.
-- A non-admin employee **cannot access the business app unless they are scheduled for that time**. The employee option opens from **10 minutes before shift start**; if the user is **not scheduled**, they are taken straight to the Customer app (no chooser).
+- A non-management employee **cannot access the business app unless they are scheduled for that time**. The employee option opens from **10 minutes before shift start**; if the user is **not scheduled**, they are taken straight to the Customer app (no chooser).
 - If an employee is **late**, employee access is **blocked**; a **manager unlocks the button** on the schedule record so the employee can enter — but the **real entry time is preserved** regardless, so time control stays honest.
-- **Admins and owners are never blocked.** They may access the business app and execute any task without being scheduled, though they must still appear on the schedule **for time control**.
+- **Managers, admins, and owners are never blocked.** They may access the business app and execute any task without being scheduled, though they must still appear on the schedule **for time control**.
 
 See [§6](#6-time-control-and-attendance) for the attendance model.
 
