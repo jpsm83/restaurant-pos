@@ -60,7 +60,7 @@ These terms are used with exactly these meanings throughout POS. Do not drift to
 
 ## 2. Who it is for
 
-POS serves five personas. Each maps to one of the four **base access layers** ([§5](#5-access-roles-and-the-mode-chooser)).
+POS serves six personas. Five map to one of the four **base access layers** ([§5](#5-access-roles-and-the-mode-chooser)); the sixth, the **Superadmin**, runs the platform's own application business in a separate realm.
 
 - **Owner** — owns one or more venues. Registers the business, holds the subscription, and moves between venues through the owner shell. Also acts as an admin inside each venue.
 - **Admin** — has **full control of the venue**: configuration, people, permissions, and every operation.
@@ -111,7 +111,7 @@ Kiosk and QR ordering are not separate products — they are routes within the *
 Access control is **two-layer**:
 
 - **Base access layers (control).** Exactly four layers define what a user may do at the highest level: **admin**, **manager**, **employee**, and **customer**. Admin has full venue control; manager runs operations; employee serves (schedule-gated); customer consumes.
-- **Job roles (description).** A user's job is described by `userRolesEnum` (Owner, General Manager, Manager, Assistant Manager, MoD, Admin, Operator, Employee, Cashier, Floor Staff, Bartender, Barista, Waiter, Head Chef, Sous Chef, Line Cooks, Kitchen Porter, Cleaner, Security, Host, Runner, Supervisor, Entertainer, Other, …). The job role tells you *what the person is*; the base layer tells you *what they may do*.
+- **Job roles (description).** A user's job is described by `userRolesEnum` (Owner, General Manager, Manager, Assistant Manager, MoD, Admin, Operator, Employee, Cashier, Floor Staff, Bartender, Barista, Waiter, Head Chef, Sous Chef, Line Cooks, Kitchen Porter, Cleaner, Security, Host, Runner, Supervisor, Entertainer, Other). The job role tells you *what the person is*; the base layer tells you *what they may do*.
 - **Permission assignment UI.** **Managers and above** use a UI to assign job roles and **per-user capabilities** — granting or revoking individual powers on top of the base layer's defaults.
 
 **The mode chooser.** Because every user is a customer *and* may hold business roles, login routes by role:
@@ -160,7 +160,6 @@ The Business app is the operational heart of POS. It comprises the **owner shell
 - **Tax**: a single **business-level tax configuration** (rate plus price-inclusive/exclusive handling) applied to orders and bills. Multi-component or per-item taxation is out of scope for now.
 - **Metrics and targets**: target cost percentages (food, beverage, labour, fixed), **supplier-good waste thresholds** by budget impact, and the **start day of the reporting week**.
 - **Subscription**: the plan is held on the **Owner** and covers its venues (see [§11](#11-monetization)).
-- **Credentials**: sign-in email verification, email change, and password reset.
 
 ### People, roles, and scheduling
 
@@ -311,13 +310,3 @@ POS is **live by design**: sales points, sales instances, order status, stock mo
 - **Not self-hosted.** There is no on-premise or self-managed deployment; POS is cloud SaaS.
 
 (Direct payment processing and delivery **are** in scope — delivered through third-party providers.)
-
----
-
-## 14. Where to go next
-
-- The user-flow document — the day-to-day journey from onboarding through service, purchasing, inventory, reporting, and the customer experience.
-- The business-metrics subject — the cost targets, supplier-good waste thresholds, reporting-week start day, and the KPI dictionary with its canonical formulas.
-- The per-feature product-document template and conventions (`_template.md`).
-
-Architecture decisions are recorded as ADRs under `docs/adr/`; engineering vocabulary is in the root `GLOSSARY.md`. Each product document is listed in `AGENTS.md`.

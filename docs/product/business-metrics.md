@@ -41,7 +41,7 @@ It deliberately does **not** cover:
 - **KPI dictionary** — the platform's canonical list of named metrics (this document's §3.5), with units, direction, and formula pointers.
 - **Target comparison** — a metric's **target** against its **actual**, with the **delta** and whether it is over or under target.
 
-Terms reused from the core vocabulary: **business**, **total sales**, **cost of goods sold (COGS)**, **supplier good**, **budget impact**, **prime cost**, **break-even**. Percent KPIs are expressed on a **`0..100`** scale; a division by zero yields `0`.
+Terms reused from other subjects rather than redefined here: **business** and **supplier good** (product overview core vocabulary), **budget impact** (supplier-goods subject), and the reporting terms **total sales**, **cost of goods sold (COGS)**, **prime cost**, and **break-even**. Percent KPIs are expressed on a **`0..100`** scale; a division by zero yields `0`.
 
 ---
 
@@ -237,16 +237,3 @@ Editing metrics is an operational, not an ownership, act; it sits with the manag
 - **ADR-0001 (zod DTOs exclude server-owned fields).** No conflict, but a constraint. The target's cost targets, waste thresholds, and reporting-week start day are **client-settable** and therefore belong in the request DTO with their `0..100` bounds; the **target comparison** — targets, actuals, deltas, and over/under flags — is **server-derived** and must stay out of every DTO.
 - **ADR-0002 (dev-only Docker against Atlas).** Does not touch business metrics.
 - **ADR-0003 (soft delete).** Does not touch business metrics; metric configuration lives on the business, whose soft-delete lifecycle is governed by ADR-0003.
-
----
-
-## 6. Where to go next
-
-- The **product overview** — the core vocabulary, the Business platform, and the reporting and monetisation themes this subject expands.
-- The **business-reports** subject — the weekly and monthly report structures that consume these targets and render the comparison.
-- The **sales-reports** subject — the daily sales reports that roll up into the reporting week.
-- The **inventories** subject — how supplier-good waste and deviation are derived.
-- The **supplier-goods** subject — the **budget impact** field that selects a waste threshold.
-- The **business** subject — venue creation, at which the defaults are seeded, and the profile surface that hosts metric settings.
-- The **notifications** subject — report-ready messaging (no over-target alert is committed by this subject).
-- Architecture decisions live under `docs/adr/`, notably ADR-0001 for request validation and ADR-0003 for soft delete.

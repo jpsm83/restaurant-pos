@@ -245,16 +245,6 @@ Granted or revoked per user by **managers and above**, on top of the layer defau
 
 ### ADR conflicts
 
-No contradiction with an existing ADR. The zod-validation and problem-details decision (ADR-0001) requires **server-owned fields** to be excluded from request DTOs; the target adds server-owned fields — the deleted marker, the deleted-at timestamp, the verified flags, and session versioning — which must likewise be excluded. The dev-only Docker decision (ADR-0002) does not touch identity. The platform-wide soft delete is recorded as its own architecture decision (ADR-0003).
-
----
-
-## 6. Where to go next
-
-- The **product overview** — the core vocabulary, tenancy, and monetisation this subject expands.
-- The **user navigation** subject — the chooser screen, route guards, and canonical URLs that enforce the mode rule.
-- The **employees** subject — HR detail for a membership (pay, contract, vacation, documents).
-- The **schedules** and **time control** subjects — the shifts and attendance mechanics behind the late lock and the manager unlock.
-- The **emails** subject — how verification and change links are delivered, retried, and cooled down.
-- The **superadmin** subject — the separate authentication realm for the application business.
-- Architecture decisions live under `docs/adr/`, including ADR-0003 for soft delete and ADR-0001 for request validation and problem details.
+- **ADR-0003 (soft delete).** The current `DELETE` routes hard-delete users, employees, and businesses — including the dead `User.deleteMany({ businessId })` cascade — which **contradicts** the accepted soft-delete decision. The target replaces them with soft deletes, so the conflict is a known gap to close, not an override.
+- **ADR-0001 (zod DTOs exclude server-owned fields).** No conflict, but a constraint: the target adds server-owned fields — the deleted marker, the deleted-at timestamp, the verified flags, and session versioning — all of which must stay **out of every request DTO**.
+- **ADR-0002 (dev-only Docker against Atlas).** Does not touch identity.

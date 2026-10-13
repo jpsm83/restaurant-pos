@@ -141,7 +141,7 @@ A business is **discoverable only while live**. Its discovery fields are:
 
 ### 3.10 Go-live, live, and offline
 
-A business's own state is server-owned and has three distinct forms.
+A business's own state is server-owned. Its go-live status has three states — **ready to go live**, **live**, and **not live** — moved between by an admin/owner using the **go-live toggle**.
 
 - **Ready to go live.** The server computes readiness as: the **go-live checklist is complete** (which includes a **verified business contact email**).
 - **The go-live toggle.** When the server reports the business ready, an **admin/owner** flips the go-live toggle to make it **live**. The same toggle takes a live business **offline**.
@@ -239,18 +239,3 @@ The owning user is admin at every venue they own. Job roles and per-user capabil
 - **ADR-0003 (soft delete).** The current `DELETE /business/:businessId` hard-deletes the tenant and cascades across eighteen collections, which **contradicts** the accepted soft-delete decision. The target replaces it with a soft delete, so the conflict is a known gap to close, not an override.
 - **ADR-0001 (zod DTOs exclude server-owned fields).** No conflict, but a constraint: the target adds server-owned fields — the derived `timezone`, the go-live readiness/live flag, the completeness signal, and the cached `averageRating`/`ratingCount` — all of which must stay **out of every request DTO**.
 - **ADR-0002 (dev-only Docker against Atlas).** Does not touch business details.
-
----
-
-## 6. Where to go next
-
-- The **product overview** — tenancy, the surfaces, discovery, and monetisation this subject expands.
-- The **users** subject — the `Owner`, the employee membership, the business contact email's verification, and the access layers.
-- The **user-navigation** subject — the owner shell, the mode chooser, and the entry points into registering a business.
-- The **order-flow** and **sales-points-and-instances** subjects — delivery order placement and the virtual delivery sales point.
-- The **payments-and-tax** subject — the business-level tax configuration.
-- The **business-metrics** subject — the meaning, defaults, validation, and comparison of the cost targets, waste thresholds, and reporting-week start day this venue stores; and the **business-reports** subject — the reports that consume them.
-- The **ratings-and-comments** subject — the aggregates business discovery caches.
-- The **emails** subject — delivery of the contact-email verification link.
-- The **superadmin** subject — the plan catalog, commission, and feature entitlements behind the subscription pointer.
-- Architecture decisions live under `docs/adr/` — notably ADR-0003 for soft delete and ADR-0001 for request validation and problem details.
