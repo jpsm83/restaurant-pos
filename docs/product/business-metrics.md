@@ -182,21 +182,7 @@ Editing metrics is an operational, not an ownership, act; it sits with the manag
 
 ---
 
-## 5. Product and business advice
-
-*Advice, not committed behaviour. Kept separate from §3.*
-
-- **Defaults are a retention feature, not a convenience.** A venue that has to invent four cost percentages before its first report gets no value on day one. Seeding industry-calibrated defaults means the very first weekly and monthly reports already say "you are `4` points over your food target" — a concrete, actionable insight that pulls the operator back next week. The defaults should read as *suggestions the venue can tune*, not as authoritative accounting.
-- **Targets are a plan-tier lever.** The basics — the four cost targets, the waste ladder, and the target comparison — should be free, because a venue that cannot see whether it is on target gets no value from the product. The monetisable layer is **advanced target tooling**: presets by venue format, target-vs-actual trends over time, configurable over-target thresholds, and multi-venue target templates owned at the portfolio level. Charge for the benchmarking and cross-venue roll-up a multi-site operator needs, and keep pricing per venue so it tracks how the product is used.
-- **Show why the four targets do not sum to 100.** The intuition that food plus beverage plus labour plus fixed should total 100 is common and wrong — it leaves no profit. Surface **prime cost** (food + labour) as a first-class badge in the metrics settings and in the report, and state the `55–65%` prime-cost band, so the operator understands what their targets imply together. Otherwise the settings screen teaches a false model of the P&L.
-- **Waste tolerance should shrink as budget impact grows.** The descending waste ladder is the whole point of keying thresholds to budget impact: an operator can tolerate more waste on cheap staples and almost none on expensive proteins. Present the five ceilings as an explicit ladder, and flag any venue that sets a *higher* tolerance for a *higher* impact level, because that inverts the intent.
-- **A calendar or restaurant-format preset beats raw percentages.** Offer one-tap presets ("Quick service", "Full service", "Bar-led") that fill the four cost targets and the waste ladder at once, then let the venue refine. This lowers setup friction and encodes the industry benchmarks so the operator does not need to know that fine dining runs higher labour and bars run lower food cost.
-- **Keep the reporting week stable, and explain the cutoff.** The start day is a reporting convention, not a data transformation. Because a change re-buckets only future weeks, say so plainly at the point of change ("this affects weeks that have not yet closed"), or operators will assume historical reports changed and distrust the numbers.
-- **Risks to watch.** (1) **Unit confusion** — a target expressed as a *fraction* (`0.3`) instead of a *percentage* (`30`) silently compares everything against a hundredth of the intended value; the `0..100` contract and the settings UI must make the unit unmistakable. (2) **Stale defaults** — a venue that never tunes its seeded targets is measured against industry averages that may not fit its format; a periodic "your targets are still the defaults" nudge keeps them honest. (3) **Over-trust in targets** — targets are management intent, not audit findings; the report must keep target and actual visually distinct so an operator never mistakes a comparison for a reconciled figure. (4) **Fixed-cost volatility** — fixed and extra operating costs are entered per month, so the monthly fixed comparison is only as good as that month's inputs; treat an off-target fixed ratio as a prompt to check the inputs before the P&L.
-
----
-
-## 6. Current vs target
+## 5. Current vs target
 
 *The only place current status is recorded.*
 
@@ -254,7 +240,7 @@ Editing metrics is an operational, not an ownership, act; it sits with the manag
 
 ---
 
-## 7. Where to go next
+## 6. Where to go next
 
 - The **product overview** — the core vocabulary, the Business platform, and the reporting and monetisation themes this subject expands.
 - The **business-reports** subject — the weekly and monthly report structures that consume these targets and render the comparison.

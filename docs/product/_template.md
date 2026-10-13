@@ -10,7 +10,7 @@ Every document is **self-contained** and **link-free**, and every document is li
 
 ## Applying this template
 
-1. Grill the subject with the maintainer (`/grill-me`) **before** writing. The grill settles the open decisions; the document then records them.
+1. Grill the subject with the maintainer (`/grill-me`) **before** writing. The grill settles the open decisions and is where business-model and product advice is given; the document records only the committed behaviour and carries **no advice section**.
 2. Copy the skeleton in [The skeleton](#the-skeleton).
 3. Replace every `<…>` placeholder and delete the HTML-comment guidance.
 4. Run the [consistency review](#consistency-review) before calling the document done.
@@ -31,7 +31,7 @@ Every document is **self-contained** and **link-free**, and every document is li
 
 ## Commitments, not status
 
-- State capabilities as commitments ("the business can…", "POS records…"), never as a status report. No built/planned tags anywhere except the [audit section](#audit) (§6, *Current vs target*).
+- State capabilities as commitments ("the business can…", "POS records…"), never as a status report. No built/planned tags anywhere except the [audit section](#audit) (§5, *Current vs target*).
 
 ## Roles and entitlements
 
@@ -39,7 +39,7 @@ Every document is **self-contained** and **link-free**, and every document is li
 
 ## Audit
 
-- Section 6, **Current vs target** — the audit — is the **only** place that records what exists today: the subject's routes, models, and screens, compared against the target above, and the gap. Everywhere else the document stays target-state and status-free.
+- Section 5, **Current vs target** — the audit — is the **only** place that records what exists today: the subject's routes, models, and screens, compared against the target above, and the gap. Everywhere else the document stays target-state and status-free.
 - If the subject contradicts an existing ADR, name the ADR (for example, `ADR-0001`) and the contradiction in the audit's **ADR conflicts** subsection rather than silently overriding it.
 
 ## Consistency review
@@ -48,7 +48,7 @@ Before a document is done, check every item:
 
 - [ ] Vocabulary matches the established product/domain terms; no invented synonyms.
 - [ ] No link to any other document; references are prose-only (self-contained).
-- [ ] No built/planned status outside the audit section (§6, *Current vs target*).
+- [ ] No built/planned status outside the audit section (§5, *Current vs target*).
 - [ ] Contradictions with an existing ADR are flagged, by name.
 - [ ] It follows [the skeleton](#the-skeleton).
 - [ ] It is listed in `AGENTS.md` with a one-line description.
@@ -80,11 +80,7 @@ Before a document is done, check every item:
 
 <!-- Who can do what: base access layer(s), job roles, and per-user capabilities that affect this subject. -->
 
-## 5. Product and business advice
-
-<!-- Explicit recommendations — monetisation, retention, pricing, operational best practice, risks. Clearly advice, kept separate from the committed behaviour in §3. -->
-
-## 6. Current vs target
+## 5. Current vs target
 
 <!-- The only place current status is recorded: existing routes, models, and screens for this subject, compared with the target above, and the gap. -->
 
@@ -92,7 +88,7 @@ Before a document is done, check every item:
 
 <!-- Any contradiction with an existing ADR, named in prose (for example, ADR-0001) rather than linked. -->
 
-## 7. Where to go next
+## 6. Where to go next
 
 <!-- Name the related subject documents and the relevant ADRs in prose only — the reader locates them through the AGENTS.md pointer list. No links. -->
 ```

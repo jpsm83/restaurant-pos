@@ -206,20 +206,7 @@ Granted or revoked per user by **managers and above**, on top of the layer defau
 
 ---
 
-## 5. Product and business advice
-
-*Advice, not committed behaviour. Kept separate from §3.*
-
-- **Monetisation fits the identity model.** Customers are free; revenue comes from the `Owner` subscription and commission. Charging **per owned venue** (per `Business`) rather than per user keeps the model aligned with how the product is actually used and avoids punishing venues that employ many staff.
-- **Customer-first drives retention.** Because every user is a customer even before they work anywhere, the customer account is the natural acquisition surface. Investing in discovery, loyalty, and gift cards makes the account worth keeping after a person leaves a job.
-- **The grace window plus email-confirmed reactivation is a strong anti-churn and anti-fraud pattern.** Irreversible deletion is a support and trust liability; a cancellable window reduces accidental loss, while the emailed confirmation prevents an email address alone from being used to seize a deleted account's data.
-- **Make verification part of onboarding, not a nag.** Gating **go-live** on the business contact email and warning on the business page turns verification into a first-run step instead of an interruption later.
-- **Keep capability grants auditable.** Per-user capabilities are the sharpest edge in this model; every grant/revoke should be attributable, and the assignment UI should show the effective layer so managers do not over-grant. Prefer granting to a role over many ad-hoc grants.
-- **Risks to watch.** (1) **One identity is the crown jewel** — the sign-in email is a single point of compromise; MFA is the obvious next hardening step. (2) **Orphaned businesses** — the transfer-or-close gate must be enforced, or ownership becomes ambiguous. (3) **Soft-delete growth and privacy** — retaining everything is an asset for recovery and a liability for "right to erasure" requests; define a retention/purge path for genuine erasure that does not break referential integrity. (4) **Privilege creep** across multiple memberships — a user's highest layer at one venue must not leak into another venue's session.
-
----
-
-## 6. Current vs target
+## 5. Current vs target
 
 *The only place current status is recorded.*
 
@@ -262,7 +249,7 @@ No contradiction with an existing ADR. The zod-validation and problem-details de
 
 ---
 
-## 7. Where to go next
+## 6. Where to go next
 
 - The **product overview** — the core vocabulary, tenancy, and monetisation this subject expands.
 - The **user navigation** subject — the chooser screen, route guards, and canonical URLs that enforce the mode rule.

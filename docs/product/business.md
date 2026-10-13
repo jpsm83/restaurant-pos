@@ -194,23 +194,7 @@ The owning user is admin at every venue they own. Job roles and per-user capabil
 
 ---
 
-## 5. Product and business advice
-
-*Advice, not committed behaviour. Kept separate from §3.*
-
-- **Progressive onboarding is the retention lever.** Allowing an incomplete draft removes the "I can't finish this now" abandonment point. Show a **progress meter and a checklist** on the business page so the venue always knows the next step, and treat go-live as the conversion moment: "you are two steps from going live" converts far better than a wall of required fields.
-- **Make the go-live gate a guided launch, not a firewall.** The checklist is already a natural onboarding script. Recommend surfacing each missing item as a one-click deep link into the relevant settings section, and marking **logo** and **categories** as strongly recommended even though they do not gate — a venue without a logo looks broken in discovery.
-- **Currency lock is a correctness feature, not a restriction.** Changing currency once orders exist silently corrupts historical reports and loyalty balances. Present the choice at onboarding as explicitly **one-time**, with a plain-language warning, rather than as an editable setting later.
-- **Derived timezone removes a whole class of support tickets.** Because the zone follows the address and is read-only, the only real failure is an unmappable address; the UTC-default prompt should be prominent and paired with a "fix address" action, since wrong timezone silently corrupts every business-local report.
-- **Discovery completeness drives customer conversion.** Cuisine and hours gate go-live for good reason — they are what customers filter on. Recommend nudging venues to keep hours and cuisine current, and surfacing "your venue is hidden / offline" as an operational warning in the business app so a live venue is not accidentally left dark.
-- **Delivery guardrails protect margin.** Radius and minimum order are the venue's defence against loss-making deliveries; recommend showing the delivery origin, radius, and windows on a map during setup so a typo in the address is caught before it becomes a delivery zone.
-- **Multi-range hours fit real service.** Split shifts (lunch + dinner) and overnight closing are common; the zero-ranges-means-closed interaction must be obviously different from "not yet configured" so a venue does not go live accidentally closed.
-- **Risks to watch.** (1) **Draft sprawl** — abandoned drafts inflate tenant counts and may consume resources; consider expiring dormant drafts via soft delete and **capping venues per plan tier**. (2) **Duplicate venues** — trade names legitimately repeat, so discovery must disambiguate by address and location, and duplicate **contact email / legal name / tax number within a country** must be rejected among active businesses. (3) **Tax-number collisions across countries** make a single global unique index wrong; scope it to the country. (4) **Closure vs offline confusion** — the two must read differently in the UI, or owners will close a venue thinking they are pausing it.
-- **Monetisation fits the tenant.** Venue count and delivery are natural plan-tier levers; the **subscription pointer** is where a venue discovers which capabilities its Owner's plan grants, so surfacing the effective plan read-only (with an upgrade path) turns configuration into an upgrade prompt.
-
----
-
-## 6. Current vs target
+## 5. Current vs target
 
 *The only place current status is recorded.*
 
@@ -258,7 +242,7 @@ The owning user is admin at every venue they own. Job roles and per-user capabil
 
 ---
 
-## 7. Where to go next
+## 6. Where to go next
 
 - The **product overview** — tenancy, the surfaces, discovery, and monetisation this subject expands.
 - The **users** subject — the `Owner`, the employee membership, the business contact email's verification, and the access layers.
