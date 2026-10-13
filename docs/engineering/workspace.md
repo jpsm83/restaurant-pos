@@ -25,12 +25,48 @@ frontend bundle never pulls the database driver.
 npm install        # at the repo root; installs all three workspaces
 ```
 
-## Run
+## Run locally (two terminals)
 
 ```sh
 npm run dev --workspace backend     # API on :4000
 npm run dev --workspace frontend    # SPA on :5173 (proxies /api to :4000)
 ```
+
+## Run with Docker
+
+A dev-only Docker stack runs both services against the **same Atlas database**
+the local workflow uses. The two-terminal commands above keep working
+unchanged.
+
+```sh
+docker compose up          # build (first run) and start both services
+docker compose up --build  # rebuild images after Dockerfile/dependency changes
+docker compose down        # stop and remove the containers
+```
+
+Both services build from the root `Dockerfile` (Node 26, the version pinned in
+`.nvmrc` and `engines.node`). With the stack up:
+
+| Service | URL |
+|---------|-----|
+| Backend | http://localhost:4000 |
+| Frontend | http://localhost:5173 (proxies `/api` to the backend service) |
+
+Confirm the stack is up:
+
+```sh
+curl http://localhost:4000/health   # {"ok": true}
+```
+
+The backend log line `Database connected` confirms it reached Atlas:
+
+```sh
+docker compose logs backend
+```
+
+The repo root is bind-mounted, so source edits hot-reload in the running
+containers, and the root `.env` is read at runtime. There is no database
+service. See [ADR-0002](../adr/0002-dev-only-docker-against-atlas.md) for why.
 
 ## Test, typecheck, build, lint
 
