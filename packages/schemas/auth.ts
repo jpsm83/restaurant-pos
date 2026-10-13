@@ -9,6 +9,7 @@
  */
 import { z } from "zod";
 
+import emailRegex from "../utils/emailRegex.ts";
 import {
   PASSWORD_POLICY_MESSAGE,
   isValidPassword,
@@ -52,6 +53,24 @@ export const requestPasswordResetBodySchema = z.strictObject({
   email: emailSchema,
 });
 
+/**
+ * The new sign-in address for an email change. Normalized like `emailSchema`
+ * but checked with the shared `emailRegex` — the same rule the client applies.
+ */
+const newEmailSchema = z
+  .string({ error: "New email is required" })
+  .trim()
+  .toLowerCase()
+  .regex(emailRegex, "Invalid email address");
+
+/** Body for the authenticated request to change a business sign-in email. */
+export const requestEmailChangeBodySchema = z.strictObject({
+  newEmail: newEmailSchema,
+  currentPassword: z
+    .string({ error: "Current password is required" })
+    .min(1, "Current password is required"),
+});
+
 export const confirmEmailBodySchema = z.strictObject({
   token: z
     .string({ error: "Please provide a confirmation token." })
@@ -81,6 +100,9 @@ export type RequestEmailConfirmationBody = z.infer<
 >;
 export type RequestPasswordResetBody = z.infer<
   typeof requestPasswordResetBodySchema
+>;
+export type RequestEmailChangeBody = z.infer<
+  typeof requestEmailChangeBodySchema
 >;
 export type ConfirmEmailBody = z.infer<typeof confirmEmailBodySchema>;
 export type ResetPasswordBody = z.infer<typeof resetPasswordBodySchema>;

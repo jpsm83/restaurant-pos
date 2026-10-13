@@ -74,6 +74,13 @@ const businessSchema = new Schema(
     verificationToken: { type: String, default: undefined },
     resetPasswordToken: { type: String, default: undefined },
     resetPasswordExpires: { type: Date, default: undefined },
+    /**
+     * Pending sign-in email change (`email` stays active until confirmed).
+     * Server-owned; excluded from every DTO and the public read projection.
+     */
+    pendingEmail: { type: String, default: undefined },
+    pendingEmailToken: { type: String, default: undefined },
+    pendingEmailExpires: { type: Date, default: undefined },
     /** Increment on password reset / password change to invalidate outstanding refresh JWTs. */
     refreshSessionVersion: { type: Number, default: 0 },
     phoneNumber: {
@@ -129,6 +136,7 @@ const businessSchema = new Schema(
 
 businessSchema.index({ verificationToken: 1 }, { sparse: true });
 businessSchema.index({ resetPasswordToken: 1 }, { sparse: true });
+businessSchema.index({ pendingEmailToken: 1 }, { sparse: true });
 
 const Business = mongoose.models.Business || model("Business", businessSchema);
 export default Business;
