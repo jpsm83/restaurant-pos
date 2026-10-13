@@ -1,0 +1,157 @@
+# Notifications
+
+> **About this document.** This is the **target-state source of truth** for notifications in POS. It is written for two readers: AI agents that build the product and engineers onboarding onto it. It describes notifications as they are *meant to be* — capabilities are stated as commitments, without built/planned tags. It is self-contained: it links to no other document.
+
+---
+
+## 1. Scope
+
+This subject covers **how POS tells a person something** — the inbox that holds it, the messages the platform and a venue send, and how those messages reach their recipients. It owns:
+
+- the **per-user inbox** and the read, unread, and deleted state of each item in it;
+- the **delivery model** — persistence-first in-app delivery, live push while a recipient is online, and the email copy of the notifications that are also emailed;
+- the **severity and engagement-kind vocabulary** a notification carries;
+- the **operational event catalogue** — which business event notifies whom, on which channel, with what severity, and with what repeat behaviour;
+- **venue engagement messaging** to customers — the automatic birthday, promotion, and event messages, and the venue events that trigger them;
+- **two-way direct messages** between a venue's managers and a person (staff or customer), and the conversations they open;
+- the **reliability behaviour** of delivery — idempotency, cooldown, and email resilience;
+- the single **engagement mute** a user holds.
+
+It deliberately does **not** cover:
+
+- the **detection of triggering conditions** — low-stock thresholds belong to the inventories and supplier-goods subjects, overtime detection to the time-control subject, report readiness to the business-reports subject, and profile-change detection to the business subject. This subject owns what happens once a condition is detected, not how it is detected.
+- the **transactional email flows themselves** — sign-in verification, password reset, an email change, order receipts, and reservation decisions. The emails subject owns their templates, copy, and retry mechanics; this subject owns which of them notify and the in-app side of each.
+- the **inbox's ownership and a user's preference storage** — the users subject owns the person's identity and preferences. This subject owns the notifications the inbox holds and the meaning of the engagement mute, not where a preference is stored.
+- the **screens and navigation** that render the inbox, a conversation, or a venue event — the user-navigation subject owns the surfaces.
+- the **orders, reservations, promotions, reports, and loyalty mechanics** that produce events — the orders, reservations, promotions, business-reports, and loyalty subjects own those.
+
+---
+
+## 2. Domain model and vocabulary
+
+### Entities
+
+- **Notification** — one message addressed to one or more recipients and belonging to **one business**. Every notification is business-scoped: POS has no platform-wide notification. It carries a **severity** or an **engagement kind**, and its text.
+- **Inbox** — a person's collection of notifications and conversations. It belongs to the **User**, not to a business or to a mode, so the same inbox is shared across the customer and employee apps.
+- **Inbox entry** — the per-person record of one notification, carrying its **unread** and **deleted** state. State is per recipient: one person reading or deleting a notification never changes it for anyone else.
+- **Conversation** (thread) — a two-way exchange opened by a manager's **direct message**, pairing the manager and one person; replies are messages in the thread.
+- **Venue event** — a dated announcement a venue publishes: a name, a date, and details. Publishing it sends an **Event** message.
+- **Engagement mute** — a single per-person switch, on by default, that suppresses a venue's broadcast engagement messages to that person.
+
+### Terms this subject introduces
+
+- **Severity** — the importance of an operational notification: **Info**, **Warning**, or **Emergency**. *Info* is routine; *Warning* needs someone's attention (low-stock and overtime); *Emergency* is reserved for a critical operational failure and is not carried by any catalogued event.
+- **Engagement kind** — the class of a venue-initiated message: **Message**, **Promotion**, **Birthday**, or **Event**.
+- **Operational event** — a system-triggered notification drawn from the catalogue in §3.3.
+- **Engagement message** — a venue-initiated message to its customers. **Promotion**, **Birthday**, and **Event** are one-way **broadcasts**; **Message** is a **direct message**.
+- **Broadcast** — an engagement message sent one-way to an audience of customers; a recipient cannot reply to it.
+- **Direct message** — a **Message** a manager addresses to one person or to a chosen group, opening a **conversation** the recipient can reply to.
+- **Managers on duty** — a venue's managers and above who are currently signed in on a shift.
+- **Related customer** — a customer who holds a relationship with the venue, such as an order, a reservation, or a loyalty membership.
+- **Persistence-first** — the stored in-app notification is the source of truth; live delivery is an acceleration, never the record.
+- **Live push** — delivering a notification immediately to a recipient who is online.
+- **Idempotency** — suppressing a repeat dispatch of the same event within a brief window (five minutes in §3.7).
+- **Cooldown** — the minimum gap between repeats of a noisy alert.
+
+Terms reused from other subjects rather than defined here: **User**, **Business**, **Employee**, **Customer**, **Order**, **Reservation**, **Promotion**, **Loyalty**, **Report** (daily, weekly, monthly), **shift session** and **on duty**, **low-stock**, **overtime**, and **soft delete** (all from the product overview and sibling subjects).
+
+---
+
+## 3. Capabilities
+
+### 3.1 Delivery: persistence-first, then live, then email
+
+- Every notification is stored in each recipient's inbox **first**, and that stored copy is the **source of truth**.
+- A recipient who is **online** also receives it immediately by **live push**. A recipient who is **offline** receives it the moment they return, from the stored copy; nothing is lost.
+- **Email** is added for: an order confirmation/receipt, a reservation pending and decision (to the customer), a reply in a customer conversation (to the customer), a business-profile change (to managers), and a venue's engagement broadcasts (to customers who have not muted them). The remaining operational alerts — low-stock, report-ready, and overtime — are **in-app only**.
+- A communication failure **never blocks** the underlying business action: a notification is a side effect of the action, not a precondition for it.
+
+### 3.2 The inbox
+
+- Each person has **one inbox**, shared across the customer and employee apps and across every venue they touch.
+- State is **per recipient**: an entry is unread by default; reading marks it read; a person can mark one read, mark all read, and delete. The inbox shows an **unread count**.
+- **Deleting** hides an entry from that person's inbox only.
+- **System-generated** notification text is delivered in the recipient's **language preference** (English or Spanish). A manager's own words in a direct message are delivered **as written**.
+- A notification or conversation follows the platform's **soft-delete** convention; a recipient's delete is a per-person hide, and nothing is purged automatically.
+
+### 3.3 Operational event catalogue
+
+| Event | Who is notified | Channel | Severity | Repeats |
+| --- | --- | --- | --- | --- |
+| Order confirmed (receipt) | The ordering customer | In-app + email | Info | Once |
+| Reservation pending | The customer; and the venue's managers on duty, prompted to review it | Customer: in-app + email; managers: in-app | Info | Once |
+| Reservation decided (confirmed or cancelled) | The customer | In-app + email | Info | Once |
+| Low-stock alert | The venue's managers on duty | In-app | Warning | At most once per 15 minutes per set of items |
+| Weekly report ready | The venue's managers and above | In-app | Info | Once |
+| Monthly report ready | The venue's managers and above | In-app | Info | Once |
+| Business profile updated | The venue's managers and above | In-app + email | Info | Once |
+| Overtime alert | The venue's admins on duty | In-app | Warning | Every 5 minutes until the employee signs off |
+
+- The **low-stock alert** lists the affected goods and fires when stock falls below a good's par level or minimum required; detecting that condition belongs to the inventories and supplier-goods subjects.
+- The **overtime alert** concerns any employee other than an admin or owner who is still on duty past their scheduled end, and repeats until they sign off; detecting that condition belongs to the time-control subject.
+- A **report-ready** notification fires when the weekly or monthly report for the period is ready for review; detecting readiness belongs to the business-reports subject.
+- The **business-profile-updated** notification fires when a change to the business profile actually persists, and reports which fields changed; detecting the change belongs to the business subject.
+- No catalogued event carries the **Emergency** severity; it is reserved for a critical operational failure.
+
+### 3.4 Venue engagement messages
+
+- Engagement messages reach only a venue's **related customers** — a customer with no relationship to the venue is never messaged.
+- Three engagement kinds are **automatic**, sent by the platform on the venue's behalf:
+  - **Birthday** — sent on a customer's birthday, in the **venue's timezone**, to related customers who have a recorded birth date.
+  - **Promotion** — sent when a promotion's **active window begins**, not when it is authored.
+  - **Event** — sent when the venue publishes a venue event (§3.6).
+- A **broadcast** engagement message is **one-way**: a recipient cannot reply to it.
+- A manager's own message to customers is a **direct message** (§3.5); the automatic kinds above are the broadcasts.
+
+### 3.5 Direct messages and conversations
+
+- **Managers and above** may start a **direct message** to one person or to a chosen group of the venue's staff and related customers. Each recipient gets their **own conversation** with the manager.
+- Only managers and above can **start** a conversation. A staff member or customer can **reply** in a conversation they were sent, but cannot start one.
+- A **reply** notifies the other party **in-app**; when the conversation is with a customer, the customer's notification is also **emailed**. Staff replies are never emailed.
+- Conversations appear in the **same inbox** as notifications; opening a message shows its **thread**, and reading a thread clears its unread state.
+- A direct message is addressed to a person, so the **engagement mute does not suppress it**.
+
+### 3.6 Venue events
+
+- A venue's **managers and above** publish an event as a dated announcement — a name, a date, and details. Publishing sends the **Event** broadcast to the venue's related customers.
+- A venue event is an **announcement**, not a booking or a reservation.
+
+### 3.7 Reliability
+
+- **Idempotency.** A repeated dispatch of the same event for the same business within **5 minutes** is suppressed, so a burst of triggers produces one notification.
+- **Cooldown.** A low-stock alert repeats at most once per **15 minutes** per set of items; an overtime alert repeats every **5 minutes** until sign-off.
+- **Email delivery.** Email is retried on a transient failure rather than dropped; the retry behaviour itself belongs to the emails subject.
+- **Live delivery is best-effort.** A recipient who cannot be reached live still has the stored notification.
+
+### 3.8 The engagement mute
+
+- The **only notification preference** is the engagement mute. There is no per-event or per-channel tuning, and operational notifications cannot be turned off.
+- A person holds a single **engagement mute**, **on by default** and **global** across every venue; muting suppresses a venue's broadcasts to that person, both in-app and by email. Operational notifications are **mandatory**.
+
+---
+
+## 4. Roles and entitlements
+
+### Base access layers
+
+| Layer | Notification powers |
+| --- | --- |
+| **Customer** | Holds the inbox; receives notifications and conversations; may reply in a conversation sent to them; may mute engagement. Cannot start a conversation. |
+| **Employee** | Everything a customer can do; as staff, receives the direct messages the venue sends them and may reply. |
+| **Manager** | Everything an employee can do, plus publishing venue events and starting direct messages to staff and related customers. Receives the manager-targeted operational alerts. |
+| **Admin** | Everything a manager can do, plus receiving overtime alerts as the admin on duty. |
+
+The owning user is an admin at every venue they own. Job roles and per-user capabilities follow the global model; this subject names only the entitlements that bear on notifications.
+
+### Who can do what
+
+| Activity | Who |
+| --- | --- |
+| Use the inbox (read, mark read, mark all read, delete) | Any signed-in person |
+| Mute engagement | The person (their own) |
+| Reply in a conversation | The recipient of the direct message |
+| Start a direct message | Managers and above |
+| Publish a venue event | Managers and above |
+| Receive low-stock and overtime alerts | The venue's managers on duty (low-stock) and admins on duty (overtime) |
+| Receive report-ready and profile-updated alerts | The venue's managers and above |
+| Operate the application business | The superadmin, in a separate realm; never a recipient of a venue's notifications |
