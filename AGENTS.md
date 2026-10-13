@@ -1,4 +1,4 @@
-# Restaurant POS
+# POS
 
 npm-workspace monorepo: `backend/` (Fastify + Mongoose), `frontend/` (React 19 + Vite), and `packages/` (`restaurant-pos-packages` — shared enums, interfaces, zod schemas, utils). Install once at the repo root; run workspace scripts from the root.
 

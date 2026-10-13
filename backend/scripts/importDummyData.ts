@@ -140,7 +140,7 @@ const main = async () => {
   }
 
   await mongoose.connect(mongodbUri, {
-    dbName: "restaurantPos",
+    dbName: "pos",
     bufferCommands: true,
   });
 

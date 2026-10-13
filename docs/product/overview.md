@@ -1,6 +1,6 @@
-# Restaurant POS — overview
+# POS — overview
 
-Restaurant POS is a **complete, real-time POS and operations platform** for **bars and restaurants**. It is **multi-tenant**: each restaurant or bar is a **Business**, and most domain data is scoped by `businessId`. One business identity per location; the same codebase serves many tenants with isolated data.
+POS is a **complete, real-time POS and operations platform** for **bars and restaurants**. It is **multi-tenant**: each restaurant or bar is a **Business**, and most domain data is scoped by `businessId`. One business identity per location; the same codebase serves many tenants with isolated data.
 
 It is full-stack: Fastify backend under `backend/`, React frontend under `frontend/`, shared contracts under `packages/`.
 

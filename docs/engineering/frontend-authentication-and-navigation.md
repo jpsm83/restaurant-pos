@@ -1,6 +1,6 @@
 # Frontend authentication and navigation
 
-This document describes **how the Restaurant POS web app handles sign-in, session shape, and routing** for **person users** versus **business (tenant) accounts**, as implemented in `frontend/src`. It is the **frontend companion** to [`authentication-and-session.md`](./authentication-and-session.md) (backend contracts).
+This document describes **how the POS web app handles sign-in, session shape, and routing** for **person users** versus **business (tenant) accounts**, as implemented in `frontend/src`. It is the **frontend companion** to [`authentication-and-session.md`](./authentication-and-session.md) (backend contracts).
 
 **Internationalization:** Sign-in, sign-up, business registration, mode selection, partition errors (**access denied** / **not found**), and global chrome (navbar, loading strings) use **i18next** namespaces (`auth`, `mode`, `errors`, `nav`, `common`, etc.). Supported UI languages: **English** and **Spanish** (navbar language control). See [`frontend-i18n.md`](./frontend-i18n.md).
 

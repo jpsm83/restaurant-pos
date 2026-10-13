@@ -34,7 +34,7 @@ describe("emailTemplates", () => {
       greetingName: "Pat",
     });
 
-    expect(subject).toBe("Confirm Your Email - Restaurant POS");
+    expect(subject).toBe("Confirm Your Email - POS");
     expect(html).toContain(`href="${url}"`);
     expect(html).toContain("24 hours");
     expect(html).toContain("Hello Pat!");
@@ -58,7 +58,7 @@ describe("emailTemplates", () => {
       resetUrl: url,
     });
 
-    expect(subject).toBe("Password Reset Request - Restaurant POS");
+    expect(subject).toBe("Password Reset Request - POS");
     expect(html).toContain(`href="${url}"`);
     expect(html).toContain("1 hour");
     expect(text).toContain(url);

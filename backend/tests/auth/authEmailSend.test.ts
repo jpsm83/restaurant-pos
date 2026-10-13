@@ -52,7 +52,7 @@ describe("authEmailSend", () => {
     });
     expect(sendMailMock).toHaveBeenCalledTimes(1);
     expect(sendMailMock).toHaveBeenCalledWith({
-      from: '"Restaurant POS" <sender@test.com>',
+      from: '"POS" <sender@test.com>',
       to: "user@test.com",
       subject: sampleContent.subject,
       text: sampleContent.text,

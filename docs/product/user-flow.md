@@ -1,4 +1,4 @@
-## Restaurant POS – End-to-End User Flow
+## POS – End-to-End User Flow
 
 This document describes **how the app works from a user perspective**, from initial setup by management to day‑to‑day service, purchasing, inventory, and reporting. It complements [`overview.md`](./overview.md) and the focused subsystem docs.
 
@@ -452,5 +452,5 @@ Role (customer vs employee) is determined by session/context; the app does not r
     - **Inventories** are closed.
     - The **monthly business report** aggregates daily performance, stock, purchases, and labour to show if the business is on target or not.
 
-This is the high‑level operational flow of the restaurant POS from a user’s perspective, connecting managers, staff, and customers through the same system while keeping stock, costs, and reports in sync.
+This is the high‑level operational flow of the POS from a user’s perspective, connecting managers, staff, and customers through the same system while keeping stock, costs, and reports in sync.
 

@@ -6,27 +6,27 @@ export type AuthEmailTemplateContent = {
 
 const confirmationTranslations = {
   en: {
-    subject: "Confirm Your Email - Restaurant POS",
+    subject: "Confirm Your Email - POS",
     greeting: "Hello",
     message:
-      "Welcome to Restaurant POS! Please confirm your email address by clicking the button below to complete your account setup.",
+      "Welcome to POS! Please confirm your email address by clicking the button below to complete your account setup.",
     confirmButton: "Confirm Email",
     ignoreMessage:
-      "If you didn't create an account with Restaurant POS, please ignore this email.",
+      "If you didn't create an account with POS, please ignore this email.",
     expiryMessage:
       "This confirmation link will expire in 24 hours for security reasons.",
     fallbackMessage:
       "If the button above doesn't work, copy and paste this link into your browser:",
-    copyright: "© 2026 Restaurant POS. All rights reserved.",
+    copyright: "© 2026 POS. All rights reserved.",
   },
 };
 
 const passwordResetTranslations = {
   en: {
-    subject: "Password Reset Request - Restaurant POS",
+    subject: "Password Reset Request - POS",
     greeting: "Hello",
     message:
-      "You recently requested to reset your password for your Restaurant POS account. Click the button below to reset it.",
+      "You recently requested to reset your password for your POS account. Click the button below to reset it.",
     resetButton: "Reset Password",
     ignoreMessage:
       "If you didn't request a password reset, please ignore this email or contact support if you have concerns.",
@@ -34,7 +34,7 @@ const passwordResetTranslations = {
       "This password reset link will expire in 1 hour for security reasons.",
     fallbackMessage:
       "If the button above doesn't work, copy and paste this link into your browser:",
-    copyright: "© 2026 Restaurant POS. All rights reserved.",
+    copyright: "© 2026 POS. All rights reserved.",
   },
 };
 
@@ -74,7 +74,7 @@ export function buildEmailConfirmationContent(options: {
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: linear-gradient(to right, #0ea5e9, #3b82f6); color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
           <h1 style="margin: 0; font-size: 24px; color: white;">
-            Restaurant POS
+            POS
           </h1>
         </div>
         <div style="background-color: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; border: 1px solid #e5e7eb;">
@@ -136,7 +136,7 @@ export function buildPasswordResetEmailContent(options: {
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: linear-gradient(to right, #0ea5e9, #3b82f6); color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
           <h1 style="margin: 0; font-size: 24px; color: white;">
-            Restaurant POS
+            POS
           </h1>
         </div>
         <div style="background-color: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; border: 1px solid #e5e7eb;">

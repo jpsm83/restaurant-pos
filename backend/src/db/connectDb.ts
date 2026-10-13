@@ -11,7 +11,7 @@ import mongoose from "mongoose";
 
 /**
  * Connects to MongoDB if not already connected. Safe to call repeatedly.
- * Uses restaurantPos db and bufferCommands for serverless compatibility.
+ * Uses pos db and bufferCommands for serverless compatibility.
  */
 const connectDb = async () => {
   // Read env at call-time (not module load time), so `dotenv` setup in `server.ts`
@@ -38,7 +38,7 @@ const connectDb = async () => {
 
   try {
     await mongoose.connect(mongodbUri, {
-      dbName: "restaurantPos",
+      dbName: "pos",
       bufferCommands: true,
     });
     console.log("Connection established");

@@ -30,7 +30,7 @@ export async function sendAuthTransactionalEmail(options: {
   });
 
   await transporter.sendMail({
-    from: `"Restaurant POS" <${process.env.EMAIL_USER}>`,
+    from: `"POS" <${process.env.EMAIL_USER}>`,
     to,
     subject,
     text,

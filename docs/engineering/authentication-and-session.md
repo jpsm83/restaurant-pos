@@ -45,8 +45,8 @@ So the **business record wins** if the same email existed in both (signup and lo
 
 **Dummy data** (`backend/dummyData/`):
 
-- `business.json` — e.g. `demo-bistro@restaurantpos.test` / `demoBusinessPassword123` (hashed when imported).
-- `users.json` — e.g. `manager@restaurantpos.test`, `waiter@restaurantpos.test` with `employeeDetails` pointing at `Employee` documents.
+- `business.json` — e.g. `demo-bistro@pos.test` / `demoBusinessPassword123` (hashed when imported).
+- `users.json` — e.g. `manager@pos.test`, `waiter@pos.test` with `employeeDetails` pointing at `Employee` documents.
 
 ---
 

@@ -4,7 +4,7 @@
     "tradeName": "Demo Bistro",
     "legalName": "Demo Bistro LLC",
     "imageUrl": "https://cdn.example.com/demo-bistro/logo.png",
-    "email": "demo-bistro@restaurantpos.test",
+    "email": "demo-bistro@pos.test",
     "password": "demoBusinessPassword123",
     "phoneNumber": "+351910000001",
     "taxNumber": "PT500000001",

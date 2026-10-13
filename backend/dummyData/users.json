@@ -3,7 +3,7 @@
     "_id": { "$oid": "64b000000000000000000101" },
     "personalDetails": {
       "username": "manager-user",
-      "email": "manager@restaurantpos.test",
+      "email": "manager@pos.test",
       "password": "managerPassword123",
       "idType": "National ID",
       "idNumber": "USR-MANAGER-001",
@@ -55,7 +55,7 @@
     "_id": { "$oid": "64b000000000000000000102" },
     "personalDetails": {
       "username": "waiter-user",
-      "email": "waiter@restaurantpos.test",
+      "email": "waiter@pos.test",
       "password": "waiterPassword123",
       "idType": "National ID",
       "idNumber": "USR-WAITER-001",

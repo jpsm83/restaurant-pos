@@ -1,6 +1,6 @@
 # Auth email security flows (verification, password reset, observability)
 
-This document is the **authoritative technical reference** for **email-driven account security** in Restaurant POS: **sign-in email confirmation**, **forgot / reset password**, **resend confirmation**, integration with **signup** and **business registration**, and how that work fits **JWT refresh invalidation**, **rate limits**, **SMTP**, and **audit/metrics**.
+This document is the **authoritative technical reference** for **email-driven account security** in POS: **sign-in email confirmation**, **forgot / reset password**, **resend confirmation**, integration with **signup** and **business registration**, and how that work fits **JWT refresh invalidation**, **rate limits**, **SMTP**, and **audit/metrics**.
 
 **Companion docs:** backend session mechanics and middleware live in [`authentication-and-session.md`](./authentication-and-session.md). **Web routes, guards, and client session** live in [`frontend-authentication-and-navigation.md`](./frontend-authentication-and-navigation.md). **Product narrative** touches [`user-flow.md`](../product/user-flow.md).
 

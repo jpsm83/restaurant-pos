@@ -1,6 +1,6 @@
 # Frontend third-party libraries
 
-This document explains **how the Restaurant POS web app (`frontend/`) relies on external npm packages**, where each major concern lives in the stack, and **conventions for adding or extending** that stack. It complements [`overview.md`](../product/overview.md) (product shape) and feature-specific docs such as [`frontend-i18n.md`](./frontend-i18n.md) and [`frontend-authentication-and-navigation.md`](./frontend-authentication-and-navigation.md).
+This document explains **how the POS web app (`frontend/`) relies on external npm packages**, where each major concern lives in the stack, and **conventions for adding or extending** that stack. It complements [`overview.md`](../product/overview.md) (product shape) and feature-specific docs such as [`frontend-i18n.md`](./frontend-i18n.md) and [`frontend-authentication-and-navigation.md`](./frontend-authentication-and-navigation.md).
 
 **Source of truth for versions:** `frontend/package.json` for the frontend's own dependencies, resolved by the single root `package-lock.json`. Prefer **pinning compatible ranges** (`^`) and running **`npm install`** from the repo root when adding dependencies.
 
