@@ -1,0 +1,17 @@
+# Dev-only stack. Runs the app processes against the shared Atlas database in the
+# root `.env`; there is deliberately no database service and no data volume.
+services:
+  backend:
+    build: .
+    command: npm run dev --workspace backend
+    ports:
+      - "4000:4000"
+    volumes:
+      # Bind-mount the repo so host edits hot-reload inside the container.
+      - .:/app
+      # Anonymous volumes shadow the host's platform-specific modules with the
+      # ones installed inside the image (matters for native deps like bcrypt).
+      - /app/node_modules
+      - /app/backend/node_modules
+      - /app/frontend/node_modules
+      - /app/packages/node_modules

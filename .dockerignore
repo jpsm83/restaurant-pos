@@ -1,0 +1,26 @@
+# Keep the build context small and secrets out of every image layer.
+
+# Installed dependencies (host platform-specific; rebuilt inside the image).
+node_modules
+**/node_modules
+
+# Version control metadata.
+.git
+.gitignore
+
+# Secrets — read at runtime from the root .env bind mount, never baked in.
+.env
+.env.*
+
+# Build output.
+dist
+build
+coverage
+**/dist
+**/build
+
+# Tooling and editor noise.
+.vscode
+.idea
+.DS_Store
+*.log

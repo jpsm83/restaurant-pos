@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "description": "Restaurant POS monorepo: backend API, frontend app, and shared packages.",
+  "engines": {
+    "node": "26"
+  },
   "workspaces": [
     "backend",
     "frontend",
