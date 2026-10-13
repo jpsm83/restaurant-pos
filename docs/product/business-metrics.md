@@ -26,7 +26,7 @@ It deliberately does **not** cover:
 
 ### Entities
 
-- **Business metrics** — the venue's own target configuration. It holds the **cost targets** and the **supplier-good waste thresholds**. It is seeded with the platform defaults when the venue is created and is editable thereafter. It belongs to one venue.
+- **Business metrics** — the venue's own target configuration. It holds the **cost targets** and the **supplier-good waste thresholds**. It is **stored as fields on the business**, seeded with the platform defaults when the venue is created, and editable thereafter. It belongs to one venue; the business subject owns the storage, this subject owns the meaning.
 - **Cost target** — a target ratio for one cost category, expressed as a **percentage of total sales** (not of that category's own sales).
 - **Supplier-good waste threshold** — the acceptable **waste ceiling** for supplier goods of one **budget-impact level**, expressed as a **percentage of total sales**.
 - **Reporting config** — the venue's reporting-window configuration; it holds the **reporting-week start day**.

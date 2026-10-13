@@ -22,7 +22,7 @@ It deliberately does **not** cover:
 
 - the **`Owner`** account, the **subscription** itself, and **commission terms** — the users subject owns the `Owner`; the superadmin subject owns the plan catalog and commission configuration. This subject only shows the effective plan read-only.
 - **tax applied to orders and bills** — the single business-level tax configuration belongs to the payments-and-tax subject.
-- **cost metrics, targets, and reporting configuration** — the business-metrics and business-reports subjects own those.
+- the **meaning, defaults, validation, and comparison of the cost targets, waste thresholds, and reporting configuration** — the business-metrics subject owns those, and the business-reports subject owns the reports that consume them. This subject stores the values as business fields but does not define them.
 - **sign-in credentials and verification mechanics** — sign-in email verification, email change, and password reset belong to the users and emails subjects. This subject owns the *business contact email* field; the emails subject owns how its verification link is delivered.
 - the **owner shell, mode chooser, route guards, and canonical URLs** — the user-navigation subject owns those surfaces. This subject owns the *business-registration action* and the business form; the navigation that reaches them is the user-navigation subject's.
 - the **sales points, sales instances, and ordering/delivery mechanics** — the order-flow and sales-points-and-instances subjects own how customers order and how delivery is dispatched. This subject owns delivery *configuration*, not order placement.
@@ -248,7 +248,7 @@ The owning user is admin at every venue they own. Job roles and per-user capabil
 - **Hard-cascade delete.** Target is a soft delete (ADR-0003); today `DELETE` destroys the business and its data.
 - **Global uniqueness.** Target scopes `taxNumber` uniqueness to the country and dedupes `legalName` per country among active businesses; today `taxNumber` is globally unique and `legalName` is checked globally without country or active scoping.
 - **`contactPerson` shape drift.** Target is a simple optional primary contact; today it is free text or an employee reference.
-- **Metrics and reporting config on the business surface.** These belong to the business-metrics and business-reports subjects in the target; today they are business profile fields.
+- **Metrics edited through the shared profile form.** Target edits the cost targets, waste thresholds, and reporting-week start day on a **dedicated metrics settings surface** owned by the business-metrics subject; today they are edited inline in the shared business profile form. The values remain business fields in both.
 
 ### ADR conflicts
 
@@ -265,7 +265,7 @@ The owning user is admin at every venue they own. Job roles and per-user capabil
 - The **user-navigation** subject — the owner shell, the mode chooser, and the entry points into registering a business.
 - The **order-flow** and **sales-points-and-instances** subjects — delivery order placement and the virtual delivery sales point.
 - The **payments-and-tax** subject — the business-level tax configuration.
-- The **business-metrics** and **business-reports** subjects — cost targets and reporting configuration.
+- The **business-metrics** subject — the meaning, defaults, validation, and comparison of the cost targets, waste thresholds, and reporting-week start day this venue stores; and the **business-reports** subject — the reports that consume them.
 - The **ratings-and-comments** subject — the aggregates business discovery caches.
 - The **emails** subject — delivery of the contact-email verification link.
 - The **superadmin** subject — the plan catalog, commission, and feature entitlements behind the subscription pointer.
