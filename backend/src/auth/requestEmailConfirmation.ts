@@ -26,7 +26,7 @@ export async function handleRequestEmailConfirmation(
   normalizedEmail: string,
 ): Promise<RequestEmailConfirmationHandlerResult> {
   const business = await Business.findOne({ email: normalizedEmail })
-    .select("_id tradeName email emailVerified")
+    .select("_id tradeName")
     .lean();
 
   const user =
@@ -42,9 +42,6 @@ export async function handleRequestEmailConfirmation(
     return { kind: "success_200", message: GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE };
   }
 
-  if (business?.emailVerified === true) {
-    // return { kind: "already_verified_400", message: "Email is already verified." };
-  }
   const userEmailVerified =
     user?.personalDetails?.emailVerified === true || user?.emailVerified === true;
   if (userEmailVerified) {
