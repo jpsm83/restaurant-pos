@@ -249,7 +249,11 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
 
   app.get<{ Params: BusinessIdParams }>(
     "/:businessId",
-    { schema: { params: businessIdParamsSchema } },
+    {
+      preValidation: [createAuthHook(app)],
+      preHandler: [requireBusinessIdMatchesSessionHook()],
+      schema: { params: businessIdParamsSchema },
+    },
     async (req, reply) => {
       const { businessId } = req.params;
 

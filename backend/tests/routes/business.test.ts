@@ -146,7 +146,7 @@ describe("Business Routes", () => {
   });
 
   describe("GET /api/v1/business/:businessId", () => {
-    it("gets business by ID", async () => {
+    it("gets business by ID for the matching owner", async () => {
       const app = await getTestApp();
 
       const business = await Business.create({
@@ -159,24 +159,130 @@ describe("Business Routes", () => {
         currencyTrade: "USD",
         address: validAddress,
       });
+      const auth = await generateTestToken({
+        id: business._id.toString(),
+        email: "gettest@business.com",
+        type: "business",
+        role: "Tenant",
+      });
 
       const response = await app.inject({
         method: "GET",
         url: `/api/v1/business/${business._id}`,
+        headers: { authorization: auth },
       });
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.tradeName).toBe("Get Test Business");
       expect(body.password).toBeUndefined();
+      expect(body.verificationToken).toBeUndefined();
+      expect(body.resetPasswordToken).toBeUndefined();
+      expect(body.resetPasswordExpires).toBeUndefined();
+    });
+
+    it("returns 401 when GET business without auth", async () => {
+      const app = await getTestApp();
+
+      const business = await Business.create({
+        tradeName: "No Auth Get",
+        legalName: "No Auth Get LLC",
+        email: "noauthget@business.com",
+        password: "hashedpassword",
+        phoneNumber: "1234567890",
+        taxNumber: "TAX-NOAUTHGET-001",
+        currencyTrade: "USD",
+        address: validAddress,
+      });
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/business/${business._id}`,
+      });
+
+      expect(response.statusCode).toBe(401);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+    });
+
+    it("returns 403 when GET business with a non-business session", async () => {
+      const app = await getTestApp();
+
+      const business = await Business.create({
+        tradeName: "Employee Get",
+        legalName: "Employee Get LLC",
+        email: "employee-get@business.com",
+        password: "hashedpassword",
+        phoneNumber: "1234567890",
+        taxNumber: "TAX-EMP-GET-001",
+        currencyTrade: "USD",
+        address: validAddress,
+      });
+      const auth = await generateTestToken({
+        id: business._id.toString(),
+        email: "employee-get@business.com",
+        type: "user",
+        role: "Manager",
+      });
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/business/${business._id}`,
+        headers: { authorization: auth },
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+    });
+
+    it("returns 403 when the business session id does not match the route param", async () => {
+      const app = await getTestApp();
+
+      const business = await Business.create({
+        tradeName: "Mismatch Get",
+        legalName: "Mismatch Get LLC",
+        email: "mismatch-get@business.com",
+        password: "hashedpassword",
+        phoneNumber: "1234567890",
+        taxNumber: "TAX-MISMATCH-GET-001",
+        currencyTrade: "USD",
+        address: validAddress,
+      });
+      const auth = await generateTestToken({
+        id: new Types.ObjectId().toString(),
+        email: "mismatch-get@business.com",
+        type: "business",
+        role: "Tenant",
+      });
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/business/${business._id}`,
+        headers: { authorization: auth },
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
     });
 
     it("returns 400 for invalid ID format", async () => {
       const app = await getTestApp();
+      const auth = await generateTestToken({
+        id: new Types.ObjectId().toString(),
+        email: "any@business.com",
+        type: "business",
+        role: "Tenant",
+      });
 
       const response = await app.inject({
         method: "GET",
         url: "/api/v1/business/invalid-id",
+        headers: { authorization: auth },
       });
 
       expect(response.statusCode).toBe(400);
@@ -192,10 +298,17 @@ describe("Business Routes", () => {
     it("returns 404 for non-existent business", async () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
+      const auth = await generateTestToken({
+        id: fakeId.toString(),
+        email: "ghost@business.com",
+        type: "business",
+        role: "Tenant",
+      });
 
       const response = await app.inject({
         method: "GET",
         url: `/api/v1/business/${fakeId}`,
+        headers: { authorization: auth },
       });
 
       expect(response.statusCode).toBe(404);
@@ -618,10 +731,17 @@ describe("Business Routes", () => {
 
       const created = await Business.findOne({ email: "tz-create@business.com" });
       expect(created?.timezone).toBe("America/Bogota");
+      const auth = await generateTestToken({
+        id: created!._id.toString(),
+        email: "tz-create@business.com",
+        type: "business",
+        role: "Tenant",
+      });
 
       const read = await app.inject({
         method: "GET",
         url: `/api/v1/business/${created?._id}`,
+        headers: { authorization: auth },
       });
       expect(read.statusCode).toBe(200);
       const body = JSON.parse(read.body);
@@ -669,10 +789,17 @@ describe("Business Routes", () => {
       expect(response.statusCode).toBe(201);
       const created = await Business.findOne({ email: "tz-unknown@business.com" });
       expect(created?.timezone).toBeUndefined();
+      const auth = await generateTestToken({
+        id: created!._id.toString(),
+        email: "tz-unknown@business.com",
+        type: "business",
+        role: "Tenant",
+      });
 
       const read = await app.inject({
         method: "GET",
         url: `/api/v1/business/${created?._id}`,
+        headers: { authorization: auth },
       });
       const body = JSON.parse(read.body);
       expect(body.timezone).toBe("UTC");
@@ -691,10 +818,17 @@ describe("Business Routes", () => {
         currencyTrade: "USD",
         address: validAddress,
       });
+      const auth = await generateTestToken({
+        id: business._id.toString(),
+        email: "legacy@business.com",
+        type: "business",
+        role: "Tenant",
+      });
 
       const response = await app.inject({
         method: "GET",
         url: `/api/v1/business/${business._id}`,
+        headers: { authorization: auth },
       });
 
       expect(response.statusCode).toBe(200);
@@ -716,10 +850,17 @@ describe("Business Routes", () => {
         timezone: "Not/AZone",
         address: validAddress,
       });
+      const auth = await generateTestToken({
+        id: business._id.toString(),
+        email: "badzone@business.com",
+        type: "business",
+        role: "Tenant",
+      });
 
       const response = await app.inject({
         method: "GET",
         url: `/api/v1/business/${business._id}`,
+        headers: { authorization: auth },
       });
 
       expect(response.statusCode).toBe(200);
@@ -769,6 +910,7 @@ describe("Business Routes", () => {
       const read = await app.inject({
         method: "GET",
         url: `/api/v1/business/${business._id}`,
+        headers: { authorization: auth },
       });
       const body = JSON.parse(read.body);
       expect(body.timezone).toBe("America/New_York");
@@ -819,6 +961,7 @@ describe("Business Routes", () => {
       const read = await app.inject({
         method: "GET",
         url: `/api/v1/business/${business._id}`,
+        headers: { authorization: auth },
       });
       const body = JSON.parse(read.body);
       expect(body.timezone).toBe("UTC");
@@ -939,6 +1082,7 @@ describe("Business Routes", () => {
       const read = await app.inject({
         method: "GET",
         url: `/api/v1/business/${business._id}`,
+        headers: { authorization: auth },
       });
       expect(read.statusCode).toBe(200);
       const body = JSON.parse(read.body);
