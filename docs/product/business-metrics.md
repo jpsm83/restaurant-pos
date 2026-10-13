@@ -231,9 +231,3 @@ Editing metrics is an operational, not an ownership, act; it sits with the manag
 - **Weekly excludes fixed — inconsistent with the report pair.** Target defines weekly as food/beverage/labour + waste and monthly as all four + waste; today that split is neither documented nor enforced and the interfaces disagree with each other.
 - **Comparison ownership is undeclared.** Target makes the target comparison a derived, report-owned output from metrics owned by this subject; today the comparison is assembled inline in the aggregators and the monthly calculate-on-demand route without a stated home.
 - **Two cost denominators.** Target keeps one canonical cost denominator (total sales); today the monthly calculate-on-demand route compares ratios computed against **total operating cost**, while the aggregation helpers use total sales, so the same "food cost %" is scaled differently in different paths.
-
-### ADR conflicts
-
-- **ADR-0001 (zod DTOs exclude server-owned fields).** No conflict, but a constraint. The target's cost targets, waste thresholds, and reporting-week start day are **client-settable** and therefore belong in the request DTO with their `0..100` bounds; the **target comparison** — targets, actuals, deltas, and over/under flags — is **server-derived** and must stay out of every DTO.
-- **ADR-0002 (dev-only Docker against Atlas).** Does not touch business metrics.
-- **ADR-0003 (soft delete).** Does not touch business metrics; metric configuration lives on the business, whose soft-delete lifecycle is governed by ADR-0003.

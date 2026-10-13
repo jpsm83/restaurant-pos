@@ -236,15 +236,9 @@ Granted or revoked per user by **managers and above**, on top of the layer defau
 - **Business registration creates no user.** Target creates or links the registrant's `User`, the `Owner`, and the owner's membership; today it creates a `Business` only.
 - **Singular membership link.** Target is per-venue membership with many per user; today `User.employeeDetails` is a single reference.
 - **No access-layer enum and no capabilities.** Target has four layers defaulted from job roles plus per-user capabilities; today there is only the job-role enum and a `managementRolesEnums` subset, with authorization checked ad hoc in routes.
-- **No soft delete.** Target forbids hard deletes and adds a deleted marker; today `DELETE` routes remove documents and even run a dead `User.deleteMany({ businessId })` cascade.
+- **No soft delete.** Target soft-deletes every domain document (ADR-0003) and adds a deleted marker; today `DELETE` routes remove documents and even run a dead `User.deleteMany({ businessId })` cascade.
 - **Mode window is 5 minutes, and there is no late unlock.** Target is a 10-minute window with a manager unlock that preserves the real entry time; today the window is 5 minutes and no unlock exists.
 - **No go-live gate.** Target keeps an unverified business out of discovery and unable to take customer orders; today registration issues a session and verification is non-blocking.
 - **Email change is business-only.** Target applies the same verified, re-authenticated, cooldown-limited flow to every user; today a user's email changes through a token-less profile update.
 - **No pending-deletion or reactivation.** Target has a 15-day cancellable window and email-confirmed reactivation; today deletion is immediate and hard.
 - **Interface drift** — `IUser` omits `refreshSessionVersion`, and `IEmployee` carries a stray `notifications` field; the target model should reconcile these.
-
-### ADR conflicts
-
-- **ADR-0003 (soft delete).** The current `DELETE` routes hard-delete users, employees, and businesses — including the dead `User.deleteMany({ businessId })` cascade — which **contradicts** the accepted soft-delete decision. The target replaces them with soft deletes, so the conflict is a known gap to close, not an override.
-- **ADR-0001 (zod DTOs exclude server-owned fields).** No conflict, but a constraint: the target adds server-owned fields — the deleted marker, the deleted-at timestamp, the verified flags, and session versioning — all of which must stay **out of every request DTO**.
-- **ADR-0002 (dev-only Docker against Atlas).** Does not touch identity.

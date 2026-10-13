@@ -233,9 +233,3 @@ The owning user is admin at every venue they own. Job roles and per-user capabil
 - **Global uniqueness.** Target scopes `taxNumber` uniqueness to the country and dedupes `legalName` per country among active businesses; today `taxNumber` is globally unique and `legalName` is checked globally without country or active scoping.
 - **`contactPerson` shape drift.** Target is a simple optional primary contact; today it is free text or an employee reference.
 - **Metrics edited through the shared profile form.** Target edits the cost targets, waste thresholds, and reporting-week start day on a **dedicated metrics settings surface** owned by the business-metrics subject; today they are edited inline in the shared business profile form. The values remain business fields in both.
-
-### ADR conflicts
-
-- **ADR-0003 (soft delete).** The current `DELETE /business/:businessId` hard-deletes the tenant and cascades across eighteen collections, which **contradicts** the accepted soft-delete decision. The target replaces it with a soft delete, so the conflict is a known gap to close, not an override.
-- **ADR-0001 (zod DTOs exclude server-owned fields).** No conflict, but a constraint: the target adds server-owned fields — the derived `timezone`, the go-live readiness/live flag, the completeness signal, and the cached `averageRating`/`ratingCount` — all of which must stay **out of every request DTO**.
-- **ADR-0002 (dev-only Docker against Atlas).** Does not touch business details.

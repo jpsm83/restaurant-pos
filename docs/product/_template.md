@@ -40,7 +40,7 @@ Every document is **self-contained** and **link-free**, and every document is li
 ## Audit
 
 - Section 5, **Current vs target** — the audit — is the **only** place that records what exists today: the subject's routes, models, and screens, compared against the target above, and the gap. Everywhere else the document stays target-state and status-free.
-- If the subject contradicts an existing ADR, name the ADR (for example, `ADR-0001`) and the contradiction in the audit's **ADR conflicts** subsection rather than silently overriding it.
+- A subject document must **not contradict an accepted ADR or a sibling subject document**. Settle every conflict before writing: change the document to match, or amend or supersede the ADR, so the product documents and the ADRs stay one consistent decision set — never a list of open disagreements. Where an ADR constrains the subject (a required field shape, an excluded DTO field), state the target so it complies and name the ADR in prose (for example, `ADR-0001`).
 
 ## Consistency review
 
@@ -49,7 +49,7 @@ Before a document is done, check every item:
 - [ ] Vocabulary matches the established product/domain terms; no invented synonyms.
 - [ ] No link to any other document; references are prose-only (self-contained).
 - [ ] No built/planned status outside the audit section (§5, *Current vs target*).
-- [ ] Contradictions with an existing ADR are flagged, by name.
+- [ ] It contradicts no accepted ADR and no sibling product document; any ADR decision it changes has been amended or superseded in the same change.
 - [ ] It follows [the skeleton](#the-skeleton).
 - [ ] It is listed in `AGENTS.md` with a one-line description.
 
@@ -82,21 +82,4 @@ Before a document is done, check every item:
 
 ## 5. Current vs target
 
-<!-- The only place current status is recorded: existing routes, models, and screens for this subject, compared with the target above, and the gap. -->
-
-### ADR conflicts
-
-<!-- Any contradiction with an existing ADR, named in prose (for example, ADR-0001) rather than linked. -->
-
-## 6. Where to go next
-
-<!-- Name the related subject documents and the relevant ADRs in prose only — the reader locates them through the AGENTS.md pointer list. No links. -->
-```
-
----
-
-## Where to go next
-
-- Related subject documents — one per subject, under `docs/product/`, each listed in `AGENTS.md`.
-- Architecture decisions — ADRs under `docs/adr/`.
-- Domain vocabulary — the root `GLOSSARY.md`.
+<!-- The only place current status is recorded: existing routes, models, and screens for this subject, compared with the target above, and the gap. Where the target implements an ADR's decision, name the ADR in prose (for example, ADR-0003). -->
