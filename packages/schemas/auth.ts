@@ -9,7 +9,6 @@
  */
 import { z } from "zod";
 
-import emailRegex from "../utils/emailRegex.ts";
 import {
   PASSWORD_POLICY_MESSAGE,
   isValidPassword,
@@ -54,18 +53,11 @@ export const requestPasswordResetBodySchema = z.strictObject({
 });
 
 /**
- * The new sign-in address for an email change. Normalized like `emailSchema`
- * but checked with the shared `emailRegex` — the same rule the client applies.
+ * The new sign-in address for an email change. Uses the shared `emailSchema`,
+ * the single server-side email rule every auth DTO already validates with.
  */
-const newEmailSchema = z
-  .string({ error: "New email is required" })
-  .trim()
-  .toLowerCase()
-  .regex(emailRegex, "Invalid email address");
-
-/** Body for the authenticated request to change a business sign-in email. */
 export const requestEmailChangeBodySchema = z.strictObject({
-  newEmail: newEmailSchema,
+  newEmail: emailSchema,
   currentPassword: z
     .string({ error: "Current password is required" })
     .min(1, "Current password is required"),

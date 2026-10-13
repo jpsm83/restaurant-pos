@@ -301,12 +301,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     },
     async (req, reply) => {
       const session = req.authSession as AuthBusiness;
-      const { newEmail, currentPassword } = req.body;
-      const result = await handleRequestEmailChange(
-        session,
-        newEmail,
-        currentPassword,
-      );
+      const result = await handleRequestEmailChange(session, req.body);
 
       if (result.kind === "account_not_found") {
         throw unauthorized("Account not found.");

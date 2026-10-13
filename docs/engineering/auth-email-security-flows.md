@@ -181,7 +181,7 @@ All paths below are under **`/api/v1/auth`**.
 
 1. **Business.findOne({ email })** then **User** if no business (same order as login).
 2. Skip send: no account, already verified, or **`tryConsumeVerificationIntentEmailSlot(EmailConfirmation, email)`** false → **generic_200**.
-3. **`createIntentTokenForVerificationIntent`**, **`updateOne`** hash + expiry, **`buildConfirmEmailLink`**, **`buildEmailConfirmationContent`**, **`sendAuthTransactionalEmailWithRollback`** (rollback clears token fields on SMTP failure).
+3. **`createIntentTokenForVerificationIntent`**, **`updateOne`** hash + expiry, **`buildConfirmEmailLink`**, **`buildEmailConfirmationContent`**, **`sendAuthTokenEmailOrRollback`** (shared flow: generate token → persist → send; rollback clears/restores the token fields on SMTP failure).
 
 ### 7.2 Request reset — `requestPasswordReset.ts`
 

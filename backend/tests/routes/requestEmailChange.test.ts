@@ -128,7 +128,9 @@ describe("POST /api/v1/auth/request-email-change", () => {
     expect(response.statusCode).toBe(200);
     expect(JSON.parse(response.body).message).toBe(EMAIL_CHANGE_REQUESTED_MESSAGE);
     expect(sendEmailMock).toHaveBeenCalledTimes(1);
-    expect(sendEmailMock.mock.calls[0][0].to).toBe(newEmail);
+    expect(sendEmailMock).toHaveBeenCalledWith(
+      expect.objectContaining({ to: newEmail }),
+    );
 
     const stored = await Business.findById(business._id).lean();
     expect(stored?.pendingEmail).toBe(newEmail);
@@ -173,6 +175,33 @@ describe("POST /api/v1/auth/request-email-change", () => {
       url: "/api/v1/auth/request-email-change",
       headers: { authorization: auth },
       payload: { newEmail: "taken-by-biz@example.com", currentPassword: testPassword },
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(sendEmailMock).not.toHaveBeenCalled();
+
+    const stored = await Business.findById(business._id).lean();
+    expect(stored?.pendingEmail).toBeUndefined();
+  });
+
+  it("returns 409 when the new email is pending on another business", async () => {
+    const app = await getTestApp();
+    const business = await createBusiness("owner-dup-pending@example.com");
+    await createBusiness("reserving-biz@example.com", {
+      pendingEmail: "reserved-by-pending@example.com",
+      pendingEmailToken: "reserving-token",
+      pendingEmailExpires: new Date(Date.now() + 3_600_000),
+    });
+    const auth = await businessTokenFor(business);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/request-email-change",
+      headers: { authorization: auth },
+      payload: {
+        newEmail: "reserved-by-pending@example.com",
+        currentPassword: testPassword,
+      },
     });
 
     expect(response.statusCode).toBe(409);

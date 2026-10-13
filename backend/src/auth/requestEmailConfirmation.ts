@@ -1,7 +1,6 @@
-import crypto from "crypto";
 import Business from "../models/business.ts";
 import User from "../models/user.ts";
-import { sendAuthTransactionalEmail } from "./authEmailSend.ts";
+import { sendAuthTokenEmailOrRollback } from "./authEmailTokenFlow.ts";
 import { buildConfirmEmailLink } from "./emailLinks.ts";
 import { buildEmailConfirmationContent } from "./emailTemplates.ts";
 
@@ -52,36 +51,28 @@ export async function handleRequestEmailConfirmation(
     return { kind: "already_verified_400", message: "Email is already verified." };
   }
 
-  const verificationToken = crypto.randomBytes(32).toString("hex");
-
   if (business) {
-    await Business.updateOne(
-      { _id: business._id },
-      {
-        $set: {
-          verificationToken,
-        },
-      },
-    );
+    const sent = await sendAuthTokenEmailOrRollback({
+      to: normalizedEmail,
+      persist: (token) =>
+        Business.updateOne(
+          { _id: business._id },
+          { $set: { verificationToken: token } },
+        ),
+      buildLink: buildConfirmEmailLink,
+      buildContent: (link) =>
+        buildEmailConfirmationContent({
+          confirmUrl: link,
+          greetingName: business.tradeName?.trim() || undefined,
+        }),
+      rollback: () =>
+        Business.updateOne(
+          { _id: business._id },
+          { $unset: { verificationToken: "" } },
+        ),
+    });
 
-    try {
-      const confirmUrl = buildConfirmEmailLink(verificationToken);
-      const trade = business.tradeName?.trim();
-      const content = buildEmailConfirmationContent({
-        confirmUrl,
-        greetingName: trade || undefined,
-      });
-      await sendAuthTransactionalEmail({
-        to: normalizedEmail,
-        content,
-      });
-    } catch {
-      await Business.updateOne(
-        { _id: business._id },
-        {
-          $unset: { verificationToken: "" },
-        },
-      );
+    if (!sent) {
       return {
         kind: "server_error_500",
         message: "Failed to send confirmation email. Please try again later.",
@@ -100,32 +91,21 @@ export async function handleRequestEmailConfirmation(
   const greetingName =
     pd?.username?.trim() || pd?.firstName?.trim() || undefined;
 
-  await User.updateOne(
-    { _id: user!._id },
-    {
-      $set: {
-        verificationToken,
-      },
-    },
-  );
+  const sent = await sendAuthTokenEmailOrRollback({
+    to: normalizedEmail,
+    persist: (token) =>
+      User.updateOne(
+        { _id: user!._id },
+        { $set: { verificationToken: token } },
+      ),
+    buildLink: buildConfirmEmailLink,
+    buildContent: (link) =>
+      buildEmailConfirmationContent({ confirmUrl: link, greetingName }),
+    rollback: () =>
+      User.updateOne({ _id: user!._id }, { $unset: { verificationToken: "" } }),
+  });
 
-  try {
-    const confirmUrl = buildConfirmEmailLink(verificationToken);
-    const content = buildEmailConfirmationContent({
-      confirmUrl,
-      greetingName,
-    });
-    await sendAuthTransactionalEmail({
-      to: normalizedEmail,
-      content,
-    });
-  } catch {
-    await User.updateOne(
-      { _id: user!._id },
-      {
-        $unset: { verificationToken: "" },
-      },
-    );
+  if (!sent) {
     return {
       kind: "server_error_500",
       message: "Failed to send confirmation email. Please try again later.",

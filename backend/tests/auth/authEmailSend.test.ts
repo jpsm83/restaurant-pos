@@ -12,10 +12,7 @@ vi.mock("nodemailer", () => ({
   },
 }));
 
-import {
-  sendAuthTransactionalEmail,
-  sendAuthTransactionalEmailWithRollback,
-} from "../../src/auth/authEmailSend.ts";
+import { sendAuthTransactionalEmail } from "../../src/auth/authEmailSend.ts";
 import type { AuthEmailTemplateContent } from "../../src/auth/emailTemplates.ts";
 
 const sampleContent: AuthEmailTemplateContent = {
@@ -86,35 +83,5 @@ describe("authEmailSend", () => {
       if (prevPass !== undefined) process.env.EMAIL_PASSWORD = prevPass;
     }
     expect(sendMailMock).not.toHaveBeenCalled();
-  });
-
-  it("sendAuthTransactionalEmailWithRollback runs rollback then rethrows on send failure", async () => {
-    sendMailMock.mockRejectedValue(new Error("SMTP failed"));
-
-    const rollback = vi.fn().mockResolvedValue(undefined);
-
-    await expect(
-      sendAuthTransactionalEmailWithRollback({
-        to: "a@test.com",
-        content: sampleContent,
-        rollback,
-      }),
-    ).rejects.toThrow("SMTP failed");
-
-    expect(rollback).toHaveBeenCalledTimes(1);
-  });
-
-  it("sendAuthTransactionalEmailWithRollback does not rollback on success", async () => {
-    sendMailMock.mockResolvedValue(undefined);
-
-    const rollback = vi.fn();
-
-    await sendAuthTransactionalEmailWithRollback({
-      to: "a@test.com",
-      content: sampleContent,
-      rollback,
-    });
-
-    expect(rollback).not.toHaveBeenCalled();
   });
 });

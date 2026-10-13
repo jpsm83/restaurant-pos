@@ -37,23 +37,3 @@ export async function sendAuthTransactionalEmail(options: {
     html,
   });
 }
-
-/**
- * Sends the email; on any failure runs `rollback` once (e.g. clear issued token fields) then rethrows.
- */
-export async function sendAuthTransactionalEmailWithRollback(options: {
-  to: string;
-  content: AuthEmailTemplateContent;
-  correlationId?: string;
-  rollback: () => Promise<void>;
-}): Promise<void> {
-  try {
-    await sendAuthTransactionalEmail({
-      to: options.to,
-      content: options.content,
-    });
-  } catch (error) {
-    await options.rollback();
-    throw error;
-  }
-}

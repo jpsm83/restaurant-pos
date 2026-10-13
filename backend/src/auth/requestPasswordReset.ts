@@ -1,10 +1,11 @@
-import crypto from "crypto";
 import Business from "../models/business.ts";
 import User from "../models/user.ts";
-import { sendAuthTransactionalEmail } from "./authEmailSend.ts";
+import { sendAuthTokenEmailOrRollback } from "./authEmailTokenFlow.ts";
 import { buildResetPasswordLink } from "./emailLinks.ts";
 import { buildPasswordResetEmailContent } from "./emailTemplates.ts";
 import { GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE } from "./requestEmailConfirmation.ts";
+
+const RESET_TOKEN_TTL_MS = 3_600_000;
 
 export type RequestPasswordResetHandlerResult =
   | { kind: "success_200"; message: string }
@@ -31,38 +32,33 @@ export async function handleRequestPasswordReset(
     return { kind: "success_200", message: GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE };
   }
 
-  const resetToken = crypto.randomBytes(32).toString("hex");
-  const resetTokenExpiry = new Date(Date.now() + 3600000);
-
   if (business) {
-    await Business.updateOne(
-      { _id: business._id },
-      {
-        $set: {
-          resetPasswordToken: resetToken,
-          resetPasswordExpires: resetTokenExpiry,
-        },
-      },
-    );
+    const sent = await sendAuthTokenEmailOrRollback({
+      to: normalizedEmail,
+      persist: (token) =>
+        Business.updateOne(
+          { _id: business._id },
+          {
+            $set: {
+              resetPasswordToken: token,
+              resetPasswordExpires: new Date(Date.now() + RESET_TOKEN_TTL_MS),
+            },
+          },
+        ),
+      buildLink: buildResetPasswordLink,
+      buildContent: (link) =>
+        buildPasswordResetEmailContent({
+          resetUrl: link,
+          greetingName: business.tradeName?.trim() || undefined,
+        }),
+      rollback: () =>
+        Business.updateOne(
+          { _id: business._id },
+          { $unset: { resetPasswordToken: "", resetPasswordExpires: "" } },
+        ),
+    });
 
-    try {
-      const resetUrl = buildResetPasswordLink(resetToken);
-      const trade = business.tradeName?.trim();
-      const content = buildPasswordResetEmailContent({
-        resetUrl,
-        greetingName: trade || undefined,
-      });
-      await sendAuthTransactionalEmail({
-        to: normalizedEmail,
-        content,
-      });
-    } catch {
-      await Business.updateOne(
-        { _id: business._id },
-        {
-          $unset: { resetPasswordToken: "", resetPasswordExpires: "" },
-        },
-      );
+    if (!sent) {
       return {
         kind: "server_error_500",
         message: "Failed to send password reset email. Please try again later.",
@@ -78,33 +74,29 @@ export async function handleRequestPasswordReset(
   const greetingName =
     pd?.username?.trim() || pd?.firstName?.trim() || undefined;
 
-  await User.updateOne(
-    { _id: user!._id },
-    {
-      $set: {
-        resetPasswordToken: resetToken,
-        resetPasswordExpires: resetTokenExpiry,
-      },
-    },
-  );
+  const sent = await sendAuthTokenEmailOrRollback({
+    to: normalizedEmail,
+    persist: (token) =>
+      User.updateOne(
+        { _id: user!._id },
+        {
+          $set: {
+            resetPasswordToken: token,
+            resetPasswordExpires: new Date(Date.now() + RESET_TOKEN_TTL_MS),
+          },
+        },
+      ),
+    buildLink: buildResetPasswordLink,
+    buildContent: (link) =>
+      buildPasswordResetEmailContent({ resetUrl: link, greetingName }),
+    rollback: () =>
+      User.updateOne(
+        { _id: user!._id },
+        { $unset: { resetPasswordToken: "", resetPasswordExpires: "" } },
+      ),
+  });
 
-  try {
-    const resetUrl = buildResetPasswordLink(resetToken);
-    const content = buildPasswordResetEmailContent({
-      resetUrl,
-      greetingName,
-    });
-    await sendAuthTransactionalEmail({
-      to: normalizedEmail,
-      content,
-    });
-  } catch {
-    await User.updateOne(
-      { _id: user!._id },
-      {
-        $unset: { resetPasswordToken: "", resetPasswordExpires: "" },
-      },
-    );
+  if (!sent) {
     return {
       kind: "server_error_500",
       message: "Failed to send password reset email. Please try again later.",
