@@ -13,7 +13,6 @@ npm-workspace monorepo: `backend/` (Fastify + Mongoose), `frontend/` (React 19 +
 Load only the document you need; each is self-contained and links to no other document.
 
 - [`docs/product/overview.md`](docs/product/overview.md) — target-state product overview: what POS is, core vocabulary, surfaces, tenancy, and monetization. Load first for product context.
-- [`docs/product/_user-flow.md`](docs/product/_user-flow.md) — end-to-end user journey from onboarding through service, purchasing, inventory, and reporting.
 - [`docs/product/users.md`](docs/product/users.md) — target-state global identity model: the user, owner, employee membership, access layers, job roles, mode chooser, and the account lifecycle.
 - [`docs/product/business.md`](docs/product/business.md) — target-state business details: adding a venue, the draft and go-live lifecycle, profile identity, currency, address and derived timezone, opening hours, delivery, discovery, and the subscription pointer.
 - [`docs/product/business-metrics.md`](docs/product/business-metrics.md) — target-state business metrics: cost targets, supplier-good waste thresholds by budget impact, the reporting-week start day, and the KPI dictionary with its canonical formulas.

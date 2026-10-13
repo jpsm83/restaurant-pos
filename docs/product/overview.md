@@ -310,3 +310,12 @@ POS is **live by design**: sales points, sales instances, order status, stock mo
 - **Not self-hosted.** There is no on-premise or self-managed deployment; POS is cloud SaaS.
 
 (Direct payment processing and delivery **are** in scope — delivered through third-party providers.)
+
+---
+
+## 14. Where to go next
+
+- The per-feature product-document template and conventions (`_template.md`).
+- The business-metrics subject — the cost targets, supplier-good waste thresholds, reporting-week start day, and the KPI dictionary with its canonical formulas.
+
+Architecture decisions are recorded as ADRs under `docs/adr/`; engineering vocabulary is in the root `GLOSSARY.md`. Each product document is listed in `AGENTS.md`.

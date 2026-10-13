@@ -1,5 +1,7 @@
 ## POS – End-to-End User Flow
 
+> **Deprecated — historical reference only.** This document describes the platform's behaviour as one end-to-end journey and is retained for reference. It is **not** the target-state source of truth: the per-feature product documents under `docs/product/` (listed in `AGENTS.md`) supersede it, and where this document and those differ, those win.
+
 This document describes **how the app works from a user perspective**, from initial setup by management to day‑to‑day service, purchasing, inventory, and reporting. It complements the product overview and the focused subsystem docs.
 
 ---
