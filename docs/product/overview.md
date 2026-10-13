@@ -1,6 +1,6 @@
 # POS — Product Overview
 
-> **About this document.** This is the **target-state source of truth** for what POS is. It is written for two readers: AI agents that build the product, and engineers onboarding onto it. It describes the product as it is *meant to be*, not as a status report — capabilities are stated as commitments, without built/planned tags. Read this first, then follow the links in [Where to go next](#14-where-to-go-next). Product and domain vocabulary is defined here as it is introduced; engineering vocabulary (DTO, server-owned field, problem details, …) lives in the root [`GLOSSARY.md`](../../GLOSSARY.md).
+> **About this document.** This is the **target-state source of truth** for what POS is. It is written for two readers: AI agents that build the product, and engineers onboarding onto it. It describes the product as it is *meant to be*, not as a status report — capabilities are stated as commitments, without built/planned tags. Read this first, then see [Where to go next](#14-where-to-go-next). Product and domain vocabulary is defined here as it is introduced; engineering vocabulary (DTO, server-owned field, problem details, …) lives in the root `GLOSSARY.md`.
 
 ---
 
@@ -228,7 +228,7 @@ The Business app is the operational heart of POS. It comprises the **owner shell
 - **Weekly business report** — aggregates calculated/closed daily reports for the venue's configured reporting week, focused on operational performance (fixed and extra monthly costs excluded). It closes automatically when a new reporting week begins.
 - **Monthly business report** — aggregates the month's daily reports plus inventory variance and waste, purchasing, and labour cost, then compares **targets vs actuals** across food/beverage/labour/fixed cost and waste. It includes break-even, net profit, and a metrics-comparison section. It auto-closes at the month boundary once all daily reports are closed.
 - **Reporting exports** are available across these reports, powered by the shared advanced-table engine used as the blueprint for report tables.
-- **Business metrics formulas** (profitability, cost and sales quality, break-even, operational efficiency, and later promotion/bar controls) are defined in [`business-metrics-formulas.md`](./business-metrics-formulas.md).
+- **Business metrics formulas** (profitability, cost and sales quality, break-even, operational efficiency, and later promotion/bar controls) are defined in the business-metrics formulas document.
 
 ### Notifications
 
@@ -314,8 +314,8 @@ POS is **live by design**: sales points, sales instances, order status, stock mo
 
 ## 14. Where to go next
 
-- [`user-flow.md`](./user-flow.md) — the day-to-day journey from onboarding through service, purchasing, inventory, reporting, and the customer experience.
-- [`business-metrics-formulas.md`](./business-metrics-formulas.md) — the canonical formulas behind the weekly and monthly metrics.
-- [`features/_template.md`](./features/_template.md) — the shared template and conventions for the per-feature product documents.
+- The user-flow document — the day-to-day journey from onboarding through service, purchasing, inventory, reporting, and the customer experience.
+- The business-metrics formulas document — the canonical formulas behind the weekly and monthly metrics.
+- The per-feature product-document template and conventions (`_template.md`).
 
-Architecture decisions are recorded as ADRs under [`docs/adr/`](../adr/); engineering vocabulary is in the root [`GLOSSARY.md`](../../GLOSSARY.md).
+Architecture decisions are recorded as ADRs under `docs/adr/`; engineering vocabulary is in the root `GLOSSARY.md`. Each product document is listed in `AGENTS.md`.
