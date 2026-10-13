@@ -55,6 +55,7 @@ These terms are used with exactly these meanings throughout POS. Do not drift to
 | **Shift session** | The actual, recorded attendance for one employee on one shift (sign-in/out, breaks). |
 | **Daily / Weekly / Monthly report** | The aggregated sales and performance reports at each roll-up level. |
 | **Soft delete** | POS never hard-deletes domain documents: a server-owned deleted marker plus a timestamp are set, the document is retained and reactivatable, and uniqueness is enforced among active documents. Every model follows it. |
+| **Live** | A business that may be discovered by customers and can take customer orders and bookings. A **draft** is not live; a live business may be taken **offline**, which is not the same as **closing** it. |
 
 ---
 
@@ -152,7 +153,8 @@ The Business app is the operational heart of POS. It comprises the **owner shell
 
 ### Onboarding and configuration
 
-- **Business registration** creates the tenant, the owner's `Owner` account, and the owner's employee membership. The account collects profile (trade/legal name, logo, email, phone, tax number), **currency** (one per business, chosen at onboarding), and address; the **timezone** is derived from the address.
+- **Registering a business** is an action by an **already-registered user**; it creates the tenant, initialises the user's `Owner` account (on their first venue), and creates the owner's employee membership. The business can be **saved as an incomplete draft** and edited over time; it collects profile (trade/legal name, logo, contact, phone, tax number), **currency** (one per business, chosen at onboarding), and address; the **timezone** is derived from the address.
+- **Go-live.** A business is **not live** until its **go-live checklist is complete** and its **contact email is verified**; an admin/owner then flips the **go-live toggle**. **Not live** means **absent from customer discovery** and **unable to take customer orders or bookings**, though the venue remains fully usable internally. A live business can also be taken **offline**, which is distinct from **closing** it.
 - **Profile and discovery.** Public fields — cuisine type, categories, contact, and cached `averageRating` / `ratingCount` — power customer discovery.
 - **Opening hours** per weekday.
 - **Delivery settings**: enable/disable, **delivery radius**, **minimum order**, and **per-day delivery windows**.

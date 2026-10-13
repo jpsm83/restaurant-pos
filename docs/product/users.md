@@ -127,8 +127,8 @@ The `User` owns the sign-in email, the password, and a **single canonical email-
 
 Each `Business` carries its **own contact email**, verified by the same token flow. It is **never a credential**.
 
-- A business may be **created and configured immediately**, before verification.
-- A business is **not live until its contact email is verified**. **Not live** means **absent from customer discovery** and **unable to take customer orders or bookings**.
+- A business may be **created as an incomplete draft and configured over time**, before verification.
+- A business is **not live until its contact email is verified** *and* its **go-live checklist** is complete; an admin/owner then toggles it live (the checklist and toggle belong to the business subject). **Not live** means **absent from customer discovery** and **unable to take customer orders or bookings**.
 - POS shows a clear **warning on the business page** until the contact email is verified.
 
 ### 3.11 Account creation paths
