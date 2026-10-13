@@ -230,7 +230,7 @@ The Business app is the operational heart of POS. It comprises the **owner shell
 - **Weekly business report** — aggregates calculated/closed daily reports for the venue's configured reporting week, focused on operational performance (fixed and extra monthly costs excluded). It closes automatically when a new reporting week begins.
 - **Monthly business report** — aggregates the month's daily reports plus inventory variance and waste, purchasing, and labour cost, then compares **targets vs actuals** across food/beverage/labour/fixed cost and waste. It includes break-even, net profit, and a metrics-comparison section. It auto-closes at the month boundary once all daily reports are closed.
 - **Reporting exports** are available across these reports, powered by the shared advanced-table engine used as the blueprint for report tables.
-- **Business metrics formulas** (profitability, cost and sales quality, break-even, operational efficiency, and later promotion/bar controls) are defined in the business-metrics formulas document.
+- **Business metrics formulas** (profitability, cost and sales quality, break-even, operational efficiency, and promotion/bar controls) are defined in the business-metrics subject, alongside the cost targets and waste thresholds.
 
 ### Notifications
 
@@ -317,7 +317,7 @@ POS is **live by design**: sales points, sales instances, order status, stock mo
 ## 14. Where to go next
 
 - The user-flow document — the day-to-day journey from onboarding through service, purchasing, inventory, reporting, and the customer experience.
-- The business-metrics formulas document — the canonical formulas behind the weekly and monthly metrics.
+- The business-metrics subject — the cost targets, supplier-good waste thresholds, reporting-week start day, and the KPI dictionary with its canonical formulas.
 - The per-feature product-document template and conventions (`_template.md`).
 
 Architecture decisions are recorded as ADRs under `docs/adr/`; engineering vocabulary is in the root `GLOSSARY.md`. Each product document is listed in `AGENTS.md`.

@@ -6,18 +6,16 @@
 
 ## 1. Scope
 
-This subject covers the **numbers a venue sets for itself and the language the platform uses to name them**. It owns:
+This subject covers the **numbers a venue sets for itself, the language the platform uses to name them, and the formulas behind them**. It owns:
 
 - the **cost targets** — the four target categories (food, beverage, labour, fixed), each a percentage of total sales;
 - the **supplier-good waste thresholds** — the acceptable waste ceilings, keyed to a supplier good's **budget impact**;
 - the **reporting-week start day** — the day that begins the venue's weekly reporting window;
-- the **KPI dictionary** — the platform's named metrics, each with its unit, the direction that is "good", and a prose pointer to its canonical formula.
+- the **KPI dictionary** — the platform's named metrics, each with its unit, the direction that is "good", its meaning, and its **canonical formula**.
 
 It deliberately does **not** cover:
 
-- the **canonical formulas** themselves, their derivations, or their worked examples — the business-metrics formulas document is their source of truth, and this subject only names the KPIs and points to it;
-- the **weekly and monthly business report** structures, buckets, aggregation, closing, and comparison rendering — the business-reports subject owns those; this subject supplies the inputs they compare against;
-- the **break-even, net-profit, and variance calculations** as algorithms — the formulas document owns them; this subject lists them as KPIs;
+- the **weekly and monthly business report** structures, buckets, aggregation, closing, and comparison rendering — the business-reports subject owns those; this subject defines the KPIs and targets they compare against;
 - the **inventory variance and supplier-good waste computation** — the inventories subject owns how waste and deviation are derived, and the supplier-goods subject owns the **budget impact** field;
 - the **business profile, onboarding, currency, and go-live** — the business subject owns those; metrics belong to a business's own configuration but are documented here;
 - **notifications** for report readiness or over-target conditions — the notifications subject owns delivery, and no over-target alert is committed here.
@@ -87,57 +85,57 @@ Waste thresholds are **five ceilings**, one per **budget-impact level**, applied
 
 ### 3.5 KPI dictionary
 
-The platform's named metrics. The **canonical formulas** — their exact derivation and worked examples — live in the business-metrics formulas document; this dictionary names them, gives each one's unit and direction, and points to that document in prose. Percentage KPIs are returned on the **`0..100`** scale. The **beverage cost** and **fixed cost** percentages follow the same cost-over-total-sales form as **food cost** and **labour cost**.
+The platform's named metrics, each with its unit, good direction, meaning, and **canonical formula**. Percentage KPIs are returned on the **`0..100`** scale (already multiplied by 100), and every division is guarded so a `0` denominator yields `0`. The **beverage cost** and **fixed cost** percentages follow the same cost-over-total-sales form as **food cost** and **labour cost**.
 
 **Profitability**
 
-| KPI | Unit | Good direction | Meaning |
-| --- | --- | --- | --- |
-| Gross profit | Business currency | Higher | Net revenue less COGS. |
-| Gross profit margin | Percent | Higher | Gross profit as a share of total sales. |
-| Net profit | Business currency | Higher | Net revenue less total operating cost. |
-| Net profit margin | Percent | Higher | Net profit as a share of total sales. |
+| KPI | Unit | Good direction | Formula | Meaning |
+| --- | --- | --- | --- | --- |
+| Gross profit | Business currency | Higher | `netRevenue - cogs` | Net revenue less COGS. |
+| Gross profit margin | Percent | Higher | `(grossProfit / totalSales) * 100` | Gross profit as a share of total sales. |
+| Net profit | Business currency | Higher | `netRevenue - totalOperatingCost` | Net revenue less total operating cost. |
+| Net profit margin | Percent | Higher | `(netProfit / totalSales) * 100` | Net profit as a share of total sales. |
 
 **Cost and sales quality**
 
-| KPI | Unit | Good direction | Meaning |
-| --- | --- | --- | --- |
-| Food cost % of sales | Percent | Lower | Food cost over total sales — the **food target**. |
-| Beverage cost % of sales | Percent | Lower | Beverage cost over total sales — the **beverage target**. |
-| Labour cost % of sales | Percent | Lower | Labour cost over total sales — the **labour target**. |
-| Fixed cost % of sales | Percent | Lower | Fixed operating cost over total sales — the **fixed target**. |
-| Prime cost | Business currency | Lower | Food cost plus labour cost. |
-| Prime cost % of sales | Percent | Lower | Prime cost over total sales. |
-| Sales payment completion | Percent | Higher | Net revenue over total sales. |
-| Void sales % | Percent | Lower | Void value over total sales. |
-| Invited sales % | Percent | Lower | Complimentary value over total sales. |
+| KPI | Unit | Good direction | Formula | Meaning |
+| --- | --- | --- | --- | --- |
+| Food cost % of sales | Percent | Lower | `(foodCost / totalSales) * 100` | Food cost over total sales — the **food target**. |
+| Beverage cost % of sales | Percent | Lower | `(beverageCost / totalSales) * 100` | Beverage cost over total sales — the **beverage target**. |
+| Labour cost % of sales | Percent | Lower | `(laborCost / totalSales) * 100` | Labour cost over total sales — the **labour target**. |
+| Fixed cost % of sales | Percent | Lower | `(fixedCost / totalSales) * 100` | Fixed operating cost over total sales — the **fixed target**. |
+| Prime cost | Business currency | Lower | `foodCost + laborCost` | Food cost plus labour cost. |
+| Prime cost % of sales | Percent | Lower | `(primeCost / totalSales) * 100` | Prime cost over total sales. |
+| Sales payment completion | Percent | Higher | `(totalNetRevenue / totalSales) * 100` | Net revenue over total sales. |
+| Void sales % | Percent | Lower | `(totalVoidSales / totalSales) * 100` | Void value over total sales. |
+| Invited sales % | Percent | Lower | `(totalInvitedSales / totalSales) * 100` | Complimentary value over total sales. |
 
 **Break-even and targets**
 
-| KPI | Unit | Good direction | Meaning |
-| --- | --- | --- | --- |
-| Contribution margin ratio | Ratio | Higher | Total sales less variable costs, over total sales. |
-| Break-even sales | Business currency | — | Fixed costs over the contribution-margin ratio. |
-| Minimum daily sales target | Business currency | — | Break-even sales spread across the period's days. |
+| KPI | Unit | Good direction | Formula | Meaning |
+| --- | --- | --- | --- | --- |
+| Contribution margin ratio | Ratio | Higher | `(totalSales - variableCosts) / totalSales` | Total sales less variable costs, over total sales. |
+| Break-even sales | Business currency | — | `fixedCosts / contributionMarginRatio` | Fixed costs over the contribution-margin ratio. |
+| Minimum daily sales target | Business currency | — | `breakEvenSales / daysInPeriod` | Break-even sales spread across the period's days. |
 
 **Operational efficiency**
 
-| KPI | Unit | Good direction | Meaning |
-| --- | --- | --- | --- |
-| Average spend per customer | Business currency | Higher | Net revenue over customers served. |
-| Sales per labour hour | Business currency | Higher | Total sales over labour hours. |
-| Inventory turnover | Ratio | Higher | COGS over average inventory value. |
-| Table turnover rate | Ratio | Higher | Guests per table per service hour. |
+| KPI | Unit | Good direction | Formula | Meaning |
+| --- | --- | --- | --- | --- |
+| Average spend per customer | Business currency | Higher | `totalNetRevenue / customersServed` | Net revenue over customers served. |
+| Sales per labour hour | Business currency | Higher | `totalSales / laborHours` | Total sales over labour hours. |
+| Inventory turnover | Ratio | Higher | `cogs / averageInventoryValue` | COGS over average inventory value. |
+| Table turnover rate | Ratio | Higher | `(guestsServed / numberOfTables) / serviceHours` | Guests per table per service hour. |
 
 **Promotion and bar controls**
 
-| KPI | Unit | Good direction | Meaning |
-| --- | --- | --- | --- |
-| Promotion sales mix | Percent | — | Promotional sales over total sales. |
-| Promotion discount rate | Percent | Lower | Discount value over gross sales. |
-| Promotion ROI proxy | Ratio | Higher | Incremental promotional sales per discount unit. |
-| Pour cost | Percent | Lower | Beverage used cost over beverage sales. |
-| Beverage variance | Percent | Lower | Actual usage cost above theoretical usage, over theoretical usage. |
+| KPI | Unit | Good direction | Formula | Meaning |
+| --- | --- | --- | --- | --- |
+| Promotion sales mix | Percent | — | `(promoSales / totalSales) * 100` | Promotional sales over total sales. |
+| Promotion discount rate | Percent | Lower | `(promoDiscountValue / grossSales) * 100` | Discount value over gross sales. |
+| Promotion ROI proxy | Ratio | Higher | `incrementalPromoSales / promoDiscountValue` | Incremental promotional sales per discount unit. |
+| Pour cost | Percent | Lower | `(beverageUsedCost / beverageSales) * 100` | Beverage used cost over beverage sales. |
+| Beverage variance | Percent | Lower | `((actualUsage - theoreticalUsage) / theoreticalUsage) * 100` | Actual usage cost above theoretical usage, over theoretical usage. |
 
 ### 3.6 Platform defaults
 
@@ -259,7 +257,6 @@ Editing metrics is an operational, not an ownership, act; it sits with the manag
 ## 7. Where to go next
 
 - The **product overview** — the core vocabulary, the Business platform, and the reporting and monetisation themes this subject expands.
-- The **business-metrics formulas document** — the canonical formulas the KPI dictionary names.
 - The **business-reports** subject — the weekly and monthly report structures that consume these targets and render the comparison.
 - The **sales-reports** subject — the daily sales reports that roll up into the reporting week.
 - The **inventories** subject — how supplier-good waste and deviation are derived.
