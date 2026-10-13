@@ -4,3 +4,4 @@
 4 - business metrics
 5 - notifications
 6 - emails
+7 - suppliers

@@ -1,6 +1,6 @@
 # POS — Product Overview
 
-> **About this document.** This is the **target-state source of truth** for what POS is. It is written for two readers: AI agents that build the product, and engineers onboarding onto it. It describes the product as it is *meant to be*, not as a status report — capabilities are stated as commitments, without built/planned tags. Read this first, then see [Where to go next](#14-where-to-go-next). Product and domain vocabulary is defined here as it is introduced; engineering vocabulary (DTO, server-owned field, problem details, …) lives in the root `GLOSSARY.md`.
+> **About this document.** This is the **target-state source of truth** for what POS is. It is written for two readers: AI agents that build the product, and engineers onboarding onto it. It describes the product as it is *meant to be*, not as a status report — capabilities are stated as commitments, without built/planned tags. Product and domain vocabulary is defined here as it is introduced; engineering vocabulary (DTO, server-owned field, problem details, …) lives in the root `GLOSSARY.md`.
 
 ---
 
@@ -311,12 +311,3 @@ POS is **live by design**: sales points, sales instances, order status, stock mo
 - **Not self-hosted.** There is no on-premise or self-managed deployment; POS is cloud SaaS.
 
 (Direct payment processing and delivery **are** in scope — delivered through third-party providers.)
-
----
-
-## 14. Where to go next
-
-- The per-feature product-document template and conventions (`_template.md`).
-- The business-metrics subject — the cost targets, supplier-good waste thresholds, reporting-week start day, and the KPI dictionary with its canonical formulas.
-
-Architecture decisions are recorded as ADRs under `docs/adr/`; engineering vocabulary is in the root `GLOSSARY.md`. Each product document is listed in `AGENTS.md`.
