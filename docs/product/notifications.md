@@ -40,8 +40,6 @@ It deliberately does **not** cover:
 
 ### Terms this subject introduces
 
-- **Severity** — the importance of an operational notification: **Info**, **Warning**, or **Emergency**. *Info* is routine; *Warning* needs someone's attention (low-stock and overtime); *Emergency* is reserved for a critical operational failure and is not carried by any catalogued event.
-- **Engagement kind** — the class of a venue-initiated message: **Message**, **Promotion**, **Birthday**, or **Event**.
 - **Operational event** — a system-triggered notification drawn from the catalogue in §3.3.
 - **Engagement message** — a venue-initiated message to its customers. **Promotion**, **Birthday**, and **Event** are one-way **broadcasts**; **Message** is a **direct message**.
 - **Broadcast** — an engagement message sent one-way to an audience of customers; a recipient cannot reply to it.
@@ -53,7 +51,7 @@ It deliberately does **not** cover:
 - **Idempotency** — suppressing a repeat dispatch of the same event within a brief window (five minutes in §3.7).
 - **Cooldown** — the minimum gap between repeats of a noisy alert.
 
-Terms reused from other subjects rather than defined here: **User**, **Business**, **Employee**, **Customer**, **Order**, **Reservation**, **Promotion**, **Loyalty**, **Report** (daily, weekly, monthly), **shift session** and **on duty**, **low-stock**, **overtime**, and **soft delete** (all from the product overview and sibling subjects).
+Terms reused from the product overview's core vocabulary rather than defined here: **Notification**, with its **severities** (Info, Warning, Emergency) and **engagement kinds** (Message, Promotion, Birthday, Event); **User**, **Business**, **Employee**, **Customer**, **Order**, **Reservation**, **Promotion**, **Loyalty**, **Report** (daily, weekly, monthly), **shift session** and **on duty**, **low-stock**, **overtime**, and **soft delete**. Terms from sibling subjects are named as that subject defines them.
 
 ---
 

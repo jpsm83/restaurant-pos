@@ -54,6 +54,7 @@ These terms are used with exactly these meanings throughout POS. Do not drift to
 | **Gift card** | A bearer value token owned by a business, identified by a QR code, with an expiry date. |
 | **Shift session** | The actual, recorded attendance for one employee on one shift (sign-in/out, breaks). |
 | **Daily / Weekly / Monthly report** | The aggregated sales and performance reports at each roll-up level. |
+| **Notification** | A message POS delivers to a person's inbox. An **operational** notification carries a **severity** — **Info**, **Warning**, or **Emergency** — while a venue **engagement** message carries a **kind** — **Message**, **Promotion**, **Birthday**, or **Event**. |
 | **Soft delete** | POS never hard-deletes domain documents: a server-owned deleted marker plus a timestamp are set, the document is retained and reactivatable, and uniqueness is enforced among active documents. Every model follows it. |
 
 ---
