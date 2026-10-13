@@ -14,6 +14,7 @@ This document is the **authoritative technical reference** for **email-driven ac
 |------|----------|
 | **Verify sign-in email** | Opaque **one-time** token (`verificationToken`) stored on account and cleared on consume. |
 | **Reset forgotten password** | Opaque token (`resetPasswordToken`) with expiry (`resetPasswordExpires`). |
+| **Change sign-in email** | Authenticated request re-checks the current password, stores the new address as **pending** (`pendingEmail` + `pendingEmailToken` + `pendingEmailExpires`), and emails a confirmation link to the new address. The current email stays active until the pending address is confirmed. |
 | **Actors** | Both **`User`** (person) and **`Business`** (tenant) — same priority as login (**business first**, then user). |
 | **Login before verify** | **Allowed** — `emailVerified` on session drives UI (banner, resend); login is **not** blocked for unverified accounts in V1. |
 | **Enumeration resistance** | Request endpoints return **HTTP 200** + **generic** body whether or not the address exists. |
@@ -110,6 +111,7 @@ Dedicated auth-email in-process limiter modules were removed from the active imp
 |------------|--------|
 | Email confirmation | `verificationToken` (one-time consume). |
 | Password reset | `resetPasswordToken` + `resetPasswordExpires` (1 hour default). |
+| Pending sign-in email change | `pendingEmailToken` + `pendingEmailExpires` (24 hours); replaced by a new request. |
 
 ### 3.5 Link base URL
 
@@ -139,6 +141,11 @@ Dedicated auth-email in-process limiter modules were removed from the active imp
 
 Same field names at **top level** (tenant `email` is sign-in identity).
 
+Pending sign-in email change adds top-level `pendingEmail`, `pendingEmailToken`
+(sparse index) and `pendingEmailExpires`; they are server-owned, excluded from
+every DTO, and stripped from the public read projection
+(`BUSINESS_PUBLIC_LEAN_SELECT`).
+
 ---
 
 ## 5. Verification intent framework
@@ -159,6 +166,7 @@ All paths below are under **`/api/v1/auth`**.
 | `POST` | `/confirm-email` | None | Body `{ token }`. **400** if token missing; otherwise **one-time** verify or generic consumption error copy. |
 | `POST` | `/reset-password` | None | Body `{ token, newPassword }`. Policy + **400** paths for weak/missing fields; success clears reset fields and **increments** `refreshSessionVersion`. |
 | `POST` | `/resend-email-confirmation` | Bearer | Resend for **current** session’s DB email; **IP** rate limit; **401** if no/invalid token or account missing. |
+| `POST` | `/request-email-change` | Bearer (business) | Body `{ newEmail, currentPassword }`. Re-authenticates against the stored hash (**`401`** wrong), rejects an address equal to the current one (**`400`**) or owned by another account (**`409`**), then stores `pendingEmail` + token + expiry and emails the confirmation link to the new address (**`500`** + rollback if send fails). Returns a generic success; current email unchanged. |
 
 **Signup / registration triggers (non-blocking):**
 
@@ -229,6 +237,8 @@ Copy lives in **`frontend/src/i18n/locales/*/auth.json`** (`forgotPassword`, `re
 
 **Changing the business sign-in email** is done on **`BusinessProfileSettingsPage`** (**`/business/:id/settings/profile`**) via multipart **`PATCH`** (may force re-login after save). Optional inline **`password`** + **`currentPassword`** on **`PATCH /api/v1/business/:id`** remain supported for API clients; the web app's credentials route does not collect them.
 
+A verified change path is now available on the backend: **`POST /auth/request-email-change`** (see §6) stores the new address as pending and emails a confirmation link to it; the current email stays active until the link is confirmed. The profile **`PATCH`** still accepts `email` until the settings UI is moved onto the verified path.
+
 ---
 
 ## 9. Observability
@@ -297,6 +307,7 @@ The SPA calls the same **`POST /api/v1/auth/request-password-reset`** as **`Forg
 |------|--------|
 | Links / templates / sender | `backend/tests/auth/emailLinks.test.ts`, `emailTemplates.test.ts`, `authEmailSend.test.ts` |
 | Routes | `requestEmailConfirmation`, `confirmEmail`, `requestPasswordReset`, `resetPassword`, `resendEmailConfirmation`, `auth-email.test.ts` |
+| Sign-in email change request | `backend/tests/routes/requestEmailChange.test.ts` |
 | Refresh invalidation after reset | `backend/tests/routes/resetPassword.test.ts` |
 | Schema | `userEmailSecuritySchema.test.ts`, `businessEmailSecuritySchema.test.ts` |
 | Frontend | `ForgotPasswordPage.test.tsx`, `ResetPasswordPage.test.tsx`, `ConfirmEmailPage.test.tsx`, `auth/api.test.ts`, `App.routing.test.tsx` |
@@ -309,6 +320,7 @@ The SPA calls the same **`POST /api/v1/auth/request-password-reset`** as **`Forg
 |------|--------|
 | `backend/src/routes/v1/auth.ts` | All auth-email routes + login/signup/refresh with **`v`**. |
 | `backend/src/auth/issueSession.ts` | **`issueSessionWithRefreshCookie`**, **`readRefreshSessionVersionForAccount`**. |
+| `backend/src/auth/requestEmailChange.ts` | Pending sign-in email change request (re-auth, duplicate check, pending store + rollback). |
 | `backend/src/auth/authEmailSend.ts` | Auth-email sender (Nodemailer Gmail). |
 | `frontend/src/pages/ForgotPasswordPage.tsx` | … |
 | `frontend/src/pages/ResetPasswordPage.tsx` | Reads **`token`** from query string. |

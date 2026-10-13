@@ -4,6 +4,7 @@ import { z } from "zod";
 import {
   confirmEmailBodySchema,
   loginBodySchema,
+  requestEmailChangeBodySchema,
   requestEmailConfirmationBodySchema,
   requestPasswordResetBodySchema,
   resetPasswordBodySchema,
@@ -16,6 +17,9 @@ const SERVER_OWNED_FIELDS = [
   "verificationToken",
   "resetPasswordToken",
   "resetPasswordExpires",
+  "pendingEmail",
+  "pendingEmailToken",
+  "pendingEmailExpires",
   "refreshSessionVersion",
   "emailVerified",
 ] as const;
@@ -112,6 +116,45 @@ describe("requestPasswordResetBodySchema", () => {
       requestPasswordResetBodySchema.safeParse({ email: "a@b.com" }).success,
     ).toBe(true);
     expect(requestPasswordResetBodySchema.safeParse({}).success).toBe(false);
+  });
+});
+
+describe("requestEmailChangeBodySchema", () => {
+  it("normalizes the new email and requires a current password", () => {
+    const parsed = requestEmailChangeBodySchema.parse({
+      newEmail: "  New.Address@Example.COM ",
+      currentPassword: "Secret123!",
+    });
+    expect(parsed.newEmail).toBe("new.address@example.com");
+    expect(parsed.currentPassword).toBe("Secret123!");
+  });
+
+  it("rejects a malformed new email", () => {
+    expect(
+      requestEmailChangeBodySchema.safeParse({
+        newEmail: "nope",
+        currentPassword: "Secret123!",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects a blank current password", () => {
+    expect(
+      requestEmailChangeBodySchema.safeParse({
+        newEmail: "a@b.com",
+        currentPassword: "",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects unknown keys", () => {
+    expect(
+      requestEmailChangeBodySchema.safeParse({
+        newEmail: "a@b.com",
+        currentPassword: "Secret123!",
+        email: "x@y.com",
+      }).success,
+    ).toBe(false);
   });
 });
 
@@ -221,6 +264,7 @@ describe("server-owned fields are excluded from every auth DTO", () => {
     loginBodySchema,
     requestEmailConfirmationBodySchema,
     requestPasswordResetBodySchema,
+    requestEmailChangeBodySchema,
     confirmEmailBodySchema,
     resetPasswordBodySchema,
     setModeBodySchema,

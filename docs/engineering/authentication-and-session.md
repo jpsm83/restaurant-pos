@@ -199,6 +199,7 @@ The access JWT **does not** embed `mode`; mode is **cookie-only** for the client
 | `POST` | `/auth/confirm-email` | None | Body `{ token }` (opaque link token). One-time verify. |
 | `POST` | `/auth/reset-password` | None | Body `{ token, newPassword }`. Clears reset token; **increments** `refreshSessionVersion`. |
 | `POST` | `/auth/resend-email-confirmation` | Bearer | Resend for **session** account’s DB email; **IP** rate limit may return **`429`**. |
+| `POST` | `/auth/request-email-change` | Bearer (business) | Body `{ newEmail, currentPassword }`. Re-authenticates, refuses a new address already used by another account (**`409`**) or equal to the current one (**`400`**), then stores the address as **pending** and emails a confirmation link to it. The current sign-in email and its verified state are untouched until confirmed; a new request replaces the previous pending token. Wrong password → **`401`**. |
 
 **Common errors:** `400` validation, `401` invalid credentials / missing token / bad refresh (including **refresh version mismatch**), `403` employee mode not allowed, `409` signup conflict, `429` auth-email **IP** rate limit.
 

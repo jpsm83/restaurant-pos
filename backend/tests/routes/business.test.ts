@@ -158,6 +158,9 @@ describe("Business Routes", () => {
         taxNumber: "TAX-GET-001",
         currencyTrade: "USD",
         address: validAddress,
+        pendingEmail: "gettest-new@business.com",
+        pendingEmailToken: "gettest-pending-token",
+        pendingEmailExpires: new Date(Date.now() + 3_600_000),
       });
       const auth = await generateTestToken({
         id: business._id.toString(),
@@ -179,6 +182,9 @@ describe("Business Routes", () => {
       expect(body.verificationToken).toBeUndefined();
       expect(body.resetPasswordToken).toBeUndefined();
       expect(body.resetPasswordExpires).toBeUndefined();
+      expect(body.pendingEmail).toBeUndefined();
+      expect(body.pendingEmailToken).toBeUndefined();
+      expect(body.pendingEmailExpires).toBeUndefined();
     });
 
     it("returns 401 when GET business without auth", async () => {

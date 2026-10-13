@@ -6,6 +6,7 @@ import Business from "../../src/models/business.ts";
 import {
   confirmEmailBodySchema,
   loginBodySchema,
+  requestEmailChangeBodySchema,
   requestEmailConfirmationBodySchema,
   requestPasswordResetBodySchema,
   resetPasswordBodySchema,
@@ -24,6 +25,9 @@ const SERVER_OWNED_FIELDS = [
   "verificationToken",
   "resetPasswordToken",
   "resetPasswordExpires",
+  "pendingEmail",
+  "pendingEmailToken",
+  "pendingEmailExpires",
   "refreshSessionVersion",
 ] as const;
 
@@ -32,6 +36,7 @@ const allDtos: Record<string, z.ZodObject> = {
   loginBodySchema,
   requestEmailConfirmationBodySchema,
   requestPasswordResetBodySchema,
+  requestEmailChangeBodySchema,
   confirmEmailBodySchema,
   resetPasswordBodySchema,
   setModeBodySchema,

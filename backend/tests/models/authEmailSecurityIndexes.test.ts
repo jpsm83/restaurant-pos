@@ -50,4 +50,12 @@ describe("Auth email security indexes", () => {
     expect(resetIx).toBeDefined();
     expect(resetIx?.sparse).toBe(true);
   });
+
+  it("Business defines a sparse index on pendingEmailToken", async () => {
+    const indexes = await listIndexSpecs(Business.collection);
+    const pendingIx = findSparseSingleFieldIndex(indexes, "pendingEmailToken");
+
+    expect(pendingIx).toBeDefined();
+    expect(pendingIx?.sparse).toBe(true);
+  });
 });

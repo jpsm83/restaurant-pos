@@ -1,7 +1,9 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
 import {
   AUTH_EMAIL_PATH_CONFIRM_EMAIL,
+  AUTH_EMAIL_PATH_CONFIRM_EMAIL_CHANGE,
   AUTH_EMAIL_PATH_RESET_PASSWORD,
+  buildConfirmEmailChangeLink,
   buildConfirmEmailLink,
   buildResetPasswordLink,
   normalizeAppBaseUrl,
@@ -66,6 +68,9 @@ describe("emailLinks", () => {
       expect(buildResetPasswordLink(tok)).toBe(
         `https://app.example.com/${AUTH_EMAIL_PATH_RESET_PASSWORD}?token=${encodeURIComponent(tok)}`,
       );
+      expect(buildConfirmEmailChangeLink(tok)).toBe(
+        `https://app.example.com/${AUTH_EMAIL_PATH_CONFIRM_EMAIL_CHANGE}?token=${encodeURIComponent(tok)}`,
+      );
     });
 
     it("respects path prefix on base URL", () => {
@@ -74,12 +79,16 @@ describe("emailLinks", () => {
       expect(href).toBe(
         `https://app.example.com/my-app/${AUTH_EMAIL_PATH_CONFIRM_EMAIL}?token=abc`,
       );
+      expect(buildConfirmEmailChangeLink("abc")).toBe(
+        `https://app.example.com/my-app/${AUTH_EMAIL_PATH_CONFIRM_EMAIL_CHANGE}?token=abc`,
+      );
     });
 
     it("rejects empty token", () => {
       vi.stubEnv("APP_BASE_URL", "https://app.example.com");
       expect(() => buildConfirmEmailLink("")).toThrow("Token is required");
       expect(() => buildConfirmEmailLink("   ")).toThrow("Token is required");
+      expect(() => buildConfirmEmailChangeLink("")).toThrow("Token is required");
     });
   });
 });

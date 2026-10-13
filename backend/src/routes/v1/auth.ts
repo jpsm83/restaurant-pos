@@ -17,6 +17,10 @@ import User from "../../models/user.ts";
 import Employee from "../../models/employee.ts";
 import canLogAsEmployee from "../../auth/canLogAsEmployee.ts";
 import { AUTH_CONFIG } from "../../auth/config.ts";
+import {
+  createAuthHook,
+  requireBusinessHook,
+} from "../../auth/middleware.ts";
 import type {
   AuthSession,
   AuthBusiness,
@@ -39,6 +43,7 @@ import {
   handleRequestEmailConfirmation,
 } from "../../auth/requestEmailConfirmation.ts";
 import { handleRequestPasswordReset } from "../../auth/requestPasswordReset.ts";
+import { handleRequestEmailChange } from "../../auth/requestEmailChange.ts";
 import { handleResendEmailConfirmationForAuthenticatedAccount } from "../../auth/resendEmailConfirmation.ts";
 import { handleResetPassword } from "../../auth/resetPassword.ts";
 import {
@@ -51,6 +56,7 @@ import {
 import {
   confirmEmailBodySchema,
   loginBodySchema,
+  requestEmailChangeBodySchema,
   requestEmailConfirmationBodySchema,
   requestPasswordResetBodySchema,
   resetPasswordBodySchema,
@@ -58,6 +64,7 @@ import {
   signupBodySchema,
   type ConfirmEmailBody,
   type LoginBody,
+  type RequestEmailChangeBody,
   type RequestEmailConfirmationBody,
   type RequestPasswordResetBody,
   type ResetPasswordBody,
@@ -280,6 +287,54 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
 
     return reply.code(200).send({ message: result.message });
   });
+
+  /**
+   * POST /auth/request-email-change
+   * Authenticated business: start a verified sign-in email change. The current
+   * email stays active until the new address confirms the emailed link.
+   */
+  app.post<{ Body: RequestEmailChangeBody }>(
+    "/request-email-change",
+    {
+      preValidation: [createAuthHook(app), requireBusinessHook()],
+      schema: { body: requestEmailChangeBodySchema },
+    },
+    async (req, reply) => {
+      const session = req.authSession as AuthBusiness;
+      const { newEmail, currentPassword } = req.body;
+      const result = await handleRequestEmailChange(
+        session,
+        newEmail,
+        currentPassword,
+      );
+
+      if (result.kind === "account_not_found") {
+        throw unauthorized("Account not found.");
+      }
+      if (result.kind === "invalid_password") {
+        throw unauthorized("Current password is incorrect.");
+      }
+      if (result.kind === "same_email") {
+        throw badRequest(
+          "The new email must be different from the current sign-in email.",
+          [
+            {
+              path: "newEmail",
+              message: "Enter an address different from your current one.",
+            },
+          ],
+        );
+      }
+      if (result.kind === "email_taken") {
+        throw conflict("That email is already used by another account.");
+      }
+      if (result.kind === "server_error_500") {
+        throw internal(result.message);
+      }
+
+      return reply.code(200).send({ message: result.message });
+    },
+  );
 
   /**
    * POST /auth/login
