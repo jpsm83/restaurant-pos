@@ -24,7 +24,7 @@ POS is delivered as **three product surfaces over one shared platform**: the **B
 | Delivery | Cloud SaaS, browser-based |
 | OS / device | Any — PC, laptop, tablet, phone, network printer, screen |
 | Connectivity | Online-only (no offline mode) |
-| Tenancy | Multi-tenant; one `Business` = one venue; venues grouped under an `Owner` |
+| Tenancy | Multi-tenant; one **Business** = one venue; venues grouped under an **Owner** |
 | Paid by | Businesses (subscription + commission); **customers are free** |
 | Surfaces | Business · Customer · Superadmin |
 
@@ -35,9 +35,9 @@ These terms are used with exactly these meanings throughout POS. Do not drift to
 | Term | Meaning |
 | --- | --- |
 | **Owner** | The account that owns one or more **Businesses**. Created automatically when a user registers a business; holds the subscription and commission terms for its venues. |
-| **Business** | The **tenant** — one venue (restaurant/bar). All operational data is scoped by `businessId`. |
+| **Business** | The **tenant** — one venue (restaurant/bar). All operational data is scoped to the business. |
 | **User** | A person's global identity. **Every user is a customer**; some also hold business roles. |
-| **Employee** | A person's membership in a Business, carrying their **job role(s)**, pay, and employment status. Links a `User` to a `Business`. |
+| **Employee** | A person's membership in a Business, carrying their **job role(s)**, pay, and employment status. Links a **User** to a **Business**. |
 | **Customer** | A user acting as the final consumer (ordering, booking, rating, loyalty). |
 | **Sales point** | A place a customer sits or is served — table, room, bar seat, counter, spot, or the virtual **delivery** point. Holds the venue's QR code. |
 | **Sales instance** | An open session/tab at a sales point that groups the orders for that sitting. |
@@ -79,14 +79,14 @@ POS's tenancy tree is:
 Superadmin  (platform operator — the application business)
    └── Owner              (the paying account; one per person/company)
           └── Business    (one venue; the tenant)
-                 └── all operational data scoped by businessId
+                 └── all operational data scoped to the business
 ```
 
-- **User → Employee → Business.** A `User` is a single global identity. An `Employee` record links that user to a business and carries job role(s), pay, and status. An owner across several venues is one user with an employee membership per venue.
-- **User → Owner → Business.** When a user registers a business, POS **automatically creates (or updates) an `Owner` model** for them, taking the **Owner job role by default**. The Owner holds the **array of businesses** it controls, the **subscription**, the **commission terms**, and other portfolio data.
-- **One Business = one venue.** A multi-venue operator does not share one business record; each venue is its own `Business`, grouped under one `Owner`.
+- **User → Employee → Business.** A **User** is a single global identity. An **Employee** record links that user to a business and carries job role(s), pay, and status. An owner across several venues is one user with an employee membership per venue.
+- **User → Owner → Business.** When a user registers a business, POS **automatically creates (or updates) an owner account** for them, taking the **Owner job role by default**. The Owner holds the **array of businesses** it controls, the **subscription**, the **commission terms**, and other portfolio data.
+- **One Business = one venue.** A multi-venue operator does not share one business record; each venue is its own **Business**, grouped under one **Owner**.
 - **Everyone is a customer.** Creating a user — including registering a business — also grants the customer identity. There is no "business-only" user.
-- **Tenant root.** Almost every domain collection carries a required, indexed `businessId`; this is the isolation boundary. The `User` is the exception — it is global and joins a tenant only through `Employee`.
+- **Tenant root.** Almost every domain collection carries a required, indexed link to its business; this is the isolation boundary. The **User** is the exception — it is global and joins a tenant only through **Employee**.
 
 Owner-level resources (subscription, commission, portfolio navigation, and the inventory-transfer network) scope to the **Owner**; everything operational scopes to the **Business**.
 
@@ -102,7 +102,7 @@ POS defines four canonical ways a venue can serve, plus a cross-cutting booking 
 4. **Takeaway / Delivery — customer-initiated.** A customer orders from the venue to be **delivered to an address** or **picked up on premises**. Delivery is **per-venue** (each venue serves within its own radius and windows) and dispatched through **third-party courier tools**.
 5. **Reservations** — the cross-cutting **booking layer** that hands off into service. Reservations are **free**: no charge is applied. See [§7](#7-the-business-platform).
 
-Kiosk and QR ordering are not separate products — they are routes within the **Customer** app. Delivery is a configuration of the same platform (`acceptsDelivery`, delivery radius, minimum order, delivery windows, and a dedicated virtual delivery sales point).
+Kiosk and QR ordering are not separate products — they are routes within the **Customer** app. Delivery is a configuration of the same platform (delivery enabled, delivery radius, minimum order, delivery windows, and a dedicated virtual delivery sales point).
 
 ---
 
@@ -111,7 +111,7 @@ Kiosk and QR ordering are not separate products — they are routes within the *
 Access control is **two-layer**:
 
 - **Base access layers (control).** Exactly four layers define what a user may do at the highest level: **admin**, **manager**, **employee**, and **customer**. Admin has full venue control; manager runs operations; employee serves (schedule-gated); customer consumes.
-- **Job roles (description).** A user's job is described by `userRolesEnum` (Owner, General Manager, Manager, Assistant Manager, MoD, Admin, Operator, Employee, Cashier, Floor Staff, Bartender, Barista, Waiter, Head Chef, Sous Chef, Line Cooks, Kitchen Porter, Cleaner, Security, Host, Runner, Supervisor, Entertainer, Other). The job role tells you *what the person is*; the base layer tells you *what they may do*.
+- **Job roles (description).** A user's job is described by the canonical job-role list (Owner, General Manager, Manager, Assistant Manager, MoD, Admin, Operator, Employee, Cashier, Floor Staff, Bartender, Barista, Waiter, Head Chef, Sous Chef, Line Cooks, Kitchen Porter, Cleaner, Security, Host, Runner, Supervisor, Entertainer, Other). The job role tells you *what the person is*; the base layer tells you *what they may do*.
 - **Permission assignment UI.** **Managers and above** use a UI to assign job roles and **per-user capabilities** — granting or revoking individual powers on top of the base layer's defaults.
 
 **The mode chooser.** Because every user is a customer *and* may hold business roles, login routes by role:
@@ -136,7 +136,7 @@ See [§6](#6-time-control-and-attendance) for the attendance model.
 Time control is a **plan-vs-actual** system, separate from the schedule:
 
 - **Schedule (the plan).** Each business defines, per calendar day, one schedule containing each employee's shift: job role, planned start/end, and vacation flags. Schedule aggregates (staff count, vacation count, planned labour cost) feed reporting. The schedule does **not** imply on-duty.
-- **Shift session (the actual).** For each employee and shift, POS records a **shift session**: planned start/end, **actual sign-in / sign-out**, breaks, resulting **worked hours** and **labour cost**, and status (`Scheduled`, `SignedIn`, `Completed`, `Absent`, `Locked`). One open session per employee at a time prevents double sign-in.
+- **Shift session (the actual).** For each employee and shift, POS records a **shift session**: planned start/end, **actual sign-in / sign-out**, breaks, resulting **worked hours** and **labour cost**, and status (scheduled, signed in, completed, absent, locked). One open session per employee at a time prevents double sign-in.
 - **Time-clock ledger.** Every punch — sign-in, sign-out, and **break start/end** — is stored as an immutable event; the shift session is a projection of it. This preserves the **real entry time** even when a manager unlocks a late entry.
 - **On duty.** A person is **on duty** while they hold an open shift session. On-duty state drives operational attribution (sales, tips) and gatekeeping.
 - **Breaks.** An employee can **pause and resume** duty during a shift (lunch, rest, or other break). Paused time is excluded from worked hours but the employee remains signed in.
@@ -152,9 +152,9 @@ The Business app is the operational heart of POS. It comprises the **owner shell
 
 ### Onboarding and configuration
 
-- **Registering a business** is an action by an **already-registered user**; it creates the tenant, initialises the user's `Owner` account (on their first venue), and creates the owner's employee membership. The business can be **saved as an incomplete draft** and edited over time; it collects profile (trade/legal name, logo, contact, phone, tax number), **currency** (one per business, chosen at onboarding), and address; the **timezone** is derived from the address.
+- **Registering a business** is an action by an **already-registered user**; it creates the tenant, initialises the user's **Owner** account (on their first venue), and creates the owner's employee membership. The business can be **saved as an incomplete draft** and edited over time; it collects profile (trade/legal name, logo, contact, phone, tax number), **currency** (one per business, chosen at onboarding), and address; the **timezone** is derived from the address.
 - **Go-live.** A business is **not live** until its **go-live checklist is complete** and its **contact email is verified**; an admin/owner then flips the **go-live toggle**. **Not live** means **absent from customer discovery** and **unable to take customer orders or bookings**, though the venue remains fully usable internally. A live business can also be taken **offline**, which is distinct from **closing** it.
-- **Profile and discovery.** Public fields — cuisine type, categories, contact, and cached `averageRating` / `ratingCount` — power customer discovery.
+- **Profile and discovery.** Public fields — cuisine type, categories, contact, and cached average rating and rating count — power customer discovery.
 - **Opening hours** per weekday.
 - **Delivery settings**: enable/disable, **delivery radius**, **minimum order**, and **per-day delivery windows**.
 - **Tax**: a single **business-level tax configuration** (rate plus price-inclusive/exclusive handling) applied to orders and bills. Multi-component or per-item taxation is out of scope for now.
@@ -163,7 +163,7 @@ The Business app is the operational heart of POS. It comprises the **owner shell
 
 ### People, roles, and scheduling
 
-- **Employees** are linked to existing users; each carries job role(s), `active` status, join date, contract hours, vacation allowance/balance, salary (frequency + gross/net), documents, and optional termination date.
+- **Employees** are linked to existing users; each carries job role(s), active status, join date, contract hours, vacation allowance/balance, salary (frequency + gross/net), documents, and optional termination date.
 - **Roles and permissions** follow the two-layer model in [§5](#5-access-roles-and-the-mode-chooser): base layers, job roles, and per-user capability assignment by managers and above.
 - **Schedules** define each day's shifts (employee, role, start/end, vacation). POS enforces no overlapping shifts and correct vacation accounting, and rolls up daily staff, vacation, and labour-cost totals.
 - **Time control** records actual attendance, breaks, and overtime as described in [§6](#6-time-control-and-attendance).
@@ -171,7 +171,7 @@ The Business app is the operational heart of POS. It comprises the **owner shell
 ### Menu — business goods
 
 - Business goods are what the venue **sells**: **simple items**, **recipe/ingredient-based items**, and **set menus / combos**.
-- Configuration includes name, keyword, main/sub category, `onMenu` and `available` flags, selling price, images, description, allergens, delivery time, and optional add-ons.
+- Configuration includes name, keyword, main/sub category, on-menu and availability flags, selling price, images, description, allergens, delivery time, and optional add-ons.
 - For recipe and combo items, POS derives **cost price** from ingredients, derives **allergens**, and suggests a **selling price** from a desired gross margin.
 
 ### Supply and purchasing
@@ -192,7 +192,7 @@ The Business app is the operational heart of POS. It comprises the **owner shell
 
 - **Sales points** represent where guests sit or are served (table, room, bar, seat, counter, spot, delivery, other). Each carries the venue's **QR code**, a **self-ordering** flag, and printer routing.
 - **Opening** a sales point (from the POS or by scanning its QR) opens a **sales instance**; at most one non-closed instance exists per sales point per work day. Staff-opened tables are service-only (customers cannot self-order at them).
-- **Orders** attach to the sales instance. Each order is one main good plus optional add-ons; promotions apply to the main good. Identity is taken from the session (`createdByUserId`, `createdAsRole`).
+- **Orders** attach to the sales instance. Each order is one main good plus optional add-ons; promotions apply to the main good. Who created it, and in what role, is taken from the session.
 - **Lifecycle**: add, transfer between tables, and — for managers and above — **cancel** (removing it and restoring inventory), **void** with a required reason (kept in reporting), and mark **invitation/complimentary**.
 - **Billing**: review the tab, split bills as supported, then take **payments per method** with optional **tips**, record the payment-method breakdown, and **close** the instance when all orders are paid.
 - **Printers** route kitchen/bar tickets by category, subcategory, and sales point, with backup printers and per-employee print permissions.
@@ -218,8 +218,8 @@ The Business app is the operational heart of POS. It comprises the **owner shell
 
 ### Reservations
 
-- Reservations are a **free** booking layer, created by a **customer** (status `Pending`, reviewed by managers) or by **staff** (created `Confirmed` when the staff member's effective role permits).
-- Lifecycle: `Pending` → `Confirmed`/`Cancelled`, then `Arrived` → `Seated` → `Completed`, with `NoShow` available.
+- Reservations are a **free** booking layer, created by a **customer** (status pending, reviewed by managers) or by **staff** (created as confirmed when the staff member's effective role permits).
+- Lifecycle: pending → confirmed/cancelled, then arrived → seated → completed, with no-show available.
 - **Seating** a reservation creates a **sales instance** and links it to the reservation; the first order attributes consumption to the reservation; full payment completes it.
 - Moving a reservation's table moves its sales instance (and vice versa).
 
@@ -233,7 +233,7 @@ The Business app is the operational heart of POS. It comprises the **owner shell
 
 ### Notifications
 
-- Each user has an **inbox** with per-notification `read` and `deleted` state, shared by customers and employees through their user identity.
+- Each user has an **inbox** with per-notification read and deleted state, shared by customers and employees through their user identity.
 - Delivery is **persistence-first** — in-app notifications are stored and are the source of truth — with **email** and **live WebSocket** push when the recipient is online. Nothing is lost if a user is offline.
 - **Operational** events include reservations pending/decided, low-stock alerts, weekly/monthly report-ready, business profile updates, and the overtime alerts in [§6](#6-time-control-and-attendance).
 - **Engagement** events let a venue message its customers — **promotions, birthdays, and events** — alongside operational alerts.
