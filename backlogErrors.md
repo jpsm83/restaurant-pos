@@ -1,5 +1,3 @@
-- connect mongodb with docker, yml file template is already on the root
-
 - review all the pages for mobile first
 
 - NOT FOR NOW BUT VERY CRITICAL
