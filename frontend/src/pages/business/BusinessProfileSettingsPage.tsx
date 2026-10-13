@@ -11,6 +11,7 @@ import {
 import { toast } from "sonner";
 import { refreshSession, resendEmailConfirmation } from "@/auth/api";
 import { useAuth } from "@/auth/store/AuthContext";
+import { ChangeEmailDialog } from "@/components/ChangeEmailDialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -37,6 +38,7 @@ import {
   BusinessProfileSettingsFormShell,
   BusinessProfileSettingsLoadingCard,
 } from "../../components/BusinessProfileSettingsFormShell";
+import { useChangeBusinessEmailController } from "../../hooks/useChangeBusinessEmailController";
 import type { BusinessProfileSettingsReady } from "../../hooks/useBusinessProfileSettingsController";
 
 const CONTACT_SELECT_NONE = "__none__";
@@ -215,7 +217,6 @@ function BusinessProfileSections({
   const {
     register,
     control,
-    setValue,
     handleImageUpload,
     imagePreviewUrl,
     imageUrl,
@@ -230,6 +231,9 @@ function BusinessProfileSections({
   const timezone = profileQuery.data?.timezone?.trim() || "UTC";
   const timezoneIsDefault = profileQuery.data?.timezoneIsDefault === true;
   const [resendPending, setResendPending] = useState(false);
+  const changeEmail = useChangeBusinessEmailController(
+    profileQuery.data?.email ?? "",
+  );
 
   async function syncSessionAndProfileAfterEmailFlow() {
     const refreshed = await refreshSession();
@@ -313,19 +317,35 @@ function BusinessProfileSections({
                 <Label htmlFor="bp-email">
                   {t("profileSettings.core.fields.email")}
                 </Label>
-                <Input
-                  id="bp-email"
-                  type="email"
-                  autoComplete="email"
-                  {...register("email", {
-                    onChange: (e: ChangeEvent<HTMLInputElement>) => {
-                      setValue("confirmEmail", e.target.value, {
-                        shouldDirty: true,
-                        shouldValidate: true,
-                      });
-                    },
-                  })}
-                />
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <Input
+                    id="bp-email"
+                    type="email"
+                    autoComplete="email"
+                    readOnly
+                    aria-readonly="true"
+                    className="sm:flex-1"
+                    {...register("email")}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="shrink-0"
+                    onClick={changeEmail.openDialog}
+                  >
+                    {t("profileSettings.core.changeEmailCta")}
+                  </Button>
+                </div>
+                {changeEmail.pendingEmail ? (
+                  <p
+                    role="status"
+                    className="text-xs leading-snug text-amber-700"
+                  >
+                    {t("profileSettings.core.pendingEmail", {
+                      email: changeEmail.pendingEmail,
+                    })}
+                  </p>
+                ) : null}
               </div>
               <div className="flex shrink-0 flex-col items-stretch justify-end sm:items-end sm:pb-0.5">
                 {emailVerified ? (
@@ -382,6 +402,7 @@ function BusinessProfileSections({
             </div>
           </div>
         </div>
+        <ChangeEmailDialog controller={changeEmail} />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <div className="min-w-0 space-y-2">
             <Label htmlFor="bp-phone">

@@ -51,6 +51,8 @@
         "confirmed": "Email confirmed",
         "confirmCta": "Click to confirm email"
       },
+      "changeEmailCta": "Change email",
+      "pendingEmail": "Confirmation pending for {{email}}. Check your new inbox to complete the change.",
       "fields": {
         "tradeName": "Trade name",
         "legalName": "Legal name",
@@ -62,6 +64,26 @@
         "timezone": "Time zone"
       },
       "timezoneDefaultHint": "We couldn't determine your time zone from the business address. Update the address country and region to set it."
+    },
+    "changeEmail": {
+      "dialogTitle": "Change sign-in email",
+      "dialogDescription": "Enter the new sign-in address and your current password. We'll email a confirmation link to the new address; your current email stays active until it's confirmed.",
+      "fields": {
+        "newEmail": "New sign-in email",
+        "currentPassword": "Current password"
+      },
+      "errors": {
+        "required": "This field is required.",
+        "invalidEmail": "Please enter a valid email address.",
+        "currentPasswordRequired": "Enter your current password.",
+        "sameEmail": "Enter an address different from your current one."
+      },
+      "submit": "Send confirmation link",
+      "submitting": "Sending…",
+      "cancel": "Cancel",
+      "close": "Close",
+      "successTitle": "Check your new inbox",
+      "successBody": "We sent a confirmation link to {{email}}. Open it to complete the change; your current email stays active until then."
     },
     "discovery": {
       "sectionTitle": "Discovery",
@@ -190,9 +212,9 @@
     }
   },
   "credentialsSettings": {
-    "cardDescription": "Change your sign-in password using a secure link we send to your business email. To update the email itself, edit it on the profile page (you will sign in again after saving).",
+    "cardDescription": "Change your sign-in password using a secure link we send to your business email. To change the email itself, use the \"Change email\" action on the profile page (you will sign in again after confirming the new address).",
     "sectionTitle": "Sign-in credentials",
-    "sectionDescription": "Confirm your business email if prompted, then use the action column to receive a time-limited link. Edit the sign-in email from the profile settings page.",
+    "sectionDescription": "Confirm your business email if prompted, then use the action column to receive a time-limited link. Change the sign-in email from the profile settings page.",
     "actionsColumnTitle": "Password reset",
     "validation": {
       "currentPasswordRequired": "Enter your current password to set a new sign-in password."

@@ -4,6 +4,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   confirmEmail,
+  requestEmailChange,
   requestEmailConfirmation,
   requestPasswordReset,
   resetPassword,
@@ -154,6 +155,104 @@ describe("auth api — email / password-reset endpoints", () => {
     expect(urlPath(fetchMock.mock.calls[0][0] as string)).toMatch(
       /\/api\/v1\/auth\/resend-email-confirmation$/,
     );
+  });
+
+  it("requestEmailChange POSTs newEmail + currentPassword with Bearer auth", async () => {
+    setAccessToken("jwt-here");
+    fetchMock.mockResolvedValueOnce(jsonResponse({ message: "Check inbox" }));
+
+    const result = await requestEmailChange("new@example.com", "CurrentPass1!");
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toMatch(/\/api\/v1\/auth\/request-email-change$/);
+    expect(init.method).toBe("POST");
+    expect(init.body).toBe(
+      JSON.stringify({
+        newEmail: "new@example.com",
+        currentPassword: "CurrentPass1!",
+      }),
+    );
+    const headers = new Headers(init.headers as HeadersInit);
+    expect(headers.get("Authorization")).toBe("Bearer jwt-here");
+    expect(result).toEqual({ ok: true, data: { message: "Check inbox" } });
+  });
+
+  it("requestEmailChange surfaces a wrong-password 401 after a failed refresh", async () => {
+    setAccessToken("jwt-here");
+    fetchMock
+      .mockResolvedValueOnce(
+        jsonResponse(
+          {
+            title: "Unauthorized",
+            status: 401,
+            detail: "Current password is incorrect.",
+          },
+          401,
+        ),
+      )
+      // Refresh also fails (no valid refresh session): 401 is not retried.
+      .mockResolvedValueOnce(jsonResponse({ message: "No" }, 401));
+
+    const result = await requestEmailChange("new@example.com", "wrong");
+
+    expect(result).toEqual({
+      ok: false,
+      error: "Current password is incorrect.",
+    });
+  });
+
+  it("requestEmailChange refreshes an expired session and retries once", async () => {
+    setAccessToken("stale-token");
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({ message: "Unauthorized" }, 401))
+      .mockResolvedValueOnce(
+        jsonResponse({
+          accessToken: "fresh-token",
+          user: { id: "b1", email: "owner@demo.test", type: "business" },
+        }),
+      )
+      .mockResolvedValueOnce(jsonResponse({ message: "Check inbox" }));
+
+    const result = await requestEmailChange("new@example.com", "CurrentPass1!");
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(
+      urlPath(fetchMock.mock.calls[2][0] as string),
+    ).toMatch(/\/api\/v1\/auth\/request-email-change$/);
+    const headers = new Headers(
+      (fetchMock.mock.calls[2][1] as RequestInit).headers as HeadersInit,
+    );
+    expect(headers.get("Authorization")).toBe("Bearer fresh-token");
+    expect(result).toEqual({ ok: true, data: { message: "Check inbox" } });
+  });
+
+  it("requestEmailChange surfaces a duplicate-email conflict", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(
+        {
+          title: "Conflict",
+          status: 409,
+          detail: "That email is already used by another account.",
+        },
+        409,
+      ),
+    );
+
+    const result = await requestEmailChange("taken@example.com", "CurrentPass1!");
+
+    expect(result).toEqual({
+      ok: false,
+      error: "That email is already used by another account.",
+    });
+  });
+
+  it("requestEmailChange returns a network error when fetch rejects", async () => {
+    fetchMock.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+
+    const result = await requestEmailChange("new@example.com", "CurrentPass1!");
+
+    expect(result).toEqual({ ok: false, error: "Failed to fetch" });
   });
 });
 

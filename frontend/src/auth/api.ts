@@ -304,6 +304,25 @@ export async function resendEmailConfirmation() {
   );
 }
 
+/**
+ * Authenticated business: start a verified sign-in email change to `newEmail`.
+ * Re-authenticates with `currentPassword`. Uses the default refresh-and-retry so
+ * an expired access token is recovered rather than misreported as a bad password;
+ * a genuinely wrong password still returns 401 and surfaces as an error.
+ */
+export async function requestEmailChange(
+  newEmail: string,
+  currentPassword: string,
+) {
+  return authRequest<AuthMessageResponseBody>(
+    "/api/v1/auth/request-email-change",
+    {
+      method: "POST",
+      body: JSON.stringify({ newEmail, currentPassword }),
+    },
+  );
+}
+
 export async function logout() {
   const result = await authRequest<{ message?: string }>(
     "/api/v1/auth/logout",

@@ -51,6 +51,8 @@
         "confirmed": "Correo confirmado",
         "confirmCta": "Haz clic para confirmar el correo"
       },
+      "changeEmailCta": "Cambiar correo",
+      "pendingEmail": "Confirmación pendiente para {{email}}. Revisa la nueva bandeja de entrada para completar el cambio.",
       "fields": {
         "tradeName": "Nombre comercial",
         "legalName": "Razón social",
@@ -62,6 +64,26 @@
         "timezone": "Zona horaria"
       },
       "timezoneDefaultHint": "No pudimos determinar tu zona horaria a partir de la dirección del negocio. Actualiza el país y la región de la dirección para establecerla."
+    },
+    "changeEmail": {
+      "dialogTitle": "Cambiar correo de acceso",
+      "dialogDescription": "Introduce la nueva dirección de acceso y tu contraseña actual. Enviaremos un enlace de confirmación a la nueva dirección; tu correo actual seguirá activo hasta que se confirme.",
+      "fields": {
+        "newEmail": "Nuevo correo de acceso",
+        "currentPassword": "Contraseña actual"
+      },
+      "errors": {
+        "required": "Este campo es obligatorio.",
+        "invalidEmail": "Introduce una dirección de correo válida.",
+        "currentPasswordRequired": "Introduce tu contraseña actual.",
+        "sameEmail": "Introduce una dirección distinta a la actual."
+      },
+      "submit": "Enviar enlace de confirmación",
+      "submitting": "Enviando…",
+      "cancel": "Cancelar",
+      "close": "Cerrar",
+      "successTitle": "Revisa tu nueva bandeja de entrada",
+      "successBody": "Enviamos un enlace de confirmación a {{email}}. Ábrelo para completar el cambio; tu correo actual seguirá activo hasta entonces."
     },
     "discovery": {
       "sectionTitle": "Descubrimiento",
@@ -190,9 +212,9 @@
     }
   },
   "credentialsSettings": {
-    "cardDescription": "Cambia la contraseña de acceso con un enlace seguro que enviamos al correo del negocio. Para cambiar el correo, edítalo en la página de perfil (tendrás que iniciar sesión de nuevo al guardar).",
+    "cardDescription": "Cambia la contraseña de acceso con un enlace seguro que enviamos al correo del negocio. Para cambiar el correo, usa la acción \"Cambiar correo\" en la página de perfil (tendrás que iniciar sesión de nuevo al confirmar la nueva dirección).",
     "sectionTitle": "Credenciales de acceso",
-    "sectionDescription": "Confirma el correo del negocio si se indica; luego usa la columna de acción para recibir un enlace temporal. El correo de acceso se edita en la página de perfil.",
+    "sectionDescription": "Confirma el correo del negocio si se indica; luego usa la columna de acción para recibir un enlace temporal. El correo de acceso se cambia desde la página de perfil.",
     "actionsColumnTitle": "Restablecer contraseña",
     "validation": {
       "currentPasswordRequired": "Introduce tu contraseña actual para definir una nueva contraseña de acceso."
