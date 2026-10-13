@@ -203,7 +203,6 @@ describe("updateBusinessBodySchema", () => {
   const validUpdate = {
     tradeName: "Cafe Demo",
     legalName: "Cafe Demo LLC",
-    email: "owner@example.com",
     phoneNumber: "1234567890",
     taxNumber: "TAX-001",
     subscription: "Free",
@@ -222,18 +221,20 @@ describe("updateBusinessBodySchema", () => {
 
   it("treats every other field as optional", () => {
     const parsed = updateBusinessBodySchema.parse(validUpdate);
-    expect(parsed.password).toBeUndefined();
     expect(parsed.metrics).toBeUndefined();
     expect(parsed.reportingConfig).toBeUndefined();
-    expect(parsed.currentPassword).toBeUndefined();
   });
 
-  it("treats a blank password as not provided", () => {
-    const parsed = updateBusinessBodySchema.parse({
-      ...validUpdate,
-      password: "   ",
-    });
-    expect(parsed.password).toBeUndefined();
+  it.each([
+    ["the sign-in email", { email: "owner@example.com" }],
+    ["the email confirmation", { confirmEmail: "owner@example.com" }],
+    ["a new password", { password: "Password1!" }],
+    ["the current password", { currentPassword: "Password1!" }],
+  ])("rejects %s as an unknown key", (_label, override) => {
+    expect(
+      updateBusinessBodySchema.safeParse({ ...validUpdate, ...override })
+        .success,
+    ).toBe(false);
   });
 
   it("validates the JSON-encoded metrics and nested waste percentages", () => {

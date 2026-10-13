@@ -14,9 +14,6 @@
   "profileForm": {
     "validation": {
       "required": "Este campo es obligatorio.",
-      "invalidEmail": "Introduce un correo electrónico válido.",
-      "emailMismatch": "La confirmación del correo no coincide.",
-      "passwordMismatch": "La confirmación de la contraseña no coincide.",
       "invalidSubscription": "Suscripción no válida.",
       "invalidCurrency": "Moneda no válida.",
       "invalidTime": "La hora debe tener formato HH:MM.",
@@ -216,9 +213,6 @@
     "sectionTitle": "Credenciales de acceso",
     "sectionDescription": "Confirma el correo del negocio si se indica; luego usa la columna de acción para recibir un enlace temporal. El correo de acceso se cambia desde la página de perfil.",
     "actionsColumnTitle": "Restablecer contraseña",
-    "validation": {
-      "currentPasswordRequired": "Introduce tu contraseña actual para definir una nueva contraseña de acceso."
-    },
     "emailVerify": {
       "bannerTitle": "Confirma el correo del negocio",
       "bannerDescription": "Enviamos un enlace a tu correo de acceso. Vuelve a enviar si no lo recibiste (pueden aplicarse límites).",

@@ -14,9 +14,6 @@
   "profileForm": {
     "validation": {
       "required": "This field is required.",
-      "invalidEmail": "Please enter a valid email address.",
-      "emailMismatch": "Email confirmation does not match.",
-      "passwordMismatch": "Password confirmation does not match.",
       "invalidSubscription": "Invalid subscription.",
       "invalidCurrency": "Invalid currency.",
       "invalidTime": "Time must be in HH:MM format.",
@@ -216,9 +213,6 @@
     "sectionTitle": "Sign-in credentials",
     "sectionDescription": "Confirm your business email if prompted, then use the action column to receive a time-limited link. Change the sign-in email from the profile settings page.",
     "actionsColumnTitle": "Password reset",
-    "validation": {
-      "currentPasswordRequired": "Enter your current password to set a new sign-in password."
-    },
     "emailVerify": {
       "bannerTitle": "Confirm your business email",
       "bannerDescription": "We sent a link to your sign-in email. Resend if you did not receive it (rate limits may apply).",

@@ -62,7 +62,7 @@ function getDefaultBusinessErrorMessage(
     return "You do not have permission to update this business profile.";
   if (status === 404) return "Business profile was not found.";
   if (status === 409)
-    return "A business with the same legal name, email, or tax number already exists.";
+    return "A business with the same legal name or tax number already exists.";
   return "Failed to update business profile.";
 }
 

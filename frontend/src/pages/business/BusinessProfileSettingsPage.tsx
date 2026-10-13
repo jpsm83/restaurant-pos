@@ -325,7 +325,7 @@ function BusinessProfileSections({
                     readOnly
                     aria-readonly="true"
                     className="sm:flex-1"
-                    {...register("email")}
+                    value={profileQuery.data?.email ?? ""}
                   />
                   <Button
                     type="button"

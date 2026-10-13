@@ -11,9 +11,8 @@ import {
   type UseFormSetValue,
 } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { toast } from "sonner";
-import { logout, setAccessToken } from "@/auth/api";
 import { useAuth } from "@/auth/store/AuthContext";
 import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
 import { useQuery } from "@tanstack/react-query";
@@ -39,11 +38,6 @@ const EMPTY_PROFILE_FORM_VALUES: BusinessProfileFormValues = {
   imageFile: null,
   tradeName: "",
   legalName: "",
-  email: "",
-  confirmEmail: "",
-  currentPassword: "",
-  password: "",
-  confirmPassword: "",
   phoneNumber: "",
   taxNumber: "",
   currencyTrade: "",
@@ -224,11 +218,9 @@ export type BusinessProfileSettingsController =
  * Each route keeps the full `BusinessProfileFormValues` so `formValuesToUpdatePayload` stays correct on save.
  */
 export function useBusinessProfileSettingsController(): BusinessProfileSettingsController {
-  const navigate = useNavigate();
   const gate = useBusinessProfileSettingsGate();
   const { dispatch } = useAuth();
   const { t } = useTranslation("business");
-  const { t: tAuth } = useTranslation("auth");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [navigationBypassAfterSave, setNavigationBypassAfterSave] = useState(false);
 
@@ -236,13 +228,6 @@ export function useBusinessProfileSettingsController(): BusinessProfileSettingsC
     () =>
       buildBusinessProfileSchema({
         required: t("profileForm.validation.required"),
-        invalidEmail: t("profileForm.validation.invalidEmail"),
-        emailMismatch: t("profileForm.validation.emailMismatch"),
-        passwordMismatch: t("profileForm.validation.passwordMismatch"),
-        passwordPolicy: tAuth("signup.errors.passwordPolicy"),
-        currentPasswordRequired: t(
-          "credentialsSettings.validation.currentPasswordRequired",
-        ),
         invalidSubscription: t("profileForm.validation.invalidSubscription"),
         invalidCurrency: t("profileForm.validation.invalidCurrency"),
         invalidTime: t("profileForm.validation.invalidTime"),
@@ -250,7 +235,7 @@ export function useBusinessProfileSettingsController(): BusinessProfileSettingsC
         invalidNonNegative: t("profileForm.validation.invalidNonNegative"),
         invalidWeeklyStartDay: t("profileForm.validation.invalidWeeklyStartDay"),
       }),
-    [t, tAuth],
+    [t],
   );
 
   const updateMutation = useUpdateBusinessProfileMutation();
@@ -331,20 +316,8 @@ export function useBusinessProfileSettingsController(): BusinessProfileSettingsC
     setValue("imageFile", file, { shouldDirty: true });
   };
 
-  const shouldForceLogoutAfterSave = (values: BusinessProfileFormValues) =>
-    values.password.trim().length > 0;
-
-  const handleForcedLogout = async () => {
-    await logout();
-    setAccessToken(null);
-    localStorage.removeItem("auth_had_session");
-    dispatch({ type: "AUTH_CLEAR" });
-    navigate("/login", { replace: true });
-  };
-
   const onSubmit = async (values: BusinessProfileFormValues) => {
     setSubmitError(null);
-    const forceLogoutAfterSave = shouldForceLogoutAfterSave(values);
     const payload = formValuesToUpdatePayload(values);
 
     try {
@@ -368,24 +341,12 @@ export function useBusinessProfileSettingsController(): BusinessProfileSettingsC
           {
             ...values,
             imageFile: null,
-            currentPassword: "",
-            password: "",
-            confirmPassword: "",
-            confirmEmail: values.email.trim(),
           },
           {
             keepDirty: false,
             keepTouched: false,
           },
         );
-      }
-
-      if (forceLogoutAfterSave) {
-        toast.success(
-          "Profile saved. Please sign in again to continue with updated credentials.",
-        );
-        await handleForcedLogout();
-        return;
       }
 
       setNavigationBypassAfterSave(true);

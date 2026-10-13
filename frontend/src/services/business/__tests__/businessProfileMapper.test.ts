@@ -76,7 +76,6 @@ describe("businessProfileMapper", () => {
   it("maps dto into trimmed and canonicalized form values", () => {
     const values = businessDtoToFormValues(dto());
     expect(values.tradeName).toBe("Demo");
-    expect(values.email).toBe("owner@demo.test");
     expect(values.currencyTrade).toBe("USD");
     expect(values.cuisineType).toEqual(["Italian"]);
     expect(values.categories).toEqual(["Pizza"]);

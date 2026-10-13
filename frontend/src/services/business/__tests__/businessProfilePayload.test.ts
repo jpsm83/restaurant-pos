@@ -9,11 +9,6 @@ function values(overrides?: Partial<BusinessProfileFormValues>): BusinessProfile
     imageFile: null,
     tradeName: " Demo ",
     legalName: " Demo LLC ",
-    email: " owner@demo.test ",
-    confirmEmail: " owner@demo.test ",
-    currentPassword: "",
-    password: "",
-    confirmPassword: "",
     phoneNumber: " +1 ",
     taxNumber: " TAX-1 ",
     currencyTrade: " USD ",
@@ -61,7 +56,6 @@ describe("businessProfilePayload", () => {
     const payload = formValuesToUpdatePayload(values());
     expect(payload.get("tradeName")).toBe("Demo");
     expect(payload.get("legalName")).toBe("Demo LLC");
-    expect(payload.get("email")).toBe("owner@demo.test");
     expect(payload.get("currencyTrade")).toBe("USD");
     expect(payload.get("acceptsDelivery")).toBe("true");
     expect(payload.get("deliveryRadius")).toBe("5");
@@ -77,15 +71,11 @@ describe("businessProfilePayload", () => {
     expect(JSON.parse(String(payload.get("categories")))).toEqual(["Pizza"]);
   });
 
-  it("sends password/currentPassword only when password is present", () => {
-    const withPassword = formValuesToUpdatePayload(
-      values({ password: "Valid1!Pass", currentPassword: "Old1!Pass" }),
-    );
-    expect(withPassword.get("password")).toBe("Valid1!Pass");
-    expect(withPassword.get("currentPassword")).toBe("Old1!Pass");
-
-    const withoutPassword = formValuesToUpdatePayload(values());
-    expect(withoutPassword.get("password")).toBeNull();
-    expect(withoutPassword.get("currentPassword")).toBeNull();
+  it("never sends the sign-in email or credentials (they are server-owned flows)", () => {
+    const payload = formValuesToUpdatePayload(values());
+    expect(payload.get("email")).toBeNull();
+    expect(payload.get("confirmEmail")).toBeNull();
+    expect(payload.get("password")).toBeNull();
+    expect(payload.get("currentPassword")).toBeNull();
   });
 });

@@ -17,7 +17,7 @@ import {
  */
 
 /** Fields that are request-only and intentionally absent from the model. */
-const REQUEST_ONLY_FIELDS = new Set(["currentPassword", "imageUrl"]);
+const REQUEST_ONLY_FIELDS = new Set(["imageUrl"]);
 
 const allDtos: Record<string, z.ZodObject> = {
   createBusinessBodySchema,
@@ -74,10 +74,10 @@ describe("business DTO ↔ model parity", () => {
     }
   });
 
-  it("the update DTO accepts currentPassword as request-only", () => {
-    expect(Object.keys(updateBusinessBodySchema.shape)).toContain(
-      "currentPassword",
-    );
-    expect(businessOwns("currentPassword")).toBe(false);
+  it("the update DTO carries no credential fields", () => {
+    const updateKeys = Object.keys(updateBusinessBodySchema.shape);
+    for (const field of ["email", "password", "currentPassword"]) {
+      expect(updateKeys).not.toContain(field);
+    }
   });
 });

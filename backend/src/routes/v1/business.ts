@@ -11,7 +11,7 @@
  */
 import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
-import { compare, hash } from "bcrypt";
+import { hash } from "bcrypt";
 import dispatchEvent from "../../communications/dispatchEvent.ts";
 import Business from "../../models/business.ts";
 import BusinessGood from "../../models/businessGood.ts";
@@ -38,10 +38,7 @@ import {
 } from "../../auth/middleware.ts";
 import { issueSessionWithRefreshCookie } from "../../auth/issueSession.ts";
 import type { AuthBusiness } from "../../auth/types.ts";
-import {
-  handleRequestEmailConfirmation,
-  normalizeRequestEmail,
-} from "../../auth/requestEmailConfirmation.ts";
+import { handleRequestEmailConfirmation } from "../../auth/requestEmailConfirmation.ts";
 import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
 import deleteFilesCloudinary from "../../cloudinary/deleteFilesCloudinary.ts";
 import deleteFolderCloudinary from "../../cloudinary/deleteFolderCloudinary.ts";
@@ -50,7 +47,6 @@ import {
   conflict,
   internal,
   notFound,
-  unauthorized,
 } from "../../errors/appError.ts";
 import { parseMultipart } from "../../schemas/multipart.ts";
 import {
@@ -410,12 +406,11 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
         _id: { $ne: businessId },
         $or: [
           { legalName: fields.legalName },
-          { email: fields.email },
           { taxNumber: fields.taxNumber },
         ],
       });
       if (duplicateBusiness) {
-        throw conflict("Business legalname, email or taxNumber already exists!");
+        throw conflict("Business legal name or tax number already exists!");
       }
 
       const business = await Business.findById(businessId).lean();
@@ -425,40 +420,12 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
 
       const businessRecord = business as Record<string, unknown>;
 
-      if (fields.password) {
-        const currentPasswordRaw = String(fields.currentPassword ?? "").trim();
-        if (!currentPasswordRaw) {
-          throw badRequest(
-            "Current password is required to set a new sign-in password.",
-          );
-        }
-        const storedHash = businessRecord.password as string | undefined;
-        if (!storedHash) {
-          throw internal("Business password state is invalid.");
-        }
-        const passwordOk = await compare(currentPasswordRaw, storedHash);
-        if (!passwordOk) {
-          throw unauthorized("Current password is incorrect.");
-        }
-      }
-
       const updateBusinessObj: Record<string, unknown> = {};
-      let businessEmailChangedForConfirmation = false;
 
       if (fields.tradeName !== businessRecord.tradeName)
         updateBusinessObj.tradeName = fields.tradeName;
       if (fields.legalName !== businessRecord.legalName)
         updateBusinessObj.legalName = fields.legalName;
-      {
-        const prevEmailNorm = normalizeRequestEmail(
-          String(businessRecord.email ?? ""),
-        );
-        if (fields.email !== prevEmailNorm) {
-          updateBusinessObj.email = fields.email;
-          updateBusinessObj.emailVerified = false;
-          businessEmailChangedForConfirmation = true;
-        }
-      }
       if (fields.phoneNumber !== businessRecord.phoneNumber)
         updateBusinessObj.phoneNumber = fields.phoneNumber;
       if (fields.taxNumber !== businessRecord.taxNumber)
@@ -607,18 +574,11 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
         updateBusinessObj.imageUrl = cloudinaryUploadResponse[0];
       }
 
-      if (fields.password) {
-        updateBusinessObj.password = await hash(fields.password, 10);
-      }
-
       const updateOps: mongoose.UpdateQuery<Record<string, unknown>> = {
         $set: updateBusinessObj,
       };
       if (clearTimezone) {
         updateOps.$unset = { timezone: 1 };
-      }
-      if (fields.password) {
-        updateOps.$inc = { refreshSessionVersion: 1 };
       }
 
       const updatedBusiness = await Business.findByIdAndUpdate(
@@ -702,27 +662,6 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
               .refreshSessionVersion ?? 0,
         },
       );
-
-      if (businessEmailChangedForConfirmation) {
-        handleRequestEmailConfirmation(fields.email)
-          .then((result) => {
-            if (
-              result.kind === "server_error_500" ||
-              result.kind === "already_verified_400"
-            ) {
-              req.log.error(
-                { errHint: "business_profile_email_change_confirmation" },
-                result.message,
-              );
-            }
-          })
-          .catch((err) => {
-            req.log.error(
-              { err },
-              "Business profile email change confirmation email failed",
-            );
-          });
-      }
 
       return reply.code(200).send({
         message: "Business updated successfully",

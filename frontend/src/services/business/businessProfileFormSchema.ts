@@ -5,22 +5,11 @@ import {
   foodSubCategoryEnums,
   subscriptionEnums,
 } from "restaurant-pos-packages/enums";
-import emailRegex from "restaurant-pos-packages/utils/emailRegex";
-import {
-  isValidPassword,
-  PASSWORD_POLICY_MESSAGE,
-} from "restaurant-pos-packages/utils/passwordPolicy";
 
 const HHMM_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
 type BusinessProfileSchemaMessages = {
   required: string;
-  invalidEmail: string;
-  emailMismatch: string;
-  passwordMismatch: string;
-  passwordPolicy: string;
-  /** Shown when `password` is non-empty but `currentPassword` is missing (credentials flow). */
-  currentPasswordRequired: string;
   invalidSubscription: string;
   invalidCurrency: string;
   invalidTime: string;
@@ -31,12 +20,6 @@ type BusinessProfileSchemaMessages = {
 
 const defaultMessages: BusinessProfileSchemaMessages = {
   required: "This field is required.",
-  invalidEmail: "Please enter a valid email address.",
-  emailMismatch: "Email confirmation does not match.",
-  passwordMismatch: "Password confirmation does not match.",
-  passwordPolicy: PASSWORD_POLICY_MESSAGE,
-  currentPasswordRequired:
-    "Enter your current password to set a new sign-in password.",
   invalidSubscription: "Invalid subscription.",
   invalidCurrency: "Invalid currency.",
   invalidTime: "Time must be in HH:MM format.",
@@ -83,11 +66,6 @@ export function buildBusinessProfileSchema(
       ),
       tradeName: requiredString,
       legalName: requiredString,
-      email: requiredString.regex(emailRegex, m.invalidEmail),
-      confirmEmail: requiredString.regex(emailRegex, m.invalidEmail),
-      currentPassword: z.string(),
-      password: z.string(),
-      confirmPassword: z.string(),
       phoneNumber: requiredString,
       taxNumber: requiredString,
       currencyTrade: z.enum(currencyTuple, m.invalidCurrency),
@@ -178,58 +156,7 @@ export function buildBusinessProfileSchema(
           .max(6, m.invalidWeeklyStartDay)
           .nullable(),
       }),
-    })
-    .refine((data) => data.email.trim() === data.confirmEmail.trim(), {
-      message: m.emailMismatch,
-      path: ["confirmEmail"],
-    })
-    .refine(
-      (data) => {
-        const password = data.password.trim();
-        const confirmPassword = data.confirmPassword.trim();
-        const hasAnyPasswordInput =
-          password.length > 0 || confirmPassword.length > 0;
-        if (!hasAnyPasswordInput) return true;
-        return password.length > 0 && confirmPassword.length > 0;
-      },
-      {
-        message: m.required,
-        path: ["password"],
-      },
-    )
-    .refine(
-      (data) => {
-        const password = data.password.trim();
-        const confirmPassword = data.confirmPassword.trim();
-        if (!password && !confirmPassword) return true;
-        return password === confirmPassword;
-      },
-      {
-        message: m.passwordMismatch,
-        path: ["confirmPassword"],
-      },
-    )
-    .refine(
-      (data) => {
-        const password = data.password.trim();
-        if (!password) return true;
-        return isValidPassword(password);
-      },
-      {
-        message: m.passwordPolicy,
-        path: ["password"],
-      },
-    )
-    .refine(
-      (data) => {
-        if (!data.password.trim()) return true;
-        return data.currentPassword.trim().length > 0;
-      },
-      {
-        message: m.currentPasswordRequired,
-        path: ["currentPassword"],
-      },
-    );
+    });
 }
 
 export type BusinessProfileSchema = ReturnType<typeof buildBusinessProfileSchema>;

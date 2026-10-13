@@ -189,19 +189,19 @@ export const createBusinessBodySchema = z.strictObject({
 /**
  * Body for `PATCH /business/:businessId` (multipart). The identity fields are
  * required (the profile form always submits them); everything else is optional.
- * `currentPassword` is accepted so the route can verify a password change.
+ * The sign-in `email` and the credentials (`password`/`currentPassword`) are not
+ * part of this contract: email changes go through the verified email-change flow
+ * and password changes through the reset-password flow, so a client that sends
+ * them gets a `400` as unknown keys.
  */
 export const updateBusinessBodySchema = z.strictObject({
   tradeName: sanitizedString("Trade name is required!"),
   legalName: sanitizedString("Legal name is required!"),
-  email: emailSchema,
   phoneNumber: sanitizedString("Phone number is required!"),
   taxNumber: sanitizedString("Tax number is required!"),
   subscription: z.enum(subscriptionEnums as EnumValues, "Invalid subscription!"),
   currencyTrade: z.enum(currenctyEnums as EnumValues, "Invalid currencyTrade!"),
   address: jsonField(businessAddressSchema),
-  password: z.preprocess(emptyToUndefined, passwordSchema.optional()),
-  currentPassword: z.preprocess(emptyToUndefined, z.string().optional()),
   contactPerson: sanitizedString().optional(),
   cuisineType: optionalCuisineTypeSchema,
   categories: optionalCategoriesSchema,

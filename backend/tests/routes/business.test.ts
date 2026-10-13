@@ -4,7 +4,6 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { hash } from "bcrypt";
 import { Types } from "mongoose";
 import { getTestApp, generateTestToken } from "../setup.ts";
 import Business from "../../src/models/business.ts";
@@ -12,7 +11,6 @@ import User from "../../src/models/user.ts";
 import Employee from "../../src/models/employee.ts";
 import Notification from "../../src/models/notification.ts";
 import emailChannel from "../../src/communications/channels/emailChannel.ts";
-import * as requestEmailConfirmation from "../../src/auth/requestEmailConfirmation.ts";
 
 describe("Business Routes", () => {
   const validAddress = {
@@ -685,7 +683,6 @@ describe("Business Routes", () => {
     function profilePatchPayload(
       boundary: string,
       business: {
-        email: string;
         taxNumber: string;
         country: string;
         state: string;
@@ -701,8 +698,6 @@ describe("Business Routes", () => {
         'Content-Disposition: form-data; name="tradeName"\r\n\r\nTZ Business',
         `--${boundary}`,
         'Content-Disposition: form-data; name="legalName"\r\n\r\nTZ Business LLC',
-        `--${boundary}`,
-        `Content-Disposition: form-data; name="email"\r\n\r\n${business.email}`,
         `--${boundary}`,
         'Content-Disposition: form-data; name="phoneNumber"\r\n\r\n1234567890',
         `--${boundary}`,
@@ -904,7 +899,6 @@ describe("Business Routes", () => {
           authorization: auth,
         },
         payload: profilePatchPayload(boundary, {
-          email: "tz-update@business.com",
           taxNumber: "TAX-TZ-UPDATE",
           country: "USA",
           state: "New York",
@@ -952,7 +946,6 @@ describe("Business Routes", () => {
           authorization: auth,
         },
         payload: profilePatchPayload(boundary, {
-          email: "tz-unmappable@business.com",
           taxNumber: "TAX-TZ-UNMAPPABLE",
           country: "Atlantis",
           state: "Nowhere",
@@ -1003,7 +996,6 @@ describe("Business Routes", () => {
           authorization: auth,
         },
         payload: profilePatchPayload(boundary, {
-          email: "tz-same@business.com",
           taxNumber: "TAX-TZ-SAME",
           country: "Colombia",
           state: "Antioquia",
@@ -1044,8 +1036,6 @@ describe("Business Routes", () => {
         'Content-Disposition: form-data; name="tradeName"\r\n\r\nReport Business',
         `--${boundary}`,
         'Content-Disposition: form-data; name="legalName"\r\n\r\nReport Business LLC',
-        `--${boundary}`,
-        'Content-Disposition: form-data; name="email"\r\n\r\nreport@business.com',
         `--${boundary}`,
         'Content-Disposition: form-data; name="phoneNumber"\r\n\r\n1234567890',
         `--${boundary}`,
@@ -1229,7 +1219,7 @@ describe("Business Routes", () => {
 
     function profileFieldsPayload(
       boundary: string,
-      business: { email: string; taxNumber: string },
+      business: { taxNumber: string },
       options: { address?: unknown; metrics?: string } = {},
     ): string {
       const parts = [
@@ -1237,8 +1227,6 @@ describe("Business Routes", () => {
         'Content-Disposition: form-data; name="tradeName"\r\n\r\nProfile Fields Biz',
         `--${boundary}`,
         'Content-Disposition: form-data; name="legalName"\r\n\r\nProfile Fields Biz LLC',
-        `--${boundary}`,
-        `Content-Disposition: form-data; name="email"\r\n\r\n${business.email}`,
         `--${boundary}`,
         'Content-Disposition: form-data; name="phoneNumber"\r\n\r\n1234567890',
         `--${boundary}`,
@@ -1426,8 +1414,6 @@ describe("Business Routes", () => {
         `--${boundary}`,
         'Content-Disposition: form-data; name="legalName"\r\n\r\nUpdated Business LLC',
         `--${boundary}`,
-        'Content-Disposition: form-data; name="email"\r\n\r\nupdated@business.com',
-        `--${boundary}`,
         'Content-Disposition: form-data; name="phoneNumber"\r\n\r\n1234567890',
         `--${boundary}`,
         'Content-Disposition: form-data; name="taxNumber"\r\n\r\nTAX-UPD-001',
@@ -1472,8 +1458,6 @@ describe("Business Routes", () => {
         'Content-Disposition: form-data; name="tradeName"\r\n\r\nX',
         `--${boundary}`,
         'Content-Disposition: form-data; name="legalName"\r\n\r\nNo Auth Patch LLC',
-        `--${boundary}`,
-        'Content-Disposition: form-data; name="email"\r\n\r\nnoauthpatch@business.com',
         `--${boundary}`,
         'Content-Disposition: form-data; name="phoneNumber"\r\n\r\n1234567890',
         `--${boundary}`,
@@ -1522,8 +1506,6 @@ describe("Business Routes", () => {
         'Content-Disposition: form-data; name="tradeName"\r\n\r\nX',
         `--${boundary}`,
         'Content-Disposition: form-data; name="legalName"\r\n\r\nEmployee Patch LLC',
-        `--${boundary}`,
-        'Content-Disposition: form-data; name="email"\r\n\r\nemployee-patch@business.com',
         `--${boundary}`,
         'Content-Disposition: form-data; name="phoneNumber"\r\n\r\n1234567890',
         `--${boundary}`,
@@ -1575,8 +1557,6 @@ describe("Business Routes", () => {
         'Content-Disposition: form-data; name="tradeName"\r\n\r\nX',
         `--${boundary}`,
         'Content-Disposition: form-data; name="legalName"\r\n\r\nMismatch Patch LLC',
-        `--${boundary}`,
-        'Content-Disposition: form-data; name="email"\r\n\r\nmismatch-patch@business.com',
         `--${boundary}`,
         'Content-Disposition: form-data; name="phoneNumber"\r\n\r\n1234567890',
         `--${boundary}`,
@@ -1631,8 +1611,6 @@ describe("Business Routes", () => {
         `--${boundary}`,
         'Content-Disposition: form-data; name="legalName"\r\n\r\nOriginal Business LLC',
         `--${boundary}`,
-        'Content-Disposition: form-data; name="email"\r\n\r\noriginal@business.com',
-        `--${boundary}`,
         'Content-Disposition: form-data; name="phoneNumber"\r\n\r\n1234567890',
         `--${boundary}`,
         'Content-Disposition: form-data; name="taxNumber"\r\n\r\nTAX-ORIG-001',
@@ -1664,83 +1642,70 @@ describe("Business Routes", () => {
       expect(updated?.tradeName).toBe("Updated Business");
     });
 
-    it("resets emailVerified and returns unverified session user when PATCH changes email", async () => {
+    it("rejects a submitted sign-in email as an unknown key", async () => {
       const app = await getTestApp();
-      const confirmSpy = vi
-        .spyOn(requestEmailConfirmation, "handleRequestEmailConfirmation")
-        .mockResolvedValue({
-          kind: "success_200",
-          message: requestEmailConfirmation.EMAIL_CONFIRMATION_SENT_MESSAGE,
-        });
+      const business = await Business.create({
+        tradeName: "Reject Email Co",
+        legalName: "Reject Email Co LLC",
+        email: "reject-email-patch@business.com",
+        emailVerified: true,
+        password: "hashedpassword",
+        phoneNumber: "1234567890",
+        taxNumber: "TAX-REJECT-EMAIL-001",
+        currencyTrade: "USD",
+        address: validAddress,
+      });
 
-      try {
-        const business = await Business.create({
-          tradeName: "Verified Co",
-          legalName: "Verified Co LLC",
-          email: "verified-patch@business.com",
-          emailVerified: true,
-          password: "hashedpassword",
-          phoneNumber: "1234567890",
-          taxNumber: "TAX-EMAIL-CHANGE-001",
-          currencyTrade: "USD",
-          address: validAddress,
-        });
+      const auth = await generateTestToken({
+        id: business._id.toString(),
+        email: "reject-email-patch@business.com",
+        type: "business",
+        role: "Tenant",
+      });
 
-        const auth = await generateTestToken({
-          id: business._id.toString(),
-          email: "verified-patch@business.com",
-          type: "business",
-          role: "Tenant",
-        });
+      const boundary = "----formdata";
+      const payload = [
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="tradeName"\r\n\r\nReject Email Co',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="legalName"\r\n\r\nReject Email Co LLC',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="email"\r\n\r\nnew-reject-email@business.com',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="phoneNumber"\r\n\r\n1234567890',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="taxNumber"\r\n\r\nTAX-REJECT-EMAIL-001',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="subscription"\r\n\r\nFree',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="currencyTrade"\r\n\r\nUSD',
+        `--${boundary}`,
+        `Content-Disposition: form-data; name="address"\r\n\r\n${JSON.stringify(validAddress)}`,
+        `--${boundary}--`,
+      ].join("\r\n");
 
-        const boundary = "----formdata";
-        const payload = [
-          `--${boundary}`,
-          'Content-Disposition: form-data; name="tradeName"\r\n\r\nVerified Co',
-          `--${boundary}`,
-          'Content-Disposition: form-data; name="legalName"\r\n\r\nVerified Co LLC',
-          `--${boundary}`,
-          'Content-Disposition: form-data; name="email"\r\n\r\nnew-verified-patch@business.com',
-          `--${boundary}`,
-          'Content-Disposition: form-data; name="phoneNumber"\r\n\r\n1234567890',
-          `--${boundary}`,
-          'Content-Disposition: form-data; name="taxNumber"\r\n\r\nTAX-EMAIL-CHANGE-001',
-          `--${boundary}`,
-          'Content-Disposition: form-data; name="subscription"\r\n\r\nFree',
-          `--${boundary}`,
-          'Content-Disposition: form-data; name="currencyTrade"\r\n\r\nUSD',
-          `--${boundary}`,
-          `Content-Disposition: form-data; name="address"\r\n\r\n${JSON.stringify(validAddress)}`,
-          `--${boundary}--`,
-        ].join("\r\n");
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/business/${business._id}`,
+        headers: {
+          "content-type": `multipart/form-data; boundary=${boundary}`,
+          authorization: auth,
+        },
+        payload,
+      });
 
-        const response = await app.inject({
-          method: "PATCH",
-          url: `/api/v1/business/${business._id}`,
-          headers: {
-            "content-type": `multipart/form-data; boundary=${boundary}`,
-            authorization: auth,
-          },
-          payload,
-        });
+      expect(response.statusCode).toBe(400);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      const messages = (JSON.parse(response.body).errors ?? []).map(
+        (e: { message: string }) => e.message,
+      );
+      expect(messages.some((m: string) => m.includes("email"))).toBe(true);
 
-        expect(response.statusCode).toBe(200);
-        const body = JSON.parse(response.body);
-        expect(body.user?.email).toBe("new-verified-patch@business.com");
-        expect(body.user?.emailVerified).toBe(false);
-
-        const updated = await Business.findById(business._id).lean();
-        expect(updated?.email).toBe("new-verified-patch@business.com");
-        expect(updated?.emailVerified).toBe(false);
-
-        await vi.waitFor(() => {
-          expect(confirmSpy).toHaveBeenCalledWith(
-            "new-verified-patch@business.com",
-          );
-        });
-      } finally {
-        confirmSpy.mockRestore();
-      }
+      const stored = await Business.findById(business._id).lean();
+      expect(stored?.email).toBe("reject-email-patch@business.com");
+      expect(stored?.emailVerified).toBe(true);
     });
 
     it("dispatches BUSINESS_PROFILE_UPDATED to manager recipients after successful patch", async () => {
@@ -1803,8 +1768,6 @@ describe("Business Routes", () => {
         'Content-Disposition: form-data; name="tradeName"\r\n\r\nNotify Business Updated',
         `--${boundary}`,
         'Content-Disposition: form-data; name="legalName"\r\n\r\nNotify Business LLC',
-        `--${boundary}`,
-        'Content-Disposition: form-data; name="email"\r\n\r\nnotify@business.com',
         `--${boundary}`,
         'Content-Disposition: form-data; name="phoneNumber"\r\n\r\n1234567890',
         `--${boundary}`,
@@ -1928,8 +1891,6 @@ describe("Business Routes", () => {
         `--${boundary}`,
         'Content-Disposition: form-data; name="legalName"\r\n\r\nEmail Dispatch LLC',
         `--${boundary}`,
-        'Content-Disposition: form-data; name="email"\r\n\r\nemaildispatch@business.com',
-        `--${boundary}`,
         'Content-Disposition: form-data; name="phoneNumber"\r\n\r\n1234567890',
         `--${boundary}`,
         'Content-Disposition: form-data; name="taxNumber"\r\n\r\nTAX-EMAIL-001',
@@ -2042,8 +2003,6 @@ describe("Business Routes", () => {
         `--${boundary}`,
         'Content-Disposition: form-data; name="legalName"\r\n\r\nNo Change Business LLC',
         `--${boundary}`,
-        'Content-Disposition: form-data; name="email"\r\n\r\nnochange@business.com',
-        `--${boundary}`,
         'Content-Disposition: form-data; name="phoneNumber"\r\n\r\n1234567890',
         `--${boundary}`,
         'Content-Disposition: form-data; name="taxNumber"\r\n\r\nTAX-NOCHANGE-001',
@@ -2093,16 +2052,15 @@ describe("Business Routes", () => {
       }
     });
 
-    it("returns 400 when a new password is sent without current password", async () => {
+    it("rejects password and currentPassword as unknown keys", async () => {
       const app = await getTestApp();
-      const pwdHash = await hash("OldPass1!a", 4);
       const business = await Business.create({
-        tradeName: "Pwd Gate Business",
-        legalName: "Pwd Gate Business LLC",
-        email: "pwdgate@business.com",
-        password: pwdHash,
+        tradeName: "Credential Reject Business",
+        legalName: "Credential Reject Business LLC",
+        email: "cred-reject@business.com",
+        password: "hashedpassword",
         phoneNumber: "1234567890",
-        taxNumber: `TAX-PWD-GATE-${Date.now()}`,
+        taxNumber: `TAX-CRED-REJECT-${Date.now()}`,
         currencyTrade: "USD",
         subscription: "Free",
         address: validAddress,
@@ -2110,7 +2068,7 @@ describe("Business Routes", () => {
 
       const auth = await generateTestToken({
         id: business._id.toString(),
-        email: "pwdgate@business.com",
+        email: "cred-reject@business.com",
         type: "business",
         role: "Tenant",
       });
@@ -2118,11 +2076,9 @@ describe("Business Routes", () => {
       const boundary = "----formdata";
       const payload = [
         `--${boundary}`,
-        'Content-Disposition: form-data; name="tradeName"\r\n\r\nPwd Gate Business',
+        'Content-Disposition: form-data; name="tradeName"\r\n\r\nCredential Reject Business',
         `--${boundary}`,
-        'Content-Disposition: form-data; name="legalName"\r\n\r\nPwd Gate Business LLC',
-        `--${boundary}`,
-        'Content-Disposition: form-data; name="email"\r\n\r\npwdgate@business.com',
+        'Content-Disposition: form-data; name="legalName"\r\n\r\nCredential Reject Business LLC',
         `--${boundary}`,
         'Content-Disposition: form-data; name="phoneNumber"\r\n\r\n1234567890',
         `--${boundary}`,
@@ -2136,6 +2092,8 @@ describe("Business Routes", () => {
         `Content-Disposition: form-data; name="address"\r\n\r\n${JSON.stringify(validAddress)}`,
         `--${boundary}`,
         'Content-Disposition: form-data; name="password"\r\n\r\nNewPass1!b',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="currentPassword"\r\n\r\nOldPass1!a',
         `--${boundary}--`,
       ].join("\r\n");
 
@@ -2153,74 +2111,13 @@ describe("Business Routes", () => {
       expect(response.headers["content-type"]).toContain(
         "application/problem+json",
       );
-      const body = JSON.parse(response.body) as { detail?: string };
-      expect(body.detail).toContain("Current password is required");
-    });
-
-    it("returns 401 when current password is wrong for a password change", async () => {
-      const app = await getTestApp();
-      const pwdHash = await hash("OldPass1!a", 4);
-      const business = await Business.create({
-        tradeName: "Pwd Wrong Business",
-        legalName: "Pwd Wrong Business LLC",
-        email: "pwdwrong@business.com",
-        password: pwdHash,
-        phoneNumber: "1234567890",
-        taxNumber: `TAX-PWD-WRONG-${Date.now()}`,
-        currencyTrade: "USD",
-        subscription: "Free",
-        address: validAddress,
-      });
-
-      const auth = await generateTestToken({
-        id: business._id.toString(),
-        email: "pwdwrong@business.com",
-        type: "business",
-        role: "Tenant",
-      });
-
-      const boundary = "----formdata";
-      const payload = [
-        `--${boundary}`,
-        'Content-Disposition: form-data; name="tradeName"\r\n\r\nPwd Wrong Business',
-        `--${boundary}`,
-        'Content-Disposition: form-data; name="legalName"\r\n\r\nPwd Wrong Business LLC',
-        `--${boundary}`,
-        'Content-Disposition: form-data; name="email"\r\n\r\npwdwrong@business.com',
-        `--${boundary}`,
-        'Content-Disposition: form-data; name="phoneNumber"\r\n\r\n1234567890',
-        `--${boundary}`,
-        'Content-Disposition: form-data; name="taxNumber"\r\n\r\n' +
-          String(business.taxNumber),
-        `--${boundary}`,
-        'Content-Disposition: form-data; name="subscription"\r\n\r\nFree',
-        `--${boundary}`,
-        'Content-Disposition: form-data; name="currencyTrade"\r\n\r\nUSD',
-        `--${boundary}`,
-        `Content-Disposition: form-data; name="address"\r\n\r\n${JSON.stringify(validAddress)}`,
-        `--${boundary}`,
-        'Content-Disposition: form-data; name="currentPassword"\r\n\r\nWrongPass1!z',
-        `--${boundary}`,
-        'Content-Disposition: form-data; name="password"\r\n\r\nNewPass1!b',
-        `--${boundary}--`,
-      ].join("\r\n");
-
-      const response = await app.inject({
-        method: "PATCH",
-        url: `/api/v1/business/${business._id}`,
-        headers: {
-          "content-type": `multipart/form-data; boundary=${boundary}`,
-          authorization: auth,
-        },
-        payload,
-      });
-
-      expect(response.statusCode).toBe(401);
-      expect(response.headers["content-type"]).toContain(
-        "application/problem+json",
+      const messages = (JSON.parse(response.body).errors ?? []).map(
+        (e: { message: string }) => e.message,
       );
-      const body = JSON.parse(response.body) as { detail?: string };
-      expect(body.detail).toContain("incorrect");
+      expect(messages.some((m: string) => m.includes("password"))).toBe(true);
+      expect(messages.some((m: string) => m.includes("currentPassword"))).toBe(
+        true,
+      );
     });
   });
 

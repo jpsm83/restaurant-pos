@@ -33,7 +33,6 @@ export function formValuesToUpdatePayload(
 
   formData.append("tradeName", asTrimmedString(values.tradeName));
   formData.append("legalName", asTrimmedString(values.legalName));
-  formData.append("email", asTrimmedString(values.email));
   formData.append("phoneNumber", asTrimmedString(values.phoneNumber));
   formData.append("taxNumber", asTrimmedString(values.taxNumber));
   formData.append("currencyTrade", asTrimmedString(values.currencyTrade));
@@ -75,15 +74,6 @@ export function formValuesToUpdatePayload(
       },
     }),
   );
-
-  const password = asOptionalTrimmedString(values.password);
-  if (password) {
-    formData.append("password", password);
-    const currentPassword = asOptionalTrimmedString(values.currentPassword);
-    if (currentPassword) {
-      formData.append("currentPassword", currentPassword);
-    }
-  }
 
   formData.append("contactPerson", asTrimmedString(values.contactPerson));
 

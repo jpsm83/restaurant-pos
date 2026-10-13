@@ -128,7 +128,7 @@ Extends `ServiceRequestError` from `../serviceErrors.ts`. Failures are normalize
 Maps `BusinessProfileDto` → `BusinessProfileFormValues`:
 
 - **Strings**: trimmed; missing fields become `""`.
-- **Security fields**: `password` / `confirmPassword` empty; `confirmEmail` mirrors `email` from API.
+- **Server-owned fields**: the sign-in `email` and credentials (`password` / `currentPassword`) are **not** part of the form model. Email changes go through the verified email-change flow and password changes through the reset-password flow, so the profile PATCH carries neither.
 - **Image**: `imageFile: null`; `imageUrl` from DTO.
 - **Cuisine**: `normalizeCuisineTypes` supports legacy **string** or **string[]** from API; values are matched case-insensitively against `cuisineTypeEnums` from `restaurant-pos-packages/enums`; unknown values dropped.
 - **Categories**: `normalizeCategories` maps to `foodSubCategoryEnums`; deduped.
@@ -145,10 +145,10 @@ These normalizers are **exported** so `businessProfilePayload` can reuse them wh
 
 Builds the **multipart PATCH** body expected by the backend:
 
-- **Scalar fields**: `tradeName`, `legalName`, `email`, `phoneNumber`, `taxNumber`, `currencyTrade`, `subscription`, `contactPerson`, `acceptsDelivery` (boolean as string).
+- **Scalar fields**: `tradeName`, `legalName`, `phoneNumber`, `taxNumber`, `currencyTrade`, `subscription`, `contactPerson`, `acceptsDelivery` (boolean as string).
 - **Nested JSON as strings**: `address`, `metrics`, `cuisineType`, `categories`, `businessOpeningHours`, `deliveryOpeningWindows`, `reportingConfig` (only if `weeklyReportStartDay` is a finite number).
 - **Optional address keys**: `region`, `doorNumber`, `complement` omitted when empty after trim.
-- **Password**: `password` only appended if non-empty (optional update). When present, **`currentPassword`** is appended for backend verification. The web app’s **`BusinessCredentialsSettingsPage`** does **not** use this path for tenants — it triggers **`requestPasswordReset(email)`** instead (email link → **`/reset-password`**).
+- **No credentials or sign-in email**: this payload never carries `email` / `confirmEmail` / `password` / `currentPassword` — the backend rejects them as unknown keys on the profile PATCH. Credentials change through **`requestPasswordReset(email)`** (email link → **`/reset-password`**) and the sign-in email through the dedicated change-email flow.
 - **Delivery**: `deliveryRadius` / `minOrder` only if finite numbers (nullable skipped when null).
 - **Enums on write**: `filterToAllowedEnums` restricts `cuisineType` and `categories` to known enum values before `JSON.stringify`.
 - **Image**: if `imageFile` is set and `size > 0`, appends file as `imageUrl` (field name matches backend convention for uploads).
@@ -164,14 +164,13 @@ Builds the **multipart PATCH** body expected by the backend:
 Returns a Zod object schema whose shape mirrors **`BusinessProfileFormValues`**:
 
 - Subscription and currency enums from `restaurant-pos-packages/enums`.
-- **`email`** and **`confirmEmail`**: required, both must match **`emailRegex`** from `restaurant-pos-packages/utils/emailRegex`, and must equal each other after trim.
-- Optional new-password flow: empty both ok; if either new-password field is set, both required, must match, `isValidPassword` from `restaurant-pos-packages/utils/passwordPolicy`, and **`currentPassword`** must be non-empty (multipart PATCH when those fields are present on a form).
+- The sign-in `email` and credentials are **not** part of the form shape or this schema; they change only through the verified email-change and reset-password flows.
 - Opening hours and delivery windows: `HH:MM` regex, `closeTime` after `openTime`, day 0–6.
 - Metrics and non-negative numbers for delivery radius / min order (nullable).
 
 Exported types: `BusinessProfileSchema`, `BusinessProfileSchemaValues`.
 
-**Usage:** `useBusinessProfileSettingsController` builds the schema with **`business.profileForm.validation.*`** / **`credentialsSettings.validation.*`** (and **`auth.signup.errors.passwordPolicy`**) and passes it to **`zodResolver`**. **`BusinessProfileSettingsFormShell`** shows a short summary **`Alert`** when submit validation fails. Vitest coverage lives in `businessProfileFormSchema.test.ts`.
+**Usage:** `useBusinessProfileSettingsController` builds the schema with **`business.profileForm.validation.*`** and passes it to **`zodResolver`**. **`BusinessProfileSettingsFormShell`** shows a short summary **`Alert`** when submit validation fails. Vitest coverage lives in `businessProfileFormSchema.test.ts`.
 
 **Gate-only settings:** `useBusinessProfileSettingsGate` (exported from **`useBusinessProfileSettingsController.ts`**) powers **`BusinessProfileSettingsStaticShell`** (e.g. credentials page) with a single profile query and no RHF/mutation.
 
@@ -195,7 +194,7 @@ Exported types: `BusinessProfileSchema`, `BusinessProfileSchemaValues`.
 
 **`BusinessProfileSettingsFormShell`** / **`BusinessProfileSettingsStaticShell`** pass a **`loadingSlot`** while the profile query is pending. These pages use the shared **`BusinessProfileSettingsLoadingCard`** and compose **`Skeleton`** so the placeholder **matches the loaded DOM**, avoiding layout shift:
 
-- **`BusinessProfileSettingsPage`**: one **`section`** with header, logo column + two name fields, then the seven-cell grid (phone, tax, currency, email, cuisine, categories, contact).
+- **`BusinessProfileSettingsPage`**: one **`section`** with header, logo column + two name fields, the read-only sign-in email with its change-email action, then the seven-cell grid (phone, tax, currency, cuisine, categories, contact, timezone).
 - **`BusinessAddressSettingsPage`**: **`section`** + **`header`**, address grid with full-width rows for street and complement, map column with title + map-sized skeleton.
 - **`BusinessCredentialsSettingsPage`**: same **`section` / `header` / `grid`** (`lg:col-span-2` + `lg:col-span-1`) skeleton pattern as address; **`LoadingCard`** omits the Save/Reset skeleton row (`showFormActionsSkeleton={false}`).
 

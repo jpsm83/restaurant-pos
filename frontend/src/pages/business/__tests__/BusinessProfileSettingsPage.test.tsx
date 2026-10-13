@@ -822,7 +822,7 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
     it("surfaces 409 conflict message, error toast, and preserves edits after failed save", async () => {
       const mutateAsync = vi.fn().mockRejectedValue(
         new BusinessServiceError(
-          "A business with the same legal name, email, or tax number already exists.",
+          "A business with the same legal name or tax number already exists.",
           409,
         ),
       );
@@ -852,7 +852,7 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
       });
       expect(
         screen.getByText(
-          "A business with the same legal name, email, or tax number already exists.",
+          "A business with the same legal name or tax number already exists.",
         ),
       ).toBeInTheDocument();
       expect(screen.getByLabelText("Trade name")).toHaveValue("Edited For Conflict");
