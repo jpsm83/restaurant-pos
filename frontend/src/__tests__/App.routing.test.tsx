@@ -107,6 +107,23 @@ describe("App public routing (Phase 1.5.1)", () => {
     ).toBeInTheDocument();
   });
 
+  it("renders ConfirmEmailChangePage and its missing-token error for `/confirm-email-change`", async () => {
+    await renderWithI18n(
+      <MemoryRouter initialEntries={["/confirm-email-change"]}>
+        <AppRoutes />
+      </MemoryRouter>,
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: /confirm your new email/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "This link is missing a confirmation token. Open the link from your email or request a new change.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("renders NotFoundPage for `/request-email-confirmation`", async () => {
     await renderWithI18n(
       <MemoryRouter initialEntries={["/request-email-confirmation"]}>

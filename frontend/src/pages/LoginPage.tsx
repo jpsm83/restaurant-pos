@@ -2,7 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { z } from "zod";
 import { login } from "@/auth/api";
@@ -35,8 +35,12 @@ type LoginFormValues = z.infer<ReturnType<typeof buildLoginSchema>>;
 export default function LoginPage() {
   const { t } = useTranslation("auth");
   const navigate = useNavigate();
+  const location = useLocation();
   const { state, dispatch } = useAuth();
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const flashMessage =
+    (location.state as { flashMessage?: string } | null)?.flashMessage ?? null;
 
   const schema = useMemo(
     () => buildLoginSchema(t("login.errors.required")),
@@ -100,7 +104,12 @@ export default function LoginPage() {
           <CardTitle>{t("login.title")}</CardTitle>
           <CardDescription>{t("login.description")}</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {flashMessage ? (
+            <Alert className="border-green-200 bg-green-50 text-green-700">
+              {flashMessage}
+            </Alert>
+          ) : null}
           <form
             className="space-y-4"
             onSubmit={(e) => void handleSubmit(onSubmit)(e)}

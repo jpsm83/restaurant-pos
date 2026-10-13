@@ -65,6 +65,25 @@ describe("LoginPage", () => {
     expect(forgotPasswordLink).toHaveAttribute("href", "/forgot-password");
   });
 
+  it("shows a flash message passed through navigation state", async () => {
+    await renderWithI18n(
+      <MemoryRouter
+        initialEntries={[
+          {
+            pathname: "/login",
+            state: { flashMessage: "Your sign-in email has been updated." },
+          },
+        ]}
+      >
+        <LoginPage />
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.getByText("Your sign-in email has been updated."),
+    ).toBeInTheDocument();
+  });
+
   it("shows backend error on failed login", async () => {
     const user = userEvent.setup();
     mockLogin.mockResolvedValue({

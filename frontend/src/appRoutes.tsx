@@ -37,6 +37,9 @@ const SignUpPage = lazy(() => import("@/pages/SignUpPage"));
 const ForgotPasswordPage = lazy(() => import("@/pages/ForgotPasswordPage"));
 const ResetPasswordPage = lazy(() => import("@/pages/ResetPasswordPage"));
 const ConfirmEmailPage = lazy(() => import("@/pages/ConfirmEmailPage"));
+const ConfirmEmailChangePage = lazy(
+  () => import("@/pages/ConfirmEmailChangePage"),
+);
 const BusinessDashboardPage = lazy(() => import("@/pages/business/BusinessDashboardPage"));
 const BusinessDeliverySettingsPage = lazy(
   () => import("@/pages/business/BusinessDeliverySettingsPage"),
@@ -172,6 +175,10 @@ export function AppRoutes() {
             />
             <Route path="reset-password" element={<ResetPasswordPage />} />
             <Route path="confirm-email" element={<ConfirmEmailPage />} />
+            <Route
+              path="confirm-email-change"
+              element={<ConfirmEmailChangePage />}
+            />
           </Route>
 
           <Route path="/access-denied" element={<AccessDenied />} />

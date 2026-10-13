@@ -323,6 +323,22 @@ export async function requestEmailChange(
   );
 }
 
+/**
+ * Unauthenticated: consume a pending sign-in email-change **token** from the
+ * emailed link (one-time). On success the server revokes existing sessions, so
+ * callers must clear the local session and send the user back to sign in.
+ */
+export async function confirmEmailChange(token: string) {
+  return authRequest<AuthMessageResponseBody>(
+    "/api/v1/auth/confirm-email-change",
+    {
+      method: "POST",
+      body: JSON.stringify({ token }),
+    },
+    false,
+  );
+}
+
 export async function logout() {
   const result = await authRequest<{ message?: string }>(
     "/api/v1/auth/logout",
