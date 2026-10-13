@@ -5,6 +5,7 @@ import User from "../../src/models/user.ts";
 import Business from "../../src/models/business.ts";
 import {
   confirmEmailBodySchema,
+  confirmEmailChangeBodySchema,
   loginBodySchema,
   requestEmailChangeBodySchema,
   requestEmailConfirmationBodySchema,
@@ -38,6 +39,7 @@ const allDtos: Record<string, z.ZodObject> = {
   requestPasswordResetBodySchema,
   requestEmailChangeBodySchema,
   confirmEmailBodySchema,
+  confirmEmailChangeBodySchema,
   resetPasswordBodySchema,
   setModeBodySchema,
 };

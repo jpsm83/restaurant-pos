@@ -94,7 +94,7 @@ Authorization: Bearer <accessToken>
 
 **Refresh flow** (`POST /auth/refresh`): reads `refresh_token` from cookies, verifies with **refresh secret**, reloads `Business` or `User` from DB, compares **`refreshSessionVersion`** on the document to the refresh JWT claim **`v`** (defaults treated as **0** if absent). On mismatch → cookie cleared + **`401`** (same message as invalid refresh). Otherwise rebuilds full session (including recomputing `canLogAsEmployee` for linked employees) and returns new **access token** in JSON. Invalid signature / expiry → cookie cleared + **`401`**.
 
-**Refresh invalidation:** `User` and `Business` store **`refreshSessionVersion`** (number). Successful **password reset via email link** and **authenticated password change** on **`PATCH /business/:id`** / **`PATCH /users/:id`** increment it so existing refresh cookies stop working.
+**Refresh invalidation:** `User` and `Business` store **`refreshSessionVersion`** (number). Successful **password reset via email link**, **confirmed sign-in email change** (`POST /auth/confirm-email-change`), and **authenticated password change** on **`PATCH /business/:id`** / **`PATCH /users/:id`** increment it so existing refresh cookies stop working.
 
 **Logout** (`POST /auth/logout`): clears `refresh_token` and `auth_mode` cookies (`path: "/"`). Does not invalidate access JWT until expiry (short TTL).
 
@@ -200,6 +200,7 @@ The access JWT **does not** embed `mode`; mode is **cookie-only** for the client
 | `POST` | `/auth/reset-password` | None | Body `{ token, newPassword }`. Clears reset token; **increments** `refreshSessionVersion`. |
 | `POST` | `/auth/resend-email-confirmation` | Bearer | Resend for **session** account’s DB email; **IP** rate limit may return **`429`**. |
 | `POST` | `/auth/request-email-change` | Bearer (business) | Body `{ newEmail, currentPassword }`. Re-authenticates, refuses a new address already used by another account (**`409`**) or equal to the current one (**`400`**), then stores the address as **pending** and emails a confirmation link to it. The current sign-in email and its verified state are untouched until confirmed; a new request replaces the previous pending token. Wrong password → **`401`**. |
+| `POST` | `/auth/confirm-email-change` | None | Body `{ token }` (opaque link token). One-time consume: atomically matches the pending token against an unexpired expiry, swaps the sign-in email to the pending address, marks it verified, clears the pending fields, and **increments** `refreshSessionVersion` so existing refresh cookies stop working. A best-effort notice goes to the **previous** address. Invalid / expired / reused token → **`400`** with the single non-revealing consumption message. |
 
 **Common errors:** `400` validation, `401` invalid credentials / missing token / bad refresh (including **refresh version mismatch**), `403` employee mode not allowed, `409` signup conflict, `429` auth-email **IP** rate limit.
 

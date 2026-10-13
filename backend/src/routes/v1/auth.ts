@@ -44,6 +44,7 @@ import {
 } from "../../auth/requestEmailConfirmation.ts";
 import { handleRequestPasswordReset } from "../../auth/requestPasswordReset.ts";
 import { handleRequestEmailChange } from "../../auth/requestEmailChange.ts";
+import { handleConfirmEmailChange } from "../../auth/confirmEmailChange.ts";
 import { handleResendEmailConfirmationForAuthenticatedAccount } from "../../auth/resendEmailConfirmation.ts";
 import { handleResetPassword } from "../../auth/resetPassword.ts";
 import {
@@ -55,6 +56,7 @@ import {
 } from "../../errors/appError.ts";
 import {
   confirmEmailBodySchema,
+  confirmEmailChangeBodySchema,
   loginBodySchema,
   requestEmailChangeBodySchema,
   requestEmailConfirmationBodySchema,
@@ -63,6 +65,7 @@ import {
   setModeBodySchema,
   signupBodySchema,
   type ConfirmEmailBody,
+  type ConfirmEmailChangeBody,
   type LoginBody,
   type RequestEmailChangeBody,
   type RequestEmailConfirmationBody,
@@ -322,6 +325,29 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       }
       if (result.kind === "email_taken") {
         throw conflict("That email is already used by another account.");
+      }
+      if (result.kind === "server_error_500") {
+        throw internal(result.message);
+      }
+
+      return reply.code(200).send({ message: result.message });
+    },
+  );
+
+  /**
+   * POST /auth/confirm-email-change
+   * Unauthenticated: consume the pending sign-in email change token (one-time).
+   * On success the pending address becomes the sign-in email, all refresh
+   * sessions are revoked, and the previous address is notified.
+   */
+  app.post<{ Body: ConfirmEmailChangeBody }>(
+    "/confirm-email-change",
+    { schema: { body: confirmEmailChangeBodySchema } },
+    async (req, reply) => {
+      const result = await handleConfirmEmailChange(req.body.token);
+
+      if (result.kind === "client_error") {
+        throw badRequest(result.message);
       }
       if (result.kind === "server_error_500") {
         throw internal(result.message);

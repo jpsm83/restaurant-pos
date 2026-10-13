@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import {
   confirmEmailBodySchema,
+  confirmEmailChangeBodySchema,
   loginBodySchema,
   requestEmailChangeBodySchema,
   requestEmailConfirmationBodySchema,
@@ -184,6 +185,26 @@ describe("confirmEmailBodySchema", () => {
   });
 });
 
+describe("confirmEmailChangeBodySchema", () => {
+  it("trims the token", () => {
+    expect(
+      confirmEmailChangeBodySchema.parse({ token: "  abc  " }).token,
+    ).toBe("abc");
+  });
+
+  it("rejects a blank or missing token with the confirmation message", () => {
+    for (const payload of [{ token: "   " }, {}]) {
+      const result = confirmEmailChangeBodySchema.safeParse(payload);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0].message).toBe(
+          "Please provide a confirmation token.",
+        );
+      }
+    }
+  });
+});
+
 describe("resetPasswordBodySchema", () => {
   it("requires a token", () => {
     const result = resetPasswordBodySchema.safeParse({
@@ -266,6 +287,7 @@ describe("server-owned fields are excluded from every auth DTO", () => {
     requestPasswordResetBodySchema,
     requestEmailChangeBodySchema,
     confirmEmailBodySchema,
+    confirmEmailChangeBodySchema,
     resetPasswordBodySchema,
     setModeBodySchema,
   };

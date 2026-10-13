@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   buildEmailChangeConfirmationContent,
+  buildEmailChangeNoticeContent,
   buildEmailConfirmationContent,
   buildPasswordResetEmailContent,
   formatAuthEmailTtlPhrase,
@@ -80,5 +81,20 @@ describe("emailTemplates", () => {
     expect(text).toContain(url);
     expect(text).toContain("24 hours");
     expect(text).toContain("Hello Pat!");
+  });
+
+  it("buildEmailChangeNoticeContent names the new address and carries no link", () => {
+    const { subject, html, text } = buildEmailChangeNoticeContent({
+      newEmail: "new-address@example.com",
+      greetingName: "Pat",
+    });
+
+    expect(subject).toBe("Your POS Sign-In Email Was Changed");
+    expect(html).toContain("Hello Pat!");
+    expect(html).toContain("new-address@example.com");
+    expect(html).not.toContain("<script>");
+    expect(text).toContain("Hello Pat!");
+    expect(text).toContain("new-address@example.com");
+    expect(html).not.toContain("href=");
   });
 });

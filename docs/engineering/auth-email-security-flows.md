@@ -122,7 +122,7 @@ Dedicated auth-email in-process limiter modules were removed from the active imp
 - **`refreshSessionVersion`** (non-negative integer, default **0**) on **`User`** and **`Business`**.
 - **Refresh JWT** payload includes **`v`** (see `RefreshTokenPayload` in `backend/src/auth/types.ts`).
 - **`POST /auth/refresh`**: if **`(payload.v ?? 0) !== dbVersion`**, cookie cleared + **401** (same user-visible message as invalid refresh).
-- **Increment** (`$inc: 1`) on: successful **email password reset** (`resetPassword.ts`), **authenticated password change** on **`PATCH /business/:id`** and **`PATCH /users/:id`** when `password` is updated.
+- **Increment** (`$inc: 1`) on: successful **email password reset** (`resetPassword.ts`), **confirmed sign-in email change** (`confirmEmailChange.ts`), and **authenticated password change** on **`PATCH /business/:id`** and **`PATCH /users/:id`** when `password` is updated.
 
 ---
 
@@ -167,6 +167,7 @@ All paths below are under **`/api/v1/auth`**.
 | `POST` | `/reset-password` | None | Body `{ token, newPassword }`. Policy + **400** paths for weak/missing fields; success clears reset fields and **increments** `refreshSessionVersion`. |
 | `POST` | `/resend-email-confirmation` | Bearer | Resend for **current** session’s DB email; **IP** rate limit; **401** if no/invalid token or account missing. |
 | `POST` | `/request-email-change` | Bearer (business) | Body `{ newEmail, currentPassword }`. Re-authenticates against the stored hash (**`401`** wrong), rejects an address equal to the current one (**`400`**) or owned by another account (**`409`**), then stores `pendingEmail` + token + expiry and emails the confirmation link to the new address (**`500`** + rollback if send fails). Returns a generic success; current email unchanged. |
+| `POST` | `/confirm-email-change` | None | Body `{ token }`. One-time consume: atomically matches `pendingEmailToken` against an unexpired `pendingEmailExpires`, swaps `email` to `pendingEmail`, sets `emailVerified: true`, clears the pending fields, and **increments** `refreshSessionVersion`. Sends a best-effort notice to the **previous** address. Invalid / expired / reused token → **`400`** with the single non-revealing consumption message. |
 
 **Signup / registration triggers (non-blocking):**
 
@@ -190,6 +191,10 @@ Same structural pattern with **`VerificationIntent.PasswordReset`**, **`buildRes
 ### 7.3 Confirm — `confirmEmail.ts`
 
 **Atomic** `findOneAndUpdate` on **Business** then **User**: matching **hash**, **`emailVerified !== true`**, **`emailVerificationExpiresAt > now`**. Success sets **`emailVerified: true`** and unsets token fields. Single **client-facing** error string for all other failures (**no oracle**).
+
+### 7.3a Confirm email change — `confirmEmailChange.ts`
+
+**Atomic** conditional `updateOne` on **Business**: matches `pendingEmailToken` + an unexpired `pendingEmailExpires`, then swaps `email` to `pendingEmail`, sets `emailVerified: true`, unsets the pending fields, and **`$inc refreshSessionVersion`**. Single client-facing consumption-error string for all failures (**no oracle**). Afterwards a best-effort notice email goes to the **previous** address; a failed notice never fails the confirmation.
 
 ### 7.4 Reset password — `resetPassword.ts`
 
@@ -308,6 +313,7 @@ The SPA calls the same **`POST /api/v1/auth/request-password-reset`** as **`Forg
 | Links / templates / sender | `backend/tests/auth/emailLinks.test.ts`, `emailTemplates.test.ts`, `authEmailSend.test.ts` |
 | Routes | `requestEmailConfirmation`, `confirmEmail`, `requestPasswordReset`, `resetPassword`, `resendEmailConfirmation`, `auth-email.test.ts` |
 | Sign-in email change request | `backend/tests/routes/requestEmailChange.test.ts` |
+| Sign-in email change confirm | `backend/tests/routes/confirmEmailChange.test.ts` |
 | Refresh invalidation after reset | `backend/tests/routes/resetPassword.test.ts` |
 | Schema | `userEmailSecuritySchema.test.ts`, `businessEmailSecuritySchema.test.ts` |
 | Frontend | `ForgotPasswordPage.test.tsx`, `ResetPasswordPage.test.tsx`, `ConfirmEmailPage.test.tsx`, `auth/api.test.ts`, `App.routing.test.tsx` |
@@ -321,6 +327,7 @@ The SPA calls the same **`POST /api/v1/auth/request-password-reset`** as **`Forg
 | `backend/src/routes/v1/auth.ts` | All auth-email routes + login/signup/refresh with **`v`**. |
 | `backend/src/auth/issueSession.ts` | **`issueSessionWithRefreshCookie`**, **`readRefreshSessionVersionForAccount`**. |
 | `backend/src/auth/requestEmailChange.ts` | Pending sign-in email change request (re-auth, duplicate check, pending store + rollback). |
+| `backend/src/auth/confirmEmailChange.ts` | Pending sign-in email change confirm (one-time consume, email swap + verify, session-version bump, old-address notice). |
 | `backend/src/auth/authEmailSend.ts` | Auth-email sender (Nodemailer Gmail). |
 | `frontend/src/pages/ForgotPasswordPage.tsx` | … |
 | `frontend/src/pages/ResetPasswordPage.tsx` | Reads **`token`** from query string. |
