@@ -1,13 +1,11 @@
-# Business Metrics Formula Reference
+# Business metrics formulas
 
-This is the canonical formula guide for weekly and monthly restaurant metrics.
-Implementation source of truth: `backend/src/reports/businessMetrics/calculations.ts`.
+Canonical formulas for weekly and monthly restaurant metrics. The weekly and monthly aggregators share these helpers so their semantics stay aligned; the implementation lives in the backend business-metrics calculations.
 
 ## Core conventions
 
 - Percent KPIs are returned as `0..100` (already multiplied by 100).
-- Division is guarded by `safeDivide(numerator, denominator)` and returns `0` when denominator is `0`.
-- Weekly and monthly aggregators use the same helper formulas to keep semantics aligned.
+- Division is guarded so a `0` denominator yields `0`.
 
 ## Profitability
 
@@ -15,14 +13,6 @@ Implementation source of truth: `backend/src/reports/businessMetrics/calculation
 - `grossProfitMarginPct = (grossProfit / totalSales) * 100`
 - `netProfit = netRevenue - totalOperatingCost`
 - `netProfitMarginPct = (netProfit / totalSales) * 100`
-
-Example:
-- Inputs: `totalSales=150`, `netRevenue=135`, `cogs=60`, `totalOperatingCost=130`
-- Results:
-  - `grossProfit = 75`
-  - `grossProfitMarginPct = 50`
-  - `netProfit = 5`
-  - `netProfitMarginPct = 3.33`
 
 ## Cost and sales quality
 
@@ -34,27 +24,11 @@ Example:
 - `voidSalesPct = (totalVoidSales / totalSales) * 100`
 - `invitedSalesPct = (totalInvitedSales / totalSales) * 100`
 
-Example:
-- Inputs: `totalSales=500`, `foodCost=150`, `laborCost=100`, `totalNetRevenue=450`, `totalVoidSales=20`
-- Results:
-  - `foodCostPctOfSales = 30`
-  - `primeCost = 250`
-  - `primeCostPctOfSales = 50`
-  - `salesPaymentCompletionPct = 90`
-  - `voidSalesPct = 4`
-
 ## Break-even and targets
 
 - `contributionMarginRatio = (totalSales - variableCosts) / totalSales`
 - `breakEvenSales = fixedCosts / contributionMarginRatio`
 - `minimumDailySalesTarget = breakEvenSales / daysInPeriod`
-
-Example:
-- Inputs: `totalSales=150`, `variableCosts=90`, `fixedCosts=40`, `daysInPeriod=30`
-- Results:
-  - `contributionMarginRatio = 0.4`
-  - `breakEvenSales = 100`
-  - `minimumDailySalesTarget = 3.33`
 
 ## Operational efficiency
 
@@ -71,6 +45,7 @@ Example:
 - `pourCostPct = (beverageUsedCost / beverageSales) * 100`
 - `beverageVariancePct = ((actualUsage - theoreticalUsage) / theoreticalUsage) * 100`
 
-Interpretation notes:
+## Interpretation
+
 - Higher `promoRoiProxy` means more sales lift per discount dollar.
-- Positive `beverageVariancePct` means actual usage cost is above theoretical expectation (possible waste/over-pouring).
+- Positive `beverageVariancePct` means actual usage cost is above theoretical expectation (possible waste or over-pouring).
