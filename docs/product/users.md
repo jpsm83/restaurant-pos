@@ -9,7 +9,7 @@
 This subject covers **who a person is and what they may do** across the whole platform:
 
 - the global **User** — one per person, the holder of every sign-in credential;
-- **business ownership** — the **Owner** account that owns one or more **Business** identities, and the transfer of a business between users;
+- **business ownership** — the **Owner** account that holds one or more **Companies**, each owning its **Business** identities, and the transfer of a business between users;
 - the **Employee** membership — the per-venue link that makes a user part of a business;
 - the **four base access layers**, the **job roles**, and **per-user capabilities**;
 - the **login mode chooser** — the rule by which a signed-in user picks between the customer and business apps;
@@ -31,15 +31,16 @@ It deliberately does **not** cover:
 ### Entities
 
 - **User** — a person's global identity. One per person, platform-wide and tenant-free. The sole holder of sign-in credentials, personal details, preferences, the notification inbox, and order history. **Every user is a customer.**
-- **Owner** — the portfolio account for a user who owns businesses. One per user, created or updated when that user registers a business. Holds the businesses it controls, the **subscription**, and the **commission terms**.
+- **Owner** — the portfolio account for a user who owns businesses. One per user, created or updated when that user registers a business. Holds the **Companies** it controls, the **subscription**, and the **commission terms**.
+- **Company** — the **tax entity** owned by exactly one **Owner**: a group of one or more **Businesses** run as one legal unit, holding their **tax number**. Stock moves only within a Company.
 - **Employee** — a person's membership in one business: the per user–business link carrying the user's job role(s) and employment state. The only way a user joins a tenant.
-- **Business** — the tenant, one venue (owned by exactly one user through that user's **Owner**). Carries its own public profile and **contact email**, but holds **no credentials** of its own.
+- **Business** — the tenant, one venue (owned by exactly one user through that user's **Owner** and belonging to exactly one **Company**). Carries its own public profile and **contact email**, but holds **no credentials** of its own.
 
 Membership is one-to-many on both sides — one user may hold a membership per business, and one business holds many memberships:
 
 ```
 User ──< Employee >── Business          (membership: the only path into a tenant)
-User ──1 Owner ──< Business              (ownership: exactly one owning user per business)
+User ──1 Owner ──< Company ──< Business  (ownership: exactly one owning user per business)
 ```
 
 ### Terms this subject introduces
@@ -67,12 +68,12 @@ Creating a user grants the **customer identity unconditionally**. There is no bu
 
 ### 3.3 Business ownership and the owner
 
-A **business is owned by exactly one user**. When a user registers a business, POS **creates or updates that user's Owner** account, which holds the businesses it controls, the subscription, and the commission terms.
+A **business is owned by exactly one user**. When a user registers a business, POS **creates or updates that user's Owner** account, which holds the Companies it controls, the subscription, and the commission terms.
 
-- A user may **own many businesses**; each owned venue is its own **Business**.
+- A user may **own many businesses**; each owned venue is its own **Business**, and each Business belongs to exactly one **Company** — the tax entity grouping the venues run as one legal unit. A user adding a venue chooses whether it **joins an existing Company** or **forms a new one**.
 - A user may simultaneously **own some venues and be an ordinary employee at others**.
 - The owner automatically takes the **Owner job role** and the **admin** base layer at every venue they own.
-- **Ownership can be transferred** from one user to another; the **Owner** accounts and their business lists follow the transfer.
+- **Ownership can be transferred** from one user to another; the **Owner** accounts, their Companies, and their business lists follow the transfer.
 
 ### 3.4 Employee membership
 
@@ -137,7 +138,7 @@ A user comes into existence through one of three paths, and POS **never duplicat
 
 1. **Self sign-up** — a person signs up and becomes a customer user.
 2. **Managed employee** — a manager or above creates an employee membership by linking an **existing user by email**. If no user exists for that email, POS creates the user (a customer) first, then links the membership.
-3. **Business registration** — a **signed-in user** registers a business; the registrant already exists as a user, and registration creates (or updates) their **Owner**, the **Business**, and the owner's membership.
+3. **Business registration** — a **signed-in user** registers a business; the registrant already exists as a user, and registration creates (or updates) their **Owner**, the **Company** (existing or new), the **Business**, and the owner's membership.
 
 ### 3.12 Sessions
 
@@ -166,7 +167,7 @@ A soft-deleted account can be **reactivated**, but reactivation is **never compl
 
 ### 3.17 Soft delete, platform-wide
 
-Under POS's **soft-delete convention**, an identity — a **User**, **Owner**, **Employee**, or **Business** — is never hard-deleted. POS marks it deleted and stamps the time, retains it, and can reactivate it; uniqueness is enforced among active identities, so reusing a soft-deleted email means **reactivating** that account, not creating a duplicate.
+Under POS's **soft-delete convention**, an identity — a **User**, **Owner**, **Company**, **Employee**, or **Business** — is never hard-deleted. POS marks it deleted and stamps the time, retains it, and can reactivate it; uniqueness is enforced among active identities, so reusing a soft-deleted email means **reactivating** that account, not creating a duplicate.
 
 ---
 

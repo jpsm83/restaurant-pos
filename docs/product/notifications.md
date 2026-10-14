@@ -19,7 +19,7 @@ This subject covers **how POS tells a person something** — the inbox that hold
 
 It deliberately does **not** cover:
 
-- the **detection of triggering conditions** — low-stock thresholds belong to the inventories and supplier-goods subjects, overtime detection to the time-control subject, report readiness to the business-reports subject, and profile-change detection to the business subject. This subject owns what happens once a condition is detected, not how it is detected.
+- the **detection of triggering conditions** — low-stock and negative-stock detection belong to the inventories and supplier-goods subjects, overtime detection to the time-control subject, report readiness to the business-reports subject, and profile-change detection to the business subject. This subject owns what happens once a condition is detected, not how it is detected.
 - the **transactional email flows themselves** — sign-in verification, password reset, an email change, order receipts, and reservation decisions. The emails subject owns their templates, copy, and retry mechanics; this subject owns which of them notify and the in-app side of each.
 - the **inbox's ownership and a user's preference storage** — the users subject owns the person's identity and preferences. This subject owns the notifications the inbox holds and the meaning of the engagement mute, not where a preference is stored.
 - the **screens and navigation** that render the inbox, a conversation, or a venue event — the user-navigation subject owns the surfaces.
@@ -61,7 +61,7 @@ Terms reused from the product overview's core vocabulary rather than defined her
 
 - Every notification is stored in each recipient's inbox **first**, and that stored copy is the **source of truth**.
 - A recipient who is **online** also receives it immediately by **live push**. A recipient who is **offline** receives it the moment they return, from the stored copy; nothing is lost.
-- **Email** is added for: an order confirmation/receipt, a reservation pending and decision (to the customer), a reply in a customer conversation (to the customer), a business-profile change (to managers), and a venue's engagement broadcasts (to customers who have not muted them). The remaining operational alerts — low-stock, report-ready, and overtime — are **in-app only**.
+- **Email** is added for: an order confirmation/receipt, a reservation pending and decision (to the customer), a reply in a customer conversation (to the customer), a business-profile change (to managers), and a venue's engagement broadcasts (to customers who have not muted them). The remaining operational alerts — low-stock, negative-stock, report-ready, and overtime — are **in-app only**.
 - A communication failure **never blocks** the underlying business action: a notification is a side effect of the action, not a precondition for it.
 
 ### 3.2 The inbox
@@ -80,12 +80,14 @@ Terms reused from the product overview's core vocabulary rather than defined her
 | Reservation pending | The customer; and the venue's managers on duty, prompted to review it | Customer: in-app + email; managers: in-app | Info | Once |
 | Reservation decided (confirmed or cancelled) | The customer | In-app + email | Info | Once |
 | Low-stock alert | The venue's managers on duty | In-app | Warning | At most once per 15 minutes per set of items |
+| Negative-stock alert | The venue's managers on duty | In-app | Warning | At most once per 15 minutes per item |
 | Weekly report ready | The venue's managers and above | In-app | Info | Once |
 | Monthly report ready | The venue's managers and above | In-app | Info | Once |
 | Business profile updated | The venue's managers and above | In-app + email | Info | Once |
 | Overtime alert | The venue's admins on duty | In-app | Warning | Every 5 minutes until the employee signs off |
 
-- The **low-stock alert** lists the affected goods and fires when stock falls below a good's par level or minimum required; detecting that condition belongs to the inventories and supplier-goods subjects.
+- The **low-stock alert** lists the affected goods and fires when stock falls below a good's **minimum required**; detecting that condition belongs to the inventories and supplier-goods subjects.
+- The **negative-stock alert** fires when a good's stock on hand falls **below zero**, as a management-error signal that purchases or counts are missing; detecting that condition belongs to the inventories subject.
 - The **overtime alert** concerns any employee other than an admin or owner who is still on duty past their scheduled end, and repeats until they sign off; detecting that condition belongs to the time-control subject.
 - A **report-ready** notification fires when the weekly or monthly report for the period is ready for review; detecting readiness belongs to the business-reports subject.
 - The **business-profile-updated** notification fires when a change to the business profile actually persists, and reports which fields changed; detecting the change belongs to the business subject.
@@ -150,6 +152,6 @@ The owning user is an admin at every venue they own. Job roles and per-user capa
 | Reply in a conversation | The recipient of the direct message |
 | Start a direct message | Managers and above |
 | Publish a venue event | Managers and above |
-| Receive low-stock and overtime alerts | The venue's managers on duty (low-stock) and admins on duty (overtime) |
+| Receive low-stock, negative-stock, and overtime alerts | The venue's managers on duty (low-stock, negative-stock) and admins on duty (overtime) |
 | Receive report-ready and profile-updated alerts | The venue's managers and above |
 | Operate the application business | The superadmin, in a separate realm; never a recipient of a venue's notifications |

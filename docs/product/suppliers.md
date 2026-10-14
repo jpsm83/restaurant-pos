@@ -25,6 +25,7 @@ It deliberately does **not** cover:
 - the **waste thresholds** keyed to a supplier good's budget impact — the business-metrics subject owns them.
 - **messages directed at POS users** — inbox notifications and account, operational, and engagement emails belong to the notifications and emails subjects. Supplier correspondence is addressed to **third parties** and is this subject's.
 - the **Business** and its tenancy — the business subject owns it.
+- **inventory transfers** — moving stock between venues of one Company belongs to the inventories subject; this subject owns the supplier record such a transfer creates, not the transfer itself.
 - **amounts payable to a supplier** — accounts payable and supplier invoices as financial obligations are not part of POS.
 
 ---
@@ -59,6 +60,7 @@ A business keeps its own list of suppliers.
 - Every supplier carries a **name**, which is required, and an optional free-text **note**.
 - The name is **not** required to be unique: a venue may legitimately keep two suppliers of the same name. The supplier is told apart by its record, not by its name.
 - Suppliers are **internal to the business** — invisible to other venues and never shown to customers.
+- A supplier may also represent **another venue of the same Company** when stock is transferred between them: an **inventory transfer** (owned by the inventories subject) creates such a record in the destination venue, carrying the source venue's details, and it is thereafter an ordinary supplier the destination may edit.
 
 ### 3.2 The supplier address
 

@@ -24,7 +24,7 @@ POS is delivered as **three product surfaces over one shared platform**: the **B
 | Delivery | Cloud SaaS, browser-based |
 | OS / device | Any — PC, laptop, tablet, phone, network printer, screen |
 | Connectivity | Online-only (no offline mode) |
-| Tenancy | Multi-tenant; one **Business** = one venue; venues grouped under an **Owner** |
+| Tenancy | Multi-tenant; one **Business** = one venue; venues grouped under an **Owner** into **Companies** (tax entities) |
 | Paid by | Businesses (subscription + commission); **customers are free** |
 | Surfaces | Business · Customer · Superadmin |
 
@@ -34,7 +34,8 @@ These terms are used with exactly these meanings throughout POS. Do not drift to
 
 | Term | Meaning |
 | --- | --- |
-| **Owner** | The account that owns one or more **Businesses**. Created automatically when a user registers a business; holds the subscription and commission terms for its venues. |
+| **Owner** | The account that owns one or more **Companies**. Created automatically when a user registers a business; holds the subscription and commission terms for its venues. |
+| **Company** | The **tax entity** that groups one or more **Businesses** (venues) run as one legal unit. Holds the tax number; its venues may transfer stock internally. |
 | **Business** | The **tenant** — one venue (restaurant/bar). All operational data is scoped to the business. |
 | **User** | A person's global identity. **Every user is a customer**; some also hold business roles. |
 | **Employee** | A person's membership in a Business, carrying their **job role(s)**, pay, and employment status. Links a **User** to a **Business**. |
@@ -46,7 +47,7 @@ These terms are used with exactly these meanings throughout POS. Do not drift to
 | **Supplier good** | A raw/purchased item from a supplier; the ingredient behind recipes and the unit of stock. |
 | **Supplier** | A vendor the business buys from. |
 | **Purchase** | A record of the goods a business buys from a supplier — from what it requests through to what it receives; feeds inventory. A **one-time purchase** records an ad-hoc expense with no supplier. |
-| **Inventory** | The monthly stock ledger per business, combining a dynamic system count with physical counts. |
+| **Inventory** | The stock ledger per business: a **dynamic system count** per supplier good, **physical counts** with **deviation** per **count period**, and a monthly **resume**. |
 | **Promotion** | A time/day-scoped price rule applied to selected business goods. |
 | **Reservation** | A free table booking made by a customer or staff; hands off into live service. |
 | **Rating / Comment / Favorite** | Venue-level customer feedback and saved venues. |
@@ -63,7 +64,7 @@ These terms are used with exactly these meanings throughout POS. Do not drift to
 
 POS serves six personas. Five map to one of the four **base access layers** ([§5](#5-access-roles-and-the-mode-chooser)); the sixth, the **Superadmin**, runs the platform's own application business in a separate realm.
 
-- **Owner** — owns one or more venues. Registers the business, holds the subscription, and moves between venues through the owner shell. Also acts as an admin inside each venue.
+- **Owner** — owns one or more venues, grouped into Companies. Registers the business, holds the subscription, and moves between venues through the owner shell. Also acts as an admin inside each venue.
 - **Admin** — has **full control of the venue**: configuration, people, permissions, and every operation.
 - **Manager** — runs day-to-day operations: schedules, purchasing, inventory, promotions, and report calculation/closure. Managers and above assign job roles and capabilities.
 - **Employee** — delivers service (waiter, bartender, chef, cashier, host, …). Access to the business app is gated by the **schedule**.
@@ -79,17 +80,19 @@ POS's tenancy tree is:
 ```
 Superadmin  (platform operator — the application business)
    └── Owner              (the paying account; one per person/company)
-          └── Business    (one venue; the tenant)
-                 └── all operational data scoped to the business
+          └── Company     (the tax entity; holds the tax number)
+                 └── Business    (one venue; the tenant)
+                        └── all operational data scoped to the business
 ```
 
 - **User → Employee → Business.** A **User** is a single global identity. An **Employee** record links that user to a business and carries job role(s), pay, and status. An owner across several venues is one user with an employee membership per venue.
-- **User → Owner → Business.** When a user registers a business, POS **automatically creates (or updates) an owner account** for them, taking the **Owner job role by default**. The Owner holds the **array of businesses** it controls, the **subscription**, the **commission terms**, and other portfolio data.
-- **One Business = one venue.** A multi-venue operator does not share one business record; each venue is its own **Business**, grouped under one **Owner**.
+- **User → Owner → Company → Business.** When a user registers a business, POS **automatically creates (or updates) an owner account** for them, taking the **Owner job role by default**. The Owner holds its **Companies**, the **subscription**, the **commission terms**, and other portfolio data.
+- **One Business = one venue.** A multi-venue operator does not share one business record; each venue is its own **Business**, grouped under one **Owner** through a **Company**.
+- **Company = tax entity.** A **Company** groups the venues run as one legal unit and holds their **tax number**. Every **Business** belongs to exactly one Company; a venue added to an existing Company shares its tax identity, while a venue added as a new Company is a separate taxpayer.
 - **Everyone is a customer.** Creating a user — including registering a business — also grants the customer identity. There is no "business-only" user.
 - **Tenant root.** Almost every domain collection carries a required, indexed link to its business; this is the isolation boundary. The **User** is the exception — it is global and joins a tenant only through **Employee**.
 
-Owner-level resources (subscription, commission, portfolio navigation, and the inventory-transfer network) scope to the **Owner**; everything operational scopes to the **Business**.
+Owner-level resources — the **subscription**, **commission**, and portfolio navigation — scope to the **Owner**; the **inventory-transfer network** scopes to the **Company** (stock moves only within one tax entity); everything operational scopes to the **Business**.
 
 ---
 
@@ -153,7 +156,7 @@ The Business app is the operational heart of POS. It comprises the **owner shell
 
 ### Onboarding and configuration
 
-- **Registering a business** is an action by an **already-registered user**; it creates the tenant, initialises the user's **Owner** account (on their first venue), and creates the owner's employee membership. The business can be **saved as an incomplete draft** and edited over time; it collects profile (trade/legal name, logo, contact, phone, tax number), **currency** (one per business, chosen at onboarding), and address; the **timezone** is derived from the address.
+- **Registering a business** is an action by an **already-registered user**; it creates the tenant, initialises the user's **Owner** account (on their first venue), and creates the owner's employee membership. A user who already owns venues chooses whether the new venue **joins an existing Company** or **forms a new one**. The business can be **saved as an incomplete draft** and edited over time; it collects profile (trade/legal name, logo, contact, phone), **currency** (one per business, chosen at onboarding), and address; the **timezone** is derived from the address. The **tax number** belongs to the venue's **Company**.
 - **Go-live.** A business is **not live** until its **go-live checklist is complete** and its **contact email is verified**; an admin/owner then flips the **go-live toggle**. **Not live** means **absent from customer discovery** and **unable to take customer orders or bookings**, though the venue remains fully usable internally. A live business can also be taken **offline**, which is distinct from **closing** it.
 - **Profile and discovery.** Public fields — cuisine type, categories, contact, and cached average rating and rating count — power customer discovery.
 - **Opening hours** per weekday.
@@ -183,11 +186,11 @@ The Business app is the operational heart of POS. It comprises the **owner shell
 
 ### Inventory and transfers
 
-- **Inventory** is monthly per business: a **dynamic system count** per supplier good (incremented by purchases, decremented by orders, restored on cancellation) and **physical counts** performed by staff with **deviation** tracking.
-- Count **re-edits** require manager/supervisor authority and a **reason**, with an audit trail.
-- POS surfaces **low-stock alerts** (below par/minimum, notified to managers on duty) and a **variance report** comparing theoretical usage (from recipes) against actual usage (opening + purchases − closing).
-- A manager **closes** the month, which locks it and **automatically rolls the next period forward**.
-- **Inventory transfers** move supplier goods between **venues of the same Owner only**, valued **at cost**, adjusting **both venues' inventories** and leaving a full **audit trail** (who, when, quantity, value). Manager-and-above authorization is required.
+- **Inventory** is the venue's stock ledger: a **dynamic system count** per supplier good (risen by received purchases and transfers in, lowered by orders and transfers out, restored on cancellation) and **physical counts** performed by staff, each carrying a **deviation** for the **count period** it closes.
+- Counts happen **whenever the venue decides** — POS sets no schedule; a submitted count is **locked**, and its **re-edit** requires manager/supervisor authority and a **reason**, with an audit trail.
+- A month's counts are aggregated into a **monthly resume**: a **manager closes** the month after reviewing it, and the month's closing count is taken on the **morning of the first day of the following month**. Closing locks the month; only the **general manager** reopens it, with a reason.
+- POS surfaces **low-stock alerts** (below a good's **minimum required**) and **negative-stock alerts**, notified to the managers on duty, plus a **variance report** comparing theoretical usage (from recipes) against actual usage (opening + purchases + transfers in − transfers out − closing) and **waste** graded by budget impact.
+- **Inventory transfers** move supplier goods between **venues of the same Company only**, valued **at cost**, adjusting **both venues' inventories** and leaving a full **audit trail** (who, when, quantity, value). A transfer is not a sale and not a purchase and carries no tax. Manager-and-above authorization is required.
 
 ### Service — sales points, sessions, orders, billing
 

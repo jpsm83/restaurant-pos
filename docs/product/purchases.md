@@ -17,13 +17,13 @@ This subject covers the **purchase record**: what a business asks a supplier for
 - **one-time purchases** — ad-hoc expenses with no supplier-good tracking;
 - **editing** a purchase with a **reason** and an audit record;
 - **cancelling** a purchase that never arrived; and
-- the purchase's interaction with a **closed inventory period**.
+- the purchase's interaction with a **closed inventory month**.
 
 It deliberately does **not** cover:
 
 - the **supplier** — its profile, address, contacts, tax number, in-use lifecycle, the composition and sending of a goods request, and the vendor's view of its goods and purchase history all belong to the suppliers subject. This subject owns what happens to a purchase **once it exists**; the suppliers subject owns the request action that may create it.
 - the **supplier good** — its identity, unit of stock, purchase unit and price math, budget impact, allergens, par level and minimum, in-use state, and deletion belong to the supplier-goods subject. A purchase line names a supplier good but never defines or changes it.
-- the **stock ledger and counting** — the dynamic system count, physical counts, deviation, variance, waste computation, the cadence of counting, and the period **close and reopen** belong to the inventories subject. This subject owns the increment a receipt contributes; the inventories subject owns the ledger it lands in.
+- the **stock ledger and counting** — the dynamic system count, physical counts, count-period deviation, variance, waste computation, when each good was last counted, the monthly resume and its **close and reopen**, and **inventory transfers** between venues of one Company — belong to the inventories subject. This subject owns the increment a receipt contributes; the inventories subject owns the ledger it lands in. A transfer is not a purchase and carries no tax.
 - the **waste thresholds** a good's budget impact selects — the business-metrics subject owns them.
 - the **business** and its currency — the business subject owns them; a purchase prices in the business's single currency.
 - **notifications** — the messages a venue or its staff receive belong to the notifications subject.
@@ -81,9 +81,9 @@ Terms reused from other subjects rather than redefined here: **Business**, **Sup
 
 - A purchase born from a request becomes **received** only through **delivery acceptance**.
 - Before accepting, the venue performs the **arrival step**: it matches the record to the goods that physically arrived and sets each line's delivered quantity. Because a sent purchase is already a record, **recording delivered quantities that differ from what was requested carries a reason and is audited**; accepting a delivery that matches the request needs no reason.
-- **Acceptance adds each delivered quantity to the business's stock for that good**, into the inventory period the purchase's date falls in. A purchase that is only awaiting delivery, or was cancelled, **never moves stock**.
+- **Acceptance adds each delivered quantity to the business's stock for that good**, into the inventory month the purchase's date falls in. A purchase that is only awaiting delivery, or was cancelled, **never moves stock**.
 - A purchase **recorded directly** is received at the moment it is recorded, and its stock moves then.
-- The increment belongs to the purchase; the **ledger** it lands in — the dynamic system count, counts, and periods — belongs to the inventories subject.
+- The increment belongs to the purchase; the **ledger** it lands in — the dynamic system count, the counts, and the count periods — belongs to the inventories subject.
 
 ### 3.4 The price and the total
 
@@ -114,14 +114,14 @@ Terms reused from other subjects rather than redefined here: **Business**, **Sup
 - A purchase that is already a record — a **sent request**, or a **received** purchase — is **corrected, never removed**: no purchase is hard-deleted, and a received purchase is never removed at all.
 - A purchase **awaiting delivery** is fixed; the only change is the **arrival step** (§3.3). Its lines are not otherwise rewritten and its requested quantities are not changed.
 - Editing a **received** purchase always carries a **reason**, records **who** made the change, **when**, and the **before and after of every line it changed**, and keeps the purchase's **entire edit history** — each edit is retained, never overwritten.
-- Editing a received purchase **updates stock for the change**: raising a delivered quantity adds the difference, lowering it removes the difference, adding or removing a line adds or removes its quantity, and a price-only correction updates the purchase's value without moving stock. Changing a received purchase's **date** moves its stock into the period the new date falls in, and is blocked when that period is closed.
+- Editing a received purchase **updates stock for the change**: raising a delivered quantity adds the difference, lowering it removes the difference, adding or removing a line adds or removes its quantity, and a price-only correction updates the purchase's value without moving stock. Changing a received purchase's **date** moves its stock into the month the new date falls in, and is blocked when that month is closed.
 - The **reason belongs to the edit**: a single edit carries **one reason** and the line-by-line changes it made, rather than a reason per line.
 
-### 3.9 The closed inventory period
+### 3.9 The closed month
 
-- An inventory period is **closed** — locked and rolled forward — on the inventories subject's terms. A period may be read for audit or the books at any range, whether or not it is closed.
-- Once a period is **closed**, every purchase whose date falls in it is **read-only**: it cannot be edited, cancelled, or accepted, and its stock figures are frozen.
-- Correcting a purchase in a closed period requires the period to be **reopened deliberately** by the general manager, with a reason; only then does the purchase become editable again.
+- An inventory **month** is **closed** — locked — on the inventories subject's terms. Closing a **count period** inside the month does **not** lock purchases; only the month close does. A month may be read for audit or the books at any range, whether or not it is closed.
+- Once a month is **closed**, every purchase whose date falls in it is **read-only**: it cannot be edited, cancelled, or accepted, and its stock figures are frozen.
+- Correcting a purchase in a closed month requires the month to be **reopened deliberately** by the general manager, with a reason; only then does the purchase become editable again.
 
 ---
 
@@ -148,6 +148,6 @@ Purchases are an internal, operational, management surface: never visible to cus
 | Cancel an awaiting-delivery purchase, with a reason | Managers and above |
 | Record or edit a one-time purchase | Managers and above |
 | View purchases and their edit history | Managers and above |
-| Reopen a closed inventory period so a purchase can be corrected | The general manager (the inventories subject's action) |
+| Reopen a closed inventory month so a purchase can be corrected | The general manager (the inventories subject's action) |
 
 Purchase management sits with the managers who run purchasing and stock, consistent with the supplier and supplier-good surfaces.

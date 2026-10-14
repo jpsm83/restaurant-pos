@@ -6,3 +6,6 @@
 6 - emails
 7 - suppliers
 8 - supplier goods
+9 - purchases
+10 - business goods
+11 - inventories
