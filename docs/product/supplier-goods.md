@@ -144,6 +144,7 @@ Supplier goods are an internal, operational surface: never visible to customers.
 | Edit a good's unit of stock, purchase unit, and price | Managers and above |
 | Edit a good's budget impact, allergens, par level, and minimum required | Managers and above |
 | Delete a good (only while it is not in use) | Managers and above |
+| Receive a good's low-stock alert | Managers on duty, and above |
 | View supplier goods | Employees with the granted capability, and managers and above |
 
 Supplier-good management sits with the managers who run purchasing and inventory, consistent with the supplier and stock surfaces.

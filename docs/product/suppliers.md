@@ -19,7 +19,7 @@ This subject covers the **vendor relationship**: the suppliers a business buys f
 
 It deliberately does **not** cover:
 
-- the **goods themselves** — the supplier-goods subject owns a good's measurement unit, purchase unit and price math, budget impact, allergens, par level and minimum, inventory schedule, and the good's own in-use state. This subject owns the supplier and names the supplier-to-goods relationship; it exposes a read of a supplier's goods but does not define them.
+- the **goods themselves** — the supplier-goods subject owns a good's measurement unit, purchase unit and price math, budget impact, allergens, par level and minimum, and the good's own in-use state. This subject owns the supplier and names the supplier-to-goods relationship; it exposes a read of a supplier's goods but does not define them.
 - the **purchase record** — a purchase's lines and their requested-versus-delivered quantities, receipt photos, the inventory increment, one-time purchases, delivery acceptance, and the reason-and-audit rule for line edits belong to the purchases subject. This subject owns the supplier-facing request action and the vendor's view of the resulting history.
 - **business goods** (sellable items and their recipes) that consume supplier goods — the business goods subject owns them.
 - the **waste thresholds** keyed to a supplier good's budget impact — the business-metrics subject owns them.
