@@ -82,6 +82,7 @@ A business keeps its own list of suppliers.
 The in-use state is the supplier's lifecycle, separate from its existence.
 
 - A supplier is **in use** or **out of use**; a venue sets the state deliberately.
+- A supplier **cannot be taken out of use while any of its goods is in use** on a business good. The venue must first remove those goods from the business goods that use them, or point those recipes at another supplier's good, before the supplier can be withdrawn.
 - An **out-of-use** supplier is **withdrawn from new selection** — it is not offered when composing a goods request, when recording a purchase, or when choosing a supplier for a new supplier good — and it keeps **all** of its history.
 - An out-of-use supplier can be **returned to use** at any time.
 - **Out of use is not deletion**: the supplier and its history remain whole, and nothing is retired.

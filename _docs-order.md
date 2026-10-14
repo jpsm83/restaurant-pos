@@ -5,3 +5,4 @@
 5 - notifications
 6 - emails
 7 - suppliers
+8 - supplier goods

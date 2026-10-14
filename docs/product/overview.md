@@ -178,7 +178,7 @@ The Business app is the operational heart of POS. It comprises the **owner shell
 ### Supply and purchasing
 
 - **Suppliers** are the vendors a business buys from (profile, address, contacts, tax number, in-use flag).
-- **Supplier goods** are the purchasable items and the unit of stock: category, measurement unit, purchase unit and purchase math (quantity ↔ total price → price per measurement unit), **budget impact**, allergens, **par level** and **minimum required**, inventory schedule, images, and in-use flag.
+- **Supplier goods** are the purchasable items and the unit of stock: category, measurement unit, purchase unit and purchase math (quantity ↔ total price → price per measurement unit), **budget impact**, allergens, **par level** and **minimum required**, images, and in-use state.
 - **Purchases** record what was received: supplier, date, purchasing employee, lines (supplier good, quantity, price), receipt identification, and optional documents. Inventory is incremented per line. **One-time purchases** record ad-hoc expenses without supplier-good tracking. Line edits require a **reason** and are **audited** (who, when, before/after values).
 
 ### Inventory and transfers
