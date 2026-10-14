@@ -172,8 +172,8 @@ The Business app is the operational heart of POS. It comprises the **owner shell
 ### Menu — business goods
 
 - Business goods are what the venue **sells**: **simple items**, **recipe/ingredient-based items**, and **set menus / combos**.
-- Configuration includes name, keyword, main/sub category, on-menu and availability flags, selling price, images, description, allergens, delivery time, and optional add-ons.
-- For recipe and combo items, POS derives **cost price** from ingredients, derives **allergens**, and suggests a **selling price** from a desired gross margin.
+- Configuration includes name, keyword, main/sub category, **on-menu state** and **availability state**, selling price, images, description, **preparation time**, and optional **add-ons** (shared across the menu).
+- POS derives **cost** and **allergens** from the supplier goods a good is built from — simple items, recipe-based items, and combos — **live** as prices and stock change; the venue sets the **selling price** freely.
 
 ### Supply and purchasing
 
