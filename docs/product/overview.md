@@ -45,7 +45,7 @@ These terms are used with exactly these meanings throughout POS. Do not drift to
 | **Business good** | A sellable menu item (simple, recipe/ingredient-based, or a set menu / combo). |
 | **Supplier good** | A raw/purchased item from a supplier; the ingredient behind recipes and the unit of stock. |
 | **Supplier** | A vendor the business buys from. |
-| **Purchase** | A record of goods received from a supplier; feeds inventory. |
+| **Purchase** | A record of the goods a business buys from a supplier — from what it requests through to what it receives; feeds inventory. A **one-time purchase** records an ad-hoc expense with no supplier. |
 | **Inventory** | The monthly stock ledger per business, combining a dynamic system count with physical counts. |
 | **Promotion** | A time/day-scoped price rule applied to selected business goods. |
 | **Reservation** | A free table booking made by a customer or staff; hands off into live service. |
@@ -179,7 +179,7 @@ The Business app is the operational heart of POS. It comprises the **owner shell
 
 - **Suppliers** are the vendors a business buys from (profile, address, contacts, tax number, in-use state).
 - **Supplier goods** are the purchasable items and the unit of stock: category, measurement unit, purchase unit and purchase math (quantity ↔ total price → price per measurement unit), **budget impact**, allergens, **par level** and **minimum required**, images, and in-use state.
-- **Purchases** record what was received: supplier, date, purchasing employee, lines (supplier good, quantity, price), receipt identification, and optional documents. Inventory is incremented per line. **One-time purchases** record ad-hoc expenses without supplier-good tracking. Line edits require a **reason** and are **audited** (who, when, before/after values).
+- **Purchases** carry a goods request from a supplier through to what was received: supplier, date, purchasing employee, lines with **requested** and **delivered** quantities (supplier good, quantity, price), receipt identification, and optional documents. Inventory is incremented on receipt, per line. **One-time purchases** record ad-hoc expenses with no supplier and no supplier-good tracking. Editing a received purchase requires a **reason** and is **audited** (who, when, before/after values).
 
 ### Inventory and transfers
 

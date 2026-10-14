@@ -108,7 +108,7 @@ A venue composes a **goods request** for a supplier and sends it to the vendor.
 - A request needs **at least one line**.
 - The request is sent by **email as an Excel or CSV attachment** to a **chosen contact**, defaulting to the supplier's **primary contact**, or it is **downloaded** for the venue to send itself. Downloading is always available, so a supplier with no email can still be requested from.
 - The request is the **pre-delivery state of a purchase**. What was **requested** against what was **delivered**, the **receipt photos**, the **manual acceptance** of the delivery, and the resulting **inventory increment** belong to the purchases subject.
-- A **sent** request is fixed; the only later change is the arrival step the purchases subject describes, where the user matches the record to the goods that physically arrived — a reason-and-audited edit — before manually accepting the delivery.
+- A **sent** request is fixed; the only later change is the arrival step the purchases subject describes, where the user matches the record to the goods that physically arrived — a reason-and-audited change when it differs from what was requested — before manually accepting the delivery.
 
 ### 3.9 Deletion
 
