@@ -110,7 +110,7 @@ Terms reused from other subjects rather than redefined here: **Business**, **Com
 
 - **Waste** is the stock that left the venue **unexplained** — the excess of actual usage over theoretical usage — valued at the good's cost.
 - A count that finds **more** stock than expected is the opposite of waste and is **not** reported as waste.
-- Waste is graded by the good's **budget impact**; each grade is measured as a **percentage of total sales** and compared against that grade's **waste threshold**.
+- Waste is graded by the good's **budget impact**; each grade is measured as a **percentage of total sales** — the view its **waste threshold** polices — and is also shown as a **percentage of COGS** for the input view.
 - Waste is derived from the counts and the movements. There is **no separate waste entry to log**.
 - A grade with no waste, or with no goods at that impact, simply produces no comparison; POS never fabricates a zero-waste result.
 

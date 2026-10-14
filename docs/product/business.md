@@ -90,6 +90,7 @@ A business carries its public and legal identity:
 - **Phone** — the venue's contact phone. Required for go-live.
 - **Business contact email** — the venue's own verified email for venue messages and receipts. Required for go-live and **must be verified**. It is **never a credential**.
 - **Tax number** — the tax identifier held on the venue's **Company**. Required for go-live; uniqueness is enforced **among active Companies in the same country** (the country of the Company's venues), so two venues sharing one Company share one tax number.
+- **Seat count** and **floor area** — optional venue attributes that feed the revenue-per-seat-hour and sales-per-floor-area metrics; neither gates go-live.
 - The **sign-in email and password are not part of the business profile** — they belong to the **User**.
 
 ### 3.4 Currency

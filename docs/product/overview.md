@@ -162,7 +162,7 @@ The Business app is the operational heart of POS. It comprises the **owner shell
 - **Opening hours** per weekday.
 - **Delivery settings**: enable/disable, **delivery radius**, **minimum order**, and **per-day delivery windows**.
 - **Tax**: a single **business-level tax configuration** (rate plus price-inclusive/exclusive handling) applied to orders and bills. Multi-component or per-item taxation is out of scope for now.
-- **Metrics and targets**: target cost percentages (food, beverage, labour, fixed), **supplier-good waste thresholds** by budget impact, and the **start day of the reporting week**.
+- **Metrics and targets**: target cost percentages (food, beverage, labour, fixed), **supplier-good waste thresholds** by budget impact, the **start day of the reporting week**, and a **KPI catalogue** — every named metric with its canonical formula, the **dimensions** it can be sliced by, and an industry **benchmark**.
 - **Subscription**: the plan is held on the **Owner** and covers its venues (see [§11](#11-monetization)).
 
 ### People, roles, and scheduling
@@ -229,11 +229,11 @@ The Business app is the operational heart of POS. It comprises the **owner shell
 
 ### Reports and metrics
 
-- **Daily sales report** — opens automatically on the first sales instance of the day. It accumulates **per-employee**, **delivery**, and **self-ordering** buckets (sales, tips, goods sold/voided/invited, payment methods), plus **business totals** (net paid, cost of goods, profit, customers served, average spend, POS commission). Managers **calculate**, **reconcile**, and **close** it; closure requires no open orders and locks the day.
-- **Weekly business report** — aggregates calculated/closed daily reports for the venue's configured reporting week, focused on operational performance (fixed and extra monthly costs excluded). It closes automatically when a new reporting week begins.
-- **Monthly business report** — aggregates the month's daily reports plus inventory variance and waste, purchasing, and labour cost, then compares **targets vs actuals** across food/beverage/labour/fixed cost and waste. It includes break-even, net profit, and a metrics-comparison section. It auto-closes at the month boundary once all daily reports are closed.
+- **Daily sales report** — opens automatically on the first sale of the day. It accumulates **per-employee**, **delivery**, and **self-ordering** buckets (sales, tips, goods sold/voided/invited, payment methods), plus **business totals** (net paid, cost of goods, profit, customers served, average spend, POS commission), with operational breakdowns by employee, sales point/channel, payment method, and item. Managers **calculate**, **reconcile**, and **close** it; closure requires no open orders and locks the day.
+- **Weekly business report** — aggregates closed daily reports for the venue's configured reporting week, focused on operational performance (fixed and extra monthly costs excluded), and carries the full set of **dimension breakdowns**. It closes automatically when a new reporting week begins.
+- **Monthly business report** — aggregates the month's daily reports plus inventory variance and waste, purchasing, and labour cost, then compares **targets vs actuals** across food/beverage/labour/fixed cost and waste. It includes break-even, net profit, and a metrics-comparison section, with the full dimension set plus supplier breakdowns. It closes at the month boundary once all daily reports and the **inventory month** are closed.
 - **Reporting exports** are available across these reports, powered by the shared advanced-table engine used as the blueprint for report tables.
-- **Business metrics formulas** (profitability, cost and sales quality, break-even, operational efficiency, and promotion/bar controls) are defined in the business-metrics subject, alongside the cost targets and waste thresholds.
+- **Business metrics** — the full **KPI catalogue** (profitability, cost, sales quality, labour, inventory and purchasing, menu engineering, operations, customer, and promotion/bar controls), each with its canonical formula, supported **dimensions**, and an industry **benchmark**, plus the cost targets and waste thresholds — are defined in the business-metrics subject; the reports subject owns how they are gathered, grouped, closed, and presented.
 
 ### Notifications
 

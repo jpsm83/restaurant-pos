@@ -2,10 +2,13 @@
 2 - users
 3 - business
 4 - business metrics
-5 - notifications
-6 - emails
-7 - suppliers
-8 - supplier goods
-9 - purchases
-10 - business goods
-11 - inventories
+5 - business reports
+6 - notifications
+7 - emails
+8 - suppliers
+9 - supplier goods
+10 - purchases
+11 - business goods
+12 - inventories
+
+it is not a pos, it is a full managent saas system for restaurante industry. review the docs
