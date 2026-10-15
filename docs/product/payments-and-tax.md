@@ -27,7 +27,7 @@ It deliberately does **not** cover:
 - the **business good beyond its tax category** — the menu, its categories, selling price, derived cost, and allergens belong to the **business-goods** subject; this subject assigns each good a **tax category** and reads the price it carries.
 - the **business profile** — the currency, the address, and the tax number held on the venue's Company belong to the **business** subject; this subject stores the venue's **tax configuration**.
 - the **subscription and commission** — the plan catalogue, the commission rates, and the charging of the platform's fees belong to the **superadmin** and **subscription** subjects, and the commission a day owes is worked out by the **reporting** subject. This subject names the money flows only.
-- the **gift-card and loyalty instruments** — issuance, balances, rewards, and redemption rules belong to the **gift-cards** and **loyalty** subjects; this subject records a redemption as a settlement.
+- the **gift-card instrument** — issuance, balances, and redemption rules belong to the **gift-cards** subject; this subject records a redemption as a settlement.
 - **receipts, notifications, and emails** — delivering a receipt or a refund decision belongs to the **notifications** and **emails** subjects.
 - **supplier invoices and their tax** — amounts payable to a supplier and supplier invoicing are not part of Project Imperium.
 
@@ -59,7 +59,7 @@ It deliberately does **not** cover:
 - **Tax-inclusive price** — a price a venue sets that already contains its tax; the customer always pays the figure shown, and the tax is the part of it that is owed.
 - **Commission** — the platform's fee on a day's sales, owed by the venue and charged separately from what its customers pay.
 
-Terms reused rather than redefined here: **Business**, **Owner**, **Company**, **Employee**, **Customer**, **Bill**, **Order**, **Sales instance**, **Business good**, **Staff tab**, **self-service instance**, **business currency**, **on duty**, **Subscription**, **Gift card**, **Loyalty**, **superadmin**, and **soft delete**.
+Terms reused rather than redefined here: **Business**, **Owner**, **Company**, **Employee**, **Customer**, **Bill**, **Order**, **Sales instance**, **Business good**, **Staff tab**, **self-service instance**, **business currency**, **on duty**, **Subscription**, **Gift card**, **superadmin**, and **soft delete**.
 
 ---
 
@@ -82,7 +82,7 @@ Terms reused rather than redefined here: **Business**, **Owner**, **Company**, *
   - **Other** — Voucher, PayPal, Venmo, Apple Pay, Google Pay, Samsung Pay.
 - The **type** groups the branches for reporting; the **branch** names exactly how the money moved. A payment is reported at both levels.
 - Every payment carries exactly one method, and the method chosen places the payment, and its tip, in the payment-method breakdown.
-- A **gift card** redeemed at its issuing venue is recorded as a **Voucher** payment, so it appears in the breakdown. Its redemption does **not** recompute tax, because the tax was collected on the sale that funded the card; the card's issuance, balance, and redemption rules belong to the gift-cards and loyalty subjects.
+- A **gift card** redeemed at its issuing venue is recorded as a **Voucher** payment, so it appears in the breakdown. Its redemption does **not** recompute tax, because the tax was collected on the sale that funded the card; the card's issuance, balance, and redemption rules belong to the gift-cards subject.
 
 ### 3.3 Taking a payment
 

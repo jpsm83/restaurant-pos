@@ -23,7 +23,7 @@ It deliberately does **not** cover:
 - the **transactional email flows themselves** — sign-in verification, password reset, an email change, order receipts, and reservation decisions. The emails subject owns their templates, copy, and retry mechanics; this subject owns which of them notify and the in-app side of each.
 - the **inbox's ownership and a user's preference storage** — the users subject owns the person's identity and preferences. This subject owns the notifications the inbox holds and the meaning of the engagement mute, not where a preference is stored.
 - the **screens and navigation** that render the inbox, a conversation, or a venue event — the user-navigation subject owns the surfaces.
-- the **orders, reservations, promotions, reports, and loyalty mechanics** that produce events — the orders, reservations, promotions, business-reports, and loyalty subjects own those.
+- the **orders, reservations, promotions, and reports mechanics** that produce events — the orders, reservations, promotions, and business-reports subjects own those.
 
 ---
 
@@ -45,13 +45,13 @@ It deliberately does **not** cover:
 - **Broadcast** — an engagement message sent one-way to an audience of customers; a recipient cannot reply to it.
 - **Direct message** — a **Message** a manager addresses to one person or to a chosen group, opening a **conversation** the recipient can reply to.
 - **Managers on duty** — a venue's managers and above who are currently signed in on a shift.
-- **Related customer** — a customer who holds a relationship with the venue, such as an order, a reservation, or a loyalty membership.
+- **Related customer** — a customer who holds a relationship with the venue, such as an order or a reservation.
 - **Persistence-first** — the stored in-app notification is the source of truth; live delivery is an acceleration, never the record.
 - **Live push** — delivering a notification immediately to a recipient who is online.
 - **Idempotency** — suppressing a repeat dispatch of the same event within a brief window (five minutes in §3.7).
 - **Cooldown** — the minimum gap between repeats of a noisy alert.
 
-Terms reused from the product overview's core vocabulary rather than defined here: **Notification**, with its **severities** (Info, Warning, Emergency) and **engagement kinds** (Message, Promotion, Birthday, Event); **User**, **Business**, **Employee**, **Customer**, **Order**, **Reservation**, **Promotion**, **Loyalty**, **Report** (daily, weekly, monthly), **shift session** and **on duty**, **low-stock**, **overtime**, and **soft delete**. Terms from sibling subjects are named as that subject defines them.
+Terms reused from the product overview's core vocabulary rather than defined here: **Notification**, with its **severities** (Info, Warning, Emergency) and **engagement kinds** (Message, Promotion, Birthday, Event); **User**, **Business**, **Employee**, **Customer**, **Order**, **Reservation**, **Promotion**, **Report** (daily, weekly, monthly), **shift session** and **on duty**, **low-stock**, **overtime**, and **soft delete**. Terms from sibling subjects are named as that subject defines them.
 
 ---
 

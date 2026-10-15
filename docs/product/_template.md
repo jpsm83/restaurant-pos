@@ -2,7 +2,7 @@
 
 > **About this file.** This is the shared **template and rulebook** for the per-feature product documents under `docs/product/`. It is not itself a subject document. It defines the skeleton every subject document copies and the conventions those documents obey.
 
-Each subject document describes **one subject** — orders, inventories, loyalty, and so on — as the **target-state source of truth** for that subject, written for two readers: AI agents that build Project Imperium and engineers onboarding onto it. Capabilities are stated as commitments, not a status report, and the document describes the **business** — its behaviour and rules — never the implementation.
+Each subject document describes **one subject** — orders, inventories, promotions, and so on — as the **target-state source of truth** for that subject, written for two readers: AI agents that build Project Imperium and engineers onboarding onto it. Capabilities are stated as commitments, not a status report, and the document describes the **business** — its behaviour and rules — never the implementation.
 
 Every document is **self-contained** and **link-free**, and every document is listed, with a short description, in the `AGENTS.md` pointer list. That list is the only index: an agent reads `AGENTS.md`, picks the one document it needs, and loads that file alone.
 

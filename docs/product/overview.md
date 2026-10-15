@@ -6,7 +6,7 @@
 
 ## 1. What Project Imperium is
 
-Project Imperium is a **complete, real-time, cloud SaaS platform** for **bars and restaurants**: a full **restaurant management platform**, not merely a point-of-sale. It covers the whole operation — service, menu, supply, stock, people, and reporting — and extends outward to the venue's **customers** through self-ordering, takeaway, delivery, booking, ratings, loyalty, and gift cards. The point of sale is one surface of one system; menu and costing, supply and stock, people and scheduling, and reporting run on the same platform.
+Project Imperium is a **complete, real-time, cloud SaaS platform** for **bars and restaurants**: a full **restaurant management platform**, not merely a point-of-sale. It covers the whole operation — service, menu, supply, stock, people, and reporting — and extends outward to the venue's **customers** through self-ordering, takeaway, delivery, booking, ratings, and gift cards. The point of sale is one surface of one system; menu and costing, supply and stock, people and scheduling, and reporting run on the same platform.
 
 It is built on four positioning pillars:
 
@@ -39,7 +39,7 @@ These terms are used with exactly these meanings throughout Project Imperium. Do
 | **Business** | The **tenant** — one venue (restaurant/bar). All operational data is scoped to the business. |
 | **User** | A person's global identity. **Every user is a customer**; some also hold business roles. |
 | **Employee** | A person's membership in a Business, carrying their **job role(s)**, pay, and employment status. Links a **User** to a **Business**. |
-| **Customer** | A user acting as the final consumer (ordering, booking, rating, loyalty). |
+| **Customer** | A user acting as the final consumer (ordering, booking, rating). |
 | **POS** | Point of sale — the staff-facing surface where an employee selects a sales point, takes orders, and bills. One surface of the platform, distinct from self-ordering, kiosk, and delivery; never the whole product. |
 | **Sales point** | A place a customer sits or is served — a **type** (Table, Room, Bar, Seat, Counter, Spot, Kiosk, the virtual **Delivery** point, or Other) plus the **channels** it accepts (dine-in, self-ordering, kiosk, delivery). Holds its QR code. |
 | **Channel** | How an order reached the venue — **dine-in**, **self-ordering**, **kiosk**, **takeaway**, or **delivery**. A **sales point** declares which point-anchored channels it accepts. |
@@ -53,7 +53,6 @@ These terms are used with exactly these meanings throughout Project Imperium. Do
 | **Promotion** | A venue-defined price rule scoped to menu subcategories and a time window, applied to orders in real time. |
 | **Reservation** | A free table booking made by a customer or staff; hands off into live service. |
 | **Rating / Comment / Favorite** | Venue-level customer feedback and saved venues. |
-| **Loyalty** | A per-customer, per-venue membership tracking spend and rewards. |
 | **Gift card** | A bearer value token owned by a business, identified by a QR code, with an expiry date. |
 | **Shift session** | The actual, recorded attendance for one employee on one shift (sign-in/out, breaks). |
 | **Daily / Weekly / Monthly report** | The aggregated sales and performance reports at each roll-up level. |
@@ -70,7 +69,7 @@ Project Imperium serves six personas. Five map to one of the four **base access 
 - **Admin** — has **full control of the venue**: configuration, people, permissions, and every operation.
 - **Manager** — runs day-to-day operations: schedules, purchasing, inventory, promotions, and report calculation/closure. Managers and above assign job roles and capabilities.
 - **Employee** — delivers service (waiter, bartender, chef, cashier, host, …). Access to the business app is gated by the **schedule**.
-- **Customer** — the final consumer. **Every user is a customer**, even one who registered a business. Uses the Customer app to discover venues, order, book, rate, and collect rewards.
+- **Customer** — the final consumer. **Every user is a customer**, even one who registered a business. Uses the Customer app to discover venues, order, book, and rate.
 - **Superadmin** — the platform operator. Runs the **application business**: accounts, plans, and platform analytics. Never operates a venue's day-to-day service.
 
 ---
@@ -217,10 +216,8 @@ The Business app is the operational heart of Project Imperium. It comprises the 
 - Scoping: an **active period**, **daily hours**, **weekdays**, the **menu subcategories** they apply to, and an option to **apply to delivery**.
 - Promotions are applied **in real time** as staff or customers build orders.
 
-### Loyalty and gift cards
+### Gift cards
 
-- **Loyalty** is per customer **and per venue**: spending at a venue builds that venue's loyalty. Each venue runs a **Loyalty Program** that defines the **levels** (by spend/visits) and the **reward per level** — a **discount** or a **gift card**. Redemption is **only at the granting venue**; there is no portfolio-wide loyalty.
-- A customer's loyalty is a balance-and-ledger record: earn/redemption history is immutable and auditable, so points always reconcile.
 - **Gift cards** are created and held by the **business**, identified by a **QR code**. They are a **bearer instrument** — whoever holds the code holds the card. A gift card carries a **fixed value** redeemable across **multiple orders** until depleted, is redeemable **only at the issuing venue**, is **non-reloadable**, and has an **expiry date**.
 
 ### Reservations
@@ -258,7 +255,6 @@ The Customer app is the free, public side of Project Imperium — the venue's cu
 - **Ratings.** Give a venue a **0–5 star** rating, optionally tied to an order.
 - **Comments.** Leave a **text review on the venue**.
 - **Favorites.** Save **venues** for quick access.
-- **Loyalty.** Earn rewards at venues by spending, and redeem the reward configured for the reached level (a discount or a gift card).
 - **Gift cards.** Receive/hold gift cards identified by QR code and redeem them at the issuing venue before expiry.
 - **Order history and receipts**, delivered in-app and by email.
 - **Notifications** in the same inbox model, including venue engagement messages.
