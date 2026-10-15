@@ -53,7 +53,7 @@ These terms are used with exactly these meanings throughout Project Imperium. Do
 | **Promotion** | A venue-defined price rule scoped to menu subcategories and a time window, applied to orders in real time. |
 | **Reservation** | A free table booking made by a customer or staff; hands off into live service. |
 | **Rating / Comment / Favorite** | Venue-level customer feedback and saved venues. |
-| **Gift card** | A bearer value token owned by a business, identified by a QR code, with an expiry date. |
+| **Gift card** | A bearer budget card a business issues as a virtual card by email, identified by a QR code and a card number, spent whole in one settlement at its issuing venue before it expires. |
 | **Shift session** | The actual, recorded attendance for one employee on one shift (sign-in/out, breaks). |
 | **Daily / Weekly / Monthly report** | The aggregated sales and performance reports at each roll-up level. |
 | **Notification** | A message Project Imperium delivers to a person's inbox. An **operational** notification carries a **severity** — **Info**, **Warning**, or **Emergency** — while a venue **engagement** message carries a **kind** — **Message**, **Promotion**, **Birthday**, or **Event**. |
@@ -162,7 +162,7 @@ The Business app is the operational heart of Project Imperium. It comprises the 
 - **Profile and discovery.** Public fields — cuisine type, categories, contact, and cached average rating and rating count — power customer discovery.
 - **Opening hours** per weekday.
 - **Delivery settings**: enable/disable, **delivery radius**, **minimum order**, and **per-day delivery windows**.
-- **Tax**: a single **business-level tax configuration** — a **rate per tax category** (Food, Non-alcoholic drinks, Alcoholic drinks, Merchandise, Tobacco, and Tip) — applied to orders and bills. Prices are **tax-inclusive**: the customer always sees the final price, and tax is computed on the amount actually paid after any discount.
+- **Tax**: a single **business-level tax configuration** — a **rate per tax category** (Food, Non-alcoholic drinks, Alcoholic drinks, Merchandise, Tobacco, Gift card, and Tip) — applied to orders and bills. Prices are **tax-inclusive**: the customer always sees the final price, and tax is computed on the amount actually paid after any discount.
 - **Metrics and targets**: target cost percentages (food, beverage, labour, fixed), **supplier-good waste thresholds** by budget impact, the **start day of the reporting week**, and a **KPI catalogue** — every named metric with its canonical formula, the **dimensions** it can be sliced by, and an industry **benchmark**.
 - **Subscription**: the plan is held on the **Owner** and covers its venues (see [§11](#11-monetization)).
 
@@ -205,7 +205,7 @@ The Business app is the operational heart of Project Imperium. It comprises the 
 
 ### Payments and tax
 
-- Payment **methods are recorded** for reporting: cash, card (Visa, Mastercard, American Express, Discover, Diners Club, Maestro), crypto (Bitcoin, Ethereum, Litecoin, Ripple, Cardano, Polkadot, Dogecoin), and other (Voucher, PayPal, Venmo, Apple Pay, Google Pay, Samsung Pay).
+- Payment **methods are recorded** for reporting: cash, card (Visa, Mastercard, American Express, Discover, Diners Club, Maestro), crypto (Bitcoin, Ethereum, Litecoin, Ripple, Cardano, Polkadot, Dogecoin), gift card, and other (Voucher, PayPal, Venmo, Apple Pay, Google Pay, Samsung Pay).
 - **Direct payment processing** is provided through **third-party providers** (e.g. PayPal, Skrill, Stripe) for in-app customer payment and in-POS capture, including split/partial payments, refunds, and provider-settled payouts.
 - **Tax** follows the business-level configuration above: a rate per tax category, applied to a tax-inclusive price.
 
@@ -218,7 +218,7 @@ The Business app is the operational heart of Project Imperium. It comprises the 
 
 ### Gift cards
 
-- **Gift cards** are created and held by the **business**, identified by a **QR code**. They are a **bearer instrument** — whoever holds the code holds the card. A gift card carries a **fixed value** redeemable across **multiple orders** until depleted, is redeemable **only at the issuing venue**, is **non-reloadable**, and has an **expiry date**.
+- **Gift cards** are issued and held by the **business**, identified by a **QR code** and a **card number**, and delivered as a **virtual card by email** — there is no physical card. They are a **bearer instrument** — whoever holds the card may spend it. A gift card carries a **value** in the business currency, is **non-reloadable**, is **spent whole in one settlement**, is redeemable **only at the issuing venue**, and **expires**, its unspent value forfeited to the business. A card is bought as a **paid** card (taxed at the **Gift card** rate) or **granted** by the business as an **invitation**, and redeemed as a **Gift card** payment. Its minimum value and validity period are business configuration; its purchase and redemption are recorded in the daily report.
 
 ### Reservations
 
@@ -255,7 +255,7 @@ The Customer app is the free, public side of Project Imperium — the venue's cu
 - **Ratings.** Give a venue a **0–5 star** rating, optionally tied to an order.
 - **Comments.** Leave a **text review on the venue**.
 - **Favorites.** Save **venues** for quick access.
-- **Gift cards.** Receive/hold gift cards identified by QR code and redeem them at the issuing venue before expiry.
+- **Gift cards.** Buy a gift card for themselves or for someone else, receive and hold virtual cards identified by QR code and card number, and redeem them at the issuing venue before expiry.
 - **Order history and receipts**, delivered in-app and by email.
 - **Notifications** in the same inbox model, including venue engagement messages.
 - **Mode switch.** If the user also holds business roles, they can switch to the business app (schedule permitting — see [§5](#5-access-roles-and-the-mode-chooser)).

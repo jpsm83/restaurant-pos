@@ -53,7 +53,7 @@ A good is exactly **one** of these kinds, determined by its components — never
 - **Member** — a business good used as a component of a combo, with the quantity the combo includes. A combo's members are **business goods only**; a member may never itself be a combo.
 - **Derived cost** — the good's cost to the business, computed **live** from its components' current prices and summed up the chain. It is **read-only** and never entered by hand.
 - **Selling price** — what the venue charges for the good, set freely by the venue in the **business currency**. It is **tax-inclusive**: it already contains the good's tax, which the payments-and-tax subject draws out.
-- **Tax category** — the category a good is taxed under, chosen from the **goods tax categories** the payments-and-tax subject owns (Food, Non-alcoholic drinks, Alcoholic drinks, Merchandise, Tobacco — never **Tip**, which rates tips alone). Every good maps to exactly one.
+- **Tax category** — the category a good is taxed under, chosen from the **goods tax categories** the payments-and-tax subject owns (Food, Non-alcoholic drinks, Alcoholic drinks, Merchandise, Tobacco — never **Tip**, which rates tips alone, nor **Gift card**, which rates a gift card's purchase). Every good maps to exactly one.
 - **On menu** — the good is part of the venue's sellable menu.
 - **Availability state** — whether the good can be ordered right now: **Available**, **Sold out**, or **Manually unavailable**.
 - **Preparation time** — the minutes the kitchen or bar needs to prepare the good.
