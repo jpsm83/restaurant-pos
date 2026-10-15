@@ -5,7 +5,7 @@ import {
   employeeByBusinessParamsSchema,
   employeeIdParamsSchema,
   patchEmployeeBodySchema,
-} from "restaurant-pos-packages/schemas/employee";
+} from "domain/schemas/employee";
 
 const VALID_ID = "507f1f77bcf86cd799439011";
 

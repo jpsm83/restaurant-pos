@@ -9,7 +9,7 @@ import {
   createBusinessBodySchema,
   discoverBusinessesQuerySchema,
   updateBusinessBodySchema,
-} from "restaurant-pos-packages/schemas/business";
+} from "domain/schemas/business";
 
 const VALID_ID = "507f1f77bcf86cd799439011";
 

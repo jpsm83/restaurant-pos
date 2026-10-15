@@ -3,8 +3,8 @@ import isObjectIdValid from "../utils/isObjectIdValid.ts";
 import type {
   IGoodsReduced,
   IActorDailySalesReport,
-} from "restaurant-pos-packages/interfaces/IDailySalesReport";
-import type { IPaymentMethod } from "restaurant-pos-packages/interfaces/IPaymentMethod";
+} from "domain/interfaces/IDailySalesReport";
+import type { IPaymentMethod } from "domain/interfaces/IPaymentMethod";
 import Order from "../models/order.ts";
 import DailySalesReport from "../models/dailySalesReport.ts";
 import BusinessGood from "../models/businessGood.ts";

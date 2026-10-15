@@ -7,7 +7,7 @@ import {
   businessGoodIdParamsSchema,
   createBusinessGoodBodySchema,
   updateBusinessGoodBodySchema,
-} from "restaurant-pos-packages/schemas/businessGood";
+} from "domain/schemas/businessGood";
 
 /**
  * Parity between the businessGood DTOs and the Mongoose BusinessGood model (the

@@ -10,7 +10,7 @@
 import Employee from "../models/employee.ts";
 import Schedule from "../models/schedule.ts";
 import type { ClientSession, Types } from "mongoose";
-import * as enums from "restaurant-pos-packages/enums";
+import * as enums from "domain/enums";
 
 const { managementRolesEnums } = enums;
 

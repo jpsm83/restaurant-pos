@@ -8,7 +8,7 @@ import type {
   IBusinessMetrics,
   IBusinessProfileAddress,
   IBusinessProfileDto,
-} from "restaurant-pos-packages/interfaces/IBusiness";
+} from "domain/interfaces/IBusiness";
 
 export type CreateBusinessResponseBody = {
   message?: string;

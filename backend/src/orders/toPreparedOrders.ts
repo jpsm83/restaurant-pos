@@ -5,8 +5,8 @@
  * salesInstances routes so the DTO-to-domain bridge lives in one place.
  */
 import { Types } from "mongoose";
-import type { IOrder } from "restaurant-pos-packages/interfaces/IOrder";
-import type { OrderItem } from "restaurant-pos-packages/schemas/orders";
+import type { IOrder } from "domain/interfaces/IOrder";
+import type { OrderItem } from "domain/schemas/orders";
 
 const toPreparedOrders = (ordersArr: OrderItem[]): Partial<IOrder>[] =>
   ordersArr.map((order) => ({

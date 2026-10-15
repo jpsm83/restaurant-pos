@@ -18,7 +18,7 @@ import {
   coercedIntSchema,
   freeTextString,
   objectIdSchema,
-} from "restaurant-pos-packages/schemas/primitives";
+} from "domain/schemas/primitives";
 
 /** Default page size when a client sends no `limit`. */
 export const NOTIFICATIONS_DEFAULT_LIMIT = 20;

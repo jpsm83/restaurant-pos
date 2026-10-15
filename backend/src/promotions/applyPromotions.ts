@@ -5,12 +5,12 @@ import type {
   IPromotionPricingInput,
   ObjectId,
   PromotionType,
-} from "restaurant-pos-packages/interfaces/IPromotion";
+} from "domain/interfaces/IPromotion";
 
 export type {
   IPromotionPricingInput,
   IPricedOrderOutput,
-} from "restaurant-pos-packages/interfaces/IPromotion";
+} from "domain/interfaces/IPromotion";
 
 const weekDaysByIndex = [
   "Sunday",

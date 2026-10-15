@@ -7,8 +7,8 @@ import {
   promotionsByBusinessParamsSchema,
   promotionsByBusinessQuerySchema,
   updatePromotionBodySchema,
-} from "restaurant-pos-packages/schemas/promotions";
-import { weekDaysEnums } from "restaurant-pos-packages/enums";
+} from "domain/schemas/promotions";
+import { weekDaysEnums } from "domain/enums";
 
 const VALID_ID = "507f1f77bcf86cd799439011";
 

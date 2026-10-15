@@ -52,7 +52,7 @@ import { parseMultipart } from "../../schemas/multipart.ts";
 import {
   isSupportedTimezone,
   timezoneSchema,
-} from "restaurant-pos-packages/schemas";
+} from "domain/schemas";
 import {
   businessIdParamsSchema,
   createBusinessBodySchema,
@@ -60,13 +60,13 @@ import {
   updateBusinessBodySchema,
   type BusinessIdParams,
   type DiscoverBusinessesQuery,
-} from "restaurant-pos-packages/schemas/business";
-import type { IReportingConfig } from "restaurant-pos-packages/interfaces/IBusiness";
-import { foodSubCategoryEnums } from "restaurant-pos-packages/enums";
+} from "domain/schemas/business";
+import type { IReportingConfig } from "domain/interfaces/IBusiness";
+import { foodSubCategoryEnums } from "domain/enums";
 import {
   resolveTimezoneFromAddress,
   type AddressLike,
-} from "restaurant-pos-packages/utils/timezoneFromAddress";
+} from "domain/utils/timezoneFromAddress";
 
 /** Public JSON must omit password and auth-email secrets (see `TODO-auth-email-security-flows-implementation.md`). */
 const BUSINESS_PUBLIC_LEAN_SELECT =

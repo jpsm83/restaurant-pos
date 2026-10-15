@@ -2,14 +2,14 @@ import { describe, it, expect } from "vitest";
 import type { z } from "zod";
 
 import Order from "../../src/models/order.ts";
-import { allergensEnums } from "restaurant-pos-packages/enums";
+import { allergensEnums } from "domain/enums";
 import {
   createOrderBodySchema,
   orderItemSchema,
   orderIdParamsSchema,
   ordersBySalesInstanceParamsSchema,
   ordersByUserParamsSchema,
-} from "restaurant-pos-packages/schemas/orders";
+} from "domain/schemas/orders";
 
 /**
  * Parity between the orders DTOs and the Order model (the domain source of

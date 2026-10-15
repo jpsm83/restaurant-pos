@@ -11,7 +11,7 @@ import {
   scheduleUserParamsSchema,
   updateEmployeeBodySchema,
   updateScheduleBodySchema,
-} from "restaurant-pos-packages/schemas/schedules";
+} from "domain/schemas/schedules";
 import {
   employeeScheduleServerOwnedFields,
   scheduleDtoSchemas,

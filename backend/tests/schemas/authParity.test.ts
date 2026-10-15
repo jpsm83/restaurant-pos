@@ -13,7 +13,7 @@ import {
   resetPasswordBodySchema,
   setModeBodySchema,
   signupBodySchema,
-} from "restaurant-pos-packages/schemas/auth";
+} from "domain/schemas/auth";
 
 /**
  * Parity between the auth DTOs and the Mongoose models (the domain source of

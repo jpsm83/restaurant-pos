@@ -7,17 +7,17 @@ three authenticated shells (business, employee, customer) and talks to the
 ## How the three workspaces fit together
 
 This repo is one npm workspace rooted at `/` — `backend/`, `frontend/`, and
-`packages/` (`restaurant-pos-packages`). Install once at the root
+`packages/` (`domain` and `config`). Install once at the root
 (`npm install`); there is a single `package-lock.json`.
 
 ```
 frontend (:5173) --/api proxy--> backend (:4000) --> MongoDB Atlas
          \                              /
-          \_ restaurant-pos-packages __/
+          \__________ domain __________/
           enums · interfaces · zod schemas
 ```
 
-- Both apps import shared contracts from `restaurant-pos-packages` **by package
+- Both apps import shared contracts from `domain` **by package
   name** (never a relative `../packages` path); the workspace symlink resolves
   them.
 - The shared **zod schemas are the request contract**: backend routes validate
@@ -44,7 +44,7 @@ frontend (:5173) --/api proxy--> backend (:4000) --> MongoDB Atlas
 | Maps | Leaflet / react-leaflet |
 | Toasts | Sonner |
 | Tests | Vitest + Testing Library (jsdom) |
-| Shared contracts | `restaurant-pos-packages` (interfaces, zod schemas) |
+| Shared contracts | `domain` (interfaces, zod schemas) |
 
 ## Ports
 

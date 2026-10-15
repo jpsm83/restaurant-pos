@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import emailRegex from "restaurant-pos-packages/utils/emailRegex";
+import emailRegex from "domain/utils/emailRegex";
 
 function buildSchema(messages: { required: string; invalidEmail: string }) {
   return z

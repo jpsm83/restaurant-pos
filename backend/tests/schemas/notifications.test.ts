@@ -11,7 +11,7 @@ import {
   NOTIFICATIONS_DEFAULT_LIMIT,
   NOTIFICATIONS_MAX_LIMIT,
 } from "../../src/schemas/notifications.ts";
-import { notificationEnums } from "restaurant-pos-packages/enums";
+import { notificationEnums } from "domain/enums";
 
 const VALID_ID = "507f1f77bcf86cd799439011";
 const OTHER_ID = "507f191e810c19729de860ea";

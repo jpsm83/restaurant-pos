@@ -69,7 +69,7 @@ flowchart LR
 
 This file is intentionally **mostly types and re-exports**:
 
-- Aligns the form model with **`IBusinessProfileDto`** / **`IBusinessProfileAddress`** from `restaurant-pos-packages/interfaces/IBusiness` via aliases (`BusinessProfileDto`, etc.).
+- Aligns the form model with **`IBusinessProfileDto`** / **`IBusinessProfileAddress`** from `domain/interfaces/IBusiness` via aliases (`BusinessProfileDto`, etc.).
 - Defines **`BusinessProfileFormValues`**, the canonical client-side shape for profile/register-style forms (subscription, credentials for register flows, address, cuisine/categories, delivery flags, metrics, opening hours, delivery windows, reporting).
 - Re-exports implementation from `businessProfileApi`, `businessProfileMapper`, and `businessProfilePayload`.
 
@@ -130,7 +130,7 @@ Maps `BusinessProfileDto` → `BusinessProfileFormValues`:
 - **Strings**: trimmed; missing fields become `""`.
 - **Server-owned fields**: the sign-in `email` and credentials (`password` / `currentPassword`) are **not** part of the form model. Email changes go through the verified email-change flow and password changes through the reset-password flow, so the profile PATCH carries neither.
 - **Image**: `imageFile: null`; `imageUrl` from DTO.
-- **Cuisine**: `normalizeCuisineTypes` supports legacy **string** or **string[]** from API; values are matched case-insensitively against `cuisineTypeEnums` from `restaurant-pos-packages/enums`; unknown values dropped.
+- **Cuisine**: `normalizeCuisineTypes` supports legacy **string** or **string[]** from API; values are matched case-insensitively against `cuisineTypeEnums` from `domain/enums`; unknown values dropped.
 - **Categories**: `normalizeCategories` maps to `foodSubCategoryEnums`; deduped.
 - **Metrics**: nested `supplierGoodWastePercentage` and top-level percentages use **`DEFAULT_BUSINESS_METRICS`** when numbers are missing or non-finite.
 - **Opening hours / delivery windows**: `normalizeBusinessOpeningHours` and `normalizeDeliveryOpeningWindows` validate `dayOfWeek` (0–6), require `HH:MM` strings, and drop invalid rows.
@@ -163,7 +163,7 @@ Builds the **multipart PATCH** body expected by the backend:
 
 Returns a Zod object schema whose shape mirrors **`BusinessProfileFormValues`**:
 
-- Subscription and currency enums from `restaurant-pos-packages/enums`.
+- Subscription and currency enums from `domain/enums`.
 - The sign-in `email` and credentials are **not** part of the form shape or this schema; they change only through the verified email-change and reset-password flows.
 - Opening hours and delivery windows: `HH:MM` regex, `closeTime` after `openTime`, day 0–6.
 - Metrics and non-negative numbers for delivery radius / min order (nullable).
@@ -182,8 +182,8 @@ Exported types: `BusinessProfileSchema`, `BusinessProfileSchemaValues`.
 |------------|--------|
 | `@/auth/api` | `setAccessToken` after create/update when JWT returned. |
 | `@/auth/types` | `AuthBusiness`, `AuthSession` in response types. |
-| `restaurant-pos-packages/interfaces/IBusiness` | DTO/metrics shapes. |
-| `restaurant-pos-packages/enums` | Cuisine, food categories, subscription, currency (schema + mapper + payload). |
+| `domain/interfaces/IBusiness` | DTO/metrics shapes. |
+| `domain/enums` | Cuisine, food categories, subscription, currency (schema + mapper + payload). |
 | `../http` | Axios instance. |
 | `../queryKeys` | Stable React Query keys for business detail. |
 | `../serviceErrors.ts` | `ServiceRequestError`, `toServiceRequestError`. |

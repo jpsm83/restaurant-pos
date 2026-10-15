@@ -2,10 +2,10 @@ import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname } from "node:path";
 import { describe, expect, it } from "vitest";
-import { mainCategoriesEnums } from "restaurant-pos-packages/enums";
-import type { IAddress } from "restaurant-pos-packages/interfaces/IAddress";
-import { emailSchema } from "restaurant-pos-packages/schemas/primitives";
-import { isValidPassword } from "restaurant-pos-packages/utils/passwordPolicy";
+import { mainCategoriesEnums } from "domain/enums";
+import type { IAddress } from "domain/interfaces/IAddress";
+import { emailSchema } from "domain/schemas/primitives";
+import { isValidPassword } from "domain/utils/passwordPolicy";
 
 const require = createRequire(import.meta.url);
 const configRoot = dirname(require.resolve("config/package.json"));

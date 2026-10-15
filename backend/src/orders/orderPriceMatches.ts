@@ -6,7 +6,7 @@
  * `discountPercentage` is server-derived (never client-settable), so it is
  * deliberately not compared — doing so would reject every promoted order.
  */
-import type { IOrder } from "restaurant-pos-packages/interfaces/IOrder";
+import type { IOrder } from "domain/interfaces/IOrder";
 
 const PRICE_TOLERANCE = 0.01;
 

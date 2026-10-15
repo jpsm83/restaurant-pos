@@ -7,7 +7,7 @@ import {
   supplierGoodBySupplierParamsSchema,
   supplierGoodIdParamsSchema,
   updateSupplierGoodBodySchema,
-} from "restaurant-pos-packages/schemas/supplierGood";
+} from "domain/schemas/supplierGood";
 
 /**
  * Parity between the supplierGood DTOs and the Mongoose SupplierGood model (the

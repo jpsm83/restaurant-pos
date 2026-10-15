@@ -2,12 +2,12 @@ import { describe, it, expect } from "vitest";
 import type { z } from "zod";
 
 import SalesPoint from "../../src/models/salesPoint.ts";
-import { salesPointTypeEnums } from "restaurant-pos-packages/enums";
+import { salesPointTypeEnums } from "domain/enums";
 import {
   createSalesPointBodySchema,
   salesPointIdParamsSchema,
   updateSalesPointBodySchema,
-} from "restaurant-pos-packages/schemas/salesPoints";
+} from "domain/schemas/salesPoints";
 
 /**
  * Parity between the salesPoints DTOs and the SalesPoint model (the domain

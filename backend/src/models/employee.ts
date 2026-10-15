@@ -1,5 +1,5 @@
 import mongoose, { Schema, model } from "mongoose";
-import * as enums from "restaurant-pos-packages/enums";
+import * as enums from "domain/enums";
 
 const { employeePayFrequencyEnums, userRolesEnums } = enums;
 

@@ -20,9 +20,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCreateBusinessMutation } from "@/services/business/businessService";
-import { currenctyEnums, subscriptionEnums } from "restaurant-pos-packages/enums";
-import { isValidPassword } from "restaurant-pos-packages/utils/passwordPolicy";
-import emailRegex from "restaurant-pos-packages/utils/emailRegex";
+import { currenctyEnums, subscriptionEnums } from "domain/enums";
+import { isValidPassword } from "domain/utils/passwordPolicy";
+import emailRegex from "domain/utils/emailRegex";
 
 const selectClassName = "flex h-10 w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 disabled:cursor-not-allowed disabled:opacity-50";
 

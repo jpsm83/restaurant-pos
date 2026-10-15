@@ -1,5 +1,5 @@
-import type { IPaymentMethod } from "restaurant-pos-packages/interfaces/IPaymentMethod";
-import type { IGoodsReduced } from "restaurant-pos-packages/interfaces/IDailySalesReport";
+import type { IPaymentMethod } from "domain/interfaces/IPaymentMethod";
+import type { IGoodsReduced } from "domain/interfaces/IDailySalesReport";
 
 export interface DailyReportAggregationSource {
   dailyTotalSalesBeforeAdjustments?: number;

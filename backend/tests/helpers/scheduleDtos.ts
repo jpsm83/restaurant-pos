@@ -10,7 +10,7 @@ import {
   scheduleUserParamsSchema,
   updateEmployeeBodySchema,
   updateScheduleBodySchema,
-} from "restaurant-pos-packages/schemas/schedules";
+} from "domain/schemas/schedules";
 
 /**
  * Every schedules DTO, keyed by name, for the shared server-owned-field sweep in

@@ -1,4 +1,4 @@
-import type { IBusiness } from "restaurant-pos-packages/interfaces/IBusiness";
+import type { IBusiness } from "domain/interfaces/IBusiness";
 
 function toTimeNumber(date: Date): number {
   const hours = date.getHours();

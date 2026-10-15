@@ -12,7 +12,7 @@ import {
   purchaseIdParamsSchema,
   purchasesQuerySchema,
   updatePurchaseBodySchema,
-} from "restaurant-pos-packages/schemas/purchase";
+} from "domain/schemas/purchase";
 
 /**
  * Parity between the purchase DTOs and the Mongoose Purchase model (the domain

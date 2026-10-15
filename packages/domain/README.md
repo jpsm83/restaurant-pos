@@ -1,4 +1,4 @@
-# restaurant-pos-packages — shared contracts
+# domain — shared contracts
 
 The single source of truth for the domain vocabulary the `backend` and
 `frontend` workspaces both depend on: enums, TypeScript interfaces, zod schemas,
@@ -8,17 +8,17 @@ package name.
 ## How the three workspaces fit together
 
 This repo is one npm workspace rooted at `/` — `backend/`, `frontend/`, and
-`packages/` (`restaurant-pos-packages`). Install once at the root
+`packages/` (`domain` and `config`). Install once at the root
 (`npm install`); there is a single `package-lock.json`.
 
 ```
 frontend (:5173) --/api proxy--> backend (:4000) --> MongoDB Atlas
          \                              /
-          \_ restaurant-pos-packages __/
+          \__________ domain __________/
           enums · interfaces · zod schemas
 ```
 
-- Both apps import shared contracts from `restaurant-pos-packages` **by package
+- Both apps import shared contracts from `domain` **by package
   name** (never a relative `../packages` path); the workspace symlink resolves
   them.
 - The shared **zod schemas are the request contract**: backend routes validate
@@ -40,19 +40,19 @@ frontend (:5173) --/api proxy--> backend (:4000) --> MongoDB Atlas
 
 ## Package format
 
-- **Name:** `restaurant-pos-packages`, `"type": "module"`, private, versioned in
+- **Name:** `domain`, `"type": "module"`, private, versioned in
   the workspace.
 - **No build / no `dist`.** Files are plain `.ts` shipped as-is and resolved
   through the workspace symlink via the `exports` map:
 
   | Import specifier | Resolves to |
   |------------------|-------------|
-  | `restaurant-pos-packages/enums` | `enums.ts` |
-  | `restaurant-pos-packages/interfaces/*` | `interfaces/*.ts` |
-  | `restaurant-pos-packages/schemas` | `schemas/index.ts` (barrel) |
-  | `restaurant-pos-packages/schemas/primitives` | `schemas/primitives.ts` |
-  | `restaurant-pos-packages/schemas/*` | `schemas/*.ts` |
-  | `restaurant-pos-packages/utils/*` | `utils/*.ts` |
+  | `domain/enums` | `enums.ts` |
+  | `domain/interfaces/*` | `interfaces/*.ts` |
+  | `domain/schemas` | `schemas/index.ts` (barrel) |
+  | `domain/schemas/primitives` | `schemas/primitives.ts` |
+  | `domain/schemas/*` | `schemas/*.ts` |
+  | `domain/utils/*` | `utils/*.ts` |
 
 - **Import by package name, never by relative path** (no `../packages`, no
   `@packages/*` alias). Vite transpiles it for the browser; `tsx` transpiles it
@@ -84,7 +84,7 @@ frontend (:5173) --/api proxy--> backend (:4000) --> MongoDB Atlas
 
 | Command | What it does |
 |---------|--------------|
-| `npm test --workspace restaurant-pos-packages` | `vitest run --passWithNoTests` (no local tests) |
+| `npm test --workspace domain` | `vitest run --passWithNoTests` (no local tests) |
 
 This package has **no tests of its own**. Its schemas are exercised from the
 backend workspace:
@@ -101,10 +101,10 @@ workspaces).
 ## Using it
 
 ```ts
-import { orderStatusEnums } from "restaurant-pos-packages/enums";
-import type { IOrder } from "restaurant-pos-packages/interfaces/IOrder";
-import { loginBodySchema } from "restaurant-pos-packages/schemas/auth";
+import { orderStatusEnums } from "domain/enums";
+import type { IOrder } from "domain/interfaces/IOrder";
+import { loginBodySchema } from "domain/schemas/auth";
 ```
 
-For more context see [`docs/engineering/workspace.md`](../docs/engineering/workspace.md)
-and the [`GLOSSARY.md`](../GLOSSARY.md).
+For more context see [`docs/engineering/workspace.md`](../../docs/engineering/workspace.md)
+and the [`GLOSSARY.md`](../../GLOSSARY.md).

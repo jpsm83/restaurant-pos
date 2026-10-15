@@ -37,8 +37,8 @@ import {
   type OrderIdParams,
   type OrdersBySalesInstanceParams,
   type OrdersByUserParams,
-} from "restaurant-pos-packages/schemas/orders";
-import * as enums from "restaurant-pos-packages/enums";
+} from "domain/schemas/orders";
+import * as enums from "domain/enums";
 
 const { managementRolesEnums } = enums;
 

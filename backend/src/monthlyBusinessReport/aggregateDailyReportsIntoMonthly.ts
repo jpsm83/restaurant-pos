@@ -31,7 +31,7 @@ import {
   getVariableCostsV1,
   mapDailyReportToCanonicalInputs,
 } from "../reports/businessMetrics/dataContract.ts";
-import { isSupportedTimezone } from "restaurant-pos-packages/schemas/primitives";
+import { isSupportedTimezone } from "domain/schemas/primitives";
 import {
   addMonthsToCalendarDate,
   calendarDateToUtcMidnight,

@@ -9,7 +9,6 @@
   "workspaces": [
     "backend",
     "frontend",
-    "packages",
     "packages/*"
   ],
   "scripts": {

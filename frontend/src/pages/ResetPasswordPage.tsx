@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { isValidPassword } from "restaurant-pos-packages/utils/passwordPolicy";
+import { isValidPassword } from "domain/utils/passwordPolicy";
 
 function buildResetSchema(messages: {
   allRequired: string;

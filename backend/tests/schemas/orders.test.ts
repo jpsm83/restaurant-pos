@@ -6,7 +6,7 @@ import {
   orderIdParamsSchema,
   ordersBySalesInstanceParamsSchema,
   ordersByUserParamsSchema,
-} from "restaurant-pos-packages/schemas/orders";
+} from "domain/schemas/orders";
 
 const VALID_ID = "507f1f77bcf86cd799439011";
 const OTHER_ID = "507f191e810c19729de860ea";

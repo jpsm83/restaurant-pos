@@ -10,9 +10,9 @@
  */
 import type { FastifyPluginAsync } from "fastify";
 import { Types } from "mongoose";
-import type { IGoodsReduced } from "restaurant-pos-packages/interfaces/IDailySalesReport";
-import type { IPaymentMethod } from "restaurant-pos-packages/interfaces/IPaymentMethod";
-import type { IMetrics } from "restaurant-pos-packages/interfaces/IBusiness";
+import type { IGoodsReduced } from "domain/interfaces/IDailySalesReport";
+import type { IPaymentMethod } from "domain/interfaces/IPaymentMethod";
+import type { IMetrics } from "domain/interfaces/IBusiness";
 
 import getWasteByBudgetImpactForMonth from "../../inventories/getWasteByBudgetImpactForMonth.ts";
 import MonthlyBusinessReport from "../../models/monthlyBusinessReport.ts";
@@ -33,7 +33,7 @@ import {
   type MonthlyBusinessReportRangeQuery,
   type MonthlyReportIdParams,
   type UpdateMonthlyBusinessReportBody,
-} from "restaurant-pos-packages/schemas/businessReports";
+} from "domain/schemas/businessReports";
 
 /** The local midnight of a `YYYY-MM` month (the schema has validated it). */
 function parseMonthStart(ym: string): Date {

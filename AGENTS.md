@@ -1,6 +1,6 @@
 # Project Imperium
 
-npm-workspace monorepo: `backend/` (Fastify + Mongoose), `apps/web` (React 19 + React Router v7 framework mode — Business and Customer surfaces), `apps/admin` (Superadmin console), and `packages/` (`restaurant-pos-packages` — shared enums, interfaces, zod schemas, utils). Install once at the repo root; run workspace scripts from the root.
+npm-workspace monorepo: `backend/` (Fastify + Mongoose), `apps/web` (React 19 + React Router v7 framework mode — Business and Customer surfaces), `apps/admin` (Superadmin console), and `packages/` (`domain` — shared enums, interfaces, zod schemas, utils; `config` — shared build tooling). Install once at the repo root; run workspace scripts from the root.
 
 > **Frontend architecture (ADR-0004, ADR-0005).** Two frontend deployables split by trust realm: `apps/web` (Business at `/business`, Customer at `/client`) and `apps/admin` (separate realm). Device is a layout concern, never an app boundary. The API is the contract for every client — web, admin, and a native POS — so writes go through `/api/v1` and the SSR server is never a data layer.
 

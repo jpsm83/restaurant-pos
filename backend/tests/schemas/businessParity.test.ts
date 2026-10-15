@@ -7,7 +7,7 @@ import {
   createBusinessBodySchema,
   discoverBusinessesQuerySchema,
   updateBusinessBodySchema,
-} from "restaurant-pos-packages/schemas/business";
+} from "domain/schemas/business";
 
 /**
  * Parity between the business DTOs and the Mongoose Business model (the domain

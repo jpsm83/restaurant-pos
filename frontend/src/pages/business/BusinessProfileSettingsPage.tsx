@@ -33,7 +33,7 @@ import {
   currenctyEnums,
   cuisineTypeEnums,
   foodSubCategoryEnums,
-} from "restaurant-pos-packages/enums";
+} from "domain/enums";
 import {
   BusinessProfileSettingsFormShell,
   BusinessProfileSettingsLoadingCard,

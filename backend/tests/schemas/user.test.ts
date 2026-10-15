@@ -6,7 +6,7 @@ import {
   updateUserBodySchema,
   userIdParamsSchema,
   userNotificationParamsSchema,
-} from "restaurant-pos-packages/schemas/user";
+} from "domain/schemas/user";
 
 const VALID_ID = "507f1f77bcf86cd799439011";
 const OTHER_ID = "507f191e810c19729de860ea";

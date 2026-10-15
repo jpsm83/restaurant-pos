@@ -13,7 +13,7 @@ import {
   weeklyBusinessReportListQuerySchema,
   weeklyBusinessReportRangeQuerySchema,
   weeklyReportIdParamsSchema,
-} from "restaurant-pos-packages/schemas/businessReports";
+} from "domain/schemas/businessReports";
 import {
   businessReportBodySchemas,
   monthlyBusinessReportServerOwnedFields,

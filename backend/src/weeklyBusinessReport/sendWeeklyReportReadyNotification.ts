@@ -1,5 +1,5 @@
 import { Types } from "mongoose";
-import type { WeekLabel } from "restaurant-pos-packages/interfaces/IWeeklyBusinessReport";
+import type { WeekLabel } from "domain/interfaces/IWeeklyBusinessReport";
 import dispatchEvent from "../communications/dispatchEvent.ts";
 
 /**

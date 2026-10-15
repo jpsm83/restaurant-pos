@@ -7,7 +7,7 @@ import {
   createRatingBodySchema,
   ratingIdParamsSchema,
   ratingsByBusinessParamsSchema,
-} from "restaurant-pos-packages/schemas/ratings";
+} from "domain/schemas/ratings";
 
 /**
  * Parity between the ratings DTOs and the Mongoose models (the domain source of

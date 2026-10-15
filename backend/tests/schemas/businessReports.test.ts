@@ -11,7 +11,7 @@ import {
   weeklyBusinessReportListQuerySchema,
   weeklyBusinessReportRangeQuerySchema,
   weeklyReportIdParamsSchema,
-} from "restaurant-pos-packages/schemas/businessReports";
+} from "domain/schemas/businessReports";
 
 const VALID_ID = "507f1f77bcf86cd799439011";
 

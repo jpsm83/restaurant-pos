@@ -6,7 +6,7 @@ import {
   billingStatusEnums,
   orderStatusEnums,
   salesInstanceStatusEnums,
-} from "restaurant-pos-packages/enums";
+} from "domain/enums";
 import {
   createDeliveryOrderBodySchema,
   createSalesInstanceBodySchema,
@@ -18,7 +18,7 @@ import {
   salesInstanceIdParamsSchema,
   salesInstanceStatusValues,
   updateSalesInstanceBodySchema,
-} from "restaurant-pos-packages/schemas/salesInstances";
+} from "domain/schemas/salesInstances";
 import { salesInstanceDtoSchemas } from "../helpers/salesInstanceDtos.ts";
 
 /**

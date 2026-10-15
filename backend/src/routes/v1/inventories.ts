@@ -12,9 +12,9 @@ import mongoose, { Types } from "mongoose";
 import type {
   IInventory,
   IInventoryCount,
-} from "restaurant-pos-packages/interfaces/IInventory";
-import type { ISupplierGood } from "restaurant-pos-packages/interfaces/ISupplierGood";
-import type { IEmployee } from "restaurant-pos-packages/interfaces/IEmployee";
+} from "domain/interfaces/IInventory";
+import type { ISupplierGood } from "domain/interfaces/ISupplierGood";
+import type { IEmployee } from "domain/interfaces/IEmployee";
 
 import Inventory from "../../models/inventory.ts";
 import SupplierGood from "../../models/supplierGood.ts";
@@ -48,7 +48,7 @@ import {
   type UpdateInventoryCountBody,
   type VarianceReportQuery,
 } from "../../schemas/inventories.ts";
-import * as enums from "restaurant-pos-packages/enums";
+import * as enums from "domain/enums";
 
 const { managementRolesEnums } = enums;
 

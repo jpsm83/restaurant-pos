@@ -34,7 +34,7 @@
     "mongoose": "^9.11.1",
     "nodemailer": "^10.0.16",
     "qrcode": "^1.5.4",
-    "restaurant-pos-packages": "*",
+    "domain": "*",
     "zod": "^4.6.5"
   },
   "devDependencies": {
