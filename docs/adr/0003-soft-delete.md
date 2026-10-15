@@ -24,7 +24,9 @@ Several forces push against hard deletion:
 
 ## Decision
 
-Adopt **soft delete as the single deletion model for all domain models**.
+Adopt **soft delete as the single deletion model for all domain models**, with
+the one narrow exception for transient, order-less sales instances defined
+below.
 
 Concretely:
 
@@ -47,6 +49,12 @@ Concretely:
   can be cancelled); after the window the soft-delete marker is applied. A user
   whose businesses would be orphaned must transfer or close them first; deletion
   does not cascade into other people's records.
+- **Transient, order-less sales instances are discarded, not soft-deleted.** A
+  sales instance that recorded no orders — a tab opened and closed empty — is
+  removed outright. It captured nothing and nothing references it, and keeping
+  it would leave phantom sittings in availability, reports, and audits. This is
+  the one deliberate exception to "no route hard-deletes a domain document": a
+  transient session that holds no lasting record may be dropped.
 
 ## Consequences
 
@@ -66,6 +74,10 @@ Concretely:
   flag; partial indexes and default filters become load-bearing.
 - Reactivation has security implications, so identity reactivation is gated on
   out-of-band confirmation rather than an in-app action alone.
+- **"No route hard-deletes a domain document" no longer holds literally.** A
+  transient, order-less sales instance is discarded rather than marked, and any
+  future exception of the same shape has to be argued deliberately rather than
+  assumed.
 
 ## Alternatives considered
 

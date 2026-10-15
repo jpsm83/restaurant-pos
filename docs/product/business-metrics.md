@@ -81,7 +81,7 @@ Every metric is computed from **period amounts** — the totals a report has agg
 - **Reporting week** — the seven-day window that groups daily sales reports into one weekly business report. Its first day is the **reporting-week start day**, expressed from `0` (Sunday) to `6` (Saturday).
 - **KPI dictionary** — the platform's canonical list of named metrics (this document's §3.7), with units, direction, dimensions, and formulas.
 - **Dimension vocabulary** — the standard breakdown axes (§3.5): category/subcategory, menu item, supplier good, supplier, employee, sales point/channel, daypart, table/seat, payment method, and promotion.
-- **Channel** — how an order reached the venue: **dine-in**, **takeout**, **delivery**, or **self-ordering**.
+- **Channel** — how an order reached the venue: **dine-in** (staff service), **self-ordering**, **kiosk**, **takeaway**, or **delivery**.
 - **Daypart** — the fixed service period an order falls in: **breakfast**, **lunch**, **dinner**, or **late-night**.
 - **Benchmark** — a reference industry range, shown for context, never policed.
 
@@ -142,7 +142,7 @@ Every KPI is expressed for a **period** — a day, a week, or a month — and ma
 | **Supplier good** | A single purchasable item / unit of stock. |
 | **Supplier** | A vendor the venue buys from. |
 | **Employee** | A member of staff. |
-| **Sales point / channel** | The sales point, or the channel: dine-in, takeout, delivery, self-ordering. |
+| **Sales point / channel** | The sales point, or the channel: dine-in, self-ordering, kiosk, takeaway, delivery. |
 | **Daypart** | Breakfast, lunch, dinner, late-night. |
 | **Table / seat** | A sales point of table or seat type. |
 | **Payment method** | The method a bill was paid with. |

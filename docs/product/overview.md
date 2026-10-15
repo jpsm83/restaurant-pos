@@ -40,7 +40,8 @@ These terms are used with exactly these meanings throughout POS. Do not drift to
 | **User** | A person's global identity. **Every user is a customer**; some also hold business roles. |
 | **Employee** | A person's membership in a Business, carrying their **job role(s)**, pay, and employment status. Links a **User** to a **Business**. |
 | **Customer** | A user acting as the final consumer (ordering, booking, rating, loyalty). |
-| **Sales point** | A place a customer sits or is served — table, room, bar seat, counter, spot, or the virtual **delivery** point. Holds the venue's QR code. |
+| **Sales point** | A place a customer sits or is served — a **type** (Table, Room, Bar, Seat, Counter, Spot, Kiosk, the virtual **Delivery** point, or Other) plus the **channels** it accepts (dine-in, self-ordering, kiosk, delivery). Holds its QR code. |
+| **Channel** | How an order reached the venue — **dine-in**, **self-ordering**, **kiosk**, **takeaway**, or **delivery**. A **sales point** declares which point-anchored channels it accepts. |
 | **Sales instance** | An open session/tab at a sales point that groups the orders for that sitting. |
 | **Order** | One billable line: one main business good plus optional add-ons. Quantity is expressed as multiple orders. |
 | **Business good** | A sellable menu item (simple, recipe/ingredient-based, or a set menu / combo). |
@@ -194,8 +195,8 @@ The Business app is the operational heart of POS. It comprises the **owner shell
 
 ### Service — sales points, sessions, orders, billing
 
-- **Sales points** represent where guests sit or are served (table, room, bar, seat, counter, spot, delivery, other). Each carries the venue's **QR code**, a **self-ordering** flag, and printer routing.
-- **Opening** a sales point (from the POS or by scanning its QR) opens a **sales instance**; at most one non-closed instance exists per sales point per work day. Staff-opened tables are service-only (customers cannot self-order at them).
+- **Sales points** represent where guests sit or are served: their **type** (Table, Room, Bar, Seat, Counter, Spot, Kiosk, the virtual Delivery point, or Other) and the **channels** they accept (dine-in and self-ordering on served points, kiosk, delivery). Each carries its **QR code** and printer routing.
+- **Opening** a sales point (from the POS or by scanning its QR) opens a **sales instance**. A served point holds **at most one open staff tab at a time**, and an open staff tab blocks customer self-ordering there; the self-service channels (self-ordering, kiosk, delivery) pay to close and may run several at once. Staff-opened tables are service-only (customers cannot self-order at them).
 - **Orders** attach to the sales instance. Each order is one main good plus optional add-ons; promotions apply to the main good. Who created it, and in what role, is taken from the session.
 - **Lifecycle**: add, transfer between tables, and — for managers and above — **cancel** (removing it and restoring inventory), **void** with a required reason (kept in reporting), and mark **invitation/complimentary**.
 - **Billing**: review the tab, split bills as supported, then take **payments per method** with optional **tips**, record the payment-method breakdown, and **close** the instance when all orders are paid.
@@ -229,7 +230,7 @@ The Business app is the operational heart of POS. It comprises the **owner shell
 
 ### Reports and metrics
 
-- **Daily sales report** — opens automatically on the first sale of the day. It accumulates **per-employee**, **delivery**, and **self-ordering** buckets (sales, tips, goods sold/voided/invited, payment methods), plus **business totals** (net paid, cost of goods, profit, customers served, average spend, POS commission), with operational breakdowns by employee, sales point/channel, payment method, and item. Managers **calculate**, **reconcile**, and **close** it; closure requires no open orders and locks the day.
+- **Daily sales report** — opens automatically on the first sale of the day. It accumulates **per-employee**, **delivery**, **self-ordering**, and **kiosk** buckets (sales, tips, goods sold/voided/invited, payment methods), plus **business totals** (net paid, cost of goods, profit, customers served, average spend, POS commission), with operational breakdowns by employee, sales point/channel, payment method, and item. Managers **calculate**, **reconcile**, and **close** it; closure requires no open orders and locks the day.
 - **Weekly business report** — aggregates closed daily reports for the venue's configured reporting week, focused on operational performance (fixed and extra monthly costs excluded), and carries the full set of **dimension breakdowns**. It closes automatically when a new reporting week begins.
 - **Monthly business report** — aggregates the month's daily reports plus inventory variance and waste, purchasing, and labour cost, then compares **targets vs actuals** across food/beverage/labour/fixed cost and waste. It includes break-even, net profit, and a metrics-comparison section, with the full dimension set plus supplier breakdowns. It closes at the month boundary once all daily reports and the **inventory month** are closed.
 - **Reporting exports** are available across these reports, powered by the shared advanced-table engine used as the blueprint for report tables.

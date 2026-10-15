@@ -63,7 +63,7 @@ Terms reused from other subjects rather than redefined here: **business**, **rep
 - It accumulates the day's activity into **buckets** and computes the venue's **business totals**:
   - **per-employee** buckets — each employee's sales, tips, goods sold, voided, and invited, and their payment-method breakdown;
   - the **delivery** channel bucket — the day's delivery sales, tips, goods, and payment methods;
-  - the **self-ordering** buckets — sales taken through self-ordering, by point;
+  - the **self-ordering** and **kiosk** buckets — sales taken through self-ordering and kiosk, by point;
   - the **business totals** — total sales, net revenue, tips, cost of goods sold, profit, customers served, average spend per customer, void and invited value, and the platform's POS commission.
 - The daily report's **dimension breakdowns** are the operational ones: **employee**, **sales point/channel**, **payment method**, and **menu item**.
 - A manager **calculates** the report, **reconciles** it, and **closes** it.
