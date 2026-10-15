@@ -297,7 +297,7 @@ Project Imperium is **live by design**: sales points, sales instances, order sta
 
 ## 12. Platforms and constraints
 
-- **Responsive web app.** Project Imperium runs in any modern browser on desktop, laptop, tablet, or phone. There is currently no installable PWA requirement and no native app; a native version may follow later using the same logic.
+- **Web app, with a native POS client.** Project Imperium runs in any modern browser on desktop, laptop, tablet, or phone. The customer and public surfaces are **server-rendered** so venues and menus are discoverable and links are shareable; the operational surfaces are rich, live client applications. A first-party **native POS client** consumes the same `/api/v1`, which is the contract shared by every client. There is currently no installable PWA requirement.
 - **Customer-brought hardware.** The venue chooses its devices, printers, and screens. Project Imperium sells none of them.
 - **Online-only.** Connectivity is required; there is no offline mode.
 - **Language and currency.** The UI ships in **English and Spanish** (more languages later); each business selects **one currency** at onboarding.

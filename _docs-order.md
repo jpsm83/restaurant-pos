@@ -12,5 +12,15 @@
 12 - inventories
 13 - sales points and instances
 14 - orders
-
-it is not a pos, it is a full managent saas system for restaurante industry. review the docs
+15 - promotions
+16 - payments and tax
+17 - gift-cards
+18 - 
+19 - 
+20 - 
+21 - 
+22 - 
+23 - 
+24 - 
+25 - 
+26 - 
