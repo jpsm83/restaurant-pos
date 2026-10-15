@@ -27,7 +27,7 @@ vi.mock("@/components/ActorSidebar", () => ({
   ),
 }));
 
-vi.mock("@/components/ui/sidebar", () => ({
+vi.mock("ui/sidebar", () => ({
   Sidebar: ({ children }: { children: ReactNode }) => <aside>{children}</aside>,
   SidebarRail: () => <div data-testid="sidebar-rail" />,
 }));

@@ -2,14 +2,14 @@ import { Component, type ErrorInfo, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { TriangleAlert } from "lucide-react";
 import i18n from "@/i18n/i18n";
-import { Button } from "@/components/ui/button";
+import { Button } from "ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from "ui/card";
 
 type Props = { children: ReactNode };
 

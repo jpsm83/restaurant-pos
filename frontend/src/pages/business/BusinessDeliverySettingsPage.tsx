@@ -1,9 +1,9 @@
 import { Controller, useFieldArray, type Control } from "react-hook-form";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from "ui/button";
+import { Input } from "ui/input";
+import { Label } from "ui/label";
 import type { BusinessProfileFormValues } from "@/services/business/businessService";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "ui/skeleton";
 import {
   BusinessProfileSettingsFormShell,
   BusinessProfileSettingsLoadingCard,

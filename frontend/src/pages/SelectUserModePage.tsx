@@ -5,15 +5,15 @@ import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { getCurrentUser } from "@/auth/api";
 import { useAuth } from "@/auth/store/AuthContext";
 import type { AuthUser } from "@/auth/types";
-import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { Alert } from "ui/alert";
+import { Button } from "ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from "ui/card";
 import { useAuthMode } from "@/context/AuthModeContext";
 import { useNextShiftForEmployee } from "@/services/schedulesService";
 import {

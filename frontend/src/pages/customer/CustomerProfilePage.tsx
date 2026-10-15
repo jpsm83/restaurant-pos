@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { resendEmailConfirmation } from "@/auth/api";
 import { useAuth } from "@/auth/store/AuthContext";
-import { Button } from "@/components/ui/button";
+import { Button } from "ui/button";
 
 /** `/:userId/customer/profile` — verification CTA when sign-in email is not verified. */
 export default function CustomerProfilePage() {

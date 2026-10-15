@@ -7,7 +7,7 @@ these endpoints.
 ## How the three workspaces fit together
 
 This repo is one npm workspace rooted at `/` — `backend/`, `frontend/`, and
-`packages/` (`domain` and `config`). Install once at the root
+`packages/` (`domain`, `ui`, and `config`). Install once at the root
 (`npm install`); there is a single `package-lock.json`.
 
 ```

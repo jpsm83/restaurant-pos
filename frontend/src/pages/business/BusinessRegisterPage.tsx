@@ -7,18 +7,18 @@ import { z } from "zod";
 import { getPostLoginDestination } from "@/auth/postLoginRedirect";
 import { useAuth } from "@/auth/store/AuthContext";
 import { FieldError } from "@/components/FieldError";
-import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { Alert } from "ui/alert";
+import { Button } from "ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+} from "ui/card";
+import { Input } from "ui/input";
+import { Label } from "ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "ui/select";
 import { useCreateBusinessMutation } from "@/services/business/businessService";
 import { currenctyEnums, subscriptionEnums } from "domain/enums";
 import { isValidPassword } from "domain/utils/passwordPolicy";

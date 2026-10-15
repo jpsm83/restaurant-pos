@@ -7,7 +7,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from "ui/card";
 import BusinessAdvancedTableSection from "../../components/business/BusinessAdvancedTableSection";
 
 /**

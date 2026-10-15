@@ -2,9 +2,9 @@ import { useMemo } from "react";
 import { useWatch } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { BusinessAddressLocationMap } from "@/components/BusinessAddressLocationMap";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "ui/input";
+import { Label } from "ui/label";
+import { Skeleton } from "ui/skeleton";
 import { businessDtoToFormValues } from "@/services/business/businessService";
 import {
   BusinessProfileSettingsFormShell,

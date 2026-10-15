@@ -4,8 +4,8 @@ import { useLocation } from "react-router-dom";
 import { useAuth } from "@/auth/store/AuthContext";
 import { AccountMenuPopover } from "@/components/AccountMenuPopover";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "ui/button";
+import { Skeleton } from "ui/skeleton";
 
 /**
  * App-wide top bar. Public routes: audience switch + auth CTAs (`SiteAudienceProvider`).

@@ -1,7 +1,7 @@
 import { useWatch } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { subscriptionEnums } from "domain/enums";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "ui/skeleton";
 import {
   BusinessProfileSettingsFormShell,
   BusinessProfileSettingsLoadingCard,

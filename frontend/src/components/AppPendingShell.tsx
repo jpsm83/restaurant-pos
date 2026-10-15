@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "ui/skeleton";
 
 /** Shared outer chrome for route + session pending so refresh and lazy load feel the same. */
 const PENDING_SHELL_CLASS =

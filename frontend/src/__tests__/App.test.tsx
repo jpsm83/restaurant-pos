@@ -18,7 +18,7 @@ vi.mock("@/auth/api", () => ({
   setAccessToken: (...args: unknown[]) => setAccessToken(...args),
 }));
 
-vi.mock("@/hooks/use-mobile", () => ({
+vi.mock("ui/hooks/use-mobile", () => ({
   useIsMobile: () => false,
 }));
 

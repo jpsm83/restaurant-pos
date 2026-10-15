@@ -7,7 +7,7 @@ three authenticated shells (business, employee, customer) and talks to the
 ## How the three workspaces fit together
 
 This repo is one npm workspace rooted at `/` — `backend/`, `frontend/`, and
-`packages/` (`domain` and `config`). Install once at the root
+`packages/` (`domain`, `ui`, and `config`). Install once at the root
 (`npm install`); there is a single `package-lock.json`.
 
 ```
@@ -115,7 +115,7 @@ src/
 ├── routes/              # AuthRouteGuards, canonicalPaths (dashboard-first URLs)
 ├── layouts/             # PublicLayout, BusinessLayout, EmployeeLayout, CustomerLayout, RecoveryLayout
 ├── pages/               # Route screens (business/, customer/, employee/, marketing/)
-├── components/          # Shared UI (Navbar, ActorSidebar, ErrorBoundary, components/ui shadcn)
+├── components/          # Shared UI (Navbar, ActorSidebar, ErrorBoundary)
 ├── features/            # Self-contained features (advancedTable)
 ├── services/            # http (axios), queryClient, queryKeys, per-domain services
 ├── auth/                # api (token singleton), AuthContext store, redirects, types
@@ -136,8 +136,9 @@ Conventions:
   `/:userId/employee`, `/business/:businessId`. Guards live in
   `routes/AuthRouteGuards.tsx`. Pages are `React.lazy`-loaded behind a Suspense
   shell; unknown URLs render `NotFoundPage`.
-- **UI primitives** are shadcn/ui components generated with the `radix-nova`
-  style (`components.json`), aliased to `@/components/ui`.
+- **UI primitives** come from the shared `ui` workspace by package name
+  (`ui/button`, `ui/card`, …) — the design system lives in `packages/ui`, not in
+  this app.
 
 ## Testing
 

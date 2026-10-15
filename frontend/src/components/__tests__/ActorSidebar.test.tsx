@@ -3,12 +3,12 @@ import userEvent from "@testing-library/user-event";
 import { Home } from "lucide-react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { SidebarProvider } from "ui/sidebar";
+import { TooltipProvider } from "ui/tooltip";
 import { renderWithI18n } from "@/test/i18nTestUtils";
 import ActorSidebar from "../ActorSidebar";
 
-vi.mock("@/hooks/use-mobile", () => ({
+vi.mock("ui/hooks/use-mobile", () => ({
   useIsMobile: () => false,
 }));
 

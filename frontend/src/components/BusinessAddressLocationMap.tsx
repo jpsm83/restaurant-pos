@@ -8,9 +8,9 @@ import markerShadow from "leaflet/dist/images/marker-shadow.png";
 import "leaflet/dist/leaflet.css";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "ui/skeleton";
 import { useDebounce } from "@/hooks/useDebounce";
-import { cn } from "@/lib/utils";
+import { cn } from "ui/utils";
 
 const DEFAULT_CENTER: L.LatLngTuple = [20, 0];
 const DEFAULT_ZOOM = 2;

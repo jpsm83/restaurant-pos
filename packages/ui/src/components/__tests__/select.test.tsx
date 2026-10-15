@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import {
@@ -7,14 +7,13 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { renderWithI18n } from "@/test/i18nTestUtils";
+} from "../select";
 
 describe("ui/select", () => {
   it("renders trigger and supports keyboard focus", async () => {
     const user = userEvent.setup();
 
-    await renderWithI18n(
+    render(
       <Select>
         <SelectTrigger aria-label="Quick range">
           <SelectValue placeholder="Select range" />

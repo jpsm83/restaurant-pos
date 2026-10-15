@@ -1,14 +1,14 @@
 /**
- * Shared **UI utilities** for `src/lib` (no React, no API calls).
+ * Shared **UI utilities** for the design system (no React, no API calls).
  *
  * ## `cn`
  * Merges class names with **tailwind-merge** on top of **clsx** so conditional Tailwind classes
  * resolve conflicts predictably (last wins for same utility “slot”).
  *
  * ## Wiring
- * Imported by shadcn-style components under `components/ui/*` (`button`, `card`, `input`, …) and
- * a few pages/components that need the same pattern (`AccountMenuPopover`, `BusinessRegisterPage`).
- * This is the standard helper for `className` composition in the app.
+ * Imported by the shadcn-style primitives under `src/components/*` (`button`, `card`, `input`, …)
+ * and re-exported to consumers as `ui/utils`. This is the standard helper for `className`
+ * composition across every client that uses the design system.
  */
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"

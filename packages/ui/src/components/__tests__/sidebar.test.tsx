@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { SidebarProvider, useSidebar } from "../sidebar";
 
-vi.mock("@/hooks/use-mobile", () => ({
+vi.mock("../../hooks/use-mobile", () => ({
   useIsMobile: () => false,
 }));
 

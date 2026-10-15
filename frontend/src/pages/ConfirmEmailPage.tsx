@@ -4,15 +4,15 @@ import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { confirmEmail, refreshSession } from "@/auth/api";
 import { useAuth } from "@/auth/store/AuthContext";
-import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { Alert } from "ui/alert";
+import { Button } from "ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from "ui/card";
 import { canonicalDefaultDashboardPath } from "@/routes/canonicalPaths";
 
 /** No fields — token comes from the URL; RHF owns submit / isSubmitting like other auth pages. */

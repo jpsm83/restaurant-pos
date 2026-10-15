@@ -1,9 +1,9 @@
 import { useLocation } from "react-router-dom";
 import App from "@/App";
 import Navbar from "@/components/Navbar";
-import { cn } from "@/lib/utils";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { cn } from "ui/utils";
+import { SidebarProvider } from "ui/sidebar";
+import { TooltipProvider } from "ui/tooltip";
 
 /** Paths where global chrome (navbar + top offset) would leave empty gaps if hidden piecemeal. */
 const MINIMAL_CHROME_PATHS = new Set([

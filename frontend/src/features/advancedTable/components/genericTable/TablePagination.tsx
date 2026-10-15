@@ -3,16 +3,16 @@ import type { Column, ReactTable, RowData } from "@tanstack/react-table";
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Download, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
+import { Button } from "ui/button";
+import { Checkbox } from "ui/checkbox";
+import { Label } from "ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "ui/select";
 import type { AdvancedTableFeatures } from "@/features/advancedTable/hooks/useEnhancedTable";
 
 const PAGE_SIZES = [25, 50, 100, 150] as const;
