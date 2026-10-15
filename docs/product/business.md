@@ -1,6 +1,6 @@
 # Business details
 
-> **About this document.** This is the **target-state source of truth** for a business's own onboarding, profile, and configuration in POS. It is written for two readers: AI agents that build the product and engineers onboarding onto it. It describes business details as they are *meant to be* — capabilities are stated as commitments, without built/planned tags. It is self-contained: it links to no other document.
+> **About this document.** This is the **target-state source of truth** for a business's own onboarding, profile, and configuration in Project Imperium. It is written for two readers: AI agents that build the product and engineers onboarding onto it. It describes business details as they are *meant to be* — capabilities are stated as commitments, without built/planned tags. It is self-contained: it links to no other document.
 
 ---
 

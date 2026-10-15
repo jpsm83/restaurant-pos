@@ -1,6 +1,6 @@
 # Supplier goods
 
-> **About this document.** This is the **target-state source of truth** for the supplier goods a venue buys and stocks in POS. It is written for two readers: AI agents that build the product and engineers onboarding onto it. It describes supplier goods as they are *meant to be* — capabilities are stated as commitments, without built/planned tags. It is self-contained: it links to no other document.
+> **About this document.** This is the **target-state source of truth** for the supplier goods a venue buys and stocks in Project Imperium. It is written for two readers: AI agents that build the product and engineers onboarding onto it. It describes supplier goods as they are *meant to be* — capabilities are stated as commitments, without built/planned tags. It is self-contained: it links to no other document.
 
 ---
 
@@ -71,7 +71,7 @@ A business keeps its own list of supplier goods.
 
 ### 3.3 Price math
 
-- When a good has a purchase unit, the venue enters the **total price of one purchase unit** and **how many units of stock** it holds; POS derives the **price per unit of stock** as that total price divided by that quantity, rounded to the **business currency**.
+- When a good has a purchase unit, the venue enters the **total price of one purchase unit** and **how many units of stock** it holds; Project Imperium derives the **price per unit of stock** as that total price divided by that quantity, rounded to the **business currency**.
 - When a good has **no purchase unit**, the venue enters the **price per unit of stock** directly.
 - The derived price per unit of stock is **read-only** — a client never sets it — and is **recomputed** whenever the total price or the quantity changes.
 - The good prices in the **single currency of its business**; the venue never chooses a currency on the good.

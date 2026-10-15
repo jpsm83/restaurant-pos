@@ -1,6 +1,6 @@
 # Business reports
 
-> **About this document.** This is the **target-state source of truth** for the business reports of a venue in POS. It is written for two readers: AI agents that build the product and engineers onboarding onto it. It describes business reports as they are *meant to be* — capabilities are stated as commitments, without built/planned tags. It is self-contained: it links to no other document.
+> **About this document.** This is the **target-state source of truth** for the business reports of a venue in Project Imperium. It is written for two readers: AI agents that build the product and engineers onboarding onto it. It describes business reports as they are *meant to be* — capabilities are stated as commitments, without built/planned tags. It is self-contained: it links to no other document.
 
 ---
 
@@ -64,7 +64,7 @@ Terms reused from other subjects rather than redefined here: **business**, **rep
   - **per-employee** buckets — each employee's sales, tips, goods sold, voided, and invited, and their payment-method breakdown;
   - the **delivery** channel bucket — the day's delivery sales, tips, goods, and payment methods;
   - the **self-ordering** and **kiosk** buckets — sales taken through self-ordering and kiosk, by point;
-  - the **business totals** — total sales, net revenue, tips, cost of goods sold, profit, customers served, average spend per customer, void and invited value, and the platform's POS commission.
+  - the **business totals** — total sales, net revenue, tips, cost of goods sold, profit, customers served, average spend per customer, void and invited value, and the platform's commission.
 - The daily report's **dimension breakdowns** are the operational ones: **employee**, **sales point/channel**, **payment method**, and **menu item**.
 - A manager **calculates** the report, **reconciles** it, and **closes** it.
 - **Closing requires no open orders**: a sales instance that is still open blocks closure. Closing **locks the day** — the closed daily report is the frozen record of that day.
@@ -77,7 +77,7 @@ Terms reused from other subjects rather than redefined here: **business**, **rep
 - It carries the **full dimension set** as breakdowns (§3.5): category/subcategory, menu item, employee, sales point/channel, daypart, table/seat, payment method, and promotion.
 - It aggregates the week's **covers**, **average spend per customer**, **tips**, **payment methods**, **goods sold/voided/invited**, **labour cost** from the schedule, and the week's **inventory waste**.
 - It **closes automatically when a new reporting week begins**. A closed week is not re-bucketed if the reporting-week start day later changes; only future weeks are affected.
-- When the week is ready for review, POS raises the **report-ready signal**.
+- When the week is ready for review, Project Imperium raises the **report-ready signal**.
 
 ### 3.3 The monthly business report
 
@@ -89,7 +89,7 @@ Terms reused from other subjects rather than redefined here: **business**, **rep
 - It compares **targets vs actuals** across **food, beverage, labour, and fixed cost** and the **waste thresholds**, and reports **break-even**, **net profit**, and the metrics comparison.
 - It carries the **full dimension set** as breakdowns (§3.5), plus the inventory dimensions **supplier good** and **supplier**.
 - It **closes at the month boundary once all daily reports are closed**.
-- When the month is ready for review, POS raises the **report-ready signal**.
+- When the month is ready for review, Project Imperium raises the **report-ready signal**.
 
 ### 3.4 Report periods and boundaries
 
@@ -104,7 +104,7 @@ Terms reused from other subjects rather than redefined here: **business**, **rep
 - Breakdowns are **first-class report content**, not an afterthought:
   - the **daily** report carries the **operational** breakdowns — employee, sales point/channel, payment method, and menu item;
   - the **weekly** and **monthly** reports carry the **full dimension set**, with the monthly report adding the inventory dimensions (supplier good, supplier).
-- A breakdown over a dimension with **no activity** produces **no value**; POS never fabricates a zero.
+- A breakdown over a dimension with **no activity** produces **no value**; Project Imperium never fabricates a zero.
 
 ### 3.6 Target and benchmark comparison
 
@@ -126,7 +126,7 @@ Terms reused from other subjects rather than redefined here: **business**, **rep
 
 ### 3.8 Report-ready signalling
 
-- When a **weekly** or **monthly** report is aggregated and ready for review, POS raises the **report-ready signal**.
+- When a **weekly** or **monthly** report is aggregated and ready for review, Project Imperium raises the **report-ready signal**.
 - The signal names the report and its period. **How it is delivered** — in-app, email, or push — belongs to the notifications subject; this subject only raises it.
 
 ---

@@ -1,6 +1,6 @@
 # Business goods
 
-> **About this document.** This is the **target-state source of truth** for the business goods a venue sells in POS. It is written for two readers: AI agents that build the product and engineers onboarding onto it. It describes business goods as they are *meant to be* — capabilities are stated as commitments, without built/planned tags. It is self-contained: it links to no other document.
+> **About this document.** This is the **target-state source of truth** for the business goods a venue sells in Project Imperium. It is written for two readers: AI agents that build the product and engineers onboarding onto it. It describes business goods as they are *meant to be* — capabilities are stated as commitments, without built/planned tags. It is self-contained: it links to no other document.
 
 ---
 
@@ -79,10 +79,10 @@ A business keeps its own menu of business goods.
 
 - A good's kind is carried by its components: a **simple item** is a single supplier good **resold as bought**; a **recipe-based item** is **prepared** by the venue from **one or more** ingredients; a **combo** is a group of **one or more** member business goods. A good is exactly one kind, and it cannot mix ingredients and members.
 - Every good has **at least one component** — it is always built from supplier goods, either directly or through members.
-- A **component carries a quantity**. An **ingredient** also carries the measurement unit the recipe expresses it in; that unit may differ from the supplier good's own unit of stock where the units are compatible, and POS converts between them.
+- A **component carries a quantity**. An **ingredient** also carries the measurement unit the recipe expresses it in; that unit may differ from the supplier good's own unit of stock where the units are compatible, and Project Imperium converts between them.
 - A **combo's members are business goods**, each simple or recipe-based. A member may **never** be a combo, so combos are **one level deep** — there are no combos of combos.
 - A supplier good sold on its own inside a group is represented by its own **simple item**; a combo never points straight at a supplier good.
-- **Variants are separate goods.** POS carries no size or portion variant: a different size is its own business good with its own components and selling price (a small fries and a large fries are two goods).
+- **Variants are separate goods.** Project Imperium carries no size or portion variant: a different size is its own business good with its own components and selling price (a small fries and a large fries are two goods).
 
 ### 3.3 Derived cost
 
@@ -97,7 +97,7 @@ A business keeps its own menu of business goods.
 ### 3.4 Selling price
 
 - The venue sets each good's **selling price** freely, in the **business currency**. A price may sit above, at, or below cost — the venue decides.
-- There is **no suggested price, no desired margin or markup, and no cost target** anywhere in this subject. POS shows the venue the **derived cost** and the venue chooses what to charge.
+- There is **no suggested price, no desired margin or markup, and no cost target** anywhere in this subject. Project Imperium shows the venue the **derived cost** and the venue chooses what to charge.
 - The good carries **one current selling price** and **no price history**.
 
 ### 3.5 Allergens
@@ -119,8 +119,8 @@ A business keeps its own menu of business goods.
 Every good carries an availability state of **Available**, **Sold out**, or **Manually unavailable**.
 
 - **Available** — the good can be ordered.
-- **Sold out** — set **automatically by POS** when any component is not satisfied: an ingredient's supplier good is deleted or has **insufficient stock on hand** for the quantity needed, or a member exists but is itself sold out or manually unavailable. This state is **live**: it clears the moment stock or the member recovers.
-- **Manually unavailable** — set by a manager or an employee holding the capability, to take a dish off sale by hand ("86 the burger") even when POS would consider it available. It sticks until a human clears it **or** until the **start of the next work day**, when it is cleared automatically.
+- **Sold out** — set **automatically by Project Imperium** when any component is not satisfied: an ingredient's supplier good is deleted or has **insufficient stock on hand** for the quantity needed, or a member exists but is itself sold out or manually unavailable. This state is **live**: it clears the moment stock or the member recovers.
+- **Manually unavailable** — set by a manager or an employee holding the capability, to take a dish off sale by hand ("86 the burger") even when Project Imperium would consider it available. It sticks until a human clears it **or** until the **start of the next work day**, when it is cleared automatically.
 - A manager — or an employee holding the capability — may bring a manually unavailable good back **only when its components allow it**; if stock or a member still blocks the good, it stays **Sold out** rather than becoming available.
 - A simple or recipe-based item with all ingredients stocked, and a combo with all members available, is **Available**.
 - Availability governs **ordering**, not visibility alone: a sold-out or manually unavailable good that is on the menu is shown but cannot be ordered.

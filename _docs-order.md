@@ -10,5 +10,7 @@
 10 - purchases
 11 - business goods
 12 - inventories
+13 - sales points and instances
+14 - orders
 
 it is not a pos, it is a full managent saas system for restaurante industry. review the docs

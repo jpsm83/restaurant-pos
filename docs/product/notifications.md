@@ -1,12 +1,12 @@
 # Notifications
 
-> **About this document.** This is the **target-state source of truth** for notifications in POS. It is written for two readers: AI agents that build the product and engineers onboarding onto it. It describes notifications as they are *meant to be* — capabilities are stated as commitments, without built/planned tags. It is self-contained: it links to no other document.
+> **About this document.** This is the **target-state source of truth** for notifications in Project Imperium. It is written for two readers: AI agents that build the product and engineers onboarding onto it. It describes notifications as they are *meant to be* — capabilities are stated as commitments, without built/planned tags. It is self-contained: it links to no other document.
 
 ---
 
 ## 1. Scope
 
-This subject covers **how POS tells a person something** — the inbox that holds it, the messages the platform and a venue send, and how those messages reach their recipients. It owns:
+This subject covers **how Project Imperium tells a person something** — the inbox that holds it, the messages the platform and a venue send, and how those messages reach their recipients. It owns:
 
 - the **per-user inbox** and the read, unread, and deleted state of each item in it;
 - the **delivery model** — persistence-first in-app delivery, live push while a recipient is online, and the email copy of the notifications that are also emailed;
@@ -31,7 +31,7 @@ It deliberately does **not** cover:
 
 ### Entities
 
-- **Notification** — one message addressed to one or more recipients and belonging to **one business**. Every notification is business-scoped: POS has no platform-wide notification. It carries a **severity** or an **engagement kind**, and its text.
+- **Notification** — one message addressed to one or more recipients and belonging to **one business**. Every notification is business-scoped: Project Imperium has no platform-wide notification. It carries a **severity** or an **engagement kind**, and its text.
 - **Inbox** — a person's collection of notifications and conversations. It belongs to the **User**, not to a business or to a mode, so the same inbox is shared across the customer and employee apps.
 - **Inbox entry** — the per-person record of one notification, carrying its **unread** and **deleted** state. State is per recipient: one person reading or deleting a notification never changes it for anyone else.
 - **Conversation** (thread) — a two-way exchange opened by a manager's **direct message**, pairing the manager and one person; replies are messages in the thread.

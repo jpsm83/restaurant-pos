@@ -25,17 +25,18 @@ Several forces push against hard deletion:
 ## Decision
 
 Adopt **soft delete as the single deletion model for all domain models**, with
-the one narrow exception for transient, order-less sales instances defined
-below.
+the two narrow exceptions defined below: transient, order-less sales instances,
+and cancelled orders.
 
 Concretely:
 
 - Every domain model carries a **server-owned deleted marker** — a `deleted`
   boolean — plus a **`deletedAt` timestamp**. Neither is ever set by a client;
   both are excluded from request DTOs like every other server-owned field.
-- **No route hard-deletes a domain document.** "Delete" operations set the
-  marker and the timestamp. Queries default to active-only, with an explicit
-  opt-in to include deleted documents where a feature needs them.
+- **No route hard-deletes a domain document**, apart from the two exceptions
+  below. "Delete" operations set the marker and the timestamp. Queries default
+  to active-only, with an explicit opt-in to include deleted documents where a
+  feature needs them.
 - **Uniqueness is enforced among active documents** through partial unique
   indexes, so a value freed by a deleted document can be reused; reusing a
   soft-deleted identity's email means **reactivating** that document, not
@@ -52,9 +53,14 @@ Concretely:
 - **Transient, order-less sales instances are discarded, not soft-deleted.** A
   sales instance that recorded no orders — a tab opened and closed empty — is
   removed outright. It captured nothing and nothing references it, and keeping
-  it would leave phantom sittings in availability, reports, and audits. This is
-  the one deliberate exception to "no route hard-deletes a domain document": a
+  it would leave phantom sittings in availability, reports, and audits. A
   transient session that holds no lasting record may be dropped.
+- **Cancelled orders are hard-deleted.** Cancelling a sent order removes it from
+  the bill and from reporting and restores the stock it moved; it leaves no
+  billable record to keep. A cancelled order is therefore erased rather than
+  marked. Its retained counterpart is the **void**: a voided order stays on the
+  bill, uncharged, and in reporting, because a void records something sold and
+  not charged, whereas a cancellation is a correction that leaves nothing.
 
 ## Consequences
 
@@ -75,9 +81,9 @@ Concretely:
 - Reactivation has security implications, so identity reactivation is gated on
   out-of-band confirmation rather than an in-app action alone.
 - **"No route hard-deletes a domain document" no longer holds literally.** A
-  transient, order-less sales instance is discarded rather than marked, and any
-  future exception of the same shape has to be argued deliberately rather than
-  assumed.
+  transient, order-less sales instance is discarded rather than marked, and a
+  cancelled order is erased rather than retained; any future exception of the
+  same shape has to be argued deliberately rather than assumed.
 
 ## Alternatives considered
 

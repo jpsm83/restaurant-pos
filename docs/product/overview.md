@@ -1,25 +1,25 @@
-# POS — Product Overview
+# Project Imperium — Product Overview
 
-> **About this document.** This is the **target-state source of truth** for what POS is. It is written for two readers: AI agents that build the product, and engineers onboarding onto it. It describes the product as it is *meant to be*, not as a status report — capabilities are stated as commitments, without built/planned tags. Product and domain vocabulary is defined here as it is introduced; engineering vocabulary (DTO, server-owned field, problem details, …) lives in the root `GLOSSARY.md`.
+> **About this document.** This is the **target-state source of truth** for what Project Imperium is. It is written for two readers: AI agents that build the product, and engineers onboarding onto it. It describes the product as it is *meant to be*, not as a status report — capabilities are stated as commitments, without built/planned tags. Product and domain vocabulary is defined here as it is introduced; engineering vocabulary (DTO, server-owned field, problem details, …) lives in the root `GLOSSARY.md`.
 
 ---
 
-## 1. What POS is
+## 1. What Project Imperium is
 
-POS is a **complete, real-time, cloud SaaS platform** for **bars and restaurants**. It covers the whole operation — service, menu, supply, stock, people, and reporting — and extends outward to the venue's **customers** through self-ordering, takeaway, delivery, booking, ratings, loyalty, and gift cards.
+Project Imperium is a **complete, real-time, cloud SaaS platform** for **bars and restaurants**: a full **restaurant management platform**, not merely a point-of-sale. It covers the whole operation — service, menu, supply, stock, people, and reporting — and extends outward to the venue's **customers** through self-ordering, takeaway, delivery, booking, ratings, loyalty, and gift cards. The point of sale is one surface of one system; menu and costing, supply and stock, people and scheduling, and reporting run on the same platform.
 
 It is built on four positioning pillars:
 
 - **100% SaaS.** Nothing to install on a server. The product runs in the browser; there is no on-premise deployment.
-- **Hardware-agnostic.** The customer brings their own hardware — desktop, laptop, tablet, phone, printer, or screen. POS sells no hardware and locks the venue into none; it works with whatever the venue already owns.
+- **Hardware-agnostic.** The customer brings their own hardware — desktop, laptop, tablet, phone, printer, or screen. Project Imperium sells no hardware and locks the venue into none; it works with whatever the venue already owns.
 - **Online-only.** The product requires connectivity; there is no offline mode.
 - **Multi-tenant.** A **Business** is the tenant and represents **one venue** (one physical restaurant or bar). The same platform serves many businesses with fully isolated data, and businesses can be grouped under an **Owner** across multiple venues.
 
-POS is delivered as **three product surfaces over one shared platform**: the **Business** app (operations, where venues and owners work), the **Customer** app (the public, free side), and the **Superadmin** console (which runs the application business itself). See [§5](#5-access-roles-and-the-mode-chooser) and [§3](#3-tenant-identity-and-account-model).
+Project Imperium is delivered as **three product surfaces over one shared platform**: the **Business** app (operations, where venues and owners work), the **Customer** app (the public, free side), and the **Superadmin** console (which runs the application business itself). See [§5](#5-access-roles-and-the-mode-chooser) and [§3](#3-tenant-identity-and-account-model).
 
 ### Positioning at a glance
 
-| Dimension | POS |
+| Dimension | Project Imperium |
 | --- | --- |
 | Delivery | Cloud SaaS, browser-based |
 | OS / device | Any — PC, laptop, tablet, phone, network printer, screen |
@@ -30,7 +30,7 @@ POS is delivered as **three product surfaces over one shared platform**: the **B
 
 ### Core vocabulary
 
-These terms are used with exactly these meanings throughout POS. Do not drift to synonyms.
+These terms are used with exactly these meanings throughout Project Imperium. Do not drift to synonyms.
 
 | Term | Meaning |
 | --- | --- |
@@ -40,6 +40,7 @@ These terms are used with exactly these meanings throughout POS. Do not drift to
 | **User** | A person's global identity. **Every user is a customer**; some also hold business roles. |
 | **Employee** | A person's membership in a Business, carrying their **job role(s)**, pay, and employment status. Links a **User** to a **Business**. |
 | **Customer** | A user acting as the final consumer (ordering, booking, rating, loyalty). |
+| **POS** | Point of sale — the staff-facing surface where an employee selects a sales point, takes orders, and bills. One surface of the platform, distinct from self-ordering, kiosk, and delivery; never the whole product. |
 | **Sales point** | A place a customer sits or is served — a **type** (Table, Room, Bar, Seat, Counter, Spot, Kiosk, the virtual **Delivery** point, or Other) plus the **channels** it accepts (dine-in, self-ordering, kiosk, delivery). Holds its QR code. |
 | **Channel** | How an order reached the venue — **dine-in**, **self-ordering**, **kiosk**, **takeaway**, or **delivery**. A **sales point** declares which point-anchored channels it accepts. |
 | **Sales instance** | An open session/tab at a sales point that groups the orders for that sitting. |
@@ -56,14 +57,14 @@ These terms are used with exactly these meanings throughout POS. Do not drift to
 | **Gift card** | A bearer value token owned by a business, identified by a QR code, with an expiry date. |
 | **Shift session** | The actual, recorded attendance for one employee on one shift (sign-in/out, breaks). |
 | **Daily / Weekly / Monthly report** | The aggregated sales and performance reports at each roll-up level. |
-| **Notification** | A message POS delivers to a person's inbox. An **operational** notification carries a **severity** — **Info**, **Warning**, or **Emergency** — while a venue **engagement** message carries a **kind** — **Message**, **Promotion**, **Birthday**, or **Event**. |
-| **Soft delete** | POS never hard-deletes domain documents: a server-owned deleted marker plus a timestamp are set, the document is retained and reactivatable, and uniqueness is enforced among active documents. Every model follows it. |
+| **Notification** | A message Project Imperium delivers to a person's inbox. An **operational** notification carries a **severity** — **Info**, **Warning**, or **Emergency** — while a venue **engagement** message carries a **kind** — **Message**, **Promotion**, **Birthday**, or **Event**. |
+| **Soft delete** | Project Imperium never hard-deletes domain documents: a server-owned deleted marker plus a timestamp are set, the document is retained and reactivatable, and uniqueness is enforced among active documents. Every model follows it, apart from deliberate exceptions — an empty sales instance is discarded, and a cancelled order is erased. |
 
 ---
 
 ## 2. Who it is for
 
-POS serves six personas. Five map to one of the four **base access layers** ([§5](#5-access-roles-and-the-mode-chooser)); the sixth, the **Superadmin**, runs the platform's own application business in a separate realm.
+Project Imperium serves six personas. Five map to one of the four **base access layers** ([§5](#5-access-roles-and-the-mode-chooser)); the sixth, the **Superadmin**, runs the platform's own application business in a separate realm.
 
 - **Owner** — owns one or more venues, grouped into Companies. Registers the business, holds the subscription, and moves between venues through the owner shell. Also acts as an admin inside each venue.
 - **Admin** — has **full control of the venue**: configuration, people, permissions, and every operation.
@@ -76,7 +77,7 @@ POS serves six personas. Five map to one of the four **base access layers** ([§
 
 ## 3. Tenant, identity, and account model
 
-POS's tenancy tree is:
+Project Imperium's tenancy tree is:
 
 ```
 Superadmin  (platform operator — the application business)
@@ -87,7 +88,7 @@ Superadmin  (platform operator — the application business)
 ```
 
 - **User → Employee → Business.** A **User** is a single global identity. An **Employee** record links that user to a business and carries job role(s), pay, and status. An owner across several venues is one user with an employee membership per venue.
-- **User → Owner → Company → Business.** When a user registers a business, POS **automatically creates (or updates) an owner account** for them, taking the **Owner job role by default**. The Owner holds its **Companies**, the **subscription**, the **commission terms**, and other portfolio data.
+- **User → Owner → Company → Business.** When a user registers a business, Project Imperium **automatically creates (or updates) an owner account** for them, taking the **Owner job role by default**. The Owner holds its **Companies**, the **subscription**, the **commission terms**, and other portfolio data.
 - **One Business = one venue.** A multi-venue operator does not share one business record; each venue is its own **Business**, grouped under one **Owner** through a **Company**.
 - **Company = tax entity.** A **Company** groups the venues run as one legal unit and holds their **tax number**. Every **Business** belongs to exactly one Company; a venue added to an existing Company shares its tax identity, while a venue added as a new Company is a separate taxpayer.
 - **Everyone is a customer.** Creating a user — including registering a business — also grants the customer identity. There is no "business-only" user.
@@ -99,7 +100,7 @@ Owner-level resources — the **subscription**, **commission**, and portfolio na
 
 ## 4. Service surfaces
 
-POS defines four canonical ways a venue can serve, plus a cross-cutting booking layer. ("Different ways to work and serve" = this set.)
+Project Imperium defines four canonical ways a venue can serve, plus a cross-cutting booking layer. ("Different ways to work and serve" = this set.)
 
 1. **Dine-in — staff POS.** A waiter, bartender, or host opens a sales point (select it in the POS, or scan its QR) to open a **sales instance**, takes orders, and later bills and closes the table. This is the classic served-on-premises flow.
 2. **QR self-ordering — on premises.** A customer at a sales point scans its QR code to self-order from the menu. The order is **delivered to that QR point** (the table/seat). Self-ordering is only enabled where the venue has turned it on for that sales point, and is unavailable while a staff member holds the table.
@@ -141,7 +142,7 @@ See [§6](#6-time-control-and-attendance) for the attendance model.
 Time control is a **plan-vs-actual** system, separate from the schedule:
 
 - **Schedule (the plan).** Each business defines, per calendar day, one schedule containing each employee's shift: job role, planned start/end, and vacation flags. Schedule aggregates (staff count, vacation count, planned labour cost) feed reporting. The schedule does **not** imply on-duty.
-- **Shift session (the actual).** For each employee and shift, POS records a **shift session**: planned start/end, **actual sign-in / sign-out**, breaks, resulting **worked hours** and **labour cost**, and status (scheduled, signed in, completed, absent, locked). One open session per employee at a time prevents double sign-in.
+- **Shift session (the actual).** For each employee and shift, Project Imperium records a **shift session**: planned start/end, **actual sign-in / sign-out**, breaks, resulting **worked hours** and **labour cost**, and status (scheduled, signed in, completed, absent, locked). One open session per employee at a time prevents double sign-in.
 - **Time-clock ledger.** Every punch — sign-in, sign-out, and **break start/end** — is stored as an immutable event; the shift session is a projection of it. This preserves the **real entry time** even when a manager unlocks a late entry.
 - **On duty.** A person is **on duty** while they hold an open shift session. On-duty state drives operational attribution (sales, tips) and gatekeeping.
 - **Breaks.** An employee can **pause and resume** duty during a shift (lunch, rest, or other break). Paused time is excluded from worked hours but the employee remains signed in.
@@ -153,7 +154,7 @@ All times are stored in UTC and interpreted in the **business timezone**. Actual
 
 ## 7. The Business platform
 
-The Business app is the operational heart of POS. It comprises the **owner shell** (a venue switcher with tabs across an owner's businesses) and the per-venue workspaces below.
+The Business app is the operational heart of Project Imperium. It comprises the **owner shell** (a venue switcher with tabs across an owner's businesses) and the per-venue workspaces below.
 
 ### Onboarding and configuration
 
@@ -170,14 +171,14 @@ The Business app is the operational heart of POS. It comprises the **owner shell
 
 - **Employees** are linked to existing users; each carries job role(s), active status, join date, contract hours, vacation allowance/balance, salary (frequency + gross/net), documents, and optional termination date.
 - **Roles and permissions** follow the two-layer model in [§5](#5-access-roles-and-the-mode-chooser): base layers, job roles, and per-user capability assignment by managers and above.
-- **Schedules** define each day's shifts (employee, role, start/end, vacation). POS enforces no overlapping shifts and correct vacation accounting, and rolls up daily staff, vacation, and labour-cost totals.
+- **Schedules** define each day's shifts (employee, role, start/end, vacation). Project Imperium enforces no overlapping shifts and correct vacation accounting, and rolls up daily staff, vacation, and labour-cost totals.
 - **Time control** records actual attendance, breaks, and overtime as described in [§6](#6-time-control-and-attendance).
 
 ### Menu — business goods
 
 - Business goods are what the venue **sells**: **simple items**, **recipe/ingredient-based items**, and **set menus / combos**.
 - Configuration includes name, keyword, main/sub category, **on-menu state** and **availability state**, selling price, images, description, **preparation time**, and optional **add-ons** (shared across the menu).
-- POS derives **cost** and **allergens** from the supplier goods a good is built from — simple items, recipe-based items, and combos — **live** as prices and stock change; the venue sets the **selling price** freely.
+- Project Imperium derives **cost** and **allergens** from the supplier goods a good is built from — simple items, recipe-based items, and combos — **live** as prices and stock change; the venue sets the **selling price** freely.
 
 ### Supply and purchasing
 
@@ -188,9 +189,9 @@ The Business app is the operational heart of POS. It comprises the **owner shell
 ### Inventory and transfers
 
 - **Inventory** is the venue's stock ledger: a **dynamic system count** per supplier good (risen by received purchases and transfers in, lowered by orders and transfers out, restored on cancellation) and **physical counts** performed by staff, each carrying a **deviation** for the **count period** it closes.
-- Counts happen **whenever the venue decides** — POS sets no schedule; a submitted count is **locked**, and its **re-edit** requires manager/supervisor authority and a **reason**, with an audit trail.
+- Counts happen **whenever the venue decides** — Project Imperium sets no schedule; a submitted count is **locked**, and its **re-edit** requires manager/supervisor authority and a **reason**, with an audit trail.
 - A month's counts are aggregated into a **monthly resume**: a **manager closes** the month after reviewing it, and the month's closing count is taken on the **morning of the first day of the following month**. Closing locks the month; only the **general manager** reopens it, with a reason.
-- POS surfaces **low-stock alerts** (below a good's **minimum required**) and **negative-stock alerts**, notified to the managers on duty, plus a **variance report** comparing theoretical usage (from recipes) against actual usage (opening + purchases + transfers in − transfers out − closing) and **waste** graded by budget impact.
+- Project Imperium surfaces **low-stock alerts** (below a good's **minimum required**) and **negative-stock alerts**, notified to the managers on duty, plus a **variance report** comparing theoretical usage (from recipes) against actual usage (opening + purchases + transfers in − transfers out − closing) and **waste** graded by budget impact.
 - **Inventory transfers** move supplier goods between **venues of the same Company only**, valued **at cost**, adjusting **both venues' inventories** and leaving a full **audit trail** (who, when, quantity, value). A transfer is not a sale and not a purchase and carries no tax. Manager-and-above authorization is required.
 
 ### Service — sales points, sessions, orders, billing
@@ -230,7 +231,7 @@ The Business app is the operational heart of POS. It comprises the **owner shell
 
 ### Reports and metrics
 
-- **Daily sales report** — opens automatically on the first sale of the day. It accumulates **per-employee**, **delivery**, **self-ordering**, and **kiosk** buckets (sales, tips, goods sold/voided/invited, payment methods), plus **business totals** (net paid, cost of goods, profit, customers served, average spend, POS commission), with operational breakdowns by employee, sales point/channel, payment method, and item. Managers **calculate**, **reconcile**, and **close** it; closure requires no open orders and locks the day.
+- **Daily sales report** — opens automatically on the first sale of the day. It accumulates **per-employee**, **delivery**, **self-ordering**, and **kiosk** buckets (sales, tips, goods sold/voided/invited, payment methods), plus **business totals** (net paid, cost of goods, profit, customers served, average spend, Project Imperium commission), with operational breakdowns by employee, sales point/channel, payment method, and item. Managers **calculate**, **reconcile**, and **close** it; closure requires no open orders and locks the day.
 - **Weekly business report** — aggregates closed daily reports for the venue's configured reporting week, focused on operational performance (fixed and extra monthly costs excluded), and carries the full set of **dimension breakdowns**. It closes automatically when a new reporting week begins.
 - **Monthly business report** — aggregates the month's daily reports plus inventory variance and waste, purchasing, and labour cost, then compares **targets vs actuals** across food/beverage/labour/fixed cost and waste. It includes break-even, net profit, and a metrics-comparison section, with the full dimension set plus supplier breakdowns. It closes at the month boundary once all daily reports and the **inventory month** are closed.
 - **Reporting exports** are available across these reports, powered by the shared advanced-table engine used as the blueprint for report tables.
@@ -247,7 +248,7 @@ The Business app is the operational heart of POS. It comprises the **owner shell
 
 ## 8. The Customer app
 
-The Customer app is the free, public side of POS — the venue's customers. It is where the "final user" features live.
+The Customer app is the free, public side of Project Imperium — the venue's customers. It is where the "final user" features live.
 
 - **Account.** Sign up and sign in, manage profile, verify email, reset password. Every user is a customer.
 - **Discovery.** Browse venues by cuisine type, categories, rating, and location (geo radius), and view a venue's public profile and menu.
@@ -267,7 +268,7 @@ The Customer app is the free, public side of POS — the venue's customers. It i
 
 ## 9. The Superadmin console
 
-The Superadmin console runs the **application business** — POS itself — not any venue. It is a separate surface with its own authentication realm (separate credentials, MFA, and access restrictions), distinct from the business and customer sessions.
+The Superadmin console runs the **application business** — Project Imperium itself — not any venue. It is a separate surface with its own authentication realm (separate credentials, MFA, and access restrictions), distinct from the business and customer sessions.
 
 - **Owner account management.** Superadmin manages **Owners** as the paying accounts: subscription, commission terms, and account lifecycle (approve/suspend/resume/delete), with visibility into the Businesses beneath each Owner.
 - **Plan catalog.** Management of the subscription plan catalog and assignment of plans to Owners.
@@ -281,9 +282,9 @@ The Superadmin console runs the **application business** — POS itself — not 
 
 ## 10. Real-time and communication
 
-POS is **live by design**: sales points, sales instances, order status, stock movement, and notifications update continuously across the API and UI. Operationally this means:
+Project Imperium is **live by design**: sales points, sales instances, order status, stock movement, and notifications update continuously across the API and UI. Operationally this means:
 
-- The POS state (open tables, order status, stock movement) is reflected in real time.
+- The point-of-sale state (open tables, order status, stock movement) is reflected in real time.
 - In-app notifications are persisted first, then pushed live over WebSocket, so online users see them instantly and offline users see them on return.
 - Core business actions are never blocked by communication failures; email has retry behavior, and noisy events (low-stock, overtime) use cooldown and idempotency.
 
@@ -293,25 +294,26 @@ POS is **live by design**: sales points, sales instances, order status, stock mo
 
 - **Businesses pay; customers are free.**
 - **Subscription.** An **Owner** subscribes to a **tiered plan** — **Free, Basic, Premium, Enterprise** — managed from the Superadmin catalog. The plan covers the Owner's venues and determines which features are available.
-- **Commission.** POS also earns a **commission on transactions**, and the commission rate **varies by subscription tier**. Commission is **fixed by the plan** and is therefore **not a user-editable field**; it is reported as platform revenue, not as a venue input. Where possible it is collected automatically through the integrated payment provider, and invoiced otherwise.
+- **Commission.** Project Imperium also earns a **commission on transactions**, and the commission rate **varies by subscription tier**. Commission is **fixed by the plan** and is therefore **not a user-editable field**; it is reported as platform revenue, not as a venue input. Where possible it is collected automatically through the integrated payment provider, and invoiced otherwise.
 
 ---
 
 ## 12. Platforms and constraints
 
-- **Responsive web app.** POS runs in any modern browser on desktop, laptop, tablet, or phone. There is currently no installable PWA requirement and no native app; a native version may follow later using the same logic.
-- **Customer-brought hardware.** The venue chooses its devices, printers, and screens. POS sells none of them.
+- **Responsive web app.** Project Imperium runs in any modern browser on desktop, laptop, tablet, or phone. There is currently no installable PWA requirement and no native app; a native version may follow later using the same logic.
+- **Customer-brought hardware.** The venue chooses its devices, printers, and screens. Project Imperium sells none of them.
 - **Online-only.** Connectivity is required; there is no offline mode.
 - **Language and currency.** The UI ships in **English and Spanish** (more languages later); each business selects **one currency** at onboarding.
 
 ---
 
-## 13. What POS is not
+## 13. What Project Imperium is not
 
-- **Not proprietary hardware.** POS does not lock venues to a specific device, printer, or screen, and sells no hardware.
-- **Not a hardware vendor.** POS is software only.
+- **Not only a point-of-sale.** The point of sale is one surface; Project Imperium also runs the menu and its costing, supply and stock, people and scheduling, and reporting.
+- **Not proprietary hardware.** Project Imperium does not lock venues to a specific device, printer, or screen, and sells no hardware.
+- **Not a hardware vendor.** Project Imperium is software only.
 - **Not offline.** There is no offline mode; the product is online-only.
 - **Not a multi-vendor marketplace.** Customers order from a specific venue; delivery is per-venue, not a marketplace spanning venues.
-- **Not self-hosted.** There is no on-premise or self-managed deployment; POS is cloud SaaS.
+- **Not self-hosted.** There is no on-premise or self-managed deployment; Project Imperium is cloud SaaS.
 
 (Direct payment processing and delivery **are** in scope — delivered through third-party providers.)

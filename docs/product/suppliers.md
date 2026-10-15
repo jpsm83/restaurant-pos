@@ -1,6 +1,6 @@
 # Suppliers
 
-> **About this document.** This is the **target-state source of truth** for the suppliers a venue buys from in POS. It is written for two readers: AI agents that build the product and engineers onboarding onto it. It describes suppliers as they are *meant to be* — capabilities are stated as commitments, without built/planned tags. It is self-contained: it links to no other document.
+> **About this document.** This is the **target-state source of truth** for the suppliers a venue buys from in Project Imperium. It is written for two readers: AI agents that build the product and engineers onboarding onto it. It describes suppliers as they are *meant to be* — capabilities are stated as commitments, without built/planned tags. It is self-contained: it links to no other document.
 
 ---
 
@@ -23,10 +23,10 @@ It deliberately does **not** cover:
 - the **purchase record** — a purchase's lines and their requested-versus-delivered quantities, receipt photos, the inventory increment, one-time purchases, delivery acceptance, and the reason-and-audit rule for line edits belong to the purchases subject. This subject owns the supplier-facing request action and the vendor's view of the resulting history.
 - **business goods** (sellable items and their recipes) that consume supplier goods — the business goods subject owns them.
 - the **waste thresholds** keyed to a supplier good's budget impact — the business-metrics subject owns them.
-- **messages directed at POS users** — inbox notifications and account, operational, and engagement emails belong to the notifications and emails subjects. Supplier correspondence is addressed to **third parties** and is this subject's.
+- **messages directed at Project Imperium users** — inbox notifications and account, operational, and engagement emails belong to the notifications and emails subjects. Supplier correspondence is addressed to **third parties** and is this subject's.
 - the **Business** and its tenancy — the business subject owns it.
 - **inventory transfers** — moving stock between venues of one Company belongs to the inventories subject; this subject owns the supplier record such a transfer creates, not the transfer itself.
-- **amounts payable to a supplier** — accounts payable and supplier invoices as financial obligations are not part of POS.
+- **amounts payable to a supplier** — accounts payable and supplier invoices as financial obligations are not part of Project Imperium.
 
 ---
 

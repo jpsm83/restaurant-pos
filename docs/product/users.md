@@ -1,6 +1,6 @@
 # Users
 
-> **About this document.** This is the **target-state source of truth** for the global identity model in POS. It is written for two readers: AI agents that build the product and engineers onboarding onto it. It describes the global identity model as it is *meant to be* — capabilities are stated as commitments, without built/planned tags. It is self-contained: it links to no other document.
+> **About this document.** This is the **target-state source of truth** for the global identity model in Project Imperium. It is written for two readers: AI agents that build the product and engineers onboarding onto it. It describes the global identity model as it is *meant to be* — capabilities are stated as commitments, without built/planned tags. It is self-contained: it links to no other document.
 
 ---
 
@@ -60,7 +60,7 @@ User ──1 Owner ──< Company ──< Business  (ownership: exactly one own
 
 ### 3.1 One identity, one login
 
-POS stores **one user per person**, and that user is the single holder of the person's sign-in credentials. A person never ends up with two accounts for the same identity. Sign-in is one shared form; after authenticating, POS applies the mode rule in §3.8.
+Project Imperium stores **one user per person**, and that user is the single holder of the person's sign-in credentials. A person never ends up with two accounts for the same identity. Sign-in is one shared form; after authenticating, Project Imperium applies the mode rule in §3.8.
 
 ### 3.2 Every user is a customer
 
@@ -68,7 +68,7 @@ Creating a user grants the **customer identity unconditionally**. There is no bu
 
 ### 3.3 Business ownership and the owner
 
-A **business is owned by exactly one user**. When a user registers a business, POS **creates or updates that user's Owner** account, which holds the Companies it controls, the subscription, and the commission terms.
+A **business is owned by exactly one user**. When a user registers a business, Project Imperium **creates or updates that user's Owner** account, which holds the Companies it controls, the subscription, and the commission terms.
 
 - A user may **own many businesses**; each owned venue is its own **Business**, and each Business belongs to exactly one **Company** — the tax entity grouping the venues run as one legal unit. A user adding a venue chooses whether it **joins an existing Company** or **forms a new one**.
 - A user may simultaneously **own some venues and be an ordinary employee at others**.
@@ -130,19 +130,19 @@ Each **Business** carries its **own contact email**, verified by the same token 
 
 - A business may be **created as an incomplete draft and configured over time**, before verification.
 - A business is **not live until its contact email is verified** *and* its **go-live checklist** is complete; an admin/owner then toggles it live (the checklist and toggle belong to the business subject). **Not live** means **absent from customer discovery** and **unable to take customer orders or bookings**.
-- POS shows a clear **warning on the business page** until the contact email is verified.
+- Project Imperium shows a clear **warning on the business page** until the contact email is verified.
 
 ### 3.11 Account creation paths
 
-A user comes into existence through one of three paths, and POS **never duplicates a person**:
+A user comes into existence through one of three paths, and Project Imperium **never duplicates a person**:
 
 1. **Self sign-up** — a person signs up and becomes a customer user.
-2. **Managed employee** — a manager or above creates an employee membership by linking an **existing user by email**. If no user exists for that email, POS creates the user (a customer) first, then links the membership.
+2. **Managed employee** — a manager or above creates an employee membership by linking an **existing user by email**. If no user exists for that email, Project Imperium creates the user (a customer) first, then links the membership.
 3. **Business registration** — a **signed-in user** registers a business; the registrant already exists as a user, and registration creates (or updates) their **Owner**, the **Company** (existing or new), the **Business**, and the owner's membership.
 
 ### 3.12 Sessions
 
-POS issues a short-lived **access token** and a **refresh session**. POS can revoke a user's refresh sessions wholesale whenever the password is reset or changed, or the sign-in email is verified as changed. The mode chosen in §3.8 is recorded in a server-side session cookie so guards can enforce it. The **superadmin console's authentication realm is entirely separate** and belongs to the superadmin subject.
+Project Imperium issues a short-lived **access token** and a **refresh session**. Project Imperium can revoke a user's refresh sessions wholesale whenever the password is reset or changed, or the sign-in email is verified as changed. The mode chosen in §3.8 is recorded in a server-side session cookie so guards can enforce it. The **superadmin console's authentication realm is entirely separate** and belongs to the superadmin subject.
 
 ### 3.13 Personal profile and preferences
 
@@ -159,7 +159,7 @@ Deleting an account is **self-service** and **two-phase**:
 1. **Request → pending deletion.** The account enters a **pending-deletion** state for a **15-day grace window**. Sign-in **still works** during the window, precisely so the user can **cancel** the deletion; the account is otherwise not public.
 2. **Soft delete.** After the window, the **soft-delete marker** is applied and **sign-in is blocked**. The data is **retained** (see §3.17).
 
-Deletion is **blocked until the user resolves every business they own** — each must be **transferred to another user** or **closed** first. Deletion **never cascades** into other people's records: POS does not silently destroy data that others depend on.
+Deletion is **blocked until the user resolves every business they own** — each must be **transferred to another user** or **closed** first. Deletion **never cascades** into other people's records: Project Imperium does not silently destroy data that others depend on.
 
 ### 3.16 Reactivation
 
@@ -167,7 +167,7 @@ A soft-deleted account can be **reactivated**, but reactivation is **never compl
 
 ### 3.17 Soft delete, platform-wide
 
-Under POS's **soft-delete convention**, an identity — a **User**, **Owner**, **Company**, **Employee**, or **Business** — is never hard-deleted. POS marks it deleted and stamps the time, retains it, and can reactivate it; uniqueness is enforced among active identities, so reusing a soft-deleted email means **reactivating** that account, not creating a duplicate.
+Under Project Imperium's **soft-delete convention**, an identity — a **User**, **Owner**, **Company**, **Employee**, or **Business** — is never hard-deleted. Project Imperium marks it deleted and stamps the time, retains it, and can reactivate it; uniqueness is enforced among active identities, so reusing a soft-deleted email means **reactivating** that account, not creating a duplicate.
 
 ---
 

@@ -1,6 +1,6 @@
 # Inventory
 
-> **About this document.** This is the **target-state source of truth** for inventory in POS — the stock a venue holds and the stock it moves between its sibling venues. It is written for two readers: AI agents that build the product and engineers onboarding onto it. It describes inventory as it is *meant to be* — capabilities are stated as commitments, without built/planned tags. It is self-contained: it links to no other document.
+> **About this document.** This is the **target-state source of truth** for inventory in Project Imperium — the stock a venue holds and the stock it moves between its sibling venues. It is written for two readers: AI agents that build the product and engineers onboarding onto it. It describes inventory as it is *meant to be* — capabilities are stated as commitments, without built/planned tags. It is self-contained: it links to no other document.
 
 ---
 
@@ -29,7 +29,7 @@ It deliberately does **not** cover:
 - **notification delivery** — the notifications subject owns how an alert reaches its recipient; inventory owns the conditions it detects.
 - the **reports** that present inventory — the business-reports subject owns them.
 - the **Business**, the **Company**, and the **Owner** — the business and users subjects own them; a transfer is confined to one Company.
-- **amounts payable to a supplier**, supplier invoices, and inter-company tax — none are part of POS.
+- **amounts payable to a supplier**, supplier invoices, and inter-company tax — none are part of Project Imperium.
 
 ---
 
@@ -94,7 +94,7 @@ Terms reused from other subjects rather than redefined here: **Business**, **Com
 - A month's count periods are aggregated into a **monthly resume**: the month's counts and their deviations, the month's usage **variance**, and the month's **waste**, so the venue can see how good or bad the month was.
 - The month is bounded by its **closing count** — taken on the **morning of the first day of the following month**, before deliveries and service, so the whole of the last day is covered. That count closes the month and opens the next, so the month's figures need **no proportional proration**.
 - A good with **no count in the month** contributes its **running** figure and is marked **uncounted**; a missing count never blocks the close.
-- When the resume is ready, POS notifies the venue's managers and above, and a **manager closes the month** after reviewing it. Closing is a deliberate act, never automatic.
+- When the resume is ready, Project Imperium notifies the venue's managers and above, and a **manager closes the month** after reviewing it. Closing is a deliberate act, never automatic.
 - Closing the month **locks** it: its counts, its purchases, and its transfers become read-only and its figures are frozen.
 - A closed month is reopened only by the **general manager**, with a **reason** and an audit record.
 
@@ -112,7 +112,7 @@ Terms reused from other subjects rather than redefined here: **Business**, **Com
 - A count that finds **more** stock than expected is the opposite of waste and is **not** reported as waste.
 - Waste is graded by the good's **budget impact**; each grade is measured as a **percentage of total sales** — the view its **waste threshold** polices — and is also shown as a **percentage of COGS** for the input view.
 - Waste is derived from the counts and the movements. There is **no separate waste entry to log**.
-- A grade with no waste, or with no goods at that impact, simply produces no comparison; POS never fabricates a zero-waste result.
+- A grade with no waste, or with no goods at that impact, simply produces no comparison; Project Imperium never fabricates a zero-waste result.
 
 ### 3.7 Low stock and negative stock
 

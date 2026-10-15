@@ -1,6 +1,6 @@
 # Business metrics
 
-> **About this document.** This is the **target-state source of truth** for the business metrics of a venue in POS. It is written for two readers: AI agents that build the product and engineers onboarding onto it. It describes business metrics as they are *meant to be* — capabilities are stated as commitments, without built/planned tags. It is self-contained: it links to no other document.
+> **About this document.** This is the **target-state source of truth** for the business metrics of a venue in Project Imperium. It is written for two readers: AI agents that build the product and engineers onboarding onto it. It describes business metrics as they are *meant to be* — capabilities are stated as commitments, without built/planned tags. It is self-contained: it links to no other document.
 
 ---
 
@@ -99,7 +99,7 @@ A business holds **four cost targets** — food, beverage, labour, and fixed.
 
 - Each target is a **percentage of total sales**, not a percentage of the category's own sales. A food target of `30` means food cost is targeted at `30%` of total sales.
 - Each target is validated in the **`0..100`** range and accepts decimals.
-- The **four targets are independent**: POS places **no requirement that they sum to 100**. They describe different cost categories against the same denominator — total sales — not shares of a cost pool. Food and beverage together form COGS; food, beverage, and labour together form **prime cost**; the remainder is profit.
+- The **four targets are independent**: Project Imperium places **no requirement that they sum to 100**. They describe different cost categories against the same denominator — total sales — not shares of a cost pool. Food and beverage together form COGS; food, beverage, and labour together form **prime cost**; the remainder is profit.
 - Targets are **seeded at venue creation** with the platform defaults (§3.8) and are **editable** at any time by managers and above.
 - The **actual** a target is compared against is the corresponding cost ratio **against total sales** for the report's period.
 
@@ -112,7 +112,7 @@ Waste thresholds are **five ceilings**, one per **budget-impact level**, applied
 - The **actual** for a level is that level's waste **cost as a percentage of total sales**; the ceilings do not blend into one figure — each level is compared on its own.
 - Waste is **also published as a percentage of COGS** for the input view (§3.7). That view is **reference only**; only the percentage-of-sales ceiling is policed.
 - Thresholds are seeded at venue creation with the platform defaults (§3.8) and are editable by managers and above.
-- A level with **no waste recorded** and a level with **no supplier goods** at that impact simply produce no meaningful comparison; POS never fabricates a zero-waste result for a level that had no activity.
+- A level with **no waste recorded** and a level with **no supplier goods** at that impact simply produce no meaningful comparison; Project Imperium never fabricates a zero-waste result for a level that had no activity.
 
 ### 3.3 Reporting-week start day
 
@@ -123,7 +123,7 @@ Waste thresholds are **five ceilings**, one per **budget-impact level**, applied
 
 ### 3.4 Targets vs actuals
 
-- POS compares each **configured target** against its **actual** for the report period and records the **target**, the **actual**, the **delta**, and whether the metric is **over** or **under** target.
+- Project Imperium compares each **configured target** against its **actual** for the report period and records the **target**, the **actual**, the **delta**, and whether the metric is **over** or **under** target.
 - The comparison is **derived** and **report-owned**; it is never a client-settable field. It is computed at report aggregation time and retained with the report.
 - Comparison coverage:
   - the **weekly** business report compares the operational cost targets — **food**, **beverage**, and **labour** — plus the **waste thresholds**; **fixed cost is excluded** from the weekly view;
@@ -151,11 +151,11 @@ Every KPI is expressed for a **period** — a day, a week, or a month — and ma
 - The **period axis is always present**; the rest are optional breakdowns.
 - Dayparts are a **fixed platform set** — breakfast, lunch, dinner, late-night — derived from the time an order was placed. Venues do not configure their own dayparts.
 - Each KPI declares the dimensions it supports. To keep the catalogue readable, dimensions are stated **per family with inline exceptions** rather than repeated on every row.
-- A breakdown over a dimension that has **no activity** produces **no value**; POS never fabricates a zero.
+- A breakdown over a dimension that has **no activity** produces **no value**; Project Imperium never fabricates a zero.
 
 ### 3.6 Benchmarks
 
-- Each KPI carries an **industry benchmark** where a **credible published range exists**, and **no benchmark** where one does not — POS never fabricates a reference range.
+- Each KPI carries an **industry benchmark** where a **credible published range exists**, and **no benchmark** where one does not — Project Imperium never fabricates a reference range.
 - A benchmark is **reference only**: it is shown beside the actual for context and is **never policed, alerted on, or configured**. Only the cost targets and waste thresholds govern.
 - Benchmarks are **platform-fixed** reference values; they are not venue-editable.
 - A benchmark is stated as a **typical range** in the KPI's own unit (for example, prime cost `55–65%` of sales).

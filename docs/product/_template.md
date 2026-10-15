@@ -2,7 +2,7 @@
 
 > **About this file.** This is the shared **template and rulebook** for the per-feature product documents under `docs/product/`. It is not itself a subject document. It defines the skeleton every subject document copies and the conventions those documents obey.
 
-Each subject document describes **one subject** — orders, inventories, loyalty, and so on — as the **target-state source of truth** for that subject, written for two readers: AI agents that build POS and engineers onboarding onto it. Capabilities are stated as commitments, not a status report, and the document describes the **business** — its behaviour and rules — never the implementation.
+Each subject document describes **one subject** — orders, inventories, loyalty, and so on — as the **target-state source of truth** for that subject, written for two readers: AI agents that build Project Imperium and engineers onboarding onto it. Capabilities are stated as commitments, not a status report, and the document describes the **business** — its behaviour and rules — never the implementation.
 
 Every document is **self-contained** and **link-free**, and every document is listed, with a short description, in the `AGENTS.md` pointer list. That list is the only index: an agent reads `AGENTS.md`, picks the one document it needs, and loads that file alone.
 
@@ -37,7 +37,7 @@ Every document is **self-contained** and **link-free**, and every document is li
 
 ## Commitments, not status
 
-- State capabilities as commitments ("the business can…", "POS records…"), never as a status report, and carry **no built/planned tags**.
+- State capabilities as commitments ("the business can…", "Project Imperium records…"), never as a status report, and carry **no built/planned tags**.
 
 ## Roles and entitlements
 
@@ -62,7 +62,7 @@ Before a document is done, check every item:
 ```markdown
 # <Subject>
 
-> **About this document.** This is the **target-state source of truth** for <subject> in POS. It is written for two readers: AI agents that build the product and engineers onboarding onto it. It describes <subject> as it is *meant to be* — capabilities are stated as commitments, without built/planned tags. It is self-contained: it links to no other document.
+> **About this document.** This is the **target-state source of truth** for <subject> in Project Imperium. It is written for two readers: AI agents that build the product and engineers onboarding onto it. It describes <subject> as it is *meant to be* — capabilities are stated as commitments, without built/planned tags. It is self-contained: it links to no other document.
 
 ---
 

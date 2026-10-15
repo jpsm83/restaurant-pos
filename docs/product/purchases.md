@@ -1,6 +1,6 @@
 # Purchases
 
-> **About this document.** This is the **target-state source of truth** for purchases in POS — the goods a venue buys from a supplier, from what it requests to what it receives. It is written for two readers: AI agents that build the product and engineers onboarding onto it. It describes purchases as they are *meant to be* — capabilities are stated as commitments, without built/planned tags. It is self-contained: it links to no other document.
+> **About this document.** This is the **target-state source of truth** for purchases in Project Imperium — the goods a venue buys from a supplier, from what it requests to what it receives. It is written for two readers: AI agents that build the product and engineers onboarding onto it. It describes purchases as they are *meant to be* — capabilities are stated as commitments, without built/planned tags. It is self-contained: it links to no other document.
 
 ---
 
@@ -27,7 +27,7 @@ It deliberately does **not** cover:
 - the **waste thresholds** a good's budget impact selects — the business-metrics subject owns them.
 - the **business** and its currency — the business subject owns them; a purchase prices in the business's single currency.
 - **notifications** — the messages a venue or its staff receive belong to the notifications subject.
-- **tax on sales, payments, and supplier invoicing** — the payments-and-tax subject owns sales tax, and **amounts payable to a supplier** and supplier invoices are not part of POS. A purchase carries no separate tax.
+- **tax on sales, payments, and supplier invoicing** — the payments-and-tax subject owns sales tax, and **amounts payable to a supplier** and supplier invoices are not part of Project Imperium. A purchase carries no separate tax.
 
 ---
 

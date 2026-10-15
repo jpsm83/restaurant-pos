@@ -1,6 +1,6 @@
 # Sales points and instances
 
-> **About this document.** This is the **target-state source of truth** for sales points and sales instances in POS — the places a venue serves from and the sessions it opens there. It is written for two readers: AI agents that build the product and engineers onboarding onto it. It describes sales points and instances as they are *meant to be* — capabilities are stated as commitments, without built/planned tags. It is self-contained: it links to no other document.
+> **About this document.** This is the **target-state source of truth** for sales points and sales instances in Project Imperium — the places a venue serves from and the sessions it opens there. It is written for two readers: AI agents that build the product and engineers onboarding onto it. It describes sales points and instances as they are *meant to be* — capabilities are stated as commitments, without built/planned tags. It is self-contained: it links to no other document.
 
 ---
 
@@ -17,7 +17,7 @@ It deliberately does **not** cover:
 
 - the **end-to-end service journey** or the surface-specific flows (dine-in, QR self-ordering, kiosk, takeaway, and delivery dispatch) — the order-flow subject owns the journey; this subject owns the anchor those flows open and close.
 - the **orders** themselves — the billable lines, add-ons, pricing, promotions, and the **identification code** an order carries belong to the orders subject. This subject groups orders into a session and owns the handover rule.
-- **billing and payment** — splitting a tab, partial and multi-method payments, tips, voids, invitations, and settlement belong to the order-flow subject. This subject owns the instance's **Bill** status and its close once settled.
+- **billing and payment** — splitting a tab, partial and multi-method payments, tips, and settlement belong to the order-flow subject, while the order lifecycle — voids, invitations, and cancellations — belongs to the orders subject. This subject owns the instance's **Bill** status and its close once settled.
 - the **reservation flow** — the booking, its lifecycle, and no-show handling belong to the reservations subject. This subject owns the **reservation link** a seated instance carries and the **reserved hold** a point may show.
 - **delivery configuration** — enabling delivery, the radius, the minimum order, and the windows belong to the business subject; this subject owns the virtual delivery point those settings produce.
 - **printer routing** — the printers-and-screens subject owns how a point routes tickets; this subject only names the point as a routing target.
@@ -43,9 +43,9 @@ It deliberately does **not** cover:
 - **One-open rule** — a served point accepts **at most one open staff tab at a time**.
 - **Guest count** — the number of guests a sitting covers; set when the instance opens and editable while it is open.
 - **Client name** — the optional name a sitting is held under.
-- **QR identity** — the point's QR code, issued by POS with the point and never chosen by a client. It is the point's identity, and it is offered to customers only where the point accepts **Self-ordering**.
+- **QR identity** — the point's QR code, issued by Project Imperium with the point and never chosen by a client. It is the point's identity, and it is offered to customers only where the point accepts **Self-ordering**.
 - **Reserved hold** — a reminder label on an **available** served point, set by a Host or managers and above, that a sitting is expected.
-- **Available** and **occupied** — the derived point states: a point is **available** when it has no open instance and **occupied** while it has one. POS stores neither.
+- **Available** and **occupied** — the derived point states: a point is **available** when it has no open instance and **occupied** while it has one. Project Imperium stores neither.
 - **Responsible employee** — the on-duty employee answerable for a staff tab; responsibility moves with the tab and can be passed between on-duty staff.
 - **Reservation link** — the instance's reference to the booking it seats, set when a tab is opened against a point for the reserved party.
 - **Work-day anchor** — the business-local day an instance belongs to; the first instance of the day opens that day's daily sales report.
@@ -62,7 +62,7 @@ Terms reused rather than redefined here: **Business**, **Order**, **Business goo
 - A venue defines the sales points it serves from. Each has a **name** unique among the business's active points, a **type**, and the set of **channels** it accepts.
 - A point may accept **Dine-in** and, independently, **Self-ordering**; a **Spot** is defined for self-ordering; a **Kiosk** point accepts the kiosk channel; the **Delivery** point accepts delivery.
 - Every point holds a **QR identity**. Only points that accept self-ordering **offer** it to customers; staff may scan any point's QR to open its tab. A lost QR is reissued and the old one retired.
-- Availability is **derived**: a point is available when no instance is open on it and occupied while one is. POS keeps no separate occupied marker to read.
+- Availability is **derived**: a point is available when no instance is open on it and occupied while one is. Project Imperium keeps no separate occupied marker to read.
 
 ### 3.2 The reserved hold
 
@@ -79,7 +79,7 @@ Terms reused rather than redefined here: **Business**, **Order**, **Business goo
 
 - An **on-duty employee** opens a staff tab from the POS or by scanning the point's QR; opening is gated by the employee's schedule, as everywhere in the business app.
 - A point accepts **at most one open staff tab at a time** (the one-open rule), whoever opened it. The point frees when that tab closes.
-- When a tab is opened on a point showing a **reserved hold**, POS asks whether the sitting is the reserved party. If it is, the instance **links to that reservation**; if it is not, the instance is an ordinary walk-in and the hold is overrun.
+- When a tab is opened on a point showing a **reserved hold**, Project Imperium asks whether the sitting is the reserved party. If it is, the instance **links to that reservation**; if it is not, the instance is an ordinary walk-in and the hold is overrun.
 - Opening records who opened the instance and in what role, the guest count, and an optional client name.
 - An instance opened and closed with **no orders** is **discarded**, as if it had never opened (see §3.8).
 
@@ -89,21 +89,21 @@ Terms reused rather than redefined here: **Business**, **Order**, **Business goo
 - These channels are **not** subject to the one-open rule: several may run at once, one per customer.
 - A **Self-ordering** instance cannot open while a **staff tab** is open on the same point; the customer is told that service is underway.
 - A self-service instance is created **only when the customer commits to pay**, so an abandoned basket leaves nothing behind.
-- Every order carries an **identification code**. For **Self-ordering**, **Kiosk**, and **Delivery**, POS **notifies and emails** the customer the code, and a **kiosk also prints a ticket**. Staff **verify the code at handover**, before releasing the items, so the person who collects is the person who ordered.
+- Every order carries an **identification code**. For **Self-ordering**, **Kiosk**, and **Delivery**, Project Imperium **notifies and emails** the customer the code, and a **kiosk also prints a ticket**. Staff **verify the code at handover**, before releasing the items, so the person who collects is the person who ordered.
 
 ### 3.6 Statuses and the tab lifecycle
 
 - An instance's status is **Occupied** (open service), **Bill** (the check has been requested), or **Closed** (settled).
 - **Bill** belongs to a **staff tab**; the self-service channels never hold it, because they pay to close.
 - A staff tab moves from **Occupied** to **Bill** when the check is requested, and to **Closed** when its last order is settled.
-- POS owns the instance status; a client never sets one directly.
+- Project Imperium owns the instance status; a client never sets one directly.
 
 ### 3.7 Attribution and moving a tab
 
 - Every instance records its opener and role, its optional client name, and its guest count, which may be edited while the instance is open.
-- A staff tab has a **responsible employee**. Responsibility moves with the tab and can be passed to another on-duty employee.
-- The **opening employee or admin and above** may move a tab that has **no orders**. Once a tab has orders, only its **responsible employee or admin and above** may move it, together with its orders.
-- Orders may be moved between staff tabs; only employee-opened tabs take part.
+- A staff tab has a **responsible employee**. Responsibility moves with the tab. The responsible employee may **hand the tab over** to another on-duty employee, who must **approve** the handover before it takes effect; after that the tab belongs to the receiver.
+- The **opening employee or admin and above** may move a tab that has **no orders**. Once a tab has orders, only its **responsible employee or admin and above** may move it, together with its orders. Moving a tab to an **empty served point** needs no approval and does not change responsibility — the tab is simply relocated.
+- Orders may be moved between staff tabs; only employee-opened tabs take part. The receiving tab's responsible employee approves, unless the mover is responsible for the destination; the orders subject owns the transfer and its approval rule.
 - A **Host cannot move** a tab; the Host's tool is the reserved hold.
 
 ### 3.8 Empty instances
@@ -148,6 +148,7 @@ Terms reused rather than redefined here: **Business**, **Order**, **Business goo
 | Request the bill | An employee on the tab |
 | Move an empty tab | The **opening employee** or admin and above |
 | Move a tab with orders, together with its orders | The **responsible employee** or admin and above |
-| Move orders between staff tabs | Employees on the tabs |
+| Hand a tab's responsibility to another on-duty employee | The responsible employee, with the receiving employee's approval |
+| Move orders between staff tabs | The tab's staff for draft orders, managers and above for sent orders (which move with their whole batch); the receiving tab approves unless moving to their own tabs |
 | Settle and close a tab | An employee on the tab |
 | Discard an empty instance | An employee on the tab |
