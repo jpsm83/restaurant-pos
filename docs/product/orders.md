@@ -103,7 +103,7 @@ Terms reused rather than redefined here: **Business**, **Sales instance**, **Sal
 ### 3.6 Promotions and manual discounts
 
 - A promotion may apply to an order's **main good only** — **never** to its add-ons.
-- At most **one** promotion applies to an order: the **best** match among the promotions that target the good, match its rules, and are **available when the order is taken**. An order counts toward a promotion only if it falls within that promotion's **availability window**; a matching order taken outside the window does not complete the promotion.
+- At most **one** promotion applies to an order: a good's subcategory is targeted by at most one enabled promotion whose active window is current at a time, so a single promotion covers the order. An order counts toward a promotion only when it is taken while the promotion is enabled and the moment falls inside its **active window**; a matching order taken outside the window does not complete the promotion.
 - The good's **full price is recorded** when the order is added; the promotion's discount is applied while the tab is **open** and may reprice an already-added order — three matching burgers on a tab turn one of them free, for example. The amount is **final** once the order is **settled**.
 - A **manual discount** is set on a **single order** by a **manager and above**, as a **percentage or a fixed amount**, and requires a **reason**.
 - Applying a manual discount **replaces** any promotion on that order; an order carries a promotion **or** a manual discount, **never both**.

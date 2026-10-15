@@ -24,7 +24,7 @@ It deliberately does **not** cover:
 - **stock on hand and counting** — the system count, physical counts, deviation, variance and monthly close belong to the inventories subject. This subject only *reads* the stock a component needs before a good can be sold; it never counts stock.
 - **buying and receiving** — the purchase record, its lines, and the inventory increment on receipt belong to the purchases subject.
 - **ordering, billing and fulfilment** — the order lifecycle, how an add-on is attached to an order at the till, billing, and the service surfaces belong to the orders and order-flow subjects. This subject defines the sellable item those orders point at.
-- **promotions** — the discount rules and their scoping belong to the promotions subject. This subject owns only the goods a promotion may target and the rule that a discount lands on the **main good**, never on an add-on.
+- **promotions** — the discount rules and their scoping belong to the promotions subject. This subject owns the **menu subcategories** a promotion may target and the rule that a discount lands on the **main good**, never on an add-on.
 - the **business**, its **currency**, and its **tax** — the business and payments-and-tax subjects own them. A good prices in the single currency of its business and carries no tax configuration of its own.
 - **targets, margins, and reports** — the business-metrics and business-reports subjects own them. This subject carries no margin, markup, or cost target.
 - **printers and kitchen routing** — the printers-and-screens subject owns routing a good's ticket by category.
@@ -56,7 +56,8 @@ A good is exactly **one** of these kinds, determined by its components — never
 - **On menu** — the good is part of the venue's sellable menu.
 - **Availability state** — whether the good can be ordered right now: **Available**, **Sold out**, or **Manually unavailable**.
 - **Preparation time** — the minutes the kitchen or bar needs to prepare the good.
-- **Main category** — the good's place on the menu, chosen from the platform's sellable categories: **Food**, **Beverage**, **Set Menu**, **Merchandise**, and **Other**. The **subcategory** is free text chosen by the venue.
+- **Main category** — the good's place on the menu, chosen from the platform's sellable categories: **Food**, **Beverage**, **Set Menu**, **Merchandise**, and **Other**.
+- **Subcategory** — a node in the venue's **subcategory tree** beneath a main category. The platform seeds a **default tree** for each main category and the venue may add its own nodes at any depth; a good belongs to exactly one subcategory, and a subcategory covers everything at or beneath it.
 - **Add-on** — a business good **flagged as an add-on**: sold alongside a main good, but never on its own.
 - **Keyword** — a short search term for finding the good.
 
@@ -70,9 +71,9 @@ The **Business**, the **Supplier good**, and the **Unit of stock** are establish
 
 A business keeps its own menu of business goods.
 
-- Every good carries a **name** (required), a **keyword** (required — a short search term for finding it), a **main category** (required, from the platform's sellable categories), an optional **subcategory** (free text, named by the venue), an optional **description**, and up to **three optional images**.
+- Every good carries a **name** (required), a **keyword** (required — a short search term for finding it), a **main category** (required, from the platform's sellable categories), a **subcategory** (required, a node in that category's subcategory tree), an optional **description**, and up to **three optional images**.
 - Within its business, a good's **name is unique among active goods**; the same name may repeat across different venues.
-- A good is **created complete**: its name, keyword, category, components, selling price, and preparation time are all present at creation. There is **no draft**.
+- A good is **created complete**: its name, keyword, category and subcategory, components, selling price, and preparation time are all present at creation. There is **no draft**.
 - A business good is part of the venue's **internal menu configuration**; what a customer sees of it is limited to its public details (§4).
 
 ### 3.2 Kinds and components
@@ -135,7 +136,8 @@ Every good carries an availability state of **Available**, **Sold out**, or **Ma
 
 ### 3.9 Categories and menu groups
 
-- Every good carries a **main category** from the platform's sellable categories — **Food, Beverage, Set Menu, Merchandise, Other** — and an optional **subcategory** named freely by the venue.
+- Every good carries a **main category** from the platform's sellable categories — **Food, Beverage, Set Menu, Merchandise, Other** — and belongs to exactly one **subcategory** node in that category's subcategory tree.
+- The venue's menu is organized as a **subcategory tree** beneath each main category. The platform seeds a **default tree** per main category and the venue may add its own subcategories at any depth; a subcategory covers everything at or beneath it, which is the scope a promotion targets.
 - Combos normally carry the **Set Menu** category, since a combo is its own menu group option; the category is otherwise the venue's choice and independent of the good's kind.
 - Category is used to place a good on the menu and to route its ticket for printing; the printers-and-screens subject owns that routing.
 
@@ -149,9 +151,9 @@ Every good carries an availability state of **Available**, **Sold out**, or **Ma
 - A good is **soft-deleted**: the record is retained and marked deleted, never hard-removed, and may be reactivated; uniqueness is enforced among active goods.
 - A good may be **deleted only when nothing live points at it**:
   - no **open order** uses it (as a main good or as an add-on);
-  - it is not a **member of a combo**;
-  - no **active promotion** targets it.
-  If any of these hold, deletion is **blocked** and the venue is told what to clear first.
+  - it is not a **member of a combo**.
+  If either holds, deletion is **blocked** and the venue is told what to clear first.
+- A **promotion never blocks deletion**: a promotion targets a subcategory, not a good, so a good may be deleted while a promotion covers it, and the promotion simply stops covering what is gone.
 - Being on the **global add-on list does not block deletion**: deleting such a good simply removes it from the list.
 - Deleting a good removes it from the menu and from selection; its **past orders and reports remain as history**.
 - Deleting a good the venue will never sell again is a **deliberate act**, distinct from merely taking it off the menu.

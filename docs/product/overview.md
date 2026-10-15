@@ -50,7 +50,7 @@ These terms are used with exactly these meanings throughout Project Imperium. Do
 | **Supplier** | A vendor the business buys from. |
 | **Purchase** | A record of the goods a business buys from a supplier — from what it requests through to what it receives; feeds inventory. A **one-time purchase** records an ad-hoc expense with no supplier. |
 | **Inventory** | The stock ledger per business: a **dynamic system count** per supplier good, **physical counts** with **deviation** per **count period**, and a monthly **resume**. |
-| **Promotion** | A time/day-scoped price rule applied to selected business goods. |
+| **Promotion** | A venue-defined price rule scoped to menu subcategories and a time window, applied to orders in real time. |
 | **Reservation** | A free table booking made by a customer or staff; hands off into live service. |
 | **Rating / Comment / Favorite** | Venue-level customer feedback and saved venues. |
 | **Loyalty** | A per-customer, per-venue membership tracking spend and rewards. |
@@ -213,7 +213,8 @@ The Business app is the operational heart of Project Imperium. It comprises the 
 ### Promotions
 
 - Promotion types: **percentage discount**, **fixed price**, **2×1**, **3×2**, **second item half price**, and **full complimentary**.
-- Scoping: active period, weekdays, the **business goods** they apply to, and an option to **apply to delivery**.
+- A promotion is created **disabled** and turned on with an **enabled** switch; enabling is blocked when it would overlap in time another enabled promotion whose **menu subcategory** scope intersects it.
+- Scoping: an **active period**, **daily hours**, **weekdays**, the **menu subcategories** they apply to, and an option to **apply to delivery**.
 - Promotions are applied **in real time** as staff or customers build orders.
 
 ### Loyalty and gift cards
