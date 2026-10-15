@@ -21,7 +21,7 @@ This subject covers the **Business** — the tenant, one venue — as a thing th
 It deliberately does **not** cover:
 
 - the **Owner** account, the **Company** and its **tax number**, the **subscription** itself, and **commission terms** — the users subject owns the **Owner** and the **Company**; the superadmin subject owns the plan catalog and commission configuration. This subject only shows the effective plan read-only, and stores the venue's link to its Company.
-- **tax applied to orders and bills** — the single business-level tax configuration belongs to the payments-and-tax subject.
+- **tax applied to orders and bills** — the business-level tax configuration (a rate per tax category) belongs to the payments-and-tax subject.
 - the **meaning, defaults, validation, and comparison of the cost targets, waste thresholds, and reporting configuration** — the business-metrics subject owns those, and the business-reports subject owns the reports that consume them. This subject stores the values as business fields but does not define them.
 - **sign-in credentials and verification mechanics** — sign-in email verification, email change, and password reset belong to the users and emails subjects. This subject owns the *business contact email* field; the emails subject owns how its verification link is delivered.
 - the **owner shell, mode chooser, route guards, and canonical URLs** — the user-navigation subject owns those surfaces. This subject owns the *business-registration action* and the business form; the navigation that reaches them is the user-navigation subject's.

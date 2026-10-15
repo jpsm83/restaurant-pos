@@ -163,7 +163,7 @@ The Business app is the operational heart of Project Imperium. It comprises the 
 - **Profile and discovery.** Public fields — cuisine type, categories, contact, and cached average rating and rating count — power customer discovery.
 - **Opening hours** per weekday.
 - **Delivery settings**: enable/disable, **delivery radius**, **minimum order**, and **per-day delivery windows**.
-- **Tax**: a single **business-level tax configuration** (rate plus price-inclusive/exclusive handling) applied to orders and bills. Multi-component or per-item taxation is out of scope for now.
+- **Tax**: a single **business-level tax configuration** — a **rate per tax category** (Food, Non-alcoholic drinks, Alcoholic drinks, Merchandise, Tobacco, and Tip) — applied to orders and bills. Prices are **tax-inclusive**: the customer always sees the final price, and tax is computed on the amount actually paid after any discount.
 - **Metrics and targets**: target cost percentages (food, beverage, labour, fixed), **supplier-good waste thresholds** by budget impact, the **start day of the reporting week**, and a **KPI catalogue** — every named metric with its canonical formula, the **dimensions** it can be sliced by, and an industry **benchmark**.
 - **Subscription**: the plan is held on the **Owner** and covers its venues (see [§11](#11-monetization)).
 
@@ -177,7 +177,7 @@ The Business app is the operational heart of Project Imperium. It comprises the 
 ### Menu — business goods
 
 - Business goods are what the venue **sells**: **simple items**, **recipe/ingredient-based items**, and **set menus / combos**.
-- Configuration includes name, keyword, main/sub category, **on-menu state** and **availability state**, selling price, images, description, **preparation time**, and optional **add-ons** (shared across the menu).
+- Configuration includes name, keyword, main/sub category, **tax category**, **on-menu state** and **availability state**, selling price, images, description, **preparation time**, and optional **add-ons** (shared across the menu).
 - Project Imperium derives **cost** and **allergens** from the supplier goods a good is built from — simple items, recipe-based items, and combos — **live** as prices and stock change; the venue sets the **selling price** freely.
 
 ### Supply and purchasing
@@ -208,7 +208,7 @@ The Business app is the operational heart of Project Imperium. It comprises the 
 
 - Payment **methods are recorded** for reporting: cash, card (Visa, Mastercard, American Express, Discover, Diners Club, Maestro), crypto (Bitcoin, Ethereum, Litecoin, Ripple, Cardano, Polkadot, Dogecoin), and other (Voucher, PayPal, Venmo, Apple Pay, Google Pay, Samsung Pay).
 - **Direct payment processing** is provided through **third-party providers** (e.g. PayPal, Skrill, Stripe) for in-app customer payment and in-POS capture, including split/partial payments, refunds, and provider-settled payouts.
-- **Tax** follows the single business-level configuration above.
+- **Tax** follows the business-level configuration above: a rate per tax category, applied to a tax-inclusive price.
 
 ### Promotions
 
@@ -295,7 +295,7 @@ Project Imperium is **live by design**: sales points, sales instances, order sta
 
 - **Businesses pay; customers are free.**
 - **Subscription.** An **Owner** subscribes to a **tiered plan** — **Free, Basic, Premium, Enterprise** — managed from the Superadmin catalog. The plan covers the Owner's venues and determines which features are available.
-- **Commission.** Project Imperium also earns a **commission on transactions**, and the commission rate **varies by subscription tier**. Commission is **fixed by the plan** and is therefore **not a user-editable field**; it is reported as platform revenue, not as a venue input. Where possible it is collected automatically through the integrated payment provider, and invoiced otherwise.
+- **Commission.** Project Imperium also earns a **commission on transactions**, and the commission rate **varies by subscription tier**. Commission is **fixed by the plan** and is therefore **not a user-editable field**; it is reported as platform revenue, not as a venue input. A day's commission is worked out when that day's sales report closes and is **charged separately** to the business — never netted out of what the venue's customers paid, and never routed through a merchant account.
 
 ---
 

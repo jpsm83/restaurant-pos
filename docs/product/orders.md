@@ -23,7 +23,7 @@ It deliberately does **not** cover:
 
 - the **sales point and sales instance** — where a guest sits, opening a tab, the one-open rule, self-service instances, and the handover verification of a self-service order belong to the sales-points-and-instances subject. This subject's orders attach to the instance that subject owns.
 - the **end-to-end service journey** and the surface flows (dine-in, QR self-ordering, kiosk, takeaway, delivery) — the order-flow subject owns the journey; this subject owns the order and its batch as they travel through it.
-- **billing and settlement** — splitting a bill, taking payments, the methods, and closing the instance belong to the order-flow and payments-and-tax subjects. This subject owns the order's billable state and the bill's composition; tips are noted here only for reference.
+- **billing and settlement** — splitting a bill, taking payments, the methods, tips, refunds, and tax belong to the payments-and-tax subject; the order-flow subject owns the journey that reaches settlement and the closing of the instance. This subject owns the order's billable state and the bill's composition; tips are noted here only for reference.
 - **promotion rules** — the types, scoping, and availability of a promotion belong to the promotions subject. This subject owns how a promotion is applied to an order and the manual discount that may replace it.
 - **business goods** — composition, selling price, derived cost, preparation time, categories, and allergens belong to the business-goods subject. This subject reads them when it prices and costs an order; the display and filtering of allergens across the menu belong to that subject too.
 - **the inventory ledger** — the stock an order moves belongs to the inventories subject; this subject only states when an order moves it.
@@ -133,8 +133,8 @@ Terms reused rather than redefined here: **Business**, **Sales instance**, **Sal
 ### 3.10 The bill
 
 - The **bill** of a sales instance is the **aggregation of its batches**. Void and invitation orders **remain listed**, flagged and uncharged.
-- **Tips** belong to the whole bill of a sales instance — optional, and taken on the aggregated amount — and are owned by the billing surface; this subject records none.
-- Settlement, splitting, and payment are the order-flow and payments-and-tax subjects' concern; this subject supplies the billable lines they settle.
+- **Tips** are optional and are taken at settlement on a payment; they are owned by the payments-and-tax subject. This subject records none.
+- Settlement, splitting, and payment are the payments-and-tax subject's concern; this subject supplies the billable lines it settles.
 
 ### 3.11 Deletion
 

@@ -23,9 +23,9 @@ It deliberately does **not** cover:
 - the **supplier good** — the purchasable item, its unit of stock, purchase unit, price math, budget impact, its own allergens, par level and minimum required, in-use state and deletion belong to the supplier-goods subject. A business good is built from supplier goods, but owns neither those goods nor their prices.
 - **stock on hand and counting** — the system count, physical counts, deviation, variance and monthly close belong to the inventories subject. This subject only *reads* the stock a component needs before a good can be sold; it never counts stock.
 - **buying and receiving** — the purchase record, its lines, and the inventory increment on receipt belong to the purchases subject.
-- **ordering, billing and fulfilment** — the order lifecycle, how an add-on is attached to an order at the till, billing, and the service surfaces belong to the orders and order-flow subjects. This subject defines the sellable item those orders point at.
+- **ordering, billing and fulfilment** — the order lifecycle, how an add-on is attached to an order at the till, and the service surfaces belong to the orders and order-flow subjects; billing and settlement belong to the payments-and-tax subject. This subject defines the sellable item those orders point at.
 - **promotions** — the discount rules and their scoping belong to the promotions subject. This subject owns the **menu subcategories** a promotion may target and the rule that a discount lands on the **main good**, never on an add-on.
-- the **business**, its **currency**, and its **tax** — the business and payments-and-tax subjects own them. A good prices in the single currency of its business and carries no tax configuration of its own.
+- the **business**, its **currency**, and its **tax rates** — the business and payments-and-tax subjects own them. A good prices in the single currency of its business and carries a **tax category**; the **rates** behind that category, and how tax is computed on a sale, belong to the payments-and-tax subject.
 - **targets, margins, and reports** — the business-metrics and business-reports subjects own them. This subject carries no margin, markup, or cost target.
 - **printers and kitchen routing** — the printers-and-screens subject owns routing a good's ticket by category.
 - **notifications** — the notifications subject owns alert delivery.
@@ -36,7 +36,7 @@ It deliberately does **not** cover:
 
 ### Entities
 
-- **Business good** — a **sellable menu item**. A business good belongs to **exactly one Business** and is **never shared across venues**; another venue's menu is invisible to it. Every business good is built from **components**, from which its **cost** and **allergens** are derived. It carries its own name, keyword, category and subcategory, description, images, selling price, availability, and preparation time.
+- **Business good** — a **sellable menu item**. A business good belongs to **exactly one Business** and is **never shared across venues**; another venue's menu is invisible to it. Every business good is built from **components**, from which its **cost** and **allergens** are derived. It carries its own name, keyword, category and subcategory, description, images, selling price, availability, preparation time, and **tax category**.
 
 ### The kinds of business good
 
@@ -52,7 +52,8 @@ A good is exactly **one** of these kinds, determined by its components — never
 - **Ingredient** — a supplier good used as a component of a simple or recipe-based item, with the quantity the item needs and the measurement unit it is expressed in.
 - **Member** — a business good used as a component of a combo, with the quantity the combo includes. A combo's members are **business goods only**; a member may never itself be a combo.
 - **Derived cost** — the good's cost to the business, computed **live** from its components' current prices and summed up the chain. It is **read-only** and never entered by hand.
-- **Selling price** — what the venue charges for the good, set freely by the venue in the **business currency**.
+- **Selling price** — what the venue charges for the good, set freely by the venue in the **business currency**. It is **tax-inclusive**: it already contains the good's tax, which the payments-and-tax subject draws out.
+- **Tax category** — the category a good is taxed under, chosen from the **goods tax categories** the payments-and-tax subject owns (Food, Non-alcoholic drinks, Alcoholic drinks, Merchandise, Tobacco — never **Tip**, which rates tips alone). Every good maps to exactly one.
 - **On menu** — the good is part of the venue's sellable menu.
 - **Availability state** — whether the good can be ordered right now: **Available**, **Sold out**, or **Manually unavailable**.
 - **Preparation time** — the minutes the kitchen or bar needs to prepare the good.
@@ -71,7 +72,7 @@ The **Business**, the **Supplier good**, and the **Unit of stock** are establish
 
 A business keeps its own menu of business goods.
 
-- Every good carries a **name** (required), a **keyword** (required — a short search term for finding it), a **main category** (required, from the platform's sellable categories), a **subcategory** (required, a node in that category's subcategory tree), an optional **description**, and up to **three optional images**.
+- Every good carries a **name** (required), a **keyword** (required — a short search term for finding it), a **main category** (required, from the platform's sellable categories), a **subcategory** (required, a node in that category's subcategory tree), a **tax category** (required, from the goods tax categories the payments-and-tax subject owns), an optional **description**, and up to **three optional images**.
 - Within its business, a good's **name is unique among active goods**; the same name may repeat across different venues.
 - A good is **created complete**: its name, keyword, category and subcategory, components, selling price, and preparation time are all present at creation. There is **no draft**.
 - A business good is part of the venue's **internal menu configuration**; what a customer sees of it is limited to its public details (§4).
@@ -97,7 +98,7 @@ A business keeps its own menu of business goods.
 
 ### 3.4 Selling price
 
-- The venue sets each good's **selling price** freely, in the **business currency**. A price may sit above, at, or below cost — the venue decides.
+- The venue sets each good's **selling price** freely, in the **business currency**. The price is **tax-inclusive**: it already contains the good's tax, which the payments-and-tax subject draws out. A price may sit above, at, or below cost — the venue decides.
 - There is **no suggested price, no desired margin or markup, and no cost target** anywhere in this subject. Project Imperium shows the venue the **derived cost** and the venue chooses what to charge.
 - The good carries **one current selling price** and **no price history**.
 
@@ -184,7 +185,7 @@ Business goods are menu configuration. Customers see only what is published and 
 | --- | --- |
 | Create, edit, and delete a business good | Managers and above |
 | Compose a recipe or a combo | Managers and above |
-| Set the selling price, category, subcategory, keyword, description, images, and preparation time | Managers and above |
+| Set the selling price, category, subcategory, tax category, keyword, description, images, and preparation time | Managers and above |
 | Put a good on or off the menu | Managers and above |
 | Flag a good as an add-on | Managers and above |
 | Mark a good manually unavailable, and clear the mark | Managers and above; employees holding the capability |
