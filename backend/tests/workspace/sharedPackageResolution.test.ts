@@ -1,8 +1,14 @@
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { dirname } from "node:path";
 import { describe, expect, it } from "vitest";
 import { mainCategoriesEnums } from "restaurant-pos-packages/enums";
 import type { IAddress } from "restaurant-pos-packages/interfaces/IAddress";
 import { emailSchema } from "restaurant-pos-packages/schemas/primitives";
 import { isValidPassword } from "restaurant-pos-packages/utils/passwordPolicy";
+
+const require = createRequire(import.meta.url);
+const configRoot = dirname(require.resolve("config/package.json"));
 
 const formatAddress = (address: IAddress): string =>
   `${address.city}, ${address.country}`;
@@ -30,5 +36,22 @@ describe("shared package resolution", () => {
         postCode: "1000-000",
       }),
     ).toBe("Lisbon, PT");
+  });
+});
+
+/**
+ * Workspace-boundary smoke test: the shared build tooling resolves from the
+ * `config` workspace by package name through its `exports` map — not a copied
+ * eslint/tsconfig/tailwind file or a relative `../../packages` path.
+ */
+describe("config package resolution", () => {
+  it("resolves the shared TypeScript base config, ESLint config, and Tailwind preset by package name", () => {
+    const tsconfig = JSON.parse(
+      readFileSync(require.resolve("config/tsconfig.base.json"), "utf8"),
+    );
+
+    expect(tsconfig.compilerOptions.strict).toBe(true);
+    expect(require.resolve("config/eslint")).toContain(configRoot);
+    expect(require.resolve("config/tailwind.css")).toContain(configRoot);
   });
 });

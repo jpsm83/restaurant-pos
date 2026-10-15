@@ -9,7 +9,8 @@
   "workspaces": [
     "backend",
     "frontend",
-    "packages"
+    "packages",
+    "packages/*"
   ],
   "scripts": {
     "test": "npm run test --workspaces --if-present",
