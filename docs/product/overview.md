@@ -127,14 +127,14 @@ Access control is **two-layer**:
 - A user with **business access** sees a **chooser**: continue as **Customer** or continue into the **Business** app. Owner/manager/admin access is a form of business mode; the owner shell then handles multi-venue switching.
 - Customer access is **always** available to every user.
 
-**Schedule gating.** The **schedule is the plan**; signing in as an employee is what puts a person **on duty**.
+**Schedule gating.** The **schedule is the plan**; **on duty** is a separate attendance fact (see [§6](#6-time-control-and-attendance)).
 
-- Employees (any job role) **must appear on the schedule**; the schedule is also how time control works.
-- A non-management employee **cannot access the business app unless they are scheduled for that time**. The employee option opens from **10 minutes before shift start**; if the user is **not scheduled**, they are taken straight to the Customer app (no chooser).
-- If an employee is **late**, employee access is **blocked**; a **manager unlocks the button** on the schedule record so the employee can enter — but the **real entry time is preserved** regardless, so time control stays honest.
-- **Managers, admins, and owners are never blocked.** They may access the business app and execute any task without being scheduled, though they must still appear on the schedule **for time control**.
+- Employees (any job role) **must appear on the schedule** for planning; time control compares actual attendance against that plan.
+- A non-management employee **cannot access the business app unless they have a planned working shift for that time**. The employee option opens from **10 minutes before shift start**; if the user is **not scheduled**, they are taken straight to the Customer app (no chooser). Opening employee mode is **not** on duty.
+- There is **no** late-unlock on the schedule. Lateness and real entry times belong to time control.
+- **Managers, admins, and owners are never blocked.** They may access the business app and execute any task without being scheduled, though they must still appear on the schedule for planning (and so time control can see who was planned as management that day).
 
-See [§6](#6-time-control-and-attendance) for the attendance model.
+See [§6](#6-time-control-and-attendance) for the attendance model. The schedules subject is the source of truth for the rota itself.
 
 ---
 
@@ -142,10 +142,9 @@ See [§6](#6-time-control-and-attendance) for the attendance model.
 
 Time control is a **plan-vs-actual** system, separate from the schedule:
 
-- **Schedule (the plan).** Each business defines, per calendar day, one schedule containing each employee's shift: job role, planned start/end, and vacation flags. Schedule aggregates (staff count, vacation count, planned labour cost) feed reporting. The schedule does **not** imply on-duty.
-- **Shift session (the actual).** For each employee and shift, Project Imperium records a **shift session**: planned start/end, **actual sign-in / sign-out**, breaks, resulting **worked hours** and **labour cost**, and status (scheduled, signed in, completed, absent, locked). One open session per employee at a time prevents double sign-in.
-- **Time-clock ledger.** Every punch — sign-in, sign-out, and **break start/end** — is stored as an immutable event; the shift session is a projection of it. This preserves the **real entry time** even when a manager unlocks a late entry.
-- **On duty.** A person is **on duty** while they hold an open shift session. On-duty state drives operational attribution (sales, tips) and gatekeeping.
+- **Schedule (the plan).** Each business defines, per calendar day, one schedule of shift entries (working shifts with job role and start/end, vacation, and other leave). Schedule aggregates (staff count, vacation count, planned hours, planned labour cost) feed reporting. The schedule does **not** imply on-duty. Overnight working shifts belong to the day they start. The schedules subject owns the rota in full.
+- **On duty (the actual).** A person becomes **on duty** by scanning a **daily QR code** held by managers on duty that day — not by opening employee mode. Sign-out is performed by a manager at the employee's request. Real entry and exit times are what attendance records. The time-control subject owns QR issue, scan-in, manager sign-out, breaks, worked hours, actual labour cost, and related alerts.
+- **Shift session.** For each employee engagement, Project Imperium records a **shift session** projected from attendance events: planned window from the schedule, **actual sign-in / sign-out**, breaks, resulting **worked hours** and **labour cost**, and status. One open session per employee at a time prevents double sign-in.
 - **Breaks.** An employee can **pause and resume** duty during a shift (lunch, rest, or other break). Paused time is excluded from worked hours but the employee remains signed in.
 - **Overtime alert.** If an employee **other than an admin/owner** is still on duty after their scheduled end, the **admin on duty** is notified **every 5 minutes** until that employee signs off. (This reuses the platform's cooldown/idempotency notification behavior.)
 
@@ -172,8 +171,8 @@ The Business app is the operational heart of Project Imperium. It comprises the 
 
 - **Employees** are the full membership of a user in a business. The **User** holds only client/global identity; job roles, employment status, contract, pay (gross for labour cost, net for HR), vacation, HR identifiers, documents, termination, and rehire all live on the membership. The employees subject is the source of truth for that record.
 - **Roles and permissions** follow the two-layer model in [§5](#5-access-roles-and-the-mode-chooser): base layers, job roles on the membership, and per-user capability assignment by managers and above.
-- **Schedules** define each day's shifts (employee, role, start/end, vacation). Project Imperium enforces no overlapping shifts and correct vacation accounting, and rolls up daily staff, vacation, and labour-cost totals.
-- **Time control** records actual attendance, breaks, and overtime as described in [§6](#6-time-control-and-attendance).
+- **Schedules** define each day's rota (working shifts with required role and start/end, vacation and other leave, day comments, copy/bulk edit, time-off requests). Project Imperium enforces no overlapping shifts and correct vacation accounting, and rolls up daily staff, vacation, planned hours, and planned labour-cost totals. The schedules subject is the source of truth.
+- **Time control** records actual attendance (manager QR sign-in, manager sign-out, breaks, overtime) as described in [§6](#6-time-control-and-attendance).
 
 ### Menu — business goods
 

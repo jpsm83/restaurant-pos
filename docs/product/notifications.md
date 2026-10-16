@@ -88,6 +88,9 @@ Terms reused from the product overview's core vocabulary rather than defined her
 | Business profile updated | The venue's managers and above | In-app + email | Info | Once |
 | Overtime alert | The venue's admins on duty | In-app | Warning | Every 5 minutes until the employee signs off |
 | Print failure | The venue's managers on duty; if none are on duty, all manager-layer users for the business | In-app | Warning | Once per failed print attempt |
+| Schedule changed | Each employee whose rota entries were added, changed, or removed in the manager's editing session | In-app | Info | Once per employee when the manager leaves the schedules main page (batched across that employee's entries) |
+| Time-off request pending | The venue's managers and above | In-app | Info | Once |
+| Time-off request decided | The requesting employee | In-app | Info | Once |
 
 - The **low-stock alert** lists the affected goods and fires when stock falls below a good's **minimum required**; detecting that condition belongs to the inventories and supplier-goods subjects.
 - The **negative-stock alert** fires when a good's stock on hand falls **below zero**, as a management-error signal that purchases or counts are missing; detecting that condition belongs to the inventories subject.
@@ -95,6 +98,8 @@ Terms reused from the product overview's core vocabulary rather than defined her
 - A **report-ready** notification fires when the weekly or monthly report for the period is ready for review; detecting readiness belongs to the business-reports subject.
 - The **business-profile-updated** notification fires when a change to the business profile actually persists, and reports which fields changed; detecting the change belongs to the business subject.
 - The **print-failure** notification fires when a print cannot be completed and no usable backup takes the job; detecting that condition belongs to the printers-and-screens subject.
+- The **schedule-changed** notification batches every add, change, or removal for one employee from a single schedules editing session into one ping when the manager leaves the schedules main page; detecting those edits belongs to the schedules subject.
+- The **time-off request pending** and **time-off request decided** notifications are raised by the schedules subject's request workflow.
 - No catalogued event carries the **Emergency** severity; it is reserved for a critical operational failure.
 
 ### 3.4 Venue engagement messages

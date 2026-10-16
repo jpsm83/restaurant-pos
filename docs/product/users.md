@@ -19,7 +19,7 @@ It deliberately does **not** cover:
 
 - the **Employee** membership — job roles, employment status, tenure, contract, pay, vacation, tax and national identifiers, documents, hire, terminate, and rehire. The **User** holds only client/global identity; **all employee data lives on the membership**. The employees subject owns that record. This subject names the membership only as the path into a tenant and as input to the mode and layer rules.
 - the **navigation surfaces** — the chooser screen, route guards, and canonical URLs. This subject states the eligibility *rule*; the user-navigation subject owns the surfaces that enforce it.
-- **attendance mechanics** — shifts, breaks, the late lock, and the manager unlock. This subject states the eligibility *consequence*; the schedules and time-control subjects own the mechanics.
+- **attendance mechanics** — on-duty QR scan-in, manager sign-out, breaks, and lateness. This subject states the employee-mode eligibility *consequence*; the schedules subject owns the planned rota, and the time-control subject owns attendance.
 - **transactional email delivery** — templates, retry, cooldown. This subject states which messages are sent; the emails subject owns how they are delivered.
 - the **superadmin console's** authentication realm, which is separate and belongs to the superadmin subject.
 
@@ -89,8 +89,8 @@ Exactly four layers exist: **admin**, **manager**, **employee**, **customer**. T
 
 - A user with **no membership** resolves to **customer**.
 - A membership resolves to one layer, **defaulted from its job roles** (employees subject) — Owner and Admin to **admin**; the management roles to **manager**; every other role to **employee**.
-- The layer is resolved **per shift**: the **schedule assigns the job role for a shift**, and that shift's role sets the effective layer for its duration. The same person can work one shift as an employee and a later shift as a manager at the same venue.
-- When a shift declares **no role**, the membership falls back to the **highest layer among its roles** (admin over manager over employee).
+- The layer is resolved **per shift**: the **schedule assigns the job role for a working shift** (role is always required on the rota), and that shift's role sets the effective layer for its duration. The same person can work one shift as an employee and a later shift as a manager at the same venue.
+- When the person is **not** on a working shift, layer resolution uses the **highest layer among the membership's roles** (admin over manager over employee).
 - **Managers and above can override** a membership's layer.
 - **Customer access is always available** to every user, whatever membership they hold.
 - A **Suspended** membership blocks business-app access until cleared (employees subject); layer resolution alone does not reopen it.
@@ -105,9 +105,9 @@ There is **one login**. After authenticating:
 
 - A user with **only customer access** goes straight to the customer app.
 - A user with **business access** (an eligible membership) chooses **customer** or **business (employee)** mode. The chosen mode is recorded for the session.
-- The **employee option** is available when the user has a membership and is eligible: **scheduled for that time**, with the option opening **10 minutes before shift start**, and the membership is not **Suspended** or **Terminated**.
+- The **employee option** is available when the user has a membership and is eligible: a **planned working shift** for that time, with the option opening **10 minutes before shift start**, and the membership is not **Suspended** or **Terminated**. Opening employee mode is **not** on duty (time-control subject).
 - **Owners, managers, and admins always see both options** — scheduled or not — because they may need to act at any time (unless that membership is Suspended or Terminated).
-- A **late employee is locked out** of the employee option until a **manager unlocks** them; the **real entry time is preserved** regardless (time-control subject).
+- There is **no** late-unlock step on the schedule for employee-mode access.
 - **Customer mode is always available.**
 
 This subject owns the eligibility **rule**; the user-navigation subject owns the chooser screen, the guards, and the URLs.
@@ -174,8 +174,8 @@ Under Project Imperium's **soft-delete convention**, an identity — a **User**,
 | Layer | Identity powers |
 | --- | --- |
 | **Customer** | Holds a **User**; signs in; uses the customer app; manages their own profile and account deletion. Always available to everyone. |
-| **Employee** | Everything a customer can do, plus business mode when the membership is eligible (scheduled, unlocked, not Suspended or Terminated). |
-| **Manager** | Everything an employee can do, plus assigning per-user capabilities, overriding a membership's layer, and unlocking late entries. Always allowed into business mode when the membership allows. Hiring, HR, and termination belong to the employees subject. |
+| **Employee** | Everything a customer can do, plus business mode when the membership is eligible (planned working shift in window, not Suspended or Terminated). |
+| **Manager** | Everything an employee can do, plus assigning per-user capabilities and overriding a membership's layer. Always allowed into business mode when the membership allows. Hiring, HR, and termination belong to the employees subject. Schedule editing belongs to the schedules subject. |
 | **Admin** | Full venue control, including ownership actions; always allowed into business mode when the membership allows. |
 
 ### Per-user capabilities
@@ -191,8 +191,8 @@ Granted or revoked per user by **managers and above**, on top of the layer defau
 | Own / transfer / close a business | The owning user |
 | Override a membership's base layer | Managers and above |
 | Assign per-user capabilities | Managers and above |
-| Unlock a late employee's entry | A manager on duty |
 | Hire, edit HR, terminate, rehire | Employees subject (managers and above; rehire admin/owner) |
+| Edit schedules / approve time-off | Schedules subject (managers and above) |
 | Delete one's own account | The account's user |
 | Reactivate a soft-deleted account | The account's user, by email-confirmed link |
 | Manage Owners, plans, and commission | The superadmin (superadmin subject) |

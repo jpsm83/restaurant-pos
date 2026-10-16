@@ -22,8 +22,8 @@ It deliberately does **not** cover:
 
 - the global **User**, **Owner**, **Company**, credentials, sessions, customer identity, or account deletion — the users subject owns those. This subject consumes the User the membership points at.
 - the **four base access layers**, the **mode chooser**, and **per-user capabilities** as platform mechanisms — the users subject owns those rules. This subject supplies the membership and job roles those rules read.
-- the **schedule** (daily shifts, vacation flags on the rota, planned labour roll-ups) — the schedules subject owns it. This subject supplies the people and vacation balance the schedule consumes and updates.
-- **attendance** — shift sessions, punches, breaks, on-duty, late lock, overtime alerts, and actual labour-cost calculation — the time-control subject owns those.
+- the **schedule** (daily rota, vacation and other leave on the rota, time-off requests, planned labour roll-ups) — the schedules subject owns it. This subject supplies the people and vacation balance the schedule consumes and updates.
+- **attendance** — on-duty QR scan-in, manager sign-out, breaks, overtime alerts, and actual labour-cost calculation — the time-control subject owns those.
 - **labour and vacation KPI formulas** — the business-metrics subject owns them; reports consume the figures.
 - **operational attribution** of service work (responsible employee on a tab, tips, print permissions) — each operational subject names the employee as an actor; this subject owns the membership record itself.
 
@@ -93,7 +93,7 @@ Exactly one status applies at a time:
 | **Terminated** | Employment at this venue has ended; access through this membership is gone. The user and customer identity stay. |
 
 - **Active**, **Seasonal**, **Medical absence**, **Parental leave**, and **Unpaid leave** may still appear on the **schedule** when the venue chooses (for example a return shift, or vacation during leave).
-- **Suspended** and **Terminated** must **not** be added to **new** shifts. What happens to shifts already planned is owned by the schedules and time-control subjects.
+- **Suspended** and **Terminated** must **not** be added to **new** shifts. The schedules subject **removes** that employee from **future** day schedules (today forward) and restores vacation remaining for any future vacation marks stripped; past days stay for history.
 - Status changes are recorded by managers and above (termination and rehire follow §3.9–§3.10).
 
 ### 3.4 Join date and required hiring fields
