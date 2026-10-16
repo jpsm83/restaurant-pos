@@ -15,7 +15,7 @@
 15 - promotions
 16 - payments and tax
 17 - gift-cards
-18 - 
+18 - reservations
 19 - 
 20 - 
 21 - 

@@ -44,10 +44,10 @@ It deliberately does **not** cover:
 - **Guest count** — the number of guests a sitting covers; set when the instance opens and editable while it is open.
 - **Client name** — the optional name a sitting is held under.
 - **QR identity** — the point's QR code, issued by Project Imperium with the point and never chosen by a client. It is the point's identity, and it is offered to customers only where the point accepts **Self-ordering**.
-- **Reserved hold** — a reminder label on an **available** served point, set by a Host or managers and above, that a sitting is expected.
+- **Reserved hold** — a label on an **available** served point that a sitting is expected. It may be placed manually by a Host or managers and above, or produced when a **reservation** assigns that point; when tied to a reservation it carries that booking's summary for the waiter.
 - **Available** and **occupied** — the derived point states: a point is **available** when it has no open instance and **occupied** while it has one. Project Imperium stores neither.
 - **Responsible employee** — the on-duty employee answerable for a staff tab; responsibility moves with the tab and can be passed between on-duty staff.
-- **Reservation link** — the instance's reference to the booking it seats, set when a tab is opened against a point for the reserved party.
+- **Reservation link** — the instance's reference to the booking it seats, set when a tab is opened as **reservation guests**. Several instances may link to the same reservation when that booking spans multiple points.
 - **Work-day anchor** — the business-local day an instance belongs to; the first instance of the day opens that day's daily sales report.
 - **Empty instance** — a sales instance that recorded no orders.
 
@@ -67,8 +67,9 @@ Terms reused rather than redefined here: **Business**, **Order**, **Business goo
 ### 3.2 The reserved hold
 
 - A **Host or manager and above** may place a **reserved hold** on an **available** served point and clear it at any time.
-- The hold is a reminder only. It is **not a reservation** and does not by itself count as one.
-- A hold is cleared as soon as an instance on the point takes its **first order**, whichever party that order belongs to.
+- A hold placed by hand is a reminder only. It is **not a reservation** and does not by itself count as one.
+- When a **reservation** assigns one or more points, each assigned point shows a reserved hold that **carries the booking's summary** (party, name, arrival, notes, and related detail). The reservations subject owns which booking claims the point and the no-overlap rule; this subject owns how the label appears on the point.
+- A hold is cleared when an instance opens on the point (reservation guests or ordinary guests), or when the reservation releases that point. A manual hold with no booking is also cleared as soon as an instance on the point takes its **first order**.
 
 ### 3.3 The virtual delivery point and kiosk points
 
@@ -79,7 +80,7 @@ Terms reused rather than redefined here: **Business**, **Order**, **Business goo
 
 - An **on-duty employee** opens a staff tab from the POS or by scanning the point's QR; opening is gated by the employee's schedule, as everywhere in the business app.
 - A point accepts **at most one open staff tab at a time** (the one-open rule), whoever opened it. The point frees when that tab closes.
-- When a tab is opened on a point showing a **reserved hold**, Project Imperium asks whether the sitting is the reserved party. If it is, the instance **links to that reservation**; if it is not, the instance is an ordinary walk-in and the hold is overrun.
+- When a tab is opened on a point showing a **reserved hold** tied to a reservation, Project Imperium asks **reservation guests** or **ordinary guests**. **Reservation guests** opens a normal staff tab, sets the **reservation link**, and leaves other assigned points of the same booking available to open the same way (each tab its own instance, same reservation). **Ordinary guests** opens a walk-in with no link; that point is released from the booking and the reservations subject may move the booking to **awaiting table** when no usable assignment remains. A manual hold with no booking is simply cleared by the open.
 - Opening records who opened the instance and in what role, the guest count, and an optional client name.
 - An instance opened and closed with **no orders** is **discarded**, as if it had never opened (see §3.8).
 

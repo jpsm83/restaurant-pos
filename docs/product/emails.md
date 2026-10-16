@@ -40,7 +40,7 @@ It deliberately does **not** cover:
 ### Terms this subject introduces
 
 - **Account email** — a message about a person's identity or security, or a business's contact-email verification: sign-in verification, password reset, sign-in email change confirmation, sign-in email change notice, reactivation, and business contact-email verification.
-- **Operational email** — the emailed copy of an operational notification: an order confirmation/receipt, a reservation pending or decided message, a business-profile-updated message to managers, and a customer conversation reply. It is **venue-initiated** and names the venue it concerns.
+- **Operational email** — the emailed copy of an operational notification: an order confirmation/receipt, a reservation pending, deposit-requested, or decided message, a business-profile-updated message to managers, and a customer conversation reply. It is **venue-initiated** and names the venue it concerns.
 - **Engagement email** — a venue's one-way broadcast to its related customers: a **Birthday**, **Promotion**, or **Event** email. It is **venue-initiated**.
 - **Sending identity** — the single platform address every outbound email is sent from, together with the venue name Project Imperium shows on venue-initiated mail.
 - **Generic response** — the single answer an unauthenticated request flow returns whether or not an account exists.
@@ -95,8 +95,9 @@ A completed password reset or sign-in email change has session effects owned by 
 Project Imperium emails the operational notifications that the notifications subject marks as emailed, each concerning **one business**:
 
 - **Order confirmed (receipt)** — sent to the ordering customer when an order is paid; it carries the order reference, the goods ordered, the amount paid, and any tip.
-- **Reservation pending** — sent to the customer when a request is placed; it carries the date, time, party size, and status.
-- **Reservation decided** — sent to the customer when the request is confirmed or cancelled; it carries the decision and the reservation details.
+- **Reservation pending** — sent to the customer when a request is placed or a customer edit re-pends it; it carries the arrival date and time, party size, and status.
+- **Deposit requested** — sent to the customer when the venue asks for a deposit; it carries the amount, the payment link, and that an account is required before paying.
+- **Reservation decided** — sent to the customer when the request becomes reserved or is cancelled; it carries the decision and the reservation details. A reserved confirmation states late-arrival and grace rules clearly and never shows the staff-only end time; it may include an optional account-invite link when the guest has no account.
 - **Business profile updated** — sent to the venue's managers and above when a profile change persists; it names the fields that changed.
 - **Customer conversation reply** — sent to a customer when a venue manager replies in their conversation.
 

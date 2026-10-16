@@ -77,8 +77,10 @@ Terms reused from the product overview's core vocabulary rather than defined her
 | Event | Who is notified | Channel | Severity | Repeats |
 | --- | --- | --- | --- | --- |
 | Order confirmed (receipt) | The ordering customer | In-app + email | Info | Once |
-| Reservation pending | The customer; and the venue's managers on duty, prompted to review it | Customer: in-app + email; managers: in-app | Info | Once |
-| Reservation decided (confirmed or cancelled) | The customer | In-app + email | Info | Once |
+| Reservation pending | The customer; and Host and managers as the venue's alert rules dictate, prompted to review it | Customer: in-app + email; staff: in-app | Info | Once |
+| Deposit requested | The customer | In-app + email (payment link) | Info | Once |
+| Reservation decided (reserved or cancelled) | The customer | In-app + email | Info | Once |
+| Awaiting table | Host and above | In-app | Info | Once |
 | Low-stock alert | The venue's managers on duty | In-app | Warning | At most once per 15 minutes per set of items |
 | Negative-stock alert | The venue's managers on duty | In-app | Warning | At most once per 15 minutes per item |
 | Weekly report ready | The venue's managers and above | In-app | Info | Once |

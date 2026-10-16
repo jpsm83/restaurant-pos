@@ -51,7 +51,7 @@ These terms are used with exactly these meanings throughout Project Imperium. Do
 | **Purchase** | A record of the goods a business buys from a supplier — from what it requests through to what it receives; feeds inventory. A **one-time purchase** records an ad-hoc expense with no supplier. |
 | **Inventory** | The stock ledger per business: a **dynamic system count** per supplier good, **physical counts** with **deviation** per **count period**, and a monthly **resume**. |
 | **Promotion** | A venue-defined price rule scoped to menu subcategories and a time window, applied to orders in real time. |
-| **Reservation** | A free table booking made by a customer or staff; hands off into live service. |
+| **Reservation** | A table booking made by a customer or staff, optionally with a deposit at acceptance; hands off into live service across one or more sales points. |
 | **Rating / Comment / Favorite** | Venue-level customer feedback and saved venues. |
 | **Gift card** | A bearer budget card a business issues as a virtual card by email, identified by a QR code and a card number, spent whole in one settlement at its issuing venue before it expires. |
 | **Shift session** | The actual, recorded attendance for one employee on one shift (sign-in/out, breaks). |
@@ -105,7 +105,7 @@ Project Imperium defines four canonical ways a venue can serve, plus a cross-cut
 2. **QR self-ordering — on premises.** A customer at a sales point scans its QR code to self-order from the menu. The order is **delivered to that QR point** (the table/seat). Self-ordering is only enabled where the venue has turned it on for that sales point, and is unavailable while a staff member holds the table.
 3. **Kiosk.** A **variant of the on-premises QR order** — a self-service terminal running the same web app. The difference is fulfilment: a kiosk order is **not delivered** anywhere; it is **picked up at the counter**.
 4. **Takeaway / Delivery — customer-initiated.** A customer orders from the venue to be **delivered to an address** or **picked up on premises**. Delivery is **per-venue** (each venue serves within its own radius and windows) and dispatched through **third-party courier tools**.
-5. **Reservations** — the cross-cutting **booking layer** that hands off into service. Reservations are **free**: no charge is applied. See [§7](#7-the-business-platform).
+5. **Reservations** — the cross-cutting **booking layer** that hands off into service. A venue may **accept** a booking with no charge or **request a deposit** before it becomes reserved. See [§7](#7-the-business-platform).
 
 Kiosk and QR ordering are not separate products — they are routes within the **Customer** app. Delivery is a configuration of the same platform (delivery enabled, delivery radius, minimum order, delivery windows, and a dedicated virtual delivery sales point).
 
@@ -222,10 +222,10 @@ The Business app is the operational heart of Project Imperium. It comprises the 
 
 ### Reservations
 
-- Reservations are a **free** booking layer, created by a **customer** (status pending, reviewed by managers) or by **staff** (created as confirmed when the staff member's effective role permits).
-- Lifecycle: pending → confirmed/cancelled, then arrived → seated → completed, with no-show available.
-- **Seating** a reservation creates a **sales instance** and links it to the reservation; the first order attributes consumption to the reservation; full payment completes it.
-- Moving a reservation's table moves its sales instance (and vice versa).
+- Reservations are a **booking layer** a venue may turn on or pause in business configuration. A **customer** requests from the Customer app (**Pending**); **Host and above** create on the web and may Accept in the same step. Host and above **Accept** (no deposit) or **Request deposit**; paying the deposit — or accepting without one — moves the booking to **Reserved** and sends confirmation by email.
+- Lifecycle: pending → awaiting deposit (when requested) → reserved → arrived → seated → completed, with cancelled, no-show, and awaiting table when assignment is lost.
+- The guest sets **arrival time**; Host and above set an internal **end time** (not shown to the guest) and may assign **one or more** sales points with a hard no-overlap rule. Opening a reserved point asks **reservation guests** or **ordinary guests**; linked tabs each run their own orders and payments under the same reservation. A paid deposit appears as **shared credit** on linked tabs and is applied at bill time.
+- Moving a reservation's assigned point moves its linked sales instance (and vice versa).
 
 ### Reports and metrics
 
@@ -239,7 +239,7 @@ The Business app is the operational heart of Project Imperium. It comprises the 
 
 - Each user has an **inbox** with per-notification read and deleted state, shared by customers and employees through their user identity.
 - Delivery is **persistence-first** — in-app notifications are stored and are the source of truth — with **email** and **live WebSocket** push when the recipient is online. Nothing is lost if a user is offline.
-- **Operational** events include reservations pending/decided, low-stock alerts, weekly/monthly report-ready, business profile updates, and the overtime alerts in [§6](#6-time-control-and-attendance).
+- **Operational** events include reservations pending/deposit-requested/decided (and awaiting-table for Host+), low-stock alerts, weekly/monthly report-ready, business profile updates, and the overtime alerts in [§6](#6-time-control-and-attendance).
 - **Engagement** events let a venue message its customers — **promotions, birthdays, and events** — alongside operational alerts.
 
 ---
@@ -251,7 +251,7 @@ The Customer app is the free, public side of Project Imperium — the venue's cu
 - **Account.** Sign up and sign in, manage profile, verify email, reset password. Every user is a customer.
 - **Discovery.** Browse venues by cuisine type, categories, rating, and location (geo radius), and view a venue's public profile and menu.
 - **Ordering across every service surface**: **QR self-ordering** at a table (delivered to the QR point), **kiosk** ordering (counter pickup), and **takeaway / delivery** (to an address or picked up on premises). Orders can be paid **in-app** via third-party providers.
-- **Reservations.** Request a table (free) and track its status.
+- **Reservations.** Request a table (when the venue accepts bookings), pay a deposit when asked, and track status.
 - **Ratings.** Give a venue a **0–5 star** rating, optionally tied to an order.
 - **Comments.** Leave a **text review on the venue**.
 - **Favorites.** Save **venues** for quick access.
