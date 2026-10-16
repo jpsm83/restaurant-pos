@@ -19,7 +19,7 @@ It deliberately does **not** cover:
 
 - the **Employee** membership — job roles, employment status, tenure, contract, pay, vacation, tax and national identifiers, documents, hire, terminate, and rehire. The **User** holds only client/global identity; **all employee data lives on the membership**. The employees subject owns that record. This subject names the membership only as the path into a tenant and as input to the mode and layer rules.
 - the **navigation surfaces** — the chooser screen, route guards, and canonical URLs. This subject states the eligibility *rule*; the user-navigation subject owns the surfaces that enforce it.
-- **attendance mechanics** — on-duty QR scan-in, manager sign-out, breaks, and lateness. This subject states the employee-mode eligibility *consequence*; the schedules subject owns the planned rota, and the time-control subject owns attendance.
+- **attendance mechanics** — on-duty QR scan-in, manager sign-out, breaks, and lateness. This subject states the employee-mode eligibility *consequence*; the schedules subject owns the planned schedule, and the time-control subject owns attendance.
 - **transactional email delivery** — templates, retry, cooldown. This subject states which messages are sent; the emails subject owns how they are delivered.
 - the **superadmin console's** authentication realm, which is separate and belongs to the superadmin subject.
 
@@ -89,7 +89,7 @@ Exactly four layers exist: **admin**, **manager**, **employee**, **customer**. T
 
 - A user with **no membership** resolves to **customer**.
 - A membership resolves to one layer, **defaulted from its job roles** (employees subject) — Owner and Admin to **admin**; the management roles to **manager**; every other role to **employee**.
-- The layer is resolved **per shift**: the **schedule assigns the job role for a working shift** (role is always required on the rota), and that shift's role sets the effective layer for its duration. The same person can work one shift as an employee and a later shift as a manager at the same venue.
+- The layer is resolved **per shift**: the **schedule assigns the job role for a working shift** (role is always required on the schedule), and that shift's role sets the effective layer for its duration. The same person can work one shift as an employee and a later shift as a manager at the same venue.
 - When the person is **not** on a working shift, layer resolution uses the **highest layer among the membership's roles** (admin over manager over employee).
 - **Managers and above can override** a membership's layer.
 - **Customer access is always available** to every user, whatever membership they hold.

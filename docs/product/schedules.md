@@ -1,6 +1,6 @@
 # Schedules
 
-> **About this document.** This is the **target-state source of truth** for schedules in Project Imperium — the daily rota, shift and leave entries, overlap and vacation rules, time-off requests, planned labour aggregates, and the schedule events that notify staff. It is written for two readers: AI agents that build the product and engineers onboarding onto it. It describes schedules as they are *meant to be* — capabilities are stated as commitments, without built/planned tags. It is self-contained: it links to no other document.
+> **About this document.** This is the **target-state source of truth** for schedules in Project Imperium — the daily schedule, shift and leave entries, overlap and vacation rules, time-off requests, planned labour aggregates, and the schedule events that notify staff. It is written for two readers: AI agents that build the product and engineers onboarding onto it. It describes schedules as they are *meant to be* — capabilities are stated as commitments, without built/planned tags. It is self-contained: it links to no other document.
 
 ---
 
@@ -18,7 +18,7 @@ This subject covers the **schedule** — the **plan** of who is expected to work
 
 It deliberately does **not** cover:
 
-- the **Employee** membership, job-role list on the membership, pay, or vacation **allowance** storage — the employees subject owns those. This subject consumes memberships and updates **vacation remaining** when vacation is marked or removed on the rota.
+- the **Employee** membership, job-role list on the membership, pay, or vacation **allowance** storage — the employees subject owns those. This subject consumes memberships and updates **vacation remaining** when vacation is marked or removed on the schedule.
 - **base access layers**, the **mode chooser**, and **per-user capabilities** as platform mechanisms — the users subject owns those. This subject supplies the planned working shifts that eligibility reads.
 - **attendance** — on-duty state, the daily manager QR, scan-in, manager sign-out, breaks, worked hours, actual labour cost, absence classification, and overtime alerts — the time-control subject owns those. The schedule never writes punches; being scheduled is not being on duty.
 - **labour and vacation KPI formulas** and report roll-ups — the business-metrics and business-reports subjects own those. This subject supplies planned figures; actuals come from time-control.
@@ -81,7 +81,7 @@ Terms reused rather than redefined here: **Employee**, **Business**, **job role*
 - Marking **vacation** on a day decrements that membership's **vacation remaining** by **exactly one**. Removing the vacation entry restores one day. Balance is day-based, not hour-prorated.
 - A change that would drive vacation remaining **below zero** is rejected.
 - **Other leave** never changes vacation remaining.
-- Managers and above may place vacation or other leave **directly** on the rota without a prior employee request.
+- Managers and above may place vacation or other leave **directly** on the schedule without a prior employee request.
 
 ### 3.5 Day comment
 
@@ -121,20 +121,20 @@ Suspended and Terminated memberships must not receive **new** entries (also stat
 
 ### 3.9 Employee calendar and time-off requests
 
-- An ordinary employee may **read their own** calendar (their shift entries and the day comment on days they view). They do not manage peers' rotas or see day labour aggregates as an editing surface.
+- An ordinary employee may **read their own** calendar (their shift entries and the day comment on days they view). They do not manage peers' schedules or see day labour aggregates as an editing surface.
 - From their calendar, an employee may **request** time off: at least **vacation** and **other leave** (for example a doctor appointment), for one or more days.
 - Each request is **pending** until a **manager or above** **approves** or **rejects** it, with an optional note.
 - **Approval of vacation** creates or updates vacation entries on the affected day schedules and applies vacation-balance rules.
 - **Approval of other leave** creates or updates other-leave entries on the affected days and does not spend vacation days.
 - **Rejection** leaves the schedule unchanged.
-- Managers and above may still edit the rota directly; requests are the employee-initiated path into the same rules.
+- Managers and above may still edit the schedule directly; requests are the employee-initiated path into the same rules.
 
 ### 3.10 Schedule gating (eligibility only)
 
 - A non-management employee's **business-app (employee mode)** eligibility follows a **planned working shift**: the employee option opens from **10 minutes before** that shift's planned start. Vacation and other leave do not grant employee-mode eligibility.
 - Opening employee mode is **not** on duty. On duty begins only through time-control (manager QR scan-in).
 - There is **no** late-unlock step on the schedule. Lateness and attendance honesty belong to time-control.
-- Managers, admins, and owners are never blocked from business mode by the schedule, though they still appear on the rota for planning (and so time-control can see who was planned as management that day).
+- Managers, admins, and owners are never blocked from business mode by the schedule, though they still appear on the schedule for planning (and so time-control can see who was planned as management that day).
 
 ### 3.11 Notifications this subject owns as events
 
@@ -171,7 +171,7 @@ No per-user capability gates schedule editing or time-off approval on this subje
 
 | Activity | Who |
 | --- | --- |
-| View month/week/day schedule surfaces | Managers and above (full rota); employees (own calendar) |
+| View month/week/day schedule surfaces | Managers and above (full schedule); employees (own calendar) |
 | Add, edit, or remove working shifts, vacation, or other leave | Managers and above |
 | Copy day, clear day, multi-day bulk add | Managers and above |
 | Edit day comment | Managers and above |

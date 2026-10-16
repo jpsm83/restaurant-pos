@@ -24,5 +24,14 @@
 24 - 
 25 - 
 26 - 
+27 - 
+28 - 
+29 - 
+30 - 
+31 - 
+32 - 
+33 - 
 
 - we must defined the subscription, what they offer, wich comission they charge
+- review all the docs to find out any conflict
+- would you add any extra subject docs to the project

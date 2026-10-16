@@ -134,7 +134,7 @@ Access control is **two-layer**:
 - There is **no** late-unlock on the schedule. Lateness and real entry times belong to time control.
 - **Managers, admins, and owners are never blocked.** They may access the business app and execute any task without being scheduled, though they must still appear on the schedule for planning (and so time control can see who was planned as management that day).
 
-See [§6](#6-time-control-and-attendance) for the attendance model. The schedules subject is the source of truth for the rota itself.
+See [§6](#6-time-control-and-attendance) for the attendance model. The schedules subject is the source of truth for the schedule itself.
 
 ---
 
@@ -142,7 +142,7 @@ See [§6](#6-time-control-and-attendance) for the attendance model. The schedule
 
 Time control is a **plan-vs-actual** system, separate from the schedule:
 
-- **Schedule (the plan).** Each business defines, per calendar day, one schedule of shift entries (working shifts with job role and start/end, vacation, and other leave). Schedule aggregates (staff count, vacation count, planned hours, planned labour cost) feed reporting. The schedule does **not** imply on-duty. Overnight working shifts belong to the day they start. The schedules subject owns the rota in full.
+- **Schedule (the plan).** Each business defines, per calendar day, one schedule of shift entries (working shifts with job role and start/end, vacation, and other leave). Schedule aggregates (staff count, vacation count, planned hours, planned labour cost) feed reporting. The schedule does **not** imply on-duty. Overnight working shifts belong to the day they start. The schedules subject owns the schedule in full.
 - **On duty (the actual).** A person becomes **on duty** by scanning a **daily QR code** held by managers on duty that day — not by opening employee mode. Sign-out is performed by a manager at the employee's request. Real entry and exit times are what attendance records. The time-control subject owns QR issue, scan-in, manager sign-out, breaks, worked hours, actual labour cost, and related alerts.
 - **Shift session.** For each employee engagement, Project Imperium records a **shift session** projected from attendance events: planned window from the schedule, **actual sign-in / sign-out**, breaks, resulting **worked hours** and **labour cost**, and status. One open session per employee at a time prevents double sign-in.
 - **Breaks.** An employee can **pause and resume** duty during a shift (lunch, rest, or other break). Paused time is excluded from worked hours but the employee remains signed in.
@@ -171,7 +171,7 @@ The Business app is the operational heart of Project Imperium. It comprises the 
 
 - **Employees** are the full membership of a user in a business. The **User** holds only client/global identity; job roles, employment status, contract, pay (gross for labour cost, net for HR), vacation, HR identifiers, documents, termination, and rehire all live on the membership. The employees subject is the source of truth for that record.
 - **Roles and permissions** follow the two-layer model in [§5](#5-access-roles-and-the-mode-chooser): base layers, job roles on the membership, and per-user capability assignment by managers and above.
-- **Schedules** define each day's rota (working shifts with required role and start/end, vacation and other leave, day comments, copy/bulk edit, time-off requests). Project Imperium enforces no overlapping shifts and correct vacation accounting, and rolls up daily staff, vacation, planned hours, and planned labour-cost totals. The schedules subject is the source of truth.
+- **Schedules** define each day's schedule (working shifts with required role and start/end, vacation and other leave, day comments, copy/bulk edit, time-off requests). Project Imperium enforces no overlapping shifts and correct vacation accounting, and rolls up daily staff, vacation, planned hours, and planned labour-cost totals. The schedules subject is the source of truth.
 - **Time control** records actual attendance (manager QR sign-in, manager sign-out, breaks, overtime) as described in [§6](#6-time-control-and-attendance).
 
 ### Menu — business goods

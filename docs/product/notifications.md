@@ -88,7 +88,7 @@ Terms reused from the product overview's core vocabulary rather than defined her
 | Business profile updated | The venue's managers and above | In-app + email | Info | Once |
 | Overtime alert | The venue's admins on duty | In-app | Warning | Every 5 minutes until the employee signs off |
 | Print failure | The venue's managers on duty; if none are on duty, all manager-layer users for the business | In-app | Warning | Once per failed print attempt |
-| Schedule changed | Each employee whose rota entries were added, changed, or removed in the manager's editing session | In-app | Info | Once per employee when the manager leaves the schedules main page (batched across that employee's entries) |
+| Schedule changed | Each employee whose schedule entries were added, changed, or removed in the manager's editing session | In-app | Info | Once per employee when the manager leaves the schedules main page (batched across that employee's entries) |
 | Time-off request pending | The venue's managers and above | In-app | Info | Once |
 | Time-off request decided | The requesting employee | In-app | Info | Once |
 
