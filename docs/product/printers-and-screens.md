@@ -51,7 +51,7 @@ It deliberately does **not** cover:
 - **Main screen** — the chef or head-of-area control surface for a prep area; it gates **Preparing** and area **Ready**.
 - **Sub-screen** — a station's control surface; it receives tickets only after the main screen has marked them **Preparing**, and only for lines routed to that station.
 - **Delivery screen** — the runner surface that shows ready work to take out, in time order, with colour by fulfilment state.
-- **Customer pickup board** — a counter-facing display of order codes in pending, in progress, and ready-for-pickup columns for self-pickup, kiosk, on-premises collection, and takeaway.
+- **Customer pickup board** — a counter-facing display of order codes in pending, in progress, and ready-for-pickup columns for self-pickup, kiosk, and on-premises to-go collection.
 - **Display mode** — a locked presentation of the customer pickup board on a device the staff have signed into, safe to leave facing guests (codes and status only — no prices, names, or payment detail).
 - **Force-ready** — a main-screen choice to mark every open station line on a ticket done and set the area slice **Ready** when sub-screens are still incomplete.
 - **Print permission** — a per-employee capability that gates who may issue or reprint customer and prep prints.

@@ -14,6 +14,7 @@ This subject covers the **Business** — the tenant, one venue — as a thing th
 - the **address** and the **timezone derived from it**;
 - **opening hours**;
 - **delivery configuration**;
+- **self-ordering configuration** — whether the venue allows QR self-ordering at all;
 - the **discovery fields** that make a business visible and findable to customers;
 - the **subscription pointer** — the read-only link from a business to the plan held on its **Owner**;
 - **offline** and **closure** of the tenant record.
@@ -25,7 +26,7 @@ It deliberately does **not** cover:
 - the **meaning, defaults, validation, and comparison of the cost targets, waste thresholds, and reporting configuration** — the business-metrics subject owns those, and the business-reports subject owns the reports that consume them. This subject stores the values as business fields but does not define them.
 - **sign-in credentials and verification mechanics** — sign-in email verification, email change, and password reset belong to the users and emails subjects. This subject owns the *business contact email* field; the emails subject owns how its verification link is delivered.
 - the **owner shell, mode chooser, route guards, and canonical URLs** — the user-navigation subject owns those surfaces. This subject owns the *business-registration action* and the business form; the navigation that reaches them is the user-navigation subject's.
-- the **sales points, sales instances, and ordering/delivery mechanics** — the order-flow and sales-points-and-instances subjects own how customers order and how delivery is dispatched. This subject owns delivery *configuration*, not order placement.
+- the **sales points, sales instances, and ordering/delivery mechanics** — the order-flow and sales-points-and-instances subjects own how customers order, which points accept which channels, and how delivery is dispatched. This subject owns delivery and self-ordering *configuration* at the venue, not order placement.
 - **ratings and comments** themselves — the ratings-and-comments subject owns them; this subject owns the cached aggregates they publish.
 - **people, schedules, printers, and screens** — their own subjects.
 
@@ -35,7 +36,7 @@ It deliberately does **not** cover:
 
 ### Entities
 
-- **Business** — the tenant: **one venue** (one physical restaurant or bar). Owned by exactly one user through that user's **Owner**, and belonging to exactly one **Company** (the tax entity). Carries its own profile identity, address, currency, opening hours, delivery configuration, discovery fields, and **go-live state**. It holds **no credentials** — sign-in credentials belong to the **User**; the business holds only its verified **contact email**.
+- **Business** — the tenant: **one venue** (one physical restaurant or bar). Owned by exactly one user through that user's **Owner**, and belonging to exactly one **Company** (the tax entity). Carries its own profile identity, address, currency, opening hours, delivery configuration, self-ordering configuration, discovery fields, and **go-live state**. It holds **no credentials** — sign-in credentials belong to the **User**; the business holds only its verified **contact email**.
 - **Company** — the tax entity a business belongs to (owned by the business's **Owner**). Groups one or more venues run as one legal unit and holds their **tax number**; stock moves only within a Company. The users subject owns the Company; this subject records which Company a venue belongs to.
 - **Owner** — the portfolio account a business hangs off (one per user who owns businesses). Holds the **Companies** it controls and the **subscription**. A business **references its Owner's plan read-only**; it never stores a subscription of its own.
 - **Address** — the structured postal address (country, state, city, street, building number, optional unit, complement, post code, region, and details). Its **country and state derive the timezone**, and its **coordinates are the discovery origin**.
@@ -53,6 +54,7 @@ It deliberately does **not** cover:
 - **Currency** — the single currency a business prices in.
 - **Discovery fields** — the public fields that power customer discovery.
 - **Delivery radius**, **minimum order**, **delivery windows** — the delivery configuration terms.
+- **Self-ordering enabled** — whether the venue allows QR self-ordering at all (points must still accept the Self-ordering channel).
 - **Subscription pointer** — the read-only reference from a business to the plan held on its **Owner**.
 
 The business contact email is a term the users subject introduces; this subject owns it as a business field. "Venue" is prose for one **Business**.
@@ -126,7 +128,15 @@ Delivery is a **per-venue** configuration.
 - **Delivery windows** — **per-weekday** time ranges during which the venue delivers.
 - When delivery is enabled, the venue gains its **virtual delivery sales point** — the sales point that represents delivery in service. The order-flow and sales-points-and-instances subjects own how delivery orders are placed and dispatched; delivery is **per-venue**, never a cross-venue marketplace.
 
-### 3.8 Discovery fields
+### 3.8 Self-ordering configuration
+
+Self-ordering is a **per-venue** switch.
+
+- **Enable/disable** — a venue turns QR self-ordering on or off for the business as a whole.
+- Table self-ordering still requires each **sales point** to accept the **Self-ordering** channel, and is blocked while a staff tab is open on that point — the sales-points-and-instances and order-flow subjects own those gates.
+- Kiosk and delivery have their own point and delivery-configuration gates; this switch governs **QR self-ordering** at served points.
+
+### 3.9 Discovery fields
 
 A business is **discoverable only while live**. Its discovery fields are:
 
@@ -135,13 +145,13 @@ A business is **discoverable only while live**. Its discovery fields are:
 - **Cuisine type and categories are edited by managers and above** at the venue; they are the filters customers browse. The identity discovery fields (trade name, logo, phone, address) are edited by admins/owners.
 - A customer's location search measures from the address coordinates.
 
-### 3.9 Subscription pointer
+### 3.10 Subscription pointer
 
 - The **subscription is held on the Owner** and covers the owner's venues.
 - A business carries **no subscription field of its own**; it exposes the **effective plan read-only** so the venue can see what its Owner's plan provides.
 - Which features a plan unlocks is the superadmin subject's concern; this subject only surfaces the plan.
 
-### 3.10 Go-live, live, and offline
+### 3.11 Go-live, live, and offline
 
 A business's own state is server-owned. Its go-live status has three states — **ready to go live**, **live**, and **not live** — moved between by an admin/owner using the **go-live toggle**.
 
@@ -161,7 +171,7 @@ The **go-live checklist** is:
 
 The **profile read exposes the completeness signal** — which checklist items are missing — so the settings surface can show what remains and the go-live toggle can be disabled with reasons.
 
-### 3.11 Closure
+### 3.12 Closure
 
 - Closing a business is a **deliberate soft delete** of the tenant record. It is **not** the same as going offline.
 - Closure requires **no open sales instances** and an **explicit confirmation**. It **never hard-deletes operational data**; the records are retained and marked deleted (see ADR-0003).
@@ -177,7 +187,7 @@ The **profile read exposes the completeness signal** — which checklist items a
 | --- | --- |
 | **Customer** | Sees a business's public discovery fields. May **register a business**, becoming its owner and an **admin** at that venue; may edit everything at a venue they own. |
 | **Employee** | Works in the business app; no business-detail editing unless granted. |
-| **Manager** | Everything an employee can do, plus editing **opening hours**, **delivery configuration**, and the **discovery cuisine/categories**. |
+| **Manager** | Everything an employee can do, plus editing **opening hours**, **delivery configuration**, **self-ordering configuration**, and the **discovery cuisine/categories**. |
 | **Admin** | Full venue control, including the **profile identity**, **legal name**, **currency**, **contact email**, the **go-live toggle**, and **closure**. |
 
 The owning user is admin at every venue they own. Job roles and per-user capabilities follow the global model; this subject names only the entitlements that bear on business details.
@@ -189,7 +199,7 @@ The owning user is admin at every venue they own. Job roles and per-user capabil
 | Register a business | Any signed-in user (becomes the **Owner** and an admin at that venue) |
 | Edit trade name, logo, primary contact, phone | Admin/owner |
 | Edit legal name, currency, business contact email | Admin/owner |
-| Edit opening hours, delivery configuration, discovery cuisine/categories | Managers and above |
+| Edit opening hours, delivery configuration, self-ordering configuration, discovery cuisine/categories | Managers and above |
 | Flip go-live / take a venue offline | Admin/owner |
 | Close a business | The owning user (admin/owner) |
 | View published discovery fields | Anyone (public) |

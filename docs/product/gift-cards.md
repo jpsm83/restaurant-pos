@@ -24,7 +24,7 @@ It deliberately does **not** cover:
 - the **order and bill** — the orders subject owns the billable lines, voids, invitations, and cancellations, and the payments-and-tax subject owns the bill's composition and settlement. This subject reads the bill and marks the lines a card covers as invitations.
 - the **emails and notifications** — the emails subject owns delivering the virtual card and the notifications subject owns any in-app alert; this subject names the delivery.
 - the **business configuration and currency** — the business subject owns the venue's currency. This subject owns the venue's gift-card configuration.
-- the **service surfaces** (dine-in, QR self-ordering, kiosk, takeaway, delivery) — the order-flow and sales-points-and-instances subjects own them. A card is offered on the payment step of every one.
+- the **service surfaces** (dine-in, QR self-ordering, kiosk, delivery) — the order-flow and sales-points-and-instances subjects own them. A card is offered on the payment step of every one.
 - the **refund mechanics** of a paid card — the payments-and-tax subject owns refunds; this subject owns voiding a card.
 - the **platform's deletion model** — the platform's soft delete rule applies; this subject states that a card is retained.
 

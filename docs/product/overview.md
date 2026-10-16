@@ -6,7 +6,7 @@
 
 ## 1. What Project Imperium is
 
-Project Imperium is a **complete, real-time, cloud SaaS platform** for **bars and restaurants**: a full **restaurant management platform**, not merely a point-of-sale. It covers the whole operation — service, menu, supply, stock, people, and reporting — and extends outward to the venue's **customers** through self-ordering, takeaway, delivery, booking, ratings, and gift cards. The point of sale is one surface of one system; menu and costing, supply and stock, people and scheduling, and reporting run on the same platform.
+Project Imperium is a **complete, real-time, cloud SaaS platform** for **bars and restaurants**: a full **restaurant management platform**, not merely a point-of-sale. It covers the whole operation — service, menu, supply, stock, people, and reporting — and extends outward to the venue's **customers** through self-ordering, delivery, to-go packaging, booking, ratings, and gift cards. The point of sale is one surface of one system; menu and costing, supply and stock, people and scheduling, and reporting run on the same platform.
 
 It is built on four positioning pillars:
 
@@ -42,7 +42,7 @@ These terms are used with exactly these meanings throughout Project Imperium. Do
 | **Customer** | A user acting as the final consumer (ordering, booking, rating). |
 | **POS** | Point of sale — the staff-facing surface where an employee selects a sales point, takes orders, and bills. One surface of the platform, distinct from self-ordering, kiosk, and delivery; never the whole product. |
 | **Sales point** | A place a customer sits or is served — a **type** (Table, Room, Bar, Seat, Counter, Spot, Kiosk, the virtual **Delivery** point, or Other) plus the **channels** it accepts (dine-in, self-ordering, kiosk, delivery). Holds its QR code. |
-| **Channel** | How an order reached the venue — **dine-in**, **self-ordering**, **kiosk**, **takeaway**, or **delivery**. A **sales point** declares which point-anchored channels it accepts. |
+| **Channel** | How an order reached the venue — **dine-in**, **self-ordering**, **kiosk**, or **delivery**. A **sales point** declares which point-anchored channels it accepts. **To-go packaging** (stay vs packed to go) is not a channel; the order-flow subject owns it. |
 | **Sales instance** | An open session/tab at a sales point that groups the orders for that sitting. |
 | **Order** | One billable line: one main business good plus optional add-ons. Quantity is expressed as multiple orders. |
 | **Batch** | A group of orders sent to the kitchen/bar together, sharing one **identification code**. |
@@ -104,12 +104,12 @@ Owner-level resources — the **subscription**, **commission**, and portfolio na
 Project Imperium defines four canonical ways a venue can serve, plus a cross-cutting booking layer. ("Different ways to work and serve" = this set.)
 
 1. **Dine-in — staff POS.** A waiter, bartender, or host opens a sales point (select it in the POS, or scan its QR) to open a **sales instance**, takes orders, and later bills and closes the table. This is the classic served-on-premises flow.
-2. **QR self-ordering — on premises.** A customer at a sales point scans its QR code to self-order from the menu. The order is **delivered to that QR point** (the table/seat). Self-ordering is only enabled where the venue has turned it on for that sales point, and is unavailable while a staff member holds the table.
+2. **QR self-ordering — on premises.** A customer at a sales point scans its QR code to self-order from the menu. The order is **delivered to that QR point** (the table/seat). Self-ordering requires the **business** to have self-ordering enabled and the **sales point** to accept that channel, and is unavailable while a staff member holds the table.
 3. **Kiosk.** A **variant of the on-premises QR order** — a self-service terminal running the same web app. The difference is fulfilment: a kiosk order is **not delivered** anywhere; it is **picked up at the counter**.
-4. **Takeaway / Delivery — customer-initiated.** A customer orders from the venue to be **delivered to an address** or **picked up on premises**. Delivery is **per-venue** (each venue serves within its own radius and windows) and dispatched through **third-party courier tools**.
+4. **Delivery — customer-initiated.** A customer orders from the venue to be **delivered to an address**. Delivery is **per-venue** (each venue serves within its own radius and windows). Venue staff hand the packed order to a **third-party courier**; the courier's last-mile tools are outside Project Imperium. Guests who want food **to go** without delivery use ordinary dine-in or self-service with **to-go packaging** — there is no separate takeaway channel or sales point.
 5. **Reservations** — the cross-cutting **booking layer** that hands off into service. A venue may **accept** a booking with no charge or **request a deposit** before it becomes reserved. See [§7](#7-the-business-platform).
 
-Kiosk and QR ordering are not separate products — they are routes within the **Customer** app. Delivery is a configuration of the same platform (delivery enabled, delivery radius, minimum order, delivery windows, and a dedicated virtual delivery sales point).
+Kiosk and QR ordering are not separate products — they are routes within the **Customer** app. Delivery is a configuration of the same platform (delivery enabled, delivery radius, minimum order, delivery windows, and a dedicated virtual delivery sales point). Self-ordering is likewise a venue configuration plus per-point channel acceptance. The shared service journey across surfaces is the order-flow subject.
 
 ---
 
@@ -252,7 +252,7 @@ The Customer app is the free, public side of Project Imperium — the venue's cu
 
 - **Account.** Sign up and sign in, manage profile, verify email, reset password. Every user is a customer.
 - **Discovery.** Browse venues by cuisine type, categories, rating, and location (geo radius), and view a venue's public profile and menu.
-- **Ordering across every service surface**: **QR self-ordering** at a table (delivered to the QR point), **kiosk** ordering (counter pickup), and **takeaway / delivery** (to an address or picked up on premises). Orders can be paid **in-app** via third-party providers.
+- **Ordering across every service surface**: **QR self-ordering** at a table (delivered to the QR point), **kiosk** ordering (counter pickup), and **delivery** (to an address), with optional **to-go packaging** on dine-in and self-service. Orders can be paid **in-app** via third-party providers.
 - **Reservations.** Request a table (when the venue accepts bookings), pay a deposit when asked, and track status.
 - **Ratings.** Give a venue a **0–5 star** rating, optionally tied to an order.
 - **Comments.** Leave a **text review on the venue**.

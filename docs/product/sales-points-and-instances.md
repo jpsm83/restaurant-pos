@@ -15,7 +15,7 @@ This subject owns the **anchor of service**: where a guest sits or is served, an
 
 It deliberately does **not** cover:
 
-- the **end-to-end service journey** or the surface-specific flows (dine-in, QR self-ordering, kiosk, takeaway, and delivery dispatch) — the order-flow subject owns the journey; this subject owns the anchor those flows open and close.
+- the **end-to-end service journey** or the surface-specific flows (dine-in, QR self-ordering, kiosk, and delivery dispatch) and **to-go packaging** — the order-flow subject owns the journey; this subject owns the anchor those flows open and close.
 - the **orders** themselves — the billable lines, add-ons, pricing, promotions, and the **identification code** an order carries belong to the orders subject. This subject groups orders into a session and owns the handover rule.
 - **billing and payment** — splitting a tab, partial and multi-method payments, tips, and settlement belong to the payments-and-tax subject, while the order lifecycle — voids, invitations, and cancellations — belongs to the orders subject. This subject owns the instance's **Bill** status and its close once settled.
 - the **reservation flow** — the booking, its lifecycle, and no-show handling belong to the reservations subject. This subject owns the **reservation link** a seated instance carries and the **reserved hold** a point may show.
@@ -38,7 +38,7 @@ It deliberately does **not** cover:
 
 - **Sales-point type** — what the place *is*: **Table**, **Room**, **Bar**, **Seat**, **Counter**, **Spot**, **Kiosk**, **Delivery**, or **Other**. A **Spot** is a standing point used for customer self-ordering; **Delivery** is the one virtual type.
 - **Served point** — a sales point of a physical serving type (Table, Room, Bar, Seat, Counter, Spot, or Other), as opposed to a **Kiosk** or the virtual **Delivery** point.
-- **Channel** — how orders reach the venue: **Dine-in** (staff service), **Self-ordering**, **Kiosk**, **Takeaway**, or **Delivery**. A point declares the set it accepts, so a table can serve staff (dine-in) and also allow self-ordering. **Takeaway** is a customer-initiated channel with no sales point of its own; the order-flow subject owns it.
+- **Channel** — how orders reach the venue: **Dine-in** (staff service), **Self-ordering**, **Kiosk**, or **Delivery**. A point declares the set it accepts, so a table can serve staff (dine-in) and also allow self-ordering. **To-go packaging** (stay vs packed to go) is not a channel; the order-flow subject owns it.
 - **Staff tab** — a sales instance opened by an employee under the **Dine-in** channel; it runs open until settled.
 - **One-open rule** — a served point accepts **at most one open staff tab at a time**.
 - **Guest count** — the number of guests a sitting covers; set when the instance opens and editable while it is open.
@@ -88,7 +88,7 @@ Terms reused rather than redefined here: **Business**, **Order**, **Business goo
 
 - **Self-ordering**, **Kiosk**, and **Delivery** open a customer's own instance at a point: the customer adds as many items as they wish, sees a **pre-payment confirmation** of the bill, pays, and the instance closes on settlement.
 - These channels are **not** subject to the one-open rule: several may run at once, one per customer.
-- A **Self-ordering** instance cannot open while a **staff tab** is open on the same point; the customer is told that service is underway.
+- A **Self-ordering** instance cannot open unless the **business** has self-ordering enabled, the point accepts that channel, and no **staff tab** is open on the same point; otherwise the customer is told self-ordering is unavailable or that service is underway.
 - A self-service instance is created **only when the customer commits to pay**, so an abandoned basket leaves nothing behind.
 - Every order carries an **identification code**. For **Self-ordering**, **Kiosk**, and **Delivery**, Project Imperium **notifies and emails** the customer the code, and a **kiosk also prints a ticket**. Staff **verify the code at handover**, before releasing the items, so the person who collects is the person who ordered.
 

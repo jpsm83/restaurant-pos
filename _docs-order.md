@@ -16,11 +16,13 @@
 16 - payments and tax
 17 - gift-cards
 18 - reservations
-19 - 
-20 - 
+19 - printers and screens
+20 - orders
 21 - 
 22 - 
 23 - 
 24 - 
 25 - 
 26 - 
+
+- we must defined the subscription, what they offer, wich comission they charge

@@ -21,7 +21,7 @@ This subject owns **settlement**: turning an open bill into paid money, and the 
 
 It deliberately does **not** cover:
 
-- the **service journey** — the surface flows (dine-in, QR self-ordering, kiosk, takeaway, delivery), requesting the bill, and closing the instance belong to the **order-flow** subject. This subject owns the settlement that closes it.
+- the **service journey** — the surface flows (dine-in, QR self-ordering, kiosk, delivery), requesting the bill, and closing the instance belong to the **order-flow** subject. This subject owns the settlement that closes it.
 - the **bill's composition** — the orders a bill aggregates, their pricing and cost, voids, invitations, cancellations, transfers, and manual discounts belong to the **orders** subject. This subject settles the billable lines that subject supplies.
 - the **sales point and sales instance** — opening, the one-open rule, self-service instances, and the pay-in-full-before-close behaviour of a self-service instance belong to the **sales-points-and-instances** subject.
 - the **business good beyond its tax category** — the menu, its categories, selling price, derived cost, and allergens belong to the **business-goods** subject; this subject assigns each good a **tax category** and reads the price it carries.
