@@ -86,10 +86,9 @@ Terms reused rather than redefined here: **Business**, **Order**, **Business goo
 
 ### 3.5 Self-service instances
 
-- **Self-ordering**, **Kiosk**, and **Delivery** open a customer's own instance at a point: the customer adds as many items as they wish, sees a **pre-payment confirmation** of the bill, pays, and the instance closes on settlement.
+- On **Self-ordering**, **Kiosk**, and **Delivery**, the customer builds a **basket** with no sales instance yet, sees a **pre-payment confirmation**, and **pays in full**. The instance is created **only when the customer commits to pay**, then closes for billing on that settlement; an abandoned basket leaves nothing behind. Fulfilment after payment belongs to the order-flow subject.
 - These channels are **not** subject to the one-open rule: several may run at once, one per customer.
 - A **Self-ordering** instance cannot open unless the **business** has self-ordering enabled, the point accepts that channel, and no **staff tab** is open on the same point; otherwise the customer is told self-ordering is unavailable or that service is underway.
-- A self-service instance is created **only when the customer commits to pay**, so an abandoned basket leaves nothing behind.
 - Every order carries an **identification code**. For **Self-ordering**, **Kiosk**, and **Delivery**, Project Imperium **notifies and emails** the customer the code, and a **kiosk also prints a ticket**. Staff **verify the code at handover**, before releasing the items, so the person who collects is the person who ordered.
 
 ### 3.6 Statuses and the tab lifecycle

@@ -12,12 +12,12 @@
 12 - inventories
 13 - sales points and instances
 14 - orders
-15 - promotions
-16 - payments and tax
-17 - gift-cards
-18 - reservations
-19 - printers and screens
-20 - orders
+15 - order flow
+16 - promotions
+17 - payments and tax
+18 - gift-cards
+19 - reservations
+20 - printers and screens
 21 - 
 22 - 
 23 - 

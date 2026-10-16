@@ -50,8 +50,9 @@ Terms reused rather than redefined here: **Business**, **Sales point**, **Sales 
 
 ### 3.1 Shared lifecycle
 
-- Every sitting walks the same **lifecycle stages**: **Open** → **Build & send** → **Fulfil** → **Bill** → **Settle** → **Close**.
-- A **staff tab** may loop **Build & send** and **Fulfil** many times before **Bill**. A **self-service** sitting typically **builds**, then **Settles** (pay-to-commit), then **Fulfils**, then **Closes** — it never holds a staff **Bill** status.
+- Every sitting uses the same **lifecycle stages**: **Open**, **Build & send**, **Fulfil**, **Bill**, **Settle**, and **Close**. Surfaces differ in **who acts** and in **stage order**, not in a separate stage catalogue.
+- A **staff tab** opens first, may loop **Build & send** and **Fulfil** many times, then **Bill**, **Settle**, and **Close**.
+- A **self-service** sitting has no staff **Bill** status: the customer **builds** a basket, **Settles** (pay-to-commit) which **Opens** the instance and **Closes** it for billing in the same step, then **Fulfil** runs until handover. Payment is complete before the kitchen starts; venue work after pay is fulfilment only.
 - The first sales instance of a work day opens that day's daily sales report; the business-reports subject owns the report.
 
 ### 3.2 To-go packaging
@@ -68,7 +69,7 @@ Terms reused rather than redefined here: **Business**, **Sales point**, **Sales 
 ### 3.3 Dine-in — staff POS
 
 - An **on-duty employee** opens a **staff tab** on a served point from the POS or by scanning the point's QR, as the sales-points-and-instances subject defines (including reservation guests vs ordinary guests when a reserved hold is present).
-- Staff **build drafts**, **send batches** (ready-to-make or held), and may send **many batches** over the sitting. Multi-course timing uses **held / release** and further sends — there is no separate course-number model.
+- Staff **build drafts**, **send batches** (ready-to-make or held), and may send **many batches** over the sitting. Multi-course timing uses **held / release** and further sends alone.
 - Prep areas advance fulfilment; runners deliver stay items to the point and pack to-go items for handover at the table or counter as the sitting requires.
 - Staff may move the tab to **Bill** and **settle** even while some fulfilment slices are still in progress. Closing does not require every slice to be Delivered.
 - While the tab is in **Bill**, staff may still **add and send** further orders; the bill updates.
@@ -82,22 +83,22 @@ Terms reused rather than redefined here: **Business**, **Sales point**, **Sales 
 - The customer scans the point's QR, builds a **basket** (no sales instance yet), confirms the bill, and **pays in full**. Only then does Project Imperium create the instance and batches and release work to the kitchen (**pay-to-commit**).
 - Fulfilment **delivers stay items to that QR point**. To-go lines on the same sitting are packed to go.
 - The customer receives the **identification code** (notification and email); staff **verify the code at handover** before releasing items, as the sales-points-and-instances subject defines.
-- The instance **closes on full settlement**. After close, another order at the same point is a **new** basket and instance — a closed self-service sitting is never reopened to add lines.
+- Billing **closes on full settlement** at pay-to-commit; fulfilment continues until handover. After that close, another order at the same point is a **new** basket and instance — a closed self-service sitting is never reopened to add lines.
 - **Managers and above** may void, invite, or cancel lines on a paid self-service sitting; refunds follow the payments-and-tax subject. Ordinary employees fulfil and verify handover; they do not rewrite a paid self-service ticket.
 
 ### 3.5 Kiosk
 
 - A **Kiosk** point is a self-service terminal on the same customer app. The journey is pay-to-commit, like QR self-ordering.
-- Fulfilment is **counter pickup**, not delivery to a table. Packaging defaults to **to-go**; the customer may still choose stay where the venue offers it for on-site consumption after pickup.
+- Fulfilment is **counter pickup**, not delivery to a table. Packaging defaults to **to-go**; the customer may override per order.
 - The kiosk **prints a handover ticket** with the identification code; staff verify the code at the counter. The customer pickup board shows progress as the printers-and-screens subject defines.
-- The instance closes on full settlement; a later order is a new instance.
+- Billing closes on full settlement at pay-to-commit; fulfilment continues until counter handover. A later order is a new instance.
 
 ### 3.6 Delivery
 
 - When delivery is enabled, orders attach to the venue's **virtual Delivery point**. The customer builds a basket, meets the venue's delivery rules (radius, minimum, windows), **pays in full**, then the kitchen receives the work.
 - Every delivery order is **to-go**. Prep runs as usual; when slices are **Ready**, venue staff use the **delivery screen** to run the handoff.
 - A **runner** (or any staff allowed on the delivery screen) hands the order to the **third-party courier** and marks it **Delivered**. That completes Project Imperium's delivery journey. The courier may manage last-mile in their own app; a courier **never** signs into Project Imperium or operates the delivery screen.
-- The instance closes on full settlement at pay-to-commit; fulfilment continues after payment until venue handoff.
+- Billing closes on full settlement at pay-to-commit; fulfilment continues after payment until venue handoff.
 
 ### 3.7 Billing, settlement, and close
 
@@ -119,20 +120,30 @@ Terms reused rather than redefined here: **Business**, **Sales point**, **Sales 
 | Layer | Powers here |
 | --- | --- |
 | **Customer** | Walks self-ordering, kiosk, and delivery journeys; sets packaging on self-service orders; pays to commit; never opens or manages a staff tab. |
-| **Employee** | Runs dine-in journeys while on duty: open, build and send, request bill, settle and close; sets packaging on staff tabs; runs fulfilment and venue handoff (including delivery screen) under job-role screen access; verifies identification codes at handover. |
+| **Employee** | Runs dine-in journeys while on duty: open, build and send, request bill, settle and close; sets packaging on staff tabs; runs fulfilment and venue handoff under the job roles below; verifies identification codes at handover. |
 | **Manager** | Everything an employee can do, plus correcting paid self-service lines (void, invite, cancel) and the sent-order powers the orders subject grants. |
 | **Admin/owner** | Full venue control over the journeys, including configuration owned by the business and sales-points subjects that gate the surfaces. |
+
+### Job roles in this journey
+
+| Job role | Role in the journey |
+| --- | --- |
+| **Waiter**, **Floor Staff**, **Bartender**, **Barista**, **Cashier** | Open and run staff tabs, take and send orders, request the bill, settle, set packaging, verify handover codes at the table or counter. |
+| **Runner** | Run stay items to the point, pack and hand to-go items, operate the delivery screen, and mark delivery **Delivered** when handed to the courier. |
+| **Host** | Seat reservation guests into staff tabs (reserved hold / open choice); does not move tabs once service is underway. |
+| **Head Chef**, **Sous Chef**, **Line Cooks**, and other prep roles | Advance prep-area fulfilment slices; they do not own billing. |
+| **Manager**, **Assistant Manager**, **MoD**, **General Manager**, **Owner**, **Admin** | Manager-and-above corrections and configuration gates as in the tables below. |
 
 ### Who can do what
 
 | Activity | Who |
 | --- | --- |
-| Open and run a staff tab through bill, settle, and close | On-duty employees on the tab |
+| Open and run a staff tab through bill, settle, and close | On-duty floor service roles on the tab (Waiter, Floor Staff, Bartender, Barista, Cashier, and managers and above) |
 | Set sitting packaging default and per-order stay/to-go on a staff tab | Staff on the tab |
 | Build a self-service basket, set packaging, and pay to commit | The ordering customer |
 | Enable self-ordering for the business | Managers and above (business subject) |
 | Accept Self-ordering on a sales point | Managers and above (sales-points-and-instances subject) |
 | Verify identification code at handover | Staff fulfilling the order |
-| Mark delivery Ready → Delivered (handed to courier) | Staff allowed on the delivery screen (typically runner) |
+| Mark delivery Ready → Delivered (handed to courier) | Runner and other staff allowed on the delivery screen |
 | Void, invite, or cancel lines on a paid self-service sitting | Managers and above |
 | Walk a courier through Project Imperium screens | Nobody — couriers stay on their own tools |
