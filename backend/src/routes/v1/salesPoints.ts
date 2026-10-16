@@ -9,7 +9,7 @@
  */
 import type { FastifyPluginAsync } from "fastify";
 import { Types } from "mongoose";
-import type { ISalesPoint } from "domain/interfaces/ISalesPoint";
+import type { ISalesPoint } from "restaurant-pos-packages/interfaces/ISalesPoint";
 
 import SalesPoint from "../../models/salesPoint.ts";
 import generateQrCode from "../../salesPoints/generateQrCode.ts";
@@ -26,7 +26,7 @@ import {
   type CreateSalesPointBody,
   type SalesPointIdParams,
   type UpdateSalesPointBody,
-} from "domain/schemas/salesPoints";
+} from "restaurant-pos-packages/schemas/salesPoints";
 
 export const salesPointsRoutes: FastifyPluginAsync = async (app) => {
   // GET /salesPoints - list all

@@ -14,12 +14,12 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
-} from "ui/sidebar";
+} from "@/components/ui/sidebar";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "ui/collapsible";
+} from "./ui/collapsible";
 
 export type ActorSidebarItem = {
   key: string;

@@ -11,7 +11,7 @@
  */
 import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
-import type { IPrinter } from "domain/interfaces/IPrinter";
+import type { IPrinter } from "restaurant-pos-packages/interfaces/IPrinter";
 
 import checkPrinterConnection from "../../printers/checkPrinterConnection.ts";
 import Printer from "../../models/printer.ts";

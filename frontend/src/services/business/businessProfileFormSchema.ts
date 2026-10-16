@@ -4,7 +4,7 @@ import {
   cuisineTypeEnums,
   foodSubCategoryEnums,
   subscriptionEnums,
-} from "domain/enums";
+} from "restaurant-pos-packages/enums";
 
 const HHMM_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
 

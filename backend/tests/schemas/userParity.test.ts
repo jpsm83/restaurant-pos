@@ -8,7 +8,7 @@ import {
   updateUserBodySchema,
   userIdParamsSchema,
   userNotificationParamsSchema,
-} from "domain/schemas/user";
+} from "restaurant-pos-packages/schemas/user";
 
 /**
  * Parity between the user DTOs and the Mongoose User model (the domain source

@@ -3,15 +3,15 @@ import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { confirmEmailChange, setAccessToken } from "@/auth/api";
 import { useAuth } from "@/auth/store/AuthContext";
-import { Alert } from "ui/alert";
-import { Button } from "ui/button";
+import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "ui/card";
+} from "@/components/ui/card";
 
 type Status = "missingToken" | "confirming" | "failure";
 

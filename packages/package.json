@@ -1,0 +1,36 @@
+{
+  "name": "restaurant-pos-packages",
+  "private": true,
+  "type": "module",
+  "version": "1.0.0",
+  "exports": {
+    "./package.json": "./package.json",
+    "./enums": "./enums.ts",
+    "./interfaces/*": "./interfaces/*.ts",
+    "./schemas": "./schemas/index.ts",
+    "./schemas/primitives": "./schemas/primitives.ts",
+    "./schemas/*": "./schemas/*.ts",
+    "./utils/*": "./utils/*.ts"
+  },
+  "scripts": {
+    "test": "vitest run --passWithNoTests"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jpsm83/restaurant-pos.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jpsm83/restaurant-pos/issues"
+  },
+  "homepage": "https://github.com/jpsm83/restaurant-pos#readme",
+  "description": "",
+  "dependencies": {
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "mongoose": "^9.3.1",
+    "vitest": "^5.0.3"
+  }
+}

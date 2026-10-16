@@ -1,11 +1,11 @@
 import { describe, it, expect } from "vitest";
 
 import Reservation from "../../src/models/reservation.ts";
-import { reservationStatusEnums } from "domain/enums";
+import { reservationStatusEnums } from "restaurant-pos-packages/enums";
 import {
   createReservationBodySchema,
   updateReservationBodySchema,
-} from "domain/schemas/reservations";
+} from "restaurant-pos-packages/schemas/reservations";
 import { reservationDtoSchemas } from "../helpers/reservationDtos.ts";
 
 /**

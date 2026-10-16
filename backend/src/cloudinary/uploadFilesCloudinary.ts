@@ -3,7 +3,7 @@ import configureCloudinary, {
   CLOUDINARY_ROOT_FOLDER,
   CLOUDINARY_UPLOAD_PRESET,
 } from "./cloudinaryConfig.ts";
-import type { UploadInputFile } from "domain/interfaces/ICloudinary";
+import type { UploadInputFile } from "restaurant-pos-packages/interfaces/ICloudinary";
 
 const uploadFilesCloudinary = async (params: {
   folder: string;

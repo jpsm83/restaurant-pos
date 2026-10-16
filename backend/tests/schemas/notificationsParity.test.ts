@@ -11,7 +11,7 @@ import {
   notificationsPaginationQuerySchema,
   updateNotificationBodySchema,
 } from "../../src/schemas/notifications.ts";
-import { notificationEnums } from "domain/enums";
+import { notificationEnums } from "restaurant-pos-packages/enums";
 
 /**
  * Parity between the notifications DTOs and the Notification model (the domain

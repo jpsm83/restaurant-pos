@@ -7,7 +7,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "ui/card";
+} from "@/components/ui/card";
 import { StandaloneAdvancedTable } from "@/features/advancedTable/components/StandaloneAdvancedTable";
 import GenericSearchBar from "@/features/advancedTable/components/GenericSearchBar";
 import type { FilterConfig, TableColumnConfig } from "@/features/advancedTable/types/tableContracts";

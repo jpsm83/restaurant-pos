@@ -8,8 +8,8 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
-} from "ui/dropdown-menu";
-import { Button } from "ui/button";
+} from "@/components/ui/dropdown-menu";
+import { Button } from "./ui/button";
 
 function isEs(code: string): boolean {
   return (code.split("-")[0]?.toLowerCase() ?? "") === "es";

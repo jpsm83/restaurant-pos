@@ -12,7 +12,7 @@ import {
 } from "./emailChangeAuditLog.ts";
 import { normalizeRequestEmail } from "./requestEmailConfirmation.ts";
 import type { AuthBusiness } from "./types.ts";
-import type { RequestEmailChangeBody } from "domain/schemas/auth";
+import type { RequestEmailChangeBody } from "restaurant-pos-packages/schemas/auth";
 
 /** How long a pending sign-in email change link stays valid. */
 export const EMAIL_CHANGE_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;

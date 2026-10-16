@@ -33,7 +33,7 @@ import {
   CONFIRM_EMAIL_SUCCESS_MESSAGE,
 } from "../../src/auth/confirmEmail.ts";
 import { RESET_PASSWORD_SUCCESS_MESSAGE } from "../../src/auth/resetPassword.ts";
-import { PASSWORD_POLICY_MESSAGE } from "domain/utils/passwordPolicy";
+import { PASSWORD_POLICY_MESSAGE } from "restaurant-pos-packages/utils/passwordPolicy";
 
 const testPassword = "TestPassword123!";
 const newPassword = "NewPassword456!";

@@ -13,11 +13,11 @@ import mongoose, { Types } from "mongoose";
 import type {
   ISchedule,
   IEmployeeSchedule,
-} from "domain/interfaces/ISchedule";
+} from "restaurant-pos-packages/interfaces/ISchedule";
 import type {
   IEmployee,
   ISalary,
-} from "domain/interfaces/IEmployee";
+} from "restaurant-pos-packages/interfaces/IEmployee";
 
 import getWeekNumber from "../../schedules/getWeekNumber.ts";
 import employeesValidation from "../../schedules/employeesValidation.ts";
@@ -55,7 +55,7 @@ import {
   type ScheduleUserParams,
   type UpdateEmployeeBody,
   type UpdateScheduleBody,
-} from "domain/schemas/schedules";
+} from "restaurant-pos-packages/schemas/schedules";
 
 /** A shift time range used by the overlap post-parse check. */
 interface ShiftTimeRange {

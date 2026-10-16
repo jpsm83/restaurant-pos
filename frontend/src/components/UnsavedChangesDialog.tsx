@@ -1,6 +1,6 @@
 import { Dialog as DialogPrimitive } from "radix-ui";
-import { Button } from "ui/button";
-import { cn } from "ui/utils";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 type UnsavedChangesDialogProps = {
   open: boolean;

@@ -15,9 +15,9 @@ import type {
   IActorDailySalesReport,
   IGoodsReduced,
   IDailySalesReport,
-} from "domain/interfaces/IDailySalesReport";
-import type { IPaymentMethod } from "domain/interfaces/IPaymentMethod";
-import type { IEmployee } from "domain/interfaces/IEmployee";
+} from "restaurant-pos-packages/interfaces/IDailySalesReport";
+import type { IPaymentMethod } from "restaurant-pos-packages/interfaces/IPaymentMethod";
+import type { IEmployee } from "restaurant-pos-packages/interfaces/IEmployee";
 
 import reconcileEmployeesDailySalesReport from "../../dailySalesReports/updateEmployeeDailySalesReport.ts";
 import aggregateDailyReportsIntoWeekly from "../../weeklyBusinessReport/aggregateDailyReportsIntoWeekly.ts";
@@ -49,9 +49,9 @@ import {
   type DailySalesReportIdParams,
   type DailySalesReportsBusinessParams,
   type DailySalesReportsBusinessQuery,
-} from "domain/schemas/dailySalesReports";
-import * as enums from "domain/enums";
-import { isSupportedTimezone } from "domain/schemas/primitives";
+} from "restaurant-pos-packages/schemas/dailySalesReports";
+import * as enums from "restaurant-pos-packages/enums";
+import { isSupportedTimezone } from "restaurant-pos-packages/schemas/primitives";
 import { resolveDayBounds } from "../../utils/timezoneResolver.ts";
 
 const { managementRolesEnums } = enums;

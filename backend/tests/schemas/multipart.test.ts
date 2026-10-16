@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { parseMultipart, validateFields } from "../../src/schemas/multipart.ts";
 import { AppError } from "../../src/errors/appError.ts";
-import { coercedBooleanSchema, coercedIntSchema, trimmedString } from "domain/schemas";
+import { coercedBooleanSchema, coercedIntSchema, trimmedString } from "restaurant-pos-packages/schemas";
 
 interface FakeField {
   type: "field";

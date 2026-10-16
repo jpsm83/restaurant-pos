@@ -1,4 +1,4 @@
-import type { WeekDays } from "domain/interfaces/IPromotion";
+import type { WeekDays } from "restaurant-pos-packages/interfaces/IPromotion";
 
 const validateDaysOfTheWeek = (weekDays: WeekDays): true | string => {
   if (!Array.isArray(weekDays) || !weekDays || weekDays.length === 0)

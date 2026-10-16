@@ -1,14 +1,14 @@
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { Info } from "lucide-react";
-import { Button } from "ui/button";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "ui/card";
+} from "@/components/ui/card";
 
 /** Fallback for unknown routes (add a catch-all route in App when ready). */
 export default function NotFoundPage() {

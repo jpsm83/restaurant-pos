@@ -1,10 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { mainCategoriesEnums } from "domain/enums";
-import type { IAddress } from "domain/interfaces/IAddress";
-import { emailSchema } from "domain/schemas/primitives";
-import { isValidPassword } from "domain/utils/passwordPolicy";
-import { Button } from "ui/button";
-import { cn } from "ui/utils";
+import { mainCategoriesEnums } from "restaurant-pos-packages/enums";
+import type { IAddress } from "restaurant-pos-packages/interfaces/IAddress";
+import { emailSchema } from "restaurant-pos-packages/schemas/primitives";
+import { isValidPassword } from "restaurant-pos-packages/utils/passwordPolicy";
 
 const formatAddress = (address: IAddress): string =>
   `${address.city}, ${address.country}`;
@@ -32,10 +30,5 @@ describe("shared package resolution", () => {
         postCode: "1000-000",
       }),
     ).toBe("Lisbon, PT");
-  });
-
-  it("resolves the design system's primitives and cn by package name", () => {
-    expect(typeof Button).toBe("function");
-    expect(cn("p-2", "p-4")).toBe("p-4");
   });
 });

@@ -6,7 +6,7 @@ import {
   createBusinessGoodBodySchema,
   ingredientSchema,
   updateBusinessGoodBodySchema,
-} from "domain/schemas/businessGood";
+} from "restaurant-pos-packages/schemas/businessGood";
 
 const VALID_ID = "507f1f77bcf86cd799439011";
 const VALID_SUPPLIER_GOOD_ID = "507f191e810c19729de860ea";

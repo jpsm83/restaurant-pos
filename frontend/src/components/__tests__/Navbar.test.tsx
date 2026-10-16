@@ -8,7 +8,7 @@ import Navbar from "../Navbar";
 
 const mockDispatch = vi.fn();
 
-vi.mock("ui/hooks/use-mobile", () => ({
+vi.mock("@/hooks/use-mobile", () => ({
   useIsMobile: () => false,
 }));
 

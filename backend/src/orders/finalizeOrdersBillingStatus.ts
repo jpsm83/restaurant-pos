@@ -1,6 +1,6 @@
 import { ClientSession, Types } from "mongoose";
-import type { IOrder } from "domain/interfaces/IOrder";
-import type { IGoodsReduced } from "domain/interfaces/IDailySalesReport";
+import type { IOrder } from "restaurant-pos-packages/interfaces/IOrder";
+import type { IGoodsReduced } from "restaurant-pos-packages/interfaces/IDailySalesReport";
 import Order from "../models/order.ts";
 import SalesInstance from "../models/salesInstance.ts";
 import SalesPoint from "../models/salesPoint.ts";

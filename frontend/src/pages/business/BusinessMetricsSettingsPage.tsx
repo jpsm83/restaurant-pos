@@ -1,7 +1,7 @@
 import { Controller } from "react-hook-form";
-import { Input } from "ui/input";
-import { Label } from "ui/label";
-import { Skeleton } from "ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   BusinessProfileSettingsFormShell,
   BusinessProfileSettingsLoadingCard,

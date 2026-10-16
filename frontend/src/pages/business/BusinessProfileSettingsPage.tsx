@@ -12,28 +12,28 @@ import { toast } from "sonner";
 import { refreshSession, resendEmailConfirmation } from "@/auth/api";
 import { useAuth } from "@/auth/store/AuthContext";
 import { ChangeEmailDialog } from "@/components/ChangeEmailDialog";
-import { Button } from "ui/button";
-import { Checkbox } from "ui/checkbox";
-import { Input } from "ui/input";
-import { Label } from "ui/label";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "ui/popover";
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "ui/select";
-import { Skeleton } from "ui/skeleton";
+} from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   currenctyEnums,
   cuisineTypeEnums,
   foodSubCategoryEnums,
-} from "domain/enums";
+} from "restaurant-pos-packages/enums";
 import {
   BusinessProfileSettingsFormShell,
   BusinessProfileSettingsLoadingCard,

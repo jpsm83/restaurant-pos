@@ -10,21 +10,21 @@ import {
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 
-import { Button } from "ui/button";
-import { Label } from "ui/label";
-import { Calendar } from "ui/calendar";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "ui/select";
+} from "@/components/ui/select";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "ui/popover";
+} from "@/components/ui/popover";
 import {
   formatCalendarDate,
   formatReadableDate,

@@ -19,8 +19,8 @@ import mongoose, { Types } from "mongoose";
 import type {
   IPurchase,
   IPurchaseItem,
-} from "domain/interfaces/IPurchase";
-import type { IEmployee } from "domain/interfaces/IEmployee";
+} from "restaurant-pos-packages/interfaces/IPurchase";
+import type { IEmployee } from "restaurant-pos-packages/interfaces/IEmployee";
 
 import validateInventoryPurchaseItems from "../../purchases/validateInventoryPurchaseItems.ts";
 import oneTimePurchaseSupplier from "../../suppliers/oneTimePurchaseSupplier.ts";
@@ -32,7 +32,7 @@ import Employee from "../../models/employee.ts";
 import { createOptionalAuthHook } from "../../auth/middleware.ts";
 import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
 import deleteFilesCloudinary from "../../cloudinary/deleteFilesCloudinary.ts";
-import * as enums from "domain/enums";
+import * as enums from "restaurant-pos-packages/enums";
 import { runTxnWithTransientRetry } from "../../mongo/runTxnWithTransientRetry.ts";
 import {
   badRequest,
@@ -66,8 +66,8 @@ import {
   type PurchaseIdParams,
   type PurchasesQuery,
   type UpdatePurchaseBody,
-} from "domain/schemas/purchase";
-import { objectIdSchema } from "domain/schemas/primitives";
+} from "restaurant-pos-packages/schemas/purchase";
+import { objectIdSchema } from "restaurant-pos-packages/schemas/primitives";
 
 const { managementRolesEnums } = enums;
 

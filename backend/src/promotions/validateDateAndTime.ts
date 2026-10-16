@@ -1,4 +1,4 @@
-import type { IPromotionPeriod } from "domain/interfaces/IPromotion";
+import type { IPromotionPeriod } from "restaurant-pos-packages/interfaces/IPromotion";
 
 const validateDateAndTime = (
   promotionPeriod: IPromotionPeriod,

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button } from "ui/button";
+import { Button } from "@/components/ui/button";
 
 export type RecordDetailsModalPosition =
   | "center"

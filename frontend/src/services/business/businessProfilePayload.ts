@@ -1,4 +1,4 @@
-import { cuisineTypeEnums, foodSubCategoryEnums } from "domain/enums";
+import { cuisineTypeEnums, foodSubCategoryEnums } from "restaurant-pos-packages/enums";
 import type { BusinessProfileFormValues } from "./businessService";
 import {
   normalizeBusinessOpeningHours,

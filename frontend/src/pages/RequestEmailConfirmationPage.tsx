@@ -6,18 +6,18 @@ import { Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { requestEmailConfirmation } from "@/auth/api";
 import { FieldError } from "@/components/FieldError";
-import { Alert } from "ui/alert";
-import { Button } from "ui/button";
+import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "ui/card";
-import { Input } from "ui/input";
-import { Label } from "ui/label";
-import emailRegex from "domain/utils/emailRegex";
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import emailRegex from "restaurant-pos-packages/utils/emailRegex";
 
 function buildEmailFieldSchema(messages: { required: string; invalidEmail: string }) {
   return z

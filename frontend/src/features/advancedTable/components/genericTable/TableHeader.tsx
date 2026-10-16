@@ -7,7 +7,7 @@ import {
 } from "@tanstack/react-table";
 import { ArrowDown, ArrowUp, ArrowUpDown, GripVertical } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Button } from "ui/button";
+import { Button } from "@/components/ui/button";
 import type { AdvancedTableFeatures } from "@/features/advancedTable/hooks/useEnhancedTable";
 
 export interface StandaloneTableHeaderProps<TData extends RowData> {

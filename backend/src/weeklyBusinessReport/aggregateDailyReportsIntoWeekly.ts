@@ -12,7 +12,7 @@ import Schedule from "../models/schedule.ts";
 import Business from "../models/business.ts";
 import { createWeeklyBusinessReport } from "./createWeeklyBusinessReport.ts";
 import sendWeeklyReportReadyNotification from "./sendWeeklyReportReadyNotification.ts";
-import { isSupportedTimezone } from "domain/schemas/primitives";
+import { isSupportedTimezone } from "restaurant-pos-packages/schemas/primitives";
 import {
   addDaysToCalendarDate,
   calendarDateToUtcMidnight,
@@ -22,9 +22,9 @@ import {
 import type {
   IMetrics,
   WeeklyReportOpen,
-} from "domain/interfaces/IWeeklyBusinessReport";
-import type { IGoodsReduced } from "domain/interfaces/IDailySalesReport";
-import type { IPaymentMethod } from "domain/interfaces/IPaymentMethod";
+} from "restaurant-pos-packages/interfaces/IWeeklyBusinessReport";
+import type { IGoodsReduced } from "restaurant-pos-packages/interfaces/IDailySalesReport";
+import type { IPaymentMethod } from "restaurant-pos-packages/interfaces/IPaymentMethod";
 import getWasteByBudgetImpactForMonth from "../inventories/getWasteByBudgetImpactForMonth.ts";
 import {
   avgSpendPerCustomer,

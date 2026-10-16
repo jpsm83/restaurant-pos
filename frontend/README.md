@@ -7,17 +7,17 @@ three authenticated shells (business, employee, customer) and talks to the
 ## How the three workspaces fit together
 
 This repo is one npm workspace rooted at `/` — `backend/`, `frontend/`, and
-`packages/` (`domain`, `ui`, and `config`). Install once at the root
+`packages/` (`restaurant-pos-packages`). Install once at the root
 (`npm install`); there is a single `package-lock.json`.
 
 ```
 frontend (:5173) --/api proxy--> backend (:4000) --> MongoDB Atlas
          \                              /
-          \__________ domain __________/
+          \_ restaurant-pos-packages __/
           enums · interfaces · zod schemas
 ```
 
-- Both apps import shared contracts from `domain` **by package
+- Both apps import shared contracts from `restaurant-pos-packages` **by package
   name** (never a relative `../packages` path); the workspace symlink resolves
   them.
 - The shared **zod schemas are the request contract**: backend routes validate
@@ -44,7 +44,7 @@ frontend (:5173) --/api proxy--> backend (:4000) --> MongoDB Atlas
 | Maps | Leaflet / react-leaflet |
 | Toasts | Sonner |
 | Tests | Vitest + Testing Library (jsdom) |
-| Shared contracts | `domain` (interfaces, zod schemas) |
+| Shared contracts | `restaurant-pos-packages` (interfaces, zod schemas) |
 
 ## Ports
 
@@ -115,7 +115,7 @@ src/
 ├── routes/              # AuthRouteGuards, canonicalPaths (dashboard-first URLs)
 ├── layouts/             # PublicLayout, BusinessLayout, EmployeeLayout, CustomerLayout, RecoveryLayout
 ├── pages/               # Route screens (business/, customer/, employee/, marketing/)
-├── components/          # Shared UI (Navbar, ActorSidebar, ErrorBoundary)
+├── components/          # Shared UI (Navbar, ActorSidebar, ErrorBoundary, components/ui shadcn)
 ├── features/            # Self-contained features (advancedTable)
 ├── services/            # http (axios), queryClient, queryKeys, per-domain services
 ├── auth/                # api (token singleton), AuthContext store, redirects, types
@@ -136,9 +136,8 @@ Conventions:
   `/:userId/employee`, `/business/:businessId`. Guards live in
   `routes/AuthRouteGuards.tsx`. Pages are `React.lazy`-loaded behind a Suspense
   shell; unknown URLs render `NotFoundPage`.
-- **UI primitives** come from the shared `ui` workspace by package name
-  (`ui/button`, `ui/card`, …) — the design system lives in `packages/ui`, not in
-  this app.
+- **UI primitives** are shadcn/ui components generated with the `radix-nova`
+  style (`components.json`), aliased to `@/components/ui`.
 
 ## Testing
 

@@ -14,11 +14,11 @@ import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
 import type {
   IDailySalesReport,
-} from "domain/interfaces/IDailySalesReport";
-import type { ISalesInstance } from "domain/interfaces/ISalesInstance";
-import type { IOrder } from "domain/interfaces/IOrder";
-import type { IAddress } from "domain/interfaces/IAddress";
-import type { IBusiness } from "domain/interfaces/IBusiness";
+} from "restaurant-pos-packages/interfaces/IDailySalesReport";
+import type { ISalesInstance } from "restaurant-pos-packages/interfaces/ISalesInstance";
+import type { IOrder } from "restaurant-pos-packages/interfaces/IOrder";
+import type { IAddress } from "restaurant-pos-packages/interfaces/IAddress";
+import type { IBusiness } from "restaurant-pos-packages/interfaces/IBusiness";
 
 import {
   badRequest,
@@ -49,7 +49,7 @@ import {
   type SelfOrderingLocationIdParams,
   type TransferSalesPointBody,
   type UpdateSalesInstanceBody,
-} from "domain/schemas/salesInstances";
+} from "restaurant-pos-packages/schemas/salesInstances";
 import SalesInstance from "../../models/salesInstance.ts";
 import SalesPoint from "../../models/salesPoint.ts";
 import User from "../../models/user.ts";
@@ -91,7 +91,7 @@ import {
   isBusinessOpenNow,
   isDeliveryOpenNow,
 } from "../../business/isBusinessOpenNow.ts";
-import * as enums from "domain/enums";
+import * as enums from "restaurant-pos-packages/enums";
 
 const { managementRolesEnums } = enums;
 

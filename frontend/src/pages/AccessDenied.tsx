@@ -3,14 +3,14 @@ import { Link, useNavigate } from "react-router-dom";
 import { TriangleAlert } from "lucide-react";
 import { getPostLoginDestination } from "@/auth/postLoginRedirect";
 import { useAuth } from "@/auth/store/AuthContext";
-import { Button } from "ui/button";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "ui/card";
+} from "@/components/ui/card";
 
 /** Client-side guard outcome: wrong account type for the route, or other forbidden UI (Phase 2.3). */
 export default function AccessDenied() {

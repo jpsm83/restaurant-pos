@@ -4,7 +4,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { renderWithI18n } from "@/test/i18nTestUtils";
 import AppRootShell from "../AppRootShell";
 
-vi.mock("ui/hooks/use-mobile", () => ({
+vi.mock("@/hooks/use-mobile", () => ({
   useIsMobile: () => false,
 }));
 

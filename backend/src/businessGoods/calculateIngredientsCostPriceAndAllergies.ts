@@ -1,7 +1,7 @@
 import convert, { Unit } from "convert-units";
 import { Types } from "mongoose";
-import type { IIngredient } from "domain/interfaces/IBusinessGood";
-import type { ISupplierGood } from "domain/interfaces/ISupplierGood";
+import type { IIngredient } from "restaurant-pos-packages/interfaces/IBusinessGood";
+import type { ISupplierGood } from "restaurant-pos-packages/interfaces/ISupplierGood";
 import SupplierGood from "../models/supplierGood.ts";
 
 const calculateIngredientsCostPriceAndAllergies = async (

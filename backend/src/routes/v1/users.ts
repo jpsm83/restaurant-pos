@@ -13,8 +13,8 @@
 import type { FastifyPluginAsync } from "fastify";
 import mongoose from "mongoose";
 import { hash } from "bcrypt";
-import type { IUser } from "domain/interfaces/IUser";
-import type { IEmployee } from "domain/interfaces/IEmployee";
+import type { IUser } from "restaurant-pos-packages/interfaces/IUser";
+import type { IEmployee } from "restaurant-pos-packages/interfaces/IEmployee";
 
 import { createOptionalAuthHook } from "../../auth/middleware.ts";
 import {
@@ -45,7 +45,7 @@ import {
   type MarkNotificationDeletedBody,
   type UserIdParams,
   type UserNotificationParams,
-} from "domain/schemas/user";
+} from "restaurant-pos-packages/schemas/user";
 
 /** Upload the single profile image, raising a `400` on any failure. */
 async function uploadImage(

@@ -14,7 +14,7 @@ import {
   RESET_PASSWORD_MISSING_TOKEN_MESSAGE,
   RESET_PASSWORD_SUCCESS_MESSAGE,
 } from "../../src/auth/resetPassword.ts";
-import { PASSWORD_POLICY_MESSAGE } from "domain/utils/passwordPolicy";
+import { PASSWORD_POLICY_MESSAGE } from "restaurant-pos-packages/utils/passwordPolicy";
 
 const oldPassword = "TestPassword123!";
 const newPassword = "NewPassword456!";

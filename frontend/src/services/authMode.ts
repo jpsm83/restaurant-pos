@@ -16,7 +16,7 @@ import type {
   IAuthMode,
   IAuthModeResponse,
   ISetAuthModeBody,
-} from "domain/interfaces/IAuth";
+} from "restaurant-pos-packages/interfaces/IAuth";
 import { http } from "./http";
 import { queryKeys } from "./queryKeys";
 import { toServiceRequestError } from "./serviceErrors";

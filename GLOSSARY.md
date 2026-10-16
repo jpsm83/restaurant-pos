@@ -76,31 +76,3 @@ validate exactly like JSON routes instead of hand-parsing strings.
 The typed error routes raise (`backend/src/errors/appError.ts`). The global
 handler formats every `AppError` as a problem-details document. Routes must not
 hand-build error bodies.
-
-## Surface
-
-One of the three product surfaces Project Imperium presents over one platform:
-the **Business** app, the **Customer** app, or the **Superadmin** console
-(`overview.md` §5, §7–§9). A surface is the unit that maps to a frontend
-boundary; **device is never a surface**. The Business and Customer surfaces live
-in `apps/web` behind the `/business` and `/client` routes; the Superadmin console
-is `apps/admin`. See ADR-0004.
-
-_Avoid_: "portal"; "frontend" (one frontend deployable may hold more than one
-surface).
-
-## Trust realm
-
-The authentication boundary a client belongs to. There are two session realms: the
-**platform realm** (Superadmin — separate credentials and MFA) and the
-**business/customer realm** (one shared identity and session, because every user
-is a customer and the mode chooser switches between the two). Surfaces in the
-same realm share an origin and session; surfaces in different realms do not. See
-ADR-0004.
-
-## Client contract
-
-The OpenAPI document generated from the `/api/v1` route schemas — the single
-source of truth every client (web, admin, native) is built against. The backend
-is the only writer; the SSR server is a render layer, never a data layer. See
-ADR-0005.

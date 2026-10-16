@@ -2,8 +2,8 @@ import { ClientSession, Types } from "mongoose";
 import type {
   IActorDailySalesReport,
   IGoodsReduced,
-} from "domain/interfaces/IDailySalesReport";
-import type { IPaymentMethod } from "domain/interfaces/IPaymentMethod";
+} from "restaurant-pos-packages/interfaces/IDailySalesReport";
+import type { IPaymentMethod } from "restaurant-pos-packages/interfaces/IPaymentMethod";
 import DailySalesReport from "../models/dailySalesReport.ts";
 
 export type ReportTargetBucket =

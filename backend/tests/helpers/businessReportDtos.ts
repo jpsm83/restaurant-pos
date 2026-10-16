@@ -1,6 +1,6 @@
 import type { z } from "zod";
 
-import { updateMonthlyBusinessReportBodySchema } from "domain/schemas/businessReports";
+import { updateMonthlyBusinessReportBodySchema } from "restaurant-pos-packages/schemas/businessReports";
 
 /**
  * The business-report DTOs that shape a persisted document. The query and params

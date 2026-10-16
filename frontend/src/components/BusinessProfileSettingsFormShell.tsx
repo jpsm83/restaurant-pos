@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog";
-import { Alert } from "ui/alert";
-import { Button } from "ui/button";
-import { Skeleton } from "ui/skeleton";
+import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { BusinessProfileSettingsReady } from "../hooks/useBusinessProfileSettingsController";
 import {
   useBusinessProfileSettingsController,

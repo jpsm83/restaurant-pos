@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button } from "ui/button";
-import { Checkbox } from "ui/checkbox";
-import { Input } from "ui/input";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 
 export interface TableConfigColumn {
   columnKey: string;

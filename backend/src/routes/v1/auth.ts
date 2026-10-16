@@ -73,7 +73,7 @@ import {
   type ResetPasswordBody,
   type SetModeBody,
   type SignupBody,
-} from "domain/schemas/auth";
+} from "restaurant-pos-packages/schemas/auth";
 
 export const authRoutes: FastifyPluginAsync = async (app) => {
   /**

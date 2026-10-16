@@ -18,7 +18,7 @@ import { Suspense } from "react";
 import { Outlet } from "react-router-dom";
 import { AppPendingShell } from "@/components/AppPendingShell";
 import ActorSidebar from "@/components/ActorSidebar";
-import { Sidebar, SidebarRail } from "ui/sidebar";
+import { Sidebar, SidebarRail } from "@/components/ui/sidebar";
 import { useAuth } from "@/auth/store/AuthContext";
 import { useTranslation } from "react-i18next";
 import { useLocation } from "react-router-dom";

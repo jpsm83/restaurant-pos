@@ -11,9 +11,9 @@
  */
 import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
-import type { IReservation } from "domain/interfaces/IReservation";
-import type { ISalesInstance } from "domain/interfaces/ISalesInstance";
-import type { IDailySalesReport } from "domain/interfaces/IDailySalesReport";
+import type { IReservation } from "restaurant-pos-packages/interfaces/IReservation";
+import type { ISalesInstance } from "restaurant-pos-packages/interfaces/ISalesInstance";
+import type { IDailySalesReport } from "restaurant-pos-packages/interfaces/IDailySalesReport";
 
 import createDailySalesReport from "../../dailySalesReports/createDailySalesReport.ts";
 import createSalesInstance from "../../salesInstances/createSalesInstance.ts";
@@ -55,8 +55,8 @@ import {
   type ReservationsByBusinessQuery,
   type ReservationsQuery,
   type UpdateReservationBody,
-} from "domain/schemas/reservations";
-import * as enums from "domain/enums";
+} from "restaurant-pos-packages/schemas/reservations";
+import * as enums from "restaurant-pos-packages/enums";
 
 const { managementRolesEnums } = enums;
 

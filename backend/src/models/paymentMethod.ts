@@ -1,5 +1,5 @@
 import { Schema } from "mongoose";
-import * as enums from "domain/enums";
+import * as enums from "restaurant-pos-packages/enums";
 
 const { paymentMethodsEnums, allPaymentMethodsEnums } = enums;
 

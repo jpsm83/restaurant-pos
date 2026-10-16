@@ -2,10 +2,10 @@ import { useId } from "react";
 import { useTranslation } from "react-i18next";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { FieldError } from "@/components/FieldError";
-import { Alert } from "ui/alert";
-import { Button } from "ui/button";
-import { Input } from "ui/input";
-import { Label } from "ui/label";
+import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import type { ChangeBusinessEmailController } from "@/hooks/useChangeBusinessEmailController";
 
 /**

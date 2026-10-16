@@ -4,7 +4,7 @@ import { useForm, type UseFormRegister } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import { requestEmailChange } from "@/auth/api";
-import emailRegex from "domain/utils/emailRegex";
+import emailRegex from "restaurant-pos-packages/utils/emailRegex";
 
 export type ChangeBusinessEmailFormValues = {
   newEmail: string;

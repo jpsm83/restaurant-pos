@@ -7,7 +7,7 @@ import {
 } from "react";
 import type { ColumnVisibilityState, RowData } from "@tanstack/react-table";
 import { useTranslation } from "react-i18next";
-import { Button } from "ui/button";
+import { Button } from "@/components/ui/button";
 import type {
   DetailsModalConfig,
   FilterConfig,

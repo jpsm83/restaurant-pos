@@ -12,9 +12,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY backend/package.json ./backend/package.json
 COPY frontend/package.json ./frontend/package.json
-COPY packages/config/package.json ./packages/config/package.json
-COPY packages/domain/package.json ./packages/domain/package.json
-COPY packages/ui/package.json ./packages/ui/package.json
+COPY packages/package.json ./packages/package.json
 
 RUN npm ci
 

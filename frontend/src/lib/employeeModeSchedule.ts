@@ -1,4 +1,4 @@
-import type { IScheduleShiftEntry } from "domain/interfaces/ISchedule";
+import type { IScheduleShiftEntry } from "restaurant-pos-packages/interfaces/ISchedule";
 
 /**
  * Pure **schedule math** for employee-mode eligibility UI (`src/lib` — no React, no network).

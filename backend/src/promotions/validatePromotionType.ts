@@ -1,4 +1,4 @@
-import type { PromotionType } from "domain/interfaces/IPromotion";
+import type { PromotionType } from "restaurant-pos-packages/interfaces/IPromotion";
 
 const validatePromotionType = (promotionType: PromotionType): true | string => {
   if (!promotionType || typeof promotionType !== "object") {

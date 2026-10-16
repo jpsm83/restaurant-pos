@@ -6,18 +6,18 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import { resetPassword } from "@/auth/api";
 import { FieldError } from "@/components/FieldError";
-import { Alert } from "ui/alert";
-import { Button } from "ui/button";
+import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "ui/card";
-import { Input } from "ui/input";
-import { Label } from "ui/label";
-import { isValidPassword } from "domain/utils/passwordPolicy";
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { isValidPassword } from "restaurant-pos-packages/utils/passwordPolicy";
 
 function buildResetSchema(messages: {
   allRequired: string;

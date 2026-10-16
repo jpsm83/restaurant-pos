@@ -3,8 +3,8 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { requestPasswordReset, resendEmailConfirmation } from "@/auth/api";
 import { useAuth } from "@/auth/store/AuthContext";
-import { Button } from "ui/button";
-import { Skeleton } from "ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   BusinessProfileSettingsLoadingCard,
   BusinessProfileSettingsStaticShell,

@@ -7,17 +7,17 @@ these endpoints.
 ## How the three workspaces fit together
 
 This repo is one npm workspace rooted at `/` — `backend/`, `frontend/`, and
-`packages/` (`domain`, `ui`, and `config`). Install once at the root
+`packages/` (`restaurant-pos-packages`). Install once at the root
 (`npm install`); there is a single `package-lock.json`.
 
 ```
 frontend (:5173) --/api proxy--> backend (:4000) --> MongoDB Atlas
          \                              /
-          \__________ domain __________/
+          \_ restaurant-pos-packages __/
           enums · interfaces · zod schemas
 ```
 
-- Both apps import shared contracts from `domain` **by package
+- Both apps import shared contracts from `restaurant-pos-packages` **by package
   name** (never a relative `../packages` path); the workspace symlink resolves
   them.
 - The shared **zod schemas are the request contract**: backend routes validate
@@ -42,7 +42,7 @@ frontend (:5173) --/api proxy--> backend (:4000) --> MongoDB Atlas
 | Files | `@fastify/multipart` + Cloudinary |
 | Email | Nodemailer (Gmail SMTP) |
 | Tests | Vitest + `mongodb-memory-server` (in-memory replica set) |
-| Shared contracts | `domain` (enums, interfaces, zod schemas) |
+| Shared contracts | `restaurant-pos-packages` (enums, interfaces, zod schemas) |
 
 ## Ports
 
@@ -132,12 +132,12 @@ src/
 Conventions:
 
 - **Zod is the single boundary validator.** Route bodies use strict DTO schemas
-  from `domain/schemas/*`; the same schemas compile to Fastify
+  from `restaurant-pos-packages/schemas/*`; the same schemas compile to Fastify
   validators and serializers.
 - **Errors are `AppError`s** thrown from handlers; the global handler serializes
   them as RFC 9457 problem details.
 - **Shared contracts** are imported by package name
-  (`domain/schemas/auth`), never by relative `../packages`
+  (`restaurant-pos-packages/schemas/auth`), never by relative `../packages`
   paths — resolved through the workspace symlink.
 - **Domain modules** (`orders/`, `inventories/`, ...) hold business logic;
   routes stay thin.

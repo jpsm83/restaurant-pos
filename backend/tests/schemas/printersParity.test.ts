@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import type { z } from "zod";
 
 import Printer from "../../src/models/printer.ts";
-import { mainCategoriesEnums } from "domain/enums";
+import { mainCategoriesEnums } from "restaurant-pos-packages/enums";
 import {
   configurationSetupBodySchema,
   configurationSetupParamsSchema,

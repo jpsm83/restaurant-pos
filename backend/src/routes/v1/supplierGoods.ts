@@ -12,7 +12,7 @@
  */
 import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
-import type { ISupplierGood } from "domain/interfaces/ISupplierGood";
+import type { ISupplierGood } from "restaurant-pos-packages/interfaces/ISupplierGood";
 
 import SupplierGood from "../../models/supplierGood.ts";
 import Supplier from "../../models/supplier.ts";
@@ -32,7 +32,7 @@ import {
   type CreateSupplierGoodBody,
   type SupplierGoodBySupplierParams,
   type SupplierGoodIdParams,
-} from "domain/schemas/supplierGood";
+} from "restaurant-pos-packages/schemas/supplierGood";
 
 /** Files a supplier good may hold in total; create and update enforce the cap. */
 const MAX_IMAGE_FILES = 3;
