@@ -20,7 +20,7 @@
 20 - printers and screens
 21 - employees
 22 - schedules
-23 - 
+23 - time control
 24 - 
 25 - 
 26 - 

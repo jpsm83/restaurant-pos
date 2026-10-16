@@ -56,7 +56,11 @@ These terms are used with exactly these meanings throughout Project Imperium. Do
 | **Reservation** | A table booking made by a customer or staff, optionally with a deposit at acceptance; hands off into live service across one or more sales points. |
 | **Rating / Comment / Favorite** | Venue-level customer feedback and saved venues. |
 | **Gift card** | A bearer budget card a business issues as a virtual card by email, identified by a QR code and a card number, spent whole in one settlement at its issuing venue before it expires. |
-| **Shift session** | The actual, recorded attendance for one employee on one shift (sign-in/out, breaks). |
+| **Shift session** | The actual, recorded attendance for one employee on one shift (sign-in/out, breaks), projected from the **time-clock ledger**. |
+| **Time-clock ledger** | The append-only attendance event record (sign-in, breaks, unlock, sign-out, corrections) from which shift sessions are projected. |
+| **Daily attendance QR** | The venue's one attendance QR for a calendar day; scanning it is how a person becomes on duty. |
+| **Late lock** | After planned start, a non-management employee who has not signed in cannot scan until a manager unlocks them; the scan still records real time. |
+| **Entry window** | For a planned working shift, from 10 minutes before planned start until 2 hours after planned start — when a non-management employee may enter employee mode to attempt duty. |
 | **Daily / Weekly / Monthly report** | The aggregated sales and performance reports at each roll-up level. |
 | **Notification** | A message Project Imperium delivers to a person's inbox. An **operational** notification carries a **severity** — **Info**, **Warning**, or **Emergency** — while a venue **engagement** message carries a **kind** — **Message**, **Promotion**, **Birthday**, or **Event**. |
 | **Soft delete** | Project Imperium never hard-deletes domain documents: a server-owned deleted marker plus a timestamp are set, the document is retained and reactivatable, and uniqueness is enforced among active documents. Every model follows it, apart from deliberate exceptions — an empty sales instance is discarded, and a cancelled order is erased. |
@@ -130,8 +134,8 @@ Access control is **two-layer**:
 **Schedule gating.** The **schedule is the plan**; **on duty** is a separate attendance fact (see [§6](#6-time-control-and-attendance)).
 
 - Employees (any job role) **must appear on the schedule** for planning; time control compares actual attendance against that plan.
-- A non-management employee **cannot access the business app unless they have a planned working shift for that time**. The employee option opens from **10 minutes before shift start**; if the user is **not scheduled**, they are taken straight to the Customer app (no chooser). Opening employee mode is **not** on duty.
-- There is **no** late-unlock on the schedule. Lateness and real entry times belong to time control.
+- A non-management employee **cannot access the business app unless they have a planned working shift inside the entry window**: from **10 minutes before** planned start until **2 hours after** planned start. Outside that window with no open session, they cannot enter employee mode and must be rescheduled. If the user is **not scheduled**, they are taken straight to the Customer app (no chooser). Opening employee mode is **not** on duty.
+- There is **no** late-unlock on the schedule. Lateness, late lock before scan-in, and real entry times belong to time control.
 - **Managers, admins, and owners are never blocked.** They may access the business app and execute any task without being scheduled, though they must still appear on the schedule for planning (and so time control can see who was planned as management that day).
 
 See [§6](#6-time-control-and-attendance) for the attendance model. The schedules subject is the source of truth for the schedule itself.
@@ -143,12 +147,12 @@ See [§6](#6-time-control-and-attendance) for the attendance model. The schedule
 Time control is a **plan-vs-actual** system, separate from the schedule:
 
 - **Schedule (the plan).** Each business defines, per calendar day, one schedule of shift entries (working shifts with job role and start/end, vacation, and other leave). Schedule aggregates (staff count, vacation count, planned hours, planned labour cost) feed reporting. The schedule does **not** imply on-duty. Overnight working shifts belong to the day they start. The schedules subject owns the schedule in full.
-- **On duty (the actual).** A person becomes **on duty** by scanning a **daily QR code** held by managers on duty that day — not by opening employee mode. Sign-out is performed by a manager at the employee's request. Real entry and exit times are what attendance records. The time-control subject owns QR issue, scan-in, manager sign-out, breaks, worked hours, actual labour cost, and related alerts.
-- **Shift session.** For each employee engagement, Project Imperium records a **shift session** projected from attendance events: planned window from the schedule, **actual sign-in / sign-out**, breaks, resulting **worked hours** and **labour cost**, and status. One open session per employee at a time prevents double sign-in.
-- **Breaks.** An employee can **pause and resume** duty during a shift (lunch, rest, or other break). Paused time is excluded from worked hours but the employee remains signed in.
-- **Overtime alert.** If an employee **other than an admin/owner** is still on duty after their scheduled end, the **admin on duty** is notified **every 5 minutes** until that employee signs off. (This reuses the platform's cooldown/idempotency notification behavior.)
+- **On duty (the actual).** A person becomes **on duty** by scanning the venue's **daily attendance QR**, which any manager-layer user in business mode may present — not by opening employee mode. Sign-out is a manager-layer action (optionally after an employee request) and is blocked while the employee still holds open sales instances. Real entry and exit times are what attendance records. Leaving the app does not end duty. The time-control subject owns QR issue, scan-in, late lock, manager sign-out, breaks, worked hours, actual labour cost, no-shows, and related alerts.
+- **Shift session.** For each employee engagement, Project Imperium records a **shift session** projected from an append-only **time-clock ledger**: planned window from the schedule, **actual sign-in / sign-out**, breaks, resulting **worked hours** and **labour cost**, and status. One open session per employee at a time prevents double sign-in. After planned start, a non-management employee who has not signed in is **late-locked** until a manager unlocks them; the eventual scan still records the real time.
+- **Breaks.** An employee can **pause and resume** duty during a shift with a required reason. Whether paused time counts toward worked hours is a venue setting (default: included). The employee remains signed in while paused.
+- **Overtime alert.** If an employee **other than an admin/owner** is still on duty after their scheduled end, the **managers on duty** are notified **every 5 minutes** until that employee signs off or a manager mutes that session's overtime alert. (This reuses the platform's cooldown/idempotency notification behavior.)
 
-All times are stored in UTC and interpreted in the **business timezone**. Actual worked hours and labour cost feed the monthly business report.
+All times are stored in UTC and interpreted in the **business timezone**. Actual worked hours and labour cost feed the monthly business report. The time-control subject is the source of truth for attendance.
 
 ---
 
@@ -172,7 +176,7 @@ The Business app is the operational heart of Project Imperium. It comprises the 
 - **Employees** are the full membership of a user in a business. The **User** holds only client/global identity; job roles, employment status, contract, pay (gross for labour cost, net for HR), vacation, HR identifiers, documents, termination, and rehire all live on the membership. The employees subject is the source of truth for that record.
 - **Roles and permissions** follow the two-layer model in [§5](#5-access-roles-and-the-mode-chooser): base layers, job roles on the membership, and per-user capability assignment by managers and above.
 - **Schedules** define each day's schedule (working shifts with required role and start/end, vacation and other leave, day comments, copy/bulk edit, time-off requests). Project Imperium enforces no overlapping shifts and correct vacation accounting, and rolls up daily staff, vacation, planned hours, and planned labour-cost totals. The schedules subject is the source of truth.
-- **Time control** records actual attendance (manager QR sign-in, manager sign-out, breaks, overtime) as described in [§6](#6-time-control-and-attendance).
+- **Time control** records actual attendance (daily attendance QR scan-in, manager sign-out, breaks, overtime) as described in [§6](#6-time-control-and-attendance).
 
 ### Menu — business goods
 
@@ -240,7 +244,7 @@ The Business app is the operational heart of Project Imperium. It comprises the 
 
 - Each user has an **inbox** with per-notification read and deleted state, shared by customers and employees through their user identity.
 - Delivery is **persistence-first** — in-app notifications are stored and are the source of truth — with **email** and **live WebSocket** push when the recipient is online. Nothing is lost if a user is offline.
-- **Operational** events include reservations pending/deposit-requested/decided (and Awaiting table for Host and above), low-stock alerts, weekly/monthly report-ready, business profile updates, and the overtime alerts in [§6](#6-time-control-and-attendance).
+- **Operational** events include reservations pending/deposit-requested/decided (and Awaiting table for Host and above), low-stock alerts, weekly/monthly report-ready, business profile updates, and the overtime and sign-out-request alerts in [§6](#6-time-control-and-attendance).
 - **Engagement** events let a venue message its customers — **promotions, birthdays, and events** — alongside operational alerts.
 
 ---

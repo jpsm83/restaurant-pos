@@ -19,7 +19,7 @@ It deliberately does **not** cover:
 
 - the **Employee** membership — job roles, employment status, tenure, contract, pay, vacation, tax and national identifiers, documents, hire, terminate, and rehire. The **User** holds only client/global identity; **all employee data lives on the membership**. The employees subject owns that record. This subject names the membership only as the path into a tenant and as input to the mode and layer rules.
 - the **navigation surfaces** — the chooser screen, route guards, and canonical URLs. This subject states the eligibility *rule*; the user-navigation subject owns the surfaces that enforce it.
-- **attendance mechanics** — on-duty QR scan-in, manager sign-out, breaks, and lateness. This subject states the employee-mode eligibility *consequence*; the schedules subject owns the planned schedule, and the time-control subject owns attendance.
+- **attendance mechanics** — daily attendance QR scan-in, manager sign-out, breaks, and lateness. This subject states the employee-mode eligibility *consequence*; the schedules subject owns the planned schedule, and the time-control subject owns attendance.
 - **transactional email delivery** — templates, retry, cooldown. This subject states which messages are sent; the emails subject owns how they are delivered.
 - the **superadmin console's** authentication realm, which is separate and belongs to the superadmin subject.
 
@@ -105,9 +105,9 @@ There is **one login**. After authenticating:
 
 - A user with **only customer access** goes straight to the customer app.
 - A user with **business access** (an eligible membership) chooses **customer** or **business (employee)** mode. The chosen mode is recorded for the session.
-- The **employee option** is available when the user has a membership and is eligible: a **planned working shift** for that time, with the option opening **10 minutes before shift start**, and the membership is not **Suspended** or **Terminated**. Opening employee mode is **not** on duty (time-control subject).
+- The **employee option** is available when the user has a membership and is eligible: a **planned working shift** whose **entry window** is open — from **10 minutes before** planned start until **2 hours after** planned start — and the membership is not **Suspended** or **Terminated**. Outside that window with no open attendance session, the employee option is unavailable until a manager reschedules them. Opening employee mode is **not** on duty (time-control subject). An employee who already has an open shift session may re-enter employee mode for that session without scanning again.
 - **Owners, managers, and admins always see both options** — scheduled or not — because they may need to act at any time (unless that membership is Suspended or Terminated).
-- There is **no** late-unlock step on the schedule for employee-mode access.
+- There is **no** late-unlock step on the schedule for employee-mode access. Late lock before scan-in belongs to time-control.
 - **Customer mode is always available.**
 
 This subject owns the eligibility **rule**; the user-navigation subject owns the chooser screen, the guards, and the URLs.

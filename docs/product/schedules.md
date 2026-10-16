@@ -20,7 +20,7 @@ It deliberately does **not** cover:
 
 - the **Employee** membership, job-role list on the membership, pay, or vacation **allowance** storage — the employees subject owns those. This subject consumes memberships and updates **vacation remaining** when vacation is marked or removed on the schedule.
 - **base access layers**, the **mode chooser**, and **per-user capabilities** as platform mechanisms — the users subject owns those. This subject supplies the planned working shifts that eligibility reads.
-- **attendance** — on-duty state, the daily manager QR, scan-in, manager sign-out, breaks, worked hours, actual labour cost, absence classification, and overtime alerts — the time-control subject owns those. The schedule never writes punches; being scheduled is not being on duty.
+- **attendance** — on-duty state, the daily attendance QR, scan-in, manager sign-out, breaks, worked hours, actual labour cost, absence classification, and overtime alerts — the time-control subject owns those. The schedule never writes punches; being scheduled is not being on duty.
 - **labour and vacation KPI formulas** and report roll-ups — the business-metrics and business-reports subjects own those. This subject supplies planned figures; actuals come from time-control.
 - **notification delivery** — inbox, live push, and reliability — the notifications subject owns how events are delivered. This subject defines which schedule events exist and when they fire.
 
@@ -131,9 +131,9 @@ Suspended and Terminated memberships must not receive **new** entries (also stat
 
 ### 3.10 Schedule gating (eligibility only)
 
-- A non-management employee's **business-app (employee mode)** eligibility follows a **planned working shift**: the employee option opens from **10 minutes before** that shift's planned start. Vacation and other leave do not grant employee-mode eligibility.
-- Opening employee mode is **not** on duty. On duty begins only through time-control (manager QR scan-in).
-- There is **no** late-unlock step on the schedule. Lateness and attendance honesty belong to time-control.
+- A non-management employee's **business-app (employee mode)** eligibility follows a **planned working shift**: the employee option is available from **10 minutes before** that shift's planned start until **2 hours after** planned start. Outside that window with no open attendance session, they cannot enter employee mode and must be rescheduled. Vacation and other leave do not grant employee-mode eligibility.
+- Opening employee mode is **not** on duty. On duty begins only through time-control (daily attendance QR scan-in).
+- There is **no** late-unlock step on the schedule. Lateness, late lock before scan-in, and attendance honesty belong to time-control.
 - Managers, admins, and owners are never blocked from business mode by the schedule, though they still appear on the schedule for planning (and so time-control can see who was planned as management that day).
 
 ### 3.11 Notifications this subject owns as events

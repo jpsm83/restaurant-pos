@@ -86,7 +86,8 @@ Terms reused from the product overview's core vocabulary rather than defined her
 | Weekly report ready | The venue's managers and above | In-app | Info | Once |
 | Monthly report ready | The venue's managers and above | In-app | Info | Once |
 | Business profile updated | The venue's managers and above | In-app + email | Info | Once |
-| Overtime alert | The venue's admins on duty | In-app | Warning | Every 5 minutes until the employee signs off |
+| Overtime alert | The venue's managers on duty | In-app | Warning | Every 5 minutes until the employee signs off or a manager mutes that session's overtime alert |
+| Sign-out request | The venue's managers on duty | In-app | Info | Once per request |
 | Print failure | The venue's managers on duty; if none are on duty, all manager-layer users for the business | In-app | Warning | Once per failed print attempt |
 | Schedule changed | Each employee whose schedule entries were added, changed, or removed in the manager's editing session | In-app | Info | Once per employee when the manager leaves the schedules main page (batched across that employee's entries) |
 | Time-off request pending | The venue's managers and above | In-app | Info | Once |
@@ -94,7 +95,8 @@ Terms reused from the product overview's core vocabulary rather than defined her
 
 - The **low-stock alert** lists the affected goods and fires when stock falls below a good's **minimum required**; detecting that condition belongs to the inventories and supplier-goods subjects.
 - The **negative-stock alert** fires when a good's stock on hand falls **below zero**, as a management-error signal that purchases or counts are missing; detecting that condition belongs to the inventories subject.
-- The **overtime alert** concerns any employee other than an admin or owner who is still on duty past their scheduled end, and repeats until they sign off; detecting that condition belongs to the time-control subject.
+- The **overtime alert** concerns any employee other than an admin or owner who is still on duty past their scheduled end, and repeats until they sign off or a manager mutes that open session's overtime alert; detecting that condition and the mute belong to the time-control subject. The venue always has a manager on duty for this alert.
+- The **sign-out request** notifies managers on duty when an employee asks to end duty; completing sign-out belongs to the time-control subject.
 - A **report-ready** notification fires when the weekly or monthly report for the period is ready for review; detecting readiness belongs to the business-reports subject.
 - The **business-profile-updated** notification fires when a change to the business profile actually persists, and reports which fields changed; detecting the change belongs to the business subject.
 - The **print-failure** notification fires when a print cannot be completed and no usable backup takes the job; detecting that condition belongs to the printers-and-screens subject.
@@ -128,14 +130,14 @@ Terms reused from the product overview's core vocabulary rather than defined her
 ### 3.7 Reliability
 
 - **Idempotency.** A repeated dispatch of the same event for the same business within **5 minutes** is suppressed, so a burst of triggers produces one notification.
-- **Cooldown.** A low-stock alert repeats at most once per **15 minutes** per set of items; an overtime alert repeats every **5 minutes** until sign-off.
+- **Cooldown.** A low-stock alert repeats at most once per **15 minutes** per set of items; an overtime alert repeats every **5 minutes** until sign-off or until that session's overtime mute.
 - **Email delivery.** Email is retried on a transient failure rather than dropped; the retry behaviour itself belongs to the emails subject.
 - **Live delivery is best-effort.** A recipient who cannot be reached live still has the stored notification.
 
 ### 3.8 The engagement mute
 
-- The **only notification preference** is the engagement mute. There is no per-event or per-channel tuning, and operational notifications cannot be turned off.
-- A person holds a single **engagement mute**, **off by default** and **global** across every venue; muting suppresses a venue's broadcasts to that person, both in-app and by email. Operational notifications are **mandatory**.
+- The **only person-level notification preference** is the engagement mute. There is no per-event or per-channel tuning for recipients.
+- A person holds a single **engagement mute**, **off by default** and **global** across every venue; muting suppresses a venue's broadcasts to that person, both in-app and by email. Operational notifications are **mandatory** for recipients. The sole operational exception is owned by time-control: a manager may **mute further overtime alert repeats for one employee's current open session**.
 
 ---
 
@@ -147,8 +149,8 @@ Terms reused from the product overview's core vocabulary rather than defined her
 | --- | --- |
 | **Customer** | Holds the inbox; receives notifications and conversations; may reply in a conversation sent to them; may mute engagement. Cannot start a conversation. |
 | **Employee** | Everything a customer can do; as staff, receives the direct messages the venue sends them and may reply. |
-| **Manager** | Everything an employee can do, plus publishing venue events and starting direct messages to staff and related customers. Receives the manager-targeted operational alerts. |
-| **Admin** | Everything a manager can do, plus receiving overtime alerts as the admin on duty. |
+| **Manager** | Everything an employee can do, plus publishing venue events and starting direct messages to staff and related customers. Receives the manager-targeted operational alerts, including overtime and sign-out requests when on duty. |
+| **Admin** | Everything a manager can do. |
 
 The owning user is an admin at every venue they own. Job roles and per-user capabilities follow the global model; this subject names only the entitlements that bear on notifications.
 
@@ -161,6 +163,6 @@ The owning user is an admin at every venue they own. Job roles and per-user capa
 | Reply in a conversation | The recipient of the direct message |
 | Start a direct message | Managers and above |
 | Publish a venue event | Managers and above |
-| Receive low-stock, negative-stock, overtime, and print-failure alerts | The venue's managers on duty (low-stock, negative-stock, print-failure) and admins on duty (overtime); print-failure falls back to all manager-layer users when none are on duty |
+| Receive low-stock, negative-stock, overtime, sign-out-request, and print-failure alerts | The venue's managers on duty; print-failure falls back to all manager-layer users when none are on duty |
 | Receive report-ready and profile-updated alerts | The venue's managers and above |
 | Operate the application business | The superadmin, in a separate realm; never a recipient of a venue's notifications |
