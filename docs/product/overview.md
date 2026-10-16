@@ -38,7 +38,7 @@ These terms are used with exactly these meanings throughout Project Imperium. Do
 | **Company** | The **tax entity** that groups one or more **Businesses** (venues) run as one legal unit. Holds the tax number; its venues may transfer stock internally. |
 | **Business** | The **tenant** — one venue (restaurant/bar). All operational data is scoped to the business. |
 | **User** | A person's global identity. **Every user is a customer**; some also hold business roles. |
-| **Employee** | A person's membership in a Business, carrying their **job role(s)**, pay, and employment status. Links a **User** to a **Business**. |
+| **Employee** | A person's membership in a Business — the full per-venue employment record (job role(s), status, contract, pay, vacation, HR identifiers). Links a **User** to a **Business**; the User itself holds only client/global identity. |
 | **Customer** | A user acting as the final consumer (ordering, booking, rating). |
 | **POS** | Point of sale — the staff-facing surface where an employee selects a sales point, takes orders, and bills. One surface of the platform, distinct from self-ordering, kiosk, and delivery; never the whole product. |
 | **Sales point** | A place a customer sits or is served — a **type** (Table, Room, Bar, Seat, Counter, Spot, Kiosk, the virtual **Delivery** point, or Other) plus the **channels** it accepts (dine-in, self-ordering, kiosk, delivery). Holds its QR code. |
@@ -170,8 +170,8 @@ The Business app is the operational heart of Project Imperium. It comprises the 
 
 ### People, roles, and scheduling
 
-- **Employees** are linked to existing users; each carries job role(s), active status, join date, contract hours, vacation allowance/balance, salary (frequency + gross/net), documents, and optional termination date.
-- **Roles and permissions** follow the two-layer model in [§5](#5-access-roles-and-the-mode-chooser): base layers, job roles, and per-user capability assignment by managers and above.
+- **Employees** are the full membership of a user in a business. The **User** holds only client/global identity; job roles, employment status, contract, pay (gross for labour cost, net for HR), vacation, HR identifiers, documents, termination, and rehire all live on the membership. The employees subject is the source of truth for that record.
+- **Roles and permissions** follow the two-layer model in [§5](#5-access-roles-and-the-mode-chooser): base layers, job roles on the membership, and per-user capability assignment by managers and above.
 - **Schedules** define each day's shifts (employee, role, start/end, vacation). Project Imperium enforces no overlapping shifts and correct vacation accounting, and rolls up daily staff, vacation, and labour-cost totals.
 - **Time control** records actual attendance, breaks, and overtime as described in [§6](#6-time-control-and-attendance).
 

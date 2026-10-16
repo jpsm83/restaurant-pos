@@ -6,23 +6,22 @@
 
 ## 1. Scope
 
-This subject covers **who a person is and what they may do** across the whole platform:
+This subject covers **who a person is as a global identity and customer**, and the access rules that sit above venue membership:
 
-- the global **User** — one per person, the holder of every sign-in credential;
+- the global **User** — one per person, the holder of every sign-in credential and of **client** personal detail;
 - **business ownership** — the **Owner** account that holds one or more **Companies**, each owning its **Business** identities, and the transfer of a business between users;
-- the **Employee** membership — the per-venue link that makes a user part of a business;
-- the **four base access layers**, the **job roles**, and **per-user capabilities**;
+- the **four base access layers** and **per-user capabilities**;
 - the **login mode chooser** — the rule by which a signed-in user picks between the customer and business apps;
 - **credentials and email** — sign-up, verification, email change, and the business contact email;
 - **sessions**, and the **account lifecycle** — pending deletion, soft delete, and reactivation.
 
 It deliberately does **not** cover:
 
+- the **Employee** membership — job roles, employment status, tenure, contract, pay, vacation, tax and national identifiers, documents, hire, terminate, and rehire. The **User** holds only client/global identity; **all employee data lives on the membership**. The employees subject owns that record. This subject names the membership only as the path into a tenant and as input to the mode and layer rules.
 - the **navigation surfaces** — the chooser screen, route guards, and canonical URLs. This subject states the eligibility *rule*; the user-navigation subject owns the surfaces that enforce it.
 - **attendance mechanics** — shifts, breaks, the late lock, and the manager unlock. This subject states the eligibility *consequence*; the schedules and time-control subjects own the mechanics.
 - **transactional email delivery** — templates, retry, cooldown. This subject states which messages are sent; the emails subject owns how they are delivered.
 - the **superadmin console's** authentication realm, which is separate and belongs to the superadmin subject.
-- **employment detail** — pay, contract hours, vacation, documents. This subject owns the membership and its access meaning; the employees subject owns HR detail.
 
 ---
 
@@ -30,23 +29,22 @@ It deliberately does **not** cover:
 
 ### Entities
 
-- **User** — a person's global identity. One per person, platform-wide and tenant-free. The sole holder of sign-in credentials, personal details, preferences, the notification inbox, and order history. **Every user is a customer.**
+- **User** — a person's global identity. One per person, platform-wide and tenant-free. The sole holder of sign-in credentials, **client** personal details, preferences, the notification inbox, and order history. **Every user is a customer.** The User does **not** carry employment fields.
 - **Owner** — the portfolio account for a user who owns businesses. One per user, created or updated when that user registers a business. Holds the **Companies** it controls, the **subscription**, and the **commission terms**.
 - **Company** — the **tax entity** owned by exactly one **Owner**: a group of one or more **Businesses** run as one legal unit, holding their **tax number**. Stock moves only within a Company.
-- **Employee** — a person's membership in one business: the per user–business link carrying the user's job role(s) and employment state. The only way a user joins a tenant.
+- **Employee** — a person's membership in one business (owned in full by the employees subject). The only way a user joins a tenant.
 - **Business** — the tenant, one venue (owned by exactly one user through that user's **Owner** and belonging to exactly one **Company**). Carries its own public profile and **contact email**, but holds **no credentials** of its own.
 
 Membership is one-to-many on both sides — one user may hold a membership per business, and one business holds many memberships:
 
 ```
-User ──< Employee >── Business          (membership: the only path into a tenant)
+User ──< Employee >── Business          (membership: the only path into a tenant; employees subject)
 User ──1 Owner ──< Company ──< Business  (ownership: exactly one owning user per business)
 ```
 
 ### Terms this subject introduces
 
 - **Base access layer** — exactly one of **admin**, **manager**, **employee**, or **customer**. Defines what a user may do at the highest level. *Customer* is always present; the other three come from a membership, and during a shift, from that shift's role.
-- **Job role** — a value from the canonical job-role enumeration (Owner, General Manager, Manager, Assistant Manager, MoD, Admin, Operator, Employee, Cashier, Floor Staff, Bartender, Barista, Waiter, Head Chef, Sous Chef, Line Cooks, Kitchen Porter, Cleaner, Security, Host, Runner, Supervisor, Entertainer, Other). Describes *what a person is*; the base layer describes *what they may do*.
 - **Per-user capability** — a named power granted or revoked on top of a base layer's defaults, assigned per user by managers and above.
 - **Mode** — the app a signed-in user chooses to work in: **customer** or **business** (employee). Chosen once per session after login.
 - **Sign-in email** — the email credential on the **User**. Distinct from a business's contact email.
@@ -54,13 +52,15 @@ User ──1 Owner ──< Company ──< Business  (ownership: exactly one own
 - **Pending deletion** — the account state during the cancellation window between a user's deletion request and the soft delete that follows it.
 - **Reactivation** — restoring a soft-deleted account, which always requires confirmation through the sign-in email.
 
+**Job role** is introduced and owned by the employees subject; this subject reads job roles only to resolve base layers and mode eligibility.
+
 ---
 
 ## 3. Capabilities
 
 ### 3.1 One identity, one login
 
-Project Imperium stores **one user per person**, and that user is the single holder of the person's sign-in credentials. A person never ends up with two accounts for the same identity. Sign-in is one shared form; after authenticating, Project Imperium applies the mode rule in §3.8.
+Project Imperium stores **one user per person**, and that user is the single holder of the person's sign-in credentials. A person never ends up with two accounts for the same identity. Sign-in is one shared form; after authenticating, Project Imperium applies the mode rule in §3.7.
 
 ### 3.2 Every user is a customer
 
@@ -72,51 +72,47 @@ A **business is owned by exactly one user**. When a user registers a business, P
 
 - A user may **own many businesses**; each owned venue is its own **Business**, and each Business belongs to exactly one **Company** — the tax entity grouping the venues run as one legal unit. A user adding a venue chooses whether it **joins an existing Company** or **forms a new one**.
 - A user may simultaneously **own some venues and be an ordinary employee at others**.
-- The owner automatically takes the **Owner job role** and the **admin** base layer at every venue they own.
+- Registration also creates the owner's **Employee** membership at that venue (Owner job role and admin layer); the employees subject owns that membership and its HR completion.
 - **Ownership can be transferred** from one user to another; the **Owner** accounts, their Companies, and their business lists follow the transfer.
 
-### 3.4 Employee membership
+### 3.4 Membership is the path into a tenant
 
-A user joins a tenant **only through an employee membership** — a per user–business record carrying job role(s) and employment state.
+A user joins a tenant **only through an employee membership**. This subject does **not** own the membership's fields or lifecycle — the employees subject does.
 
 - A user holds **at most one membership per business**, and may hold **many across businesses**.
-- The membership is the **authoritative link**; a **User** never embeds a single employee reference.
-- **Employment state** (active status, join date, termination date) is the tenure lifecycle. **Termination ends a membership but leaves the user and their customer identity intact.**
-- Pay, contract hours, vacation, and documents are the employees subject's; this subject owns the binding and its access meaning.
+- The membership is the **authoritative link**; a **User** never embeds employment data.
+- **Termination** ends access through that membership but leaves the user and their customer identity intact (employees subject).
 
 ### 3.5 The four base access layers
 
 Exactly four layers exist: **admin**, **manager**, **employee**, **customer**. They are a **classification, not a stored preference**:
 
 - A user with **no membership** resolves to **customer**.
-- A membership resolves to one layer, **defaulted from its job role** — Owner and Admin to **admin**; the management roles to **manager**; every other role to **employee**.
+- A membership resolves to one layer, **defaulted from its job roles** (employees subject) — Owner and Admin to **admin**; the management roles to **manager**; every other role to **employee**.
 - The layer is resolved **per shift**: the **schedule assigns the job role for a shift**, and that shift's role sets the effective layer for its duration. The same person can work one shift as an employee and a later shift as a manager at the same venue.
 - When a shift declares **no role**, the membership falls back to the **highest layer among its roles** (admin over manager over employee).
 - **Managers and above can override** a membership's layer.
 - **Customer access is always available** to every user, whatever membership they hold.
+- A **Suspended** membership blocks business-app access until cleared (employees subject); layer resolution alone does not reopen it.
 
-### 3.6 Job roles
+### 3.6 Per-user capabilities
 
-A user's job is described by the canonical job-role enumeration (§2). Roles and layers are separate concerns: the role says *what the person is*, the layer says *what they may do*. A user may hold **several job roles** on one membership, and the **schedule selects which role — and therefore which layer — the user works in for a given shift**.
+On top of the base layer's defaults, **managers and above** assign **named per-user capabilities** that grant or revoke individual powers. Capabilities are additive overrides scoped to what the platform already defines as possible for that user's layer; they never invent new powers. This subject owns the mechanism and the **cross-cutting** capabilities; each feature subject enumerates the capabilities that gate it. Job-role assignment on the membership belongs to the employees subject.
 
-### 3.7 Per-user capabilities
-
-On top of the base layer's defaults, **managers and above** assign **named per-user capabilities** that grant or revoke individual powers. Capabilities are additive overrides scoped to what the platform already defines as possible for that user's layer; they never invent new powers. This subject owns the mechanism and the **cross-cutting** capabilities; each feature subject enumerates the capabilities that gate it.
-
-### 3.8 The login mode chooser
+### 3.7 The login mode chooser
 
 There is **one login**. After authenticating:
 
 - A user with **only customer access** goes straight to the customer app.
-- A user with **business access** chooses **customer** or **business (employee)** mode. The chosen mode is recorded for the session.
-- The **employee option** is available when the user has a membership and is eligible: **scheduled for that time**, with the option opening **10 minutes before shift start**.
-- **Owners, managers, and admins always see both options** — scheduled or not — because they may need to act at any time.
+- A user with **business access** (an eligible membership) chooses **customer** or **business (employee)** mode. The chosen mode is recorded for the session.
+- The **employee option** is available when the user has a membership and is eligible: **scheduled for that time**, with the option opening **10 minutes before shift start**, and the membership is not **Suspended** or **Terminated**.
+- **Owners, managers, and admins always see both options** — scheduled or not — because they may need to act at any time (unless that membership is Suspended or Terminated).
 - A **late employee is locked out** of the employee option until a **manager unlocks** them; the **real entry time is preserved** regardless (time-control subject).
 - **Customer mode is always available.**
 
 This subject owns the eligibility **rule**; the user-navigation subject owns the chooser screen, the guards, and the URLs.
 
-### 3.9 Credentials, verification, and email change
+### 3.8 Credentials, verification, and email change
 
 The **User** owns the sign-in email, the password, and a **single canonical email-verified flag**.
 
@@ -124,7 +120,7 @@ The **User** owns the sign-in email, the password, and a **single canonical emai
 - **Changing the sign-in email** requires the **current password**, is **token-verified** by a link sent to the **new address**, is **cooldown-limited**, **notifies the old address**, enforces **uniqueness among active accounts**, and **revokes other sessions**.
 - The same verification and change flow applies to **every user** — a business registrant is not a special case.
 
-### 3.10 Business contact email and go-live
+### 3.9 Business contact email and go-live
 
 Each **Business** carries its **own contact email**, verified by the same token flow. It is **never a credential**.
 
@@ -132,40 +128,40 @@ Each **Business** carries its **own contact email**, verified by the same token 
 - A business is **not live until its contact email is verified** *and* its **go-live checklist** is complete; an admin/owner then toggles it live (the checklist and toggle belong to the business subject). **Not live** means **absent from customer discovery** and **unable to take customer orders or bookings**.
 - Project Imperium shows a clear **warning on the business page** until the contact email is verified.
 
-### 3.11 Account creation paths
+### 3.10 Account creation paths
 
 A user comes into existence through one of three paths, and Project Imperium **never duplicates a person**:
 
 1. **Self sign-up** — a person signs up and becomes a customer user.
-2. **Managed employee** — a manager or above creates an employee membership by linking an **existing user by email**. If no user exists for that email, Project Imperium creates the user (a customer) first, then links the membership.
-3. **Business registration** — a **signed-in user** registers a business; the registrant already exists as a user, and registration creates (or updates) their **Owner**, the **Company** (existing or new), the **Business**, and the owner's membership.
+2. **Managed employee** — a manager or above hires through the employees subject by linking an **existing user by email**. If no user exists for that email, Project Imperium creates the user (a customer) first, then the membership.
+3. **Business registration** — a **signed-in user** registers a business; the registrant already exists as a user, and registration creates (or updates) their **Owner**, the **Company** (existing or new), the **Business**, and the owner's membership (employees subject).
 
-### 3.12 Sessions
+### 3.11 Sessions
 
-Project Imperium issues a short-lived **access token** and a **refresh session**. Project Imperium can revoke a user's refresh sessions wholesale whenever the password is reset or changed, or the sign-in email is verified as changed. The mode chosen in §3.8 is recorded in a server-side session cookie so guards can enforce it. The **superadmin console's authentication realm is entirely separate** and belongs to the superadmin subject.
+Project Imperium issues a short-lived **access token** and a **refresh session**. Project Imperium can revoke a user's refresh sessions wholesale whenever the password is reset or changed, or the sign-in email is verified as changed. The mode chosen in §3.7 is recorded in a server-side session cookie so guards can enforce it. The **superadmin console's authentication realm is entirely separate** and belongs to the superadmin subject.
 
-### 3.13 Personal profile and preferences
+### 3.12 Personal profile and preferences
 
-The **User** holds the person's **personal detail** — name, sign-in email, phone, personal address, ID type and number, birth date, gender, nationality, image — and a **language preference**, so the UI language follows the person independently of the business's currency.
+The **User** holds the person's **client personal detail** — name, sign-in email, phone, personal address, birth date, gender, nationality, image — and a **language preference**, so the UI language follows the person independently of the business's currency. **Employee tax number**, **national ID number**, and other employment identifiers live only on the **Employee** membership (employees subject), not on the User.
 
-### 3.14 Inbox and order history
+### 3.13 Inbox and order history
 
 The **notification inbox** and **order history** belong to the **User** and are **shared across the customer and employee modes** — a person's history does not fork by mode.
 
-### 3.15 Account deletion
+### 3.14 Account deletion
 
 Deleting an account is **self-service** and **two-phase**:
 
 1. **Request → pending deletion.** The account enters a **pending-deletion** state for a **15-day grace window**. Sign-in **still works** during the window, precisely so the user can **cancel** the deletion; the account is otherwise not public.
-2. **Soft delete.** After the window, the **soft-delete marker** is applied and **sign-in is blocked**. The data is **retained** (see §3.17).
+2. **Soft delete.** After the window, the **soft-delete marker** is applied and **sign-in is blocked**. The data is **retained** (see §3.16).
 
 Deletion is **blocked until the user resolves every business they own** — each must be **transferred to another user** or **closed** first. Deletion **never cascades** into other people's records: Project Imperium does not silently destroy data that others depend on.
 
-### 3.16 Reactivation
+### 3.15 Reactivation
 
-A soft-deleted account can be **reactivated**, but reactivation is **never completed inside the app alone** — it always requires **confirming a link sent to the account's sign-in email**, so knowing an email is never enough to reach a deleted account's data. Reactivation **restores the user, the customer identity, and their history**; memberships return **only if still valid** at their venues, and otherwise stay terminated.
+A soft-deleted account can be **reactivated**, but reactivation is **never completed inside the app alone** — it always requires **confirming a link sent to the account's sign-in email**, so knowing an email is never enough to reach a deleted account's data. Reactivation **restores the user, the customer identity, and their history**; memberships return **only if still valid** at their venues, and otherwise stay terminated (employees subject).
 
-### 3.17 Soft delete, platform-wide
+### 3.16 Soft delete, platform-wide
 
 Under Project Imperium's **soft-delete convention**, an identity — a **User**, **Owner**, **Company**, **Employee**, or **Business** — is never hard-deleted. Project Imperium marks it deleted and stamps the time, retains it, and can reactivate it; uniqueness is enforced among active identities, so reusing a soft-deleted email means **reactivating** that account, not creating a duplicate.
 
@@ -178,13 +174,9 @@ Under Project Imperium's **soft-delete convention**, an identity — a **User**,
 | Layer | Identity powers |
 | --- | --- |
 | **Customer** | Holds a **User**; signs in; uses the customer app; manages their own profile and account deletion. Always available to everyone. |
-| **Employee** | Everything a customer can do, plus business mode when scheduled and unlocked. |
-| **Manager** | Everything an employee can do, plus creating memberships, assigning job roles and capabilities, overriding a membership's layer, and unlocking late entries. Always allowed into business mode. |
-| **Admin** | Full venue control, including ownership actions; always allowed into business mode. |
-
-### Job roles
-
-Job roles describe the person and default the layer (Owner/Admin → admin; management roles → manager; others → employee). They are assignable by managers and above and do not by themselves grant powers beyond the layer.
+| **Employee** | Everything a customer can do, plus business mode when the membership is eligible (scheduled, unlocked, not Suspended or Terminated). |
+| **Manager** | Everything an employee can do, plus assigning per-user capabilities, overriding a membership's layer, and unlocking late entries. Always allowed into business mode when the membership allows. Hiring, HR, and termination belong to the employees subject. |
+| **Admin** | Full venue control, including ownership actions; always allowed into business mode when the membership allows. |
 
 ### Per-user capabilities
 
@@ -194,13 +186,13 @@ Granted or revoked per user by **managers and above**, on top of the layer defau
 
 | Activity | Who |
 | --- | --- |
-| Sign up / sign in / choose mode | Anyone (mode choice needs business access) |
-| Register a business | Any user (becomes the **Owner**, an admin at that venue) |
+| Sign up / sign in / choose mode | Anyone (mode choice needs eligible business access) |
+| Register a business | Any user (becomes the **Owner**, an admin at that venue; employees subject creates the owner membership) |
 | Own / transfer / close a business | The owning user |
-| Create or link an employee membership | Managers and above |
-| Assign job roles and capabilities | Managers and above |
 | Override a membership's base layer | Managers and above |
+| Assign per-user capabilities | Managers and above |
 | Unlock a late employee's entry | A manager on duty |
+| Hire, edit HR, terminate, rehire | Employees subject (managers and above; rehire admin/owner) |
 | Delete one's own account | The account's user |
 | Reactivate a soft-deleted account | The account's user, by email-confirmed link |
 | Manage Owners, plans, and commission | The superadmin (superadmin subject) |
