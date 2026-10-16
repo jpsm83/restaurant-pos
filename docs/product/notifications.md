@@ -61,7 +61,7 @@ Terms reused from the product overview's core vocabulary rather than defined her
 
 - Every notification is stored in each recipient's inbox **first**, and that stored copy is the **source of truth**.
 - A recipient who is **online** also receives it immediately by **live push**. A recipient who is **offline** receives it the moment they return, from the stored copy; nothing is lost.
-- **Email** is added for: an order confirmation/receipt, a reservation pending and decision (to the customer), a reply in a customer conversation (to the customer), a business-profile change (to managers), and a venue's engagement broadcasts (to customers who have not muted them). The remaining operational alerts — low-stock, negative-stock, report-ready, and overtime — are **in-app only**.
+- **Email** is added for: an order confirmation/receipt, a reservation pending, deposit-requested, and decision message (to the customer), a reply in a customer conversation (to the customer), a business-profile change (to managers), and a venue's engagement broadcasts (to customers who have not muted them). The remaining operational alerts — low-stock, negative-stock, report-ready, overtime, and awaiting-table — are **in-app only**.
 - A communication failure **never blocks** the underlying business action: a notification is a side effect of the action, not a precondition for it.
 
 ### 3.2 The inbox
@@ -77,7 +77,7 @@ Terms reused from the product overview's core vocabulary rather than defined her
 | Event | Who is notified | Channel | Severity | Repeats |
 | --- | --- | --- | --- | --- |
 | Order confirmed (receipt) | The ordering customer | In-app + email | Info | Once |
-| Reservation pending | The customer; and Host and managers as the venue's alert rules dictate, prompted to review it | Customer: in-app + email; staff: in-app | Info | Once |
+| Reservation pending | The customer; and the venue's Host and managers, prompted to review it | Customer: in-app + email; Host and managers: in-app | Info | Once |
 | Deposit requested | The customer | In-app + email (payment link) | Info | Once |
 | Reservation decided (reserved or cancelled) | The customer | In-app + email | Info | Once |
 | Awaiting table | Host and above | In-app | Info | Once |

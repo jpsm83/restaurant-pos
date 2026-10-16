@@ -239,7 +239,7 @@ The Business app is the operational heart of Project Imperium. It comprises the 
 
 - Each user has an **inbox** with per-notification read and deleted state, shared by customers and employees through their user identity.
 - Delivery is **persistence-first** — in-app notifications are stored and are the source of truth — with **email** and **live WebSocket** push when the recipient is online. Nothing is lost if a user is offline.
-- **Operational** events include reservations pending/deposit-requested/decided (and awaiting-table for Host+), low-stock alerts, weekly/monthly report-ready, business profile updates, and the overtime alerts in [§6](#6-time-control-and-attendance).
+- **Operational** events include reservations pending/deposit-requested/decided (and Awaiting table for Host and above), low-stock alerts, weekly/monthly report-ready, business profile updates, and the overtime alerts in [§6](#6-time-control-and-attendance).
 - **Engagement** events let a venue message its customers — **promotions, birthdays, and events** — alongside operational alerts.
 
 ---

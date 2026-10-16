@@ -76,9 +76,10 @@ Terms reused rather than redefined here: **Business**, **User**, **Customer**, *
 
 ### 3.3 Decision: accept or request a deposit
 
-- **Host and above** decide a **Pending** booking: **Accept** (no deposit) or **Request deposit** (amount chosen on that reply).
+- **Host and above** decide a **Pending** booking: **Accept** (no deposit), **Request deposit** (amount chosen on that reply), or **Reject** (moves to **Cancelled** with a decision email).
 - **Accept** moves the booking to **Reserved** and sends the **confirmation email**.
-- **Request deposit** moves the booking to **Awaiting deposit** and sends the guest a **payment link**. Paying the deposit records full payment details on the reservation, moves it to **Reserved**, and sends the confirmation email.
+- **Request deposit** moves the booking to **Awaiting deposit** and sends the guest a **payment link**. Paying the deposit records full payment details on the reservation, moves it to **Reserved**, and sends the confirmation email. An unpaid awaiting-deposit booking **stays** until the guest pays or Host and above (or the customer) **cancel** it — there is no automatic expiry.
+- A signed-in **customer** can **view and track** each of their bookings and its status in the Customer app.
 - Paying a deposit requires the guest to **sign in or create an account** first; the booking then attaches to that account. When no deposit is required, account creation from the confirmation email is **optional**; the confirmation is still emailed.
 - If the guest already has an account for that email, the booking is attached to it. A premises booking that names an email still receives confirmation by email and appears on the account when one exists or is created later via the invite link.
 
@@ -145,7 +146,7 @@ A reservation's status is one of:
 
 | Event | Audience | Notes |
 | --- | --- | --- |
-| Reservation pending | Customer; Host and managers as the venue's alert rules dictate | Includes a new request and a customer edit that re-pends |
+| Reservation pending | Customer; the venue's Host and managers (in-app) | Includes a new request and a customer edit that re-pends |
 | Deposit requested | Customer | Carries the payment link; account required before pay |
 | Reservation decided (Reserved or Cancelled) | Customer | Confirmation or cancellation; confirmation states late-arrival / grace rules clearly; never shows internal end time |
 | Awaiting table | Host and above | In-app only |
@@ -167,19 +168,20 @@ A reservation's status is one of:
 | --- | --- |
 | **Customer** | Requests a booking when the venue accepts reservations and is taking public bookings; tracks status; edits within the customer-edit window when enabled (re-pends); cancels per §3.6; pays a deposit when required (after sign-in or account creation). |
 | **Employee** | Opens reserved points and chooses reservation guests or ordinary guests while on duty; works each linked tab's orders and bill. Cannot create or decide bookings unless they also hold Host (or higher) powers. |
-| **Manager** | Everything an employee can do, plus Host booking powers when their effective role includes Host or manager-and-above decision rights; sets reservation configuration with admin/owner as the venue assigns. |
-| **Admin/owner** | Full venue control over reservation configuration and every Host power. |
+| **Manager** | Everything an employee can do, plus every Host booking power, and setting reservation configuration. |
+| **Admin/owner** | Everything a manager can do. |
 
 ### Who can do what
 
 | Activity | Who |
 | --- | --- |
-| Set accepts reservations, pause, default cover duration, customer-edit window, grace period | Managers and above (per venue permission practice; admin/owner for full control) |
+| Set accepts reservations, pause, default cover duration, customer-edit window, grace period | Managers and above |
 | Create a booking (Pending, or Accept in the same step) | Host and above |
-| Accept or request a deposit on a pending booking | Host and above |
+| Accept, request a deposit, or reject a pending booking | Host and above |
 | Assign or change sales points; set internal end time | Host and above |
 | Mark arrived, no-show, or cancel (pre-seat) | Host and above |
 | Edit a booking without forcing Pending | Host and above |
+| View and track own bookings and status | The customer who owns or is linked to the booking |
 | Customer-edit a booking (re-pends) | The customer, when edits are enabled and inside the window |
 | Open a reserved point as reservation guests or ordinary guests | Any on-duty employee opening the staff tab |
 | Apply shared deposit credit at bill time | Staff settling that tab |
