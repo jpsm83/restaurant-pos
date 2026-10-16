@@ -67,7 +67,7 @@ Terms reused from other subjects rather than redefined here: **business**, **rep
   - the **business totals** — total sales, net revenue, tips, cost of goods sold, profit, customers served, average spend per customer, void and invited value, and the platform's commission.
 - The daily report's **dimension breakdowns** are the operational ones: **employee**, **sales point/channel**, **payment method**, and **menu item**.
 - A manager **calculates** the report, **reconciles** it, and **closes** it.
-- **Closing requires no open orders**: a sales instance that is still open blocks closure. Closing **locks the day** — the closed daily report is the frozen record of that day.
+- **Closing requires no open orders**: a sales instance that is still open blocks closure. Closing **locks the day** — the closed daily report is the frozen record of that day. Closing also **clears fulfilment queues**: every order fulfilment slice for that business day that is not yet delivered is moved to delivered (through preparing and ready as needed), as the printers-and-screens and orders subjects define.
 - The first sale of a new day opens that day's report; it does not disturb a prior day's closed report.
 
 ### 3.2 The weekly business report
@@ -116,7 +116,7 @@ Terms reused from other subjects rather than redefined here: **business**, **rep
 ### 3.7 Closing and reopening
 
 - A report's lifecycle is **open → calculated → reconciled → closed**. A closed report is the frozen record of its period.
-- **Daily**: a manager closes the day; closing requires no open orders and locks the day.
+- **Daily**: a manager closes the day; closing requires no open orders, locks the day, and clears undelivered fulfilment slices for that day (§3.1).
 - **Weekly**: closes automatically when the next reporting week begins.
 - **Monthly**: closes at the month boundary **only once every daily report in the month is closed** and **the inventory month is closed** — so the report's variance and waste figures are final.
 - **Reopening** a closed report is deliberate and audited:

@@ -45,6 +45,8 @@ These terms are used with exactly these meanings throughout Project Imperium. Do
 | **Channel** | How an order reached the venue — **dine-in**, **self-ordering**, **kiosk**, **takeaway**, or **delivery**. A **sales point** declares which point-anchored channels it accepts. |
 | **Sales instance** | An open session/tab at a sales point that groups the orders for that sitting. |
 | **Order** | One billable line: one main business good plus optional add-ons. Quantity is expressed as multiple orders. |
+| **Batch** | A group of orders sent to the kitchen/bar together, sharing one **identification code**. |
+| **Fulfilment slice** | The portion of a batch one **prep area** must prepare. Each slice carries its own **fulfilment status**: **Sent → Preparing → Ready → Delivered**, so areas (for example food and drinks) can finish on independent timelines. |
 | **Business good** | A sellable menu item (simple, recipe/ingredient-based, or a set menu / combo). |
 | **Supplier good** | A raw/purchased item from a supplier; the ingredient behind recipes and the unit of stock. |
 | **Supplier** | A vendor the business buys from. |
@@ -200,7 +202,7 @@ The Business app is the operational heart of Project Imperium. It comprises the 
 - **Orders** attach to the sales instance. Each order is one main good plus optional add-ons; promotions apply to the main good. Who created it, and in what role, is taken from the session.
 - **Lifecycle**: add, transfer between tables, and — for managers and above — **cancel** (removing it and restoring inventory), **void** with a required reason (kept in reporting), and mark **invitation/complimentary**.
 - **Billing**: review the tab, split bills as supported, then take **payments per method** with optional **tips**, record the payment-method breakdown, and **close** the instance when all orders are paid.
-- **Printers** route kitchen/bar tickets by category, subcategory, and sales point, with backup printers and per-employee print permissions.
+- **Printers and screens** route prep and customer tickets by category, subcategory, and sales point; bind logical printers through local print connectors; offer backup printers and per-employee print permissions; and run configurable prep-area main/sub screens, a delivery screen, and a customer pickup board. Fulfilment status advances per prep-area slice (**Sent → Preparing → Ready → Delivered**).
 - The **first sales instance of the day** automatically opens the daily sales report (see Reporting).
 
 ### Payments and tax
