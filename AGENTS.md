@@ -13,7 +13,7 @@ npm-workspace monorepo: `backend/` (Fastify + Mongoose), `frontend/` (React 19 +
 Load only the document you need; each is self-contained and links to no other document.
 
 - [`docs/product/overview.md`](docs/product/overview.md) — target-state product overview: what Project Imperium is, core vocabulary, surfaces, tenancy, and monetization. Load first for product context.
-- [`docs/product/users.md`](docs/product/users.md) — target-state global identity model: the user as client, owner and company, base access layers, per-user capabilities, mode chooser, credentials, sessions, and the account lifecycle.
+- [`docs/product/users.md`](docs/product/users.md) — target-state global identity model: the user as client, owner and company, base access layers, per-user capabilities, mode chooser, credentials, sessions, account lifecycle, and favorites.
 - [`docs/product/employees.md`](docs/product/employees.md) — target-state employees: the membership of a user in a business, job roles, employment status, contract and pay, vacation, HR identifiers and documents, termination, and rehire.
 - [`docs/product/schedules.md`](docs/product/schedules.md) — target-state schedules: the daily schedule, working shifts and leave, overlap and vacation rules, time-off requests, copy and bulk edit, planned labour aggregates, and schedule notification events.
 - [`docs/product/time-control.md`](docs/product/time-control.md) — target-state time control: plan-versus-actual attendance, the daily attendance QR, the time-clock ledger and shift session, late lock, breaks, sign-out rules, worked hours and actual labour cost, no-shows, and overtime alerts.

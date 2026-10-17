@@ -1,6 +1,6 @@
 # Users
 
-> **About this document.** This is the **target-state source of truth** for the global identity model in Project Imperium. It is written for two readers: AI agents that build the product and engineers onboarding onto it. It describes the global identity model as it is *meant to be* — capabilities are stated as commitments, without built/planned tags. It is self-contained: it links to no other document.
+> **About this document.** This is the **target-state source of truth** for the global identity model in Project Imperium — the user as customer, ownership, access layers, credentials, sessions, account lifecycle, and **favorites**. It is written for two readers: AI agents that build the product and engineers onboarding onto it. It describes the global identity model as it is *meant to be* — capabilities are stated as commitments, without built/planned tags. It is self-contained: it links to no other document.
 
 ---
 
@@ -13,14 +13,17 @@ This subject covers **who a person is as a global identity and customer**, and t
 - the **four base access layers** and **per-user capabilities**;
 - the **login mode chooser** — the rule by which a signed-in user picks between the customer and business apps;
 - **credentials and email** — sign-up, verification, email change, and the business contact email;
-- **sessions**, and the **account lifecycle** — pending deletion, soft delete, and reactivation.
+- **sessions**, and the **account lifecycle** — pending deletion, soft delete, and reactivation;
+- **favorites** — the venues a customer saves for quick access.
 
 It deliberately does **not** cover:
 
 - the **Employee** membership — job roles, employment status, tenure, contract, pay, vacation, tax and national identifiers, documents, hire, terminate, and rehire. The **User** holds only client/global identity; **all employee data lives on the membership**. The employees subject owns that record. This subject names the membership only as the path into a tenant and as input to the mode and layer rules.
-- the **navigation surfaces** — the chooser screen, route guards, and canonical URLs. This subject states the eligibility *rule*; the user-navigation subject owns the surfaces that enforce it.
+- the **navigation surfaces** — the chooser screen, route guards, and canonical URLs. This subject states the eligibility *rule*; the user-navigation subject owns the surfaces that enforce it. Favorites appear on customer surfaces those subjects own; this subject owns the preference itself.
 - **attendance mechanics** — daily attendance QR scan-in, manager sign-out, breaks, and lateness. This subject states the employee-mode eligibility *consequence*; the schedules subject owns the planned schedule, and the time-control subject owns attendance.
 - **transactional email delivery** — templates, retry, cooldown. This subject states which messages are sent; the emails subject owns how they are delivered.
+- **ratings and comments** — venue reviews after a closed sales instance belong to the ratings-and-comments subject. Favorites are bookmarks, not feedback.
+- **which venues are live and discoverable** — the business subject owns go-live, offline, and discovery fields. This subject only allows favoriting venues that are live.
 - the **superadmin console's** authentication realm, which is separate and belongs to the superadmin subject.
 
 ---
@@ -29,7 +32,8 @@ It deliberately does **not** cover:
 
 ### Entities
 
-- **User** — a person's global identity. One per person, platform-wide and tenant-free. The sole holder of sign-in credentials, **client** personal details, preferences, the notification inbox, and order history. **Every user is a customer.** The User does **not** carry employment fields.
+- **User** — a person's global identity. One per person, platform-wide and tenant-free. The sole holder of sign-in credentials, **client** personal details, preferences (including **favorites**), the notification inbox, and order history. **Every user is a customer.** The User does **not** carry employment fields.
+- **Favorite** — a customer's saved bookmark of exactly one **live Business**, held on that customer's **User**. At most one favorite exists per user per business.
 - **Owner** — the portfolio account for a user who owns businesses. One per user, created or updated when that user registers a business. Holds the **Companies** it controls, the **subscription**, and the **commission terms**.
 - **Company** — the **tax entity** owned by exactly one **Owner**: a group of one or more **Businesses** run as one legal unit, holding their **tax number**. Stock moves only within a Company.
 - **Employee** — a person's membership in one business (owned in full by the employees subject). The only way a user joins a tenant.
@@ -52,7 +56,7 @@ User ──1 Owner ──< Company ──< Business  (ownership: exactly one own
 - **Pending deletion** — the account state during the cancellation window between a user's deletion request and the soft delete that follows it.
 - **Reactivation** — restoring a soft-deleted account, which always requires confirmation through the sign-in email.
 
-**Job role** is introduced and owned by the employees subject; this subject reads job roles only to resolve base layers and mode eligibility.
+**Job role** is introduced and owned by the employees subject; this subject reads job roles only to resolve base layers and mode eligibility. Terms reused rather than redefined here for favorites: **Business**, **live** venue, and **discovery**.
 
 ---
 
@@ -142,26 +146,37 @@ Project Imperium issues a short-lived **access token** and a **refresh session**
 
 ### 3.12 Personal profile and preferences
 
-The **User** holds the person's **client personal detail** — name, sign-in email, phone, personal address, birth date, gender, nationality, image — and a **language preference**, so the UI language follows the person independently of the business's currency. **Employee tax number**, **national ID number**, and other employment identifiers live only on the **Employee** membership (employees subject), not on the User.
+The **User** holds the person's **client personal detail** — name, sign-in email, phone, personal address, birth date, gender, nationality, image — and a **language preference**, so the UI language follows the person independently of the business's currency. **Employee tax number**, **national ID number**, and other employment identifiers live only on the **Employee** membership (employees subject), not on the User. **Favorites** are a preference of the same User (§3.13).
 
-### 3.13 Inbox and order history
+### 3.13 Favorites
+
+- A **favorite** is a signed-in customer's bookmark of exactly one **Business**. Only a **live** (discoverable) venue may be favorited. Draft or offline venues cannot be added.
+- Favorites are **account-bound**: there is no anonymous or device-only favorites list. They travel with the User across sessions and devices.
+- A user may hold **at most one favorite per business**. Favoriting again does not create a duplicate. There is **no maximum** number of distinct venues.
+- **Add and remove are a toggle.** Unfavoriting removes the bookmark from the customer's list; the customer does not see a soft-delete trail for favorites.
+- A user may favorite **any live venue**, including venues they **own or work at** — every user is always a customer.
+- Customers add or remove favorites from the venue's **public profile** and from **discovery** cards where the control is shown, and browse the full list on the customer app's **Favorites** page. The list is ordered **most recently favorited first**.
+- While a favorited venue is **offline**, it is **hidden** from the customer's favorites list and quick access. When it is live again, it **reappears** if the favorite still exists. If the business is **gone** (closed / removed from the platform's active set), the favorite is **dropped**.
+- Favoriting **never** sends a notification or email — not to the venue, not to the customer. Venue reviews remain the ratings-and-comments subject's concern.
+
+### 3.14 Inbox and order history
 
 The **notification inbox** and **order history** belong to the **User** and are **shared across the customer and employee modes** — a person's history does not fork by mode.
 
-### 3.14 Account deletion
+### 3.15 Account deletion
 
 Deleting an account is **self-service** and **two-phase**:
 
 1. **Request → pending deletion.** The account enters a **pending-deletion** state for a **15-day grace window**. Sign-in **still works** during the window, precisely so the user can **cancel** the deletion; the account is otherwise not public.
-2. **Soft delete.** After the window, the **soft-delete marker** is applied and **sign-in is blocked**. The data is **retained** (see §3.16).
+2. **Soft delete.** After the window, the **soft-delete marker** is applied and **sign-in is blocked**. The data is **retained** (see §3.17).
 
-Deletion is **blocked until the user resolves every business they own** — each must be **transferred to another user** or **closed** first. Deletion **never cascades** into other people's records: Project Imperium does not silently destroy data that others depend on.
+Deletion is **blocked until the user resolves every business they own** — each must be **transferred to another user** or **closed** first. Deletion **never cascades** into other people's records: Project Imperium does not silently destroy data that others depend on. The user's favorites are retained with the account under the soft-delete convention and are not visible while sign-in is blocked.
 
-### 3.15 Reactivation
+### 3.16 Reactivation
 
-A soft-deleted account can be **reactivated**, but reactivation is **never completed inside the app alone** — it always requires **confirming a link sent to the account's sign-in email**, so knowing an email is never enough to reach a deleted account's data. Reactivation **restores the user, the customer identity, and their history**; memberships return **only if still valid** at their venues, and otherwise stay terminated (employees subject).
+A soft-deleted account can be **reactivated**, but reactivation is **never completed inside the app alone** — it always requires **confirming a link sent to the account's sign-in email**, so knowing an email is never enough to reach a deleted account's data. Reactivation **restores the user, the customer identity, their history, and their favorites** (subject to the live/offline rules in §3.13); memberships return **only if still valid** at their venues, and otherwise stay terminated (employees subject).
 
-### 3.16 Soft delete, platform-wide
+### 3.17 Soft delete, platform-wide
 
 Under Project Imperium's **soft-delete convention**, an identity — a **User**, **Owner**, **Company**, **Employee**, or **Business** — is never hard-deleted. Project Imperium marks it deleted and stamps the time, retains it, and can reactivate it; uniqueness is enforced among active identities, so reusing a soft-deleted email means **reactivating** that account, not creating a duplicate.
 
@@ -173,7 +188,7 @@ Under Project Imperium's **soft-delete convention**, an identity — a **User**,
 
 | Layer | Identity powers |
 | --- | --- |
-| **Customer** | Holds a **User**; signs in; uses the customer app; manages their own profile and account deletion. Always available to everyone. |
+| **Customer** | Holds a **User**; signs in; uses the customer app; manages their own profile, **favorites**, and account deletion. Always available to everyone. |
 | **Employee** | Everything a customer can do, plus business mode when the membership is eligible (planned working shift in window, not Suspended or Terminated). |
 | **Manager** | Everything an employee can do, plus assigning per-user capabilities and overriding a membership's layer. Always allowed into business mode when the membership allows. Hiring, HR, and termination belong to the employees subject. Schedule editing belongs to the schedules subject. |
 | **Admin** | Full venue control, including ownership actions; always allowed into business mode when the membership allows. |
@@ -195,4 +210,7 @@ Granted or revoked per user by **managers and above**, on top of the layer defau
 | Edit schedules / approve time-off | Schedules subject (managers and above) |
 | Delete one's own account | The account's user |
 | Reactivate a soft-deleted account | The account's user, by email-confirmed link |
+| Favorite or unfavorite a live venue | The signed-in user (customer identity) |
+| Browse own favorites list | The signed-in user |
+| See another user's favorites | No one |
 | Manage Owners, plans, and commission | The superadmin (superadmin subject) |
