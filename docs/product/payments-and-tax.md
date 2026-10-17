@@ -72,6 +72,7 @@ Terms reused rather than redefined here: **Business**, **Owner**, **Company**, *
 - A **staff tab** is settled by the staff on duty on it; a **self-service** instance is paid in full before it closes.
 - A bill may be settled by **one payment or several**. Each payment is recorded in its own right, and the bill keeps its payments as history.
 - A payment belongs to the **work day** of the instance it settles, in the business timezone, and its amount and tip feed that day's sales report.
+- A payment (and its bill) that changes after that work day's sales report has already been **closed** at least once carries an **edited** flag, matching the flag on the daily sales report — the sales-reports subject owns when the day must be reopened first.
 
 ### 3.2 The payment-method catalogue
 
@@ -145,7 +146,7 @@ Terms reused rather than redefined here: **Business**, **Owner**, **Company**, *
 
 - **Customer to venue.** What a customer pays for what they consume settles, through a connected provider where one is used, **directly to the venue**. It is the venue's money, in the venue's account: the platform records it and takes no part of it at source.
 - **Venue to Project Imperium.** The platform's own fees are the **monthly subscription** on the Owner and a **daily commission** on the day's total sales. The commission for a day is worked out when that day's **sales report closes** and is **charged separately** to the business — never netted out of what the venue's customers paid. No merchant account is involved in the platform's fees.
-- Which subscription a venue's Owner holds, and the commission its plan fixes, are the superadmin and subscription subjects' concern; how a day's commission is worked out is the reporting subject's. This subject owns only the shape of the two flows.
+- Which subscription a venue's Owner holds, and the commission its plan fixes, are the superadmin and subscription subjects' concern; how a day's commission is worked out at daily close is the sales-reports subject's. This subject owns only the shape of the two flows.
 
 ### 3.11 Retention
 

@@ -22,7 +22,7 @@ It deliberately does **not** cover:
 - the **sales point** — types, channels, and instances belong to the sales-points-and-instances subject. This subject uses a point as a **routing target** and as the place that names its receipt printer.
 - **business goods and menu structure** — categories and subcategories belong to the business-goods subject. This subject routes by them.
 - **billing and payment** — settlement belongs to the payments-and-tax subject. This subject prints the customer receipt and bill those subjects produce.
-- the **daily sales report close** — the business-reports subject owns closing the day; this subject states the fulfilment sweep that close triggers.
+- the **daily sales report close** — the sales-reports subject owns closing the day; this subject states the fulfilment sweep that close triggers.
 - **notifications and emails** — their subjects own delivery; this subject names the print-failure condition that notifies managers.
 - **hardware sales or lock-in** — Project Imperium sells no printers or screens and requires no brand; the venue brings its own devices.
 
@@ -124,7 +124,7 @@ Terms reused rather than redefined here: **Business**, **Batch**, **Identificati
 
 ### 3.10 Daily close sweep
 
-- When the **daily sales report closes**, every fulfilment slice for that business day that is not yet **Delivered** is moved to **Delivered** (advancing through Preparing and Ready as needed) so queues are clear. The business-reports subject owns the close; this subject owns that fulfilment consequence.
+- When the **daily sales report closes**, every fulfilment slice for that business day that is not yet **Delivered** is moved to **Delivered** (advancing through Preparing and Ready as needed) so queues are clear. The sales-reports subject owns the close; this subject owns that fulfilment consequence.
 
 ### 3.11 Printer lifecycle
 

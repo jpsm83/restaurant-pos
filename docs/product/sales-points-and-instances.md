@@ -21,7 +21,7 @@ It deliberately does **not** cover:
 - the **reservation flow** — the booking, its lifecycle, and no-show handling belong to the reservations subject. This subject owns the **reservation link** a seated instance carries and the **reserved hold** a point may show.
 - **delivery configuration** — enabling delivery, the radius, the minimum order, and the windows belong to the business subject; this subject owns the virtual delivery point those settings produce.
 - **printer routing** — the printers-and-screens subject owns how a point routes tickets; this subject only names the point as a routing target.
-- the **daily sales report** — the business-reports subject owns it; this subject owns the work-day anchor it opens on.
+- the **daily sales report** — the sales-reports subject owns it; this subject owns the work-day anchor it opens on.
 - **notification, email, and ticket delivery** — their own subjects own delivery; this subject names the triggers.
 - **inventory effects** — the inventories subject owns what a sold order consumes.
 
@@ -120,8 +120,8 @@ Terms reused rather than redefined here: **Business**, **Order**, **Business goo
 ### 3.10 The work day
 
 - Every instance belongs to the **work day** it opened in — the business-local calendar day — even if it stays open past midnight.
-- The **first instance of a work day** opens that day's daily sales report; the business-reports subject owns the report itself.
-- A work day's report closes only once no instance on that day has open orders.
+- The **first instance of a work day** opens that day's daily sales report; the sales-reports subject owns the report itself.
+- Closing that work day's daily sales report is blocked while any instance on that day still has open orders; managers close the report under the sales-reports subject's rules.
 
 ---
 

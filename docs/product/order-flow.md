@@ -53,7 +53,7 @@ Terms reused rather than redefined here: **Business**, **Sales point**, **Sales 
 - Every sitting uses the same **lifecycle stages**: **Open**, **Build & send**, **Fulfil**, **Bill**, **Settle**, and **Close**. Surfaces differ in **who acts** and in **stage order**, not in a separate stage catalogue.
 - A **staff tab** opens first, may loop **Build & send** and **Fulfil** many times, then **Bill**, **Settle**, and **Close**.
 - A **self-service** sitting has no staff **Bill** status: the customer **builds** a basket, **Settles** (pay-to-commit) which **Opens** the instance and **Closes** it for billing in the same step, then **Fulfil** runs until handover. Payment is complete before the kitchen starts; venue work after pay is fulfilment only.
-- The first sales instance of a work day opens that day's daily sales report; the business-reports subject owns the report.
+- The first sales instance of a work day opens that day's daily sales report; the sales-reports subject owns the report.
 
 ### 3.2 To-go packaging
 

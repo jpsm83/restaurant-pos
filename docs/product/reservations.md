@@ -115,7 +115,7 @@ A reservation's status is one of:
 - The **customer** may cancel while **Pending**, **Awaiting deposit**, or **Reserved** (before arrival / seating).
 - **Host and above** may cancel at any pre-seated status.
 - Once **Seated**, cancel is not used; the sitting ends through each linked tab, and the reservation becomes **Completed** when all linked tabs close.
-- If a **deposit was paid** and the **venue** cancels, the deposit is **refunded**. If the **customer** cancels after **Reserved**, or the booking is marked **No-show**, the deposit is **forfeited to the business**, unless Host and above choose a manual refund.
+- If a **deposit was paid** and the **venue** cancels, the deposit is **refunded**. If the **customer** cancels after **Reserved**, or the booking is marked **No-show**, the deposit is **forfeited to the business**, unless Host and above choose a manual refund. A forfeiture feeds that work day's **forfeiture channel bucket** on the daily sales report (the sales-reports subject owns the bucket).
 - When the booking **Completes**, any **unused remaining deposit credit** is **refunded** to the guest (unless it was already forfeited under cancel or no-show rules).
 
 ### 3.7 Table assignment (one or many points)

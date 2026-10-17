@@ -106,7 +106,7 @@ Terms reused rather than redefined here: **Business**, **Order**, **Bill**, **Pa
 
 - A business sets its **gift-card configuration**: the **minimum card value** and the **validity period**.
 - The **Gift card tax rate** is a category in the business's tax configuration, which the payments-and-tax subject owns; a paid card's purchase is taxed at it.
-- In the **daily report**, a **Gift card** payment appears in its own **payment-method breakdown** column; a paid card's purchase appears as a sale and a granted card as an invitation; and a redemption adds no new revenue.
+- In the **daily sales report**, gift-card activity accumulates in the **gift-card channel bucket** (paid issues, granted invitations, and redemptions) and a **Gift card** payment also appears in the **payment-method breakdown**; a paid card's purchase appears as a sale and a granted card as an invitation; a redemption adds no new revenue. **Expiry forfeiture** accumulates in the daily report's **forfeiture channel bucket**. The sales-reports subject owns those buckets.
 
 ---
 

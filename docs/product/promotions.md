@@ -22,7 +22,7 @@ It deliberately does **not** cover:
 - **how an order prices and records a discount** — the price and cost an order carries, the promotion attached to it, the repricing of an open tab, the moment a discount becomes final, and the **manual discount** a manager may apply instead belong to the orders subject. This subject defines the rule that order applies.
 - **the menu and its categories** — the business goods a venue sells and the **subcategory tree** a promotion targets belong to the business-goods subject. This subject reads that tree when it scopes a promotion.
 - **gift cards** — a gift card's issuance, balance, and redemption are the gift-cards subject's concern; a gift card is a payment instrument, **not** a promotion.
-- **promotion reporting and metrics** — the promotion dimension, the promotion sales-mix and discount KPIs, and how a promotion is presented in the daily, weekly, and monthly reports belong to the business-metrics and business-reports subjects.
+- **promotion reporting and metrics** — the promotion dimension, the promotion sales-mix and discount KPIs, and how a promotion is presented in reports belong to the business-metrics subject (definitions) and the sales-reports and business-reports subjects (daily vs weekly/monthly presentation).
 - **delivering promotion messages** — the inbox broadcast a venue's customers receive when a promotion's window begins belongs to the notifications subject, and its email copy to the emails subject.
 - **billing and tax** — the payments-and-tax subject owns how a discounted bill settles and how tax is computed.
 - the **order lifecycle** — voids, invitations, cancellations, transfer, and the bill belong to the orders subject.
@@ -106,7 +106,7 @@ Terms reused rather than redefined here: **Business**, **Business good**, **Orde
 
 ### 3.8 Reporting, metrics, and engagement
 
-- The **promotion an order carries** is retained, so reporting attributes the order's discount to the promotion across the promotion dimension and computes the promotion sales mix, promotion discount rate, and promotion ROI proxy the business-metrics and business-reports subjects define.
+- The **promotion an order carries** is retained, so reporting attributes the order's discount to the promotion across the promotion dimension and computes the promotion sales mix, promotion discount rate, and promotion ROI proxy the business-metrics subject defines and the sales-reports and business-reports subjects present.
 - When a promotion's **active window begins**, Project Imperium sends the venue's related customers a **Promotion** engagement message; the notifications and emails subjects own its delivery. An **edit or re-enable does not re-broadcast** — only a window beginning does.
 
 ---

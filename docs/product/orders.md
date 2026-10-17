@@ -131,11 +131,12 @@ Terms reused rather than redefined here: **Business**, **Sales instance**, **Sal
 - A **held** batch is sent on its own (never mixed with a ready-to-make batch), waits at the **end of each affected prep area's ticket queue**, and, when an **employee on the tab releases** it, joins the **end of that area's ready-to-make queue**.
 - An **employee on the tab** may mark an order **don't make** while taking it. A don't-make order needs no reason and is treated as **done**: it is **charged normally** and its stock is **deducted** like any other.
 - A batch whose orders are **all** don't-make is fully **Delivered** at once, skipping the kitchen and delivery surfaces.
-- When the **daily sales report closes**, any slice still not Delivered for that business day is moved to Delivered (through Preparing and Ready as needed) so queues are clear — the printers-and-screens and business-reports subjects state that sweep.
+- When the **daily sales report closes**, any slice still not Delivered for that business day is moved to Delivered (through Preparing and Ready as needed) so queues are clear — the printers-and-screens and sales-reports subjects state that sweep.
 
 ### 3.10 The bill
 
 - The **bill** of a sales instance is the **aggregation of its batches**. Void and invitation orders **remain listed**, flagged and uncharged.
+- A bill that changes after its work day's sales report has already been **closed** at least once carries an **edited** flag (alongside the matching flag on affected payments and on the daily sales report). Changing such a bill requires that day to be **reopened** first — the sales-reports subject owns reopen.
 - **Tips** are optional and are taken at settlement on a payment; they are owned by the payments-and-tax subject. This subject records none.
 - Settlement, splitting, and payment are the payments-and-tax subject's concern; this subject supplies the billable lines it settles.
 

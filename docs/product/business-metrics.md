@@ -18,7 +18,7 @@ This subject covers the **numbers a venue measures itself by** — the financial
 
 It deliberately does **not** cover:
 
-- the **daily, weekly, and monthly report** structures, buckets, aggregation, closing, and rendering — the business-reports subject owns those; this subject defines the metrics and targets those reports compare against;
+- the **daily, weekly, and monthly report** structures, buckets, aggregation, closing, and rendering — the sales-reports subject owns the daily report; the business-reports subject owns the weekly and monthly reports; this subject defines the metrics and targets those reports compare against;
 - the **derivation of inventory variance and supplier-good waste** — the inventories subject owns how usage, deviation, variance, and waste are computed; the supplier-goods subject owns the **budget impact** a good carries. This subject owns the thresholds waste is compared against and the metrics that name it;
 - the **raw sales, order, labour, and inventory data** the inputs are drawn from — the orders, time-control, and inventories subjects own those;
 - the **business profile, currency, and go-live** — the business subject owns those; metrics belong to a business's own configuration but are documented here;
