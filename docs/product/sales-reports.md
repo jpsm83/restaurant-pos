@@ -12,14 +12,17 @@ This subject covers the **daily sales report**: how a venue's one-day activity i
 - **opening** on the first sales instance of the work day;
 - the **per-employee** and **channel** buckets and the venue's **business totals**;
 - the **operational dimension breakdowns** for the day;
-- the **open / closed / reopened** lifecycle, including close preconditions, lock, fulfilment sweep, and commission finalisation;
+- the **open / closed / reopened** lifecycle, including close preconditions, lock, and fulfilment sweep;
+- a **day-level commission estimate** (finalisation and collection belong to the weekly business report);
+- **download/export** of the entire daily report;
 - **bill-driven recalculation** and the **edited** flags on the report and on amended bills and payments;
 - **reopen** with a mandatory reason, and how that reason and amendment cascade into weekly and monthly business reports.
 
 It deliberately does **not** cover:
 
 - the **weekly and monthly business reports**, their target-vs-actual comparison, and the report-ready signal — the business-reports subject owns those; this subject supplies the closed (and amended) dailies they aggregate;
-- the **definition, units, formulas, dimensions, and benchmarks of the metrics themselves** — the business-metrics subject owns those; this subject presents the day's operational figures using those definitions (including **total sales** as the commission base);
+- the **definition, units, formulas, dimensions, and benchmarks of the metrics themselves** — the business-metrics subject owns those; this subject presents the day's operational sales figures using those definitions;
+- **platform commission finalisation and collection** — the business-reports subject owns those at weekly close; this subject only shows a day-level **estimate**;
 - the **raw sales, order, payment, labour, and stock data** the report is built from — the orders, payments-and-tax, sales-points-and-instances, and related subjects own those; this subject only aggregates them;
 - **cash drawer or tip-cash counting** at close — out of scope for this subject; close does not require a cash attestation;
 - the **delivery of notifications** — the notifications subject owns inbox and channels; this subject raises **no** daily report-ready or closed signal;
@@ -40,15 +43,16 @@ It deliberately does **not** cover:
 - **Work day** — the business-local calendar day, in the venue's timezone, that a sales instance belongs to (the day it opened). The daily sales report is scoped to one work day.
 - **Report state** — where the daily report is in its lifecycle: **open**, **closed**, or **reopened**.
 - **Open** — the report for a work day that has **never been closed**; figures recalculate continuously from bills and payments.
-- **Closed** — the day is locked. Figures do not change until the report is reopened. Commission for the day has been finalised.
+- **Closed** — the day is locked. Figures do not change until the report is reopened.
 - **Reopened** — a previously closed day unlocked for further bill and payment changes. Distinct from **open**: the day had already been closed at least once. Figures recalculate continuously again until the next close.
 - **Bucket** — a group the day's activity is accumulated into: a **per-employee** bucket or a **channel bucket**.
 - **Channel bucket** — a dedicated accumulation for a named money path that is not staff-taken dine-in attribution: **delivery**, **self-ordering**, **kiosk**, **gift-card**, or **forfeiture**.
 - **Business totals** — the day's whole-venue figures, as distinct from per-bucket and per-dimension figures.
 - **Edited flag** — a durable marker that a daily report, bill, or payment was amended after that work day had already been closed at least once. It survives the subsequent close.
 - **Reopen reason** — the mandatory, audited explanation a manager supplies when reopening a closed day; carried onto weekly and monthly reports that absorb the amendment.
-- **Close** — lock the day: block further changes until reopen, run the fulfilment sweep for that work day, and finalise the day's platform commission.
+- **Close** — lock the day: block further changes until reopen, and run the fulfilment sweep for that work day.
 - **Reopen** — unlock a closed day so belonging bills and payments may change again; moves the report to **reopened**.
+- **Commission estimate** — a day-level preview of platform commission on that day's commissionable sales; **not charged**. Finalisation and automatic collection happen when the weekly business report closes.
 
 Terms reused from other subjects rather than redefined here: **business**, **sales instance**, **sales point**, **order**, **bill**, **payment**, **guest count**, **covers**, **total sales**, **net revenue**, **cost of goods sold**, **tip**, **void**, **invitation**, **gift card**, **reservation deposit**, **fulfilment slice**, **managers and above**, and the metric names defined by the business-metrics subject.
 
@@ -84,7 +88,7 @@ Terms reused from other subjects rather than redefined here: **business**, **sal
 
 ### 3.4 Business totals and dimensions
 
-- **Business totals** for the day include at least: total sales, net revenue, tips, cost of goods sold, profit, customers served (covers), average spend per customer, void and invited value, and — once closed — the platform's commission for the day.
+- **Business totals** for the day include at least: total sales, net revenue, tips, cost of goods sold, profit, customers served (covers), average spend per customer, void and invited value, and a **commission estimate** for the day (never a charged amount).
 - **Customers served (covers)** is the sum of **guest counts** on sales instances that belong to that work day, including self-ordering, kiosk, and delivery instances.
 - The daily report's **dimension breakdowns** are the operational set only: **employee**, **sales point/channel**, **payment method**, and **menu item**.
 - The **sales point/channel** breakdown includes ordinary sales points for staff-taken activity and the dedicated channels **delivery**, **self-ordering**, **kiosk**, **gift-card**, and **forfeiture**.
@@ -100,21 +104,20 @@ Terms reused from other subjects rather than redefined here: **business**, **sal
 - Closing does **not** require a cash-drawer or tip-cash count.
 - On close, Project Imperium:
   - moves the report to **closed** and **locks the day** — belonging bills and payments cannot change until reopen;
-  - runs the **fulfilment sweep** (§3.6);
-  - **finalises the day's commission** (§3.7).
+  - runs the **fulfilment sweep** (§3.6).
 - A first-pass close (the day was never closed before) does **not** set the edited flag.
+- Closing the day does **not** charge platform commission; the commission estimate remains an estimate until the weekly business report closes.
 
 ### 3.6 Fulfilment sweep on close
 
 - When the daily sales report **closes**, every fulfilment slice for that business work day that is not yet **Delivered** is moved to **Delivered** (advancing through Preparing and Ready as needed) so queues are clear.
 - The printers-and-screens and orders subjects own fulfilment status mechanics; this subject owns that close triggers that sweep.
 
-### 3.7 Commission at close
+### 3.7 Commission estimate
 
-- The platform's **commission** for the day is worked out when the report **closes**, as plan rate × that day's **total sales** (the business-metrics definition), with voids, refunds, and other payment history already reflected in that total.
+- The daily report shows a **commission estimate**: plan rate × that day's **commissionable sales**, using the same base the business-reports subject uses for the week — **paid sales after voids and refunds**, plus **paid gift-card issues**, across **all payment methods**; **invitations**, **granted** gift cards, gift-card **redemptions**, and **forfeitures** are excluded.
 - The rate is **fixed by the subscription plan** and is not editable on the report.
-- Commission is **charged separately** to the business — never netted out of what customers paid, and never routed through a merchant account.
-- The **charged** commission is the amount finalised on close (and re-finalised on a later close after reopen).
+- The estimate is **never charged** from the daily report. **Finalisation, owing, and automatic collection** happen when the **weekly business report closes** (business-reports subject).
 
 ### 3.8 Reopen, bill edits, and the edited flag
 
@@ -125,7 +128,7 @@ Terms reused from other subjects rather than redefined here: **business**, **sal
   - that **bill** and that **payment** carry an **edited** flag for easy identification;
   - the **daily sales report** also carries an **edited** flag.
 - The edited flags and the reopen reason are **durable**: they survive the subsequent close.
-- After reopen, the manager must **close** again to lock the day, re-run the fulfilment sweep as needed, and re-finalise commission.
+- After reopen, the manager must **close** again to lock the day and re-run the fulfilment sweep as needed. The day's commission estimate recalculates with the figures; any already-closed weekly report that absorbed the day is re-finalised by the business-reports subject.
 - A day closed once with no prior close does **not** get the edited flag — only days that went **closed → reopened → (bill or payment change) → closed** again.
 
 ### 3.9 Refunds and payment history
@@ -139,10 +142,16 @@ Terms reused from other subjects rather than redefined here: **business**, **sal
 - When a closed daily is reopened, amended through bill or payment changes, and closed again:
   - any weekly or monthly report that already included that day is **automatically recalculated**;
   - those roll-ups **remain closed** (amended closed records);
-  - they **carry the same reopen reason** and show that they were **updated from an edited daily**, so the amendment is justified end-to-end.
+  - they **carry the same reopen reason** and show that they were **updated from an edited daily**, so the amendment is justified end-to-end;
+  - a closed weekly report's **commission is re-finalised** under the business-reports subject's rules.
 - There is no separate manager reopen of each roll-up for this path; the daily's reopen reason is the justification.
 
-### 3.11 No daily notifications
+### 3.11 Export
+
+- Managers and above (and employees granted view access) can **download/export the entire** daily sales report.
+- Export format and on-screen layout are outside this subject; the capability to take the whole report away is in scope.
+
+### 3.12 No daily notifications
 
 - The daily sales report raises **no** report-ready and **no** closed notification. Closing the day is an operational act for managers on duty.
 - Weekly and monthly report-ready signalling belongs to the business-reports subject.
@@ -167,6 +176,7 @@ Job roles follow the usual floor hierarchy: **managers and above** close and reo
 | Activity | Who |
 | --- | --- |
 | View the daily sales report and its breakdowns | Managers and above; employees with the per-user capability to view the daily sales report |
+| Download/export the daily sales report | Whoever may view the daily sales report |
 | Close the daily report | Managers and above |
 | Reopen the daily report (mandatory reason) | Managers and above |
 | Edit report figures directly | Nobody — figures are derived only |

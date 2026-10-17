@@ -126,7 +126,7 @@ Waste thresholds are **five ceilings**, one per **budget-impact level**, applied
 - Project Imperium compares each **configured target** against its **actual** for the report period and records the **target**, the **actual**, the **delta**, and whether the metric is **over** or **under** target.
 - The comparison is **derived** and **report-owned**; it is never a client-settable field. It is computed at report aggregation time and retained with the report.
 - Comparison coverage:
-  - the **weekly** business report compares the operational cost targets — **food**, **beverage**, and **labour** — plus the **waste thresholds**; **fixed cost is excluded** from the weekly view;
+  - the **weekly** business report compares the operational cost targets — **food**, **beverage**, and **labour**; **fixed cost** and the **waste thresholds** are excluded from the weekly view (waste waits for the monthly inventory close);
   - the **monthly** business report compares **all four cost targets** plus the **waste thresholds**.
 - A target that has not been set is not compared. Because defaults are seeded at creation (§3.8), a venue begins with every target configured and may still clear any it does not want to police.
 - Only **targets and waste thresholds** are policed. Every other KPI is **read-only** and, where a benchmark exists, is shown against that benchmark **for reference only**.

@@ -21,8 +21,8 @@
 21 - employees
 22 - schedules
 23 - time control
-24 - 
-25 - 
+24 - sales report
+25 - business report
 26 - 
 27 - 
 28 - 

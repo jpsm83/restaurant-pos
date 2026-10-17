@@ -26,7 +26,7 @@ It deliberately does **not** cover:
 - the **sales point and sales instance** — opening, the one-open rule, self-service instances, and the pay-in-full-before-close behaviour of a self-service instance belong to the **sales-points-and-instances** subject.
 - the **business good beyond its tax category** — the menu, its categories, selling price, derived cost, and allergens belong to the **business-goods** subject; this subject assigns each good a **tax category** and reads the price it carries.
 - the **business profile** — the currency, the address, and the tax number held on the venue's Company belong to the **business** subject; this subject stores the venue's **tax configuration**.
-- the **subscription and commission** — the plan catalogue, the commission rates, and the charging of the platform's fees belong to the **superadmin** and **subscription** subjects, and the commission a day owes is worked out by the **reporting** subject. This subject names the money flows only.
+- the **subscription and commission** — the plan catalogue, the commission rates, and the charging of the platform's fees belong to the **superadmin** and **subscription** subjects, and the commission a **reporting week** owes is worked out and collected by the **business-reports** subject at weekly close. This subject names the money flows only.
 - the **gift-card instrument** — issuance, value, lifecycle, and redemption rules belong to the **gift-cards** subject; this subject owns the **Gift card** payment method and the **Gift card** tax category a card's purchase is taxed under, and records a redemption as a settlement.
 - **receipts, notifications, and emails** — delivering a receipt or a refund decision belongs to the **notifications** and **emails** subjects.
 - **supplier invoices and their tax** — amounts payable to a supplier and supplier invoicing are not part of Project Imperium.
@@ -57,7 +57,7 @@ It deliberately does **not** cover:
 - **Refund request** — a request to reverse settled money, raised by a customer or a staff member and decided by the manager on duty.
 - **Tax category** — one of the fixed set a business rates: **Food**, **Non-alcoholic drinks**, **Alcoholic drinks**, **Merchandise**, **Tobacco**, **Gift card**, and **Tip**.
 - **Tax-inclusive price** — a price a venue sets that already contains its tax; the customer always pays the figure shown, and the tax is the part of it that is owed.
-- **Commission** — the platform's fee on a day's sales, owed by the venue and charged separately from what its customers pay.
+- **Commission** — the platform's fee on a reporting week's **commissionable sales**, owed by the venue and collected automatically at weekly report close, separately from what its customers pay.
 
 Terms reused rather than redefined here: **Business**, **Owner**, **Company**, **Employee**, **Customer**, **Bill**, **Order**, **Sales instance**, **Business good**, **Staff tab**, **self-service instance**, **business currency**, **on duty**, **Subscription**, **Gift card**, **superadmin**, and **soft delete**.
 
@@ -145,8 +145,8 @@ Terms reused rather than redefined here: **Business**, **Owner**, **Company**, *
 ### 3.10 The two money flows
 
 - **Customer to venue.** What a customer pays for what they consume settles, through a connected provider where one is used, **directly to the venue**. It is the venue's money, in the venue's account: the platform records it and takes no part of it at source.
-- **Venue to Project Imperium.** The platform's own fees are the **monthly subscription** on the Owner and a **daily commission** on the day's total sales. The commission for a day is worked out when that day's **sales report closes** and is **charged separately** to the business — never netted out of what the venue's customers paid. No merchant account is involved in the platform's fees.
-- Which subscription a venue's Owner holds, and the commission its plan fixes, are the superadmin and subscription subjects' concern; how a day's commission is worked out at daily close is the sales-reports subject's. This subject owns only the shape of the two flows.
+- **Venue to Project Imperium.** The platform's own fees are the **monthly subscription** on the Owner and a **weekly commission** on the reporting week's **commissionable sales** (paid sales after voids and refunds, plus paid gift-card issues, across all payment methods; invitations, granted gift cards, gift-card redemptions, and forfeitures excluded). The commission for a week is **finalised, owed, and paid automatically** when that week's **business report closes** — never netted out of what the venue's customers paid. No merchant account is involved in the platform's fees. Until that close, daily and open weekly reports may show a **commission estimate** only.
+- Which subscription a venue's Owner holds, and the commission its plan fixes, are the superadmin and subscription subjects' concern; how a week's commission is worked out and collected at weekly close is the business-reports subject's. This subject owns only the shape of the two flows.
 
 ### 3.11 Retention
 
