@@ -81,7 +81,7 @@ Project Imperium serves six personas. Five map to one of the four **base access 
 - **Manager** — runs day-to-day operations: schedules, purchasing, inventory, promotions, and report closure. Managers and above assign job roles and capabilities.
 - **Employee** — delivers service (waiter, bartender, chef, cashier, host, …). Access to the business app is gated by the **schedule**.
 - **Customer** — the final consumer. **Every user is a customer**, even one who registered a business. Uses the Customer app to discover venues, order, book, and rate.
-- **Superadmin** — the platform operator. Runs the **application business**: accounts, plans, and platform analytics. Never operates a venue's day-to-day service.
+- **Superadmin** — Imperium staff operating the **application business** from a **separate Superadmin console** (own web app and auth realm): paying accounts, plans, flags, support, and portfolio analytics. Never operates a venue's day-to-day service; never a mode on the Customer \| Business chooser.
 
 ---
 
@@ -281,14 +281,15 @@ The Customer app is the free, **public default** side of Project Imperium — th
 
 ## 9. The Superadmin console
 
-The Superadmin console runs the **application business** — Project Imperium itself — not any venue. It is a separate surface with its own authentication realm (separate credentials, MFA, and access restrictions), distinct from the business and customer sessions.
+The Superadmin console runs the **application business** — Project Imperium itself — not any venue. It is a **separate web app** with its own authentication realm (separate credentials, mandatory MFA, enrollment for Imperium staff), distinct from Customer and Business sessions and never offered as a third mode on the Customer \| Business chooser. Console operators hold console roles **Staff**, **Manager**, or **Owner** (Manager and console Owner share the same tools; console Owner marks ownership of the Imperium app).
 
-- **Owner account management.** Superadmin manages **Owners** as the paying accounts: subscription, commission terms, and account lifecycle (approve/suspend/resume/delete), with visibility into the Businesses beneath each Owner.
-- **Plan catalog.** Management of the subscription plan catalog and assignment of plans to Owners.
-- **Commission configuration.** The commission rate per plan.
-- **Feature flags and platform configuration.**
-- **Support tooling**, including scoped impersonation for debugging a venue.
-- **Platform-wide analytics** across Owners and venues.
+- **Owner account management.** Superadmin manages paying **Owners**: subscription and commission terms, suspend/resume, soft delete (no hard delete), visibility into Companies and Businesses beneath each Owner. Ordinary go-live is not Superadmin-approved — required fields and paid-in-full on a paid plan belong elsewhere; late payment uses notify → deadline → automatic suspend.
+- **Plan catalogue.** Management of the subscription plan catalogue and force-assignment of plans to Owners. Term changes email affected Owners, who must accept or decline and terminate.
+- **Commission configuration.** The commission rate per plan (no one-off per-Owner rates).
+- **Feature flags** platform-wide and per-Owner.
+- **Support tooling**, including scoped impersonation (one User, one Business, time-bounded, audited) and the review abuse-removal queue — not a general helpdesk.
+- **Payment-provider catalogue** maintenance (which providers venues may connect).
+- **Portfolio analytics** across Owners and venues (not day-of POS detail).
 - Superadmin manages **Owners and their Businesses**; it never operates a venue's day-to-day service.
 
 ---
