@@ -54,7 +54,7 @@ These terms are used with exactly these meanings throughout Project Imperium. Do
 | **Inventory** | The stock ledger per business: a **dynamic system count** per supplier good, **physical counts** with **deviation** per **count period**, and a monthly **resume**. |
 | **Promotion** | A venue-defined price rule scoped to menu subcategories and a time window, applied to orders in real time. |
 | **Reservation** | A table booking made by a customer or staff, optionally with a deposit at acceptance; hands off into live service across one or more sales points. |
-| **Rating / Comment / Favorite** | Venue-level customer feedback and saved venues. |
+| **Rating / Comment / Favorite** | Venue-level customer **review** (score and optional text) and saved-venue favorites. Reviews are owned by the ratings-and-comments subject; favorites with the users subject. |
 | **Gift card** | A bearer budget card a business issues as a virtual card by email, identified by a QR code and a card number, spent whole in one settlement at its issuing venue before it expires. |
 | **Shift session** | The actual, recorded attendance for one employee on one shift (sign-in/out, breaks), projected from the **time-clock ledger**. |
 | **Time-clock ledger** | The append-only attendance event record (sign-in, breaks, unlock, sign-out, corrections) from which shift sessions are projected. |
@@ -257,9 +257,8 @@ The Customer app is the free, public side of Project Imperium — the venue's cu
 - **Discovery.** Browse venues by cuisine type, categories, rating, and location (geo radius), and view a venue's public profile and menu.
 - **Ordering across every service surface**: **QR self-ordering** at a table (delivered to the QR point), **kiosk** ordering (counter pickup), and **delivery** (to an address), with optional **to-go packaging** on dine-in and self-service. Orders can be paid **in-app** via third-party providers.
 - **Reservations.** Request a table (when the venue accepts bookings), pay a deposit when asked, and track status.
-- **Ratings.** Give a venue a **0–5 star** rating, optionally tied to an order.
-- **Comments.** Leave a **text review on the venue**.
-- **Favorites.** Save **venues** for quick access.
+- **Ratings and comments.** After a closed, settled sales instance, leave a venue **review**: a **0–5 star** score with optional text. Invites arrive via the receipt QR, a delivery review email, or order history. The ratings-and-comments subject is the source of truth.
+- **Favorites.** Save **venues** for quick access (per-user bookmarks; owned with the users subject).
 - **Gift cards.** Buy a gift card for themselves or for someone else, receive and hold virtual cards identified by QR code and card number, and redeem them at the issuing venue before expiry.
 - **Order history and receipts**, delivered in-app and by email.
 - **Notifications** in the same inbox model, including venue engagement messages.

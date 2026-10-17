@@ -61,7 +61,7 @@ Terms reused from the product overview's core vocabulary rather than defined her
 
 - Every notification is stored in each recipient's inbox **first**, and that stored copy is the **source of truth**.
 - A recipient who is **online** also receives it immediately by **live push**. A recipient who is **offline** receives it the moment they return, from the stored copy; nothing is lost.
-- **Email** is added for: an order confirmation/receipt, a reservation pending, deposit-requested, and decision message (to the customer), a reply in a customer conversation (to the customer), a business-profile change (to managers), and a venue's engagement broadcasts (to customers who have not muted them). The remaining operational alerts — low-stock, negative-stock, report-ready, overtime, awaiting-table, and print-failure — are **in-app only**.
+- **Email** is added for: an order confirmation/receipt, a reservation pending, deposit-requested, and decision message (to the customer), a reply in a customer conversation (to the customer), a **business reply to a review** (to the reviewing customer), a **delivery review invite** (to the attributed delivery customer), a business-profile change (to managers), and a venue's engagement broadcasts (to customers who have not muted them). The remaining operational alerts — low-stock, negative-stock, report-ready, overtime, awaiting-table, print-failure, new review, and review removal decided — are **in-app only**.
 - A communication failure **never blocks** the underlying business action: a notification is a side effect of the action, not a precondition for it.
 
 ### 3.2 The inbox
@@ -92,6 +92,10 @@ Terms reused from the product overview's core vocabulary rather than defined her
 | Schedule changed | Each employee whose schedule entries were added, changed, or removed in the manager's editing session | In-app | Info | Once per employee when the manager leaves the schedules main page (batched across that employee's entries) |
 | Time-off request pending | The venue's managers and above | In-app | Info | Once |
 | Time-off request decided | The requesting employee | In-app | Info | Once |
+| New review | The venue's managers and above | In-app | Info | Once |
+| Business reply to a review | The reviewing customer | In-app + email | Info | Once per post or edit |
+| Review removal decided | The managers who requested removal | In-app | Info | Once |
+| Delivery review invite | The attributed delivery customer | In-app + email | Info | Once, three hours after handover if still unreviewed |
 
 - The **low-stock alert** lists the affected goods and fires when stock falls below a good's **minimum required**; detecting that condition belongs to the inventories and supplier-goods subjects.
 - The **negative-stock alert** fires when a good's stock on hand falls **below zero**, as a management-error signal that purchases or counts are missing; detecting that condition belongs to the inventories subject.
@@ -102,6 +106,7 @@ Terms reused from the product overview's core vocabulary rather than defined her
 - The **print-failure** notification fires when a print cannot be completed and no usable backup takes the job; detecting that condition belongs to the printers-and-screens subject.
 - The **schedule-changed** notification batches every add, change, or removal for one employee from a single schedules editing session into one ping when the manager leaves the schedules main page; detecting those edits belongs to the schedules subject.
 - The **time-off request pending** and **time-off request decided** notifications are raised by the schedules subject's request workflow.
+- The **new review**, **business reply to a review**, **review removal decided**, and **delivery review invite** events are raised by the ratings-and-comments subject.
 - No catalogued event carries the **Emergency** severity; it is reserved for a critical operational failure.
 
 ### 3.4 Venue engagement messages
@@ -147,9 +152,9 @@ Terms reused from the product overview's core vocabulary rather than defined her
 
 | Layer | Notification powers |
 | --- | --- |
-| **Customer** | Holds the inbox; receives notifications and conversations; may reply in a conversation sent to them; may mute engagement. Cannot start a conversation. |
+| **Customer** | Holds the inbox; receives notifications and conversations; may reply in a conversation sent to them; may mute engagement; receives business replies to their reviews and delivery review invites. Cannot start a conversation. |
 | **Employee** | Everything a customer can do; as staff, receives the direct messages the venue sends them and may reply. |
-| **Manager** | Everything an employee can do, plus publishing venue events and starting direct messages to staff and related customers. Receives the manager-targeted operational alerts, including overtime and sign-out requests when on duty. |
+| **Manager** | Everything an employee can do, plus publishing venue events and starting direct messages to staff and related customers. Receives the manager-targeted operational alerts, including overtime and sign-out requests when on duty, new reviews, and review-removal decisions. |
 | **Admin** | Everything a manager can do. |
 
 The owning user is an admin at every venue they own. Job roles and per-user capabilities follow the global model; this subject names only the entitlements that bear on notifications.
