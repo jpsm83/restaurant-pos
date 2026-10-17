@@ -25,6 +25,7 @@ It deliberately does **not** cover:
 - the **daily sales report close** — the sales-reports subject owns closing the day; this subject states the fulfilment sweep that close triggers.
 - **notifications and emails** — their subjects own delivery; this subject names the print-failure condition that notifies managers.
 - **hardware sales or lock-in** — Project Imperium sells no printers or screens and requires no brand; the venue brings its own devices.
+- **floor-plan placement** — where a printer or screen sits on a venue floor map belongs to the floor-plans subject. This subject owns creating and configuring those devices; a device may exist unplaced until a manager locates it on a floor.
 
 ---
 

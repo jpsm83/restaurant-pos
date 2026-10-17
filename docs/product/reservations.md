@@ -20,6 +20,7 @@ This subject owns the **reservation**: a booking for a party at one Business, it
 It deliberately does **not** cover:
 
 - the **sales point**, **reserved hold** mechanic, **one-open rule**, and **tab move** rules — the sales-points-and-instances subject owns the anchor of service. This subject owns the booking, which points it claims, and when a hold overrun returns the booking to awaiting table.
+- the **Host floor map** and floor-plan placement — the floor-plans subject owns the spatial Service → Host surface. This subject owns the richer booking and seating detail that Host opens onto a point.
 - the **orders** and **bill lines** on each tab — the orders subject owns them. Each linked tab runs its own order and payment flow.
 - **payment capture, change, and refunds** as platform payment mechanics — the payments-and-tax subject owns settlement. This subject owns that a deposit is recorded on the reservation and must appear as shared credit on linked tabs until applied at bill time.
 - **gift cards** — a reservation deposit is not a gift card.

@@ -69,7 +69,7 @@ Terms reused rather than redefined here: **Business**, **Sales point**, **Sales 
 
 ### 3.3 Dine-in — staff POS
 
-- An **on-duty employee** opens a **staff tab** on a served point from the POS or by scanning the point's QR, as the sales-points-and-instances subject defines (including reservation guests vs ordinary guests when a reserved hold is present).
+- An **on-duty employee** opens a **staff tab** on a served point from the POS (floor map on a wide viewport, or list/grid when narrow — the floor-plans subject) or by scanning the point's QR, as the sales-points-and-instances subject defines (including reservation guests vs ordinary guests when a reserved hold is present).
 - Staff **build drafts**, **send batches** (ready-to-make or held), and may send **many batches** over the sitting. Multi-course timing uses **held / release** and further sends alone.
 - Prep areas advance fulfilment; runners deliver stay items to the point and pack to-go items for handover at the table or counter as the sitting requires.
 - Staff may move the tab to **Bill** and **settle** even while some fulfilment slices are still in progress. Closing does not require every slice to be Delivered.

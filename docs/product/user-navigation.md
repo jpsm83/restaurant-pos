@@ -46,7 +46,7 @@ This subject introduces **no new persistent tenant entity**. It owns navigation 
 - **Venue tab** — a horizontal tab in business chrome that selects which **Business** (venue) is the active context when the person has more than one.
 - **Owner chrome** — extra controls on venue tabs that only an **Owner** sees for that venue (for example add venue, plan, company), distinct from an employee tab at a venue they only work at.
 - **Left menu** — the persistent vertical navigation rail in **Business** mode (and the separate rail in the **customer account area**).
-- **Service** — left-menu header for day-of operations destinations (POS and, when entitled, control screens and attendance).
+- **Service** — left-menu header for day-of operations destinations (POS, Host when entitled, and when entitled control screens and attendance).
 - **Manage** — left-menu header for administration destinations; **managers and above** only.
 - **Me** — left-menu header in Business for **self-only** destinations (own schedule, notifications, personal details) that are not admin data.
 - **Customer account area** — the signed-in customer's settings surface opened from the avatar while in Customer mode: profile, address, saved payment methods, email, notifications, and related account items, with its own left sidebar.
@@ -105,21 +105,24 @@ Terms reused rather than redefined here: **User**, **Business**, **Owner**, **Em
 
 #### Service
 
-- **Ordinary employees:** **POS** only under Service (unless a capability grants a control screen or attendance — see below).
-- **Managers and above:** **POS (floor)**, **Prep screens**, **Delivery screen**, **Customer pickup board**, and **Attendance** (present/scan flows as time-control defines).
+- **Ordinary employees:** **POS** only under Service (unless a capability or job role grants Host, a control screen, or attendance — see below).
+- **Managers and above:** **POS**, **Host**, **Prep screens**, **Delivery screen**, **Customer pickup board**, and **Attendance** (present/scan flows as time-control defines).
+- **Host** (job role) and above also see **Host** under Service when not already covered as managers.
 - **Ordinary employees** see Prep / Delivery / Pickup / Attendance under Service **only when** a per-user capability or job-role entitlement those feature subjects define grants that destination.
+- **POS** and **Host** use the venue's **floor plans** on a wide viewport (map with floor tabs) and fall back to **list/grid** on a narrow viewport — the floor-plans subject owns that behaviour. POS is the spatial home for opening sittings; Host is the spatial home for seating and reservation context.
 - Service destinations support **fullscreen**: hide normal desktop chrome, with a **small corner control** to restore the desktop layout. Manage pages stay in normal desktop chrome with the left rail.
 
 #### Manage
 
 - Visible to **managers and above** (and owners/admins) at that venue. Ordinary employees do **not** see Manage.
-- Under Manage, feature groups are:
+- Under Manage, feature groups and top-level items are:
 
   - **Venue** — profile, hours, delivery, go-live, and related venue configuration;
   - **People** — employees, full schedules, time-control administration as those subjects allow;
   - **Menu** — business goods, promotions;
   - **Supply** — suppliers, purchases, inventory;
   - **Service setup** — sales points, printers and screen configuration (day-of screens remain under Service);
+  - **Floor plans** — its **own top-level Manage** item: multi-floor layout editor (backgrounds and placement of sales points, printers, and screens). Not nested under Venue or Service setup; the floor-plans subject owns behaviour;
   - **Money** — payments and tax configuration, gift cards, reports and metrics.
 
 - Fine-grained screens and rules inside each group belong to the feature subjects.
@@ -154,9 +157,11 @@ This subject names destinations the chrome must be able to reach. Behaviour insi
 | Favorites, order history | Customer, signed-in |
 | Mode toggle | Signed-in chrome when eligible |
 | Manage home (business main) | Manager+ entering Business |
-| POS (floor) | Service → POS |
+| POS (floor map or list/grid) | Service → POS |
+| Host (floor map or list/grid) | Service → Host (Host and above) |
 | Prep / Delivery / Pickup screens | Service (when entitled) |
 | Attendance | Service (when entitled) |
+| Floor plans (layout editor) | Manage → Floor plans |
 | Manage feature groups (Venue, People, Menu, Supply, Service setup, Money) | Manage header |
 | My schedule / Notifications / Personal details | Me (Business) or account area (Customer) |
 | Venue tabs / owner chrome | Multi-venue Business |
@@ -190,6 +195,8 @@ Ordinary employees may gain individual **Service** destinations (control screens
 | See owner chrome on a tab | Owner of that venue |
 | Use Manage header | Managers and above at that venue |
 | Use Service → POS | Everyone in Business at that venue (as POS entitlements allow) |
+| Use Service → Host | Host and above |
+| Use Manage → Floor plans | Managers and above |
 | Use Service control screens / Attendance | Managers and above, or employees with the granting entitlement |
 | Use Me destinations | Everyone in Business |
 | Enter Service fullscreen | Anyone on a Service destination that offers it |

@@ -40,7 +40,8 @@ These terms are used with exactly these meanings throughout Project Imperium. Do
 | **User** | A person's global identity. **Every user is a customer**; some also hold business roles. |
 | **Employee** | A person's membership in a Business — the full per-venue employment record (job role(s), status, contract, pay, vacation, HR identifiers). Links a **User** to a **Business**; the User itself holds only client/global identity. |
 | **Customer** | A user acting as the final consumer (ordering, booking, rating). |
-| **POS** | Point of sale — the staff-facing surface where an employee selects a sales point, takes orders, and bills. One surface of the platform, distinct from self-ordering, kiosk, and delivery; never the whole product. |
+| **POS** | Point of sale — the staff-facing surface where an employee selects a sales point, takes orders, and bills. On a wide viewport its home is the venue **floor plan** map; on a narrow viewport it falls back to a list/grid. One surface of the platform, distinct from self-ordering, kiosk, and delivery; never the whole product. |
+| **Floor plan** | A named level or area of a venue (main floor, terrace, basement, …) with an optional uploaded or drawn **background** and **vector markers** placing sales points, printers, and screens. Many floors per business. The floor-plans subject owns layout; Service maps on POS and Host use it day-of. |
 | **Sales point** | A place a customer sits or is served — a **type** (Table, Room, Bar, Seat, Counter, Spot, Kiosk, the virtual **Delivery** point, or Other) plus the **channels** it accepts (dine-in, self-ordering, kiosk, delivery). Holds its QR code. |
 | **Channel** | How an order reached the venue — **dine-in**, **self-ordering**, **kiosk**, or **delivery**. A **sales point** declares which point-anchored channels it accepts. **To-go packaging** (stay vs packed to go) is not a channel; the order-flow subject owns it. |
 | **Sales instance** | An open session/tab at a sales point that groups the orders for that sitting. |
@@ -62,8 +63,8 @@ These terms are used with exactly these meanings throughout Project Imperium. Do
 | **Late lock** | After planned start, a non-management employee who has not signed in cannot scan until a manager unlocks them; the scan still records real time. |
 | **Entry window** | For a planned working shift, from 10 minutes before planned start until 2 hours after planned start — when a non-management employee may enter **business mode** to attempt duty. |
 | **Mode** | Whether a signed-in person is working in the **Customer** app or the **Business** app. Only two modes exist; there is no separate employee mode. |
-| **Service** (nav) | Business left-menu header for day-of destinations — POS, and when entitled control screens and attendance. |
-| **Manage** (nav) | Business left-menu header for administration groups. Managers and above. |
+| **Service** (nav) | Business left-menu header for day-of destinations — POS, Host when entitled, and when entitled control screens and attendance. |
+| **Manage** (nav) | Business left-menu header for administration groups and top-level items (including Floor plans). Managers and above. |
 | **Me** (nav) | Business left-menu header for self-only destinations (own schedule, notifications, personal details). |
 | **Daily / Weekly / Monthly report** | The aggregated sales and performance reports at each roll-up level. |
 | **Notification** | A message Project Imperium delivers to a person's inbox. An **operational** notification carries a **severity** — **Info**, **Warning**, or **Emergency** — while a venue **engagement** message carries a **kind** — **Message**, **Promotion**, **Birthday**, or **Event**. |
@@ -162,8 +163,8 @@ All times are stored in UTC and interpreted in the **business timezone**. Actual
 
 The Business app is the operational heart of Project Imperium. It comprises the **owner shell** (venue tabs across businesses) and, inside each venue, a persistent **left menu** with headers:
 
-- **Service** — day-of destinations: POS (and, when entitled, control screens and attendance). Ordinary employees see **POS** under Service unless a capability grants more.
-- **Manage** — administration groups (venue, people, menu, supply, service setup, money). **Managers and above**. Ordinary employees do not see Manage.
+- **Service** — day-of destinations: **POS** and, when entitled, **Host**, control screens, and attendance. Ordinary employees see **POS** under Service unless a capability or Host role grants more. POS and Host use floor-plan maps on a wide viewport and list/grid when narrow.
+- **Manage** — administration groups (venue, people, menu, supply, service setup, money) plus **Floor plans** as its own top-level item. **Managers and above**. Ordinary employees do not see Manage.
 - **Me** — self-only destinations (own schedule, notifications, personal details) for everyone in business mode.
 
 There is no separate product mode for administration; Manage and Service are menu headers inside business mode. The user-navigation subject owns the desktop chrome in full.
@@ -209,7 +210,8 @@ There is no separate product mode for administration; Manage and Service are men
 ### Service — sales points, sessions, orders, billing
 
 - **Sales points** represent where guests sit or are served: their **type** (Table, Room, Bar, Seat, Counter, Spot, Kiosk, the virtual Delivery point, or Other) and the **channels** they accept (dine-in and self-ordering on served points, kiosk, delivery). Each carries its **QR code** and printer routing.
-- **Opening** a sales point (from the POS or by scanning its QR) opens a **sales instance**. A served point holds **at most one open staff tab at a time**, and an open staff tab blocks customer self-ordering there; the self-service channels (self-ordering, kiosk, delivery) pay to close and may run several at once. Staff-opened tables are service-only (customers cannot self-order at them).
+- **Floor plans** arrange those points (and printers and screens) on named venue levels with an uploaded or drawn background. Managers edit layout under Manage → Floor plans; day-of **POS** and **Host** show the sales-point map only. Delivery is never placed on a floor; kiosks may be. The floor-plans subject is the source of truth for placement and Service maps.
+- **Opening** a sales point (from the POS floor map or list, or by scanning its QR) opens a **sales instance**. A served point holds **at most one open staff tab at a time**, and an open staff tab blocks customer self-ordering there; the self-service channels (self-ordering, kiosk, delivery) pay to close and may run several at once. Staff-opened tables are service-only (customers cannot self-order at them).
 - **Orders** attach to the sales instance. Each order is one main good plus optional add-ons; promotions apply to the main good. Who created it, and in what role, is taken from the session.
 - **Lifecycle**: add, transfer between tables, and — for managers and above — **cancel** (removing it and restoring inventory), **void** with a required reason (kept in reporting), and mark **invitation/complimentary**.
 - **Billing**: review the tab, split bills as supported, then take **payments per method** with optional **tips**, record the payment-method breakdown, and **close** the instance when all orders are paid.

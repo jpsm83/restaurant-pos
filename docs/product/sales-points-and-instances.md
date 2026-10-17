@@ -21,6 +21,7 @@ It deliberately does **not** cover:
 - the **reservation flow** — the booking, its lifecycle, and no-show handling belong to the reservations subject. This subject owns the **reservation link** a seated instance carries and the **reserved hold** a point may show.
 - **delivery configuration** — enabling delivery, the radius, the minimum order, and the windows belong to the business subject; this subject owns the virtual delivery point those settings produce.
 - **printer routing** — the printers-and-screens subject owns how a point routes tickets; this subject only names the point as a routing target.
+- **floor-plan placement** — which floor a point sits on, marker position, and Service map presentation belong to the floor-plans subject. This subject owns the point itself; a point may be used while still unplaced on any floor.
 - the **daily sales report** — the sales-reports subject owns it; this subject owns the work-day anchor it opens on.
 - **notification, email, and ticket delivery** — their own subjects own delivery; this subject names the triggers.
 - **inventory effects** — the inventories subject owns what a sold order consumes.
