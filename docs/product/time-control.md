@@ -25,6 +25,7 @@ It deliberately does **not** cover:
 - **open sales instances** and responsible-staff attribution — the sales-points-and-instances subject owns those. This subject only enforces that duty sign-out is blocked while the employee still holds open instances.
 - **notification delivery** — inbox, live push, cooldown mechanics — the notifications subject owns how events are delivered. This subject defines which attendance events exist, when they fire, and the overtime session mute.
 - **labour KPI formulas** and report roll-ups — the business-metrics and business-reports subjects own those. This subject supplies worked hours, overtime hours, and actual labour cost.
+- **payroll preparation and export** — pay periods, tip pooling into a pay run, release, and accountant CSV — the payroll subject owns those. This subject supplies the closed sessions and hours that subject consumes.
 
 ---
 

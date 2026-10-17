@@ -26,6 +26,7 @@ It deliberately does **not** cover:
 - **attendance** — daily attendance QR scan-in, manager sign-out, breaks, overtime alerts, and actual labour-cost calculation — the time-control subject owns those.
 - **labour and vacation KPI formulas** — the business-metrics subject owns them; reports consume the figures.
 - **operational attribution** of service work (responsible employee on a tab, tips, print permissions) — each operational subject names the employee as an actor; this subject owns the membership record itself.
+- **payroll preparation and export** — pay runs, tip pooling into a pay package, and accountant release — the payroll subject owns those. This subject supplies pay terms and identifiers that subject reads.
 
 ---
 

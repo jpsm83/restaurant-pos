@@ -186,6 +186,7 @@ There is no separate product mode for administration; Manage and Service are men
 - **Roles and permissions** follow the two-layer model in [§5](#5-access-roles-and-mode): base layers, job roles on the membership, and per-user capability assignment by managers and above.
 - **Schedules** define each day's schedule (working shifts with required role and start/end, vacation and other leave, day comments, copy/bulk edit, time-off requests). Project Imperium enforces no overlapping shifts and correct vacation accounting, and rolls up daily staff, vacation, planned hours, and planned labour-cost totals. The schedules subject is the source of truth.
 - **Time control** records actual attendance (daily attendance QR scan-in, manager sign-out, breaks, overtime) as described in [§6](#6-time-control-and-attendance).
+- **Payroll** is **preparation and export only**: each venue configures pay periods and an accountant contact, assembles earnings from closed attendance plus pay terms, optionally pools tips, and **releases** a versioned CSV email for an external accountant or payroll provider. Project Imperium does not withhold taxes, file returns, or disburse wages. The payroll subject is the source of truth.
 
 ### Menu — business goods
 

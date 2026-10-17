@@ -2,7 +2,6 @@
 2 - users
 3 - business
 4 - business metrics
-5 - business reports
 6 - notifications
 7 - emails
 8 - suppliers
@@ -21,13 +20,13 @@
 21 - employees
 22 - schedules
 23 - time control
-24 - sales report
-25 - business report
-26 - ratings and comments
-27 - user navigation
-28 - floor plans
-29 - superadmin console
-30 - 
+24 - payroll
+25 - sales report
+26 - business report
+27 - ratings and comments
+28 - user navigation
+29 - floor plans
+30 - superadmin console
 31 - 
 32 - 
 33 - 

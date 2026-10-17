@@ -30,6 +30,7 @@ It deliberately does **not** cover:
 - the **gift-card instrument** — issuance, value, lifecycle, and redemption rules belong to the **gift-cards** subject; this subject owns the **Gift card** payment method and the **Gift card** tax category a card's purchase is taxed under, and records a redemption as a settlement.
 - **receipts, notifications, and emails** — delivering a receipt or a refund decision belongs to the **notifications** and **emails** subjects.
 - **supplier invoices and their tax** — amounts payable to a supplier and supplier invoicing are not part of Project Imperium.
+- **tip pooling and payroll export** — redistributing tips across roles and packaging them into a pay run belong to the **payroll** subject. This subject records and attributes tips at settlement.
 
 ---
 

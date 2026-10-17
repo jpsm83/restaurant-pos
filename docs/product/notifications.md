@@ -96,6 +96,8 @@ Terms reused from the product overview's core vocabulary rather than defined her
 | Business reply to a review | The reviewing customer | In-app + email | Info | Once per post or edit |
 | Review removal decided | The managers who requested removal | In-app | Info | Once |
 | Delivery review invite | The attributed delivery customer | In-app + email | Info | Once, three hours after handover if still unreviewed |
+| Pay run version recalculated | The venue's managers and above | In-app | Info | Once per recalculation after a prior release when upstream sources change |
+| Pay run released to accountant | The configured accountant contact | Email (CSV package) | Info | Once per Release |
 
 - The **low-stock alert** lists the affected goods and fires when stock falls below a good's **minimum required**; detecting that condition belongs to the inventories and supplier-goods subjects.
 - The **negative-stock alert** fires when a good's stock on hand falls **below zero**, as a management-error signal that purchases or counts are missing; detecting that condition belongs to the inventories subject.
@@ -107,6 +109,7 @@ Terms reused from the product overview's core vocabulary rather than defined her
 - The **schedule-changed** notification batches every add, change, or removal for one employee from a single schedules editing session into one ping when the manager leaves the schedules main page; detecting those edits belongs to the schedules subject.
 - The **time-off request pending** and **time-off request decided** notifications are raised by the schedules subject's request workflow.
 - The **new review**, **business reply to a review**, **review removal decided**, and **delivery review invite** events are raised by the ratings-and-comments subject.
+- The **pay run version recalculated** and **pay run released to accountant** events are raised by the payroll subject; the accountant recipient is the venue's configured accountant contact, which need not be a User.
 - No catalogued event carries the **Emergency** severity; it is reserved for a critical operational failure.
 
 ### 3.4 Venue engagement messages

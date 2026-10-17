@@ -102,8 +102,9 @@ Project Imperium emails the operational notifications that the notifications sub
 - **Customer conversation reply** — sent to a customer when a venue manager replies in their conversation.
 - **Business reply to a review** — sent to the reviewing customer when the venue posts or edits its one public reply on their review; it carries the venue name and that a reply is waiting in the product.
 - **Delivery review invite** — sent to the attributed delivery customer **three hours after handover** when that sales instance still has no review; it carries the venue name and the one-time review invite for that instance. Detecting eligibility belongs to the ratings-and-comments subject.
+- **Pay run released to accountant** — sent to the venue's configured **accountant contact** when managers **Release** a pay run; it carries the venue name, pay period, export version identity, changelog when replacing a prior version, and the CSV package. Raising Release belongs to the payroll subject. The accountant address need not belong to a User.
 
-An operational email is the **emailed copy** of an in-app notification, and the notification remains the record. A send failure is best-effort and never blocks the action that triggered it.
+An operational email is the **emailed copy** of an in-app notification where one exists, and the notification remains the record. The accountant pay-run package is email-primary (the accountant may have no inbox in the product). A send failure is best-effort and never blocks the action that triggered it.
 
 ### 3.5 Engagement email
 
@@ -151,7 +152,7 @@ The owning user is an admin at every venue they own. Job roles and per-user capa
 | Activity | Who |
 | --- | --- |
 | Receive account and security email | Any account holder, at their sign-in email; a business contact-email verification goes to the business's own contact address |
-| Receive operational email | The recipient named by the triggering event — the customer for receipts, reservation messages, conversation replies, business replies to reviews, and delivery review invites; the venue's managers and above for profile changes |
+| Receive operational email | The recipient named by the triggering event — the customer for receipts, reservation messages, conversation replies, business replies to reviews, and delivery review invites; the venue's managers and above for profile changes; the configured accountant contact for a released pay-run package |
 | Receive engagement email | A venue's related customers who have not muted engagement |
 | Unsubscribe from engagement email | The recipient (their own engagement mute) |
 | Trigger an account email | The person making the request (or the sign-up itself) |
