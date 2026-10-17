@@ -11,7 +11,7 @@ This subject covers **who a person is as a global identity and customer**, and t
 - the global **User** — one per person, the holder of every sign-in credential and of **client** personal detail;
 - **business ownership** — the **Owner** account that holds one or more **Companies**, each owning its **Business** identities, and the transfer of a business between users;
 - the **four base access layers** and **per-user capabilities**;
-- the **login mode chooser** — the rule by which a signed-in user picks between the customer and business apps;
+- the **mode eligibility rule** — when a signed-in user may work in **customer** or **business** mode (exactly two modes);
 - **credentials and email** — sign-up, verification, email change, and the business contact email;
 - **sessions**, and the **account lifecycle** — pending deletion, soft delete, and reactivation;
 - **favorites** — the venues a customer saves for quick access.
@@ -19,8 +19,8 @@ This subject covers **who a person is as a global identity and customer**, and t
 It deliberately does **not** cover:
 
 - the **Employee** membership — job roles, employment status, tenure, contract, pay, vacation, tax and national identifiers, documents, hire, terminate, and rehire. The **User** holds only client/global identity; **all employee data lives on the membership**. The employees subject owns that record. This subject names the membership only as the path into a tenant and as input to the mode and layer rules.
-- the **navigation surfaces** — the chooser screen, route guards, and canonical URLs. This subject states the eligibility *rule*; the user-navigation subject owns the surfaces that enforce it. Favorites appear on customer surfaces those subjects own; this subject owns the preference itself.
-- **attendance mechanics** — daily attendance QR scan-in, manager sign-out, breaks, and lateness. This subject states the employee-mode eligibility *consequence*; the schedules subject owns the planned schedule, and the time-control subject owns attendance.
+- the **navigation surfaces** — the public customer chrome, the **Customer | Business** mode toggle, the **Service** / **Manage** / **Me** left menu inside business mode, guards, and canonical destinations. This subject states the eligibility *rule*; the user-navigation subject owns the surfaces that enforce it. Favorites appear on customer surfaces those subjects own; this subject owns the preference itself.
+- **attendance mechanics** — daily attendance QR scan-in, manager sign-out, breaks, and lateness. This subject states the business-mode eligibility *consequence*; the schedules subject owns the planned schedule, and the time-control subject owns attendance.
 - **transactional email delivery** — templates, retry, cooldown. This subject states which messages are sent; the emails subject owns how they are delivered.
 - **ratings and comments** — venue reviews after a closed sales instance belong to the ratings-and-comments subject. Favorites are bookmarks, not feedback.
 - **which venues are live and discoverable** — the business subject owns go-live, offline, and discovery fields. This subject only allows favoriting venues that are live.
@@ -50,7 +50,7 @@ User ──1 Owner ──< Company ──< Business  (ownership: exactly one own
 
 - **Base access layer** — exactly one of **admin**, **manager**, **employee**, or **customer**. Defines what a user may do at the highest level. *Customer* is always present; the other three come from a membership, and during a shift, from that shift's role.
 - **Per-user capability** — a named power granted or revoked on top of a base layer's defaults, assigned per user by managers and above.
-- **Mode** — the app a signed-in user chooses to work in: **customer** or **business** (employee). Chosen once per session after login.
+- **Mode** — whether a signed-in user is in the **customer** or **business** app. Exactly two modes; there is no separate employee mode. The person may switch during the session via the mode toggle when eligible. Floor work and administration are **left-menu headers inside business mode** (Service, Manage, and Me), owned by the user-navigation subject — not additional modes.
 - **Sign-in email** — the email credential on the **User**. Distinct from a business's contact email.
 - **Business contact email** — a business's own verified email, used for venue messages and receipts. Never a credential.
 - **Pending deletion** — the account state during the cancellation window between a user's deletion request and the soft delete that follows it.
@@ -64,11 +64,11 @@ User ──1 Owner ──< Company ──< Business  (ownership: exactly one own
 
 ### 3.1 One identity, one login
 
-Project Imperium stores **one user per person**, and that user is the single holder of the person's sign-in credentials. A person never ends up with two accounts for the same identity. Sign-in is one shared form; after authenticating, Project Imperium applies the mode rule in §3.7.
+Project Imperium stores **one user per person**, and that user is the single holder of the person's sign-in credentials. A person never ends up with two accounts for the same identity. Sign-in is one shared form. The Customer app is usable **without** signing in for public browse and for assembling an order; after authenticating, the person remains on the Customer surface and §3.7 governs when they may enter business mode.
 
 ### 3.2 Every user is a customer
 
-Creating a user grants the **customer identity unconditionally**. There is no business-only account and no way for a person to surrender customer access. Customer mode is always available and is the default destination for a user with no business access.
+Creating a user grants the **customer identity unconditionally**. There is no business-only account and no way for a person to surrender customer access. Customer mode is always available. Visitors who never sign in still use the public Customer surface; once signed in, a user with no eligible business access simply has no Business side on the mode toggle.
 
 ### 3.3 Business ownership and the owner
 
@@ -103,18 +103,20 @@ Exactly four layers exist: **admin**, **manager**, **employee**, **customer**. T
 
 On top of the base layer's defaults, **managers and above** assign **named per-user capabilities** that grant or revoke individual powers. Capabilities are additive overrides scoped to what the platform already defines as possible for that user's layer; they never invent new powers. This subject owns the mechanism and the **cross-cutting** capabilities; each feature subject enumerates the capabilities that gate it. Job-role assignment on the membership belongs to the employees subject.
 
-### 3.7 The login mode chooser
+### 3.7 Mode eligibility (Customer | Business)
 
-There is **one login**. After authenticating:
+There is **one login** and **exactly two modes**: **customer** and **business**. There is no third “employee” mode — Service (floor/POS), Manage (administration), and Me (self) are left-menu headers **inside** business mode, owned by the user-navigation subject.
 
-- A user with **only customer access** goes straight to the customer app.
-- A user with **business access** (an eligible membership) chooses **customer** or **business (employee)** mode. The chosen mode is recorded for the session.
-- The **employee option** is available when the user has a membership and is eligible: a **planned working shift** whose **entry window** is open — from **10 minutes before** planned start until **2 hours after** planned start — and the membership is not **Suspended** or **Terminated**. Outside that window with no open attendance session, the employee option is unavailable until a manager reschedules them. Opening employee mode is **not** on duty (time-control subject). An employee who already has an open shift session may re-enter employee mode for that session without scanning again.
-- **Owners, managers, and admins always see both options** — scheduled or not — because they may need to act at any time (unless that membership is Suspended or Terminated).
-- There is **no** late-unlock step on the schedule for employee-mode access. Late lock before scan-in belongs to time-control.
-- **Customer mode is always available.**
+- The **Customer** app is the default public surface. Sign-in is not required to browse or to build an order basket. After sign-in, the person **stays in customer mode** unless they switch.
+- When the signed-in user has **eligible business access**, a **Customer | Business** toggle is available in the chrome. They may switch mode during the session; each switch re-checks eligibility. The active mode is recorded so guards can enforce it.
+- A user with **only customer access** never sees the Business side of the toggle.
+- **Business mode** is available when the user has a membership and is eligible: for ordinary employees, a **planned working shift** whose **entry window** is open — from **10 minutes before** planned start until **2 hours after** planned start — and the membership is not **Suspended** or **Terminated**. Outside that window with no open attendance session, Business is unavailable until a manager reschedules them. Opening business mode is **not** on duty (time-control subject). An employee who already has an open shift session may re-enter business mode for that session without scanning again.
+- **Owners, managers, and admins always may use Business** — scheduled or not — because they may need to act at any time (unless that membership is Suspended or Terminated).
+- There is **no** late-unlock step on the schedule for business-mode access. Late lock before scan-in belongs to time-control.
+- **Customer mode is always available** to every signed-in user.
+- **Identity gates (not modes).** Favorites, inbox, order history, and other User-owned preferences require a signed-in User. Customer ordering may proceed as a guest until **payment** is requested; at payment (and at those account-bound actions) Project Imperium requires **sign-in or sign-up**, preserving the open basket. The user-navigation and order-flow subjects own how that gate is presented.
 
-This subject owns the eligibility **rule**; the user-navigation subject owns the chooser screen, the guards, and the URLs.
+This subject owns the eligibility **rule**; the user-navigation subject owns the chrome toggle, left menu, guards, and destinations.
 
 ### 3.8 Credentials, verification, and email change
 
@@ -142,11 +144,11 @@ A user comes into existence through one of three paths, and Project Imperium **n
 
 ### 3.11 Sessions
 
-Project Imperium issues a short-lived **access token** and a **refresh session**. Project Imperium can revoke a user's refresh sessions wholesale whenever the password is reset or changed, or the sign-in email is verified as changed. The mode chosen in §3.7 is recorded in a server-side session cookie so guards can enforce it. The **superadmin console's authentication realm is entirely separate** and belongs to the superadmin subject.
+Project Imperium issues a short-lived **access token** and a **refresh session**. Project Imperium can revoke a user's refresh sessions wholesale whenever the password is reset or changed, or the sign-in email is verified as changed. The **mode** from §3.7 is recorded in a server-side session so guards can enforce it; switching mode updates that record. The **superadmin console's authentication realm is entirely separate** and belongs to the superadmin subject.
 
 ### 3.12 Personal profile and preferences
 
-The **User** holds the person's **client personal detail** — name, sign-in email, phone, personal address, birth date, gender, nationality, image — and a **language preference**, so the UI language follows the person independently of the business's currency. **Employee tax number**, **national ID number**, and other employment identifiers live only on the **Employee** membership (employees subject), not on the User. **Favorites** are a preference of the same User (§3.13).
+The **User** holds the person's **client personal detail** — name, sign-in email, phone, personal address, birth date, gender, nationality, image — and a **language preference**, so the UI language follows the person independently of the business's currency. The User may also hold **saved payment methods** for in-app customer checkout (how those methods capture money belongs to the payments-and-tax subject). **Employee tax number**, **national ID number**, and other employment identifiers live only on the **Employee** membership (employees subject), not on the User. **Favorites** are a preference of the same User (§3.13). The **customer account area** and Business **Me** destinations that edit these fields are owned by the user-navigation subject.
 
 ### 3.13 Favorites
 
@@ -161,7 +163,7 @@ The **User** holds the person's **client personal detail** — name, sign-in ema
 
 ### 3.14 Inbox and order history
 
-The **notification inbox** and **order history** belong to the **User** and are **shared across the customer and employee modes** — a person's history does not fork by mode.
+The **notification inbox** and **order history** belong to the **User** and are **shared across customer and business modes** — a person's history does not fork by mode.
 
 ### 3.15 Account deletion
 
@@ -188,10 +190,10 @@ Under Project Imperium's **soft-delete convention**, an identity — a **User**,
 
 | Layer | Identity powers |
 | --- | --- |
-| **Customer** | Holds a **User**; signs in; uses the customer app; manages their own profile, **favorites**, and account deletion. Always available to everyone. |
-| **Employee** | Everything a customer can do, plus business mode when the membership is eligible (planned working shift in window, not Suspended or Terminated). |
-| **Manager** | Everything an employee can do, plus assigning per-user capabilities and overriding a membership's layer. Always allowed into business mode when the membership allows. Hiring, HR, and termination belong to the employees subject. Schedule editing belongs to the schedules subject. |
-| **Admin** | Full venue control, including ownership actions; always allowed into business mode when the membership allows. |
+| **Customer** | Holds a **User**; may use the public Customer surface unsigned for browse and basket assembly; signs in for account-bound actions and payment; manages their own profile, **favorites**, and account deletion. Always available to everyone. |
+| **Employee** | Everything a customer can do, plus business mode (Service → POS, and Me) when the membership is eligible (planned working shift in window, not Suspended or Terminated). |
+| **Manager** | Everything an employee can do, plus the Manage header, assigning per-user capabilities, and overriding a membership's layer. Always allowed into business mode when the membership allows. Hiring, HR, and termination belong to the employees subject. Schedule editing belongs to the schedules subject. |
+| **Admin** | Full venue control, including ownership actions and Manage; always allowed into business mode when the membership allows. |
 
 ### Per-user capabilities
 
@@ -201,7 +203,7 @@ Granted or revoked per user by **managers and above**, on top of the layer defau
 
 | Activity | Who |
 | --- | --- |
-| Sign up / sign in / choose mode | Anyone (mode choice needs eligible business access) |
+| Sign up / sign in / switch mode | Anyone may sign up or sign in; Business on the mode toggle needs eligible business access |
 | Register a business | Any user (becomes the **Owner**, an admin at that venue; employees subject creates the owner membership) |
 | Own / transfer / close a business | The owning user |
 | Override a membership's base layer | Managers and above |

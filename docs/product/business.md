@@ -25,7 +25,7 @@ It deliberately does **not** cover:
 - **tax applied to orders and bills** — the business-level tax configuration (a rate per tax category) belongs to the payments-and-tax subject.
 - the **meaning, defaults, validation, and comparison of the cost targets, waste thresholds, and reporting configuration** — the business-metrics subject owns those, and the business-reports subject owns the reports that consume them. This subject stores the values as business fields but does not define them.
 - **sign-in credentials and verification mechanics** — sign-in email verification, email change, and password reset belong to the users and emails subjects. This subject owns the *business contact email* field; the emails subject owns how its verification link is delivered.
-- the **owner shell, mode chooser, route guards, and canonical URLs** — the user-navigation subject owns those surfaces. This subject owns the *business-registration action* and the business form; the navigation that reaches them is the user-navigation subject's.
+- the **owner shell, mode toggle, Service / Manage / Me left menu, guards, and canonical destinations** — the user-navigation subject owns those surfaces. This subject owns the *business-registration action* and the business form; the navigation that reaches them is the user-navigation subject's.
 - the **sales points, sales instances, and ordering/delivery mechanics** — the order-flow and sales-points-and-instances subjects own how customers order, which points accept which channels, and how delivery is dispatched. This subject owns delivery and self-ordering *configuration* at the venue, not order placement.
 - **ratings and comments** themselves — the ratings-and-comments subject owns them; this subject owns the cached aggregates they publish.
 - **people, schedules, printers, and screens** — their own subjects.
@@ -67,10 +67,10 @@ The business contact email is a term the users subject introduces; this subject 
 
 Registering a business is an **authenticated action by an existing user** — there is no unauthenticated business registration. The UI presents it as **add your venue**.
 
-- A user with **no business** reaches the action from the customer app; a user who **already owns businesses** reaches it from the business app's venue tabs.
+- A user with **no business** reaches the action from the customer app; a user who **already owns businesses** reaches it from the business app's venue tabs (typically from **Manage**).
 - Registering a user's **first business creates that user's Owner** and a **Company**; each later business is added to that Owner and the user chooses whether it **joins an existing Company** (sharing that tax entity, so stock can move internally) or **forms a new one** (a separate taxpayer).
 - A business is **owned by exactly one user**; the owner takes the **Owner job role** and the **admin** base layer at that venue.
-- On sign-in, a user who owns businesses is routed through the **mode chooser** and may work in either the customer or the business app; a user who owns none is taken to the customer app. These surfaces belong to the user-navigation subject; this subject owns the action and the form behind them.
+- After sign-in, a user who owns businesses may switch to **business mode** via the **Customer | Business** toggle and work in Manage (or Service); a user who owns none stays on the customer surface with no Business side on the toggle. These surfaces belong to the user-navigation subject; this subject owns the action and the form behind them.
 
 ### 3.2 The draft lifecycle
 

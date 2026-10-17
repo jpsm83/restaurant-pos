@@ -69,7 +69,7 @@ Terms reused rather than redefined here: **Business**, **Owner**, **Company**, *
 
 - A **bill** is settled when what it owes is paid; on full settlement the sales instance closes. Which surface closes the instance and when the bill is requested belong to the order-flow subject; this subject supplies the settlement that closes it.
 - Every chargeable order on the bill contributes its **final price** — a price that already contains the business's tax. A **void** or **invitation** line stays listed and uncharged.
-- A **staff tab** is settled by the staff on duty on it; a **self-service** instance is paid in full before it closes.
+- A **staff tab** is settled by the staff on duty on it; a **self-service** instance is paid in full before it closes. On customer self-service channels, the payer must be a **signed-in User** at the moment payment is taken (order-flow may let a guest build the basket first; identity is required at payment).
 - A bill may be settled by **one payment or several**. Each payment is recorded in its own right, and the bill keeps its payments as history.
 - A payment belongs to the **work day** of the instance it settles, in the business timezone, and its amount and tip feed that day's sales report.
 - A payment (and its bill) that changes after that work day's sales report has already been **closed** at least once carries an **edited** flag, matching the flag on the daily sales report — the sales-reports subject owns when the day must be reopened first.

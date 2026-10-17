@@ -21,7 +21,7 @@ This subject covers the **Employee** — the full per-venue membership that make
 It deliberately does **not** cover:
 
 - the global **User**, **Owner**, **Company**, credentials, sessions, customer identity, or account deletion — the users subject owns those. This subject consumes the User the membership points at.
-- the **four base access layers**, the **mode chooser**, and **per-user capabilities** as platform mechanisms — the users subject owns those rules. This subject supplies the membership and job roles those rules read.
+- the **four base access layers**, **mode eligibility** (Customer | Business), and **per-user capabilities** as platform mechanisms — the users subject owns those rules. This subject supplies the membership and job roles those rules read.
 - the **schedule** (daily schedule, vacation and other leave on the schedule, time-off requests, planned labour roll-ups) — the schedules subject owns it. This subject supplies the people and vacation balance the schedule consumes and updates.
 - **attendance** — daily attendance QR scan-in, manager sign-out, breaks, overtime alerts, and actual labour-cost calculation — the time-control subject owns those.
 - **labour and vacation KPI formulas** — the business-metrics subject owns them; reports consume the figures.
@@ -76,7 +76,7 @@ A person joins a venue **only** through an **Employee** membership. The **User**
 ### 3.2 Job roles on the membership
 
 - Every membership carries **one or more job roles** from the canonical list (§2).
-- Roles describe the person. The **base access layer** defaults from those roles and may be overridden by managers and above; the **users** subject owns how layers and the mode chooser resolve from membership and shift role. This subject owns assigning and storing the roles on the membership.
+- Roles describe the person. The **base access layer** defaults from those roles and may be overridden by managers and above; the **users** subject owns how layers and mode eligibility resolve from membership and shift role. This subject owns assigning and storing the roles on the membership.
 
 ### 3.3 Employment status
 

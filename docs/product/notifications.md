@@ -32,7 +32,7 @@ It deliberately does **not** cover:
 ### Entities
 
 - **Notification** — one message addressed to one or more recipients and belonging to **one business**. Every notification is business-scoped: Project Imperium has no platform-wide notification. It carries a **severity** or an **engagement kind**, and its text.
-- **Inbox** — a person's collection of notifications and conversations. It belongs to the **User**, not to a business or to a mode, so the same inbox is shared across the customer and employee apps.
+- **Inbox** — a person's collection of notifications and conversations. It belongs to the **User**, not to a business or to a mode, so the same inbox is shared across the customer and business apps.
 - **Inbox entry** — the per-person record of one notification, carrying its **unread** and **deleted** state. State is per recipient: one person reading or deleting a notification never changes it for anyone else.
 - **Conversation** (thread) — a two-way exchange opened by a manager's **direct message**, pairing the manager and one person; replies are messages in the thread.
 - **Venue event** — a dated announcement a venue publishes: a name, a date, and details. Publishing it sends an **Event** message.
@@ -66,7 +66,7 @@ Terms reused from the product overview's core vocabulary rather than defined her
 
 ### 3.2 The inbox
 
-- Each person has **one inbox**, shared across the customer and employee apps and across every venue they touch.
+- Each person has **one inbox**, shared across the customer and business apps and across every venue they touch. Inbox access requires a signed-in User (account-bound; users subject).
 - State is **per recipient**: an entry is unread by default; reading marks it read; a person can mark one read, mark all read, and delete. The inbox shows an **unread count**.
 - **Deleting** hides an entry from that person's inbox only.
 - **System-generated** notification text is delivered in the recipient's **language preference** (English or Spanish). A manager's own words in a direct message are delivered **as written**.
