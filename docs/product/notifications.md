@@ -19,7 +19,7 @@ This subject covers **how Project Imperium tells a person something** — the in
 
 It deliberately does **not** cover:
 
-- the **detection of triggering conditions** — low-stock and negative-stock detection belong to the inventories and supplier-goods subjects, overtime detection to the time-control subject, report readiness to the business-reports subject, profile-change detection to the business subject, and print-failure detection to the printers-and-screens subject. This subject owns what happens once a condition is detected, not how it is detected.
+- the **detection of triggering conditions** — low-stock and negative-stock detection belong to the inventories and supplier-goods subjects, overtime detection to the time-control subject, report readiness to the business-reports subject, profile-change detection to the business subject, print-failure detection to the printers-and-screens subject, and platform-charge overdue / freeze / billing-document events to the platform-billing subject. This subject owns what happens once a condition is detected, not how it is detected.
 - the **transactional email flows themselves** — sign-in verification, password reset, an email change, order receipts, and reservation decisions. The emails subject owns their templates, copy, and retry mechanics; this subject owns which of them notify and the in-app side of each.
 - the **inbox's ownership and a user's preference storage** — the users subject owns the person's identity and preferences. This subject owns the notifications the inbox holds and the meaning of the engagement mute, not where a preference is stored.
 - the **screens and navigation** that render the inbox, a conversation, or a venue event — the user-navigation subject owns the surfaces.
@@ -61,7 +61,7 @@ Terms reused from the product overview's core vocabulary rather than defined her
 
 - Every notification is stored in each recipient's inbox **first**, and that stored copy is the **source of truth**.
 - A recipient who is **online** also receives it immediately by **live push**. A recipient who is **offline** receives it the moment they return, from the stored copy; nothing is lost.
-- **Email** is added for: an order confirmation/receipt, a reservation pending, deposit-requested, and decision message (to the customer), a reply in a customer conversation (to the customer), a **business reply to a review** (to the reviewing customer), a **delivery review invite** (to the attributed delivery customer), a business-profile change (to managers), and a venue's engagement broadcasts (to customers who have not muted them). The remaining operational alerts — low-stock, negative-stock, report-ready, overtime, awaiting-table, print-failure, new review, and review removal decided — are **in-app only**.
+- **Email** is added for: an order confirmation/receipt, a reservation pending, deposit-requested, and decision message (to the customer), a reply in a customer conversation (to the customer), a **business reply to a review** (to the reviewing customer), a **delivery review invite** (to the attributed delivery customer), a business-profile change (to managers), **platform billing documents and arrears / post-freeze dunning** (to the Owner and Manager-and-above recipients named by platform-billing), and a venue's engagement broadcasts (to customers who have not muted them). The remaining operational alerts — low-stock, negative-stock, report-ready, overtime, awaiting-table, print-failure, new review, and review removal decided — are **in-app only**.
 - A communication failure **never blocks** the underlying business action: a notification is a side effect of the action, not a precondition for it.
 
 ### 3.2 The inbox
@@ -98,6 +98,10 @@ Terms reused from the product overview's core vocabulary rather than defined her
 | Delivery review invite | The attributed delivery customer | In-app + email | Info | Once, three hours after handover if still unreviewed |
 | Pay run version recalculated | The venue's managers and above | In-app | Info | Once per recalculation after a prior release when upstream sources change |
 | Pay run released to accountant | The configured accountant contact | Email (CSV package) | Info | Once per Release |
+| Platform billing document | The Owner | Email (billing document) | Info | Once per charge, invoice, or adjustment |
+| Platform charge overdue | Owner always; Manager and above at every Business under the Owner (subscription) or at that Business only (venue commission) | In-app + email | Warning | Daily from overdue notice through the payment deadline or until paid |
+| Platform service frozen | Same recipients as platform charge overdue for that debt | In-app + email | Warning | Once on the cut-off / freeze day |
+| Platform post-freeze pay-to-restart | Same recipients as platform charge overdue for that debt | In-app + email | Warning | Daily for fourteen days after freeze, then stop |
 
 - The **low-stock alert** lists the affected goods and fires when stock falls below a good's **minimum required**; detecting that condition belongs to the inventories and supplier-goods subjects.
 - The **negative-stock alert** fires when a good's stock on hand falls **below zero**, as a management-error signal that purchases or counts are missing; detecting that condition belongs to the inventories subject.
@@ -110,6 +114,7 @@ Terms reused from the product overview's core vocabulary rather than defined her
 - The **time-off request pending** and **time-off request decided** notifications are raised by the schedules subject's request workflow.
 - The **new review**, **business reply to a review**, **review removal decided**, and **delivery review invite** events are raised by the ratings-and-comments subject.
 - The **pay run version recalculated** and **pay run released to accountant** events are raised by the payroll subject; the accountant recipient is the venue's configured accountant contact, which need not be a User.
+- The **platform billing document**, **platform charge overdue**, **platform service frozen**, and **platform post-freeze pay-to-restart** events are raised by the platform-billing subject. The billing document is **email-primary** to the Owner (in-app history lives in platform-billing). Portfolio subscription arrears fan out as business-scoped in-app notifications to every venue under the Owner so each inbox stays business-scoped; venue commission arrears stay on that Business. The Owner always receives the emailed dunning copy as well.
 - No catalogued event carries the **Emergency** severity; it is reserved for a critical operational failure.
 
 ### 3.4 Venue engagement messages
@@ -173,4 +178,5 @@ The owning user is an admin at every venue they own. Job roles and per-user capa
 | Publish a venue event | Managers and above |
 | Receive low-stock, negative-stock, overtime, sign-out-request, and print-failure alerts | The venue's managers on duty; print-failure falls back to all manager-layer users when none are on duty |
 | Receive report-ready and profile-updated alerts | The venue's managers and above |
+| Receive platform-billing arrears, freeze, and post-freeze alerts | Owner always; Manager and above at every venue (subscription / portfolio) or at that venue only (commission), per platform-billing |
 | Operate the application business | The superadmin, in a separate realm; never a recipient of a venue's notifications |

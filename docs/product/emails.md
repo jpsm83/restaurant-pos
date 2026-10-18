@@ -20,7 +20,7 @@ This subject covers **every email Project Imperium sends** — the messages that
 It deliberately does **not** cover:
 
 - **which events notify, and the in-app side of each** — the notifications subject owns the notification catalogue, the inbox, the severities and engagement kinds, and the engagement mute itself. This subject owns how an email is written and delivered, not whether an event notifies.
-- **the mechanics of the actions behind the emails** — orders and payments, reservations, reviews, the sign-in email and password, the business contact email, and venue events are owned by the orders, reservations, ratings-and-comments, users, business, and notifications subjects. This subject owns the email side: when each message is sent and what it carries.
+- **the mechanics of the actions behind the emails** — orders and payments, reservations, reviews, the sign-in email and password, the business contact email, venue events, and platform charges are owned by the orders, reservations, ratings-and-comments, users, business, notifications, and platform-billing subjects. This subject owns the email side: when each message is sent and what it carries.
 - **the pages a one-time link opens** — the user-navigation subject owns the destination surfaces. This subject owns only that a link leads a person to complete an action, never what they see.
 - **the session effects of a completed change** — the users subject owns session revocation and the email-verified flag.
 - **where the language preference is stored** — the users subject owns the person's preference; this subject reads it.
@@ -40,7 +40,7 @@ It deliberately does **not** cover:
 ### Terms this subject introduces
 
 - **Account email** — a message about a person's identity or security, or a business's contact-email verification: sign-in verification, password reset, sign-in email change confirmation, sign-in email change notice, reactivation, and business contact-email verification.
-- **Operational email** — the emailed copy of an operational notification: an order confirmation/receipt, a reservation pending, deposit-requested, or decided message, a business-profile-updated message to managers, a customer conversation reply, a **business reply to a review**, and a **delivery review invite**. It is **venue-initiated** and names the venue it concerns.
+- **Operational email** — the emailed copy of an operational notification: an order confirmation/receipt, a reservation pending, deposit-requested, or decided message, a business-profile-updated message to managers, a customer conversation reply, a **business reply to a review**, a **delivery review invite**, and **platform billing** messages (billing documents, arrears dunning, freeze, and post-freeze pay-to-restart). Venue-facing operational mail names the venue it concerns; platform-billing mail is Imperium-initiated and may be portfolio-scoped.
 - **Engagement email** — a venue's one-way broadcast to its related customers: a **Birthday**, **Promotion**, or **Event** email. It is **venue-initiated**.
 - **Sending identity** — the single platform address every outbound email is sent from, together with the venue name Project Imperium shows on venue-initiated mail.
 - **Generic response** — the single answer an unauthenticated request flow returns whether or not an account exists.
@@ -103,8 +103,12 @@ Project Imperium emails the operational notifications that the notifications sub
 - **Business reply to a review** — sent to the reviewing customer when the venue posts or edits its one public reply on their review; it carries the venue name and that a reply is waiting in the product.
 - **Delivery review invite** — sent to the attributed delivery customer **three hours after handover** when that sales instance still has no review; it carries the venue name and the one-time review invite for that instance. Detecting eligibility belongs to the ratings-and-comments subject.
 - **Pay run released to accountant** — sent to the venue's configured **accountant contact** when managers **Release** a pay run; it carries the venue name, pay period, export version identity, changelog when replacing a prior version, and the CSV package. Raising Release belongs to the payroll subject. The accountant address need not belong to a User.
+- **Platform billing document** — sent to the **Owner** on every platform charge, payable invoice, or adjustment; it carries charge kind, Business when commission-related, period, rates, platform-fee tax, and totals. Raising the document belongs to the platform-billing subject.
+- **Platform charge overdue** — daily copy to the Owner and to Manager-and-above recipients scoped by platform-billing; it carries the unpaid amount, what it is for, and the **exact cut-off date**.
+- **Platform service frozen** — sent on freeze day to the same recipients; it states that service is cut until the debt is cleared.
+- **Platform post-freeze pay-to-restart** — daily for fourteen days after freeze to the same recipients; it urges payment so service can restart.
 
-An operational email is the **emailed copy** of an in-app notification where one exists, and the notification remains the record. The accountant pay-run package is email-primary (the accountant may have no inbox in the product). A send failure is best-effort and never blocks the action that triggered it.
+An operational email is the **emailed copy** of an in-app notification where one exists, and the notification remains the record. The accountant pay-run package and the Owner's **platform billing document** are email-primary. A send failure is best-effort and never blocks the action that triggered it.
 
 ### 3.5 Engagement email
 
@@ -142,8 +146,8 @@ An operational email is the **emailed copy** of an in-app notification where one
 | --- | --- |
 | **Customer** | Holds the address every email is sent to; receives account email, operational email (order receipts, reservation messages, customer conversation replies, business replies to reviews, and delivery review invites), and engagement email; may unsubscribe from engagement email. |
 | **Employee** | Everything a customer can do; as staff, holds the account email flows the same as anyone. |
-| **Manager** | Everything an employee can do, plus receiving the **business profile updated** email as a venue manager. |
-| **Admin** | Everything a manager can do. |
+| **Manager** | Everything an employee can do, plus receiving the **business profile updated** email as a venue manager, and platform-billing arrears / freeze / post-freeze email when in scope for that venue or portfolio. |
+| **Admin** | Everything a manager can do; Owners also receive every **platform billing document**. |
 
 The owning user is an admin at every venue they own. Job roles and per-user capabilities follow the global model; this subject names only the entitlements that bear on email.
 
@@ -152,7 +156,7 @@ The owning user is an admin at every venue they own. Job roles and per-user capa
 | Activity | Who |
 | --- | --- |
 | Receive account and security email | Any account holder, at their sign-in email; a business contact-email verification goes to the business's own contact address |
-| Receive operational email | The recipient named by the triggering event — the customer for receipts, reservation messages, conversation replies, business replies to reviews, and delivery review invites; the venue's managers and above for profile changes; the configured accountant contact for a released pay-run package |
+| Receive operational email | The recipient named by the triggering event — the customer for receipts, reservation messages, conversation replies, business replies to reviews, and delivery review invites; the venue's managers and above for profile changes; the configured accountant contact for a released pay-run package; the Owner and Manager-and-above recipients named by platform-billing for billing documents and arrears mail |
 | Receive engagement email | A venue's related customers who have not muted engagement |
 | Unsubscribe from engagement email | The recipient (their own engagement mute) |
 | Trigger an account email | The person making the request (or the sign-up itself) |

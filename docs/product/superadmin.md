@@ -25,7 +25,7 @@ It deliberately does **not** cover:
 - the **Customer** and **Business** apps, the **Customer | Business** mode toggle, venue chrome, or day-of service — the user-navigation, order-flow, and related subjects own those. Superadmin is never a third mode on that chooser.
 - **go-live checklist**, draft venues, and **paid-in-full** before go-live on a paid plan — the business and monetization subjects own those gates. This subject only states that Superadmin does **not** approve ordinary go-live.
 - **default late-payment grace rules** (when to notify, how long the deadline is) — the monetization subject owns the defaults. This subject owns console override and the automatic freeze outcome.
-- **commission collection** when a weekly business report closes — the business-reports subject owns finalising, owing, and collecting. This subject owns editing the catalogue rates the monetization subject defines.
+- **commission collection** when a weekly business report closes — the business-reports subject owns finalising and owing; the platform-billing subject owns collecting. This subject owns editing the catalogue rates the monetization subject defines.
 - **what each plan unlocks** (the entitlement matrix) and commercial meaning of base vs card-recovery commission — the monetization subject owns that. This subject owns catalogue maintenance, assignment, and overrides.
 - **User** identity in the Customer/Business realm, membership, and venue HR — the users and employees subjects own those.
 - **review authoring and business replies** — the ratings-and-comments subject owns them; this subject owns only accept/reject of a venue's abuse-removal request.
@@ -87,7 +87,7 @@ Terms reused rather than redefined here: **User**, **Owner** (paying account), *
 
 - Superadmin maintains the **plan catalogue** (Free, Basic, Premium, Enterprise): monthly prices, **base commission** per plan, the shared **card recovery** pass-through, venue caps, and entitlement flags.
 - Base commission for a paying Owner is **always** the rate on that Owner's current plan (Enterprise may carry custom terms on the assignment). There are **no** arbitrary one-off rates outside that; changing a published rate means editing the catalogue (or moving the Owner to another plan).
-- Managers and console Owners may **force-assign or override** a paying Owner's plan. Force-assign applies entitlements immediately with time proration (monetization subject). Where an Owner-facing subscription flow also changes plans, **Superadmin wins** on conflict.
+- Managers and console Owners may **force-assign or override** a paying Owner's plan. Force-assign applies entitlements immediately with commission-rate cutover and subscription next-bill true-up (monetization and platform-billing subjects). Where an Owner-facing subscription flow also changes plans, **Superadmin wins** on conflict.
 - When Superadmin changes catalogue terms, rates, or policies that bind existing paying Owners, Project Imperium **emails every affected Owner**. The Owner must **accept** to continue under the new terms, or **decline**, which starts **account termination** (each owned business transferred or closed first, per the users and business subjects). **Silence is not acceptance**; acceptance is an explicit action.
 
 ### 3.5 Late payment

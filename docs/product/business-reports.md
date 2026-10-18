@@ -15,7 +15,7 @@ This subject covers **how a venue's numbers are gathered, grouped, closed, and p
 - the **dimension breakdowns** on weekly and monthly reports;
 - the **target-vs-actual comparison** for the periods this subject presents;
 - the **weekly and monthly report lifecycle** — aggregation, close, amendment from an edited daily, and inventory-tied reopen of the monthly report;
-- **platform commission finalisation and automatic collection** at weekly close;
+- **platform commission finalisation** at weekly close (and handing the owed amount to platform-billing for collection);
 - the **report-ready signal** when a weekly or monthly report closes;
 - **download/export** of the entire weekly or monthly report.
 
@@ -27,6 +27,7 @@ It deliberately does **not** cover:
 - **actual labour cost and worked hours** as attendance facts — the time-control subject owns those; this subject presents them on weekly and monthly reports;
 - the **raw sales, order, payment, and stock data** the reports are built from — the orders, payments-and-tax, and inventories subjects own those;
 - the **plan catalogue and commission rates** (base + card recovery) — the monetization and superadmin subjects own those; this subject applies them at weekly close;
+- **how platform charges are taken** (payment method, invoice, retries, billing documents, dunning) — the platform-billing subject owns collection; this subject finalises the owed weekly amount and signals re-finalise adjustments;
 - the **delivery of notifications** — the notifications subject owns inbox, email, and push; this subject only raises the report-ready signal;
 - **how reports are laid out on screen** (tabs, charts, table chrome) — outside this subject; export of the whole report is in scope.
 
@@ -36,7 +37,7 @@ It deliberately does **not** cover:
 
 ### Entities
 
-- **Weekly business report** — one venue's report for one **reporting week**. It is the operational performance package: sales, COGS and labour actuals, operational targets, and dimension breakdowns. It is also the period at which **platform commission** is finalised and automatically collected.
+- **Weekly business report** — one venue's report for one **reporting week**. It is the operational performance package: sales, COGS and labour actuals, operational targets, and dimension breakdowns. It is also the period at which **platform commission** is finalised and marked owed for platform-billing to collect.
 - **Monthly business report** — one venue's report for one **calendar month**. It has a **sales section** and a **full P&L section** (costs, inventory, purchasing, finance, profitability). It is the venue's fullest statement of the month.
 - **Reporting week** — the seven-day window defined by the venue's **reporting-week start day**. It groups daily sales reports into the weekly report.
 - **Report period** — the window a weekly or monthly report covers: a **reporting week** or a **calendar month**.
@@ -50,8 +51,8 @@ It deliberately does **not** cover:
 - **Close** — lock the weekly or monthly report for its period under the rules in §3.8.
 - **Live mid-period roll-up** — the open weekly or monthly report as viewed during the period: whatever belonging dailies are already closed, plus the current live work day's sales figures when the viewer asks for the period so far.
 - **Commissionable sales** — the paid sales volume that commission is calculated on for a reporting week: paid sales after voids and refunds, plus **paid gift-card issues**, across **every payment method** (cash, card, crypto, and the rest). **Invitations** (comps), **granted** gift cards, gift-card **redemptions**, **forfeitures**, and any other activity with no paid sale are **excluded**.
-- **Weekly commission** — the platform fee for one reporting week: **(base plan rate × commissionable sales) + (card recovery rate × card-tendered commissionable sales)**. It is **finalised, owed, and paid automatically** when the weekly report **closes**.
-- **Amendment from edited daily** — when a closed daily sales report is reopened, changed through its bills or payments, and closed again, any closed weekly or monthly report that included that day is recalculated automatically, stays closed, carries the daily's reopen reason, and shows it was updated from an edited daily; the week's commission is **re-finalised** if that week is already closed.
+- **Weekly commission** — the platform fee for one reporting week: **(base plan rate × commissionable sales) + (card recovery rate × card-tendered commissionable sales)**. It is **finalised and owed** when the weekly report **closes**; **collection** belongs to platform-billing.
+- **Amendment from edited daily** — when a closed daily sales report is reopened, changed through its bills or payments, and closed again, any closed weekly or monthly report that included that day is recalculated automatically, stays closed, carries the daily's reopen reason, and shows it was updated from an edited daily; the week's commission is **re-finalised** if that week is already closed (platform-billing then adjusts the collected amount).
 
 Terms reused from other subjects rather than redefined here: **business**, **daily sales report**, **work day**, **edited flag**, **reopen reason**, **reporting-week start day**, **total sales**, **net revenue**, **cost of goods sold**, **prime cost**, **labour cost**, **fixed cost**, **extra cost**, **finance costs**, **target**, **waste threshold**, **benchmark**, **dimension**, **daypart**, **channel**, **sales point**, **sales instance**, **order**, **inventory month**, **monthly resume**, and the metric names defined by the business-metrics subject.
 
@@ -75,7 +76,7 @@ Terms reused from other subjects rather than redefined here: **business**, **dai
   - **excludes fixed cost, extra cost, and finance costs**;
   - **excludes inventory variance and waste**, **waste-threshold comparison**, and **purchasing** totals (those are monthly).
 - It carries the **full dimension set** as breakdowns (§3.6), except the inventory-only slices (supplier good, supplier) which appear on the monthly report.
-- While **open**, it may show a **week-to-date commission estimate** (same base as §3.9). On **close** it **finalises and collects** commission (§3.9).
+- While **open**, it may show a **week-to-date commission estimate** (same base as §3.9). On **close** it **finalises** commission and marks it owed for platform-billing to collect (§3.9).
 - When the week **closes**, Project Imperium raises the **report-ready signal**.
 - The entire weekly report can be **downloaded/exported**.
 
@@ -143,7 +144,7 @@ Terms reused from other subjects rather than redefined here: **business**, **dai
   - any weekly or monthly report that already included that day is **automatically recalculated**;
   - those roll-ups **remain closed** (amended closed records);
   - they **carry the same reopen reason** and show they were **updated from an edited daily**;
-  - if a **closed weekly** report is among them, its **weekly commission is re-finalised** and the automatic payment is adjusted to the new amount (§3.9).
+  - if a **closed weekly** report is among them, its **weekly commission is re-finalised** and platform-billing is signalled to adjust the collected amount to match (§3.9).
 - A change to the reporting-week start day still affects only open or future weeks; it does not by itself rewrite closed history. Amendment from an edited daily is the deliberate exception above.
 - Fixed, extra, and finance inputs do **not** gate monthly close (zeros allowed — §3.4).
 
@@ -154,9 +155,9 @@ Terms reused from other subjects rather than redefined here: **business**, **dai
 - When the weekly report **closes**, Project Imperium:
   - **finalises** the **weekly commission** as base rate × commissionable sales **plus** card recovery × card-tendered commissionable sales;
   - marks it **owed** on the **Business** (weekly commission is a venue debt); and
-  - **collects it automatically** as a weekly fee line — never netted out of what the venue's customers paid, and never routed through a merchant account.
+  - hands that owed amount to **platform-billing** for collection as a weekly fee line — never netted out of what the venue's customers paid, and never routed through a merchant account.
 - The rates are **fixed by the subscription plan / catalogue** and are not editable on the report.
-- After an edited-daily amendment to a closed week, commission is **re-finalised** and the automatic collection is adjusted to match.
+- After an edited-daily amendment to a closed week, commission is **re-finalised** and platform-billing adjusts the collected amount to match.
 - The monthly report **sums** the finalised weekly commission charges for weeks that **closed in that month**; it does not charge commission again.
 
 ### 3.10 Report-ready signalling

@@ -12,17 +12,17 @@ This subject owns **how Project Imperium is paid** by businesses, and **what eac
 - the **plan catalogue** — monthly subscription prices, **base commission** rates, **card recovery** rate, venue caps, and the **entitlement matrix**;
 - how the **subscription** sits on the **Owner** and covers every venue in that Owner's portfolio;
 - **commissionable sales**, the dual fee (base + card recovery), and how a **reporting week's** commission is composed;
-- **plan changes** (upgrade, downgrade, Superadmin force-assign) with immediate entitlements and time proration;
+- **plan changes** (upgrade, downgrade, Superadmin force-assign) with immediate entitlements, commission-rate cutover inside a reporting week, and calendar-month subscription true-up rules;
 - **paid-in-full** before go-live on a paid plan;
 - **default late-payment grace** and the split between Owner subscription freeze and per-venue commission freeze; and
 - the **one-country Owner** rule that keeps portfolio currency and tax regime aligned.
 
 It deliberately does **not** cover:
 
-- **how charges are taken** — payment method on file, retries, statements, receipts, and FX execution belong to the **platform-billing** subject;
+- **how charges are taken** — payment method on file, calendar prepaid collection, retries, invoices, billing documents, receipts, arrears dunning, and adjustments belong to the **platform-billing** subject;
 - **payment-facilitator / connected-account plumbing** — the future direction for collecting card money belongs to that decision track; this subject only states commercial pass-through of card recovery;
 - **customer-to-venue settlement** and **business tax configuration** — the payments-and-tax subject owns those;
-- **finalising and collecting** a week's commission at weekly report close — the business-reports subject owns the close event and applies the rates this subject defines;
+- **finalising** a week's commission at weekly report close — the business-reports subject owns the close event and applies the rates this subject defines; **collecting** that owed amount belongs to platform-billing;
 - the **Superadmin console UI** for editing the catalogue — the superadmin subject owns console operators, force-assign, term-change accept/decline, and catalogue *maintenance powers*; this subject owns what the catalogue *means*;
 - **go-live checklist fields** beyond the paid-in-full gate — the business subject owns the checklist and toggle;
 - **day-of POS and channel mechanics** — order-flow and related subjects own how sales happen; this subject only states that selling channels are not plan-gated.
@@ -46,7 +46,7 @@ It deliberately does **not** cover:
 - **Weekly commission** — for one venue and one reporting week:  
   `(base commission rate × commissionable sales) + (card recovery rate × card-tendered commissionable sales)`.
 - **Entitlement matrix** — which product capabilities each plan unlocks (ops depth, reports, multi-venue caps). Selling **channels** are not gated by plan.
-- **Paid-in-full** — the Owner's subscription for the current period is settled, required before go-live on a **paid** plan.
+- **Paid-in-full** — the Owner's subscription for the current **calendar subscription month** is settled (full month prepaid or mid-month prorated prepaid), required before go-live on a **paid** plan. Collection of that prepaid amount belongs to platform-billing.
 - **Portfolio freeze** — every Business under an Owner is inaccessible for normal operation after subscription arrears past grace.
 - **Venue freeze** — a single Business is inaccessible after that venue's weekly commission arrears past grace; sibling venues stay up.
 - **Catalogue currency** — the currency in which list monthly prices are published (seed: euro). Charges follow the Owner portfolio currency (same as every venue under that Owner).
@@ -118,19 +118,20 @@ Free means: run real service and take payment; Manage depth beyond promotions an
 ### 3.6 Plan changes
 
 - An Owner may **change plan mid-cycle**. **Entitlements apply immediately.**
-- **Monthly subscription** and **commission rates** are **time-prorated** at the cutover: elapsed fraction at the old price/rates, remainder at the new. Within a reporting week that spans a cutover, sales before the cut use the old rates; sales after use the new.
+- **Commission rates** on sales are **cut over at the plan change**: within a reporting week that spans a cutover, sales before the cut use the old rates; sales after use the new.
+- **Monthly subscription price** follows **calendar prepaid** billing owned by platform-billing: billed on the **first of each calendar month in advance** for that month; a mid-month start or go-live takes a **prorated prepaid** for the remaining days immediately; a mid-month plan change's price difference is a **true-up on the next first-of-month** invoice (not an immediate mid-month charge or refund).
 - **Downgrade** is allowed only when the portfolio already fits the lower venue and feature caps; otherwise the Owner must shed venues or turn off gated features first.
-- **Superadmin force-assign** follows the same immediate entitlements and proration rules, and **wins** on conflict with an Owner-driven change.
+- **Superadmin force-assign** follows the same immediate entitlements, commission-rate cutover, and subscription true-up rules, and **wins** on conflict with an Owner-driven change.
 
 ### 3.7 Go-live and paid-in-full
 
-- On **Free**, go-live needs only the business go-live checklist (business subject).
-- On **paid** plans (Basic and above), go-live also requires the Owner's subscription **paid-in-full** for the current period.
+- On **Free**, go-live needs only the business go-live checklist (business subject). Free has no subscription invoice gate, but still owes **weekly commission** (collected by platform-billing).
+- On **paid** plans (Basic and above), go-live also requires the Owner's subscription **paid-in-full** for the current **calendar subscription month** (full month or mid-month prorated prepaid — platform-billing).
 - Commission arrears do not block go-live; they use late-payment freeze (§3.8).
 
 ### 3.8 Late payment and freeze
 
-- Default grace: notify on overdue platform charge; **payment deadline = 7 days** after notice. Superadmin may override a specific Owner's deadline.
+- Default grace: notify on overdue platform charge; **payment deadline = 7 days** after notice. Superadmin may override a specific Owner's deadline. Daily arrears dunning, the named cut-off date, and post-freeze reminders belong to platform-billing; this subject owns the grace default and the freeze outcome.
 - **Subscription** is owed by the **Owner**. If still unpaid after the deadline, the **entire Owner portfolio is frozen** (every venue).
 - **Weekly commission** is owed by the **Business**. If that venue's commission is still unpaid after the deadline, **only that Business is frozen**. Sibling venues under the same Owner that are current keep running.
 - Resume when the debt is cleared (or Superadmin resumes). Soft-delete and other Owner lifecycle rules remain with the users and superadmin subjects.

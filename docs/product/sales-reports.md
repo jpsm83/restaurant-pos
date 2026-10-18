@@ -52,7 +52,7 @@ It deliberately does **not** cover:
 - **Reopen reason** — the mandatory, audited explanation a manager supplies when reopening a closed day; carried onto weekly and monthly reports that absorb the amendment.
 - **Close** — lock the day: block further changes until reopen, and run the fulfilment sweep for that work day.
 - **Reopen** — unlock a closed day so belonging bills and payments may change again; moves the report to **reopened**.
-- **Commission estimate** — a day-level preview of platform commission on that day's commissionable sales; **not charged**. Finalisation and automatic collection happen when the weekly business report closes.
+- **Commission estimate** — a day-level preview of platform commission on that day's commissionable sales; **not charged**. Finalisation and owing happen when the weekly business report closes; collection belongs to platform-billing.
 
 Terms reused from other subjects rather than redefined here: **business**, **sales instance**, **sales point**, **order**, **bill**, **payment**, **guest count**, **covers**, **total sales**, **net revenue**, **cost of goods sold**, **tip**, **void**, **invitation**, **gift card**, **reservation deposit**, **fulfilment slice**, **managers and above**, and the metric names defined by the business-metrics subject.
 
@@ -116,8 +116,8 @@ Terms reused from other subjects rather than redefined here: **business**, **sal
 ### 3.7 Commission estimate
 
 - The daily report shows a **commission estimate** using the same formula the business-reports subject uses for the week: **(base plan rate × that day's commissionable sales) + (card recovery rate × that day's card-tendered commissionable sales)**. Commissionable sales are **paid sales after voids and refunds**, plus **paid gift-card issues**, across **all payment methods**; **invitations**, **granted** gift cards, gift-card **redemptions**, and **forfeitures** are excluded. Rates come from the monetization catalogue (base by plan; card recovery shared, pass-through only).
-- The rate is **fixed by the subscription plan** and is not editable on the report.
-- The estimate is **never charged** from the daily report. **Finalisation, owing, and automatic collection** happen when the **weekly business report closes** (business-reports subject).
+- The rates are **fixed by the subscription plan / catalogue** and are not editable on the report.
+- The estimate is **never charged** from the daily report. **Finalisation and owing** happen when the **weekly business report closes** (business-reports subject); **collection** belongs to platform-billing.
 
 ### 3.8 Reopen, bill edits, and the edited flag
 

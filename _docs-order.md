@@ -27,12 +27,11 @@
 28 - user navigation
 29 - floor plans
 30 - superadmin console
-31 - 
-32 - 
-33 - 
+31 - payroll
+32 - monetization
+33 - platform billing
+34 - 
 
 - one doubt with gift card, it is consider as a sale with its own tax percent but is that correct? should it be justa a money handling to be hold, no sale, till its is used them we can apply the tax on the exact product it was used for?
-- we must defined the subscription, what they offer, wich comission they charge
 - review all the docs to find out any conflict
 - would you add any extra subject docs to the project
-yes
