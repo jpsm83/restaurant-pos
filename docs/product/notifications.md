@@ -70,7 +70,7 @@ Terms reused from the product overview's core vocabulary rather than defined her
 - State is **per recipient**: an entry is unread by default; reading marks it read; a person can mark one read, mark all read, and delete. The inbox shows an **unread count**.
 - **Deleting** hides an entry from that person's inbox only.
 - **System-generated** notification text is delivered in the recipient's **language preference** (English or Spanish). A manager's own words in a direct message are delivered **as written**.
-- A notification or conversation follows the platform's **soft-delete** convention; a recipient's delete is a per-person hide, and nothing is purged automatically.
+- A notification or conversation follows the platform's **soft-delete** convention; a recipient's delete is a per-person hide. Soft-deleted notification records may later be physically removed under **operational** retention by the plan quotas and data retention subject when the **data-integrity rule** allows.
 
 ### 3.3 Operational event catalogue
 

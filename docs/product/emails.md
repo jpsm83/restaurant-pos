@@ -107,6 +107,8 @@ Project Imperium emails the operational notifications that the notifications sub
 - **Platform charge overdue** — daily copy to the Owner and to Manager-and-above recipients scoped by platform-billing; it carries the unpaid amount, what it is for, and the **exact cut-off date**.
 - **Platform service frozen** — sent on freeze day to the same recipients; it states that service is cut until the debt is cleared.
 - **Platform post-freeze pay-to-restart** — daily for fourteen days after freeze to the same recipients; it urges payment so service can restart.
+- **Inactive account warning** — sent to a User approaching inactivity soft-delete; it states the deadline and how to keep the account (sign in or keep-account confirmation). Raising the candidate belongs to the plan quotas and data retention subject.
+- **Dormant business confirmation** — sent to the Owner when a venue has had no venue activity for the dormant window; it asks them to confirm the venue should stay live before soft-delete. Raising the candidate belongs to the plan quotas and data retention subject.
 
 An operational email is the **emailed copy** of an in-app notification where one exists, and the notification remains the record. The accountant pay-run package and the Owner's **platform billing document** are email-primary. A send failure is best-effort and never blocks the action that triggered it.
 

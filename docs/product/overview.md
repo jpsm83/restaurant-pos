@@ -68,7 +68,7 @@ These terms are used with exactly these meanings throughout Project Imperium. Do
 | **Me** (nav) | Business left-menu header for self-only destinations (own schedule, notifications, personal details). |
 | **Daily / Weekly / Monthly report** | The aggregated sales and performance reports at each roll-up level. |
 | **Notification** | A message Project Imperium delivers to a person's inbox. An **operational** notification carries a **severity** — **Info**, **Warning**, or **Emergency** — while a venue **engagement** message carries a **kind** — **Message**, **Promotion**, **Birthday**, or **Event**. |
-| **Soft delete** | Project Imperium never hard-deletes domain documents: a server-owned deleted marker plus a timestamp are set, the document is retained and reactivatable, and uniqueness is enforced among active documents. Every model follows it, apart from deliberate exceptions — an empty sales instance is discarded, and a cancelled order is erased. |
+| **Soft delete** | Ordinary delete marks a domain document deleted with a timestamp, retains it, and allows reactivation where the product promises it; uniqueness is among active documents. Routes and operators do not physically remove domain documents, apart from deliberate exceptions — an empty sales instance is discarded, and a cancelled order is erased. **Retention purge** (plan quotas and data retention subject) may later physically remove soft-deleted records after class delays when the **data-integrity rule** allows. |
 
 ---
 
@@ -284,8 +284,8 @@ The Customer app is the free, **public default** side of Project Imperium — th
 
 The Superadmin console runs the **application business** — Project Imperium itself — not any venue. It is a **separate web app** with its own authentication realm (separate credentials, mandatory MFA, enrollment for Imperium staff), distinct from Customer and Business sessions and never offered as a third mode on the Customer \| Business chooser. Console operators hold console roles **Staff**, **Manager**, or **Owner** (Manager and console Owner share the same tools; console Owner marks ownership of the Imperium app).
 
-- **Owner account management.** Superadmin manages paying **Owners**: subscription and commission terms, suspend/resume, soft delete (no hard delete), visibility into Companies and Businesses beneath each Owner. Ordinary go-live is not Superadmin-approved — required fields and paid-in-full on a paid plan belong elsewhere; late payment uses notify → deadline → automatic suspend.
-- **Plan catalogue.** Management of the subscription plan catalogue and force-assignment of plans to Owners. Term changes email affected Owners, who must accept or decline and terminate.
+- **Owner account management.** Superadmin manages paying **Owners**: subscription and commission terms, suspend/resume, soft delete (operators never hard-delete), visibility into Companies and Businesses beneath each Owner. Ordinary go-live is not Superadmin-approved — required fields and paid-in-full on a paid plan belong elsewhere; late payment uses notify → deadline → automatic suspend.
+- **Plan catalogue.** Management of the subscription plan catalogue — including creation quotas and platform retention constants owned by the plan quotas and data retention subject — and force-assignment of plans to Owners. Term changes email affected Owners, who must accept or decline and terminate.
 - **Commission configuration.** Base commission per plan and the shared card-recovery pass-through (no one-off per-Owner rates outside Enterprise custom terms).
 - **Feature flags** platform-wide and per-Owner.
 - **Support tooling**, including scoped impersonation (one User, one Business, time-bounded, audited) and the review abuse-removal queue — not a general helpdesk.

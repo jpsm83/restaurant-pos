@@ -165,7 +165,7 @@ They must **not** see **gross or net pay**, **employee tax number**, **national 
 
 ### 3.12 Soft delete
 
-Under the platform soft-delete convention, an Employee membership is never hard-deleted. Soft-delete is the retention marker for the platform delete/reactivate path — **not** a substitute for **Terminated**. Day-to-day separation uses termination (§3.9).
+Under the platform soft-delete convention, an Employee membership is soft-deleted (not operator hard-deleted). Soft-delete is the retention marker for the platform delete/reactivate path — **not** a substitute for **Terminated**. Day-to-day separation uses termination (§3.9). Physical removal of soft-deleted membership or HR data later follows the plan quotas and data retention subject (operational versus legal and financial classes) and the **data-integrity rule**. Inactivity without sign-in is not by itself deletion.
 
 ---
 

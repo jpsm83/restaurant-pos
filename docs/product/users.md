@@ -181,7 +181,11 @@ A soft-deleted account can be **reactivated**, but reactivation is **never compl
 
 ### 3.17 Soft delete, platform-wide
 
-Under Project Imperium's **soft-delete convention**, an identity — a **User**, **Owner**, **Company**, **Employee**, or **Business** — is never hard-deleted. Project Imperium marks it deleted and stamps the time, retains it, and can reactivate it; uniqueness is enforced among active identities, so reusing a soft-deleted email means **reactivating** that account, not creating a duplicate.
+Under Project Imperium's **soft-delete convention**, an identity — a **User**, **Owner**, **Company**, **Employee**, or **Business** — is soft-deleted by marking it deleted and stamping the time, retained, and reactivatable under the rules above; uniqueness is enforced among active identities, so reusing a soft-deleted email means **reactivating** that account, not creating a duplicate. Operators and routes do not physically remove these identities. **Retention purge** after soft-delete — including inactivity-driven soft-delete of non-owner users — belongs to the plan quotas and data retention subject and always obeys that subject’s **data-integrity rule**.
+
+### 3.18 Inactive users
+
+Long absence without sign-in may lead to soft-delete of a **non-owner** User after notice. A User who **owns any Business** is never auto soft-deleted for inactivity. Full windows, emails, private-only cascade, and later purge rules belong to the plan quotas and data retention subject.
 
 ---
 
@@ -212,6 +216,7 @@ Granted or revoked per user by **managers and above**, on top of the layer defau
 | Hire, edit HR, terminate, rehire | Employees subject (managers and above; rehire admin/owner) |
 | Edit schedules / approve time-off | Schedules subject (managers and above) |
 | Delete one's own account | The account's user |
+| Keep account after inactive-user warning | The account's user (sign in or keep-account confirmation; rules in plan quotas and data retention) |
 | Reactivate a soft-deleted account | The account's user, by email-confirmed link |
 | Favorite or unfavorite a live venue | The signed-in user (customer identity) |
 | Browse own favorites list | The signed-in user |

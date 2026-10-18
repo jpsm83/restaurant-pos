@@ -9,7 +9,7 @@
 This subject owns **how Project Imperium is paid** by businesses, and **what each plan unlocks**. It covers:
 
 - the **plan ladder** — **Free**, **Basic**, **Premium**, and **Enterprise**;
-- the **plan catalogue** — monthly subscription prices, **base commission** rates, **card recovery** rate, venue caps, and the **entitlement matrix**;
+- the **plan catalogue** — monthly subscription prices, **base commission** rates, **card recovery** rate, venue caps, and the **entitlement matrix** (feature and venue depth); **creation quotas** for active menu items and employees are defined by the plan quotas and data retention subject and ship on the same catalogue;
 - how the **subscription** sits on the **Owner** and covers every venue in that Owner's portfolio;
 - **commissionable sales**, the dual fee (base + card recovery), and how a **reporting week's** commission is composed;
 - **plan changes** (upgrade, downgrade, Superadmin force-assign) with immediate entitlements, commission-rate cutover inside a reporting week, and calendar-month subscription true-up rules;
@@ -25,7 +25,8 @@ It deliberately does **not** cover:
 - **finalising** a week's commission at weekly report close — the business-reports subject owns the close event and applies the rates this subject defines; **collecting** that owed amount belongs to platform-billing;
 - the **Superadmin console UI** for editing the catalogue — the superadmin subject owns console operators, force-assign, term-change accept/decline, and catalogue *maintenance powers*; this subject owns what the catalogue *means*;
 - **go-live checklist fields** beyond the paid-in-full gate — the business subject owns the checklist and toggle;
-- **day-of POS and channel mechanics** — order-flow and related subjects own how sales happen; this subject only states that selling channels are not plan-gated.
+- **day-of POS and channel mechanics** — order-flow and related subjects own how sales happen; this subject only states that selling channels are not plan-gated;
+- **creation quota numbers, retention purge, inactive users, and dormant businesses** — the plan quotas and data retention subject owns those rules and the catalogue constants for them; this subject only requires that a downgrade also fit those quotas.
 
 ---
 
@@ -104,8 +105,9 @@ Terms reused rather than redefined here: **Owner**, **Company**, **Business**, *
 | Weekly business reports | No | Yes | Yes | Yes |
 | Full monthly P&L / advanced metrics | No | No | Yes | Yes |
 | Custom commercial terms | No | No | No | Yes |
+| Active food / drink menu and employee **creation quotas** | See plan quotas and data retention subject | Same | Same | Same |
 
-Free means: run real service and take payment; Manage depth beyond promotions and ratings stays off until a paid plan.
+Free means: run real service and take payment; Manage depth beyond promotions and ratings stays off until a paid plan. Creation quotas on Free still limit how large an active menu may grow.
 
 ### 3.5 Commission composition and timing
 
@@ -120,7 +122,7 @@ Free means: run real service and take payment; Manage depth beyond promotions an
 - An Owner may **change plan mid-cycle**. **Entitlements apply immediately.**
 - **Commission rates** on sales are **cut over at the plan change**: within a reporting week that spans a cutover, sales before the cut use the old rates; sales after use the new.
 - **Monthly subscription price** follows **calendar prepaid** billing owned by platform-billing: billed on the **first of each calendar month in advance** for that month; a mid-month start or go-live takes a **prorated prepaid** for the remaining days immediately; a mid-month plan change's price difference is a **true-up on the next first-of-month** invoice (not an immediate mid-month charge or refund).
-- **Downgrade** is allowed only when the portfolio already fits the lower venue and feature caps; otherwise the Owner must shed venues or turn off gated features first.
+- **Downgrade** is allowed only when the portfolio already fits the lower venue caps, feature caps, and **creation quotas** (plan quotas and data retention subject); otherwise the Owner must shed venues, turn off gated features, or reduce active menu or employee counts first.
 - **Superadmin force-assign** follows the same immediate entitlements, commission-rate cutover, and subscription true-up rules, and **wins** on conflict with an Owner-driven change.
 
 ### 3.7 Go-live and paid-in-full

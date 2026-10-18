@@ -151,9 +151,9 @@ Terms reused rather than redefined here: **Business**, **Owner**, **Company**, *
 
 ### 3.11 Retention
 
-- Payments live as **history**: the platform never hard-deletes one. A payment reversed in full is **retained** and reads as refunded, so a bill's settlement always reconciles.
+- Payments live as **history**: operators never physically remove one. A payment reversed in full is **retained** and reads as refunded, so a bill's settlement always reconciles.
 - A **refund** is retained and audited with its reason and its decision.
-- These are business records, kept under the platform's **soft-delete** rule.
+- These are business records under the platform's **soft-delete** rule and the **legal and financial** retention class. Any later physical removal after that class delay belongs to the plan quotas and data retention subject and only when the **data-integrity rule** allows.
 
 ---
 

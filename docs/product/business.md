@@ -177,8 +177,12 @@ The **profile read exposes the completeness signal** — which checklist items a
 ### 3.12 Closure
 
 - Closing a business is a **deliberate soft delete** of the tenant record. It is **not** the same as going offline.
-- Closure requires **no open sales instances** and an **explicit confirmation**. It **never hard-deletes operational data**; the records are retained and marked deleted (see ADR-0003).
+- Closure requires **no open sales instances** and an **explicit confirmation**. Operators do not physically remove operational data on close; records are retained and marked deleted (ADR-0003). Later physical removal of soft-deleted venue data follows the plan quotas and data retention subject under the **data-integrity rule**.
 - A closed business leaves discovery and stops taking customer orders; the platform does not silently destroy data other people depend on.
+
+### 3.13 Dormant businesses
+
+A venue with no qualifying **venue activity** for a long window may be soft-deleted after Owner notice and no confirmation. Activity definition, windows, and purge afterward belong to the plan quotas and data retention subject. Deliberate closure (§3.12) remains the Owner-driven path.
 
 ---
 
@@ -205,4 +209,5 @@ The owning user is admin at every venue they own. Job roles and per-user capabil
 | Edit opening hours, delivery configuration, self-ordering configuration, discovery cuisine/categories | Managers and above |
 | Flip go-live / take a venue offline | Admin/owner |
 | Close a business | The owning user (admin/owner) |
+| Confirm a dormant business should stay live | The owning user (Owner), per plan quotas and data retention |
 | View published discovery fields | Anyone (public) |

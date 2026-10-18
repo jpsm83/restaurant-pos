@@ -1,6 +1,6 @@
 # ADR-0003: Soft delete across all domain models
 
-- **Status:** Accepted
+- **Status:** Accepted (amended 2026-10-18)
 - **Date:** 2026-10-13
 
 ## Context
@@ -84,6 +84,26 @@ Concretely:
   transient, order-less sales instance is discarded rather than marked, and a
   cancelled order is erased rather than retained; any future exception of the
   same shape has to be argued deliberately rather than assumed.
+
+## Amendment (2026-10-18) — platform retention purge
+
+**Context.** Soft-delete without any physical removal grows storage without bound
+(already noted under Consequences). Plan creation quotas and a platform
+retention policy are owned by the plan-quotas-and-data-retention product subject.
+
+**Decision addendum.** Soft-delete remains the only deletion model for **routes
+and console operators**. In addition, Project Imperium may run **retention
+purge**: automatic physical removal of **already soft-deleted** domain documents
+after platform-wide class delays (operational versus legal and financial), and
+**only** when a **data-integrity rule** passes — no remaining retained document
+(active or soft-deleted and not yet purged) still requires that identity.
+Operators never hard-delete identities to bypass that path. Nulling references
+solely to force eligibility is forbidden.
+
+**Consequences.** The negative “storage grows without bound” is addressed by
+retention purge; integrity and recoverability during the soft-delete window
+remain. Product behaviour and catalogue constants live in the plan-quotas-and-
+data-retention subject, not in this ADR’s implementation notes.
 
 ## Alternatives considered
 

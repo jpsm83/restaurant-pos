@@ -12,7 +12,7 @@ This subject owns the **Superadmin console**: the Imperium-staff surface that ad
 - **console operators** — Imperium employees who sign into that realm, with console roles **Owner**, **Manager**, and **Staff**;
 - **enrollment**, credentials, and MFA for those accounts;
 - management of **Owners** (the paying portfolio accounts): visibility into their Companies and Businesses, plan assignment, suspend / resume, soft delete, and term-change acceptance;
-- the **plan catalogue** — monthly prices, **base commission** per plan, shared **card recovery**, venue caps, and entitlement flags;
+- the **plan catalogue** — monthly prices, **base commission** per plan, shared **card recovery**, venue caps, entitlement flags, **creation quotas**, and platform **retention** and lifecycle constants (owned in meaning by the plan quotas and data retention subject);
 - **feature flags** at platform-wide and per-Owner scope;
 - **scoped impersonation** for support;
 - the **review abuse-removal** decision queue;
@@ -74,18 +74,18 @@ Terms reused rather than redefined here: **User**, **Owner** (paying account), *
 - **Managers and console Owners** create console-operator accounts manually and send an **enrollment** email. Until the person completes enrollment — credentials and MFA — the account cannot use the console.
 - A console operator holds exactly one **console role**: **Staff**, **Manager**, or **Owner**.
 - **Manager** and **console Owner** have the **same tool entitlements**. The console **Owner** role means the person **owns the Imperium application** (more than one console Owner is allowed); it is not a higher permission tier than Manager.
-- Console operators are disabled or soft-deleted under the same soft-delete convention as the rest of the platform; there is **no hard delete**.
+- Console operators are disabled or soft-deleted under the same soft-delete convention as the rest of the platform; console operators **never hard-delete**. Platform **retention purge** of eligible soft-deleted domain data is owned by the plan quotas and data retention subject.
 
 ### 3.3 Paying Owner lifecycle
 
 - Superadmin lists and inspects **Owners**, with visibility into the **Companies** and **Businesses** beneath each.
 - There is **no mandatory Superadmin approval** for ordinary business registration or go-live. Go-live completeness and paid-in-full on a paid plan belong to the business and monetization subjects.
-- Console Managers and console Owners may **suspend** and **resume** a paying Owner, and may **soft-delete** a paying Owner (never hard-delete). Soft-delete follows the platform-wide convention: mark deleted, retain, allow reactivation under the same rules as the main apps.
+- Console Managers and console Owners may **suspend** and **resume** a paying Owner, and may **soft-delete** a paying Owner (operators never hard-delete). Soft-delete follows the platform-wide convention: mark deleted, retain, allow reactivation under the same rules as the main apps.
 - Suspended or soft-deleted Owners (and their venues) are inaccessible for normal Customer/Business operation until resumed or reactivated per those rules.
 
 ### 3.4 Plans, commission, and term changes
 
-- Superadmin maintains the **plan catalogue** (Free, Basic, Premium, Enterprise): monthly prices, **base commission** per plan, the shared **card recovery** pass-through, venue caps, and entitlement flags.
+- Superadmin maintains the **plan catalogue** (Free, Basic, Premium, Enterprise): monthly prices, **base commission** per plan, the shared **card recovery** pass-through, venue caps, entitlement flags, **creation quotas**, and platform-wide **retention delays** and inactive-user / dormant-business windows. Meaning of quotas and retention belongs to the plan quotas and data retention subject; this subject owns the console’s power to edit them.
 - Base commission for a paying Owner is **always** the rate on that Owner's current plan (Enterprise may carry custom terms on the assignment). There are **no** arbitrary one-off rates outside that; changing a published rate means editing the catalogue (or moving the Owner to another plan).
 - Managers and console Owners may **force-assign or override** a paying Owner's plan. Force-assign applies entitlements immediately with commission-rate cutover and subscription next-bill true-up (monetization and platform-billing subjects). Where an Owner-facing subscription flow also changes plans, **Superadmin wins** on conflict.
 - When Superadmin changes catalogue terms, rates, or policies that bind existing paying Owners, Project Imperium **emails every affected Owner**. The Owner must **accept** to continue under the new terms, or **decline**, which starts **account termination** (each owned business transferred or closed first, per the users and business subjects). **Silence is not acceptance**; acceptance is an explicit action.
@@ -152,7 +152,7 @@ Venue **base access layers** and job roles do not apply inside the Superadmin co
 | Work the abuse-removal queue | Any console operator |
 | Scoped impersonation | Any console operator |
 | Assign or override a paying Owner's plan | Console Manager or console Owner |
-| Edit the plan catalogue (prices, base rates, card recovery, entitlements) | Console Manager or console Owner |
+| Edit the plan catalogue (prices, base rates, card recovery, entitlements, creation quotas, retention and lifecycle constants) | Console Manager or console Owner |
 | Edit feature flags | Console Manager or console Owner |
 | Suspend / resume / freeze a paying Owner or venue for arrears | Console Manager or console Owner |
 | Soft-delete a paying Owner | Console Manager or console Owner |
@@ -160,7 +160,7 @@ Venue **base access layers** and job roles do not apply inside the Superadmin co
 | Maintain the payment-provider catalogue | Console Manager or console Owner |
 | View portfolio analytics | Any console operator |
 | Approve ordinary go-live | No one in Superadmin — business/monetization gates |
-| Hard-delete any identity | No one — soft delete only |
+| Hard-delete any identity outside retention purge | No one — soft delete for operators; retention purge only per plan quotas and data retention subject |
 | Run venue day-to-day service from Superadmin | No one |
 | Open a general helpdesk ticket product | Out of scope |
 | Customer or Business User access via console-operator credentials | Never |
