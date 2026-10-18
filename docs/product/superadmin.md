@@ -12,11 +12,11 @@ This subject owns the **Superadmin console**: the Imperium-staff surface that ad
 - **console operators** — Imperium employees who sign into that realm, with console roles **Owner**, **Manager**, and **Staff**;
 - **enrollment**, credentials, and MFA for those accounts;
 - management of **Owners** (the paying portfolio accounts): visibility into their Companies and Businesses, plan assignment, suspend / resume, soft delete, and term-change acceptance;
-- the **plan catalogue** and **commission rates** fixed per plan;
+- the **plan catalogue** — monthly prices, **base commission** per plan, shared **card recovery**, venue caps, and entitlement flags;
 - **feature flags** at platform-wide and per-Owner scope;
 - **scoped impersonation** for support;
 - the **review abuse-removal** decision queue;
-- **late-payment** notification and automatic suspension behaviour as it appears to console operators;
+- **late-payment** notification and automatic **freeze** behaviour (Owner portfolio vs single venue) as it appears to console operators;
 - **portfolio analytics** across Owners and venues; and
 - maintenance of the platform's **payment-provider catalogue** (which providers Project Imperium offers venues).
 
@@ -51,9 +51,9 @@ It deliberately does **not** cover:
 - **Authentication realm** — the separate credential and session world for the Superadmin console (credentials, MFA, access rules), distinct from Customer/Business sign-in.
 - **Console role** — exactly one of **Owner**, **Manager**, or **Staff** on a console-operator account. These names are **console roles** only; they are not the venue job roles or base access layers of the Business app.
 - **Enrollment** — the invite flow by which a Manager or console Owner creates a console operator and the person sets credentials and MFA via email before first access.
-- **Plan catalogue** — the Superadmin-managed set of plans and their commission rates.
+- **Plan catalogue** — the Superadmin-managed set of plans, base commission rates, shared card recovery, and entitlements.
 - **Term change** — an edit to catalogue terms, rates, or policies that bind existing paying Owners; triggers email and an explicit accept-or-decline choice.
-- **Payment deadline** — the date by which an overdue Owner must pay before automatic suspension.
+- **Payment deadline** — the date by which an overdue subscription or venue commission must be paid before automatic freeze (portfolio-wide for subscription; that venue only for weekly commission).
 - **Abuse-removal queue** — the Superadmin list of venue requests to soft-delete a review for abuse.
 
 Terms reused rather than redefined here: **User**, **Owner** (paying account), **Company**, **Business**, **subscription**, **commission**, **soft delete**, **live** venue, **go-live**, and **payment provider**.
@@ -152,7 +152,7 @@ Venue **base access layers** and job roles do not apply inside the Superadmin co
 | Work the abuse-removal queue | Any console operator |
 | Scoped impersonation | Any console operator |
 | Assign or override a paying Owner's plan | Console Manager or console Owner |
-| Edit the plan catalogue and commission rates | Console Manager or console Owner |
+| Edit the plan catalogue (prices, base rates, card recovery, entitlements) | Console Manager or console Owner |
 | Edit feature flags | Console Manager or console Owner |
 | Suspend / resume / freeze a paying Owner or venue for arrears | Console Manager or console Owner |
 | Soft-delete a paying Owner | Console Manager or console Owner |
