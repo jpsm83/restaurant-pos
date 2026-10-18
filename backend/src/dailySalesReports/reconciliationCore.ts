@@ -4,6 +4,7 @@ import type {
   IGoodsReduced,
 } from "restaurant-pos-packages/interfaces/IDailySalesReport";
 import type { IPaymentMethod } from "restaurant-pos-packages/interfaces/IPaymentMethod";
+import { resolveBaseCommissionPercent } from "restaurant-pos-packages/utils/subscriptionCatalogue";
 import resolveFinalizationActorReportTarget from "./resolveFinalizationActorReportTarget.ts";
 
 // Shared reconciliation core for admin/manual rebuild flows.
@@ -345,20 +346,7 @@ export const buildReconciledDailyPayload = async (input: {
   );
   const top = updateTopLevelFromActorRows(rows);
 
-  let comissionPercentage = 0;
-  switch (input.subscription) {
-    case "Basic":
-      comissionPercentage = 0.05;
-      break;
-    case "Premium":
-      comissionPercentage = 0.08;
-      break;
-    case "Enterprise":
-      comissionPercentage = 0.1;
-      break;
-    default:
-      comissionPercentage = 0;
-  }
+  const comissionPercentage = resolveBaseCommissionPercent(input.subscription);
 
   return {
     ...rows,

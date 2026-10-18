@@ -286,7 +286,7 @@ The Superadmin console runs the **application business** — Project Imperium it
 
 - **Owner account management.** Superadmin manages paying **Owners**: subscription and commission terms, suspend/resume, soft delete (no hard delete), visibility into Companies and Businesses beneath each Owner. Ordinary go-live is not Superadmin-approved — required fields and paid-in-full on a paid plan belong elsewhere; late payment uses notify → deadline → automatic suspend.
 - **Plan catalogue.** Management of the subscription plan catalogue and force-assignment of plans to Owners. Term changes email affected Owners, who must accept or decline and terminate.
-- **Commission configuration.** The commission rate per plan (no one-off per-Owner rates).
+- **Commission configuration.** Base commission per plan and the shared card-recovery pass-through (no one-off per-Owner rates outside Enterprise custom terms).
 - **Feature flags** platform-wide and per-Owner.
 - **Support tooling**, including scoped impersonation (one User, one Business, time-bounded, audited) and the review abuse-removal queue — not a general helpdesk.
 - **Payment-provider catalogue** maintenance (which providers venues may connect).
@@ -308,8 +308,9 @@ Project Imperium is **live by design**: sales points, sales instances, order sta
 ## 11. Monetization
 
 - **Businesses pay; customers are free.**
-- **Subscription.** An **Owner** subscribes to a **tiered plan** — **Free, Basic, Premium, Enterprise** — managed from the Superadmin catalog. The plan covers the Owner's venues and determines which features are available.
-- **Commission.** Project Imperium also earns a **commission** on the venue's **commissionable sales**, and the commission rate **varies by subscription tier**. Commission is **fixed by the plan** and is therefore **not a user-editable field**; it is reported as platform revenue, not as a venue input. The base is **paid sales after voids and refunds, plus paid gift-card issues, across all payment methods** (cash, card, crypto, and the rest); **invitations**, **granted** gift cards, gift-card **redemptions**, and **forfeitures** are excluded. A **reporting week's** commission is **finalised, owed, and paid automatically** when that week's **business report closes** — never netted out of what the venue's customers paid, and never routed through a merchant account. Until that close, daily and open weekly reports show an **estimate** only.
+- **Subscription.** An **Owner** subscribes to a **tiered plan** — **Free, Basic, Premium, Enterprise** — managed from the Superadmin catalogue. The plan covers the Owner's venues (one **country** per Owner) and determines which **ops** features are available. Selling channels (dine-in, self-ordering, kiosk, delivery) are available on every plan. Catalogue prices, rates, and entitlements are Superadmin-configurable; the monetization subject is the source of truth for the matrix and commercial rules.
+- **Commission.** A reporting week's fee has two parts: **base commission** (plan rate × all **commissionable sales** — Imperium's earnings) plus **card recovery** (a shared pass-through percent × **card-tendered** commissionable sales — no Imperium markup). Commissionable sales are paid sales after voids and refunds, plus paid gift-card issues, across all payment methods; invitations, granted gift cards, redemptions, and forfeitures are excluded. The week is **finalised, owed, and paid automatically** when that week's **business report closes** — never netted out of what the venue's customers paid. Until that close, daily and open weekly reports show an **estimate** only.
+- **Arrears.** Subscription late past grace freezes the whole Owner portfolio; a venue's weekly commission late past grace freezes **only that venue**.
 
 ---
 

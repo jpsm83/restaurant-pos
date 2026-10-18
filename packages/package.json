@@ -10,7 +10,8 @@
     "./schemas": "./schemas/index.ts",
     "./schemas/primitives": "./schemas/primitives.ts",
     "./schemas/*": "./schemas/*.ts",
-    "./utils/*": "./utils/*.ts"
+    "./utils/*": "./utils/*.ts",
+    "./subscriptionCatalogue.json": "./subscriptionCatalogue.json"
   },
   "scripts": {
     "test": "vitest run --passWithNoTests"

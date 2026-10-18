@@ -75,6 +75,7 @@ Creating a user grants the **customer identity unconditionally**. There is no bu
 A **business is owned by exactly one user**. When a user registers a business, Project Imperium **creates or updates that user's Owner** account, which holds the Companies it controls, the subscription, and the commission terms.
 
 - A user may **own many businesses**; each owned venue is its own **Business**, and each Business belongs to exactly one **Company** — the tax entity grouping the venues run as one legal unit. A user adding a venue chooses whether it **joins an existing Company** or **forms a new one**.
+- An Owner's portfolio is **one country**: every owned Business shares that country (and thus the same currency). Cross-border venues under one Owner are not allowed.
 - A user may simultaneously **own some venues and be an ordinary employee at others**.
 - Registration also creates the owner's **Employee** membership at that venue (Owner job role and admin layer); the employees subject owns that membership and its HR completion.
 - **Ownership can be transferred** from one user to another; the **Owner** accounts, their Companies, and their business lists follow the transfer.

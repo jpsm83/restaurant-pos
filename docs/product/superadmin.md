@@ -23,10 +23,10 @@ This subject owns the **Superadmin console**: the Imperium-staff surface that ad
 It deliberately does **not** cover:
 
 - the **Customer** and **Business** apps, the **Customer | Business** mode toggle, venue chrome, or day-of service — the user-navigation, order-flow, and related subjects own those. Superadmin is never a third mode on that chooser.
-- **go-live checklist**, draft venues, and **paid-in-full** before go-live on a paid plan — the business and subscription subjects own those gates. This subject only states that Superadmin does **not** approve ordinary go-live.
-- **default late-payment grace rules** (when to notify, how long the deadline is) — the subscription subject owns the defaults. This subject owns console override and the automatic suspend outcome.
-- **commission collection** when a weekly business report closes — the business-reports subject owns finalising, owing, and collecting. This subject owns the rate on the plan.
-- **what each plan unlocks** (the entitlement matrix) — the subscription subject owns that matrix. This subject owns the catalogue, assignment, and rates.
+- **go-live checklist**, draft venues, and **paid-in-full** before go-live on a paid plan — the business and monetization subjects own those gates. This subject only states that Superadmin does **not** approve ordinary go-live.
+- **default late-payment grace rules** (when to notify, how long the deadline is) — the monetization subject owns the defaults. This subject owns console override and the automatic freeze outcome.
+- **commission collection** when a weekly business report closes — the business-reports subject owns finalising, owing, and collecting. This subject owns editing the catalogue rates the monetization subject defines.
+- **what each plan unlocks** (the entitlement matrix) and commercial meaning of base vs card-recovery commission — the monetization subject owns that. This subject owns catalogue maintenance, assignment, and overrides.
 - **User** identity in the Customer/Business realm, membership, and venue HR — the users and employees subjects own those.
 - **review authoring and business replies** — the ratings-and-comments subject owns them; this subject owns only accept/reject of a venue's abuse-removal request.
 - a **general helpdesk** or ticket product — out of scope; support here is ops tools plus the abuse queue.
@@ -41,7 +41,7 @@ It deliberately does **not** cover:
 - **Superadmin console** — the Imperium-staff product surface that runs the **application business**. It is a **separate web app** with its own authentication realm. It shares the platform's data with the Customer and Business apps; it does not share their login or session.
 - **Console operator** — an Imperium employee account that exists only in the Superadmin realm. A console operator is **not** a **User** of the Customer/Business apps; those credentials never grant Customer or Business access. This is not the venue job role of the same everyday word.
 - **Owner** (paying account) — the portfolio account that holds Companies, Businesses, subscription, and commission terms. Created when a person registers a business in the Customer/Business realm. Superadmin manages these accounts; it does not replace them.
-- **Plan** — a named subscription tier in the **plan catalogue** (**Free**, **Basic**, **Premium**, **Enterprise**). It carries the **commission rate** for that tier and is assigned to paying Owners.
+- **Plan** — a named subscription tier in the **plan catalogue** (**Free**, **Basic**, **Premium**, **Enterprise**). It carries the monthly price and **base commission** for that tier (plus shared **card recovery** on the catalogue) and is assigned to paying Owners.
 - **Feature flag** — a named platform capability switch, scoped **platform-wide** or to one paying **Owner**'s portfolio.
 - **Impersonation session** — a time-bounded, audited support session in which a console operator acts as a **named User** inside **one Business**.
 
@@ -79,21 +79,22 @@ Terms reused rather than redefined here: **User**, **Owner** (paying account), *
 ### 3.3 Paying Owner lifecycle
 
 - Superadmin lists and inspects **Owners**, with visibility into the **Companies** and **Businesses** beneath each.
-- There is **no mandatory Superadmin approval** for ordinary business registration or go-live. Go-live completeness and paid-in-full on a paid plan belong to the business and subscription subjects.
+- There is **no mandatory Superadmin approval** for ordinary business registration or go-live. Go-live completeness and paid-in-full on a paid plan belong to the business and monetization subjects.
 - Console Managers and console Owners may **suspend** and **resume** a paying Owner, and may **soft-delete** a paying Owner (never hard-delete). Soft-delete follows the platform-wide convention: mark deleted, retain, allow reactivation under the same rules as the main apps.
 - Suspended or soft-deleted Owners (and their venues) are inaccessible for normal Customer/Business operation until resumed or reactivated per those rules.
 
 ### 3.4 Plans, commission, and term changes
 
-- Superadmin maintains the **plan catalogue** (Free, Basic, Premium, Enterprise) and the **commission rate** on each plan.
-- Commission for a paying Owner is **always** the rate on that Owner's current plan. There are **no** one-off per-Owner commission rates; changing a rate means editing the catalogue (or moving the Owner to another plan).
-- Managers and console Owners may **force-assign or override** a paying Owner's plan. Where an Owner-facing subscription flow also changes plans, **Superadmin wins** on conflict.
+- Superadmin maintains the **plan catalogue** (Free, Basic, Premium, Enterprise): monthly prices, **base commission** per plan, the shared **card recovery** pass-through, venue caps, and entitlement flags.
+- Base commission for a paying Owner is **always** the rate on that Owner's current plan (Enterprise may carry custom terms on the assignment). There are **no** arbitrary one-off rates outside that; changing a published rate means editing the catalogue (or moving the Owner to another plan).
+- Managers and console Owners may **force-assign or override** a paying Owner's plan. Force-assign applies entitlements immediately with time proration (monetization subject). Where an Owner-facing subscription flow also changes plans, **Superadmin wins** on conflict.
 - When Superadmin changes catalogue terms, rates, or policies that bind existing paying Owners, Project Imperium **emails every affected Owner**. The Owner must **accept** to continue under the new terms, or **decline**, which starts **account termination** (each owned business transferred or closed first, per the users and business subjects). **Silence is not acceptance**; acceptance is an explicit action.
 
 ### 3.5 Late payment
 
-- When a paying Owner's payment is late, Project Imperium **notifies** them and establishes a **payment deadline**. If they do not pay by that deadline, the Owner is **automatically suspended**.
-- Default grace timing belongs to the subscription subject. Managers and console Owners may **override** a specific Owner's deadline or suspend/resume manually; the automatic suspend on a missed deadline still applies when no override clears the debt in time.
+- When a platform charge is late, Project Imperium **notifies** the payer and establishes a **payment deadline** (default grace from the monetization subject).
+- **Subscription** arrears past the deadline **freeze the whole Owner portfolio**. **Weekly commission** arrears past the deadline **freeze only the venue that owes**.
+- Managers and console Owners may **override** a specific Owner's deadline or freeze/resume manually; the automatic freeze on a missed deadline still applies when no override clears the debt in time.
 
 ### 3.6 Feature flags
 
@@ -153,12 +154,12 @@ Venue **base access layers** and job roles do not apply inside the Superadmin co
 | Assign or override a paying Owner's plan | Console Manager or console Owner |
 | Edit the plan catalogue and commission rates | Console Manager or console Owner |
 | Edit feature flags | Console Manager or console Owner |
-| Suspend / resume a paying Owner | Console Manager or console Owner |
+| Suspend / resume / freeze a paying Owner or venue for arrears | Console Manager or console Owner |
 | Soft-delete a paying Owner | Console Manager or console Owner |
 | Override a payment deadline | Console Manager or console Owner |
 | Maintain the payment-provider catalogue | Console Manager or console Owner |
 | View portfolio analytics | Any console operator |
-| Approve ordinary go-live | No one in Superadmin — business/subscription gates |
+| Approve ordinary go-live | No one in Superadmin — business/monetization gates |
 | Hard-delete any identity | No one — soft delete only |
 | Run venue day-to-day service from Superadmin | No one |
 | Open a general helpdesk ticket product | Out of scope |

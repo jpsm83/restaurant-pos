@@ -33,6 +33,7 @@ import { createAuthHook } from "../../auth/middleware.ts";
 import { isAggregateMismatchCheckEnabled } from "../../dailySalesReports/rolloutControls.ts";
 import { recordAggregateMismatchCheck } from "../../dailySalesReports/rolloutTelemetry.ts";
 import { buildReconciledDailyPayload } from "../../dailySalesReports/reconciliationCore.ts";
+import { resolveBaseCommissionPercent } from "restaurant-pos-packages/utils/subscriptionCatalogue";
 import {
   badRequest,
   forbidden,
@@ -528,7 +529,6 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
           0,
         );
 
-      let comissionPercentage = 0;
       const businessIdPayload = dailyReportWithUsers.businessId;
       const subscription =
         typeof businessIdPayload === "object" &&
@@ -537,23 +537,7 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
           ? (businessIdPayload as { subscription?: string }).subscription
           : undefined;
 
-      switch (subscription) {
-        case "Free":
-          comissionPercentage = 0;
-          break;
-        case "Basic":
-          comissionPercentage = 0.05;
-          break;
-        case "Premium":
-          comissionPercentage = 0.08;
-          break;
-        case "Enterprise":
-          comissionPercentage = 0.1;
-          break;
-        default:
-          comissionPercentage = 0;
-          break;
-      }
+      const comissionPercentage = resolveBaseCommissionPercent(subscription);
 
       dailySalesReportObj.dailyPosSystemCommission =
         dailySalesReportObj.dailyTotalSalesBeforeAdjustments *
@@ -853,7 +837,6 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
           0,
         );
 
-      let comissionPercentage = 0;
       const businessIdPayload = dailyReportWithUsers.businessId;
       const subscription =
         typeof businessIdPayload === "object" &&
@@ -861,23 +844,7 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
         "subscription" in businessIdPayload
           ? (businessIdPayload as { subscription?: string }).subscription
           : undefined;
-      switch (subscription) {
-        case "Free":
-          comissionPercentage = 0;
-          break;
-        case "Basic":
-          comissionPercentage = 0.05;
-          break;
-        case "Premium":
-          comissionPercentage = 0.08;
-          break;
-        case "Enterprise":
-          comissionPercentage = 0.1;
-          break;
-        default:
-          comissionPercentage = 0;
-          break;
-      }
+      const comissionPercentage = resolveBaseCommissionPercent(subscription);
       dailySalesReportObj.dailyPosSystemCommission =
         dailySalesReportObj.dailyTotalSalesBeforeAdjustments *
         comissionPercentage;

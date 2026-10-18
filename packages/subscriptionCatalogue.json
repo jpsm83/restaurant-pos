@@ -1,0 +1,117 @@
+{
+  "version": 1,
+  "catalogueCurrency": "EUR",
+  "latePaymentGraceDays": 7,
+  "cardRecovery": {
+    "percent": 0.025,
+    "imperiumMarginPercent": 0,
+    "benchmarkNote": "EEA blended effective average across Stripe, PayPal Advanced Card, and Skrill public list fees (percent-only pass-through; no Imperium margin)."
+  },
+  "plans": [
+    {
+      "id": "Free",
+      "monthlyPrice": 0,
+      "baseCommissionPercent": 0.01,
+      "venueLimit": 1,
+      "entitlements": {
+        "channels": {
+          "dineIn": true,
+          "selfOrdering": true,
+          "kiosk": true,
+          "delivery": true
+        },
+        "floorPlanLimit": 1,
+        "promotions": true,
+        "ratings": true,
+        "giftCards": false,
+        "reservations": false,
+        "inventory": false,
+        "suppliersPurchases": false,
+        "schedulesHr": false,
+        "payrollExport": false,
+        "dailyReports": true,
+        "weeklyReports": false,
+        "monthlyPnlReports": false
+      }
+    },
+    {
+      "id": "Basic",
+      "monthlyPrice": 49,
+      "baseCommissionPercent": 0.007,
+      "venueLimit": 2,
+      "entitlements": {
+        "channels": {
+          "dineIn": true,
+          "selfOrdering": true,
+          "kiosk": true,
+          "delivery": true
+        },
+        "floorPlanLimit": null,
+        "promotions": true,
+        "ratings": true,
+        "giftCards": true,
+        "reservations": true,
+        "inventory": true,
+        "suppliersPurchases": true,
+        "schedulesHr": true,
+        "payrollExport": false,
+        "dailyReports": true,
+        "weeklyReports": true,
+        "monthlyPnlReports": false
+      }
+    },
+    {
+      "id": "Premium",
+      "monthlyPrice": 129,
+      "baseCommissionPercent": 0.004,
+      "venueLimit": 5,
+      "entitlements": {
+        "channels": {
+          "dineIn": true,
+          "selfOrdering": true,
+          "kiosk": true,
+          "delivery": true
+        },
+        "floorPlanLimit": null,
+        "promotions": true,
+        "ratings": true,
+        "giftCards": true,
+        "reservations": true,
+        "inventory": true,
+        "suppliersPurchases": true,
+        "schedulesHr": true,
+        "payrollExport": true,
+        "dailyReports": true,
+        "weeklyReports": true,
+        "monthlyPnlReports": true
+      }
+    },
+    {
+      "id": "Enterprise",
+      "monthlyPrice": null,
+      "baseCommissionPercent": null,
+      "venueLimit": null,
+      "entitlements": {
+        "channels": {
+          "dineIn": true,
+          "selfOrdering": true,
+          "kiosk": true,
+          "delivery": true
+        },
+        "floorPlanLimit": null,
+        "promotions": true,
+        "ratings": true,
+        "giftCards": true,
+        "reservations": true,
+        "inventory": true,
+        "suppliersPurchases": true,
+        "schedulesHr": true,
+        "payrollExport": true,
+        "dailyReports": true,
+        "weeklyReports": true,
+        "monthlyPnlReports": true,
+        "customCommercialTerms": true
+      }
+    }
+  ]
+}

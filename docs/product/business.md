@@ -70,6 +70,7 @@ Registering a business is an **authenticated action by an existing user** — th
 
 - A user with **no business** reaches the action from the customer app; a user who **already owns businesses** reaches it from the business app's venue tabs (typically from **Manage**).
 - Registering a user's **first business creates that user's Owner** and a **Company**; each later business is added to that Owner and the user chooses whether it **joins an existing Company** (sharing that tax entity, so stock can move internally) or **forms a new one** (a separate taxpayer).
+- Every Business under one Owner must be in the **same country** as that Owner's portfolio (currency and tax regime stay aligned). A venue in another country cannot join that Owner.
 - A business is **owned by exactly one user**; the owner takes the **Owner job role** and the **admin** base layer at that venue.
 - After sign-in, a user who owns businesses may switch to **business mode** via the **Customer | Business** toggle and work in Manage (or Service); a user who owns none stays on the customer surface with no Business side on the toggle. These surfaces belong to the user-navigation subject; this subject owns the action and the form behind them.
 
@@ -150,13 +151,14 @@ A business is **discoverable only while live**. Its discovery fields are:
 
 - The **subscription is held on the Owner** and covers the owner's venues.
 - A business carries **no subscription field of its own**; it exposes the **effective plan read-only** so the venue can see what its Owner's plan provides.
-- Which features a plan unlocks is the superadmin subject's concern; this subject only surfaces the plan.
+- Which features a plan unlocks is the **monetization** subject's concern; this subject only surfaces the plan.
+- On a **paid** plan, go-live also requires the Owner's subscription **paid-in-full** for the period (monetization subject); Free has no subscription invoice gate.
 
 ### 3.11 Go-live, live, and offline
 
 A business's own state is server-owned. Its go-live status has three states — **ready to go live**, **live**, and **not live** — moved between by an admin/owner using the **go-live toggle**.
 
-- **Ready to go live.** The server computes readiness as: the **go-live checklist is complete** (which includes a **verified business contact email**).
+- **Ready to go live.** The server computes readiness as: the **go-live checklist is complete** (which includes a **verified business contact email**), and — on a **paid** Owner plan — the subscription is **paid-in-full** for the period (monetization subject). Free has no subscription invoice gate.
 - **The go-live toggle.** When the server reports the business ready, an **admin/owner** flips the go-live toggle to make it **live**. The same toggle takes a live business **offline**.
 - **Live means** the business is **discoverable** and **able to take customer orders and bookings**.
 - **Not live means** the business is **absent from customer discovery** and **cannot take customer orders or bookings**. Staff can always work in the business app meanwhile — a draft and an offline business are fully usable internally.
