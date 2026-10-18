@@ -27,7 +27,7 @@ It deliberately does **not** cover:
 - the **business good beyond its tax category** — the menu, its categories, selling price, derived cost, and allergens belong to the **business-goods** subject; this subject assigns each good a **tax category** and reads the price it carries.
 - the **business profile** — the currency, the address, and the tax number held on the venue's Company belong to the **business** subject; this subject stores the venue's **tax configuration**.
 - the **subscription and commission** — the plan catalogue, base and card-recovery rates, and commercial rules belong to the **monetization** subject (catalogue maintenance in **superadmin**); the amount a **reporting week** owes is finalised by the **business-reports** subject at weekly close; **charging mechanics** (Owner payment method, invoice, retries, billing documents, dunning) belong to **platform-billing**. This subject names the money flows only.
-- the **gift-card instrument** — issuance, value, lifecycle, and redemption rules belong to the **gift-cards** subject; this subject owns the **Gift card** payment method and the **Gift card** tax category a card's purchase is taxed under, and records a redemption as a settlement.
+- the **gift-card instrument** — issuance as deposit/liability, balance, ledger, lifecycle, and redemption rules belong to the **gift-cards** subject; this subject owns the **Gift card** payment method and records a redemption as ordinary settlement (tax stays on the goods).
 - **receipts, notifications, and emails** — delivering a receipt or a refund decision belongs to the **notifications** and **emails** subjects.
 - **supplier invoices and their tax** — amounts payable to a supplier and supplier invoicing are not part of Project Imperium.
 - **tip pooling and payroll export** — redistributing tips across roles and packaging them into a pay run belong to the **payroll** subject. This subject records and attributes tips at settlement.
@@ -56,7 +56,7 @@ It deliberately does **not** cover:
 - **Tip** — an optional gratuity added at settlement, taken on a payment and attributed to the employee who took it.
 - **Payout** — the transfer a provider makes of captured money to the venue's account.
 - **Refund request** — a request to reverse settled money, raised by a customer or a staff member and decided by the manager on duty.
-- **Tax category** — one of the fixed set a business rates: **Food**, **Non-alcoholic drinks**, **Alcoholic drinks**, **Merchandise**, **Tobacco**, **Gift card**, and **Tip**.
+- **Tax category** — one of the fixed set a business rates: **Food**, **Non-alcoholic drinks**, **Alcoholic drinks**, **Merchandise**, **Tobacco**, and **Tip**.
 - **Tax-inclusive price** — a price a venue sets that already contains its tax; the customer always pays the figure shown, and the tax is the part of it that is owed.
 - **Commission** — the platform's fee on a reporting week's **commissionable sales**, owed by the venue and collected automatically at weekly report close, separately from what its customers pay.
 
@@ -85,7 +85,7 @@ Terms reused rather than redefined here: **Business**, **Owner**, **Company**, *
   - **Other** — Voucher, PayPal, Venmo, Apple Pay, Google Pay, Samsung Pay.
 - The **type** groups the branches for reporting; the **branch** names exactly how the money moved. A payment is reported at both levels.
 - Every payment carries exactly one method, and the method chosen places the payment, and its tip, in the payment-method breakdown.
-- A **gift card** redeemed at its issuing venue is recorded as a **Gift card** payment, so it appears in its own place in the breakdown. Its redemption does **not** recompute tax, because the tax was collected on the purchase that funded the card, and the lines it covers are recorded as invitations; the card's issuance, value, lifecycle, and redemption rules belong to the gift-cards subject.
+- A **gift card** redeemed at its issuing venue is recorded as a **Gift card** payment, so it appears in its own place in the breakdown. Tax on the bill is the ordinary tax on each **paid** order line (and tip); gift-card tender does **not** change line tax categories and does **not** turn lines into invitations. Funding a card is a **deposit**, not a product sale — the gift-cards subject owns issue, balance, ledger, and lifecycle.
 
 ### 3.3 Taking a payment
 
@@ -134,8 +134,8 @@ Terms reused rather than redefined here: **Business**, **Owner**, **Company**, *
 
 ### 3.9 Tax configuration and tax on a sale
 
-- A business has **one tax configuration**: a **rate for each tax category**, set by an admin/owner. The categories are a **fixed platform set** — **Food**, **Non-alcoholic drinks**, **Alcoholic drinks**, **Merchandise**, **Tobacco**, **Gift card**, and **Tip** — and each carries the rate that business must apply, which may be zero.
-- Every **business good maps to exactly one tax category** — never to **Tip**, which rates tips alone, nor to **Gift card**, which rates the purchase of a gift card — and an **add-on** maps to its own category. A good's category tells a sale which rate taxes it.
+- A business has **one tax configuration**: a **rate for each tax category**, set by an admin/owner. The categories are a **fixed platform set** — **Food**, **Non-alcoholic drinks**, **Alcoholic drinks**, **Merchandise**, **Tobacco**, and **Tip** — and each carries the rate that business must apply, which may be zero.
+- Every **business good maps to exactly one tax category** — never to **Tip**, which rates tips alone — and an **add-on** maps to its own category. A good's category tells a sale which rate taxes it. Gift-card **deposit intake** is not a business good and is not taxed as a product sale; tax is taken when gift-card tender pays for goods (and tips) at redemption (gift-cards subject; ADR-0004).
 - **Prices are tax-inclusive.** The price a venue sets for a good already contains its tax: the customer always sees and pays the **final** figure, and the tax is the part of it that is owed. There is no separate inclusive-or-exclusive choice.
 - Tax on a sale is computed on the amount **actually paid** after every **discount, promotion, or price edit** — a good discounted from 8 to 6 is taxed on 6 — and **never** on the undiscounted price. A **void** or **invitation** line is uncharged and so untaxed.
 - A **tip** is taxed at the **Tip** rate.
@@ -146,7 +146,7 @@ Terms reused rather than redefined here: **Business**, **Owner**, **Company**, *
 ### 3.10 The two money flows
 
 - **Customer to venue.** What a customer pays for what they consume settles, through a connected provider where one is used, **directly to the venue**. It is the venue's money, in the venue's account: the platform records it and takes no part of it at source.
-- **Venue to Project Imperium.** The platform's own fees are the **monthly subscription** on the Owner and a **weekly commission** composed of **base commission** on all **commissionable sales** plus **card recovery** on card-tendered commissionable sales (paid sales after voids and refunds, plus paid gift-card issues; invitations, granted gift cards, gift-card redemptions, and forfeitures excluded). The commission for a week is **finalised and owed** when that week's **business report closes**, then **collected** by platform-billing — never netted out of what the venue's customers paid. Until that close, daily and open weekly reports may show a **commission estimate** only.
+- **Venue to Project Imperium.** The platform's own fees are the **monthly subscription** on the Owner and a **weekly commission** composed of **base commission** on all **commissionable sales** plus **card recovery** on **card-tendered** commissionable sales (paid product sales after voids and refunds across tenders, including sales paid with gift card; invitations, gift-card deposit intake, and forfeitures excluded; gift-card tender never attracts card recovery). The commission for a week is **finalised and owed** when that week's **business report closes**, then **collected** by platform-billing — never netted out of what the venue's customers paid. Until that close, daily and open weekly reports may show a **commission estimate** only.
 - Which subscription a venue's Owner holds, and the rates its plan fixes, are the monetization and superadmin subjects' concern; how a week's commission is worked out at weekly close is the business-reports subject's; how Imperium charges and the business pays is the platform-billing subject's. This subject owns only the shape of the two flows.
 
 ### 3.11 Retention

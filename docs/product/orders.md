@@ -112,7 +112,7 @@ Terms reused rather than redefined here: **Business**, **Sales instance**, **Sal
 ### 3.7 Void, invitation, and cancellation
 
 - **Void** keeps the order **on the bill, flagged**, and **uncharged**; the order is **retained in reporting**. A reason is **required**, stored, and never shown to the customer. Stock is **not** restored.
-- **Invitation** (complimentary) likewise keeps the order **on the bill, flagged**, and **uncharged**, and **retained in reporting**. It requires a reason, stored and never shown to the customer, and stock is **not** restored.
+- **Invitation** (complimentary) likewise keeps the order **on the bill, flagged**, and **uncharged**, and **retained in reporting**. It requires a reason, stored and never shown to the customer, and stock is **not** restored. Paying with a **gift card** is **not** an invitation: those orders stay **Paid** and gift card is only tender (gift-cards and payments-and-tax subjects; ADR-0004).
 - **Cancellation** removes a **sent** order from the bill **and** from reporting, **restores** the stock it moved, and is a **manager and above** act. A cancelled order is **hard-deleted**: the platform's soft-delete rule retains domain records, and a cancelled line is a deliberate exception, because it leaves no billable record to keep.
 - Removing a **draft** order is **not** a cancellation: nothing was committed, so nothing is restored and nothing is recorded.
 

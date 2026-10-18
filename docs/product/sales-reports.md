@@ -27,7 +27,7 @@ It deliberately does **not** cover:
 - **cash drawer or tip-cash counting** at close — out of scope for this subject; close does not require a cash attestation;
 - the **delivery of notifications** — the notifications subject owns inbox and channels; this subject raises **no** daily report-ready or closed signal;
 - **how reports are exported or laid out on screen** — outside this subject;
-- **gift-card issue, redemption, and expiry rules** — the gift-cards subject owns those; this subject accumulates their money movement in the gift-card and forfeiture channel buckets;
+- **gift-card issue, balance, redemption, void, and expiry rules** — the gift-cards subject owns those; this subject accumulates deposit intake and tender in the gift-card channel, forfeitures (expiry and void-with-balance) in the forfeiture channel, and surfaces outstanding liability;
 - **reservation deposit forfeiture** — the reservations subject owns when a deposit is forfeited; this subject accumulates that forfeiture in the forfeiture channel bucket.
 
 ---
@@ -81,9 +81,9 @@ Terms reused from other subjects rather than redefined here: **business**, **sal
   - **delivery** — delivery-channel sales, tips, goods, and payment methods;
   - **self-ordering** — self-ordering sales by point;
   - **kiosk** — kiosk sales by point;
-  - **gift-card** — that day's **paid gift-card issues**, **granted gift-card invitations**, and **gift-card redemptions** (as Gift card payments), so one channel is the audit home for gift-card money movement;
-  - **forfeiture** — **gift-card expiry forfeitures** and **reservation deposit forfeitures** (customer cancel after reserved, or no-show, when the deposit is kept), and nothing else.
-- Amounts in channel buckets still roll into **business totals** where they are venue money; a gift-card **redemption** adds no new revenue (purchase already counted), matching the gift-cards subject's rule.
+  - **gift-card** — that day's **gift-card deposit intake** (paid issues as cash-in liability funding, granted issues as liability with no cash), and **Gift card** tender on meal bills (payment-method view of redemptions), so one channel is the audit home for gift-card money movement; **product sales and tax** from redemptions sit in ordinary business totals by line, not as a second gift-card sale;
+  - **forfeiture** — **gift-card expiry forfeitures** and **gift-card void-with-balance forfeitures** (each labeled Expired or Voided), and **reservation deposit forfeitures** (customer cancel after reserved, or no-show, when the deposit is kept), and nothing else.
+- Amounts in channel buckets still roll into **business totals** where they are venue money. Gift-card **deposit intake** is not product sales revenue; **redemption** recognises product revenue on the paid order lines (gift-cards subject; ADR-0004). **Outstanding gift-card liability** (sum of Active remaining balances) is visible to managers and above alongside the day.
 - There is **no** separate dine-in channel bucket: staff-taken dine-in activity lives in **per-employee** buckets, with sales-point breakdown for where it happened.
 
 ### 3.4 Business totals and dimensions
@@ -115,7 +115,7 @@ Terms reused from other subjects rather than redefined here: **business**, **sal
 
 ### 3.7 Commission estimate
 
-- The daily report shows a **commission estimate** using the same formula the business-reports subject uses for the week: **(base plan rate × that day's commissionable sales) + (card recovery rate × that day's card-tendered commissionable sales)**. Commissionable sales are **paid sales after voids and refunds**, plus **paid gift-card issues**, across **all payment methods**; **invitations**, **granted** gift cards, gift-card **redemptions**, and **forfeitures** are excluded. Rates come from the monetization catalogue (base by plan; card recovery shared, pass-through only).
+- The daily report shows a **commission estimate** using the same formula the business-reports subject uses for the week: **(base plan rate × that day's commissionable sales) + (card recovery rate × that day's card-tendered commissionable sales)**. Commissionable sales are **paid product sales after voids and refunds** across **all payment methods**, including sales paid with **gift card** tender (paid or granted cards); **invitations**, gift-card **deposit intake**, and **forfeitures** are excluded. **Card recovery** applies only to card-network (and other card-recovery-eligible) tender — never to gift-card tender. Rates come from the monetization catalogue (base by plan; card recovery shared, pass-through only).
 - The rates are **fixed by the subscription plan / catalogue** and are not editable on the report.
 - The estimate is **never charged** from the daily report. **Finalisation and owing** happen when the **weekly business report closes** (business-reports subject); **collection** belongs to platform-billing.
 

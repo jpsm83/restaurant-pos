@@ -50,7 +50,7 @@ It deliberately does **not** cover:
 - **Report state** — where a weekly or monthly report is in its lifecycle: **open** (live mid-period roll-up, still accepting further closed dailies and inputs) or **closed** (frozen for the period, except when amended from an edited daily or when the monthly report is reopened with the inventory month — §3.8).
 - **Close** — lock the weekly or monthly report for its period under the rules in §3.8.
 - **Live mid-period roll-up** — the open weekly or monthly report as viewed during the period: whatever belonging dailies are already closed, plus the current live work day's sales figures when the viewer asks for the period so far.
-- **Commissionable sales** — the paid sales volume that commission is calculated on for a reporting week: paid sales after voids and refunds, plus **paid gift-card issues**, across **every payment method** (cash, card, crypto, and the rest). **Invitations** (comps), **granted** gift cards, gift-card **redemptions**, **forfeitures**, and any other activity with no paid sale are **excluded**.
+- **Commissionable sales** — the paid product sales volume that commission is calculated on for a reporting week: paid sales after voids and refunds across **every payment method** (cash, card, crypto, gift card tender, and the rest). **Invitations** (comps), gift-card **deposit intake** (paid or granted issue), **forfeitures**, and any other activity with no paid product sale are **excluded**.
 - **Weekly commission** — the platform fee for one reporting week: **(base plan rate × commissionable sales) + (card recovery rate × card-tendered commissionable sales)**. It is **finalised and owed** when the weekly report **closes**; **collection** belongs to platform-billing.
 - **Amendment from edited daily** — when a closed daily sales report is reopened, changed through its bills or payments, and closed again, any closed weekly or monthly report that included that day is recalculated automatically, stays closed, carries the daily's reopen reason, and shows it was updated from an edited daily; the week's commission is **re-finalised** if that week is already closed (platform-billing then adjusts the collected amount).
 
@@ -150,7 +150,7 @@ Terms reused from other subjects rather than redefined here: **business**, **dai
 
 ### 3.9 Platform commission at weekly close
 
-- **Commissionable sales** for a reporting week are **paid sales after voids and refunds**, plus **paid gift-card issues**, across **all payment methods** (cash, card, crypto, gift card at issue, and any other recorded method). **Invitations**, **granted** gift cards, gift-card **redemptions**, **forfeitures**, and other unpaid activity are **not** in the base.
+- **Commissionable sales** for a reporting week are **paid product sales after voids and refunds** across **all payment methods** (cash, card, crypto, gift card tender at redemption, and any other recorded method). **Invitations**, gift-card **deposit intake**, **forfeitures**, and other unpaid activity are **not** in the base. Gift-card tender never contributes to the **card-recovery** portion of weekly commission.
 - Until weekly close, commission is **estimate only**: the daily sales report shows a **day-level estimate**, and an **open** weekly report may show a **week-to-date estimate**. Neither estimate is charged.
 - When the weekly report **closes**, Project Imperium:
   - **finalises** the **weekly commission** as base rate × commissionable sales **plus** card recovery × card-tendered commissionable sales;

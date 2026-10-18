@@ -42,8 +42,8 @@ It deliberately does **not** cover:
 
 ### Terms this subject introduces
 
-- **Commissionable sales** — paid sales after voids and refunds, plus **paid gift-card issues**, across every payment method. **Invitations**, **granted** gift cards, gift-card **redemptions**, **forfeitures**, and other unpaid activity are excluded.
-- **Card-tendered commissionable sales** — the portion of commissionable sales whose recorded tender is **card** (including contactless and wallets on card rails), regardless of which processor handled the charge.
+- **Commissionable sales** — paid product sales after voids and refunds across every payment method, including sales paid with **gift card** tender (whether the card was paid or granted). **Invitations**, gift-card **deposit intake**, **forfeitures**, and other unpaid activity are excluded.
+- **Card-tendered commissionable sales** — the portion of commissionable sales whose recorded tender is **card** (including contactless and wallets on card rails), regardless of which processor handled the charge. **Gift card** tender is never card-tendered for card recovery.
 - **Weekly commission** — for one venue and one reporting week:  
   `(base commission rate × commissionable sales) + (card recovery rate × card-tendered commissionable sales)`.
 - **Entitlement matrix** — which product capabilities each plan unlocks (ops depth, reports, multi-venue caps). Selling **channels** are not gated by plan.
