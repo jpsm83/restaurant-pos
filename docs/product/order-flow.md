@@ -18,7 +18,8 @@ It deliberately does **not** cover:
 
 - the **sales point and sales instance** model — types, channels a point accepts, the one-open rule, instance statuses, responsible employee, reserved hold, and handover verification of an identification code belong to the sales-points-and-instances subject. This subject sequences the journey those anchors support.
 - the **order and batch** model — composition, drafting and sending, pricing, promotions, void, invitation, cancellation, transfer, held batches, don't-make, and fulfilment statuses belong to the orders subject. This subject places those acts in the journey.
-- **settlement mechanics** — payment methods, providers, splits, partial payments, tips, refunds, and tax belong to the payments-and-tax subject. This subject owns when the journey reaches settlement and that the instance closes only when the bill is fully paid.
+- **settlement mechanics** — payment methods, providers, splits, partial payments, tips, over-tender, refunds, and tax belong to the payments-and-tax subject. This subject owns when the journey reaches settlement and that the instance closes only when the outstanding balance is covered or surpassed.
+- **customer bill and receipt documents** — content, numbering, and reprint/replacement identity belong to the **receipts-and-bills** subject. This subject places first Bill request and settlement close in the journey those documents attach to.
 - **printers and screens** — routing, prep screens, the delivery screen, and the customer pickup board belong to the printers-and-screens subject. This subject names when fulfilment and handoff happen in the journey.
 - **reservations** — booking, deposit, and seating choice (reservation guests vs ordinary guests) belong to the reservations subject. This subject continues from the staff tab that seating opens.
 - **delivery and self-ordering configuration** — enabling delivery, radius, minimum order, and windows, and enabling self-ordering for the venue, belong to the business subject; which points accept which channels belong to the sales-points-and-instances subject.
@@ -74,7 +75,7 @@ Terms reused rather than redefined here: **Business**, **Sales point**, **Sales 
 - Prep areas advance fulfilment; runners deliver stay items to the point and pack to-go items for handover at the table or counter as the sitting requires.
 - Staff may move the tab to **Bill** and **settle** even while some fulfilment slices are still in progress. Closing does not require every slice to be Delivered.
 - While the tab is in **Bill**, staff may still **add and send** further orders; the bill updates.
-- The tab **closes only when the outstanding balance is zero**. Unpaid open orders are not walked out; voids, invitations, and cancellations (orders subject) are how lines leave the charge. An instance opened and closed with **no orders** is discarded.
+- The tab **closes only when the outstanding balance is covered or surpassed** (payments-and-tax). Unpaid open orders are not walked out; voids, invitations, and cancellations (orders subject) are how lines leave the charge. An instance opened and closed with **no orders** is discarded. First Bill request and the closing receipt are issued per the receipts-and-bills subject.
 - Tips, splits, and payment methods are taken at settlement as the payments-and-tax subject defines.
 - While the staff tab is open, **Self-ordering cannot open** on that point. When the tab **closes** (or an empty tab is discarded), self-ordering may open again if the business and point allow it and no **reserved hold** remains (§3.4).
 
@@ -104,7 +105,7 @@ Terms reused rather than redefined here: **Business**, **Sales point**, **Sales 
 ### 3.7 Billing, settlement, and close
 
 - **Staff tabs** enter **Bill** when an employee on the tab requests the check; self-service sittings never use that status because they pay to commit.
-- Settlement — whole or in parts, with optional tips — belongs to the payments-and-tax subject. This subject requires that **every surface closes only when the outstanding balance is zero**.
+- Settlement — whole or in parts, with optional tips and over-tender — belongs to the payments-and-tax subject. This subject requires that **every surface closes only when the outstanding balance is covered or surpassed**.
 - A **self-service** instance is created only at successful pay-to-commit, so it never carries a partial balance.
 - When a reservation left a **shared deposit credit**, it is applied at bill time as the reservations subject defines; order-flow only places that moment in the staff-tab journey.
 

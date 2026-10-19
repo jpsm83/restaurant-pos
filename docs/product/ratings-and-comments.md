@@ -23,7 +23,7 @@ It deliberately does **not** cover:
 - **favorites** — saving venues for quick access is a per-user bookmark, not feedback. It belongs with the users subject, not here.
 - the **sales instance, bill, settlement, and close** — the sales-points-and-instances, order-flow, and payments-and-tax subjects own opening, settling, and closing a sitting. This subject reads a closed, settled instance as the unit a review attaches to.
 - **orders as billable lines** — the orders subject owns individual lines. A review is **not** per order line; it is once per sales instance bill.
-- **printing the receipt** — the printers-and-screens and order-flow subjects own how a receipt is produced. This subject requires that the closed-instance receipt carry a **review QR** beside the bill information.
+- **producing the receipt** — the **receipts-and-bills** subject owns receipt content, numbering, and that a closed meal receipt carries the **review QR**; the printers-and-screens subject owns paper print and layout; order-flow owns when the sitting closes. This subject requires that the closed-instance receipt carry a **review QR** beside the bill information.
 - **discovery browse and filters** — the business subject owns discovery fields and that average rating and rating count are server-owned caches; this subject **publishes** those caches whenever reviews change.
 - **customer KPIs** (average rating, review volume, rating distribution) — the business-metrics subject owns their formulas and presentation in reports; this subject is the source of the underlying reviews.
 - **inbox, severities, and email sending** — the notifications and emails subjects own delivery; this subject names which review events fire and who they address.
@@ -73,7 +73,7 @@ Terms reused rather than redefined here: **Business**, **Customer**, **Sales ins
 
 ### 3.3 Invites: receipt QR, delivery email, order history
 
-- **On close**, when the receipt ticket is printed, Project Imperium includes a **receipt QR** beside the bill information. That QR is the review invite for that sales instance. This applies to on-premises sittings (dine-in, QR table service, kiosk pickup, and other surfaces that print a close receipt).
+- **On close**, when the **customer receipt** is issued, Project Imperium includes a **receipt QR** beside the bill information. That QR is the review invite for that sales instance. This applies to meal sittings that receive a customer receipt (dine-in, QR table service, kiosk, delivery, and other surfaces) per the receipts-and-bills subject.
 - **Delivery.** When a delivery sitting reaches **handover** and still has no review, Project Imperium sends a **delivery review email** to the attributed customer **three hours after handover**. The email carries the review invite for that instance. If a review already exists, the email is skipped.
 - **Order history.** A signed-in customer may open review from **order history** for any of their eligible closed instances that still have no review and whose invite has not expired, without needing the printed QR or the email.
 - All three paths share the same eligibility rules and the same one-review-per-instance rule.

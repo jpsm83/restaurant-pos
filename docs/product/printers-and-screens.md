@@ -21,7 +21,8 @@ It deliberately does **not** cover:
 - the **order and batch** — composition, send, identification code, held and don't-make rules, and the fulfilment status vocabulary belong to the orders subject. This subject routes and displays what that subject sends and records the station actions that move status.
 - the **sales point** — types, channels, and instances belong to the sales-points-and-instances subject. This subject uses a point as a **routing target** and as the place that names its receipt printer.
 - **business goods and menu structure** — categories and subcategories belong to the business-goods subject. This subject routes by them.
-- **billing and payment** — settlement belongs to the payments-and-tax subject. This subject prints the customer receipt and bill those subjects produce.
+- **billing and payment** — settlement belongs to the payments-and-tax subject.
+- **customer bill and receipt content, numbering, and reprint/replacement identity** — the **receipts-and-bills** subject owns document kinds, required fields, bill and receipt numbers, and when a reprint or replacement applies. This subject **prints** those documents on the sales point's receipt printer, may arrange their **layout** from the required fields, and gates paper issue with **print permission**; it does not invent or omit required content.
 - the **daily sales report close** — the sales-reports subject owns closing the day; this subject states the fulfilment sweep that close triggers.
 - **notifications and emails** — their subjects own delivery; this subject names the print-failure condition that notifies managers.
 - **hardware sales or lock-in** — Project Imperium sells no printers or screens and requires no brand; the venue brings its own devices.
@@ -95,8 +96,8 @@ Terms reused rather than redefined here: **Business**, **Batch**, **Identificati
 ### 3.5 What prints
 
 - This subject prints **prep tickets** (when a route names a prep printer), **customer receipts**, **bills**, and **kiosk handover tickets**.
-- Prep paper is optional per route; the control screens always show the work. Customer documents always require a usable receipt-printer path.
-- Entitled users may **reprint** prep tickets and customer documents; reprints follow current routing and backup rules and are audited. Screens re-show work from **history** rather than reprinting.
+- Prep paper is optional per route; the control screens always show the work. Customer documents always require a usable receipt-printer path when paper is requested.
+- Customer bill and receipt **content and numbering** come from the receipts-and-bills subject. A paper **reprint** of an unchanged bill or receipt keeps that subject's number and reprint mark; layout still follows current routing and backup rules and is audited. Screens re-show work from **history** rather than reprinting.
 
 ### 3.6 Control screens — shared behaviour
 

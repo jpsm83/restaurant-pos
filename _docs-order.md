@@ -17,6 +17,7 @@
 18 - gift-cards
 19 - reservations
 20 - printers and screens
+20a - receipts and bills
 21 - employees
 22 - schedules
 23 - time control
@@ -32,5 +33,3 @@
 33 - platform billing
 34 - data retention
 35 - payment facilitator
-
-- would you add any extra subject docs to the project

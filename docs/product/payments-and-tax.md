@@ -12,7 +12,8 @@ This subject owns **settlement**: turning an open bill into paid money, and the 
 - the **payment-method catalogue** — the fixed types and branches a payment may use;
 - **taking payment** — settling a bill, whole or in parts, across every service channel;
 - **splits and partial payments** — arranging a bill into parts and paying it down until it closes;
-- **tips** — taking and attributing a gratuity at settlement;
+- **tips** — taking and attributing a gratuity at settlement, including surplus from over-tender taken as tip;
+- **over-tender** — when cash (or similar) tender surpasses outstanding balance, returning change or recording the difference as tip;
 - **third-party processing** — Stripe Connect as the integrated processor for Imperium-processed self-channels, connecting each venue's payment account, and recording external tenders;
 - **payouts** — how captured money reaches the venue;
 - **refunds and card disputes** — the request-and-decision flow, reversal of a settled payment, and how provider disputes feed reporting and commission;
@@ -29,7 +30,7 @@ It deliberately does **not** cover:
 - the **subscription and commission** — the plan catalogue, base commission rates, and commercial rules belong to the **monetization** subject (catalogue maintenance in **superadmin**); the amount a **reporting week** owes is finalised by the **business-reports** subject at weekly close; **charging mechanics** (Owner payment method, invoice, retries, billing documents, dunning) belong to **platform-billing**. This subject names the money flows only.
 - **Stripe Terminal / in-premises card hardware** — dine-in customers pay on the venue's own reader; Imperium does not process that card rail in stage 1.
 - the **gift-card instrument** — issuance as deposit/liability, balance, ledger, lifecycle, and redemption rules belong to the **gift-cards** subject; this subject owns the **Gift card** payment method and records a redemption as ordinary settlement (tax stays on the goods).
-- **receipts, notifications, and emails** — delivering a receipt or a refund decision belongs to the **notifications** and **emails** subjects.
+- **customer bill and receipt documents** — required content, numbering, reprint, and replacement identity belong to the **receipts-and-bills** subject. Delivering a receipt or a refund decision belongs to the **notifications** and **emails** subjects; those payloads must satisfy receipts-and-bills.
 - **supplier invoices and their tax** — amounts payable to a supplier and supplier invoicing are not part of Project Imperium.
 - **tip pooling and payroll export** — redistributing tips across roles and packaging them into a pay run belong to the **payroll** subject. This subject records and attributes tips at settlement.
 
@@ -55,7 +56,7 @@ It deliberately does **not** cover:
 - **Settlement** — paying a bill in full, clearing what is owed.
 - **Split** — dividing a bill into parts that are paid separately.
 - **Partial payment** — a payment for less than what the bill still owes.
-- **Outstanding balance** — the part of a bill not yet paid. A bill closes when it reaches zero.
+- **Outstanding balance** — the part of a bill not yet paid. A bill closes when outstanding is covered or surpassed (§3.6).
 - **Tip** — an optional gratuity added at settlement, taken on a payment and attributed to the employee who took it.
 - **Payout** — the transfer a provider makes of captured money to the venue's account.
 - **Refund request** — a request to reverse settled money, raised by a customer or a staff member and decided by the manager on duty.
@@ -102,18 +103,25 @@ Terms reused rather than redefined here: **Business**, **Owner**, **Company**, *
 
 - A bill may be **split** the ways a venue serves: into **equal shares**, by **amount**, or by **selected lines or guest**. A split is an arrangement for paying; it moves no money by itself.
 - Each part of a split is settled by its **own payment or payments**, so one bill may be paid partly in cash, partly by card, and partly by another method.
-- A **partial payment** reduces the **outstanding balance** and leaves the bill open; the bill closes only once it is **fully paid**.
+- Guests sharing a tab may pay with **different methods at different times**. A **partial payment** reduces the **outstanding balance** and leaves the bill open; the bill closes only once outstanding is **fully covered** or **surpassed** (§3.6).
 - A **self-service** instance is paid in full before it closes, so it never carries a partial balance.
+- Customer **receipt** issue at full close — and mid-settlement **bill** content showing payments so far — belong to the receipts-and-bills subject; this subject only records the payments.
 
 ### 3.5 Tips
 
 - A **tip** is optional and is taken **on a payment** — a **percentage** of the payment or a **fixed amount** in the business currency — at the moment the bill is settled.
 - A staff tip is **attributed to the employee** who took it; a self-service tip is the customer's own.
-- A tip is recorded with its payment and feeds the day's sales report; the platform taxes the tips it records (§3.9).
+- A tip is recorded with its payment and feeds the day's sales report; the platform taxes the tips it records (§3.10).
 - On an **Imperium-processed** card payment, the tip is collected on the **same** diner charge as the bill, settles to the venue with the bill, and is **recorded separately** so it never enters **commissionable sales**.
 - A **cash tip** handed to staff away from the platform is not the business's concern: the platform neither records nor taxes it.
 
-### 3.6 Third-party processing and connected accounts
+### 3.6 Over-tender and change
+
+- When a payment's tender **surpasses** the outstanding balance (typical for cash), the guest chooses either **change returned** in the business currency or that the **difference is taken as tip** on that payment.
+- The instance may close when outstanding is **covered or surpassed**; surplus never stays as unexplained cash on the tab — it is either change or tip.
+- The customer **receipt** shows owed, tendered, and change or tip as the receipts-and-bills subject requires.
+
+### 3.7 Third-party processing and connected accounts
 
 - Project Imperium offers **direct payment processing** through **Stripe** only in stage 1 (ADR-0005). There is no venue choice among competing integrated processors.
 - Imperium operates as a **Connect platform**. Each **Business** holds **one connected payment account** (Stripe Express). The **venue is merchant of record**: the diner pays the restaurant; checkout, bank statement descriptor, and receipt **seller name** use the venue's **trade name**. Imperium may appear only as software chrome, never as the merchant of the meal.
@@ -124,12 +132,12 @@ Terms reused rather than redefined here: **Business**, **Owner**, **Company**, *
 - A provider-processed payment carries the provider's **reference** and its status. The business's **currency** governs.
 - While a Business is under **venue freeze** or its Owner under **portfolio freeze**, Imperium **stops new** Imperium-processed captures for that Business (monetization / platform-billing own freeze rules).
 
-### 3.7 Payouts
+### 3.8 Payouts
 
 - Money captured through Stripe is settled **to the venue** by the provider's own **payout**. The platform does **not** hold or move a venue's diner money and keeps **no payout ledger**: payout timing, batching, and provider fees are the provider's, visible in the Express dashboard and provider reporting.
 - Project Imperium records the payments a venue takes and the refunds against them; the money itself flows **directly to the venue's account**.
 
-### 3.8 Refunds and card disputes
+### 3.9 Refunds and card disputes
 
 - There are **no automatic refunds**. A refund is a **request** decided by the **manager on duty**; no payment is ever reversed without that decision — including a customer's delivery or self-service order.
 - A **refund request** may be raised by the **customer** from the app or by **any staff member**, naming the payment and, optionally, the amount sought. The manager on duty **approves or declines** it and may approve a **full or partial** refund.
@@ -140,7 +148,7 @@ Terms reused rather than redefined here: **Business**, **Owner**, **Company**, *
 - Refunds against one payment may not exceed the amount settled; several partial refunds may be made until the payment is fully returned.
 - **Card disputes** (chargebacks) are evidenced in the provider's **Express dashboard**. Imperium records the dispute outcome on the payment. Approved refunds and dispute outcomes that reverse **commissionable** product sales feed the same reporting and, after a closed week, the **re-finalise and commission adjustment** path owned by business-reports and platform-billing.
 
-### 3.9 Tax configuration and tax on a sale
+### 3.10 Tax configuration and tax on a sale
 
 - A business has **one tax configuration**: a **rate for each tax category**, set by an admin/owner. The categories are a **fixed platform set** — **Food**, **Non-alcoholic drinks**, **Alcoholic drinks**, **Merchandise**, **Tobacco**, and **Tip** — and each carries the rate that business must apply, which may be zero.
 - Every **business good maps to exactly one tax category** — never to **Tip**, which rates tips alone — and an **add-on** maps to its own category. A good's category tells a sale which rate taxes it. Gift-card **deposit intake** is not a business good and is not taxed as a product sale; tax is taken when gift-card tender pays for goods (and tips) at redemption (gift-cards subject; ADR-0004).
@@ -151,13 +159,13 @@ Terms reused rather than redefined here: **Business**, **Owner**, **Company**, *
 - Tax is expressed to the **currency's minor unit**: a derived tax amount is **rounded to two decimals**, and the customer's final price is **never changed** by the calculation.
 - A change to the tax configuration takes effect for **open tabs and future sales only**; a settled sale keeps the tax it recorded.
 
-### 3.10 The two money flows
+### 3.11 The two money flows
 
 - **Customer to venue.** What a customer pays for what they consume settles, through Stripe on Imperium-processed channels, **directly to the venue**. It is the venue's money, in the venue's account: the platform records it and takes **no** Imperium commission from that payment at source.
 - **Venue to Project Imperium.** The platform's own fees are the **monthly subscription** on the Owner and a **weekly commission** of **base commission** on all **commissionable sales** (paid product sales after voids and refunds across tenders, including sales paid with gift card; invitations, gift-card deposit intake, forfeitures, and **tips** excluded). The commission for a week is **finalised and owed** when that week's **business report closes**, then **collected** by platform-billing on the Owner's platform payment method — never netted out of what the venue's customers paid. Until that close, daily and open weekly reports may show a **commission estimate** only.
 - Which subscription a venue's Owner holds, and the rates its plan fixes, are the monetization and superadmin subjects' concern; how a week's commission is worked out at weekly close is the business-reports subject's; how Imperium charges and the business pays is the platform-billing subject's. This subject owns only the shape of the two flows.
 
-### 3.11 Retention
+### 3.12 Retention
 
 - Payments live as **history**: operators never physically remove one. A payment reversed in full is **retained** and reads as refunded, so a bill's settlement always reconciles.
 - A **refund** is retained and audited with its reason and its decision.

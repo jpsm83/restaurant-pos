@@ -21,6 +21,7 @@ It deliberately does **not** cover:
 
 - **which events notify, and the in-app side of each** — the notifications subject owns the notification catalogue, the inbox, the severities and engagement kinds, and the engagement mute itself. This subject owns how an email is written and delivered, not whether an event notifies.
 - **the mechanics of the actions behind the emails** — orders and payments, reservations, reviews, the sign-in email and password, the business contact email, venue events, and platform charges are owned by the orders, reservations, ratings-and-comments, users, business, notifications, and platform-billing subjects. This subject owns the email side: when each message is sent and what it carries.
+- **customer bill and receipt required content and numbering** — the **receipts-and-bills** subject owns document kinds, required fields, and bill/receipt numbers. An emailed receipt must carry that subject's receipt content; this subject does not invent a thinner email-only set.
 - **the pages a one-time link opens** — the user-navigation subject owns the destination surfaces. This subject owns only that a link leads a person to complete an action, never what they see.
 - **the session effects of a completed change** — the users subject owns session revocation and the email-verified flag.
 - **where the language preference is stored** — the users subject owns the person's preference; this subject reads it.
@@ -94,7 +95,7 @@ A completed password reset or sign-in email change has session effects owned by 
 
 Project Imperium emails the operational notifications that the notifications subject marks as emailed, each concerning **one business**:
 
-- **Order confirmed (receipt)** — sent to the ordering customer when an order is paid; it carries the order reference, the goods ordered, the amount paid, and any tip.
+- **Order confirmed (receipt)** — sent to the ordering customer when a sales instance (or the relevant paid order path) is settled; it is the emailed **customer receipt** and must carry the full receipt content the receipts-and-bills subject requires (venue identity, lines, tax breakdown, payments and tips, gift-card tender when used, receipt number, identification codes, and review QR on meal receipts).
 - **Reservation pending** — sent to the customer when a request is placed or a customer edit re-pends it; it carries the arrival date and time, party size, and status.
 - **Deposit requested** — sent to the customer when the venue asks for a deposit; it carries the amount, the payment link, and that an account is required before paying.
 - **Reservation decided** — sent to the customer when the request becomes reserved or is cancelled; it carries the decision and the reservation details. A reserved confirmation states late-arrival and grace rules clearly and never shows the staff-only end time; it may include an optional account-invite link when the guest has no account.
