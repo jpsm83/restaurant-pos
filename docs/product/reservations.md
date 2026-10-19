@@ -93,14 +93,15 @@ A reservation's status is one of:
 | **Pending** | Requested; awaiting Host+ decision (including after a customer edit that re-pends). |
 | **Awaiting deposit** | Deposit requested; unpaid. |
 | **Reserved** | Accepted; deposit paid if one was required. |
-| **Arrived** | Host+ marked the party checked in. |
-| **Seated** | At least one linked staff tab was opened as reservation guests. |
+| **Arrived** | Host+ marked the party checked in (table may still be preparing). **Required before Seated.** |
+| **Seated** | At least one linked staff tab was opened as reservation guests. Only reachable from **Arrived** (or from **Reserved** via the auto Arrived→Seated seating step). |
 | **Completed** | Every linked staff tab is closed. |
 | **Cancelled** | Rejected or cancelled; terminal for the booking. |
 | **No-show** | Party did not honour the booking; terminal. |
 | **Awaiting table** | Needs a fresh sales-point assignment after assignment was lost (for example ordinary-guest overrun) before or without a usable linked tab. |
 
-- **Host and above** may mark **Arrived** when the party checks in.
+- **Host and above** may mark **Arrived** when the party checks in, including when the party goes straight to a ready table (Arrived then Seated keeps the flow intact).
+- **Seated** is never reached without **Arrived** having been recorded first (manually, or automatically in the seating step below).
 - **No-show** is set only by Host and above, on a reserved or arrived booking that was never seated as reservation guests. There is **no automatic no-show** timer; the grace period informs staff and the guest via email copy only.
 - **Completed** is set when **every** sales instance linked to the reservation is closed.
 
@@ -131,7 +132,7 @@ A reservation's status is one of:
 ### 3.8 Seating handoff
 
 - When a waiter (any on-duty employee opening the tab) opens a point that shows this booking's reserved label, Project Imperium asks **reservation guests** or **ordinary guests**.
-- **Reservation guests** — opens a normal staff tab, sets the **reservation link**, copies useful guest details (name, party size as appropriate), and moves the booking to **Seated** on the first such open. Further assigned points may be opened the same way; each creates its **own** staff tab linked to the **same** reservation. Orders, billing, and payment on each tab run separately under the orders and payments-and-tax subjects.
+- **Reservation guests** — opens a normal staff tab, sets the **reservation link**, copies useful guest details (name, party size as appropriate), and on the **first** such open advances status as follows: from **Reserved**, **Reserved → Arrived → Seated** in one step; from **Arrived**, **Arrived → Seated** only. Further assigned points may be opened the same way; each creates its **own** staff tab linked to the **same** reservation. Orders, billing, and payment on each tab run separately under the orders and payments-and-tax subjects.
 - **Ordinary guests** — opens a walk-in tab with no reservation link. That point is **removed** from the reservation's assignment and its reserved label clears because the point is occupied. If the booking has **no** linked instance yet and no remaining usable assignment for the party, status becomes **Awaiting table** so Host and above can assign again. If other points remain assigned or tabs are already linked, only the overrun point is dropped and status stays as it was (reserved, arrived, or seated).
 - Moving a linked tab to another served point follows the sales-points-and-instances move rules; the reservation's assigned set updates so the booking and its linked instances stay aligned.
 

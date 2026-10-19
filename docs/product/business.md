@@ -135,7 +135,7 @@ Delivery is a **per-venue** configuration.
 Self-ordering is a **per-venue** switch.
 
 - **Enable/disable** — a venue turns QR self-ordering on or off for the business as a whole.
-- Table self-ordering still requires each **sales point** to accept the **Self-ordering** channel, and is blocked while a staff tab is open on that point — the sales-points-and-instances and order-flow subjects own those gates.
+- Table self-ordering still requires each **sales point** to accept the **Self-ordering** channel, and is blocked while a staff tab is open on that point or the point shows a **reserved hold** — the sales-points-and-instances and order-flow subjects own those gates.
 - Kiosk and delivery have their own point and delivery-configuration gates; this switch governs **QR self-ordering** at served points.
 
 ### 3.9 Discovery fields
@@ -144,8 +144,8 @@ A business is **discoverable only while live**. Its discovery fields are:
 
 - **Trade name**, **logo**, **cuisine type(s)**, **categories**, **contact phone**, and **address** (with its coordinates as the geo origin).
 - The **average rating and rating count** are server-owned cached aggregates, published by the ratings-and-comments subject. A client never sets them.
-- **Cuisine type and categories are edited by managers and above** at the venue; they are the filters customers browse. The identity discovery fields (trade name, logo, phone, address) are edited by admins/owners.
-- A customer's location search measures from the address coordinates.
+- **Cuisine type and categories are edited by managers and above** at the venue; they are among the filters customers use. The identity discovery fields (trade name, logo, phone, address) are edited by admins/owners.
+- Customers find live venues in either of two ways: **search and filter** (trade name, cuisine type, categories, rating, and location / geo radius), or a **map of the closest venues** near them. A customer's location search and the closest-venues map both measure from the address coordinates.
 
 ### 3.10 Subscription pointer
 

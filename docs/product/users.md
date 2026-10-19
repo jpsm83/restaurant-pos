@@ -94,8 +94,9 @@ Exactly four layers exist: **admin**, **manager**, **employee**, **customer**. T
 
 - A user with **no membership** resolves to **customer**.
 - A membership resolves to one layer, **defaulted from its job roles** (employees subject) — Owner and Admin to **admin**; the management roles to **manager**; every other role to **employee**.
-- The layer is resolved **per shift**: the **schedule assigns the job role for a working shift** (role is always required on the schedule), and that shift's role sets the effective layer for its duration. The same person can work one shift as an employee and a later shift as a manager at the same venue.
+- The layer is resolved **per shift**: the **schedule assigns the job role for a working shift** (role is always required on the schedule), and that shift's role sets the **effective layer** for its duration — including which Business chrome and powers apply (for example **Manage** is visible only while the effective layer is manager or admin). The same person can work one shift as an employee and a later shift as a manager at the same venue.
 - When the person is **not** on a working shift, layer resolution uses the **highest layer among the membership's roles** (admin over manager over employee).
+- **Mode eligibility** for owners, managers, and admins is separate from effective layer: membership Active at manager+ (or owner/admin) may enter Business whether or not they are currently on a management shift; while they work an employee-layer shift, chrome and powers follow that shift's layer until the shift ends.
 - **Managers and above can override** a membership's layer.
 - **Customer access is always available** to every user, whatever membership they hold.
 - A **Suspended** membership blocks business-app access until cleared (employees subject); layer resolution alone does not reopen it.

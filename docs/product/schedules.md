@@ -59,7 +59,8 @@ Terms reused rather than redefined here: **Employee**, **Business**, **job role*
 
 - Each business has **at most one** day schedule per calendar day in the business timezone.
 - Managers and above plan **in advance**. The primary management surface is a **month calendar**; opening a day edits that day's schedule (typically in a day detail). Day, week, and month views all read the same day schedules.
-- An empty day (no entries) is a valid plan.
+- An empty day (no entries) is a valid plan (for example a closed day with no staff).
+- **Manager-in-charge on the plan.** Any day schedule that includes **at least one working shift** must include **at least one working shift whose job role resolves to the manager or admin base layer** (so someone is always in charge on the plan). Saving or publishing a day that has only employee-layer working shifts is **blocked**.
 
 ### 3.2 Working shifts
 
@@ -134,7 +135,7 @@ Suspended and Terminated memberships must not receive **new** entries (also stat
 - A non-management employee's **business mode** eligibility follows a **planned working shift**: Business on the mode toggle is available from **10 minutes before** that shift's planned start until **2 hours after** planned start. Outside that window with no open attendance session, they cannot enter business mode and must be rescheduled. Vacation and other leave do not grant business-mode eligibility.
 - Opening business mode is **not** on duty. On duty begins only through time-control (daily attendance QR scan-in).
 - There is **no** late-unlock step on the schedule. Lateness, late lock before scan-in, and attendance honesty belong to time-control.
-- Managers, admins, and owners are never blocked from business mode by the schedule, though they still appear on the schedule for planning (and so time-control can see who was planned as management that day).
+- Managers, admins, and owners are never blocked from business mode by the schedule or entry window, though they still appear on the schedule for planning (and so time-control can see who was planned as management that day). Suspended or Terminated membership still blocks Business (users and employees subjects).
 
 ### 3.11 Notifications this subject owns as events
 
@@ -180,3 +181,4 @@ No per-user capability gates schedule editing or time-off approval on this subje
 | Approve or reject a time-off request | Managers and above |
 | Read own planned shifts | The employee themself |
 | See day planned labour aggregates as management totals | Managers and above |
+| Save a day that has working shifts without a manager- or admin-layer working shift | Nobody — blocked (§3.1) |

@@ -121,7 +121,7 @@ Terms reused from other subjects rather than redefined here: **Business**, **Sup
 
 - An inventory **month** is **closed** — locked — on the inventories subject's terms. Closing a **count period** inside the month does **not** lock purchases; only the month close does. A month may be read for audit or the books at any range, whether or not it is closed.
 - Once a month is **closed**, every purchase whose date falls in it is **read-only**: it cannot be edited, cancelled, or accepted, and its stock figures are frozen.
-- Correcting a purchase in a closed month requires the month to be **reopened deliberately** by the general manager, with a reason; only then does the purchase become editable again.
+- Correcting a purchase in a closed month requires the month to be **reopened deliberately** by a membership with the **General Manager** or **Owner** job role, with a reason; only then does the purchase become editable again.
 
 ---
 
@@ -148,6 +148,6 @@ Purchases are an internal, operational, management surface: never visible to cus
 | Cancel an awaiting-delivery purchase, with a reason | Managers and above |
 | Record or edit a one-time purchase | Managers and above |
 | View purchases and their edit history | Managers and above |
-| Reopen a closed inventory month so a purchase can be corrected | The general manager (the inventories subject's action) |
+| Reopen a closed inventory month so a purchase can be corrected | General Manager or Owner job role (the inventories subject's action) |
 
 Purchase management sits with the managers who run purchasing and stock, consistent with the supplier and supplier-good surfaces.

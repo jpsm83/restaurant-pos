@@ -47,7 +47,7 @@ This subject introduces **no new persistent tenant entity**. It owns navigation 
 - **Owner chrome** — extra controls on venue tabs that only an **Owner** sees for that venue (for example add venue, plan, company), distinct from an employee tab at a venue they only work at.
 - **Left menu** — the persistent vertical navigation rail in **Business** mode (and the separate rail in the **customer account area**).
 - **Service** — left-menu header for day-of operations destinations (POS, Host when entitled, and when entitled control screens and attendance).
-- **Manage** — left-menu header for administration destinations; **managers and above** only.
+- **Manage** — left-menu header for administration destinations; visible only while the person's **effective base layer** at that venue is **manager or admin** (users subject: per shift when on a working shift, otherwise highest membership layer).
 - **Me** — left-menu header in Business for **self-only** destinations (own schedule, notifications, personal details) that are not admin data.
 - **Customer account area** — the signed-in customer's settings surface opened from the avatar while in Customer mode: profile, address, saved payment methods, email, notifications, and related account items, with its own left sidebar.
 - **Icon rail** — the left menu's default desktop behaviour: it can collapse to a vertical strip of icons and expand on hover to show full labels. This is built-in behaviour, not a stored preference.
@@ -94,9 +94,9 @@ Terms reused rather than redefined here: **User**, **Business**, **Owner**, **Em
 - **One eligible venue:** go straight into that venue's business chrome (no picker).
 - **Several venues:** show **horizontal venue tabs**. Each tab is one **Business** context. Switching tabs changes venue without leaving Business mode.
 - **Owner chrome** (add venue, plan, company, and similar portfolio controls) appears only on tabs for venues the person **owns**. An employee tab at a venue they only work at is **operational** — Service, Manage if manager+ there, and Me — without owner portfolio controls.
-- **Landing:**
-  - **Ordinary employees** enter toward **Service** with **POS** as their primary work destination.
-  - **Managers, admins, and owners** enter the venue's **Manage home** (business main page) with the left menu showing **Service** and **Manage** headers (and **Me**).
+- **Landing** (uses **effective base layer** at enter — users subject):
+  - **Employee-layer** effective users enter toward **Service** with **POS** as their primary work destination (including a manager-membership person currently on an employee-layer shift).
+  - **Manager- or admin-layer** effective users enter the venue's **Manage home** (business main page) with the left menu showing **Service** and **Manage** headers (and **Me**).
 
 ### 3.6 Business left menu
 
@@ -114,7 +114,7 @@ Terms reused rather than redefined here: **User**, **Business**, **Owner**, **Em
 
 #### Manage
 
-- Visible to **managers and above** (and owners/admins) at that venue. Ordinary employees do **not** see Manage.
+- Visible while the person's **effective base layer** at that venue is **manager or admin** (owners included via admin). A person who holds Manager on the membership but is working an employee-layer shift does **not** see Manage for that shift; when not on a working shift, highest membership layer applies. Ordinary employee-layer users do **not** see Manage.
 - Under Manage, feature groups and top-level items are:
 
   - **Venue** — profile, hours, delivery, go-live, and related venue configuration;
@@ -151,12 +151,12 @@ This subject names destinations the chrome must be able to reach. Behaviour insi
 
 | Destination | Typical entry |
 | --- | --- |
-| Public discovery / venue profile | Customer, signed out or in |
+| Public discovery (search and filter, or map of closest venues) / venue profile | Customer, signed out or in |
+| Manage home (business main) | Manager- or admin-layer effective users entering Business |
 | Customer ordering basket / pay gate | Customer; identity at payment |
 | Customer account area (profile, address, payment methods, email, notifications, …) | Avatar → Account |
 | Favorites, order history | Customer, signed-in |
 | Mode toggle | Signed-in chrome when eligible |
-| Manage home (business main) | Manager+ entering Business |
 | POS (floor map or list/grid) | Service → POS |
 | Host (floor map or list/grid) | Service → Host (Host and above) |
 | Prep / Delivery / Pickup screens | Service (when entitled) |
@@ -175,9 +175,9 @@ This subject names destinations the chrome must be able to reach. Behaviour insi
 | Layer | Navigation powers |
 | --- | --- |
 | **Customer** (including unsigned visitors) | Public Customer surface; guest basket until identity gates; after sign-in, customer chrome, account area, and Customer side of the mode toggle. |
-| **Employee** | Everything a customer can do, plus Business when eligible; left menu **Service** (POS; other Service links only if entitled) and **Me**; no Manage. |
-| **Manager** | Everything an employee can do, plus Manage header and groups; full Service link set; Manage home on enter. |
-| **Admin / Owner** | Everything a manager can do, plus owner chrome on owned venue tabs and ownership actions those subjects define. |
+| **Employee** (effective) | Everything a customer can do, plus Business when eligible; left menu **Service** (POS; other Service links only if entitled) and **Me**; no Manage. |
+| **Manager** (effective) | Everything an employee can do, plus Manage header and groups; full Service link set; Manage home on enter. |
+| **Admin / Owner** (effective) | Everything a manager can do, plus owner chrome on owned venue tabs and ownership actions those subjects define. |
 
 ### Per-user capabilities
 
@@ -193,11 +193,11 @@ Ordinary employees may gain individual **Service** destinations (control screens
 | Switch to Business via mode toggle | Signed-in user with eligible business access |
 | Use venue tabs | Person with more than one eligible venue in Business |
 | See owner chrome on a tab | Owner of that venue |
-| Use Manage header | Managers and above at that venue |
+| Use Manage header | Effective manager or admin layer at that venue |
 | Use Service → POS | Everyone in Business at that venue (as POS entitlements allow) |
 | Use Service → Host | Host and above |
-| Use Manage → Floor plans | Managers and above |
-| Use Service control screens / Attendance | Managers and above, or employees with the granting entitlement |
+| Use Manage → Floor plans | Effective manager or admin layer at that venue |
+| Use Service control screens / Attendance | Effective manager or admin layer, or employees with the granting entitlement |
 | Use Me destinations | Everyone in Business |
 | Enter Service fullscreen | Anyone on a Service destination that offers it |
 | Be returned to Customer on eligibility loss | Non-management staff per §3.8 |

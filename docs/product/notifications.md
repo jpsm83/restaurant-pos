@@ -86,7 +86,7 @@ Terms reused from the product overview's core vocabulary rather than defined her
 | Weekly report ready | The venue's managers and above | In-app | Info | Once |
 | Monthly report ready | The venue's managers and above | In-app | Info | Once |
 | Business profile updated | The venue's managers and above | In-app + email | Info | Once |
-| Overtime alert | The venue's managers on duty | In-app | Warning | Every 5 minutes until the employee signs off or a manager mutes that session's overtime alert |
+| Overtime alert | The venue's managers on duty; if none are on duty, all manager-layer users for the business | In-app | Warning | Every 5 minutes until the employee signs off or a manager mutes that session's overtime alert |
 | Sign-out request | The venue's managers on duty | In-app | Info | Once per request |
 | Print failure | The venue's managers on duty; if none are on duty, all manager-layer users for the business | In-app | Warning | Once per failed print attempt |
 | Schedule changed | Each employee whose schedule entries were added, changed, or removed in the manager's editing session | In-app | Info | Once per employee when the manager leaves the schedules main page (batched across that employee's entries) |
@@ -105,7 +105,7 @@ Terms reused from the product overview's core vocabulary rather than defined her
 
 - The **low-stock alert** lists the affected goods and fires when stock falls below a good's **minimum required**; detecting that condition belongs to the inventories and supplier-goods subjects.
 - The **negative-stock alert** fires when a good's stock on hand falls **below zero**, as a management-error signal that purchases or counts are missing; detecting that condition belongs to the inventories subject.
-- The **overtime alert** concerns any employee other than an admin or owner who is still on duty past their scheduled end, and repeats until they sign off or a manager mutes that open session's overtime alert; detecting that condition and the mute belong to the time-control subject. The venue always has a manager on duty for this alert.
+- The **overtime alert** concerns any employee other than an admin or owner who is still on duty past their scheduled end, and repeats until they sign off or a manager mutes that open session's overtime alert; detecting that condition and the mute belong to the time-control subject. Recipients are the venue's **managers on duty**; if none are on duty, the alert **falls back** to all manager-layer users at that venue (same pattern as print-failure). The schedules subject keeps a manager-layer shift on every day that plans work so someone is always in charge on the plan.
 - The **sign-out request** notifies managers on duty when an employee asks to end duty; completing sign-out belongs to the time-control subject.
 - A **report-ready** notification fires when the weekly or monthly report for the period is ready for review; detecting readiness belongs to the business-reports subject.
 - The **business-profile-updated** notification fires when a change to the business profile actually persists, and reports which fields changed; detecting the change belongs to the business subject.
@@ -176,7 +176,7 @@ The owning user is an admin at every venue they own. Job roles and per-user capa
 | Reply in a conversation | The recipient of the direct message |
 | Start a direct message | Managers and above |
 | Publish a venue event | Managers and above |
-| Receive low-stock, negative-stock, overtime, sign-out-request, and print-failure alerts | The venue's managers on duty; print-failure falls back to all manager-layer users when none are on duty |
+| Receive low-stock, negative-stock, overtime, sign-out-request, and print-failure alerts | The venue's managers on duty; overtime and print-failure fall back to all manager-layer users when none are on duty |
 | Receive report-ready and profile-updated alerts | The venue's managers and above |
 | Receive platform-billing arrears, freeze, and post-freeze alerts | Owner always; Manager and above at every venue (subscription / portfolio) or at that venue only (commission), per platform-billing |
 | Operate the application business | The superadmin, in a separate realm; never a recipient of a venue's notifications |

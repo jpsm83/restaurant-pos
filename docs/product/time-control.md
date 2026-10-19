@@ -96,7 +96,7 @@ For a non-management employee with a **planned working shift**:
 - Outside that window, if they have **no open session**, they cannot enter business mode and must be **rescheduled** by a manager before they can attempt duty.
 - The window gates **entering** business mode to start (or attempt) a session. An **already open** session continues past planned start + 2 hours.
 - **Vacation** or **other leave** on a day (no working shift) grants no entry window and no clock-in.
-- **Managers, admins, and owners** are never blocked from business mode by the schedule or this window.
+- **Managers, admins, and owners** are never blocked from business mode by the schedule or this window (Suspended or Terminated membership still blocks Business).
 - **Suspended** or **Terminated** memberships cannot enter business mode or open a session.
 
 There is **no** late-unlock step on the schedule itself. Lateness honesty is late lock and real scan times in this subject; the two-hour end of the entry window is schedule-side eligibility, not a manager unlock.
@@ -157,7 +157,7 @@ There is **no** late-unlock step on the schedule itself. Lateness honesty is lat
 ### 3.12 Overtime
 
 - Overtime starts when a person who is **not** an admin or owner is still **on duty** (including on break) past that session's **planned end**.
-- Detection belongs to this subject. Delivery belongs to the notifications subject: **managers on duty** are notified **every 5 minutes** until sign-off. The venue always has a manager on duty for this purpose.
+- Detection belongs to this subject. Delivery belongs to the notifications subject: **managers on duty** are notified **every 5 minutes** until sign-off; if none are on duty, the alert **falls back** to all manager-layer users at that venue. The schedules subject requires a manager-layer working shift on every day that plans work, so someone is always in charge on the plan; the fallback covers the gap before that person has signed in.
 - A manager-layer user may **mute** further repeats for that employee's **current open session**. A new session can alert again. Mute is not the engagement mute; it is specific to this overtime thread.
 
 ### 3.13 Overnight working shifts
@@ -176,7 +176,7 @@ Attendance events are **in-app only**. Delivery mechanics belong to the notifica
 | Event | Who is notified | When |
 | --- | --- | --- |
 | Sign-out request | Managers on duty | When an employee requests sign-out |
-| Overtime alert | Managers on duty | Every 5 minutes while a non-admin/owner remains on duty past planned end, until sign-off or overtime mute for that session |
+| Overtime alert | Managers on duty; if none, all manager-layer users at the venue | Every 5 minutes while a non-admin/owner remains on duty past planned end, until sign-off or overtime mute for that session |
 
 ---
 

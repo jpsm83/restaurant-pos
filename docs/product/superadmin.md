@@ -17,8 +17,7 @@ This subject owns the **Superadmin console**: the Imperium-staff surface that ad
 - **scoped impersonation** for support;
 - the **review abuse-removal** decision queue;
 - **late-payment** notification and automatic **freeze** behaviour (Owner portfolio vs single venue) as it appears to console operators;
-- **portfolio analytics** across Owners and venues; and
-- maintenance of the platform's **payment-provider catalogue** (which providers Project Imperium offers venues).
+- **portfolio analytics** across Owners and venues.
 
 It deliberately does **not** cover:
 
@@ -28,6 +27,7 @@ It deliberately does **not** cover:
 - **commission collection** when a weekly business report closes — the business-reports subject owns finalising and owing; the platform-billing subject owns collecting. This subject owns editing the catalogue rates the monetization subject defines.
 - **what each plan unlocks** (the entitlement matrix) and commercial meaning of base commission — the monetization subject owns that. This subject owns catalogue maintenance, assignment, and overrides.
 - **User** identity in the Customer/Business realm, membership, and venue HR — the users and employees subjects own those.
+- **which integrated payment processor venues use** — stage 1 is Stripe Connect only (payments-and-tax; ADR-0005). There is no Superadmin payment-provider catalogue or venue choice among processors.
 - **review authoring and business replies** — the ratings-and-comments subject owns them; this subject owns only accept/reject of a venue's abuse-removal request.
 - a **general helpdesk** or ticket product — out of scope; support here is ops tools plus the abuse queue.
 - **visual design, exact labels, and copy** — out of scope for the product set.
@@ -113,16 +113,12 @@ Terms reused rather than redefined here: **User**, **Owner** (paying account), *
 - Console operators **accept** or **reject** the request. Accept soft-deletes the review (and its business reply, if any) and recomputes aggregates per that subject; reject leaves the review public.
 - Superadmin does not author customer reviews or venue replies.
 
-### 3.9 Payment-provider catalogue
-
-- Stage 1 uses **Stripe Connect** only for Imperium-processed payments (ADR-0005). Superadmin does not offer venues a choice of alternate integrated processors. Connecting a venue's account and capturing payments belong to the payments-and-tax subject.
-
-### 3.10 Portfolio analytics
+### 3.9 Portfolio analytics
 
 - The console shows **portfolio aggregates** across Owners and venues: plan mix, commission owed and collected, suspensions, go-live counts, and similar roll-ups.
 - It does **not** show day-of POS, kitchen, or other operational detail that belongs inside the Business app.
 
-### 3.11 Support scope
+### 3.10 Support scope
 
 - Support on this surface is **ops tooling**: Owner lifecycle, plan and flag overrides, impersonation, and the abuse-removal queue.
 - There is **no** general helpdesk or ticket product inside Superadmin.
@@ -138,7 +134,7 @@ Venue **base access layers** and job roles do not apply inside the Superadmin co
 | Console role | Powers |
 | --- | --- |
 | **Staff** | Read Owners and venues; work the abuse-removal queue; open scoped impersonation sessions; view portfolio analytics. |
-| **Manager** | Everything Staff can do, plus create and disable console operators (enrollment), assign or override plans, edit feature flags (platform-wide or per-Owner), suspend/resume paying Owners, soft-delete paying Owners, override payment deadlines, and maintain the payment-provider catalogue. |
+| **Manager** | Everything Staff can do, plus create and disable console operators (enrollment), assign or override plans, edit feature flags (platform-wide or per-Owner), suspend/resume paying Owners, soft-delete paying Owners, and override payment deadlines. |
 | **Owner** | **Same tool entitlements as Manager.** Additionally marks **ownership of the Imperium application** (multiple console Owners allowed). |
 
 ### Who can do what
@@ -154,10 +150,10 @@ Venue **base access layers** and job roles do not apply inside the Superadmin co
 | Assign or override a paying Owner's plan | Console Manager or console Owner |
 | Edit the plan catalogue (prices, base rates, entitlements, creation quotas, retention and lifecycle constants) | Console Manager or console Owner |
 | Edit feature flags | Console Manager or console Owner |
-| Suspend / resume / freeze a paying Owner or venue for arrears | Console Manager or console Owner |
+| Manually suspend / resume a paying Owner | Console Manager or console Owner |
+| Override deadline or resume a portfolio/venue freeze (arrears) | Console Manager or console Owner |
 | Soft-delete a paying Owner | Console Manager or console Owner |
 | Override a payment deadline | Console Manager or console Owner |
-| Maintain the payment-provider catalogue | Console Manager or console Owner |
 | View portfolio analytics | Any console operator |
 | Approve ordinary go-live | No one in Superadmin — business/monetization gates |
 | Hard-delete any identity outside retention purge | No one — soft delete for operators; retention purge only per plan quotas and data retention subject |

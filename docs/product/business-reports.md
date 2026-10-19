@@ -139,7 +139,7 @@ Terms reused from other subjects rather than redefined here: **business**, **dai
   - every **daily sales report that belongs to that month** is **closed** or never existed; and
   - the **inventory month is closed**.
 - Close does **not** fire at clock midnight while a belonging **work day is still open** (late service past midnight). The period waits for that work day to close. A gap day with no sales instance does not block.
-- **Reopening the inventory month** (general manager, inventories subject) **reopens the monthly business report with it**; the report closes again when the inventory month closes again. Weekly reports are **not** affected by inventory reopen.
+- **Reopening the inventory month** (General Manager or Owner job role, inventories subject) **reopens the monthly business report with it**; the report closes again when the inventory month closes again. Weekly reports are **not** affected by inventory reopen.
 - When a **closed daily sales report** is reopened, changed through its bills or payments, and closed again (sales-reports subject):
   - any weekly or monthly report that already included that day is **automatically recalculated**;
   - those roll-ups **remain closed** (amended closed records);
@@ -192,7 +192,7 @@ Terms reused from other subjects rather than redefined here: **business**, **dai
 | Enter or edit fixed, extra, and finance costs on the monthly report | Managers and above |
 | Download/export the weekly or monthly report | Whoever may view that report |
 | Close a weekly or monthly report | Automatic under §3.8 — not a manual manager action |
-| Reopen the monthly report | Tied to the inventory month: the general manager's inventory reopen reopens it (the inventories subject's rule) |
+| Reopen the monthly report | Tied to the inventory month: General Manager or Owner job-role inventory reopen reopens it (the inventories subject's rule) |
 | View targets, benchmarks, and the target comparison | Whoever may view the weekly or monthly report |
 | View commission estimate / finalised weekly commission | Whoever may view the weekly report |
 

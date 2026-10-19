@@ -33,6 +33,4 @@
 34 - data retention
 35 - payment facilitator
 
-- we can search for a restaurant using the search and filter tools or we can see the closes restaurantes on the map too
-- review all the docs to find out any conflict
 - would you add any extra subject docs to the project

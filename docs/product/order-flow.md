@@ -76,11 +76,11 @@ Terms reused rather than redefined here: **Business**, **Sales point**, **Sales 
 - While the tab is in **Bill**, staff may still **add and send** further orders; the bill updates.
 - The tab **closes only when the outstanding balance is zero**. Unpaid open orders are not walked out; voids, invitations, and cancellations (orders subject) are how lines leave the charge. An instance opened and closed with **no orders** is discarded.
 - Tips, splits, and payment methods are taken at settlement as the payments-and-tax subject defines.
-- While the staff tab is open, **Self-ordering cannot open** on that point. When the tab **closes** (or an empty tab is discarded), self-ordering may open again if the business and point allow it (§3.4).
+- While the staff tab is open, **Self-ordering cannot open** on that point. When the tab **closes** (or an empty tab is discarded), self-ordering may open again if the business and point allow it and no **reserved hold** remains (§3.4).
 
 ### 3.4 QR self-ordering
 
-- Table self-ordering opens only when **all** of these hold: the **business** has self-ordering enabled, the **sales point** accepts the **Self-ordering** channel, and **no staff tab** is open on that point.
+- Table self-ordering opens only when **all** of these hold: the **business** has self-ordering enabled, the **sales point** accepts the **Self-ordering** channel, **no staff tab** is open on that point, and the point has **no reserved hold** (manual or reservation-assigned).
 - The customer scans the point's QR and may build a **basket** without signing in (no sales instance yet). When they proceed to **pay**, Project Imperium requires **sign-in or sign-up** if they are not already signed in, **preserves the basket**, then takes payment in full. Only after successful payment does Project Imperium create the instance and batches and release work to the kitchen (**pay-to-commit**).
 - Fulfilment **delivers stay items to that QR point**. To-go lines on the same sitting are packed to go.
 - The customer receives the **identification code** (notification and email); staff **verify the code at handover** before releasing items, as the sales-points-and-instances subject defines.

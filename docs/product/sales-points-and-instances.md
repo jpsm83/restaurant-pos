@@ -68,9 +68,9 @@ Terms reused rather than redefined here: **Business**, **Order**, **Business goo
 ### 3.2 The reserved hold
 
 - A **Host or manager and above** may place a **reserved hold** on an **available** served point and clear it at any time.
-- A hold placed by hand is a reminder only. It is **not a reservation** and does not by itself count as one.
-- When a **reservation** assigns one or more points, each assigned point shows a reserved hold that **carries the booking's summary** (party, name, arrival, notes, and related detail). The reservations subject owns which booking claims the point and the no-overlap rule; this subject owns how the label appears on the point.
-- A hold is cleared when an instance opens on the point (reservation guests or ordinary guests), or when the reservation releases that point. A manual hold with no booking is also cleared as soon as an instance on the point takes its **first order**.
+- A hold placed by hand is **not a reservation** and does not by itself count as one, but it still **blocks QR self-ordering** on that point while it is present.
+- When a **reservation** assigns one or more points, each assigned point shows a reserved hold that **carries the booking's summary** (party, name, arrival, notes, and related detail). That hold likewise **blocks QR self-ordering**. The reservations subject owns which booking claims the point and the no-overlap rule; this subject owns how the label appears on the point.
+- A hold is cleared when an instance opens on the point (reservation guests or ordinary guests), or when the reservation releases that point, or when Host or manager and above clear a manual hold. A manual hold with no booking is also cleared as soon as an instance on the point takes its **first order**.
 
 ### 3.3 The virtual delivery point and kiosk points
 
@@ -89,7 +89,7 @@ Terms reused rather than redefined here: **Business**, **Order**, **Business goo
 
 - On **Self-ordering**, **Kiosk**, and **Delivery**, the customer builds a **basket** with no sales instance yet, sees a **pre-payment confirmation**, and **pays in full**. The instance is created **only when the customer commits to pay**, then closes for billing on that settlement; an abandoned basket leaves nothing behind. Fulfilment after payment belongs to the order-flow subject.
 - These channels are **not** subject to the one-open rule: several may run at once, one per customer.
-- A **Self-ordering** instance cannot open unless the **business** has self-ordering enabled, the point accepts that channel, and no **staff tab** is open on the same point; otherwise the customer is told self-ordering is unavailable or that service is underway.
+- A **Self-ordering** instance cannot open unless the **business** has self-ordering enabled, the point accepts that channel, no **staff tab** is open on the same point, and the point has **no reserved hold**; otherwise the customer is told self-ordering is unavailable, that the table is reserved, or that service is underway.
 - Every order carries an **identification code**. For **Self-ordering**, **Kiosk**, and **Delivery**, Project Imperium **notifies and emails** the customer the code, and a **kiosk also prints a ticket**. Staff **verify the code at handover**, before releasing the items, so the person who collects is the person who ordered.
 
 ### 3.6 Statuses and the tab lifecycle

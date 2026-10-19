@@ -15,7 +15,7 @@ This subject owns **how Project Imperium takes money for its own fees**, and **h
 - **post-freeze** reminders until payment resumes service;
 - **detailed billing documents**, in-app **billing history**, and export;
 - **platform-fee tax** on Imperium's own charges under the Owner's country rules;
-- **adjustments** when a week's commission is re-finalised after an edited daily.
+- **adjustments** when a week's commission is re-finalised after an edited daily, an approved refund, or a card dispute that changes commissionable sales.
 
 It deliberately does **not** cover:
 
@@ -85,7 +85,7 @@ Terms reused rather than redefined here: **Owner**, **Business**, **subscription
 - When a weekly business report **closes**, business-reports finalises the week's commission and marks it owed on the Business. This subject then **collects** that amount as a **weekly commission charge** (automatic collection or invoice fallback).
 - Until that close, daily and open-weekly **estimates** are not charged.
 - **Every plan**, including Free, is subject to weekly commission collection.
-- After a closed week is **re-finalised** (edited daily), this subject applies a **commission adjustment** immediately — charge the uplift or credit the reduction — and issues a billing document for that adjustment. The Owner's billing history always shows the adjustment.
+- After a closed week is **re-finalised** (edited daily, approved refund, or card dispute that changes commissionable sales), this subject applies a **commission adjustment** immediately — charge the uplift or credit the reduction — and issues a billing document for that adjustment. The Owner's billing history always shows the adjustment.
 
 ### 3.5 Automatic collection and invoice fallback
 

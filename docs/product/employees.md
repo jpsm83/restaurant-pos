@@ -121,7 +121,7 @@ When a user **registers a business**, Project Imperium creates the owner's membe
 - **Seasonal** contracts **require** a contract end date on or after the join date.
 - Contract kind is **independent** of employment status (for example Active on a seasonal contract, or Seasonal status on a permanent contract).
 - Reaching the contract end date does **not** change status automatically. Managers and above **terminate**, **extend** (new end date), or otherwise act deliberately.
-- **Contract quantity** plus **contract period** (**Hourly**, **Monthly**, or **Yearly**) state the committed hours. They are the planned-hours reference for reporting and overtime context. They are **not** a hard scheduler block — the venue may still schedule more or less; alerts belong to schedules and time-control.
+- **Contract quantity** plus **contract period** (**Hourly**, **Monthly**, or **Yearly**) state the committed hours. They are the **planned-hours reference for reporting** (how much the venue committed to schedule). They are **not** a hard scheduler block — the venue may still schedule more or less — and they do **not** trigger overtime: overtime detection is time on duty past the session's **planned end**, owned by time-control.
 
 ### 3.6 Pay
 
