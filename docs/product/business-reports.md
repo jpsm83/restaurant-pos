@@ -112,7 +112,8 @@ Terms reused from other subjects rather than redefined here: **business**, **dai
 
 ### 3.6 Dimension breakdowns
 
-- Every period's metrics may be sliced by the **standard dimensions** defined by the business-metrics subject: category/subcategory, menu item, supplier good, supplier, employee, sales point/channel, daypart, table/seat, payment method, and promotion.
+- Every period's metrics may be sliced by the **standard dimensions** defined by the business-metrics subject: category/subcategory, menu item, supplier good, supplier, employee, sales point/channel, daypart, table/seat, payment method, promotion, and **reason**.
+- The **reason** dimension applies only where the business-metrics subject declares it — void, invitation, manual-discount, and refund figures (operational reasons subject). It is not a slice on every KPI.
 - Breakdowns are **first-class report content**:
   - the **weekly** report carries the operational full set (without requiring inventory supplier slices);
   - the **monthly** report carries the **full dimension set**, including **supplier good** and **supplier**;

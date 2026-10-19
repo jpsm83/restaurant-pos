@@ -9,7 +9,7 @@
 This subject covers the **stock a venue holds**: how it is tracked, counted, valued, reconciled, closed, and moved between the venues of one tax entity. It owns:
 
 - the **dynamic system count** — the live, running quantity held per supplier good;
-- **physical counts** — who counts, how a count is recorded, and the lock on a submitted count;
+- **physical counts** — who counts, how a count is recorded, the lock on a submitted count, and **re-edit** with a required operational reason;
 - **count periods** and their **deviation**;
 - the **monthly resume** — the aggregation of a month's count periods — its **close** and its **reopen**;
 - the **variance** between theoretical and actual usage;
@@ -30,6 +30,7 @@ It deliberately does **not** cover:
 - the **reports** that present inventory — the business-reports subject owns them.
 - the **Business**, the **Company**, and the **Owner** — the business and users subjects own them; a transfer is confined to one Company.
 - **amounts payable to a supplier**, supplier invoices, and inter-company tax — none are part of Project Imperium.
+- the **operational reason catalogue** for count re-edit — closed platform list, Other-note rule, maintenance, and visibility belong to the **operational reasons** subject. This subject requires a code from that catalogue when a submitted count is re-edited. Count re-edit reasons are audit-only and are not a sales-report dimension.
 
 ---
 
@@ -58,9 +59,10 @@ It deliberately does **not** cover:
 - **Inventory value** — stock on hand valued at the good's **price per unit of stock**.
 - **Low stock** — a good whose stock on hand is below its **minimum required**.
 - **Negative stock** — a good whose stock on hand is below zero.
+- **Count re-edit** — a correction to a submitted, locked count by supervisor layer or above, carrying an **operational reason** and an audit record.
 - **Uncounted** — a good with no count in the month.
 
-Terms reused from other subjects rather than redefined here: **Business**, **Company**, **Owner**, **Supplier**, **Supplier good**, **unit of stock**, **purchase unit**, **price per unit of stock**, **par level**, **minimum required**, **budget impact**, **in use**, **managers on duty**, **total sales**, and **soft delete**.
+Terms reused from other subjects rather than redefined here: **Business**, **Company**, **Owner**, **Supplier**, **Supplier good**, **unit of stock**, **purchase unit**, **price per unit of stock**, **par level**, **minimum required**, **budget impact**, **in use**, **managers on duty**, **total sales**, **soft delete**, and **operational reason** (reason code and optional Other note from the operational reasons subject).
 
 ---
 
@@ -78,7 +80,7 @@ Terms reused from other subjects rather than redefined here: **Business**, **Com
 
 - A count is performed **whenever the business decides**. Routine counting follows **no fixed schedule and no cadence**: a good may be counted as often as the venue likes, and different goods may be counted at different rhythms. The one fixed count is the month's **closing count** (§3.4). The inventory shows each good's **last-counted date** so the venue can see how far a good is from its last count.
 - A count records the **counted quantity**, **who** counted, **when**, and an optional **comment**.
-- A count is **submitted and locked**. Once submitted, it cannot be changed by the person who made it; correcting it requires **supervisor layer or above**, a **reason**, and leaves an **audit record** of who re-edited, when, why, and the values before and after. A count is **never removed**.
+- A count is **submitted and locked**. Once submitted, it cannot be changed by the person who made it; correcting it requires **supervisor layer or above**, an **operational reason** from the closed **count re-edit** catalogue (operational reasons subject), and leaves an **audit record** of who re-edited, when, why (reason code and optional Other note), and the values before and after. A count is **never removed**. Count re-edit reasons are **audit-only** — they are not a sales-report dimension.
 - A count **sets** the good's stock on hand to the counted quantity and records the **deviation** against the expected count at that moment.
 - Counting a good whose quantity matches what was expected is a valid count; its deviation is zero.
 
@@ -153,8 +155,8 @@ Inventory is an internal, operational, management surface: never visible to cust
 | --- | --- |
 | **Customer** | None. Inventory is never visible to customers. |
 | **Employee** | Performs **physical counts**; views stock only when granted the capability. |
-| **Supervisor** | Performs physical counts; re-edits submitted counts with a reason and an audit (supervisor-layer default); views stock when granted the capability or as feature defaults allow. Does not create transfers or close the month. |
-| **Manager** | Re-edits counts with a reason and an audit, creates transfers, closes the month, and views variance, waste, and value. Month reopen is General Manager or Owner job role only. |
+| **Supervisor** | Performs physical counts; re-edits submitted counts with an operational reason and an audit (supervisor-layer default); views stock when granted the capability or as feature defaults allow. Does not create transfers or close the month. |
+| **Manager** | Re-edits counts with an operational reason and an audit, creates transfers, closes the month, and views variance, waste, and value. Month reopen is General Manager or Owner job role only. |
 | **Admin/owner** | Everything a manager can do, plus full venue control. |
 
 ### Who can do what
@@ -162,7 +164,7 @@ Inventory is an internal, operational, management surface: never visible to cust
 | Activity | Who |
 | --- | --- |
 | Perform a physical count | Employees, supervisors, and managers and above |
-| Re-edit a submitted count, with a reason and an audit | Supervisor layer and above |
+| Re-edit a submitted count, with an operational reason and an audit | Supervisor layer and above |
 | View stock, counts, variance, waste, and value | Managers and above; employees or supervisors with the granted capability |
 | Create an inventory transfer (within one Company only) | Managers and above |
 | Close the month | Managers and above |

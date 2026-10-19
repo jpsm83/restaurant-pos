@@ -11,7 +11,7 @@ This subject covers the **daily sales report**: how a venue's one-day activity i
 - the **daily sales report** itself — one report per venue per work day;
 - **opening** on the first sales instance of the work day;
 - the **per-employee** and **channel** buckets and the venue's **business totals**;
-- the **operational dimension breakdowns** for the day;
+- the **operational dimension breakdowns** for the day, including **reason code** for void, invitation, manual discount, and refund figures;
 - the **open / closed / reopened** lifecycle, including close preconditions, lock, and fulfilment sweep;
 - a **day-level commission estimate** (finalisation and collection belong to the weekly business report);
 - **download/export** of the entire daily report;
@@ -29,6 +29,7 @@ It deliberately does **not** cover:
 - **how reports are exported or laid out on screen** — outside this subject;
 - **gift-card issue, balance, redemption, void, and expiry rules** — the gift-cards subject owns those; this subject accumulates deposit intake and tender in the gift-card channel, forfeitures (expiry and void-with-balance) in the forfeiture channel, and surfaces outstanding liability;
 - **reservation deposit forfeiture** — the reservations subject owns when a deposit is forfeited; this subject accumulates that forfeiture in the forfeiture channel bucket.
+- the **operational reason catalogues** themselves — closed lists, Other-note rule, and maintenance belong to the **operational reasons** subject. This subject presents day-level breakdowns **by reason code** for void, invitation, manual discount, and refund activity those catalogues label; count re-edit reasons are not a daily-report dimension.
 
 ---
 
@@ -54,7 +55,7 @@ It deliberately does **not** cover:
 - **Reopen** — unlock a closed day so belonging bills and payments may change again; moves the report to **reopened**.
 - **Commission estimate** — a day-level preview of platform commission on that day's commissionable sales; **not charged**. Finalisation and owing happen when the weekly business report closes; collection belongs to platform-billing.
 
-Terms reused from other subjects rather than redefined here: **business**, **sales instance**, **sales point**, **order**, **bill**, **payment**, **guest count**, **covers**, **total sales**, **net revenue**, **cost of goods sold**, **tip**, **void**, **invitation**, **gift card**, **reservation deposit**, **fulfilment slice**, **managers and above**, and the metric names defined by the business-metrics subject.
+Terms reused from other subjects rather than redefined here: **business**, **sales instance**, **sales point**, **order**, **bill**, **payment**, **guest count**, **covers**, **total sales**, **net revenue**, **cost of goods sold**, **tip**, **void**, **invitation**, **manual discount**, **refund**, **gift card**, **reservation deposit**, **fulfilment slice**, **managers and above**, **operational reason** / **reason code**, and the metric names defined by the business-metrics subject.
 
 ---
 
@@ -90,8 +91,9 @@ Terms reused from other subjects rather than redefined here: **business**, **sal
 
 - **Business totals** for the day include at least: total sales, net revenue, tips, cost of goods sold, profit, customers served (covers), average spend per customer, void and invited value, and a **commission estimate** for the day (never a charged amount).
 - **Customers served (covers)** is the sum of **guest counts** on sales instances that belong to that work day, including self-ordering, kiosk, and delivery instances.
-- The daily report's **dimension breakdowns** are the operational set only: **employee**, **sales point/channel**, **payment method**, and **menu item**.
+- The daily report's **dimension breakdowns** are the operational set only: **employee**, **sales point/channel**, **payment method**, and **menu item**. In addition, **void**, **invitation**, **manual discount**, and **refund** figures may be broken down by **reason** (reason code).
 - The **sales point/channel** breakdown includes ordinary sales points for staff-taken activity and the dedicated channels **delivery**, **self-ordering**, **kiosk**, **gift-card**, and **forfeiture**.
+- The **reason** breakdown uses the closed operational reason catalogues (operational reasons subject). Acts under **Other** bucket together; Other notes are not a dimension. Reason is **not** a general slice on net revenue, COGS, or other totals. **Count re-edit** reasons do not appear on the daily sales report.
 - The daily report does **not** carry cost-target or waste-threshold comparison, nor industry benchmarks — those belong to weekly and monthly business reports.
 - A breakdown over a dimension with **no activity** produces **no value**; Project Imperium never fabricates a zero.
 - Money is shown in the venue's currency.

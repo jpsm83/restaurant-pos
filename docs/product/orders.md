@@ -14,8 +14,8 @@ This subject owns the **order** — the billable line a venue sells — and the 
 - **drafting and sending** — the freely editable draft, the send that commits a batch, and the immutability that follows;
 - **attribution** — who created an order and who sent a batch, and in what capacity;
 - **pricing and cost** — the price and cost an order records;
-- **promotions** applied to orders, and the **manual discount** a manager may apply instead;
-- the **order lifecycle** — transfer, void, invitation, and cancellation;
+- **promotions** applied to orders, and the **manual discount** a manager may apply instead (with a required operational reason);
+- the **order lifecycle** — transfer, void, invitation, and cancellation (void and invitation each require an operational reason);
 - the **fulfilment status** of a batch's **prep-area slices**, including **held** batches and **don't-make** orders; and
 - the **bill** as the aggregation of a sales instance's batches.
 
@@ -26,6 +26,7 @@ It deliberately does **not** cover:
 - **billing and settlement** — splitting a bill, taking payments, the methods, tips, refunds, and tax belong to the payments-and-tax subject; the order-flow subject owns the journey that reaches settlement and the closing of the instance. This subject owns the order's billable state and the bill's composition; tips are noted here only for reference.
 - **customer bill and receipt documents** — required content, bill and receipt numbers, reprint and replacement identity belong to the **receipts-and-bills** subject. This subject owns the bill as aggregation and the batch **identification codes** that may appear on those documents.
 - **promotion rules** — the types, scoping, and availability of a promotion belong to the promotions subject. This subject owns how a promotion is applied to an order and the manual discount that may replace it.
+- the **operational reason catalogues** for void, invitation, and manual discount — closed platform lists, Other-note rule, maintenance, visibility, and reporting-by-reason expectations belong to the **operational reasons** subject. This subject requires a code from those catalogues when the act happens.
 - **business goods** — composition, selling price, derived cost, preparation time, categories, and allergens belong to the business-goods subject. This subject reads them when it prices and costs an order; the display and filtering of allergens across the menu belong to that subject too.
 - **the inventory ledger** — the stock an order moves belongs to the inventories subject; this subject only states when an order moves it.
 - **printing and screens** — printer routing and the kitchen, bar, delivery, and pickup surfaces belong to the printers-and-screens subject; this subject owns the fulfilment statuses those surfaces display and advance.
@@ -61,7 +62,7 @@ It deliberately does **not** cover:
 - **Deadline** — the kitchen's visual target time for a batch, drawn from its orders' preparation times; it is for display only.
 - **Bill** — the aggregation of a sales instance's batches as presented for settlement. An order is a bill's building block.
 
-Terms reused rather than redefined here: **Business**, **Sales instance**, **Sales point**, **Business good**, **Promotion**, **Employee**, **Customer**, **on duty**, **business currency**, and **soft delete**.
+Terms reused rather than redefined here: **Business**, **Sales instance**, **Sales point**, **Business good**, **Promotion**, **Employee**, **Customer**, **on duty**, **business currency**, **soft delete**, and **operational reason** (reason code and optional Other note from the operational reasons subject).
 
 ---
 
@@ -107,13 +108,13 @@ Terms reused rather than redefined here: **Business**, **Sales instance**, **Sal
 - A promotion may apply to an order's **main good only** — **never** to its add-ons.
 - At most **one** promotion applies to an order: a good's subcategory is targeted by at most one enabled promotion whose active window is current at a time, so a single promotion covers the order. An order counts toward a promotion only when it is taken while the promotion is enabled and the moment falls inside its **active window**; a matching order taken outside the window does not complete the promotion.
 - The good's **full price is recorded** when the order is added; the promotion's discount is applied while the staff tab is **open**, or while a self-service **pre-pay basket** is unpaid (promotions subject: basket is a sitting-equivalent; multi-buy groups there, then bind to the instance at pay). The discount may reprice an already-added line — three matching burgers on a tab or basket turn one of them free, for example. The amount is **final** once the order is **settled**.
-- A **manual discount** is set on a **single order** by a **manager and above**, as a **percentage or a fixed amount**, and requires a **reason**.
+- A **manual discount** is set on a **single order** by a **manager and above**, as a **percentage or a fixed amount**, and requires an **operational reason** from the closed **manual discount** catalogue (operational reasons subject).
 - Applying a manual discount **replaces** any promotion on that order; an order carries a promotion **or** a manual discount, **never both**.
 
 ### 3.7 Void, invitation, and cancellation
 
-- **Void** keeps the order **on the bill, flagged**, and **uncharged**; the order is **retained in reporting**. A reason is **required**, stored, and never shown to the customer. Stock is **not** restored.
-- **Invitation** (complimentary) likewise keeps the order **on the bill, flagged**, and **uncharged**, and **retained in reporting**. It requires a reason, stored and never shown to the customer, and stock is **not** restored. Paying with a **gift card** is **not** an invitation: those orders stay **Paid** and gift card is only tender (gift-cards and payments-and-tax subjects; ADR-0004).
+- **Void** keeps the order **on the bill, flagged**, and **uncharged**; the order is **retained in reporting**. An **operational reason** from the closed **void** catalogue is **required**, stored, and never shown to the customer (operational reasons subject). Stock is **not** restored.
+- **Invitation** (complimentary) likewise keeps the order **on the bill, flagged**, and **uncharged**, and **retained in reporting**. It requires an **operational reason** from the closed **invitation** catalogue, stored and never shown to the customer (operational reasons subject), and stock is **not** restored. Paying with a **gift card** is **not** an invitation: those orders stay **Paid** and gift card is only tender (gift-cards and payments-and-tax subjects; ADR-0004).
 - **Cancellation** removes a **sent** order from the bill **and** from reporting, **restores** the stock it moved, and is a **manager and above** act. A cancelled order is **hard-deleted**: the platform's soft-delete rule retains domain records, and a cancelled line is a deliberate exception, because it leaves no billable record to keep.
 - Removing a **draft** order is **not** a cancellation: nothing was committed, so nothing is restored and nothing is recorded.
 

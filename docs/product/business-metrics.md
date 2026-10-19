@@ -80,7 +80,7 @@ Every metric is computed from **period amounts** — the totals a report has agg
 - **Budget-impact level** — the **Very Low → Very High** classification carried on a **supplier good** (defined by the supplier-goods subject). It selects which waste threshold applies to that good's waste.
 - **Reporting week** — the seven-day window that groups daily sales reports into one weekly business report. Its first day is the **reporting-week start day**, expressed from `0` (Sunday) to `6` (Saturday).
 - **KPI dictionary** — the platform's canonical list of named metrics (this document's §3.7), with units, direction, dimensions, and formulas.
-- **Dimension vocabulary** — the standard breakdown axes (§3.5): category/subcategory, menu item, supplier good, supplier, employee, sales point/channel, daypart, table/seat, payment method, and promotion.
+- **Dimension vocabulary** — the standard breakdown axes (§3.5): category/subcategory, menu item, supplier good, supplier, employee, sales point/channel, daypart, table/seat, payment method, promotion, and reason.
 - **Channel** — how an order reached the venue: **dine-in** (staff service), **self-ordering**, **kiosk**, or **delivery**.
 - **Daypart** — the fixed service period an order falls in: **breakfast**, **lunch**, **dinner**, or **late-night**.
 - **Benchmark** — a reference industry range, shown for context, never policed.
@@ -147,9 +147,11 @@ Every KPI is expressed for a **period** — a day, a week, or a month — and ma
 | **Table / seat** | A sales point of table or seat type. |
 | **Payment method** | The method a bill was paid with. |
 | **Promotion** | A promotion applied to orders. |
+| **Reason** | The operational reason code on a void, invitation, manual discount, or refund (closed catalogues owned by the operational reasons subject). |
 
 - The **period axis is always present**; the rest are optional breakdowns.
 - Dayparts are a **fixed platform set** — breakfast, lunch, dinner, late-night — derived from the time an order was placed. Venues do not configure their own dayparts.
+- Reason codes are a **fixed platform set** per act catalogue. Venues do not invent codes. Acts under **Other** bucket together; free-text Other notes are **not** a dimension. Count re-edit reasons are **not** a KPI dimension.
 - Each KPI declares the dimensions it supports. To keep the catalogue readable, dimensions are stated **per family with inline exceptions** rather than repeated on every row.
 - A breakdown over a dimension that has **no activity** produces **no value**; Project Imperium never fabricates a zero.
 
@@ -211,7 +213,7 @@ Every cost category is published as an **amount**, as a **percentage of total sa
 
 #### Sales quality
 
-**Dimensions:** period; category, menu item, employee, sales point/channel, daypart, table/seat, payment method, promotion.
+**Dimensions:** period; category, menu item, employee, sales point/channel, daypart, table/seat, payment method, promotion. **Exceptions:** Void sales % and Invited sales % also support **reason**. Manual-discount value (when broken out) supports **reason**; promotional discount uses the **promotion** dimension, not reason. Refund value (when broken out beside the original sale) supports **reason**.
 
 | KPI | Unit | Good direction | Formula | Meaning | Benchmark |
 | --- | --- | --- | --- | --- | --- |

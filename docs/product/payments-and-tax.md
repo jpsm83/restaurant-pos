@@ -16,7 +16,7 @@ This subject owns **settlement**: turning an open bill into paid money, and the 
 - **over-tender** — when cash (or similar) tender surpasses outstanding balance, returning change or recording the difference as tip;
 - **third-party processing** — Stripe Connect as the integrated processor for Imperium-processed self-channels, connecting each venue's payment account, and recording external tenders;
 - **payouts** — how captured money reaches the venue;
-- **refunds and card disputes** — the request-and-decision flow, reversal of a settled payment, and how provider disputes feed reporting and commission;
+- **refunds and card disputes** — the request-and-decision flow, reversal of a settled payment (with a required operational reason on approval), and how provider disputes feed reporting and commission;
 - the **tax configuration** — the per-category rates a business sets; and
 - **tax on a sale** — the tax a sale records and how it is drawn out of a tax-inclusive price.
 
@@ -33,6 +33,7 @@ It deliberately does **not** cover:
 - **customer bill and receipt documents** — required content, numbering, reprint, and replacement identity belong to the **receipts-and-bills** subject. Delivering a receipt or a refund decision belongs to the **notifications** and **emails** subjects; those payloads must satisfy receipts-and-bills.
 - **supplier invoices and their tax** — amounts payable to a supplier and supplier invoicing are not part of Project Imperium.
 - **tip pooling and payroll export** — redistributing tips across roles and packaging them into a pay run belong to the **payroll** subject. This subject records and attributes tips at settlement.
+- the **operational reason catalogue** for refunds — closed platform list, Other-note rule, maintenance, visibility, and reporting-by-reason expectations belong to the **operational reasons** subject. This subject requires a code from that catalogue when a refund is approved and issued.
 
 ---
 
@@ -41,7 +42,7 @@ It deliberately does **not** cover:
 ### Entities
 
 - **Payment** — a recorded settlement entry against a bill. It belongs to exactly one **Business** and exactly one **sales instance**. It records **who took it and in what capacity**, the **moment** it was taken, its **method**, its **amount**, an optional **tip**, an optional **provider reference** where a provider captured it, its **status**, and the **refunds** returned against it.
-- **Refund** — a recorded reversal of a settled payment. It records **who decided it and when**, the **amount** returned, the **reason**, and the **method** it was returned to. A refund belongs to the payment it reverses.
+- **Refund** — a recorded reversal of a settled payment. It records **who decided it and when**, the **amount** returned, the **operational reason**, and the **method** it was returned to. A refund belongs to the payment it reverses.
 - **Tax configuration** — the single per-business set of tax rates: one rate for each **tax category**. It belongs to exactly one **Business**.
 
 ### Terms this subject introduces
@@ -64,7 +65,7 @@ It deliberately does **not** cover:
 - **Tax-inclusive price** — a price a venue sets that already contains its tax; the customer always pays the figure shown, and the tax is the part of it that is owed.
 - **Commission** — the platform's fee on a reporting week's **commissionable sales**, owed by the venue and collected automatically at weekly report close, separately from what its customers pay.
 
-Terms reused rather than redefined here: **Business**, **Owner**, **Company**, **Employee**, **Customer**, **Bill**, **Order**, **Sales instance**, **Business good**, **Staff tab**, **self-service instance**, **business currency**, **on duty**, **Subscription**, **Gift card**, **superadmin**, and **soft delete**.
+Terms reused rather than redefined here: **Business**, **Owner**, **Company**, **Employee**, **Customer**, **Bill**, **Order**, **Sales instance**, **Business good**, **Staff tab**, **self-service instance**, **business currency**, **on duty**, **Subscription**, **Gift card**, **superadmin**, **soft delete**, and **operational reason** (reason code and optional Other note from the operational reasons subject).
 
 ---
 
@@ -141,7 +142,7 @@ Terms reused rather than redefined here: **Business**, **Owner**, **Company**, *
 
 - There are **no automatic refunds**. A refund is a **request** decided by the **manager on duty**; no payment is ever reversed without that decision — including a customer's delivery or self-service order.
 - A **refund request** may be raised by the **customer** from the app or by **any staff member**, naming the payment and, optionally, the amount sought. The manager on duty **approves or declines** it and may approve a **full or partial** refund.
-- An approved refund requires a **reason** and is **audited**: it records who decided it, when, how much, its reason, and the method it was returned to.
+- An approved refund requires an **operational reason** from the closed **refund** catalogue (operational reasons subject) and is **audited**: it records who decided it, when, how much, its reason code (and optional Other note), and the method it was returned to. The reason is never shown to the customer.
 - An **electronic or provider-processed** payment is refunded to its **original method**; a **cash** payment is returned in **cash**. A refund reverses the payment's **tax** and its place in the **payment-method breakdown** in proportion to the amount returned.
 - The **original sale stays in reporting**; the refund is shown **beside it**, never by erasing the sale.
 - A refund returns **money only** — it does **not restore inventory**. Restoring stock is a **cancellation**, which belongs to the orders subject.
@@ -168,7 +169,7 @@ Terms reused rather than redefined here: **Business**, **Owner**, **Company**, *
 ### 3.12 Retention
 
 - Payments live as **history**: operators never physically remove one. A payment reversed in full is **retained** and reads as refunded, so a bill's settlement always reconciles.
-- A **refund** is retained and audited with its reason and its decision.
+- A **refund** is retained and audited with its operational reason and its decision.
 - These are business records under the platform's **soft-delete** rule and the **legal and financial** retention class. Any later physical removal after that class delay belongs to the plan quotas and data retention subject and only when the **data-integrity rule** allows.
 
 ---
