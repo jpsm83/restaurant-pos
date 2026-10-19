@@ -135,6 +135,7 @@ Purchases are an internal, operational, management surface: never visible to cus
 | --- | --- |
 | **Customer** | None. Purchases are never visible to customers. |
 | **Employee** | None. Purchases are not delegated to employees. |
+| **Supervisor** | None. Purchases stay manager+ (no Manage). |
 | **Manager** | Records, receives, edits, cancels, and views purchases; records one-time purchases. |
 | **Admin/owner** | Everything a manager can do, plus full venue control. |
 

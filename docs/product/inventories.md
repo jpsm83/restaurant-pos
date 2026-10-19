@@ -78,7 +78,7 @@ Terms reused from other subjects rather than redefined here: **Business**, **Com
 
 - A count is performed **whenever the business decides**. Routine counting follows **no fixed schedule and no cadence**: a good may be counted as often as the venue likes, and different goods may be counted at different rhythms. The one fixed count is the month's **closing count** (§3.4). The inventory shows each good's **last-counted date** so the venue can see how far a good is from its last count.
 - A count records the **counted quantity**, **who** counted, **when**, and an optional **comment**.
-- A count is **submitted and locked**. Once submitted, it cannot be changed by the person who made it; correcting it requires a **manager-layer** user **or** a membership that holds the **Supervisor** job role, a **reason**, and leaves an **audit record** of who re-edited, when, why, and the values before and after. A count is **never removed**.
+- A count is **submitted and locked**. Once submitted, it cannot be changed by the person who made it; correcting it requires **supervisor layer or above**, a **reason**, and leaves an **audit record** of who re-edited, when, why, and the values before and after. A count is **never removed**.
 - A count **sets** the good's stock on hand to the counted quantity and records the **deviation** against the expected count at that moment.
 - Counting a good whose quantity matches what was expected is a valid count; its deviation is zero.
 
@@ -153,16 +153,17 @@ Inventory is an internal, operational, management surface: never visible to cust
 | --- | --- |
 | **Customer** | None. Inventory is never visible to customers. |
 | **Employee** | Performs **physical counts**; views stock only when granted the capability. |
-| **Manager** | Re-edits counts with a reason and an audit (Supervisor job role may also re-edit), creates transfers, closes the month, and views variance, waste, and value. Month reopen is General Manager or Owner job role only. |
+| **Supervisor** | Performs physical counts; re-edits submitted counts with a reason and an audit (supervisor-layer default); views stock when granted the capability or as feature defaults allow. Does not create transfers or close the month. |
+| **Manager** | Re-edits counts with a reason and an audit, creates transfers, closes the month, and views variance, waste, and value. Month reopen is General Manager or Owner job role only. |
 | **Admin/owner** | Everything a manager can do, plus full venue control. |
 
 ### Who can do what
 
 | Activity | Who |
 | --- | --- |
-| Perform a physical count | Employees, and managers and above |
-| Re-edit a submitted count, with a reason and an audit | Manager layer and above, or Supervisor job role |
-| View stock, counts, variance, waste, and value | Managers and above; employees with the granted capability |
+| Perform a physical count | Employees, supervisors, and managers and above |
+| Re-edit a submitted count, with a reason and an audit | Supervisor layer and above |
+| View stock, counts, variance, waste, and value | Managers and above; employees or supervisors with the granted capability |
 | Create an inventory transfer (within one Company only) | Managers and above |
 | Close the month | Managers and above |
 | Reopen a closed month, with a reason and an audit | General Manager or Owner job role |

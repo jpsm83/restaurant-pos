@@ -20,7 +20,7 @@ This subject covers **attendance** — the **actual** side of the plan-versus-ac
 It deliberately does **not** cover:
 
 - the **schedule** (day schedules, working shifts, vacation and other leave, time-off requests, planned labour aggregates) — the schedules subject owns the plan. This subject compares actuals against that plan and never writes schedule punches.
-- **business-mode eligibility** as a platform rule — the users subject owns when a person may enter business mode. This subject states the attendance facts and the entry window those rules read; schedules supply the planned working shift. Service / Manage / Me left-menu navigation inside business mode belongs to the user-navigation subject.
+- **business-mode eligibility** as a platform rule — the users subject owns when a person may enter business mode; the access-and-permissions subject owns effective layer (including that supervisors are schedule-gated). This subject states the attendance facts and the entry window those rules read; schedules supply the planned working shift. Service / Manage / Me left-menu navigation inside business mode belongs to the user-navigation subject.
 - the **Employee** membership, pay, and vacation allowance — the employees subject owns those. This subject consumes gross pay and pay frequency for actual labour cost.
 - **open sales instances** and responsible-staff attribution — the sales-points-and-instances subject owns those. This subject only enforces that duty sign-out is blocked while the employee still holds open instances.
 - **notification delivery** — inbox, live push, cooldown mechanics — the notifications subject owns how events are delivered. This subject defines which attendance events exist, when they fire, and the overtime session mute.
@@ -46,8 +46,8 @@ Business ──< Time-clock ledger event >── Employee
 ### Terms this subject introduces
 
 - **On duty** — the actual attendance fact that the person has signed in and has not yet been signed out. Distinct from being in **business mode** and from being scheduled.
-- **Late lock** — after a non-management employee's planned start, if they have not signed in, they cannot scan until a manager unlocks them. Unlock does not change the eventual scan timestamp.
-- **Entry window** — for a planned working shift, the interval from **10 minutes before** planned start until **2 hours after** planned start, during which a non-management employee may enter **business mode** to attempt duty. Outside that window with no open session, they cannot enter business mode and need a manager to reschedule.
+- **Late lock** — after an employee- or supervisor-layer person's planned start, if they have not signed in, they cannot scan until a manager unlocks them. Unlock does not change the eventual scan timestamp.
+- **Entry window** — for a planned working shift, the interval from **10 minutes before** planned start until **2 hours after** planned start, during which an employee- or supervisor-layer person may enter **business mode** to attempt duty. Outside that window with no open session, they cannot enter business mode and need a manager to reschedule.
 - **Attendance reason** — a value from the fixed platform list: **lunch**, **rest**, **personal**, or **other** (optional short free-text note when other). Required when starting a break and when signing out more than 10 minutes before planned end; optional on late unlock.
 - **Break hours setting** — venue setting: whether paused time **counts toward worked hours** (default **include**) or is **excluded**. Managers and above edit it; changes apply to new pauses; already-closed sessions keep the math they closed with.
 - **Worked hours** — duration from sign-in to sign-out after applying the break hours setting to pause intervals.
@@ -90,13 +90,13 @@ A shift session (or the plan-vs-actual row for a working shift with no session) 
 
 ### 3.3 Business-mode entry window
 
-For a non-management employee with a **planned working shift**:
+For an employee- or supervisor-layer person with a **planned working shift**:
 
 - Business mode is available from **10 minutes before** planned start until **2 hours after** planned start.
 - Outside that window, if they have **no open session**, they cannot enter business mode and must be **rescheduled** by a manager before they can attempt duty.
 - The window gates **entering** business mode to start (or attempt) a session. An **already open** session continues past planned start + 2 hours.
 - **Vacation** or **other leave** on a day (no working shift) grants no entry window and no clock-in.
-- **Managers, admins, and owners** are never blocked from business mode by the schedule or this window (Suspended or Terminated membership still blocks Business).
+- **Managers, admins, and owners** are never blocked from business mode by the schedule or this window (Suspended or Terminated membership still blocks Business). **Supervisors** follow the employee/supervisor entry-window rule above — they are not excused from the schedule.
 - **Suspended** or **Terminated** memberships cannot enter business mode or open a session.
 
 There is **no** late-unlock step on the schedule itself. Lateness honesty is late lock and real scan times in this subject; the two-hour end of the entry window is schedule-side eligibility, not a manager unlock.
@@ -104,13 +104,13 @@ There is **no** late-unlock step on the schedule itself. Lateness honesty is lat
 ### 3.4 Sign-in and shift binding
 
 - Scanning the valid daily attendance QR while eligible opens a **shift session** and appends a sign-in event at the **exact scan moment**.
-- For ordinary employees, the session binds to the **planned working shift** that currently makes them eligible. If more than one planned interval could apply, bind to the **earliest-starting** working shift that still has no completed session.
+- For **employee- or supervisor-layer** people, the session binds to the **planned working shift** that currently makes them eligible. If more than one planned interval could apply, bind to the **earliest-starting** working shift that still has no completed session.
 - **One open session** per employee at a time. A later working shift the same day requires the first session closed first.
-- Managers, admins, and owners may sign in **without** a matching working shift; that session may carry an empty planned window for plan-vs-actual and never raises overtime.
+- Managers, admins, and owners may sign in **without** a matching working shift; that session may carry an empty planned window for plan-vs-actual and never raises overtime. Supervisors may not — they need a planned working shift like employees.
 
 ### 3.5 Late lock
 
-- Before planned start, a non-management employee inside the entry window may scan freely.
+- Before planned start, an employee- or supervisor-layer person inside the entry window may scan freely.
 - From **planned start** onward, if they have not signed in, they are **late-locked**: they may still be in business mode until the window ends, but **scan-in is rejected** until a manager unlocks them.
 - Unlock is a manager-layer action, optional **attendance reason**. The unlock is ledgered (who, when). It only permits the next scan; the sign-in timestamp remains the real scan time.
 - Managers, admins, and owners are never late-locked.
@@ -132,7 +132,7 @@ There is **no** late-unlock step on the schedule itself. Lateness honesty is lat
 - Only a **manager-layer** user in business mode may sign someone out. They need not be on duty.
 - The employee may optionally **request sign-out** in the app; that notifies **managers on duty**. A manager may sign them out with or without a prior request.
 - Sign-out appends a ledger event at the real action time and sets the session to **closed**.
-- For **non-management** staff, duty sign-out also **ends business mode** for that visit (they return to customer mode). Managers, admins, and owners may be signed out of duty without being kicked out of business mode.
+- For **employee- or supervisor-layer** staff, duty sign-out also **ends business mode** for that visit (they return to customer mode). Managers, admins, and owners may be signed out of duty without being kicked out of business mode.
 - **Early leave.** If sign-out is **more than 10 minutes before** the session's planned end, an **attendance reason** is required. Within 10 minutes of planned end, or after planned end, no reason is required. Unscheduled management sessions have no early-leave reason rule.
 - **Open sales instances.** Sign-out is **rejected** while the employee is the responsible staff on any **open sales instance** (any point type, not only tables). The warning lists those open points. Sign-out becomes possible only after those instances are **closed** or **transferred**. There is no force-sign-out override.
 
@@ -187,8 +187,9 @@ Attendance events are **in-app only**. Delivery mechanics belong to the notifica
 | Layer | Powers on this subject |
 | --- | --- |
 | **Customer** | No attendance access. |
-| **Employee** | Enter business mode (Service → POS) inside their entry window; scan-in when not late-locked; pause and resume own breaks with reason; request sign-out; re-enter business mode during an open session; read own sessions and ledger. |
-| **Manager** | Everything an employee can do, plus present the daily attendance QR, late-unlock, sign anyone out, correct the ledger, mute overtime for a session, edit the break hours setting, and see venue-wide attendance. |
+| **Employee** | Enter business mode inside their entry window; open Attendance to scan in when not late-locked; pause and resume own breaks with reason; request sign-out; re-enter business mode during an open session; read own sessions and ledger. Does **not** present the daily attendance QR. |
+| **Supervisor** | Same attendance powers as employee (schedule-gated; own scan-in via Attendance; sign-out ends Business). Full Service may include Attendance for self scan-in. Does **not** present the QR, late-unlock, sign others out, or see venue-wide attendance. |
+| **Manager** | Everything an employee can do, plus present the daily attendance QR, late-unlock, sign anyone out, correct the ledger, mute overtime for a session, edit the break hours setting, and see venue-wide attendance. Always Business-eligible when membership allows. |
 | **Admin** | Everything a manager can do. |
 
 ### Job roles
@@ -203,14 +204,14 @@ No per-user capability gates attendance actions on this subject. Those actions f
 
 | Activity | Who |
 | --- | --- |
-| Present the daily attendance QR | Manager-layer users in business mode |
-| Scan in (become on duty) | Eligible employee in business mode (ordinary staff need a planned working shift and must clear late lock when applicable) |
+| Present the daily attendance QR | Manager-layer users in business mode (not supervisors) |
+| Scan in (become on duty) | Eligible employee- or supervisor-layer person in business mode (planned working shift; must clear late lock when applicable); managers and admins may scan without a matching shift |
 | Late-unlock | Manager-layer users in business mode |
-| Pause / resume own break | The on-duty employee; also any manager-layer user for that employee |
-| Request sign-out | The on-duty employee |
-| Sign out (end duty) | Manager-layer users in business mode, and only when the employee holds no open sales instances |
+| Pause / resume own break | The on-duty person; also any manager-layer user for that person |
+| Request sign-out | The on-duty person |
+| Sign out (end duty) | Manager-layer users in business mode, and only when the person holds no open sales instances |
 | Append corrections | Managers and above |
 | Edit break hours setting | Managers and above |
 | Mute overtime for an open session | Manager-layer users in business mode |
-| View own attendance | The employee themself |
+| View own attendance | The person themself |
 | View venue-wide attendance | Managers and above |

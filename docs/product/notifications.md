@@ -163,6 +163,7 @@ Terms reused from the product overview's core vocabulary rather than defined her
 | --- | --- |
 | **Customer** | Holds the inbox; receives notifications and conversations; may reply in a conversation sent to them; may mute engagement; receives business replies to their reviews and delivery review invites. Cannot start a conversation. |
 | **Employee** | Everything a customer can do; as staff, receives the direct messages the venue sends them and may reply. |
+| **Supervisor** | Same inbox powers as employee. Does not publish venue events or start direct messages; does not receive manager-targeted operational alerts unless also on duty as a manager-layer person. |
 | **Manager** | Everything an employee can do, plus publishing venue events and starting direct messages to staff and related customers. Receives the manager-targeted operational alerts, including overtime and sign-out requests when on duty, new reviews, and review-removal decisions. |
 | **Admin** | Everything a manager can do. |
 

@@ -129,6 +129,7 @@ Terms reused rather than redefined here: **Owner**, **Business**, **subscription
 | --- | --- |
 | **Customer** | None — customers never pay platform fees. |
 | **Employee** | None. |
+| **Supervisor** | None. |
 | **Manager** | Receives arrears dunning for portfolio subscription (every venue) or for that venue's commission; may see commission billing detail tied to venues they manage; cannot change the platform payment method or pay plans. |
 | **Admin/owner** | Manages the Owner's platform payment method; changes plan under monetization rules; views and exports billing history; receives all Owner billing documents and notices. |
 

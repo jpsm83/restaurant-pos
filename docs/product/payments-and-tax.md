@@ -181,6 +181,7 @@ Terms reused rather than redefined here: **Business**, **Owner**, **Company**, *
 | --- | --- |
 | **Customer** | Self-pays a self-service bill in-app by any method; may raise a refund request; never takes another's payment, configures tax, or decides a refund. |
 | **Employee** | Takes payments and tips on the tab they are on duty for, records cash and external-terminal payments, and may raise a refund request; cannot refund or configure. |
+| **Supervisor** | Same payment-taking powers as employee; cannot decide refunds or configure tax / Stripe. |
 | **Manager** | Everything an employee can do, plus deciding refund requests and issuing refunds. Cannot complete Stripe connected-account onboarding. |
 | **Admin/owner** | Full venue control, including the **tax configuration** and **connecting or disconnecting** the venue's Stripe connected payment account. |
 

@@ -361,6 +361,7 @@ The cost targets follow the industry convention that **prime cost** (food plus b
 | --- | --- |
 | **Customer** | None. |
 | **Employee** | None by default; may be granted a capability (see below). |
+| **Supervisor** | None by default; may be granted a view capability via report view grants. Does not edit targets or thresholds. |
 | **Manager** | Sets and edits the **cost targets**, the **waste thresholds**, and the **reporting-week start day**. |
 | **Admin** | Everything a manager can do, plus full venue control. |
 

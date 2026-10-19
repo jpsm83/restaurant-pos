@@ -134,6 +134,7 @@ Terms reused rather than redefined here: **Business**, **Order**, **Business goo
 | --- | --- |
 | **Customer** | Self-orders by QR, at a kiosk, or for delivery where the point and business allow it; never opens a staff tab. |
 | **Employee** | Opens and works staff tabs while on duty; takes orders, requests the bill, and settles and closes a tab. |
+| **Supervisor** | Same staff-tab powers as employee; may place or clear a reserved hold when acting with Host powers. Does not create or edit sales-point configuration. |
 | **Manager** | Everything an employee can do, plus creating, editing, deactivating, and reactivating points, choosing their channels, enabling self-ordering, and placing or clearing a reserved hold. |
 | **Admin/owner** | Full venue control, including every manager power and moving any tab. |
 
@@ -143,8 +144,8 @@ Terms reused rather than redefined here: **Business**, **Order**, **Business goo
 | --- | --- |
 | Create, edit, deactivate, or reactivate a sales point; choose its channels | Managers and above |
 | Enable self-ordering on a point | Managers and above |
-| Place or clear a reserved hold | Host, managers, and above |
-| Open a staff tab | Any **on-duty employee** |
+| Place or clear a reserved hold | Host, supervisors, managers, and above |
+| Open a staff tab | Any **on-duty** employee or supervisor (and managers/admins when on duty) |
 | Self-ordering by QR, at a kiosk, or for delivery | Any customer |
 | Request the bill | An employee on the tab |
 | Move an empty tab | The **opening employee** or admin and above |

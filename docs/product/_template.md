@@ -41,7 +41,7 @@ Every document is **self-contained** and **link-free**, and every document is li
 
 ## Roles and entitlements
 
-- Every document answers "who can do this?" for its subject: the **base access layer** (admin, manager, employee, customer), the **job roles** involved, and any **per-user capabilities** that gate the subject.
+- Every document answers "who can do this?" for its subject: the **base access layer** (admin, manager, supervisor, employee, customer), the **job roles** involved, and any **per-user capabilities** that gate the subject. The access-and-permissions subject owns the shared layer and capability vocabulary.
 
 ## Consistency review
 

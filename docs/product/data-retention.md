@@ -149,6 +149,7 @@ Seed ceilings (Superadmin may edit; unlimited means no ceiling):
 | --- | --- |
 | **Customer** | May receive inactive-user warnings and keep-account confirmations for their own User; may export only what the product already allows for customers (typically none of venue operational export). |
 | **Employee** | Sees creation-quota limits only insofar as create actions refuse at the ceiling; no catalogue editing. |
+| **Supervisor** | Same as employee for quotas; no catalogue editing. |
 | **Manager** | May see usage against quotas where they create menu or hire; may participate in Business-mode activity that resets dormancy; cannot change catalogue constants. |
 | **Admin / Owner** | Same as manager for venue create actions; receives dormant-business confirmation; may export venue (and portfolio) data while it exists; may change plan under monetization rules (which must fit quotas on downgrade). |
 

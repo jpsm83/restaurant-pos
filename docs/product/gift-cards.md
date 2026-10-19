@@ -137,6 +137,7 @@ Terms reused rather than redefined here: **Business**, **Order**, **Bill**, **Pa
 | --- | --- |
 | **Customer** | Buys a paid card for themselves or as a gift, holds it, and redeems it at the issuing venue; never grants, voids, or configures. |
 | **Employee** | Everything a customer can do, plus selling paid cards on the POS and redeeming cards at payment. |
+| **Supervisor** | Same POS sell and redeem powers as employee. Does not grant, void, or configure gift cards. |
 | **Manager** | Everything an employee can do, plus granting business-gift cards, overriding a granted card’s expiry, voiding cards with a reason, viewing cards and outstanding liability, and setting the gift-card configuration. |
 | **Admin/owner** | Everything a manager can do. |
 

@@ -166,16 +166,17 @@ Terms reused from other subjects rather than redefined here: **business**, **sal
 | --- | --- |
 | **Customer** | None. |
 | **Employee** | None by default; may be granted a per-user capability to **view the daily sales report**. |
+| **Supervisor** | None by default; may be granted the same view capability. Does not close or reopen the day. |
 | **Manager** | Views the daily report and its breakdowns; closes and reopens the day (reopen with reason). |
 | **Admin** | Everything a manager can do, plus full venue control. |
 
-Job roles follow the usual floor hierarchy: **managers and above** close and reopen; no separate host- or chef-specific gate. Viewing may be extended to an individual employee via the per-user capability above.
+Job roles follow the usual floor hierarchy: **managers and above** close and reopen; no separate host- or chef-specific gate. Viewing may be extended to an individual employee or supervisor via the per-user capability above.
 
 ### Who can do what
 
 | Activity | Who |
 | --- | --- |
-| View the daily sales report and its breakdowns | Managers and above; employees with the per-user capability to view the daily sales report |
+| View the daily sales report and its breakdowns | Managers and above; employees or supervisors with the per-user capability to view the daily sales report |
 | Download/export the daily sales report | Whoever may view the daily sales report |
 | Close the daily report | Managers and above |
 | Reopen the daily report (mandatory reason) | Managers and above |

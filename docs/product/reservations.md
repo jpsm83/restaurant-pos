@@ -170,6 +170,7 @@ A reservation's status is one of:
 | --- | --- |
 | **Customer** | Requests a booking when the venue accepts reservations and is taking public bookings; tracks status; edits within the customer-edit window when enabled (re-pends); cancels per §3.6; pays a deposit when required (after sign-in or account creation). |
 | **Employee** | Opens reserved points and chooses reservation guests or ordinary guests while on duty; works each linked tab's orders and bill. Cannot create or decide bookings unless they also hold Host (or higher) powers. |
+| **Supervisor** | Everything an employee can do, plus **Host booking powers** (create, accept, assign, arrive, no-show, cancel) via full Service / Host default. Does not set reservation configuration. |
 | **Manager** | Everything an employee can do, plus every Host booking power, and setting reservation configuration. |
 | **Admin/owner** | Everything a manager can do. |
 
@@ -178,11 +179,11 @@ A reservation's status is one of:
 | Activity | Who |
 | --- | --- |
 | Set accepts reservations, pause, default cover duration, customer-edit window, grace period | Managers and above |
-| Create a booking (Pending, or Accept in the same step) | Host and above |
-| Accept, request a deposit, or reject a pending booking | Host and above |
-| Assign or change sales points; set internal end time | Host and above |
-| Mark arrived, no-show, or cancel (pre-seat) | Host and above |
-| Edit a booking without forcing Pending | Host and above |
+| Create a booking (Pending, or Accept in the same step) | Host and above (includes supervisor layer and managers+) |
+| Accept, request a deposit, or reject a pending booking | Host and above (includes supervisor layer and managers+) |
+| Assign or change sales points; set internal end time | Host and above (includes supervisor layer and managers+) |
+| Mark arrived, no-show, or cancel (pre-seat) | Host and above (includes supervisor layer and managers+) |
+| Edit a booking without forcing Pending | Host and above (includes supervisor layer and managers+) |
 | View and track own bookings and status | The customer who owns or is linked to the booking |
 | Customer-edit a booking (re-pends) | The customer, when edits are enabled and inside the window |
 | Open a reserved point as reservation guests or ordinary guests | Any on-duty employee opening the staff tab |

@@ -157,6 +157,7 @@ Terms reused rather than redefined here: **Business**, **Sales instance**, **Sal
 | --- | --- |
 | **Customer** | Self-orders through self-ordering, kiosk, or delivery; holds the identification code of their batch; never sees a void or invitation reason; never manages an order. |
 | **Employee** | Builds and sends orders as drafts; marks don't-make; holds and releases batches; prep areas set slices preparing and ready and the delivery area delivers ready slices; reads sent orders but cannot change them. |
+| **Supervisor** | Same floor order powers as employee. Does not edit, transfer, void, invite, cancel, or manually discount a **sent** order. |
 | **Manager** | Everything an employee can do, plus editing, transferring, cancelling, voiding, or inviting a **sent** order and applying a manual discount. |
 | **Admin/owner** | Everything a manager can do, with full venue control. |
 

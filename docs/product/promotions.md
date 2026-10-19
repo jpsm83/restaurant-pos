@@ -119,6 +119,7 @@ Terms reused rather than redefined here: **Business**, **Business good**, **Orde
 | --- | --- |
 | **Customer** | Enjoys promotions as they apply to orders; never authors or configures one. |
 | **Employee** | Everything a customer can do; takes orders that promotions apply to; never authors or configures a promotion. |
+| **Supervisor** | Same as employee for taking orders with promotions; never authors or configures a promotion. |
 | **Manager** | Creates, edits, enables, disables, and deletes promotions; sets their type, target scope, active window, and delivery extension. |
 | **Admin/owner** | Everything a manager can do, plus full venue control. |
 

@@ -107,7 +107,7 @@ Terms reused rather than redefined here: **Business**, **Sales point**, **Served
 - On a wide viewport, Host shows the floor map with the same minimal marker glance; **Host activation** (double-click or equivalent) opens **richer table and reservation detail** for that point — seating, holds, and booking context as the reservations and sales-points subjects define. Host does not replace those subjects' rules.
 - On a narrow viewport, Host uses **list/grid** with the same richer-detail action.
 - With **no** floor plans yet, Host uses list/grid only, same as POS.
-- **Host and above** (including managers and above, who hold Host powers) may open Host. Ordinary employees without Host do not see this destination unless a job role or entitlement grants Host.
+- **Host and above** may open Host: the **Host** job role, **supervisor** layer (full Service default), and **managers and above**. Ordinary employees without Host do not see this destination unless a job role or entitlement grants Host.
 
 ### 3.9 Layers in Service vs Manage
 
@@ -127,12 +127,13 @@ Terms reused rather than redefined here: **Business**, **Sales point**, **Served
 | --- | --- |
 | **Customer** | None. Floor plans are business-only. |
 | **Employee** | Service → **POS** map or list/grid as POS entitlements allow. No Manage editor. No Host unless they also hold Host. |
+| **Supervisor** | Service → **POS** and **Host** by layer default. No Manage editor. |
 | **Manager** | Everything an employee can do, plus **Manage → Floor plans** (full editor), full Service POS, and **Service → Host**. |
 | **Admin / Owner** | Everything a manager can do. |
 
 ### Job roles
 
-- **Host** (and any higher role that includes Host powers) may use **Service → Host**. Managers and above include those powers.
+- **Host** (and any higher role that includes Host powers) may use **Service → Host**. **Supervisor** layer and managers and above include those powers.
 
 ### Per-user capabilities
 
@@ -147,5 +148,5 @@ This subject introduces **no** separate per-user capability for layout edit. Flo
 | Place, move, or unplace sales points, printers, and screens | Managers and above |
 | Open object configuration from a Manage marker | Managers and above (subject to that object's own edit rules) |
 | Use Service → POS floor map or list/grid | Everyone in Business entitled to POS |
-| Use Service → Host floor map or list/grid | Host and above |
+| Use Service → Host floor map or list/grid | Host job role; supervisor layer; managers and above; or other entitlement granting Host |
 | Rearrange layout from Service | Nobody — Manage only |

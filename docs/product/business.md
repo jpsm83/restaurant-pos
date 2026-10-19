@@ -195,6 +195,7 @@ A venue with no qualifying **venue activity** for a long window may be soft-dele
 | --- | --- |
 | **Customer** | Sees a business's public discovery fields. May **register a business**, becoming its owner and an **admin** at that venue; may edit everything at a venue they own. |
 | **Employee** | Works in the business app; no business-detail editing unless granted. |
+| **Supervisor** | Works in the business app; no business-detail editing (no Manage). |
 | **Manager** | Everything an employee can do, plus editing **opening hours**, **delivery configuration**, **self-ordering configuration**, and the **discovery cuisine/categories**. |
 | **Admin** | Full venue control, including the **profile identity**, **legal name**, **currency**, **contact email**, the **go-live toggle**, and **closure**. |
 

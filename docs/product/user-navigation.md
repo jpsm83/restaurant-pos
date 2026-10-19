@@ -23,7 +23,7 @@ It owns:
 
 It deliberately does **not** cover:
 
-- **who may enter business mode** — membership, entry window, suspended/terminated rules, and layer defaults belong to the users subject. This subject enforces those rules in chrome and guards.
+- **who may enter business mode** — membership, entry window, and suspended/terminated rules belong to the users subject; **layer defaults and effective layer** belong to the access-and-permissions subject. This subject enforces those rules in chrome and guards.
 - **attendance and on-duty** — daily attendance QR, late lock, and shift sessions belong to the time-control subject. This subject only places Attendance under Service when the person may open it.
 - **feature behaviour inside each destination** — orders, schedules, inventory, reports, and the rest belong to their own subjects. This subject only places those destinations in the chrome.
 - **the Superadmin console's** own navigation and authentication realm — the superadmin subject owns that surface entirely.
@@ -47,7 +47,7 @@ This subject introduces **no new persistent tenant entity**. It owns navigation 
 - **Owner chrome** — extra controls on venue tabs that only an **Owner** sees for that venue (for example add venue, plan, company), distinct from an employee tab at a venue they only work at.
 - **Left menu** — the persistent vertical navigation rail in **Business** mode (and the separate rail in the **customer account area**).
 - **Service** — left-menu header for day-of operations destinations (POS, Host when entitled, and when entitled control screens and attendance).
-- **Manage** — left-menu header for administration destinations; visible only while the person's **effective base layer** at that venue is **manager or admin** (users subject: per shift when on a working shift, otherwise highest membership layer).
+- **Manage** — left-menu header for administration destinations; visible only while the person's **effective base layer** at that venue is **manager or admin** (access-and-permissions subject: per shift when on a working shift, otherwise highest membership layer; supervisor never sees Manage).
 - **Me** — left-menu header in Business for **self-only** destinations (own schedule, notifications, personal details) that are not admin data.
 - **Customer account area** — the signed-in customer's settings surface opened from the avatar while in Customer mode: profile, address, saved payment methods, email, notifications, and related account items, with its own left sidebar.
 - **Icon rail** — the left menu's default desktop behaviour: it can collapse to a vertical strip of icons and expand on hover to show full labels. This is built-in behaviour, not a stored preference.
@@ -94,8 +94,8 @@ Terms reused rather than redefined here: **User**, **Business**, **Owner**, **Em
 - **One eligible venue:** go straight into that venue's business chrome (no picker).
 - **Several venues:** show **horizontal venue tabs**. Each tab is one **Business** context. Switching tabs changes venue without leaving Business mode.
 - **Owner chrome** (add venue, plan, company, and similar portfolio controls) appears only on tabs for venues the person **owns**. An employee tab at a venue they only work at is **operational** — Service, Manage if manager+ there, and Me — without owner portfolio controls.
-- **Landing** (uses **effective base layer** at enter — users subject):
-  - **Employee-layer** effective users enter toward **Service** with **POS** as their primary work destination (including a manager-membership person currently on an employee-layer shift).
+- **Landing** (uses **effective base layer** at enter — access-and-permissions subject):
+  - **Employee- or supervisor-layer** effective users enter toward **Service** (POS primary for employees; supervisors land in Service with the full Service set) — including a manager-membership person currently on an employee- or supervisor-layer shift.
   - **Manager- or admin-layer** effective users enter the venue's **Manage home** (business main page) with the left menu showing **Service** and **Manage** headers (and **Me**).
 
 ### 3.6 Business left menu
@@ -106,15 +106,16 @@ Terms reused rather than redefined here: **User**, **Business**, **Owner**, **Em
 #### Service
 
 - **Ordinary employees:** **POS** only under Service (unless a capability or job role grants Host, a control screen, or attendance — see below).
-- **Managers and above:** **POS**, **Host**, **Prep screens**, **Delivery screen**, **Customer pickup board**, and **Attendance** (present/scan flows as time-control defines).
-- **Host** (job role) and above also see **Host** under Service when not already covered as managers.
-- **Ordinary employees** see Prep / Delivery / Pickup / Attendance under Service **only when** a per-user capability or job-role entitlement those feature subjects define grants that destination.
+- **Supervisors:** full Service set by default — **POS**, **Host**, **Prep screens**, **Delivery screen**, **Customer pickup board**, and **Attendance** for **own** scan-in (access-and-permissions layer defaults). Presenting the venue daily attendance QR stays manager+ (time-control subject).
+- **Managers and above:** the same full Service set, and managers present the attendance QR.
+- **Host** (job role) also sees **Host** under Service when not already covered by supervisor/manager/admin Service defaults.
+- **Ordinary employees** see Prep / Delivery / Pickup / Attendance under Service **only when** a per-user capability (bound to the active job role) or job-role entitlement those feature subjects define grants that destination.
 - **POS** and **Host** use the venue's **floor plans** on a wide viewport (map with floor tabs) and fall back to **list/grid** on a narrow viewport — the floor-plans subject owns that behaviour. POS is the spatial home for opening sittings; Host is the spatial home for seating and reservation context.
 - Service destinations support **fullscreen**: hide normal desktop chrome, with a **small corner control** to restore the desktop layout. Manage pages stay in normal desktop chrome with the left rail.
 
 #### Manage
 
-- Visible while the person's **effective base layer** at that venue is **manager or admin** (owners included via admin). A person who holds Manager on the membership but is working an employee-layer shift does **not** see Manage for that shift; when not on a working shift, highest membership layer applies. Ordinary employee-layer users do **not** see Manage.
+- Visible while the person's **effective base layer** at that venue is **manager or admin** (owners included via admin). A person who holds Manager on the membership but is working an employee- or supervisor-layer shift does **not** see Manage for that shift; when not on a working shift, highest membership layer applies. Supervisor- and employee-layer users do **not** see Manage.
 - Under Manage, feature groups and top-level items are:
 
   - **Venue** — profile, hours, delivery, go-live, and related venue configuration;
@@ -142,7 +143,7 @@ Terms reused rather than redefined here: **User**, **Business**, **Owner**, **Em
 ### 3.8 Guards
 
 - **Mode guard.** Business destinations require business mode and eligibility. Customer destinations remain available in customer mode; account-bound ones require a signed-in User.
-- **Eligibility loss (non-management).** If a non-management employee loses eligibility (entry window ended, membership suspended or terminated) while in Business and has **no** open shift session, guards **move them to Customer mode** with a clear message. An **open** shift session still allows re-entry to Business as time-control and users already state.
+- **Eligibility loss (schedule-gated layers).** If an employee- or supervisor-layer person loses eligibility (entry window ended, membership suspended or terminated) while in Business and has **no** open shift session, guards **move them to Customer mode** with a clear message. An **open** shift session still allows re-entry to Business as time-control and users already state.
 - **Deep links and one-time links.** When a notification, email, or bookmark targets a Business destination (or the reverse) while the person is in the wrong mode: if they are **eligible**, switch mode and open the destination; if not, stay in Customer and explain why Business is unavailable. Emails own link issuance; this subject owns the landing surface behaviour.
 
 ### 3.9 Canonical destinations (catalogue)
@@ -158,9 +159,9 @@ This subject names destinations the chrome must be able to reach. Behaviour insi
 | Favorites, order history | Customer, signed-in |
 | Mode toggle | Signed-in chrome when eligible |
 | POS (floor map or list/grid) | Service → POS |
-| Host (floor map or list/grid) | Service → Host (Host and above) |
-| Prep / Delivery / Pickup screens | Service (when entitled) |
-| Attendance | Service (when entitled) |
+| Host (floor map or list/grid) | Service → Host (Host job role; supervisor; managers+) |
+| Prep / Delivery / Pickup screens | Service (supervisor/manager+ by default; employees when entitled) |
+| Attendance | Service (own scan-in when entitled; present QR manager+ only) |
 | Floor plans (layout editor) | Manage → Floor plans |
 | Manage feature groups (Venue, People, Menu, Supply, Service setup, Money) | Manage header |
 | My schedule / Notifications / Personal details | Me (Business) or account area (Customer) |
@@ -175,13 +176,14 @@ This subject names destinations the chrome must be able to reach. Behaviour insi
 | Layer | Navigation powers |
 | --- | --- |
 | **Customer** (including unsigned visitors) | Public Customer surface; guest basket until identity gates; after sign-in, customer chrome, account area, and Customer side of the mode toggle. |
-| **Employee** (effective) | Everything a customer can do, plus Business when eligible; left menu **Service** (POS; other Service links only if entitled) and **Me**; no Manage. |
-| **Manager** (effective) | Everything an employee can do, plus Manage header and groups; full Service link set; Manage home on enter. |
+| **Employee** (effective) | Everything a customer can do, plus Business when schedule-eligible; left menu **Service** (POS; other Service links only if entitled) and **Me**; no Manage. |
+| **Supervisor** (effective) | Business when schedule-eligible; full Service set and **Me**; no Manage; Service landing. |
+| **Manager** (effective) | Always Business-eligible when membership allows; Manage header and groups; full Service link set; Manage home on enter. |
 | **Admin / Owner** (effective) | Everything a manager can do, plus owner chrome on owned venue tabs and ownership actions those subjects define. |
 
 ### Per-user capabilities
 
-Ordinary employees may gain individual **Service** destinations (control screens, attendance) when feature subjects grant them. Capabilities never invent a third mode.
+Ordinary employees may gain individual **Service** destinations (control screens, attendance) when granted from the access-and-permissions catalogue (role-bound; active on the shift's job role). Capabilities never invent a third mode or open Manage for supervisor/employee.
 
 ### Who can do what
 
@@ -195,9 +197,9 @@ Ordinary employees may gain individual **Service** destinations (control screens
 | See owner chrome on a tab | Owner of that venue |
 | Use Manage header | Effective manager or admin layer at that venue |
 | Use Service → POS | Everyone in Business at that venue (as POS entitlements allow) |
-| Use Service → Host | Host and above |
+| Use Service → Host | Host job role; supervisor layer; managers and above |
 | Use Manage → Floor plans | Effective manager or admin layer at that venue |
-| Use Service control screens / Attendance | Effective manager or admin layer, or employees with the granting entitlement |
+| Use Service control screens / Attendance | Effective manager, admin, or supervisor (full Service defaults); or employees with the granting entitlement. Presenting the attendance QR: manager+ only |
 | Use Me destinations | Everyone in Business |
 | Enter Service fullscreen | Anyone on a Service destination that offers it |
-| Be returned to Customer on eligibility loss | Non-management staff per §3.8 |
+| Be returned to Customer on eligibility loss | Employee- or supervisor-layer staff per §3.8 |

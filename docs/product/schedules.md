@@ -19,7 +19,7 @@ This subject covers the **schedule** — the **plan** of who is expected to work
 It deliberately does **not** cover:
 
 - the **Employee** membership, job-role list on the membership, pay, or vacation **allowance** storage — the employees subject owns those. This subject consumes memberships and updates **vacation remaining** when vacation is marked or removed on the schedule.
-- **base access layers**, **mode eligibility** (Customer | Business), and **per-user capabilities** as platform mechanisms — the users subject owns those. This subject supplies the planned working shifts that eligibility reads.
+- **base access layers**, **per-user capabilities**, and assignment — the access-and-permissions subject owns those. **Mode eligibility** (Customer | Business) belongs to the users subject. This subject supplies the planned working shifts and shift job roles those rules read.
 - **attendance** — on-duty state, the daily attendance QR, scan-in, manager sign-out, breaks, worked hours, actual labour cost, absence classification, and overtime alerts — the time-control subject owns those. The schedule never writes punches; being scheduled is not being on duty.
 - **labour and vacation KPI formulas** and report roll-ups — the business-metrics and business-reports subjects own those. This subject supplies planned figures; actuals come from time-control.
 - **notification delivery** — inbox, live push, and reliability — the notifications subject owns how events are delivered. This subject defines which schedule events exist and when they fire.
@@ -60,12 +60,12 @@ Terms reused rather than redefined here: **Employee**, **Business**, **job role*
 - Each business has **at most one** day schedule per calendar day in the business timezone.
 - Managers and above plan **in advance**. The primary management surface is a **month calendar**; opening a day edits that day's schedule (typically in a day detail). Day, week, and month views all read the same day schedules.
 - An empty day (no entries) is a valid plan (for example a closed day with no staff).
-- **Manager-in-charge on the plan.** Any day schedule that includes **at least one working shift** must include **at least one working shift whose job role resolves to the manager or admin base layer** (so someone is always in charge on the plan). Saving or publishing a day that has only employee-layer working shifts is **blocked**.
+- **Manager-in-charge on the plan.** Any day schedule that includes **at least one working shift** must include **at least one working shift whose job role resolves to the manager or admin base layer** (so someone is always in charge on the plan). **Supervisor** does not satisfy manager-in-charge. Saving or publishing a day that has only employee- or supervisor-layer working shifts is **blocked**.
 
 ### 3.2 Working shifts
 
 - A working shift requires an **employee**, a **job role** from that membership's roles, and planned **start** and **end**.
-- Role is **always required** on a working shift. There is no blank-role fallback on the schedule; the scheduled role is what the users subject uses for effective layer during that shift.
+- Role is **always required** on a working shift. There is no blank-role fallback on the schedule; the scheduled role is what the access-and-permissions subject uses for effective layer during that shift (subject to any membership layer override).
 - One employee may hold **several** working shifts on the same day when their intervals do **not** overlap.
 - A working shift may **cross midnight**. It belongs entirely to the **calendar day on which it starts** for placement, aggregates, and eligibility. The following day's schedule does not also own that interval.
 
@@ -132,10 +132,10 @@ Suspended and Terminated memberships must not receive **new** entries (also stat
 
 ### 3.10 Schedule gating (eligibility only)
 
-- A non-management employee's **business mode** eligibility follows a **planned working shift**: Business on the mode toggle is available from **10 minutes before** that shift's planned start until **2 hours after** planned start. Outside that window with no open attendance session, they cannot enter business mode and must be rescheduled. Vacation and other leave do not grant business-mode eligibility.
+- An **employee- or supervisor-layer** person's **business mode** eligibility follows a **planned working shift**: Business on the mode toggle is available from **10 minutes before** that shift's planned start until **2 hours after** planned start. Outside that window with no open attendance session, they cannot enter business mode and must be rescheduled. Vacation and other leave do not grant business-mode eligibility.
 - Opening business mode is **not** on duty. On duty begins only through time-control (daily attendance QR scan-in).
 - There is **no** late-unlock step on the schedule. Lateness, late lock before scan-in, and attendance honesty belong to time-control.
-- Managers, admins, and owners are never blocked from business mode by the schedule or entry window, though they still appear on the schedule for planning (and so time-control can see who was planned as management that day). Suspended or Terminated membership still blocks Business (users and employees subjects).
+- Managers, admins, and owners are never blocked from business mode by the schedule or entry window, though they still appear on the schedule for planning (and so time-control can see who was planned as management that day). **Supervisors and employees are schedule-gated** (users and access-and-permissions subjects). Suspended or Terminated membership still blocks Business (users and employees subjects).
 
 ### 3.11 Notifications this subject owns as events
 
@@ -157,12 +157,13 @@ Schedule events are **in-app only** — a live ping on mobile or desktop while t
 | --- | --- |
 | **Customer** | No schedule access. |
 | **Employee** | Read own calendar and day comments on viewed days; submit time-off requests; receive schedule-change and request-decision notifications. Business-app access still follows the users subject's mode rules and §3.10. |
+| **Supervisor** | Same self-schedule powers as employee. Does not edit the full workforce schedule or approve time-off. Schedule-gated for Business like employee. |
 | **Manager** | Everything an employee can do, plus create and edit day schedules, copy/clear/bulk-add, approve or reject time-off requests, and edit day comments. |
 | **Admin** | Everything a manager can do. |
 
 ### Job roles
 
-A working shift's job role is chosen from the employee's membership roles. That scheduled role feeds effective base-layer resolution for the shift duration (users subject).
+A working shift's job role is chosen from the employee's membership roles. That scheduled role feeds effective base-layer resolution for the shift duration (access-and-permissions subject).
 
 ### Per-user capabilities
 
@@ -172,7 +173,7 @@ No per-user capability gates schedule editing or time-off approval on this subje
 
 | Activity | Who |
 | --- | --- |
-| View month/week/day schedule surfaces | Managers and above (full schedule); employees (own calendar) |
+| View month/week/day schedule surfaces | Managers and above (full schedule); employees and supervisors (own calendar) |
 | Add, edit, or remove working shifts, vacation, or other leave | Managers and above |
 | Copy day, clear day, multi-day bulk add | Managers and above |
 | Edit day comment | Managers and above |

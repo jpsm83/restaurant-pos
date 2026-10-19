@@ -123,6 +123,7 @@ Terms reused rather than redefined here: **Business**, **Sales point**, **Sales 
 | --- | --- |
 | **Customer** | Walks self-ordering, kiosk, and delivery journeys; sets packaging on self-service orders; pays to commit; never opens or manages a staff tab. |
 | **Employee** | Runs dine-in journeys while on duty: open, build and send, request bill, settle and close; sets packaging on staff tabs; runs fulfilment and venue handoff under the job roles below; verifies identification codes at handover. |
+| **Supervisor** | Same floor journeys as employee, plus Host seating when using Host; may operate Service control screens by layer default. Does not void/invite/cancel sent or paid lines. |
 | **Manager** | Everything an employee can do, plus correcting paid self-service lines (void, invite, cancel) and the sent-order powers the orders subject grants. |
 | **Admin/owner** | Full venue control over the journeys, including configuration owned by the business and sales-points subjects that gate the surfaces. |
 
@@ -133,6 +134,7 @@ Terms reused rather than redefined here: **Business**, **Sales point**, **Sales 
 | **Waiter**, **Floor Staff**, **Bartender**, **Barista**, **Cashier** | Open and run staff tabs, take and send orders, request the bill, settle, set packaging, verify handover codes at the table or counter. |
 | **Runner** | Run stay items to the point, pack and hand to-go items, operate the delivery screen, and mark delivery **Delivered** when handed to the courier. |
 | **Host** | Seat reservation guests into staff tabs (reserved hold / open choice); does not move tabs once service is underway. |
+| **Supervisor** (job role → supervisor layer) | Floor lead: Host seating and full Service screens by layer default; not manager corrections. |
 | **Head Chef**, **Sous Chef**, **Line Cooks**, and other prep roles | Advance prep-area fulfilment slices; they do not own billing. |
 | **Manager**, **Assistant Manager**, **MoD**, **General Manager**, **Owner**, **Admin** | Manager-and-above corrections and configuration gates as in the tables below. |
 

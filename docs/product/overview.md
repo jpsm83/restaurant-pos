@@ -62,11 +62,12 @@ These terms are used with exactly these meanings throughout Project Imperium. Do
 | **Shift session** | The actual, recorded attendance for one employee on one shift (sign-in/out, breaks), projected from the **time-clock ledger**. |
 | **Time-clock ledger** | The append-only attendance event record (sign-in, breaks, unlock, sign-out, corrections) from which shift sessions are projected. |
 | **Daily attendance QR** | The venue's one attendance QR for a calendar day; scanning it is how a person becomes on duty. |
-| **Late lock** | After planned start, a non-management employee who has not signed in cannot scan until a manager unlocks them; the scan still records real time. |
-| **Entry window** | For a planned working shift, from 10 minutes before planned start until 2 hours after planned start — when a non-management employee may enter **business mode** to attempt duty. |
+| **Late lock** | After planned start, an employee- or supervisor-layer person who has not signed in cannot scan until a manager unlocks them; the scan still records real time. |
+| **Entry window** | For a planned working shift, from 10 minutes before planned start until 2 hours after planned start — when an employee- or supervisor-layer person may enter **business mode** to attempt duty. |
 | **Mode** | Whether a signed-in person is working in the **Customer** app or the **Business** app. Only two modes exist; there is no separate employee mode. |
+| **Base access layer** | Exactly one of **admin**, **manager**, **supervisor**, **employee**, or **customer**. Highest-level control of what a person may do; the access-and-permissions subject owns resolution and the capability catalogue. |
 | **Service** (nav) | Business left-menu header for day-of destinations — POS, Host when entitled, and when entitled control screens and attendance. |
-| **Manage** (nav) | Business left-menu header for administration groups and top-level items (including Floor plans). Managers and above. |
+| **Manage** (nav) | Business left-menu header for administration groups and top-level items (including Floor plans). Effective **manager or admin** only; supervisors do not see Manage. |
 | **Me** (nav) | Business left-menu header for self-only destinations (own schedule, notifications, personal details). |
 | **Daily / Weekly / Monthly report** | The aggregated sales and performance reports at each roll-up level. |
 | **Notification** | A message Project Imperium delivers to a person's inbox. An **operational** notification carries a **severity** — **Info**, **Warning**, or **Emergency** — while a venue **engagement** message carries a **kind** — **Message**, **Promotion**, **Birthday**, or **Event**. |
@@ -76,11 +77,12 @@ These terms are used with exactly these meanings throughout Project Imperium. Do
 
 ## 2. Who it is for
 
-Project Imperium serves six personas. Five map to one of the four **base access layers** ([§5](#5-access-roles-and-mode)); the sixth, the **Superadmin**, runs the platform's own application business in a separate realm.
+Project Imperium serves seven personas. Six map to the **base access layers** ([§5](#5-access-roles-and-mode)); the seventh, the **Superadmin**, runs the platform's own application business in a separate realm.
 
 - **Owner** — owns one or more venues, grouped into Companies. Registers the business, holds the subscription, and moves between venues through the owner shell. Also acts as an admin inside each venue.
 - **Admin** — has **full control of the venue**: configuration, people, permissions, and every operation.
-- **Manager** — runs day-to-day operations: schedules, purchasing, inventory, promotions, and report closure. Managers and above assign job roles and capabilities.
+- **Manager** — runs day-to-day operations: schedules, purchasing, inventory, promotions, and report closure. Managers and above assign job roles and capabilities (within the access-and-permissions subject's assignment rules).
+- **Supervisor** — floor lead: elevated Service powers, no Manage, still **schedule-gated** for Business entry. The access-and-permissions subject owns the supervisor layer defaults.
 - **Employee** — delivers service (waiter, bartender, chef, cashier, host, …). Access to the business app is gated by the **schedule**.
 - **Customer** — the final consumer. **Every user is a customer**, even one who registered a business. Uses the Customer app to discover venues, order, book, and rate.
 - **Superadmin** — Imperium staff operating the **application business** from a **separate Superadmin console** (own web app and auth realm): paying accounts, plans, flags, support, and portfolio analytics. Never operates a venue's day-to-day service; never a mode on the Customer \| Business chooser.
@@ -126,24 +128,25 @@ Kiosk and QR ordering are not separate products — they are routes within the *
 
 ## 5. Access, roles, and mode
 
-Access control is **two-layer**:
+Access control is a **fixed platform model** (not venue-authored RBAC). The access-and-permissions subject is the source of truth; this overview summarises:
 
-- **Base access layers (control).** Exactly four layers define what a user may do at the highest level: **admin**, **manager**, **employee**, and **customer**. Admin has full venue control; manager runs operations; employee serves (schedule-gated); customer consumes.
-- **Job roles (description).** A user's job is described by the canonical job-role list (Owner, General Manager, Manager, Assistant Manager, MoD, Admin, Operator, Employee, Cashier, Floor Staff, Bartender, Barista, Waiter, Head Chef, Sous Chef, Line Cooks, Kitchen Porter, Cleaner, Security, Host, Runner, Supervisor, Entertainer, Other). The job role tells you *what the person is*; the base layer tells you *what they may do*.
-- **Permission assignment UI.** **Managers and above** use a UI to assign job roles and **per-user capabilities** — granting or revoking individual powers on top of the base layer's defaults.
+- **Base access layers (control).** Exactly five layers: **admin**, **manager**, **supervisor**, **employee**, and **customer**. Admin has full venue control; manager runs operations and Manage; supervisor is a schedule-gated floor lead (full Service, no Manage); employee serves (schedule-gated); customer consumes.
+- **Job roles (description).** A user's job is described by the canonical job-role list (Owner, General Manager, Manager, Assistant Manager, MoD, Admin, Operator, Employee, Cashier, Floor Staff, Bartender, Barista, Waiter, Head Chef, Sous Chef, Line Cooks, Kitchen Porter, Cleaner, Security, Host, Runner, Supervisor, Entertainer, Other). The job role tells you *what the person is*; the base layer tells you *what they may do*. Supervisor job role defaults to the **supervisor** layer; the access-and-permissions subject owns the full default map.
+- **Per-user capabilities.** Named grant or revoke overrides from a fixed catalogue, each bound to a job role on the membership; active set follows the shift's job role. Never invent custom powers or open Manage for supervisor/employee.
+- **Permission assignment UI.** On the membership under Manage → People: job roles, optional layer override, and capability checklist. Each layer may set only layers **below** it; only the owning user creates or demotes admin.
 
 **Two modes only — Customer and Business.** There is **no** third “employee” mode. Floor work and administration both live inside **business mode**, as **Service**, **Manage**, and **Me** left-menu headers (see [§7](#7-the-business-platform)).
 
-**Public customer surface and mode toggle.** The **Customer** app is the default public surface: anyone may browse discovery and venue profiles **without signing in**. Sign-in is offered from the chrome (avatar or sign-in control). After sign-in the person stays on the Customer surface; when they have **eligible business access**, a **Customer | Business** toggle appears in the chrome so they can switch mode without signing out. Pure customers never see the Business side of the toggle. The users subject owns **who may enter business mode**; the user-navigation subject owns the chrome, left menu, and guards.
+**Public customer surface and mode toggle.** The **Customer** app is the default public surface: anyone may browse discovery and venue profiles **without signing in**. Sign-in is offered from the chrome (avatar or sign-in control). After sign-in the person stays on the Customer surface; when they have **eligible business access**, a **Customer | Business** toggle appears in the chrome so they can switch mode without signing out. Pure customers never see the Business side of the toggle. The users subject states mode eligibility together with the access-and-permissions subject's layer rules; the user-navigation subject owns the chrome, left menu, and guards.
 
 **Schedule gating.** The **schedule is the plan**; **on duty** is a separate attendance fact (see [§6](#6-time-control-and-attendance)).
 
-- Employees (any job role) **must appear on the schedule** for planning; time control compares actual attendance against that plan.
-- A non-management employee **cannot enter business mode unless they have a planned working shift inside the entry window**: from **10 minutes before** planned start until **2 hours after** planned start. Outside that window with no open session, the Business side of the toggle is unavailable until a manager reschedules them. Opening business mode is **not** on duty.
+- Staff **must appear on the schedule** for planning; time control compares actual attendance against that plan.
+- A person whose **effective layer** is **employee** or **supervisor** **cannot enter business mode unless they have a planned working shift inside the entry window**: from **10 minutes before** planned start until **2 hours after** planned start. Outside that window with no open session, the Business side of the toggle is unavailable until a manager reschedules them. Opening business mode is **not** on duty.
 - There is **no** late-unlock on the schedule. Lateness, late lock before scan-in, and real entry times belong to time control.
-- **Managers, admins, and owners are never blocked by the schedule or entry window.** They may enter business mode without being scheduled, though they must still appear on the schedule for planning (and so time control can see who was planned as management that day). A **Suspended** or **Terminated** membership still blocks Business for that venue.
+- **Managers, admins, and owners are never blocked by the schedule or entry window.** Supervisors **are** schedule-gated. Managers and admins may enter business mode without being scheduled, though they must still appear on the schedule for planning (and so time control can see who was planned as management that day). A **Suspended** or **Terminated** membership still blocks Business for that venue.
 
-See [§6](#6-time-control-and-attendance) for the attendance model. The schedules subject is the source of truth for the schedule itself.
+See [§6](#6-time-control-and-attendance) for the attendance model. The schedules subject is the source of truth for the schedule itself. The access-and-permissions subject is the source of truth for layers, capabilities, and assignment.
 
 ---
 
@@ -153,7 +156,7 @@ Time control is a **plan-vs-actual** system, separate from the schedule:
 
 - **Schedule (the plan).** Each business defines, per calendar day, one schedule of shift entries (working shifts with job role and start/end, vacation, and other leave). Schedule aggregates (staff count, vacation count, planned hours, planned labour cost) feed reporting. The schedule does **not** imply on-duty. Overnight working shifts belong to the day they start. The schedules subject owns the schedule in full.
 - **On duty (the actual).** A person becomes **on duty** by scanning the venue's **daily attendance QR**, which any manager-layer user in business mode may present — not by opening business mode. Sign-out is a manager-layer action (optionally after an employee request) and is blocked while the employee still holds open sales instances. Real entry and exit times are what attendance records. Leaving the app does not end duty. The time-control subject owns QR issue, scan-in, late lock, manager sign-out, breaks, worked hours, actual labour cost, no-shows, and related alerts.
-- **Shift session.** For each employee engagement, Project Imperium records a **shift session** projected from an append-only **time-clock ledger**: planned window from the schedule, **actual sign-in / sign-out**, breaks, resulting **worked hours** and **labour cost**, and status. One open session per employee at a time prevents double sign-in. After planned start, a non-management employee who has not signed in is **late-locked** until a manager unlocks them; the eventual scan still records the real time.
+- **Shift session.** For each employee engagement, Project Imperium records a **shift session** projected from an append-only **time-clock ledger**: planned window from the schedule, **actual sign-in / sign-out**, breaks, resulting **worked hours** and **labour cost**, and status. One open session per employee at a time prevents double sign-in. After planned start, an employee- or supervisor-layer person who has not signed in is **late-locked** until a manager unlocks them; the eventual scan still records the real time. Managers and admins are never late-locked.
 - **Breaks.** An employee can **pause and resume** duty during a shift with a required reason. Whether paused time counts toward worked hours is a venue setting (default: included). The employee remains signed in while paused.
 - **Overtime alert.** If an employee **other than an admin/owner** is still on duty after their scheduled end, the **managers on duty** are notified **every 5 minutes** until that employee signs off or a manager mutes that session's overtime alert; if none are on duty, the alert falls back to all manager-layer users at that venue. (This reuses the platform's cooldown/idempotency notification behavior.) Every day that plans any working shift must include at least one **manager-layer** working shift so someone is always in charge on the plan.
 
@@ -165,8 +168,8 @@ All times are stored in UTC and interpreted in the **business timezone**. Actual
 
 The Business app is the operational heart of Project Imperium. It comprises the **owner shell** (venue tabs across businesses) and, inside each venue, a persistent **left menu** with headers:
 
-- **Service** — day-of destinations: **POS** and, when entitled, **Host**, control screens, and attendance. Ordinary employees see **POS** under Service unless a capability or Host role grants more. POS and Host use floor-plan maps on a wide viewport and list/grid when narrow.
-- **Manage** — administration groups (venue, people, menu, supply, service setup, money) plus **Floor plans** as its own top-level item. **Managers and above**. Ordinary employees do not see Manage.
+- **Service** — day-of destinations: **POS** and, when entitled, **Host**, control screens, and attendance. Ordinary employees see **POS** under Service unless a capability or Host role grants more. **Supervisors** get the full Service set by default. POS and Host use floor-plan maps on a wide viewport and list/grid when narrow.
+- **Manage** — administration groups (venue, people, menu, supply, service setup, money) plus **Floor plans** as its own top-level item. **Effective manager or admin only**. Supervisors and ordinary employees do not see Manage.
 - **Me** — self-only destinations (own schedule, notifications, personal details) for everyone in business mode.
 
 There is no separate product mode for administration; Manage and Service are menu headers inside business mode. The user-navigation subject owns the desktop chrome in full.
@@ -185,7 +188,7 @@ There is no separate product mode for administration; Manage and Service are men
 ### People, roles, and scheduling
 
 - **Employees** are the full membership of a user in a business. The **User** holds only client/global identity; job roles, employment status, contract, pay (gross for labour cost, net for HR), vacation, HR identifiers, documents, termination, and rehire all live on the membership. The employees subject is the source of truth for that record.
-- **Roles and permissions** follow the two-layer model in [§5](#5-access-roles-and-mode): base layers, job roles on the membership, and per-user capability assignment by managers and above.
+- **Roles and permissions** follow [§5](#5-access-roles-and-mode) and the access-and-permissions subject: five base layers, job roles on the membership, and per-user capability assignment by managers and above within the assignment rules.
 - **Schedules** define each day's schedule (working shifts with required role and start/end, vacation and other leave, day comments, copy/bulk edit, time-off requests). Project Imperium enforces no overlapping shifts and correct vacation accounting, and rolls up daily staff, vacation, planned hours, and planned labour-cost totals. The schedules subject is the source of truth.
 - **Time control** records actual attendance (daily attendance QR scan-in, manager sign-out, breaks, overtime) as described in [§6](#6-time-control-and-attendance).
 - **Payroll** is **preparation and export only**: each venue configures pay periods and an accountant contact, assembles earnings from closed attendance plus pay terms, optionally pools tips, and **releases** a versioned CSV email for an external accountant or payroll provider. Project Imperium does not withhold taxes, file returns, or disburse wages. The payroll subject is the source of truth.

@@ -149,6 +149,7 @@ An operational email is the **emailed copy** of an in-app notification where one
 | --- | --- |
 | **Customer** | Holds the address every email is sent to; receives account email, operational email (order receipts, reservation messages, customer conversation replies, business replies to reviews, and delivery review invites), and engagement email; may unsubscribe from engagement email. |
 | **Employee** | Everything a customer can do; as staff, holds the account email flows the same as anyone. |
+| **Supervisor** | Same as employee for account and personal operational email. Does not receive manager-targeted venue profile or platform-billing manager mail. |
 | **Manager** | Everything an employee can do, plus receiving the **business profile updated** email as a venue manager, and platform-billing arrears / freeze / post-freeze email when in scope for that venue or portfolio. |
 | **Admin** | Everything a manager can do; Owners also receive every **platform billing document**. |
 

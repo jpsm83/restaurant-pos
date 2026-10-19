@@ -132,6 +132,7 @@ Suppliers are an internal, operational surface: never visible to customers, and 
 | --- | --- |
 | **Customer** | None. Suppliers are never visible to customers. |
 | **Employee** | None by default; individual supplier capabilities may be granted. |
+| **Supervisor** | None by default (no Manage). Same optional capability path as employee if a feature grant is added later. |
 | **Manager** | Manages suppliers — profile, address, contacts, tax number, and in-use state — composes and sends goods requests, and views a supplier's goods and purchase history. |
 | **Admin/owner** | Everything a manager can do, plus full venue control. |
 

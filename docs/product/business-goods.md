@@ -175,6 +175,7 @@ Business goods are menu configuration. Customers see only what is published and 
 | --- | --- |
 | **Customer** | Sees only goods that are **on the menu and available**, with public details only (name, images, description, category, selling price, allergens, preparation time). Never sees off-menu or unavailable goods, and never cost. |
 | **Employee** | Sees the **available** part of the menu; may mark a good **manually unavailable** and clear the mark if granted the capability, subject to the component rule. Never sees cost. |
+| **Supervisor** | Same as employee for menu view and 86 (capability required for manual unavailability unless granted). Never sees cost; does not author the menu. |
 | **Manager** | Creates, edits, prices, and deletes goods; composes recipes and combos; sets categories, images, keyword, description, and preparation time; flags add-ons; marks goods on or off menu; and manages availability. Sees cost. |
 | **Admin/owner** | Everything a manager can do, plus full venue control. |
 | **Superadmin** | None. The platform operator never manages a venue's menu. |
@@ -188,9 +189,9 @@ Business goods are menu configuration. Customers see only what is published and 
 | Set the selling price, category, subcategory, tax category, keyword, description, images, and preparation time | Managers and above |
 | Put a good on or off the menu | Managers and above |
 | Flag a good as an add-on | Managers and above |
-| Mark a good manually unavailable, and clear the mark | Managers and above; employees holding the capability |
+| Mark a good manually unavailable, and clear the mark | Managers and above; employees or supervisors holding the capability |
 | View cost and derived values | Managers and above |
-| View the available menu | Employees, and customers for on-menu available goods |
+| View the available menu | Employees, supervisors, and customers for on-menu available goods |
 | View another venue's menu | No one — menus are private to their business |
 
 Menu authoring sits with the managers who run the kitchen and the menu; the frontline 86 switch sits with the staff on the floor, bounded by what the components actually allow.

@@ -134,6 +134,7 @@ The owning user is an admin at every venue they own. Job roles and per-user capa
 | --- | --- |
 | **Customer** | Submits a review for an eligible closed sales instance (after sign-in or sign-up via invite); reads public reviews on discovery; reads their own reviews as read-only; receives the delivery review invite and reply notifications. |
 | **Employee** | Everything a customer can do as a person; does **not** manage the venue's reviews, replies, or removal requests while acting as ordinary staff. |
+| **Supervisor** | Same as employee for reviews — no venue review management (no Manage). |
 | **Manager** | Reads the venue's reviews with sales-instance context; posts and edits the one business reply; files removal requests; receives new-review and removal-decision notifications. |
 | **Admin/owner** | Everything a manager can do. |
 | **Superadmin** | Accepts or rejects removal requests. Does not author customer reviews or venue replies. |

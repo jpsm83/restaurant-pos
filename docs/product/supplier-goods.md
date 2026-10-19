@@ -132,6 +132,7 @@ Supplier goods are an internal, operational surface: never visible to customers.
 | --- | --- |
 | **Customer** | None. Supplier goods are never visible to customers. |
 | **Employee** | None by default; a per-user capability may grant viewing. |
+| **Supervisor** | None by default (no Manage); same optional view capability path as employee if granted. |
 | **Manager** | Creates and edits goods — identity, unit of stock, purchase unit and price, budget impact, allergens, par level, and minimum required — and deletes goods that are not in use. |
 | **Admin/owner** | Everything a manager can do, plus full venue control. |
 

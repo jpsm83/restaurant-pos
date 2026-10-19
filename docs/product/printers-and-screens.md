@@ -141,8 +141,9 @@ Terms reused rather than redefined here: **Business**, **Batch**, **Identificati
 | Layer | Printer and screen powers |
 | --- | --- |
 | **Customer** | Sees own order readiness on customer surfaces and the public-facing pickup board codes; never configures devices or routing. |
-| **Employee** | Opens the control screens their job role allows; runs prep, delivery, and history gestures on those screens; prints and reprints only with **print permission**. |
-| **Manager** | Everything an employee can do, plus configuring connectors, logical printers, bindings, backups, prep areas, stations, routing, print permissions, and opening any control screen (including the pickup board in display mode). Receives print-failure alerts when on duty. |
+| **Employee** | Opens the control screens their job role or capability allows; runs prep, delivery, and history gestures on those screens; prints and reprints only with **print permission**. |
+| **Supervisor** | Opens any Service control screen by default (prep, delivery, pickup); prints and reprints with print permission by layer default. Does not configure connectors, printers, routing, or grant print permissions. |
+| **Manager** | Everything a supervisor can do, plus configuring connectors, logical printers, bindings, backups, prep areas, stations, routing, print permissions, and opening any control screen (including the pickup board in display mode). Receives print-failure alerts when on duty. |
 | **Admin/owner** | Everything a manager can do, with full venue control. |
 
 ### Who can do what
@@ -152,10 +153,10 @@ Terms reused rather than redefined here: **Business**, **Batch**, **Identificati
 | Install and run print connectors; create, bind, rebind, and retire logical printers; set backups | Managers and above |
 | Define prep areas, stations, and routing rules; assign sales-point receipt printers | Managers and above |
 | Grant per-employee print permissions | Managers and above |
-| Issue or reprint receipts, bills, kiosk tickets, and prep tickets | Users with **print permission** (managers and above always) |
-| Open kitchen / bar (or other area) main and sub-screens | Job roles for that area, plus managers and above |
-| Open the delivery screen | Runner / service roles that deliver, plus managers and above |
-| Open the customer pickup board and display mode | Managers and above; employees granted the capability |
+| Issue or reprint receipts, bills, kiosk tickets, and prep tickets | Users with **print permission** (supervisor layer and above always; employees when granted) |
+| Open kitchen / bar (or other area) main and sub-screens | Job roles for that area; supervisors; managers and above; employees with the granting capability |
+| Open the delivery screen | Runner / service roles that deliver; supervisors; managers and above; employees with the granting capability |
+| Open the customer pickup board and display mode | Supervisors; managers and above; employees granted the capability |
 | Single-click Preparing; double-click station done; main Ready; force-ready | Users allowed on that area's screens (session is the signed-in opener) |
 | Double-click Deliver on a Ready slice | Users allowed on the delivery screen |
 | Reverse a station step from history | That station's staff for their steps; managers and above for any |

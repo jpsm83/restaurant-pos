@@ -21,7 +21,7 @@ This subject covers the **Employee** — the full per-venue membership that make
 It deliberately does **not** cover:
 
 - the global **User**, **Owner**, **Company**, credentials, sessions, customer identity, or account deletion — the users subject owns those. This subject consumes the User the membership points at.
-- the **four base access layers**, **mode eligibility** (Customer | Business), and **per-user capabilities** as platform mechanisms — the users subject owns those rules. This subject supplies the membership and job roles those rules read.
+- the **base access layers**, **effective layer**, **per-user capabilities**, and **assignment UI** — the access-and-permissions subject owns those. **Mode eligibility** (Customer | Business) belongs to the users subject. This subject supplies the membership and job roles those rules read.
 - the **schedule** (daily schedule, vacation and other leave on the schedule, time-off requests, planned labour roll-ups) — the schedules subject owns it. This subject supplies the people and vacation balance the schedule consumes and updates.
 - **attendance** — daily attendance QR scan-in, manager sign-out, breaks, overtime alerts, and actual labour-cost calculation — the time-control subject owns those.
 - **labour and vacation KPI formulas** — the business-metrics subject owns them; reports consume the figures.
@@ -60,7 +60,7 @@ User ──< Employee >── Business          (membership: the only path into 
 - **Termination** — ending employment at the venue by setting status to **Terminated** and recording a termination date. The **User** and customer identity remain intact.
 - **Rehire** — restoring a terminated membership at the same venue to **Active** on the **same** user–business link (never a second membership).
 
-Terms reused rather than redefined here: **User**, **Business**, **Owner**, **Company**, **base access layer**, **per-user capability**, **business currency**, **business timezone**, **on duty**, and **soft delete**.
+Terms reused rather than redefined here: **User**, **Business**, **Owner**, **Company**, **base access layer**, **supervisor** (layer), **per-user capability**, **business currency**, **business timezone**, **on duty**, and **soft delete**.
 
 ---
 
@@ -77,7 +77,7 @@ A person joins a venue **only** through an **Employee** membership. The **User**
 ### 3.2 Job roles on the membership
 
 - Every membership carries **one or more job roles** from the canonical list (§2).
-- Roles describe the person. The **base access layer** defaults from those roles and may be overridden by managers and above; the **users** subject owns how layers and mode eligibility resolve from membership and shift role. This subject owns assigning and storing the roles on the membership.
+- Roles describe the person. The **base access layer** defaults from those roles (Supervisor → supervisor layer; Owner/Admin → admin; management roles → manager; others → employee) and may be overridden within the access-and-permissions subject's assignment rules. That subject owns layer resolution, capabilities, and assignment; the users subject owns mode eligibility. This subject owns assigning and storing the roles on the membership.
 
 ### 3.3 Employment status
 
@@ -177,16 +177,17 @@ Under the platform soft-delete convention, an Employee membership is soft-delete
 | --- | --- |
 | **Customer** | No employee-record access. |
 | **Employee** | Self-view of non-sensitive own HR (§3.11). Business-app access still follows the users subject's mode and schedule rules. |
-| **Manager** | Everything an employee can do, plus create and edit memberships, assign job roles, change status (including Suspended), edit all HR fields, upload or remove documents, and terminate. |
+| **Supervisor** | Same HR self-view as employee. Does not hire, edit peers' HR, or assign access. |
+| **Manager** | Everything an employee can do, plus create and edit memberships, assign job roles (within access-and-permissions assignment bounds), change status (including Suspended), edit all HR fields, upload or remove documents, and terminate. |
 | **Admin** | Everything a manager can do, plus **rehire**. The owning user is admin at every venue they own. |
 
 ### Job roles
 
-Job roles live on the membership and feed the base-layer defaults the users subject resolves. Assignable by managers and above.
+Job roles live on the membership and feed the base-layer defaults the access-and-permissions subject resolves. Assignable by managers and above within that subject's who-may-assign rules.
 
 ### Per-user capabilities
 
-No per-user capability gates hiring, HR editing, termination, or rehire on this subject. Those actions follow the **base access layer** table above. Cross-cutting capabilities remain a users-subject mechanism; other feature subjects may still grant capabilities that name an employee as an actor.
+No per-user capability gates hiring, HR editing, termination, or rehire on this subject. Those actions follow the **base access layer** table above. The capability catalogue and mechanism belong to the access-and-permissions subject; other feature subjects may still grant capabilities that name an employee as an actor.
 
 ### Who can do what
 

@@ -181,6 +181,7 @@ Terms reused from other subjects rather than redefined here: **business**, **dai
 | --- | --- |
 | **Customer** | None. |
 | **Employee** | None by default; may be granted a capability to view a report (see below). |
+| **Supervisor** | None by default; may be granted the same view capability. Does not enter monthly costs. |
 | **Manager** | Views weekly and monthly reports and breakdowns; enters fixed, extra, and finance costs on the monthly report; exports reports. Closing the daily sales report (which feeds these roll-ups) belongs to the sales-reports subject. |
 | **Admin** | Everything a manager can do, plus full venue control. |
 
@@ -188,7 +189,7 @@ Terms reused from other subjects rather than redefined here: **business**, **dai
 
 | Activity | Who |
 | --- | --- |
-| View the weekly and monthly reports and their breakdowns | Managers and above; employees with the granted capability |
+| View the weekly and monthly reports and their breakdowns | Managers and above; employees or supervisors with the granted capability |
 | Enter or edit fixed, extra, and finance costs on the monthly report | Managers and above |
 | Download/export the weekly or monthly report | Whoever may view that report |
 | Close a weekly or monthly report | Automatic under §3.8 — not a manual manager action |

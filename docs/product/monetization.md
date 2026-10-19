@@ -149,6 +149,7 @@ Free means: run real service and take payment; Manage depth beyond promotions an
 | --- | --- |
 | **Customer** | None — customers never pay platform fees. |
 | **Employee** | None for plan or commission configuration. |
+| **Supervisor** | None for plan or commission configuration. |
 | **Manager** | May see effective plan and commission estimates on reports they can already view; cannot change the Owner's plan. |
 | **Admin/owner** | May change the Owner's subscription plan (subject to caps and paid-in-full rules); sees effective plan on each owned venue. |
 

@@ -161,6 +161,7 @@ They must **not** see other employees' lines, wage amounts (own or others'), pre
 | --- | --- |
 | **Customer** | No payroll access. |
 | **Employee** | Self-view of own period hours and tip lines (§3.9). |
+| **Supervisor** | Same self-view as employee. No Release and no payroll configuration. |
 | **Manager** | Everything an employee can do, plus review drafts, **Release** (and re-Release), and download any export version for the venue. |
 | **Admin** | Everything a manager can do, plus edit **payroll configuration** (pay periods, accountant contact, tip-pool policy). The owning user is admin at every venue they own. |
 
