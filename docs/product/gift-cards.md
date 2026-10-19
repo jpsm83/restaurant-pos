@@ -124,7 +124,7 @@ Terms reused rather than redefined here: **Business**, **Order**, **Bill**, **Pa
   - **Gift card** payments on meal bills appear in the **payment-method breakdown** and the gift-card channel as tender; the **product sales and tax** sit in ordinary sales totals by line category;
   - **expiry and void-with-balance forfeitures** accumulate in the **forfeiture** channel, each labeled **Expired** or **Voided**;
   - **outstanding liability** is visible to managers and above.
-- **Commissionable sales** include product sales paid with gift-card tender (paid or granted cards alike). Deposit intake and forfeitures are not commissionable. Card recovery never applies to gift-card tender. The monetization and business-reports subjects own the formula.
+- **Commissionable sales** include product sales paid with gift-card tender (paid or granted cards alike). Deposit intake and forfeitures are not commissionable. The monetization and business-reports subjects own the formula (base commission only).
 
 ---
 

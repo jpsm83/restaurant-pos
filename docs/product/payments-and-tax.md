@@ -13,9 +13,9 @@ This subject owns **settlement**: turning an open bill into paid money, and the 
 - **taking payment** — settling a bill, whole or in parts, across every service channel;
 - **splits and partial payments** — arranging a bill into parts and paying it down until it closes;
 - **tips** — taking and attributing a gratuity at settlement;
-- **third-party processing** — the integrated providers, connecting a venue's account, and direct processing for in-app and in-POS payment;
+- **third-party processing** — Stripe Connect as the integrated processor for Imperium-processed self-channels, connecting each venue's payment account, and recording external tenders;
 - **payouts** — how captured money reaches the venue;
-- **refunds** — the request-and-decision flow and the reversal of a settled payment;
+- **refunds and card disputes** — the request-and-decision flow, reversal of a settled payment, and how provider disputes feed reporting and commission;
 - the **tax configuration** — the per-category rates a business sets; and
 - **tax on a sale** — the tax a sale records and how it is drawn out of a tax-inclusive price.
 
@@ -26,7 +26,8 @@ It deliberately does **not** cover:
 - the **sales point and sales instance** — opening, the one-open rule, self-service instances, and the pay-in-full-before-close behaviour of a self-service instance belong to the **sales-points-and-instances** subject.
 - the **business good beyond its tax category** — the menu, its categories, selling price, derived cost, and allergens belong to the **business-goods** subject; this subject assigns each good a **tax category** and reads the price it carries.
 - the **business profile** — the currency, the address, and the tax number held on the venue's Company belong to the **business** subject; this subject stores the venue's **tax configuration**.
-- the **subscription and commission** — the plan catalogue, base and card-recovery rates, and commercial rules belong to the **monetization** subject (catalogue maintenance in **superadmin**); the amount a **reporting week** owes is finalised by the **business-reports** subject at weekly close; **charging mechanics** (Owner payment method, invoice, retries, billing documents, dunning) belong to **platform-billing**. This subject names the money flows only.
+- the **subscription and commission** — the plan catalogue, base commission rates, and commercial rules belong to the **monetization** subject (catalogue maintenance in **superadmin**); the amount a **reporting week** owes is finalised by the **business-reports** subject at weekly close; **charging mechanics** (Owner payment method, invoice, retries, billing documents, dunning) belong to **platform-billing**. This subject names the money flows only.
+- **Stripe Terminal / in-premises card hardware** — dine-in customers pay on the venue's own reader; Imperium does not process that card rail in stage 1.
 - the **gift-card instrument** — issuance as deposit/liability, balance, ledger, lifecycle, and redemption rules belong to the **gift-cards** subject; this subject owns the **Gift card** payment method and records a redemption as ordinary settlement (tax stays on the goods).
 - **receipts, notifications, and emails** — delivering a receipt or a refund decision belongs to the **notifications** and **emails** subjects.
 - **supplier invoices and their tax** — amounts payable to a supplier and supplier invoicing are not part of Project Imperium.
@@ -47,8 +48,10 @@ It deliberately does **not** cover:
 - **Payment method** — how a bill is paid, described by a **type** and a **branch**.
 - **Payment-method type** — **Cash**, **Card**, **Crypto**, **Gift card**, or **Other**. Groups the branches for reporting.
 - **Method branch** — the named variant under a type: the **card networks** (Visa, Mastercard, American Express, Discover, Diners Club, Maestro), the **cryptocurrencies** (Bitcoin, Ethereum, Litecoin, Ripple, Cardano, Polkadot, Dogecoin), and the **other methods** (Voucher, PayPal, Venmo, Apple Pay, Google Pay, Samsung Pay); and **Cash** and **Gift card**, which have no separate branch.
-- **Payment provider** — a third-party processor through which a card, wallet, or crypto payment is captured directly, its money settling to the venue. The platform keeps the catalogue of providers it offers and grows it over time.
+- **Payment provider** — the third-party processor through which Imperium captures card (and supported wallet) payments on self-channels. Stage 1 uses **Stripe** only, via a **connected payment account** per Business.
+- **Connected payment account** — the venue's Stripe Express account under Imperium's Connect platform. The **Business is merchant of record**; diner money settles to the venue. One account per Business; its country follows the Business address country.
 - **Provider reference** — the identifier a provider returns for a captured or refunded payment, recorded so the venue can reconcile it in the provider's own reporting.
+- **Card dispute** — a chargeback or similar challenge raised through the card provider against a settled Imperium-processed payment. Evidence is handled in the provider's Express dashboard; Imperium records the outcome.
 - **Settlement** — paying a bill in full, clearing what is owed.
 - **Split** — dividing a bill into parts that are paid separately.
 - **Partial payment** — a payment for less than what the bill still owes.
@@ -107,22 +110,26 @@ Terms reused rather than redefined here: **Business**, **Owner**, **Company**, *
 - A **tip** is optional and is taken **on a payment** — a **percentage** of the payment or a **fixed amount** in the business currency — at the moment the bill is settled.
 - A staff tip is **attributed to the employee** who took it; a self-service tip is the customer's own.
 - A tip is recorded with its payment and feeds the day's sales report; the platform taxes the tips it records (§3.9).
+- On an **Imperium-processed** card payment, the tip is collected on the **same** diner charge as the bill, settles to the venue with the bill, and is **recorded separately** so it never enters **commissionable sales**.
 - A **cash tip** handed to staff away from the platform is not the business's concern: the platform neither records nor taxes it.
 
-### 3.6 Third-party processing and providers
+### 3.6 Third-party processing and connected accounts
 
-- Project Imperium offers **direct payment processing** through **third-party providers**. The platform keeps the catalogue of providers it integrates and grows it over time; it begins with **Stripe**, **PayPal**, and **Skrill**.
-- A business **chooses and connects the provider it uses**. A connection is set per business by managers and above and may be disconnected again. A business that uses no provider may still **record** every payment it takes.
-- Direct processing is available for the methods a connected provider supports, for both **in-app customer payment** (self-ordering, kiosk, and delivery) and **in-POS capture** by staff, and it supports **splits and partial payments**.
-- A provider-processed payment carries the provider's **reference** and its status, so the venue can reconcile it in the provider's own reporting. The business's **currency** governs; a provider must support it.
-- Disconnecting a provider stops new captures; payments already recorded or captured are untouched.
+- Project Imperium offers **direct payment processing** through **Stripe** only in stage 1 (ADR-0005). There is no venue choice among competing integrated processors.
+- Imperium operates as a **Connect platform**. Each **Business** holds **one connected payment account** (Stripe Express). The **venue is merchant of record**: the diner pays the restaurant; checkout, bank statement descriptor, and receipt **seller name** use the venue's **trade name**. Imperium may appear only as software chrome, never as the merchant of the meal.
+- **Admin/owner only** starts and completes connected-account onboarding (and reconnect). The account country follows the Business address country.
+- Imperium processes card payments only on **online, delivery, and QR / self-order** channels. **Dine-in** card payment uses the venue's **own reader** and is **recorded** in Imperium without Stripe capture. Staff may always **record** cash, external-terminal card, gift card, and other catalogue methods.
+- A Business must have a connected account **able to accept charges and receive payouts** before it may go live (business go-live checklist). Taking a venue **offline** keeps the connection. **Closing** a Business stops Imperium from using that connected account for further captures.
+- An Imperium-processed payment is a **direct charge** on the venue's connected account. The customer is charged the **face price** (no Imperium or Stripe fee added on top). Provider processing, refund, and dispute fees land on the **venue's** connected account; Imperium does not reimburse them and does not skim Imperium commission from the diner payment.
+- A provider-processed payment carries the provider's **reference** and its status. The business's **currency** governs.
+- While a Business is under **venue freeze** or its Owner under **portfolio freeze**, Imperium **stops new** Imperium-processed captures for that Business (monetization / platform-billing own freeze rules).
 
 ### 3.7 Payouts
 
-- Money captured through a provider is settled **to the venue** by the provider's own **payout**. The platform does **not** hold or move a venue's money and keeps **no payout ledger**: payout timing, batching, and provider fees are the provider's, visible in the provider's reporting.
+- Money captured through Stripe is settled **to the venue** by the provider's own **payout**. The platform does **not** hold or move a venue's diner money and keeps **no payout ledger**: payout timing, batching, and provider fees are the provider's, visible in the Express dashboard and provider reporting.
 - Project Imperium records the payments a venue takes and the refunds against them; the money itself flows **directly to the venue's account**.
 
-### 3.8 Refunds
+### 3.8 Refunds and card disputes
 
 - There are **no automatic refunds**. A refund is a **request** decided by the **manager on duty**; no payment is ever reversed without that decision — including a customer's delivery or self-service order.
 - A **refund request** may be raised by the **customer** from the app or by **any staff member**, naming the payment and, optionally, the amount sought. The manager on duty **approves or declines** it and may approve a **full or partial** refund.
@@ -131,6 +138,7 @@ Terms reused rather than redefined here: **Business**, **Owner**, **Company**, *
 - The **original sale stays in reporting**; the refund is shown **beside it**, never by erasing the sale.
 - A refund returns **money only** — it does **not restore inventory**. Restoring stock is a **cancellation**, which belongs to the orders subject.
 - Refunds against one payment may not exceed the amount settled; several partial refunds may be made until the payment is fully returned.
+- **Card disputes** (chargebacks) are evidenced in the provider's **Express dashboard**. Imperium records the dispute outcome on the payment. Approved refunds and dispute outcomes that reverse **commissionable** product sales feed the same reporting and, after a closed week, the **re-finalise and commission adjustment** path owned by business-reports and platform-billing.
 
 ### 3.9 Tax configuration and tax on a sale
 
@@ -145,8 +153,8 @@ Terms reused rather than redefined here: **Business**, **Owner**, **Company**, *
 
 ### 3.10 The two money flows
 
-- **Customer to venue.** What a customer pays for what they consume settles, through a connected provider where one is used, **directly to the venue**. It is the venue's money, in the venue's account: the platform records it and takes no part of it at source.
-- **Venue to Project Imperium.** The platform's own fees are the **monthly subscription** on the Owner and a **weekly commission** composed of **base commission** on all **commissionable sales** plus **card recovery** on **card-tendered** commissionable sales (paid product sales after voids and refunds across tenders, including sales paid with gift card; invitations, gift-card deposit intake, and forfeitures excluded; gift-card tender never attracts card recovery). The commission for a week is **finalised and owed** when that week's **business report closes**, then **collected** by platform-billing — never netted out of what the venue's customers paid. Until that close, daily and open weekly reports may show a **commission estimate** only.
+- **Customer to venue.** What a customer pays for what they consume settles, through Stripe on Imperium-processed channels, **directly to the venue**. It is the venue's money, in the venue's account: the platform records it and takes **no** Imperium commission from that payment at source.
+- **Venue to Project Imperium.** The platform's own fees are the **monthly subscription** on the Owner and a **weekly commission** of **base commission** on all **commissionable sales** (paid product sales after voids and refunds across tenders, including sales paid with gift card; invitations, gift-card deposit intake, forfeitures, and **tips** excluded). The commission for a week is **finalised and owed** when that week's **business report closes**, then **collected** by platform-billing on the Owner's platform payment method — never netted out of what the venue's customers paid. Until that close, daily and open weekly reports may show a **commission estimate** only.
 - Which subscription a venue's Owner holds, and the rates its plan fixes, are the monetization and superadmin subjects' concern; how a week's commission is worked out at weekly close is the business-reports subject's; how Imperium charges and the business pays is the platform-billing subject's. This subject owns only the shape of the two flows.
 
 ### 3.11 Retention
@@ -165,8 +173,8 @@ Terms reused rather than redefined here: **Business**, **Owner**, **Company**, *
 | --- | --- |
 | **Customer** | Self-pays a self-service bill in-app by any method; may raise a refund request; never takes another's payment, configures tax, or decides a refund. |
 | **Employee** | Takes payments and tips on the tab they are on duty for, records cash and external-terminal payments, and may raise a refund request; cannot refund or configure. |
-| **Manager** | Everything an employee can do, plus deciding refund requests and issuing refunds, and connecting or disconnecting the venue's payment provider. |
-| **Admin/owner** | Full venue control, including the **tax configuration** and the venue's provider choice. |
+| **Manager** | Everything an employee can do, plus deciding refund requests and issuing refunds. Cannot complete Stripe connected-account onboarding. |
+| **Admin/owner** | Full venue control, including the **tax configuration** and **connecting or disconnecting** the venue's Stripe connected payment account. |
 
 ### Who can do what
 
@@ -178,7 +186,8 @@ Terms reused rather than redefined here: **Business**, **Owner**, **Company**, *
 | Split a bill; take partial payments | The employee settling the tab |
 | Raise a refund request | The customer from the app, or any staff member |
 | Approve or decline a refund request; issue a refund | The manager on duty |
-| Connect or disconnect the venue's payment provider | Managers and above |
+| Complete Stripe connected-account onboarding or disconnect it | Admin/owner |
+| Respond to card-dispute evidence in the Express dashboard | Admin/owner (or whoever the venue authorises in Stripe) |
 | Set the tax configuration (a rate per tax category) | Admin/owner |
 | Choose a business good's tax category | Managers and above, when creating or editing the good |
-| Maintain the platform's provider catalogue and commission terms | The superadmin |
+| Maintain platform commission terms | The superadmin |

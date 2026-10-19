@@ -169,6 +169,7 @@ The **go-live checklist** is:
 | --- | --- |
 | **Identity / contact** | Trade name, legal name, phone, the **Company's tax number**, currency, address (so the timezone resolves), and a **verified business contact email**. |
 | **Service** | **Opening hours** (at least one day with at least one range) and **at least one cuisine type** (so the venue can be discovered). |
+| **Payments** | **Stripe connected payment account** able to **accept charges and receive payouts** (payments-and-tax; required on Free and paid — delivery and self-order are stage-1 channels). |
 | **Conditional** | When delivery is enabled: delivery radius, minimum order, and at least one delivery window. |
 | **Not gating** | Logo, categories, primary contact, metrics, and delivery when disabled. |
 

@@ -12,7 +12,7 @@ This subject owns the **Superadmin console**: the Imperium-staff surface that ad
 - **console operators** — Imperium employees who sign into that realm, with console roles **Owner**, **Manager**, and **Staff**;
 - **enrollment**, credentials, and MFA for those accounts;
 - management of **Owners** (the paying portfolio accounts): visibility into their Companies and Businesses, plan assignment, suspend / resume, soft delete, and term-change acceptance;
-- the **plan catalogue** — monthly prices, **base commission** per plan, shared **card recovery**, venue caps, entitlement flags, **creation quotas**, and platform **retention** and lifecycle constants (owned in meaning by the plan quotas and data retention subject);
+- the **plan catalogue** — monthly prices, **base commission** per plan, venue caps, entitlement flags, **creation quotas**, and platform **retention** and lifecycle constants (owned in meaning by the plan quotas and data retention subject);
 - **feature flags** at platform-wide and per-Owner scope;
 - **scoped impersonation** for support;
 - the **review abuse-removal** decision queue;
@@ -26,7 +26,7 @@ It deliberately does **not** cover:
 - **go-live checklist**, draft venues, and **paid-in-full** before go-live on a paid plan — the business and monetization subjects own those gates. This subject only states that Superadmin does **not** approve ordinary go-live.
 - **default late-payment grace rules** (when to notify, how long the deadline is) — the monetization subject owns the defaults. This subject owns console override and the automatic freeze outcome.
 - **commission collection** when a weekly business report closes — the business-reports subject owns finalising and owing; the platform-billing subject owns collecting. This subject owns editing the catalogue rates the monetization subject defines.
-- **what each plan unlocks** (the entitlement matrix) and commercial meaning of base vs card-recovery commission — the monetization subject owns that. This subject owns catalogue maintenance, assignment, and overrides.
+- **what each plan unlocks** (the entitlement matrix) and commercial meaning of base commission — the monetization subject owns that. This subject owns catalogue maintenance, assignment, and overrides.
 - **User** identity in the Customer/Business realm, membership, and venue HR — the users and employees subjects own those.
 - **review authoring and business replies** — the ratings-and-comments subject owns them; this subject owns only accept/reject of a venue's abuse-removal request.
 - a **general helpdesk** or ticket product — out of scope; support here is ops tools plus the abuse queue.
@@ -41,7 +41,7 @@ It deliberately does **not** cover:
 - **Superadmin console** — the Imperium-staff product surface that runs the **application business**. It is a **separate web app** with its own authentication realm. It shares the platform's data with the Customer and Business apps; it does not share their login or session.
 - **Console operator** — an Imperium employee account that exists only in the Superadmin realm. A console operator is **not** a **User** of the Customer/Business apps; those credentials never grant Customer or Business access. This is not the venue job role of the same everyday word.
 - **Owner** (paying account) — the portfolio account that holds Companies, Businesses, subscription, and commission terms. Created when a person registers a business in the Customer/Business realm. Superadmin manages these accounts; it does not replace them.
-- **Plan** — a named subscription tier in the **plan catalogue** (**Free**, **Basic**, **Premium**, **Enterprise**). It carries the monthly price and **base commission** for that tier (plus shared **card recovery** on the catalogue) and is assigned to paying Owners.
+- **Plan** — a named subscription tier in the **plan catalogue** (**Free**, **Basic**, **Premium**, **Enterprise**). It carries the monthly price and **base commission** for that tier and is assigned to paying Owners.
 - **Feature flag** — a named platform capability switch, scoped **platform-wide** or to one paying **Owner**'s portfolio.
 - **Impersonation session** — a time-bounded, audited support session in which a console operator acts as a **named User** inside **one Business**.
 
@@ -51,7 +51,7 @@ It deliberately does **not** cover:
 - **Authentication realm** — the separate credential and session world for the Superadmin console (credentials, MFA, access rules), distinct from Customer/Business sign-in.
 - **Console role** — exactly one of **Owner**, **Manager**, or **Staff** on a console-operator account. These names are **console roles** only; they are not the venue job roles or base access layers of the Business app.
 - **Enrollment** — the invite flow by which a Manager or console Owner creates a console operator and the person sets credentials and MFA via email before first access.
-- **Plan catalogue** — the Superadmin-managed set of plans, base commission rates, shared card recovery, and entitlements.
+- **Plan catalogue** — the Superadmin-managed set of plans, base commission rates, and entitlements.
 - **Term change** — an edit to catalogue terms, rates, or policies that bind existing paying Owners; triggers email and an explicit accept-or-decline choice.
 - **Payment deadline** — the date by which an overdue subscription or venue commission must be paid before automatic freeze (portfolio-wide for subscription; that venue only for weekly commission).
 - **Abuse-removal queue** — the Superadmin list of venue requests to soft-delete a review for abuse.
@@ -85,7 +85,7 @@ Terms reused rather than redefined here: **User**, **Owner** (paying account), *
 
 ### 3.4 Plans, commission, and term changes
 
-- Superadmin maintains the **plan catalogue** (Free, Basic, Premium, Enterprise): monthly prices, **base commission** per plan, the shared **card recovery** pass-through, venue caps, entitlement flags, **creation quotas**, and platform-wide **retention delays** and inactive-user / dormant-business windows. Meaning of quotas and retention belongs to the plan quotas and data retention subject; this subject owns the console’s power to edit them.
+- Superadmin maintains the **plan catalogue** (Free, Basic, Premium, Enterprise): monthly prices, **base commission** per plan, venue caps, entitlement flags, **creation quotas**, and platform-wide **retention delays** and inactive-user / dormant-business windows. Meaning of quotas and retention belongs to the plan quotas and data retention subject; this subject owns the console’s power to edit them.
 - Base commission for a paying Owner is **always** the rate on that Owner's current plan (Enterprise may carry custom terms on the assignment). There are **no** arbitrary one-off rates outside that; changing a published rate means editing the catalogue (or moving the Owner to another plan).
 - Managers and console Owners may **force-assign or override** a paying Owner's plan. Force-assign applies entitlements immediately with commission-rate cutover and subscription next-bill true-up (monetization and platform-billing subjects). Where an Owner-facing subscription flow also changes plans, **Superadmin wins** on conflict.
 - When Superadmin changes catalogue terms, rates, or policies that bind existing paying Owners, Project Imperium **emails every affected Owner**. The Owner must **accept** to continue under the new terms, or **decline**, which starts **account termination** (each owned business transferred or closed first, per the users and business subjects). **Silence is not acceptance**; acceptance is an explicit action.
@@ -115,7 +115,7 @@ Terms reused rather than redefined here: **User**, **Owner** (paying account), *
 
 ### 3.9 Payment-provider catalogue
 
-- Superadmin maintains the catalogue of **payment providers** Project Imperium offers venues for direct processing. Connecting a venue's account and capturing payments belong to the payments-and-tax subject.
+- Stage 1 uses **Stripe Connect** only for Imperium-processed payments (ADR-0005). Superadmin does not offer venues a choice of alternate integrated processors. Connecting a venue's account and capturing payments belong to the payments-and-tax subject.
 
 ### 3.10 Portfolio analytics
 
@@ -152,7 +152,7 @@ Venue **base access layers** and job roles do not apply inside the Superadmin co
 | Work the abuse-removal queue | Any console operator |
 | Scoped impersonation | Any console operator |
 | Assign or override a paying Owner's plan | Console Manager or console Owner |
-| Edit the plan catalogue (prices, base rates, card recovery, entitlements, creation quotas, retention and lifecycle constants) | Console Manager or console Owner |
+| Edit the plan catalogue (prices, base rates, entitlements, creation quotas, retention and lifecycle constants) | Console Manager or console Owner |
 | Edit feature flags | Console Manager or console Owner |
 | Suspend / resume / freeze a paying Owner or venue for arrears | Console Manager or console Owner |
 | Soft-delete a paying Owner | Console Manager or console Owner |

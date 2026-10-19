@@ -9,9 +9,9 @@
 This subject owns **how Project Imperium is paid** by businesses, and **what each plan unlocks**. It covers:
 
 - the **plan ladder** — **Free**, **Basic**, **Premium**, and **Enterprise**;
-- the **plan catalogue** — monthly subscription prices, **base commission** rates, **card recovery** rate, venue caps, and the **entitlement matrix** (feature and venue depth); **creation quotas** for active menu items and employees are defined by the plan quotas and data retention subject and ship on the same catalogue;
+- the **plan catalogue** — monthly subscription prices, **base commission** rates, venue caps, and the **entitlement matrix** (feature and venue depth); **creation quotas** for active menu items and employees are defined by the plan quotas and data retention subject and ship on the same catalogue;
 - how the **subscription** sits on the **Owner** and covers every venue in that Owner's portfolio;
-- **commissionable sales**, the dual fee (base + card recovery), and how a **reporting week's** commission is composed;
+- **commissionable sales** and how a **reporting week's** **base commission** is composed;
 - **plan changes** (upgrade, downgrade, Superadmin force-assign) with immediate entitlements, commission-rate cutover inside a reporting week, and calendar-month subscription true-up rules;
 - **paid-in-full** before go-live on a paid plan;
 - **default late-payment grace** and the split between Owner subscription freeze and per-venue commission freeze; and
@@ -20,7 +20,7 @@ This subject owns **how Project Imperium is paid** by businesses, and **what eac
 It deliberately does **not** cover:
 
 - **how charges are taken** — payment method on file, calendar prepaid collection, retries, invoices, billing documents, receipts, arrears dunning, and adjustments belong to the **platform-billing** subject;
-- **payment-facilitator / connected-account plumbing** — the future direction for collecting card money belongs to that decision track; this subject only states commercial pass-through of card recovery;
+- **connected-account / Stripe plumbing** — how diner card money is captured on self-channels belongs to the **payments-and-tax** subject (ADR-0005); this subject only states Imperium's commercial fees;
 - **customer-to-venue settlement** and **business tax configuration** — the payments-and-tax subject owns those;
 - **finalising** a week's commission at weekly report close — the business-reports subject owns the close event and applies the rates this subject defines; **collecting** that owed amount belongs to platform-billing;
 - the **Superadmin console UI** for editing the catalogue — the superadmin subject owns console operators, force-assign, term-change accept/decline, and catalogue *maintenance powers*; this subject owns what the catalogue *means*;
@@ -35,21 +35,19 @@ It deliberately does **not** cover:
 ### Entities
 
 - **Plan** — one of four named tiers in the catalogue: **Free**, **Basic**, **Premium**, or **Enterprise**. It carries a monthly price (or custom), a **base commission** rate (or custom), venue limits, and entitlements.
-- **Plan catalogue** — the Superadmin-managed set of the four plans, the shared **card recovery** rate, grace defaults, and entitlement flags. Seed values ship with the product; Superadmin may change numbers and entitlements without renaming the four tiers.
+- **Plan catalogue** — the Superadmin-managed set of the four plans, grace defaults, and entitlement flags. Seed values ship with the product; Superadmin may change numbers and entitlements without renaming the four tiers.
 - **Subscription** — the Owner's current plan assignment. It covers every Business under that Owner. A Business never holds its own subscription; it exposes the Owner's plan read-only.
-- **Base commission** — Imperium's take-rate on **all** commissionable sales for the Owner's plan. This is where Imperium earns on sales volume.
-- **Card recovery** — a **pass-through** percent on **card-tendered** commissionable sales only, sized to the blended average of major card processors. Imperium does **not** mark this up; it does not earn margin on card recovery.
+- **Base commission** — Imperium's take-rate on **all** commissionable sales for the Owner's plan. This is where Imperium earns on sales volume. There is **no** separate card-recovery pass-through in stage 1 (ADR-0005).
 
 ### Terms this subject introduces
 
-- **Commissionable sales** — paid product sales after voids and refunds across every payment method, including sales paid with **gift card** tender (whether the card was paid or granted). **Invitations**, gift-card **deposit intake**, **forfeitures**, and other unpaid activity are excluded.
-- **Card-tendered commissionable sales** — the portion of commissionable sales whose recorded tender is **card** (including contactless and wallets on card rails), regardless of which processor handled the charge. **Gift card** tender is never card-tendered for card recovery.
+- **Commissionable sales** — paid product sales after voids and refunds across every payment method, including sales paid with **gift card** tender (whether the card was paid or granted). **Invitations**, gift-card **deposit intake**, **forfeitures**, **tips**, and other unpaid activity are excluded.
 - **Weekly commission** — for one venue and one reporting week:  
-  `(base commission rate × commissionable sales) + (card recovery rate × card-tendered commissionable sales)`.
+  `base commission rate × commissionable sales`.
 - **Entitlement matrix** — which product capabilities each plan unlocks (ops depth, reports, multi-venue caps). Selling **channels** are not gated by plan.
 - **Paid-in-full** — the Owner's subscription for the current **calendar subscription month** is settled (full month prepaid or mid-month prorated prepaid), required before go-live on a **paid** plan. Collection of that prepaid amount belongs to platform-billing.
-- **Portfolio freeze** — every Business under an Owner is inaccessible for normal operation after subscription arrears past grace.
-- **Venue freeze** — a single Business is inaccessible after that venue's weekly commission arrears past grace; sibling venues stay up.
+- **Portfolio freeze** — every Business under an Owner is hidden from the public and inaccessible for normal operation after subscription arrears past grace; billing and paying the debt remain available.
+- **Venue freeze** — a single Business is hidden from the public and inaccessible for normal operation after that venue's weekly commission arrears past grace; sibling venues stay up; billing and paying that venue's debt remain available.
 - **Catalogue currency** — the currency in which list monthly prices are published (seed: euro). Charges follow the Owner portfolio currency (same as every venue under that Owner).
 
 Terms reused rather than redefined here: **Owner**, **Company**, **Business**, **User**, **commission**, **reporting week**, **weekly business report**, **go-live**, **Superadmin**, **soft delete**, and **payment provider**.
@@ -61,12 +59,12 @@ Terms reused rather than redefined here: **Owner**, **Company**, **Business**, *
 ### 3.1 Who pays
 
 - **Businesses pay; customers are free.** The Customer app never carries a subscription or commission for the diner.
-- Platform revenue is the **monthly subscription** (paid plans) plus **base commission** on commissionable sales. **Card recovery** only reimburses typical third-party card cost; it is not Imperium profit.
+- Platform revenue is the **monthly subscription** (paid plans) plus **base commission** on commissionable sales. Real card-processor fees on Imperium-processed payments are paid by the venue to Stripe (payments-and-tax); Imperium does not add a card-recovery line on the weekly bill.
 
 ### 3.2 Plans and the catalogue
 
 - Exactly four named plans exist: **Free**, **Basic**, **Premium**, **Enterprise**. Superadmin does not invent additional plan names in the first catalogue.
-- Superadmin configures, per catalogue: monthly prices, base commission rates, the shared card recovery percent, venue caps, entitlement flags, and default grace days. Changing catalogue terms that bind existing Owners triggers the superadmin subject's term-change accept-or-decline flow.
+- Superadmin configures, per catalogue: monthly prices, base commission rates, venue caps, entitlement flags, and default grace days. Changing catalogue terms that bind existing Owners triggers the superadmin subject's term-change accept-or-decline flow.
 - There are **no** one-off per-Owner commission rates outside moving the Owner to another plan or Enterprise custom terms recorded on that assignment.
 - Seed defaults (catalogue currency euro; Superadmin may edit):
 
@@ -76,8 +74,6 @@ Terms reused rather than redefined here: **Owner**, **Company**, **Business**, *
 | Basic | 49 | 0.70% | 2 |
 | Premium | 129 | 0.40% | 5 |
 | Enterprise | Custom | Custom (suggest floor ~0.20%) | Unlimited |
-
-- **Card recovery** seed: **2.5%** on card-tendered commissionable sales, **same for every plan**, Imperium margin **0%**. The figure is a blended effective average of public EEA-oriented Stripe, PayPal Advanced Card, and Skrill list fees (percent-only; no separate fixed per-payment line in the weekly formula).
 
 ### 3.3 Owner, country, and currency
 
@@ -111,11 +107,11 @@ Free means: run real service and take payment; Manage depth beyond promotions an
 
 ### 3.5 Commission composition and timing
 
-- Commissionable sales follow the definition in §2.
-- **Weekly commission** = base rate × all commissionable sales **+** card recovery rate × card-tendered commissionable sales.
-- Cash, crypto, and other non-card tenders pay **base only**. Card tenders pay **base + card recovery**.
-- Rates come from the Owner's plan (and the shared card recovery) at the time each portion of the week applies (§3.6).
+- Commissionable sales follow the definition in §2 (all tenders; tips excluded; full face price).
+- **Weekly commission** = base rate × all commissionable sales.
+- The base rate comes from the Owner's plan at the time each portion of the week applies (§3.6).
 - A reporting week's commission is **finalised, owed, and collected** when that week's **business report closes** — never netted out of what customers paid the venue. Until close, daily and open weekly reports show an **estimate** only. Collection mechanics belong to platform-billing; the close event belongs to business-reports.
+- When a closed week is **re-finalised** (edited daily, approved refund, or card dispute that changes commissionable sales), platform-billing applies a **commission adjustment**.
 
 ### 3.6 Plan changes
 
@@ -136,7 +132,7 @@ Free means: run real service and take payment; Manage depth beyond promotions an
 - Default grace: notify on overdue platform charge; **payment deadline = 7 days** after notice. Superadmin may override a specific Owner's deadline. Daily arrears dunning, the named cut-off date, and post-freeze reminders belong to platform-billing; this subject owns the grace default and the freeze outcome.
 - **Subscription** is owed by the **Owner**. If still unpaid after the deadline, the **entire Owner portfolio is frozen** (every venue).
 - **Weekly commission** is owed by the **Business**. If that venue's commission is still unpaid after the deadline, **only that Business is frozen**. Sibling venues under the same Owner that are current keep running.
-- Resume when the debt is cleared (or Superadmin resumes). Soft-delete and other Owner lifecycle rules remain with the users and superadmin subjects.
+- A frozen Business is **absent from public discovery**, its **customer channels are unavailable**, and **normal Service and Manage operation is blocked**. Imperium also stops **new** Imperium-processed Stripe captures for that Business. **Allowed while frozen:** viewing billing and dunning, **paying** the owed platform charge, and **managing** the Owner's platform payment method. Paying clears the freeze (or Superadmin resumes). Soft-delete and other Owner lifecycle rules remain with the users and superadmin subjects.
 
 ### 3.9 New Owners
 

@@ -115,7 +115,7 @@ Terms reused from other subjects rather than redefined here: **business**, **sal
 
 ### 3.7 Commission estimate
 
-- The daily report shows a **commission estimate** using the same formula the business-reports subject uses for the week: **(base plan rate × that day's commissionable sales) + (card recovery rate × that day's card-tendered commissionable sales)**. Commissionable sales are **paid product sales after voids and refunds** across **all payment methods**, including sales paid with **gift card** tender (paid or granted cards); **invitations**, gift-card **deposit intake**, and **forfeitures** are excluded. **Card recovery** applies only to card-network (and other card-recovery-eligible) tender — never to gift-card tender. Rates come from the monetization catalogue (base by plan; card recovery shared, pass-through only).
+- The daily report shows a **commission estimate** using the same formula the business-reports subject uses for the week: **base plan rate × that day's commissionable sales**. Commissionable sales are **paid product sales after voids and refunds** across **all payment methods**, including sales paid with **gift card** tender (paid or granted cards); **invitations**, gift-card **deposit intake**, **forfeitures**, and **tips** are excluded. The base rate comes from the monetization catalogue.
 - The rates are **fixed by the subscription plan / catalogue** and are not editable on the report.
 - The estimate is **never charged** from the daily report. **Finalisation and owing** happen when the **weekly business report closes** (business-reports subject); **collection** belongs to platform-billing.
 

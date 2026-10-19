@@ -30,8 +30,9 @@
 31 - payroll
 32 - monetization
 33 - platform billing
-34 - 
+34 - data retention
+35 - payment facilitator
 
-- one doubt with gift card, it is consider as a sale with its own tax percent but is that correct? should it be justa a money handling to be hold, no sale, till its is used them we can apply the tax on the exact product it was used for?
+- we can search for a restaurant using the search and filter tools or we can see the closes restaurantes on the map too
 - review all the docs to find out any conflict
 - would you add any extra subject docs to the project

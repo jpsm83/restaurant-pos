@@ -28,7 +28,7 @@ Concretely:
 7. **Refund of a card purchase** is allowed **only if the card is fully unspent** (no redemption ever). **Meal refunds** that were paid by gift card prefer **restoring balance to that card** when the card can still hold value; restore **does not extend** expiry.
 8. Every card has an append-only **gift-card ledger** of audited events.
 9. **Remove** the **Gift card** product-sale **tax category** from the platform set (v1). No dual “tax at issue” mode until a later ADR for a concrete jurisdiction.
-10. **Commissionable sales** are **paid product sales** after voids and refunds across tenders — **including** sales paid (in whole or part) by gift card, **including** when the card was granted. **Exclude** deposit intake at issue and **exclude** forfeitures. **Card recovery** never applies to gift-card tender.
+10. **Commissionable sales** are **paid product sales** after voids and refunds across tenders — **including** sales paid (in whole or part) by gift card, **including** when the card was granted. **Exclude** deposit intake at issue and **exclude** forfeitures. (Weekly commission composition is owned by monetization / ADR-0005 — base commission only; no card-recovery term.)
 11. Reporting distinguishes **deposit intake**, **product sales at redemption**, **forfeiture**, and **outstanding liability**.
 
 Target-state product documents must match this decision; the former tax-at-issue and invitation-on-redeem rules are superseded.

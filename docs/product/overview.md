@@ -222,7 +222,7 @@ There is no separate product mode for administration; Manage and Service are men
 ### Payments and tax
 
 - Payment **methods are recorded** for reporting: cash, card (Visa, Mastercard, American Express, Discover, Diners Club, Maestro), crypto (Bitcoin, Ethereum, Litecoin, Ripple, Cardano, Polkadot, Dogecoin), gift card, and other (Voucher, PayPal, Venmo, Apple Pay, Google Pay, Samsung Pay).
-- **Direct payment processing** is provided through **third-party providers** (e.g. PayPal, Skrill, Stripe) for in-app customer payment and in-POS capture, including split/partial payments, refunds, and provider-settled payouts.
+- **Direct payment processing** on online, delivery, and QR / self-order uses **Stripe Connect** (venue merchant of record, one connected account per Business). Dine-in card stays on the venue's own reader and is recorded in Imperium. Split/partial payments, refunds, and provider-settled payouts apply on Imperium-processed channels.
 - **Tax** follows the business-level configuration above: a rate per tax category, applied to a tax-inclusive price.
 
 ### Promotions
@@ -286,7 +286,7 @@ The Superadmin console runs the **application business** — Project Imperium it
 
 - **Owner account management.** Superadmin manages paying **Owners**: subscription and commission terms, suspend/resume, soft delete (operators never hard-delete), visibility into Companies and Businesses beneath each Owner. Ordinary go-live is not Superadmin-approved — required fields and paid-in-full on a paid plan belong elsewhere; late payment uses notify → deadline → automatic suspend.
 - **Plan catalogue.** Management of the subscription plan catalogue — including creation quotas and platform retention constants owned by the plan quotas and data retention subject — and force-assignment of plans to Owners. Term changes email affected Owners, who must accept or decline and terminate.
-- **Commission configuration.** Base commission per plan and the shared card-recovery pass-through (no one-off per-Owner rates outside Enterprise custom terms).
+- **Commission configuration.** Base commission per plan (no one-off per-Owner rates outside Enterprise custom terms; no card-recovery pass-through in stage 1).
 - **Feature flags** platform-wide and per-Owner.
 - **Support tooling**, including scoped impersonation (one User, one Business, time-bounded, audited) and the review abuse-removal queue — not a general helpdesk.
 - **Payment-provider catalogue** maintenance (which providers venues may connect).
@@ -309,8 +309,8 @@ Project Imperium is **live by design**: sales points, sales instances, order sta
 
 - **Businesses pay; customers are free.**
 - **Subscription.** An **Owner** subscribes to a **tiered plan** — **Free, Basic, Premium, Enterprise** — managed from the Superadmin catalogue. The plan covers the Owner's venues (one **country** per Owner) and determines which **ops** features are available. Selling channels (dine-in, self-ordering, kiosk, delivery) are available on every plan. Catalogue prices, rates, and entitlements are Superadmin-configurable; the monetization subject is the source of truth for the matrix and commercial rules. Paid plans are **prepaid on the first of each calendar month** (mid-month start is prorated prepaid; mid-month plan-price true-up lands on the next first); collection mechanics belong to platform-billing.
-- **Commission.** A reporting week's fee has two parts: **base commission** (plan rate × all **commissionable sales** — Imperium's earnings) plus **card recovery** (a shared pass-through percent × **card-tendered** commissionable sales — no Imperium markup). Commissionable sales are paid product sales after voids and refunds across all payment methods, including sales paid with gift card; invitations, gift-card deposit intake, and forfeitures are excluded. Gift-card tender never attracts card recovery. The week is **finalised and owed** when that week's **business report closes**, then **collected** by platform-billing (Owner method on file or invoice) — never netted out of what the venue's customers paid. Until that close, daily and open weekly reports show an **estimate** only. Weekly commission applies on **every** plan, including Free.
-- **Arrears.** Subscription late past grace freezes the whole Owner portfolio; a venue's weekly commission late past grace freezes **only that venue**. Platform-billing runs daily dunning with a named cut-off date and two weeks of post-freeze pay-to-restart reminders.
+- **Commission.** A reporting week's fee is **base commission** only (plan rate × all **commissionable sales**). Commissionable sales are paid product sales after voids and refunds across all payment methods, including sales paid with gift card; invitations, gift-card deposit intake, forfeitures, and **tips** are excluded. The week is **finalised and owed** when that week's **business report closes**, then **collected** by platform-billing (Owner method on file or invoice) — never netted out of what the venue's customers paid. Until that close, daily and open weekly reports show an **estimate** only. Weekly commission applies on **every** plan, including Free.
+- **Arrears.** Subscription late past grace freezes the whole Owner portfolio; a venue's weekly commission late past grace freezes **only that venue**. A frozen venue is hidden from the public and blocked for normal operation until paid. Platform-billing runs daily dunning with a named cut-off date and two weeks of post-freeze pay-to-restart reminders.
 
 ---
 

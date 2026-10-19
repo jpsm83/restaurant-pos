@@ -19,7 +19,7 @@ This subject owns **how Project Imperium takes money for its own fees**, and **h
 
 It deliberately does **not** cover:
 
-- the **plan catalogue, entitlement matrix, base and card-recovery rates, grace-day default, and freeze outcomes** — the monetization subject owns those commercial rules; this subject executes charges against them;
+- the **plan catalogue, entitlement matrix, base commission rates, grace-day default, and freeze outcomes** — the monetization subject owns those commercial rules; this subject executes charges against them;
 - **finalising** a reporting week's commission amount — the business-reports subject owns weekly close, the owed mark on the Business, and the re-finalise event; this subject collects and adjusts the money;
 - **customer-to-venue settlement** and **business tax on sales** — the payments-and-tax subject owns those;
 - **payment-facilitator / connected-account auto-take** from customer card flows — that future direction belongs to its own decision track; this subject never nets platform fees out of what customers paid the venue;
@@ -52,7 +52,7 @@ It deliberately does **not** cover:
 - **Platform-fee tax** — tax Imperium applies on its own subscription and commission fees under the Owner's country rules (for example VAT on the fee). It is not the venue's customer-facing sales tax configuration.
 - **Commission adjustment** — the immediate charge or credit that brings money in line when a closed week's commission is **re-finalised**.
 
-Terms reused rather than redefined here: **Owner**, **Business**, **subscription**, **paid-in-full**, **weekly commission**, **commissionable sales**, **card recovery**, **reporting week**, **portfolio freeze**, **venue freeze**, **payment deadline**, **Superadmin**, and **plan**.
+Terms reused rather than redefined here: **Owner**, **Business**, **subscription**, **paid-in-full**, **weekly commission**, **commissionable sales**, **reporting week**, **portfolio freeze**, **venue freeze**, **payment deadline**, **Superadmin**, and **plan**.
 
 ---
 
@@ -111,7 +111,7 @@ Terms reused rather than redefined here: **Owner**, **Business**, **subscription
 ### 3.8 Billing documents, history, and tax
 
 - Every successful platform charge, every payable invoice, and every commission or subscription adjustment produces a **billing document** emailed to the Owner and stored in **billing history**.
-- Each document states: charge kind (subscription, weekly commission, true-up, adjustment), Business when commission-related, **period** covered, **rates** applied (base and card recovery where relevant), fee subtotal, **platform-fee tax**, and totals in portfolio currency.
+- Each document states: charge kind (subscription, weekly commission, true-up, adjustment), Business when commission-related, **period** covered, **base commission rate** applied, fee subtotal, **platform-fee tax**, and totals in portfolio currency.
 - Admin/owner users may view and **export** billing history for the portfolio (and commission lines for venues they administer). Managers may see commission-related billing detail for venues they already manage when it appears in arrears notices; they do not change payment methods or plans.
 - **Platform-fee tax** follows the Owner's country rules on Imperium's fees. It is independent of the venue's sales-tax configuration on customer prices.
 
