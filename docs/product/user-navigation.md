@@ -49,7 +49,7 @@ This subject introduces **no new persistent tenant entity**. It owns navigation 
 - **Service** — left-menu header for day-of operations destinations (POS, Host when entitled, and when entitled control screens and attendance).
 - **Manage** — left-menu header for administration destinations; visible only while the person's **effective base layer** at that venue is **manager or admin** (access-and-permissions subject: per shift when on a working shift, otherwise highest membership layer; supervisor never sees Manage).
 - **Me** — left-menu header in Business for **self-only** destinations (own schedule, notifications, personal details) that are not admin data.
-- **Customer account area** — the signed-in customer's settings surface opened from the avatar while in Customer mode: profile, address, saved payment methods, email, notifications, and related account items, with its own left sidebar.
+- **Customer account area** — the signed-in customer's settings surface opened from the avatar while in Customer mode: profile, address, saved payment methods, email, notifications, **marketing consent**, **Download my data**, and related account items, with its own left sidebar. Privacy rules for those controls belong to the privacy, consent, and DSAR subject.
 - **Icon rail** — the left menu's default desktop behaviour: it can collapse to a vertical strip of icons and expand on hover to show full labels. This is built-in behaviour, not a stored preference.
 - **Service fullscreen** — a Service destination shown without the normal desktop chrome, with a small control to restore the desktop layout.
 - **Canonical destination** — a named place in the product the chrome or a link may open (for example Manage home, POS, customer account area). Destinations are described in business language, never as implementation paths.
@@ -78,7 +78,7 @@ Terms reused rather than redefined here: **User**, **Business**, **Owner**, **Em
 
 - **Unsigned:** the avatar offers **Sign in** and **Sign up**.
 - **Signed-in:** the avatar opens a short menu that includes at least **Account** (enters the customer account area), **Sign out**, and — when eligible — a path into the **mode toggle** / Business.
-- The **customer account area** stays in **Customer** mode. It has its **own left sidebar** with destinations such as **profile (Me)**, **address**, **saved payment methods**, **email**, **notifications**, and related account settings.
+- The **customer account area** stays in **Customer** mode. It has its **own left sidebar** with destinations such as **profile (Me)**, **address**, **saved payment methods**, **email**, **notifications**, **marketing consent**, **Download my data**, and related account settings.
 - **Saved payment methods** are the person's instruments for **in-app customer checkout**. Venue POS payment recording stays with the payments-and-tax subject; this subject only places the account nav item.
 - The same **User** profile and **inbox** are reachable from Business **Me** (personal details / notifications) and from the customer account area — **one account model, two doors**.
 
@@ -155,7 +155,7 @@ This subject names destinations the chrome must be able to reach. Behaviour insi
 | Public discovery (search and filter, or map of closest venues) / venue profile | Customer, signed out or in |
 | Manage home (business main) | Manager- or admin-layer effective users entering Business |
 | Customer ordering basket / pay gate | Customer; identity at payment |
-| Customer account area (profile, address, payment methods, email, notifications, …) | Avatar → Account |
+| Customer account area (profile, address, payment methods, email, notifications, marketing consent, Download my data, …) | Avatar → Account |
 | Favorites, order history | Customer, signed-in |
 | Mode toggle | Signed-in chrome when eligible |
 | POS (floor map or list/grid) | Service → POS |
