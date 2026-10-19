@@ -13,7 +13,7 @@ This subject owns the **Superadmin console**: the Imperium-staff surface that ad
 - **enrollment**, credentials, and MFA for those accounts;
 - management of **Owners** (the paying portfolio accounts): visibility into their Companies and Businesses, plan assignment, suspend / resume, soft delete, and term-change acceptance;
 - the **plan catalogue** — monthly prices, **base commission** per plan, venue caps, entitlement flags, **creation quotas**, and platform **retention** and lifecycle constants (owned in meaning by the plan quotas and data retention subject);
-- **feature flags** at platform-wide and per-Owner scope;
+- **feature flags** at platform-wide and per-Owner scope (console read/edit powers; catalogue meaning and off outcomes belong to the feature-flags subject);
 - **scoped impersonation** for support;
 - the **review abuse-removal** decision queue;
 - **late-payment** notification and automatic **freeze** behaviour (Owner portfolio vs single venue) as it appears to console operators;
@@ -26,6 +26,7 @@ It deliberately does **not** cover:
 - **default late-payment grace rules** (when to notify, how long the deadline is) — the monetization subject owns the defaults. This subject owns console override and the automatic freeze outcome.
 - **commission collection** when a weekly business report closes — the business-reports subject owns finalising and owing; the platform-billing subject owns collecting. This subject owns editing the catalogue rates the monetization subject defines.
 - **what each plan unlocks** (the entitlement matrix) and commercial meaning of base commission — the monetization subject owns that. This subject owns catalogue maintenance, assignment, and overrides.
+- the **named feature-flag catalogue, default-on kill-switch outcomes, effective-flag resolution, and composition with plan entitlements** — the feature-flags subject owns those. This subject owns console operators' power to read and edit flags at platform-wide or per-Owner scope.
 - **User** identity in the Customer/Business realm, membership, and venue HR — the users and employees subjects own those.
 - **which integrated payment processor venues use** — stage 1 is Stripe Connect only (payments-and-tax; ADR-0005). There is no Superadmin payment-provider catalogue or venue choice among processors.
 - **review authoring and business replies** — the ratings-and-comments subject owns them; this subject owns only accept/reject of a venue's abuse-removal request.
@@ -42,7 +43,7 @@ It deliberately does **not** cover:
 - **Console operator** — an Imperium employee account that exists only in the Superadmin realm. A console operator is **not** a **User** of the Customer/Business apps; those credentials never grant Customer or Business access. This is not the venue job role of the same everyday word.
 - **Owner** (paying account) — the portfolio account that holds Companies, Businesses, subscription, and commission terms. Created when a person registers a business in the Customer/Business realm. Superadmin manages these accounts; it does not replace them.
 - **Plan** — a named subscription tier in the **plan catalogue** (**Free**, **Basic**, **Premium**, **Enterprise**). It carries the monthly price and **base commission** for that tier and is assigned to paying Owners.
-- **Feature flag** — a named platform capability switch, scoped **platform-wide** or to one paying **Owner**'s portfolio.
+- **Feature flag** — a named platform capability switch, scoped **platform-wide** or to one paying **Owner**'s portfolio. The closed catalogue and off outcomes are owned by the feature-flags subject; this subject owns who may toggle them in the console.
 - **Impersonation session** — a time-bounded, audited support session in which a console operator acts as a **named User** inside **one Business**.
 
 ### Terms this subject introduces
@@ -99,6 +100,7 @@ Terms reused rather than redefined here: **User**, **Owner** (paying account), *
 ### 3.6 Feature flags
 
 - Superadmin turns **feature flags** on or off **platform-wide** or for a **specific paying Owner's** portfolio.
+- **Any console operator** may **read** flag state; **Managers and console Owners** may **edit**. Every edit is **audited** (who, when, flag, scope, old → new). Named catalogue, defaults, kill-switch outcomes, and composition with plan entitlements belong to the feature-flags subject — flags never unlock beyond the Owner's plan.
 - Venue staff and Customers never manage feature flags.
 
 ### 3.7 Scoped impersonation
@@ -133,7 +135,7 @@ Venue **base access layers** and job roles do not apply inside the Superadmin co
 
 | Console role | Powers |
 | --- | --- |
-| **Staff** | Read Owners and venues; work the abuse-removal queue; open scoped impersonation sessions; view portfolio analytics. |
+| **Staff** | Read Owners and venues; read feature-flag state; work the abuse-removal queue; open scoped impersonation sessions; view portfolio analytics. |
 | **Manager** | Everything Staff can do, plus create and disable console operators (enrollment), assign or override plans, edit feature flags (platform-wide or per-Owner), suspend/resume paying Owners, soft-delete paying Owners, and override payment deadlines. |
 | **Owner** | **Same tool entitlements as Manager.** Additionally marks **ownership of the Imperium application** (multiple console Owners allowed). |
 
@@ -149,6 +151,7 @@ Venue **base access layers** and job roles do not apply inside the Superadmin co
 | Scoped impersonation | Any console operator |
 | Assign or override a paying Owner's plan | Console Manager or console Owner |
 | Edit the plan catalogue (prices, base rates, entitlements, creation quotas, retention and lifecycle constants) | Console Manager or console Owner |
+| Read feature flag state | Any console operator |
 | Edit feature flags | Console Manager or console Owner |
 | Manually suspend / resume a paying Owner | Console Manager or console Owner |
 | Override deadline or resume a portfolio/venue freeze (arrears) | Console Manager or console Owner |

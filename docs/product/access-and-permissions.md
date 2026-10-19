@@ -14,7 +14,7 @@ This subject covers **who may do what inside a venue**, as a fixed platform mode
 - **per-user capabilities** — named grant or revoke overrides from a fixed platform catalogue, each bound to a job role on the membership;
 - the **assignment surface** on the membership (Manage → People): job roles, layer override, and capability checklist;
 - **who may assign** access to whom (each layer sets only layers below it; only the owning user creates or demotes admin);
-- how access composes with **plan entitlements** (Owner subscription) and with **mode eligibility** consequences.
+- how access composes with **feature flags**, **plan entitlements** (Owner subscription), and **mode eligibility** consequences.
 
 It deliberately does **not** cover:
 
@@ -24,7 +24,8 @@ It deliberately does **not** cover:
 - the **daily schedule** and which job role a working shift carries — the schedules subject owns that; this subject consumes the shift role for effective layer and active capabilities.
 - **attendance** (on duty, late lock, QR) — the time-control subject owns those.
 - **feature behaviour** inside each gated power (voiding an order, closing a report, editing stock) — each feature subject owns behaviour and restates who may act; this subject owns the shared layer/capability vocabulary and the authoritative capability catalogue index.
-- **plan catalogue prices and which ops features a plan unlocks** — the monetization subject owns entitlements; this subject only states that plan gates run before layer and capability.
+- **plan catalogue prices and which ops features a plan unlocks** — the monetization subject owns entitlements; this subject only states that plan gates run after feature flags and before layer and capability.
+- the **feature-flag catalogue, kill-switch outcomes, and effective-flag resolution** — the feature-flags subject owns those; this subject only places the feature-flag gate first in the composition order.
 - the **Superadmin** console's own roles — the superadmin subject owns that separate realm.
 
 Project Imperium does **not** offer custom roles, free-form permission matrices, or per-screen visualization configuration. Configuration is only: assign canonical job roles, optionally override base layer within the rules below, and grant or revoke named capabilities from the platform catalogue.
@@ -44,10 +45,10 @@ This subject introduces **no new persistent tenant entity**. Access facts live o
 - **Layer override** — an optional, deliberate base-layer value stored on the membership that wins over the job-role default map until cleared.
 - **Per-user capability** — a named power from the **platform capability catalogue**, granted or revoked on a membership and **bound to one of that membership's job roles**. Capabilities never invent powers outside the catalogue.
 - **Capability grant** — a (capability, job role) binding on one membership: grant or revoke that capability when that job role is the active role for resolution.
-- **Platform capability catalogue** — the closed list of named capabilities this subject indexes. Feature subjects own how each power behaves; new flags are added to this catalogue when a feature subject introduces them.
-- **Plan entitlement gate** — whether the Owner's subscription plan unlocks a feature for the venue at all. Evaluated **before** layer defaults and capabilities.
+- **Platform capability catalogue** — the closed list of named capabilities this subject indexes. Feature subjects own how each power behaves; new capabilities are added to this catalogue when a feature subject introduces them.
+- **Plan entitlement gate** — whether the Owner's subscription plan unlocks a feature for the venue at all. Evaluated **after** the feature-flag gate (feature-flags subject) and **before** layer defaults and capabilities.
 
-Terms reused rather than redefined here: **User**, **Owner**, **Business**, **Employee** (membership), **job role**, **working shift**, **entry window**, **mode** (Customer | Business), **Service**, **Manage**, **Me**, **Suspended**, **Terminated**, and soft delete.
+Terms reused rather than redefined here: **User**, **Owner**, **Business**, **Employee** (membership), **job role**, **working shift**, **entry window**, **mode** (Customer | Business), **Service**, **Manage**, **Me**, **Suspended**, **Terminated**, soft delete, and **feature-flag gate**.
 
 ---
 
@@ -106,13 +107,14 @@ Exactly two modes exist — Customer and Business — owned as surfaces by the u
 - **Supervisor** and **employee**: Business only when a **planned working shift** has an open **entry window** (from 10 minutes before planned start until 2 hours after planned start), or an open shift session already exists — same schedule gate; supervisors are **not** excused from the schedule.
 - Opening Business is **not** on duty (time-control subject).
 
-### 3.6 Plan entitlements first
+### 3.6 Feature flags, then plan entitlements
 
 Composition order for any gated power:
 
-1. **Plan entitlement** — if the Owner's plan does not unlock the feature, the power is unavailable (capability grants do nothing for that feature).
-2. **Effective layer defaults** — what the layer includes out of the box.
-3. **Active capability grants/revokes** — for the active job role (§3.7).
+1. **Feature-flag gate** — if the effective feature flag for that capability is off, the power is unavailable (plan, layer, and capability grants do nothing for that feature). Catalogue, scopes, and off outcomes belong to the feature-flags subject.
+2. **Plan entitlement** — if the Owner's plan does not unlock the feature, the power is unavailable (capability grants do nothing for that feature).
+3. **Effective layer defaults** — what the layer includes out of the box.
+4. **Active capability grants/revokes** — for the active job role (§3.7).
 
 ### 3.7 Per-user capabilities (mechanism)
 
@@ -126,7 +128,7 @@ Composition order for any gated power:
 
 ### 3.8 Platform capability catalogue (v1 index)
 
-This subject owns the authoritative list. Feature subjects own behaviour for each power and may introduce a new named flag later; when they do, the flag is added here.
+This subject owns the authoritative list. Feature subjects own behaviour for each power and may introduce a new named capability later; when they do, the capability is added here.
 
 **Service / floor** (typically bound to an employee-layer job role; supervisor/manager/admin layers include the full Service set by default without needing these grants):
 

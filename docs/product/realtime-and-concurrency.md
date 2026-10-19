@@ -20,7 +20,7 @@ It deliberately does **not** cover:
 - **what** each surface displays or which lifecycle stages a sitting walks — sales-points-and-instances, orders, order-flow, printers-and-screens, and sibling subjects own those behaviours; this subject owns that they update live and how conflicting writes resolve.
 - **notification catalogue and persistence-first delivery** — the notifications subject. Live push of inbox items follows this subject’s live-surface rule; storage and email copies stay with notifications and emails.
 - **email** as a channel — emails are best-effort and are **not** a live surface.
-- **plan entitlements and feature flags** — monetization and Superadmin. This subject assumes the actor is already entitled to the surface.
+- **plan entitlements and feature flags** — monetization and the feature-flags subject (Superadmin owns console toggles). This subject assumes the actor is already entitled to the surface.
 - **exclusive editor locks** (“only Alice may open this tab”) — stage 1 does not use them; responsible-employee attribution stays with sales-points-and-instances.
 - **offline write queues or local-first sync** — Project Imperium is online-only (product overview).
 

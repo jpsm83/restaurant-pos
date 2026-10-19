@@ -24,6 +24,7 @@ It deliberately does **not** cover:
 - **customer-to-venue settlement** and **business tax configuration** — the payments-and-tax subject owns those;
 - **finalising** a week's commission at weekly report close — the business-reports subject owns the close event and applies the rates this subject defines; **collecting** that owed amount belongs to platform-billing;
 - the **Superadmin console UI** for editing the catalogue — the superadmin subject owns console operators, force-assign, term-change accept/decline, and catalogue *maintenance powers*; this subject owns what the catalogue *means*;
+- **feature flags** — the feature-flags subject owns the named catalogue, kill-switch outcomes, and composition order. Flags **never expand** this subject's entitlement matrix; they may only narrow availability of capabilities a plan already unlocks. Selling channels are not plan-gated and are not individually flag-gated;
 - **go-live checklist fields** beyond the paid-in-full gate — the business subject owns the checklist and toggle;
 - **day-of POS and channel mechanics** — order-flow and related subjects own how sales happen; this subject only states that selling channels are not plan-gated;
 - **creation quota numbers, retention purge, inactive users, and dormant businesses** — the plan quotas and data retention subject owns those rules and the catalogue constants for them; this subject only requires that a downgrade also fit those quotas.
@@ -83,7 +84,7 @@ Terms reused rather than redefined here: **Owner**, **Company**, **Business**, *
 
 ### 3.4 Entitlement matrix (defaults)
 
-**Channels:** dine-in POS, self-ordering, kiosk, and delivery are available on **every** plan, including Free. Monetization gates **ops depth**, not ways to sell.
+**Channels:** dine-in POS, self-ordering, kiosk, and delivery are available on **every** plan, including Free. Monetization gates **ops depth**, not ways to sell. A plan row of **Yes** still requires the matching **feature flag** to be effectively on (feature-flags subject); a flag never turns a **No** into availability.
 
 | Capability | Free | Basic | Premium | Enterprise |
 | --- | --- | --- | --- | --- |
