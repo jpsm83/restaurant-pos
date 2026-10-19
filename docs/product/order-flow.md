@@ -12,7 +12,8 @@ This subject owns the **service journey**: the sequencing of a sitting from open
 - the **surface flows** — **dine-in** (staff POS), **QR self-ordering**, **kiosk**, and **delivery**;
 - **to-go packaging** (stay vs packed to go) as a choice on orders, not as a channel or sales point;
 - when a sitting may **bill**, **settle**, and **close** relative to fulfilment; and
-- how **self-service** commits (pay first) versus how a **staff tab** runs open service.
+- how **self-service** commits (pay first) versus how a **staff tab** runs open service; and
+- that each self-service **ordering session** owns its own basket so concurrent customers never mix orders.
 
 It deliberately does **not** cover:
 
@@ -24,6 +25,7 @@ It deliberately does **not** cover:
 - **reservations** — booking, deposit, and seating choice (reservation guests vs ordinary guests) belong to the reservations subject. This subject continues from the staff tab that seating opens.
 - **delivery and self-ordering configuration** — enabling delivery, radius, minimum order, and windows, and enabling self-ordering for the venue, belong to the business subject; which points accept which channels belong to the sales-points-and-instances subject.
 - **inventory, notifications, emails, and reports** — their subjects own those effects; this subject only places the moments that trigger them.
+- **live push, reconnect, and conflict outcomes** (stale actions, double-send, double-pay) — the realtime-and-concurrency subject. This subject states the journey rule that baskets are session-scoped.
 
 ---
 
@@ -44,7 +46,7 @@ This subject introduces **no new persistent entity**. It sequences existing ones
 - **Guest basket** — a customer ordering basket built **without** a signed-in User. Discovery and basket assembly are allowed unsigned; **sign-in or sign-up is required when payment is requested**, and the basket is preserved across that step.
 - **Venue handoff (delivery)** — the moment venue staff mark a delivery order **Delivered** when it is handed to the courier; that completes Project Imperium's delivery journey. The courier may track last-mile in their own tools.
 
-Terms reused rather than redefined here: **Business**, **Sales point**, **Sales instance**, **Staff tab**, **Channel**, **Order**, **Batch**, **Identification code**, **Fulfilment slice**, **Fulfilment status**, **Held batch**, **Bill**, **Payment**, **Outstanding balance**, **Reservation**, **on duty**, and **soft delete**.
+Terms reused rather than redefined here: **Business**, **Sales point**, **Sales instance**, **Staff tab**, **Channel**, **Order**, **Batch**, **Identification code**, **Fulfilment slice**, **Fulfilment status**, **Held batch**, **Bill**, **Payment**, **Outstanding balance**, **Reservation**, **on duty**, **ordering session**, **stale action**, and **soft delete**.
 
 ---
 
@@ -82,22 +84,22 @@ Terms reused rather than redefined here: **Business**, **Sales point**, **Sales 
 ### 3.4 QR self-ordering
 
 - Table self-ordering opens only when **all** of these hold: the **business** has self-ordering enabled, the **sales point** accepts the **Self-ordering** channel, **no staff tab** is open on that point, and the point has **no reserved hold** (manual or reservation-assigned).
-- The customer scans the point's QR and may build a **basket** without signing in (no sales instance yet). When they proceed to **pay**, Project Imperium requires **sign-in or sign-up** if they are not already signed in, **preserves the basket**, then takes payment in full. Only after successful payment does Project Imperium create the instance and batches and release work to the kitchen (**pay-to-commit**).
+- The customer scans the point's QR and starts an **ordering session** with its own **basket** (no sales instance yet). Many customers may scan the same point QR at once; each session’s basket is **isolated** — baskets never merge because they share a table. When they proceed to **pay**, Project Imperium requires **sign-in or sign-up** if they are not already signed in, **preserves that session’s basket**, then takes payment in full. Only after successful payment does Project Imperium create **that session’s** instance and batches and release work to the kitchen (**pay-to-commit**), each with its own **identification code**.
 - Fulfilment **delivers stay items to that QR point**. To-go lines on the same sitting are packed to go.
 - The customer receives the **identification code** (notification and email); staff **verify the code at handover** before releasing items, as the sales-points-and-instances subject defines.
-- Billing **closes on full settlement** at pay-to-commit; fulfilment continues until handover. After that close, another order at the same point is a **new** basket and instance — a closed self-service sitting is never reopened to add lines.
+- Billing **closes on full settlement** at pay-to-commit; fulfilment continues until handover. After that close, another order at the same point is a **new** ordering session, basket, and instance — a closed self-service sitting is never reopened to add lines.
 - **Managers and above** may void, invite, or cancel lines on a paid self-service sitting; refunds follow the payments-and-tax subject. Ordinary employees fulfil and verify handover; they do not rewrite a paid self-service ticket.
 
 ### 3.5 Kiosk
 
-- A **Kiosk** point is a self-service terminal on the same customer app. The journey is pay-to-commit, like QR self-ordering, including **guest basket until identity at payment**.
+- A **Kiosk** point is a self-service terminal on the same customer app. The journey is pay-to-commit, like QR self-ordering, including **guest basket until identity at payment**. Each terminal use is one **ordering session** with its own basket and, on pay, its own instance and identification code.
 - Fulfilment is **counter pickup**, not delivery to a table. Packaging defaults to **to-go**; the customer may override per order.
 - The kiosk **prints a handover ticket** with the identification code; staff verify the code at the counter. The customer pickup board shows progress as the printers-and-screens subject defines.
 - Billing closes on full settlement at pay-to-commit; fulfilment continues until counter handover. A later order is a new instance.
 
 ### 3.6 Delivery
 
-- When delivery is enabled, orders attach to the venue's **virtual Delivery point**. The customer may build a basket without signing in, must meet the venue's delivery rules (radius, minimum, windows), and at **payment** must **sign in or sign up** if needed (basket preserved), then **pays in full**; only then does the kitchen receive the work.
+- When delivery is enabled, orders attach to the venue's **virtual Delivery point**. Many customers order at once; each starts an **ordering session** with its own basket. The customer may build a basket without signing in, must meet the venue's delivery rules (radius, minimum, windows), and at **payment** must **sign in or sign up** if needed (basket preserved), then **pays in full**; only then does that session’s instance and kitchen work exist. Baskets never merge across sessions on the Delivery point.
 - Every delivery order is **to-go**. Prep runs as usual; when slices are **Ready**, venue staff use the **delivery screen** to run the handoff.
 - A **runner** (or any staff allowed on the delivery screen) hands the order to the **third-party courier** and marks it **Delivered**. That completes Project Imperium's delivery journey. The courier may manage last-mile in their own app; a courier **never** signs into Project Imperium or operates the delivery screen.
 - Billing closes on full settlement at pay-to-commit; fulfilment continues after payment until venue handoff.

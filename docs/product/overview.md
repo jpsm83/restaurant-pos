@@ -71,6 +71,8 @@ These terms are used with exactly these meanings throughout Project Imperium. Do
 | **Me** (nav) | Business left-menu header for self-only destinations (own schedule, notifications, personal details). |
 | **Daily / Weekly / Monthly report** | The aggregated sales and performance reports at each roll-up level. |
 | **Notification** | A message Project Imperium delivers to a person's inbox. An **operational** notification carries a **severity** — **Info**, **Warning**, or **Emergency** — while a venue **engagement** message carries a **kind** — **Message**, **Promotion**, **Birthday**, or **Event**. |
+| **Ordering session** | The client session that owns one self-service **basket** from the start of ordering until pay-to-commit, abandon, or session end. Concurrent sessions never share a basket because they share a sales point. The realtime-and-concurrency and order-flow subjects own the rule. |
+| **Stale action** | A mutating attempt the server rejects because the client's view no longer matches server truth or the lifecycle no longer allows the act. The realtime-and-concurrency subject owns conflict outcomes. |
 | **Soft delete** | Ordinary delete marks a domain document deleted with a timestamp, retains it, and allows reactivation where the product promises it; uniqueness is among active documents. Routes and operators do not physically remove domain documents, apart from deliberate exceptions — an empty sales instance is discarded, and a cancelled order is erased. **Retention purge** (plan quotas and data retention subject) may later physically remove soft-deleted records after class delays when the **data-integrity rule** allows. |
 
 ---
@@ -302,11 +304,13 @@ The Superadmin console runs the **application business** — Project Imperium it
 
 ## 10. Real-time and communication
 
-Project Imperium is **live by design**: sales points, sales instances, order status, stock movement, and notifications update continuously across the API and UI. Operationally this means:
+Project Imperium is **live by design**: every entitled open screen in the Customer app, Business app, and Superadmin console works on **current server truth**. The realtime-and-concurrency subject is the source of truth for live surfaces, reconnect, **stale actions**, and conflict rules (send, pay, fulfilment, **ordering-session** isolation). Operationally this means:
 
-- The point-of-sale state (open tables, order status, stock movement) is reflected in real time.
-- In-app notifications are persisted first, then pushed live over WebSocket, so online users see them instantly and offline users see them on return.
-- Core business actions are never blocked by communication failures; email has retry behavior, and noisy events (low-stock, overtime) use cooldown and idempotency.
+- POS, Host occupancy, fulfilment, stock, inbox, customer order status, Manage, Superadmin, and public browse while viewing all update live — not only a short list of day-of surfaces.
+- When the connection drops, mutating actions are **blocked** until reconnect and resync; there is no offline write queue (online-only).
+- In-app notifications are persisted first, then pushed live over WebSocket, so online users see them instantly and offline users see them on return (notifications subject; ADR-0006).
+- Email is best-effort and is **not** a live surface; noisy events (low-stock, overtime) use cooldown and repeat-suppression on the notification side.
+- Concurrent writes never silently last-write-wins on checks or payments: stale actions, same-attempt replay, and lifecycle blocks apply (realtime-and-concurrency; ADR-0006).
 
 ---
 

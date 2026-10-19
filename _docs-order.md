@@ -33,3 +33,16 @@
 33 - platform billing
 34 - data retention
 35 - payment facilitator
+36 - receipts, bills and numbering
+37 - realtime and concurrency
+38 - 
+39 - 
+40 - 
+41 - 
+42 - 
+43 -
+44 - 
+45 - 
+46 - 
+47 - 
+48 - 

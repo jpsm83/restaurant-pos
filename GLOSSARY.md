@@ -76,3 +76,23 @@ validate exactly like JSON routes instead of hand-parsing strings.
 The typed error routes raise (`backend/src/errors/appError.ts`). The global
 handler formats every `AppError` as a problem-details document. Routes must not
 hand-build error bodies.
+
+## Idempotency key
+
+A client-generated attempt identity sent with a critical mutation (send, pay,
+fulfilment advance, and others named by product). Scoped so that retries of the
+**same attempt** replay the stored outcome; a new intentional act uses a new
+key. Same key with a different payload is rejected. Product outcomes are in the
+realtime-and-concurrency subject; the mechanism is ADR-0006.
+
+_Avoid_: reusing "request id" for a different attempt, or treating the key as a
+resource id.
+
+## Optimistic concurrency
+
+A write carries the **version** (or equivalent concurrency token) the client
+last observed. If the server version has moved, the write is rejected as a
+conflict and the client must reload server truth before retrying with a new
+intent. Complements lifecycle checks and idempotency keys (ADR-0006).
+
+_Avoid_: "last-write-wins" for checks, payments, or kitchen sends.

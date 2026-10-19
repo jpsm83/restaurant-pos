@@ -52,7 +52,7 @@ It deliberately does **not** cover:
 - **Work-day anchor** — the business-local day an instance belongs to; the first instance of the day opens that day's daily sales report.
 - **Empty instance** — a sales instance that recorded no orders.
 
-Terms reused rather than redefined here: **Business**, **Order**, **Business good**, **Reservation**, **Daily sales report**, **managers on duty**, and **soft delete**.
+Terms reused rather than redefined here: **Business**, **Order**, **Business good**, **Reservation**, **Daily sales report**, **managers on duty**, **ordering session**, and **soft delete**.
 
 ---
 
@@ -87,8 +87,8 @@ Terms reused rather than redefined here: **Business**, **Order**, **Business goo
 
 ### 3.5 Self-service instances
 
-- On **Self-ordering**, **Kiosk**, and **Delivery**, the customer builds a **basket** with no sales instance yet, sees a **pre-payment confirmation**, and **pays in full**. The instance is created **only when the customer commits to pay**, then closes for billing on that settlement; an abandoned basket leaves nothing behind. Fulfilment after payment belongs to the order-flow subject.
-- These channels are **not** subject to the one-open rule: several may run at once, one per customer.
+- On **Self-ordering**, **Kiosk**, and **Delivery**, the customer builds a **basket** in an **ordering session** with no sales instance yet, sees a **pre-payment confirmation**, and **pays in full**. The instance is created **only when the customer commits to pay**, then closes for billing on that settlement; an abandoned basket leaves nothing behind. Fulfilment after payment belongs to the order-flow subject.
+- These channels are **not** subject to the one-open rule: several may run at once, **one instance per paying ordering session**. Concurrent baskets on the same point (or on the virtual Delivery point) stay **isolated by session** and never merge because they share a point — the order-flow and realtime-and-concurrency subjects state the journey and conflict rules.
 - A **Self-ordering** instance cannot open unless the **business** has self-ordering enabled, the point accepts that channel, no **staff tab** is open on the same point, and the point has **no reserved hold**; otherwise the customer is told self-ordering is unavailable, that the table is reserved, or that service is underway.
 - Every order carries an **identification code**. For **Self-ordering**, **Kiosk**, and **Delivery**, Project Imperium **notifies and emails** the customer the code, and a **kiosk also prints a ticket**. Staff **verify the code at handover**, before releasing the items, so the person who collects is the person who ordered.
 
