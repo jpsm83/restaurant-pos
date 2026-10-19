@@ -41,14 +41,13 @@ This subject introduces **no new persistent business entity** beyond preferences
 
 ### Terms this subject introduces
 
-- **Marketing consent** — a single per-person, **platform-global** switch on the **User**, **off by default**, that the person must **opt in** before a venue may send them engagement **broadcasts** (Promotion, Birthday, Event — in-app and email). It is not per-venue and not per-category.
 - **Privacy notice** — the published explanation of how Project Imperium and venues process personal data. Creating a User requires acknowledging it (with account terms). Exact counsel text is outside this subject.
 - **Customer data export** (also **DSAR export** in product language) — a self-service, portable, machine-readable package of the signed-in person's **own attributable** personal data and history while those rows still exist.
 - **Digital-consent age** — the platform floor age below which marketing consent cannot be granted in stage 1 because there is no parental-authorisation product. Seed: **sixteen**.
 - **Alcohol purchase age** — the platform floor age required before a payer may check out **Alcoholic drinks** tax-category goods on **self-channels**. Seed: **eighteen**.
 - **Self-channel** — a customer journey where the diner pays through Imperium-mediated checkout: QR self-ordering, kiosk, and delivery (order-flow and payments-and-tax). Staff-recorded dine-in tenders are not self-channels for this age gate.
 
-Terms reused rather than redefined here: **User**, **Customer**, **Business**, **Owner**, **Company**, **Employee**, **engagement mute**, **broadcast**, **direct message**, **related customer**, **soft delete**, **pending deletion**, **retention purge**, **data-integrity rule**, **Alcoholic drinks** tax category, **birth date**, **language preference**, **guest basket**, **ordering session**, and **merchant of record**.
+Terms reused rather than redefined here: **User**, **Customer**, **Business**, **Owner**, **Company**, **Employee**, **marketing consent** (product overview Core vocabulary — this subject owns the behavioural rules), **engagement mute**, **broadcast**, **direct message**, **related customer**, **soft delete**, **pending deletion**, **retention purge**, **data-integrity rule**, **Alcoholic drinks** tax category, **birth date**, **language preference**, **guest basket**, **ordering session**, and **merchant of record**.
 
 ---
 
@@ -152,7 +151,6 @@ Terms reused rather than redefined here: **User**, **Customer**, **Business**, *
 | --- | --- |
 | Assist an exceptional locked-out export or support request without bypassing integrity | Console operators under Superadmin process |
 | Force physical deletion of an identity outside soft-delete and retention purge | No one |
-| Edit platform age-floor seeds if the catalogue later exposes them | Console Manager or console Owner when such constants exist; stage 1 seeds are sixteen and eighteen as committed here |
 
 ### Who can do what
 
