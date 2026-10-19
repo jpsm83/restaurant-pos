@@ -13,7 +13,8 @@ This subject covers **who a person is as a global identity and customer**, and t
 - the **mode eligibility rule** — when a signed-in user may work in **customer** or **business** mode (exactly two modes), consuming effective layer from the access-and-permissions subject;
 - **credentials and email** — sign-up, verification, email change, and the business contact email;
 - **sessions**, and the **account lifecycle** — pending deletion, soft delete, and reactivation;
-- **favorites** — the venues a customer saves for quick access.
+- **favorites** — the venues a customer saves for quick access;
+- that creating a User requires accepting the **privacy notice** and account terms, and that **birth date** gates marketing consent and self-channel alcohol under the privacy, consent, and DSAR subject.
 
 It deliberately does **not** cover:
 
@@ -25,6 +26,7 @@ It deliberately does **not** cover:
 - **ratings and comments** — venue reviews after a closed sales instance belong to the ratings-and-comments subject. Favorites are bookmarks, not feedback.
 - **which venues are live and discoverable** — the business subject owns go-live, offline, and discovery fields. This subject only allows favoriting venues that are live.
 - the **superadmin console's** authentication realm, which is separate and belongs to the superadmin subject.
+- **marketing consent**, customer data export (DSAR), age floors, and the full privacy product rules — the privacy, consent, and DSAR subject. This subject holds birth date and language preference on the User and states the accept-to-create and birth-date gate hooks those rules need.
 
 ---
 
@@ -132,13 +134,15 @@ A user comes into existence through one of three paths, and Project Imperium **n
 2. **Managed employee** — a manager or above hires through the employees subject by linking an **existing user by email**. If no user exists for that email, Project Imperium creates the user (a customer) first, then the membership.
 3. **Business registration** — a **signed-in user** registers a business; the registrant already exists as a user, and registration creates (or updates) their **Owner**, the **Company** (existing or new), the **Business**, and the owner's membership (employees subject).
 
+Creating a User through self sign-up (and through managed-employee creation when Project Imperium creates the User) requires acknowledging the **privacy notice** and account terms before the account is created. Full privacy rules belong to the privacy, consent, and DSAR subject.
+
 ### 3.10 Sessions
 
 Project Imperium issues a short-lived **access token** and a **refresh session**. Project Imperium can revoke a user's refresh sessions wholesale whenever the password is reset or changed, or the sign-in email is verified as changed. The **mode** from §3.6 is recorded in a server-side session so guards can enforce it; switching mode updates that record. The **superadmin console's authentication realm is entirely separate** and belongs to the superadmin subject.
 
 ### 3.11 Personal profile and preferences
 
-The **User** holds the person's **client personal detail** — name, sign-in email, phone, personal address, birth date, gender, nationality, image — and a **language preference**, so the UI language follows the person independently of the business's currency. The User may also hold **saved payment methods** for in-app customer checkout (how those methods capture money belongs to the payments-and-tax subject). **Employee tax number**, **national ID number**, and other employment identifiers live only on the **Employee** membership (employees subject), not on the User. **Favorites** are a preference of the same User (§3.12). The **customer account area** and Business **Me** destinations that edit these fields are owned by the user-navigation subject.
+The **User** holds the person's **client personal detail** — name, sign-in email, phone, personal address, birth date, gender, nationality, image — and a **language preference**, so the UI language follows the person independently of the business's currency. When language preference is unset, **browser language** seeds it. The User may also hold **saved payment methods** for in-app customer checkout (how those methods capture money belongs to the payments-and-tax subject). **Employee tax number**, **national ID number**, and other employment identifiers live only on the **Employee** membership (employees subject), not on the User. **Favorites** are a preference of the same User (§3.12). **Marketing consent**, engagement-mute reachability, and **Download my data** are User-level privacy controls owned by the privacy, consent, and DSAR subject (with the engagement mute meaning owned by notifications). **Birth date** is required before the person may turn marketing consent on or check out **Alcoholic drinks** tax-category goods on self-channels; those age floors belong to privacy. The **customer account area** and Business **Me** destinations that edit these fields are owned by the user-navigation subject.
 
 ### 3.12 Favorites
 
@@ -207,6 +211,8 @@ Owned by the access-and-permissions subject (catalogue, role-bound grants, assig
 | Hire, edit HR, terminate, rehire | Employees subject (managers and above; rehire admin/owner) |
 | Edit schedules / approve time-off | Schedules subject (managers and above) |
 | Delete one's own account | The account's user |
+| Accept privacy notice and terms at User creation | The person creating the User (privacy, consent, and DSAR subject) |
+| Manage marketing consent / Download my data | The signed-in user (privacy, consent, and DSAR subject) |
 | Keep account after inactive-user warning | The account's user (sign in or keep-account confirmation; rules in plan quotas and data retention) |
 | Reactivate a soft-deleted account | The account's user, by email-confirmed link |
 | Favorite or unfavorite a live venue | The signed-in user (customer identity) |

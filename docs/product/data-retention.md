@@ -13,7 +13,8 @@ This subject owns **how Project Imperium limits active data by plan** and **how 
 - **retention classes** and platform-wide delays after soft-delete — operational versus legal and financial;
 - **retention purge** — Project Imperium’s automatic physical removal of eligible soft-deleted records after those delays when integrity allows;
 - **inactive users** — soft-delete of non-owner accounts after long absence, with notice, private-only cascade, and later purge only under integrity;
-- **dormant businesses** — soft-delete of venues with no trading or Business-mode activity after notice to the Owner, then the same retention path; and
+- **dormant businesses** — soft-delete of venues with no trading or Business-mode activity after notice to the Owner, then the same retention path;
+- **Owner/Admin venue and portfolio export shape** relative to soft-delete and retention purge — operational and commercial packages distinct from customer DSAR; and
 - Superadmin’s power to edit quota numbers and the platform retention and lifecycle constants, including how shortening terms that bind Owners is accepted.
 
 It deliberately does **not** cover:
@@ -24,6 +25,7 @@ It deliberately does **not** cover:
 - **deliberate business closure** initiated by an admin — the business subject owns that close flow; this subject owns dormancy-driven soft-delete and purge after soft-delete;
 - **employee hire, termination, and HR** — the employees subject owns membership lifecycle; this subject only states that inactive is not deleted, and that soft-deleted employee data follows retention classes;
 - **collection of platform fees** — platform-billing;
+- **customer portable data export (DSAR), marketing consent, and privacy notice acceptance** — the privacy, consent, and DSAR subject;
 - **country-by-country statutory retention matrices** beyond the product’s legal-and-financial floor — deferred; Superadmin may lengthen delays when advice requires it;
 - **media storage byte caps** — out of scope;
 - **per-plan purge delays** — delays are platform-wide, not tiered by plan;
@@ -125,7 +127,11 @@ Seed ceilings (Superadmin may edit; unlimited means no ceiling):
 
 ### 3.8 Export and honesty
 
-- Owner and Admin may **export** venue data (and portfolio-scoped exports where the product already allows) while the data still exists — active or soft-deleted.
+- Owner and Admin may **export** venue data (and portfolio-scoped exports where the product already allows) while the data still exists — **active or soft-deleted**.
+- That **venue / portfolio export** is an **operational and commercial** package for people who already administer the venue: menu and stock configuration, sales and reports, staff memberships and HR the venue holds, payments and settlement history, and similar venue-owned records. Soft-deleted rows that are still retained are **included**. Once **retention purge** physically removes a record, export no longer covers it.
+- Venue / portfolio export is **not** a customer data export (DSAR). It must **not** dump unrelated platform-wide User profiles. Customer personal detail appears only as fields **already visible in venue operations** (for example a name or email on a reservation or an attributed order).
+- Exact file format and column layout are outside this subject; the capability to take the administered data away as a downloadable package is in scope.
+- **Customer** self-service portable export of a person's own attributable data is owned by the privacy, consent, and DSAR subject — distinct from this Owner/Admin package.
 - Project Imperium is explicit in product copy and policy that soft-delete is recoverable for a time, that retention purge may physically remove eligible soft-deleted data after the published delays, and that integrity may keep some soft-deleted identities indefinitely when history still depends on them.
 
 ### 3.9 Superadmin and catalogue constants
@@ -147,11 +153,11 @@ Seed ceilings (Superadmin may edit; unlimited means no ceiling):
 
 | Layer | Powers on this subject |
 | --- | --- |
-| **Customer** | May receive inactive-user warnings and keep-account confirmations for their own User; may export only what the product already allows for customers (typically none of venue operational export). |
-| **Employee** | Sees creation-quota limits only insofar as create actions refuse at the ceiling; no catalogue editing. |
-| **Supervisor** | Same as employee for quotas; no catalogue editing. |
-| **Manager** | May see usage against quotas where they create menu or hire; may participate in Business-mode activity that resets dormancy; cannot change catalogue constants. |
-| **Admin / Owner** | Same as manager for venue create actions; receives dormant-business confirmation; may export venue (and portfolio) data while it exists; may change plan under monetization rules (which must fit quotas on downgrade). |
+| **Customer** | May receive inactive-user warnings and keep-account confirmations for their own User; does **not** receive venue operational export. Own portable data export belongs to the privacy, consent, and DSAR subject. |
+| **Employee** | Sees creation-quota limits only insofar as create actions refuse at the ceiling; no catalogue editing; no venue operational export. |
+| **Supervisor** | Same as employee for quotas; no catalogue editing; no venue operational export. |
+| **Manager** | May see usage against quotas where they create menu or hire; may participate in Business-mode activity that resets dormancy; cannot change catalogue constants; venue operational export stays Admin/Owner unless a sibling subject already grants a narrower report download. |
+| **Admin / Owner** | Same as manager for venue create actions; receives dormant-business confirmation; may export venue (and portfolio) **operational and commercial** data while it exists, including soft-deleted-until-purged rows (§3.8); may change plan under monetization rules (which must fit quotas on downgrade). |
 
 ### Superadmin console
 

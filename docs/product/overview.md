@@ -71,6 +71,7 @@ These terms are used with exactly these meanings throughout Project Imperium. Do
 | **Me** (nav) | Business left-menu header for self-only destinations (own schedule, notifications, personal details). |
 | **Daily / Weekly / Monthly report** | The aggregated sales and performance reports at each roll-up level. |
 | **Notification** | A message Project Imperium delivers to a person's inbox. An **operational** notification carries a **severity** — **Info**, **Warning**, or **Emergency** — while a venue **engagement** message carries a **kind** — **Message**, **Promotion**, **Birthday**, or **Event**. |
+| **Marketing consent** | A per-person, platform-global opt-in (off by default) that must be on before a venue may send engagement **broadcasts** (Promotion, Birthday, Event). Distinct from the **engagement mute**. The privacy, consent, and DSAR subject owns the rule; notifications and emails enforce the gate. |
 | **Ordering session** | The client session that owns one self-service **basket** from the start of ordering until pay-to-commit, abandon, or session end. Concurrent sessions never share a basket because they share a sales point. The realtime-and-concurrency and order-flow subjects own the rule. |
 | **Stale action** | A mutating attempt the server rejects because the client's view no longer matches server truth or the lifecycle no longer allows the act. The realtime-and-concurrency subject owns conflict outcomes. |
 | **Soft delete** | Ordinary delete marks a domain document deleted with a timestamp, retains it, and allows reactivation where the product promises it; uniqueness is among active documents. Routes and operators do not physically remove domain documents, apart from deliberate exceptions — an empty sales instance is discarded, and a cancelled order is erased. **Retention purge** (plan quotas and data retention subject) may later physically remove soft-deleted records after class delays when the **data-integrity rule** allows. |
@@ -274,7 +275,7 @@ The Customer app is the free, **public default** side of Project Imperium — th
 
 - **Public browse.** Anyone may use discovery and public venue profiles **without an account**. Sign-in and sign-up are offered from the chrome; after authenticating, the person remains on the Customer surface.
 - **Guest ordering until identity at payment.** A visitor may navigate customer ordering surfaces and **build a basket** without signing in. Project Imperium asks for **sign-in or sign-up** when **payment** is requested (and for other **account-bound** actions). The open basket is **preserved** across that identity step. Account-bound actions include favorites, inbox, order history, and other preferences owned by the User — not only payment.
-- **Account.** Sign up and sign in from the chrome avatar; manage profile, address, saved payment methods, email, and notifications in the **customer account area**. Verify email and reset password. Every user is a customer.
+- **Account.** Sign up and sign in from the chrome avatar (accepting the **privacy notice** and account terms); manage profile, address, saved payment methods, email, notifications, **marketing consent**, and **Download my data** in the **customer account area**. Verify email and reset password. Every user is a customer. Privacy, consent, and DSAR rules belong to that subject.
 - **Discovery.** Find live venues in either of two ways: **search and filter** (by name, cuisine type, categories, rating, and location / geo radius), or a **map of the closest venues** near the customer. From either path, open a venue's public profile and menu.
 - **Ordering across every service surface**: **QR self-ordering** at a table (delivered to the QR point), **kiosk** ordering (counter pickup), and **delivery** (to an address), with optional **to-go packaging** on dine-in and self-service. Self-channel orders can be paid **in-app** via **Stripe Connect** (venue merchant of record; payments-and-tax).
 - **Reservations.** Request a table (when the venue accepts bookings), pay a deposit when asked, and track status (signed-in; reservations subject).
@@ -282,7 +283,7 @@ The Customer app is the free, **public default** side of Project Imperium — th
 - **Favorites.** Save **venues** for quick access (per-user bookmarks; owned with the users subject) — signed-in only.
 - **Gift cards.** Buy a gift card for themselves or for someone else, receive and hold virtual cards identified by QR code and card number, and redeem them at the issuing venue before expiry.
 - **Order history and receipts**, delivered in-app and by email — signed-in only.
-- **Notifications** in the same inbox model, including venue engagement messages — signed-in only.
+- **Notifications** in the same inbox model, including venue engagement **broadcasts** only when **marketing consent** is on and engagement mute is off — signed-in only.
 - **Mode toggle.** When the signed-in user has eligible business access, a **Customer | Business** control in the chrome switches mode (schedule permitting — see [§5](#5-access-roles-and-mode)). There is no third mode.
 - **Real-time order status**, updated live.
 

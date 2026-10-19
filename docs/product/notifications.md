@@ -15,7 +15,8 @@ This subject covers **how Project Imperium tells a person something** — the in
 - **venue engagement messaging** to customers — the automatic birthday, promotion, and event messages, and the venue events that trigger them;
 - **two-way direct messages** between a venue's managers and a person (staff or customer), and the conversations they open;
 - the **reliability behaviour** of delivery — idempotency, cooldown, and email resilience;
-- the single **engagement mute** a user holds.
+- the single **engagement mute** a user holds;
+- that engagement **broadcasts** also require the person's **marketing consent** (owned by the privacy, consent, and DSAR subject) to be on.
 
 It deliberately does **not** cover:
 
@@ -23,6 +24,7 @@ It deliberately does **not** cover:
 - the **transactional email flows themselves** — sign-in verification, password reset, an email change, order receipts, and reservation decisions. The emails subject owns their templates, copy, and retry mechanics; this subject owns which of them notify and the in-app side of each.
 - **customer bill and receipt required content and numbering** — the **receipts-and-bills** subject owns document kinds, required fields, and bill/receipt numbers. An in-app order-confirmed (receipt) notification must present that subject's receipt content; this subject does not invent a thinner inbox-only set.
 - the **inbox's ownership and a user's preference storage** — the users subject owns the person's identity and preferences. This subject owns the notifications the inbox holds and the meaning of the engagement mute, not where a preference is stored.
+- **marketing consent**, customer data export, privacy-notice acceptance, and age floors — the privacy, consent, and DSAR subject. This subject enforces that broadcasts require marketing consent on and engagement mute off.
 - the **screens and navigation** that render the inbox, a conversation, or a venue event — the user-navigation subject owns the surfaces.
 - the **orders, reservations, promotions, and reports mechanics** that produce events — the orders, reservations, promotions, and business-reports subjects own those.
 
@@ -37,7 +39,7 @@ It deliberately does **not** cover:
 - **Inbox entry** — the per-person record of one notification, carrying its **unread** and **deleted** state. State is per recipient: one person reading or deleting a notification never changes it for anyone else.
 - **Conversation** (thread) — a two-way exchange opened by a manager's **direct message**, pairing the manager and one person; replies are messages in the thread.
 - **Venue event** — a dated announcement a venue publishes: a name, a date, and details. Publishing it sends an **Event** message.
-- **Engagement mute** — a single per-person switch, off by default, that suppresses a venue's broadcast engagement messages to that person.
+- **Engagement mute** — a single per-person switch, off by default, that suppresses a venue's broadcast engagement messages to that person. Broadcasts additionally require **marketing consent** (privacy, consent, and DSAR subject).
 
 ### Terms this subject introduces
 
@@ -127,6 +129,7 @@ Terms reused from the product overview's core vocabulary rather than defined her
   - **Event** — sent when the venue publishes a venue event (§3.6).
 - A **broadcast** engagement message is **one-way**: a recipient cannot reply to it.
 - A manager's own message to customers is a **direct message** (§3.5); the automatic kinds above are the broadcasts.
+- A **broadcast** is delivered to a related customer only when that person's **marketing consent is on** (privacy, consent, and DSAR subject) **and** their **engagement mute is off**. Missing either gate means no broadcast in-app or by email.
 
 ### 3.5 Direct messages and conversations
 
@@ -150,8 +153,8 @@ Terms reused from the product overview's core vocabulary rather than defined her
 
 ### 3.8 The engagement mute
 
-- The **only person-level notification preference** is the engagement mute. There is no per-event or per-channel tuning for recipients.
-- A person holds a single **engagement mute**, **off by default** and **global** across every venue; muting suppresses a venue's broadcasts to that person, both in-app and by email. Operational notifications are **mandatory** for recipients. The sole operational exception is owned by time-control: a manager may **mute further overtime alert repeats for one employee's current open session**.
+- The person-level notification preference this subject owns is the **engagement mute**. **Marketing consent** is a separate User preference owned by the privacy, consent, and DSAR subject. There is no per-event or per-channel tuning for recipients.
+- A person holds a single **engagement mute**, **off by default** and **global** across every venue; muting suppresses a venue's broadcasts to that person, both in-app and by email, even when marketing consent is on. Operational notifications are **mandatory** for recipients. The sole operational exception is owned by time-control: a manager may **mute further overtime alert repeats for one employee's current open session**.
 
 ---
 
@@ -175,6 +178,7 @@ The owning user is an admin at every venue they own. Job roles and per-user capa
 | --- | --- |
 | Use the inbox (read, mark read, mark all read, delete) | Any signed-in person |
 | Mute engagement | The person (their own) |
+| Grant or withdraw marketing consent | The person (their own; privacy, consent, and DSAR subject; age-gated) |
 | Reply in a conversation | The recipient of the direct message |
 | Start a direct message | Managers and above |
 | Publish a venue event | Managers and above |

@@ -29,6 +29,7 @@ It deliberately does **not** cover:
 - **targets, margins, and reports** — the business-metrics and business-reports subjects own them. This subject carries no margin, markup, or cost target.
 - **printers and kitchen routing** — the printers-and-screens subject owns routing a good's ticket by category.
 - **notifications** — the notifications subject owns alert delivery.
+- **age floors and marketing consent** — the privacy, consent, and DSAR subject. This subject only supplies the **Alcoholic drinks** tax category as the catalogue signal those rules use.
 
 ---
 
@@ -53,7 +54,7 @@ A good is exactly **one** of these kinds, determined by its components — never
 - **Member** — a business good used as a component of a combo, with the quantity the combo includes. A combo's members are **business goods only**; a member may never itself be a combo.
 - **Derived cost** — the good's cost to the business, computed **live** from its components' current prices and summed up the chain. It is **read-only** and never entered by hand.
 - **Selling price** — what the venue charges for the good, set freely by the venue in the **business currency**. It is **tax-inclusive**: it already contains the good's tax, which the payments-and-tax subject draws out.
-- **Tax category** — the category a good is taxed under, chosen from the **goods tax categories** the payments-and-tax subject owns (Food, Non-alcoholic drinks, Alcoholic drinks, Merchandise, Tobacco — never **Tip**, which rates tips alone). Every good maps to exactly one. Gift-card funding is not a business good.
+- **Tax category** — the category a good is taxed under, chosen from the **goods tax categories** the payments-and-tax subject owns (Food, Non-alcoholic drinks, Alcoholic drinks, Merchandise, Tobacco — never **Tip**, which rates tips alone). Every good maps to exactly one. Gift-card funding is not a business good. The **Alcoholic drinks** category is also the **signal** for the self-channel alcohol age gate owned by the privacy, consent, and DSAR subject and enforced on self-service journeys by the order-flow subject.
 - **On menu** — the good is part of the venue's sellable menu.
 - **Availability state** — whether the good can be ordered right now: **Available**, **Sold out**, or **Manually unavailable**.
 - **Preparation time** — the minutes the kitchen or bar needs to prepare the good.

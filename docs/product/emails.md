@@ -20,6 +20,7 @@ This subject covers **every email Project Imperium sends** — the messages that
 It deliberately does **not** cover:
 
 - **which events notify, and the in-app side of each** — the notifications subject owns the notification catalogue, the inbox, the severities and engagement kinds, and the engagement mute itself. This subject owns how an email is written and delivered, not whether an event notifies.
+- **marketing consent**, customer data export, and privacy-notice acceptance — the privacy, consent, and DSAR subject. Engagement broadcast email still requires marketing consent on and engagement mute off.
 - **the mechanics of the actions behind the emails** — orders and payments, reservations, reviews, the sign-in email and password, the business contact email, venue events, and platform charges are owned by the orders, reservations, ratings-and-comments, users, business, notifications, and platform-billing subjects. This subject owns the email side: when each message is sent and what it carries.
 - **customer bill and receipt required content and numbering** — the **receipts-and-bills** subject owns document kinds, required fields, and bill/receipt numbers. An emailed receipt must carry that subject's receipt content; this subject does not invent a thinner email-only set.
 - **the pages a one-time link opens** — the user-navigation subject owns the destination surfaces. This subject owns only that a link leads a person to complete an action, never what they see.
@@ -51,7 +52,7 @@ It deliberately does **not** cover:
 - **Rollback** — clearing the pending one-time link when its email cannot be sent, so a later attempt starts clean.
 - **Unsubscribe** — the one-click control on an engagement email that turns on the person's engagement mute.
 
-Terms reused from the product overview's core vocabulary rather than defined here: **User**, **Customer**, **Employee**, **Business**, **Order**, **Reservation**, **Delivery**, **Notification**, and **soft delete**. Terms from sibling subjects are named as that subject defines them: the **engagement mute**, **severity**, **engagement kinds**, **sign-in email**, **business contact email**, **language preference**, and the **email-verified flag**.
+Terms reused from the product overview's core vocabulary rather than defined here: **User**, **Customer**, **Employee**, **Business**, **Order**, **Reservation**, **Delivery**, **Notification**, **marketing consent**, and **soft delete**. Terms from sibling subjects are named as that subject defines them: the **engagement mute**, **severity**, **engagement kinds**, **sign-in email**, **business contact email**, **language preference**, and the **email-verified flag**.
 
 ---
 
@@ -117,8 +118,9 @@ An operational email is the **emailed copy** of an in-app notification where one
 
 - The venue engagement messages the notifications subject owns — the **Birthday**, **Promotion**, and **Event** broadcasts — are delivered as engagement email to the venue's **related customers**. This subject owns the email side of them: that they leave as email, and how.
 - Engagement email is **one-way**: a recipient cannot reply to it.
-- Every engagement email carries a **one-click unsubscribe** that turns on the person's **engagement mute**. Project Imperium does not email an engagement message to a person who has muted engagement.
-- A **direct message** to a customer is not engagement: its emailed copy is the operational **customer conversation reply**, is addressed to the person, and is **not** suppressed by the engagement mute.
+- Project Imperium emails a broadcast only when the recipient's **marketing consent is on** (privacy, consent, and DSAR subject) **and** their **engagement mute is off**.
+- Every engagement email carries a **one-click unsubscribe** that turns on the person's **engagement mute**. Unsubscribe does not by itself change marketing consent.
+- A **direct message** to a customer is not engagement: its emailed copy is the operational **customer conversation reply**, is addressed to the person, and is **not** suppressed by the engagement mute or by missing marketing consent.
 
 ### 3.6 Language
 
@@ -136,7 +138,7 @@ An operational email is the **emailed copy** of an in-app notification where one
 
 ### 3.8 The unsubscribe control
 
-- The **only** email preference a person holds is reached through the engagement **unsubscribe**, which sets the single **engagement mute** that the notifications subject owns and that a person can also set in-app. There is no per-category, per-venue, or per-channel email tuning.
+- The email preference this subject reaches through engagement **unsubscribe** is the **engagement mute** (notifications subject). **Marketing consent** is a separate control owned by the privacy, consent, and DSAR subject. There is no per-category, per-venue, or per-channel email tuning.
 - **Account and operational email are mandatory** and carry no unsubscribe; a person cannot stop receiving them.
 
 ---
