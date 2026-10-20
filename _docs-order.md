@@ -42,10 +42,8 @@
 41 - staff sessions
 42 - conversations
 43 - allergens
-44 - 
+44 - cash drawers (peer cash-in + house paid-in/out live under employee cash-out; shared till object and no-sale remain out of that subject)
 45 - 
 46 - 
 47 - 
 48 - 
-
-Future thicken (not this subject): paid-in/out; transfer of cash among employees.

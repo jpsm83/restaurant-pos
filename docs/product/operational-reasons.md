@@ -18,7 +18,7 @@ It deliberately does **not** cover:
 
 - the **acts themselves** — voiding or inviting an order, applying a manual discount, issuing a refund, and re-editing a submitted count belong to the **orders**, **payments-and-tax**, and **inventories** subjects. This subject owns only the reason codes those acts require;
 - **who may perform** those acts — base access layers and capabilities belong to the **access-and-permissions** subject and are restated on each owning subject;
-- **other reason-bearing acts** — attendance reasons (time-control), purchase-edit and purchase-cancel reasons (purchases), month reopen (inventories), daily reopen (sales-reports), gift-card void (gift-cards), and similar. Those stay with their owning subjects and are **not** stage-1 operational reason catalogues;
+- **other reason-bearing acts** — attendance reasons (time-control), purchase-edit and purchase-cancel reasons (purchases), month reopen (inventories), daily reopen (sales-reports), gift-card void (gift-cards), optional house paid-in/out reasons (employee cash-out), and similar. Those stay with their owning subjects and are **not** the five closed catalogues this subject owns;
 - **KPI formulas and report roll-ups** — the **business-metrics**, **sales-reports**, and **business-reports** subjects own figures and periods; this subject states that reason code is a breakdown axis where those subjects already care about voids, invitations, manual discounts, and refunds;
 - **visual design and exact UI copy** — out of scope for the product set.
 

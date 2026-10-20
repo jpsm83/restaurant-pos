@@ -137,7 +137,7 @@ There is **no** late-unlock step on the schedule itself. Lateness honesty is lat
 - For **employee- or supervisor-layer** staff, duty sign-out also **ends business mode** for that visit (they return to customer mode). Managers, admins, and owners may be signed out of duty without being kicked out of business mode.
 - **Early leave.** If sign-out is **more than 10 minutes before** the session's planned end, an **attendance reason** is required. Within 10 minutes of planned end, or after planned end, no reason is required. Unscheduled management sessions have no early-leave reason rule.
 - **Open sales instances.** Sign-out is **rejected** while the employee is the responsible staff on any **open sales instance** (any point type, not only tables). The warning lists those open points. Sign-out becomes possible only after those instances are **closed** or **transferred**.
-- **Uncashed activity.** Sign-out is **rejected** while the employee still has **uncashed activity** in their employee cash session (employee cash-out subject). They must complete an approved **cash-out** (or have no settled activity to cash) before sign-out. Personal float alone does not block sign-out.
+- **Uncashed activity.** Sign-out is **rejected** while the employee still has **uncashed activity** in their employee cash session (employee cash-out subject) — including receive-only obligation from peer cash-in or house paid-out with no sales. They must complete an approved **cash-out** (or have no uncashed activity) before sign-out. Personal float alone does not block sign-out.
 - There is **no** force-sign-out override for either blocker.
 
 ### 3.9 Absence (no-show)

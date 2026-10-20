@@ -30,7 +30,7 @@ It deliberately does **not** cover:
 - **how platform charges are taken** (payment method, invoice, retries, billing documents, dunning) — the platform-billing subject owns collection; this subject finalises the owed weekly amount and signals re-finalise adjustments;
 - the **delivery of notifications** — the notifications subject owns inbox, email, and push; this subject only raises the report-ready signal;
 - **how reports are laid out on screen** (tabs, charts, table chrome) — outside this subject; export of the whole report is in scope.
-- **employee cash-out** (wallet, expected business cash, cash-out resume, approval) — the employee cash-out subject owns those. Weekly and monthly reports may show **staff cash collected** rolled from closed dailies; they carry **no** cash over/short variance line. Day close never waits on cash-out (sales-reports).
+- **employee cash-out** (wallet, expected business cash, peer/house cash movements, cash-out resume, approval) — the employee cash-out subject owns those. Weekly and monthly reports may show **staff cash collected** rolled from closed dailies and may carry operational cash-movement audit rolled from dailies; they carry **no** cash over/short variance line. Day close never waits on cash-out (sales-reports).
 
 ---
 

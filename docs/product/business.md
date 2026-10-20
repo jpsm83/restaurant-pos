@@ -15,6 +15,7 @@ This subject covers the **Business** — the tenant, one venue — as a thing th
 - **opening hours**;
 - **delivery configuration**;
 - **self-ordering configuration** — whether the venue allows QR self-ordering at all;
+- **peer cash transfer setting** — whether on-duty staff may record peer cash-in between wallets (employee cash-out subject owns the behaviour);
 - the **discovery fields** that make a business visible and findable to customers;
 - the **subscription pointer** — the read-only link from a business to the plan held on its **Owner**;
 - **offline** and **closure** of the tenant record.
@@ -24,6 +25,7 @@ It deliberately does **not** cover:
 - the **Owner** account, the **Company** and its **tax number**, the **subscription** itself, and **commission terms** — the users subject owns the **Owner** and the **Company**; the superadmin subject owns the plan catalog and commission configuration. This subject only shows the effective plan read-only, and stores the venue's link to its Company.
 - **tax applied to orders and bills** — the business-level tax configuration (a rate per tax category) belongs to the payments-and-tax subject.
 - **payroll configuration** — pay-period cadence, accountant contact, and tip-pool policy — the payroll subject owns those settings and the pay runs they drive.
+- **employee cash-out behaviour** (wallets, peer cash-in, house paid-in/out, cash-out approval) — the employee cash-out subject. This subject only stores the **peer cash transfer** switch.
 - the **meaning, defaults, validation, and comparison of the cost targets, waste thresholds, and reporting configuration** — the business-metrics subject owns those, and the business-reports subject owns the reports that consume them. This subject stores the values as business fields but does not define them.
 - **sign-in credentials and verification mechanics** — sign-in email verification, email change, and password reset belong to the users and emails subjects. This subject owns the *business contact email* field; the emails subject owns how its verification link is delivered.
 - the **owner shell, mode toggle, Service / Manage / Me left menu, guards, and canonical destinations** — the user-navigation subject owns those surfaces. This subject owns the *business-registration action* and the business form; the navigation that reaches them is the user-navigation subject's.
@@ -138,7 +140,14 @@ Self-ordering is a **per-venue** switch.
 - Table self-ordering still requires each **sales point** to accept the **Self-ordering** channel, and is blocked while a staff tab is open on that point or the point shows a **reserved hold** — the sales-points-and-instances and order-flow subjects own those gates.
 - Kiosk and delivery have their own point and delivery-configuration gates; this switch governs **QR self-ordering** at served points.
 
-### 3.9 Discovery fields
+### 3.9 Peer cash transfer setting
+
+Peer cash transfer is a **per-venue** switch.
+
+- **Enable/disable** — default **on**. When on, on-duty staff may record **peer cash-in** (receiver-recorded cash obligation moves between wallets). When off, peer cash-in is unavailable.
+- **House paid-in and paid-out** are not toggled here; they are always available. Behaviour of both peer and house cash movements belongs to the employee cash-out subject; this subject only stores the peer switch.
+
+### 3.10 Discovery fields
 
 A business is **discoverable only while live**. Its discovery fields are:
 
@@ -147,14 +156,14 @@ A business is **discoverable only while live**. Its discovery fields are:
 - **Cuisine type and categories are edited by managers and above** at the venue; they are among the filters customers use. The identity discovery fields (trade name, logo, phone, address) are edited by admins/owners.
 - Customers find live venues in either of two ways: **search and filter** (trade name, cuisine type, categories, rating, and location / geo radius), or a **map of the closest venues** near them. A customer's location search and the closest-venues map both measure from the address coordinates.
 
-### 3.10 Subscription pointer
+### 3.11 Subscription pointer
 
 - The **subscription is held on the Owner** and covers the owner's venues.
 - A business carries **no subscription field of its own**; it exposes the **effective plan read-only** so the venue can see what its Owner's plan provides.
 - Which features a plan unlocks is the **monetization** subject's concern; this subject only surfaces the plan.
 - On a **paid** plan, go-live also requires the Owner's subscription **paid-in-full** for the period (monetization subject); Free has no subscription invoice gate.
 
-### 3.11 Go-live, live, and offline
+### 3.12 Go-live, live, and offline
 
 A business's own state is server-owned. Its go-live status has three states — **ready to go live**, **live**, and **not live** — moved between by an admin/owner using the **go-live toggle**.
 
@@ -175,15 +184,15 @@ The **go-live checklist** is:
 
 The **profile read exposes the completeness signal** — which checklist items are missing — so the settings surface can show what remains and the go-live toggle can be disabled with reasons.
 
-### 3.12 Closure
+### 3.13 Closure
 
 - Closing a business is a **deliberate soft delete** of the tenant record. It is **not** the same as going offline.
 - Closure requires **no open sales instances** and an **explicit confirmation**. Operators do not physically remove operational data on close; records are retained and marked deleted (ADR-0003). Later physical removal of soft-deleted venue data follows the plan quotas and data retention subject under the **data-integrity rule**.
 - A closed business leaves discovery and stops taking customer orders; the platform does not silently destroy data other people depend on.
 
-### 3.13 Dormant businesses
+### 3.14 Dormant businesses
 
-A venue with no qualifying **venue activity** for a long window may be soft-deleted after Owner notice and no confirmation. Activity definition, windows, and purge afterward belong to the plan quotas and data retention subject. Deliberate closure (§3.12) remains the Owner-driven path.
+A venue with no qualifying **venue activity** for a long window may be soft-deleted after Owner notice and no confirmation. Activity definition, windows, and purge afterward belong to the plan quotas and data retention subject. Deliberate closure (§3.13) remains the Owner-driven path.
 
 ---
 
@@ -196,7 +205,7 @@ A venue with no qualifying **venue activity** for a long window may be soft-dele
 | **Customer** | Sees a business's public discovery fields. May **register a business**, becoming its owner and an **admin** at that venue; may edit everything at a venue they own. |
 | **Employee** | Works in the business app; no business-detail editing unless granted. |
 | **Supervisor** | Works in the business app; no business-detail editing (no Manage). |
-| **Manager** | Everything an employee can do, plus editing **opening hours**, **delivery configuration**, **self-ordering configuration**, and the **discovery cuisine/categories**. |
+| **Manager** | Everything an employee can do, plus editing **opening hours**, **delivery configuration**, **self-ordering configuration**, the **peer cash transfer** setting, and the **discovery cuisine/categories**. |
 | **Admin** | Full venue control, including the **profile identity**, **legal name**, **currency**, **contact email**, the **go-live toggle**, and **closure**. |
 
 The owning user is admin at every venue they own. Job roles and per-user capabilities follow the global model; this subject names only the entitlements that bear on business details.
@@ -208,7 +217,7 @@ The owning user is admin at every venue they own. Job roles and per-user capabil
 | Register a business | Any signed-in user (becomes the **Owner** and an admin at that venue) |
 | Edit trade name, logo, primary contact, phone | Admin/owner |
 | Edit legal name, currency, business contact email | Admin/owner |
-| Edit opening hours, delivery configuration, self-ordering configuration, discovery cuisine/categories | Managers and above |
+| Edit opening hours, delivery configuration, self-ordering configuration, peer cash transfer setting, discovery cuisine/categories | Managers and above |
 | Flip go-live / take a venue offline | Admin/owner |
 | Close a business | The owning user (admin/owner) |
 | Confirm a dormant business should stay live | The owning user (Owner), per plan quotas and data retention |

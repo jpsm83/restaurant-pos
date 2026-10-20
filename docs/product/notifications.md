@@ -92,6 +92,7 @@ Terms reused from the product overview's core vocabulary rather than defined her
 | Overtime alert | The venue's managers on duty; if none are on duty, all manager-layer users for the business | In-app | Warning | Every 5 minutes until the employee signs off or a manager mutes that session's overtime alert |
 | Sign-out request | The venue's managers on duty | In-app | Info | Once per request |
 | Print failure | The venue's managers on duty; if none are on duty, all manager-layer users for the business | In-app | Warning | Once per failed print attempt |
+| Cash movement recorded | Peer cash-in: paying and receiving employees. House paid-in/out or reverse: affected employee and the supervisor+ who recorded it | In-app | Info | Once per completed movement |
 | Schedule changed | Each employee whose schedule entries were added, changed, or removed in the manager's editing session | In-app | Info | Once per employee when the manager leaves the schedules main page (batched across that employee's entries) |
 | Time-off request pending | The venue's managers and above | In-app | Info | Once |
 | Time-off request decided | The requesting employee | In-app | Info | Once |
@@ -113,6 +114,7 @@ Terms reused from the product overview's core vocabulary rather than defined her
 - A **report-ready** notification fires when the weekly or monthly report for the period is ready for review; detecting readiness belongs to the business-reports subject.
 - The **business-profile-updated** notification fires when a change to the business profile actually persists, and reports which fields changed; detecting the change belongs to the business subject.
 - The **print-failure** notification fires when a print cannot be completed and no usable backup takes the job; detecting that condition belongs to the printers-and-screens subject.
+- The **cash movement recorded** notification fires when a peer cash-in, house paid-in/out, or reverse completes (receipt number issued); raising it belongs to the employee cash-out subject. It is the confirmation path when paper print fails after backup.
 - The **schedule-changed** notification batches every add, change, or removal for one employee from a single schedules editing session into one ping when the manager leaves the schedules main page; detecting those edits belongs to the schedules subject.
 - The **time-off request pending** and **time-off request decided** notifications are raised by the schedules subject's request workflow.
 - The **new review**, **business reply to a review**, **review removal decided**, and **delivery review invite** events are raised by the ratings-and-comments subject.
