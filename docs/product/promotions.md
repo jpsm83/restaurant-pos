@@ -12,8 +12,8 @@ This subject owns the **promotion**: a venue-defined price rule that discounts s
 - the **target scope** — the menu subcategories a promotion applies to;
 - the **active window** — the dates, daily hours, and weekdays a promotion runs over;
 - the **enabled switch** — creating a promotion disabled, enabling it, and the rule that enabled promotions may not overlap in time where their subcategory scopes intersect;
-- the **delivery extension** — whether a promotion reaches delivery orders;
-- how a promotion is applied to orders in real time, including the group behaviour of the multi-buy types;
+- the **delivery extension** — whether a promotion reaches delivery orders (the only channel opt-in; there is no delivery-only or channel-include matrix);
+- how a promotion is applied to orders in real time, including the group behaviour of the multi-buy types and **mid-basket disable** repricing;
 - the promotion's **editing, disabling, and deletion**; and
 - the promotion as the unit reporting and customer engagement attribute to.
 
@@ -26,6 +26,7 @@ It deliberately does **not** cover:
 - **delivering promotion messages** — the inbox broadcast a venue's customers receive when a promotion's window begins belongs to the notifications subject, and its email copy to the emails subject.
 - **billing and tax** — the payments-and-tax subject owns how a discounted bill settles and how tax is computed.
 - the **order lifecycle** — voids, invitations, cancellations, transfer, and the bill belong to the orders subject.
+- a **delivery-only** (or dine-in-only / channel-include) promotion targeting model — only the **delivery extension** opts a promotion into delivery. Ghost kitchens that serve only delivery use delivery enablement on the business and turn the delivery extension **on** for promotions that should apply there.
 
 ---
 
@@ -82,7 +83,7 @@ Terms reused rather than redefined here: **Business**, **Business good**, **Orde
 
 ### 3.5 Enabling and the overlap rule
 
-- A promotion is created **disabled**; the venue enables it with a switch and may disable it again at any time. Disabling stops it applying at once: an order still on an open tab loses the promotion, while an order already settled is never altered.
+- A promotion is created **disabled**; the venue enables it with a switch and may disable it again at any time. Disabling stops it applying at once on every still-open staff tab and every unpaid self-service basket: matching lines **reprice to full price** (and multi-buy groups rebuild without that promotion). An order already **settled** is never altered.
 - A venue may hold **as many promotions as it needs**, with any windows and target scopes, overlapping freely — while disabled, nothing conflicts.
 - **Enabling is guarded.** Enabling a promotion is **blocked, with a warning naming the conflict**, when it would overlap an already-**enabled** promotion: their active windows share any moment **and** their target scopes intersect — the same subcategory, or one an ancestor or descendant of the other.
 - The same guard applies when an **enabled** promotion is **edited**, so an edit cannot silently create a collision.
@@ -94,8 +95,9 @@ Terms reused rather than redefined here: **Business**, **Business good**, **Orde
 - Because overlapping enabled promotions are refused, a good is targeted by **at most one** enabled promotion whose active window is current at a time, so a single promotion covers an order.
 - **Percentage discount**, **fixed price**, and **full complimentary** apply to **each** matching order on its own.
 - The **multi-buy** types — **2×1**, **3×2**, and **second item half price** — group matching lines on the **same sitting**: an open **staff tab** (sales instance), or a self-service **pre-pay basket** treated as a sitting-equivalent until payment. Groups are filled from the most expensive matching line downward, and the **cheapest line in each group** is the one discounted, so the customer always pays in full for the most expensive goods. Matching lines left over after grouping are charged in full.
+- Multi-buy groups **rebuild live** while the sitting is open: adding, removing, voiding, or transferring a matching draft line, or disabling the promotion, recomputes groups from the remaining matching lines on that sitting. A line that leaves the sitting (void, cancel, transfer away) drops out of the group; the destination sitting (on transfer) regroups under its own open promotions. **Sent** lines that still carry a promotion keep their evaluated discount until a manager correction the orders subject allows; disable mid-sitting does not rewrite already-settled payments.
 - The goods' **full price is recorded** as lines are added; the promotion's discount is applied while the tab is **open** or the basket is **unpaid**, and may reprice an already-added line as further matching lines complete a group. On self-service, the evaluated basket binds to the **sales instance created at pay**; the amount is **final** once the order is settled.
-- A promotion applies to orders taken through every channel **except delivery**; the **delivery extension** adds delivery. The channels themselves belong to the sales-points-and-instances and order-flow subjects.
+- A promotion applies to orders taken through every channel **except delivery**; the **delivery extension** adds delivery. There is **no** separate delivery-only or channel-include matrix — the delivery extension is the only channel opt-in. A **ghost kitchen** (delivery-only venue) turns delivery on for the business and enables the delivery extension on promotions that should apply to delivery orders. The channels themselves belong to the sales-points-and-instances and order-flow subjects.
 
 ### 3.7 Editing, disabling, and deletion
 

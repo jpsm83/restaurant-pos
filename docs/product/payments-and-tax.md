@@ -107,12 +107,14 @@ Terms reused rather than redefined here: **Business**, **Owner**, **Company**, *
 - A bill may be **split** the ways a venue serves: into **equal shares**, by **amount**, or by **selected lines or guest**. A split is an arrangement for paying; it moves no money by itself.
 - Each part of a split is settled by its **own payment or payments**, so one bill may be paid partly in cash, partly by card, and partly by another method.
 - Guests sharing a tab may pay with **different methods at different times**. A **partial payment** reduces the **outstanding balance** and leaves the bill open; the bill closes only once outstanding is **fully covered** or **surpassed** (§3.6).
-- A **self-service** instance is paid in full before it closes, so it never carries a partial balance.
+- A **tip** is taken **on the payment that is being settled**, not on the whole bill in advance: each digital payment may carry its own tip; cash parts never do (§3.5).
+- Staff **enter the tendered amount** for cash (and for any method that can over-tender); the system derives change or surplus choice from that amount against what that payment covers.
+- A **self-service** instance is paid in full before it closes, so it never carries a partial balance and never uses staff-tab split UX.
 - Customer **receipt** issue at full close — and mid-settlement **bill** content showing payments so far — belong to the receipts-and-bills subject; this subject only records the payments.
 
 ### 3.5 Tips
 
-- A **tip** is optional and is taken **on a digital payment** — a **percentage** of the payment or a **fixed amount** in the business currency — at the moment the bill is settled. **Cash** payments never carry a tip line.
+- A **tip** is optional and is taken **on a digital payment** — a **percentage** of the payment or a **fixed amount** in the business currency — at the moment that payment is taken. **Cash** payments never carry a tip line.
 - A staff tip on a digital payment is **attributed to the employee** who took it; a self-service tip is the customer's own.
 - A **platform-recorded** tip feeds the day's sales report and is taxed at the Tip rate (§3.10). Only recorded tips enter payroll tip pooling.
 - On an **Imperium-processed** card payment, the tip is collected on the **same** diner charge as the bill, settles to the venue with the bill, and is **recorded separately** so it never enters **commissionable sales**.
@@ -120,9 +122,9 @@ Terms reused rather than redefined here: **Business**, **Owner**, **Company**, *
 
 ### 3.6 Over-tender and change
 
-- When a payment's tender **surpasses** the outstanding balance:
-  - **Cash** — the guest receives **change returned** in the business currency, or keeps the surplus with the employee as an **off-record cash tip**. Project Imperium **never** records a tip line on a cash payment. The payment amount on the bill is the house-owed cash for that tender (employee cash-out uses that amount in expected business cash).
-  - **Digital methods** — the guest chooses either **change returned** (where the method allows) or that the **difference is taken as tip** on that payment (recorded and attributed).
+- When a payment's tender **surpasses** the outstanding balance that payment is covering:
+  - **Cash** — staff record the **tendered** amount; the guest receives **change returned** in the business currency, or keeps the surplus with the employee as an **off-record cash tip**. Project Imperium **never** records a tip line on a cash payment. The payment amount on the bill is the house-owed cash for that tender (employee cash-out uses that amount in expected business cash).
+  - **Digital methods** — the guest chooses either **change returned** (where the method allows) or that the **difference is taken as tip** on that payment (recorded and attributed). When the method **cannot** return change, the only surplus option is **recorded tip** (or the tender must not exceed the amount owed).
 - The instance may close when outstanding is **covered or surpassed**. On cash, surplus is never unexplained venue cash on the tab — it is change or off-record employee keep. On digital methods, surplus is change or recorded tip.
 - The customer **receipt** shows owed, tendered, and change or tip as the receipts-and-bills subject requires (tip lines appear only when a tip was recorded).
 

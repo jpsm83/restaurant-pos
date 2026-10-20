@@ -37,8 +37,8 @@ It deliberately does **not** cover:
 
 - **User** — a person's global identity. One per person, platform-wide and tenant-free. The sole holder of sign-in credentials, **client** personal details, preferences (including **favorites**), the notification inbox, and order history. **Every user is a customer.** The User does **not** carry employment fields.
 - **Favorite** — a customer's saved bookmark of exactly one **live Business**, held on that customer's **User**. At most one favorite exists per user per business.
-- **Owner** — the portfolio account for a user who owns businesses. One per user, created or updated when that user registers a business. Holds the **Companies** it controls, the **subscription**, and the **commission terms**.
-- **Company** — the **tax entity** owned by exactly one **Owner**: a group of one or more **Businesses** run as one legal unit, holding their **tax number**. Stock moves only within a Company.
+- **Owner** — the portfolio account for a user who owns businesses. One per user, created or updated when that user registers a business. Holds the **Companies** it controls, the **subscription**, and the **commission terms**. Every Owner holds **at least one Company**.
+- **Company** — the **tax entity** owned by exactly one **Owner**: a group of one or more **Businesses** run as one legal unit. It holds the **tax number** and the **legal name** of that taxpayer. Stock moves only within a Company. Every Company holds **at least one Business**.
 - **Employee** — a person's membership in one business (owned in full by the employees subject). The only way a user joins a tenant.
 - **Business** — the tenant, one venue (owned by exactly one user through that user's **Owner** and belonging to exactly one **Company**). Carries its own public profile and **contact email**, but holds **no credentials** of its own.
 
@@ -76,7 +76,10 @@ Creating a user grants the **customer identity unconditionally**. There is no bu
 A **business is owned by exactly one user**. When a user registers a business, Project Imperium **creates or updates that user's Owner** account, which holds the Companies it controls, the subscription, and the commission terms.
 
 - A user may **own many businesses**; each owned venue is its own **Business**, and each Business belongs to exactly one **Company** — the tax entity grouping the venues run as one legal unit. A user adding a venue chooses whether it **joins an existing Company** or **forms a new one**.
+- An Owner always has **at least one Company**, and each Company always has **at least one Business**. The first venue creates both; Project Imperium never leaves an Owner without a Company or a Company without a venue.
+- **Same taxpayer, several venues** — join an existing Company (shared tax number and legal name; stock may transfer). **Separate taxpayers** — form a new Company (its own tax number and legal name; no stock transfer across Companies).
 - An Owner's portfolio is **one country**: every owned Business shares that country (and thus the same currency). Cross-border venues under one Owner are not allowed.
+- The Company's **legal name** and **tax number** are edited on the Company (Owner chrome); venue shopfront fields stay on each Business (business subject). Uniqueness of tax number and of legal name is enforced **among active Companies in the same country**.
 - A user may simultaneously **own some venues and be an ordinary employee at others**.
 - Registration also creates the owner's **Employee** membership at that venue (Owner job role and admin layer); the employees subject owns that membership and its HR completion.
 - **Ownership can be transferred** from one user to another; the **Owner** accounts, their Companies, and their business lists follow the transfer.

@@ -9,7 +9,7 @@
 This subject covers the **Business** — the tenant, one venue — as a thing the platform sets up, profiles, and publishes. It owns:
 
 - **registering a business** (presented to users as *add your venue*) as an existing user, the **draft** lifecycle, and **go-live**;
-- the **profile identity** — trade name, legal name, logo, primary contact, phone, and business contact email (the venue's **Company** holds its tax number);
+- the **profile identity** — trade name, logo, primary contact, phone, and business contact email (the venue's **Company** holds the tax number and legal name);
 - **currency** — the single currency a business prices in;
 - the **address** and the **timezone derived from it**;
 - **opening hours**;
@@ -22,7 +22,7 @@ This subject covers the **Business** — the tenant, one venue — as a thing th
 
 It deliberately does **not** cover:
 
-- the **Owner** account, the **Company** and its **tax number**, the **subscription** itself, and **commission terms** — the users subject owns the **Owner** and the **Company**; the superadmin subject owns the plan catalog and commission configuration. This subject only shows the effective plan read-only, and stores the venue's link to its Company.
+- the **Owner** account, the **Company** and its **tax number** and **legal name**, the **subscription** itself, and **commission terms** — the users subject owns the **Owner** and the **Company**; the superadmin subject owns the plan catalog and commission configuration. This subject only shows the effective plan read-only, stores the venue's link to its Company, and requires the Company's tax identity on the go-live checklist.
 - **tax applied to orders and bills** — the business-level tax configuration (a rate per tax category) belongs to the payments-and-tax subject.
 - **payroll configuration** — pay-period cadence, accountant contact, and tip-pool policy — the payroll subject owns those settings and the pay runs they drive.
 - **employee cash-out behaviour** (wallets, peer cash-in, house paid-in/out, cash-out approval) — the employee cash-out subject. This subject only stores the **peer cash transfer** switch.
@@ -40,7 +40,7 @@ It deliberately does **not** cover:
 ### Entities
 
 - **Business** — the tenant: **one venue** (one physical restaurant or bar). Owned by exactly one user through that user's **Owner**, and belonging to exactly one **Company** (the tax entity). Carries its own profile identity, address, currency, opening hours, delivery configuration, self-ordering configuration, discovery fields, and **go-live state**. It holds **no credentials** — sign-in credentials belong to the **User**; the business holds only its verified **contact email**.
-- **Company** — the tax entity a business belongs to (owned by the business's **Owner**). Groups one or more venues run as one legal unit and holds their **tax number**; stock moves only within a Company. The users subject owns the Company; this subject records which Company a venue belongs to.
+- **Company** — the tax entity a business belongs to (owned by the business's **Owner**). Groups one or more venues run as one legal unit and holds their **tax number** and **legal name**; stock moves only within a Company. The users subject owns the Company; this subject records which Company a venue belongs to and reads its tax identity for go-live and receipts.
 - **Owner** — the portfolio account a business hangs off (one per user who owns businesses). Holds the **Companies** it controls and the **subscription**. A business **references its Owner's plan read-only**; it never stores a subscription of its own.
 - **Address** — the structured postal address (country, state, city, street, building number, optional unit, complement, post code, region, and details). Its **country and state derive the timezone**, and its **coordinates are the discovery origin**.
 - **Opening hours** — the venue's weekly operating hours: **per weekday, zero or more time ranges**.
@@ -71,7 +71,7 @@ The business contact email is a term the users subject introduces; this subject 
 Registering a business is an **authenticated action by an existing user** — there is no unauthenticated business registration. The UI presents it as **add your venue**.
 
 - A user with **no business** reaches the action from the customer app; a user who **already owns businesses** reaches it from the business app's venue tabs (typically from **Manage**).
-- Registering a user's **first business creates that user's Owner** and a **Company**; each later business is added to that Owner and the user chooses whether it **joins an existing Company** (sharing that tax entity, so stock can move internally) or **forms a new one** (a separate taxpayer).
+- Registering a user's **first business creates that user's Owner** and a **Company**; each later business is added to that Owner and the user chooses whether it **joins an existing Company** (sharing that tax entity, so stock can move internally) or **forms a new one** (a separate taxpayer). An Owner always has at least one Company; a Company always has at least one Business.
 - Every Business under one Owner must be in the **same country** as that Owner's portfolio (currency and tax regime stay aligned). A venue in another country cannot join that Owner.
 - A business is **owned by exactly one user**; the owner takes the **Owner job role** and the **admin** base layer at that venue.
 - After sign-in, a user who owns businesses may switch to **business mode** via the **Customer | Business** toggle and work in Manage (or Service); a user who owns none stays on the customer surface with no Business side on the toggle. These surfaces belong to the user-navigation subject; this subject owns the action and the form behind them.
@@ -87,15 +87,14 @@ A newly added business begins as a **draft**.
 
 ### 3.3 Profile identity
 
-A business carries its public and legal identity:
+A business carries its **venue shopfront** identity; the **taxpayer** identity lives on its **Company** (users subject):
 
-- **Trade name** — the public-facing name. Required for go-live.
-- **Legal name** — the registered legal entity behind the venue. Required for go-live; uniqueness is enforced **per country among active businesses** (the same legal entity name may exist in different countries).
+- **Trade name** — the public-facing venue name. Required for go-live.
 - **Logo** — a **single** optional image. Replacing it discards the previous asset. It is the venue's mark in discovery.
 - **Primary contact** — an optional contact person for the venue.
 - **Phone** — the venue's contact phone. Required for go-live.
 - **Business contact email** — the venue's own verified email for venue messages and receipts. Required for go-live and **must be verified**. It is **never a credential**.
-- **Tax number** — the tax identifier held on the venue's **Company**. Required for go-live; uniqueness is enforced **among active Companies in the same country** (the country of the Company's venues), so two venues sharing one Company share one tax number.
+- **Company tax identity (read for go-live)** — the venue's **Company** holds the **legal name** (registered legal entity of the taxpayer) and the **tax number**. Both are required for go-live. Uniqueness of tax number and of legal name is enforced **among active Companies in the same country**; venues that share one Company share that tax identity. Editing legal name and tax number is an Owner action on the Company (user-navigation Owner chrome), not a per-venue profile field.
 - **Seat count** and **floor area** — optional venue attributes that feed the revenue-per-seat-hour and sales-per-floor-area metrics; neither gates go-live.
 - The **sign-in email and password are not part of the business profile** — they belong to the **User**.
 
@@ -176,7 +175,7 @@ The **go-live checklist** is:
 
 | Group | Items |
 | --- | --- |
-| **Identity / contact** | Trade name, legal name, phone, the **Company's tax number**, currency, address (so the timezone resolves), and a **verified business contact email**. |
+| **Identity / contact** | Trade name, phone, currency, address (so the timezone resolves), a **verified business contact email**, and the venue's **Company** **legal name** and **tax number**. |
 | **Service** | **Opening hours** (at least one day with at least one range) and **at least one cuisine type** (so the venue can be discovered). |
 | **Minimum service kit** | **At least one on-menu business good** (business-goods), and **at least one active order path**: either **at least one active** served or kiosk **sales point**, or **delivery enabled** (which produces the virtual Delivery point — sales-points-and-instances). |
 | **Payments** | **Stripe connected payment account** able to **accept charges and receive payouts** (payments-and-tax; required on Free and paid — delivery and self-order are stage-1 channels). |
@@ -207,7 +206,7 @@ A venue with no qualifying **venue activity** for a long window may be soft-dele
 | **Employee** | Works in the business app; no business-detail editing unless granted. |
 | **Supervisor** | Works in the business app; no business-detail editing (no Manage). |
 | **Manager** | Everything an employee can do, plus editing **opening hours**, **delivery configuration**, **self-ordering configuration**, the **peer cash transfer** setting, and the **discovery cuisine/categories**. |
-| **Admin** | Full venue control, including the **profile identity**, **legal name**, **currency**, **contact email**, the **go-live toggle**, and **closure**. |
+| **Admin** | Full venue control, including the **profile identity**, **currency**, **contact email**, the **go-live toggle**, and **closure**. Company **legal name** and **tax number** are Owner portfolio fields (users subject). |
 
 The owning user is admin at every venue they own. Job roles and per-user capabilities follow the global model; this subject names only the entitlements that bear on business details.
 
@@ -217,7 +216,8 @@ The owning user is admin at every venue they own. Job roles and per-user capabil
 | --- | --- |
 | Register a business | Any signed-in user (becomes the **Owner** and an admin at that venue) |
 | Edit trade name, logo, primary contact, phone | Admin/owner |
-| Edit legal name, currency, business contact email | Admin/owner |
+| Edit currency, business contact email | Admin/owner |
+| Edit Company legal name and tax number | Owner (Company destination in Owner chrome) |
 | Edit opening hours, delivery configuration, self-ordering configuration, peer cash transfer setting, discovery cuisine/categories | Managers and above |
 | Flip go-live / take a venue offline | Admin/owner |
 | Close a business | The owning user (admin/owner) |

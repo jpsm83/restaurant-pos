@@ -15,6 +15,7 @@ This subject owns the **service journey**: the sequencing of a sitting from open
 - how **self-service** commits (pay first) versus how a **staff tab** runs open service; and
 - that each self-service **ordering session** owns its own basket so concurrent customers never mix orders; and
 - **clear basket** and **idle expiry** (including the **still-there** prompt) for unpaid self-service baskets; and
+- **journey failure paths** at pay, print, prep print, and post-pay corrections (composing payments, printers, orders, and realtime rules); and
 - enforcing the **self-channel alcohol age gate** at basket and pay (rule owned by the privacy, consent, and DSAR subject); and
 - the **allergen filter journey** on staff tabs and self-channels (when the filter is used, when orders are auto-flagged, and the self-channel pre-pay confirmation); and
 - blocking **send** or **pay** when a line's good is no longer orderable under day-of availability.
@@ -156,6 +157,16 @@ These rules apply to every unpaid **ordering session** on **Self-ordering**, **K
 - If the guest does not respond for a further **two minutes**, **basket idle expiry** ends the ordering session and discards the unpaid basket. No sales instance, stock movement, or payment is created. The guest must start again (rescan the QR, begin a new kiosk use, or open delivery ordering again). Concurrent sessions on the same point stay isolated (realtime-and-concurrency).
 - If the guest **leaves without paying** (closes the surface or otherwise ends the client session before pay-to-commit), the unpaid basket is discarded with that session the same way — no instance, stock, or payment.
 - Clear basket and idle expiry never affect a sitting that has already **paid to commit**.
+
+### 3.12 Journey failure paths
+
+This subject composes failure outcomes already owned elsewhere so the journey has a defined fate. It invents no new money or print rules.
+
+- **Payment decline or fail at settle / pay-to-commit.** The payment reads **failed**; no charge sticks for that attempt. On a **staff tab**, the instance stays open with the **outstanding balance** still owed; staff retry or use another method (payments-and-tax; a same-attempt retry does not double-charge — realtime-and-concurrency). On **self-service**, the basket and ordering session remain; the guest may retry pay or clear/leave; **no** sales instance is created until a successful pay-to-commit.
+- **Receipt or bill print failure at close or Bill.** Settlement and close follow payments-and-tax once outstanding is covered; paper is not a precondition for the money outcome. Print follows backup then block with manager notify (printers-and-screens). Required content remains available on screen and by email (receipts-and-bills).
+- **Prep printer failure after send.** The batch and identification code already exist; prep **screens** continue; staff retry print or a manager rebinds (printers-and-screens). The sitting does not auto-void.
+- **Good becomes unorderable after pay-to-commit or after send.** Catalogue blocks apply at **send** and **pay** (§3.4). After a successful pay or send, correcting an unmakeable line is a **manager** void, cancel, or refund path (orders; payments-and-tax) — there is **no** automatic refund or auto-cancel from this subject.
+- **Disconnect or stale action mid-journey.** Writes are blocked or rejected as the realtime-and-concurrency subject defines; the client refreshes to server truth and the guest or staff retry the act.
 
 ---
 

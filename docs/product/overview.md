@@ -35,7 +35,7 @@ These terms are used with exactly these meanings throughout Project Imperium. Do
 | Term | Meaning |
 | --- | --- |
 | **Owner** | The account that owns one or more **Companies**. Created automatically when a user registers a business; holds the subscription and commission terms for its venues. |
-| **Company** | The **tax entity** that groups one or more **Businesses** (venues) run as one legal unit. Holds the tax number; its venues may transfer stock internally. |
+| **Company** | The **tax entity** that groups one or more **Businesses** (venues) run as one legal unit. Holds the **tax number** and **legal name**; its venues may transfer stock internally. Every Owner has at least one Company; every Company has at least one Business. |
 | **Business** | The **tenant** — one venue (restaurant/bar). All operational data is scoped to the business. |
 | **User** | A person's global identity. **Every user is a customer**; some also hold business roles. |
 | **Employee** | A person's membership in a Business — the full per-venue employment record (job role(s), status, contract, pay, vacation, HR identifiers). Links a **User** to a **Business**; the User itself holds only client/global identity. |
@@ -109,7 +109,7 @@ Project Imperium's tenancy tree is:
 ```
 Superadmin  (platform operator — the application business)
    └── Owner              (the paying account; one per person/company)
-          └── Company     (the tax entity; holds the tax number)
+          └── Company     (the tax entity; holds tax number and legal name)
                  └── Business    (one venue; the tenant)
                         └── all operational data scoped to the business
 ```
@@ -117,7 +117,7 @@ Superadmin  (platform operator — the application business)
 - **User → Employee → Business.** A **User** is a single global identity. An **Employee** record links that user to a business and carries job role(s), pay, and status. An owner across several venues is one user with an employee membership per venue.
 - **User → Owner → Company → Business.** When a user registers a business, Project Imperium **automatically creates (or updates) an owner account** for them, taking the **Owner job role by default**. The Owner holds its **Companies**, the **subscription**, the **commission terms**, and other portfolio data.
 - **One Business = one venue.** A multi-venue operator does not share one business record; each venue is its own **Business**, grouped under one **Owner** through a **Company**.
-- **Company = tax entity.** A **Company** groups the venues run as one legal unit and holds their **tax number**. Every **Business** belongs to exactly one Company; a venue added to an existing Company shares its tax identity, while a venue added as a new Company is a separate taxpayer.
+- **Company = tax entity.** A **Company** groups the venues run as one legal unit and holds their **tax number** and **legal name**. Every **Owner** has at least one Company; every Company has at least one **Business**. A venue added to an existing Company shares that tax identity (and may transfer stock); a venue added as a new Company is a separate taxpayer. Venue **trade name**, address, phone, and contact email stay on the **Business**.
 - **Everyone is a customer.** Creating a user — including registering a business — also grants the customer identity. There is no "business-only" user.
 - **Tenant root.** Almost every domain collection carries a required, indexed link to its business; this is the isolation boundary. The **User** is the exception — it is global and joins a tenant only through **Employee**.
 
@@ -189,8 +189,9 @@ There is no separate product mode for administration; Manage and Service are men
 
 ### Onboarding and configuration
 
-- **Registering a business** is an action by an **already-registered user**; it creates the tenant, initialises the user's **Owner** account (on their first venue), and creates the owner's employee membership. A user who already owns venues chooses whether the new venue **joins an existing Company** or **forms a new one**. The business can be **saved as an incomplete draft** and edited over time; it collects profile (trade/legal name, logo, contact, phone), **currency** (one per business, chosen at onboarding), and address; the **timezone** is derived from the address. The **tax number** belongs to the venue's **Company**.
-- **Go-live.** A business is **not live** until its **go-live checklist is complete** and its **contact email is verified**; an admin/owner then flips the **go-live toggle**. The checklist includes identity/contact, opening hours and cuisine, a **minimum service kit** (**at least one on-menu business good** and **at least one active order path** — a served or kiosk sales point, or delivery enabled), and Stripe readiness; a **receipt printer does not gate** go-live. **Not live** means **absent from customer discovery** and **unable to take customer orders or bookings**, though the venue remains fully usable internally. A live business can also be taken **offline**, which is distinct from **closing** it.
+- **Registering a business** is an action by an **already-registered user**; it creates the tenant, initialises the user's **Owner** account (on their first venue), and creates the owner's employee membership. A user who already owns venues chooses whether the new venue **joins an existing Company** or **forms a new one**. The business can be **saved as an incomplete draft** and edited over time; it collects venue profile (trade name, logo, contact, phone), **currency** (one per business, chosen at onboarding), and address; the **timezone** is derived from the address. The **tax number** and **legal name** belong to the venue's **Company**.
+- **Owner portfolio.** Owner chrome on owned venue tabs exposes **Add venue**, **Plan**, **Company**, and **Billing** (user-navigation; plan and billing behaviour with monetization and platform-billing).
+- **Go-live.** A business is **not live** until its **go-live checklist is complete** and its **contact email is verified**; an admin/owner then flips the **go-live toggle**. The checklist includes identity/contact (including the Company's legal name and tax number), opening hours and cuisine, a **minimum service kit** (**at least one on-menu business good** and **at least one active order path** — a served or kiosk sales point, or delivery enabled), and Stripe readiness; a **receipt printer does not gate** go-live. **Not live** means **absent from customer discovery** and **unable to take customer orders or bookings**, though the venue remains fully usable internally. A live business can also be taken **offline**, which is distinct from **closing** it.
 - **Profile and discovery.** Public fields — cuisine type, categories, contact, and cached average rating and rating count — power customer discovery (search and filter, and the map of closest venues).
 - **Opening hours** per weekday.
 - **Delivery settings**: enable/disable, **delivery radius**, **minimum order**, and **per-day delivery windows**.
@@ -254,7 +255,7 @@ There is no separate product mode for administration; Manage and Service are men
 
 ### Gift cards
 
-- **Gift cards** are issued and held by the **business**, identified by a **QR code** and a **card number**, and delivered as a **virtual card by email** — there is no physical card. They are a **bearer stored-value instrument** — whoever holds the card may spend it. A gift card carries an **issued value** and **remaining balance** in the business currency, is **non-reloadable**, supports **partial redemption**, is redeemable **only at the issuing venue**, and **expires** (remaining balance forfeited). A **paid** card is funded by a **standalone deposit checkout** (liability, no product tax); a **granted** card creates the same liability with no cash. Redemption is a **Gift card** payment on an ordinary bill: order lines stay paid and taxed by category; Invitation is not used for redeem. Card purchase refund is only for **fully unspent** cards; meal refunds may **restore** balance to the card. Minimum value and validity period are business configuration; intake, tender, forfeiture, and outstanding liability are recorded in reporting (gift-cards subject; ADR-0004).
+- **Gift cards** are issued and held by the **business**, identified by a **QR code** and a **card number**, and delivered as a **virtual card by email** — there is no physical card. They are a **bearer stored-value instrument** — whoever holds the card may spend it. A gift card carries an **issued value** and **remaining balance** in the business currency, is **non-reloadable**, supports **partial redemption**, is redeemable **only at the issuing venue**, and **expires** (remaining balance forfeited). A **paid** card is funded by a **standalone deposit checkout** (liability, no product tax); a **granted** card creates the same liability with no cash. Redemption is a **Gift card** payment on an ordinary bill: order lines stay paid and taxed by category; Invitation is not used for redeem. Card purchase refund is only for **fully unspent** cards; meal refunds may **restore** balance to the card. Minimum value and validity period are business configuration; intake, tender, forfeiture, and outstanding liability are recorded in reporting (gift-cards subject; ADR-0004). There is **no** User-linked gift-card wallet and **no** lost/stolen recovery flow (resend, replace identity, transfer); holders use the emailed virtual card, and managers void, grant, refund, or restore under the gift-cards subject.
 
 ### Reservations
 
@@ -293,7 +294,7 @@ The Customer app is the free, **public default** side of Project Imperium — th
 - **Reservations.** Request a table (when the venue accepts bookings), pay a deposit when asked, and track status (signed-in; reservations subject).
 - **Ratings and comments.** After a closed, settled sales instance, leave a venue **review**: a **0–5 star** score with optional text. Invites arrive via the receipt QR, a delivery review email, or order history. The ratings-and-comments subject is the source of truth.
 - **Favorites.** Save **venues** for quick access (per-user bookmarks; owned with the users subject) — signed-in only.
-- **Gift cards.** Buy a gift card for themselves or for someone else, receive and hold virtual cards identified by QR code and card number, and redeem them at the issuing venue before expiry.
+- **Gift cards.** Buy a gift card for themselves or for someone else, receive the virtual card by email (QR and card number), and redeem at the issuing venue before expiry. There is no signed-in gift-card wallet (gift-cards subject).
 - **Order history and receipts**, delivered in-app and by email — signed-in only.
 - **Notifications** in the same inbox model, including venue engagement **broadcasts** only when **marketing consent** is on and engagement mute is off — signed-in only.
 - **Mode toggle.** When the signed-in user has eligible business access, a **Customer | Business** control in the chrome switches mode (schedule permitting — see [§5](#5-access-roles-and-mode)). There is no third mode.

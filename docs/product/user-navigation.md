@@ -44,7 +44,7 @@ This subject introduces **no new persistent tenant entity**. It owns navigation 
 - **Mode** — whether the signed-in person is in the **Customer** or **Business** surface. Exactly two modes; there is no third “employee” mode.
 - **Mode toggle** — the desktop chrome control **Customer | Business** that switches mode when the person is eligible for Business.
 - **Venue tab** — a horizontal tab in business chrome that selects which **Business** (venue) is the active context when the person has more than one.
-- **Owner chrome** — extra controls on venue tabs that only an **Owner** sees for that venue (for example add venue, plan, company), distinct from an employee tab at a venue they only work at.
+- **Owner chrome** — the fixed set of portfolio destinations only an **Owner** sees on owned venue tabs: **Add venue**, **Plan**, **Company**, and **Billing**. Distinct from an employee tab at a venue they only work at.
 - **Left menu** — the persistent vertical navigation rail in **Business** mode (and the separate rail in the **customer account area**).
 - **Service** — left-menu header for day-of operations destinations (POS, Host when entitled, and when entitled control screens and attendance).
 - **Manage** — left-menu header for administration destinations; visible only while the person's **effective base layer** at that venue is **manager or admin** (access-and-permissions subject: per shift when on a working shift, otherwise highest membership layer; supervisor never sees Manage).
@@ -93,7 +93,13 @@ Terms reused rather than redefined here: **User**, **Business**, **Owner**, **Em
 
 - **One eligible venue:** go straight into that venue's business chrome (no picker).
 - **Several venues:** show **horizontal venue tabs**. Each tab is one **Business** context. Switching tabs changes venue without leaving Business mode.
-- **Owner chrome** (add venue, plan, company, and similar portfolio controls) appears only on tabs for venues the person **owns**. An employee tab at a venue they only work at is **operational** — Service, Manage if manager+ there, and Me — without owner portfolio controls.
+- **Owner chrome** appears only on tabs for venues the person **owns**. It is exactly four destinations:
+  - **Add venue** — register another Business under this Owner (join an existing Company or form a new one — business and users subjects).
+  - **Plan** — the Owner's subscription and entitlements (monetization subject).
+  - **Company** — the tax entity for the active venue's Company: **legal name**, **tax number**, and the list of venues in that Company (users subject).
+  - **Billing** — the platform payment method, **billing history**, and **in-product pay** for payable invoices (platform-billing subject).
+- These hang on Owner chrome next to venue tabs (portfolio-scoped). Venue **Manage → Money** stays venue operations (payments/tax config, gift cards, reports) and does not replace Plan, Company, or Billing.
+- An employee tab at a venue they only work at is **operational** — Service, Manage if manager+ there, and Me — without owner portfolio controls.
 - **Landing** (uses **effective base layer** at enter — access-and-permissions subject):
   - **Employee- or supervisor-layer** effective users enter toward **Service** (POS primary for employees; supervisors land in Service with the full Service set) — including a manager-membership person currently on an employee- or supervisor-layer shift.
   - **Manager- or admin-layer** effective users enter the venue's **Manage home** (business main page) with the left menu showing **Service** and **Manage** headers (and **Me**).
@@ -165,7 +171,8 @@ This subject names destinations the chrome must be able to reach. Behaviour insi
 | Floor plans (layout editor) | Manage → Floor plans |
 | Manage feature groups (Venue, People, Menu, Supply, Service setup, Money) | Manage header |
 | My schedule / Notifications / Personal details | Me (Business) or account area (Customer) |
-| Venue tabs / owner chrome | Multi-venue Business |
+| Venue tabs | Multi-venue Business |
+| Owner chrome: Add venue, Plan, Company, Billing | Owner on an owned venue tab |
 
 ---
 

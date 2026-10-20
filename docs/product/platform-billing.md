@@ -46,7 +46,7 @@ It deliberately does **not** cover:
 - **Next-bill true-up** — the prorated subscription price difference from a mid-month plan change, applied as a debit or credit on the **next first-of-month** subscription invoice — not as an immediate mid-month charge or refund.
 - **Automatic collection** — charging the Owner's platform payment method for an owed platform charge without netting against customer settlement.
 - **Invoice fallback** — issuing a payable invoice when there is no usable platform payment method or automatic collection fails past retries.
-- **Retry window** — a short series of automatic re-attempts (within about two days) after a failed auto-charge, before the charge is treated as overdue.
+- **Retry window** — up to **three** automatic re-attempts spread over about **forty-eight hours** after a failed auto-charge, before the charge is treated as overdue (hard declines may end the window sooner).
 - **Arrears dunning** — the daily in-app notification and email cadence that names the unpaid amount, what it is for, and the **exact cut-off date** when service will freeze if still unpaid.
 - **Post-freeze reminder window** — **fourteen days** of continued daily notify-and-email after freeze, urging payment so service can restart; then the daily cadence stops while the debt and freeze remain.
 - **Platform-fee tax** — tax Imperium applies on its own subscription and commission fees under the Owner's country rules (for example VAT on the fee). It is not the venue's customer-facing sales tax configuration.
@@ -92,10 +92,11 @@ Terms reused rather than redefined here: **Owner**, **Business**, **subscription
 - Preferred path: **automatic collection** on the Owner's platform payment method when the charge becomes due (subscription on the first / prorated prepaid; commission at weekly close; adjustments when re-finalised; true-ups on the next first).
 - If there is **no usable method**, or automatic collection **fails past the retry window**, Project Imperium issues a **payable invoice** with the same commercial detail and the monetization **payment deadline** (default seven days from notice; Superadmin may override).
 - Paying the invoice (or a successful late auto-charge) **clears the debt**. Clearing the debt that caused a freeze **resumes** service for that portfolio or venue; Superadmin may also resume.
+- The Owner pays a **payable invoice in-product** from **Billing** in Owner chrome (user-navigation): using the saved **platform payment method**, or after updating that method. Email still carries the billing document; in-product pay is the primary clear-debt path. Superadmin override and resume remain available.
 
 ### 3.6 Retries and arrears
 
-- After a failed auto-charge, Project Imperium retries within a short **retry window** (a few attempts over about two days). Soft declines may retry; hard failures move to invoice fallback sooner.
+- After a failed auto-charge, Project Imperium retries within the **retry window**: up to **three** automatic attempts over about **forty-eight hours**. Soft declines may retry across that window; hard failures move to invoice fallback sooner (without waiting for all three attempts).
 - When the charge is still unpaid after retries (or was invoiced from the start), Project Imperium **notifies** and starts the **payment deadline**.
 - From that notice through the deadline, **arrears dunning** runs **daily**: in-app notification and email naming the unpaid amount, whether it is subscription or which venue's commission, and the **exact calendar cut-off date** when service will freeze.
 - On the cut-off date, if still unpaid: **subscription** arrears → **portfolio freeze**; **weekly commission** arrears → **venue freeze** for that Business only (monetization). There is **no** silent downgrade to Free.
@@ -144,6 +145,6 @@ Terms reused rather than redefined here: **Owner**, **Business**, **subscription
 | Receive billing documents | The Owner (always); Admin/owner may view history |
 | Receive arrears / post-freeze dunning | Owner always; Manager and above scoped per §3.7 |
 | Override deadline or resume when frozen | Superadmin console Manager or console Owner |
-| Pay an invoice / clear debt | Whoever the invoice addresses (Owner for subscription; Business debt paid through Owner settlement path) |
+| Pay an invoice / clear debt in-product from Billing | The **Owner**, from **Billing** in Owner chrome (subscription and venue commission debts settle through the Owner's platform method) |
 
 Job roles and per-user capabilities follow the global model; this subject does not add a separate capability flag beyond who may manage the platform payment method, view billing history, and receive arrears notices.

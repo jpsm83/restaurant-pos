@@ -72,7 +72,7 @@ Terms reused rather than redefined here: **Business**, **Sales instance**, **Sal
 
 Every customer bill carries at least:
 
-- **venue identity** — trade name, address, and the Company's tax number;
+- **venue identity** — trade name, address, the Company's **legal name**, and the Company's **tax number**;
 - **datetime** of issue (and the work day in the business timezone);
 - **sales-point** context for the sitting;
 - **line items** — each main good and its add-ons, with void and invitation lines listed, flagged, and uncharged;
@@ -121,7 +121,7 @@ When tender **surpasses** outstanding, the receipt shows amount **owed**, amount
 ### 3.8 Channels and layout
 
 - Required content applies whether the document is **shown on screen**, **printed**, or **emailed**. There is no thinner content set for email.
-- The printers-and-screens subject lays out the required fields on paper and chooses the sales point's receipt printer; layout must not omit required content.
+- This subject owns **what** must appear; the printers-and-screens subject owns **how** those fields are laid out on paper (platform layout only — no venue template editor) and which receipt printer prints them. Layout must not omit or invent required content.
 - A venue that issues printed bills or receipts needs a usable receipt-printer path as printers-and-screens requires. The same required content is also available in-app and by email.
 
 ### 3.9 Retention

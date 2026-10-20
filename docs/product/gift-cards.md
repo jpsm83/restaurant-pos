@@ -29,6 +29,7 @@ It deliberately does **not** cover:
 - the **refund mechanics** of settling money — the payments-and-tax subject owns refund request and decision; this subject owns when a **card** may be refunded or have balance restored.
 - **reservation deposits** — the reservations subject owns those; a reservation deposit is not a gift card.
 - the **platform’s deletion model** — soft delete applies; this subject states that a card and its ledger are retained.
+- a **User-linked gift-card wallet**, lost/stolen recovery, resend of the virtual card, replace QR/card number, or transfer of holder. This subject is **bearer + email delivery** plus the manager void / grant / refund / restore rules below; holders keep the emailed card details.
 
 The money model follows ADR-0004 (gift cards as liability; tax and revenue at redemption).
 
