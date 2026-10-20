@@ -8,17 +8,19 @@
 
 This subject owns the **operational reason catalogues** used when staff must justify a controlled act. It covers:
 
-- five **closed, platform-defined catalogues** — **void**, **invitation**, **manual discount**, **refund**, and **count re-edit**;
-- the shared **selection rule** (required catalogue code; **Other** with an optional short free-text note);
+- **closed, platform-defined catalogues** — including the authored **void**, **invitation**, **manual discount**, **refund**, and **count re-edit** catalogues, and any further catalogues product amends onto this subject for other reason-bearing audited acts;
+- the shared **selection rule** (required catalogue code; **Other** with an optional short free-text note) for every act that requires a catalogue reason;
 - **who maintains** the catalogues and what happens when a code is **retired**;
-- **customer visibility** (reasons are never guest-facing); and
+- **customer visibility** (reasons are never guest-facing);
+- that reason codes and Other notes are a **primary audited payload** on the acts that require them (audit-trail subject owns the shared who/what/when model); and
 - **reporting-by-reason** expectations for the four money and sales acts, versus audit-only use for count re-edit.
 
 It deliberately does **not** cover:
 
 - the **acts themselves** — voiding or inviting an order, applying a manual discount, issuing a refund, and re-editing a submitted count belong to the **orders**, **payments-and-tax**, and **inventories** subjects. This subject owns only the reason codes those acts require;
 - **who may perform** those acts — base access layers and capabilities belong to the **access-and-permissions** subject and are restated on each owning subject;
-- **other reason-bearing acts** — attendance reasons (time-control), purchase-edit and purchase-cancel reasons (purchases), month reopen (inventories), daily reopen (sales-reports), gift-card void (gift-cards), optional house paid-in/out reasons (employee cash-out), and similar. Those stay with their owning subjects and are **not** the five closed catalogues this subject owns;
+- the **shared audit entry shape, when an act must be audited, append-only integrity, retention of trails, and read defaults** — the **audit-trail** subject. This subject owns catalogue contents and the selection rule; audit-trail owns how a selected reason is recorded on the trail;
+- **attendance reasons** (time-control) and other justification lists that remain with their owning subjects until product amends them onto this catalogue home;
 - **KPI formulas and report roll-ups** — the **business-metrics**, **sales-reports**, and **business-reports** subjects own figures and periods; this subject states that reason code is a breakdown axis where those subjects already care about voids, invitations, manual discounts, and refunds;
 - **visual design and exact UI copy** — out of scope for the product set.
 
@@ -28,8 +30,8 @@ It deliberately does **not** cover:
 
 ### Entities
 
-- **Operational reason catalogue** — a closed, platform-defined list of reason codes for one controlled act. There are exactly five stage-1 catalogues: void, invitation, manual discount, refund, and count re-edit.
-- **Operational reason** — one code from an operational reason catalogue, recorded on the act that required it. When the code is **Other**, it may carry an optional short free-text note.
+- **Operational reason catalogue** — a closed, platform-defined list of reason codes for one controlled act. The authored catalogues are void, invitation, manual discount, refund, and count re-edit; further catalogues may be added only by product amendment of this subject.
+- **Operational reason** — one code from an operational reason catalogue, recorded on the act that required it and carried on that act’s **audit entry**. When the code is **Other**, it may carry an optional short free-text note.
 
 ### Terms this subject introduces
 
@@ -37,7 +39,7 @@ It deliberately does **not** cover:
 - **Other note** — the optional short free-text explanation that may accompany the **Other** code. It is for staff audit only and is never a report dimension.
 - **Retired reason code** — a code the product has removed from selectable lists. It remains readable on historical acts and in reports for past activity, but is not offered for new acts.
 
-Terms reused rather than redefined here: **void**, **invitation**, **manual discount**, **refund**, **count**, **base access layer**, **managers and above**, **supervisor**, and **soft delete**.
+Terms reused rather than redefined here: **void**, **invitation**, **manual discount**, **refund**, **count**, **base access layer**, **managers and above**, **supervisor**, **soft delete**, **audit entry**, and **audit trail**.
 
 ---
 
@@ -45,10 +47,10 @@ Terms reused rather than redefined here: **void**, **invitation**, **manual disc
 
 ### 3.1 Closed platform catalogues
 
-- Each of the five catalogues is **closed and platform-defined**. A business neither adds, renames, nor removes a reason code.
-- Every controlled act that requires an operational reason **must** record exactly **one** reason code from the catalogue that belongs to that act.
-- Free-text alone is **never** a valid reason. The only free text allowed is the optional **Other note** when the selected code is **Other**.
-- Catalogues are **amended only by product commitment** — by changing this subject when the product adds, renames meaning, or retires a code. Stage 1 has **no** venue catalogue editor and **no** Superadmin catalogue UI for operational reasons.
+- Each catalogue is **closed and platform-defined**. A business neither adds, renames, nor removes a reason code.
+- Every controlled act that requires an operational reason **must** record exactly **one** reason code from the catalogue that belongs to that act. That code (and any Other note) is a **primary audited payload** on the act’s audit entry (audit-trail subject).
+- Free-text alone is **never** a valid reason. The only free text allowed is the optional **Other note** when the selected code is **Other**. The same selection rule applies to every catalogue this subject owns.
+- Catalogues are **amended only by product commitment** — by changing this subject when the product adds a catalogue, renames meaning, or retires a code. There is **no** venue catalogue editor and **no** Superadmin catalogue UI for operational reasons.
 - A recorded act keeps the **reason code chosen at the time**. When a code is later **retired**, it stays readable on history and in reports for past acts, and is **not selectable** for new acts.
 
 ### 3.2 Visibility
