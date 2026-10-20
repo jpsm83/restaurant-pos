@@ -27,7 +27,7 @@ It deliberately does **not** cover:
 - **account deletion windows, reactivation, and User profile fields** as identity mechanics — the users subject. This subject states privacy-notice accept, birth-date gates, marketing consent and DSAR controls on the User, and that deletion is the erasure path.
 - **employee / HR privacy, payroll packages, and staff DSAR** — employees, payroll, and access-and-permissions. Staff are also customers: the same User-level marketing consent and mute apply; there is no separate staff marketing consent in stage 1.
 - **cookie banners, non-essential analytics, and tracking SDKs** — out of stage-1 product scope.
-- **parental-authorisation flows, full child-account products, and country-by-country alcohol or age-assurance packs** — deferred (named for a later compliance subject). Stage 1 commits only the age floors in this document.
+- **parental-authorisation flows, full child-account products, and country-by-country alcohol or age-assurance packs** — deferred to a future **alcohol and age-assurance service compliance** subject. Stage 1 commits only the age floors in this document (and the self-channel gate order-flow enforces).
 - **exact legal text** of the privacy notice and terms — out of scope for the product set; the product commits that an accept step exists and that published notice covers necessary processing.
 - **visual design and exact UI copy** — out of scope for the product set.
 
@@ -89,7 +89,7 @@ Terms reused rather than redefined here: **User**, **Customer**, **Business**, *
 - **Marketing consent** may be granted only when birth date shows age at least the **digital-consent age** (**sixteen**). Stage 1 has **no parental-authorisation** product; under sixteen, marketing consent stays **off** and cannot be turned on.
 - On **self-channels**, a basket or pay-to-commit that includes any **Alcoholic drinks** tax-category line is **blocked** unless the payer's birth date shows age at least the **alcohol purchase age** (**eighteen**). Order-flow enforces the block at basket and pay; business-goods identify the tax category as the signal.
 - **Staff-recorded dine-in** sale of alcoholic items is **not** hard-blocked by this age gate in stage 1 — the venue remains responsible at the table.
-- Full ID-at-table, ID-at-delivery, and per-country alcohol packs are **deferred** and are not invented here.
+- Full ID-at-table, ID-at-delivery, and per-country alcohol packs are **deferred** to the future **alcohol and age-assurance service compliance** subject and are not invented here.
 
 ### 3.6 Guest data before identity
 
@@ -117,7 +117,7 @@ Terms reused rather than redefined here: **User**, **Customer**, **Business**, *
 ### 3.9 Language
 
 - Privacy, consent, and DSAR **product chrome and system copy** follow the person's **UI language preference** (English or Spanish). When unset, **browser language** seeds that preference (users subject).
-- **Business-authored** content — menu text, venue event copy, manager-written one-shot email bodies and staff chat — stays in the language the business entered. Privacy does not translate or dual-store it.
+- **Business-authored** content — menu text, venue event copy, manager-written one-shot email bodies and staff chat — stays in the language the business entered. Privacy does not translate it or keep it in more than one language. Multilingual **menu content** beyond that single authored language is **deferred** to a future **menu localisation** subject (business-goods states the same deferral).
 - Customer data export packages include data **as stored** — no translation pass.
 
 ### 3.10 Where customers manage privacy controls

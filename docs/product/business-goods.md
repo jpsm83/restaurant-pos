@@ -12,8 +12,9 @@ This subject covers the **sellable menu item**: what a venue offers for sale, ho
 - the **kinds of business good** — simple items, recipe-based items, and combos / set menus;
 - the **components** a good is built from — its ingredients and, for a combo, its members;
 - the good's **derived cost** and **derived allergens**;
+- **guest-facing allergen display** and **allergen menu filtering** (what is shown and what the filter hides);
 - the good's **selling price**;
-- the good's **on-menu state** and **availability state**;
+- the good's **on-menu state** and **availability state**, including the day-of **86 / sold-out** rules shared by POS and customer surfaces;
 - the good's **preparation time**;
 - the **add-on list**; and
 - the good's **deletion**.
@@ -23,13 +24,15 @@ It deliberately does **not** cover:
 - the **supplier good** — the purchasable item, its unit of stock, purchase unit, price math, budget impact, its own allergens, par level and minimum required, in-use state and deletion belong to the supplier-goods subject. A business good is built from supplier goods, but owns neither those goods nor their prices.
 - **stock on hand and counting** — the system count, physical counts, deviation, variance and monthly close belong to the inventories subject. This subject only *reads* the stock a component needs before a good can be sold; it never counts stock.
 - **buying and receiving** — the purchase record, its lines, and the inventory increment on receipt belong to the purchases subject.
-- **ordering, billing and fulfilment** — the order lifecycle, how an add-on is attached to an order at the till, and the service surfaces belong to the orders and order-flow subjects; billing and settlement belong to the payments-and-tax subject. This subject defines the sellable item those orders point at.
+- **ordering, billing and fulfilment** — the order lifecycle, how an add-on is attached to an order at the till, **guest allergen flags** on an order, and the service surfaces belong to the orders and order-flow subjects; billing and settlement belong to the payments-and-tax subject. This subject defines the sellable item those orders point at and how the menu filter behaves; order-flow places when staff or guests use the filter on a journey.
 - **promotions** — the discount rules and their scoping belong to the promotions subject. This subject owns the **menu subcategories** a promotion may target and the rule that a discount lands on the **main good**, never on an add-on.
 - the **business**, its **currency**, and its **tax rates** — the business and payments-and-tax subjects own them. A good prices in the single currency of its business and carries a **tax category**; the **rates** behind that category, and how tax is computed on a sale, belong to the payments-and-tax subject.
 - **targets, margins, and reports** — the business-metrics and business-reports subjects own them. This subject carries no margin, markup, or cost target.
-- **printers and kitchen routing** — the printers-and-screens subject owns routing a good's ticket by category.
+- **printers and kitchen routing** — the printers-and-screens subject owns routing a good's ticket by category and how allergen flags appear on prep tickets and screens.
 - **notifications** — the notifications subject owns alert delivery.
 - **age floors and marketing consent** — the privacy, consent, and DSAR subject. This subject only supplies the **Alcoholic drinks** tax category as the catalogue signal those rules use.
+- **full alcohol / age-assurance service compliance** (ID-at-table, ID-at-delivery, per-country packs) — deferred to a future **alcohol and age-assurance service compliance** subject; stage 1 keeps only the privacy age floors and this subject's tax-category signal.
+- **menu content languages** beyond the product UI languages (English and Spanish) — deferred to a future **menu localisation** subject. Stage 1 keeps a single authored language per name, description, and other business-authored menu text; Project Imperium does not keep or serve menu text in more than one language, and does not translate it.
 
 ---
 
@@ -56,7 +59,8 @@ A good is exactly **one** of these kinds, determined by its components — never
 - **Selling price** — what the venue charges for the good, set freely by the venue in the **business currency**. It is **tax-inclusive**: it already contains the good's tax, which the payments-and-tax subject draws out.
 - **Tax category** — the category a good is taxed under, chosen from the **goods tax categories** the payments-and-tax subject owns (Food, Non-alcoholic drinks, Alcoholic drinks, Merchandise, Tobacco — never **Tip**, which rates tips alone). Every good maps to exactly one. Gift-card funding is not a business good. The **Alcoholic drinks** category is also the **signal** for the self-channel alcohol age gate owned by the privacy, consent, and DSAR subject and enforced on self-service journeys by the order-flow subject.
 - **On menu** — the good is part of the venue's sellable menu.
-- **Availability state** — whether the good can be ordered right now: **Available**, **Sold out**, or **Manually unavailable**.
+- **Availability state** — whether the good can be ordered right now: **Available**, **Sold out**, or **Manually unavailable**. The same three states and labels apply on POS and on every customer catalogue surface.
+- **Allergen menu filter** — a selection of one or more allergens from the **canonical allergen set**. While active, the menu (including the add-on list offered on an order) **hides** goods whose **derived allergens** intersect that selection. The filter does not change what a good contains; it only narrows what may be chosen.
 - **Preparation time** — the minutes the kitchen or bar needs to prepare the good.
 - **Main category** — the good's place on the menu, chosen from the platform's sellable categories: **Food**, **Beverage**, **Set Menu**, **Merchandise**, and **Other**.
 - **Subcategory** — a node in the venue's **subcategory tree** beneath a main category. The platform seeds a **default tree** for each main category and the venue may add its own nodes at any depth; a good belongs to exactly one subcategory, and a subcategory covers everything at or beneath it.
@@ -105,28 +109,43 @@ A business keeps its own menu of business goods.
 
 ### 3.5 Allergens
 
-- A good's **allergens are derived** from its components, drawn from the platform's **canonical allergen set** (Gluten, Crustaceans, Eggs, Fish, Peanuts, Soybeans, Milk, Nuts, Celery, Mustard, Sesame, Sulphur dioxide, Lupin, and Molluscs):
+- A good's **allergens are derived** from its components, drawn from the platform's **canonical allergen set** — the EU Annex II fourteen (Gluten, Crustaceans, Eggs, Fish, Peanuts, Soybeans, Milk, Nuts, Celery, Mustard, Sesame, Sulphur dioxide, Lupin, and Molluscs):
   - a **simple item** presents its supplier good's allergens;
   - a **recipe-based item** presents the union of its ingredients' allergens;
   - a **combo** presents the union of its members' allergens, rolled up through them.
 - The venue **never enters or edits** allergens on the business good; they are **live**, following the supplier goods they originate from. Each supplier good owns its own declaration; this subject only presents the union.
+- Stage 1 models **declared contains** only. There is **no** “may contain”, precautionary labelling, cross-contamination guarantee, or allergen outside the canonical set.
+
+#### Guest-facing display
+
+- Every **guest-facing catalogue surface** — browse, item detail, and basket or checkout lines on self-channels — shows the good's **derived allergens** as a plain list from that set.
+- A good with **no** derived allergens shows an explicit **none / no declared allergens** state. Silence is not allowed.
+- Guests may use an **allergen menu filter** on those surfaces: selecting allergens hides goods (and, when choosing add-ons, matching add-ons) whose derived allergens intersect the selection. Clearing the filter restores the full on-menu view under ordinary availability rules.
+- What a dish contains remains this subject's concern; how a journey stamps **guest allergen flags** on an order when a filter is active belongs to the orders and order-flow subjects.
+
+#### Staff menu filter
+
+- On the staff POS, the same **allergen menu filter** is available as a tool (the journey places an **Allergen** control — order-flow). While staff have allergens selected, the POS menu **and the add-ons offered on an order** hide goods whose derived allergens intersect that selection — automatically, with no separate add-on configuration.
+- With **no** allergens selected, the menu behaves normally (subject only to on-menu and availability).
+- The filter never invents allergens on a good; it only hides goods that already declare them.
 
 ### 3.6 On menu
 
 - **On menu** is the venue's decision that a good is part of its sellable menu at all.
-- An **off-menu** good is hidden from customers and cannot be ordered, but it is kept, priced, and composed — the venue can bring it back later.
+- An **off-menu** good is **hidden** from customers and from ordinary staff ordering, and cannot be ordered, but it is kept, priced, and composed — the venue can bring it back later.
 - On-menu is independent of availability: a good may be on the menu but not orderable right now.
 
 ### 3.7 Availability
 
-Every good carries an availability state of **Available**, **Sold out**, or **Manually unavailable**.
+Every good carries an availability state of **Available**, **Sold out**, or **Manually unavailable**. The same states and labels appear on **POS and every customer catalogue surface** — one rule for the venue.
 
 - **Available** — the good can be ordered.
 - **Sold out** — set **automatically by Project Imperium** when any component is not satisfied: an ingredient's supplier good is deleted or has **insufficient stock on hand** for the quantity needed, or a member exists but is itself sold out or manually unavailable. This state is **live**: it clears the moment stock or the member recovers.
-- **Manually unavailable** — set by a manager or an employee holding the capability, to take a dish off sale by hand ("86 the burger") even when Project Imperium would consider it available. It sticks until a human clears it **or** until the **start of the next work day**, when it is cleared automatically.
+- **Manually unavailable** — set by a manager or an employee holding the capability, to take a dish off sale by hand ("86 the burger") even when Project Imperium would consider it available. It sticks until a human clears it **or** until the **start of the next work day** (the business-local calendar day in the venue's timezone — the same **work day** notion the sales-reports subject uses), when it is cleared automatically.
 - A manager — or an employee holding the capability — may bring a manually unavailable good back **only when its components allow it**; if stock or a member still blocks the good, it stays **Sold out** rather than becoming available.
 - A simple or recipe-based item with all ingredients stocked, and a combo with all members available, is **Available**.
-- Availability governs **ordering**, not visibility alone: a sold-out or manually unavailable good that is on the menu is shown but cannot be ordered.
+- An on-menu good that is **Sold out** or **Manually unavailable** remains **visible** on POS and customer surfaces, **labelled** with that state, and **cannot be ordered**. Only **off-menu** goods are hidden.
+- Order-flow blocks send or pay when a draft or basket line's good is no longer orderable (stale line after a live flip). Live push of availability belongs to the realtime-and-concurrency subject.
 
 ### 3.8 Add-ons
 
@@ -174,9 +193,9 @@ Business goods are menu configuration. Customers see only what is published and 
 
 | Layer | Business-good powers |
 | --- | --- |
-| **Customer** | Sees only goods that are **on the menu and available**, with public details only (name, images, description, category, selling price, allergens, preparation time). Never sees off-menu or unavailable goods, and never cost. |
-| **Employee** | Sees the **available** part of the menu; may mark a good **manually unavailable** and clear the mark if granted the capability, subject to the component rule. Never sees cost. |
-| **Supervisor** | Same as employee for menu view and 86 (capability required for manual unavailability unless granted). Never sees cost; does not author the menu. |
+| **Customer** | Sees **on-menu** goods with public details (name, images, description, category, selling price, **derived allergens**, preparation time, and **availability state**). Sees sold-out and manually unavailable on-menu goods labelled and not orderable. Never sees off-menu goods, and never cost. May use the **allergen menu filter**. |
+| **Employee** | Sees the on-menu catalogue with availability states; may use the **allergen menu filter** on the POS; may mark a good **manually unavailable** and clear the mark if granted the capability, subject to the component rule. Never sees cost. |
+| **Supervisor** | Same as employee for menu view, filter, and 86 (capability required for manual unavailability unless granted). Never sees cost; does not author the menu. |
 | **Manager** | Creates, edits, prices, and deletes goods; composes recipes and combos; sets categories, images, keyword, description, and preparation time; flags add-ons; marks goods on or off menu; and manages availability. Sees cost. |
 | **Admin/owner** | Everything a manager can do, plus full venue control. |
 | **Superadmin** | None. The platform operator never manages a venue's menu. |
@@ -192,7 +211,8 @@ Business goods are menu configuration. Customers see only what is published and 
 | Flag a good as an add-on | Managers and above |
 | Mark a good manually unavailable, and clear the mark | Managers and above; employees or supervisors holding the capability |
 | View cost and derived values | Managers and above |
-| View the available menu | Employees, supervisors, and customers for on-menu available goods |
+| View the on-menu catalogue (including labelled unavailable goods) | Employees, supervisors, and customers |
+| Use the allergen menu filter | Customers on guest surfaces; staff on the staff tab |
 | View another venue's menu | No one — menus are private to their business |
 
-Menu authoring sits with the managers who run the kitchen and the menu; the frontline 86 switch sits with the staff on the floor, bounded by what the components actually allow.
+Menu authoring sits with the managers who run the kitchen and the menu; the frontline 86 switch and allergen filter sit with the staff on the floor, bounded by what the components and declarations actually allow.

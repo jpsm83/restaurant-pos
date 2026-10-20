@@ -88,6 +88,7 @@ After one or more **partial payments**, a reprinted or re-shown bill also carrie
 Every **meal** customer receipt carries at least:
 
 - everything a bill carries for that instance at close (lines, discounts, identification codes, venue identity, sales-point context);
+- each line's **derived allergens** (or the explicit none state) from the business-goods subject — so allergen information is available again at **handover or delivery** for self-channel sittings (distance-selling: before purchase on catalogue and basket, and again at fulfilment handoff);
 - **every payment** that closed the sitting (method, amount, tip);
 - **gift-card tender** when used — amount applied and enough card identity to reconcile with the gift-cards subject (without exposing secrets beyond what that subject already shows a holder);
 - **tax breakdown** on amounts **actually paid**;

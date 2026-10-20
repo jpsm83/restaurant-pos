@@ -14,12 +14,15 @@ This subject owns the **service journey**: the sequencing of a sitting from open
 - when a sitting may **bill**, **settle**, and **close** relative to fulfilment; and
 - how **self-service** commits (pay first) versus how a **staff tab** runs open service; and
 - that each self-service **ordering session** owns its own basket so concurrent customers never mix orders; and
-- enforcing the **self-channel alcohol age gate** at basket and pay (rule owned by the privacy, consent, and DSAR subject).
+- enforcing the **self-channel alcohol age gate** at basket and pay (rule owned by the privacy, consent, and DSAR subject); and
+- the **allergen filter journey** on staff tabs and self-channels (when the filter is used, when orders are auto-flagged, and the self-channel pre-pay confirmation); and
+- blocking **send** or **pay** when a line's good is no longer orderable under day-of availability.
 
 It deliberately does **not** cover:
 
 - the **sales point and sales instance** model — types, channels a point accepts, the one-open rule, instance statuses, responsible employee, reserved hold, and handover verification of an identification code belong to the sales-points-and-instances subject. This subject sequences the journey those anchors support.
-- the **order and batch** model — composition, drafting and sending, pricing, promotions, void, invitation, cancellation, transfer, held batches, don't-make, and fulfilment statuses belong to the orders subject. This subject places those acts in the journey.
+- the **order and batch** model — composition, drafting and sending, **guest allergen flags** on an order, pricing, promotions, void, invitation, cancellation, transfer, held batches, don't-make, and fulfilment statuses belong to the orders subject. This subject places those acts in the journey.
+- **derived allergens, guest-facing allergen display, and allergen menu filter behaviour** — the business-goods subject. This subject places when staff and guests use the filter and when the pre-pay confirmation runs.
 - **settlement mechanics** — payment methods, providers, splits, partial payments, tips, over-tender, refunds, and tax belong to the payments-and-tax subject. This subject owns when the journey reaches settlement and that the instance closes only when the outstanding balance is covered or surpassed.
 - **customer bill and receipt documents** — content, numbering, and reprint/replacement identity belong to the **receipts-and-bills** subject. This subject places first Bill request and settlement close in the journey those documents attach to.
 - **printers and screens** — routing, prep screens, the delivery screen, and the customer pickup board belong to the printers-and-screens subject. This subject names when fulfilment and handoff happen in the journey.
@@ -28,7 +31,7 @@ It deliberately does **not** cover:
 - **inventory, notifications, emails, and reports** — their subjects own those effects; this subject only places the moments that trigger them.
 - **live push, reconnect, and conflict outcomes** (stale actions, double-send, double-pay) — the realtime-and-concurrency subject. This subject states the journey rule that baskets are session-scoped.
 - **marketing consent, customer data export, privacy notice, and age-floor policy** — the privacy, consent, and DSAR subject. This subject only enforces the self-channel alcohol checkout block those rules require.
-- **full country alcohol / ID-at-delivery compliance packs** — deferred; not invented here.
+- **full country alcohol / ID-at-table / ID-at-delivery / age-assurance packs** — deferred to a future **alcohol and age-assurance service compliance** subject; not invented here. Stage 1 keeps only the privacy age floors and the self-channel gate this subject enforces.
 
 ---
 
@@ -48,8 +51,9 @@ This subject introduces **no new persistent entity**. It sequences existing ones
 - **Pay-to-commit** — the self-service rule that a basket creates no sales instance and reaches the kitchen only after the customer pays in full.
 - **Guest basket** — a customer ordering basket built **without** a signed-in User. Discovery and basket assembly are allowed unsigned; **sign-in or sign-up is required when payment is requested**, and the basket is preserved across that step.
 - **Venue handoff (delivery)** — the moment venue staff mark a delivery order **Delivered** when it is handed to the courier; that completes Project Imperium's delivery journey. The courier may track last-mile in their own tools.
+- **Allergen pre-pay confirmation** — the required self-channel step immediately before payment in which the guest affirms they have reviewed allergen information for the basket and choose to proceed. It is a **double-check**, not a second allergen declaration and not a restamp of basket lines.
 
-Terms reused rather than redefined here: **Business**, **Sales point**, **Sales instance**, **Staff tab**, **Channel**, **Order**, **Batch**, **Identification code**, **Fulfilment slice**, **Fulfilment status**, **Held batch**, **Bill**, **Payment**, **Outstanding balance**, **Reservation**, **on duty**, **ordering session**, **stale action**, **Alcoholic drinks** tax category, **alcohol purchase age**, and **soft delete**.
+Terms reused rather than redefined here: **Business**, **Sales point**, **Sales instance**, **Staff tab**, **Channel**, **Order**, **Batch**, **Identification code**, **Fulfilment slice**, **Fulfilment status**, **Held batch**, **Bill**, **Payment**, **Outstanding balance**, **Reservation**, **on duty**, **ordering session**, **stale action**, **Alcoholic drinks** tax category, **alcohol purchase age**, **allergen menu filter**, **guest allergen flags**, **availability state**, and **soft delete**.
 
 ---
 
@@ -73,52 +77,68 @@ Terms reused rather than redefined here: **Business**, **Sales point**, **Sales 
 - On **Delivery**, every order is **to-go** — there is no stay choice.
 - Prep tickets and screens show stay vs to-go so stations **pack accordingly**.
 
-### 3.3 Dine-in — staff POS
+### 3.3 Allergen filter journey
+
+Guest allergen handling starts with the **allergen menu filter** (business-goods). Structured flags on orders follow the orders subject.
+
+- If the guest reports **no** allergen concern, staff or the guest leave the filter empty and ordering proceeds normally — no guest allergen flags on new lines.
+- If the guest reports allergens, the filter is set **first** (staff via the POS **Allergen** control; guests via the self-channel filter). Matching goods and add-ons are hidden; every **new** order added while the filter is active is **auto-flagged** with that selection (orders subject). There is no separate “flag after the order is placed” step.
+- Staff clear or change the filter between guests at a mixed table so later lines follow the new state. One batch may carry flagged and unflagged orders together.
+- On **self-channels**, immediately before payment, the guest must complete the **allergen pre-pay confirmation** — a double-check that they have reviewed allergen information for the basket and choose to proceed. That step does **not** declare a new allergen set, does **not** restamp basket lines, and does **not** hard-block pay when the guest ordered something unsafe without using the filter; proceeding after confirmation is the guest's responsibility.
+- Distance-selling (self-channels) keeps derived allergens visible on catalogue and basket lines **before purchase**; allergen information for sold goods is available again at **handover / delivery** on the customer documents the receipts-and-bills subject requires.
+
+### 3.4 Day-of availability in the journey
+
+- Catalogue surfaces show **Sold out** and **Manually unavailable** on-menu goods labelled and not orderable (business-goods).
+- **Sending** a staff batch, or **paying** a self-service basket, is **blocked** for any line whose good is no longer orderable. The surface must refresh to current availability (realtime-and-concurrency) before the act can succeed.
+
+### 3.5 Dine-in — staff POS
 
 - An **on-duty employee** opens a **staff tab** on a served point from the POS (floor map on a wide viewport, or list/grid when narrow — the floor-plans subject) or by scanning the point's QR, as the sales-points-and-instances subject defines (including reservation guests vs ordinary guests when a reserved hold is present).
 - Staff **build drafts**, **send batches** (ready-to-make or held), and may send **many batches** over the sitting. Multi-course timing uses **held / release** and further sends alone.
-- Prep areas advance fulfilment; runners deliver stay items to the point and pack to-go items for handover at the table or counter as the sitting requires.
+- Staff use the **Allergen** control when a guest reports allergens (§3.3) before adding that guest's lines; with nothing selected, the tab flows normally.
+- Prep areas advance fulfilment; runners deliver stay items to the point and pack to-go items for handover at the table or counter as the sitting requires. Flagged order lines show clearly on prep tickets and screens (printers-and-screens).
 - Staff may move the tab to **Bill** and **settle** even while some fulfilment slices are still in progress. Closing does not require every slice to be Delivered.
 - While the tab is in **Bill**, staff may still **add and send** further orders; the bill updates.
 - The tab **closes only when the outstanding balance is covered or surpassed** (payments-and-tax). Unpaid open orders are not walked out; voids, invitations, and cancellations (orders subject) are how lines leave the charge. An instance opened and closed with **no orders** is discarded. First Bill request and the closing receipt are issued per the receipts-and-bills subject.
 - Tips, splits, and payment methods are taken at settlement as the payments-and-tax subject defines.
-- While the staff tab is open, **Self-ordering cannot open** on that point. When the tab **closes** (or an empty tab is discarded), self-ordering may open again if the business and point allow it and no **reserved hold** remains (§3.4).
+- While the staff tab is open, **Self-ordering cannot open** on that point. When the tab **closes** (or an empty tab is discarded), self-ordering may open again if the business and point allow it and no **reserved hold** remains (§3.6).
 - Staff may record **Alcoholic drinks** tax-category lines on a staff tab without Project Imperium applying the self-channel alcohol age gate; venue responsibility at the table remains. The privacy, consent, and DSAR subject owns that distinction.
 
-### 3.4 QR self-ordering
+### 3.6 QR self-ordering
 
 - Table self-ordering opens only when **all** of these hold: the **business** has self-ordering enabled, the **sales point** accepts the **Self-ordering** channel, **no staff tab** is open on that point, and the point has **no reserved hold** (manual or reservation-assigned).
-- The customer scans the point's QR and starts an **ordering session** with its own **basket** (no sales instance yet). Many customers may scan the same point QR at once; each session’s basket is **isolated** — baskets never merge because they share a table. When they proceed to **pay**, Project Imperium requires **sign-in or sign-up** if they are not already signed in, **preserves that session’s basket**, then takes payment in full. Only after successful payment does Project Imperium create **that session’s** instance and batches and release work to the kitchen (**pay-to-commit**), each with its own **identification code**.
+- The customer scans the point's QR and starts an **ordering session** with its own **basket** (no sales instance yet). Many customers may scan the same point QR at once; each session’s basket is **isolated** — baskets never merge because they share a table. The guest may use the **allergen menu filter** while browsing (§3.3). When they proceed to **pay**, Project Imperium requires **sign-in or sign-up** if they are not already signed in, **preserves that session’s basket**, runs the **allergen pre-pay confirmation**, then takes payment in full. Only after successful payment does Project Imperium create **that session’s** instance and batches and release work to the kitchen (**pay-to-commit**), each with its own **identification code**.
 - A self-ordering basket or pay-to-commit that includes any **Alcoholic drinks** tax-category line is **blocked** unless the payer User's birth date shows age at least the **alcohol purchase age** (eighteen) — privacy, consent, and DSAR subject. Birth date must be present for that check.
 - Fulfilment **delivers stay items to that QR point**. To-go lines on the same sitting are packed to go.
 - The customer receives the **identification code** (notification and email); staff **verify the code at handover** before releasing items, as the sales-points-and-instances subject defines.
 - Billing **closes on full settlement** at pay-to-commit; fulfilment continues until handover. After that close, another order at the same point is a **new** ordering session, basket, and instance — a closed self-service sitting is never reopened to add lines.
 - **Managers and above** may void, invite, or cancel lines on a paid self-service sitting; refunds follow the payments-and-tax subject. Ordinary employees fulfil and verify handover; they do not rewrite a paid self-service ticket.
 
-### 3.5 Kiosk
+### 3.7 Kiosk
 
-- A **Kiosk** point is a self-service terminal on the same customer app. The journey is pay-to-commit, like QR self-ordering, including **guest basket until identity at payment**. Each terminal use is one **ordering session** with its own basket and, on pay, its own instance and identification code.
-- The same **self-channel alcohol age gate** as QR self-ordering applies at basket and pay (§3.4).
+- A **Kiosk** point is a self-service terminal on the same customer app. The journey is pay-to-commit, like QR self-ordering, including **guest basket until identity at payment**, the **allergen menu filter**, and the **allergen pre-pay confirmation**. Each terminal use is one **ordering session** with its own basket and, on pay, its own instance and identification code.
+- The same **self-channel alcohol age gate** as QR self-ordering applies at basket and pay (§3.6).
 - Fulfilment is **counter pickup**, not delivery to a table. Packaging defaults to **to-go**; the customer may override per order.
 - The kiosk **prints a handover ticket** with the identification code; staff verify the code at the counter. The customer pickup board shows progress as the printers-and-screens subject defines.
 - Billing closes on full settlement at pay-to-commit; fulfilment continues until counter handover. A later order is a new instance.
 
-### 3.6 Delivery
+### 3.8 Delivery
 
-- When delivery is enabled, orders attach to the venue's **virtual Delivery point**. Many customers order at once; each starts an **ordering session** with its own basket. The customer may build a basket without signing in, must meet the venue's delivery rules (radius, minimum, windows), and at **payment** must **sign in or sign up** if needed (basket preserved), then **pays in full**; only then does that session’s instance and kitchen work exist. Baskets never merge across sessions on the Delivery point.
-- The same **self-channel alcohol age gate** as QR self-ordering applies at basket and pay (§3.4).
+- When delivery is enabled, orders attach to the venue's **virtual Delivery point**. Many customers order at once; each starts an **ordering session** with its own basket. The customer may build a basket without signing in (with the **allergen menu filter** available), must meet the venue's delivery rules (radius, minimum, windows), and at **payment** must **sign in or sign up** if needed (basket preserved), complete the **allergen pre-pay confirmation**, then **pays in full**; only then does that session’s instance and kitchen work exist. Baskets never merge across sessions on the Delivery point.
+- The same **self-channel alcohol age gate** as QR self-ordering applies at basket and pay (§3.6).
 - Every delivery order is **to-go**. Prep runs as usual; when slices are **Ready**, venue staff use the **delivery screen** to run the handoff.
 - A **runner** (or any staff allowed on the delivery screen) hands the order to the **third-party courier** and marks it **Delivered**. That completes Project Imperium's delivery journey. The courier may manage last-mile in their own app; a courier **never** signs into Project Imperium or operates the delivery screen.
-- Billing closes on full settlement at pay-to-commit; fulfilment continues after payment until venue handoff.
+- Billing closes on full settlement at pay-to-commit; fulfilment continues after payment until venue handoff. Allergen information for sold goods is available again on the customer receipt at that handover (receipts-and-bills).
 
-### 3.7 Billing, settlement, and close
+### 3.9 Billing, settlement, and close
 
 - **Staff tabs** enter **Bill** when an employee on the tab requests the check; self-service sittings never use that status because they pay to commit.
 - Settlement — whole or in parts, with optional tips and over-tender — belongs to the payments-and-tax subject. This subject requires that **every surface closes only when the outstanding balance is covered or surpassed**.
 - A **self-service** instance is created only at successful pay-to-commit, so it never carries a partial balance.
 - When a reservation left a **shared deposit credit**, it is applied at bill time as the reservations subject defines; order-flow only places that moment in the staff-tab journey.
 
-### 3.8 Reservation seating into the journey
+### 3.10 Reservation seating into the journey
 
 - Seating a reservation opens one or more **staff tabs** linked to the booking. From that open onward, each tab walks the dine-in journey in this subject. Completing the reservation when every linked tab closes belongs to the reservations subject.
 
@@ -130,8 +150,8 @@ Terms reused rather than redefined here: **Business**, **Sales point**, **Sales 
 
 | Layer | Powers here |
 | --- | --- |
-| **Customer** | Walks self-ordering, kiosk, and delivery journeys; sets packaging on self-service orders; pays to commit; never opens or manages a staff tab. |
-| **Employee** | Runs dine-in journeys while on duty: open, build and send, request bill, settle and close; sets packaging on staff tabs; runs fulfilment and venue handoff under the job roles below; verifies identification codes at handover. |
+| **Customer** | Walks self-ordering, kiosk, and delivery journeys; uses the allergen menu filter; completes allergen pre-pay confirmation; sets packaging on self-service orders; pays to commit; never opens or manages a staff tab. |
+| **Employee** | Runs dine-in journeys while on duty: open, build and send, request bill, settle and close; uses the POS **Allergen** control; sets packaging on staff tabs; runs fulfilment and venue handoff under the job roles below; verifies identification codes at handover. |
 | **Supervisor** | Same floor journeys as employee, plus Host seating when using Host; may operate Service control screens by layer default. Does not void/invite/cancel sent or paid lines. |
 | **Manager** | Everything an employee can do, plus correcting paid self-service lines (void, invite, cancel) and the sent-order powers the orders subject grants. |
 | **Admin/owner** | Full venue control over the journeys, including configuration owned by the business and sales-points subjects that gate the surfaces. |
@@ -152,8 +172,9 @@ Terms reused rather than redefined here: **Business**, **Sales point**, **Sales 
 | Activity | Who |
 | --- | --- |
 | Open and run a staff tab through bill, settle, and close | On-duty floor service roles on the tab (Waiter, Floor Staff, Bartender, Barista, Cashier, and managers and above) |
+| Use the POS Allergen control (allergen menu filter) on a staff tab | Staff on the tab |
 | Set sitting packaging default and per-order stay/to-go on a staff tab | Staff on the tab |
-| Build a self-service basket, set packaging, and pay to commit | The ordering customer |
+| Build a self-service basket, use the allergen filter, complete allergen pre-pay confirmation, set packaging, and pay to commit | The ordering customer |
 | Enable self-ordering for the business | Managers and above (business subject) |
 | Accept Self-ordering on a sales point | Managers and above (sales-points-and-instances subject) |
 | Verify identification code at handover | Staff fulfilling the order |

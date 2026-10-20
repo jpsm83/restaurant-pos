@@ -202,7 +202,7 @@ There is no separate product mode for administration; Manage and Service are men
 
 - Business goods are what the venue **sells**: **simple items**, **recipe/ingredient-based items**, and **set menus / combos**.
 - Configuration includes name, keyword, main/sub category, **tax category**, **on-menu state** and **availability state**, selling price, images, description, **preparation time**, and optional **add-ons** (shared across the menu).
-- Project Imperium derives **cost** and **allergens** from the supplier goods a good is built from — simple items, recipe-based items, and combos — **live** as prices and stock change; the venue sets the **selling price** freely.
+- Project Imperium derives **cost** and **allergens** from the supplier goods a good is built from — simple items, recipe-based items, and combos — **live** as prices and stock change; the venue sets the **selling price** freely. Guests and staff see derived allergens on the catalogue, may **filter** the menu by allergen, and staff or self-channel filter-at-add stamps **guest allergen flags** on orders for kitchen and bar (business-goods, orders, and order-flow). Day-of **sold out** and **86** (manually unavailable) share one labelled availability model on POS and customer surfaces.
 
 ### Supply and purchasing
 
@@ -333,7 +333,7 @@ Project Imperium is **live by design**: every entitled open screen in the Custom
 - **Staff on personal or venue devices.** Every staff actor signs in with their own email and password on a personal or venue-provided browser device. Each browser session is **one User only**. One User may hold several concurrent peer sessions across devices. Shared staff login, staff PIN, quick-switch, and in-app lock-screen identity are **out of scope** (staff-sessions subject).
 - **Venue output and guest hardware.** The venue chooses its printers, optional prep/customer screens, and customer kiosk terminals. Project Imperium sells none of them. Those surfaces do not replace each staff actor’s own signed-in session.
 - **Online-only.** Connectivity is required; there is no offline mode.
-- **Language and currency.** The UI ships in **English and Spanish** (more languages later); each business selects **one currency** at onboarding.
+- **Language and currency.** The UI ships in **English and Spanish** (more UI languages later); each business selects **one currency** at onboarding. **Menu content languages** beyond a single authored language per field are **deferred** to a future **menu localisation** subject — stage 1 does not keep or serve business-authored menu text in more than one language, and does not translate it.
 
 ---
 
@@ -346,5 +346,7 @@ Project Imperium is **live by design**: every entitled open screen in the Custom
 - **Not offline.** There is no offline mode; the product is online-only.
 - **Not a multi-vendor marketplace.** Customers order from a specific venue; delivery is per-venue, not a marketplace spanning venues.
 - **Not self-hosted.** There is no on-premise or self-managed deployment; Project Imperium is cloud SaaS.
+- **Not a full alcohol-compliance pack in stage 1.** Self-channel age floors exist (privacy and order-flow); ID-at-table, ID-at-delivery, and per-country age-assurance packs are deferred to a future **alcohol and age-assurance service compliance** subject.
+- **Not multilingual menu content in stage 1.** UI English/Spanish only for chrome; dual-language menu fields wait on a future **menu localisation** subject.
 
 (Direct payment processing and delivery **are** in scope — Imperium-processed payments via **Stripe Connect** in stage 1; last-mile delivery via third-party couriers.)

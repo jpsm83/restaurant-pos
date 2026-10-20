@@ -10,6 +10,7 @@ This subject owns the **order** — the billable line a venue sells — and the 
 
 - the **order** and its composition: one **main good** plus its **add-ons**;
 - **add-ons** on an order — several, and repeats of the same one;
+- **guest allergen flags** on an order — the structured allergen set stamped when an allergen menu filter is active at add time;
 - the **batch** — the group of orders sent to the kitchen/bar together — and its **identification code**;
 - **drafting and sending** — the freely editable draft, the send that commits a batch, and the immutability that follows;
 - **attribution** — who created an order and who sent a batch, and in what capacity;
@@ -27,7 +28,7 @@ It deliberately does **not** cover:
 - **customer bill and receipt documents** — required content, bill and receipt numbers, reprint and replacement identity belong to the **receipts-and-bills** subject. This subject owns the bill as aggregation and the batch **identification codes** that may appear on those documents.
 - **promotion rules** — the types, scoping, and availability of a promotion belong to the promotions subject. This subject owns how a promotion is applied to an order and the manual discount that may replace it.
 - the **operational reason catalogues** for void, invitation, and manual discount — closed platform lists, Other-note rule, maintenance, visibility, and reporting-by-reason expectations belong to the **operational reasons** subject. This subject requires a code from those catalogues when the act happens.
-- **business goods** — composition, selling price, derived cost, preparation time, categories, and allergens belong to the business-goods subject. This subject reads them when it prices and costs an order; the display and filtering of allergens across the menu belong to that subject too.
+- **business goods** — composition, selling price, derived cost, preparation time, categories, derived allergens, guest-facing allergen display, and the **allergen menu filter** behaviour belong to the business-goods subject. This subject reads goods when it prices and costs an order and stamps **guest allergen flags** from the active filter at add time; order-flow places when the filter is used on each surface.
 - **the inventory ledger** — the stock an order moves belongs to the inventories subject; this subject only states when an order moves it.
 - **printing and screens** — printer routing and the kitchen, bar, delivery, and pickup surfaces belong to the printers-and-screens subject; this subject owns the fulfilment statuses those surfaces display and advance.
 - **notifications, emails, and reports** — their subjects own delivery and reporting; this subject only names the events.
@@ -39,8 +40,8 @@ It deliberately does **not** cover:
 
 ### Entities
 
-- **Order** — one **billable line**: a single **main good** plus its **add-ons**. It belongs to exactly one **Business**, exactly one **sales instance**, and — once sent — exactly one **batch**. It records who created it and in what capacity, the price and cost it was sold at, the promotion or manual discount it carries, an optional comment, and its **billing state**.
-- **Batch** — a group of orders **sent to the kitchen/bar together**. It carries one **identification code** shared by all its orders, the attribution of the person who sent it, and one **fulfilment slice** per prep area that received lines. It is the unit that was sent together; preparation and delivery may complete **per slice** on independent timelines.
+- **Order** — one **billable line**: a single **main good** plus its **add-ons**. It belongs to exactly one **Business**, exactly one **sales instance**, and — once sent — exactly one **batch**. It records who created it and in what capacity, the price and cost it was sold at, the promotion or manual discount it carries, an optional comment, optional **guest allergen flags**, and its **billing state**.
+- **Batch** — a group of orders **sent to the kitchen/bar together**. It carries one **identification code** shared by all its orders, the attribution of the person who sent it, and one **fulfilment slice** per prep area that received lines. It is the unit that was sent together; preparation and delivery may complete **per slice** on independent timelines. A batch may mix orders **with** and **without** guest allergen flags; the flag lives on the order, not on the batch.
 
 ### Terms this subject introduces
 
@@ -53,7 +54,8 @@ It deliberately does **not** cover:
 - **Fulfilment status** (also called **kitchen status** in service talk) — a slice's preparation state: **Sent**, **Preparing**, **Ready**, or **Delivered**.
 - **Held batch** / **released** — a batch sent **held** waits at the end of each affected prep area's tickets until an employee on the tab **releases** it, when it joins the end of that area's ready-to-make queue.
 - **Don't make** — a per-**order** instruction that the kitchen should **not** prepare it; the order is treated as done.
-- **Order comment** — the optional free-text note an order carries for the kitchen: a preparation request, or an allergy a customer raised.
+- **Order comment** — the optional free-text note an order carries for the kitchen (for example a preparation request). It is **not** the structured allergy path; declared guest allergens travel as **guest allergen flags**.
+- **Guest allergen flags** — the optional set of allergens from the platform's **canonical allergen set** stored on an **order** when that order was added while an **allergen menu filter** was active. Empty means the order carries no allergen flag. Kitchen and bar surfaces read these flags (printers-and-screens).
 - **Billing state** — an order's billable standing: **Open**, **Paid**, **Void**, or **Invitation**.
 - **Void** — an order kept on the bill but flagged, **not charged**, and retained in reporting.
 - **Invitation** (complimentary) — an order kept on the bill but flagged, **not charged**, and retained in reporting.
@@ -62,7 +64,7 @@ It deliberately does **not** cover:
 - **Deadline** — the kitchen's visual target time for a batch, drawn from its orders' preparation times; it is for display only.
 - **Bill** — the aggregation of a sales instance's batches as presented for settlement. An order is a bill's building block.
 
-Terms reused rather than redefined here: **Business**, **Sales instance**, **Sales point**, **Business good**, **Promotion**, **Employee**, **Customer**, **on duty**, **business currency**, **soft delete**, and **operational reason** (reason code and optional Other note from the operational reasons subject).
+Terms reused rather than redefined here: **Business**, **Sales instance**, **Sales point**, **Business good**, **Promotion**, **Employee**, **Customer**, **on duty**, **business currency**, **soft delete**, **allergen menu filter**, **canonical allergen set** (business-goods), and **operational reason** (reason code and optional Other note from the operational reasons subject).
 
 ---
 
@@ -73,8 +75,14 @@ Terms reused rather than redefined here: **Business**, **Sales instance**, **Sal
 - An order is one **main good** plus any number of **add-ons**. Quantity of the main good is expressed as **separate orders** — three cokes are three orders.
 - An order belongs to exactly one business, exactly one sales instance, and, once sent, exactly one batch.
 - An order records its **creator and the creator's capacity** — an employee working the tab, or the customer for self-ordering, kiosk, or delivery.
-- An order may carry an **optional comment** for the kitchen. A customer's allergy concern travels as a comment, not as a recorded allergen list; what a dish contains is the menu's concern.
+- An order may carry an **optional comment** for the kitchen. Structured guest allergen concern travels as **guest allergen flags**, not as the comment. What a dish contains remains the business-goods subject's concern.
 - An order carries a **billing state**: **Open** while it is live, then **Paid**, **Void**, or **Invitation** (§3.7).
+- When an order is **added** while an **allergen menu filter** is active (staff POS or self-channel — order-flow), Project Imperium **automatically** stamps that order with **guest allergen flags** equal to the filter's current selection.
+- When **no** filter allergens are selected, new orders carry **no** guest allergen flags and the sitting flows normally.
+- Flags attach to the **order**, not the batch or the whole sales instance. A mixed table may send one batch with, for example, two unflagged burgers and one burger flagged for Milk — kitchen and bar see the flag only on the flagged line.
+- Guest allergen flags are set **only at add time** from the active filter. There is **no** way to add, change, or clear flags on an order after it is already on the tab or in the basket. To redo, staff or the guest **remove** the draft or basket line and add it again under the correct filter state.
+- Changing or clearing the filter does **not** rewrite flags on orders already added; it only affects orders added afterward.
+- Because the filter hides goods (and add-ons) that contain the selected allergens, a newly added flagged order's main good and add-ons do not declare those allergens at add time. The optional comment remains available for free-text prep notes.
 
 ### 3.2 Add-ons
 
@@ -92,10 +100,11 @@ Terms reused rather than redefined here: **Business**, **Sales instance**, **Sal
 
 ### 3.4 Drafting and sending
 
-- Orders are built on the tab as **drafts** and are **freely editable** by the tab's staff: change the main good, add, remove, or repeat add-ons, and remove orders.
+- Orders are built on the tab as **drafts** and are **freely editable** by the tab's staff: change the main good, add, remove, or repeat add-ons, and remove orders. **Guest allergen flags** are not edited on the draft; they follow the add-time rules in §3.1.
 - Removing a draft leaves **nothing behind** — no stock has moved and no batch exists.
-- **Sending** a batch commits it: stock leaves the venue, the kitchen starts, the identification code is issued, and its orders become **immutable** to everyone but a **manager** (§3.6–§3.8, §4).
+- **Sending** a batch commits it: stock leaves the venue, the kitchen starts, the identification code is issued, and its orders become **immutable** to everyone but a **manager** (§3.6–§3.8, §4). Guest allergen flags travel with each sent order for prep tickets and screens.
 - A tab may send **many batches** over a sitting; staff see what is already on the table when building the next one.
+- Send (and self-channel pay-to-commit) is **blocked** when any line's business good is no longer orderable under business-goods availability — order-flow places that check in the journey.
 
 ### 3.5 Pricing and cost
 

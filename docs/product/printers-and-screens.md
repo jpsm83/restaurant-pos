@@ -18,7 +18,7 @@ This subject owns **how work leaves the till and how stations see and control it
 
 It deliberately does **not** cover:
 
-- the **order and batch** — composition, send, identification code, held and don't-make rules, and the fulfilment status vocabulary belong to the orders subject. This subject routes and displays what that subject sends and records the station actions that move status.
+- the **order and batch** — composition, send, identification code, **guest allergen flags**, held and don't-make rules, and the fulfilment status vocabulary belong to the orders subject. This subject routes and displays what that subject sends — including a clear **allergen flag** on flagged order lines — and records the station actions that move status.
 - the **sales point** — types, channels, and instances belong to the sales-points-and-instances subject. This subject uses a point as a **routing target** and as the place that names its receipt printer.
 - **business goods and menu structure** — categories and subcategories belong to the business-goods subject. This subject routes by them.
 - **billing and payment** — settlement belongs to the payments-and-tax subject.
@@ -58,7 +58,7 @@ It deliberately does **not** cover:
 - **Force-ready** — a main-screen choice to mark every open station line on a ticket done and set the area slice **Ready** when sub-screens are still incomplete.
 - **Print permission** — a per-employee capability that gates who may issue or reprint customer and prep prints.
 
-Terms reused rather than redefined here: **Business**, **Batch**, **Identification code**, **Fulfilment slice**, **Fulfilment status** (**Sent**, **Preparing**, **Ready**, **Delivered**), **Held batch**, **Don't make**, **Sales point**, **Menu category**, **Menu subcategory**, **Business good**, **Deadline**, **managers on duty**, **managers and above**, **soft delete**, and **daily sales report**.
+Terms reused rather than redefined here: **Business**, **Batch**, **Identification code**, **Fulfilment slice**, **Fulfilment status** (**Sent**, **Preparing**, **Ready**, **Delivered**), **Held batch**, **Don't make**, **guest allergen flags**, **Sales point**, **Menu category**, **Menu subcategory**, **Business good**, **Deadline**, **managers on duty**, **managers and above**, **soft delete**, and **daily sales report**.
 
 ---
 
@@ -99,6 +99,7 @@ Terms reused rather than redefined here: **Business**, **Batch**, **Identificati
 - This subject prints **prep tickets** (when a route names a prep printer), **customer receipts**, **bills**, and **kiosk handover tickets**.
 - Prep paper is optional per route; the control screens always show the work. Customer documents always require a usable receipt-printer path when paper is requested.
 - Customer bill and receipt **content and numbering** come from the receipts-and-bills subject. A paper **reprint** of an unchanged bill or receipt keeps that subject's number and reprint mark; layout still follows current routing and backup rules and is audited. Screens re-show work from **history** rather than reprinting.
+- On **prep tickets** and **prep control screens**, every order line that carries **guest allergen flags** shows a clear **allergen flag** together with the allergen names on that line. Unflagged lines on the same ticket or screen look normal — one batch, one identification code, no separate allergen-only ticket. The orders subject owns the flags; this subject owns making them unmistakable at the station.
 
 ### 3.6 Control screens — shared behaviour
 
@@ -111,7 +112,7 @@ Terms reused rather than redefined here: **Business**, **Batch**, **Identificati
 ### 3.7 Kitchen and bar main and sub-screens
 
 - Each prep area has one **main screen**. Optional **sub-screens** follow the chef or head of bar.
-- Ready-to-make tickets appear on the **main screen** when the batch is sent. A **single-click** marks the area slice **Preparing**. A ticket appears on a **sub-screen** only after that Preparing action, and only if it has lines for that station.
+- Ready-to-make tickets appear on the **main screen** when the batch is sent. A **single-click** marks the area slice **Preparing**. A ticket appears on a **sub-screen** only after that Preparing action, and only if it has lines for that station. Flagged allergen lines remain visually distinct on main and sub-screens (§3.5).
 - On a sub-screen, **double-click** marks that station's lines done. Many tickets may be Preparing at once. The main screen shows a **per-line done indicator** for station work.
 - The main screen **double-click** sets the area slice **Ready** only when every sub-line for that ticket is done — or when the ticket has no station lines. If subs are still open, the main offers a choice: **wait**, or **force-ready** (mark all remaining station lines done and set Ready). Force-ready needs **no reason and is not audited**.
 - The same main/sub pattern applies to every prep area the venue configures (kitchen, bar, merchandise counter, and so on).
