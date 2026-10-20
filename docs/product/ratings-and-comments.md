@@ -16,10 +16,12 @@ This subject owns **venue reviews**: the customer feedback a live venue collects
 - **public surfacing** on the venue's discovery profile and the **cached average rating and rating count** published onto the business;
 - the venue's **one reply** per review;
 - **abuse removal** requested by the venue and decided by **superadmin**; and
-- the **notification and email events** this subject raises (delivery owned by the notifications and emails subjects).
+- the **notification and email events** this subject raises (delivery owned by the notifications and emails subjects);
+- that the **review and business reply** are the customer↔venue dialogue path in stage 1 (there are no customer conversation threads).
 
 It deliberately does **not** cover:
 
+- **staff conversations and the manager-to-customer one-shot email** — the conversations subject. This subject owns only review-based customer feedback and the venue's one public reply per review.
 - **favorites** — saving venues for quick access is a per-user bookmark, not feedback. It belongs with the users subject, not here.
 - the **sales instance, bill, settlement, and close** — the sales-points-and-instances, order-flow, and payments-and-tax subjects own opening, settling, and closing a sitting. This subject reads a closed, settled instance as the unit a review attaches to.
 - **orders as billable lines** — the orders subject owns individual lines. A review is **not** per order line; it is once per sales instance bill.

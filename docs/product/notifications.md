@@ -12,8 +12,8 @@ This subject covers **how Project Imperium tells a person something** — the in
 - the **delivery model** — persistence-first in-app delivery, live push while a recipient is online, and the email copy of the notifications that are also emailed;
 - the **severity and engagement-kind vocabulary** a notification carries;
 - the **operational event catalogue** — which business event notifies whom, on which channel, with what severity, and with what repeat behaviour;
-- **venue engagement messaging** to customers — the automatic birthday, promotion, and event messages, and the venue events that trigger them;
-- **two-way direct messages** between a venue's managers and a person (staff or customer), and the conversations they open;
+- **venue engagement messaging** to customers — the automatic birthday, promotion, and event **broadcasts**, and the venue events that trigger them;
+- **surfacing staff conversation threads** in the same inbox (unread/read and live push for new messages);
 - the **reliability behaviour** of delivery — idempotency, cooldown, and email resilience;
 - the single **engagement mute** a user holds;
 - that engagement **broadcasts** also require the person's **marketing consent** (owned by the privacy, consent, and DSAR subject) to be on.
@@ -25,6 +25,7 @@ It deliberately does **not** cover:
 - **customer bill and receipt required content and numbering** — the **receipts-and-bills** subject owns document kinds, required fields, and bill/receipt numbers. An in-app order-confirmed (receipt) notification must present that subject's receipt content; this subject does not invent a thinner inbox-only set.
 - the **inbox's ownership and a user's preference storage** — the users subject owns the person's identity and preferences. This subject owns the notifications the inbox holds and the meaning of the engagement mute, not where a preference is stored.
 - **marketing consent**, customer data export, privacy-notice acceptance, and age floors — the privacy, consent, and DSAR subject. This subject enforces that broadcasts require marketing consent on and engagement mute off.
+- **staff conversation threads, who may message, group roster rules, and the manager-to-customer one-shot email** — the conversations subject. This subject delivers in-app (and live) notice of new staff messages and holds conversation entries in the inbox; it does not own who may converse.
 - the **screens and navigation** that render the inbox, a conversation, or a venue event — the user-navigation subject owns the surfaces.
 - the **orders, reservations, promotions, and reports mechanics** that produce events — the orders, reservations, promotions, and business-reports subjects own those.
 
@@ -35,18 +36,16 @@ It deliberately does **not** cover:
 ### Entities
 
 - **Notification** — one message addressed to one or more recipients and belonging to **one business**. Every notification is business-scoped: Project Imperium has no platform-wide notification. It carries a **severity** or an **engagement kind**, and its text.
-- **Inbox** — a person's collection of notifications and conversations. It belongs to the **User**, not to a business or to a mode, so the same inbox is shared across the customer and business apps.
-- **Inbox entry** — the per-person record of one notification, carrying its **unread** and **deleted** state. State is per recipient: one person reading or deleting a notification never changes it for anyone else.
-- **Conversation** (thread) — a two-way exchange opened by a manager's **direct message**, pairing the manager and one person; replies are messages in the thread.
-- **Venue event** — a dated announcement a venue publishes: a name, a date, and details. Publishing it sends an **Event** message.
+- **Inbox** — a person's collection of notifications and staff conversation entries. It belongs to the **User**, not to a business or to a mode, so the same inbox is shared across the customer and business apps.
+- **Inbox entry** — the per-person record of one notification (or conversation entry), carrying its **unread** and **deleted** state. State is per recipient: one person reading or deleting an entry never changes it for anyone else.
+- **Venue event** — a dated announcement a venue publishes: a name, a date, and details. Publishing it sends an **Event** broadcast.
 - **Engagement mute** — a single per-person switch, off by default, that suppresses a venue's broadcast engagement messages to that person. Broadcasts additionally require **marketing consent** (privacy, consent, and DSAR subject).
 
 ### Terms this subject introduces
 
 - **Operational event** — a system-triggered notification drawn from the catalogue in §3.3.
-- **Engagement message** — a venue-initiated message to its customers. **Promotion**, **Birthday**, and **Event** are one-way **broadcasts**; **Message** is a **direct message**.
+- **Engagement message** — a venue-initiated one-way **broadcast** to its customers. The engagement kinds are **Promotion**, **Birthday**, and **Event**.
 - **Broadcast** — an engagement message sent one-way to an audience of customers; a recipient cannot reply to it.
-- **Direct message** — a **Message** a manager addresses to one person or to a chosen group, opening a **conversation** the recipient can reply to.
 - **Managers on duty** — a venue's managers and above who are currently signed in on a shift.
 - **Related customer** — a customer who holds a relationship with the venue, such as an order or a reservation.
 - **Persistence-first** — the stored in-app notification is the source of truth; live delivery is an acceleration, never the record.
@@ -54,7 +53,7 @@ It deliberately does **not** cover:
 - **Idempotency** — suppressing a repeat dispatch of the same event within a brief window (five minutes in §3.7).
 - **Cooldown** — the minimum gap between repeats of a noisy alert.
 
-Terms reused from the product overview's core vocabulary rather than defined here: **Notification**, with its **severities** (Info, Warning, Emergency) and **engagement kinds** (Message, Promotion, Birthday, Event); **User**, **Business**, **Employee**, **Customer**, **Order**, **Reservation**, **Promotion**, **Report** (daily, weekly, monthly), **shift session** and **on duty**, **low-stock**, **overtime**, and **soft delete**. Terms from sibling subjects are named as that subject defines them.
+Terms reused from the product overview's core vocabulary rather than defined here: **Notification**, with its **severities** (Info, Warning, Emergency) and **engagement kinds** (Promotion, Birthday, Event); **User**, **Business**, **Employee**, **Customer**, **Order**, **Reservation**, **Promotion**, **Report** (daily, weekly, monthly), **shift session** and **on duty**, **low-stock**, **overtime**, and **soft delete**. **Conversation** is owned by the conversations subject. Terms from sibling subjects are named as that subject defines them.
 
 ---
 
@@ -64,7 +63,7 @@ Terms reused from the product overview's core vocabulary rather than defined her
 
 - Every notification is stored in each recipient's inbox **first**, and that stored copy is the **source of truth**.
 - A recipient who is **online** also receives it immediately by **live push**. A recipient who is **offline** receives it the moment they return, from the stored copy; nothing is lost.
-- **Email** is added for: an order confirmation/receipt, a reservation pending, deposit-requested, and decision message (to the customer), a reply in a customer conversation (to the customer), a **business reply to a review** (to the reviewing customer), a **delivery review invite** (to the attributed delivery customer), a business-profile change (to managers), **platform billing documents and arrears / post-freeze dunning** (to the Owner and Manager-and-above recipients named by platform-billing), and a venue's engagement broadcasts (to customers who have not muted them). The remaining operational alerts — low-stock, negative-stock, report-ready, overtime, awaiting-table, print-failure, new review, and review removal decided — are **in-app only**.
+- **Email** is added for: an order confirmation/receipt, a reservation pending, deposit-requested, and decision message (to the customer), a **business reply to a review** (to the reviewing customer), a **delivery review invite** (to the attributed delivery customer), a business-profile change (to managers), **platform billing documents and arrears / post-freeze dunning** (to the Owner and Manager-and-above recipients named by platform-billing), and a venue's engagement broadcasts (to customers who have not muted them). The remaining operational alerts — low-stock, negative-stock, report-ready, overtime, awaiting-table, print-failure, new review, and review removal decided — are **in-app only**. Staff conversation messages are **never** emailed. The **manager-to-customer one-shot email** is **email-primary** (conversations authorises; emails delivers) and has **no** in-app notification on this catalogue.
 - A communication failure **never blocks** the underlying business action: a notification is a side effect of the action, not a precondition for it.
 
 ### 3.2 The inbox
@@ -72,8 +71,9 @@ Terms reused from the product overview's core vocabulary rather than defined her
 - Each person has **one inbox**, shared across the customer and business apps and across every venue they touch. Inbox access requires a signed-in User (account-bound; users subject).
 - State is **per recipient**: an entry is unread by default; reading marks it read; a person can mark one read, mark all read, and delete. The inbox shows an **unread count**.
 - **Deleting** hides an entry from that person's inbox only.
-- **System-generated** notification text is delivered in the recipient's **language preference** (English or Spanish). A manager's own words in a direct message are delivered **as written**.
-- A notification or conversation follows the platform's **soft-delete** convention; a recipient's delete is a per-person hide. Soft-deleted notification records may later be physically removed under **operational** retention by the plan quotas and data retention subject when the **data-integrity rule** allows.
+- **System-generated** notification text is delivered in the recipient's **language preference** (English or Spanish). A person's **own words** in a staff conversation are delivered **as written**.
+- A notification or conversation entry follows the platform's **soft-delete** convention; a recipient's delete is a per-person hide. Soft-deleted notification records may later be physically removed under **operational** retention by the plan quotas and data retention subject when the **data-integrity rule** allows.
+- **Staff conversations** appear in the same inbox; opening an entry shows its **thread**, and reading a thread clears its unread state for that person. Who may converse and how groups work belong to the conversations subject. Customers receive **no** conversation inbox entries; a manager-to-customer one-shot email does not create one.
 
 ### 3.3 Operational event catalogue
 
@@ -128,16 +128,14 @@ Terms reused from the product overview's core vocabulary rather than defined her
   - **Promotion** — sent when a promotion's **active window begins**, not when it is authored.
   - **Event** — sent when the venue publishes a venue event (§3.6).
 - A **broadcast** engagement message is **one-way**: a recipient cannot reply to it.
-- A manager's own message to customers is a **direct message** (§3.5); the automatic kinds above are the broadcasts.
+- There is **no** customer direct-message engagement kind. Staff messaging and the manager-to-customer one-shot email belong to the conversations subject. Customer↔venue dialogue is the review and business reply (ratings-and-comments subject).
 - A **broadcast** is delivered to a related customer only when that person's **marketing consent is on** (privacy, consent, and DSAR subject) **and** their **engagement mute is off**. Missing either gate means no broadcast in-app or by email.
 
-### 3.5 Direct messages and conversations
+### 3.5 Staff conversations in the inbox
 
-- **Managers and above** may start a **direct message** to one person or to a chosen group of the venue's staff and related customers. Each recipient gets their **own conversation** with the manager.
-- Only managers and above can **start** a conversation. A staff member or customer can **reply** in a conversation they were sent, but cannot start one.
-- A **reply** notifies the other party **in-app**; when the conversation is with a customer, the customer's notification is also **emailed**. Staff replies are never emailed.
-- Conversations appear in the **same inbox** as notifications; opening a message shows its **thread**, and reading a thread clears its unread state.
-- A direct message is addressed to a person, so the **engagement mute does not suppress it**.
+- When a staff conversation gains a new message (conversations subject), each other **current participant** receives an **in-app** inbox notice and **live push** when online. Conversation messages are **never** emailed.
+- The **engagement mute** does **not** suppress staff conversation delivery. Staff chat is mandatory for participants; there is no per-thread mute on this subject.
+- Customers are **not** conversation participants and receive **no** conversation inbox entries.
 
 ### 3.6 Venue events
 
@@ -164,10 +162,10 @@ Terms reused from the product overview's core vocabulary rather than defined her
 
 | Layer | Notification powers |
 | --- | --- |
-| **Customer** | Holds the inbox; receives notifications and conversations; may reply in a conversation sent to them; may mute engagement; receives business replies to their reviews and delivery review invites. Cannot start a conversation. |
-| **Employee** | Everything a customer can do; as staff, receives the direct messages the venue sends them and may reply. |
-| **Supervisor** | Same inbox powers as employee. Does not publish venue events or start direct messages; does not receive manager-targeted operational alerts unless also on duty as a manager-layer person. |
-| **Manager** | Everything an employee can do, plus publishing venue events and starting direct messages to staff and related customers. Receives the manager-targeted operational alerts, including overtime and sign-out requests when on duty, new reviews, and review-removal decisions. |
+| **Customer** | Holds the inbox; receives notifications (not staff conversations); may mute engagement; receives business replies to their reviews and delivery review invites. |
+| **Employee** | Everything a customer can do; as Active staff, also receives staff conversation inbox entries for threads they participate in (conversations subject owns who may converse). |
+| **Supervisor** | Same inbox powers as employee. Does not publish venue events; does not receive manager-targeted operational alerts unless also on duty as a manager-layer person. |
+| **Manager** | Everything an employee can do, plus publishing venue events. Receives the manager-targeted operational alerts, including overtime and sign-out requests when on duty, new reviews, and review-removal decisions. |
 | **Admin** | Everything a manager can do. |
 
 The owning user is an admin at every venue they own. Job roles and per-user capabilities follow the global model; this subject names only the entitlements that bear on notifications.
@@ -179,8 +177,7 @@ The owning user is an admin at every venue they own. Job roles and per-user capa
 | Use the inbox (read, mark read, mark all read, delete) | Any signed-in person |
 | Mute engagement | The person (their own) |
 | Grant or withdraw marketing consent | The person (their own; privacy, consent, and DSAR subject; age-gated) |
-| Reply in a conversation | The recipient of the direct message |
-| Start a direct message | Managers and above |
+| Receive staff conversation inbox entries | Active Employees who are current participants (conversations subject) |
 | Publish a venue event | Managers and above |
 | Receive low-stock, negative-stock, overtime, sign-out-request, and print-failure alerts | The venue's managers on duty; overtime and print-failure fall back to all manager-layer users when none are on duty |
 | Receive report-ready and profile-updated alerts | The venue's managers and above |

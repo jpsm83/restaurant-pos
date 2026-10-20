@@ -21,7 +21,8 @@ It deliberately does **not** cover:
 
 - **which events notify, and the in-app side of each** — the notifications subject owns the notification catalogue, the inbox, the severities and engagement kinds, and the engagement mute itself. This subject owns how an email is written and delivered, not whether an event notifies.
 - **marketing consent**, customer data export, and privacy-notice acceptance — the privacy, consent, and DSAR subject. Engagement broadcast email still requires marketing consent on and engagement mute off.
-- **the mechanics of the actions behind the emails** — orders and payments, reservations, reviews, the sign-in email and password, the business contact email, venue events, and platform charges are owned by the orders, reservations, ratings-and-comments, users, business, notifications, and platform-billing subjects. This subject owns the email side: when each message is sent and what it carries.
+- **the mechanics of the actions behind the emails** — orders and payments, reservations, reviews, the sign-in email and password, the business contact email, venue events, staff conversations, and platform charges are owned by the orders, reservations, ratings-and-comments, users, business, notifications, conversations, and platform-billing subjects. This subject owns the email side: when each message is sent and what it carries.
+- **who may send staff chat or authorise a manager-to-customer one-shot email** — the conversations subject. This subject delivers that one-shot email; staff conversation messages are never emailed.
 - **customer bill and receipt required content and numbering** — the **receipts-and-bills** subject owns document kinds, required fields, and bill/receipt numbers. An emailed receipt must carry that subject's receipt content; this subject does not invent a thinner email-only set.
 - **the pages a one-time link opens** — the user-navigation subject owns the destination surfaces. This subject owns only that a link leads a person to complete an action, never what they see.
 - **the session effects of a completed change** — the users subject owns session revocation and the email-verified flag.
@@ -42,7 +43,7 @@ It deliberately does **not** cover:
 ### Terms this subject introduces
 
 - **Account email** — a message about a person's identity or security, or a business's contact-email verification: sign-in verification, password reset, sign-in email change confirmation, sign-in email change notice, reactivation, and business contact-email verification.
-- **Operational email** — the emailed copy of an operational notification: an order confirmation/receipt, a reservation pending, deposit-requested, or decided message, a business-profile-updated message to managers, a customer conversation reply, a **business reply to a review**, a **delivery review invite**, and **platform billing** messages (billing documents, arrears dunning, freeze, and post-freeze pay-to-restart). Venue-facing operational mail names the venue it concerns; platform-billing mail is Imperium-initiated and may be portfolio-scoped.
+- **Operational email** — the emailed copy of an operational notification: an order confirmation/receipt, a reservation pending, deposit-requested, or decided message, a business-profile-updated message to managers, a **manager-to-customer one-shot email**, a **business reply to a review**, a **delivery review invite**, and **platform billing** messages (billing documents, arrears dunning, freeze, and post-freeze pay-to-restart). Venue-facing operational mail names the venue it concerns; platform-billing mail is Imperium-initiated and may be portfolio-scoped.
 - **Engagement email** — a venue's one-way broadcast to its related customers: a **Birthday**, **Promotion**, or **Event** email. It is **venue-initiated**.
 - **Sending identity** — the single platform address every outbound email is sent from, together with the venue name Project Imperium shows on venue-initiated mail.
 - **Generic response** — the single answer an unauthenticated request flow returns whether or not an account exists.
@@ -64,7 +65,7 @@ Terms reused from the product overview's core vocabulary rather than defined her
 - Every email is sent from **one sending identity**, the platform's address. Venue-initiated mail shows the **venue's name**, but a business holds **no sending credentials** of its own; all mail leaves through the platform.
 - Every email is addressed to **exactly one recipient**. A customer never sees another customer's address; a message to many customers is many separate single-recipient emails.
 - Every email is written as both a **rich** and a **plain-text** message, so it is readable in any mailbox.
-- Email is sent from an address whose replies are **not monitored**: a person completes a conversation or a change **inside the product**, not by replying to the email.
+- Email is sent from an address whose replies are **not monitored**: a person completes a change **inside the product**, not by replying to the email. A manager-to-customer one-shot email likewise expects no mailbox reply thread.
 
 ### 3.2 Account and security email
 
@@ -101,7 +102,7 @@ Project Imperium emails the operational notifications that the notifications sub
 - **Deposit requested** — sent to the customer when the venue asks for a deposit; it carries the amount, the payment link, and that an account is required before paying.
 - **Reservation decided** — sent to the customer when the request becomes reserved or is cancelled; it carries the decision and the reservation details. A reserved confirmation states late-arrival and grace rules clearly and never shows the staff-only end time; it may include an optional account-invite link when the guest has no account.
 - **Business profile updated** — sent to the venue's managers and above when a profile change persists; it names the fields that changed.
-- **Customer conversation reply** — sent to a customer when a venue manager replies in their conversation.
+- **Manager-to-customer one-shot email** — sent to a related customer when a manager-and-above at that venue chooses to reach them by email (conversations subject). It carries the venue name and the manager's own words. It is **email-primary** (no in-app notification copy), opens **no** in-app conversation, and is **not** a broadcast.
 - **Business reply to a review** — sent to the reviewing customer when the venue posts or edits its one public reply on their review; it carries the venue name and that a reply is waiting in the product.
 - **Delivery review invite** — sent to the attributed delivery customer **three hours after handover** when that sales instance still has no review; it carries the venue name and the one-time review invite for that instance. Detecting eligibility belongs to the ratings-and-comments subject.
 - **Pay run released to accountant** — sent to the venue's configured **accountant contact** when managers **Release** a pay run; it carries the venue name, pay period, export version identity, changelog when replacing a prior version, and the CSV package. Raising Release belongs to the payroll subject. The accountant address need not belong to a User.
@@ -112,7 +113,7 @@ Project Imperium emails the operational notifications that the notifications sub
 - **Inactive account warning** — sent to a User approaching inactivity soft-delete; it states the deadline and how to keep the account (sign in or keep-account confirmation). Raising the candidate belongs to the plan quotas and data retention subject.
 - **Dormant business confirmation** — sent to the Owner when a venue has had no venue activity for the dormant window; it asks them to confirm the venue should stay live before soft-delete. Raising the candidate belongs to the plan quotas and data retention subject.
 
-An operational email is the **emailed copy** of an in-app notification where one exists, and the notification remains the record. The accountant pay-run package and the Owner's **platform billing document** are email-primary. A send failure is best-effort and never blocks the action that triggered it.
+An operational email is the **emailed copy** of an in-app notification where one exists, and the notification remains the record. The accountant pay-run package, the Owner's **platform billing document**, and the **manager-to-customer one-shot email** are email-primary. A send failure is best-effort and never blocks the action that triggered it.
 
 ### 3.5 Engagement email
 
@@ -120,12 +121,12 @@ An operational email is the **emailed copy** of an in-app notification where one
 - Engagement email is **one-way**: a recipient cannot reply to it.
 - Project Imperium emails a broadcast only when the recipient's **marketing consent is on** (privacy, consent, and DSAR subject) **and** their **engagement mute is off**.
 - Every engagement email carries a **one-click unsubscribe** that turns on the person's **engagement mute**. Unsubscribe does not by itself change marketing consent.
-- A **direct message** to a customer is not engagement: its emailed copy is the operational **customer conversation reply**, is addressed to the person, and is **not** suppressed by the engagement mute or by missing marketing consent.
+- A **manager-to-customer one-shot email** is not engagement: it is operational mail, addressed to one related customer, and is **not** suppressed by the engagement mute or by missing marketing consent. There is **no** customer conversation-reply email — customers have no conversation threads (conversations subject).
 
 ### 3.6 Language
 
 - Every system-written email is written in the recipient's **language preference** (English or Spanish), falling back to **English** where no preference is set.
-- A manager's **own words** in a conversation reply are sent **as written** and are never translated.
+- A manager's **own words** in a manager-to-customer one-shot email are sent **as written** and are never translated.
 - Venue names and other proper nouns are not translated.
 
 ### 3.7 Delivery and retry
@@ -149,7 +150,7 @@ An operational email is the **emailed copy** of an in-app notification where one
 
 | Layer | Email powers |
 | --- | --- |
-| **Customer** | Holds the address every email is sent to; receives account email, operational email (order receipts, reservation messages, customer conversation replies, business replies to reviews, and delivery review invites), and engagement email; may unsubscribe from engagement email. |
+| **Customer** | Holds the address every email is sent to; receives account email, operational email (order receipts, reservation messages, manager-to-customer one-shot emails, business replies to reviews, and delivery review invites), and engagement email; may unsubscribe from engagement email. |
 | **Employee** | Everything a customer can do; as staff, holds the account email flows the same as anyone. |
 | **Supervisor** | Same as employee for account and personal operational email. Does not receive manager-targeted venue profile or platform-billing manager mail. |
 | **Manager** | Everything an employee can do, plus receiving the **business profile updated** email as a venue manager, and platform-billing arrears / freeze / post-freeze email when in scope for that venue or portfolio. |
@@ -162,9 +163,10 @@ The owning user is an admin at every venue they own. Job roles and per-user capa
 | Activity | Who |
 | --- | --- |
 | Receive account and security email | Any account holder, at their sign-in email; a business contact-email verification goes to the business's own contact address |
-| Receive operational email | The recipient named by the triggering event — the customer for receipts, reservation messages, conversation replies, business replies to reviews, and delivery review invites; the venue's managers and above for profile changes; the configured accountant contact for a released pay-run package; the Owner and Manager-and-above recipients named by platform-billing for billing documents and arrears mail |
+| Receive operational email | The recipient named by the triggering event — the customer for receipts, reservation messages, manager-to-customer one-shot emails, business replies to reviews, and delivery review invites; the venue's managers and above for profile changes; the configured accountant contact for a released pay-run package; the Owner and Manager-and-above recipients named by platform-billing for billing documents and arrears mail |
 | Receive engagement email | A venue's related customers who have not muted engagement |
 | Unsubscribe from engagement email | The recipient (their own engagement mute) |
 | Trigger an account email | The person making the request (or the sign-up itself) |
-| Send engagement email | The platform, on the venue's behalf when a broadcast is due — no one sends email by hand |
+| Send engagement email | The platform, on the venue's behalf when a broadcast is due — no one sends engagement email by hand |
+| Send manager-to-customer one-shot email | Managers and above at that Business (authorisation owned by conversations; this subject delivers) |
 | Opt out of account or operational email | No one |

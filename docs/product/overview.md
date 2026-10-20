@@ -70,7 +70,8 @@ These terms are used with exactly these meanings throughout Project Imperium. Do
 | **Manage** (nav) | Business left-menu header for administration groups and top-level items (including Floor plans). Effective **manager or admin** only; supervisors do not see Manage. |
 | **Me** (nav) | Business left-menu header for self-only destinations (own schedule, notifications, personal details). |
 | **Daily / Weekly / Monthly report** | The aggregated sales and performance reports at each roll-up level. |
-| **Notification** | A message Project Imperium delivers to a person's inbox. An **operational** notification carries a **severity** — **Info**, **Warning**, or **Emergency** — while a venue **engagement** message carries a **kind** — **Message**, **Promotion**, **Birthday**, or **Event**. |
+| **Notification** | A message Project Imperium delivers to a person's inbox. An **operational** notification carries a **severity** — **Info**, **Warning**, or **Emergency** — while a venue **engagement** broadcast carries a **kind** — **Promotion**, **Birthday**, or **Event**. |
+| **Conversation** | A staff messaging thread among **Active** Employees of one **Business** (one-to-one or group). Customers have no conversations; customer↔venue dialogue is reviews. The conversations subject owns the rules. |
 | **Marketing consent** | A per-person, platform-global opt-in (off by default) that must be on before a venue may send engagement **broadcasts** (Promotion, Birthday, Event). Distinct from the **engagement mute**. The privacy, consent, and DSAR subject owns the rule; notifications and emails enforce the gate. |
 | **Ordering session** | The client session that owns one self-service **basket** from the start of ordering until pay-to-commit, abandon, or session end. Concurrent sessions never share a basket because they share a sales point. The realtime-and-concurrency and order-flow subjects own the rule. |
 | **Stale action** | A mutating attempt the server rejects because the client's view no longer matches server truth or the lifecycle no longer allows the act. The realtime-and-concurrency subject owns conflict outcomes. |
@@ -261,12 +262,13 @@ There is no separate product mode for administration; Manage and Service are men
 - **Reporting exports** are available across daily, weekly, and monthly reports, powered by the shared advanced-table engine used as the blueprint for report tables.
 - **Business metrics** — the full **KPI catalogue** (profitability, cost, sales quality, labour, inventory and purchasing, menu engineering, operations, customer, and promotion/bar controls), each with its canonical formula, supported **dimensions**, and an industry **benchmark**, plus the cost targets and waste thresholds — are defined in the business-metrics subject; the sales-reports subject owns the daily gathering and lock, and the business-reports subject owns how weekly and monthly figures are grouped, closed, and presented.
 
-### Notifications
+### Notifications and conversations
 
-- Each user has an **inbox** with per-notification read and deleted state, shared by customers and employees through their user identity.
-- Delivery is **persistence-first** — in-app notifications are stored and are the source of truth — with **email** and **live WebSocket** push when the recipient is online. Nothing is lost if a user is offline.
+- Each user has an **inbox** with per-notification read and deleted state, shared by customers and employees through their user identity. Staff **conversation** threads for a venue also surface in that inbox for their participants.
+- Delivery is **persistence-first** — in-app notifications are stored and are the source of truth — with **email** and **live WebSocket** push when the recipient is online. Nothing is lost if a user is offline. Staff conversation messages are **in-app only**.
 - **Operational** events include reservations pending/deposit-requested/decided (and Awaiting table for Host and above), low-stock alerts, weekly/monthly report-ready, business profile updates, and the overtime and sign-out-request alerts in [§6](#6-time-control-and-attendance).
-- **Engagement** events let a venue message its customers — **promotions, birthdays, and events** — alongside operational alerts.
+- **Engagement** broadcasts let a venue message its customers — **promotions, birthdays, and events** — only when marketing consent is on and engagement mute is off.
+- **Staff conversations** (one-to-one and group among Active Employees of the same Business) and the optional **manager-to-customer one-shot email** are owned by the conversations subject. Customers do not chat with the venue in-product; they use **reviews**.
 
 ---
 

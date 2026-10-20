@@ -47,7 +47,7 @@ This subject introduces **no new persistent business entity** beyond preferences
 - **Alcohol purchase age** — the platform floor age required before a payer may check out **Alcoholic drinks** tax-category goods on **self-channels**. Seed: **eighteen**.
 - **Self-channel** — a customer journey where the diner pays through Imperium-mediated checkout: QR self-ordering, kiosk, and delivery (order-flow and payments-and-tax). Staff-recorded dine-in tenders are not self-channels for this age gate.
 
-Terms reused rather than redefined here: **User**, **Customer**, **Business**, **Owner**, **Company**, **Employee**, **marketing consent** (product overview Core vocabulary — this subject owns the behavioural rules), **engagement mute**, **broadcast**, **direct message**, **related customer**, **soft delete**, **pending deletion**, **retention purge**, **data-integrity rule**, **Alcoholic drinks** tax category, **birth date**, **language preference**, **guest basket**, **ordering session**, and **merchant of record**.
+Terms reused rather than redefined here: **User**, **Customer**, **Business**, **Owner**, **Company**, **Employee**, **marketing consent** (product overview Core vocabulary — this subject owns the behavioural rules), **engagement mute**, **broadcast**, **related customer**, **manager-to-customer one-shot email**, **soft delete**, **pending deletion**, **retention purge**, **data-integrity rule**, **Alcoholic drinks** tax category, **birth date**, **language preference**, **guest basket**, **ordering session**, and **merchant of record**.
 
 ---
 
@@ -78,7 +78,7 @@ Terms reused rather than redefined here: **User**, **Customer**, **Business**, *
 - Venue engagement **broadcasts** (Promotion, Birthday, Event — in-app and email) are sent only when **marketing consent is on** and the person's **engagement mute is off**. Both gates must pass.
 - The person may **grant** or **withdraw** marketing consent at any time from the surfaces in §3.10. Withdrawal stops future broadcasts **immediately**. Withdrawal does not by itself turn the engagement mute on; unmute does not grant consent.
 - The **engagement mute** remains the suppress / one-click unsubscribe control owned by notifications and emails. Unsubscribe turns mute **on**; it does not change marketing consent by itself. A person with mute on receives no broadcasts even if consent is on.
-- **Direct messages** and **operational** notifications and emails are **not** gated by marketing consent and are **not** suppressed by the engagement mute (except the existing overtime-session mute owned by time-control).
+- **Operational** notifications and emails — including the **manager-to-customer one-shot email** (conversations subject) — are **not** gated by marketing consent and are **not** suppressed by the engagement mute (except the existing overtime-session mute owned by time-control). Staff conversations are in-app only and likewise not consent- or mute-gated.
 - There is **no** per-venue or per-category marketing toggle in stage 1.
 - Project Imperium **records** when marketing consent was granted or withdrawn (with time) on the User. That state appears in the customer data export.
 
@@ -101,7 +101,7 @@ Terms reused rather than redefined here: **User**, **Customer**, **Business**, *
 
 - A signed-in customer may **Download my data** from the customer account area (and from Business **Me** where account settings are shared). The ordinary case is **self-service** — not a Superadmin ticket.
 - The package is a **portable machine-readable** download (file format is an implementation detail; the product commits that the person can take the data away in machine-readable form).
-- The package covers **their User-held personal data and history they can already see in product**, including: profile detail, favorites, order / reservation / payment history attributable to them, reviews they wrote, gift-card balances they hold, inbox and conversation items addressed to them, **marketing consent** and **engagement mute** state (and consent change times).
+- The package covers **their User-held personal data and history they can already see in product**, including: profile detail, favorites, order / reservation / payment history attributable to them, reviews they wrote, gift-card balances they hold, inbox items addressed to them, manager-to-customer one-shot emails sent to them (while retained), **marketing consent** and **engagement mute** state (and consent change times). Customers have no conversation threads; staff conversation history belongs only to participating staff Users.
 - Soft-deleted-but-still-retained personal rows that still belong to them are **included** while they exist.
 - The package **excludes** other people's data, venue operational internals the customer cannot see, and employee / HR records on memberships.
 - Ordinary export is **prompt in-product** (generate and download when ready). It is not framed as a thirty-day support SLA for the self-service path.
@@ -117,7 +117,7 @@ Terms reused rather than redefined here: **User**, **Customer**, **Business**, *
 ### 3.9 Language
 
 - Privacy, consent, and DSAR **product chrome and system copy** follow the person's **UI language preference** (English or Spanish). When unset, **browser language** seeds that preference (users subject).
-- **Business-authored** content — menu text, venue event copy, manager-written messages — stays in the language the business entered. Privacy does not translate or dual-store it.
+- **Business-authored** content — menu text, venue event copy, manager-written one-shot email bodies and staff chat — stays in the language the business entered. Privacy does not translate or dual-store it.
 - Customer data export packages include data **as stored** — no translation pass.
 
 ### 3.10 Where customers manage privacy controls
@@ -142,7 +142,7 @@ Terms reused rather than redefined here: **User**, **Customer**, **Business**, *
 | **Customer** | Accepts privacy notice and terms at User creation; manages own marketing consent (when age-eligible), engagement mute, and customer data export; may delete own account as the erasure path. |
 | **Employee** | Same User-level privacy controls as customer (every user is a customer). No venue power over another person's marketing consent. |
 | **Supervisor** | Same as employee for this subject. |
-| **Manager** | Same as employee for customer privacy controls. May send direct messages and publish venue events per notifications; broadcasts still respect each recipient's marketing consent and mute. Cannot flip another person's marketing consent. |
+| **Manager** | Same as employee for customer privacy controls. May send manager-to-customer one-shot emails (conversations) and publish venue events (notifications); broadcasts still respect each recipient's marketing consent and mute. Cannot flip another person's marketing consent. |
 | **Admin / Owner** | Same as manager for customer privacy. May use venue/portfolio operational export per plan quotas and data retention — distinct from customer DSAR. |
 
 ### Superadmin console
