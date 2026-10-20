@@ -11,7 +11,7 @@ Project Imperium is a **complete, real-time, cloud SaaS platform** for **bars an
 It is built on four positioning pillars:
 
 - **100% SaaS.** Nothing to install on a server. The product runs in the browser; there is no on-premise deployment.
-- **Hardware-agnostic.** The customer brings their own hardware — desktop, laptop, tablet, phone, printer, or screen. Project Imperium sells no hardware and locks the venue into none; it works with whatever the venue already owns.
+- **Hardware-agnostic; staff on personal devices.** Staff sign in on **their own personal browser device** (typically a phone; also laptop or desktop). There is **no shared staff tablet, station login, PIN, or quick-switch**. The venue may still bring **printers**, **prep/customer screens**, and **customer kiosk** hardware. Project Imperium sells no hardware and locks the venue into none. The staff-sessions subject owns the personal-session and no-shared-device rules.
 - **Online-only.** The product requires connectivity; there is no offline mode.
 - **Multi-tenant.** A **Business** is the tenant and represents **one venue** (one physical restaurant or bar). The same platform serves many businesses with fully isolated data, and businesses can be grouped under an **Owner** across multiple venues.
 
@@ -22,7 +22,7 @@ Project Imperium is delivered as **three product surfaces over one shared platfo
 | Dimension | Project Imperium |
 | --- | --- |
 | Delivery | Cloud SaaS, browser-based |
-| OS / device | Any — PC, laptop, tablet, phone, network printer, screen |
+| OS / device | Staff: own personal browser device (phone, laptop, desktop). Venue may add printers, prep/customer screens, customer kiosk. No shared staff login. |
 | Connectivity | Online-only (no offline mode) |
 | Tenancy | Multi-tenant; one **Business** = one venue; venues grouped under an **Owner** into **Companies** (tax entities) |
 | Paid by | Businesses (subscription + commission); **customers are free** |
@@ -159,7 +159,7 @@ See [§6](#6-time-control-and-attendance) for the attendance model. The schedule
 Time control is a **plan-vs-actual** system, separate from the schedule:
 
 - **Schedule (the plan).** Each business defines, per calendar day, one schedule of shift entries (working shifts with job role and start/end, vacation, and other leave). Schedule aggregates (staff count, vacation count, planned hours, planned labour cost) feed reporting. The schedule does **not** imply on-duty. Overnight working shifts belong to the day they start. The schedules subject owns the schedule in full.
-- **On duty (the actual).** A person becomes **on duty** by scanning the venue's **daily attendance QR**, which any manager-layer user in business mode may present — not by opening business mode. Sign-out is a manager-layer action (optionally after an employee request) and is blocked while the employee still holds open sales instances. Real entry and exit times are what attendance records. Leaving the app does not end duty. The time-control subject owns QR issue, scan-in, late lock, manager sign-out, breaks, worked hours, actual labour cost, no-shows, and related alerts.
+- **On duty (the actual).** A person becomes **on duty** by scanning the venue's **daily attendance QR**, which any manager-layer user in business mode may present from **their own signed-in personal device** — not by opening business mode, and not via a shared staff display login. Employees scan from **their own** signed-in session. Sign-out is a manager-layer action (optionally after an employee request) and is blocked while the employee still holds open sales instances. Real entry and exit times are what attendance records. Leaving the app does not end duty. The time-control subject owns QR issue, scan-in, late lock, manager sign-out, breaks, worked hours, actual labour cost, no-shows, and related alerts; the staff-sessions subject owns the personal-device rule.
 - **Shift session.** For each employee engagement, Project Imperium records a **shift session** projected from an append-only **time-clock ledger**: planned window from the schedule, **actual sign-in / sign-out**, breaks, resulting **worked hours** and **labour cost**, and status. One open session per employee at a time prevents double sign-in. After planned start, an employee- or supervisor-layer person who has not signed in is **late-locked** until a manager unlocks them; the eventual scan still records the real time. Managers and admins are never late-locked.
 - **Breaks.** An employee can **pause and resume** duty during a shift with a required reason. Whether paused time counts toward worked hours is a venue setting (default: included). The employee remains signed in while paused.
 - **Overtime alert.** If an employee **other than an admin/owner** is still on duty after their scheduled end, the **managers on duty** are notified **every 5 minutes** until that employee signs off or a manager mutes that session's overtime alert; if none are on duty, the alert falls back to all manager-layer users at that venue. (This reuses the platform's cooldown/idempotency notification behavior.) Every day that plans any working shift must include at least one **manager-layer** working shift so someone is always in charge on the plan.
@@ -328,7 +328,8 @@ Project Imperium is **live by design**: every entitled open screen in the Custom
 ## 12. Platforms and constraints
 
 - **Responsive web app.** Project Imperium runs in any modern browser on desktop, laptop, tablet, or phone. There is currently no installable PWA requirement and no native app; a native version may follow later using the same logic.
-- **Customer-brought hardware.** The venue chooses its devices, printers, and screens. Project Imperium sells none of them.
+- **Staff on personal devices.** Every staff actor signs in with their own email and password on their own browser device. One User may hold several concurrent peer sessions across devices. Shared staff device access, staff PIN, quick-switch, and in-app lock-screen identity are **not part of the product** (staff-sessions subject).
+- **Venue output and guest hardware.** The venue chooses its printers, optional prep/customer screens, and customer kiosk terminals. Project Imperium sells none of them. Those surfaces are not shared staff identity devices.
 - **Online-only.** Connectivity is required; there is no offline mode.
 - **Language and currency.** The UI ships in **English and Spanish** (more languages later); each business selects **one currency** at onboarding.
 
@@ -339,6 +340,7 @@ Project Imperium is **live by design**: every entitled open screen in the Custom
 - **Not only a point-of-sale.** The point of sale is one surface; Project Imperium also runs the menu and its costing, supply and stock, people and scheduling, and reporting.
 - **Not proprietary hardware.** Project Imperium does not lock venues to a specific device, printer, or screen, and sells no hardware.
 - **Not a hardware vendor.** Project Imperium is software only.
+- **Not shared-staff-device POS.** There is no shared tablet pool, station login, staff PIN, quick-switch, or in-app lock that changes who is acting. Staff work from their own signed-in personal devices (staff-sessions subject).
 - **Not offline.** There is no offline mode; the product is online-only.
 - **Not a multi-vendor marketplace.** Customers order from a specific venue; delivery is per-venue, not a marketplace spanning venues.
 - **Not self-hosted.** There is no on-premise or self-managed deployment; Project Imperium is cloud SaaS.

@@ -26,6 +26,7 @@ It deliberately does **not** cover:
 - **notification delivery** — inbox, live push, cooldown mechanics — the notifications subject owns how events are delivered. This subject defines which attendance events exist, when they fire, and the overtime session mute.
 - **labour KPI formulas** and report roll-ups — the business-metrics and business-reports subjects own those. This subject supplies worked hours, overtime hours, and actual labour cost.
 - **payroll preparation and export** — pay periods, tip pooling into a pay run, release, and accountant CSV — the payroll subject owns those. This subject supplies the closed sessions and hours that subject consumes.
+- **staff personal-device sessions**, concurrent multi-session, and the exclusion of shared staff device / PIN / quick-switch identity — the staff-sessions subject. Presenting and scanning the attendance QR always happens on each person's **own** signed-in session.
 
 ---
 
@@ -84,8 +85,8 @@ A shift session (or the plan-vs-actual row for a working shift with no session) 
 ### 3.2 Daily attendance QR
 
 - Each business has **one** attendance QR per calendar day in the business timezone. The next day issues a new QR; presenting another day's QR fails.
-- Any **manager-layer** user (manager, admin, owner) in business mode may **present** that day's QR. They need **not** already be on duty — presenting the QR is how managers themselves become on duty when they scan (typically from another device or a shared display flow the venue uses).
-- Ordinary employees become on duty only by scanning a QR a manager-layer user is presenting.
+- Any **manager-layer** user (manager, admin, owner) in business mode may **present** that day's QR from **their own signed-in session** on their personal device. They need **not** already be on duty — presenting the QR is how managers themselves become on duty when they scan on their own session. There is **no** shared staff display login for attendance.
+- Ordinary employees become on duty only by scanning a QR a manager-layer user is presenting, from **their own** signed-in Business session on their personal device (staff-sessions subject).
 - Scan-in requires the person to be in **business mode** (users subject). Opening business mode alone is not on duty.
 
 ### 3.3 Business-mode entry window

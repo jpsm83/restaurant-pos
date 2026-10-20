@@ -25,7 +25,7 @@ It deliberately does **not** cover:
 - **customer bill and receipt content, numbering, and reprint/replacement identity** — the **receipts-and-bills** subject owns document kinds, required fields, bill and receipt numbers, and when a reprint or replacement applies. This subject **prints** those documents on the sales point's receipt printer, may arrange their **layout** from the required fields, and gates paper issue with **print permission**; it does not invent or omit required content.
 - the **daily sales report close** — the sales-reports subject owns closing the day; this subject states the fulfilment sweep that close triggers.
 - **notifications and emails** — their subjects own delivery; this subject names the print-failure condition that notifies managers.
-- **hardware sales or lock-in** — Project Imperium sells no printers or screens and requires no brand; the venue brings its own devices.
+- **hardware sales or lock-in** — Project Imperium sells no printers or screens and requires no brand; the venue brings its own printers and optional displays. Staff identity devices are personal (staff-sessions subject), not a shared printer/screen login.
 - **floor-plan placement** — where a printer or screen sits on a venue floor map belongs to the floor-plans subject. This subject owns creating and configuring those devices; a device may exist unplaced until a manager locates it on a floor.
 
 ---
@@ -66,8 +66,9 @@ Terms reused rather than redefined here: **Business**, **Batch**, **Identificati
 
 ### 3.1 Hardware stance
 
-- The venue brings its own computers, tablets, printers, and displays. Project Imperium sells none and locks the venue to no brand.
-- **Control screens** always exist in the product: staff open the screen they need on any internet device after sign-in. Connecting a dedicated display at a location is optional and does not change the service flow.
+- The venue brings its own **printers** and optional **dedicated displays** for prep and customer boards. Project Imperium sells none and locks the venue to no brand.
+- **Staff identity** stays on each person's **own signed-in personal device** (staff-sessions subject). Printers and screens are output and control surfaces, not a shared staff login, PIN, or quick-switch station.
+- **Control screens** always exist in the product: a person opens the screen they need after signing in with **their own** email and password. Connecting a dedicated display at a location is optional and does not change the service flow; the session on that browser is still that signed-in User’s.
 - **Printing** is a required capability for customer documents. How many printers the venue has and where they sit is its choice; what each logical printer produces is fully configured.
 - A venue may run **printer-only**, with tickets and verbal calling and little or no use of control screens; service continues. Status may still be advanced from the POS, and the daily close clears stragglers (§3.10).
 

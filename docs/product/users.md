@@ -12,7 +12,7 @@ This subject covers **who a person is as a global identity and customer**, and t
 - **business ownership** — the **Owner** account that holds one or more **Companies**, each owning its **Business** identities, and the transfer of a business between users;
 - the **mode eligibility rule** — when a signed-in user may work in **customer** or **business** mode (exactly two modes), consuming effective layer from the access-and-permissions subject;
 - **credentials and email** — sign-up, verification, email change, and the business contact email;
-- **sessions**, and the **account lifecycle** — pending deletion, soft delete, and reactivation;
+- **sessions** (access token, refresh session, revoke on credential change), and the **account lifecycle** — pending deletion, soft delete, and reactivation;
 - **favorites** — the venues a customer saves for quick access;
 - that creating a User requires accepting the **privacy notice** and account terms, and that **birth date** gates marketing consent and self-channel alcohol under the privacy, consent, and DSAR subject.
 
@@ -27,6 +27,7 @@ It deliberately does **not** cover:
 - **which venues are live and discoverable** — the business subject owns go-live, offline, and discovery fields. This subject only allows favoriting venues that are live.
 - the **superadmin console's** authentication realm, which is separate and belongs to the superadmin subject.
 - **marketing consent**, customer data export (DSAR), age floors, and the full privacy product rules — the privacy, consent, and DSAR subject. This subject holds birth date and language preference on the User and states the accept-to-create and birth-date gate hooks those rules need.
+- **staff multi-session peer rules**, **personal-device-only** Business work, and the product exclusion of shared staff devices, PIN, quick-switch, and in-app lock identity — the staff-sessions subject. This subject still owns issuing and revoking access and refresh sessions.
 
 ---
 
@@ -138,7 +139,7 @@ Creating a User through self sign-up (and through managed-employee creation when
 
 ### 3.10 Sessions
 
-Project Imperium issues a short-lived **access token** and a **refresh session**. Project Imperium can revoke a user's refresh sessions wholesale whenever the password is reset or changed, or the sign-in email is verified as changed. The **mode** from §3.6 is recorded in a server-side session so guards can enforce it; switching mode updates that record. The **superadmin console's authentication realm is entirely separate** and belongs to the superadmin subject.
+Project Imperium issues a short-lived **access token** and a **refresh session**. A User may hold **more than one** refresh session at a time (for example the same person signed in on phone and laptop). Project Imperium can revoke a user's refresh sessions wholesale whenever the password is reset or changed, or the sign-in email is verified as changed. The **mode** from §3.6 is recorded in a server-side session so guards can enforce it; switching mode updates that record. How staff use concurrent sessions on **personal devices only**, and that shared staff device / PIN / quick-switch identity is **not in the product**, belong to the staff-sessions subject. The **superadmin console's authentication realm is entirely separate** and belongs to the superadmin subject.
 
 ### 3.11 Personal profile and preferences
 
