@@ -109,7 +109,7 @@ Terms reused rather than redefined here: **Business**, **Owner**, **Company**, *
 - Guests sharing a tab may pay with **different methods at different times**. A **partial payment** reduces the **outstanding balance** and leaves the bill open; the bill closes only once outstanding is **fully covered** or **surpassed** (§3.6).
 - A **tip** is taken **on the payment that is being settled**, not on the whole bill in advance: each digital payment may carry its own tip; cash parts never do (§3.5).
 - Staff **enter the tendered amount** for cash (and for any method that can over-tender); the system derives change or surplus choice from that amount against what that payment covers.
-- A **self-service** instance is paid in full before it closes, so it never carries a partial balance and never uses staff-tab split UX.
+- A **self-service** instance is paid in full before it closes, so it never carries a partial balance and never uses the staff-tab bill-split flow.
 - Customer **receipt** issue at full close — and mid-settlement **bill** content showing payments so far — belong to the receipts-and-bills subject; this subject only records the payments.
 
 ### 3.5 Tips
