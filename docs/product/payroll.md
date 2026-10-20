@@ -118,7 +118,7 @@ Managers do not change payroll configuration; they release packages under it.
   - **House tip input** — self-service tips that day enter the pool with no employee owner.
   - **Recipients** — job roles configured to receive; the day's pool is split among recipient employees **in proportion to worked hours** from sessions that **started that day**.
   - Pre-pool (attributed) and post-pool amounts are both retained for the package and for staff self-view.
-- Only **platform-recorded** tips participate. Cash tips handed to staff away from the platform are out of scope (payments-and-tax).
+- Only **platform-recorded** tips participate (digital tips at settlement — payments-and-tax). **Off-record cash tips** — including surplus cash kept at settle or at employee cash-out — never enter the pool or any tip line (employee cash-out subject).
 - Tip-pool math is **automatic** as sessions and tips settle. There is no separate tip-day approval. The only send gate is **Release** on the pay run (§3.7).
 - Changing tip-pool policy or upstream tips recalculates the draft (and may create a new version after a prior release — §3.8).
 

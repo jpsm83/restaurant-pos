@@ -12,7 +12,7 @@ This subject covers **attendance** — the **actual** side of the plan-versus-ac
 - the **time-clock ledger** and the **shift session** projected from it;
 - **late lock** and manager unlock;
 - **breaks** (pause and resume), attendance reasons, and the venue setting for whether paused time counts toward worked hours;
-- **manager sign-out**, early-leave reasons, and the open-sales-instance blocker;
+- **manager sign-out**, early-leave reasons, and the blockers for open sales instances and **uncashed activity**;
 - **worked hours**, **actual labour cost**, and **overtime** detection;
 - **absence (no-show)** when the business-mode entry window closes without a sign-in;
 - the attendance events that notify managers (sign-out request, overtime), including **overtime mute** for a session.
@@ -22,7 +22,8 @@ It deliberately does **not** cover:
 - the **schedule** (day schedules, working shifts, vacation and other leave, time-off requests, planned labour aggregates) — the schedules subject owns the plan. This subject compares actuals against that plan and never writes schedule punches.
 - **business-mode eligibility** as a platform rule — the users subject owns when a person may enter business mode; the access-and-permissions subject owns effective layer (including that supervisors are schedule-gated). This subject states the attendance facts and the entry window those rules read; schedules supply the planned working shift. Service / Manage / Me left-menu navigation inside business mode belongs to the user-navigation subject.
 - the **Employee** membership, pay, and vacation allowance — the employees subject owns those. This subject consumes gross pay and pay frequency for actual labour cost.
-- **open sales instances** and responsible-staff attribution — the sales-points-and-instances subject owns those. This subject only enforces that duty sign-out is blocked while the employee still holds open instances.
+- **open sales instances** and responsible-staff attribution — the sales-points-and-instances subject owns those. This subject enforces that duty sign-out is blocked while the employee still holds open instances.
+- **employee cash-out** and what counts as **uncashed activity** — the employee cash-out subject owns the wallet, cash-out approval, and financial obligation. This subject enforces that duty sign-out is also blocked while uncashed activity remains.
 - **notification delivery** — inbox, live push, cooldown mechanics — the notifications subject owns how events are delivered. This subject defines which attendance events exist, when they fire, and the overtime session mute.
 - **labour KPI formulas** and report roll-ups — the business-metrics and business-reports subjects own those. This subject supplies worked hours, overtime hours, and actual labour cost.
 - **payroll preparation and export** — pay periods, tip pooling into a pay run, release, and accountant CSV — the payroll subject owns those. This subject supplies the closed sessions and hours that subject consumes.
@@ -135,7 +136,9 @@ There is **no** late-unlock step on the schedule itself. Lateness honesty is lat
 - Sign-out appends a ledger event at the real action time and sets the session to **closed**.
 - For **employee- or supervisor-layer** staff, duty sign-out also **ends business mode** for that visit (they return to customer mode). Managers, admins, and owners may be signed out of duty without being kicked out of business mode.
 - **Early leave.** If sign-out is **more than 10 minutes before** the session's planned end, an **attendance reason** is required. Within 10 minutes of planned end, or after planned end, no reason is required. Unscheduled management sessions have no early-leave reason rule.
-- **Open sales instances.** Sign-out is **rejected** while the employee is the responsible staff on any **open sales instance** (any point type, not only tables). The warning lists those open points. Sign-out becomes possible only after those instances are **closed** or **transferred**. There is no force-sign-out override.
+- **Open sales instances.** Sign-out is **rejected** while the employee is the responsible staff on any **open sales instance** (any point type, not only tables). The warning lists those open points. Sign-out becomes possible only after those instances are **closed** or **transferred**.
+- **Uncashed activity.** Sign-out is **rejected** while the employee still has **uncashed activity** in their employee cash session (employee cash-out subject). They must complete an approved **cash-out** (or have no settled activity to cash) before sign-out. Personal float alone does not block sign-out.
+- There is **no** force-sign-out override for either blocker.
 
 ### 3.9 Absence (no-show)
 
@@ -210,7 +213,7 @@ No per-user capability gates attendance actions on this subject. Those actions f
 | Late-unlock | Manager-layer users in business mode |
 | Pause / resume own break | The on-duty person; also any manager-layer user for that person |
 | Request sign-out | The on-duty person |
-| Sign out (end duty) | Manager-layer users in business mode, and only when the person holds no open sales instances |
+| Sign out (end duty) | Manager-layer users in business mode, and only when the person holds no open sales instances and has no uncashed activity |
 | Append corrections | Managers and above |
 | Edit break hours setting | Managers and above |
 | Mute overtime for an open session | Manager-layer users in business mode |

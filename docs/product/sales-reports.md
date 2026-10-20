@@ -24,7 +24,7 @@ It deliberately does **not** cover:
 - the **definition, units, formulas, dimensions, and benchmarks of the metrics themselves** — the business-metrics subject owns those; this subject presents the day's operational sales figures using those definitions;
 - **platform commission finalisation and collection** — the business-reports subject owns those at weekly close; this subject only shows a day-level **estimate**;
 - the **raw sales, order, payment, labour, and stock data** the report is built from — the orders, payments-and-tax, sales-points-and-instances, and related subjects own those; this subject only aggregates them;
-- **cash drawer or tip-cash counting** at close — out of scope for this subject; close does not require a cash attestation;
+- **employee cash-out** (personal wallet, expected business cash, cash-out resume, approval) — the employee cash-out subject owns those. This subject surfaces **staff cash collected** and cash-out / uncashed visibility from approved cash-outs; **close does not require** a cash-out or cash attestation, and there is **no** business over/short variance line;
 - the **delivery of notifications** — the notifications subject owns inbox and channels; this subject raises **no** daily report-ready or closed signal;
 - **how reports are exported or laid out on screen** — outside this subject;
 - **gift-card issue, balance, redemption, void, and expiry rules** — the gift-cards subject owns those; this subject accumulates deposit intake and tender in the gift-card channel, forfeitures (expiry and void-with-balance) in the forfeiture channel, and surfaces outstanding liability;
@@ -103,7 +103,8 @@ Terms reused from other subjects rather than redefined here: **business**, **sal
 - **Managers and above** **close** the day when service for that work day is done.
 - Closing requires that **no sales instance for that work day still has open orders**. Empty instances are discarded or closed first; an empty instance alone does not block close.
 - Closing does **not** require every fulfilment slice to be Delivered first; close itself clears stragglers (§3.6).
-- Closing does **not** require a cash-drawer or tip-cash count.
+- Closing does **not** require an employee cash-out or any cash attestation. Cash-out and day close are independent (employee cash-out subject).
+- The daily report surfaces **staff cash collected** from approved cash-outs for that work day and **cash-out / uncashed** status per employee for supervisors and above (employees see their own). Those figures do **not** create an over/short P&L line; shortfalls never approve on cash-out.
 - On close, Project Imperium:
   - moves the report to **closed** and **locks the day** — belonging bills and payments cannot change until reopen;
   - runs the **fulfilment sweep** (§3.6).
@@ -168,7 +169,7 @@ Terms reused from other subjects rather than redefined here: **business**, **sal
 | --- | --- |
 | **Customer** | None. |
 | **Employee** | None by default; may be granted a per-user capability to **view the daily sales report**. |
-| **Supervisor** | None by default; may be granted the same view capability. Does not close or reopen the day. |
+| **Supervisor** | None by default for the full daily report; may be granted the same view capability. Sees cash-out / uncashed status for floor control (employee cash-out). Does not close or reopen the day. |
 | **Manager** | Views the daily report and its breakdowns; closes and reopens the day (reopen with reason). |
 | **Admin** | Everything a manager can do, plus full venue control. |
 

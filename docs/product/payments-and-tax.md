@@ -12,8 +12,8 @@ This subject owns **settlement**: turning an open bill into paid money, and the 
 - the **payment-method catalogue** — the fixed types and branches a payment may use;
 - **taking payment** — settling a bill, whole or in parts, across every service channel;
 - **splits and partial payments** — arranging a bill into parts and paying it down until it closes;
-- **tips** — taking and attributing a gratuity at settlement, including surplus from over-tender taken as tip;
-- **over-tender** — when cash (or similar) tender surpasses outstanding balance, returning change or recording the difference as tip;
+- **tips** — taking and attributing a gratuity at settlement on **digital** methods (recorded and taxable); cash tips stay off-record;
+- **over-tender** — when tender surpasses outstanding balance: on **cash**, return change or leave surplus with the employee off-record; on **digital** methods, return change or record the difference as tip;
 - **third-party processing** — Stripe Connect as the integrated processor for Imperium-processed self-channels, connecting each venue's payment account, and recording external tenders;
 - **payouts** — how captured money reaches the venue;
 - **refunds and card disputes** — the request-and-decision flow, reversal of a settled payment (with a required operational reason on approval), and how provider disputes feed reporting and commission;
@@ -32,7 +32,8 @@ It deliberately does **not** cover:
 - the **gift-card instrument** — issuance as deposit/liability, balance, ledger, lifecycle, and redemption rules belong to the **gift-cards** subject; this subject owns the **Gift card** payment method and records a redemption as ordinary settlement (tax stays on the goods).
 - **customer bill and receipt documents** — required content, numbering, reprint, and replacement identity belong to the **receipts-and-bills** subject. Delivering a receipt or a refund decision belongs to the **notifications** and **emails** subjects; those payloads must satisfy receipts-and-bills.
 - **supplier invoices and their tax** — amounts payable to a supplier and supplier invoicing are not part of Project Imperium.
-- **tip pooling and payroll export** — redistributing tips across roles and packaging them into a pay run belong to the **payroll** subject. This subject records and attributes tips at settlement.
+- **tip pooling and payroll export** — redistributing tips across roles and packaging them into a pay run belong to the **payroll** subject. This subject records and attributes **platform-recorded** tips at settlement.
+- **employee cash-out** — the personal wallet, expected business cash, cash-out resume, and sign-out financial obligation belong to the **employee cash-out** subject. This subject supplies the settled payments that subject reconciles and owns the cash-vs-digital tip and Cash-method gates below.
 - the **operational reason catalogue** for refunds — closed platform list, Other-note rule, maintenance, visibility, and reporting-by-reason expectations belong to the **operational reasons** subject. This subject requires a code from that catalogue when a refund is approved and issued.
 
 ---
@@ -89,7 +90,8 @@ Terms reused rather than redefined here: **Business**, **Owner**, **Company**, *
   - **Gift card** — a gift card redeemed at its issuing venue, with no separate branch.
   - **Other** — Voucher, PayPal, Venmo, Apple Pay, Google Pay, Samsung Pay.
 - The **type** groups the branches for reporting; the **branch** names exactly how the money moved. A payment is reported at both levels.
-- Every payment carries exactly one method, and the method chosen places the payment, and its tip, in the payment-method breakdown.
+- Every payment carries exactly one method, and the method chosen places the payment, and its tip (when allowed), in the payment-method breakdown.
+- **Cash is staff-only.** **Cash** may be recorded only on a **staff tab** (or a staff-taken gift-card deposit checkout) by on-duty staff. **Self-ordering, kiosk, and delivery** never offer Cash — those channels are entirely digital.
 - A **gift card** redeemed at its issuing venue is recorded as a **Gift card** payment, so it appears in its own place in the breakdown. Tax on the bill is the ordinary tax on each **paid** order line (and tip); gift-card tender does **not** change line tax categories and does **not** turn lines into invitations. Funding a card is a **deposit**, not a product sale — the gift-cards subject owns issue, balance, ledger, and lifecycle.
 
 ### 3.3 Taking a payment
@@ -110,17 +112,19 @@ Terms reused rather than redefined here: **Business**, **Owner**, **Company**, *
 
 ### 3.5 Tips
 
-- A **tip** is optional and is taken **on a payment** — a **percentage** of the payment or a **fixed amount** in the business currency — at the moment the bill is settled.
-- A staff tip is **attributed to the employee** who took it; a self-service tip is the customer's own.
-- A tip is recorded with its payment and feeds the day's sales report; the platform taxes the tips it records (§3.10).
+- A **tip** is optional and is taken **on a digital payment** — a **percentage** of the payment or a **fixed amount** in the business currency — at the moment the bill is settled. **Cash** payments never carry a tip line.
+- A staff tip on a digital payment is **attributed to the employee** who took it; a self-service tip is the customer's own.
+- A **platform-recorded** tip feeds the day's sales report and is taxed at the Tip rate (§3.10). Only recorded tips enter payroll tip pooling.
 - On an **Imperium-processed** card payment, the tip is collected on the **same** diner charge as the bill, settles to the venue with the bill, and is **recorded separately** so it never enters **commissionable sales**.
-- A **cash tip** handed to staff away from the platform is not the business's concern: the platform neither records nor taxes it.
+- **Cash tips** — including surplus cash above what the house is owed at settle or at employee cash-out — are **off-record**: the platform neither records nor taxes them. The employee cash-out subject owns how house cash is reconciled without writing those tips.
 
 ### 3.6 Over-tender and change
 
-- When a payment's tender **surpasses** the outstanding balance (typical for cash), the guest chooses either **change returned** in the business currency or that the **difference is taken as tip** on that payment.
-- The instance may close when outstanding is **covered or surpassed**; surplus never stays as unexplained cash on the tab — it is either change or tip.
-- The customer **receipt** shows owed, tendered, and change or tip as the receipts-and-bills subject requires.
+- When a payment's tender **surpasses** the outstanding balance:
+  - **Cash** — the guest receives **change returned** in the business currency, or keeps the surplus with the employee as an **off-record cash tip**. Project Imperium **never** records a tip line on a cash payment. The payment amount on the bill is the house-owed cash for that tender (employee cash-out uses that amount in expected business cash).
+  - **Digital methods** — the guest chooses either **change returned** (where the method allows) or that the **difference is taken as tip** on that payment (recorded and attributed).
+- The instance may close when outstanding is **covered or surpassed**. On cash, surplus is never unexplained venue cash on the tab — it is change or off-record employee keep. On digital methods, surplus is change or recorded tip.
+- The customer **receipt** shows owed, tendered, and change or tip as the receipts-and-bills subject requires (tip lines appear only when a tip was recorded).
 
 ### 3.7 Third-party processing and connected accounts
 
@@ -181,7 +185,7 @@ Terms reused rather than redefined here: **Business**, **Owner**, **Company**, *
 | Layer | Payments-and-tax powers |
 | --- | --- |
 | **Customer** | Self-pays a self-service bill in-app by any method; may raise a refund request; never takes another's payment, configures tax, or decides a refund. |
-| **Employee** | Takes payments and tips on the tab they are on duty for, records cash and external-terminal payments, and may raise a refund request; cannot refund or configure. |
+| **Employee** | Takes payments on the tab they are on duty for; records cash (staff tabs only) and external-terminal payments; may record tips on **digital** methods only; may raise a refund request; cannot refund or configure. |
 | **Supervisor** | Same payment-taking powers as employee; cannot decide refunds or configure tax / Stripe. |
 | **Manager** | Everything an employee can do, plus deciding refund requests and issuing refunds. Cannot complete Stripe connected-account onboarding. |
 | **Admin/owner** | Full venue control, including the **tax configuration** and **connecting or disconnecting** the venue's Stripe connected payment account. |
@@ -190,9 +194,11 @@ Terms reused rather than redefined here: **Business**, **Owner**, **Company**, *
 
 | Activity | Who |
 | --- | --- |
-| Take a payment and a tip on a tab | The employee on duty on the tab |
-| Pay a self-service bill in full | The customer |
-| Record a cash or external-terminal payment | An employee on the tab |
+| Take a payment on a tab | The employee on duty on the tab |
+| Record a tip on a digital payment | The employee on duty on the tab (or the customer on self-service) |
+| Pay a self-service bill in full (digital methods only) | The customer |
+| Record a cash payment | An employee on a staff tab (never on self-service) |
+| Record an external-terminal payment | An employee on the tab |
 | Split a bill; take partial payments | The employee settling the tab |
 | Raise a refund request | The customer from the app, or any staff member |
 | Approve or decline a refund request; issue a refund | The manager on duty |

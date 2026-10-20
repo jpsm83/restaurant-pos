@@ -21,6 +21,7 @@
 21 - employees
 22 - schedules
 23 - time control
+23a - employee cash-out
 24 - payroll
 25 - sales report
 26 - business report
@@ -40,9 +41,11 @@
 40 - operational reasons
 41 - staff sessions
 42 - conversations
-43 -
+43 - allergens
 44 - 
 45 - 
 46 - 
 47 - 
 48 - 
+
+Future thicken (not this subject): paid-in/out; transfer of cash among employees.

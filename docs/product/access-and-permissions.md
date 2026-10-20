@@ -73,7 +73,7 @@ Ordered for business memberships **admin > manager > supervisor > employee**. **
 | --- | --- |
 | **Customer** | Every User. Public Customer surface; never a membership layer. |
 | **Employee** | Floor and self-service staff. **Schedule-gated** Business entry. Default Service is **POS** (plus **Me**); other Service destinations and elevated ops need catalogue grants (or a job-role entitlement such as Host). **No Manage.** |
-| **Supervisor** | Floor lead. **Schedule-gated** Business entry (same entry window as employee). **No Manage.** **Full Service** by default (POS, Host, prep screens, delivery screen, customer pickup board, Attendance for **own** scan-in) and **print permission**. Does **not** present the venue daily attendance QR (manager+ only — time-control subject). Selected elevated defaults (for example inventory count re-edit). Further powers only via catalogue grant/revoke. |
+| **Supervisor** | Floor lead. **Schedule-gated** Business entry (same entry window as employee). **No Manage.** **Full Service** by default (POS, Host, prep screens, delivery screen, customer pickup board, Attendance for **own** scan-in) and **print permission**. Does **not** present the venue daily attendance QR (manager+ only — time-control subject). Selected elevated defaults (for example inventory count re-edit, **approve another employee's cash-out** — employee cash-out subject). Further powers only via catalogue grant/revoke. |
 | **Manager** | Day-to-day administration and operations. **Always** may enter Business (not schedule-gated). **Manage** header and full Service by default. Assigns access for layers below manager. |
 | **Admin** | Full venue control, including ownership-adjacent acts the feature subjects reserve for admin/owner. **Always** may enter Business. **Manage** and full Service. The owning user is admin at every venue they own. |
 
@@ -154,6 +154,7 @@ This subject owns the authoritative list. Feature subjects own behaviour for eac
 
 - **Host** under Service — **Host** job role, and anyone whose effective layer already includes full Service (supervisor, manager, admin).
 - **Inventory count re-edit** (with reason and audit) — **supervisor** layer and above (manager, admin), migrating the former “Supervisor job role only” special case into the supervisor **layer** default.
+- **Approve employee cash-out** (another person's wallet only) — **supervisor** layer and above; behaviour owned by the employee cash-out subject.
 
 ### 3.9 Assignment surface
 

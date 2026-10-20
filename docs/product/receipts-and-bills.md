@@ -28,6 +28,7 @@ It deliberately does **not** cover:
 - **batch identification codes** — the **orders** subject issues them for kitchen and handover; they may appear on bill and receipt content but are never the fiscal document number.
 - the **review invite** mechanics beyond requiring the **review QR** on a meal receipt — the **ratings-and-comments** subject.
 - **daily reopen** of a work day — the **sales-reports** subject. This subject states how document identity follows an amended bill or payment after reopen.
+- the **cash-out resume** (employee wallet reconciliation document) — the **employee cash-out** subject owns that document, its number, and reprint rules. It is not a customer bill or receipt.
 
 ---
 
