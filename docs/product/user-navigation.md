@@ -27,7 +27,7 @@ It deliberately does **not** cover:
 - **attendance and on-duty** — daily attendance QR, late lock, and shift sessions belong to the time-control subject. This subject only places Attendance under Service when the person may open it.
 - **feature behaviour inside each destination** — orders, schedules, inventory, reports, and the rest belong to their own subjects. This subject only places those destinations in the chrome.
 - **the Superadmin console's** own navigation and authentication realm — the superadmin subject owns that surface entirely.
-- **a distinct mobile shell** — this subject's chrome commitments are for the **desktop web app**. Phone and tablet layouts are out of scope here. Staff still sign in on their **own personal devices** with full email and password; there is no shared-device chrome, PIN, or quick-switch (staff-sessions subject).
+- **a distinct mobile shell** — this subject's chrome commitments are for the **desktop web app**. Phone and tablet layouts are out of scope here. Staff still sign in with full email and password on a personal or venue-provided device; one User per browser session; no shared-login chrome, PIN, or quick-switch (staff-sessions subject).
 - **visual design, exact labels, and copy** — out of scope for the product set.
 
 ---

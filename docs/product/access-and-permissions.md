@@ -19,7 +19,7 @@ This subject covers **who may do what inside a venue**, as a fixed platform mode
 It deliberately does **not** cover:
 
 - the global **User**, credentials, sessions, ownership transfer, favorites, or account lifecycle — the users subject owns those. This subject supplies the layer and capability rules mode eligibility and chrome consume.
-- **staff multi-session**, **personal-device-only** Business work, and the exclusion of shared staff devices, PIN, quick-switch, and in-app lock identity — the staff-sessions subject. Layers and capabilities always apply to the **signed-in User** on that person's own session; there is no device-shared actor.
+- **staff multi-session**, personal or venue-provided staff devices with **one User per browser session**, and the exclusion of shared login, PIN, quick-switch, and in-app lock identity — the staff-sessions subject. Layers and capabilities always apply to the **signed-in User** on that person's own session; there is no shared actor on one session.
 - the **Employee** membership record itself — hire, HR, pay, vacation, termination, rehire, and storing job roles on the membership — the employees subject owns that. This subject reads those roles and owns how they map to layers and capabilities.
 - **navigation chrome** — Customer | Business toggle, Service / Manage / Me, guards, and destinations — the user-navigation subject owns those surfaces; this subject states which effective layer and capabilities make them available.
 - the **daily schedule** and which job role a working shift carries — the schedules subject owns that; this subject consumes the shift role for effective layer and active capabilities.

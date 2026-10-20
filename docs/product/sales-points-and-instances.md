@@ -25,7 +25,7 @@ It deliberately does **not** cover:
 - the **daily sales report** — the sales-reports subject owns it; this subject owns the work-day anchor it opens on.
 - **notification, email, and ticket delivery** — their own subjects own delivery; this subject names the triggers.
 - **inventory effects** — the inventories subject owns what a sold order consumes.
-- **staff personal-device sessions** and the exclusion of shared staff device / PIN / quick-switch identity — the staff-sessions subject. Tab handover approval runs on the receiver's own signed-in session.
+- **staff sessions** (one User per browser session on personal or venue-provided devices) and the exclusion of shared login / PIN / quick-switch identity — the staff-sessions subject. Tab handover approval runs on the receiver's own signed-in session.
 
 ---
 
@@ -103,7 +103,7 @@ Terms reused rather than redefined here: **Business**, **Order**, **Business goo
 ### 3.7 Attribution and moving a tab
 
 - Every instance records its opener and role, its optional client name, and its guest count, which may be edited while the instance is open.
-- A staff tab has a **responsible employee**. Responsibility moves with the tab. The responsible employee may **hand the tab over** to another on-duty employee, who must **approve** the handover in **their own signed-in session** on their personal device before it takes effect; after that the tab belongs to the receiver. There is no shared-device PIN or quick-switch for handover (staff-sessions subject).
+- A staff tab has a **responsible employee**. Responsibility moves with the tab. The responsible employee may **hand the tab over** to another on-duty employee, who must **approve** the handover in **their own signed-in session** before it takes effect; after that the tab belongs to the receiver. There is no PIN or quick-switch for handover (staff-sessions subject).
 - The **opening employee or admin and above** may move a tab that has **no orders**. Once a tab has orders, only its **responsible employee or admin and above** may move it, together with its orders. Moving a tab to an **empty served point** needs no approval and does not change responsibility — the tab is simply relocated.
 - Orders may be moved between staff tabs; only employee-opened tabs take part. The receiving tab's responsible employee approves, unless the mover is responsible for the destination; the orders subject owns the transfer and its approval rule.
 - A **Host cannot move** a tab; the Host's tool is the reserved hold.
