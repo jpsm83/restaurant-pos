@@ -55,7 +55,7 @@ It deliberately does **not** cover:
 - **Theoretical usage** — the quantity of a good the venue should have used, derived from the recipes of the business goods sold.
 - **Actual usage** — the quantity the venue did use, derived from opening stock plus stock in minus stock out and closing stock.
 - **Variance** — theoretical usage against actual usage, per good.
-- **Waste** — the excess of actual usage over theoretical usage: stock that left the venue unexplained. It is valued at cost and graded by **budget impact**.
+- **Waste** — the excess of actual usage over theoretical usage: stock that left the venue unexplained. It is valued at cost and graded by **budget impact**. Waste is **only** this derived figure — Project Imperium has **no** separate manual spoilage or waste log.
 - **Inventory value** — stock on hand valued at the good's **price per unit of stock**.
 - **Low stock** — a good whose stock on hand is below its **minimum required**.
 - **Negative stock** — a good whose stock on hand is below zero.
@@ -113,7 +113,7 @@ Terms reused from other subjects rather than redefined here: **Business**, **Com
 - **Waste** is the stock that left the venue **unexplained** — the excess of actual usage over theoretical usage — valued at the good's cost.
 - A count that finds **more** stock than expected is the opposite of waste and is **not** reported as waste.
 - Waste is graded by the good's **budget impact**; each grade is measured as a **percentage of total sales** — the view its **waste threshold** polices — and is also shown as a **percentage of COGS** for the input view.
-- Waste is derived from the counts and the movements. There is **no separate waste entry to log**.
+- Waste is **derived only** from the counts and the movements. There is **no** separate spoilage or waste entry to log: known throw-aways surface when staff count or move stock.
 - A grade with no waste, or with no goods at that impact, simply produces no comparison; Project Imperium never fabricates a zero-waste result.
 
 ### 3.7 Low stock and negative stock

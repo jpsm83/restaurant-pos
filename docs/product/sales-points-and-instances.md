@@ -11,11 +11,12 @@ This subject owns the **anchor of service**: where a guest sits or is served, an
 - the **sales point** — the place, its **type**, the set of **channels** it accepts, its **QR identity**, its **reserved hold**, its derived **availability**, and its **deletion**;
 - the **virtual delivery point** and the venue's **kiosk points**;
 - the **sales instance** — opening, attribution, guest count, client name, status, the **one-open rule**, moving a tab, moving orders between tabs, the **reservation link**, the work-day anchor, and the discarding of an **empty instance**; and
+- the explicit rule that **open staff tabs are never auto-aged or auto-closed**; and
 - the **handover verification** rule for self-service orders.
 
 It deliberately does **not** cover:
 
-- the **end-to-end service journey** or the surface-specific flows (dine-in, QR self-ordering, kiosk, and delivery dispatch) and **to-go packaging** — the order-flow subject owns the journey; this subject owns the anchor those flows open and close.
+- the **end-to-end service journey** or the surface-specific flows (dine-in, QR self-ordering, kiosk, and delivery dispatch), **to-go packaging**, and **self-service basket clear / idle expiry** — the order-flow subject owns the journey and unpaid-basket ageing; this subject owns the anchor those flows open and close.
 - the **orders** themselves — the billable lines, add-ons, pricing, promotions, and the **identification code** an order carries belong to the orders subject. This subject groups orders into a session and owns the handover rule.
 - **billing and payment** — splitting a tab, partial and multi-method payments, tips, and settlement belong to the payments-and-tax subject, while the order lifecycle — voids, invitations, and cancellations — belongs to the orders subject. This subject owns the instance's **Bill** status and its close once settled.
 - **employee cash-out** — which wallet must cash a settled bill follows this subject's **responsible employee** at payment time; cash-out approval and resumes belong to the employee cash-out subject.
@@ -89,7 +90,7 @@ Terms reused rather than redefined here: **Business**, **Order**, **Business goo
 
 ### 3.5 Self-service instances
 
-- On **Self-ordering**, **Kiosk**, and **Delivery**, the customer builds a **basket** in an **ordering session** with no sales instance yet, sees a **pre-payment confirmation**, and **pays in full**. The instance is created **only when the customer commits to pay**, then closes for billing on that settlement; an abandoned basket leaves nothing behind. Fulfilment after payment belongs to the order-flow subject.
+- On **Self-ordering**, **Kiosk**, and **Delivery**, the customer builds a **basket** in an **ordering session** with no sales instance yet, sees a **pre-payment confirmation**, and **pays in full**. The instance is created **only when the customer commits to pay**, then closes for billing on that settlement; an abandoned or idle-expired basket leaves nothing behind (clear basket and idle expiry belong to the order-flow subject). Fulfilment after payment belongs to the order-flow subject.
 - These channels are **not** subject to the one-open rule: several may run at once, **one instance per paying ordering session**. Concurrent baskets on the same point (or on the virtual Delivery point) stay **isolated by session** and never merge because they share a point — the order-flow and realtime-and-concurrency subjects state the journey and conflict rules.
 - A **Self-ordering** instance cannot open unless the **business** has self-ordering enabled, the point accepts that channel, no **staff tab** is open on the same point, and the point has **no reserved hold**; otherwise the customer is told self-ordering is unavailable, that the table is reserved, or that service is underway.
 - Every order carries an **identification code**. For **Self-ordering**, **Kiosk**, and **Delivery**, Project Imperium **notifies and emails** the customer the code, and a **kiosk also prints a ticket**. Staff **verify the code at handover**, before releasing the items, so the person who collects is the person who ordered.
@@ -100,6 +101,7 @@ Terms reused rather than redefined here: **Business**, **Order**, **Business goo
 - **Bill** belongs to a **staff tab**; the self-service channels never hold it, because they pay to close.
 - A staff tab moves from **Occupied** to **Bill** when the check is requested, and to **Closed** when its last order is settled.
 - Project Imperium owns the instance status; a client never sets one directly.
+- **No open-tab ageing.** Occupied or Bill staff tabs are **never** auto-closed, auto-voided, or auto-settled, and Project Imperium raises **no** manager (or other) notification for a “stale” tab. Closing, settling, voiding, cancelling, transferring, or discarding an empty tab is operational work for the **responsible employee** and other entitled staff on the floor. Duty **sign-out** remains blocked while the employee still holds open sales instances (time-control subject) — that is the product pressure, not a separate ageing alert.
 
 ### 3.7 Attribution and moving a tab
 
