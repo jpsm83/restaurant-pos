@@ -32,7 +32,7 @@ Engineering and cross-cutting rails every later subject assumes. Prefer ADRs and
 
 | on-going | done | Order | Focus | Slice | Docs to open |
 | --- | --- | --- | --- | --- | --- |
-| [ ] | [ ] | 0.1 | Request validation, problem details, shared schemas | Zod validation + problem details rail | [ADR-0001](adr/0001-zod-request-validation-and-problem-details.md) |
+| [ ] | [x] | 0.1 | Request validation, problem details, shared schemas | Zod validation + problem details rail | [ADR-0001](adr/0001-zod-request-validation-and-problem-details.md) |
 | [ ] | [ ] | 0.2 | Soft-delete conventions | Soft-delete behaviour and reactivation rules | [ADR-0003](adr/0003-soft-delete.md), [overview](product/overview.md) (soft-delete vocabulary only) |
 | [ ] | [ ] | 0.3 | Auth session plumbing stub | Issue/revoke access + refresh sessions | [users](product/users.md), [staff-sessions](product/staff-sessions.md) |
 | [ ] | [ ] | 0.4 | Transactional email delivery rail | Send + retry plumbing (no full catalogue UI) | [emails](product/emails.md) |

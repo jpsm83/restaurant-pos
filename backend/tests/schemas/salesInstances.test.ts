@@ -108,6 +108,15 @@ describe("createSalesInstanceBodySchema", () => {
     ).toBe(false);
   });
 
+  it("rejects paymentId (only delivery/self-order may set it)", () => {
+    expect(
+      createSalesInstanceBodySchema.safeParse({
+        ...createValid,
+        paymentId: "pay-123",
+      }).success,
+    ).toBe(false);
+  });
+
   it("rejects unknown keys", () => {
     expect(
       createSalesInstanceBodySchema.safeParse({ ...createValid, isAdmin: true })
@@ -183,6 +192,12 @@ describe("updateSalesInstanceBodySchema", () => {
     expect(
       updateSalesInstanceBodySchema.safeParse({ dailyReferenceNumber: 1 })
         .success,
+    ).toBe(false);
+  });
+
+  it("rejects paymentId (only delivery/self-order may set it)", () => {
+    expect(
+      updateSalesInstanceBodySchema.safeParse({ paymentId: "pay-123" }).success,
     ).toBe(false);
   });
 
@@ -358,6 +373,15 @@ describe("openSelfOrderingTableBodySchema", () => {
       openSelfOrderingTableBodySchema.safeParse({
         businessId: VALID_ID,
         openedByUserId: VALID_ID,
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects paymentId (only the self-order create body may set it)", () => {
+    expect(
+      openSelfOrderingTableBodySchema.safeParse({
+        businessId: VALID_ID,
+        paymentId: "pay-123",
       }).success,
     ).toBe(false);
   });

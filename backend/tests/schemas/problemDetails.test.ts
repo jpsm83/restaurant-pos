@@ -7,8 +7,10 @@ import {
 import { z } from "zod";
 import {
   coercedBooleanSchema,
+  coercedIntSchema,
   coercedNumberSchema,
   emailSchema,
+  objectIdSchema,
   sanitizedString,
 } from "restaurant-pos-packages/schemas";
 
@@ -16,8 +18,8 @@ import { registerProblemDetailsHandler } from "../../src/errors/problemDetails.t
 import { badRequest } from "../../src/errors/appError.ts";
 
 /**
- * Harness DTO built from shared primitives — the acceptance seam for the
- * zod + problem-details rail (issue #117 / ADR-0001).
+ * Harness DTOs built from shared primitives — the acceptance seam for the
+ * zod + problem-details rail (issues #117 / #119 / ADR-0001).
  */
 const harnessBodySchema = z.strictObject({
   name: sanitizedString("Name is required"),
@@ -27,6 +29,15 @@ const harnessBodySchema = z.strictObject({
   address: z.strictObject({
     city: sanitizedString("City is required"),
   }),
+});
+
+const harnessParamsSchema = z.strictObject({
+  thingId: objectIdSchema,
+});
+
+const harnessQuerySchema = z.strictObject({
+  q: sanitizedString("Query is required"),
+  limit: coercedIntSchema.positive(),
 });
 
 let app: FastifyInstance;
@@ -45,6 +56,26 @@ beforeAll(async () => {
       },
     },
     async (request) => request.body,
+  );
+
+  app.get(
+    "/thing/:thingId",
+    {
+      schema: {
+        params: harnessParamsSchema,
+      },
+    },
+    async (request) => request.params,
+  );
+
+  app.get(
+    "/search",
+    {
+      schema: {
+        querystring: harnessQuerySchema,
+      },
+    },
+    async (request) => request.query,
   );
 
   app.get("/app-error", async () => {
@@ -117,6 +148,59 @@ describe("problem-details error envelope", () => {
     expect(response.statusCode).toBe(400);
     expect(response.json().type).toBe(
       "https://restaurant-pos.app/errors/validation",
+    );
+  });
+
+  it("formats invalid params as 400 application/problem+json like body validation", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/thing/not-an-object-id",
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.headers["content-type"]).toContain(
+      "application/problem+json",
+    );
+
+    const body = response.json();
+    expect(body).toMatchObject({
+      type: "https://restaurant-pos.app/errors/validation",
+      title: "Bad Request",
+      status: 400,
+      detail: "Request path parameters is invalid",
+      instance: "/thing/not-an-object-id",
+    });
+    expect(body.errors).toEqual(
+      expect.arrayContaining([
+        { path: "thingId", message: expect.any(String) },
+      ]),
+    );
+  });
+
+  it("formats invalid querystring as 400 application/problem+json like body validation", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/search?q=&limit=nope",
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.headers["content-type"]).toContain(
+      "application/problem+json",
+    );
+
+    const body = response.json();
+    expect(body).toMatchObject({
+      type: "https://restaurant-pos.app/errors/validation",
+      title: "Bad Request",
+      status: 400,
+      detail: "Request query is invalid",
+      instance: "/search?q=&limit=nope",
+    });
+    expect(body.errors).toEqual(
+      expect.arrayContaining([
+        { path: "q", message: expect.any(String) },
+        { path: "limit", message: expect.any(String) },
+      ]),
     );
   });
 
