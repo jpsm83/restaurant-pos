@@ -233,14 +233,3 @@ Phase 0 rails
 Hard rule: **do not** implement monetization freezes, inventory variance, or Superadmin before the Phase 2 money loop works. Those subjects assume sales and tenancy already exist.
 
 ---
-
-## Suggested ticket habit (for you)
-
-For each numbered row when you reach it:
-
-1. Tick **on-going**, open **only** the files in **Docs to open**.
-2. Write a short spec that lists **in-scope commitments for this phase only** and **explicitly out-of-scope** (later phase).
-3. Break into tickets that leave the phase **exit criteria** testable.
-4. Clear **on-going**, tick **done**, then move to the next number.
-
-This file is the sequence; the linked product docs remain the source of truth for behaviour.
