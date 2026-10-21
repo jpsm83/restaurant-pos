@@ -5,9 +5,29 @@ import {
   validatorCompiler,
 } from "@fastify/type-provider-zod";
 import { z } from "zod";
+import {
+  coercedBooleanSchema,
+  coercedNumberSchema,
+  emailSchema,
+  sanitizedString,
+} from "restaurant-pos-packages/schemas";
 
 import { registerProblemDetailsHandler } from "../../src/errors/problemDetails.ts";
 import { badRequest } from "../../src/errors/appError.ts";
+
+/**
+ * Harness DTO built from shared primitives — the acceptance seam for the
+ * zod + problem-details rail (issue #117 / ADR-0001).
+ */
+const harnessBodySchema = z.strictObject({
+  name: sanitizedString("Name is required"),
+  email: emailSchema,
+  quantity: coercedNumberSchema,
+  active: coercedBooleanSchema,
+  address: z.strictObject({
+    city: sanitizedString("City is required"),
+  }),
+});
 
 let app: FastifyInstance;
 
@@ -21,13 +41,10 @@ beforeAll(async () => {
     "/thing",
     {
       schema: {
-        body: z.strictObject({
-          name: z.string().min(1),
-          address: z.strictObject({ city: z.string().min(1) }),
-        }),
+        body: harnessBodySchema,
       },
     },
-    async () => ({ ok: true }),
+    async (request) => request.body,
   );
 
   app.get("/app-error", async () => {
@@ -50,11 +67,19 @@ describe("problem-details error envelope", () => {
     const response = await app.inject({
       method: "POST",
       url: "/thing",
-      payload: { name: "", address: { city: "" } },
+      payload: {
+        name: "",
+        email: "not-an-email",
+        quantity: "x",
+        active: "maybe",
+        address: { city: "" },
+      },
     });
 
     expect(response.statusCode).toBe(400);
-    expect(response.headers["content-type"]).toContain("application/problem+json");
+    expect(response.headers["content-type"]).toContain(
+      "application/problem+json",
+    );
 
     const body = response.json();
     expect(body).toMatchObject({
@@ -67,6 +92,9 @@ describe("problem-details error envelope", () => {
     expect(body.errors).toEqual(
       expect.arrayContaining([
         { path: "name", message: expect.any(String) },
+        { path: "email", message: expect.any(String) },
+        { path: "quantity", message: expect.any(String) },
+        { path: "active", message: expect.any(String) },
         { path: "address.city", message: expect.any(String) },
       ]),
     );
@@ -76,7 +104,14 @@ describe("problem-details error envelope", () => {
     const response = await app.inject({
       method: "POST",
       url: "/thing",
-      payload: { name: "ok", address: { city: "ok" }, extra: true },
+      payload: {
+        name: "ok",
+        email: "ok@example.com",
+        quantity: 1,
+        active: true,
+        address: { city: "ok" },
+        extra: true,
+      },
     });
 
     expect(response.statusCode).toBe(400);
@@ -89,7 +124,9 @@ describe("problem-details error envelope", () => {
     const response = await app.inject({ method: "GET", url: "/app-error" });
 
     expect(response.statusCode).toBe(400);
-    expect(response.headers["content-type"]).toContain("application/problem+json");
+    expect(response.headers["content-type"]).toContain(
+      "application/problem+json",
+    );
     expect(response.json()).toEqual({
       type: "https://restaurant-pos.app/errors/bad-request",
       title: "Bad Request",
@@ -99,17 +136,46 @@ describe("problem-details error envelope", () => {
     });
   });
 
-  it("formats an unexpected error as an internal problem document", async () => {
+  it("formats an unexpected error as an opaque 500 with no stack leak", async () => {
     const response = await app.inject({ method: "GET", url: "/boom" });
 
     expect(response.statusCode).toBe(500);
-    expect(response.headers["content-type"]).toContain("application/problem+json");
-    expect(response.json()).toMatchObject({
+    expect(response.headers["content-type"]).toContain(
+      "application/problem+json",
+    );
+
+    const body = response.json();
+    expect(body).toEqual({
       type: "https://restaurant-pos.app/errors/internal",
       title: "Internal Server Error",
       status: 500,
       detail: "Internal Server Error",
       instance: "/boom",
+    });
+    expect(body).not.toHaveProperty("stack");
+    expect(JSON.stringify(body)).not.toContain("kaboom");
+  });
+
+  it("accepts a payload after shared-primitive sanitization and coercion", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/thing",
+      payload: {
+        name: "  <b>Cafe</b>\u0000  ",
+        email: "  Foo.Bar@Example.COM ",
+        quantity: "3.5",
+        active: "yes",
+        address: { city: "  Lisbon\u0007  " },
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      name: "Cafe",
+      email: "foo.bar@example.com",
+      quantity: 3.5,
+      active: true,
+      address: { city: "Lisbon" },
     });
   });
 });
