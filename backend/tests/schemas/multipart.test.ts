@@ -114,6 +114,7 @@ describe("parseMultipart", () => {
     await expect(promise).rejects.toBeInstanceOf(AppError);
     await promise.catch((error: AppError) => {
       expect(error.statusCode).toBe(400);
+      expect(error.type).toBe("https://restaurant-pos.app/errors/validation");
       expect(error.errors).toEqual([
         { path: "address.city", message: "Required" },
       ]);
@@ -129,6 +130,7 @@ describe("parseMultipart", () => {
     await expect(promise).rejects.toBeInstanceOf(AppError);
     await promise.catch((error: AppError) => {
       expect(error.statusCode).toBe(400);
+      expect(error.type).toBe("https://restaurant-pos.app/errors/validation");
       expect(error.errors).toEqual([
         { path: "address", message: "Invalid JSON" },
       ]);
@@ -160,6 +162,9 @@ describe("validateFields", () => {
       );
     } catch (error) {
       expect((error as AppError).statusCode).toBe(400);
+      expect((error as AppError).type).toBe(
+        "https://restaurant-pos.app/errors/validation",
+      );
       expect((error as AppError).errors).toEqual(
         expect.arrayContaining([
           { path: "name", message: "Required" },

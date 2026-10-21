@@ -1,10 +1,17 @@
 /**
- * Shared multipart helper.
+ * Shared multipart helper (backend-only — not exported from the packages
+ * schemas workspace).
  *
- * Multipart routes previously read `req.parts()` field by field and cast raw
- * strings ad hoc. This helper buffers every part once, collects files, parses
- * designated JSON-encoded fields, and validates the resulting field object
- * against a DTO — so a multipart route validates exactly like a JSON route.
+ * Buffers `req.parts()` once, collects files, optionally JSON-parses fields
+ * named in `options.jsonFields`, and validates the resulting field object
+ * against a strict DTO via `validateFields`. Failures raise a 400 `AppError`
+ * with slug `validation` and dotted `errors[].path`, so the global
+ * problem-details handler emits the same envelope as JSON body validation.
+ *
+ * Production routes pass a packages DTO that wraps nested objects with
+ * `jsonField` (e.g. `address: jsonField(addressSchema)`) and call
+ * `parseMultipart(req, dto)` with no `jsonFields` option — files are collected
+ * here; field parsing and coercion stay in the shared schema.
  */
 import type { FastifyRequest } from "fastify";
 import type { z } from "zod";
@@ -54,6 +61,7 @@ const parseJsonField = (fieldname: string, value: unknown): unknown => {
   } catch {
     throw new AppError(`Invalid JSON in "${fieldname}"`, {
       statusCode: 400,
+      slug: "validation",
       errors: [{ path: fieldname, message: "Invalid JSON" }],
     });
   }
@@ -79,6 +87,7 @@ export function validateFields<T>(raw: unknown, schema: z.ZodType<T>): T {
     }));
     throw new AppError("Request body is invalid", {
       statusCode: 400,
+      slug: "validation",
       errors,
     });
   }
