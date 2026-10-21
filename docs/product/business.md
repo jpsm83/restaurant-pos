@@ -180,7 +180,7 @@ The **go-live checklist** is:
 | **Minimum service kit** | **At least one on-menu business good** (business-goods), and **at least one active order path**: either **at least one active** served or kiosk **sales point**, or **delivery enabled** (which produces the virtual Delivery point — sales-points-and-instances). |
 | **Payments** | **Stripe connected payment account** able to **accept charges and receive payouts** (payments-and-tax; required on Free and paid — delivery and self-order are stage-1 channels). |
 | **Conditional** | When delivery is enabled: delivery radius, minimum order, and at least one delivery window. |
-| **Not gating** | Logo, categories, primary contact, metrics, delivery when disabled, and a **receipt printer**. Going live does **not** require a configured receipt printer; issuing paper bills or receipts still requires a usable receipt printer at print time (printers-and-screens). |
+| **Not gating** | Logo, categories, primary contact, metrics, delivery when disabled, a **receipt printer**, and a **print connector**. Going live does **not** require paper printing hardware; issuing paper bills or receipts still requires a usable receipt printer binding (and the connector or other print path that serves it) at print time (printers-and-screens). |
 
 The **profile read exposes the completeness signal** — which checklist items are missing — so the settings surface can show what remains and the go-live toggle can be disabled with reasons.
 

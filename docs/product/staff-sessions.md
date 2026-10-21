@@ -21,7 +21,7 @@ It deliberately does **not** cover:
 - **base access layers**, effective layer, schedule gating for Business entry, and per-user capabilities — the access-and-permissions and users subjects own those. Opening Business and acting under a layer still require the signed-in User to be eligible as those subjects already define;
 - **on duty**, daily attendance QR, late lock, breaks, and manager sign-out — the time-control subject. Duty is independent of which device the person uses; leaving an app or device does not end duty;
 - **navigation chrome** and phone/tablet layout — the user-navigation subject;
-- **venue printers, prep and customer screens, and customer kiosk / QR self-ordering hardware** — printers-and-screens, sales-points-and-instances, and order-flow. Those are output or guest surfaces; they are not a substitute for each staff actor’s own signed-in session when that person acts in Business;
+- **venue printers, print connectors, prep and customer screens, and customer kiosk / QR self-ordering hardware** — printers-and-screens, sales-points-and-instances, and order-flow. Those are output, bridge, or guest surfaces; they are not a substitute for each staff actor’s own signed-in session when that person acts in Business;
 - **Superadmin** authentication — the superadmin subject’s separate realm;
 - **biometrics** and **device fleet management** — out of product scope. An ordinary **OS-level device lock** on the phone, tablet, or laptop is enough when the device sits idle; Project Imperium does not add an in-app lock.
 
@@ -56,7 +56,7 @@ Terms reused rather than redefined here: **User**, **sign-in email**, **password
 - Whatever the hardware, **each browser session is unique to one employee**: only that signed-in User is the actor on that session. Two people never share one active Business session.
 - When a venue device passes from one employee to another, the previous User **signs out** (or their session ends) and the next employee signs in with **their own** email and password. There is no PIN handoff.
 - Project Imperium sells no staff hardware and does not enroll, name, or manage staff devices.
-- Venue-owned **printers**, **prep and customer screens**, and **customer kiosk** terminals remain as their own subjects describe. Any Business action on a browser still belongs to whoever signed in on that session with their own credentials.
+- Venue-owned **printers**, **print connectors**, **prep and customer screens**, and **customer kiosk** terminals remain as their own subjects describe. Any Business action on a browser still belongs to whoever signed in on that session with their own credentials.
 
 ### 3.3 Concurrent multi-session
 

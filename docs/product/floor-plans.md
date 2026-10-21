@@ -18,7 +18,7 @@ This subject owns the **spatial arrangement of a venue** and how staff **see and
 
 It deliberately does **not** cover:
 
-- **creating or configuring** sales points, printers, or screens — those objects are created and set up on their own Manage pages (sales-points-and-instances and printers-and-screens subjects). This subject only **places** them and opens their existing configuration from the editor.
+- **creating or configuring** sales points, printers, or screens — those objects are created and set up on their own Manage pages (sales-points-and-instances and printers-and-screens subjects). This subject only **places** them and opens their existing configuration from the editor. **Print connectors** are venue infrastructure for the print path and are **not** placed on floor plans.
 - **prep stations as a separate created type** — kitchen and bar posts are **screens** placed on a floor; there is no third create-and-setup entity for “prep station.”
 - **opening sittings, orders, billing, and fulfilment** — sales instances, orders, and control-screen work belong to their subjects. This subject provides the spatial entry (POS tap; Host richer detail) into those flows.
 - **reservation booking rules** — accepts-reservations, deposits, assignment, and status lifecycle belong to the reservations subject. The Host floor is a **spatial entry** into that work, not a second booking system.

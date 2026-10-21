@@ -9,6 +9,7 @@
 This subject owns **how work leaves the till and how stations see and control it**. It covers:
 
 - **printers** — logical printers a venue configures, the **print connectors** that reach physical hardware, and the **binding** between them;
+- the **print path** — staff devices talk only to Project Imperium in the cloud; Imperium hands print work to a venue **print connector**; the connector alone reaches the physical printers;
 - **routing** — which printer and which prep area or station receive a ticket, by category, subcategory, and sales point;
 - **backup printers** and what happens when a print fails;
 - **per-employee print permissions** for issuing and reprinting documents;
@@ -26,8 +27,8 @@ It deliberately does **not** cover:
 - **cash-out resume and cash-movement receipt content and numbering** — the **employee cash-out** subject owns those documents and when a cash movement is complete. This subject **prints** them on the receipt path (primary then **backup printer**) and raises print-failure when neither can print; movement completion still follows employee cash-out rules when paper fails after backup.
 - the **daily sales report close** — the sales-reports subject owns closing the day; this subject states the fulfilment sweep that close triggers.
 - **notifications and emails** — their subjects own delivery; this subject names the print-failure condition that notifies managers.
-- **hardware sales or lock-in** — Project Imperium sells no printers or screens and requires no brand; the venue brings its own printers and optional displays. Staff browser sessions stay one User each (staff-sessions subject), not a shared printer/screen login.
-- **floor-plan placement** — where a printer or screen sits on a venue floor map belongs to the floor-plans subject. This subject owns creating and configuring those devices; a device may exist unplaced until a manager locates it on a floor.
+- **hardware sales or lock-in** — Project Imperium sells no printers, screens, or print-connector devices and requires no brand; the venue brings what it chooses. Staff browser sessions stay one User each (staff-sessions subject), not a shared printer/screen login.
+- **floor-plan placement** — where a logical printer or screen sits on a venue floor map belongs to the floor-plans subject. This subject owns creating and configuring those devices; a device may exist unplaced until a manager locates it on a floor. **Print connectors** are venue infrastructure and are **not** floor-plan objects.
 
 ---
 
@@ -36,8 +37,9 @@ It deliberately does **not** cover:
 ### Entities
 
 - **Printer** — a **logical** output device the venue configures: a stable name, what it is for (receipt and/or prep), its routing participation, its optional **backup printer**, and its **binding** to physical hardware. The configuration survives hardware changes.
-- **Print connector** — a small always-on helper on a local internet device at the venue that discovers the physical printers that device can reach and reports them to Project Imperium. A venue may run one or many connectors; one connector may expose many physical printers.
-- **Binding** — the link from a logical **printer** to one physical printer exposed by a **print connector**. Rebinding changes hardware without changing routing or permissions.
+- **Print connector** — Project Imperium's small always-on helper that runs on a local internet device at the venue. That device is **infrastructure left plugged in** (for example a mini computer or single-board computer) — not a staff workstation with screen and keyboard for daily use. After install it normally runs **headless**. It is the only path from the cloud product to ordinary venue printers: it discovers the physical printers that device can reach on USB or the local network, reports them to Project Imperium, receives print work from Imperium, and drives those printers. Staff phones, tablets, and screens never talk to printers directly. A venue may run one or many connectors; one connector may expose many physical printers.
+- **Binding** — the link from a logical **printer** to one physical printer exposed by a **print connector** (or by an optional manufacturer cloud-print path treated as a physical target). Rebinding changes hardware without changing routing or permissions.
+- **Connector pairing** — the one-time step that attaches a running print connector to a **Business** so Imperium trusts it. A manager starts pairing in Project Imperium and completes it on the connector device (for example with a short code); afterwards discovery, print work, and success or failure reports flow through that link.
 - **Prep area** — a configurable fulfilment zone (for example kitchen or bar) with one **main screen** and optional **stations**. A batch may produce one **fulfilment slice** per area that receives lines.
 - **Station** (sub-area) — a named prep post under a prep area (for example salad, fry, dessert, cocktail rail) with its own **sub-screen**. Routing may send lines to a station.
 - **Control screen** — an in-app surface opened after sign-in: a prep area's **main screen** or **sub-screen**, the **delivery screen**, or the **customer pickup board**. Screens are not registered hardware devices; any internet device may open them.
@@ -45,9 +47,10 @@ It deliberately does **not** cover:
 ### Terms this subject introduces
 
 - **Logical printer** — the configured **printer** entity, as opposed to the physical machine it is bound to.
-- **Physical printer** — a real printer a **print connector** has discovered on its device or local network.
+- **Physical printer** — a real printer a **print connector** has discovered on its device or local network, or an equivalent target exposed by a manufacturer cloud-print path.
 - **Receipt printer** — a logical printer used for customer-facing documents: receipts, bills, and kiosk handover tickets.
 - **Prep printer** — a logical printer used for kitchen/bar prep tickets. Prep printing is optional; control screens always show the work.
+- **Minimum venue kit** — the product goal that a business can operate with as little hardware as it chooses: staff phones (or other browser devices), optional control-screen devices, optional printers, and — only when paper printing is used with ordinary local printers — at least one **print connector**. Project Imperium does not impose how many of each the venue must buy.
 - **Backup printer** — another logical printer named as failover for a primary; used automatically when the primary cannot print.
 - **Routing rule** — a rule that matches category and/or subcategory and/or sales point and sends matching lines to a prep area, optional station, and/or prep printer. More specific matches win.
 - **Default prep target** — the venue's required fallback when no routing rule matches a line.
@@ -67,19 +70,62 @@ Terms reused rather than redefined here: **Business**, **Batch**, **Identificati
 
 ### 3.1 Hardware stance
 
-- The venue brings its own **printers** and optional **dedicated displays** for prep and customer boards. Project Imperium sells none and locks the venue to no brand.
-- **Staff identity** is the **signed-in User** on that browser session — personal or venue-provided device (staff-sessions subject). Printers and screens are output and control surfaces, not a shared staff login, PIN, or quick-switch.
+- **Minimum venue kit is a product goal.** The venue chooses what to run and how many of each: staff phones or other browser devices, optional dedicated displays for prep and customer boards, optional printers, and print connectors only when paper printing needs them. Project Imperium does **not** impose a required device count, a required brand, or a required station layout. A small venue may run on phones plus one kitchen tablet and one receipt printer; a larger venue may add many screens and printers. The product scales with that choice rather than forcing hardware up front.
+- The venue brings its own **printers**, optional **dedicated displays**, and the local device(s) that run **print connectors**. Project Imperium sells none and locks the venue to no brand.
+- **Staff identity** is the **signed-in User** on that browser session — personal or venue-provided device (staff-sessions subject). Printers, screens, and print connectors are output, control, or bridge surfaces — not a shared staff login, PIN, or quick-switch.
 - **Control screens** always exist in the product: a person opens the screen they need after signing in with **their own** email and password. Connecting a dedicated display at a location is optional and does not change the service flow; the session on that browser is still that signed-in User’s alone.
-- **Printing** is a required capability for customer documents. How many printers the venue has and where they sit is its choice; what each logical printer produces is fully configured.
+- **Printing** is a required capability for customer documents when the venue wants paper. How many printers the venue has and where they sit is its choice; what each logical printer produces is fully configured. Prep paper is optional; screens can carry the kitchen without a prep printer.
 - A venue may run **printer-only**, with tickets and verbal calling and little or no use of control screens; service continues. Status may still be advanced from the POS, and the daily close clears stragglers (§3.10).
+- A venue may run **screens-only prep** with paper only at the till (or no paper until a receipt printer is bound). Go-live does not require a receipt printer (business subject); paper issue still requires a usable receipt path at print time.
 
 ### 3.2 Print connectors, printers, and binding
 
-- Project Imperium does not reach venue printers by itself from the browser. Each venue runs one or more **print connectors** on local devices; each connector reports the **physical printers** it can see.
+- Staff devices and control screens talk **only to Project Imperium in the cloud**. They do not discover, open, or drive venue printers on the local network or by USB. Project Imperium does not read the venue router and does not reach ordinary local printers by itself.
+- Each venue that prints on ordinary local printers runs one or more **print connectors** on always-on local devices. The host device stays on power and venue internet during service; it is **not** a day-to-day PC with monitor and keyboard for staff. A temporary screen may be used only for first install if needed; after that the connector runs in the background.
+- **Bring-up order** (not a local-only setup script that replaces Manage):
+  1. Install and start the print connector on the always-on device so it runs on boot.
+  2. **Pair** the connector to the business from Project Imperium (manager starts pairing in the app; the connector completes it).
+  3. The connector **discovers** reachable physical printers and **reports** them to Imperium.
+  4. Managers **create logical printers** and **bind** each one to a reported physical printer (and set backups and routing) **in Project Imperium**. Naming, routing, and binding are not done as a one-off local script outside the product.
+- After pairing, the connector receives print work from Imperium and drives the bound physical printer. Discovery stays local to the connector; the cloud only sees what connectors report.
 - Managers and above create **logical printers** with the full configuration the venue needs (name, receipt and/or prep role, backup, participation in routing).
 - Each logical printer is **bound** to one physical printer on a connector. If hardware fails or moves, staff **rebind** the same logical printer to another physical printer; routing and permissions stay.
-- Manufacturer cloud-print paths may expose a physical target the same way; binding stays the model.
-- A venue that issues receipts or bills must have **at least one** configured **receipt printer** with a usable binding when those documents are issued. Prep printers are optional.
+- The **print connector is the primary path** for venue paper. Manufacturer cloud-print paths may expose a physical target the same way as an optional secondary path; binding stays the model either way.
+- A venue that issues receipts or bills must have **at least one** configured **receipt printer** with a usable binding when those documents are issued. Prep printers are optional. A connector is required only when the venue uses paper through that connector path.
+
+### 3.2.1 Print path at a glance
+
+Staff and screens use only the cloud product. Paper leaves the venue through a paired connector (or an optional manufacturer cloud-print target bound the same way).
+
+```mermaid
+flowchart LR
+  subgraph venueStaff [Venue staff devices]
+    Phone[Staff phone or tablet]
+    Screen[Prep or pickup screen]
+  end
+
+  subgraph cloud [Project Imperium cloud]
+    App[Business app]
+    Logic[Logical printers routing and binding]
+  end
+
+  subgraph venueBridge [Venue print bridge]
+    Conn[Print connector always-on headless device]
+  end
+
+  subgraph venuePrint [Venue printers]
+    USB[USB printer]
+    LAN[Network printer]
+  end
+
+  Phone --> App
+  Screen --> App
+  App --> Logic
+  Logic -->|"print work"| Conn
+  Conn -->|"reports physical printers"| Logic
+  Conn --> USB
+  Conn --> LAN
+```
 
 ### 3.3 Prep areas, stations, and routing
 
@@ -153,7 +199,7 @@ Terms reused rather than redefined here: **Business**, **Batch**, **Identificati
 
 | Activity | Who |
 | --- | --- |
-| Install and run print connectors; create, bind, rebind, and retire logical printers; set backups | Managers and above |
+| Install and pair print connectors; create, bind, rebind, and retire logical printers; set backups | Managers and above |
 | Define prep areas, stations, and routing rules; assign sales-point receipt printers | Managers and above |
 | Grant per-employee print permissions | Managers and above |
 | Issue or reprint receipts, bills, kiosk tickets, and prep tickets | Users with **print permission** (supervisor layer and above always; employees when granted) |
