@@ -99,19 +99,19 @@ Terms reused rather than redefined here: **Owner**, **Company**, **Business**, *
 | Employees, schedules, time control | No | Yes | Yes | Yes |
 | Payroll export | No | No | Yes | Yes |
 | Daily sales reports | Yes | Yes | Yes | Yes |
-| Weekly business reports | No | Yes | Yes | Yes |
+| Weekly business reports (view / export) | No | Yes | Yes | Yes |
 | Full monthly P&L / advanced metrics | No | No | Yes | Yes |
 | Custom commercial terms | No | No | No | Yes |
 | Active food / drink menu and employee **creation quotas** | See plan quotas and data retention subject | Same | Same | Same |
 
-Free means: run real service and take payment; Manage depth beyond promotions and ratings stays off until a paid plan. Creation quotas on Free still limit how large an active menu may grow.
+Free means: **no monthly subscription charge**, but the venue **still owes weekly commission** on commissionable sales — the product is never free of platform fees. Free runs real service and take payment with **basic** ops depth; Manage depth beyond promotions and ratings stays off until a paid plan. **Employees, schedules, and time control are off**; only the **Owner User** may use Business at that venue (Owner access, no Employee membership). Creation quotas on Free still limit how large an active menu may grow (and keep Active employee memberships at **zero**).
 
 ### 3.5 Commission composition and timing
 
 - Commissionable sales follow the definition in §2 (all tenders; tips excluded; full face price).
 - **Weekly commission** = base rate × all commissionable sales.
 - The base rate comes from the Owner's plan at the time each portion of the week applies (§3.6).
-- A reporting week's commission is **finalised, owed, and collected** when that week's **business report closes** — never netted out of what customers paid the venue. Until close, daily and open weekly reports show an **estimate** only. Collection mechanics belong to platform-billing; the close event belongs to business-reports.
+- A reporting week's commission is **finalised, owed, and collected** when that week's **business report closes** — never netted out of what customers paid the venue. Until close, daily and open weekly reports show an **estimate** only. Collection mechanics belong to platform-billing; the close event belongs to business-reports. On **Free**, weekly reports still **create and close** so commission can finalise; the entitlement **No** for weekly business reports gates **view and export** only — not the billing close.
 - When a closed week is **re-finalised** (edited daily, approved refund, or card dispute that changes commissionable sales), platform-billing applies a **commission adjustment**.
 
 ### 3.6 Plan changes

@@ -111,7 +111,7 @@ Terms reused from other subjects rather than redefined here: **Business**, **Sup
 
 ### 3.8 Editing a purchase
 
-- A purchase that is already a record — a **sent request**, or a **received** purchase — is **corrected, never removed**: no purchase is hard-deleted, and a received purchase is never removed at all.
+- A purchase that is already a record — a **sent request**, or a **received** purchase — is **corrected, not operator-deleted**: routes never hard-delete a purchase. Soft-delete (if ever applied) and later **retention purge** follow ADR-0003 and the plan quotas and data retention subject under the **data-integrity rule**. Day-to-day ops correct received purchases with reason and audit rather than deleting them.
 - A purchase **awaiting delivery** is fixed; the only change is the **arrival step** (§3.3). Its lines are not otherwise rewritten and its requested quantities are not changed.
 - Editing a **received** purchase always carries a **reason**, records **who** made the change, **when**, and the **before and after of every line it changed**, and keeps the purchase's **entire edit history** — each edit is retained, never overwritten.
 - Editing a received purchase **updates stock for the change**: raising a delivered quantity adds the difference, lowering it removes the difference, adding or removing a line adds or removes its quantity, and a price-only correction updates the purchase's value without moving stock. Changing a received purchase's **date** moves its stock into the month the new date falls in, and is blocked when that month is closed.

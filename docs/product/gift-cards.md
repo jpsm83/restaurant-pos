@@ -28,7 +28,8 @@ It deliberately does **not** cover:
 - the **service surfaces** — order-flow and sales-points-and-instances own them. A card is offered on the payment step of ordinary bills; deposit purchase is its own checkout.
 - the **refund mechanics** of settling money — the payments-and-tax subject owns refund request and decision; this subject owns when a **card** may be refunded or have balance restored.
 - **reservation deposits** — the reservations subject owns those; a reservation deposit is not a gift card.
-- the **platform’s deletion model** — soft delete applies; this subject states that a card and its ledger are retained.
+- the **platform’s deletion model** — soft delete applies for operators; retention purge belongs to plan quotas and data retention. This subject states that a card and its ledger are retained under that model.
+- the **gift-card void operational reason catalogue** — the operational reasons subject owns the closed list; this subject requires a code from it on void.
 - a **User-linked gift-card wallet**, lost/stolen recovery, resend of the virtual card, replace QR/card number, or transfer of holder. This subject is **bearer + email delivery** plus the manager void / grant / refund / restore rules below; holders keep the emailed card details.
 
 The money model follows ADR-0004 (gift cards as liability; tax and revenue at redemption).
@@ -105,10 +106,10 @@ Terms reused rather than redefined here: **Business**, **Order**, **Bill**, **Pa
   - **Expired** — past expiry; any leftover balance was forfeited;
   - **Voided** — stopped by the business; any leftover balance was forfeited; or
   - **Refunded** — a fully unspent paid card’s deposit was returned and the card is closed.
-- **Managers and above may void** a card with a required, audited **reason**. Voiding stops the card. If balance remains, that amount is **forfeited** to the business (ledger event labeled **Voided**) — void is **not** a customer refund.
+- **Managers and above may void** a card with a required **operational reason** from the closed **gift-card void** catalogue (operational reasons subject). Voiding stops the card. If balance remains, that amount is **forfeited** to the business (ledger event labeled **Voided**) — void is **not** a customer refund.
 - **Refunding a paid card** is allowed **only when the card is fully unspent** (no redemption has ever been applied). The refund follows the payments-and-tax refund flow, reverses the liability, returns the deposit, writes a ledger **refunded** event, and sets status **Refunded**. A card that has been partly or fully redeemed cannot be refunded as a card; remaining value is used, expires, or is voided.
 - When a **meal payment** that used gift-card tender is refunded, Project Imperium **prefers restoring** the gift-card portion to that card’s remaining balance (ledger **restored** event) when the card can still hold value (**Active** or **Depleted**, not expired, voided, or refunded). Restore **does not extend** the expiry date. If restore is impossible, the manager on duty decides the exception path for that portion under the payments-and-tax refund rules.
-- A card and its ledger are **retained** under the platform’s soft-delete rule and are never hard-removed, so issues, applies, forfeits, voids, refunds, and restores always reconcile.
+- A card and its ledger are **retained** under the platform’s soft-delete rule (operators do not hard-delete them). Later **retention purge** of soft-deleted rows may apply only under the plan quotas and data retention subject and the **data-integrity rule**. Issues, applies, forfeits, voids, refunds, and restores always reconcile while retained.
 - Managers and above can see cards by lifecycle and the venue’s **outstanding liability** (sum of Active remaining balances).
 
 ### 3.6 Gift-card ledger

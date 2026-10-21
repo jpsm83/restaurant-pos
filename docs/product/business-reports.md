@@ -79,7 +79,7 @@ Terms reused from other subjects rather than redefined here: **business**, **dai
 - It carries the **full dimension set** as breakdowns (§3.6), except the inventory-only slices (supplier good, supplier) which appear on the monthly report.
 - While **open**, it may show a **week-to-date commission estimate** (same base as §3.9). On **close** it **finalises** commission and marks it owed for platform-billing to collect (§3.9).
 - When the week **closes**, Project Imperium raises the **report-ready signal**.
-- The entire weekly report can be **downloaded/exported**.
+- The entire weekly report can be **downloaded/exported** when the plan entitles weekly business report **view/export** (monetization). On **Free**, weekly reports still **exist and close** so platform commission can finalise; Managers/Owners do **not** get the weekly report chrome or export.
 
 ### 3.3 The monthly business report
 
@@ -135,7 +135,7 @@ Terms reused from other subjects rather than redefined here: **business**, **dai
 - While a reporting week or calendar month is in progress, the report stays **open** as a **live mid-period roll-up**. Managers may view it at any time.
 - A weekly report **closes** when both are true:
   - the **reporting week has ended** in the venue's timezone; and
-  - every **daily sales report that belongs to that week** is **closed**, or **never existed** because that work day had no sales instance.
+  - every **daily sales report that belongs to that week** is **closed**, or **never existed** because that work day never opened a daily report (no first send / pay-to-commit — sales-reports).
 - A monthly report **closes** when all are true:
   - the **calendar month has ended** in the venue's timezone;
   - every **daily sales report that belongs to that month** is **closed** or never existed; and

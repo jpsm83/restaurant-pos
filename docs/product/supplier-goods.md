@@ -108,7 +108,7 @@ A business keeps its own list of supplier goods.
 
 ### 3.8 Deletion
 
-- A good is **soft-deleted**: the record is retained and marked deleted, never hard-removed.
+- A good is **soft-deleted**: the record is retained and marked deleted. Operators do not hard-delete it. Later **retention purge** may physically remove soft-deleted goods only under the plan quotas and data retention subject and the **data-integrity rule**.
 - A good may be **deleted only while it is not in use** — that is, while no business good uses it. If the good is **in use**, deletion is **blocked**, and the venue is told to remove it from those business goods first.
 - **Deleting a good the venue will never use is a deliberate act**, distinct from a good that is merely **not in use** and may be used later. Removing an unneeded good is how the venue keeps its goods list to what it actually buys.
 - Deleting a good removes it from current stock and selection; its **past purchases remain as history**.

@@ -1,6 +1,6 @@
 # ADR-0006: Realtime transport and concurrency mechanisms
 
-- **Status:** Accepted
+- **Status:** Accepted (amended 2026-10-21)
 - **Date:** 2026-10-19
 - **Ticket:** GitHub issue #105
 
@@ -16,7 +16,7 @@ Those commitments force engineering choices for **how** live push and conflict d
 2. **Authoritative server.** The server is the single source of truth. Clients do not maintain an offline write queue or CRDT merge for money, stock, or kitchen work.
 3. **Optimistic concurrency.** Mutating APIs that can overwrite shared structure carry a **version** (or equivalent concurrency token) the client last observed. A stale version yields a conflict response; the client must reload server truth and retry with a new intent when appropriate.
 4. **Attempt idempotency.** Send, pay, and fulfilment-advance (and other critical mutations named by product) accept a client-generated **idempotency key** (attempt identity) scoped so that retries and double-taps of the **same attempt** replay the stored outcome. A new intentional act uses a new key. Same key with a different payload is rejected.
-5. **Lifecycle enforcement.** Domain state machines (instance status, sent vs draft, fulfilment forward-only, Closed bill) are enforced on the server independently of version checks so an already-committed outcome cannot be duplicated by a racing second intent.
+5. **Lifecycle enforcement.** Domain state machines (instance status, sent vs draft, fulfilment **forward-only**, Closed bill) are enforced on the server independently of version checks so an already-committed outcome cannot be duplicated by a racing second intent. Fulfilment has **no** reverse API: backward status jumps are lifecycle blocks; prep-screen history is view/reprint only (product: printers-and-screens; realtime-and-concurrency).
 6. **Self-service session isolation.** Baskets are keyed to the **ordering session**, not solely to the sales point, so concurrent QR/delivery/kiosk customers never share or merge baskets.
 7. **No exclusive editor lock** in stage 1. Concurrent viewers of the same staff tab are allowed; live push plus the rules above cover races.
 8. **Product boundary.** Business outcomes live in the realtime-and-concurrency subject (and order-flow thicken for session isolation). This ADR does not change ADR-0003, ADR-0004, or ADR-0005.
@@ -26,3 +26,9 @@ Those commitments force engineering choices for **how** live push and conflict d
 - **Positive:** Build tickets can implement one transport and one conflict stack without inventing double-pay or double-send behaviour; product docs stay free of routes and schemas.
 - **Negative / follow-on:** Clients must hold version tokens and attempt keys; reconnect paths must resync before enabling writes; load and fan-out of “entire app live” must be engineered carefully (rooms/topics, backpressure) in later build work — not prescribed here beyond WebSocket + server authority.
 - **Does not supersede** ADR-0003–0005.
+
+## Amendment (2026-10-21) — fulfilment forward-only, no station reverse
+
+**Context.** Prep control-screen copy had allowed audited reverse of a station step; that conflicted with fulfilment forward-only in this ADR and the realtime subject.
+
+**Decision addendum.** Fulfilment status advances are forward-only. There is no reverse or “send work back” mutation that moves a slice to an earlier status. Station history is view and reprint only; order corrections use void, cancel, don't-make, and related order/bill acts.

@@ -8,7 +8,7 @@
 
 This subject covers the **Employee** — the full per-venue membership that makes a person part of a business. The **User** holds only client/global identity; every employment fact lives on the membership. This subject owns:
 
-- the **membership** — the one link between a **User** and a **Business**, and the only path into a tenant;
+- the **membership** — the workforce link between a **User** and a **Business** (hired staff and Owners who opt into the workforce);
 - **job role(s)** on that membership;
 - **employment status** and tenure (join date, termination date);
 - the **employment contract** — kind, quantity, period, and optional end date;
@@ -34,10 +34,11 @@ It deliberately does **not** cover:
 
 ### Entities
 
-- **Employee** — a person's membership in one **Business**. It links exactly one **User** to exactly one venue and carries that person's job role(s), employment status, tenure, contract, pay, vacation, tax and national identifiers, documents, and HR comments. It is the **only** way a user joins a tenant. One user holds **at most one** membership per business and may hold **many** across businesses. Soft-delete applies under the platform convention.
+- **Employee** — a person's **workforce** membership in one **Business**. It links exactly one **User** to exactly one venue and carries that person's job role(s), employment status, tenure, contract, pay, vacation, tax and national identifiers, documents, and HR comments. It is how a user joins the venue as **staff**. The owning User may operate an owned venue **without** a membership (**Owner access** — users and access-and-permissions subjects). One user holds **at most one** membership per business and may hold **many** across businesses. Soft-delete applies under the platform convention.
 
 ```
-User ──< Employee >── Business          (membership: the only path into a tenant)
+User ──< Employee >── Business          (workforce membership)
+User ──1 Owner ──< Business             (Owner access without membership — users subject)
 ```
 
 ### Terms this subject introduces
@@ -68,11 +69,13 @@ Terms reused rather than redefined here: **User**, **Business**, **Owner**, **Co
 
 ### 3.1 Membership is the full employee record
 
-A person joins a venue **only** through an **Employee** membership. The **User** stays the client and global identity; it does **not** embed employment fields.
+A person joins a venue's **workforce** through an **Employee** membership. The **User** stays the client and global identity; it does **not** embed employment fields. **Owner access** without membership is owned by the users and access-and-permissions subjects — this subject does not create a membership on business registration.
 
 - Managers and above create a membership by linking an **existing user by sign-in email**. If no user exists for that email, Project Imperium creates the user (a customer) first, then creates the membership — the users subject owns user creation; this subject owns the membership.
+- An **Owner** who wants to appear on the schedule, clock in, take payroll, or hold staff tax identifiers at a venue **opts into the workforce** by creating (or having created) their own membership there with the **Owner** job role (or another role) — only when the plan entitles employees (not on Free).
 - A user holds **at most one** membership per business. Rehire never creates a duplicate link.
 - Soft-deleting a membership follows the platform soft-delete convention. Routine “let them go” is **termination**, not soft-delete (§3.9–§3.10).
+- On **Free**, the Active employee memberships quota is **zero** and employees / schedules / time control are off (monetization; plan quotas and data retention) — no workforce memberships at that venue.
 
 ### 3.2 Job roles on the membership
 
@@ -112,7 +115,7 @@ Creating a membership for hired staff requires:
 
 **HR documents** and **HR comments** are optional at create and afterward.
 
-When a user **registers a business**, Project Imperium creates the owner's membership with the **Owner** job role, **Active** status, and **join date** now. The owner **completes the remaining required HR fields** afterward. Incomplete owner HR is allowed operationally; labour and vacation figures stay incomplete until filled. Incomplete owner HR is **not** a go-live checklist item (business subject).
+When a user **registers a business**, Project Imperium does **not** create an Employee membership. The Owner operates via **Owner access** until they (on a paid plan) opt into the workforce. When an Owner membership is created later, it uses the **Owner** job role, **Active** status, and **join date** then; the owner completes required HR fields afterward. Incomplete owner HR is allowed operationally; labour and vacation figures stay incomplete until filled. Incomplete owner HR is **not** a go-live checklist item (business subject).
 
 ### 3.5 Employment contract
 
@@ -200,4 +203,5 @@ No per-user capability gates hiring, HR editing, termination, or rehire on this 
 | Rehire | Admin or owner |
 | Read own non-sensitive HR | The employee themself |
 | Read salary, tax/national ID, or HR comments | Managers and above |
-| Complete remaining HR on the owner membership after registration | The owner (admin) at that venue |
+| Opt the Owner into the workforce (create Owner membership) on a paid plan | The owning user (admin) at that venue |
+| Complete remaining HR on an Owner membership | The owning user (admin) at that venue |

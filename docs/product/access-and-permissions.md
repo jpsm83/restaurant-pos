@@ -72,10 +72,10 @@ Ordered for business memberships **admin > manager > supervisor > employee**. **
 | Layer | Meaning |
 | --- | --- |
 | **Customer** | Every User. Public Customer surface; never a membership layer. |
-| **Employee** | Floor and self-service staff. **Schedule-gated** Business entry. Default Service is **POS** (plus **Me**); other Service destinations and elevated ops need catalogue grants (or a job-role entitlement such as Host). **No Manage.** |
-| **Supervisor** | Floor lead. **Schedule-gated** Business entry (same entry window as employee). **No Manage.** **Full Service** by default (POS, Host, prep screens, delivery screen, customer pickup board, Attendance for **own** scan-in) and **print permission**. Does **not** present the venue daily attendance QR (manager+ only — time-control subject). Selected elevated defaults (for example inventory count re-edit, **approve another employee's cash-out**, **house paid-in/out and cash-movement reverses** against another wallet — employee cash-out subject). Further powers only via catalogue grant/revoke. |
-| **Manager** | Day-to-day administration and operations. **Always** may enter Business (not schedule-gated). **Manage** header and full Service by default. Assigns access for layers below manager. |
-| **Admin** | Full venue control, including ownership-adjacent acts the feature subjects reserve for admin/owner. **Always** may enter Business. **Manage** and full Service. The owning user is admin at every venue they own. |
+| **Employee** | Floor and self-service staff. **Schedule-gated** Business entry. Default Service is **POS**, **Attendance** for **own** scan-in (plus **Me**); other Service destinations and elevated ops need catalogue grants (or a job-role entitlement such as Host). Late-locked scan-in still needs manager unlock (time-control). **No Manage.** |
+| **Supervisor** | Floor lead. **Schedule-gated** Business entry (same entry window as employee). **No Manage.** **Full Service** by default (POS, Host, prep screens, delivery screen, customer pickup board, Attendance for **own** scan-in, **Counts** for physical count / count re-edit, **Cash-out** for approving another wallet and house paid-in/out) and **print permission**. Does **not** present the venue daily attendance QR (manager+ only — time-control subject). Further powers only via catalogue grant/revoke. |
+| **Manager** | Day-to-day administration and operations. **Always** may enter Business (not schedule-gated) when effective manager. **Manage** header and full Service by default. Assigns access for layers below manager. |
+| **Admin** | Full venue control, including ownership-adjacent acts the feature subjects reserve for admin/owner. **Always** may enter Business when effective admin. **Manage** and full Service. The owning user has **Owner access** (admin-equivalent within plan entitlements) at every venue they own **with or without** an Employee membership (users subject). |
 
 **Manage** visibility follows **effective layer** only: **manager** or **admin**. Supervisor and employee never see Manage, regardless of capabilities. Revoking capabilities on a manager or admin never hides the Manage header; it only removes the specific catalogue powers revoked.
 
@@ -94,19 +94,21 @@ A membership may hold several job roles. Changing job roles **recomputes** the d
 
 ### 3.4 Effective layer resolution
 
-1. **On a working shift:** the schedule's job role for that shift maps through §3.3 (then override if set on the membership) to the **effective layer** for the shift's duration — chrome and powers follow that layer (for example a manager-membership person on a Waiter shift is effective **employee**: no Manage until the shift ends).
-2. **Not on a working shift:** effective layer is the **highest** among the membership's job-role defaults (admin over manager over supervisor over employee), unless a **layer override** is set — then the override is the effective layer.
-3. **No membership** → **customer** only.
-4. **Suspended** or **Terminated** membership blocks Business access for that venue; layer resolution alone does not reopen it (employees subject).
+1. **On an open shift session** (after scan-in until sign-out): the session's job role maps through §3.3 (then override if set on the membership) to the **effective layer** for that session — chrome and powers follow that layer (for example a manager-membership person on a Waiter session is effective **employee**: no Manage until they sign out).
+2. **Not on an open shift session**, with a membership: effective layer is the **highest** among the membership's job-role defaults (admin over manager over supervisor over employee), unless a **layer override** is set — then the override is the effective layer.
+3. **Owning user without a membership** at an owned venue → **Owner access**: treated as **admin** for layer defaults and Manage/Service, still bounded by **plan entitlements** and feature flags (users subject).
+4. **No membership and not the owning user** → **customer** only for that venue.
+5. **Suspended** or **Terminated** membership blocks Business access **through that membership**; Owner access (if they own the venue) is unaffected unless ownership itself is blocked. Layer resolution alone does not reopen a suspended membership (employees subject).
 
 ### 3.5 Mode eligibility (consequence)
 
 Exactly two modes exist — Customer and Business — owned as surfaces by the user-navigation subject. This subject states the eligibility rule those surfaces enforce:
 
 - **Customer** mode is always available to every signed-in user.
+- **Owner access** (owning user at an owned venue): may enter Business **without** a membership, shift, or entry window.
 - **Manager** and **admin** effective eligibility for Business: may enter Business **without** a planned shift or entry window (unless Suspended or Terminated).
 - **Supervisor** and **employee**: Business only when a **planned working shift** has an open **entry window** (from 10 minutes before planned start until 2 hours after planned start), or an open shift session already exists — same schedule gate; supervisors are **not** excused from the schedule.
-- Opening Business is **not** on duty (time-control subject).
+- Opening Business is **not** on duty (time-control subject). On Free, time control and hired staff are off — only Owner access applies.
 
 ### 3.6 Feature flags, then plan entitlements
 
@@ -138,7 +140,6 @@ This subject owns the authoritative list. Feature subjects own behaviour for eac
 | Open prep screens | May open prep-area control screens under Service |
 | Open delivery screen | May open the delivery screen under Service |
 | Open customer pickup board | May open the customer pickup board under Service |
-| Open Attendance | May open Attendance under Service to **scan in / attempt duty**. Presenting the venue's daily attendance QR for others remains manager-layer only (time-control subject) |
 | Print permission | May issue or reprint customer and prep tickets (supervisor layer and above have this by default; employees need the grant) |
 
 **Ops grants** (often bound to employee or used to extend supervisor; manager/admin have view/86 by layer default where feature subjects say so):
@@ -152,10 +153,10 @@ This subject owns the authoritative list. Feature subjects own behaviour for eac
 
 **Job-role and layer defaults (not separate catalogue flags):**
 
+- **Attendance** under Service (own scan-in) — **employee** layer and above by default (supervisor, manager, admin included). Presenting the venue daily attendance QR remains manager-layer only (time-control). Not a catalogue grant.
 - **Host** under Service — **Host** job role, and anyone whose effective layer already includes full Service (supervisor, manager, admin).
-- **Inventory count re-edit** (with reason and audit) — **supervisor** layer and above (manager, admin), migrating the former “Supervisor job role only” special case into the supervisor **layer** default.
-- **Approve employee cash-out** (another person's wallet only) — **supervisor** layer and above; behaviour owned by the employee cash-out subject.
-- **House paid-in / paid-out and cash-movement reverses** (another person's wallet only) — **supervisor** layer and above; peer cash-in when the Business setting is on is any on-duty employee as receiver — employee cash-out subject.
+- **Counts** under Service — physical count and **inventory count re-edit** (with reason and audit) — **supervisor** layer and above; full inventory admin remains Manage → Supply for managers (inventories; user-navigation).
+- **Cash-out** under Service — **approve employee cash-out** (another person's wallet only) and **house paid-in / paid-out and cash-movement reverses** (another person's wallet only) — **supervisor** layer and above; peer cash-in when the Business setting is on is any on-duty employee as receiver — employee cash-out subject.
 
 ### 3.9 Assignment surface
 
@@ -202,7 +203,7 @@ An ordinary employee or supervisor may see their own job roles and that they hol
 | Layer | Powers on this subject |
 | --- | --- |
 | **Customer** | No venue access configuration. |
-| **Employee** | Uses Business under schedule gate; POS and Me by default; catalogue grants only when bound and active. |
+| **Employee** | Uses Business under schedule gate; POS, Attendance (own scan-in), and Me by default; catalogue grants only when bound and active. |
 | **Supervisor** | Schedule-gated; full Service defaults; no Manage; selected elevated defaults; catalogue grant/revoke on top; does not assign access. |
 | **Manager** | Always Business; Manage + full Service; assigns job roles, overrides, and capabilities for layers below manager. |
 | **Admin** | Everything a manager can do on access, plus configure managers; full venue control. Only the **owning user** creates or demotes admin. |

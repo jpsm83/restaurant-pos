@@ -152,7 +152,7 @@ flowchart LR
 
 - Screens are ordinary **in-app surfaces**. The manager on duty (or any user allowed to open that screen kind) signs in and opens each screen on the device at that location. **The same account may be signed in on many devices at once.** Whoever physically taps the device, actions run as the signed-in user — in practice the opener's responsibility.
 - Gestures are **single-click** and **double-click** (or the equivalent pointer actions). Touch hardware is recommended at the pass but **not required**; mouse or trackpad works so venues that skip dedicated screens are not blocked.
-- Every control screen has a **history** view to bring tickets back, send work back, or reverse a station step. Station staff may reverse steps for their own station; managers and above may reverse any. Reversals re-queue work in the right place and are audited.
+- Every control screen has a **history** view to **look up and reprint** tickets already seen. History does **not** reverse fulfilment status, send work backward, or undo a station step — fulfilment is **forward-only** (realtime-and-concurrency; ADR-0006). Wrong lines are corrected on the order/bill path (void, cancel, don't-make — orders subject), not by moving a slice backward.
 - **Held** batches appear at the end of the relevant queue, visually distinct, and are **not activatable** until released from the tab (release stays on the tab, as the orders subject defines).
 - Batches whose orders are all **don't make** never appear on prep or delivery screens.
 
@@ -208,6 +208,6 @@ flowchart LR
 | Open the customer pickup board and display mode | Supervisors; managers and above; employees granted the capability |
 | Single-click Preparing; double-click station done; main Ready; force-ready | Users allowed on that area's screens (session is the signed-in opener) |
 | Double-click Deliver on a Ready slice | Users allowed on the delivery screen |
-| Reverse a station step from history | That station's staff for their steps; managers and above for any |
+| View / reprint from station history | That station's staff for their tickets; managers and above for any |
 | Advance fulfilment status from the POS | Same entitlements as the matching screen action |
 | Receive print-failure notifications | Managers on duty (else all manager-layer users for the business) |

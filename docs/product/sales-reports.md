@@ -9,7 +9,7 @@
 This subject covers the **daily sales report**: how a venue's one-day activity is opened, accumulated, locked, and amended. It owns:
 
 - the **daily sales report** itself — one report per venue per work day;
-- **opening** on the first sales instance of the work day;
+- **opening** on the first **order send** or self-service **pay-to-commit** of the work day;
 - the **per-employee** and **channel** buckets and the venue's **business totals**;
 - the **operational dimension breakdowns** for the day, including **reason code** for void, invitation, manual discount, and refund figures;
 - the **open / closed / reopened** lifecycle, including close preconditions, lock, and fulfilment sweep;
@@ -29,7 +29,7 @@ It deliberately does **not** cover:
 - **how reports are exported or laid out on screen** — outside this subject;
 - **gift-card issue, balance, redemption, void, and expiry rules** — the gift-cards subject owns those; this subject accumulates deposit intake and tender in the gift-card channel, forfeitures (expiry and void-with-balance) in the forfeiture channel, and surfaces outstanding liability;
 - **reservation deposit forfeiture** — the reservations subject owns when a deposit is forfeited; this subject accumulates that forfeiture in the forfeiture channel bucket.
-- the **operational reason catalogues** themselves — closed lists, Other-note rule, and maintenance belong to the **operational reasons** subject. This subject presents day-level breakdowns **by reason code** for void, invitation, manual discount, and refund activity those catalogues label; count re-edit reasons are not a daily-report dimension.
+- the **operational reason catalogues** themselves — closed lists, Other-note rule, and maintenance belong to the **operational reasons** subject. This subject presents day-level breakdowns **by reason code** for void, invitation, manual discount, and refund activity those catalogues label; requires a **daily reopen** catalogue code on reopen; count re-edit and gift-card void reasons are not daily-report dimensions.
 
 ---
 
@@ -37,7 +37,7 @@ It deliberately does **not** cover:
 
 ### Entities
 
-- **Daily sales report** — one venue's report for one **work day**, in the venue's timezone. It opens automatically on the **first sales instance** of that work day, stays continuously derived from that day's activity while open or reopened, and is locked when a manager **closes** it.
+- **Daily sales report** — one venue's report for one **work day**, in the venue's timezone. It opens automatically on the **first committed kitchen/sale act** of that work day (first **order send** on a staff tab, or first successful self-service **pay-to-commit**), stays continuously derived from that day's activity while open or reopened, and is locked when a manager **closes** it.
 
 ### Terms this subject introduces
 
@@ -50,7 +50,7 @@ It deliberately does **not** cover:
 - **Channel bucket** — a dedicated accumulation for a named money path that is not staff-taken dine-in attribution: **delivery**, **self-ordering**, **kiosk**, **gift-card**, or **forfeiture**.
 - **Business totals** — the day's whole-venue figures, as distinct from per-bucket and per-dimension figures.
 - **Edited flag** — a durable marker that a daily report, bill, or payment was amended after that work day had already been closed at least once. It survives the subsequent close.
-- **Reopen reason** — the mandatory, audited explanation a manager supplies when reopening a closed day; carried onto weekly and monthly reports that absorb the amendment.
+- **Reopen reason** — the mandatory **operational reason** from the closed **daily reopen** catalogue (operational reasons subject) a manager supplies when reopening a closed day; carried onto weekly and monthly reports that absorb the amendment.
 - **Close** — lock the day: block further changes until reopen, and run the fulfilment sweep for that work day.
 - **Reopen** — unlock a closed day so belonging bills and payments may change again; moves the report to **reopened**.
 - **Commission estimate** — a day-level preview of platform commission on that day's commissionable sales; **not charged**. Finalisation and owing happen when the weekly business report closes; collection belongs to platform-billing.
@@ -64,7 +64,7 @@ Terms reused from other subjects rather than redefined here: **business**, **sal
 ### 3.1 Opening the day
 
 - There is **one daily sales report per venue per work day**, in the venue's timezone.
-- The report **opens automatically on the first sales instance** of that work day. Opening an empty tab with no sale yet still opens the report.
+- The report **opens automatically** on the first **order send** (staff tab) or first successful self-service **pay-to-commit** of that work day — whichever comes first. Opening or discarding an **empty** sales instance does **not** open the day.
 - If a venue has **no sales instance** on a calendar day, there is **no** daily sales report for that day.
 - The first instance of a new work day opens that day's report; it does **not** disturb a prior day's closed report.
 
@@ -125,7 +125,7 @@ Terms reused from other subjects rather than redefined here: **business**, **sal
 ### 3.8 Reopen, bill edits, and the edited flag
 
 - Changing a bill or payment that belongs to a **closed** day requires **reopening** that day first.
-- **Managers and above** reopen with a **mandatory reason**. Reopen moves the report to **reopened** (not plain **open**).
+- **Managers and above** reopen with a **mandatory operational reason** from the **daily reopen** catalogue (operational reasons subject). Reopen moves the report to **reopened** (not plain **open**).
 - While **reopened**, the day accepts both **corrections** to existing activity (refunds, voids, reasoned bill edits) and **any still-arriving same-work-day activity**, until it is closed again.
 - When at least one belonging **bill** or **payment** changes after a prior close:
   - that **bill** and that **payment** carry an **edited** flag for easy identification;

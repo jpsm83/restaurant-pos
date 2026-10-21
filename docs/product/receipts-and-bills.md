@@ -112,10 +112,11 @@ When tender **surpasses** outstanding, the receipt shows amount **owed**, amount
 - Reprinting or re-delivering an **unchanged** current bill or receipt keeps the **same** number and is marked **reprint**. A reprint is not a new fiscal document.
 - Who may trigger a paper reprint follows **print permission** (printers-and-screens). Customers may receive another copy of their own receipt through in-app order history or email without consuming a new number.
 
-### 3.7 Replacement after change
+### 3.7 Unpaid bill updates vs paid immutability
 
-- When lines or payments change **after** a bill or receipt was issued — including after a work day is **reopened** and an edited bill or payment is recorded — Project Imperium issues a **replacement** document with a **new** number that **supersedes** the prior number.
-- The superseded number remains on file so reprints of the old version and auditor trails stay reconcilable. Reprints of the **current** version use the current number.
+- While the sales instance is **not** fully paid and closed, the **customer bill** stays the live check for that sitting under the **same bill number** assigned on first Bill request. Staff may still void, invite, cancel, or add lines (orders subject). After any such change, the waiter **must reprint or re-show** the bill; content **updates** under that **same** number and is marked **reprint** — it is not a new bill number.
+- Once the sitting is **fully paid and closed**, the issued **bill** (final check state) and **receipt** are **immutable snapshots** of what the customer was shown and settled. Cancelling or amending lines later does not rewrite those bodies. Issued paid documents remain reconstructible even if a cancelled order is hard-deleted (orders; ADR-0003).
+- **Replacement with a new number** that **supersedes** a prior number applies when a **closed** work day is **reopened** and an already-settled bill or payment is amended (sales-reports edited path), or when a **receipt** must be re-issued after such an amendment. The superseded number stays on file. Reprints of the **current** post-reopen version use the current number.
 - Replacement aligns with the durable **edited** flags on bill, payment, and daily sales report owned by sales-reports; this subject does not own reopen itself.
 
 ### 3.8 Channels and layout
@@ -126,7 +127,7 @@ When tender **surpasses** outstanding, the receipt shows amount **owed**, amount
 
 ### 3.9 Retention
 
-- Issued bills and receipts are retained with the legal and financial class under the plan quotas and data retention subject. Soft-delete of a sales instance or payment never erases the need to reconstruct what the customer was shown.
+- Issued bills and receipts are retained with the legal and financial class under the plan quotas and data retention subject. Soft-delete of a sales instance or payment never erases the need to reconstruct what the customer was shown. **Paid and closed** document bodies are the snapshots that satisfy that need.
 
 ---
 

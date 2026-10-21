@@ -82,20 +82,21 @@ A **business is owned by exactly one user**. When a user registers a business, P
 - Forming a **new Company** (first venue, or a later venue as a separate taxpayer) creates that Company's **legal name** and **tax number** fields. They may be filled then or later on the Company (Owner chrome **Company** destination); both are required before any venue in that Company may go live (business subject). Joining an **existing** Company reuses that Company's legal name and tax number — the new venue does not invent a second tax identity.
 - The Company's **legal name** and **tax number** are edited only on the Company (Owner chrome); venue shopfront fields stay on each Business (business subject). Uniqueness of tax number and of legal name is enforced **among active Companies in the same country**.
 - A user may simultaneously **own some venues and be an ordinary employee at others**.
-- Registration also creates the owner's **Employee** membership at that venue (Owner job role and admin layer); the employees subject owns that membership and its HR completion.
+- Registration **does not** create an **Employee** membership for the Owner. The registrant becomes the **Owner** and gains **Owner access** at that venue immediately (full control of whatever the **plan entitles** — access-and-permissions and monetization). An Owner becomes an Employee at a venue only if they later **join the workforce** there (employees subject) — for tax, schedule, payroll, and duty attribution as staff.
 - **Ownership can be transferred** from one user to another; the **Owner** accounts, their Companies, and their business lists follow the transfer.
 
-### 3.4 Membership is the path into a tenant
+### 3.4 Workforce membership vs Owner access
 
-A user joins a tenant **only through an employee membership**. This subject does **not** own the membership's fields or lifecycle — the employees subject does.
+A user joins a venue's **workforce** only through an **Employee** membership. This subject does **not** own the membership's fields or lifecycle — the employees subject does.
 
 - A user holds **at most one membership per business**, and may hold **many across businesses**.
-- The membership is the **authoritative link**; a **User** never embeds employment data.
+- The membership is the **authoritative workforce link**; a **User** never embeds employment data.
 - **Termination** ends access through that membership but leaves the user and their customer identity intact (employees subject).
+- **Owner access** is separate: the owning User may use Business at every owned venue **without** a membership, with **admin-equivalent** powers limited by **plan entitlements** and feature flags. Hired staff always use memberships. On **Free**, employees / schedules / time control are off and the creation quota is **zero** Active memberships — **only the Owner User** may use Business at that venue (monetization; plan quotas and data retention).
 
 ### 3.5 Access layers and capabilities (consumed here)
 
-Venue **base access layers**, **effective layer** (including per-shift resolution), **layer override**, **job-role → layer defaults**, and **per-user capabilities** belong to the access-and-permissions subject. This subject only needs those facts for **mode eligibility** (§3.6) and to state that **customer** access is always available to every user. A **Suspended** membership blocks business-app access until cleared (employees subject); layer resolution alone does not reopen it.
+Venue **base access layers**, **effective layer** (including per-shift resolution), **layer override**, **job-role → layer defaults**, and **per-user capabilities** belong to the access-and-permissions subject. This subject only needs those facts for **mode eligibility** (§3.6) and to state that **customer** access is always available to every user. A **Suspended** membership blocks business-app access until cleared (employees subject); layer resolution alone does not reopen it. **Owner access without membership** is treated as admin-equivalent eligibility for owned venues (still entitlement-bounded).
 
 ### 3.6 Mode eligibility (Customer | Business)
 
@@ -104,14 +105,16 @@ There is **one login** and **exactly two modes**: **customer** and **business**.
 - The **Customer** app is the default public surface. Sign-in is not required to browse or to build an order basket. After sign-in, the person **stays in customer mode** unless they switch.
 - When the signed-in user has **eligible business access**, a **Customer | Business** toggle is available in the chrome. They may switch mode during the session; each switch re-checks eligibility. The active mode is recorded so guards can enforce it.
 - A user with **only customer access** never sees the Business side of the toggle.
-- **Business mode** is available when the user has a membership and is eligible. Eligibility uses **effective layer** from the access-and-permissions subject:
-  - **Employee** or **supervisor** effective layer: a **planned working shift** whose **entry window** is open — from **10 minutes before** planned start until **2 hours after** planned start — and the membership is not **Suspended** or **Terminated**. Outside that window with no open attendance session, Business is unavailable until a manager reschedules them. An open shift session still allows re-entry without scanning again.
-  - **Manager** or **admin** (including the owning user): may use Business **scheduled or not** (unless Suspended or Terminated).
-- While a manager- or admin-membership person works an **employee-** or **supervisor-layer** shift, chrome and powers follow that shift's effective layer until the shift ends; their standing eligibility to enter Business when not on such a shift remains manager/admin.
-- Opening business mode is **not** on duty (time-control subject).
-- There is **no** late-unlock step on the schedule for business-mode access. Late lock before scan-in belongs to time-control.
+- **Business mode** is available when the user is eligible. Eligibility:
+  - **Owning user** at an owned venue (**Owner access**, with or without a membership): may use Business **always** for that venue (unless the Owner account or business is otherwise blocked — freeze, soft-delete). Not schedule-gated. Plan entitlements still hide features the plan does not unlock.
+  - **Employee** or **supervisor** effective layer (membership): a **planned working shift** whose **entry window** is open — from **10 minutes before** planned start until **2 hours after** planned start — and the membership is not **Suspended** or **Terminated**. Outside that window with no open attendance session, Business is unavailable until a manager reschedules them. An open shift session still allows re-entry without scanning again.
+  - **Manager** or **admin** effective layer via membership: may use Business **scheduled or not** (unless Suspended or Terminated).
+- While a manager- or admin-membership person has an **open shift session** whose job role resolves to **employee** or **supervisor**, chrome and powers follow that session's effective layer; when they are **not** on an open shift session, standing eligibility and chrome return to their membership manager/admin (or Owner access). The access-and-permissions subject owns this flip.
+- Opening business mode is **not** on duty (time-control subject). On Free, time control is off; the Owner operates without scan-in.
+- There is **no** late-unlock step on the schedule for business-mode access. Late lock before scan-in belongs to time-control (paid plans with attendance).
 - **Customer mode is always available** to every signed-in user.
 - **Identity gates (not modes).** Favorites, inbox, order history, and other User-owned preferences require a signed-in User. Customer ordering may proceed as a guest until **payment** is requested; at payment (and at those account-bound actions) Project Imperium requires **sign-in or sign-up**, preserving the open basket. The user-navigation and order-flow subjects own how that gate is presented.
+- **Owner-operator attribution.** When the acting person has **no** Employee membership (typical Free Owner, or paid Owner who has not joined the workforce), orders, payments, and related ops attribute to that **User as Owner-operator**. Employee cash-out and time-control do not apply until a real membership exists. Peer multi-session across devices remains allowed for that User (staff-sessions subject).
 
 This subject owns the eligibility **rule**; the access-and-permissions subject owns layer meaning; the user-navigation subject owns the chrome toggle, left menu, guards, and destinations.
 
@@ -137,7 +140,7 @@ A user comes into existence through one of three paths, and Project Imperium **n
 
 1. **Self sign-up** — a person signs up and becomes a customer user.
 2. **Managed employee** — a manager or above hires through the employees subject by linking an **existing user by email**. If no user exists for that email, Project Imperium creates the user (a customer) first, then the membership.
-3. **Business registration** — a **signed-in user** registers a business; the registrant already exists as a user, and registration creates (or updates) their **Owner**, the **Company** (existing or new), the **Business**, and the owner's membership (employees subject).
+3. **Business registration** — a **signed-in user** registers a business; the registrant already exists as a user, and registration creates (or updates) their **Owner**, the **Company** (existing or new), and the **Business**. It does **not** create an Employee membership; the Owner may join the workforce later on a paid plan (employees subject).
 
 Creating a User through self sign-up (and through managed-employee creation when Project Imperium creates the User) requires acknowledging the **privacy notice** and account terms before the account is created. Full privacy rules belong to the privacy, consent, and DSAR subject.
 
@@ -210,7 +213,7 @@ Owned by the access-and-permissions subject (catalogue, role-bound grants, assig
 | Activity | Who |
 | --- | --- |
 | Sign up / sign in / switch mode | Anyone may sign up or sign in; Business on the mode toggle needs eligible business access |
-| Register a business | Any user (becomes the **Owner**, an admin at that venue; employees subject creates the owner membership) |
+| Register a business | Any user (becomes the **Owner** with Owner access at that venue; no Employee membership unless they later join the workforce) |
 | Edit Company legal name and tax number | The owning user (Owner chrome **Company**) |
 | Own / transfer / close a business | The owning user |
 | Override a membership's base layer / assign capabilities | Access-and-permissions subject (managers and above within its assignment rules) |

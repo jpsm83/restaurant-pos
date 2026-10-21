@@ -114,7 +114,7 @@ A venue composes a **goods request** for a supplier and sends it to the vendor.
 
 ### 3.9 Deletion
 
-- A supplier is deleted by **soft delete**; the record is retained and marked deleted, never hard-removed.
+- A supplier is deleted by **soft delete**; the record is retained and marked deleted. Operators do not hard-delete it. Later **retention purge** may physically remove soft-deleted suppliers only under the plan quotas and data retention subject and the **data-integrity rule**.
 - A supplier is **deletable only when none of its goods is used in any business good**. If one of its goods feeds a business good, deletion is **blocked**.
 - The block **warns**, naming the **business goods** made from that supplier's good and telling the venue to point those recipes at a good from **another supplier** first. Once no business good uses the supplier's goods, the deletion proceeds.
 - Owning goods or having purchase history does **not** block deletion on its own. Deleting a supplier also **soft-deletes its goods**, which belong to that supplier alone, while its purchases and requests **remain as history**.

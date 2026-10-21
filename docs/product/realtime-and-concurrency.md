@@ -93,8 +93,8 @@ Stage 1 uses **no exclusive editor lock**. Two staff may open the same staff tab
 
 ### 3.7 Fulfilment
 
-- Advancing a fulfilment slice (Sent → Preparing → Ready → Delivered) replays safely for a same attempt and for a client that applies a status the slice **already holds** (success / no-op).
-- An **invalid or backward** jump is a lifecycle block.
+- Advancing a fulfilment slice (Sent → Preparing → Ready → Delivered) is **forward-only**. Same-attempt replay and a client that applies a status the slice **already holds** succeed as success / no-op.
+- An **invalid or backward** jump is a lifecycle block. There is **no** audited reverse mutation — prep history is view/reprint only (printers-and-screens).
 - Different slices of the same batch remain independent (orders subject).
 
 ### 3.8 Stock, inbox, and other live domains

@@ -58,6 +58,7 @@ It deliberately does **not** cover:
 - **Discovery fields** — the public fields that power customer discovery.
 - **Delivery radius**, **minimum order**, **delivery windows** — the delivery configuration terms.
 - **Self-ordering enabled** — whether the venue allows QR self-ordering at all (points must still accept the Self-ordering channel).
+- **Kiosk payment mode** — per-Business choice for all kiosk points: **full digital** (Stripe Connect in the kiosk app) or **pay on premises** (business-provided card reader attached to the kiosk; tender recorded without Connect capture).
 - **Subscription pointer** — the read-only reference from a business to the plan held on its **Owner**.
 
 The business contact email is a term the users subject introduces; this subject owns it as a business field. "Venue" is prose for one **Business**.
@@ -71,9 +72,9 @@ The business contact email is a term the users subject introduces; this subject 
 Registering a business is an **authenticated action by an existing user** — there is no unauthenticated business registration. The UI presents it as **add your venue**.
 
 - A user with **no business** reaches the action from the customer app; a user who **already owns businesses** reaches it from the business app's venue tabs (typically from **Manage**).
-- Registering a user's **first business creates that user's Owner** and a **Company**; each later business is added to that Owner and the user chooses whether it **joins an existing Company** (sharing that tax entity, so stock can move internally) or **forms a new one** (a separate taxpayer). An Owner always has at least one Company; a Company always has at least one Business. A **new Company** carries **legal name** and **tax number** (users subject); they may be incomplete while the venue is a draft and must be complete before go-live (§3.12). Joining an existing Company inherits that tax identity.
+- Registering a user's **first business creates that user's Owner** and a **Company**; each later business is added to that Owner and the user chooses whether it **joins an existing Company** (sharing that tax entity, so stock can move internally) or **forms a new one** (a separate taxpayer). An Owner always has at least one Company; a Company always has at least one Business. A **new Company** carries **legal name** and **tax number** (users subject); they may be incomplete while the venue is a draft and must be complete before go-live (§3.13). Joining an existing Company inherits that tax identity.
 - Every Business under one Owner must be in the **same country** as that Owner's portfolio (currency and tax regime stay aligned). A venue in another country cannot join that Owner.
-- A business is **owned by exactly one user**; the owner takes the **Owner job role** and the **admin** base layer at that venue.
+- A business is **owned by exactly one user**. That user gains **Owner access** (admin-equivalent powers within plan entitlements) **without** an Employee membership. An Owner job-role membership is created only if they later join the workforce on a paid plan (employees subject).
 - After sign-in, a user who owns businesses may switch to **business mode** via the **Customer | Business** toggle and work in Manage (or Service); a user who owns none stays on the customer surface with no Business side on the toggle. These surfaces belong to the user-navigation subject; this subject owns the action and the form behind them.
 
 ### 3.2 The draft lifecycle
@@ -139,14 +140,22 @@ Self-ordering is a **per-venue** switch.
 - Table self-ordering still requires each **sales point** to accept the **Self-ordering** channel, and is blocked while a staff tab is open on that point or the point shows a **reserved hold** — the sales-points-and-instances and order-flow subjects own those gates.
 - Kiosk and delivery have their own point and delivery-configuration gates; this switch governs **QR self-ordering** at served points.
 
-### 3.9 Peer cash transfer setting
+### 3.9 Kiosk payment mode
+
+Kiosk payment mode is a **per-venue** setting that applies to **all** kiosk sales points at the Business.
+
+- **Full digital** — the guest pays in the kiosk app via **Stripe Connect** (Imperium-processed); pay-to-commit creates the instance on successful capture (order-flow; payments-and-tax).
+- **Pay on premises** — the guest confirms the order on the kiosk; Project Imperium creates the instance and sends to prep; the guest pays at a **business-provided card reader** attached to the kiosk; staff or the terminal path **records** the card tender without Connect capture (order-flow; payments-and-tax).
+- Managers and above set the mode. One mode per Business — no per-kiosk override in stage 1.
+
+### 3.10 Peer cash transfer setting
 
 Peer cash transfer is a **per-venue** switch.
 
 - **Enable/disable** — default **on**. When on, on-duty staff may record **peer cash-in** (receiver-recorded cash obligation moves between wallets). When off, peer cash-in is unavailable.
 - **House paid-in and paid-out** are not toggled here; they are always available. Behaviour of both peer and house cash movements belongs to the employee cash-out subject; this subject only stores the peer switch.
 
-### 3.10 Discovery fields
+### 3.11 Discovery fields
 
 A business is **discoverable only while live**. Its discovery fields are:
 
@@ -155,14 +164,14 @@ A business is **discoverable only while live**. Its discovery fields are:
 - **Cuisine type and categories are edited by managers and above** at the venue; they are among the filters customers use. The identity discovery fields (trade name, logo, phone, address) are edited by admins/owners.
 - Customers find live venues in either of two ways: **search and filter** (trade name, cuisine type, categories, rating, and location / geo radius), or a **map of the closest venues** near them. A customer's location search and the closest-venues map both measure from the address coordinates.
 
-### 3.11 Subscription pointer
+### 3.12 Subscription pointer
 
 - The **subscription is held on the Owner** and covers the owner's venues.
 - A business carries **no subscription field of its own**; it exposes the **effective plan read-only** so the venue can see what its Owner's plan provides.
 - Which features a plan unlocks is the **monetization** subject's concern; this subject only surfaces the plan.
 - On a **paid** plan, go-live also requires the Owner's subscription **paid-in-full** for the period (monetization subject); Free has no subscription invoice gate.
 
-### 3.12 Go-live, live, and offline
+### 3.13 Go-live, live, and offline
 
 A business's own state is server-owned. Its go-live status has three states — **ready to go live**, **live**, and **not live** — moved between by an admin/owner using the **go-live toggle**.
 
@@ -184,15 +193,15 @@ The **go-live checklist** is:
 
 The **profile read exposes the completeness signal** — which checklist items are missing — so the settings surface can show what remains and the go-live toggle can be disabled with reasons.
 
-### 3.13 Closure
+### 3.14 Closure
 
 - Closing a business is a **deliberate soft delete** of the tenant record. It is **not** the same as going offline.
 - Closure requires **no open sales instances** and an **explicit confirmation**. Operators do not physically remove operational data on close; records are retained and marked deleted (ADR-0003). Later physical removal of soft-deleted venue data follows the plan quotas and data retention subject under the **data-integrity rule**.
 - A closed business leaves discovery and stops taking customer orders; the platform does not silently destroy data other people depend on.
 
-### 3.14 Dormant businesses
+### 3.15 Dormant businesses
 
-A venue with no qualifying **venue activity** for a long window may be soft-deleted after Owner notice and no confirmation. Activity definition, windows, and purge afterward belong to the plan quotas and data retention subject. Deliberate closure (§3.13) remains the Owner-driven path.
+A venue with no qualifying **venue activity** for a long window may be soft-deleted after Owner notice and no confirmation. Activity definition, windows, and purge afterward belong to the plan quotas and data retention subject. Deliberate closure (§3.14) remains the Owner-driven path.
 
 ---
 
@@ -202,7 +211,7 @@ A venue with no qualifying **venue activity** for a long window may be soft-dele
 
 | Layer | Business-detail powers |
 | --- | --- |
-| **Customer** | Sees a business's public discovery fields. May **register a business**, becoming its owner and an **admin** at that venue; may edit everything at a venue they own. |
+| **Customer** | Sees a business's public discovery fields. May **register a business**, becoming its **Owner** with Owner access at that venue (no Employee membership unless they later join the workforce); may edit everything the plan entitles at a venue they own. |
 | **Employee** | Works in the business app; no business-detail editing unless granted. |
 | **Supervisor** | Works in the business app; no business-detail editing (no Manage). |
 | **Manager** | Everything an employee can do, plus editing **opening hours**, **delivery configuration**, **self-ordering configuration**, the **peer cash transfer** setting, and the **discovery cuisine/categories**. |
@@ -214,11 +223,11 @@ The owning user is admin at every venue they own. Job roles and per-user capabil
 
 | Activity | Who |
 | --- | --- |
-| Register a business | Any signed-in user (becomes the **Owner** and an admin at that venue) |
+| Register a business | Any signed-in user (becomes the **Owner** with Owner access at that venue) |
 | Edit trade name, logo, primary contact, phone | Admin/owner |
 | Edit currency, business contact email | Admin/owner |
 | Edit Company legal name and tax number | Owner (Company destination in Owner chrome) |
-| Edit opening hours, delivery configuration, self-ordering configuration, peer cash transfer setting, discovery cuisine/categories | Managers and above |
+| Edit opening hours, delivery configuration, self-ordering configuration, kiosk payment mode, peer cash transfer setting, discovery cuisine/categories | Managers and above |
 | Flip go-live / take a venue offline | Admin/owner |
 | Close a business | The owning user (admin/owner) |
 | Confirm a dormant business should stay live | The owning user (Owner), per plan quotas and data retention |

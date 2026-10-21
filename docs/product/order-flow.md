@@ -51,7 +51,7 @@ This subject introduces **no new persistent entity**. It sequences existing ones
 - **Surface** — one of the four ways a venue serves through a **channel**: **Dine-in**, **Self-ordering**, **Kiosk**, or **Delivery**.
 - **To-go packaging** (also **stay** vs **to-go**) — whether an order is fulfilled for consumption on plates and glasses (**stay**) or packed in takeaway bags and cups (**to-go**). Packaging is **not** a channel and **not** a sales point.
 - **Sitting default (packaging)** — the stay/to-go preference a sitting carries; new orders inherit it until overridden.
-- **Pay-to-commit** — the self-service rule that a basket creates no sales instance and reaches the kitchen only after the customer pays in full.
+- **Pay-to-commit** — the self-service rule that a basket creates no sales instance and reaches the kitchen only after the customer pays in full (QR self-ordering, delivery, and **full-digital** kiosk). **Pay-on-premises kiosk** commits the order first, then records reader payment (business kiosk payment mode).
 - **Guest basket** — a customer ordering basket built **without** a signed-in User. Discovery and basket assembly are allowed unsigned; **sign-in or sign-up is required when payment is requested**, and the basket is preserved across that step.
 - **Venue handoff (delivery)** — the moment venue staff mark a delivery order **Delivered** when it is handed to the courier; that completes Project Imperium's delivery journey. The courier may track last-mile in their own tools.
 - **Allergen pre-pay confirmation** — the required self-channel step immediately before payment in which the guest affirms they have reviewed allergen information for the basket and choose to proceed. It is a **double-check**, not a second allergen declaration and not a restamp of basket lines.
@@ -70,7 +70,7 @@ Terms reused rather than redefined here: **Business**, **Sales point**, **Sales 
 - Every sitting uses the same **lifecycle stages**: **Open**, **Build & send**, **Fulfil**, **Bill**, **Settle**, and **Close**. Surfaces differ in **who acts** and in **stage order**, not in a separate stage catalogue.
 - A **staff tab** opens first, may loop **Build & send** and **Fulfil** many times, then **Bill**, **Settle**, and **Close**.
 - A **self-service** sitting has no staff **Bill** status: the customer **builds** a basket, **Settles** (pay-to-commit) which **Opens** the instance and **Closes** it for billing in the same step, then **Fulfil** runs until handover. Payment is complete before the kitchen starts; venue work after pay is fulfilment only.
-- The first sales instance of a work day opens that day's daily sales report; the sales-reports subject owns the report.
+- The first **order send** or self-service **pay-to-commit** of a work day opens that day's daily sales report; the sales-reports subject owns the report.
 
 ### 3.2 To-go packaging
 
@@ -115,6 +115,7 @@ Guest allergen handling starts with the **allergen menu filter** (business-goods
 
 - Table self-ordering opens only when **all** of these hold: the **business** has self-ordering enabled, the **sales point** accepts the **Self-ordering** channel, **no staff tab** is open on that point, and the point has **no reserved hold** (manual or reservation-assigned).
 - The customer scans the point's QR and starts an **ordering session** with its own **basket** (no sales instance yet). Many customers may scan the same point QR at once; each session’s basket is **isolated** — baskets never merge because they share a table. The guest may **Clear basket**, and unpaid sessions follow **still-there** and **basket idle expiry** (§3.11). The guest may use the **allergen menu filter** while browsing (§3.3). When they proceed to **pay**, Project Imperium requires **sign-in or sign-up** if they are not already signed in, **preserves that session’s basket**, runs the **allergen pre-pay confirmation**, then takes payment in full. Only after successful payment does Project Imperium create **that session’s** instance and batches and release work to the kitchen (**pay-to-commit**), each with its own **identification code**.
+- If a **staff tab opens** or a **reserved hold** is placed on the point **while** an unpaid ordering session already has a basket, Project Imperium **keeps the basket** and **blocks pay-to-commit** (and blocks **new** self-ordering opens on that point) until the block clears. The guest may **Clear basket** or wait; the session is not force-discarded solely because the floor block appeared.
 - A self-ordering basket or pay-to-commit that includes any **Alcoholic drinks** tax-category line is **blocked** unless the payer User's birth date shows age at least the **alcohol purchase age** (eighteen) — privacy, consent, and DSAR subject. Birth date must be present for that check.
 - Fulfilment **delivers stay items to that QR point**. To-go lines on the same sitting are packed to go.
 - The customer receives the **identification code** (notification and email); staff **verify the code at handover** before releasing items, as the sales-points-and-instances subject defines.
@@ -123,11 +124,13 @@ Guest allergen handling starts with the **allergen menu filter** (business-goods
 
 ### 3.7 Kiosk
 
-- A **Kiosk** point is a self-service terminal on the same customer app. The journey is pay-to-commit, like QR self-ordering, including **guest basket until identity at payment**, **Clear basket** and **basket idle expiry** (§3.11), the **allergen menu filter**, and the **allergen pre-pay confirmation**. Each terminal use is one **ordering session** with its own basket and, on pay, its own instance and identification code.
-- The same **self-channel alcohol age gate** as QR self-ordering applies at basket and pay (§3.6).
+- A **Kiosk** point is a self-service terminal on the same customer app. Each terminal use is one **ordering session** with its own basket, including **guest basket until identity at payment**, **Clear basket** and **basket idle expiry** (§3.11), the **allergen menu filter**, and the **allergen pre-pay confirmation**. The venue's **kiosk payment mode** (business subject) chooses the settle path for **all** kiosks:
+  - **Full digital** — same as QR self-ordering: identity at payment, then **pay-to-commit** via Stripe Connect; instance and kitchen work exist only after successful capture.
+  - **Pay on premises** — after identity and allergen pre-pay confirmation, the guest **commits the order**; Project Imperium creates the instance, identification code, and sends to prep; outstanding balance is settled when the **business-provided card reader** payment is **recorded** (payments-and-tax). The sitting stays open for settlement until that record covers outstanding.
+- The same **self-channel alcohol age gate** as QR self-ordering applies at basket and pay/commit (§3.6).
 - Fulfilment is **counter pickup**, not delivery to a table. Packaging defaults to **to-go**; the customer may override per order.
 - The kiosk **prints a handover ticket** with the identification code; staff verify the code at the counter. The customer pickup board shows progress as the printers-and-screens subject defines.
-- Billing closes on full settlement at pay-to-commit; fulfilment continues until counter handover. A later order is a new instance.
+- Billing closes on full settlement; fulfilment continues until counter handover. A later order is a new instance.
 
 ### 3.8 Delivery
 

@@ -111,17 +111,18 @@ Terms reused rather than redefined here: **User**, **Business**, **Owner**, **Em
 
 #### Service
 
-- **Ordinary employees:** **POS** only under Service (unless a capability or job role grants Host, a control screen, or attendance — see below).
-- **Supervisors:** full Service set by default — **POS**, **Host**, **Prep screens**, **Delivery screen**, **Customer pickup board**, and **Attendance** for **own** scan-in (access-and-permissions layer defaults). Presenting the venue daily attendance QR stays manager+ (time-control subject).
-- **Managers and above:** the same full Service set, and managers present the attendance QR.
+- **Ordinary employees:** **POS** and **Attendance** for **own** scan-in under Service by default (access-and-permissions). Other Service destinations need a capability or job-role entitlement (Host, prep screens, and so on).
+- **Supervisors:** full Service set by default — **POS**, **Host**, **Prep screens**, **Delivery screen**, **Customer pickup board**, **Attendance** for **own** scan-in, **Counts**, and **Cash-out** (access-and-permissions layer defaults). Presenting the venue daily attendance QR stays manager+ (time-control subject).
+- **Managers and above:** the same full Service set (including Counts and Cash-out), and managers present the attendance QR. Full inventory admin stays under Manage → Supply.
+- **Owner access** (owning user, with or without membership): admin-equivalent Service and Manage for whatever the **plan entitles** (Free has no hired-staff Attendance/Counts/Cash-out surfaces).
 - **Host** (job role) also sees **Host** under Service when not already covered by supervisor/manager/admin Service defaults.
-- **Ordinary employees** see Prep / Delivery / Pickup / Attendance under Service **only when** a per-user capability (bound to the active job role) or job-role entitlement those feature subjects define grants that destination.
+- **Ordinary employees** see Prep / Delivery / Pickup under Service **only when** a per-user capability (bound to the active job role) or job-role entitlement those feature subjects define grants that destination. Attendance for own scan-in does **not** require a catalogue grant.
 - **POS** and **Host** use the venue's **floor plans** on a wide viewport (map with floor tabs) and fall back to **list/grid** on a narrow viewport — the floor-plans subject owns that behaviour. POS is the spatial home for opening sittings; Host is the spatial home for seating and reservation context.
 - Service destinations support **fullscreen**: hide normal desktop chrome, with a **small corner control** to restore the desktop layout. Manage pages stay in normal desktop chrome with the left rail.
 
 #### Manage
 
-- Visible while the person's **effective base layer** at that venue is **manager or admin** (owners included via admin). A person who holds Manager on the membership but is working an employee- or supervisor-layer shift does **not** see Manage for that shift; when not on a working shift, highest membership layer applies. Supervisor- and employee-layer users do **not** see Manage.
+- Visible while the person's **effective base layer** at that venue is **manager or admin** (owners included via Owner access or admin membership). A person who holds Manager on the membership but has an **open shift session** at employee or supervisor effective layer does **not** see Manage for that session; when **not** on an open shift session, highest membership layer (or Owner access) applies. Supervisor- and employee-layer users do **not** see Manage.
 - Under Manage, feature groups and top-level items are:
 
   - **Venue** — profile, hours, delivery, go-live, and related venue configuration;
@@ -167,7 +168,9 @@ This subject names destinations the chrome must be able to reach. Behaviour insi
 | POS (floor map or list/grid) | Service → POS |
 | Host (floor map or list/grid) | Service → Host (Host job role; supervisor; managers+) |
 | Prep / Delivery / Pickup screens | Service (supervisor/manager+ by default; employees when entitled) |
-| Attendance | Service (own scan-in when entitled; present QR manager+ only) |
+| Attendance | Service (own scan-in for employee layer+ by default; present QR manager+ only) |
+| Counts | Service (supervisor layer+; physical count and count re-edit) |
+| Cash-out | Service (supervisor layer+; approve another wallet / house movements) |
 | Floor plans (layout editor) | Manage → Floor plans |
 | Manage feature groups (Venue, People, Menu, Supply, Service setup, Money) | Manage header |
 | My schedule / Notifications / Personal details | Me (Business) or account area (Customer) |
@@ -183,10 +186,10 @@ This subject names destinations the chrome must be able to reach. Behaviour insi
 | Layer | Navigation powers |
 | --- | --- |
 | **Customer** (including unsigned visitors) | Public Customer surface; guest basket until identity gates; after sign-in, customer chrome, account area, and Customer side of the mode toggle. |
-| **Employee** (effective) | Everything a customer can do, plus Business when schedule-eligible; left menu **Service** (POS; other Service links only if entitled) and **Me**; no Manage. |
-| **Supervisor** (effective) | Business when schedule-eligible; full Service set and **Me**; no Manage; Service landing. |
+| **Employee** (effective) | Everything a customer can do, plus Business when schedule-eligible; left menu **Service** (POS and Attendance by default; other Service links only if entitled) and **Me**; no Manage. |
+| **Supervisor** (effective) | Business when schedule-eligible; full Service set (including Counts and Cash-out) and **Me**; no Manage; Service landing. |
 | **Manager** (effective) | Always Business-eligible when membership allows; Manage header and groups; full Service link set; Manage home on enter. |
-| **Admin / Owner** (effective) | Everything a manager can do, plus owner chrome on owned venue tabs and ownership actions those subjects define. |
+| **Admin / Owner** (effective or Owner access) | Everything a manager can do within plan entitlements, plus owner chrome on owned venue tabs and ownership actions those subjects define. Owner access does not require an Employee membership. |
 
 ### Per-user capabilities
 
@@ -206,7 +209,9 @@ Ordinary employees may gain individual **Service** destinations (control screens
 | Use Service → POS | Everyone in Business at that venue (as POS entitlements allow) |
 | Use Service → Host | Host job role; supervisor layer; managers and above |
 | Use Manage → Floor plans | Effective manager or admin layer at that venue |
-| Use Service control screens / Attendance | Effective manager, admin, or supervisor (full Service defaults); or employees with the granting entitlement. Presenting the attendance QR: manager+ only |
+| Use Service control screens | Effective manager, admin, or supervisor (full Service defaults); or employees with the granting entitlement |
+| Use Service → Attendance (own scan-in) | Employee layer and above by default. Presenting the attendance QR: manager+ only |
+| Use Service → Counts / Cash-out | Supervisor layer and above |
 | Use Me destinations | Everyone in Business |
 | Enter Service fullscreen | Anyone on a Service destination that offers it |
 | Be returned to Customer on eligibility loss | Employee- or supervisor-layer staff per §3.8 |

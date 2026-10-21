@@ -171,4 +171,4 @@ Inventory is an internal, operational, management surface: never visible to cust
 | Reopen a closed month, with a reason and an audit | General Manager or Owner job role |
 | Receive low-stock and negative-stock alerts | The venue's managers on duty |
 
-Inventory sits with the managers who run purchasing and stock, consistent with the supplier, supplier-good, and purchase surfaces.
+Full inventory admin (variance, transfers, month close, Manage → Supply) sits with managers. Day-of **physical counts** and **count re-edit** for supervisor layer+ live under **Service → Counts** (user-navigation; access-and-permissions).

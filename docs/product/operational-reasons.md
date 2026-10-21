@@ -1,6 +1,6 @@
 # Operational reasons
 
-> **About this document.** This is the **target-state source of truth** for operational reason catalogues in Project Imperium — the closed lists a venue picks from when voiding, inviting, manually discounting, refunding, or re-editing a submitted count. It is written for two readers: AI agents that build the product and engineers onboarding onto it. It describes operational reasons as they are *meant to be* — capabilities are stated as commitments, without built/planned tags. It is self-contained: it links to no other document.
+> **About this document.** This is the **target-state source of truth** for operational reason catalogues in Project Imperium — the closed lists a venue picks from when voiding, inviting, manually discounting, refunding, re-editing a submitted count, voiding a gift card, or reopening a closed daily sales report. It is written for two readers: AI agents that build the product and engineers onboarding onto it. It describes operational reasons as they are *meant to be* — capabilities are stated as commitments, without built/planned tags. It is self-contained: it links to no other document.
 
 ---
 
@@ -8,7 +8,7 @@
 
 This subject owns the **operational reason catalogues** used when staff must justify a controlled act. It covers:
 
-- **closed, platform-defined catalogues** — including the authored **void**, **invitation**, **manual discount**, **refund**, and **count re-edit** catalogues, and any further catalogues product amends onto this subject for other reason-bearing audited acts;
+- **closed, platform-defined catalogues** — including the authored **void**, **invitation**, **manual discount**, **refund**, **count re-edit**, **gift-card void**, and **daily reopen** catalogues, and any further catalogues product amends onto this subject for other reason-bearing audited acts;
 - the shared **selection rule** (required catalogue code; **Other** with an optional short free-text note) for every act that requires a catalogue reason;
 - **who maintains** the catalogues and what happens when a code is **retired**;
 - **customer visibility** (reasons are never guest-facing);
@@ -17,7 +17,7 @@ This subject owns the **operational reason catalogues** used when staff must jus
 
 It deliberately does **not** cover:
 
-- the **acts themselves** — voiding or inviting an order, applying a manual discount, issuing a refund, and re-editing a submitted count belong to the **orders**, **payments-and-tax**, and **inventories** subjects. This subject owns only the reason codes those acts require;
+- the **acts themselves** — voiding or inviting an order, applying a manual discount, issuing a refund, re-editing a submitted count, voiding a gift card, and reopening a daily sales report belong to the **orders**, **payments-and-tax**, **inventories**, **gift-cards**, and **sales-reports** subjects. This subject owns only the reason codes those acts require;
 - **who may perform** those acts — base access layers and capabilities belong to the **access-and-permissions** subject and are restated on each owning subject;
 - the **shared audit entry shape, when an act must be audited, append-only integrity, retention of trails, and read defaults** — the **audit-trail** subject. This subject owns catalogue contents and the selection rule; audit-trail owns how a selected reason is recorded on the trail;
 - **attendance reasons** (time-control) and other justification lists that remain with their owning subjects until product amends them onto this catalogue home;
@@ -30,7 +30,7 @@ It deliberately does **not** cover:
 
 ### Entities
 
-- **Operational reason catalogue** — a closed, platform-defined list of reason codes for one controlled act. The authored catalogues are void, invitation, manual discount, refund, and count re-edit; further catalogues may be added only by product amendment of this subject.
+- **Operational reason catalogue** — a closed, platform-defined list of reason codes for one controlled act. The authored catalogues are void, invitation, manual discount, refund, count re-edit, gift-card void, and daily reopen; further catalogues may be added only by product amendment of this subject.
 - **Operational reason** — one code from an operational reason catalogue, recorded on the act that required it and carried on that act’s **audit entry**. When the code is **Other**, it may carry an optional short free-text note.
 
 ### Terms this subject introduces
@@ -123,11 +123,35 @@ Used when supervisor layer or above re-edits a submitted physical count (invento
 | Entry error |
 | Other |
 
-### 3.8 Reporting by reason
+### 3.8 Gift-card void catalogue
+
+Used when a manager voids a gift card (gift-cards subject). Selectable codes:
+
+| Reason code |
+| --- |
+| Issued in error |
+| Suspected fraud / abuse |
+| Customer request (no refund) |
+| Business policy |
+| Other |
+
+### 3.9 Daily reopen catalogue
+
+Used when a manager reopens a closed daily sales report (sales-reports subject). Selectable codes:
+
+| Reason code |
+| --- |
+| Payment correction |
+| Bill / order correction |
+| Refund after close |
+| Reporting error |
+| Other |
+
+### 3.10 Reporting by reason
 
 - Where sales and business reporting already present **void**, **invitation**, **manual discount**, or **refund** figures, operators can break those figures down **by reason code**.
 - All acts recorded under **Other** bucket together under that code. The **Other note** is **not** a report dimension.
-- **Count re-edit** reasons stay on the **inventory audit trail** only. They are **not** a sales-report or business-metrics dimension.
+- **Count re-edit**, **gift-card void**, and **daily reopen** reasons stay on the **audit trail** (and cascade copy for reopen onto weekly/monthly as sales-reports already states). They are **not** general sales KPI dimensions unless a metrics subject later adds them.
 - The **reason** dimension and which KPIs support it are owned by the business-metrics subject; daily and roll-up report surfaces present the breakdowns those definitions allow.
 
 ---
@@ -141,7 +165,7 @@ Used when supervisor layer or above re-edits a submitted physical count (invento
 | **Customer** | Never sees an operational reason code or Other note; never selects one. |
 | **Employee** | Does not void, invite, manually discount, refund, or re-edit a count, so does not select these catalogues. May see a reason only where a report or audit surface their layer is allowed to open already exposes it. |
 | **Supervisor** | Selects a **count re-edit** reason when re-editing a submitted count (inventories and access-and-permissions defaults). Does not select void, invitation, manual discount, or refund reasons unless a higher layer applies. |
-| **Manager** | Selects void, invitation, manual discount, and refund reasons when performing those acts; selects count re-edit reasons when re-editing counts. |
+| **Manager** | Selects void, invitation, manual discount, refund, gift-card void, and daily reopen reasons when performing those acts; selects count re-edit reasons when re-editing counts. |
 | **Admin/owner** | Everything a manager can do for these catalogues. |
 
 Catalogue **maintenance** (adding, renaming meaning, or retiring codes) is **not** a venue or Superadmin console power in stage 1; it is a **product amendment** of this subject.
@@ -153,6 +177,8 @@ Catalogue **maintenance** (adding, renaming meaning, or retiring codes) is **not
 | Select a void, invitation, or manual discount reason | Managers and above, when performing the act (orders subject) |
 | Select a refund reason | The manager on duty, when approving and issuing the refund (payments-and-tax subject) |
 | Select a count re-edit reason | Supervisor layer and above, when re-editing a submitted count (inventories subject) |
+| Select a gift-card void reason | Managers and above, when voiding a gift card (gift-cards subject) |
+| Select a daily reopen reason | Managers and above, when reopening a closed daily sales report (sales-reports subject) |
 | See reason codes and Other notes on acts and reports | Staff who may perform or review those acts or open the report surfaces that include them |
 | Add, rename, or remove a catalogue code at a venue | No one |
 | Edit catalogues in the Superadmin console (stage 1) | No one |

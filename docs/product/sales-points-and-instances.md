@@ -125,7 +125,7 @@ Terms reused rather than redefined here: **Business**, **Order**, **Business goo
 ### 3.10 The work day
 
 - Every instance belongs to the **work day** it opened in — the business-local calendar day — even if it stays open past midnight.
-- The **first instance of a work day** opens that day's daily sales report; the sales-reports subject owns the report itself.
+- The daily sales report for a work day opens on the first **order send** or self-service **pay-to-commit** that day — not merely on opening an instance; the sales-reports subject owns the report itself.
 - Closing that work day's daily sales report is blocked while any instance on that day still has open orders; managers close the report under the sales-reports subject's rules.
 
 ---

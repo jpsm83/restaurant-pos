@@ -98,7 +98,7 @@ Seed ceilings (Superadmin may edit; unlimited means no ceiling):
 | Active drink menu items | 50 | 300 | 500 | Unlimited |
 | Active employee memberships | 0 | 40 | 100 | Unlimited |
 
-- Free’s zero employees matches employees, schedules, and time control already off on Free; the quota still exists so paid plans and downgrade checks stay uniform.
+- Free’s zero Active employee memberships matches employees, schedules, and time control already off on Free: **only the Owner User** operates the venue via **Owner access** (no Employee membership). The quota still exists so paid plans and downgrade checks stay uniform. The Owner’s optional workforce membership on paid plans **does** consume an Active slot when created.
 
 ### 3.5 Inactive users
 

@@ -1,6 +1,6 @@
 # Employee cash-out
 
-> **About this document.** This is the **target-state source of truth** for employee cash-out in Project Imperium — the personal money wallet a floor worker holds while on duty, cash movements that rearrange who holds house-owed cash, the resume of their settled work, and the manager-approved cash-out that clears their financial obligation to the venue. It is written for two readers: AI agents that build the product and engineers onboarding onto it. It describes employee cash-out as it is *meant to be* — capabilities are stated as commitments, without built/planned tags. It is self-contained: it links to no other document.
+> **About this document.** This is the **target-state source of truth** for employee cash-out in Project Imperium — the personal money wallet a floor worker holds while on duty, cash movements that rearrange who holds house-owed cash, the resume of their settled work, and the supervisor-or-above-approved cash-out that clears their financial obligation to the venue. It is written for two readers: AI agents that build the product and engineers onboarding onto it. It describes employee cash-out as it is *meant to be* — capabilities are stated as commitments, without built/planned tags. It is self-contained: it links to no other document.
 
 ---
 
@@ -256,7 +256,7 @@ A common pattern: the employee has transferred all expected business cash to a p
 | **Manager** | Same approval, visibility, and house-movement powers as supervisor; not schedule-gated for Business entry. May edit the **peer cash transfer** Business setting (business subject). |
 | **Admin/owner** | Everything a manager can do. |
 
-Approve cash-out, house paid-in/out, and cash-movement reverses are **supervisor-and-above layer defaults** (access-and-permissions). Peer cash-in is any on-duty employee when the Business setting is on. No separate per-user catalogue capabilities are required beyond the peer cash transfer Business setting.
+Approve cash-out, house paid-in/out, and cash-movement reverses are **supervisor-and-above layer defaults** (access-and-permissions). Day-of chrome for those acts is **Service → Cash-out** (user-navigation); supervisors do not need Manage. Peer cash-in is any on-duty employee when the Business setting is on. No separate per-user catalogue capabilities are required beyond the peer cash transfer Business setting.
 
 ### Who can do what
 
