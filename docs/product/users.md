@@ -79,7 +79,8 @@ A **business is owned by exactly one user**. When a user registers a business, P
 - An Owner always has **at least one Company**, and each Company always has **at least one Business**. The first venue creates both; Project Imperium never leaves an Owner without a Company or a Company without a venue.
 - **Same taxpayer, several venues** — join an existing Company (shared tax number and legal name; stock may transfer). **Separate taxpayers** — form a new Company (its own tax number and legal name; no stock transfer across Companies).
 - An Owner's portfolio is **one country**: every owned Business shares that country (and thus the same currency). Cross-border venues under one Owner are not allowed.
-- The Company's **legal name** and **tax number** are edited on the Company (Owner chrome); venue shopfront fields stay on each Business (business subject). Uniqueness of tax number and of legal name is enforced **among active Companies in the same country**.
+- Forming a **new Company** (first venue, or a later venue as a separate taxpayer) creates that Company's **legal name** and **tax number** fields. They may be filled then or later on the Company (Owner chrome **Company** destination); both are required before any venue in that Company may go live (business subject). Joining an **existing** Company reuses that Company's legal name and tax number — the new venue does not invent a second tax identity.
+- The Company's **legal name** and **tax number** are edited only on the Company (Owner chrome); venue shopfront fields stay on each Business (business subject). Uniqueness of tax number and of legal name is enforced **among active Companies in the same country**.
 - A user may simultaneously **own some venues and be an ordinary employee at others**.
 - Registration also creates the owner's **Employee** membership at that venue (Owner job role and admin layer); the employees subject owns that membership and its HR completion.
 - **Ownership can be transferred** from one user to another; the **Owner** accounts, their Companies, and their business lists follow the transfer.
@@ -210,6 +211,7 @@ Owned by the access-and-permissions subject (catalogue, role-bound grants, assig
 | --- | --- |
 | Sign up / sign in / switch mode | Anyone may sign up or sign in; Business on the mode toggle needs eligible business access |
 | Register a business | Any user (becomes the **Owner**, an admin at that venue; employees subject creates the owner membership) |
+| Edit Company legal name and tax number | The owning user (Owner chrome **Company**) |
 | Own / transfer / close a business | The owning user |
 | Override a membership's base layer / assign capabilities | Access-and-permissions subject (managers and above within its assignment rules) |
 | Hire, edit HR, terminate, rehire | Employees subject (managers and above; rehire admin/owner) |
