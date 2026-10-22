@@ -282,6 +282,7 @@ export const printersRoutes: FastifyPluginAsync = async (app) => {
 
       try {
         const printer = await Printer.findById(printerId)
+          .setOptions({ includeDeleted: true })
           .select("deleted")
           .session(session)
           .lean();
@@ -315,6 +316,7 @@ export const printersRoutes: FastifyPluginAsync = async (app) => {
         const wasDeleted = await markAsDeletedById(
           Printer as mongoose.Model<IPrinter & { deleted: boolean }>,
           printerId,
+          session,
         );
         if (!wasDeleted) {
           await session.abortTransaction();

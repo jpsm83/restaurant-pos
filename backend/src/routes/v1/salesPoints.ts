@@ -198,7 +198,9 @@ export const salesPointsRoutes: FastifyPluginAsync = async (app) => {
     async (req, reply) => {
       const { salesPointId } = req.params;
 
-      const salesPoint = await SalesPoint.findById(salesPointId);
+      const salesPoint = await SalesPoint.findById(salesPointId).setOptions({
+        includeDeleted: true,
+      });
 
       if (!salesPoint) {
         throw notFound("SalesPoint not found!");

@@ -1,7 +1,7 @@
 import mongoose, { Schema, model } from "mongoose";
 import { addressSchema } from "./address.ts";
 import * as enums from "restaurant-pos-packages/enums";
-import { softDeleteSchemaFields } from "./softDelete.ts";
+import { applyActiveOnlySoftDelete, softDeleteSchemaFields } from "./softDelete.ts";
 
 const { subscriptionEnums } = enums;
 
@@ -144,6 +144,8 @@ businessSchema.index(
   { taxNumber: 1 },
   { unique: true, partialFilterExpression: { deleted: false } },
 );
+
+applyActiveOnlySoftDelete(businessSchema);
 
 const Business = mongoose.models.Business || model("Business", businessSchema);
 export default Business;

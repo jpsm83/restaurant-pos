@@ -221,21 +221,31 @@ const aggregateDailyReportsIntoMonthly = async (
     }
 
     // Sequential reads on `session`: one ClientSession must not run operations in parallel.
-    const dailyReports = await DailySalesReport.find({
-      businessId,
-      createdAt: { $gte: monthBounds.start, $lte: monthBounds.end },
-      dailyNetPaidAmount: { $exists: true, $ne: null },
-    })
+    const dailyReports = await DailySalesReport.find(
+      withSoftDeleteFilter(
+        {
+          businessId,
+          createdAt: { $gte: monthBounds.start, $lte: monthBounds.end },
+          dailyNetPaidAmount: { $exists: true, $ne: null },
+        },
+        true,
+      ),
+    )
       .select(
         "dailyTotalSalesBeforeAdjustments dailyNetPaidAmount dailyCostOfGoodsSold dailyTipsReceived dailyTotalVoidValue dailyTotalInvitedValue dailyCustomersServed dailyPosSystemCommission businessPaymentMethods dailySoldGoods dailyVoidedGoods dailyInvitedGoods",
       )
       .session(session)
       .lean();
 
-    const schedules = await Schedule.find({
-      businessId,
-      date: { $gte: monthBounds.start, $lte: monthBounds.end },
-    })
+    const schedules = await Schedule.find(
+      withSoftDeleteFilter(
+        {
+          businessId,
+          date: { $gte: monthBounds.start, $lte: monthBounds.end },
+        },
+        true,
+      ),
+    )
       .select("totalDayEmployeesCost")
       .session(session)
       .lean();

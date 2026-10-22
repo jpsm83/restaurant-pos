@@ -6,6 +6,8 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { Types } from "mongoose";
 import calculateIngredientsCostPriceAndAllergies from "../../src/businessGoods/calculateIngredientsCostPriceAndAllergies.ts";
+import { calculateSetMenuCostPriceAndAllergies } from "../../src/businessGoods/calculateSetMenuCostPriceAndAllergies.ts";
+import BusinessGood from "../../src/models/businessGood.ts";
 import SupplierGood from "../../src/models/supplierGood.ts";
 import Supplier from "../../src/models/supplier.ts";
 
@@ -212,6 +214,85 @@ describe("BusinessGoods Helpers", () => {
       if (Array.isArray(result)) {
         expect(result[0].costOfRequiredQuantity).toBe(1); // 0.25 * 4
       }
+    });
+
+    it("omits the price and allergens of a soft-deleted supplier good", async () => {
+      const live = await SupplierGood.create({
+        businessId,
+        supplierId,
+        name: "Flour live",
+        keyword: "flour-live",
+        mainCategory: "Food",
+        subCategory: "Baking",
+        currentlyInUse: true,
+        measurementUnit: "kg",
+        pricePerMeasurementUnit: 2,
+        parLevel: 10,
+        allergens: ["Gluten"],
+      });
+      const retired = await SupplierGood.create({
+        businessId,
+        supplierId,
+        name: "Nuts retired",
+        keyword: "nuts-retired",
+        mainCategory: "Food",
+        subCategory: "Baking",
+        currentlyInUse: true,
+        measurementUnit: "kg",
+        pricePerMeasurementUnit: 8,
+        parLevel: 10,
+        allergens: ["Nuts"],
+      });
+      await SupplierGood.updateOne(
+        { _id: retired._id },
+        { $set: { deleted: true, deletedAt: new Date() } },
+      );
+
+      const result = await calculateIngredientsCostPriceAndAllergies([
+        { supplierGoodId: live._id, measurementUnit: "kg", requiredQuantity: 2 },
+        { supplierGoodId: retired._id, measurementUnit: "kg", requiredQuantity: 1 },
+      ] as any);
+
+      expect(Array.isArray(result)).toBe(true);
+      if (Array.isArray(result)) {
+        expect(result).toHaveLength(2);
+        expect(result[0].costOfRequiredQuantity).toBe(4);
+        expect(result[0].allergens).toEqual(["Gluten"]);
+        expect(result[1].costOfRequiredQuantity).toBe(0);
+        expect(result[1].allergens).toBeUndefined();
+      }
+    });
+  });
+
+  describe("calculateSetMenuCostPriceAndAllergies", () => {
+    it("prices only active components when a set-menu item is soft-deleted", async () => {
+      const live = await BusinessGood.create({
+        businessId,
+        name: "Live component",
+        keyword: "live-component",
+        mainCategory: "Food",
+        sellingPrice: 10,
+        costPrice: 4,
+        allergens: ["Gluten"],
+      });
+      const retired = await BusinessGood.create({
+        businessId,
+        name: "Retired component",
+        keyword: "retired-component",
+        mainCategory: "Food",
+        sellingPrice: 12,
+        costPrice: 9,
+        allergens: ["Nuts"],
+        deleted: true,
+        deletedAt: new Date(),
+      });
+
+      const result = await calculateSetMenuCostPriceAndAllergies([
+        live._id,
+        retired._id,
+      ]);
+
+      expect(result).toEqual({ costPrice: 4, allergens: ["Gluten"] });
     });
   });
 });

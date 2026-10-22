@@ -1,5 +1,5 @@
 import mongoose, { Schema, model } from "mongoose";
-import { softDeleteSchemaFields } from "./softDelete.ts";
+import { applyActiveOnlySoftDelete, softDeleteSchemaFields } from "./softDelete.ts";
 
 // on the time of record the purchase, employee should be able to select the supplier good in a dropdown
 // and from there employee should be able to see the supplierGood.pricePerMeasurementUnit to compare with the price of the purchase
@@ -89,10 +89,7 @@ const purchaseSchema = new Schema(
   }
 );
 
-purchaseSchema.index(
-  { businessId: 1, supplierId: 1, receiptId: 1 },
-  { unique: true, partialFilterExpression: { deleted: false } },
-);
+applyActiveOnlySoftDelete(purchaseSchema);
 
 const Purchase = mongoose.models.Purchase || model("Purchase", purchaseSchema);
 export default Purchase;

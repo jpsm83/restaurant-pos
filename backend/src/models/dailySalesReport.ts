@@ -1,6 +1,6 @@
 import mongoose, { Schema, model } from "mongoose";
 import { paymentMethod } from "./paymentMethod.ts";
-import { softDeleteSchemaFields } from "./softDelete.ts";
+import { applyActiveOnlySoftDelete, softDeleteSchemaFields } from "./softDelete.ts";
 
 export const goodsReducedSchema = new Schema(
   {
@@ -135,6 +135,8 @@ dailySalesReportSchema.index(
   { businessId: 1, dailyReferenceNumber: 1 },
   { unique: true, partialFilterExpression: { deleted: false } },
 );
+
+applyActiveOnlySoftDelete(dailySalesReportSchema);
 
 const DailySalesReport =
   mongoose.models.DailySalesReport ||

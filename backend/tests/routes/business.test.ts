@@ -2210,6 +2210,7 @@ describe("Business Routes", () => {
       });
 
       const deletedBusiness = await Business.findById(business._id)
+        .setOptions({ includeDeleted: true })
         .select("deleted deletedAt")
         .lean();
       expect(deletedBusiness?.deleted).toBe(true);

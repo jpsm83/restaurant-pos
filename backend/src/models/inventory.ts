@@ -1,5 +1,5 @@
 import mongoose, { Schema, model } from "mongoose";
-import { softDeleteSchemaFields } from "./softDelete.ts";
+import { applyActiveOnlySoftDelete, softDeleteSchemaFields } from "./softDelete.ts";
 
 // Schema for individual count events will be created only upon the count of the inventory
 const inventoryCountSchema = new Schema(
@@ -108,5 +108,7 @@ const inventorySchema = new Schema(
 );
 
 // Create the model
+applyActiveOnlySoftDelete(inventorySchema);
+
 const Inventory = mongoose.models.Inventory || model("Inventory", inventorySchema);
 export default Inventory;

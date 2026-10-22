@@ -844,9 +844,9 @@ describe("Notifications Routes", () => {
       const body = JSON.parse(deleteResponse.body);
       expect(body.message).toContain("deleted");
 
-      const deletedNotification = await Notification.findById(
-        notification?._id,
-      ).lean();
+      const deletedNotification = await Notification.findById(notification?._id)
+        .setOptions({ includeDeleted: true })
+        .lean();
       expect(deletedNotification).not.toBeNull();
       expect(deletedNotification?.deleted).toBe(true);
 

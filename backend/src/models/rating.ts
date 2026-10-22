@@ -1,4 +1,5 @@
 import mongoose, { Schema, model } from "mongoose";
+import { applyActiveOnlySoftDelete, softDeleteSchemaFields } from "./softDelete.ts";
 
 const ratingSchema = new Schema(
   {
@@ -26,11 +27,14 @@ const ratingSchema = new Schema(
       max: [5, "Score must be at most 5"],
     },
     comment: { type: String },
+    ...softDeleteSchemaFields,
   },
   { timestamps: true }
 );
 
 ratingSchema.index({ businessId: 1, createdAt: -1 });
+
+applyActiveOnlySoftDelete(ratingSchema);
 
 const Rating = mongoose.models.Rating || model("Rating", ratingSchema);
 export default Rating;

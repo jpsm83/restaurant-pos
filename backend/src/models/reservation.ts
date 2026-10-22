@@ -1,6 +1,6 @@
 import mongoose, { Schema, model } from "mongoose";
 import * as enums from "restaurant-pos-packages/enums";
-import { softDeleteSchemaFields } from "./softDelete.ts";
+import { applyActiveOnlySoftDelete, softDeleteSchemaFields } from "./softDelete.ts";
 
 const { reservationStatusEnums } = enums;
 
@@ -74,6 +74,8 @@ const reservationSchema = new Schema(
 
 reservationSchema.index({ businessId: 1, reservationStart: 1 });
 reservationSchema.index({ businessId: 1, status: 1, reservationStart: 1 });
+
+applyActiveOnlySoftDelete(reservationSchema);
 
 const Reservation =
   mongoose.models.Reservation || model("Reservation", reservationSchema);

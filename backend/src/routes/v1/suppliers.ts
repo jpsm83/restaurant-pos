@@ -301,6 +301,7 @@ export const suppliersRoutes: FastifyPluginAsync = async (app) => {
     async (req, reply) => {
       const { supplierId } = req.params;
       const supplier = await Supplier.findById(supplierId)
+        .setOptions({ includeDeleted: true })
         .select("businessId deleted")
         .lean();
 

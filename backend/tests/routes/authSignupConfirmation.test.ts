@@ -163,7 +163,9 @@ describe("POST /api/v1/auth/signup (confirmation email)", () => {
     const body = JSON.parse(res.body);
     expect(body.message).toContain("reactivation");
 
-    const allRows = await User.find({ "personalDetails.email": email }).lean();
+    const allRows = await User.find({ "personalDetails.email": email })
+      .setOptions({ includeDeleted: true })
+      .lean();
     expect(allRows).toHaveLength(1);
     expect(allRows[0].deleted).toBe(true);
     expect(allRows[0].verificationToken).toBeTruthy();

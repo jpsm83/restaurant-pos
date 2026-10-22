@@ -10,6 +10,7 @@ import type {
   preValidationHookHandler,
 } from "fastify";
 import { forbidden, unauthorized } from "../errors/appError.ts";
+import Business from "../models/business.ts";
 import User from "../models/user.ts";
 import type { AuthSession, AuthUser } from "./types.ts";
 
@@ -35,12 +36,7 @@ export function createAuthHook(app: FastifyInstance): preValidationHookHandler {
 
     try {
       const decoded = app.jwt.verify<AuthSession>(token);
-      if (decoded.type === "user") {
-        const user = await User.findById(decoded.id).select("deleted").lean();
-        if (user?.deleted) {
-          throw unauthorized("Invalid or expired access token");
-        }
-      }
+      await assertAccountCanUseSession(decoded);
       req.authSession = decoded;
     } catch {
       throw unauthorized("Invalid or expired access token");
@@ -67,17 +63,38 @@ export function createOptionalAuthHook(
 
     try {
       const decoded = app.jwt.verify<AuthSession>(token);
-      if (decoded.type === "user") {
-        const user = await User.findById(decoded.id).select("deleted").lean();
-        if (user?.deleted) {
-          return;
-        }
-      }
+      await assertAccountCanUseSession(decoded);
       req.authSession = decoded;
     } catch {
       // Token invalid, but we allow the request to proceed
     }
   };
+}
+
+/**
+ * A soft-deleted User or Business must not keep a live session.
+ * Missing accounts stay allowed so a route can answer 404. A closed
+ * Business or a soft-deleted User is refused because closure ends access.
+ */
+export async function assertAccountCanUseSession(session: AuthSession): Promise<void> {
+  if (session.type === "user") {
+    const user = await User.findById(session.id)
+      .setOptions({ includeDeleted: true })
+      .select("deleted")
+      .lean();
+    if (user?.deleted) {
+      throw unauthorized("Invalid or expired access token");
+    }
+    return;
+  }
+
+  const business = await Business.findById(session.id)
+    .setOptions({ includeDeleted: true })
+    .select("deleted")
+    .lean();
+  if (business?.deleted) {
+    throw unauthorized("Invalid or expired access token");
+  }
 }
 
 /**

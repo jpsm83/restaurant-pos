@@ -1,7 +1,7 @@
 import mongoose, { Schema, model } from "mongoose";
 import { paymentMethod } from "./paymentMethod.ts";
 import { goodsReducedSchema } from "./dailySalesReport.ts";
-import { softDeleteSchemaFields } from "./softDelete.ts";
+import { applyActiveOnlySoftDelete, softDeleteSchemaFields } from "./softDelete.ts";
 
 const weeklyBusinessReportSchema = new Schema(
   {
@@ -127,6 +127,8 @@ weeklyBusinessReportSchema.index(
   { businessId: 1, weekReference: 1 },
   { unique: true, partialFilterExpression: { deleted: false } },
 );
+
+applyActiveOnlySoftDelete(weeklyBusinessReportSchema);
 
 const WeeklyBusinessReport =
   mongoose.models.WeeklyBusinessReport ||

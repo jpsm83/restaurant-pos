@@ -10,6 +10,7 @@ import Notification from "./notification.ts";
 import Printer from "./printer.ts";
 import Promotion from "./promotion.ts";
 import Purchase from "./purchase.ts";
+import Rating from "./rating.ts";
 import Reservation from "./reservation.ts";
 import SalesInstance from "./salesInstance.ts";
 import SalesPoint from "./salesPoint.ts";
@@ -35,6 +36,7 @@ export const softDeleteBackfillModels: Array<{
   { label: "Printer", model: Printer as SoftDeleteModel },
   { label: "Promotion", model: Promotion as SoftDeleteModel },
   { label: "Purchase", model: Purchase as SoftDeleteModel },
+  { label: "Rating", model: Rating as SoftDeleteModel },
   { label: "Reservation", model: Reservation as SoftDeleteModel },
   { label: "SalesInstance", model: SalesInstance as SoftDeleteModel },
   { label: "SalesPoint", model: SalesPoint as SoftDeleteModel },

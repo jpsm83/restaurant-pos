@@ -7,7 +7,18 @@
  * replica set). Image upload tests require Cloudinary mocking.
  */
 
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeAll } from "vitest";
+
+const sendEmailMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+
+vi.mock("../../src/auth/authEmailSend.ts", () => ({
+  sendAuthTransactionalEmail: sendEmailMock,
+}));
+
+vi.mock("../../src/cloudinary/deleteFolderCloudinary.ts", () => ({
+  default: vi.fn().mockResolvedValue(true),
+}));
+
 import { Types } from "mongoose";
 import { getTestApp, generateTestToken } from "../setup.ts";
 import User from "../../src/models/user.ts";
@@ -20,11 +31,13 @@ import {
   isProblemDetails,
 } from "../helpers/problemDetails.ts";
 
-vi.mock("../../src/cloudinary/deleteFolderCloudinary.ts", () => ({
-  default: vi.fn().mockResolvedValue(true),
-}));
-
 describe("Users Routes", () => {
+  beforeAll(() => {
+    if (!process.env.APP_BASE_URL?.trim()) {
+      process.env.APP_BASE_URL = "http://127.0.0.1:3000";
+    }
+  });
+
   const validAddress = {
     country: "USA",
     state: "CA",
@@ -126,6 +139,74 @@ describe("Users Routes", () => {
   });
 
   describe("POST /api/v1/users", () => {
+    it("starts confirmation-gated reactivation for a soft-deleted sign-in email", async () => {
+      const app = await getTestApp();
+      sendEmailMock.mockClear();
+      const existing = await createValidUser("reactivate-create");
+      await User.updateOne(
+        { _id: existing._id },
+        { $set: { deleted: true, deletedAt: new Date() } },
+      );
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/users",
+        payload: multipart(
+          validCreateFields({
+            email: "reactivate-create@test.com",
+            username: "someone-else",
+            idNumber: "ID-OTHER-REACT",
+          }),
+        ),
+        headers: { "content-type": "multipart/form-data" },
+      });
+
+      expect(response.statusCode).toBe(202);
+      expect(response.json().message).toContain("reactivation");
+      expect(sendEmailMock).toHaveBeenCalledTimes(1);
+
+      const rows = await User.find({
+        "personalDetails.email": "reactivate-create@test.com",
+      })
+        .setOptions({ includeDeleted: true })
+        .lean();
+      expect(rows).toHaveLength(1);
+      expect(rows[0].deleted).toBe(true);
+      expect(rows[0].verificationToken).toBeTruthy();
+    });
+
+    it("lets a new email reuse a username freed by a soft-deleted user", async () => {
+      const app = await getTestApp();
+      const existing = await createValidUser("freed-username");
+      await User.updateOne(
+        { _id: existing._id },
+        { $set: { deleted: true, deletedAt: new Date() } },
+      );
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/users",
+        payload: multipart(
+          validCreateFields({
+            email: "fresh-person@test.com",
+            username: "freed-usernameuser",
+            idNumber: "ID-FRESH-PERSON",
+          }),
+        ),
+        headers: { "content-type": "multipart/form-data" },
+      });
+
+      expect(response.statusCode).toBe(201);
+
+      const rows = await User.find({})
+        .setOptions({ includeDeleted: true })
+        .select("personalDetails.email personalDetails.username deleted")
+        .lean();
+      const emails = rows.map((row) => row.personalDetails.email);
+      expect(emails).toContain("freed-username@test.com");
+      expect(emails).toContain("fresh-person@test.com");
+    });
+
     it("creates a user and normalizes the email", async () => {
       const app = await getTestApp();
 
@@ -508,6 +589,7 @@ describe("Users Routes", () => {
       expect(response.statusCode, response.body).toBe(200);
 
       const persisted = await User.findById(user._id)
+        .setOptions({ includeDeleted: true })
         .select("deleted deletedAt")
         .lean();
       expect(persisted).toBeTruthy();

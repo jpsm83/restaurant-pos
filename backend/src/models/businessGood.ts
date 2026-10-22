@@ -1,6 +1,6 @@
 import mongoose, { Schema, model } from "mongoose";
 import * as enums from "restaurant-pos-packages/enums";
-import { softDeleteSchemaFields } from "./softDelete.ts";
+import { applyActiveOnlySoftDelete, softDeleteSchemaFields } from "./softDelete.ts";
 
 const { mainCategoriesEnums, measurementUnitEnums, allergensEnums } = enums;
 
@@ -88,10 +88,7 @@ const businessGoodSchema = new Schema(
   }
 );
 
-businessGoodSchema.index(
-  { businessId: 1, name: 1 },
-  { unique: true, partialFilterExpression: { deleted: false } },
-);
+applyActiveOnlySoftDelete(businessGoodSchema);
 
 const BusinessGood =
   mongoose.models.BusinessGood ||

@@ -422,6 +422,7 @@ export const supplierGoodsRoutes: FastifyPluginAsync = async (app) => {
 
       try {
         const supplierGood = (await SupplierGood.findById(supplierGoodId)
+          .setOptions({ includeDeleted: true })
           .select("businessId deleted")
           .session(session)
           .lean()) as unknown as ISupplierGood | null;
@@ -447,6 +448,7 @@ export const supplierGoodsRoutes: FastifyPluginAsync = async (app) => {
         const wasDeleted = await markAsDeletedById(
           SupplierGood as mongoose.Model<ISupplierGood & { deleted: boolean }>,
           supplierGoodId,
+          session,
         );
         if (!wasDeleted) {
           throw conflict("Supplier good already deleted!");

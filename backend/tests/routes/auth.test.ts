@@ -9,6 +9,7 @@ import bcrypt from "bcrypt";
 import { getTestApp } from "../setup.ts";
 import User from "../../src/models/user.ts";
 import Business from "../../src/models/business.ts";
+import Employee from "../../src/models/employee.ts";
 
 describe("Auth Routes", () => {
   const testPassword = "TestPassword123!";
@@ -207,6 +208,120 @@ describe("Auth Routes", () => {
       expect(response.statusCode).toBe(401);
       expect(response.json().detail).toBe("Invalid credentials");
     });
+
+    it("returns 401 when credentials belong to a closed business", async () => {
+      const app = await getTestApp();
+
+      await Business.create({
+        tradeName: "Closed Cafe",
+        legalName: "Closed Cafe Legal",
+        email: "closed-biz@test.com",
+        password: hashedPassword,
+        taxNumber: "TAX-CLOSED-LOGIN",
+        phoneNumber: "1234567890",
+        currencyTrade: "USD",
+        deleted: true,
+        deletedAt: new Date(),
+        address: {
+          country: "USA",
+          state: "CA",
+          city: "LA",
+          street: "Main St",
+          buildingNumber: "123",
+          postCode: "90001",
+        },
+      });
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: { email: "closed-biz@test.com", password: testPassword },
+      });
+
+      expect(response.statusCode).toBe(401);
+      expect(response.json().detail).toBe("Invalid credentials");
+    });
+
+    it("does not grant staff sign-in for a soft-deleted employee membership", async () => {
+      const app = await getTestApp();
+      const user = await User.create({
+        personalDetails: {
+          email: "staff-removed@test.com",
+          password: hashedPassword,
+          firstName: "Staff",
+          lastName: "Removed",
+          phoneNumber: "1234567890",
+          birthDate: new Date("1990-01-01"),
+          gender: "Man",
+          nationality: "USA",
+          address: {
+            country: "USA",
+            state: "CA",
+            city: "LA",
+            street: "Main St",
+            buildingNumber: "123",
+            postCode: "90001",
+          },
+          idNumber: "ID-STAFF-REMOVED",
+          idType: "Passport",
+          username: "staffremoved",
+        },
+      });
+      const business = await Business.create({
+        tradeName: "Staff Venue",
+        legalName: "Staff Venue Legal",
+        email: "staff-venue@test.com",
+        password: hashedPassword,
+        taxNumber: "TAX-STAFF-VENUE",
+        phoneNumber: "1234567890",
+        currencyTrade: "USD",
+        address: {
+          country: "USA",
+          state: "CA",
+          city: "LA",
+          street: "Main St",
+          buildingNumber: "123",
+          postCode: "90001",
+        },
+      });
+      const employee = await Employee.create({
+        businessId: business._id,
+        userId: user._id,
+        taxNumber: "EMP-STAFF-REMOVED",
+        joinDate: new Date(),
+        vacationDaysPerYear: 20,
+        vacationDaysLeft: 20,
+        allEmployeeRoles: ["Manager"],
+        currentShiftRole: "Manager",
+        onDuty: false,
+        active: true,
+      });
+      await User.updateOne(
+        { _id: user._id },
+        { $set: { employeeDetails: employee._id } },
+      );
+
+      const before = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: { email: "staff-removed@test.com", password: testPassword },
+      });
+      expect(before.statusCode).toBe(200);
+      expect(before.json().user.canLogAsEmployee).toBe(true);
+
+      await Employee.updateOne(
+        { _id: employee._id },
+        { $set: { deleted: true, deletedAt: new Date() } },
+      );
+
+      const after = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: { email: "staff-removed@test.com", password: testPassword },
+      });
+      expect(after.statusCode).toBe(200);
+      expect(after.json().user.canLogAsEmployee).toBeUndefined();
+    });
   });
 
   describe("POST /api/v1/auth/logout", () => {
@@ -360,6 +475,106 @@ describe("Auth Routes", () => {
 
       expect(refreshRes.statusCode).toBe(401);
       expect(refreshRes.json().detail).toBe("User not found");
+    });
+
+    it("returns 401 after a logged-in business is closed", async () => {
+      const app = await getTestApp();
+      const business = await Business.create({
+        tradeName: "Refresh Closed Biz",
+        legalName: "Refresh Closed Biz Legal",
+        email: "refresh-closed-biz@test.com",
+        password: hashedPassword,
+        taxNumber: "TAX-REFRESH-CLOSED",
+        phoneNumber: "1234567890",
+        currencyTrade: "USD",
+        address: {
+          country: "USA",
+          state: "CA",
+          city: "LA",
+          street: "Main St",
+          buildingNumber: "123",
+          postCode: "90001",
+        },
+      });
+
+      const loginRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: { email: "refresh-closed-biz@test.com", password: testPassword },
+      });
+      expect(loginRes.statusCode).toBe(200);
+
+      const setCookie = loginRes.headers["set-cookie"];
+      const lines = Array.isArray(setCookie) ? setCookie : setCookie ? [setCookie] : [];
+      const refreshLine = lines.find((l) => l.startsWith("refresh_token="));
+      expect(refreshLine).toBeDefined();
+      const prefix = "refresh_token=";
+      const afterPrefix = refreshLine!.slice(prefix.length);
+      const semi = afterPrefix.indexOf(";");
+      const refreshVal = semi >= 0 ? afterPrefix.slice(0, semi) : afterPrefix;
+
+      await Business.updateOne(
+        { _id: business._id },
+        { $set: { deleted: true, deletedAt: new Date() } },
+      );
+
+      const refreshRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/refresh",
+        headers: { cookie: `refresh_token=${refreshVal}` },
+      });
+
+      expect(refreshRes.statusCode).toBe(401);
+      expect(refreshRes.json().detail).toBe("Business not found");
+    });
+
+    it("rejects a closed business access token on a protected route and on the session read", async () => {
+      const app = await getTestApp();
+      const business = await Business.create({
+        tradeName: "Access Closed Biz",
+        legalName: "Access Closed Biz Legal",
+        email: "access-closed-biz@test.com",
+        password: hashedPassword,
+        taxNumber: "TAX-ACCESS-CLOSED",
+        phoneNumber: "1234567890",
+        currencyTrade: "USD",
+        address: {
+          country: "USA",
+          state: "CA",
+          city: "LA",
+          street: "Main St",
+          buildingNumber: "123",
+          postCode: "90001",
+        },
+      });
+
+      const loginRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: { email: "access-closed-biz@test.com", password: testPassword },
+      });
+      expect(loginRes.statusCode).toBe(200);
+      const { accessToken } = JSON.parse(loginRes.body);
+
+      await Business.updateOne(
+        { _id: business._id },
+        { $set: { deleted: true, deletedAt: new Date() } },
+      );
+
+      const venueRead = await app.inject({
+        method: "GET",
+        url: `/api/v1/business/${business._id}`,
+        headers: { authorization: `Bearer ${accessToken}` },
+      });
+      expect(venueRead.statusCode).toBe(401);
+
+      const sessionRead = await app.inject({
+        method: "GET",
+        url: "/api/v1/auth/me",
+        headers: { authorization: `Bearer ${accessToken}` },
+      });
+      expect(sessionRead.statusCode).toBe(401);
+      expect(sessionRead.json().detail).toBe("Invalid or expired access token");
     });
   });
 

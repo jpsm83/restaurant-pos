@@ -491,6 +491,39 @@ describe("Orders Routes", () => {
       const erasedOrder = await Order.findById(order._id).lean();
       expect(erasedOrder).toBeNull();
     });
+
+    it.each(["Void", "Invitation", "Paid"] as const)(
+      "refuses to erase a %s order",
+      async (billingStatus) => {
+        const app = await getTestApp();
+        const order = await Order.create({
+          businessId,
+          businessGoodId,
+          salesInstanceId,
+          createdByUserId: userId,
+          dailyReferenceNumber: 1,
+          billingStatus,
+          orderGrossPrice: 12.99,
+          orderNetPrice: 12.99,
+          orderCostPrice: 4,
+          orderStatus: "Sent",
+        });
+
+        const response = await app.inject({
+          method: "DELETE",
+          url: `/api/v1/orders/${order._id}`,
+          headers: { authorization: managerAuth },
+        });
+
+        const body = expectProblem(response, 400, "bad-request");
+        expect(body.detail).toBe(
+          "Only orders with billing status Open can be cancelled.",
+        );
+        const retained = await Order.findById(order._id).lean();
+        expect(retained).not.toBeNull();
+        expect(retained?.billingStatus).toBe(billingStatus);
+      },
+    );
   });
 
   describe("GET /api/v1/orders/salesInstance/:salesInstanceId", () => {

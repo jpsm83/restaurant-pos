@@ -336,6 +336,48 @@ describe("Ratings Routes", () => {
       expect(body.length).toBe(0);
     });
 
+    it("hides a soft-deleted rating unless includeDeleted is set", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      const user = await createTestUser();
+      const rating = await createTestRating(
+        business._id as Types.ObjectId,
+        user._id as Types.ObjectId,
+      );
+      await Rating.updateOne(
+        { _id: rating._id },
+        { $set: { deleted: true, deletedAt: new Date() } },
+      );
+
+      const hiddenList = await app.inject({
+        method: "GET",
+        url: `/api/v1/ratings/business/${business._id}`,
+      });
+      expect(hiddenList.statusCode).toBe(200);
+      expect(hiddenList.json()).toEqual([]);
+
+      const hiddenDetail = await app.inject({
+        method: "GET",
+        url: `/api/v1/ratings/${rating._id}`,
+      });
+      expect(hiddenDetail.statusCode).toBe(404);
+
+      const visibleList = await app.inject({
+        method: "GET",
+        url: `/api/v1/ratings/business/${business._id}?includeDeleted=true`,
+      });
+      expect(visibleList.statusCode).toBe(200);
+      expect(visibleList.json()).toHaveLength(1);
+      expect(visibleList.json()[0].deleted).toBe(true);
+
+      const visibleDetail = await app.inject({
+        method: "GET",
+        url: `/api/v1/ratings/${rating._id}?includeDeleted=true`,
+      });
+      expect(visibleDetail.statusCode).toBe(200);
+      expect(visibleDetail.json().deleted).toBe(true);
+    });
+
     it("lists ratings by business", async () => {
       const app = await getTestApp();
       const business = await createTestBusiness();

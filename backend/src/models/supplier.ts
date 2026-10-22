@@ -1,6 +1,6 @@
 import mongoose, { Schema, model } from "mongoose";
 import { addressSchema } from "./address.ts";
-import { softDeleteSchemaFields } from "./softDelete.ts";
+import { applyActiveOnlySoftDelete, softDeleteSchemaFields } from "./softDelete.ts";
 
 const supplierSchema = new Schema(
   {
@@ -52,6 +52,8 @@ supplierSchema.index(
   { businessId: 1, taxNumber: 1 },
   { unique: true, partialFilterExpression: { deleted: false } },
 );
+
+applyActiveOnlySoftDelete(supplierSchema);
 
 const Supplier = mongoose.models.Supplier || model("Supplier", supplierSchema);
 export default Supplier;

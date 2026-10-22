@@ -281,7 +281,9 @@ describe("DailySalesReports routes - Task T2 integration", () => {
         headers: { authorization: token },
       });
       expect(deleted.statusCode, deleted.body).toBe(200);
-      const persisted = await DailySalesReport.findById(report._id).lean();
+      const persisted = await DailySalesReport.findById(report._id)
+        .setOptions({ includeDeleted: true })
+        .lean();
       expect(persisted?.deleted).toBe(true);
 
       const secondDelete = await app.inject({

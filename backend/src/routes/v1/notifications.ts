@@ -509,6 +509,7 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
 
       try {
         const notification = (await Notification.findById(notificationId)
+          .setOptions({ includeDeleted: true })
           .select("employeesRecipientsIds customersRecipientsIds deleted")
           .session(session)
           .lean()) as {
@@ -527,6 +528,7 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
         const wasDeleted = await markAsDeletedById(
           Notification as mongoose.Model<{ deleted: boolean }>,
           notificationId,
+          session,
         );
         if (!wasDeleted) {
           throw conflict("Notification already deleted!");

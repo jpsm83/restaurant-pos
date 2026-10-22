@@ -486,6 +486,7 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
 
       try {
         const employee = await Employee.findById(employeeId)
+          .setOptions({ includeDeleted: true })
           .select("businessId deleted")
           .session(session)
           .lean<IEmployee>();
@@ -501,6 +502,7 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
         const wasDeleted = await markAsDeletedById(
           Employee as mongoose.Model<IEmployee & { deleted: boolean }>,
           employeeId,
+          session,
         );
         if (!wasDeleted) {
           throw conflict("Employee already deleted!");

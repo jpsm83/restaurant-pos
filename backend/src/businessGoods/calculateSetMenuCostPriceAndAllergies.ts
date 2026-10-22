@@ -21,7 +21,15 @@ export const calculateSetMenuCostPriceAndAllergies = async (
       .lean();
 
     if (businessGoods.length !== setMenuIds.length) {
-      return "Some business goods found!";
+      const activeIds = new Set(businessGoods.map((good) => String(good._id)));
+      const missingIds = setMenuIds.filter((id) => !activeIds.has(String(id)));
+      const deletedCount = await BusinessGood.countDocuments({
+        _id: { $in: missingIds },
+        deleted: true,
+      });
+      if (deletedCount !== missingIds.length) {
+        return "Some business goods found!";
+      }
     }
 
     let totalCostPrice = 0;

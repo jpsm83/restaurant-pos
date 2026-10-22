@@ -1,5 +1,6 @@
 import Business from "../models/business.ts";
 import User from "../models/user.ts";
+import { withSoftDeleteFilter } from "../models/softDelete.ts";
 import { sendAuthTokenEmailOrRollback } from "./authEmailTokenFlow.ts";
 import { buildConfirmEmailLink } from "./emailLinks.ts";
 import { buildEmailConfirmationContent } from "./emailTemplates.ts";
@@ -9,6 +10,9 @@ export const GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE =
 
 export const EMAIL_CONFIRMATION_SENT_MESSAGE =
   "Email confirmation sent successfully. Please check your email.";
+
+export const REACTIVATION_REQUIRED_MESSAGE =
+  "Account reactivation required. Please confirm the email link we sent to reactivate this account.";
 
 export function normalizeRequestEmail(email: string): string {
   return email.toLowerCase().trim();
@@ -31,7 +35,12 @@ export async function handleRequestEmailConfirmation(
 
   const user =
     business == null
-      ? await User.findOne({ "personalDetails.email": normalizedEmail })
+      ? await User.findOne(
+          withSoftDeleteFilter(
+            { "personalDetails.email": normalizedEmail },
+            true,
+          ),
+        )
           .select(
             "_id personalDetails.username personalDetails.firstName personalDetails.emailVerified emailVerified deleted",
           )
@@ -90,16 +99,19 @@ export async function handleRequestEmailConfirmation(
 
   const sent = await sendAuthTokenEmailOrRollback({
     to: normalizedEmail,
-    persist: (token) =>
-      User.updateOne(
-        { _id: user!._id },
-        { $set: { verificationToken: token } },
-      ),
+      persist: (token) =>
+        User.updateOne(
+          withSoftDeleteFilter({ _id: user!._id }, true),
+          { $set: { verificationToken: token } },
+        ),
     buildLink: buildConfirmEmailLink,
     buildContent: (link) =>
       buildEmailConfirmationContent({ confirmUrl: link, greetingName }),
-    rollback: () =>
-      User.updateOne({ _id: user!._id }, { $unset: { verificationToken: "" } }),
+      rollback: () =>
+        User.updateOne(
+          withSoftDeleteFilter({ _id: user!._id }, true),
+          { $unset: { verificationToken: "" } },
+        ),
   });
 
   if (!sent) {

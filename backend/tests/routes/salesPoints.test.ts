@@ -445,7 +445,9 @@ describe("SalesPoints Routes", () => {
       const body = JSON.parse(response.body);
       expect(body.message).toBe("Sales point deleted successfully");
 
-      const deleted = await SalesPoint.findById(salesPoint._id).lean();
+      const deleted = await SalesPoint.findById(salesPoint._id)
+        .setOptions({ includeDeleted: true })
+        .lean();
       expect(deleted?.deleted).toBe(true);
       expect(deleted?.deletedAt).toBeDefined();
     });
@@ -544,7 +546,9 @@ describe("SalesPoints Routes", () => {
       expect(body.message).toBe("Sales point deleted successfully");
 
       // Verify it was soft-deleted in database
-      const deleted = await SalesPoint.findById(salesPoint?._id).lean();
+      const deleted = await SalesPoint.findById(salesPoint?._id)
+        .setOptions({ includeDeleted: true })
+        .lean();
       expect(deleted?.deleted).toBe(true);
       expect(deleted?.deletedAt).toBeDefined();
     });

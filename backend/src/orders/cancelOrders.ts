@@ -13,7 +13,7 @@ const cancelOrders = async (
       _id: { $in: ordersIdsArr },
       salesInstanceId,
     })
-      .select("businessGoodId addOns orderStatus")
+      .select("businessGoodId addOns orderStatus billingStatus")
       .lean()
       .session(session);
 
@@ -23,6 +23,10 @@ const cancelOrders = async (
 
     if (orders.some((order) => order.orderStatus === "Done")) {
       return "Cannot cancel orders with status 'Done'!";
+    }
+
+    if (orders.some((order) => order.billingStatus !== "Open")) {
+      return "Only orders with billing status Open can be cancelled.";
     }
 
     const businessGoodsIds = orders.flatMap((order) => [

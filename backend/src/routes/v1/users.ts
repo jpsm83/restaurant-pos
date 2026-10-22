@@ -18,6 +18,10 @@ import type { IEmployee } from "restaurant-pos-packages/interfaces/IEmployee";
 
 import { createOptionalAuthHook } from "../../auth/middleware.ts";
 import {
+  handleRequestEmailConfirmation,
+  REACTIVATION_REQUIRED_MESSAGE,
+} from "../../auth/requestEmailConfirmation.ts";
+import {
   buildAuthUserSessionFromUserId,
   issueSessionWithRefreshCookie,
 } from "../../auth/issueSession.ts";
@@ -146,6 +150,17 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
     const { fields, files } = await parseMultipart(req, createUserBodySchema);
 
     await assertNoDuplicateUser(fields);
+
+    const deletedByEmail = await User.findOne({
+      "personalDetails.email": fields.email,
+      deleted: true,
+    })
+      .select("_id")
+      .lean();
+    if (deletedByEmail) {
+      await handleRequestEmailConfirmation(fields.email);
+      return reply.code(202).send({ message: REACTIVATION_REQUIRED_MESSAGE });
+    }
 
     const userId = new mongoose.Types.ObjectId();
     const newUser = toNewUser(
@@ -337,7 +352,10 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
         );
       }
 
-      const user = await User.findById(userId).select("deleted").lean();
+      const user = await User.findById(userId)
+        .setOptions({ includeDeleted: true })
+        .select("deleted")
+        .lean();
       if (!user) {
         throw notFound("User not found!");
       }

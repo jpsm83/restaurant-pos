@@ -527,7 +527,9 @@ describe("Reservations Routes", () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.message).toBe("Reservation deleted!");
-      const persisted = await Reservation.findById(reservation._id).lean();
+      const persisted = await Reservation.findById(reservation._id)
+        .setOptions({ includeDeleted: true })
+        .lean();
       expect(persisted).not.toBeNull();
       expect(persisted?.deleted).toBe(true);
     });

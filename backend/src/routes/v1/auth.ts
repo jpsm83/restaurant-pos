@@ -19,6 +19,7 @@ import { withSoftDeleteFilter } from "../../models/softDelete.ts";
 import canLogAsEmployee from "../../auth/canLogAsEmployee.ts";
 import { AUTH_CONFIG } from "../../auth/config.ts";
 import {
+  assertAccountCanUseSession,
   createAuthHook,
   requireBusinessHook,
 } from "../../auth/middleware.ts";
@@ -42,6 +43,7 @@ import {
 import {
   GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE,
   handleRequestEmailConfirmation,
+  REACTIVATION_REQUIRED_MESSAGE,
 } from "../../auth/requestEmailConfirmation.ts";
 import { handleRequestPasswordReset } from "../../auth/requestPasswordReset.ts";
 import { handleRequestEmailChange } from "../../auth/requestEmailChange.ts";
@@ -77,9 +79,6 @@ import {
 } from "restaurant-pos-packages/schemas/auth";
 
 export const authRoutes: FastifyPluginAsync = async (app) => {
-  const REACTIVATION_REQUIRED_MESSAGE =
-    "Account reactivation required. Please confirm the email link we sent to reactivate this account.";
-
   /**
    * POST /auth/signup
    * Create a customer user account and return authenticated session.
@@ -608,6 +607,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
 
     try {
       const session = app.jwt.verify<AuthSession>(token);
+      await assertAccountCanUseSession(session);
       return reply.code(200).send({ user: session });
     } catch {
       throw unauthorized("Invalid or expired access token");

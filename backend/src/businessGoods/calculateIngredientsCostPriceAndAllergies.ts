@@ -24,6 +24,22 @@ const calculateIngredientsCostPriceAndAllergies = async (
         .lean()) as ISupplierGood | null;
 
       if (!supplierGood) {
+        const retained = await SupplierGood.findOne({
+          _id: ingredient.supplierGoodId,
+          deleted: true,
+        })
+          .select("_id")
+          .lean();
+        if (retained) {
+          newIngredientsArray.push({
+            supplierGoodId: ingredient.supplierGoodId,
+            measurementUnit: ingredient.measurementUnit,
+            requiredQuantity: ingredient.requiredQuantity,
+            costOfRequiredQuantity: 0,
+            allergens: undefined,
+          });
+          continue;
+        }
         return "Supplier good not found!";
       }
 

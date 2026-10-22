@@ -257,6 +257,7 @@ export const promotionsRoutes: FastifyPluginAsync = async (app) => {
     async (req, reply) => {
       const { promotionId } = req.params;
       const promotion = await Promotion.findById(promotionId)
+        .setOptions({ includeDeleted: true })
         .select("deleted")
         .lean();
 

@@ -702,7 +702,9 @@ describe("Purchases Routes", () => {
 
       expect(response.statusCode).toBe(200);
 
-      const deletedPurchase = await Purchase.findById(purchase._id).lean();
+      const deletedPurchase = await Purchase.findById(purchase._id)
+        .setOptions({ includeDeleted: true })
+        .lean();
       expect(deletedPurchase).not.toBeNull();
       expect(deletedPurchase?.deleted).toBe(true);
 

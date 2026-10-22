@@ -735,7 +735,9 @@ describe("Suppliers Routes", () => {
         "Supplier deleted successfully!",
       );
 
-      const persisted = await Supplier.findById(supplier._id).lean();
+      const persisted = await Supplier.findById(supplier._id)
+        .setOptions({ includeDeleted: true })
+        .lean();
       expect(persisted?.deleted).toBe(true);
     });
 
@@ -763,7 +765,9 @@ describe("Suppliers Routes", () => {
         "Supplier deleted successfully!",
       );
 
-      const persisted = await Supplier.findById(supplier._id).lean();
+      const persisted = await Supplier.findById(supplier._id)
+        .setOptions({ includeDeleted: true })
+        .lean();
       expect(persisted).not.toBeNull();
       expect(persisted?.deleted).toBe(true);
       expect(persisted?.deletedAt).toBeInstanceOf(Date);

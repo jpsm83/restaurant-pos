@@ -816,7 +816,9 @@ describe("Employees Routes", () => {
       }
       expect(response.statusCode).toBe(200);
 
-      const deleted = await Employee.findById(employee?._id).lean();
+      const deleted = await Employee.findById(employee?._id)
+        .setOptions({ includeDeleted: true })
+        .lean();
       expect(deleted).not.toBeNull();
       expect(deleted?.deleted).toBe(true);
 

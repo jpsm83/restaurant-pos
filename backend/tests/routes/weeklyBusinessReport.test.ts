@@ -408,5 +408,66 @@ describe("WeeklyBusinessReport Routes", () => {
       );
       expect(created?.averageSpendingPerCustomer).toBeCloseTo(22.5, 6);
     });
+
+    it("keeps a soft-deleted daily report in the weekly derivation", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      const businessId = business._id as Types.ObjectId;
+      const now = new Date();
+
+      await DailySalesReport.create([
+        {
+          businessId,
+          dailyReferenceNumber: Number(`${Date.now()}3`),
+          isDailyReportOpen: false,
+          timeCountdownToClose: Date.now() + 86400000,
+          dailyTotalSalesBeforeAdjustments: 20,
+          dailyNetPaidAmount: 10,
+          dailyCostOfGoodsSold: 4,
+          dailyTipsReceived: 1,
+          dailyTotalVoidValue: 0,
+          dailyTotalInvitedValue: 0,
+          dailyCustomersServed: 1,
+          dailyPosSystemCommission: 1,
+          businessPaymentMethods: [],
+          dailySoldGoods: [],
+          dailyVoidedGoods: [],
+          dailyInvitedGoods: [],
+        },
+        {
+          businessId,
+          dailyReferenceNumber: Number(`${Date.now()}4`),
+          isDailyReportOpen: false,
+          timeCountdownToClose: Date.now() + 86400000,
+          deleted: true,
+          deletedAt: new Date(),
+          dailyTotalSalesBeforeAdjustments: 80,
+          dailyNetPaidAmount: 70,
+          dailyCostOfGoodsSold: 16,
+          dailyTipsReceived: 2,
+          dailyTotalVoidValue: 0,
+          dailyTotalInvitedValue: 0,
+          dailyCustomersServed: 3,
+          dailyPosSystemCommission: 2,
+          businessPaymentMethods: [],
+          dailySoldGoods: [],
+          dailyVoidedGoods: [],
+          dailyInvitedGoods: [],
+        },
+      ]);
+
+      await aggregateDailyReportsIntoWeekly(businessId, now, 1);
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/weeklyBusinessReport",
+      });
+      expect(response.statusCode).toBe(200);
+      const reports = response.json() as Array<{
+        financialSummary?: { totalSalesForWeek?: number; totalNetRevenue?: number };
+      }>;
+      expect(reports[0]?.financialSummary?.totalSalesForWeek).toBe(100);
+      expect(reports[0]?.financialSummary?.totalNetRevenue).toBe(80);
+    });
   });
 });

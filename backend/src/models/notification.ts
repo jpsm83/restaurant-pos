@@ -1,6 +1,6 @@
 import mongoose, { Schema, model } from "mongoose";
 import * as enums from "restaurant-pos-packages/enums";
-import { softDeleteSchemaFields } from "./softDelete.ts";
+import { applyActiveOnlySoftDelete, softDeleteSchemaFields } from "./softDelete.ts";
 
 const { notificationEnums } = enums;
 
@@ -46,6 +46,8 @@ const notificationSchema = new Schema(
 notificationSchema.index({ businessId: 1, createdAt: -1 });
 notificationSchema.index({ customersRecipientsIds: 1, createdAt: -1 });
 notificationSchema.index({ employeesRecipientsIds: 1, createdAt: -1 });
+
+applyActiveOnlySoftDelete(notificationSchema);
 
 const Notification =
   mongoose.models.Notification ||

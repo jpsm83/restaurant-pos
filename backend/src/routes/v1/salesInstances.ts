@@ -682,6 +682,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
       const { salesInstanceId } = req.params;
 
       const salesInstance = await SalesInstance.findById(salesInstanceId)
+        .setOptions({ includeDeleted: true })
         .select("salesGroup deleted")
         .lean();
 
@@ -1154,18 +1155,23 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
         req.body;
 
       // Idempotency: if this payment was already accepted and processed, return the existing SalesInstance.
-      const existingSalesInstanceForPayment = await SalesInstance.findOne({
-        paymentId,
-        businessId,
-        openedAsRole: "customer",
-      })
+      const existingSalesInstanceForPayment = await SalesInstance.findOne(
+        withSoftDeleteFilter(
+          {
+            paymentId,
+            businessId,
+            openedAsRole: "customer",
+          },
+          true,
+        ),
+      )
         .select("_id salesInstanceStatus")
         .lean();
 
       if (existingSalesInstanceForPayment?.salesInstanceStatus === "Closed") {
         const existingSalesInstanceDoc = await SalesInstance.findById(
           existingSalesInstanceForPayment._id,
-        )
+        ).setOptions({ includeDeleted: true })
           .select("dailyReferenceNumber salesGroup.orderCode salesGroup.ordersIds")
           .lean();
 
@@ -1351,11 +1357,16 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
         if (typeof salesInstance === "string") {
           // Race handling: if the paymentId unique index rejected the insert, return the existing instance.
           await session.abortTransaction();
-          const existing = await SalesInstance.findOne({
-            paymentId,
-            businessId,
-            openedAsRole: "customer",
-          })
+          const existing = await SalesInstance.findOne(
+            withSoftDeleteFilter(
+              {
+                paymentId,
+                businessId,
+                openedAsRole: "customer",
+              },
+              true,
+            ),
+          )
             .select("_id salesInstanceStatus")
             .lean();
 
@@ -1510,18 +1521,23 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
       const { businessId, ordersArr, paymentMethodArr, paymentId } = req.body;
 
       // Idempotency: if this payment was already accepted and processed, return the existing SalesInstance.
-      const existingSalesInstanceForPayment = await SalesInstance.findOne({
-        paymentId,
-        businessId,
-        openedAsRole: "customer",
-      })
+      const existingSalesInstanceForPayment = await SalesInstance.findOne(
+        withSoftDeleteFilter(
+          {
+            paymentId,
+            businessId,
+            openedAsRole: "customer",
+          },
+          true,
+        ),
+      )
         .select("_id salesInstanceStatus")
         .lean();
 
       if (existingSalesInstanceForPayment?.salesInstanceStatus === "Closed") {
         const existingSalesInstanceDoc = await SalesInstance.findById(
           existingSalesInstanceForPayment._id,
-        )
+        ).setOptions({ includeDeleted: true })
           .select("dailyReferenceNumber salesGroup.orderCode salesGroup.ordersIds")
           .lean();
 
@@ -1739,11 +1755,16 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
         if (typeof salesInstanceResult === "string") {
           // Race handling: if the paymentId unique index rejected the insert, return the existing instance.
           await session.abortTransaction();
-          const existing = await SalesInstance.findOne({
-            paymentId,
-            businessId,
-            openedAsRole: "customer",
-          })
+          const existing = await SalesInstance.findOne(
+            withSoftDeleteFilter(
+              {
+                paymentId,
+                businessId,
+                openedAsRole: "customer",
+              },
+              true,
+            ),
+          )
             .select("_id salesInstanceStatus")
             .lean();
 

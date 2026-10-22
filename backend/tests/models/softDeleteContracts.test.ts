@@ -1,9 +1,14 @@
 import { beforeAll, describe, expect, it } from "vitest";
 
-import BusinessGood from "../../src/models/businessGood.ts";
-import Purchase from "../../src/models/purchase.ts";
-import SalesPoint from "../../src/models/salesPoint.ts";
-import SupplierGood from "../../src/models/supplierGood.ts";
+import Business from "../../src/models/business.ts";
+import DailySalesReport from "../../src/models/dailySalesReport.ts";
+import Employee from "../../src/models/employee.ts";
+import MonthlyBusinessReport from "../../src/models/monthlyBusinessReport.ts";
+import Printer from "../../src/models/printer.ts";
+import Promotion from "../../src/models/promotion.ts";
+import Supplier from "../../src/models/supplier.ts";
+import User from "../../src/models/user.ts";
+import WeeklyBusinessReport from "../../src/models/weeklyBusinessReport.ts";
 import { softDeleteBackfillModels } from "../../src/models/softDeleteBackfillModels.ts";
 
 type IndexSpec = Record<string, unknown>;
@@ -35,61 +40,43 @@ async function listIndexes(model: {
 }
 
 describe("Soft-delete contracts", () => {
+  const activeOnly = { deleted: false };
+
+  const partialUniqueIndexes: Array<{
+    label: string;
+    model: Parameters<typeof listIndexes>[0];
+    key: Record<string, number>;
+    partial: Record<string, unknown>;
+  }> = [
+    { label: "User email", model: User, key: { "personalDetails.email": 1 }, partial: activeOnly },
+    { label: "Business taxNumber", model: Business, key: { taxNumber: 1 }, partial: activeOnly },
+    { label: "Employee taxNumber", model: Employee, key: { taxNumber: 1 }, partial: activeOnly },
+    { label: "Supplier legalName", model: Supplier, key: { businessId: 1, legalName: 1 }, partial: activeOnly },
+    { label: "Supplier email", model: Supplier, key: { businessId: 1, email: 1 }, partial: activeOnly },
+    { label: "Supplier taxNumber", model: Supplier, key: { businessId: 1, taxNumber: 1 }, partial: activeOnly },
+    { label: "Printer alias", model: Printer, key: { businessId: 1, printerAlias: 1 }, partial: activeOnly },
+    { label: "Printer ip", model: Printer, key: { businessId: 1, ipAddress: 1 }, partial: activeOnly },
+    { label: "Promotion name", model: Promotion, key: { businessId: 1, promotionName: 1 }, partial: activeOnly },
+    { label: "Daily report reference", model: DailySalesReport, key: { businessId: 1, dailyReferenceNumber: 1 }, partial: activeOnly },
+    { label: "Weekly report", model: WeeklyBusinessReport, key: { businessId: 1, weekReference: 1 }, partial: activeOnly },
+    { label: "Monthly report", model: MonthlyBusinessReport, key: { businessId: 1, monthReference: 1 }, partial: activeOnly },
+  ];
+
   beforeAll(async () => {
-    await Promise.all([
-      SalesPoint.syncIndexes(),
-      BusinessGood.syncIndexes(),
-      SupplierGood.syncIndexes(),
-      Purchase.syncIndexes(),
-    ]);
+    await Promise.all(
+      [...new Set(partialUniqueIndexes.map((entry) => entry.model))].map((model) =>
+        model.syncIndexes(),
+      ),
+    );
   });
 
-  it("enforces active-only unique indexes for newly covered key fields", async () => {
-    const salesPointIndexes = await listIndexes(SalesPoint);
-    const businessGoodIndexes = await listIndexes(BusinessGood);
-    const supplierGoodIndexes = await listIndexes(SupplierGood);
-    const purchaseIndexes = await listIndexes(Purchase);
-
-    const salesPointNameIx = findIndex(salesPointIndexes, {
-      businessId: 1,
-      salesPointName: 1,
-    });
-    const deliveryPointIx = findIndex(salesPointIndexes, {
-      businessId: 1,
-      salesPointType: 1,
-    });
-    const businessGoodNameIx = findIndex(businessGoodIndexes, {
-      businessId: 1,
-      name: 1,
-    });
-    const supplierGoodNameIx = findIndex(supplierGoodIndexes, {
-      businessId: 1,
-      supplierId: 1,
-      name: 1,
-    });
-    const purchaseReceiptIx = findIndex(purchaseIndexes, {
-      businessId: 1,
-      supplierId: 1,
-      receiptId: 1,
-    });
-
-    expect(salesPointNameIx?.unique).toBe(true);
-    expect(salesPointNameIx?.partialFilterExpression).toEqual({ deleted: false });
-
-    expect(deliveryPointIx?.unique).toBe(true);
-    expect(deliveryPointIx?.partialFilterExpression).toEqual({
-      deleted: false,
-      salesPointType: "delivery",
-    });
-
-    expect(businessGoodNameIx?.unique).toBe(true);
-    expect(businessGoodNameIx?.partialFilterExpression).toEqual({ deleted: false });
-
-    expect(supplierGoodNameIx?.unique).toBe(true);
-    expect(supplierGoodNameIx?.partialFilterExpression).toEqual({ deleted: false });
-
-    expect(purchaseReceiptIx?.unique).toBe(true);
-    expect(purchaseReceiptIx?.partialFilterExpression).toEqual({ deleted: false });
+  it("enforces an active-only partial unique index for every affected key", async () => {
+    for (const entry of partialUniqueIndexes) {
+      const indexes = await listIndexes(entry.model);
+      const match = findIndex(indexes, entry.key);
+      expect(match?.unique, entry.label).toBe(true);
+      expect(match?.partialFilterExpression, entry.label).toEqual(entry.partial);
+    }
   });
 
   it("keeps backfill coverage aligned with the full soft-delete model set", () => {
@@ -105,6 +92,7 @@ describe("Soft-delete contracts", () => {
       "Printer",
       "Promotion",
       "Purchase",
+      "Rating",
       "Reservation",
       "SalesInstance",
       "SalesPoint",

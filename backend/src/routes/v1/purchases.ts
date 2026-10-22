@@ -234,6 +234,7 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
             updateOne: {
               filter: {
                 businessId,
+                deleted: { $ne: true },
                 "inventoryGoods.supplierGoodId": supplierGoodId,
                 setFinalCount: false,
               },
@@ -431,6 +432,7 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
 
       try {
         const purchase = (await Purchase.findById(purchaseId)
+          .setOptions({ includeDeleted: true })
           .select("businessId purchaseInventoryItems deleted")
           .session(session)
           .lean()) as unknown as IPurchase | null;
@@ -445,6 +447,7 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
         const wasDeleted = await markAsDeletedById(
           Purchase as mongoose.Model<IPurchase & { deleted: boolean }>,
           purchaseId,
+          session,
         );
         if (!wasDeleted) {
           throw conflict("Purchase already deleted!");
@@ -456,6 +459,7 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
               updateOne: {
                 filter: {
                   businessId: purchase.businessId,
+                  deleted: { $ne: true },
                   setFinalCount: false,
                   "inventoryGoods.supplierGoodId": item.supplierGoodId,
                 },

@@ -348,7 +348,9 @@ describe("Inventories Routes", () => {
       });
 
       expect(response.statusCode).toBe(200);
-      const deleted = await Inventory.findById(inventory._id).lean();
+      const deleted = await Inventory.findById(inventory._id)
+        .setOptions({ includeDeleted: true })
+        .lean();
       expect(deleted).not.toBeNull();
       expect(deleted?.deleted).toBe(true);
     });

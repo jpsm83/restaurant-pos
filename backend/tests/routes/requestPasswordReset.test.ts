@@ -195,6 +195,32 @@ describe("POST /api/v1/auth/request-password-reset", () => {
     expect(updated?.resetPasswordExpires).toBeFalsy();
   });
 
+  it("does not store a reset token for a closed business", async () => {
+    const app = await getTestApp();
+    const email = "closed-reset@example.com";
+    const business = await createTestBusiness(email);
+    await Business.updateOne(
+      { _id: business._id },
+      { $set: { deleted: true, deletedAt: new Date() } },
+    );
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/request-password-reset",
+      payload: { email },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().message).toBe(GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE);
+    expect(sendEmailMock).not.toHaveBeenCalled();
+
+    const stored = await Business.findById(business._id)
+      .setOptions({ includeDeleted: true })
+      .select("resetPasswordToken")
+      .lean();
+    expect(stored?.resetPasswordToken).toBeFalsy();
+  });
+
   it("prefers business over user for the same email", async () => {
     const app = await getTestApp();
     const email = "shared-reset@example.com";

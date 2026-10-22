@@ -671,7 +671,9 @@ describe("Printers Routes", () => {
       const body = JSON.parse(response.body);
       expect(body.message).toContain("deleted");
 
-      const deletedPrinter = await Printer.findById(printer._id).lean();
+      const deletedPrinter = await Printer.findById(printer._id)
+        .setOptions({ includeDeleted: true })
+        .lean();
       expect(deletedPrinter).not.toBeNull();
       expect(deletedPrinter?.deleted).toBe(true);
     });

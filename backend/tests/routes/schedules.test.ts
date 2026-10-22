@@ -438,7 +438,9 @@ describe("Schedules Routes", () => {
       });
 
       expect(response.statusCode).toBe(200);
-      const persisted = await Schedule.findById(schedule._id).lean();
+      const persisted = await Schedule.findById(schedule._id)
+        .setOptions({ includeDeleted: true })
+        .lean();
       expect(persisted).not.toBeNull();
       expect(persisted?.deleted).toBe(true);
     });

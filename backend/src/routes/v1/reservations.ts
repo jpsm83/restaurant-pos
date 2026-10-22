@@ -537,6 +537,7 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
     async (req, reply) => {
       const { reservationId } = req.params;
       const reservation = await Reservation.findById(reservationId)
+        .setOptions({ includeDeleted: true })
         .select("deleted")
         .lean();
       if (!reservation) {

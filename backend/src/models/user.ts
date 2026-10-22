@@ -1,6 +1,6 @@
 import mongoose, { Schema, model } from "mongoose";
 import { personalDetailsSchema } from "./personalDetails.ts";
-import { softDeleteSchemaFields } from "./softDelete.ts";
+import { applyActiveOnlySoftDelete, softDeleteSchemaFields } from "./softDelete.ts";
 
 const notificationEntrySchema = new Schema(
   {
@@ -69,6 +69,13 @@ userSchema.index({ "notifications.notificationId": 1 });
 
 userSchema.index({ verificationToken: 1 }, { sparse: true });
 userSchema.index({ resetPasswordToken: 1 }, { sparse: true });
+// Sign-in email is unique among active users. A soft-deleted row must not hold the address.
+userSchema.index(
+  { "personalDetails.email": 1 },
+  { unique: true, partialFilterExpression: { deleted: false } },
+);
+
+applyActiveOnlySoftDelete(userSchema);
 
 const User = mongoose.models.User || model("User", userSchema);
 export default User;

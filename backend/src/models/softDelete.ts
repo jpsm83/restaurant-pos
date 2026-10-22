@@ -1,4 +1,9 @@
-import { type Model } from "mongoose";
+import {
+  type ClientSession,
+  type Model,
+  type Query,
+  type Schema,
+} from "mongoose";
 
 export const softDeleteSchemaFields = {
   deleted: {
@@ -12,6 +17,45 @@ export const softDeleteSchemaFields = {
   },
 } as const;
 
+/**
+ * Ordinary finds, counts, and updates. `deleteOne` stays unhooked so the two
+ * ADR-0003 discards can still remove a document.
+ */
+const ACTIVE_ONLY_QUERY_HOOKS = [
+  "count",
+  "countDocuments",
+  "find",
+  "findOne",
+  "findOneAndReplace",
+  "findOneAndUpdate",
+  "replaceOne",
+  "updateMany",
+  "updateOne",
+] as const;
+
+/**
+ * Hides soft-deleted rows unless the filter already names `deleted` or the
+ * query sets `{ includeDeleted: true }`. An existing active-only `deleted`
+ * clause is left as-is.
+ */
+export function applyActiveOnlySoftDelete(schema: Schema): void {
+  for (const hook of ACTIVE_ONLY_QUERY_HOOKS) {
+    schema.pre(hook as "find", function (this: Query<unknown, unknown>) {
+      const options = this.getOptions() as { includeDeleted?: boolean };
+      if (options.includeDeleted === true) {
+        return;
+      }
+
+      const filter = this.getFilter() as Record<string, unknown>;
+      if (Object.prototype.hasOwnProperty.call(filter, "deleted")) {
+        return;
+      }
+
+      this.where({ deleted: { $ne: true } });
+    });
+  }
+}
+
 type SoftDeleteRecord = {
   deleted: boolean;
   deletedAt?: Date;
@@ -19,13 +63,22 @@ type SoftDeleteRecord = {
 
 /**
  * Active-only reads are the default; callers must opt in to include deleted.
+ * `includeDeleted` matches every stored state, including rows whose flag is
+ * still missing, so the query default does not hide them.
  */
 export function withSoftDeleteFilter(
   filter: Record<string, unknown>,
   includeDeleted = false,
 ): Record<string, unknown> {
   if (includeDeleted) {
-    return filter;
+    if (Object.prototype.hasOwnProperty.call(filter, "deleted")) {
+      return filter;
+    }
+
+    return {
+      ...filter,
+      deleted: { $in: [true, false, null] },
+    };
   }
 
   return {
@@ -36,10 +89,12 @@ export function withSoftDeleteFilter(
 
 /**
  * Marks a document as deleted if it is currently active.
+ * Pass the surrounding transaction session so a later failure rolls the marker back.
  */
 export async function markAsDeletedById<TRecord extends SoftDeleteRecord>(
   model: Model<TRecord>,
   id: string,
+  session?: ClientSession,
 ): Promise<boolean> {
   const result = await model.updateOne(
     { _id: id, deleted: { $ne: true } },
@@ -49,6 +104,7 @@ export async function markAsDeletedById<TRecord extends SoftDeleteRecord>(
         deletedAt: new Date(),
       },
     },
+    session ? { session } : undefined,
   );
 
   return result.modifiedCount === 1;

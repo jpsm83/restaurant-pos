@@ -58,6 +58,7 @@ const updateDynamicCountSupplierGood = async (
       }
       if (businessGood.setMenuIds) {
         for (const setMenuItem of businessGood.setMenuIds) {
+          if (!setMenuItem?.ingredients) continue;
           for (const ing of setMenuItem.ingredients) {
             allIngredientsRequired.push({
               ingredientId: ing.supplierGoodId,
@@ -74,6 +75,7 @@ const updateDynamicCountSupplierGood = async (
     const inventoryItems = await Inventory.aggregate([
       {
         $match: {
+          deleted: { $ne: true },
           setFinalCount: false,
           "inventoryGoods.supplierGoodId": {
             $in: allIngredientsRequired.map((ing) => ing.ingredientId),
@@ -151,7 +153,10 @@ const updateDynamicCountSupplierGood = async (
 
         return {
           updateOne: {
-            filter: { "inventoryGoods.supplierGoodId": ingredientObj.ingredientId },
+            filter: {
+              deleted: { $ne: true },
+              "inventoryGoods.supplierGoodId": ingredientObj.ingredientId,
+            },
             update: {
               $inc: {
                 "inventoryGoods.$.dynamicSystemCount":

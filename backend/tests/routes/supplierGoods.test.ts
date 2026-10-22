@@ -468,8 +468,36 @@ describe("SupplierGoods Routes", () => {
 
       expect(response.statusCode).toBe(200);
       expect(JSON.parse(response.body).message).toContain("deleted");
-      const persisted = await SupplierGood.findById(supplierGood._id).lean();
+      const persisted = await SupplierGood.findById(supplierGood._id)
+        .setOptions({ includeDeleted: true })
+        .lean();
       expect(persisted?.deleted).toBe(true);
+    });
+
+    it("rolls the soft-delete marker back when a later step in the transaction fails", async () => {
+      const app = await getTestApp();
+      deleteFolderCloudinaryMock.mockResolvedValueOnce("cloudinary failed");
+
+      const supplierGood = await SupplierGood.create({
+        businessId,
+        supplierId,
+        name: "Rollback Flour",
+        keyword: "rollback",
+        mainCategory: "Food",
+        currentlyInUse: true,
+      });
+
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/supplierGoods/${supplierGood._id}`,
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(isProblemDetails(response)).toBe(true);
+
+      const stillActive = await SupplierGood.findById(supplierGood._id).lean();
+      expect(stillActive).not.toBeNull();
+      expect(stillActive?.deleted).toBe(false);
     });
   });
 

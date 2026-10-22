@@ -335,6 +335,7 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
         _id: dailySalesReportId,
         businessId: managerBusinessId,
       })
+        .setOptions({ includeDeleted: true })
         .select("deleted")
         .lean();
       if (!report) {

@@ -9,7 +9,13 @@
  */
 import { z } from "zod";
 
-import { coercedIntSchema, freeTextString, objectIdSchema } from "./primitives.ts";
+import {
+  coercedBooleanSchema,
+  coercedIntSchema,
+  emptyToUndefined,
+  freeTextString,
+  objectIdSchema,
+} from "./primitives.ts";
 
 /** Default page size when a client sends no `limit`. */
 export const RATINGS_DEFAULT_LIMIT = 20;
@@ -54,6 +60,12 @@ export const ratingsPaginationQuerySchema = z.strictObject({
   skip: coercedIntSchema.optional().transform((value) =>
     value === undefined ? 0 : Math.max(value, 0),
   ),
+  includeDeleted: z.preprocess(emptyToUndefined, coercedBooleanSchema.optional()),
+});
+
+/** Optional query for a single rating read: include a soft-deleted review. */
+export const ratingsIncludeDeletedQuerySchema = z.strictObject({
+  includeDeleted: z.preprocess(emptyToUndefined, coercedBooleanSchema.optional()),
 });
 
 export type CreateRatingBody = z.infer<typeof createRatingBodySchema>;
@@ -62,3 +74,6 @@ export type RatingsByBusinessParams = z.infer<
   typeof ratingsByBusinessParamsSchema
 >;
 export type RatingsPaginationQuery = z.infer<typeof ratingsPaginationQuerySchema>;
+export type RatingsIncludeDeletedQuery = z.infer<
+  typeof ratingsIncludeDeletedQuerySchema
+>;

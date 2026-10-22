@@ -1,6 +1,6 @@
 import mongoose, { Schema, model } from "mongoose";
 import * as enums from "restaurant-pos-packages/enums";
-import { softDeleteSchemaFields } from "./softDelete.ts";
+import { applyActiveOnlySoftDelete, softDeleteSchemaFields } from "./softDelete.ts";
 
 const { employeePayFrequencyEnums, userRolesEnums } = enums;
 
@@ -93,6 +93,8 @@ employeeSchema.index(
   { taxNumber: 1 },
   { unique: true, partialFilterExpression: { deleted: false } },
 );
+
+applyActiveOnlySoftDelete(employeeSchema);
 
 const Employee = mongoose.models.Employee || model("Employee", employeeSchema);
 export default Employee;

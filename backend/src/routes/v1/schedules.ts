@@ -324,7 +324,9 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
     async (req, reply) => {
       const { scheduleId } = req.params;
 
-      const schedule = (await Schedule.findById(scheduleId).lean()) as
+      const schedule = (await Schedule.findById(scheduleId)
+        .setOptions({ includeDeleted: true })
+        .lean()) as
         | (ISchedule & { deleted?: boolean })
         | null;
       if (!schedule) {

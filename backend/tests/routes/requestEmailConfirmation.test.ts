@@ -194,6 +194,32 @@ describe("POST /api/v1/auth/request-email-confirmation", () => {
     expect(updated?.verificationToken).toBeFalsy();
   });
 
+  it("does not store a confirmation token for a closed business", async () => {
+    const app = await getTestApp();
+    const email = "closed-confirm@example.com";
+    const business = await createTestBusiness(email, { emailVerified: false });
+    await Business.updateOne(
+      { _id: business._id },
+      { $set: { deleted: true, deletedAt: new Date() } },
+    );
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/request-email-confirmation",
+      payload: { email },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().message).toBe(GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE);
+    expect(sendEmailMock).not.toHaveBeenCalled();
+
+    const stored = await Business.findById(business._id)
+      .setOptions({ includeDeleted: true })
+      .select("verificationToken")
+      .lean();
+    expect(stored?.verificationToken).toBeFalsy();
+  });
+
   it("prefers business over user for the same email", async () => {
     const app = await getTestApp();
     const email = "shared@example.com";

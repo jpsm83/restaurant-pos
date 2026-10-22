@@ -261,6 +261,7 @@ export const inventoriesRoutes: FastifyPluginAsync = async (app) => {
     async (req, reply) => {
       const { inventoryId } = req.params;
       const inventory = await Inventory.findById(inventoryId)
+        .setOptions({ includeDeleted: true })
         .select("deleted")
         .lean();
 

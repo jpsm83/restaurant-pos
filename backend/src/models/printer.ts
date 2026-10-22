@@ -1,6 +1,6 @@
 import mongoose, { Schema, model } from "mongoose";
 import * as enums from "restaurant-pos-packages/enums";
-import { softDeleteSchemaFields } from "./softDelete.ts";
+import { applyActiveOnlySoftDelete, softDeleteSchemaFields } from "./softDelete.ts";
 
 const { mainCategoriesEnums, printerStatusEnums } = enums;
 
@@ -83,6 +83,8 @@ printerSchema.index(
   { businessId: 1, ipAddress: 1 },
   { unique: true, partialFilterExpression: { deleted: false } },
 );
+
+applyActiveOnlySoftDelete(printerSchema);
 
 const Printer = mongoose.models.Printer || model("Printer", printerSchema);
 export default Printer;

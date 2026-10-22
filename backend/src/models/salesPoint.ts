@@ -1,5 +1,5 @@
 import mongoose, { Schema, model } from "mongoose";
-import { softDeleteSchemaFields } from "./softDelete.ts";
+import { applyActiveOnlySoftDelete, softDeleteSchemaFields } from "./softDelete.ts";
 
 const SalesPointSchema = new Schema(
   {
@@ -24,17 +24,7 @@ const SalesPointSchema = new Schema(
   }
 );
 
-SalesPointSchema.index(
-  { businessId: 1, salesPointName: 1 },
-  { unique: true, partialFilterExpression: { deleted: false } },
-);
-SalesPointSchema.index(
-  { businessId: 1, salesPointType: 1 },
-  {
-    unique: true,
-    partialFilterExpression: { deleted: false, salesPointType: "delivery" },
-  },
-);
+applyActiveOnlySoftDelete(SalesPointSchema);
 
 const SalesPoint =
   mongoose.models.SalesPoint || model("SalesPoint", SalesPointSchema);

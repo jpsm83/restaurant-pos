@@ -1,5 +1,5 @@
 import mongoose, { Schema, model } from "mongoose";
-import { softDeleteSchemaFields } from "./softDelete.ts";
+import { applyActiveOnlySoftDelete, softDeleteSchemaFields } from "./softDelete.ts";
 
 const employeesScheduledSchema = new Schema(
   {
@@ -78,6 +78,8 @@ const scheduleSchema = new Schema(
     trim: true,
   }
 );
+
+applyActiveOnlySoftDelete(scheduleSchema);
 
 const Schedule = mongoose.models.Schedule || model("Schedule", scheduleSchema);
 export default Schedule;

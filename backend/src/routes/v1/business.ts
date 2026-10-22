@@ -687,6 +687,7 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
       const { businessId } = req.params;
 
       const business = await Business.findById(businessId)
+        .setOptions({ includeDeleted: true })
         .select("deleted")
         .lean();
       if (!business) {

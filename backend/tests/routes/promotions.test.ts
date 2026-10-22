@@ -587,7 +587,9 @@ describe("Promotions Routes", () => {
       const body = JSON.parse(response.body);
       expect(body.message).toContain("deleted");
 
-      const persisted = await Promotion.findById(promotion._id).lean();
+      const persisted = await Promotion.findById(promotion._id)
+        .setOptions({ includeDeleted: true })
+        .lean();
       expect(persisted).not.toBeNull();
       expect(persisted?.deleted).toBe(true);
     });

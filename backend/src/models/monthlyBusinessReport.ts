@@ -1,7 +1,7 @@
 import mongoose, { Schema, model } from "mongoose";
 import { paymentMethod } from "./paymentMethod.ts";
 import { goodsReducedSchema } from "./dailySalesReport.ts";
-import { softDeleteSchemaFields } from "./softDelete.ts";
+import { applyActiveOnlySoftDelete, softDeleteSchemaFields } from "./softDelete.ts";
 
 const monthlyBusinessReportSchema = new Schema(
   {
@@ -181,6 +181,8 @@ monthlyBusinessReportSchema.index(
   { businessId: 1, monthReference: 1 },
   { unique: true, partialFilterExpression: { deleted: false } },
 );
+
+applyActiveOnlySoftDelete(monthlyBusinessReportSchema);
 
 const MonthlyBusinessReport =
   mongoose.models.MonthlyBusinessReport ||

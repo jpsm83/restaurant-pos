@@ -1,6 +1,6 @@
 import mongoose, { Schema, model } from "mongoose";
 import * as enums from "restaurant-pos-packages/enums";
-import { softDeleteSchemaFields } from "./softDelete.ts";
+import { applyActiveOnlySoftDelete, softDeleteSchemaFields } from "./softDelete.ts";
 
 const { salesInstanceStatusEnums } = enums;
 
@@ -92,6 +92,8 @@ const salesInstanceSchema = new Schema(
     trim: true,
   }
 );
+
+applyActiveOnlySoftDelete(salesInstanceSchema);
 
 const SalesInstance =
   mongoose.models.SalesInstance || model("SalesInstance", salesInstanceSchema);

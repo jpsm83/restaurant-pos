@@ -335,7 +335,9 @@ describe("SalesInstances Routes", () => {
 
       expect(response.statusCode).toBe(200);
 
-      const stillStored = await SalesInstance.findById(salesInstance._id).lean();
+      const stillStored = await SalesInstance.findById(salesInstance._id)
+        .setOptions({ includeDeleted: true })
+        .lean();
       expect(stillStored).not.toBeNull();
       expect(stillStored?.deleted).toBe(true);
       expect(stillStored?.deletedAt).toBeDefined();

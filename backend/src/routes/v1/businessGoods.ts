@@ -479,6 +479,7 @@ export const businessGoodsRoutes: FastifyPluginAsync = async (app) => {
 
       try {
         const businessGood = (await BusinessGood.findById(businessGoodId)
+          .setOptions({ includeDeleted: true })
           .select("businessId deleted")
           .session(session)
           .lean()) as IBusinessGood | null;
@@ -510,6 +511,7 @@ export const businessGoodsRoutes: FastifyPluginAsync = async (app) => {
         const wasDeleted = await markAsDeletedById(
           BusinessGood as mongoose.Model<IBusinessGood & { deleted: boolean }>,
           businessGoodId,
+          session,
         );
         if (!wasDeleted) {
           throw conflict("Business good already deleted!");
