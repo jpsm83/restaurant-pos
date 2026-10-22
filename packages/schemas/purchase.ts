@@ -18,6 +18,7 @@ import { z } from "zod";
 
 import {
   calendarDateSchema,
+  coercedBooleanSchema,
   coercedNumberSchema,
   emptyToUndefined,
   freeTextString,
@@ -111,6 +112,7 @@ export const purchaseByUserParamsSchema = z.strictObject({
 export const purchasesQuerySchema = z.strictObject({
   startDate: calendarDateQuerySchema,
   endDate: calendarDateQuerySchema,
+  includeDeleted: z.preprocess(emptyToUndefined, coercedBooleanSchema.optional()),
 });
 
 /** Body for `PATCH /purchases/:purchaseId/addSupplierGood`. */

@@ -24,6 +24,7 @@ import {
   coercedIntSchema,
   emptyToUndefined,
   objectIdSchema,
+  coercedBooleanSchema,
 } from "./primitives.ts";
 
 /**
@@ -73,6 +74,12 @@ export const dailySalesReportsBusinessQuerySchema = z.strictObject({
   dailyReferenceNumber: referenceNumberQuerySchema,
   dailyReferenceNumberFrom: referenceNumberQuerySchema,
   dailyReferenceNumberTo: referenceNumberQuerySchema,
+  includeDeleted: z.preprocess(emptyToUndefined, coercedBooleanSchema.optional()),
+});
+
+/** Optional query for report reads: include soft-deleted records explicitly. */
+export const dailySalesReportsIncludeDeletedQuerySchema = z.strictObject({
+  includeDeleted: z.preprocess(emptyToUndefined, coercedBooleanSchema.optional()),
 });
 
 export type DailySalesReportIdParams = z.infer<
@@ -86,4 +93,7 @@ export type CalculateUsersReportBody = z.infer<
 >;
 export type DailySalesReportsBusinessQuery = z.infer<
   typeof dailySalesReportsBusinessQuerySchema
+>;
+export type DailySalesReportsIncludeDeletedQuery = z.infer<
+  typeof dailySalesReportsIncludeDeletedQuerySchema
 >;

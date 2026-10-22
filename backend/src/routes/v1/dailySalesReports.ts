@@ -10,7 +10,7 @@
  * guards and the date/reference-number range rules.
  */
 import type { FastifyPluginAsync } from "fastify";
-import { Types } from "mongoose";
+import mongoose, { Types } from "mongoose";
 import type {
   IActorDailySalesReport,
   IGoodsReduced,
@@ -29,6 +29,7 @@ import Business from "../../models/business.ts";
 import Order from "../../models/order.ts";
 import SalesInstance from "../../models/salesInstance.ts";
 import SalesPoint from "../../models/salesPoint.ts";
+import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
 import { createAuthHook } from "../../auth/middleware.ts";
 import { isAggregateMismatchCheckEnabled } from "../../dailySalesReports/rolloutControls.ts";
 import { recordAggregateMismatchCheck } from "../../dailySalesReports/rolloutTelemetry.ts";
@@ -36,6 +37,7 @@ import { buildReconciledDailyPayload } from "../../dailySalesReports/reconciliat
 import { resolveBaseCommissionPercent } from "restaurant-pos-packages/utils/subscriptionCatalogue";
 import {
   badRequest,
+  conflict,
   forbidden,
   internal,
   notFound,
@@ -46,10 +48,12 @@ import {
   dailySalesReportIdParamsSchema,
   dailySalesReportsBusinessParamsSchema,
   dailySalesReportsBusinessQuerySchema,
+  dailySalesReportsIncludeDeletedQuerySchema,
   type CalculateUsersReportBody,
   type DailySalesReportIdParams,
   type DailySalesReportsBusinessParams,
   type DailySalesReportsBusinessQuery,
+  type DailySalesReportsIncludeDeletedQuery,
 } from "restaurant-pos-packages/schemas/dailySalesReports";
 import * as enums from "restaurant-pos-packages/enums";
 import { isSupportedTimezone } from "restaurant-pos-packages/schemas/primitives";
@@ -214,12 +218,19 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
   };
 
   // GET /dailySalesReports - list all
-  app.get("/", { preValidation: [createAuthHook(app)] }, async (_req, reply) => {
-    const businessId = await resolveManagerBusinessId(_req);
+  app.get<{ Querystring: DailySalesReportsIncludeDeletedQuery }>(
+    "/",
+    {
+      preValidation: [createAuthHook(app)],
+      schema: { querystring: dailySalesReportsIncludeDeletedQuerySchema },
+    },
+    async (_req, reply) => {
+      const businessId = await resolveManagerBusinessId(_req);
+      const { includeDeleted = false } = _req.query;
 
-    const dailySalesReports = await DailySalesReport.find({
-      businessId,
-    })
+      const dailySalesReports = await DailySalesReport.find(
+        withSoftDeleteFilter({ businessId }, includeDeleted),
+      )
       .populate({
         path: "employeesDailySalesReport.userId",
         select: "personalDetails.firstName personalDetails.lastName",
@@ -237,25 +248,33 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
       })
       .lean();
 
-    if (!dailySalesReports.length) {
-      throw notFound("No daily reports found!");
-    }
-    return reply.code(200).send(dailySalesReports);
-  });
+      if (!dailySalesReports.length) {
+        throw notFound("No daily reports found!");
+      }
+      return reply.code(200).send(dailySalesReports);
+    },
+  );
 
   // GET /dailySalesReports/:dailySalesReportId - get by ID
-  app.get<{ Params: DailySalesReportIdParams }>(
+  app.get<{
+    Params: DailySalesReportIdParams;
+    Querystring: DailySalesReportsIncludeDeletedQuery;
+  }>(
     "/:dailySalesReportId",
     {
       preValidation: [createAuthHook(app)],
-      schema: { params: dailySalesReportIdParamsSchema },
+      schema: {
+        params: dailySalesReportIdParamsSchema,
+        querystring: dailySalesReportsIncludeDeletedQuerySchema,
+      },
     },
     async (req, reply) => {
       const managerBusinessId = await resolveManagerBusinessId(req);
       const { dailySalesReportId } = req.params;
+      const { includeDeleted = false } = req.query;
 
-      const dailySalesReport = await DailySalesReport.findById(
-        dailySalesReportId,
+      const dailySalesReport = await DailySalesReport.findOne(
+        withSoftDeleteFilter({ _id: dailySalesReportId }, includeDeleted),
       )
         .populate({
           path: "employeesDailySalesReport.userId",
@@ -312,14 +331,25 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
 
       const managerBusinessId = await resolveManagerBusinessId(req);
       const { dailySalesReportId } = req.params;
-
-      const result = await DailySalesReport.deleteOne({
+      const report = await DailySalesReport.findOne({
         _id: dailySalesReportId,
         businessId: managerBusinessId,
-      });
-
-      if (result.deletedCount === 0) {
+      })
+        .select("deleted")
+        .lean();
+      if (!report) {
         throw notFound("Daily report not found!");
+      }
+      if (report.deleted) {
+        throw conflict("Daily report already deleted!");
+      }
+
+      const wasDeleted = await markAsDeletedById(
+        DailySalesReport as mongoose.Model<IDailySalesReport & { deleted: boolean }>,
+        dailySalesReportId,
+      );
+      if (!wasDeleted) {
+        throw conflict("Daily report already deleted!");
       }
 
       return reply.code(200).send(`Daily report ${dailySalesReportId} deleted`);
@@ -337,9 +367,9 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
       const managerBusinessId = await resolveManagerBusinessId(req);
       const { dailySalesReportId } = req.params;
 
-      const dailySalesReport = (await DailySalesReport.findOne({
-        _id: dailySalesReportId,
-      })
+      const dailySalesReport = (await DailySalesReport.findOne(
+        withSoftDeleteFilter({ _id: dailySalesReportId }),
+      )
         .select(
           "dailyReferenceNumber businessId dailyTotalSalesBeforeAdjustments dailyNetPaidAmount dailyCostOfGoodsSold dailyTipsReceived dailyTotalVoidValue dailyTotalInvitedValue",
         )
@@ -370,9 +400,9 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
         );
       }
 
-      const dailyReportWithUsers = (await DailySalesReport.findOne({
-        _id: dailySalesReportId,
-      })
+      const dailyReportWithUsers = (await DailySalesReport.findOne(
+        withSoftDeleteFilter({ _id: dailySalesReportId }),
+      )
         .select(
           "_id dailyReferenceNumber employeesDailySalesReport deliveryDailySalesReport selfOrderingSalesReport businessId",
         )
@@ -555,7 +585,7 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
       }
 
       await DailySalesReport.updateOne(
-        { _id: dailySalesReportId },
+        withSoftDeleteFilter({ _id: dailySalesReportId }),
         dailySalesReportObj,
       );
 
@@ -604,8 +634,8 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
       const { dailySalesReportId } = req.params;
       const { userIds } = req.body;
 
-      const dailySalesReport = (await DailySalesReport.findById(
-        dailySalesReportId,
+      const dailySalesReport = (await DailySalesReport.findOne(
+        withSoftDeleteFilter({ _id: dailySalesReportId }),
       )
         .select("dailyReferenceNumber businessId")
         .lean()) as Pick<IDailySalesReport, "dailyReferenceNumber"> | null;
@@ -654,7 +684,9 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
       const managerBusinessId = await resolveManagerBusinessId(req);
       const { dailySalesReportId } = req.params;
 
-      const dailyReport = (await DailySalesReport.findById(dailySalesReportId)
+      const dailyReport = (await DailySalesReport.findOne(
+        withSoftDeleteFilter({ _id: dailySalesReportId }),
+      )
         .select(
           "dailyReferenceNumber businessId dailyTotalSalesBeforeAdjustments dailyNetPaidAmount dailyCostOfGoodsSold dailyTipsReceived dailyTotalVoidValue dailyTotalInvitedValue",
         )
@@ -686,9 +718,9 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
         );
       }
 
-      const dailyReportWithUsers = (await DailySalesReport.findOne({
-        _id: dailySalesReportId,
-      })
+      const dailyReportWithUsers = (await DailySalesReport.findOne(
+        withSoftDeleteFilter({ _id: dailySalesReportId }),
+      )
         .select(
           "_id dailyReferenceNumber employeesDailySalesReport deliveryDailySalesReport selfOrderingSalesReport businessId",
         )
@@ -872,7 +904,7 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
       }
 
       const updatedReport = await DailySalesReport.updateOne(
-        { _id: dailySalesReportId },
+        withSoftDeleteFilter({ _id: dailySalesReportId }),
         { $set: { ...dailySalesReportObj, isDailyReportOpen: false } },
       );
 
@@ -934,7 +966,9 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
       const managerBusinessId = await resolveManagerBusinessId(req);
       const { dailySalesReportId } = req.params;
 
-      const report = (await DailySalesReport.findById(dailySalesReportId)
+      const report = (await DailySalesReport.findOne(
+        withSoftDeleteFilter({ _id: dailySalesReportId }),
+      )
         .select("businessId dailyReferenceNumber")
         .lean()) as
         | {
@@ -964,7 +998,7 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
       );
 
       const result = await DailySalesReport.updateOne(
-        { _id: dailySalesReportId },
+        withSoftDeleteFilter({ _id: dailySalesReportId }),
         { $set: reconciledPayload },
       );
 
@@ -1004,6 +1038,7 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
         dailyReferenceNumber,
         dailyReferenceNumberFrom,
         dailyReferenceNumberTo,
+        includeDeleted = false,
       } = req.query;
 
       const filter: {
@@ -1065,7 +1100,9 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
         };
       }
 
-      const dailySalesReports = await DailySalesReport.find(filter)
+      const dailySalesReports = await DailySalesReport.find(
+        withSoftDeleteFilter(filter as unknown as Record<string, unknown>, includeDeleted),
+      )
         .populate({
           path: "employeesDailySalesReport.userId",
           select: "personalDetails.firstName personalDetails.lastName",

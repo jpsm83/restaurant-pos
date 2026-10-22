@@ -194,6 +194,106 @@ describe("DailySalesReports routes - Task T2 integration", () => {
     return read();
   };
 
+  describe("soft-delete contract", () => {
+    it("lists active reports by default and includes deleted when requested", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      const token = await createManagerToken(business._id as Types.ObjectId);
+
+      await DailySalesReport.create({
+        businessId: business._id,
+        dailyReferenceNumber: Date.now() + 1,
+        isDailyReportOpen: true,
+        timeCountdownToClose: 3600,
+      });
+      await DailySalesReport.create({
+        businessId: business._id,
+        dailyReferenceNumber: Date.now() + 2,
+        isDailyReportOpen: true,
+        timeCountdownToClose: 3600,
+        deleted: true,
+        deletedAt: new Date(),
+      });
+
+      const activeOnly = await app.inject({
+        method: "GET",
+        url: "/api/v1/dailySalesReports",
+        headers: { authorization: token },
+      });
+      expect(activeOnly.statusCode, activeOnly.body).toBe(200);
+      expect((JSON.parse(activeOnly.body) as unknown[]).length).toBe(1);
+
+      const withDeleted = await app.inject({
+        method: "GET",
+        url: "/api/v1/dailySalesReports?includeDeleted=true",
+        headers: { authorization: token },
+      });
+      expect(withDeleted.statusCode, withDeleted.body).toBe(200);
+      expect((JSON.parse(withDeleted.body) as unknown[]).length).toBe(2);
+    });
+
+    it("hides a soft-deleted report by default in GET by id", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      const token = await createManagerToken(business._id as Types.ObjectId);
+
+      const report = await DailySalesReport.create({
+        businessId: business._id,
+        dailyReferenceNumber: Date.now() + 3,
+        isDailyReportOpen: true,
+        timeCountdownToClose: 3600,
+        deleted: true,
+        deletedAt: new Date(),
+      });
+
+      const hidden = await app.inject({
+        method: "GET",
+        url: `/api/v1/dailySalesReports/${report._id}`,
+        headers: { authorization: token },
+      });
+      const hiddenBody = expectProblem(hidden, 404, "not-found");
+      expect(hiddenBody.detail).toBe("Daily report not found!");
+
+      const visible = await app.inject({
+        method: "GET",
+        url: `/api/v1/dailySalesReports/${report._id}?includeDeleted=true`,
+        headers: { authorization: token },
+      });
+      expect(visible.statusCode, visible.body).toBe(200);
+      expect(visible.json().deleted).toBe(true);
+    });
+
+    it("soft-deletes on DELETE and returns conflict when already deleted", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      const token = await createManagerToken(business._id as Types.ObjectId);
+
+      const report = await DailySalesReport.create({
+        businessId: business._id,
+        dailyReferenceNumber: Date.now() + 4,
+        isDailyReportOpen: true,
+        timeCountdownToClose: 3600,
+      });
+
+      const deleted = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/dailySalesReports/${report._id}`,
+        headers: { authorization: token },
+      });
+      expect(deleted.statusCode, deleted.body).toBe(200);
+      const persisted = await DailySalesReport.findById(report._id).lean();
+      expect(persisted?.deleted).toBe(true);
+
+      const secondDelete = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/dailySalesReports/${report._id}`,
+        headers: { authorization: token },
+      });
+      const conflict = expectProblem(secondDelete, 409, "conflict");
+      expect(conflict.detail).toBe("Daily report already deleted!");
+    });
+  });
+
   it("manager calculate aggregates from actor rows (without order recompute dependency)", async () => {
     const app = await getTestApp();
     const business = await createTestBusiness();

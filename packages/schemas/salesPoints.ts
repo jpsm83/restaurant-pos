@@ -65,6 +65,14 @@ export const updateSalesPointBodySchema = z.strictObject({
   selfOrdering: coercedBooleanSchema.optional(),
 });
 
+/** Optional query for sales-point reads: include soft-deleted records explicitly. */
+export const salesPointsIncludeDeletedQuerySchema = z.strictObject({
+  includeDeleted: coercedBooleanSchema.optional(),
+});
+
 export type CreateSalesPointBody = z.infer<typeof createSalesPointBodySchema>;
 export type UpdateSalesPointBody = z.infer<typeof updateSalesPointBodySchema>;
 export type SalesPointIdParams = z.infer<typeof salesPointIdParamsSchema>;
+export type SalesPointsIncludeDeletedQuery = z.infer<
+  typeof salesPointsIncludeDeletedQuerySchema
+>;

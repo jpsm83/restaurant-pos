@@ -13,7 +13,13 @@
  */
 import { z } from "zod";
 
-import { coercedIntSchema, freeTextString, objectIdSchema } from "./primitives.ts";
+import {
+  coercedBooleanSchema,
+  coercedIntSchema,
+  emptyToUndefined,
+  freeTextString,
+  objectIdSchema,
+} from "./primitives.ts";
 
 /**
  * The reservation statuses. Pinned locally so `z.enum` carries the literal
@@ -91,6 +97,7 @@ export const reservationsByBusinessQuerySchema = z.strictObject({
   status: reservationStatusSchema.optional(),
   startDate: optionalDateSchema,
   endDate: optionalDateSchema,
+  includeDeleted: z.preprocess(emptyToUndefined, coercedBooleanSchema.optional()),
 });
 
 /**
@@ -99,6 +106,11 @@ export const reservationsByBusinessQuerySchema = z.strictObject({
  */
 export const reservationsQuerySchema = reservationsByBusinessQuerySchema.extend({
   businessId: objectIdSchema.optional(),
+});
+
+/** Optional query for reservation reads: include soft-deleted records explicitly. */
+export const reservationsIncludeDeletedQuerySchema = z.strictObject({
+  includeDeleted: z.preprocess(emptyToUndefined, coercedBooleanSchema.optional()),
 });
 
 /** Path params for `GET /reservations/business/:businessId`. */
@@ -115,4 +127,7 @@ export type ReservationsByBusinessParams = z.infer<
 >;
 export type ReservationsByBusinessQuery = z.infer<
   typeof reservationsByBusinessQuerySchema
+>;
+export type ReservationsIncludeDeletedQuery = z.infer<
+  typeof reservationsIncludeDeletedQuerySchema
 >;

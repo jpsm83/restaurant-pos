@@ -785,9 +785,11 @@ describe("Notifications Routes", () => {
       const body = JSON.parse(deleteResponse.body);
       expect(body.message).toContain("deleted");
 
-      // Verify notification was deleted
-      const deletedNotification = await Notification.findById(notification?._id);
-      expect(deletedNotification).toBeNull();
+      const deletedNotification = await Notification.findById(
+        notification?._id,
+      ).lean();
+      expect(deletedNotification).not.toBeNull();
+      expect(deletedNotification?.deleted).toBe(true);
 
       // Verify notification was removed from user's inbox (employee inbox state is centralized on User)
       const updatedUser = await User.findById(user._id).lean();

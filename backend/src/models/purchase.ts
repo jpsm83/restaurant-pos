@@ -1,4 +1,5 @@
 import mongoose, { Schema, model } from "mongoose";
+import { softDeleteSchemaFields } from "./softDelete.ts";
 
 // on the time of record the purchase, employee should be able to select the supplier good in a dropdown
 // and from there employee should be able to see the supplierGood.pricePerMeasurementUnit to compare with the price of the purchase
@@ -80,6 +81,7 @@ const purchaseSchema = new Schema(
     }, // Array of goods in this purchase
     oneTimePurchase: { type: Boolean, default: false }, // If the purchase is a one time purchase
     comment: { type: String }, // Comment on the purchase
+    ...softDeleteSchemaFields,
   },
   {
     timestamps: true,

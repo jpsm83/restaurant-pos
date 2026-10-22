@@ -17,6 +17,7 @@ import { genderEnums, idEnums } from "../enums.ts";
 import { passwordSchema } from "./auth.ts";
 import { addressSchema } from "./address.ts";
 import {
+  coercedBooleanSchema,
   emailSchema,
   emptyToUndefined,
   type EnumValues,
@@ -88,6 +89,11 @@ export const userNotificationParamsSchema = z.strictObject({
   notificationId: objectIdSchema,
 });
 
+/** Optional query for user reads: include soft-deleted records explicitly. */
+export const usersIncludeDeletedQuerySchema = z.strictObject({
+  includeDeleted: z.preprocess(emptyToUndefined, coercedBooleanSchema.optional()),
+});
+
 export type CreateUserBody = z.infer<typeof createUserBodySchema>;
 export type UpdateUserBody = z.infer<typeof updateUserBodySchema>;
 export type UserIdParams = z.infer<typeof userIdParamsSchema>;
@@ -96,4 +102,7 @@ export type MarkNotificationDeletedBody = z.infer<
 >;
 export type UserNotificationParams = z.infer<
   typeof userNotificationParamsSchema
+>;
+export type UsersIncludeDeletedQuery = z.infer<
+  typeof usersIncludeDeletedQuerySchema
 >;

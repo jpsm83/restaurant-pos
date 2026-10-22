@@ -204,6 +204,11 @@ export const salesInstancesByUserParamsSchema = z.strictObject({
   userId: objectIdSchema,
 });
 
+/** Optional query for sales-instance reads: include soft-deleted records explicitly. */
+export const salesInstancesIncludeDeletedQuerySchema = z.strictObject({
+  includeDeleted: coercedBooleanSchema.optional(),
+});
+
 export type CreateSalesInstanceBody = z.infer<
   typeof createSalesInstanceBodySchema
 >;
@@ -230,4 +235,7 @@ export type SalesInstancesByBusinessParams = z.infer<
 >;
 export type SalesInstancesByUserParams = z.infer<
   typeof salesInstancesByUserParamsSchema
+>;
+export type SalesInstancesIncludeDeletedQuery = z.infer<
+  typeof salesInstancesIncludeDeletedQuerySchema
 >;

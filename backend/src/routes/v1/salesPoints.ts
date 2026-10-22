@@ -8,10 +8,11 @@
  * duplicate-name rules stay as named post-parse checks.
  */
 import type { FastifyPluginAsync } from "fastify";
-import { Types } from "mongoose";
+import mongoose, { Types } from "mongoose";
 import type { ISalesPoint } from "restaurant-pos-packages/interfaces/ISalesPoint";
 
 import SalesPoint from "../../models/salesPoint.ts";
+import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
 import generateQrCode from "../../salesPoints/generateQrCode.ts";
 import deleteFilesCloudinary from "../../cloudinary/deleteFilesCloudinary.ts";
 import {
@@ -22,22 +23,31 @@ import {
 import {
   createSalesPointBodySchema,
   salesPointIdParamsSchema,
+  salesPointsIncludeDeletedQuerySchema,
   updateSalesPointBodySchema,
   type CreateSalesPointBody,
   type SalesPointIdParams,
+  type SalesPointsIncludeDeletedQuery,
   type UpdateSalesPointBody,
 } from "restaurant-pos-packages/schemas/salesPoints";
 
 export const salesPointsRoutes: FastifyPluginAsync = async (app) => {
   // GET /salesPoints - list all
-  app.get("/", async (_req, reply) => {
-    const salesPoints = await SalesPoint.find().lean();
+  app.get<{ Querystring: SalesPointsIncludeDeletedQuery }>(
+    "/",
+    { schema: { querystring: salesPointsIncludeDeletedQuerySchema } },
+    async (req, reply) => {
+      const { includeDeleted = false } = req.query;
+      const salesPoints = await SalesPoint.find(
+        withSoftDeleteFilter({}, includeDeleted),
+      ).lean();
 
-    if (!salesPoints.length) {
-      throw notFound("No salesPoints found!");
-    }
-    return reply.code(200).send(salesPoints);
-  });
+      if (!salesPoints.length) {
+        throw notFound("No salesPoints found!");
+      }
+      return reply.code(200).send(salesPoints);
+    },
+  );
 
   // POST /salesPoints - create
   app.post<{ Body: CreateSalesPointBody }>(
@@ -49,19 +59,23 @@ export const salesPointsRoutes: FastifyPluginAsync = async (app) => {
       const businessObjectId = new Types.ObjectId(businessId);
 
       if (salesPointType === "delivery") {
-        const existingDelivery = await SalesPoint.exists({
-          businessId: businessObjectId,
-          salesPointType: "delivery",
-        });
+        const existingDelivery = await SalesPoint.exists(
+          withSoftDeleteFilter({
+            businessId: businessObjectId,
+            salesPointType: "delivery",
+          }),
+        );
         if (existingDelivery) {
           throw conflict("This business already has a delivery sales point.");
         }
       }
 
-      const duplicateSalesPoint = await SalesPoint.exists({
-        businessId: businessObjectId,
-        salesPointName,
-      });
+      const duplicateSalesPoint = await SalesPoint.exists(
+        withSoftDeleteFilter({
+          businessId: businessObjectId,
+          salesPointName,
+        }),
+      );
 
       if (duplicateSalesPoint) {
         throw conflict("SalesPoint already exists!");
@@ -81,11 +95,14 @@ export const salesPointsRoutes: FastifyPluginAsync = async (app) => {
         );
 
         if (!qrCode || qrCode.includes("Failed")) {
-          await SalesPoint.deleteOne({ _id: salesPointCreated._id });
+          await markAsDeletedById(
+            SalesPoint as mongoose.Model<ISalesPoint & { deleted: boolean }>,
+            String(salesPointCreated._id),
+          );
           throw internal("Failed to generate QR code, rollback applied");
         }
         await SalesPoint.updateOne(
-          { _id: salesPointCreated._id },
+          withSoftDeleteFilter({ _id: salesPointCreated._id }),
           { $set: { qrCode } },
         );
       }
@@ -95,13 +112,24 @@ export const salesPointsRoutes: FastifyPluginAsync = async (app) => {
   );
 
   // GET /salesPoints/:salesPointId - get by ID
-  app.get<{ Params: SalesPointIdParams }>(
+  app.get<{
+    Params: SalesPointIdParams;
+    Querystring: SalesPointsIncludeDeletedQuery;
+  }>(
     "/:salesPointId",
-    { schema: { params: salesPointIdParamsSchema } },
+    {
+      schema: {
+        params: salesPointIdParamsSchema,
+        querystring: salesPointsIncludeDeletedQuerySchema,
+      },
+    },
     async (req, reply) => {
       const { salesPointId } = req.params;
+      const { includeDeleted = false } = req.query;
 
-      const salesPoint = await SalesPoint.findById(salesPointId).lean();
+      const salesPoint = await SalesPoint.findOne(
+        withSoftDeleteFilter({ _id: salesPointId }, includeDeleted),
+      ).lean();
 
       if (!salesPoint) {
         throw notFound("No salesPoint found!");
@@ -123,7 +151,9 @@ export const salesPointsRoutes: FastifyPluginAsync = async (app) => {
       const { salesPointId } = req.params;
       const { salesPointName, salesPointType, selfOrdering } = req.body;
 
-      const salesPoint = await SalesPoint.findById(salesPointId);
+      const salesPoint = await SalesPoint.findOne(
+        withSoftDeleteFilter({ _id: salesPointId }),
+      );
 
       if (!salesPoint) {
         throw notFound("SalesPoint not found!");
@@ -131,9 +161,11 @@ export const salesPointsRoutes: FastifyPluginAsync = async (app) => {
 
       if (salesPointName) {
         const duplicateSalesPoint = await SalesPoint.exists({
-          salesPointName,
-          _id: { $ne: salesPointId },
-          businessId: salesPoint.businessId,
+          ...withSoftDeleteFilter({
+            salesPointName,
+            _id: { $ne: salesPointId },
+            businessId: salesPoint.businessId,
+          }),
         });
 
         if (duplicateSalesPoint) {
@@ -149,7 +181,7 @@ export const salesPointsRoutes: FastifyPluginAsync = async (app) => {
         updatedSalesPoint.selfOrdering = selfOrdering;
 
       await SalesPoint.updateOne(
-        { _id: salesPointId },
+        withSoftDeleteFilter({ _id: salesPointId }),
         { $set: updatedSalesPoint },
       );
 
@@ -171,15 +203,19 @@ export const salesPointsRoutes: FastifyPluginAsync = async (app) => {
       if (!salesPoint) {
         throw notFound("SalesPoint not found!");
       }
+      if (salesPoint.deleted) {
+        throw conflict("SalesPoint already deleted!");
+      }
 
       const qrCode = salesPoint.qrCode;
 
-      const result = await SalesPoint.deleteOne({
-        _id: salesPointId,
-      });
+      const wasDeleted = await markAsDeletedById(
+        SalesPoint as mongoose.Model<ISalesPoint & { deleted: boolean }>,
+        salesPointId,
+      );
 
-      if (result.deletedCount === 0) {
-        throw notFound("Sales location not found or it has orders!");
+      if (!wasDeleted) {
+        throw conflict("SalesPoint already deleted!");
       }
 
       if (qrCode) {

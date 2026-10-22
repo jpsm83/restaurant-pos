@@ -77,6 +77,8 @@ export interface IBusiness {
   businessOpeningHours?: IBusinessOpeningHour[];
   deliveryOpeningWindows?: IDeliveryOpeningWindow[];
   reportingConfig?: IReportingConfig;
+  deleted?: boolean;
+  deletedAt?: Date;
 }
 
 /**

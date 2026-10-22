@@ -1,5 +1,6 @@
 import mongoose, { Schema, model } from "mongoose";
 import { personalDetailsSchema } from "./personalDetails.ts";
+import { softDeleteSchemaFields } from "./softDelete.ts";
 
 const notificationEntrySchema = new Schema(
   {
@@ -55,6 +56,7 @@ const userSchema = new Schema(
     resetPasswordExpires: { type: Date, default: undefined },
     /** Increment on password reset / password change to invalidate outstanding refresh JWTs. */
     refreshSessionVersion: { type: Number, default: 0 },
+    ...softDeleteSchemaFields,
   },
   {
     timestamps: true,

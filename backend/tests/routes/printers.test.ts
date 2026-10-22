@@ -53,13 +53,19 @@ describe("Printers Routes", () => {
     });
   };
 
-  const createTestPrinter = async (businessId: Types.ObjectId, alias?: string) => {
+  const createTestPrinter = async (
+    businessId: Types.ObjectId,
+    alias?: string,
+    opts?: { deleted?: boolean },
+  ) => {
     return await Printer.create({
       businessId,
       printerAlias: alias || `Printer-${Date.now()}`,
       ipAddress: `192.168.1.${Math.floor(Math.random() * 255)}`,
       port: 9100,
       printerStatus: "Offline",
+      deleted: opts?.deleted,
+      deletedAt: opts?.deleted ? new Date() : undefined,
     });
   };
 
@@ -68,6 +74,11 @@ describe("Printers Routes", () => {
       const app = await getTestApp();
       const business = await createTestBusiness();
       await createTestPrinter(business._id as Types.ObjectId);
+      await createTestPrinter(
+        business._id as Types.ObjectId,
+        "Deleted Printer",
+        { deleted: true },
+      );
 
       const response = await app.inject({
         method: "GET",
@@ -77,7 +88,26 @@ describe("Printers Routes", () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(Array.isArray(body)).toBe(true);
-      expect(body.length).toBeGreaterThanOrEqual(1);
+      expect(body.length).toBe(1);
+    });
+
+    it("includes deleted printers when includeDeleted=true", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      await createTestPrinter(business._id as Types.ObjectId);
+      await createTestPrinter(
+        business._id as Types.ObjectId,
+        "Deleted Printer",
+        { deleted: true },
+      );
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/printers?includeDeleted=true",
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json().length).toBe(2);
     });
 
     it("returns a not-found problem when no printers exist", async () => {
@@ -267,6 +297,40 @@ describe("Printers Routes", () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body._id).toBe(printer._id.toString());
+    });
+
+    it("returns not-found for soft-deleted printer by default", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      const printer = await createTestPrinter(
+        business._id as Types.ObjectId,
+        "Soft Deleted Printer",
+        { deleted: true },
+      );
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/printers/${printer._id}`,
+      });
+      const body = expectProblem(response, 404, "not-found");
+      expect(body.detail).toBe("Printer not found!");
+    });
+
+    it("returns soft-deleted printer when includeDeleted=true", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      const printer = await createTestPrinter(
+        business._id as Types.ObjectId,
+        "Soft Deleted Printer",
+        { deleted: true },
+      );
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/printers/${printer._id}?includeDeleted=true`,
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.json().deleted).toBe(true);
     });
   });
 
@@ -554,6 +618,11 @@ describe("Printers Routes", () => {
       const app = await getTestApp();
       const business = await createTestBusiness();
       await createTestPrinter(business._id as Types.ObjectId);
+      await createTestPrinter(
+        business._id as Types.ObjectId,
+        "Deleted Printer",
+        { deleted: true },
+      );
 
       const response = await app.inject({
         method: "GET",
@@ -563,13 +632,32 @@ describe("Printers Routes", () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(Array.isArray(body)).toBe(true);
-      expect(body.length).toBeGreaterThanOrEqual(1);
+      expect(body.length).toBe(1);
+    });
+
+    it("lists deleted printers by business when includeDeleted=true", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      await createTestPrinter(business._id as Types.ObjectId);
+      await createTestPrinter(
+        business._id as Types.ObjectId,
+        "Deleted Printer",
+        { deleted: true },
+      );
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/printers/business/${business._id}?includeDeleted=true`,
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json().length).toBe(2);
     });
   });
 
   // Phase 4 Task 4.9: Transaction Tests for DELETE with backup cleanup
   describe("Transaction Tests - DELETE /api/v1/printers/:printerId", () => {
-    it("deletes printer successfully", async () => {
+    it("soft-deletes printer successfully", async () => {
       const app = await getTestApp();
       const business = await createTestBusiness();
       const printer = await createTestPrinter(business._id as Types.ObjectId, "ToDelete");
@@ -583,9 +671,9 @@ describe("Printers Routes", () => {
       const body = JSON.parse(response.body);
       expect(body.message).toContain("deleted");
 
-      // Verify printer was actually deleted
-      const deletedPrinter = await Printer.findById(printer._id);
-      expect(deletedPrinter).toBeNull();
+      const deletedPrinter = await Printer.findById(printer._id).lean();
+      expect(deletedPrinter).not.toBeNull();
+      expect(deletedPrinter?.deleted).toBe(true);
     });
 
     it("deletes printer and clears backup references", async () => {
@@ -639,6 +727,24 @@ describe("Printers Routes", () => {
 
       const body = expectProblem(response, 404, "not-found");
       expect(body.detail).toBe("Printer not found!");
+    });
+
+    it("returns conflict for already deleted printer", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      const printer = await createTestPrinter(
+        business._id as Types.ObjectId,
+        "Already Deleted Printer",
+        { deleted: true },
+      );
+
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/printers/${printer._id}`,
+      });
+
+      const body = expectProblem(response, 409, "conflict");
+      expect(body.detail).toBe("Printer already deleted!");
     });
   });
 });

@@ -43,6 +43,8 @@ describe("reservations DTO ↔ model parity", () => {
       "createdByUserId",
       "createdByRole",
       "salesInstanceId",
+      "deleted",
+      "deletedAt",
       "createdAt",
       "updatedAt",
     ]) {

@@ -109,10 +109,18 @@ export const businessGoodByBusinessParamsSchema = z.strictObject({
   businessId: objectIdSchema,
 });
 
+/** Optional query for business-good reads: include soft-deleted records explicitly. */
+export const businessGoodsIncludeDeletedQuerySchema = z.strictObject({
+  includeDeleted: z.preprocess(emptyToUndefined, coercedBooleanSchema.optional()),
+});
+
 export type Ingredient = z.infer<typeof ingredientSchema>;
 export type CreateBusinessGoodBody = z.infer<typeof createBusinessGoodBodySchema>;
 export type UpdateBusinessGoodBody = z.infer<typeof updateBusinessGoodBodySchema>;
 export type BusinessGoodIdParams = z.infer<typeof businessGoodIdParamsSchema>;
 export type BusinessGoodByBusinessParams = z.infer<
   typeof businessGoodByBusinessParamsSchema
+>;
+export type BusinessGoodsIncludeDeletedQuery = z.infer<
+  typeof businessGoodsIncludeDeletedQuerySchema
 >;

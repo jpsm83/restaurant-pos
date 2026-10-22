@@ -1,5 +1,6 @@
 import mongoose, { Schema, model } from "mongoose";
 import { paymentMethod } from "./paymentMethod.ts";
+import { softDeleteSchemaFields } from "./softDelete.ts";
 
 export const goodsReducedSchema = new Schema(
   {
@@ -121,6 +122,7 @@ const dailySalesReportSchema = new Schema(
     dailyTotalVoidValue: { type: Number }, // sum of the price of the void items
     dailyTotalInvitedValue: { type: Number }, // sum of the price of the invited items
     dailyPosSystemCommission: { type: Number }, // comission of the POS system app
+    ...softDeleteSchemaFields,
   },
   {
     timestamps: true,
@@ -131,7 +133,7 @@ const dailySalesReportSchema = new Schema(
 // One operational day reference per business.
 dailySalesReportSchema.index(
   { businessId: 1, dailyReferenceNumber: 1 },
-  { unique: true },
+  { unique: true, partialFilterExpression: { deleted: { $ne: true } } },
 );
 
 const DailySalesReport =

@@ -1,5 +1,6 @@
 import mongoose, { Schema, model } from "mongoose";
 import * as enums from "restaurant-pos-packages/enums";
+import { softDeleteSchemaFields } from "./softDelete.ts";
 
 const { notificationEnums } = enums;
 
@@ -33,6 +34,7 @@ const notificationSchema = new Schema(
       ref: "Business",
       required: [true, "Business id is required!"],
     }, // Reference to the business where the notification was created
+    ...softDeleteSchemaFields,
   },
   {
     timestamps: true,

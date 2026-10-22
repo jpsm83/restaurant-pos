@@ -13,7 +13,9 @@ import { z } from "zod";
 
 import { mainCategoriesEnums } from "restaurant-pos-packages/enums";
 import {
+  coercedBooleanSchema,
   coercedIntSchema,
+  emptyToUndefined,
   freeTextString,
   objectIdSchema,
   sanitizedString,
@@ -86,6 +88,11 @@ export const printersByBusinessParamsSchema = z.strictObject({
   businessId: objectIdSchema,
 });
 
+/** Optional query for printer reads: include soft-deleted records explicitly. */
+export const printersIncludeDeletedQuerySchema = z.strictObject({
+  includeDeleted: z.preprocess(emptyToUndefined, coercedBooleanSchema.optional()),
+});
+
 export type MainCategory = z.infer<typeof mainCategorySchema>;
 export type CreatePrinterBody = z.infer<typeof createPrinterBodySchema>;
 export type UpdatePrinterBody = z.infer<typeof updatePrinterBodySchema>;
@@ -98,4 +105,7 @@ export type ConfigurationSetupBody = z.infer<
 >;
 export type PrintersByBusinessParams = z.infer<
   typeof printersByBusinessParamsSchema
+>;
+export type PrintersIncludeDeletedQuery = z.infer<
+  typeof printersIncludeDeletedQuerySchema
 >;

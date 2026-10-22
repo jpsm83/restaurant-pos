@@ -7,4 +7,6 @@ export interface ISalesPoint {
   selfOrdering: boolean;
   qrCode?: string;
   businessId: Types.ObjectId;
+  deleted?: boolean;
+  deletedAt?: Date;
 }

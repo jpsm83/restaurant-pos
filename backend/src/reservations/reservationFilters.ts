@@ -11,11 +11,13 @@ import { Types } from "mongoose";
 import Reservation from "../models/reservation.ts";
 import { badRequest, notFound } from "../errors/appError.ts";
 import type { ReservationStatus } from "restaurant-pos-packages/schemas/reservations";
+import { withSoftDeleteFilter } from "../models/softDelete.ts";
 
 export interface ReservationFilter {
   businessId?: Types.ObjectId;
   reservationStart?: { $gte?: Date; $lte?: Date };
   status?: ReservationStatus;
+  includeDeleted?: boolean;
 }
 
 /**
@@ -40,7 +42,10 @@ export function applyReservationDateRange(
 
 /** Finds reservations for `filter`, or throws a `notFound` problem when empty. */
 export async function listReservations(filter: ReservationFilter) {
-  const reservations = await Reservation.find(filter).sort({
+  const { includeDeleted = false, ...baseFilter } = filter;
+  const reservations = await Reservation.find(
+    withSoftDeleteFilter(baseFilter as unknown as Record<string, unknown>, includeDeleted),
+  ).sort({
     reservationStart: 1,
   });
 

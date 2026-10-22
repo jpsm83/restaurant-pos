@@ -18,4 +18,7 @@ export interface IUser {
   verificationToken?: string;
   resetPasswordToken?: string;
   resetPasswordExpires?: Date;
+  refreshSessionVersion?: number;
+  deleted?: boolean;
+  deletedAt?: Date;
 }

@@ -8,4 +8,6 @@ export interface INotification {
   customersRecipientsIds: Types.ObjectId[];
   businessId: Types.ObjectId;
   senderId?: Types.ObjectId;
+  deleted?: boolean;
+  deletedAt?: Date;
 }

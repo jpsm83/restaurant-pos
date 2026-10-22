@@ -22,6 +22,7 @@ import validateEmployeeDates from "../../employees/validateEmployeeDates.ts";
 import Employee from "../../models/employee.ts";
 import User from "../../models/user.ts";
 import Printer from "../../models/printer.ts";
+import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
 import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
 import * as enums from "restaurant-pos-packages/enums";
 import { badRequest, conflict, notFound } from "../../errors/appError.ts";
@@ -29,10 +30,12 @@ import { parseMultipart, type MultipartFile } from "../../schemas/multipart.ts";
 import {
   createEmployeeBodySchema,
   employeeByBusinessParamsSchema,
+  employeesIncludeDeletedQuerySchema,
   employeeIdParamsSchema,
   patchEmployeeBodySchema,
   type CreateEmployeeBody,
   type EmployeeByBusinessParams,
+  type EmployeesIncludeDeletedQuery,
   type EmployeeIdParams,
 } from "restaurant-pos-packages/schemas/employee";
 
@@ -94,25 +97,46 @@ function toNewEmployee(
 
 export const employeesRoutes: FastifyPluginAsync = async (app) => {
   // GET /employees - list all
-  app.get("/", async (_req, reply) => {
-    const employees = await Employee.find().lean();
+  app.get<{ Querystring: EmployeesIncludeDeletedQuery }>(
+    "/",
+    { schema: { querystring: employeesIncludeDeletedQuerySchema } },
+    async (req, reply) => {
+      const { includeDeleted = false } = req.query;
+      const employees = await Employee.find(
+        withSoftDeleteFilter({}, includeDeleted),
+      ).lean();
 
-    if (!employees?.length) {
-      throw notFound("No employees found!");
-    }
-    return reply.code(200).send(employees);
-  });
+      if (!employees?.length) {
+        throw notFound("No employees found!");
+      }
+      return reply.code(200).send(employees);
+    },
+  );
 
   // GET /employees/business/:businessId/management-contacts — profile contact dropdown (before generic /business/:id).
-  app.get<{ Params: EmployeeByBusinessParams }>(
+  app.get<{
+    Params: EmployeeByBusinessParams;
+    Querystring: EmployeesIncludeDeletedQuery;
+  }>(
     "/business/:businessId/management-contacts",
-    { schema: { params: employeeByBusinessParamsSchema } },
+    {
+      schema: {
+        params: employeeByBusinessParamsSchema,
+        querystring: employeesIncludeDeletedQuerySchema,
+      },
+    },
     async (req, reply) => {
       const { businessId } = req.params;
+      const { includeDeleted = false } = req.query;
 
       const employees = await Employee.find({
-        businessId: new Types.ObjectId(businessId),
-        active: { $ne: false },
+        ...withSoftDeleteFilter(
+          {
+            businessId: new Types.ObjectId(businessId),
+            active: { $ne: false },
+          },
+          includeDeleted,
+        ),
       }).lean();
 
       const managers = employees.filter((e) => {
@@ -129,9 +153,11 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
 
       const userIds = managers.map((m) => m.userId).filter(Boolean);
 
-      const users = await User.find({
-        _id: { $in: userIds.map((id) => new Types.ObjectId(String(id))) },
-      })
+      const users = await User.find(
+        withSoftDeleteFilter({
+          _id: { $in: userIds.map((id) => new Types.ObjectId(String(id))) },
+        }, includeDeleted),
+      )
         .select(
           "personalDetails.firstName personalDetails.lastName personalDetails.email",
         )
@@ -170,7 +196,9 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
 
     try {
       const user = await User.findOne({
-        "personalDetails.email": fields.userEmail,
+        ...withSoftDeleteFilter({
+          "personalDetails.email": fields.userEmail,
+        }),
       })
         .select("_id")
         .session(session)
@@ -181,8 +209,10 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
       }
 
       const employeeAlreadyExists = await Employee.exists({
-        businessId: fields.businessId,
-        userId: user._id,
+        ...withSoftDeleteFilter({
+          businessId: fields.businessId,
+          userId: user._id,
+        }),
       }).session(session);
 
       if (employeeAlreadyExists) {
@@ -224,13 +254,24 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
   });
 
   // GET /employees/:employeeId - get by ID
-  app.get<{ Params: EmployeeIdParams }>(
+  app.get<{
+    Params: EmployeeIdParams;
+    Querystring: EmployeesIncludeDeletedQuery;
+  }>(
     "/:employeeId",
-    { schema: { params: employeeIdParamsSchema } },
+    {
+      schema: {
+        params: employeeIdParamsSchema,
+        querystring: employeesIncludeDeletedQuerySchema,
+      },
+    },
     async (req, reply) => {
       const { employeeId } = req.params;
+      const { includeDeleted = false } = req.query;
 
-      const employee = await Employee.findById(employeeId).lean();
+      const employee = await Employee.findOne(
+        withSoftDeleteFilter({ _id: employeeId }, includeDeleted),
+      ).lean();
 
       if (!employee) {
         throw notFound("Employee not found!");
@@ -263,7 +304,9 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
       session.startTransaction();
 
       try {
-        const employee = (await Employee.findById(employeeId)
+        const employee = (await Employee.findOne(
+          withSoftDeleteFilter({ _id: employeeId }),
+        )
           .populate({
             path: "userId",
             select: "personalDetails.email",
@@ -330,7 +373,9 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
 
         if (fields.userEmail !== employee.userId?.personalDetails?.email) {
           const user = await User.findOne({
-            "personalDetails.email": fields.userEmail,
+            ...withSoftDeleteFilter({
+              "personalDetails.email": fields.userEmail,
+            }),
           })
             .select("_id")
             .session(session)
@@ -341,8 +386,10 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
           }
 
           const employeeAlreadyExists = await Employee.exists({
-            businessId: employee.businessId,
-            userId: user._id,
+            ...withSoftDeleteFilter({
+              businessId: employee.businessId,
+              userId: user._id,
+            }),
           }).session(session);
 
           if (employeeAlreadyExists) {
@@ -381,7 +428,7 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
         }
 
         const updatedEmployee = await Employee.findOneAndUpdate(
-          { _id: employeeId },
+          withSoftDeleteFilter({ _id: employeeId }),
           { $set: updateEmployeeObj },
           { returnDocument: "after", lean: true, session },
         );
@@ -439,6 +486,7 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
 
       try {
         const employee = await Employee.findById(employeeId)
+          .select("businessId deleted")
           .session(session)
           .lean<IEmployee>();
 
@@ -446,13 +494,16 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
           throw notFound("Employee not found!");
         }
 
-        const deletedEmployee = await Employee.findOneAndDelete(
-          { _id: employeeId },
-          { session },
-        );
+        if (employee.deleted) {
+          throw conflict("Employee already deleted!");
+        }
 
-        if (!deletedEmployee) {
-          throw notFound("Employee not found!");
+        const wasDeleted = await markAsDeletedById(
+          Employee as mongoose.Model<IEmployee & { deleted: boolean }>,
+          employeeId,
+        );
+        if (!wasDeleted) {
+          throw conflict("Employee already deleted!");
         }
 
         await Printer.updateMany(
@@ -510,14 +561,26 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
   );
 
   // GET /employees/business/:businessId - get by business
-  app.get<{ Params: EmployeeByBusinessParams }>(
+  app.get<{
+    Params: EmployeeByBusinessParams;
+    Querystring: EmployeesIncludeDeletedQuery;
+  }>(
     "/business/:businessId",
-    { schema: { params: employeeByBusinessParamsSchema } },
+    {
+      schema: {
+        params: employeeByBusinessParamsSchema,
+        querystring: employeesIncludeDeletedQuerySchema,
+      },
+    },
     async (req, reply) => {
       const { businessId } = req.params;
+      const { includeDeleted = false } = req.query;
 
       const employees = await Employee.find({
-        businessId: new Types.ObjectId(businessId),
+        ...withSoftDeleteFilter(
+          { businessId: new Types.ObjectId(businessId) },
+          includeDeleted,
+        ),
       }).lean();
 
       return reply.code(200).send(employees);

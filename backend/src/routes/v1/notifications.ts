@@ -21,10 +21,12 @@ import Business from "../../models/business.ts";
 import User from "../../models/user.ts";
 import notificationService from "../../communications/services/notificationService.ts";
 import { runTxnWithTransientRetry } from "../../mongo/runTxnWithTransientRetry.ts";
-import { badRequest, notFound } from "../../errors/appError.ts";
+import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
+import { badRequest, conflict, notFound } from "../../errors/appError.ts";
 import {
   createNotificationBodySchema,
   notificationIdParamsSchema,
+  notificationsIncludeDeletedQuerySchema,
   notificationsByBusinessParamsSchema,
   notificationsByUserParamsSchema,
   notificationsPaginationQuerySchema,
@@ -32,6 +34,7 @@ import {
   type CreateNotificationBody,
   type NotificationIdParams,
   type NotificationsByBusinessParams,
+  type NotificationsIncludeDeletedQuery,
   type NotificationsByUserParams,
   type NotificationsPaginationQuery,
   type UpdateNotificationBody,
@@ -93,9 +96,12 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
     { schema: { querystring: notificationsPaginationQuerySchema } },
     async (req, reply) => {
       const { page, limit, includeRecipients } = req.query;
+      const { includeDeleted = false } = req.query;
       const skip = (page - 1) * limit;
 
-      let notificationsQuery = Notification.find()
+      let notificationsQuery = Notification.find(
+        withSoftDeleteFilter({}, includeDeleted),
+      )
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -222,13 +228,24 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
   );
 
   // GET /notifications/:notificationId - get by ID
-  app.get<{ Params: NotificationIdParams }>(
+  app.get<{
+    Params: NotificationIdParams;
+    Querystring: NotificationsIncludeDeletedQuery;
+  }>(
     "/:notificationId",
-    { schema: { params: notificationIdParamsSchema } },
+    {
+      schema: {
+        params: notificationIdParamsSchema,
+        querystring: notificationsIncludeDeletedQuerySchema,
+      },
+    },
     async (req, reply) => {
       const { notificationId } = req.params;
+      const { includeDeleted = false } = req.query;
 
-      const notification = await Notification.findById(notificationId)
+      const notification = await Notification.findOne(
+        withSoftDeleteFilter({ _id: notificationId }, includeDeleted),
+      )
         .populate({
           path: "employeesRecipientsIds",
           select: "userId",
@@ -292,7 +309,9 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
           ? "employeesRecipientsIds"
           : "customersRecipientsIds";
 
-        const existingNotification = (await Notification.findById(notificationId)
+        const existingNotification = (await Notification.findOne(
+          withSoftDeleteFilter({ _id: notificationId }),
+        )
           .select(`${notificationField} message`)
           .lean()
           .session(session)) as {
@@ -387,7 +406,7 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
         const updatedNotification =
           Object.keys(updateNotification).length > 0
             ? await Notification.updateOne(
-                { _id: notificationId },
+                withSoftDeleteFilter({ _id: notificationId }),
                 { $set: updateNotification },
                 { session },
               )
@@ -489,26 +508,34 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
       session.startTransaction();
 
       try {
-        const notificationDeleted = (await Notification.findByIdAndDelete(
-          notificationId,
-          {
-            session,
-            select: "employeesRecipientsIds customersRecipientsIds",
-            lean: true,
-          },
-        )) as {
+        const notification = (await Notification.findById(notificationId)
+          .select("employeesRecipientsIds customersRecipientsIds deleted")
+          .session(session)
+          .lean()) as {
           employeesRecipientsIds?: Types.ObjectId[];
           customersRecipientsIds?: Types.ObjectId[];
+          deleted?: boolean;
         } | null;
 
-        if (!notificationDeleted) {
+        if (!notification) {
           throw notFound("Notification not found!");
+        }
+        if (notification.deleted) {
+          throw conflict("Notification already deleted!");
+        }
+
+        const wasDeleted = await markAsDeletedById(
+          Notification as mongoose.Model<{ deleted: boolean }>,
+          notificationId,
+        );
+        if (!wasDeleted) {
+          throw conflict("Notification already deleted!");
         }
 
         const isEmployeeNotification =
-          !!notificationDeleted.employeesRecipientsIds;
+          !!notification.employeesRecipientsIds;
         const recipientIds =
-          notificationDeleted[
+          notification[
             isEmployeeNotification
               ? "employeesRecipientsIds"
               : "customersRecipientsIds"
@@ -588,11 +615,15 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
     },
     async (req, reply) => {
       const { businessId } = req.params;
-      const { page, limit, includeRecipients } = req.query;
+      const { page, limit, includeRecipients, includeDeleted = false } =
+        req.query;
       const skip = (page - 1) * limit;
 
       let notificationsQuery = Notification.find({
-        businessId: new Types.ObjectId(businessId),
+        ...withSoftDeleteFilter(
+          { businessId: new Types.ObjectId(businessId) },
+          includeDeleted,
+        ),
       })
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -640,7 +671,8 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
     },
     async (req, reply) => {
       const { userId } = req.params;
-      const { page, limit, includeRecipients } = req.query;
+      const { page, limit, includeRecipients, includeDeleted = false } =
+        req.query;
       const skip = (page - 1) * limit;
 
       const user = await User.findById(userId)
@@ -655,9 +687,9 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
         return reply.code(200).send([]);
       }
 
-      let notificationsQuery = Notification.find({
-        _id: { $in: notificationIds },
-      })
+      let notificationsQuery = Notification.find(
+        withSoftDeleteFilter({ _id: { $in: notificationIds } }, includeDeleted),
+      )
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)

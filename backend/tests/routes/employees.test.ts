@@ -791,9 +791,9 @@ describe("Employees Routes", () => {
       }
       expect(response.statusCode).toBe(200);
 
-      // Verify employee was deleted
-      const deleted = await Employee.findById(employee?._id);
-      expect(deleted).toBeNull();
+      const deleted = await Employee.findById(employee?._id).lean();
+      expect(deleted).not.toBeNull();
+      expect(deleted?.deleted).toBe(true);
 
       // Verify user's employeeDetails was cleared
       const updatedUser = await User.findById(userId).lean();

@@ -24,4 +24,6 @@ export interface IPurchase {
   purchaseInventoryItems?: IPurchaseItem[];
   oneTimePurchase?: object;
   comment?: string;
+  deleted?: boolean;
+  deletedAt?: Date;
 }

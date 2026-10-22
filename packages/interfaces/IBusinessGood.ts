@@ -29,4 +29,6 @@ export interface IBusinessGood {
   allergens?: string[];
   imagesUrl?: string[];
   deliveryTime?: number;
+  deleted?: boolean;
+  deletedAt?: Date;
 }

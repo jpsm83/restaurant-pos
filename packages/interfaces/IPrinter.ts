@@ -8,6 +8,7 @@ export interface IConfigurationSetupToPrintOrders {
 }
 
 export interface IPrinter {
+    _id?: Types.ObjectId;
     printerAlias: string;
     description?: string;
     printerStatus?: string;
@@ -17,4 +18,6 @@ export interface IPrinter {
     backupPrinterId?: Types.ObjectId;
     employeesAllowedToPrintDataIds?: Types.ObjectId[];
     configurationSetupToPrintOrders?: IConfigurationSetupToPrintOrders[];
+    deleted?: boolean;
+    deletedAt?: Date;
 }

@@ -445,8 +445,9 @@ describe("SalesPoints Routes", () => {
       const body = JSON.parse(response.body);
       expect(body.message).toBe("Sales point deleted successfully");
 
-      const deleted = await SalesPoint.findById(salesPoint._id);
-      expect(deleted).toBeNull();
+      const deleted = await SalesPoint.findById(salesPoint._id).lean();
+      expect(deleted?.deleted).toBe(true);
+      expect(deleted?.deletedAt).toBeDefined();
     });
   });
 
@@ -542,9 +543,10 @@ describe("SalesPoints Routes", () => {
       const body = JSON.parse(deleteResponse.body);
       expect(body.message).toBe("Sales point deleted successfully");
 
-      // Verify it was deleted from database
-      const deleted = await SalesPoint.findById(salesPoint?._id);
-      expect(deleted).toBeNull();
+      // Verify it was soft-deleted in database
+      const deleted = await SalesPoint.findById(salesPoint?._id).lean();
+      expect(deleted?.deleted).toBe(true);
+      expect(deleted?.deletedAt).toBeDefined();
     });
   });
 });

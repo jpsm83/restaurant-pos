@@ -17,6 +17,7 @@ import checkPrinterConnection from "../../printers/checkPrinterConnection.ts";
 import Printer from "../../models/printer.ts";
 import Employee from "../../models/employee.ts";
 import SalesPoint from "../../models/salesPoint.ts";
+import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
 import {
   badRequest,
   conflict,
@@ -29,12 +30,14 @@ import {
   createPrinterBodySchema,
   printerIdParamsSchema,
   printersByBusinessParamsSchema,
+  printersIncludeDeletedQuerySchema,
   updatePrinterBodySchema,
   type ConfigurationSetupBody,
   type ConfigurationSetupParams,
   type CreatePrinterBody,
   type PrinterIdParams,
   type PrintersByBusinessParams,
+  type PrintersIncludeDeletedQuery,
   type UpdatePrinterBody,
 } from "../../schemas/printers.ts";
 
@@ -90,14 +93,23 @@ const resolvePrinterStatus = async (
 
 export const printersRoutes: FastifyPluginAsync = async (app) => {
   // GET /printers - list all
-  app.get("/", async (_req, reply) => {
-    const printers = await Printer.find().populate(PRINTER_POPULATE).lean();
+  app.get<{ Querystring: PrintersIncludeDeletedQuery }>(
+    "/",
+    { schema: { querystring: printersIncludeDeletedQuerySchema } },
+    async (req, reply) => {
+      const { includeDeleted = false } = req.query;
+      const printers = await Printer.find(
+        withSoftDeleteFilter({}, includeDeleted),
+      )
+        .populate(PRINTER_POPULATE)
+        .lean();
 
-    if (!printers.length) {
-      throw notFound("No printers found!");
-    }
-    return reply.code(200).send(printers);
-  });
+      if (!printers.length) {
+        throw notFound("No printers found!");
+      }
+      return reply.code(200).send(printers);
+    },
+  );
 
   // POST /printers - create
   app.post<{ Body: CreatePrinterBody }>(
@@ -114,10 +126,10 @@ export const printersRoutes: FastifyPluginAsync = async (app) => {
         employeesAllowedToPrintDataIds,
       } = req.body;
 
-      const duplicatePrinter = await Printer.findOne({
+      const duplicatePrinter = await Printer.findOne(withSoftDeleteFilter({
         businessId,
         $or: [{ printerAlias }, { ipAddress }],
-      });
+      }));
 
       if (duplicatePrinter) {
         throw conflict("Printer already exists with printerAlias or ipAddress!");
@@ -143,13 +155,24 @@ export const printersRoutes: FastifyPluginAsync = async (app) => {
   );
 
   // GET /printers/:printerId - get by ID
-  app.get<{ Params: PrinterIdParams }>(
+  app.get<{
+    Params: PrinterIdParams;
+    Querystring: PrintersIncludeDeletedQuery;
+  }>(
     "/:printerId",
-    { schema: { params: printerIdParamsSchema } },
+    {
+      schema: {
+        params: printerIdParamsSchema,
+        querystring: printersIncludeDeletedQuerySchema,
+      },
+    },
     async (req, reply) => {
       const { printerId } = req.params;
+      const { includeDeleted = false } = req.query;
 
-      const printer = await Printer.findById(printerId)
+      const printer = await Printer.findOne(
+        withSoftDeleteFilter({ _id: printerId }, includeDeleted),
+      )
         .populate(PRINTER_POPULATE)
         .lean();
 
@@ -180,7 +203,9 @@ export const printersRoutes: FastifyPluginAsync = async (app) => {
         employeesAllowedToPrintDataIds,
       } = req.body;
 
-      const printer = (await Printer.findById(printerId)
+      const printer = (await Printer.findOne(
+        withSoftDeleteFilter({ _id: printerId }),
+      )
         .select("businessId")
         .lean()) as unknown as IPrinter | null;
 
@@ -200,10 +225,12 @@ export const printersRoutes: FastifyPluginAsync = async (app) => {
 
       const conflictingPrinter = conflictConditions.length
         ? ((await Printer.findOne({
-            _id: { $ne: printerId },
-            businessId: printer.businessId,
-            $or: conflictConditions,
-          }).lean()) as unknown as IPrinter | null)
+              ...withSoftDeleteFilter({
+                _id: { $ne: printerId },
+                businessId: printer.businessId,
+                $or: conflictConditions,
+              }),
+            }).lean()) as unknown as IPrinter | null)
         : null;
 
       if (conflictingPrinter) {
@@ -229,8 +256,8 @@ export const printersRoutes: FastifyPluginAsync = async (app) => {
           employeesAllowedToPrintDataIds.map((id) => new Types.ObjectId(id));
       if (printerStatus) updatePrinterObj.printerStatus = printerStatus;
 
-      const updatedPrinter = await Printer.findByIdAndUpdate(
-        printerId,
+      const updatedPrinter = await Printer.findOneAndUpdate(
+        withSoftDeleteFilter({ _id: printerId }),
         { $set: updatePrinterObj },
         { returnDocument: "after", lean: true },
       );
@@ -254,23 +281,27 @@ export const printersRoutes: FastifyPluginAsync = async (app) => {
       session.startTransaction();
 
       try {
-        const result = await Printer.deleteOne(
-          { _id: printerId },
-          { session },
-        );
+        const printer = await Printer.findById(printerId)
+          .select("deleted")
+          .session(session)
+          .lean();
 
-        if (result.deletedCount === 0) {
+        if (!printer) {
           await session.abortTransaction();
           throw notFound("Printer not found!");
         }
+        if (printer.deleted) {
+          await session.abortTransaction();
+          throw conflict("Printer already deleted!");
+        }
 
         const isBackupPrinter = await Printer.exists({
-          backupPrinterId: printerId,
+          ...withSoftDeleteFilter({ backupPrinterId: printerId }),
         }).session(session);
 
         if (isBackupPrinter) {
           const updatedPrinter = await Printer.updateMany(
-            { backupPrinterId: printerId },
+            withSoftDeleteFilter({ backupPrinterId: printerId }),
             { $unset: { backupPrinterId: "" } },
             { session },
           );
@@ -279,6 +310,15 @@ export const printersRoutes: FastifyPluginAsync = async (app) => {
             await session.abortTransaction();
             throw internal("Failed to update the backup printer!");
           }
+        }
+
+        const wasDeleted = await markAsDeletedById(
+          Printer as mongoose.Model<IPrinter & { deleted: boolean }>,
+          printerId,
+        );
+        if (!wasDeleted) {
+          await session.abortTransaction();
+          throw conflict("Printer already deleted!");
         }
 
         await session.commitTransaction();
@@ -323,7 +363,7 @@ export const printersRoutes: FastifyPluginAsync = async (app) => {
       }
 
       const existingCombination = await Printer.findOne({
-        _id: printerId,
+        ...withSoftDeleteFilter({ _id: printerId }),
         configurationSetupToPrintOrders: {
           $elemMatch: {
             mainCategory,
@@ -343,7 +383,7 @@ export const printersRoutes: FastifyPluginAsync = async (app) => {
       }
 
       const updatedPrinter = await Printer.findOneAndUpdate(
-        { _id: printerId },
+        withSoftDeleteFilter({ _id: printerId }),
         {
           $push: {
             configurationSetupToPrintOrders: {
@@ -376,7 +416,7 @@ export const printersRoutes: FastifyPluginAsync = async (app) => {
       const { printerId, configId } = req.params;
 
       const updatedPrinter = await Printer.findOneAndUpdate(
-        { _id: printerId },
+        withSoftDeleteFilter({ _id: printerId }),
         {
           $pull: {
             configurationSetupToPrintOrders: { _id: configId },
@@ -420,7 +460,7 @@ export const printersRoutes: FastifyPluginAsync = async (app) => {
       );
 
       const existingCombination = await Printer.exists({
-        _id: printerId,
+        ...withSoftDeleteFilter({ _id: printerId }),
         configurationSetupToPrintOrders: {
           $elemMatch: {
             _id: { $ne: configId },
@@ -438,7 +478,7 @@ export const printersRoutes: FastifyPluginAsync = async (app) => {
 
       const updatedPrinter = await Printer.findOneAndUpdate(
         {
-          _id: printerId,
+          ...withSoftDeleteFilter({ _id: printerId }),
           "configurationSetupToPrintOrders._id": configId,
         },
         {
@@ -465,13 +505,24 @@ export const printersRoutes: FastifyPluginAsync = async (app) => {
   );
 
   // GET /printers/business/:businessId - get by business
-  app.get<{ Params: PrintersByBusinessParams }>(
+  app.get<{
+    Params: PrintersByBusinessParams;
+    Querystring: PrintersIncludeDeletedQuery;
+  }>(
     "/business/:businessId",
-    { schema: { params: printersByBusinessParamsSchema } },
+    {
+      schema: {
+        params: printersByBusinessParamsSchema,
+        querystring: printersIncludeDeletedQuerySchema,
+      },
+    },
     async (req, reply) => {
       const { businessId } = req.params;
+      const { includeDeleted = false } = req.query;
 
-      const printers = await Printer.find({ businessId })
+      const printers = await Printer.find(
+        withSoftDeleteFilter({ businessId }, includeDeleted),
+      )
         .populate(PRINTER_POPULATE)
         .lean();
 

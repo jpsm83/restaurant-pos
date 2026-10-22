@@ -124,6 +124,11 @@ export const supplierGoodBySupplierParamsSchema = z.strictObject({
   supplierId: objectIdSchema,
 });
 
+/** Optional query for supplier-good reads: include soft-deleted records explicitly. */
+export const supplierGoodsIncludeDeletedQuerySchema = z.strictObject({
+  includeDeleted: z.preprocess(emptyToUndefined, coercedBooleanSchema.optional()),
+});
+
 export type CreateSupplierGoodBody = z.infer<
   typeof createSupplierGoodBodySchema
 >;
@@ -133,4 +138,7 @@ export type UpdateSupplierGoodBody = z.infer<
 export type SupplierGoodIdParams = z.infer<typeof supplierGoodIdParamsSchema>;
 export type SupplierGoodBySupplierParams = z.infer<
   typeof supplierGoodBySupplierParamsSchema
+>;
+export type SupplierGoodsIncludeDeletedQuery = z.infer<
+  typeof supplierGoodsIncludeDeletedQuerySchema
 >;

@@ -30,4 +30,6 @@ export interface IEmployee {
   comments?: string;
   documentsUrl?: string[];
   notifications?: INotificationEntry[];
+  deleted?: boolean;
+  deletedAt?: Date;
 }

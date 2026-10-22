@@ -1,5 +1,6 @@
 import mongoose, { Schema, model } from "mongoose";
 import * as enums from "restaurant-pos-packages/enums";
+import { softDeleteSchemaFields } from "./softDelete.ts";
 
 const {
   mainCategoriesEnums,
@@ -78,6 +79,7 @@ const supplierGoodSchema = new Schema(
     // this will need information of orders to do so
     // ONLY FOR FOOD AND BEVERAGE GOODS
     // LOGIC HAVE TO BE CREATE IN THE ORDER CONTROLLER
+    ...softDeleteSchemaFields,
   },
   {
     timestamps: true,

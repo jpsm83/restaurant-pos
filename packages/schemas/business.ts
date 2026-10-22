@@ -250,6 +250,12 @@ export const discoverBusinessesQuerySchema = z.strictObject({
         value === undefined ? undefined : Math.min(Math.max(value, 1), 100),
       ),
   ),
+  includeDeleted: z.preprocess(emptyToUndefined, coercedBooleanSchema.optional()),
+});
+
+/** Optional query for single-business reads. */
+export const businessIncludeDeletedQuerySchema = z.strictObject({
+  includeDeleted: z.preprocess(emptyToUndefined, coercedBooleanSchema.optional()),
 });
 
 export type BusinessAddress = z.infer<typeof businessAddressSchema>;
@@ -262,4 +268,7 @@ export type UpdateBusinessBody = z.infer<typeof updateBusinessBodySchema>;
 export type BusinessIdParams = z.infer<typeof businessIdParamsSchema>;
 export type DiscoverBusinessesQuery = z.infer<
   typeof discoverBusinessesQuerySchema
+>;
+export type BusinessIncludeDeletedQuery = z.infer<
+  typeof businessIncludeDeletedQuerySchema
 >;

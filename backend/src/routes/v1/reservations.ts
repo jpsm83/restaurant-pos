@@ -33,6 +33,7 @@ import Employee from "../../models/employee.ts";
 import SalesPoint from "../../models/salesPoint.ts";
 import SalesInstance from "../../models/salesInstance.ts";
 import DailySalesReport from "../../models/dailySalesReport.ts";
+import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
 import { createAuthHook } from "../../auth/middleware.ts";
 import {
   badRequest,
@@ -44,12 +45,14 @@ import {
 import {
   createReservationBodySchema,
   reservationIdParamsSchema,
+  reservationsIncludeDeletedQuerySchema,
   reservationsByBusinessParamsSchema,
   reservationsByBusinessQuerySchema,
   reservationsQuerySchema,
   updateReservationBodySchema,
   type CreateReservationBody,
   type ReservationIdParams,
+  type ReservationsIncludeDeletedQuery,
   type ReservationStatus,
   type ReservationsByBusinessParams,
   type ReservationsByBusinessQuery,
@@ -94,6 +97,7 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
     { schema: { querystring: reservationsQuerySchema } },
     async (req, reply) => {
       const { businessId, startDate, endDate, status } = req.query;
+      const { includeDeleted = false } = req.query;
 
       const filter: ReservationFilter = {};
 
@@ -103,6 +107,7 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
       if (status) {
         filter.status = status;
       }
+      filter.includeDeleted = includeDeleted;
 
       applyReservationDateRange(filter, startDate, endDate);
 
@@ -196,13 +201,24 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
   );
 
   // GET /reservations/:reservationId - get by ID
-  app.get<{ Params: ReservationIdParams }>(
+  app.get<{
+    Params: ReservationIdParams;
+    Querystring: ReservationsIncludeDeletedQuery;
+  }>(
     "/:reservationId",
-    { schema: { params: reservationIdParamsSchema } },
+    {
+      schema: {
+        params: reservationIdParamsSchema,
+        querystring: reservationsIncludeDeletedQuerySchema,
+      },
+    },
     async (req, reply) => {
       const { reservationId } = req.params;
+      const { includeDeleted = false } = req.query;
 
-      const reservation = await Reservation.findById(reservationId).lean();
+      const reservation = await Reservation.findOne(
+        withSoftDeleteFilter({ _id: reservationId }, includeDeleted),
+      ).lean();
 
       if (!reservation) {
         throw notFound("Reservation not found!");
@@ -243,7 +259,9 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
       session.startTransaction();
 
       try {
-        const reservation = (await Reservation.findById(reservationId)
+        const reservation = (await Reservation.findOne(
+          withSoftDeleteFilter({ _id: reservationId }),
+        )
           .session(session)
           .lean()) as unknown as (IReservation & { status?: string }) | null;
 
@@ -397,10 +415,12 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
             throw badRequest("salesPointId is required to seat a reservation!");
           }
 
-          const dailySalesReport = (await DailySalesReport.findOne({
-            isDailyReportOpen: true,
-            businessId: reservation.businessId,
-          })
+          const dailySalesReport = (await DailySalesReport.findOne(
+            withSoftDeleteFilter({
+              isDailyReportOpen: true,
+              businessId: reservation.businessId,
+            }),
+          )
             .select("dailyReferenceNumber")
             .session(session)
             .lean()) as unknown as IDailySalesReport | null;
@@ -456,7 +476,7 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
         }
 
         const result = await Reservation.updateOne(
-          { _id: reservationId },
+          withSoftDeleteFilter({ _id: reservationId }),
           { $set: updated },
           { session },
         );
@@ -516,11 +536,22 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
     { schema: { params: reservationIdParamsSchema } },
     async (req, reply) => {
       const { reservationId } = req.params;
-
-      const deleted = await Reservation.deleteOne({ _id: reservationId });
-
-      if (deleted.deletedCount === 0) {
+      const reservation = await Reservation.findById(reservationId)
+        .select("deleted")
+        .lean();
+      if (!reservation) {
         throw notFound("Reservation not found!");
+      }
+      if (reservation.deleted) {
+        throw conflict("Reservation already deleted!");
+      }
+
+      const wasDeleted = await markAsDeletedById(
+        Reservation as mongoose.Model<IReservation & { deleted: boolean }>,
+        reservationId,
+      );
+      if (!wasDeleted) {
+        throw conflict("Reservation already deleted!");
       }
       return reply.code(200).send({ message: "Reservation deleted!" });
     },
@@ -540,13 +571,14 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
     },
     async (req, reply) => {
       const { businessId } = req.params;
-      const { startDate, endDate, status } = req.query;
+      const { startDate, endDate, status, includeDeleted = false } = req.query;
 
       const filter: ReservationFilter = {
         businessId: new Types.ObjectId(businessId),
       };
 
       if (status) filter.status = status;
+      filter.includeDeleted = includeDeleted;
 
       applyReservationDateRange(filter, startDate, endDate);
 

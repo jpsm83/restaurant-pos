@@ -1,5 +1,6 @@
 import mongoose, { Schema, model } from "mongoose";
 import * as enums from "restaurant-pos-packages/enums";
+import { softDeleteSchemaFields } from "./softDelete.ts";
 
 const { mainCategoriesEnums, printerStatusEnums } = enums;
 
@@ -48,7 +49,6 @@ const printerSchema = new Schema(
     ipAddress: {
       type: String,
       required: [true, "Ip address is required!"],
-      unique: true,
     }, // IP address of the printer
     port: { type: Number, required: [true, "Port is required!"] }, // port of the printer
     businessId: {
@@ -67,11 +67,21 @@ const printerSchema = new Schema(
       type: [configurationSetupToPrintOrdersSchema],
       default: undefined,
     }, // array of objects that will dictate what the printer will print and from wich sales point, it can be multiple variations of prints, thats why it is an array
+    ...softDeleteSchemaFields,
   },
   {
     timestamps: true,
     trim: true,
   }
+);
+
+printerSchema.index(
+  { businessId: 1, printerAlias: 1 },
+  { unique: true, partialFilterExpression: { deleted: { $ne: true } } },
+);
+printerSchema.index(
+  { businessId: 1, ipAddress: 1 },
+  { unique: true, partialFilterExpression: { deleted: { $ne: true } } },
 );
 
 const Printer = mongoose.models.Printer || model("Printer", printerSchema);

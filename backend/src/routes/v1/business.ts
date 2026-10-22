@@ -17,14 +17,10 @@ import Business from "../../models/business.ts";
 import BusinessGood from "../../models/businessGood.ts";
 import DailySalesReport from "../../models/dailySalesReport.ts";
 import Employee from "../../models/employee.ts";
-import Inventory from "../../models/inventory.ts";
-import MonthlyBusinessReport from "../../models/monthlyBusinessReport.ts";
 import Notification from "../../models/notification.ts";
-import Order from "../../models/order.ts";
 import Printer from "../../models/printer.ts";
 import Promotion from "../../models/promotion.ts";
 import Purchase from "../../models/purchase.ts";
-import Rating from "../../models/rating.ts";
 import Reservation from "../../models/reservation.ts";
 import SalesInstance from "../../models/salesInstance.ts";
 import SalesPoint from "../../models/salesPoint.ts";
@@ -32,6 +28,7 @@ import Schedule from "../../models/schedule.ts";
 import SupplierGood from "../../models/supplierGood.ts";
 import Supplier from "../../models/supplier.ts";
 import User from "../../models/user.ts";
+import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
 import {
   createAuthHook,
   requireBusinessIdMatchesSessionHook,
@@ -57,11 +54,16 @@ import {
   businessIdParamsSchema,
   createBusinessBodySchema,
   discoverBusinessesQuerySchema,
+  businessIncludeDeletedQuerySchema,
   updateBusinessBodySchema,
+  type BusinessIncludeDeletedQuery,
   type BusinessIdParams,
   type DiscoverBusinessesQuery,
 } from "restaurant-pos-packages/schemas/business";
-import type { IReportingConfig } from "restaurant-pos-packages/interfaces/IBusiness";
+import type {
+  IBusiness,
+  IReportingConfig,
+} from "restaurant-pos-packages/interfaces/IBusiness";
 import { foodSubCategoryEnums } from "restaurant-pos-packages/enums";
 import {
   resolveTimezoneFromAddress,
@@ -168,7 +170,9 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
       let businesses: unknown[];
 
       if (!hasFilters) {
-        businesses = await Business.find()
+        businesses = await Business.find(
+          withSoftDeleteFilter({}, query.includeDeleted ?? false),
+        )
           .select(BUSINESS_PUBLIC_LEAN_SELECT)
           .lean();
       } else {
@@ -198,7 +202,9 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
 
         const limit = query.limit ?? DEFAULT_DISCOVERY_LIMIT;
 
-        businesses = await Business.find(filter)
+        businesses = await Business.find(
+          withSoftDeleteFilter(filter as Record<string, unknown>, query.includeDeleted ?? false),
+        )
           .select(BUSINESS_PUBLIC_LEAN_SELECT)
           .limit(limit)
           .lean();
@@ -243,17 +249,26 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
     },
   );
 
-  app.get<{ Params: BusinessIdParams }>(
+  app.get<{
+    Params: BusinessIdParams;
+    Querystring: BusinessIncludeDeletedQuery;
+  }>(
     "/:businessId",
     {
       preValidation: [createAuthHook(app)],
       preHandler: [requireBusinessIdMatchesSessionHook()],
-      schema: { params: businessIdParamsSchema },
+      schema: {
+        params: businessIdParamsSchema,
+        querystring: businessIncludeDeletedQuerySchema,
+      },
     },
     async (req, reply) => {
       const { businessId } = req.params;
+      const { includeDeleted = false } = req.query;
 
-      const business = await Business.findById(businessId)
+      const business = await Business.findOne(
+        withSoftDeleteFilter({ _id: businessId }, includeDeleted),
+      )
         .select(BUSINESS_PUBLIC_LEAN_SELECT)
         .lean();
 
@@ -279,13 +294,15 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
   app.post("/", async (req, reply) => {
     const { fields, files } = await parseMultipart(req, createBusinessBodySchema);
 
-    const duplicateBusiness = await Business.exists({
-      $or: [
-        { legalName: fields.legalName },
-        { email: fields.email },
-        { taxNumber: fields.taxNumber },
-      ],
-    });
+    const duplicateBusiness = await Business.exists(
+      withSoftDeleteFilter({
+        $or: [
+          { legalName: fields.legalName },
+          { email: fields.email },
+          { taxNumber: fields.taxNumber },
+        ],
+      }),
+    );
     if (duplicateBusiness) {
       throw conflict(
         `Business ${fields.legalName}, ${fields.email} or ${fields.taxNumber} already exists!`,
@@ -403,17 +420,21 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
       );
 
       const duplicateBusiness = await Business.exists({
-        _id: { $ne: businessId },
-        $or: [
-          { legalName: fields.legalName },
-          { taxNumber: fields.taxNumber },
-        ],
+        ...withSoftDeleteFilter({
+          _id: { $ne: businessId },
+          $or: [
+            { legalName: fields.legalName },
+            { taxNumber: fields.taxNumber },
+          ],
+        }),
       });
       if (duplicateBusiness) {
         throw conflict("Business legal name or tax number already exists!");
       }
 
-      const business = await Business.findById(businessId).lean();
+      const business = await Business.findOne(
+        withSoftDeleteFilter({ _id: businessId }),
+      ).lean();
       if (!business) {
         throw notFound("Business not found!");
       }
@@ -581,8 +602,8 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
         updateOps.$unset = { timezone: 1 };
       }
 
-      const updatedBusiness = await Business.findByIdAndUpdate(
-        businessId,
+      const updatedBusiness = await Business.findOneAndUpdate(
+        withSoftDeleteFilter({ _id: businessId }),
         updateOps,
         { returnDocument: "after", lean: true },
       );
@@ -681,26 +702,41 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
       session.startTransaction();
 
       try {
-        // Sequential writes: MongoDB does not support concurrent use of one session.
-        await Business.deleteOne({ _id: businessId }, { session });
-        await BusinessGood.deleteMany({ businessId }, { session });
-        await DailySalesReport.deleteMany({ businessId }, { session });
-        await Employee.deleteMany({ businessId }, { session });
-        await Inventory.deleteMany({ businessId }, { session });
-        await MonthlyBusinessReport.deleteMany({ businessId }, { session });
-        await Notification.deleteMany({ businessId }, { session });
-        await Order.deleteMany({ businessId }, { session });
-        await Printer.deleteMany({ businessId }, { session });
-        await Promotion.deleteMany({ businessId }, { session });
-        await Purchase.deleteMany({ businessId }, { session });
-        await Rating.deleteMany({ businessId }, { session });
-        await Reservation.deleteMany({ businessId }, { session });
-        await SalesInstance.deleteMany({ businessId }, { session });
-        await SalesPoint.deleteMany({ businessId }, { session });
-        await Schedule.deleteMany({ businessId }, { session });
-        await SupplierGood.deleteMany({ businessId }, { session });
-        await Supplier.deleteMany({ businessId }, { session });
-        await User.deleteMany({ businessId }, { session });
+        const business = await Business.findById(businessId)
+          .select("deleted")
+          .session(session)
+          .lean();
+        if (!business) {
+          throw notFound("Business not found!");
+        }
+        if (business.deleted) {
+          throw conflict("Business already deleted!");
+        }
+
+        const wasDeleted = await markAsDeletedById(
+          Business as mongoose.Model<IBusiness & { deleted: boolean }>,
+          businessId,
+        );
+        if (!wasDeleted) {
+          throw conflict("Business already deleted!");
+        }
+
+        // Soft-delete directly-owned aggregates/entities so tenant data is hidden by default.
+        const softDeleteUpdate = { $set: { deleted: true, deletedAt: new Date() } };
+        await BusinessGood.updateMany(withSoftDeleteFilter({ businessId }), softDeleteUpdate, { session });
+        await DailySalesReport.updateMany(withSoftDeleteFilter({ businessId }), softDeleteUpdate, { session });
+        await Employee.updateMany(withSoftDeleteFilter({ businessId }), softDeleteUpdate, { session });
+        await Notification.updateMany(withSoftDeleteFilter({ businessId }), softDeleteUpdate, { session });
+        await Printer.updateMany(withSoftDeleteFilter({ businessId }), softDeleteUpdate, { session });
+        await Promotion.updateMany(withSoftDeleteFilter({ businessId }), softDeleteUpdate, { session });
+        await Purchase.updateMany(withSoftDeleteFilter({ businessId }), softDeleteUpdate, { session });
+        await Reservation.updateMany(withSoftDeleteFilter({ businessId }), softDeleteUpdate, { session });
+        await SalesInstance.updateMany(withSoftDeleteFilter({ businessId }), softDeleteUpdate, { session });
+        await SalesPoint.updateMany(withSoftDeleteFilter({ businessId }), softDeleteUpdate, { session });
+        await Schedule.updateMany(withSoftDeleteFilter({ businessId }), softDeleteUpdate, { session });
+        await SupplierGood.updateMany(withSoftDeleteFilter({ businessId }), softDeleteUpdate, { session });
+        await Supplier.updateMany(withSoftDeleteFilter({ businessId }), softDeleteUpdate, { session });
+        await User.updateMany(withSoftDeleteFilter({ businessId }), softDeleteUpdate, { session });
 
         await session.commitTransaction();
       } catch (error) {

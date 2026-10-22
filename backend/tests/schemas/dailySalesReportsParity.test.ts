@@ -77,6 +77,7 @@ describe("dailySalesReports DTO ↔ model parity", () => {
       "dailyReferenceNumberFrom",
       "dailyReferenceNumberTo",
       "endDate",
+      "includeDeleted",
       "startDate",
     ]);
     // The date filters bound the model's `createdAt` timestamp, which the client

@@ -5,6 +5,7 @@ import {
   reservationIdParamsSchema,
   reservationsByBusinessParamsSchema,
   reservationsByBusinessQuerySchema,
+  reservationsIncludeDeletedQuerySchema,
   reservationsQuerySchema,
   updateReservationBodySchema,
 } from "restaurant-pos-packages/schemas/reservations";
@@ -21,4 +22,5 @@ export const reservationDtoSchemas: Record<string, z.ZodObject> = {
   reservationsQuerySchema,
   reservationsByBusinessParamsSchema,
   reservationsByBusinessQuerySchema,
+  reservationsIncludeDeletedQuerySchema,
 };

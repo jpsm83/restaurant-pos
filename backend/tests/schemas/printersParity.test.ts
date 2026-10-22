@@ -9,6 +9,7 @@ import {
   createPrinterBodySchema,
   mainCategorySchema,
   printerIdParamsSchema,
+  printersIncludeDeletedQuerySchema,
   printersByBusinessParamsSchema,
   updatePrinterBodySchema,
 } from "../../src/schemas/printers.ts";
@@ -35,6 +36,7 @@ const allDtos: Record<string, z.ZodObject> = {
   configurationSetupParamsSchema,
   configurationSetupBodySchema,
   printersByBusinessParamsSchema,
+  printersIncludeDeletedQuerySchema,
 };
 
 describe("printers DTO ↔ model parity", () => {
@@ -80,7 +82,13 @@ describe("printers DTO ↔ model parity", () => {
   });
 
   it("server-owned fields are owned by Printer but accepted by no DTO", () => {
-    for (const field of ["createdAt", "updatedAt", "printerStatus"]) {
+    for (const field of [
+      "createdAt",
+      "updatedAt",
+      "printerStatus",
+      "deleted",
+      "deletedAt",
+    ]) {
       expect(printerOwns(field), `${field} should be owned by Printer`).toBe(true);
       for (const [name, schema] of Object.entries(allDtos)) {
         expect(

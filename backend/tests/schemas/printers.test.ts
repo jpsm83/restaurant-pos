@@ -8,6 +8,7 @@ import {
   createPrinterBodySchema,
   mainCategorySchema,
   printerIdParamsSchema,
+  printersIncludeDeletedQuerySchema,
   printersByBusinessParamsSchema,
   updatePrinterBodySchema,
 } from "../../src/schemas/printers.ts";
@@ -242,6 +243,7 @@ describe("server-owned fields are excluded from every printers DTO", () => {
     configurationSetupParamsSchema,
     configurationSetupBodySchema,
     printersByBusinessParamsSchema,
+    printersIncludeDeletedQuerySchema,
   };
 
   it.each(Object.entries(dtoSchemas))(

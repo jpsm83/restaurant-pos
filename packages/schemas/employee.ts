@@ -114,9 +114,17 @@ export const employeeByBusinessParamsSchema = z.strictObject({
   businessId: objectIdSchema,
 });
 
+/** Optional query for employee reads: include soft-deleted records explicitly. */
+export const employeesIncludeDeletedQuerySchema = z.strictObject({
+  includeDeleted: z.preprocess(emptyToUndefined, coercedBooleanSchema.optional()),
+});
+
 export type CreateEmployeeBody = z.infer<typeof createEmployeeBodySchema>;
 export type UpdateEmployeeRecordBody = z.infer<typeof patchEmployeeBodySchema>;
 export type EmployeeIdParams = z.infer<typeof employeeIdParamsSchema>;
 export type EmployeeByBusinessParams = z.infer<
   typeof employeeByBusinessParamsSchema
+>;
+export type EmployeesIncludeDeletedQuery = z.infer<
+  typeof employeesIncludeDeletedQuerySchema
 >;

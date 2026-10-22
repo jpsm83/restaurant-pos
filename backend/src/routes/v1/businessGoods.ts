@@ -21,6 +21,7 @@ import Promotion from "../../models/promotion.ts";
 import Order from "../../models/order.ts";
 import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
 import deleteFolderCloudinary from "../../cloudinary/deleteFolderCloudinary.ts";
+import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
 import calculateIngredientsCostPriceAndAllergies from "../../businessGoods/calculateIngredientsCostPriceAndAllergies.ts";
 import { calculateSetMenuCostPriceAndAllergies } from "../../businessGoods/calculateSetMenuCostPriceAndAllergies.ts";
 import { badRequest, conflict, notFound } from "../../errors/appError.ts";
@@ -28,9 +29,11 @@ import { parseMultipart } from "../../schemas/multipart.ts";
 import {
   businessGoodByBusinessParamsSchema,
   businessGoodIdParamsSchema,
+  businessGoodsIncludeDeletedQuerySchema,
   createBusinessGoodBodySchema,
   updateBusinessGoodBodySchema,
   type BusinessGoodByBusinessParams,
+  type BusinessGoodsIncludeDeletedQuery,
   type BusinessGoodIdParams,
   type Ingredient,
 } from "restaurant-pos-packages/schemas/businessGood";
@@ -161,16 +164,23 @@ function applySuggestedSellingPrice(
 
 export const businessGoodsRoutes: FastifyPluginAsync = async (app) => {
   // GET /businessGoods - list all business goods
-  app.get("/", async (_req, reply) => {
-    const businessGoods = await BusinessGood.find()
+  app.get<{ Querystring: BusinessGoodsIncludeDeletedQuery }>(
+    "/",
+    { schema: { querystring: businessGoodsIncludeDeletedQuerySchema } },
+    async (req, reply) => {
+      const { includeDeleted = false } = req.query;
+      const businessGoods = await BusinessGood.find(
+        withSoftDeleteFilter({}, includeDeleted),
+      )
       .populate(BUSINESS_GOOD_POPULATE)
       .lean();
 
-    if (!businessGoods.length) {
-      throw notFound("No businessId goods found!");
-    }
-    return reply.code(200).send(businessGoods);
-  });
+      if (!businessGoods.length) {
+        throw notFound("No businessId goods found!");
+      }
+      return reply.code(200).send(businessGoods);
+    },
+  );
 
   // POST /businessGoods - create business good (formData with image)
   app.post("/", async (req, reply) => {
@@ -185,10 +195,12 @@ export const businessGoodsRoutes: FastifyPluginAsync = async (app) => {
 
     assertIngredientsXorSetMenu(fields);
 
-    const duplicateBusinessGood = await BusinessGood.exists({
-      businessId: fields.businessId,
-      name: fields.name,
-    });
+    const duplicateBusinessGood = await BusinessGood.exists(
+      withSoftDeleteFilter({
+        businessId: fields.businessId,
+        name: fields.name,
+      }),
+    );
 
     if (duplicateBusinessGood) {
       throw badRequest(`${fields.name} already exists on businessId goods!`);
@@ -275,13 +287,24 @@ export const businessGoodsRoutes: FastifyPluginAsync = async (app) => {
   });
 
   // GET /businessGoods/:businessGoodId - get by ID
-  app.get<{ Params: BusinessGoodIdParams }>(
+  app.get<{
+    Params: BusinessGoodIdParams;
+    Querystring: BusinessGoodsIncludeDeletedQuery;
+  }>(
     "/:businessGoodId",
-    { schema: { params: businessGoodIdParamsSchema } },
+    {
+      schema: {
+        params: businessGoodIdParamsSchema,
+        querystring: businessGoodsIncludeDeletedQuerySchema,
+      },
+    },
     async (req, reply) => {
       const { businessGoodId } = req.params;
+      const { includeDeleted = false } = req.query;
 
-      const businessGood = await BusinessGood.findById(businessGoodId)
+      const businessGood = await BusinessGood.findOne(
+        withSoftDeleteFilter({ _id: businessGoodId }, includeDeleted),
+      )
         .populate(BUSINESS_GOOD_POPULATE)
         .lean();
 
@@ -306,8 +329,8 @@ export const businessGoodsRoutes: FastifyPluginAsync = async (app) => {
 
       assertIngredientsXorSetMenu(fields);
 
-      const businessGood = (await BusinessGood.findById(
-        businessGoodId,
+      const businessGood = (await BusinessGood.findOne(
+        withSoftDeleteFilter({ _id: businessGoodId }),
       ).lean()) as IBusinessGood | null;
 
       if (!businessGood) {
@@ -322,9 +345,11 @@ export const businessGoodsRoutes: FastifyPluginAsync = async (app) => {
       }
 
       const duplicateBusinessGood = await BusinessGood.exists({
-        _id: { $ne: businessGoodId },
-        businessId: businessGood.businessId,
-        name: fields.name,
+        ...withSoftDeleteFilter({
+          _id: { $ne: businessGoodId },
+          businessId: businessGood.businessId,
+          name: fields.name,
+        }),
       });
 
       if (duplicateBusinessGood) {
@@ -426,8 +451,8 @@ export const businessGoodsRoutes: FastifyPluginAsync = async (app) => {
         fields.grossProfitMarginDesired,
       );
 
-      const updateBusinessGood = await BusinessGood.findByIdAndUpdate(
-        businessGoodId,
+      const updateBusinessGood = await BusinessGood.findOneAndUpdate(
+        withSoftDeleteFilter({ _id: businessGoodId }),
         { $set: updatedBusinessGoodObj },
         { returnDocument: "after", lean: true },
       );
@@ -453,6 +478,17 @@ export const businessGoodsRoutes: FastifyPluginAsync = async (app) => {
       session.startTransaction();
 
       try {
+        const businessGood = (await BusinessGood.findById(businessGoodId)
+          .select("businessId deleted")
+          .session(session)
+          .lean()) as IBusinessGood | null;
+        if (!businessGood) {
+          throw notFound("Business good not found!");
+        }
+        if (businessGood.deleted) {
+          throw conflict("Business good already deleted!");
+        }
+
         const businessGoodInOrders = await Order.exists({
           $or: [
             { businessGoodId, billingStatus: "Open" },
@@ -471,21 +507,19 @@ export const businessGoodsRoutes: FastifyPluginAsync = async (app) => {
           );
         }
 
-        const deletedBusinessGood = await BusinessGood.findOneAndDelete(
-          { _id: businessGoodId },
-          { session },
+        const wasDeleted = await markAsDeletedById(
+          BusinessGood as mongoose.Model<IBusinessGood & { deleted: boolean }>,
+          businessGoodId,
         );
+        if (!wasDeleted) {
+          throw conflict("Business good already deleted!");
+        }
         await Promotion.updateMany(
           { businessGoodsToApplyIds: businessGoodId },
           { $pull: { businessGoodsToApplyIds: businessGoodId } },
           { session },
         );
-
-        if (!deletedBusinessGood) {
-          throw notFound("Business good not found!");
-        }
-
-        const folderPath = `/business/${deletedBusinessGood.businessId}/businessGoods/${businessGoodId}`;
+        const folderPath = `/business/${businessGood.businessId}/businessGoods/${businessGoodId}`;
 
         const deleteFolderCloudinaryResult =
           await deleteFolderCloudinary(folderPath);
@@ -513,13 +547,24 @@ export const businessGoodsRoutes: FastifyPluginAsync = async (app) => {
   );
 
   // GET /businessGoods/business/:businessId - get by business
-  app.get<{ Params: BusinessGoodByBusinessParams }>(
+  app.get<{
+    Params: BusinessGoodByBusinessParams;
+    Querystring: BusinessGoodsIncludeDeletedQuery;
+  }>(
     "/business/:businessId",
-    { schema: { params: businessGoodByBusinessParamsSchema } },
+    {
+      schema: {
+        params: businessGoodByBusinessParamsSchema,
+        querystring: businessGoodsIncludeDeletedQuerySchema,
+      },
+    },
     async (req, reply) => {
       const { businessId } = req.params;
+      const { includeDeleted = false } = req.query;
 
-      const businessGoods = await BusinessGood.find({ businessId })
+      const businessGoods = await BusinessGood.find(
+        withSoftDeleteFilter({ businessId }, includeDeleted),
+      )
         .populate(BUSINESS_GOOD_POPULATE)
         .lean();
 

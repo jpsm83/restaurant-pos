@@ -1,5 +1,6 @@
 import mongoose, { Schema, model } from "mongoose";
 import * as enums from "restaurant-pos-packages/enums";
+import { softDeleteSchemaFields } from "./softDelete.ts";
 
 const { employeePayFrequencyEnums, userRolesEnums } = enums;
 
@@ -34,7 +35,6 @@ const employeeSchema = new Schema(
     taxNumber: {
       type: String,
       required: [true, "Tax number is required!"],
-      unique: true,
     }, // tax number of the employee
     joinDate: { type: Date, required: [true, "Join date is required!"] }, // date when the employee joined the business
     active: {
@@ -84,8 +84,14 @@ const employeeSchema = new Schema(
     }, // date when the employee left the business
     documentsUrl: { type: [String], default: undefined }, // photo of the employee documents as id, contract, tax, etc
     comments: { type: String }, // comments about the employee
+    ...softDeleteSchemaFields,
   },
   { timestamps: true, trim: true },
+);
+
+employeeSchema.index(
+  { taxNumber: 1 },
+  { unique: true, partialFilterExpression: { deleted: { $ne: true } } },
 );
 
 const Employee = mongoose.models.Employee || model("Employee", employeeSchema);

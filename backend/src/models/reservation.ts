@@ -1,5 +1,6 @@
 import mongoose, { Schema, model } from "mongoose";
 import * as enums from "restaurant-pos-packages/enums";
+import { softDeleteSchemaFields } from "./softDelete.ts";
 
 const { reservationStatusEnums } = enums;
 
@@ -63,6 +64,7 @@ const reservationSchema = new Schema(
       ref: "SalesInstance",
       index: true,
     }, // linked when reservation turns into a consuming session
+    ...softDeleteSchemaFields,
   },
   {
     timestamps: true,

@@ -1,5 +1,6 @@
 import mongoose, { Schema, model } from "mongoose";
 import * as enums from "restaurant-pos-packages/enums";
+import { softDeleteSchemaFields } from "./softDelete.ts";
 
 const { salesInstanceStatusEnums } = enums;
 
@@ -84,6 +85,7 @@ const salesInstanceSchema = new Schema(
       default: undefined,
     }, // orders separate by groups of time ordered made in the salesInstance
     closedAt: { type: Date }, // date and time when the table was closed
+    ...softDeleteSchemaFields,
   },
   {
     timestamps: true,

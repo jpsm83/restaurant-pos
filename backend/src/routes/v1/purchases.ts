@@ -29,6 +29,7 @@ import Inventory from "../../models/inventory.ts";
 import Supplier from "../../models/supplier.ts";
 import SupplierGood from "../../models/supplierGood.ts";
 import Employee from "../../models/employee.ts";
+import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
 import { createOptionalAuthHook } from "../../auth/middleware.ts";
 import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
 import deleteFilesCloudinary from "../../cloudinary/deleteFilesCloudinary.ts";
@@ -36,6 +37,7 @@ import * as enums from "restaurant-pos-packages/enums";
 import { runTxnWithTransientRetry } from "../../mongo/runTxnWithTransientRetry.ts";
 import {
   badRequest,
+  conflict,
   forbidden,
   internal,
   notFound,
@@ -102,6 +104,7 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
     { schema: { querystring: purchasesQuerySchema } },
     async (req, reply) => {
       const { startDate, endDate } = req.query;
+      const { includeDeleted = false } = req.query;
 
       const dbQuery: { purchaseDate?: { $gte: Date; $lte: Date } } = {};
 
@@ -110,7 +113,12 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
         dbQuery.purchaseDate = purchaseDate;
       }
 
-      const purchases = await Purchase.find(dbQuery)
+      const purchases = await Purchase.find(
+        withSoftDeleteFilter(
+          dbQuery as unknown as Record<string, unknown>,
+          includeDeleted,
+        ),
+      )
         .populate(SUPPLIER_POPULATE)
         .populate(PURCHASE_ITEMS_POPULATE)
         .lean();
@@ -188,11 +196,13 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
       session.startTransaction();
 
       try {
-        const existingReceiptId = await Purchase.exists({
-          receiptId,
-          businessId,
-          supplierId: newSupplierId,
-        }).session(session);
+        const existingReceiptId = await Purchase.exists(
+          withSoftDeleteFilter({
+            receiptId,
+            businessId,
+            supplierId: newSupplierId,
+          }),
+        ).session(session);
         if (existingReceiptId) {
           throw badRequest("Receipt Id already exists!");
         }
@@ -259,13 +269,21 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
   );
 
   // GET /purchases/:purchaseId - get by ID
-  app.get<{ Params: PurchaseIdParams }>(
+  app.get<{ Params: PurchaseIdParams; Querystring: PurchasesQuery }>(
     "/:purchaseId",
-    { schema: { params: purchaseIdParamsSchema } },
+    {
+      schema: {
+        params: purchaseIdParamsSchema,
+        querystring: purchasesQuerySchema,
+      },
+    },
     async (req, reply) => {
       const { purchaseId } = req.params;
+      const { includeDeleted = false } = req.query;
 
-      const purchase = await Purchase.findById(purchaseId)
+      const purchase = await Purchase.findOne(
+        withSoftDeleteFilter({ _id: purchaseId }, includeDeleted),
+      )
         .populate(SUPPLIER_POPULATE)
         .populate(PURCHASE_ITEMS_POPULATE)
         .lean();
@@ -328,7 +346,9 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
           );
         }
 
-        const purchase = await Purchase.findById(purchaseId).lean();
+        const purchase = await Purchase.findOne(
+          withSoftDeleteFilter({ _id: purchaseId }),
+        ).lean();
         const existingDocs =
           (purchase as unknown as { documentsUrl?: string[] })?.documentsUrl ??
           [];
@@ -339,8 +359,8 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
         }
 
         // Overwrite documentsUrl with newly uploaded assets.
-        const updatedPurchase = await Purchase.findByIdAndUpdate(
-          purchaseId,
+        const updatedPurchase = await Purchase.findOneAndUpdate(
+          withSoftDeleteFilter({ _id: purchaseId }),
           {
             $set: {
               ...(title ? { title } : {}),
@@ -364,9 +384,11 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
 
       if (receiptId) {
         const existingReceiptId = await Purchase.exists({
-          _id: { $ne: purchaseId },
-          receiptId,
-          businessId,
+          ...withSoftDeleteFilter({
+            _id: { $ne: purchaseId },
+            receiptId,
+            businessId,
+          }),
         });
         if (existingReceiptId) {
           throw badRequest("Receipt Id already exists!");
@@ -381,8 +403,8 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
         updatePurchaseObj.purchasedByEmployeeId = purchasedByEmployeeId;
       if (receiptId) updatePurchaseObj.receiptId = receiptId;
 
-      const updatedPurchase = await Purchase.findByIdAndUpdate(
-        purchaseId,
+      const updatedPurchase = await Purchase.findOneAndUpdate(
+        withSoftDeleteFilter({ _id: purchaseId }),
         { $set: updatePurchaseObj },
         { returnDocument: "after", lean: true },
       );
@@ -409,20 +431,23 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
 
       try {
         const purchase = (await Purchase.findById(purchaseId)
-          .select("businessId purchaseInventoryItems")
+          .select("businessId purchaseInventoryItems deleted")
           .session(session)
           .lean()) as unknown as IPurchase | null;
 
         if (!purchase) {
           throw notFound("Purchase not found!");
         }
+        if (purchase.deleted) {
+          throw conflict("Purchase already deleted!");
+        }
 
-        const result = await Purchase.deleteOne({ _id: purchaseId }).session(
-          session,
+        const wasDeleted = await markAsDeletedById(
+          Purchase as mongoose.Model<IPurchase & { deleted: boolean }>,
+          purchaseId,
         );
-
-        if (result.deletedCount === 0) {
-          throw notFound("Purchase not found!");
+        if (!wasDeleted) {
+          throw conflict("Purchase already deleted!");
         }
 
         const bulkWriteOperations = purchase.purchaseInventoryItems?.map(
@@ -486,7 +511,7 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
 
       try {
         const updatePurchase = (await Purchase.findOneAndUpdate(
-          { _id: purchaseId },
+          withSoftDeleteFilter({ _id: purchaseId }),
           {
             $push: {
               purchaseInventoryItems: {
@@ -554,10 +579,10 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
 
       try {
         const purchaseItem = (await Purchase.findOne(
-          {
+          withSoftDeleteFilter({
             _id: purchaseId,
             "purchaseInventoryItems._id": purchaseInventoryItemsId,
-          },
+          }),
           {
             businessId: 1,
             "purchaseInventoryItems.$": 1,
@@ -574,7 +599,7 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
           purchaseItem?.purchaseInventoryItems?.[0].quantityPurchased ?? 0;
 
         const updatePurchase = await Purchase.findOneAndUpdate(
-          { _id: purchaseId },
+          withSoftDeleteFilter({ _id: purchaseId }),
           {
             $pull: {
               purchaseInventoryItems: { _id: purchaseInventoryItemsId },
@@ -646,10 +671,10 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
       const userIdObj = new Types.ObjectId(req.authSession.id);
 
       const purchaseItem = (await Purchase.findOne(
-        {
+        withSoftDeleteFilter({
           _id: purchaseId,
           "purchaseInventoryItems._id": purchaseInventoryItemsId,
-        },
+        }),
         {
           businessId: 1,
           "purchaseInventoryItems.$": 1,
@@ -698,10 +723,10 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
 
         const now = new Date();
         const updatePurchase = await Purchase.findOneAndUpdate(
-          {
+          withSoftDeleteFilter({
             _id: purchaseId,
             "purchaseInventoryItems._id": purchaseInventoryItemsId,
-          },
+          }),
           {
             $set: {
               "purchaseInventoryItems.$.quantityPurchased":
@@ -765,7 +790,7 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
     },
     async (req, reply) => {
       const { supplierId } = req.params;
-      const { startDate, endDate } = req.query;
+      const { startDate, endDate, includeDeleted = false } = req.query;
 
       interface SupplierQuery {
         supplierId: Types.ObjectId;
@@ -781,7 +806,12 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
         dbQuery.purchaseDate = purchaseDate;
       }
 
-      const purchase = await Purchase.find(dbQuery)
+      const purchase = await Purchase.find(
+        withSoftDeleteFilter(
+          dbQuery as unknown as Record<string, unknown>,
+          includeDeleted,
+        ),
+      )
         .populate(SUPPLIER_POPULATE)
         .populate(PURCHASE_ITEMS_POPULATE)
         .lean();
@@ -804,7 +834,7 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
     },
     async (req, reply) => {
       const { userId } = req.params;
-      const { startDate, endDate } = req.query;
+      const { startDate, endDate, includeDeleted = false } = req.query;
 
       const employees = await Employee.find({
         userId: new Types.ObjectId(userId),
@@ -828,7 +858,12 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
         dbQuery.purchaseDate = purchaseDate;
       }
 
-      const purchase = await Purchase.find(dbQuery)
+      const purchase = await Purchase.find(
+        withSoftDeleteFilter(
+          dbQuery as unknown as Record<string, unknown>,
+          includeDeleted,
+        ),
+      )
         .populate(SUPPLIER_POPULATE)
         .populate(PURCHASE_ITEMS_POPULATE)
         .lean();

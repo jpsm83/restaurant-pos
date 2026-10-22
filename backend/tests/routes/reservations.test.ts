@@ -56,7 +56,10 @@ describe("Reservations Routes", () => {
     });
   };
 
-  const createTestReservation = async (businessId: Types.ObjectId) => {
+  const createTestReservation = async (
+    businessId: Types.ObjectId,
+    opts?: { deleted?: boolean },
+  ) => {
     return await Reservation.create({
       businessId,
       createdByUserId: new Types.ObjectId(),
@@ -65,6 +68,8 @@ describe("Reservations Routes", () => {
       reservationStart: new Date("2024-06-15T19:00:00Z"),
       reservationEnd: new Date("2024-06-15T21:00:00Z"),
       status: "Pending",
+      deleted: opts?.deleted,
+      deletedAt: opts?.deleted ? new Date() : undefined,
     });
   };
 
@@ -81,6 +86,7 @@ describe("Reservations Routes", () => {
       const app = await getTestApp();
       const business = await createTestBusiness();
       await createTestReservation(business._id as Types.ObjectId);
+      await createTestReservation(business._id as Types.ObjectId, { deleted: true });
 
       const response = await app.inject({
         method: "GET",
@@ -90,7 +96,21 @@ describe("Reservations Routes", () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(Array.isArray(body)).toBe(true);
-      expect(body.length).toBeGreaterThanOrEqual(1);
+      expect(body.length).toBe(1);
+    });
+
+    it("includes deleted reservations when includeDeleted=true", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      await createTestReservation(business._id as Types.ObjectId);
+      await createTestReservation(business._id as Types.ObjectId, { deleted: true });
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/reservations?includeDeleted=true",
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.json().length).toBe(2);
     });
 
     it("returns a not-found problem when no reservations exist", async () => {
@@ -331,6 +351,36 @@ describe("Reservations Routes", () => {
       const body = JSON.parse(response.body);
       expect(body._id).toBe(reservation._id.toString());
     });
+
+    it("returns not-found for soft-deleted reservation by default", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      const reservation = await createTestReservation(
+        business._id as Types.ObjectId,
+        { deleted: true },
+      );
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/reservations/${reservation._id}`,
+      });
+      const body = expectProblem(response, 404, "not-found");
+      expect(body.detail).toBe("Reservation not found!");
+    });
+
+    it("returns soft-deleted reservation when includeDeleted=true", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      const reservation = await createTestReservation(
+        business._id as Types.ObjectId,
+        { deleted: true },
+      );
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/reservations/${reservation._id}?includeDeleted=true`,
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.json().deleted).toBe(true);
+    });
   });
 
   describe("PATCH /api/v1/reservations/:reservationId", () => {
@@ -462,7 +512,7 @@ describe("Reservations Routes", () => {
       expect(body.detail).toBe("Reservation not found!");
     });
 
-    it("deletes reservation successfully", async () => {
+    it("soft-deletes reservation successfully", async () => {
       const app = await getTestApp();
       const business = await createTestBusiness();
       const reservation = await createTestReservation(
@@ -477,6 +527,24 @@ describe("Reservations Routes", () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.message).toBe("Reservation deleted!");
+      const persisted = await Reservation.findById(reservation._id).lean();
+      expect(persisted).not.toBeNull();
+      expect(persisted?.deleted).toBe(true);
+    });
+
+    it("returns conflict when reservation already deleted", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      const reservation = await createTestReservation(
+        business._id as Types.ObjectId,
+        { deleted: true },
+      );
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/reservations/${reservation._id}`,
+      });
+      const body = expectProblem(response, 409, "conflict");
+      expect(body.detail).toBe("Reservation already deleted!");
     });
   });
 
@@ -544,6 +612,7 @@ describe("Reservations Routes", () => {
       const app = await getTestApp();
       const business = await createTestBusiness();
       await createTestReservation(business._id as Types.ObjectId);
+      await createTestReservation(business._id as Types.ObjectId, { deleted: true });
 
       const response = await app.inject({
         method: "GET",
@@ -553,7 +622,21 @@ describe("Reservations Routes", () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(Array.isArray(body)).toBe(true);
-      expect(body.length).toBeGreaterThanOrEqual(1);
+      expect(body.length).toBe(1);
+    });
+
+    it("lists deleted reservations by business when includeDeleted=true", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      await createTestReservation(business._id as Types.ObjectId);
+      await createTestReservation(business._id as Types.ObjectId, { deleted: true });
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/reservations/business/${business._id}?includeDeleted=true`,
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.json().length).toBe(2);
     });
   });
 

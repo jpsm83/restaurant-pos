@@ -1,6 +1,7 @@
 import mongoose, { Schema, model } from "mongoose";
 import { addressSchema } from "./address.ts";
 import * as enums from "restaurant-pos-packages/enums";
+import { softDeleteSchemaFields } from "./softDelete.ts";
 
 const { subscriptionEnums } = enums;
 
@@ -92,7 +93,6 @@ const businessSchema = new Schema(
     taxNumber: {
       type: String,
       required: [true, "Tax number is required!"],
-      unique: true,
     }, // Tax number of the company
     currencyTrade: {
       type: String,
@@ -130,6 +130,7 @@ const businessSchema = new Schema(
       type: reportingConfigSchema,
       default: undefined,
     }, // optional reporting configuration (e.g. weekly report start day)
+    ...softDeleteSchemaFields,
   },
   {
     timestamps: true,
@@ -139,6 +140,10 @@ const businessSchema = new Schema(
 businessSchema.index({ verificationToken: 1 }, { sparse: true });
 businessSchema.index({ resetPasswordToken: 1 }, { sparse: true });
 businessSchema.index({ pendingEmailToken: 1 }, { sparse: true });
+businessSchema.index(
+  { taxNumber: 1 },
+  { unique: true, partialFilterExpression: { deleted: { $ne: true } } },
+);
 
 const Business = mongoose.models.Business || model("Business", businessSchema);
 export default Business;

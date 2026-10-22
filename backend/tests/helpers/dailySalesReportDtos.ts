@@ -33,6 +33,8 @@ export const dailySalesReportServerOwnedFields = [
   "dailyTotalVoidValue",
   "dailyTotalInvitedValue",
   "dailyPosSystemCommission",
+  "deleted",
+  "deletedAt",
   "createdAt",
   "updatedAt",
 ] as const;

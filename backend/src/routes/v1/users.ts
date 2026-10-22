@@ -27,6 +27,7 @@ import deleteFolderCloudinary from "../../cloudinary/deleteFolderCloudinary.ts";
 import User from "../../models/user.ts";
 import Employee from "../../models/employee.ts";
 import Notification from "../../models/notification.ts";
+import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
 import {
   badRequest,
   conflict,
@@ -41,10 +42,12 @@ import {
   updateUserBodySchema,
   userIdParamsSchema,
   userNotificationParamsSchema,
+  usersIncludeDeletedQuerySchema,
   type CreateUserBody,
   type MarkNotificationDeletedBody,
   type UserIdParams,
   type UserNotificationParams,
+  type UsersIncludeDeletedQuery,
 } from "restaurant-pos-packages/schemas/user";
 
 /** Upload the single profile image, raising a `400` on any failure. */
@@ -78,11 +81,13 @@ async function assertNoDuplicateUser(
   excludeUserId?: string,
 ): Promise<void> {
   const query: Record<string, unknown> = {
-    $or: [
-      { "personalDetails.username": fields.username },
-      { "personalDetails.email": fields.email },
-      { "personalDetails.idNumber": fields.idNumber },
-    ],
+    ...withSoftDeleteFilter({
+      $or: [
+        { "personalDetails.username": fields.username },
+        { "personalDetails.email": fields.email },
+        { "personalDetails.idNumber": fields.idNumber },
+      ],
+    }),
   };
   if (excludeUserId) query._id = { $ne: excludeUserId };
 
@@ -119,17 +124,22 @@ function toNewUser(
 
 export const usersRoutes: FastifyPluginAsync = async (app) => {
   // GET /users - list all
-  app.get("/", async (_req, reply) => {
-    const users = await User.find(
-      {},
+  app.get<{ Querystring: UsersIncludeDeletedQuery }>(
+    "/",
+    { schema: { querystring: usersIncludeDeletedQuerySchema } },
+    async (req, reply) => {
+      const { includeDeleted = false } = req.query;
+      const users = await User.find(
+        withSoftDeleteFilter({}, includeDeleted),
       { "personalDetails.password": 0 },
-    ).lean();
+      ).lean();
 
-    if (!users?.length) {
-      throw notFound("No users found!");
-    }
-    return reply.code(200).send(users);
-  });
+      if (!users?.length) {
+        throw notFound("No users found!");
+      }
+      return reply.code(200).send(users);
+    },
+  );
 
   // POST /users - create (formData with image)
   app.post("/", async (req, reply) => {
@@ -158,15 +168,22 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
   });
 
   // GET /users/:userId - get by ID
-  app.get<{ Params: UserIdParams }>(
+  app.get<{ Params: UserIdParams; Querystring: UsersIncludeDeletedQuery }>(
     "/:userId",
-    { schema: { params: userIdParamsSchema } },
+    {
+      schema: {
+        params: userIdParamsSchema,
+        querystring: usersIncludeDeletedQuerySchema,
+      },
+    },
     async (req, reply) => {
       const { userId } = req.params;
+      const { includeDeleted = false } = req.query;
 
-      const user = await User.findById(userId, {
-        "personalDetails.password": 0,
-      }).lean();
+      const user = await User.findOne(
+        withSoftDeleteFilter({ _id: userId }, includeDeleted),
+        { "personalDetails.password": 0 },
+      ).lean();
 
       if (!user) {
         throw notFound("User not found!");
@@ -197,7 +214,9 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
 
       const { fields, files } = await parseMultipart(req, updateUserBodySchema);
 
-      const userDoc = await User.findById(userId).lean();
+      const userDoc = await User.findOne(
+        withSoftDeleteFilter({ _id: userId }),
+      ).lean();
       if (!userDoc) {
         throw notFound("User not found!");
       }
@@ -265,10 +284,14 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
         userUpdate.$inc = { refreshSessionVersion: 1 };
       }
 
-      const updatedUser = await User.findByIdAndUpdate(userId, userUpdate, {
+      const updatedUser = await User.findOneAndUpdate(
+        withSoftDeleteFilter({ _id: userId }),
+        userUpdate,
+        {
         returnDocument: "after",
         lean: true,
-      });
+        },
+      );
 
       if (!updatedUser) {
         throw notFound("User not found!");
@@ -314,10 +337,20 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
         );
       }
 
-      const deletedUser = await User.findOneAndDelete({ _id: userId });
-
-      if (!deletedUser) {
+      const user = await User.findById(userId).select("deleted").lean();
+      if (!user) {
         throw notFound("User not found!");
+      }
+      if (user.deleted) {
+        throw conflict("User already deleted!");
+      }
+
+      const wasDeleted = await markAsDeletedById(
+        User as mongoose.Model<IUser & { deleted: boolean }>,
+        userId,
+      );
+      if (!wasDeleted) {
+        throw conflict("User already deleted!");
       }
 
       const folderPath = `/users/${userId}`;
@@ -363,7 +396,10 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
         }
 
         const updatedUser = await User.findOneAndUpdate(
-          { _id: userId, "notifications.notificationId": notificationId },
+          withSoftDeleteFilter({
+            _id: userId,
+            "notifications.notificationId": notificationId,
+          }),
           {
             $set: {
               "notifications.$.deletedFlag": true,
@@ -407,10 +443,10 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
       }
 
       const updatedUser = await User.findOneAndUpdate(
-        {
+        withSoftDeleteFilter({
           _id: userId,
           "notifications.notificationId": notificationId,
-        },
+        }),
         { $set: { "notifications.$.readFlag": true } },
         { returnDocument: "after", lean: true },
       );

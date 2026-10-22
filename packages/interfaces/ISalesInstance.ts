@@ -24,4 +24,6 @@ export interface ISalesInstance {
   paymentId?: string;
   salesGroup?: ISalesGroup[];
   closedByUserId?: Types.ObjectId;
+  deleted?: boolean;
+  deletedAt?: Date;
 }

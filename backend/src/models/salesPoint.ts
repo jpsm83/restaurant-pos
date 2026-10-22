@@ -1,4 +1,5 @@
 import mongoose, { Schema, model } from "mongoose";
+import { softDeleteSchemaFields } from "./softDelete.ts";
 
 const SalesPointSchema = new Schema(
   {
@@ -15,6 +16,7 @@ const SalesPointSchema = new Schema(
       required: [true, "Business id is required!"],
       index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
     }, // business that owns the printer
+    ...softDeleteSchemaFields,
   },
   {
     timestamps: true,

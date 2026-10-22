@@ -63,11 +63,17 @@ export const notificationsPaginationQuerySchema = z.strictObject({
     return Math.min(value, NOTIFICATIONS_MAX_LIMIT);
   }),
   includeRecipients: coercedBooleanSchema.optional(),
+  includeDeleted: coercedBooleanSchema.optional(),
 });
 
 /** Path params for `GET`/`PATCH`/`DELETE /notifications/:notificationId`. */
 export const notificationIdParamsSchema = z.strictObject({
   notificationId: objectIdSchema,
+});
+
+/** Optional query for single-notification reads. */
+export const notificationsIncludeDeletedQuerySchema = z.strictObject({
+  includeDeleted: coercedBooleanSchema.optional(),
 });
 
 /** Path params for `GET /notifications/business/:businessId`. */
@@ -112,6 +118,9 @@ export type NotificationsPaginationQuery = z.infer<
 export type NotificationIdParams = z.infer<typeof notificationIdParamsSchema>;
 export type NotificationsByBusinessParams = z.infer<
   typeof notificationsByBusinessParamsSchema
+>;
+export type NotificationsIncludeDeletedQuery = z.infer<
+  typeof notificationsIncludeDeletedQuerySchema
 >;
 export type NotificationsByUserParams = z.infer<
   typeof notificationsByUserParamsSchema

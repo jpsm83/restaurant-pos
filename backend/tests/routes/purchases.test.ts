@@ -702,9 +702,9 @@ describe("Purchases Routes", () => {
 
       expect(response.statusCode).toBe(200);
 
-      // Verify purchase was deleted
-      const deletedPurchase = await Purchase.findById(purchase._id);
-      expect(deletedPurchase).toBeNull();
+      const deletedPurchase = await Purchase.findById(purchase._id).lean();
+      expect(deletedPurchase).not.toBeNull();
+      expect(deletedPurchase?.deleted).toBe(true);
 
       // Verify inventory was rolled back
       const afterDelete = await Inventory.findById(inventoryId).lean();

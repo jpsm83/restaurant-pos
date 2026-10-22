@@ -33,6 +33,7 @@ import {
   createSalesInstanceBodySchema,
   createSelfOrderBodySchema,
   openSelfOrderingTableBodySchema,
+  salesInstancesIncludeDeletedQuerySchema,
   salesInstanceIdParamsSchema,
   salesInstancesByBusinessParamsSchema,
   salesInstancesByUserParamsSchema,
@@ -44,6 +45,7 @@ import {
   type CreateSelfOrderBody,
   type OpenSelfOrderingTableBody,
   type SalesInstanceIdParams,
+  type SalesInstancesIncludeDeletedQuery,
   type SalesInstancesByBusinessParams,
   type SalesInstancesByUserParams,
   type SelfOrderingLocationIdParams,
@@ -87,6 +89,7 @@ import {
 } from "../../auth/middleware.ts";
 import transferOrdersBetweenSalesInstances from "../../orders/transferOrdersBetweenSalesInstances.ts";
 import getEffectiveUserRoleAtTime from "../../auth/getEffectiveUserRoleAtTime.ts";
+import { withSoftDeleteFilter } from "../../models/softDelete.ts";
 import {
   isBusinessOpenNow,
   isDeliveryOpenNow,
@@ -109,8 +112,14 @@ function employeeTxnError(
 }
 
 export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
-  app.get("/", async (_req, reply) => {
-    const salesInstances = await SalesInstance.find()
+  app.get<{ Querystring: SalesInstancesIncludeDeletedQuery }>(
+    "/",
+    { schema: { querystring: salesInstancesIncludeDeletedQuerySchema } },
+    async (req, reply) => {
+      const { includeDeleted = false } = req.query;
+      const salesInstances = await SalesInstance.find(
+        withSoftDeleteFilter({}, includeDeleted),
+      )
       .populate({
         path: "salesPointId",
         select: "salesPointName salesPointType selfOrdering",
@@ -144,13 +153,14 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
         ],
         model: Order,
       })
-      .lean();
+        .lean();
 
-    if (!salesInstances?.length) {
-      throw notFound("No salesInstances found!");
-    }
-    return reply.code(200).send(salesInstances);
-  });
+      if (!salesInstances?.length) {
+        throw notFound("No salesInstances found!");
+      }
+      return reply.code(200).send(salesInstances);
+    },
+  );
 
   app.post<{ Body: CreateSalesInstanceBody }>(
     "/",
@@ -182,10 +192,12 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
         );
       }
 
-      const salesPointExists = await SalesPoint.exists({
-        _id: salesPointId,
-        businessId: new Types.ObjectId(businessId),
-      });
+      const salesPointExists = await SalesPoint.exists(
+        withSoftDeleteFilter({
+          _id: salesPointId,
+          businessId: new Types.ObjectId(businessId),
+        }),
+      );
       if (!salesPointExists) {
         throw notFound(
           "Sales point does not belong to this business (or does not exist)!",
@@ -267,13 +279,24 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
     },
   );
 
-  app.get<{ Params: SalesInstanceIdParams }>(
+  app.get<{
+    Params: SalesInstanceIdParams;
+    Querystring: SalesInstancesIncludeDeletedQuery;
+  }>(
     "/:salesInstanceId",
-    { schema: { params: salesInstanceIdParamsSchema } },
+    {
+      schema: {
+        params: salesInstanceIdParamsSchema,
+        querystring: salesInstancesIncludeDeletedQuerySchema,
+      },
+    },
     async (req, reply) => {
       const { salesInstanceId } = req.params;
+      const { includeDeleted = false } = req.query;
 
-      const salesInstance = await SalesInstance.findById(salesInstanceId)
+      const salesInstance = await SalesInstance.findOne(
+        withSoftDeleteFilter({ _id: salesInstanceId }, includeDeleted),
+      )
         .populate({
           path: "salesPointId",
           select: "salesPointName salesPointType selfOrdering",
@@ -350,7 +373,9 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
       session.startTransaction();
 
       try {
-        const salesInstance = (await SalesInstance.findById(salesInstanceId)
+        const salesInstance = (await SalesInstance.findOne(
+          withSoftDeleteFilter({ _id: salesInstanceId }),
+        )
           .select(
             "openedByUserId businessId salesInstanceStatus salesGroup openedAsRole salesPointId"
           )
@@ -417,8 +442,8 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
             : new Types.ObjectId(salesInstanceId);
 
           if (wantsTransferOrders) {
-            const sourceSalesInstance = await SalesInstance.findById(
-              toSalesInstanceId,
+            const sourceSalesInstance = await SalesInstance.findOne(
+              withSoftDeleteFilter({ _id: toSalesInstanceId }),
             )
               .select("businessId salesInstanceStatus openedAsRole")
               .session(session)
@@ -491,7 +516,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
           salesInstanceStatus !== "Reserved"
         ) {
           const deleteResult = await SalesInstance.deleteOne(
-            { _id: salesInstanceId },
+            withSoftDeleteFilter({ _id: salesInstanceId }),
             { session },
           );
 
@@ -624,7 +649,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
           ) as any;
 
         const updatedSalesInstance = await SalesInstance.updateOne(
-          { _id: salesInstanceId },
+          withSoftDeleteFilter({ _id: salesInstanceId }),
           { $set: updatedSalesInstanceObj },
           { session },
         );
@@ -657,7 +682,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
       const { salesInstanceId } = req.params;
 
       const result = await SalesInstance.deleteOne({
-        _id: salesInstanceId,
+        ...withSoftDeleteFilter({ _id: salesInstanceId }),
         $or: [{ salesGroup: { $size: 0 } }, { salesGroup: { $exists: false } }],
       });
 
@@ -696,7 +721,9 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
       session.startTransaction();
 
       try {
-        const salesInstance = (await SalesInstance.findById(salesInstanceId)
+        const salesInstance = (await SalesInstance.findOne(
+          withSoftDeleteFilter({ _id: salesInstanceId }),
+        )
           .select(
             "businessId dailyReferenceNumber salesInstanceStatus salesPointId reservationId openedAsRole",
           )
@@ -743,10 +770,12 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
           throw forbidden("Forbidden");
         }
 
-        const sp = await SalesPoint.exists({
-          _id: salesPointId,
-          businessId: salesInstance.businessId,
-        }).session(session);
+        const sp = await SalesPoint.exists(
+          withSoftDeleteFilter({
+            _id: salesPointId,
+            businessId: salesInstance.businessId,
+          }),
+        ).session(session);
 
         if (!sp) {
           throw notFound("SalesPoint not found for this business!");
@@ -766,7 +795,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
         }
 
         const moved = await SalesInstance.updateOne(
-          { _id: salesInstanceId },
+          withSoftDeleteFilter({ _id: salesInstanceId }),
           { $set: { salesPointId } },
           { session },
         );
@@ -806,13 +835,24 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
     },
   );
 
-  app.get<{ Params: SalesInstancesByBusinessParams }>(
+  app.get<{
+    Params: SalesInstancesByBusinessParams;
+    Querystring: SalesInstancesIncludeDeletedQuery;
+  }>(
     "/business/:businessId",
-    { schema: { params: salesInstancesByBusinessParamsSchema } },
+    {
+      schema: {
+        params: salesInstancesByBusinessParamsSchema,
+        querystring: salesInstancesIncludeDeletedQuerySchema,
+      },
+    },
     async (req, reply) => {
       const { businessId } = req.params;
+      const { includeDeleted = false } = req.query;
 
-      const salesInstances = await SalesInstance.find({ businessId })
+      const salesInstances = await SalesInstance.find(
+        withSoftDeleteFilter({ businessId }, includeDeleted),
+      )
         .populate({
           path: "salesPointId",
           select: "salesPointName salesPointType selfOrdering",
@@ -856,15 +896,27 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
     },
   );
 
-  app.get<{ Params: SalesInstancesByUserParams }>(
+  app.get<{
+    Params: SalesInstancesByUserParams;
+    Querystring: SalesInstancesIncludeDeletedQuery;
+  }>(
     "/user/:userId",
-    { schema: { params: salesInstancesByUserParamsSchema } },
+    {
+      schema: {
+        params: salesInstancesByUserParamsSchema,
+        querystring: salesInstancesIncludeDeletedQuerySchema,
+      },
+    },
     async (req, reply) => {
       const { userId } = req.params;
+      const { includeDeleted = false } = req.query;
 
-      const salesInstances = await SalesInstance.find({
-        $or: [{ openedByUserId: userId }, { responsibleByUserId: userId }],
-      })
+      const salesInstances = await SalesInstance.find(
+        withSoftDeleteFilter(
+          { $or: [{ openedByUserId: userId }, { responsibleByUserId: userId }] },
+          includeDeleted,
+        ),
+      )
         .populate({
           path: "salesPointId",
           select: "salesPointName salesPointType selfOrdering",
@@ -929,7 +981,9 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
       const { selfOrderingLocationId } = req.params;
       const { businessId, guests } = req.body;
 
-      const salesPoint = (await SalesPoint.findById(selfOrderingLocationId)
+      const salesPoint = (await SalesPoint.findOne(
+        withSoftDeleteFilter({ _id: selfOrderingLocationId }),
+      )
         .select("businessId")
         .lean()) as {
         businessId: Types.ObjectId | { _id: Types.ObjectId };
@@ -1130,7 +1184,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
       }
 
       const [businessDoc, user] = await Promise.all([
-        Business.findById(businessId).lean<IBusiness>(),
+        Business.findOne(withSoftDeleteFilter({ _id: businessId })).lean<IBusiness>(),
         User.findById(userId)
           .select(
             "address personalDetails.firstName personalDetails.lastName username",
@@ -1157,10 +1211,12 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
       const resolvedDeliveryAddress: IAddress | undefined =
         deliveryAddress ?? (user as { address?: IAddress }).address;
 
-      const deliverySalesPoint = (await SalesPoint.findOne({
-        businessId,
-        salesPointType: "delivery",
-      })
+      const deliverySalesPoint = (await SalesPoint.findOne(
+        withSoftDeleteFilter({
+          businessId,
+          salesPointType: "delivery",
+        }),
+      )
         .select("_id")
         .lean()) as { _id: Types.ObjectId } | null;
 
@@ -1483,7 +1539,9 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
         throw badRequest(validPaymentMethods);
       }
 
-      const salesPoint = (await SalesPoint.findById(selfOrderingLocationId)
+      const salesPoint = (await SalesPoint.findOne(
+        withSoftDeleteFilter({ _id: selfOrderingLocationId }),
+      )
         .select("selfOrdering businessId")
         .lean()) as {
         selfOrdering: boolean;
@@ -1505,7 +1563,9 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
         throw badRequest("Sales point does not belong to this business.");
       }
 
-      const business = await Business.findById(businessId).lean<IBusiness>();
+      const business = await Business.findOne(
+        withSoftDeleteFilter({ _id: businessId }),
+      ).lean<IBusiness>();
       if (!business) {
         throw notFound("Business not found.");
       }

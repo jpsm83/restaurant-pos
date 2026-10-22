@@ -22,4 +22,6 @@ export interface ISupplierGood {
   quantityInMeasurementUnit?: number;
   totalPurchasePrice?: number;
   pricePerMeasurementUnit?: number;
+  deleted?: boolean;
+  deletedAt?: Date;
 }

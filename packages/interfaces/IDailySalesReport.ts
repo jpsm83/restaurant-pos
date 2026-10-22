@@ -56,4 +56,6 @@ export interface IDailySalesReport {
   dailyTotalVoidValue?: number;
   dailyTotalInvitedValue?: number;
   dailyPosSystemCommission?: number;
+  deleted?: boolean;
+  deletedAt?: Date;
 }

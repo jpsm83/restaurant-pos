@@ -1,5 +1,6 @@
 import mongoose, { Schema, model } from "mongoose";
 import * as enums from "restaurant-pos-packages/enums";
+import { softDeleteSchemaFields } from "./softDelete.ts";
 
 const { mainCategoriesEnums, measurementUnitEnums, allergensEnums } = enums;
 
@@ -79,6 +80,7 @@ const businessGoodSchema = new Schema(
     allergens: { type: [String], enum: allergensEnums , default: undefined }, // allergens of the business good - have to follow the allergens from the supplier goods and add more if needed
     imagesUrl: { type: [String] }, // multiple photo of the business good
     deliveryTime: { type: Number }, // maximun time to deliver the business good to client in minutes
+    ...softDeleteSchemaFields,
   },
   {
     timestamps: true,
