@@ -14,6 +14,7 @@
 import { z } from "zod";
 
 import {
+  coercedBooleanSchema,
   coercedNumberSchema,
   freeTextString,
   objectIdSchema,
@@ -69,6 +70,17 @@ export const inventoryMonthDateQuerySchema = z.strictObject({
   monthDate: optionalMonthDateSchema,
 });
 
+/** Optional soft-delete toggle combined with monthDate filters. */
+export const inventoriesByBusinessQuerySchema = z.strictObject({
+  monthDate: optionalMonthDateSchema,
+  includeDeleted: emptyToUndefined(coercedBooleanSchema.optional()),
+});
+
+/** Optional query for inventory reads: include soft-deleted records explicitly. */
+export const inventoryIncludeDeletedQuerySchema = z.strictObject({
+  includeDeleted: emptyToUndefined(coercedBooleanSchema.optional()),
+});
+
 /**
  * Body for `PATCH /inventories/:inventoryId/supplierGood/:supplierGoodId/addCount`.
  * `quantityNeeded` and `deviationPercent` are computed by the route, not the
@@ -109,6 +121,12 @@ export type InventorySupplierGoodParams = z.infer<
 export type BusinessIdParams = z.infer<typeof businessIdParamsSchema>;
 export type InventoryMonthDateQuery = z.infer<
   typeof inventoryMonthDateQuerySchema
+>;
+export type InventoriesByBusinessQuery = z.infer<
+  typeof inventoriesByBusinessQuerySchema
+>;
+export type InventoryIncludeDeletedQuery = z.infer<
+  typeof inventoryIncludeDeletedQuerySchema
 >;
 export type AddInventoryCountBody = z.infer<
   typeof addInventoryCountBodySchema

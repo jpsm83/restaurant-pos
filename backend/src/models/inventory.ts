@@ -1,4 +1,5 @@
 import mongoose, { Schema, model } from "mongoose";
+import { softDeleteSchemaFields } from "./softDelete.ts";
 
 // Schema for individual count events will be created only upon the count of the inventory
 const inventoryCountSchema = new Schema(
@@ -98,6 +99,7 @@ const inventorySchema = new Schema(
       type: [inventoryGoodsSchema],
       default: undefined,
     }, // all the supplier goods that exists on the business
+    ...softDeleteSchemaFields,
   },
   {
     timestamps: true,

@@ -1,5 +1,6 @@
 import mongoose, { Schema, model } from "mongoose";
 import * as enums from "restaurant-pos-packages/enums";
+import { softDeleteSchemaFields } from "./softDelete.ts";
 
 const { weekDaysEnums } = enums;
 
@@ -53,11 +54,17 @@ const promotionSchema = new Schema(
       index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
     }, // business goods that the promotion will apply to
     description: { type: String }, // description of the promotion
+    ...softDeleteSchemaFields,
   },
   {
     timestamps: true,
     trim: true,
   }
+);
+
+promotionSchema.index(
+  { businessId: 1, promotionName: 1 },
+  { unique: true, partialFilterExpression: { deleted: { $ne: true } } },
 );
 
 const Promotion = mongoose.models.Promotion || model("Promotion", promotionSchema);

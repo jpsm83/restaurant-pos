@@ -2,6 +2,7 @@ import { Types } from "mongoose";
 import Inventory from "../models/inventory.ts";
 import Purchase from "../models/purchase.ts";
 import SupplierGood from "../models/supplierGood.ts";
+import { withSoftDeleteFilter } from "../models/softDelete.ts";
 
 interface InvGoodLean {
   supplierGoodId: Types.ObjectId;
@@ -32,17 +33,21 @@ const getActualUsage = async (
   const [openingInventory, closingInventory, purchasesInRange] =
     await Promise.all([
       Inventory.findOne({
-        businessId,
-        setFinalCount: true,
-        updatedAt: { $lt: startDate },
+        ...withSoftDeleteFilter({
+          businessId,
+          setFinalCount: true,
+          updatedAt: { $lt: startDate },
+        }),
       })
         .sort({ updatedAt: -1 })
         .select("inventoryGoods.supplierGoodId inventoryGoods.dynamicSystemCount")
         .lean() as Promise<InventoryLean | null>,
       Inventory.findOne({
-        businessId,
-        setFinalCount: true,
-        updatedAt: { $lte: endDate },
+        ...withSoftDeleteFilter({
+          businessId,
+          setFinalCount: true,
+          updatedAt: { $lte: endDate },
+        }),
       })
         .sort({ updatedAt: -1 })
         .select("inventoryGoods.supplierGoodId inventoryGoods.dynamicSystemCount")

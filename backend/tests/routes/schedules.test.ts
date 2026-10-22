@@ -108,6 +108,13 @@ describe("Schedules Routes", () => {
         date: new Date(),
         weekNumber: 1,
       });
+      await Schedule.create({
+        businessId,
+        date: new Date(Date.now() + 86_400_000),
+        weekNumber: 2,
+        deleted: true,
+        deletedAt: new Date(),
+      });
 
       const response = await app.inject({
         method: "GET",
@@ -118,6 +125,31 @@ describe("Schedules Routes", () => {
       const body = JSON.parse(response.body);
       expect(Array.isArray(body)).toBe(true);
       expect(body.length).toBe(1);
+    });
+
+    it("includes soft-deleted schedules when includeDeleted=true", async () => {
+      const app = await getTestApp();
+
+      await Schedule.create({
+        businessId,
+        date: new Date(),
+        weekNumber: 1,
+      });
+      await Schedule.create({
+        businessId,
+        date: new Date(Date.now() + 86_400_000),
+        weekNumber: 2,
+        deleted: true,
+        deletedAt: new Date(),
+      });
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/schedules?includeDeleted=true",
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json().length).toBe(2);
     });
 
     it("returns 404 when no schedules exist", async () => {
@@ -269,6 +301,44 @@ describe("Schedules Routes", () => {
       const body = expectProblem(response, 404, "not-found");
       expect(body.detail).toBe("No schedule found!");
     });
+
+    it("returns 404 for soft-deleted schedule by default", async () => {
+      const app = await getTestApp();
+      const schedule = await Schedule.create({
+        businessId,
+        date: new Date(),
+        weekNumber: 2,
+        deleted: true,
+        deletedAt: new Date(),
+      });
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/schedules/${schedule._id}`,
+      });
+
+      const body = expectProblem(response, 404, "not-found");
+      expect(body.detail).toBe("No schedule found!");
+    });
+
+    it("returns soft-deleted schedule when includeDeleted=true", async () => {
+      const app = await getTestApp();
+      const schedule = await Schedule.create({
+        businessId,
+        date: new Date(),
+        weekNumber: 2,
+        deleted: true,
+        deletedAt: new Date(),
+      });
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/schedules/${schedule._id}?includeDeleted=true`,
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json().deleted).toBe(true);
+    });
   });
 
   describe("PATCH /api/v1/schedules/:scheduleId", () => {
@@ -351,6 +421,48 @@ describe("Schedules Routes", () => {
       const body = expectProblem(response, 400, "bad-request");
       expect(body.detail).toBe("Cannot delete past or current schedules!");
     });
+
+    it("soft-deletes a future schedule", async () => {
+      const app = await getTestApp();
+      const futureDate = new Date();
+      futureDate.setDate(futureDate.getDate() + 10);
+      const schedule = await Schedule.create({
+        businessId,
+        date: futureDate,
+        weekNumber: 4,
+      });
+
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/schedules/${schedule._id}`,
+      });
+
+      expect(response.statusCode).toBe(200);
+      const persisted = await Schedule.findById(schedule._id).lean();
+      expect(persisted).not.toBeNull();
+      expect(persisted?.deleted).toBe(true);
+    });
+
+    it("returns 409 for already soft-deleted schedule", async () => {
+      const app = await getTestApp();
+      const futureDate = new Date();
+      futureDate.setDate(futureDate.getDate() + 12);
+      const schedule = await Schedule.create({
+        businessId,
+        date: futureDate,
+        weekNumber: 4,
+        deleted: true,
+        deletedAt: new Date(),
+      });
+
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/schedules/${schedule._id}`,
+      });
+
+      const body = expectProblem(response, 409, "conflict");
+      expect(body.detail).toBe("Schedule already deleted!");
+    });
   });
 
   describe("PATCH /api/v1/schedules/:scheduleId/addEmployee", () => {
@@ -430,6 +542,13 @@ describe("Schedules Routes", () => {
         date: new Date(),
         weekNumber: 5,
       });
+      await Schedule.create({
+        businessId,
+        date: new Date(Date.now() + 86_400_000),
+        weekNumber: 6,
+        deleted: true,
+        deletedAt: new Date(),
+      });
 
       const response = await app.inject({
         method: "GET",
@@ -440,6 +559,31 @@ describe("Schedules Routes", () => {
       const body = JSON.parse(response.body);
       expect(Array.isArray(body)).toBe(true);
       expect(body.length).toBe(1);
+    });
+
+    it("lists deleted schedules by business when includeDeleted=true", async () => {
+      const app = await getTestApp();
+
+      await Schedule.create({
+        businessId,
+        date: new Date(),
+        weekNumber: 5,
+      });
+      await Schedule.create({
+        businessId,
+        date: new Date(Date.now() + 86_400_000),
+        weekNumber: 6,
+        deleted: true,
+        deletedAt: new Date(),
+      });
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/schedules/business/${businessId}?includeDeleted=true`,
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json().length).toBe(2);
     });
 
     it("returns 400 for invalid businessId", async () => {

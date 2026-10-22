@@ -15,6 +15,7 @@ import { z } from "zod";
 
 import {
   coercedBooleanSchema,
+  emptyToUndefined,
   freeTextString,
   objectIdSchema,
   sanitizedString,
@@ -82,6 +83,11 @@ export const dailyScheduleQuerySchema = z.strictObject({
   dayKey: dayKeySchema,
 });
 
+/** Optional query for schedule reads: include soft-deleted records explicitly. */
+export const schedulesIncludeDeletedQuerySchema = z.strictObject({
+  includeDeleted: z.preprocess(emptyToUndefined, coercedBooleanSchema.optional()),
+});
+
 /** Body for `PATCH /schedules/:scheduleId` — only `comments` is client-settable. */
 export const updateScheduleBodySchema = z.strictObject({
   comments: freeTextString().optional(),
@@ -110,6 +116,9 @@ export type ScheduleIdParams = z.infer<typeof scheduleIdParamsSchema>;
 export type ScheduleBusinessParams = z.infer<typeof scheduleBusinessParamsSchema>;
 export type ScheduleUserParams = z.infer<typeof scheduleUserParamsSchema>;
 export type DailyScheduleQuery = z.infer<typeof dailyScheduleQuerySchema>;
+export type SchedulesIncludeDeletedQuery = z.infer<
+  typeof schedulesIncludeDeletedQuerySchema
+>;
 export type UpdateScheduleBody = z.infer<typeof updateScheduleBodySchema>;
 export type AddEmployeeBody = z.infer<typeof addEmployeeBodySchema>;
 export type UpdateEmployeeBody = z.infer<typeof updateEmployeeBodySchema>;

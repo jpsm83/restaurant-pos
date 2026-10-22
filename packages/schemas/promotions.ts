@@ -15,6 +15,7 @@ import { z } from "zod";
 
 import { weekDaysEnums } from "../enums.ts";
 import {
+  emptyToUndefined,
   coercedBooleanSchema,
   freeTextString,
   objectIdSchema,
@@ -101,6 +102,12 @@ const optionalDateSchema = z.preprocess(
 export const promotionsByBusinessQuerySchema = z.strictObject({
   startDate: optionalDateSchema,
   endDate: optionalDateSchema,
+  includeDeleted: z.preprocess(emptyToUndefined, coercedBooleanSchema.optional()),
+});
+
+/** Optional query for promotion reads: include soft-deleted records explicitly. */
+export const promotionsIncludeDeletedQuerySchema = z.strictObject({
+  includeDeleted: z.preprocess(emptyToUndefined, coercedBooleanSchema.optional()),
 });
 
 export type PromotionTypeDto = z.infer<typeof promotionTypeSchema>;
@@ -113,4 +120,7 @@ export type PromotionsByBusinessParams = z.infer<
 >;
 export type PromotionsByBusinessQuery = z.infer<
   typeof promotionsByBusinessQuerySchema
+>;
+export type PromotionsIncludeDeletedQuery = z.infer<
+  typeof promotionsIncludeDeletedQuerySchema
 >;

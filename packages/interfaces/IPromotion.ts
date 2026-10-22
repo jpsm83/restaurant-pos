@@ -68,6 +68,7 @@ export type IPromotionDocLean = {
 };
 
 export interface IPromotion {
+  _id?: Types.ObjectId;
   promotionName: string;
   promotionPeriod: IPromotionPeriod;
   weekDays: string[];
@@ -77,4 +78,6 @@ export interface IPromotion {
   businessGoodsToApplyIds?: Types.ObjectId[];
   applyToDelivery?: boolean;
   description?: string;
+  deleted?: boolean;
+  deletedAt?: Date;
 }

@@ -1,4 +1,5 @@
 import mongoose, { Schema, model } from "mongoose";
+import { softDeleteSchemaFields } from "./softDelete.ts";
 
 const employeesScheduledSchema = new Schema(
   {
@@ -70,6 +71,7 @@ const scheduleSchema = new Schema(
     comments: {
       type: String,
     }, // comments for the schedule, games, parties, events, etc
+    ...softDeleteSchemaFields,
   },
   {
     timestamps: true,

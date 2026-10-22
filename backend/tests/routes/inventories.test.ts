@@ -101,6 +101,13 @@ describe("Inventories Routes", () => {
           },
         ],
       });
+      await Inventory.create({
+        businessId,
+        setFinalCount: false,
+        inventoryGoods: [],
+        deleted: true,
+        deletedAt: new Date(),
+      });
 
       const response = await app.inject({
         method: "GET",
@@ -111,6 +118,31 @@ describe("Inventories Routes", () => {
       const body = JSON.parse(response.body);
       expect(Array.isArray(body)).toBe(true);
       expect(body.length).toBe(1);
+    });
+
+    it("includes soft-deleted inventories when includeDeleted=true", async () => {
+      const app = await getTestApp();
+
+      await Inventory.create({
+        businessId,
+        setFinalCount: false,
+        inventoryGoods: [],
+      });
+      await Inventory.create({
+        businessId,
+        setFinalCount: false,
+        inventoryGoods: [],
+        deleted: true,
+        deletedAt: new Date(),
+      });
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/inventories?includeDeleted=true",
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json().length).toBe(2);
     });
 
     it("returns a not-found problem when no inventories exist", async () => {
@@ -231,6 +263,44 @@ describe("Inventories Routes", () => {
       const body = expectProblem(response, 404, "not-found");
       expect(body.detail).toBe("No inventory found");
     });
+
+    it("returns not-found for soft-deleted inventory by default", async () => {
+      const app = await getTestApp();
+      const inventory = await Inventory.create({
+        businessId,
+        setFinalCount: false,
+        inventoryGoods: [],
+        deleted: true,
+        deletedAt: new Date(),
+      });
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/inventories/${inventory._id}`,
+      });
+
+      const body = expectProblem(response, 404, "not-found");
+      expect(body.detail).toBe("No inventory found");
+    });
+
+    it("returns soft-deleted inventory when includeDeleted=true", async () => {
+      const app = await getTestApp();
+      const inventory = await Inventory.create({
+        businessId,
+        setFinalCount: false,
+        inventoryGoods: [],
+        deleted: true,
+        deletedAt: new Date(),
+      });
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/inventories/${inventory._id}?includeDeleted=true`,
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json().deleted).toBe(true);
+    });
   });
 
   describe("DELETE /api/v1/inventories/:inventoryId", () => {
@@ -263,7 +333,7 @@ describe("Inventories Routes", () => {
       expect(body.detail).toBe("Inventory not found!");
     });
 
-    it("deletes inventory successfully", async () => {
+    it("soft-deletes inventory successfully", async () => {
       const app = await getTestApp();
 
       const inventory = await Inventory.create({
@@ -278,9 +348,28 @@ describe("Inventories Routes", () => {
       });
 
       expect(response.statusCode).toBe(200);
+      const deleted = await Inventory.findById(inventory._id).lean();
+      expect(deleted).not.toBeNull();
+      expect(deleted?.deleted).toBe(true);
+    });
 
-      const deleted = await Inventory.findById(inventory._id);
-      expect(deleted).toBeNull();
+    it("returns conflict when inventory already deleted", async () => {
+      const app = await getTestApp();
+      const inventory = await Inventory.create({
+        businessId,
+        setFinalCount: false,
+        inventoryGoods: [],
+        deleted: true,
+        deletedAt: new Date(),
+      });
+
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/inventories/${inventory._id}`,
+      });
+
+      const body = expectProblem(response, 409, "conflict");
+      expect(body.detail).toBe("Inventory already deleted!");
     });
   });
 
@@ -413,6 +502,13 @@ describe("Inventories Routes", () => {
         setFinalCount: false,
         inventoryGoods: [],
       });
+      await Inventory.create({
+        businessId,
+        setFinalCount: false,
+        inventoryGoods: [],
+        deleted: true,
+        deletedAt: new Date(),
+      });
 
       const response = await app.inject({
         method: "GET",
@@ -423,6 +519,31 @@ describe("Inventories Routes", () => {
       const body = JSON.parse(response.body);
       expect(Array.isArray(body)).toBe(true);
       expect(body.length).toBe(1);
+    });
+
+    it("lists soft-deleted inventories by business when includeDeleted=true", async () => {
+      const app = await getTestApp();
+
+      await Inventory.create({
+        businessId,
+        setFinalCount: false,
+        inventoryGoods: [],
+      });
+      await Inventory.create({
+        businessId,
+        setFinalCount: false,
+        inventoryGoods: [],
+        deleted: true,
+        deletedAt: new Date(),
+      });
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/inventories/business/${businessId}?includeDeleted=true`,
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json().length).toBe(2);
     });
 
     it("returns a validation problem for an invalid businessId", async () => {

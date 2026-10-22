@@ -10,7 +10,7 @@
  * duplicate-name rule.
  */
 import type { FastifyPluginAsync } from "fastify";
-import { Types } from "mongoose";
+import mongoose, { Types } from "mongoose";
 import type { IPromotion } from "restaurant-pos-packages/interfaces/IPromotion";
 import type { PromotionType } from "restaurant-pos-packages/interfaces/IPromotion";
 
@@ -19,14 +19,17 @@ import validateDaysOfTheWeek from "../../promotions/validateDaysOfTheWeek.ts";
 import validatePromotionType from "../../promotions/validatePromotionType.ts";
 import Promotion from "../../models/promotion.ts";
 import BusinessGood from "../../models/businessGood.ts";
+import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
 import { badRequest, conflict, notFound } from "../../errors/appError.ts";
 import {
   createPromotionBodySchema,
+  promotionsIncludeDeletedQuerySchema,
   promotionIdParamsSchema,
   promotionsByBusinessParamsSchema,
   promotionsByBusinessQuerySchema,
   updatePromotionBodySchema,
   type CreatePromotionBody,
+  type PromotionsIncludeDeletedQuery,
   type PromotionIdParams,
   type PromotionsByBusinessParams,
   type PromotionsByBusinessQuery,
@@ -41,16 +44,23 @@ const BUSINESS_GOODS_POPULATE = {
 
 export const promotionsRoutes: FastifyPluginAsync = async (app) => {
   // GET /promotions - list all
-  app.get("/", async (_req, reply) => {
-    const promotions = await Promotion.find()
-      .populate(BUSINESS_GOODS_POPULATE)
-      .lean();
+  app.get<{ Querystring: PromotionsIncludeDeletedQuery }>(
+    "/",
+    { schema: { querystring: promotionsIncludeDeletedQuerySchema } },
+    async (req, reply) => {
+      const { includeDeleted = false } = req.query;
+      const promotions = await Promotion.find(
+        withSoftDeleteFilter({}, includeDeleted),
+      )
+        .populate(BUSINESS_GOODS_POPULATE)
+        .lean();
 
-    if (!promotions.length) {
-      throw notFound("No promotions found!");
-    }
-    return reply.code(200).send(promotions);
-  });
+      if (!promotions.length) {
+        throw notFound("No promotions found!");
+      }
+      return reply.code(200).send(promotions);
+    },
+  );
 
   // POST /promotions - create
   app.post<{ Body: CreatePromotionBody }>(
@@ -90,10 +100,10 @@ export const promotionsRoutes: FastifyPluginAsync = async (app) => {
 
       const businessObjectId = new Types.ObjectId(businessId);
 
-      const duplicatePromotion = await Promotion.exists({
+      const duplicatePromotion = await Promotion.exists(withSoftDeleteFilter({
         businessId: businessObjectId,
         promotionName,
-      });
+      }));
 
       if (duplicatePromotion) {
         throw conflict(`Promotion ${promotionName} already exists!`);
@@ -118,13 +128,24 @@ export const promotionsRoutes: FastifyPluginAsync = async (app) => {
   );
 
   // GET /promotions/:promotionId - get by ID
-  app.get<{ Params: PromotionIdParams }>(
+  app.get<{
+    Params: PromotionIdParams;
+    Querystring: PromotionsIncludeDeletedQuery;
+  }>(
     "/:promotionId",
-    { schema: { params: promotionIdParamsSchema } },
+    {
+      schema: {
+        params: promotionIdParamsSchema,
+        querystring: promotionsIncludeDeletedQuerySchema,
+      },
+    },
     async (req, reply) => {
       const { promotionId } = req.params;
+      const { includeDeleted = false } = req.query;
 
-      const promotion = await Promotion.findById(promotionId)
+      const promotion = await Promotion.findOne(
+        withSoftDeleteFilter({ _id: promotionId }, includeDeleted),
+      )
         .populate(BUSINESS_GOODS_POPULATE)
         .lean();
 
@@ -182,7 +203,9 @@ export const promotionsRoutes: FastifyPluginAsync = async (app) => {
         }
       }
 
-      const promotion = (await Promotion.findById(promotionId)
+      const promotion = (await Promotion.findOne(
+        withSoftDeleteFilter({ _id: promotionId }),
+      )
         .select("businessId")
         .lean()) as unknown as IPromotion | null;
 
@@ -191,11 +214,11 @@ export const promotionsRoutes: FastifyPluginAsync = async (app) => {
       }
 
       if (promotionName) {
-        const duplicatePromotion = await Promotion.exists({
+        const duplicatePromotion = await Promotion.exists(withSoftDeleteFilter({
           _id: { $ne: promotionId },
           businessId: promotion.businessId,
           promotionName,
-        });
+        }));
 
         if (duplicatePromotion) {
           throw conflict(`Promotion ${promotionName} already exists!`);
@@ -217,7 +240,7 @@ export const promotionsRoutes: FastifyPluginAsync = async (app) => {
       if (description) updatedPromotion.description = description;
 
       await Promotion.updateOne(
-        { _id: promotionId },
+        withSoftDeleteFilter({ _id: promotionId }),
         { $set: updatedPromotion },
       );
 
@@ -233,11 +256,23 @@ export const promotionsRoutes: FastifyPluginAsync = async (app) => {
     { schema: { params: promotionIdParamsSchema } },
     async (req, reply) => {
       const { promotionId } = req.params;
+      const promotion = await Promotion.findById(promotionId)
+        .select("deleted")
+        .lean();
 
-      const result = await Promotion.deleteOne({ _id: promotionId });
-
-      if (result.deletedCount === 0) {
+      if (!promotion) {
         throw notFound("Promotion not found!");
+      }
+      if (promotion.deleted) {
+        throw conflict("Promotion already deleted!");
+      }
+
+      const wasDeleted = await markAsDeletedById(
+        Promotion as mongoose.Model<IPromotion & { deleted: boolean }>,
+        promotionId,
+      );
+      if (!wasDeleted) {
+        throw conflict("Promotion already deleted!");
       }
 
       return reply
@@ -260,7 +295,7 @@ export const promotionsRoutes: FastifyPluginAsync = async (app) => {
     },
     async (req, reply) => {
       const { businessId } = req.params;
-      const { startDate, endDate } = req.query;
+      const { startDate, endDate, includeDeleted = false } = req.query;
 
       const filter: {
         businessId: Types.ObjectId;
@@ -278,7 +313,9 @@ export const promotionsRoutes: FastifyPluginAsync = async (app) => {
         filter["promotionPeriod.end"] = { $lte: endDate };
       }
 
-      const promotions = await Promotion.find(filter)
+      const promotions = await Promotion.find(
+        withSoftDeleteFilter(filter, includeDeleted),
+      )
         .populate(BUSINESS_GOODS_POPULATE)
         .lean();
 

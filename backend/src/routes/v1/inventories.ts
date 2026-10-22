@@ -20,11 +20,13 @@ import Inventory from "../../models/inventory.ts";
 import SupplierGood from "../../models/supplierGood.ts";
 import Supplier from "../../models/supplier.ts";
 import Employee from "../../models/employee.ts";
+import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
 import createNextPeriodInventory from "../../inventories/createNextPeriodInventory.ts";
 import getVarianceReport from "../../inventories/getVarianceReport.ts";
 import { createAuthHook } from "../../auth/middleware.ts";
 import {
   badRequest,
+  conflict,
   forbidden,
   internal,
   notFound,
@@ -35,6 +37,8 @@ import {
   businessIdParamsSchema,
   createInventoryBodySchema,
   inventoryIdParamsSchema,
+  inventoryIncludeDeletedQuerySchema,
+  inventoriesByBusinessQuerySchema,
   inventoryMonthDateQuerySchema,
   inventorySupplierGoodParamsSchema,
   updateInventoryCountBodySchema,
@@ -43,6 +47,8 @@ import {
   type BusinessIdParams,
   type CreateInventoryBody,
   type InventoryIdParams,
+  type InventoryIncludeDeletedQuery,
+  type InventoriesByBusinessQuery,
   type InventoryMonthDateQuery,
   type InventorySupplierGoodParams,
   type UpdateInventoryCountBody,
@@ -86,16 +92,23 @@ const resolveMonthRange = (
 
 export const inventoriesRoutes: FastifyPluginAsync = async (app) => {
   // GET /inventories - list all
-  app.get("/", async (_req, reply) => {
-    const inventories = await Inventory.find()
+  app.get<{ Querystring: InventoryIncludeDeletedQuery }>(
+    "/",
+    { schema: { querystring: inventoryIncludeDeletedQuerySchema } },
+    async (req, reply) => {
+      const { includeDeleted = false } = req.query;
+      const inventories = await Inventory.find(
+        withSoftDeleteFilter({}, includeDeleted),
+      )
       .populate(INVENTORY_POPULATE)
       .lean();
 
-    if (!inventories.length) {
-      throw notFound("No inventories found");
-    }
-    return reply.code(200).send(inventories);
-  });
+      if (!inventories.length) {
+        throw notFound("No inventories found");
+      }
+      return reply.code(200).send(inventories);
+    },
+  );
 
   // POST /inventories - create (transaction)
   app.post<{ Body: CreateInventoryBody }>(
@@ -117,10 +130,12 @@ export const inventoriesRoutes: FastifyPluginAsync = async (app) => {
 
       try {
         const currentMonthInventory: IInventory | null =
-          await Inventory.findOne({
-            businessId,
-            createdAt: { $gte: startOfCurrentMonth, $lte: endOfCurrentMonth },
-          })
+          await Inventory.findOne(
+            withSoftDeleteFilter({
+              businessId,
+              createdAt: { $gte: startOfCurrentMonth, $lte: endOfCurrentMonth },
+            }),
+          )
             .select("setFinalCount")
             .session(session)
             .lean();
@@ -137,13 +152,13 @@ export const inventoriesRoutes: FastifyPluginAsync = async (app) => {
 
         const lastInventory: IInventory | null =
           await Inventory.findOneAndUpdate(
-            {
+            withSoftDeleteFilter({
               businessId,
               createdAt: {
                 $gte: startOfPreviousMonth,
                 $lte: endOfPreviousMonth,
               },
-            },
+            }),
             {
               $set: { setFinalCount: true },
             },
@@ -211,13 +226,24 @@ export const inventoriesRoutes: FastifyPluginAsync = async (app) => {
   );
 
   // GET /inventories/:inventoryId - get by ID
-  app.get<{ Params: InventoryIdParams }>(
+  app.get<{
+    Params: InventoryIdParams;
+    Querystring: InventoryIncludeDeletedQuery;
+  }>(
     "/:inventoryId",
-    { schema: { params: inventoryIdParamsSchema } },
+    {
+      schema: {
+        params: inventoryIdParamsSchema,
+        querystring: inventoryIncludeDeletedQuerySchema,
+      },
+    },
     async (req, reply) => {
       const { inventoryId } = req.params;
+      const { includeDeleted = false } = req.query;
 
-      const inventory = await Inventory.findById(inventoryId)
+      const inventory = await Inventory.findOne(
+        withSoftDeleteFilter({ _id: inventoryId }, includeDeleted),
+      )
         .populate(INVENTORY_POPULATE)
         .lean();
 
@@ -234,11 +260,23 @@ export const inventoriesRoutes: FastifyPluginAsync = async (app) => {
     { schema: { params: inventoryIdParamsSchema } },
     async (req, reply) => {
       const { inventoryId } = req.params;
+      const inventory = await Inventory.findById(inventoryId)
+        .select("deleted")
+        .lean();
 
-      const result = await Inventory.deleteOne({ _id: inventoryId });
-
-      if (result.deletedCount === 0) {
+      if (!inventory) {
         throw notFound("Inventory not found!");
+      }
+      if (inventory.deleted) {
+        throw conflict("Inventory already deleted!");
+      }
+
+      const wasDeleted = await markAsDeletedById(
+        Inventory as mongoose.Model<IInventory & { deleted: boolean }>,
+        inventoryId,
+      );
+      if (!wasDeleted) {
+        throw conflict("Inventory already deleted!");
       }
 
       return reply.code(200).send(`Inventory ${inventoryId} deleted`);
@@ -264,7 +302,9 @@ export const inventoriesRoutes: FastifyPluginAsync = async (app) => {
       session.startTransaction();
 
       try {
-        const inventory = (await Inventory.findById(inventoryId)
+        const inventory = (await Inventory.findOne(
+          withSoftDeleteFilter({ _id: inventoryId }),
+        )
           .select("businessId setFinalCount inventoryGoods")
           .lean()
           .session(session)) as IInventory | null;
@@ -303,7 +343,7 @@ export const inventoriesRoutes: FastifyPluginAsync = async (app) => {
         }
 
         await Inventory.updateOne(
-          { _id: inventoryId },
+          withSoftDeleteFilter({ _id: inventoryId }),
           { $set: { setFinalCount: true } },
           { session },
         );
@@ -364,7 +404,9 @@ export const inventoriesRoutes: FastifyPluginAsync = async (app) => {
         };
       }
 
-      const inventories = await Inventory.find(dbQuery)
+      const inventories = await Inventory.find(
+        withSoftDeleteFilter(dbQuery as unknown as Record<string, unknown>),
+      )
         .select("inventoryGoods.$")
         .populate(INVENTORY_POPULATE)
         .lean();
@@ -391,8 +433,10 @@ export const inventoriesRoutes: FastifyPluginAsync = async (app) => {
 
       const [inventory, supplierGood] = await Promise.all([
         Inventory.findOne({
-          _id: inventoryId,
-          "inventoryGoods.supplierGoodId": supplierGoodId,
+          ...withSoftDeleteFilter({
+            _id: inventoryId,
+            "inventoryGoods.supplierGoodId": supplierGoodId,
+          }),
         })
           .select("setFinalCount inventoryGoods.$")
           .lean() as Promise<IInventory | null>,
@@ -448,7 +492,7 @@ export const inventoriesRoutes: FastifyPluginAsync = async (app) => {
       await Promise.all([
         Inventory.updateOne(
           {
-            _id: inventoryId,
+            ...withSoftDeleteFilter({ _id: inventoryId }),
             "inventoryGoods.supplierGoodId": supplierGoodId,
             "inventoryGoods.monthlyCounts.lastCount": true,
           },
@@ -467,7 +511,7 @@ export const inventoriesRoutes: FastifyPluginAsync = async (app) => {
 
         Inventory.updateOne(
           {
-            _id: inventoryId,
+            ...withSoftDeleteFilter({ _id: inventoryId }),
             "inventoryGoods.supplierGoodId": supplierGoodId,
           },
           {
@@ -517,8 +561,10 @@ export const inventoriesRoutes: FastifyPluginAsync = async (app) => {
 
       const [inventory, supplierGood] = await Promise.all([
         Inventory.findOne({
-          _id: inventoryId,
-          "inventoryGoods.supplierGoodId": supplierGoodId,
+          ...withSoftDeleteFilter({
+            _id: inventoryId,
+            "inventoryGoods.supplierGoodId": supplierGoodId,
+          }),
         })
           .select("businessId setFinalCount inventoryGoods")
           .lean() as Promise<IInventory | null>,
@@ -635,7 +681,7 @@ export const inventoriesRoutes: FastifyPluginAsync = async (app) => {
 
       await Inventory.updateOne(
         {
-          _id: inventoryId,
+          ...withSoftDeleteFilter({ _id: inventoryId }),
           "inventoryGoods.supplierGoodId": supplierGoodId,
           "inventoryGoods.monthlyCounts._id": countId,
         },
@@ -663,16 +709,17 @@ export const inventoriesRoutes: FastifyPluginAsync = async (app) => {
   );
 
   // GET /inventories/business/:businessId - get by business
-  app.get<{ Params: BusinessIdParams; Querystring: InventoryMonthDateQuery }>(
+  app.get<{ Params: BusinessIdParams; Querystring: InventoriesByBusinessQuery }>(
     "/business/:businessId",
     {
       schema: {
         params: businessIdParamsSchema,
-        querystring: inventoryMonthDateQuerySchema,
+        querystring: inventoriesByBusinessQuerySchema,
       },
     },
     async (req, reply) => {
       const { businessId } = req.params;
+      const { includeDeleted = false } = req.query;
 
       const range = resolveMonthRange(req.query.monthDate);
 
@@ -692,7 +739,12 @@ export const inventoriesRoutes: FastifyPluginAsync = async (app) => {
         };
       }
 
-      const inventories = await Inventory.find(dbQuery)
+      const inventories = await Inventory.find(
+        withSoftDeleteFilter(
+          dbQuery as unknown as Record<string, unknown>,
+          includeDeleted,
+        ),
+      )
         .populate(INVENTORY_POPULATE)
         .lean();
 
@@ -715,8 +767,10 @@ export const inventoriesRoutes: FastifyPluginAsync = async (app) => {
       }
 
       const inventory = (await Inventory.findOne({
-        businessId: new Types.ObjectId(businessId),
-        setFinalCount: false,
+        ...withSoftDeleteFilter({
+          businessId: new Types.ObjectId(businessId),
+          setFinalCount: false,
+        }),
       })
         .populate({
           path: "inventoryGoods.supplierGoodId",

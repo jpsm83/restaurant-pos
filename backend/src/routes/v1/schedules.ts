@@ -27,6 +27,7 @@ import calculateEmployeeCost from "../../schedules/calculateEmployeeCost.ts";
 import Schedule from "../../models/schedule.ts";
 import Employee from "../../models/employee.ts";
 import User from "../../models/user.ts";
+import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
 import { createAuthHook } from "../../auth/middleware.ts";
 import type { AuthUser } from "../../auth/types.ts";
 import {
@@ -43,6 +44,7 @@ import {
   deleteEmployeeBodySchema,
   scheduleBusinessParamsSchema,
   scheduleIdParamsSchema,
+  schedulesIncludeDeletedQuerySchema,
   scheduleUserParamsSchema,
   updateEmployeeBodySchema,
   updateScheduleBodySchema,
@@ -52,6 +54,7 @@ import {
   type DeleteEmployeeBody,
   type ScheduleBusinessParams,
   type ScheduleIdParams,
+  type SchedulesIncludeDeletedQuery,
   type ScheduleUserParams,
   type UpdateEmployeeBody,
   type UpdateScheduleBody,
@@ -142,10 +145,12 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
         endOfDay.setDate(endOfDay.getDate() + 1);
       }
 
-      const schedule = (await Schedule.findOne({
-        businessId,
-        date: { $gte: startOfDay, $lt: endOfDay },
-      })
+      const schedule = (await Schedule.findOne(
+        withSoftDeleteFilter({
+          businessId,
+          date: { $gte: startOfDay, $lt: endOfDay },
+        }),
+      )
         .select("employeesSchedules")
         .lean()) as {
         employeesSchedules?: Array<{
@@ -177,8 +182,14 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
   );
 
   // GET /schedules - list all
-  app.get("/", async (_req, reply) => {
-    const schedules = await Schedule.find()
+  app.get<{ Querystring: SchedulesIncludeDeletedQuery }>(
+    "/",
+    { schema: { querystring: schedulesIncludeDeletedQuerySchema } },
+    async (req, reply) => {
+      const { includeDeleted = false } = req.query;
+      const schedules = await Schedule.find(
+        withSoftDeleteFilter({}, includeDeleted),
+      )
       .populate({
         path: "employeesSchedules.employeeId",
         select: "employeeName allEmployeeRoles",
@@ -186,11 +197,12 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
       })
       .lean();
 
-    if (!schedules.length) {
-      throw notFound("No schedules found!");
-    }
-    return reply.code(200).send(schedules);
-  });
+      if (!schedules.length) {
+        throw notFound("No schedules found!");
+      }
+      return reply.code(200).send(schedules);
+    },
+  );
 
   // POST /schedules - create
   app.post<{ Body: CreateScheduleBody }>(
@@ -206,7 +218,7 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
       const month = dateObj.getMonth() + 1;
       const day = dateObj.getDate();
 
-      const duplicateSchedule = await Schedule.exists({
+      const duplicateSchedule = await Schedule.exists(withSoftDeleteFilter({
         businessId,
         $expr: {
           $and: [
@@ -215,7 +227,7 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
             { $eq: [{ $dayOfMonth: "$date" }, day] },
           ],
         },
-      });
+      }));
 
       if (duplicateSchedule) {
         throw conflict(
@@ -241,13 +253,24 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
   );
 
   // GET /schedules/:scheduleId - get by ID
-  app.get<{ Params: ScheduleIdParams }>(
+  app.get<{
+    Params: ScheduleIdParams;
+    Querystring: SchedulesIncludeDeletedQuery;
+  }>(
     "/:scheduleId",
-    { schema: { params: scheduleIdParamsSchema } },
+    {
+      schema: {
+        params: scheduleIdParamsSchema,
+        querystring: schedulesIncludeDeletedQuerySchema,
+      },
+    },
     async (req, reply) => {
       const { scheduleId } = req.params;
+      const { includeDeleted = false } = req.query;
 
-      const schedule = await Schedule.findById(scheduleId)
+      const schedule = await Schedule.findOne(
+        withSoftDeleteFilter({ _id: scheduleId }, includeDeleted),
+      )
         .populate({
           path: "employeesSchedules.employeeId",
           select: "employeeName allEmployeeRoles",
@@ -280,8 +303,8 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
         updateSchedule.comments = comments;
       }
 
-      const updatedSchedule = await Schedule.findByIdAndUpdate(
-        scheduleId,
+      const updatedSchedule = await Schedule.findOneAndUpdate(
+        withSoftDeleteFilter({ _id: scheduleId }),
         { $set: updateSchedule },
         { returnDocument: "after", lean: true },
       );
@@ -301,11 +324,14 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
     async (req, reply) => {
       const { scheduleId } = req.params;
 
-      const schedule = (await Schedule.findById(
-        scheduleId,
-      ).lean()) as unknown as ISchedule | null;
+      const schedule = (await Schedule.findById(scheduleId).lean()) as
+        | (ISchedule & { deleted?: boolean })
+        | null;
       if (!schedule) {
         throw notFound("Schedule not found!");
+      }
+      if (schedule.deleted) {
+        throw conflict("Schedule already deleted!");
       }
 
       const scheduleDate = new Date(schedule.date);
@@ -318,10 +344,12 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
         throw badRequest("Cannot delete past or current schedules!");
       }
 
-      const result = await Schedule.deleteOne({ _id: scheduleId });
-
-      if (result.deletedCount === 0) {
-        throw notFound("Schedule not found!");
+      const wasDeleted = await markAsDeletedById(
+        Schedule as mongoose.Model<ISchedule & { deleted: boolean }>,
+        scheduleId,
+      );
+      if (!wasDeleted) {
+        throw conflict("Schedule already deleted!");
       }
 
       return reply.code(200).send({ message: `Schedule ${scheduleId} deleted` });
@@ -354,7 +382,9 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
       session.startTransaction();
 
       try {
-        const schedule = (await Schedule.findById(scheduleId)
+        const schedule = (await Schedule.findOne(
+          withSoftDeleteFilter({ _id: scheduleId }),
+        )
           .select(
             "employeesSchedules.employeeId employeesSchedules.vacation employeesSchedules.timeRange",
           )
@@ -420,8 +450,8 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
         const totalEmployeesScheduledIncrement =
           employeeAlreadyScheduled.length > 0 ? 0 : 1;
 
-        const updatedSchedule = await Schedule.findByIdAndUpdate(
-          scheduleId,
+        const updatedSchedule = await Schedule.findOneAndUpdate(
+          withSoftDeleteFilter({ _id: scheduleId }),
           {
             $push: { employeesSchedules: addEmployeeSchedule },
             $inc: {
@@ -474,8 +504,8 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
       const { scheduleId } = req.params;
       const { employeeId, employeeScheduleId } = req.body;
 
-      const schedule = (await Schedule.findById({
-        _id: scheduleId,
+      const schedule = (await Schedule.findOne({
+        ...withSoftDeleteFilter({ _id: scheduleId }),
         employeeSchedules: { $elemMatch: { employeeId } },
       })
         .select("_id employeeSchedules")
@@ -502,8 +532,8 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
 
       const scheduleEmployeesLen = (schedule.employeesSchedules || []).length;
 
-      const updatedSchedule = await Schedule.findByIdAndUpdate(
-        scheduleId,
+      const updatedSchedule = await Schedule.findOneAndUpdate(
+        withSoftDeleteFilter({ _id: scheduleId }),
         {
           $pull: { employeesSchedules: { _id: employeeScheduleId } },
           $inc: {
@@ -563,7 +593,9 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
       session.startTransaction();
 
       try {
-        const schedule = await Schedule.findById(scheduleId)
+        const schedule = await Schedule.findOne(
+          withSoftDeleteFilter({ _id: scheduleId }),
+        )
           .select(
             "employeesSchedules._id employeesSchedules.employeeId employeesSchedules.vacation employeesSchedules.timeRange employeesSchedules.employeeCost",
           )
@@ -625,7 +657,7 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
         // Update individual fields to avoid timestamps conflict
         const updatedSchedule = await Schedule.findOneAndUpdate(
           {
-            _id: scheduleId,
+            ...withSoftDeleteFilter({ _id: scheduleId }),
             "employeesSchedules._id": employeeScheduleId,
           },
           {
@@ -695,15 +727,27 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
   );
 
   // GET /schedules/business/:businessId - get by business
-  app.get<{ Params: ScheduleBusinessParams }>(
+  app.get<{
+    Params: ScheduleBusinessParams;
+    Querystring: SchedulesIncludeDeletedQuery;
+  }>(
     "/business/:businessId",
-    { schema: { params: scheduleBusinessParamsSchema } },
+    {
+      schema: {
+        params: scheduleBusinessParamsSchema,
+        querystring: schedulesIncludeDeletedQuerySchema,
+      },
+    },
     async (req, reply) => {
       const { businessId } = req.params;
+      const { includeDeleted = false } = req.query;
 
-      const schedules = await Schedule.find({
-        businessId: new Types.ObjectId(businessId),
-      })
+      const schedules = await Schedule.find(
+        withSoftDeleteFilter(
+          { businessId: new Types.ObjectId(businessId) },
+          includeDeleted,
+        ),
+      )
         .populate({
           path: "employeesSchedules.employeeId",
           select: "employeeName allEmployeeRoles",
@@ -719,11 +763,20 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
   );
 
   // GET /schedules/user/:userId - get by user
-  app.get<{ Params: ScheduleUserParams }>(
+  app.get<{
+    Params: ScheduleUserParams;
+    Querystring: SchedulesIncludeDeletedQuery;
+  }>(
     "/user/:userId",
-    { schema: { params: scheduleUserParamsSchema } },
+    {
+      schema: {
+        params: scheduleUserParamsSchema,
+        querystring: schedulesIncludeDeletedQuerySchema,
+      },
+    },
     async (req, reply) => {
       const { userId } = req.params;
+      const { includeDeleted = false } = req.query;
 
       const user = (await User.findById(userId)
         .select("employeeDetails")
@@ -736,9 +789,12 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
 
       const employeeId = user.employeeDetails as Types.ObjectId;
 
-      const schedules = await Schedule.find({
-        "employeesSchedules.employeeId": employeeId,
-      })
+      const schedules = await Schedule.find(
+        withSoftDeleteFilter(
+          { "employeesSchedules.employeeId": employeeId },
+          includeDeleted,
+        ),
+      )
         .populate({
           path: "employeesSchedules.employeeId",
           select: "employeeName allEmployeeRoles",

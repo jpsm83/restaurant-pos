@@ -25,6 +25,8 @@ export interface ISchedule {
   totalDayEmployeesCost?: number;
   businessId: Types.ObjectId;
   comments?: string;
+  deleted?: boolean;
+  deletedAt?: Date;
 }
 
 /**

@@ -31,7 +31,10 @@ export interface IInventoryGood {
 }
 
 export interface IInventory {
+  _id?: Types.ObjectId;
   businessId: Types.ObjectId;
   setFinalCount: boolean;
   inventoryGoods: IInventoryGood[];
+  deleted?: boolean;
+  deletedAt?: Date;
 }

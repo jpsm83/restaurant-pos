@@ -38,6 +38,7 @@ describe("Promotions Routes", () => {
   const createTestPromotion = async (
     businessId: Types.ObjectId,
     name: string,
+    opts?: { deleted?: boolean },
   ) => {
     return await Promotion.create({
       promotionName: name,
@@ -58,6 +59,8 @@ describe("Promotions Routes", () => {
       promotionType: {
         fixedPrice: 9.99,
       },
+      deleted: opts?.deleted,
+      deletedAt: opts?.deleted ? new Date() : undefined,
     });
   };
 
@@ -99,6 +102,11 @@ describe("Promotions Routes", () => {
       const app = await getTestApp();
       const business = await createTestBusiness();
       await createTestPromotion(business._id as Types.ObjectId, "Test Promo");
+      await createTestPromotion(
+        business._id as Types.ObjectId,
+        "Deleted Promo",
+        { deleted: true },
+      );
 
       const response = await app.inject({
         method: "GET",
@@ -108,7 +116,27 @@ describe("Promotions Routes", () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(Array.isArray(body)).toBe(true);
-      expect(body.length).toBeGreaterThanOrEqual(1);
+      expect(body.length).toBe(1);
+    });
+
+    it("includes soft-deleted promotions when includeDeleted=true", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      await createTestPromotion(business._id as Types.ObjectId, "Test Promo");
+      await createTestPromotion(
+        business._id as Types.ObjectId,
+        "Deleted Promo",
+        { deleted: true },
+      );
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/promotions?includeDeleted=true",
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.length).toBe(2);
     });
 
     it("returns a not-found problem when no promotions exist", async () => {
@@ -381,6 +409,42 @@ describe("Promotions Routes", () => {
       const body = JSON.parse(response.body);
       expect(body._id).toBe(promotion._id.toString());
     });
+
+    it("returns not-found for soft-deleted promotion by default", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      const promotion = await createTestPromotion(
+        business._id as Types.ObjectId,
+        "Soft Deleted Promo",
+        { deleted: true },
+      );
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/promotions/${promotion._id}`,
+      });
+
+      const body = expectProblem(response, 404, "not-found");
+      expect(body.detail).toBe("Promotion not found!");
+    });
+
+    it("returns soft-deleted promotion when includeDeleted=true", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      const promotion = await createTestPromotion(
+        business._id as Types.ObjectId,
+        "Soft Deleted Promo",
+        { deleted: true },
+      );
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/promotions/${promotion._id}?includeDeleted=true`,
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json().deleted).toBe(true);
+    });
   });
 
   describe("PATCH /api/v1/promotions/:promotionId", () => {
@@ -522,6 +586,28 @@ describe("Promotions Routes", () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.message).toContain("deleted");
+
+      const persisted = await Promotion.findById(promotion._id).lean();
+      expect(persisted).not.toBeNull();
+      expect(persisted?.deleted).toBe(true);
+    });
+
+    it("returns conflict when promotion already soft-deleted", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      const promotion = await createTestPromotion(
+        business._id as Types.ObjectId,
+        "Already Deleted Promo",
+        { deleted: true },
+      );
+
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/promotions/${promotion._id}`,
+      });
+
+      const body = expectProblem(response, 409, "conflict");
+      expect(body.detail).toBe("Promotion already deleted!");
     });
   });
 
@@ -577,6 +663,11 @@ describe("Promotions Routes", () => {
         business._id as Types.ObjectId,
         "Business Promo",
       );
+      await createTestPromotion(
+        business._id as Types.ObjectId,
+        "Deleted Business Promo",
+        { deleted: true },
+      );
 
       const response = await app.inject({
         method: "GET",
@@ -586,7 +677,29 @@ describe("Promotions Routes", () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(Array.isArray(body)).toBe(true);
-      expect(body.length).toBeGreaterThanOrEqual(1);
+      expect(body.length).toBe(1);
+    });
+
+    it("lists deleted promotions by business when includeDeleted=true", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      await createTestPromotion(
+        business._id as Types.ObjectId,
+        "Business Promo",
+      );
+      await createTestPromotion(
+        business._id as Types.ObjectId,
+        "Deleted Business Promo",
+        { deleted: true },
+      );
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/promotions/business/${business._id}?includeDeleted=true`,
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json().length).toBe(2);
     });
   });
 });
