@@ -87,6 +87,11 @@ const supplierGoodSchema = new Schema(
   },
 );
 
+supplierGoodSchema.index(
+  { businessId: 1, supplierId: 1, name: 1 },
+  { unique: true, partialFilterExpression: { deleted: false } },
+);
+
 const SupplierGood =
   mongoose.models.SupplierGood || model("SupplierGood", supplierGoodSchema);
 export default SupplierGood;

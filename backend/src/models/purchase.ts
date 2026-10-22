@@ -89,5 +89,10 @@ const purchaseSchema = new Schema(
   }
 );
 
+purchaseSchema.index(
+  { businessId: 1, supplierId: 1, receiptId: 1 },
+  { unique: true, partialFilterExpression: { deleted: false } },
+);
+
 const Purchase = mongoose.models.Purchase || model("Purchase", purchaseSchema);
 export default Purchase;

@@ -1,37 +1,10 @@
 import dotenv from "dotenv";
 import path from "node:path";
 import mongoose from "mongoose";
-
-import Business from "../src/models/business.ts";
-import Employee from "../src/models/employee.ts";
-import DailySalesReport from "../src/models/dailySalesReport.ts";
-import Printer from "../src/models/printer.ts";
-import Promotion from "../src/models/promotion.ts";
-import Supplier from "../src/models/supplier.ts";
-import WeeklyBusinessReport from "../src/models/weeklyBusinessReport.ts";
-import MonthlyBusinessReport from "../src/models/monthlyBusinessReport.ts";
+import { softDeleteBackfillModels } from "../src/models/softDeleteBackfillModels.ts";
 
 dotenv.config({ path: path.resolve(process.cwd(), "../.env") });
 dotenv.config();
-
-type SoftDeleteModel = mongoose.Model<{ deleted?: boolean | null }>;
-
-const models: Array<{ label: string; model: SoftDeleteModel }> = [
-  { label: "Business", model: Business as SoftDeleteModel },
-  { label: "Employee", model: Employee as SoftDeleteModel },
-  { label: "DailySalesReport", model: DailySalesReport as SoftDeleteModel },
-  { label: "Printer", model: Printer as SoftDeleteModel },
-  { label: "Promotion", model: Promotion as SoftDeleteModel },
-  { label: "Supplier", model: Supplier as SoftDeleteModel },
-  {
-    label: "WeeklyBusinessReport",
-    model: WeeklyBusinessReport as SoftDeleteModel,
-  },
-  {
-    label: "MonthlyBusinessReport",
-    model: MonthlyBusinessReport as SoftDeleteModel,
-  },
-];
 
 async function main() {
   const mongodbUri = process.env.MONGODB_URI;
@@ -46,7 +19,7 @@ async function main() {
 
   console.log("Connected to MongoDB.");
 
-  for (const { label, model } of models) {
+  for (const { label, model } of softDeleteBackfillModels) {
     const result = await model.updateMany(
       {
         $or: [{ deleted: { $exists: false } }, { deleted: null }],

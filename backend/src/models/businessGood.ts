@@ -88,6 +88,11 @@ const businessGoodSchema = new Schema(
   }
 );
 
+businessGoodSchema.index(
+  { businessId: 1, name: 1 },
+  { unique: true, partialFilterExpression: { deleted: false } },
+);
+
 const BusinessGood =
   mongoose.models.BusinessGood ||
   model("BusinessGood", businessGoodSchema);

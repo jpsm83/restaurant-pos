@@ -24,6 +24,18 @@ const SalesPointSchema = new Schema(
   }
 );
 
+SalesPointSchema.index(
+  { businessId: 1, salesPointName: 1 },
+  { unique: true, partialFilterExpression: { deleted: false } },
+);
+SalesPointSchema.index(
+  { businessId: 1, salesPointType: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { deleted: false, salesPointType: "delivery" },
+  },
+);
+
 const SalesPoint =
   mongoose.models.SalesPoint || model("SalesPoint", SalesPointSchema);
 export default SalesPoint;
