@@ -64,7 +64,7 @@ const promotionSchema = new Schema(
 
 promotionSchema.index(
   { businessId: 1, promotionName: 1 },
-  { unique: true, partialFilterExpression: { deleted: { $ne: true } } },
+  { unique: true, partialFilterExpression: { deleted: false } },
 );
 
 const Promotion = mongoose.models.Promotion || model("Promotion", promotionSchema);

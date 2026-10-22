@@ -77,11 +77,11 @@ const printerSchema = new Schema(
 
 printerSchema.index(
   { businessId: 1, printerAlias: 1 },
-  { unique: true, partialFilterExpression: { deleted: { $ne: true } } },
+  { unique: true, partialFilterExpression: { deleted: false } },
 );
 printerSchema.index(
   { businessId: 1, ipAddress: 1 },
-  { unique: true, partialFilterExpression: { deleted: { $ne: true } } },
+  { unique: true, partialFilterExpression: { deleted: false } },
 );
 
 const Printer = mongoose.models.Printer || model("Printer", printerSchema);

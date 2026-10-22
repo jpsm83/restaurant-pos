@@ -133,7 +133,7 @@ const dailySalesReportSchema = new Schema(
 // One operational day reference per business.
 dailySalesReportSchema.index(
   { businessId: 1, dailyReferenceNumber: 1 },
-  { unique: true, partialFilterExpression: { deleted: { $ne: true } } },
+  { unique: true, partialFilterExpression: { deleted: false } },
 );
 
 const DailySalesReport =

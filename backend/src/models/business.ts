@@ -142,7 +142,7 @@ businessSchema.index({ resetPasswordToken: 1 }, { sparse: true });
 businessSchema.index({ pendingEmailToken: 1 }, { sparse: true });
 businessSchema.index(
   { taxNumber: 1 },
-  { unique: true, partialFilterExpression: { deleted: { $ne: true } } },
+  { unique: true, partialFilterExpression: { deleted: false } },
 );
 
 const Business = mongoose.models.Business || model("Business", businessSchema);

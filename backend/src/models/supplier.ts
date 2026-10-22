@@ -42,15 +42,15 @@ const supplierSchema = new Schema(
 // Supplier uniqueness applies to active records only; deleted values may be reused.
 supplierSchema.index(
   { businessId: 1, legalName: 1 },
-  { unique: true, partialFilterExpression: { deleted: { $ne: true } } },
+  { unique: true, partialFilterExpression: { deleted: false } },
 );
 supplierSchema.index(
   { businessId: 1, email: 1 },
-  { unique: true, partialFilterExpression: { deleted: { $ne: true } } },
+  { unique: true, partialFilterExpression: { deleted: false } },
 );
 supplierSchema.index(
   { businessId: 1, taxNumber: 1 },
-  { unique: true, partialFilterExpression: { deleted: { $ne: true } } },
+  { unique: true, partialFilterExpression: { deleted: false } },
 );
 
 const Supplier = mongoose.models.Supplier || model("Supplier", supplierSchema);

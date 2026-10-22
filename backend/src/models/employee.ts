@@ -91,7 +91,7 @@ const employeeSchema = new Schema(
 
 employeeSchema.index(
   { taxNumber: 1 },
-  { unique: true, partialFilterExpression: { deleted: { $ne: true } } },
+  { unique: true, partialFilterExpression: { deleted: false } },
 );
 
 const Employee = mongoose.models.Employee || model("Employee", employeeSchema);
