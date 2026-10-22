@@ -89,7 +89,7 @@ import {
 } from "../../auth/middleware.ts";
 import transferOrdersBetweenSalesInstances from "../../orders/transferOrdersBetweenSalesInstances.ts";
 import getEffectiveUserRoleAtTime from "../../auth/getEffectiveUserRoleAtTime.ts";
-import { withSoftDeleteFilter } from "../../models/softDelete.ts";
+import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
 import {
   isBusinessOpenNow,
   isDeliveryOpenNow,
@@ -681,13 +681,55 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
     async (req, reply) => {
       const { salesInstanceId } = req.params;
 
-      const result = await SalesInstance.deleteOne({
-        ...withSoftDeleteFilter({ _id: salesInstanceId }),
-        $or: [{ salesGroup: { $size: 0 } }, { salesGroup: { $exists: false } }],
-      });
+      const salesInstance = await SalesInstance.findById(salesInstanceId)
+        .select("salesGroup deleted")
+        .lean();
 
-      if (result.deletedCount === 0) {
-        throw notFound("Sales instance not found or it has orders!");
+      if (!salesInstance) {
+        throw notFound("Sales instance not found!");
+      }
+
+      if (salesInstance.deleted) {
+        throw conflict("Sales instance already deleted!");
+      }
+
+      const hasOrders = Boolean(
+        salesInstance.salesGroup?.some(
+          (group: { ordersIds?: unknown[] }) =>
+            Array.isArray(group.ordersIds) && group.ordersIds.length > 0,
+        ),
+      );
+
+      if (!hasOrders) {
+        // ADR-0003 exception: transient order-less SalesInstances are discarded.
+        const discardResult = await SalesInstance.deleteOne({
+          ...withSoftDeleteFilter({ _id: salesInstanceId }),
+          // Re-check exception eligibility at write time to avoid hard-deleting
+          // instances that gained orders concurrently after the initial read.
+          salesGroup: {
+            $not: {
+              $elemMatch: {
+                ordersIds: { $exists: true, $ne: [] },
+              },
+            },
+          },
+        });
+
+        if (discardResult.deletedCount === 1) {
+          return reply
+            .code(200)
+            .send({ message: "Sales instance deleted successfully!" });
+        }
+
+        // If another write changed the instance shape between read/delete, fall through to soft-delete.
+      }
+
+      const wasDeleted = await markAsDeletedById(
+        SalesInstance as mongoose.Model<ISalesInstance & { deleted: boolean }>,
+        salesInstanceId,
+      );
+      if (!wasDeleted) {
+        throw conflict("Sales instance already deleted!");
       }
 
       return reply

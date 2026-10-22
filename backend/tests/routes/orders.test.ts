@@ -3,7 +3,7 @@
  * Tests for order CRUD endpoints
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { Types } from "mongoose";
 import { getTestApp, generateTestToken } from "../setup.ts";
 import Order from "../../src/models/order.ts";
@@ -13,7 +13,12 @@ import Notification from "../../src/models/notification.ts";
 import SalesInstance from "../../src/models/salesInstance.ts";
 import SalesPoint from "../../src/models/salesPoint.ts";
 import User from "../../src/models/user.ts";
+import Employee from "../../src/models/employee.ts";
 import sendOrderConfirmation from "../../src/orderConfirmation/sendOrderConfirmation.ts";
+
+vi.mock("../../src/inventories/updateDynamicCountSupplierGood.ts", () => ({
+  default: vi.fn(async () => true as const),
+}));
 
 const expectProblem = (
   response: {
@@ -43,6 +48,8 @@ describe("Orders Routes", () => {
   let salesInstanceId: Types.ObjectId;
   let salesPointId: Types.ObjectId;
   let userId: Types.ObjectId;
+  let managerUserId: Types.ObjectId;
+  let managerAuth: string;
 
   const authFor = (id: Types.ObjectId) =>
     generateTestToken({
@@ -139,6 +146,53 @@ describe("Orders Routes", () => {
       allUserRoles: ["Customer"],
     });
     userId = user._id;
+
+    const manager = await User.create({
+      personalDetails: {
+        email: `manager-${Date.now()}@test.com`,
+        password: "hashedpassword",
+        firstName: "Manager",
+        lastName: "User",
+        phoneNumber: "1234567890",
+        birthDate: new Date("1990-01-01"),
+        gender: "Man",
+        nationality: "USA",
+        address: {
+          country: "USA",
+          state: "CA",
+          city: "LA",
+          street: "Main St",
+          buildingNumber: "123",
+          postCode: "90001",
+        },
+        idNumber: "ID654321",
+        idType: "Passport",
+        username: "manager-user",
+      },
+      allUserRoles: ["Manager"],
+    });
+    managerUserId = manager._id;
+
+    const managerEmployee = await Employee.create({
+      businessId,
+      userId: managerUserId,
+      allEmployeeRoles: ["Manager"],
+      taxNumber: `MGR-TAX-${Date.now()}`,
+      joinDate: new Date(),
+      active: true,
+      onDuty: true,
+      vacationDaysPerYear: 20,
+    });
+
+    manager.employeeDetails = managerEmployee._id;
+    await manager.save();
+
+    managerAuth = await generateTestToken({
+      id: String(managerUserId),
+      email: manager.personalDetails.email,
+      type: "user",
+      role: "Manager",
+    });
   });
 
   describe("GET /api/v1/orders", () => {
@@ -402,6 +456,40 @@ describe("Orders Routes", () => {
 
       const body = expectProblem(response, 400, "validation");
       expect(hasErrorPath(body, "orderId")).toBe(true);
+    });
+
+    it("erases a cancelled order (ADR exception) instead of retaining it", async () => {
+      const app = await getTestApp();
+
+      const order = await Order.create({
+        businessId,
+        businessGoodId,
+        salesInstanceId,
+        createdByUserId: userId,
+        dailyReferenceNumber: 1,
+        billingStatus: "Open",
+        orderGrossPrice: 12.99,
+        orderNetPrice: 12.99,
+        orderCostPrice: 4.00,
+        orderStatus: "Sent",
+      });
+
+      await SalesInstance.updateOne(
+        { _id: salesInstanceId },
+        { $set: { salesGroup: [{ orderCode: "ORD-DELETE-1", ordersIds: [order._id] }] } },
+      );
+
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/orders/${order._id}`,
+        headers: { authorization: managerAuth },
+      });
+
+      expect(response.statusCode, response.body).toBe(200);
+      expect(response.json().message).toBe("Order deleted successfully!");
+
+      const erasedOrder = await Order.findById(order._id).lean();
+      expect(erasedOrder).toBeNull();
     });
   });
 

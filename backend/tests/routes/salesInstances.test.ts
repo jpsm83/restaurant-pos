@@ -285,6 +285,73 @@ describe("SalesInstances Routes", () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.message).toBe("Sales instance deleted successfully!");
+
+      const deleted = await SalesInstance.findById(salesInstance._id).lean();
+      expect(deleted).toBeNull();
+    });
+
+    it("deletes order-less sales instances even when salesGroup buckets exist but are empty", async () => {
+      const app = await getTestApp();
+
+      const salesInstance = await SalesInstance.create({
+        businessId,
+        salesPointId,
+        dailyReferenceNumber: 1,
+        guests: 2,
+        salesInstanceStatus: "Occupied",
+        openedByUserId: userId,
+        salesGroup: [{ orderCode: "ORD-EMPTY-1", ordersIds: [] }],
+      });
+
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/salesInstances/${salesInstance._id}`,
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const deleted = await SalesInstance.findById(salesInstance._id).lean();
+      expect(deleted).toBeNull();
+    });
+
+    it("soft-deletes a sales instance with orders and hides it by default", async () => {
+      const app = await getTestApp();
+      const orderId = new Types.ObjectId();
+
+      const salesInstance = await SalesInstance.create({
+        businessId,
+        salesPointId,
+        dailyReferenceNumber: 1,
+        guests: 2,
+        salesInstanceStatus: "Occupied",
+        openedByUserId: userId,
+        salesGroup: [{ orderCode: "ORD-1", ordersIds: [orderId] }],
+      });
+
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/salesInstances/${salesInstance._id}`,
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const stillStored = await SalesInstance.findById(salesInstance._id).lean();
+      expect(stillStored).not.toBeNull();
+      expect(stillStored?.deleted).toBe(true);
+      expect(stillStored?.deletedAt).toBeDefined();
+
+      const activeRead = await app.inject({
+        method: "GET",
+        url: `/api/v1/salesInstances/${salesInstance._id}`,
+      });
+      expect(activeRead.statusCode).toBe(404);
+
+      const includeDeletedRead = await app.inject({
+        method: "GET",
+        url: `/api/v1/salesInstances/${salesInstance._id}?includeDeleted=true`,
+      });
+      expect(includeDeletedRead.statusCode).toBe(200);
+      expect(includeDeletedRead.json().deleted).toBe(true);
     });
 
     it("returns 404 for non-existent sales instance", async () => {
@@ -297,7 +364,7 @@ describe("SalesInstances Routes", () => {
       });
 
       const body = expectProblem(response, 404, "not-found");
-      expect(body.detail).toBe("Sales instance not found or it has orders!");
+      expect(body.detail).toBe("Sales instance not found!");
     });
   });
 
