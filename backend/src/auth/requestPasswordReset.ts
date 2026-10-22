@@ -1,5 +1,6 @@
 import Business from "../models/business.ts";
 import User from "../models/user.ts";
+import { withSoftDeleteFilter } from "../models/softDelete.ts";
 import { sendAuthTokenEmailOrRollback } from "./authEmailTokenFlow.ts";
 import { buildResetPasswordLink } from "./emailLinks.ts";
 import { buildPasswordResetEmailContent } from "./emailTemplates.ts";
@@ -23,7 +24,9 @@ export async function handleRequestPasswordReset(
 
   const user =
     business == null
-      ? await User.findOne({ "personalDetails.email": normalizedEmail })
+      ? await User.findOne(
+          withSoftDeleteFilter({ "personalDetails.email": normalizedEmail }),
+        )
           .select("_id personalDetails.username personalDetails.firstName")
           .lean()
       : null;

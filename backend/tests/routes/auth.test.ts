@@ -167,6 +167,46 @@ describe("Auth Routes", () => {
 
       expect(response.statusCode).toBe(401);
     });
+
+    it("returns 401 when credentials belong to a soft-deleted user", async () => {
+      const app = await getTestApp();
+
+      await User.create({
+        deleted: true,
+        deletedAt: new Date(),
+        personalDetails: {
+          email: "deleted-user@test.com",
+          password: hashedPassword,
+          firstName: "Deleted",
+          lastName: "User",
+          phoneNumber: "1234567890",
+          birthDate: new Date("1990-01-01"),
+          gender: "Man",
+          nationality: "USA",
+          address: {
+            country: "USA",
+            state: "CA",
+            city: "LA",
+            street: "Main St",
+            buildingNumber: "123",
+            postCode: "90001",
+          },
+          idNumber: "ID-DELETED",
+          idType: "Passport",
+          username: "deleteduser",
+        },
+        allUserRoles: ["Customer"],
+      });
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: { email: "deleted-user@test.com", password: testPassword },
+      });
+
+      expect(response.statusCode).toBe(401);
+      expect(response.json().detail).toBe("Invalid credentials");
+    });
   });
 
   describe("POST /api/v1/auth/logout", () => {
@@ -262,6 +302,64 @@ describe("Auth Routes", () => {
       const body = JSON.parse(refreshRes.body);
       expect(body.accessToken).toBeDefined();
       expect(body.user?.type).toBe("business");
+    });
+
+    it("returns 401 after a logged-in user account is soft-deleted", async () => {
+      const app = await getTestApp();
+
+      const user = await User.create({
+        personalDetails: {
+          email: "refresh-soft-delete@test.com",
+          password: hashedPassword,
+          firstName: "Refresh",
+          lastName: "Deleted",
+          phoneNumber: "1234567890",
+          birthDate: new Date("1990-01-01"),
+          gender: "Man",
+          nationality: "USA",
+          address: {
+            country: "USA",
+            state: "CA",
+            city: "LA",
+            street: "Main St",
+            buildingNumber: "123",
+            postCode: "90001",
+          },
+          idNumber: "ID-REFRESH-DELETED",
+          idType: "Passport",
+          username: "refreshdeleted",
+        },
+      });
+
+      const loginRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: { email: "refresh-soft-delete@test.com", password: testPassword },
+      });
+      expect(loginRes.statusCode).toBe(200);
+
+      const setCookie = loginRes.headers["set-cookie"];
+      const lines = Array.isArray(setCookie) ? setCookie : setCookie ? [setCookie] : [];
+      const refreshLine = lines.find((l) => l.startsWith("refresh_token="));
+      expect(refreshLine).toBeDefined();
+      const prefix = "refresh_token=";
+      const afterPrefix = refreshLine!.slice(prefix.length);
+      const semi = afterPrefix.indexOf(";");
+      const refreshVal = semi >= 0 ? afterPrefix.slice(0, semi) : afterPrefix;
+
+      await User.updateOne(
+        { _id: user._id },
+        { $set: { deleted: true, deletedAt: new Date() } },
+      );
+
+      const refreshRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/refresh",
+        headers: { cookie: `refresh_token=${refreshVal}` },
+      });
+
+      expect(refreshRes.statusCode).toBe(401);
+      expect(refreshRes.json().detail).toBe("User not found");
     });
   });
 

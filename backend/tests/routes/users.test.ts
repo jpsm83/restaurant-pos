@@ -7,7 +7,7 @@
  * replica set). Image upload tests require Cloudinary mocking.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { Types } from "mongoose";
 import { getTestApp, generateTestToken } from "../setup.ts";
 import User from "../../src/models/user.ts";
@@ -19,6 +19,10 @@ import {
   errorPaths,
   isProblemDetails,
 } from "../helpers/problemDetails.ts";
+
+vi.mock("../../src/cloudinary/deleteFolderCloudinary.ts", () => ({
+  default: vi.fn().mockResolvedValue(true),
+}));
 
 describe("Users Routes", () => {
   const validAddress = {
@@ -93,6 +97,31 @@ describe("Users Routes", () => {
       expect(response.statusCode).toBe(404);
       expect(isProblemDetails(response)).toBe(true);
       expect(detail(response)).toBe("No users found!");
+    });
+
+    it("excludes soft-deleted users by default and includes them when includeDeleted=true", async () => {
+      const app = await getTestApp();
+
+      await createValidUser("active-list-user");
+      const deletedUser = await createValidUser("deleted-list-user");
+      await User.updateOne(
+        { _id: deletedUser._id },
+        { $set: { deleted: true, deletedAt: new Date() } },
+      );
+
+      const defaultList = await app.inject({
+        method: "GET",
+        url: "/api/v1/users",
+      });
+      expect(defaultList.statusCode).toBe(200);
+      expect(defaultList.json().length).toBe(1);
+
+      const includeDeleted = await app.inject({
+        method: "GET",
+        url: "/api/v1/users?includeDeleted=true",
+      });
+      expect(includeDeleted.statusCode).toBe(200);
+      expect(includeDeleted.json().length).toBe(2);
     });
   });
 
@@ -347,9 +376,10 @@ describe("Users Routes", () => {
     it("returns 403 when JWT does not match the URL id", async () => {
       const app = await getTestApp();
       const user = await createValidUser("forbiddenpatch");
+      const otherUser = await createValidUser("forbiddenpatchother");
       const auth = await generateTestToken({
-        id: new Types.ObjectId().toString(),
-        email: "other@test.com",
+        id: otherUser._id.toString(),
+        email: "forbiddenpatchother@test.com",
         type: "user",
         role: "Customer",
       });
@@ -366,6 +396,35 @@ describe("Users Routes", () => {
 
       expect(response.statusCode).toBe(403);
       expect(isProblemDetails(response)).toBe(true);
+    });
+
+    it("returns 401 when token user is soft-deleted", async () => {
+      const app = await getTestApp();
+      const user = await createValidUser("deletedtokenpatch");
+      const auth = await generateTestToken({
+        id: user._id.toString(),
+        email: "deletedtokenpatch@test.com",
+        type: "user",
+        role: "Customer",
+      });
+      await User.updateOne(
+        { _id: user._id },
+        { $set: { deleted: true, deletedAt: new Date() } },
+      );
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/users/${user._id}`,
+        payload: multipart(validCreateFields()),
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: auth,
+        },
+      });
+
+      expect(response.statusCode, response.body).toBe(401);
+      expect(isProblemDetails(response)).toBe(true);
+      expect(detail(response)).toBe("Authentication required");
     });
 
     it("updates the user and returns a session", async () => {
@@ -436,6 +495,37 @@ describe("Users Routes", () => {
       expect(response.statusCode).toBe(404);
       expect(isProblemDetails(response)).toBe(true);
       expect(detail(response)).toBe("User not found!");
+    });
+
+    it("soft-deletes a user and keeps the record for includeDeleted reads", async () => {
+      const app = await getTestApp();
+      const user = await createValidUser("softdelete-user");
+
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/users/${user._id}`,
+      });
+      expect(response.statusCode, response.body).toBe(200);
+
+      const persisted = await User.findById(user._id)
+        .select("deleted deletedAt")
+        .lean();
+      expect(persisted).toBeTruthy();
+      expect(persisted?.deleted).toBe(true);
+      expect(persisted?.deletedAt).toBeInstanceOf(Date);
+
+      const hiddenByDefault = await app.inject({
+        method: "GET",
+        url: `/api/v1/users/${user._id}`,
+      });
+      expect(hiddenByDefault.statusCode).toBe(404);
+
+      const visibleWhenIncluded = await app.inject({
+        method: "GET",
+        url: `/api/v1/users/${user._id}?includeDeleted=true`,
+      });
+      expect(visibleWhenIncluded.statusCode).toBe(200);
+      expect(visibleWhenIncluded.json().deleted).toBe(true);
     });
   });
 

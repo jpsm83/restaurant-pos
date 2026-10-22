@@ -116,4 +116,57 @@ describe("POST /api/v1/auth/signup (confirmation email)", () => {
 
     await waitForUserVerificationToken(email, { expectPresent: false });
   });
+
+  it("returns a reactivation gate response when signup email belongs to a soft-deleted user", async () => {
+    const app = await getTestApp();
+    const email = `reactivate-${Date.now()}@example.com`;
+
+    await User.create({
+      deleted: true,
+      deletedAt: new Date(),
+      personalDetails: {
+        username: "reactivate-user",
+        email,
+        password: "hashedpassword",
+        firstName: "Re",
+        lastName: "Activate",
+        phoneNumber: "1234567890",
+        birthDate: new Date("1990-01-01"),
+        gender: "Other",
+        nationality: "USA",
+        idType: "Passport",
+        idNumber: `ID-${Date.now()}`,
+        address: {
+          country: "USA",
+          state: "CA",
+          city: "LA",
+          street: "Main St",
+          buildingNumber: "123",
+          postCode: "90001",
+        },
+      },
+      emailVerified: false,
+    });
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/signup",
+      payload: {
+        email,
+        password: "TestPassword123!",
+        firstName: "Pat",
+        lastName: "Lee",
+      },
+    });
+
+    expect(res.statusCode).toBe(202);
+    const body = JSON.parse(res.body);
+    expect(body.message).toContain("reactivation");
+
+    const allRows = await User.find({ "personalDetails.email": email }).lean();
+    expect(allRows).toHaveLength(1);
+    expect(allRows[0].deleted).toBe(true);
+    expect(allRows[0].verificationToken).toBeTruthy();
+    expect(sendEmailMock).toHaveBeenCalledTimes(1);
+  });
 });

@@ -1,6 +1,7 @@
 import bcrypt from "bcrypt";
 import Business from "../models/business.ts";
 import User from "../models/user.ts";
+import { withSoftDeleteFilter } from "../models/softDelete.ts";
 import { CONFIRM_EMAIL_CONSUMPTION_ERROR_MESSAGE } from "./confirmEmail.ts";
 
 export const RESET_PASSWORD_SUCCESS_MESSAGE =
@@ -49,10 +50,10 @@ export async function handleResetPassword(
     }
 
     const user = await User.findOneAndUpdate(
-      {
+      withSoftDeleteFilter({
         resetPasswordToken: resetToken,
         resetPasswordExpires: { $gt: now },
-      },
+      }),
       {
         $set: { "personalDetails.password": passwordHash },
         $unset: {

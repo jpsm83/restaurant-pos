@@ -33,7 +33,7 @@ export async function handleRequestEmailConfirmation(
     business == null
       ? await User.findOne({ "personalDetails.email": normalizedEmail })
           .select(
-            "_id personalDetails.username personalDetails.firstName personalDetails.emailVerified emailVerified",
+            "_id personalDetails.username personalDetails.firstName personalDetails.emailVerified emailVerified deleted",
           )
           .lean()
       : null;
@@ -44,7 +44,7 @@ export async function handleRequestEmailConfirmation(
 
   const userEmailVerified =
     user?.personalDetails?.emailVerified === true || user?.emailVerified === true;
-  if (userEmailVerified) {
+  if (userEmailVerified && user?.deleted !== true) {
     return { kind: "already_verified_400", message: "Email is already verified." };
   }
 

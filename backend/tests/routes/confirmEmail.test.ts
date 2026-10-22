@@ -240,4 +240,38 @@ describe("POST /api/v1/auth/confirm-email", () => {
     expect(usrAfter?.emailVerified).toBe(false);
     expect(usrAfter?.verificationToken).toBe(sharedRaw);
   });
+
+  it("reactivates a soft-deleted user when consuming a valid token", async () => {
+    const app = await getTestApp();
+    const user = await createTestUser("reactivate-confirm@example.com");
+    const raw = randomToken();
+
+    await User.updateOne(
+      { _id: user._id },
+      {
+        $set: {
+          verificationToken: raw,
+          deleted: true,
+          deletedAt: new Date(),
+        },
+      },
+    );
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/confirm-email",
+      payload: { token: raw },
+    });
+
+    expect(response.statusCode).toBe(200);
+
+    const updated = await User.findById(user._id)
+      .select("deleted deletedAt emailVerified personalDetails.emailVerified verificationToken")
+      .lean();
+    expect(updated?.deleted).toBe(false);
+    expect(updated?.deletedAt).toBeFalsy();
+    expect(updated?.emailVerified).toBe(true);
+    expect(updated?.personalDetails?.emailVerified).toBe(true);
+    expect(updated?.verificationToken).toBeFalsy();
+  });
 });

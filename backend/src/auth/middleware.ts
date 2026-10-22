@@ -10,6 +10,7 @@ import type {
   preValidationHookHandler,
 } from "fastify";
 import { forbidden, unauthorized } from "../errors/appError.ts";
+import User from "../models/user.ts";
 import type { AuthSession, AuthUser } from "./types.ts";
 
 declare module "fastify" {
@@ -34,6 +35,12 @@ export function createAuthHook(app: FastifyInstance): preValidationHookHandler {
 
     try {
       const decoded = app.jwt.verify<AuthSession>(token);
+      if (decoded.type === "user") {
+        const user = await User.findById(decoded.id).select("deleted").lean();
+        if (user?.deleted) {
+          throw unauthorized("Invalid or expired access token");
+        }
+      }
       req.authSession = decoded;
     } catch {
       throw unauthorized("Invalid or expired access token");
@@ -60,6 +67,12 @@ export function createOptionalAuthHook(
 
     try {
       const decoded = app.jwt.verify<AuthSession>(token);
+      if (decoded.type === "user") {
+        const user = await User.findById(decoded.id).select("deleted").lean();
+        if (user?.deleted) {
+          return;
+        }
+      }
       req.authSession = decoded;
     } catch {
       // Token invalid, but we allow the request to proceed

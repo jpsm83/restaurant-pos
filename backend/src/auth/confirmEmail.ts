@@ -39,8 +39,12 @@ export async function handleConfirmEmail(
       { verificationToken },
       {
         // Keep root mirror for backward compatibility while `personalDetails.emailVerified` is canonical.
-        $set: { "personalDetails.emailVerified": true, emailVerified: true },
-        $unset: { verificationToken: "" },
+        $set: {
+          "personalDetails.emailVerified": true,
+          emailVerified: true,
+          deleted: false,
+        },
+        $unset: { verificationToken: "", deletedAt: "" },
       },
     );
 

@@ -15,6 +15,7 @@ import bcrypt from "bcrypt";
 import Business from "../../models/business.ts";
 import User from "../../models/user.ts";
 import Employee from "../../models/employee.ts";
+import { withSoftDeleteFilter } from "../../models/softDelete.ts";
 import canLogAsEmployee from "../../auth/canLogAsEmployee.ts";
 import { AUTH_CONFIG } from "../../auth/config.ts";
 import {
@@ -76,6 +77,9 @@ import {
 } from "restaurant-pos-packages/schemas/auth";
 
 export const authRoutes: FastifyPluginAsync = async (app) => {
+  const REACTIVATION_REQUIRED_MESSAGE =
+    "Account reactivation required. Please confirm the email link we sent to reactivate this account.";
+
   /**
    * POST /auth/signup
    * Create a customer user account and return authenticated session.
@@ -86,13 +90,25 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     async (req, reply) => {
       const { email, password, username, firstName, lastName } = req.body;
 
-      const [existingBusiness, existingUser] = await Promise.all([
+      const [existingBusiness, existingUser, deletedUser] = await Promise.all([
         Business.findOne({ email }).select("_id").lean(),
-        User.findOne({ "personalDetails.email": email }).select("_id").lean(),
+        User.findOne(withSoftDeleteFilter({ "personalDetails.email": email }))
+          .select("_id")
+          .lean(),
+        User.findOne({
+          "personalDetails.email": email,
+          deleted: true,
+        })
+          .select("_id")
+          .lean(),
       ]);
 
       if (existingBusiness || existingUser) {
         throw conflict("Account with this email already exists");
+      }
+      if (deletedUser) {
+        await handleRequestEmailConfirmation(email);
+        return reply.code(202).send({ message: REACTIVATION_REQUIRED_MESSAGE });
       }
 
       const hashedPassword = await bcrypt.hash(password, 10);
@@ -418,7 +434,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
 
       // 2. Check User collection
       const user = (await User.findOne({
-        "personalDetails.email": email,
+        ...withSoftDeleteFilter({ "personalDetails.email": email }),
       })
         .select(
           "_id personalDetails.email personalDetails.password personalDetails.emailVerified employeeDetails emailVerified refreshSessionVersion",

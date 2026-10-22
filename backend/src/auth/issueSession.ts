@@ -9,6 +9,7 @@ import type { Types } from "mongoose";
 import Business from "../models/business.ts";
 import Employee from "../models/employee.ts";
 import User from "../models/user.ts";
+import { withSoftDeleteFilter } from "../models/softDelete.ts";
 import canLogAsEmployee from "./canLogAsEmployee.ts";
 import { AUTH_CONFIG } from "./config.ts";
 import type {
@@ -71,7 +72,9 @@ export async function readRefreshSessionVersionForAccount(
     if (!doc) return null;
     return doc.refreshSessionVersion ?? 0;
   }
-  const doc = (await User.findById(id)
+  const doc = (await User.findOne(
+    withSoftDeleteFilter({ _id: id }),
+  )
     .select("refreshSessionVersion")
     .lean()) as { refreshSessionVersion?: number } | null;
   if (!doc) return null;
@@ -89,7 +92,9 @@ export function refreshTokenPayloadVersionMatchesDb(
 export async function buildAuthUserSessionFromUserId(
   userId: string,
 ): Promise<AuthUser | null> {
-  const user = (await User.findById(userId)
+  const user = (await User.findOne(
+    withSoftDeleteFilter({ _id: userId }),
+  )
     .select(
       "_id personalDetails.email personalDetails.emailVerified employeeDetails emailVerified",
     )
