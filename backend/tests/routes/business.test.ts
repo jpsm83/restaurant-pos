@@ -12,6 +12,10 @@ import Employee from "../../src/models/employee.ts";
 import Notification from "../../src/models/notification.ts";
 import emailChannel from "../../src/communications/channels/emailChannel.ts";
 
+vi.mock("../../src/cloudinary/deleteFolderCloudinary.ts", () => ({
+  default: vi.fn().mockResolvedValue(true),
+}));
+
 describe("Business Routes", () => {
   const validAddress = {
     country: "USA",
@@ -2140,6 +2144,129 @@ describe("Business Routes", () => {
       expect(body.errors?.map((e: { path: string }) => e.path)).toContain(
         "businessId",
       );
+    });
+
+    it("closes the business via soft delete and retains dependent records", async () => {
+      const app = await getTestApp();
+      const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+      const business = await Business.create({
+        tradeName: "Delete Test Business",
+        legalName: "Delete Test Business LLC",
+        email: `delete-business-${suffix}@business.com`,
+        password: "hashedpassword",
+        phoneNumber: "1234567890",
+        taxNumber: `TAX-DELETE-${suffix}`,
+        currencyTrade: "USD",
+        address: validAddress,
+      });
+
+      const user = await User.create({
+        personalDetails: {
+          username: `delete-user-${suffix}`,
+          email: `delete-user-${suffix}@test.com`,
+          password: "hashedpassword",
+          firstName: "Delete",
+          lastName: "User",
+          phoneNumber: "9999999999",
+          birthDate: new Date("1990-01-01"),
+          gender: "Man",
+          nationality: "USA",
+          idType: "National ID",
+          idNumber: `ID-DELETE-${suffix}`,
+          address: validAddress,
+        },
+        allUserRoles: ["Employee"],
+      });
+
+      const employee = await Employee.create({
+        businessId: business._id,
+        userId: user._id,
+        taxNumber: `EMP-DELETE-${suffix}`,
+        joinDate: new Date(),
+        vacationDaysPerYear: 20,
+        vacationDaysLeft: 20,
+        allEmployeeRoles: ["Manager"],
+        currentShiftRole: "Manager",
+        onDuty: false,
+        active: true,
+      });
+
+      const notification = await Notification.create({
+        notificationType: "Info",
+        message: "Delete route retention test",
+        businessId: business._id,
+        employeesRecipientsIds: [employee._id],
+      });
+
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/business/${business._id}`,
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.body)).toEqual({
+        message: "Business deleted successfully",
+      });
+
+      const deletedBusiness = await Business.findById(business._id)
+        .select("deleted deletedAt")
+        .lean();
+      expect(deletedBusiness?.deleted).toBe(true);
+      expect(deletedBusiness?.deletedAt).toBeInstanceOf(Date);
+
+      const retainedEmployee = await Employee.findById(employee._id)
+        .select("deleted")
+        .lean();
+      expect(retainedEmployee?.deleted).toBe(false);
+
+      const retainedNotification = await Notification.findById(notification._id)
+        .select("deleted")
+        .lean();
+      expect(retainedNotification?.deleted).toBe(false);
+    });
+
+    it("excludes a closed business from active-default reads", async () => {
+      const app = await getTestApp();
+      const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+      const business = await Business.create({
+        tradeName: "Closed Discovery Business",
+        legalName: "Closed Discovery Business LLC",
+        email: `closed-discovery-${suffix}@business.com`,
+        password: "hashedpassword",
+        phoneNumber: "1234567890",
+        taxNumber: `TAX-CLOSED-${suffix}`,
+        currencyTrade: "USD",
+        address: validAddress,
+      });
+
+      const closeResponse = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/business/${business._id}`,
+      });
+      expect(closeResponse.statusCode).toBe(200);
+
+      const defaultRead = await app.inject({
+        method: "GET",
+        url: "/api/v1/business",
+      });
+      expect(defaultRead.statusCode).toBe(400);
+      expect(defaultRead.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      expect(JSON.parse(defaultRead.body).detail).toBe("No business found!");
+
+      const includeDeletedRead = await app.inject({
+        method: "GET",
+        url: "/api/v1/business?includeDeleted=true",
+      });
+      expect(includeDeletedRead.statusCode).toBe(200);
+      expect(
+        JSON.parse(includeDeletedRead.body).some(
+          (entry: { _id: string }) => entry._id === business._id.toString(),
+        ),
+      ).toBe(true);
     });
   });
 });

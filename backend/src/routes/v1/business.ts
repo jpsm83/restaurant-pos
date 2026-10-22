@@ -14,19 +14,8 @@ import mongoose, { Types } from "mongoose";
 import { hash } from "bcrypt";
 import dispatchEvent from "../../communications/dispatchEvent.ts";
 import Business from "../../models/business.ts";
-import BusinessGood from "../../models/businessGood.ts";
-import DailySalesReport from "../../models/dailySalesReport.ts";
 import Employee from "../../models/employee.ts";
 import Notification from "../../models/notification.ts";
-import Printer from "../../models/printer.ts";
-import Promotion from "../../models/promotion.ts";
-import Purchase from "../../models/purchase.ts";
-import Reservation from "../../models/reservation.ts";
-import SalesInstance from "../../models/salesInstance.ts";
-import SalesPoint from "../../models/salesPoint.ts";
-import Schedule from "../../models/schedule.ts";
-import SupplierGood from "../../models/supplierGood.ts";
-import Supplier from "../../models/supplier.ts";
 import User from "../../models/user.ts";
 import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
 import {
@@ -42,7 +31,6 @@ import deleteFolderCloudinary from "../../cloudinary/deleteFolderCloudinary.ts";
 import {
   badRequest,
   conflict,
-  internal,
   notFound,
 } from "../../errors/appError.ts";
 import { parseMultipart } from "../../schemas/multipart.ts";
@@ -698,53 +686,22 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
     async (req, reply) => {
       const { businessId } = req.params;
 
-      const session = await mongoose.startSession();
-      session.startTransaction();
+      const business = await Business.findById(businessId)
+        .select("deleted")
+        .lean();
+      if (!business) {
+        throw notFound("Business not found!");
+      }
+      if (business.deleted) {
+        throw conflict("Business already deleted!");
+      }
 
-      try {
-        const business = await Business.findById(businessId)
-          .select("deleted")
-          .session(session)
-          .lean();
-        if (!business) {
-          throw notFound("Business not found!");
-        }
-        if (business.deleted) {
-          throw conflict("Business already deleted!");
-        }
-
-        const wasDeleted = await markAsDeletedById(
-          Business as mongoose.Model<IBusiness & { deleted: boolean }>,
-          businessId,
-        );
-        if (!wasDeleted) {
-          throw conflict("Business already deleted!");
-        }
-
-        // Soft-delete directly-owned aggregates/entities so tenant data is hidden by default.
-        const softDeleteUpdate = { $set: { deleted: true, deletedAt: new Date() } };
-        await BusinessGood.updateMany(withSoftDeleteFilter({ businessId }), softDeleteUpdate, { session });
-        await DailySalesReport.updateMany(withSoftDeleteFilter({ businessId }), softDeleteUpdate, { session });
-        await Employee.updateMany(withSoftDeleteFilter({ businessId }), softDeleteUpdate, { session });
-        await Notification.updateMany(withSoftDeleteFilter({ businessId }), softDeleteUpdate, { session });
-        await Printer.updateMany(withSoftDeleteFilter({ businessId }), softDeleteUpdate, { session });
-        await Promotion.updateMany(withSoftDeleteFilter({ businessId }), softDeleteUpdate, { session });
-        await Purchase.updateMany(withSoftDeleteFilter({ businessId }), softDeleteUpdate, { session });
-        await Reservation.updateMany(withSoftDeleteFilter({ businessId }), softDeleteUpdate, { session });
-        await SalesInstance.updateMany(withSoftDeleteFilter({ businessId }), softDeleteUpdate, { session });
-        await SalesPoint.updateMany(withSoftDeleteFilter({ businessId }), softDeleteUpdate, { session });
-        await Schedule.updateMany(withSoftDeleteFilter({ businessId }), softDeleteUpdate, { session });
-        await SupplierGood.updateMany(withSoftDeleteFilter({ businessId }), softDeleteUpdate, { session });
-        await Supplier.updateMany(withSoftDeleteFilter({ businessId }), softDeleteUpdate, { session });
-        await User.updateMany(withSoftDeleteFilter({ businessId }), softDeleteUpdate, { session });
-
-        await session.commitTransaction();
-      } catch (error) {
-        await session.abortTransaction();
-        req.log.error({ err: error }, "Delete business failed");
-        throw internal("Delete business failed!");
-      } finally {
-        session.endSession();
+      const wasDeleted = await markAsDeletedById(
+        Business as mongoose.Model<IBusiness & { deleted: boolean }>,
+        businessId,
+      );
+      if (!wasDeleted) {
+        throw conflict("Business already deleted!");
       }
 
       const folderPath = `business/${businessId}`;
