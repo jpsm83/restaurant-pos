@@ -1,6 +1,7 @@
 import mongoose, { Schema, model } from "mongoose";
 import { paymentMethod } from "./paymentMethod.ts";
 import { goodsReducedSchema } from "./dailySalesReport.ts";
+import { softDeleteSchemaFields } from "./softDelete.ts";
 
 const weeklyBusinessReportSchema = new Schema(
   {
@@ -114,6 +115,7 @@ const weeklyBusinessReportSchema = new Schema(
     averageSpendingPerCustomer: { type: Number },
     paymentMethods: { type: [paymentMethod], default: undefined },
     posSystemCommission: { type: Number },
+    ...softDeleteSchemaFields,
   },
   {
     timestamps: true,
@@ -123,7 +125,7 @@ const weeklyBusinessReportSchema = new Schema(
 
 weeklyBusinessReportSchema.index(
   { businessId: 1, weekReference: 1 },
-  { unique: true }
+  { unique: true, partialFilterExpression: { deleted: false } },
 );
 
 const WeeklyBusinessReport =

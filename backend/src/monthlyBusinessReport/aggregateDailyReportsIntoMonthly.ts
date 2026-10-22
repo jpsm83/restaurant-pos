@@ -16,6 +16,7 @@ import {
   type MonthlyReportOpen,
 } from "./createMonthlyBusinessReport.ts";
 import sendMonthlyReportReadyNotification from "./sendMonthlyReportReadyNotification.ts";
+import { withSoftDeleteFilter } from "../models/softDelete.ts";
 import {
   avgSpendPerCustomer,
   breakEvenSales,
@@ -176,11 +177,13 @@ const aggregateDailyReportsIntoMonthly = async (
       timeZone,
     );
 
-    const openPrevMonthReport = (await MonthlyBusinessReport.findOne({
-      businessId,
-      monthReference: previousMonthReference,
-      isReportOpen: true,
-    })
+    const openPrevMonthReport = (await MonthlyBusinessReport.findOne(
+      withSoftDeleteFilter({
+        businessId,
+        monthReference: previousMonthReference,
+        isReportOpen: true,
+      }),
+    )
       .select("_id monthReference isReportOpen")
       .session(session)
       .lean()) as {
@@ -201,7 +204,10 @@ const aggregateDailyReportsIntoMonthly = async (
 
       if (!openDailyInPrevMonth) {
         const closeResult = await MonthlyBusinessReport.updateOne(
-          { _id: openPrevMonthReport._id, isReportOpen: true },
+          withSoftDeleteFilter({
+            _id: openPrevMonthReport._id,
+            isReportOpen: true,
+          }),
           { $set: { isReportOpen: false } },
           { session },
         );
@@ -234,7 +240,9 @@ const aggregateDailyReportsIntoMonthly = async (
       .session(session)
       .lean();
 
-    const existingReport = await MonthlyBusinessReport.findById(reportId)
+    const existingReport = await MonthlyBusinessReport.findOne(
+      withSoftDeleteFilter({ _id: reportId }),
+    )
       .select(
         "costBreakdown.totalFixedOperatingCost costBreakdown.totalExtraCost",
       )
@@ -471,7 +479,7 @@ const aggregateDailyReportsIntoMonthly = async (
         : undefined;
 
     await MonthlyBusinessReport.updateOne(
-      { _id: reportId },
+      withSoftDeleteFilter({ _id: reportId }),
       {
         $set: {
           financialSummary: {

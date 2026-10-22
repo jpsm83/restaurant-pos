@@ -60,28 +60,67 @@ describe("weekly business report DTO ↔ model parity", () => {
     for (const field of weeklyBusinessReportServerOwnedFields) {
       for (const [name, schema] of Object.entries(businessReportBodySchemas)) {
         expect(
-          Object.keys(schema.shape),
-          `${name} should not accept ${field}`,
-        ).not.toContain(field);
+          schema.safeParse({ [field]: "__probe__" }).success,
+          `${name} should reject server-owned field ${field}`,
+        ).toBe(false);
       }
     }
   });
 
   it("the params DTOs expose only identifiers that map to model paths", () => {
-    expect(Object.keys(weeklyReportIdParamsSchema.shape)).toEqual([
-      "weeklyReportId",
-    ]);
-    expect(Object.keys(weeklyBusinessParamsSchema.shape)).toEqual(["businessId"]);
+    expect(
+      weeklyReportIdParamsSchema.safeParse({
+        weeklyReportId: "507f1f77bcf86cd799439011",
+      }).success,
+    ).toBe(true);
+    expect(
+      weeklyReportIdParamsSchema.safeParse({
+        weeklyReportId: "507f1f77bcf86cd799439011",
+        extra: "x",
+      }).success,
+    ).toBe(false);
+    expect(
+      weeklyBusinessParamsSchema.safeParse({
+        businessId: "507f1f77bcf86cd799439011",
+      }).success,
+    ).toBe(true);
+    expect(
+      weeklyBusinessParamsSchema.safeParse({
+        businessId: "507f1f77bcf86cd799439011",
+        extra: "x",
+      }).success,
+    ).toBe(false);
     expect(weeklyOwns("businessId")).toBe(true);
   });
 
   it("the query DTOs expose only read-only filters", () => {
     expect(
-      Object.keys(weeklyBusinessReportListQuerySchema.shape).sort(),
-    ).toEqual(["businessId", "endWeek", "startWeek"]);
+      weeklyBusinessReportListQuerySchema.safeParse({
+        businessId: "507f1f77bcf86cd799439011",
+        startWeek: "2024-01-01",
+        endWeek: "2024-01-07",
+        includeDeleted: "true",
+      }).success,
+    ).toBe(true);
     expect(
-      Object.keys(weeklyBusinessReportRangeQuerySchema.shape).sort(),
-    ).toEqual(["endWeek", "startWeek"]);
+      weeklyBusinessReportListQuerySchema.safeParse({
+        startWeek: "2024-01-01",
+        isReportOpen: "true",
+      }).success,
+    ).toBe(false);
+    expect(
+      weeklyBusinessReportRangeQuerySchema.safeParse({
+        startWeek: "2024-01-01",
+        endWeek: "2024-01-07",
+        includeDeleted: "false",
+      }).success,
+    ).toBe(true);
+    expect(
+      weeklyBusinessReportRangeQuerySchema.safeParse({
+        startWeek: "2024-01-01",
+        businessId: "507f1f77bcf86cd799439011",
+      }).success,
+    ).toBe(false);
     // The week filters bound the model's `weekReference` timestamp, which the
     // client may filter by but never set through a report DTO.
     expect(weeklyOwns("startWeek")).toBe(false);
@@ -104,33 +143,78 @@ describe("monthly business report DTO ↔ model parity", () => {
     for (const field of monthlyBusinessReportServerOwnedFields) {
       for (const [name, schema] of Object.entries(businessReportBodySchemas)) {
         expect(
-          Object.keys(schema.shape),
-          `${name} should not accept ${field}`,
-        ).not.toContain(field);
+          schema.safeParse({ [field]: "__probe__" }).success,
+          `${name} should reject server-owned field ${field}`,
+        ).toBe(false);
       }
     }
   });
 
   it("the params DTOs expose only identifiers that map to model paths", () => {
-    expect(Object.keys(monthlyReportIdParamsSchema.shape)).toEqual([
-      "monthlyReportId",
-    ]);
-    expect(Object.keys(monthlyBusinessParamsSchema.shape)).toEqual([
-      "businessId",
-    ]);
+    expect(
+      monthlyReportIdParamsSchema.safeParse({
+        monthlyReportId: "507f1f77bcf86cd799439011",
+      }).success,
+    ).toBe(true);
+    expect(
+      monthlyReportIdParamsSchema.safeParse({
+        monthlyReportId: "507f1f77bcf86cd799439011",
+        extra: "x",
+      }).success,
+    ).toBe(false);
+    expect(
+      monthlyBusinessParamsSchema.safeParse({
+        businessId: "507f1f77bcf86cd799439011",
+      }).success,
+    ).toBe(true);
+    expect(
+      monthlyBusinessParamsSchema.safeParse({
+        businessId: "507f1f77bcf86cd799439011",
+        extra: "x",
+      }).success,
+    ).toBe(false);
     expect(monthlyOwns("businessId")).toBe(true);
   });
 
   it("the query DTOs expose only read-only filters", () => {
     expect(
-      Object.keys(monthlyBusinessReportListQuerySchema.shape).sort(),
-    ).toEqual(["businessId", "endMonth", "startMonth"]);
+      monthlyBusinessReportListQuerySchema.safeParse({
+        businessId: "507f1f77bcf86cd799439011",
+        startMonth: "2024-01",
+        endMonth: "2024-02",
+        includeDeleted: "true",
+      }).success,
+    ).toBe(true);
     expect(
-      Object.keys(monthlyBusinessReportRangeQuerySchema.shape).sort(),
-    ).toEqual(["endMonth", "startMonth"]);
+      monthlyBusinessReportListQuerySchema.safeParse({
+        startMonth: "2024-01",
+        isReportOpen: "true",
+      }).success,
+    ).toBe(false);
     expect(
-      Object.keys(calculateMonthlyReportQuerySchema.shape),
-    ).toEqual(["month"]);
+      monthlyBusinessReportRangeQuerySchema.safeParse({
+        startMonth: "2024-01",
+        endMonth: "2024-02",
+        includeDeleted: "false",
+      }).success,
+    ).toBe(true);
+    expect(
+      monthlyBusinessReportRangeQuerySchema.safeParse({
+        startMonth: "2024-01",
+        businessId: "507f1f77bcf86cd799439011",
+      }).success,
+    ).toBe(false);
+    expect(
+      calculateMonthlyReportQuerySchema.safeParse({
+        month: "2024-06",
+      }).success,
+    ).toBe(true);
+    expect(
+      calculateMonthlyReportQuerySchema.safeParse({
+        month: "2024-06",
+        extra: "x",
+      }).success,
+    ).toBe(false);
     // The month filters bound the model's `monthReference` timestamp, which the
     // client may filter by but never set through a report DTO.
     expect(monthlyOwns("startMonth")).toBe(false);
@@ -140,9 +224,13 @@ describe("monthly business report DTO ↔ model parity", () => {
   });
 
   it("the PATCH body's costs map to nested model paths", () => {
-    const keys = Object.keys(updateMonthlyBusinessReportBodySchema.shape).sort();
-    expect(keys).toEqual(["totalExtraCost", "totalFixedOperatingCost"]);
-    for (const key of keys) {
+    expect(
+      updateMonthlyBusinessReportBodySchema.safeParse({
+        totalFixedOperatingCost: 1500,
+        totalExtraCost: 200,
+      }).success,
+    ).toBe(true);
+    for (const key of ["totalFixedOperatingCost", "totalExtraCost"] as const) {
       expect(
         monthlyOwns(`costBreakdown.${key}`),
         `costBreakdown.${key} should map to a model field`,

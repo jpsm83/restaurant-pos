@@ -216,12 +216,15 @@ describe("Performance baseline - notification read endpoints", () => {
       },
     };
 
-    const outputPath = resolve(
-      process.cwd(),
-      "src/communications/NOTIFICATIONS_PERFORMANCE_BASELINE_SNAPSHOT.json"
-    );
-    mkdirSync(dirname(outputPath), { recursive: true });
-    writeFileSync(outputPath, JSON.stringify(result, null, 2), "utf-8");
+    // Avoid mutating tracked files during normal test runs.
+    if (process.env.UPDATE_NOTIFICATIONS_PERF_BASELINE === "true") {
+      const outputPath = resolve(
+        process.cwd(),
+        "src/communications/NOTIFICATIONS_PERFORMANCE_BASELINE_SNAPSHOT.json"
+      );
+      mkdirSync(dirname(outputPath), { recursive: true });
+      writeFileSync(outputPath, JSON.stringify(result, null, 2), "utf-8");
+    }
 
     expect(result.latencyMs.businessList.p95).toBeGreaterThan(0);
     expect(result.latencyMs.userList.p95).toBeGreaterThan(0);

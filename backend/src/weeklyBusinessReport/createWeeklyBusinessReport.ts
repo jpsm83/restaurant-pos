@@ -4,6 +4,7 @@
 
 import { ClientSession, Types } from "mongoose";
 import WeeklyBusinessReport from "../models/weeklyBusinessReport.ts";
+import { withSoftDeleteFilter } from "../models/softDelete.ts";
 import type { WeeklyReportOpen } from "restaurant-pos-packages/interfaces/IWeeklyBusinessReport";
 
 export async function createWeeklyBusinessReport(
@@ -11,10 +12,12 @@ export async function createWeeklyBusinessReport(
   weekReference: Date,
   session: ClientSession,
 ): Promise<WeeklyReportOpen | null> {
-  const existing = (await WeeklyBusinessReport.findOne({
-    businessId,
-    weekReference,
-  })
+  const existing = (await WeeklyBusinessReport.findOne(
+    withSoftDeleteFilter({
+      businessId,
+      weekReference,
+    }),
+  )
     .session(session)
     .lean()) as {
     _id: Types.ObjectId;

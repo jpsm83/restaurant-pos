@@ -107,5 +107,7 @@ export interface IWeeklyBusinessReport {
   averageSpendingPerCustomer: number;
   paymentMethods: IPaymentMethod[];
   posSystemCommission: number;
+  deleted?: boolean;
+  deletedAt?: Date;
 }
 

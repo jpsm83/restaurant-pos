@@ -18,6 +18,7 @@ import { z } from "zod";
 import {
   calendarDateSchema,
   calendarMonthSchema,
+  coercedBooleanSchema,
   emptyToUndefined,
   objectIdSchema,
 } from "./primitives.ts";
@@ -44,6 +45,10 @@ const objectIdQuerySchema = z.preprocess(
 export const weeklyReportIdParamsSchema = z.strictObject({
   weeklyReportId: objectIdSchema,
 });
+/** Optional query for report reads: include soft-deleted records explicitly. */
+export const reportIncludeDeletedQuerySchema = z.strictObject({
+  includeDeleted: emptyToUndefined(coercedBooleanSchema.optional()),
+});
 
 /** Path params for `GET /weeklyBusinessReport/business/:businessId`. */
 export const weeklyBusinessParamsSchema = z.strictObject({
@@ -59,12 +64,14 @@ export const weeklyBusinessReportListQuerySchema = z.strictObject({
   businessId: objectIdQuerySchema,
   startWeek: calendarDateQuerySchema,
   endWeek: calendarDateQuerySchema,
+  includeDeleted: emptyToUndefined(coercedBooleanSchema.optional()),
 });
 
 /** Query for `GET /weeklyBusinessReport/business/:businessId`. */
 export const weeklyBusinessReportRangeQuerySchema = z.strictObject({
   startWeek: calendarDateQuerySchema,
   endWeek: calendarDateQuerySchema,
+  includeDeleted: emptyToUndefined(coercedBooleanSchema.optional()),
 });
 
 /** Path params for `GET`/`PATCH /monthlyBusinessReport/:monthlyReportId`. */
@@ -90,12 +97,14 @@ export const monthlyBusinessReportListQuerySchema = z.strictObject({
   businessId: objectIdQuerySchema,
   startMonth: monthQuerySchema,
   endMonth: monthQuerySchema,
+  includeDeleted: emptyToUndefined(coercedBooleanSchema.optional()),
 });
 
 /** Query for `GET /monthlyBusinessReport/business/:businessId`. */
 export const monthlyBusinessReportRangeQuerySchema = z.strictObject({
   startMonth: monthQuerySchema,
   endMonth: monthQuerySchema,
+  includeDeleted: emptyToUndefined(coercedBooleanSchema.optional()),
 });
 
 /**
@@ -125,6 +134,9 @@ export type WeeklyBusinessReportListQuery = z.infer<
 >;
 export type WeeklyBusinessReportRangeQuery = z.infer<
   typeof weeklyBusinessReportRangeQuerySchema
+>;
+export type ReportIncludeDeletedQuery = z.infer<
+  typeof reportIncludeDeletedQuerySchema
 >;
 export type MonthlyReportIdParams = z.infer<typeof monthlyReportIdParamsSchema>;
 export type MonthlyBusinessParams = z.infer<typeof monthlyBusinessParamsSchema>;

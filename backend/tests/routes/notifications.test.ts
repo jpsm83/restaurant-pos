@@ -314,6 +314,32 @@ describe("Notifications Routes", () => {
       const body = JSON.parse(response.body);
       expect(body._id).toBe(notification._id.toString());
     });
+
+    it("hides soft-deleted notifications by default and returns them when includeDeleted=true", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      const notification = await createTestNotification(
+        business._id as Types.ObjectId,
+      );
+
+      await Notification.updateOne(
+        { _id: notification._id },
+        { $set: { deleted: true, deletedAt: new Date() } },
+      );
+
+      const hidden = await app.inject({
+        method: "GET",
+        url: `/api/v1/notifications/${notification._id}`,
+      });
+      expect(hidden.statusCode).toBe(404);
+
+      const visible = await app.inject({
+        method: "GET",
+        url: `/api/v1/notifications/${notification._id}?includeDeleted=true`,
+      });
+      expect(visible.statusCode).toBe(200);
+      expect(visible.json().deleted).toBe(true);
+    });
   });
 
   describe("PATCH /api/v1/notifications/:notificationId", () => {
@@ -393,6 +419,39 @@ describe("Notifications Routes", () => {
           { path: "notificationId", message: expect.any(String) },
         ]),
       );
+    });
+
+    it("returns 404 when notification does not exist", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/notifications/${new Types.ObjectId()}`,
+      });
+
+      expect(response.statusCode).toBe(404);
+      expect(response.json().detail).toBe("Notification not found!");
+    });
+
+    it("returns 409 when notification is already deleted", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      const notification = await createTestNotification(
+        business._id as Types.ObjectId,
+      );
+
+      await Notification.updateOne(
+        { _id: notification._id },
+        { $set: { deleted: true, deletedAt: new Date() } },
+      );
+
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/notifications/${notification._id}`,
+      });
+
+      expect(response.statusCode).toBe(409);
+      expect(response.json().detail).toBe("Notification already deleted!");
     });
   });
 

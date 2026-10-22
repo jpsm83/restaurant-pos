@@ -4,6 +4,7 @@
 
 import { ClientSession, Types } from "mongoose";
 import MonthlyBusinessReport from "../models/monthlyBusinessReport.ts";
+import { withSoftDeleteFilter } from "../models/softDelete.ts";
 
 export interface MonthlyReportOpen {
   _id: Types.ObjectId;
@@ -21,10 +22,12 @@ export async function createMonthlyBusinessReport(
   monthReference: Date,
   session: ClientSession
 ): Promise<MonthlyReportOpen | null> {
-  const existing = (await MonthlyBusinessReport.findOne({
-    businessId,
-    monthReference,
-  })
+  const existing = (await MonthlyBusinessReport.findOne(
+    withSoftDeleteFilter({
+      businessId,
+      monthReference,
+    }),
+  )
     .session(session)
     .lean()) as {
     _id: Types.ObjectId;

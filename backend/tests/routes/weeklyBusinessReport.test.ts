@@ -154,6 +154,31 @@ describe("WeeklyBusinessReport Routes", () => {
       const body = JSON.parse(response.body);
       expect(Array.isArray(body)).toBe(true);
     });
+
+    it("excludes soft-deleted reports by default and includes them when requested", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      await WeeklyBusinessReport.create({
+        businessId: business._id,
+        weekReference: new Date("2024-02-05"),
+        deleted: true,
+        deletedAt: new Date(),
+      });
+
+      const activeOnly = await app.inject({
+        method: "GET",
+        url: "/api/v1/weeklyBusinessReport",
+      });
+      const activeBody = expectProblem(activeOnly, 404, "not-found");
+      expect(activeBody.detail).toContain("No weekly reports");
+
+      const includeDeleted = await app.inject({
+        method: "GET",
+        url: "/api/v1/weeklyBusinessReport?includeDeleted=true",
+      });
+      expect(includeDeleted.statusCode).toBe(200);
+      expect(includeDeleted.json()).toHaveLength(1);
+    });
   });
 
   describe("GET /api/v1/weeklyBusinessReport/:weeklyReportId", () => {
@@ -195,6 +220,30 @@ describe("WeeklyBusinessReport Routes", () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body._id).toBe(report._id.toString());
+    });
+
+    it("returns 404 for soft-deleted report by default and 200 with includeDeleted=true", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      const report = await WeeklyBusinessReport.create({
+        businessId: business._id,
+        weekReference: new Date("2024-03-04"),
+        deleted: true,
+        deletedAt: new Date(),
+      });
+
+      const hidden = await app.inject({
+        method: "GET",
+        url: `/api/v1/weeklyBusinessReport/${report._id}`,
+      });
+      expect(hidden.statusCode).toBe(404);
+
+      const visible = await app.inject({
+        method: "GET",
+        url: `/api/v1/weeklyBusinessReport/${report._id}?includeDeleted=true`,
+      });
+      expect(visible.statusCode).toBe(200);
+      expect(visible.json().deleted).toBe(true);
     });
   });
 
@@ -251,6 +300,30 @@ describe("WeeklyBusinessReport Routes", () => {
       const body = JSON.parse(response.body);
       expect(Array.isArray(body)).toBe(true);
       expect(body.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("supports includeDeleted on business-scoped reads", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      const deletedReport = await WeeklyBusinessReport.create({
+        businessId: business._id,
+        weekReference: new Date("2024-04-01"),
+        deleted: true,
+        deletedAt: new Date(),
+      });
+
+      const hidden = await app.inject({
+        method: "GET",
+        url: `/api/v1/weeklyBusinessReport/business/${business._id}`,
+      });
+      expect(hidden.statusCode).toBe(404);
+
+      const visible = await app.inject({
+        method: "GET",
+        url: `/api/v1/weeklyBusinessReport/business/${business._id}?includeDeleted=true`,
+      });
+      expect(visible.statusCode).toBe(200);
+      expect(visible.json()[0]._id).toBe(deletedReport._id.toString());
     });
   });
 

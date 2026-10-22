@@ -6,6 +6,7 @@ import {
   monthlyBusinessReportListQuerySchema,
   monthlyBusinessReportRangeQuerySchema,
   monthlyReportIdParamsSchema,
+  reportIncludeDeletedQuerySchema,
   updateMonthlyBusinessReportBodySchema,
   weeklyBusinessParamsSchema,
   weeklyBusinessReportListQuerySchema,
@@ -71,6 +72,7 @@ describe("weeklyBusinessReportListQuerySchema", () => {
     expect(parsed.businessId).toBeUndefined();
     expect(parsed.startWeek).toBeUndefined();
     expect(parsed.endWeek).toBeUndefined();
+    expect(parsed.includeDeleted).toBeUndefined();
   });
 
   it("accepts a businessId and a plain calendar-date week range", () => {
@@ -82,6 +84,14 @@ describe("weeklyBusinessReportListQuerySchema", () => {
     expect(parsed.businessId).toBe(VALID_ID);
     expect(parsed.startWeek).toBe("2024-01-01");
     expect(parsed.endWeek).toBe("2024-01-07");
+    expect(parsed.includeDeleted).toBeUndefined();
+  });
+
+  it("coerces includeDeleted when provided", () => {
+    const parsed = weeklyBusinessReportListQuerySchema.parse({
+      includeDeleted: "true",
+    });
+    expect(parsed.includeDeleted).toBe(true);
   });
 
   it("rejects a malformed businessId", () => {
@@ -138,6 +148,7 @@ describe("weeklyBusinessReportRangeQuerySchema", () => {
       weeklyBusinessReportRangeQuerySchema.safeParse({
         startWeek: "2024-01-01",
         endWeek: "2024-01-07",
+        includeDeleted: "false",
       }).success,
     ).toBe(true);
   });
@@ -196,6 +207,7 @@ describe("monthlyBusinessReportListQuerySchema", () => {
     expect(parsed.businessId).toBeUndefined();
     expect(parsed.startMonth).toBeUndefined();
     expect(parsed.endMonth).toBeUndefined();
+    expect(parsed.includeDeleted).toBeUndefined();
   });
 
   it("accepts a businessId and a YYYY-MM month range", () => {
@@ -207,6 +219,14 @@ describe("monthlyBusinessReportListQuerySchema", () => {
     expect(parsed.businessId).toBe(VALID_ID);
     expect(parsed.startMonth).toBe("2024-01");
     expect(parsed.endMonth).toBe("2024-12");
+    expect(parsed.includeDeleted).toBeUndefined();
+  });
+
+  it("coerces includeDeleted when provided", () => {
+    const parsed = monthlyBusinessReportListQuerySchema.parse({
+      includeDeleted: "true",
+    });
+    expect(parsed.includeDeleted).toBe(true);
   });
 
   it("rejects a malformed businessId", () => {
@@ -263,6 +283,7 @@ describe("monthlyBusinessReportRangeQuerySchema", () => {
       monthlyBusinessReportRangeQuerySchema.safeParse({
         startMonth: "2024-01",
         endMonth: "2024-06",
+        includeDeleted: "false",
       }).success,
     ).toBe(true);
   });
@@ -304,6 +325,23 @@ describe("calculateMonthlyReportQuerySchema", () => {
         month: "2024-06",
         extra: "x",
       }).success,
+    ).toBe(false);
+  });
+});
+
+describe("reportIncludeDeletedQuerySchema", () => {
+  it("accepts missing includeDeleted and coerces boolean values", () => {
+    expect(reportIncludeDeletedQuerySchema.parse({}).includeDeleted).toBeUndefined();
+    expect(
+      reportIncludeDeletedQuerySchema.parse({ includeDeleted: "true" })
+        .includeDeleted,
+    ).toBe(true);
+  });
+
+  it("rejects non-boolean includeDeleted values", () => {
+    expect(
+      reportIncludeDeletedQuerySchema.safeParse({ includeDeleted: "nope" })
+        .success,
     ).toBe(false);
   });
 });

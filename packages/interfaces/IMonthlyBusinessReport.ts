@@ -86,4 +86,6 @@ export interface IMonthlyBusinessReport {
   averageSpendingPerCustomer: number; // Average spending per customer
   paymentMethods: IPaymentMethod[]; // Array of payment methods used
   posSystemCommission: number; // POS system commission
+  deleted?: boolean;
+  deletedAt?: Date;
 }

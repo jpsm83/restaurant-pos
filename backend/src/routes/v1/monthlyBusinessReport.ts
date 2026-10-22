@@ -19,6 +19,7 @@ import MonthlyBusinessReport from "../../models/monthlyBusinessReport.ts";
 import DailySalesReport from "../../models/dailySalesReport.ts";
 import Schedule from "../../models/schedule.ts";
 import Business from "../../models/business.ts";
+import { withSoftDeleteFilter } from "../../models/softDelete.ts";
 import { badRequest, notFound } from "../../errors/appError.ts";
 import {
   calculateMonthlyReportQuerySchema,
@@ -26,12 +27,14 @@ import {
   monthlyBusinessReportListQuerySchema,
   monthlyBusinessReportRangeQuerySchema,
   monthlyReportIdParamsSchema,
+  reportIncludeDeletedQuerySchema,
   updateMonthlyBusinessReportBodySchema,
   type CalculateMonthlyReportQuery,
   type MonthlyBusinessParams,
   type MonthlyBusinessReportListQuery,
   type MonthlyBusinessReportRangeQuery,
   type MonthlyReportIdParams,
+  type ReportIncludeDeletedQuery,
   type UpdateMonthlyBusinessReportBody,
 } from "restaurant-pos-packages/schemas/businessReports";
 
@@ -96,7 +99,9 @@ export const monthlyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
     "/",
     { schema: { querystring: monthlyBusinessReportListQuerySchema } },
     async (req, reply) => {
-      const { businessId, startMonth, endMonth } = req.query;
+      const { businessId, startMonth, endMonth, includeDeleted = false } =
+        req.query;
+      const includeDeletedFlag = includeDeleted === true;
 
       const filter: {
         businessId?: Types.ObjectId;
@@ -112,7 +117,9 @@ export const monthlyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
         filter.monthReference = monthReference;
       }
 
-      const reports = await MonthlyBusinessReport.find(filter)
+      const reports = await MonthlyBusinessReport.find(
+        withSoftDeleteFilter(filter, includeDeletedFlag),
+      )
         .sort({ monthReference: -1 })
         .lean();
 
@@ -125,14 +132,25 @@ export const monthlyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
   );
 
   // GET /monthlyBusinessReport/:monthlyReportId - get by ID
-  app.get<{ Params: MonthlyReportIdParams }>(
+  app.get<{
+    Params: MonthlyReportIdParams;
+    Querystring: ReportIncludeDeletedQuery;
+  }>(
     "/:monthlyReportId",
-    { schema: { params: monthlyReportIdParamsSchema } },
+    {
+      schema: {
+        params: monthlyReportIdParamsSchema,
+        querystring: reportIncludeDeletedQuerySchema,
+      },
+    },
     async (req, reply) => {
       const { monthlyReportId } = req.params;
+      const { includeDeleted = false } = req.query;
+      const includeDeletedFlag = includeDeleted === true;
 
-      const report =
-        await MonthlyBusinessReport.findById(monthlyReportId).lean();
+      const report = await MonthlyBusinessReport.findOne(
+        withSoftDeleteFilter({ _id: monthlyReportId }, includeDeletedFlag),
+      ).lean();
 
       if (!report) {
         throw notFound("Monthly report not found!");
@@ -167,7 +185,9 @@ export const monthlyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
         );
       }
 
-      const report = await MonthlyBusinessReport.findById(monthlyReportId)
+      const report = await MonthlyBusinessReport.findOne(
+        withSoftDeleteFilter({ _id: monthlyReportId }),
+      )
         .select("isReportOpen costBreakdown")
         .lean();
 
@@ -210,7 +230,7 @@ export const monthlyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
         totalOperatingCost > 0 ? newFixed / totalOperatingCost : 0;
 
       await MonthlyBusinessReport.updateOne(
-        { _id: monthlyReportId },
+        withSoftDeleteFilter({ _id: monthlyReportId }),
         {
           $set: {
             "costBreakdown.totalFixedOperatingCost": newFixed,
@@ -225,8 +245,9 @@ export const monthlyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
         },
       );
 
-      const updated =
-        await MonthlyBusinessReport.findById(monthlyReportId).lean();
+      const updated = await MonthlyBusinessReport.findOne(
+        withSoftDeleteFilter({ _id: monthlyReportId }),
+      ).lean();
       return reply.code(200).send(updated);
     },
   );
@@ -245,7 +266,8 @@ export const monthlyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
     },
     async (req, reply) => {
       const { businessId } = req.params;
-      const { startMonth, endMonth } = req.query;
+      const { startMonth, endMonth, includeDeleted = false } = req.query;
+      const includeDeletedFlag = includeDeleted === true;
 
       const filter: {
         businessId: Types.ObjectId;
@@ -259,7 +281,9 @@ export const monthlyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
         filter.monthReference = monthReference;
       }
 
-      const reports = await MonthlyBusinessReport.find(filter)
+      const reports = await MonthlyBusinessReport.find(
+        withSoftDeleteFilter(filter, includeDeletedFlag),
+      )
         .sort({ monthReference: 1 })
         .lean();
 
@@ -330,8 +354,10 @@ export const monthlyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
           .select("totalDayEmployeesCost")
           .lean(),
         MonthlyBusinessReport.findOne({
-          businessId: businessObjId,
-          monthReference: monthStart,
+          ...withSoftDeleteFilter({
+            businessId: businessObjId,
+            monthReference: monthStart,
+          }),
         })
           .select(
             "isReportOpen costBreakdown.totalFixedOperatingCost costBreakdown.totalExtraCost",

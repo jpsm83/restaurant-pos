@@ -8,6 +8,8 @@ import DailySalesReport from "../src/models/dailySalesReport.ts";
 import Printer from "../src/models/printer.ts";
 import Promotion from "../src/models/promotion.ts";
 import Supplier from "../src/models/supplier.ts";
+import WeeklyBusinessReport from "../src/models/weeklyBusinessReport.ts";
+import MonthlyBusinessReport from "../src/models/monthlyBusinessReport.ts";
 
 dotenv.config({ path: path.resolve(process.cwd(), "../.env") });
 dotenv.config();
@@ -21,6 +23,14 @@ const models: Array<{ label: string; model: SoftDeleteModel }> = [
   { label: "Printer", model: Printer as SoftDeleteModel },
   { label: "Promotion", model: Promotion as SoftDeleteModel },
   { label: "Supplier", model: Supplier as SoftDeleteModel },
+  {
+    label: "WeeklyBusinessReport",
+    model: WeeklyBusinessReport as SoftDeleteModel,
+  },
+  {
+    label: "MonthlyBusinessReport",
+    model: MonthlyBusinessReport as SoftDeleteModel,
+  },
 ];
 
 async function main() {

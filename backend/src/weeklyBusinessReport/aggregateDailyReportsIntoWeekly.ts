@@ -26,6 +26,7 @@ import type {
 import type { IGoodsReduced } from "restaurant-pos-packages/interfaces/IDailySalesReport";
 import type { IPaymentMethod } from "restaurant-pos-packages/interfaces/IPaymentMethod";
 import getWasteByBudgetImpactForMonth from "../inventories/getWasteByBudgetImpactForMonth.ts";
+import { withSoftDeleteFilter } from "../models/softDelete.ts";
 import {
   avgSpendPerCustomer,
   calculateCostRatiosByTotalSales,
@@ -152,11 +153,13 @@ const aggregateDailyReportsIntoWeekly = async (
       weeklyReportStartDay,
     );
 
-    const openPreviousWeekReport = (await WeeklyBusinessReport.findOne({
-      businessId,
-      weekReference: previousWeekReference,
-      isReportOpen: true,
-    })
+    const openPreviousWeekReport = (await WeeklyBusinessReport.findOne(
+      withSoftDeleteFilter({
+        businessId,
+        weekReference: previousWeekReference,
+        isReportOpen: true,
+      }),
+    )
       .select("_id weekReference isReportOpen")
       .session(session)
       .lean()) as {
@@ -177,7 +180,10 @@ const aggregateDailyReportsIntoWeekly = async (
 
       if (!openDailyInPreviousWeek) {
         const closeResult = await WeeklyBusinessReport.updateOne(
-          { _id: openPreviousWeekReport._id, isReportOpen: true },
+          withSoftDeleteFilter({
+            _id: openPreviousWeekReport._id,
+            isReportOpen: true,
+          }),
           { $set: { isReportOpen: false } },
           { session },
         );
@@ -401,7 +407,7 @@ const aggregateDailyReportsIntoWeekly = async (
         : undefined;
 
     await WeeklyBusinessReport.updateOne(
-      { _id: reportId },
+      withSoftDeleteFilter({ _id: reportId }),
       {
         $set: {
           financialSummary: {

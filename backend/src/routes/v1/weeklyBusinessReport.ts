@@ -12,12 +12,15 @@ import type { FastifyPluginAsync } from "fastify";
 import { Types } from "mongoose";
 
 import WeeklyBusinessReport from "../../models/weeklyBusinessReport.ts";
+import { withSoftDeleteFilter } from "../../models/softDelete.ts";
 import { badRequest, notFound } from "../../errors/appError.ts";
 import {
+  reportIncludeDeletedQuerySchema,
   weeklyBusinessParamsSchema,
   weeklyBusinessReportListQuerySchema,
   weeklyBusinessReportRangeQuerySchema,
   weeklyReportIdParamsSchema,
+  type ReportIncludeDeletedQuery,
   type WeeklyBusinessParams,
   type WeeklyBusinessReportListQuery,
   type WeeklyBusinessReportRangeQuery,
@@ -66,11 +69,14 @@ export const weeklyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
     "/",
     { schema: { querystring: weeklyBusinessReportListQuerySchema } },
     async (req, reply) => {
-      const { businessId, startWeek, endWeek } = req.query;
+      const { businessId, startWeek, endWeek, includeDeleted = false } =
+        req.query;
+      const includeDeletedFlag = includeDeleted === true;
 
       const filter: {
         businessId?: Types.ObjectId;
         weekReference?: { $gte: Date; $lte: Date };
+        deleted?: { $ne: true };
       } = {};
 
       if (businessId) {
@@ -82,7 +88,9 @@ export const weeklyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
         filter.weekReference = weekReference;
       }
 
-      const reports = await WeeklyBusinessReport.find(filter)
+      const reports = await WeeklyBusinessReport.find(
+        withSoftDeleteFilter(filter, includeDeletedFlag),
+      )
         .sort({ weekReference: -1 })
         .lean();
 
@@ -95,13 +103,22 @@ export const weeklyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
   );
 
   // GET /weeklyBusinessReport/:weeklyReportId - get by ID
-  app.get<{ Params: WeeklyReportIdParams }>(
+  app.get<{ Params: WeeklyReportIdParams; Querystring: ReportIncludeDeletedQuery }>(
     "/:weeklyReportId",
-    { schema: { params: weeklyReportIdParamsSchema } },
+    {
+      schema: {
+        params: weeklyReportIdParamsSchema,
+        querystring: reportIncludeDeletedQuerySchema,
+      },
+    },
     async (req, reply) => {
       const { weeklyReportId } = req.params;
+      const { includeDeleted = false } = req.query;
+      const includeDeletedFlag = includeDeleted === true;
 
-      const report = await WeeklyBusinessReport.findById(weeklyReportId).lean();
+      const report = await WeeklyBusinessReport.findOne(
+        withSoftDeleteFilter({ _id: weeklyReportId }, includeDeletedFlag),
+      ).lean();
 
       if (!report) {
         throw notFound("Weekly report not found!");
@@ -125,11 +142,13 @@ export const weeklyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
     },
     async (req, reply) => {
       const { businessId } = req.params;
-      const { startWeek, endWeek } = req.query;
+      const { startWeek, endWeek, includeDeleted = false } = req.query;
+      const includeDeletedFlag = includeDeleted === true;
 
       const filter: {
         businessId: Types.ObjectId;
         weekReference?: { $gte: Date; $lte: Date };
+        deleted?: { $ne: true };
       } = {
         businessId: new Types.ObjectId(businessId),
       };
@@ -139,7 +158,9 @@ export const weeklyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
         filter.weekReference = weekReference;
       }
 
-      const reports = await WeeklyBusinessReport.find(filter)
+      const reports = await WeeklyBusinessReport.find(
+        withSoftDeleteFilter(filter, includeDeletedFlag),
+      )
         .sort({ weekReference: 1 })
         .lean();
 

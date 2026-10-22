@@ -27,6 +27,8 @@ export const weeklyBusinessReportServerOwnedFields = [
   "averageSpendingPerCustomer",
   "paymentMethods",
   "posSystemCommission",
+  "deleted",
+  "deletedAt",
   "createdAt",
   "updatedAt",
 ] as const;
@@ -47,6 +49,8 @@ export const monthlyBusinessReportServerOwnedFields = [
   "averageSpendingPerCustomer",
   "paymentMethods",
   "posSystemCommission",
+  "deleted",
+  "deletedAt",
   "createdAt",
   "updatedAt",
 ] as const;

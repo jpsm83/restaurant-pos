@@ -149,6 +149,31 @@ describe("MonthlyBusinessReport Routes", () => {
       const body = expectProblem(response, 400, "validation");
       expect(fieldPaths(body)).toContain("startMonth");
     });
+
+    it("excludes soft-deleted reports by default and includes them when requested", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      await MonthlyBusinessReport.create({
+        businessId: business._id,
+        monthReference: new Date("2024-02-01"),
+        deleted: true,
+        deletedAt: new Date(),
+      });
+
+      const hidden = await app.inject({
+        method: "GET",
+        url: "/api/v1/monthlyBusinessReport",
+      });
+      const hiddenBody = expectProblem(hidden, 404, "not-found");
+      expect(hiddenBody.detail).toContain("No monthly reports");
+
+      const visible = await app.inject({
+        method: "GET",
+        url: "/api/v1/monthlyBusinessReport?includeDeleted=true",
+      });
+      expect(visible.statusCode).toBe(200);
+      expect(visible.json()).toHaveLength(1);
+    });
   });
 
   describe("GET /api/v1/monthlyBusinessReport/:monthlyReportId", () => {
@@ -190,6 +215,30 @@ describe("MonthlyBusinessReport Routes", () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body._id).toBe(report._id.toString());
+    });
+
+    it("returns 404 for soft-deleted report by default and 200 with includeDeleted=true", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      const report = await MonthlyBusinessReport.create({
+        businessId: business._id,
+        monthReference: new Date("2024-03-01"),
+        deleted: true,
+        deletedAt: new Date(),
+      });
+
+      const hidden = await app.inject({
+        method: "GET",
+        url: `/api/v1/monthlyBusinessReport/${report._id}`,
+      });
+      expect(hidden.statusCode).toBe(404);
+
+      const visible = await app.inject({
+        method: "GET",
+        url: `/api/v1/monthlyBusinessReport/${report._id}?includeDeleted=true`,
+      });
+      expect(visible.statusCode).toBe(200);
+      expect(visible.json().deleted).toBe(true);
     });
   });
 
@@ -319,6 +368,30 @@ describe("MonthlyBusinessReport Routes", () => {
       const body = JSON.parse(response.body);
       expect(Array.isArray(body)).toBe(true);
       expect(body.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("supports includeDeleted on business-scoped reads", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      const deletedReport = await MonthlyBusinessReport.create({
+        businessId: business._id,
+        monthReference: new Date("2024-04-01"),
+        deleted: true,
+        deletedAt: new Date(),
+      });
+
+      const hidden = await app.inject({
+        method: "GET",
+        url: `/api/v1/monthlyBusinessReport/business/${business._id}`,
+      });
+      expect(hidden.statusCode).toBe(404);
+
+      const visible = await app.inject({
+        method: "GET",
+        url: `/api/v1/monthlyBusinessReport/business/${business._id}?includeDeleted=true`,
+      });
+      expect(visible.statusCode).toBe(200);
+      expect(visible.json()[0]._id).toBe(deletedReport._id.toString());
     });
   });
 
