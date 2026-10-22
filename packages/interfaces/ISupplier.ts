@@ -13,4 +13,6 @@ export interface ISupplier {
   currentlyInUse: boolean;
   imageUrl?: string;
   contactPerson?: string;
+  deleted?: boolean;
+  deletedAt?: Date;
 }

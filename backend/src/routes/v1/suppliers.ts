@@ -23,12 +23,15 @@ import deleteFilesCloudinary from "../../cloudinary/deleteFilesCloudinary.ts";
 import deleteFolderCloudinary from "../../cloudinary/deleteFolderCloudinary.ts";
 import { badRequest, conflict, notFound } from "../../errors/appError.ts";
 import { parseMultipart } from "../../schemas/multipart.ts";
+import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
 import {
   createSupplierBodySchema,
+  supplierIncludeDeletedQuerySchema,
   supplierByBusinessParamsSchema,
   supplierIdParamsSchema,
   updateSupplierBodySchema,
   type CreateSupplierBody,
+  type SupplierIncludeDeletedQuery,
   type SupplierByBusinessParams,
   type SupplierIdParams,
 } from "restaurant-pos-packages/schemas/supplier";
@@ -63,14 +66,21 @@ function assertNotReservedName(fields: SupplierIdentityFields): void {
 
 export const suppliersRoutes: FastifyPluginAsync = async (app) => {
   // GET /suppliers - list all
-  app.get("/", async (_req, reply) => {
-    const suppliers = await Supplier.find().lean();
+  app.get<{ Querystring: SupplierIncludeDeletedQuery }>(
+    "/",
+    { schema: { querystring: supplierIncludeDeletedQuerySchema } },
+    async (req, reply) => {
+      const { includeDeleted = false } = req.query;
+      const suppliers = await Supplier.find(
+        withSoftDeleteFilter({}, includeDeleted),
+      ).lean();
 
-    if (!suppliers.length) {
-      throw notFound("No suppliers found!");
-    }
-    return reply.code(200).send(suppliers);
-  });
+      if (!suppliers.length) {
+        throw notFound("No suppliers found!");
+      }
+      return reply.code(200).send(suppliers);
+    },
+  );
 
   // POST /suppliers - create (formData with image)
   app.post("/", async (req, reply) => {
@@ -81,14 +91,14 @@ export const suppliersRoutes: FastifyPluginAsync = async (app) => {
 
     assertNotReservedName(fields);
 
-    const duplicateSupplier = await Supplier.exists({
+    const duplicateSupplier = await Supplier.exists(withSoftDeleteFilter({
       businessId: fields.businessId,
       $or: [
         { legalName: fields.legalName },
         { email: fields.email },
         { taxNumber: fields.taxNumber },
       ],
-    });
+    }));
 
     if (duplicateSupplier) {
       throw conflict(
@@ -142,13 +152,24 @@ export const suppliersRoutes: FastifyPluginAsync = async (app) => {
   });
 
   // GET /suppliers/:supplierId - get by ID
-  app.get<{ Params: SupplierIdParams }>(
+  app.get<{
+    Params: SupplierIdParams;
+    Querystring: SupplierIncludeDeletedQuery;
+  }>(
     "/:supplierId",
-    { schema: { params: supplierIdParamsSchema } },
+    {
+      schema: {
+        params: supplierIdParamsSchema,
+        querystring: supplierIncludeDeletedQuerySchema,
+      },
+    },
     async (req, reply) => {
       const { supplierId } = req.params;
+      const { includeDeleted = false } = req.query;
 
-      const supplier = await Supplier.findById(supplierId).lean();
+      const supplier = await Supplier.findOne(
+        withSoftDeleteFilter({ _id: supplierId }, includeDeleted),
+      ).lean();
 
       if (!supplier) {
         throw notFound("No suppliers found!");
@@ -169,7 +190,9 @@ export const suppliersRoutes: FastifyPluginAsync = async (app) => {
         updateSupplierBodySchema,
       );
 
-      const supplier = (await Supplier.findById(supplierId)
+      const supplier = (await Supplier.findOne(
+        withSoftDeleteFilter({ _id: supplierId }),
+      )
         .select(
           "businessId imageUrl address tradeName legalName email phoneNumber taxNumber currentlyInUse contactPerson",
         )
@@ -179,7 +202,7 @@ export const suppliersRoutes: FastifyPluginAsync = async (app) => {
         throw notFound("Supplier not found!");
       }
 
-      const duplicateSupplier = await Supplier.exists({
+      const duplicateSupplier = await Supplier.exists(withSoftDeleteFilter({
         _id: { $ne: supplierId },
         businessId: supplier.businessId,
         $or: [
@@ -187,7 +210,7 @@ export const suppliersRoutes: FastifyPluginAsync = async (app) => {
           { email: fields.email },
           { taxNumber: fields.taxNumber },
         ],
-      });
+      }));
 
       if (duplicateSupplier) {
         throw conflict(
@@ -277,6 +300,17 @@ export const suppliersRoutes: FastifyPluginAsync = async (app) => {
     { schema: { params: supplierIdParamsSchema } },
     async (req, reply) => {
       const { supplierId } = req.params;
+      const supplier = await Supplier.findById(supplierId)
+        .select("businessId deleted")
+        .lean();
+
+      if (!supplier) {
+        throw notFound("Supplier not found!");
+      }
+
+      if (supplier.deleted) {
+        throw conflict("Supplier already deleted!");
+      }
 
       const supplierGoodIds = await SupplierGood.find({
         supplierId,
@@ -292,26 +326,18 @@ export const suppliersRoutes: FastifyPluginAsync = async (app) => {
         }
       }
 
-      const deletedSupplier = await Supplier.findOneAndDelete({
-        _id: supplierId,
-      });
+      const folderPath = `/business/${supplier.businessId}/suppliers/${supplierId}`;
 
-      if (!deletedSupplier) {
-        throw notFound("Supplier not found!");
+      const wasDeleted = await markAsDeletedById(
+        Supplier as mongoose.Model<ISupplier & { deleted: boolean }>,
+        supplierId,
+      );
+      if (!wasDeleted) {
+        throw conflict("Supplier already deleted!");
       }
 
-      const folderPath = `/business/${deletedSupplier.businessId}/suppliers/${supplierId}`;
-
-      const deleteFolderCloudinaryResult: string | boolean =
-        await deleteFolderCloudinary(folderPath);
-
-      if (deleteFolderCloudinaryResult !== true) {
-        throw badRequest(
-          typeof deleteFolderCloudinaryResult === "string"
-            ? deleteFolderCloudinaryResult
-            : "DeleteCloudinaryFolder failed!",
-        );
-      }
+      // Cleanup is best-effort; deletion state is already durable.
+      await deleteFolderCloudinary(folderPath);
 
       return reply.code(200).send({
         message: `Supplier deleted successfully!`,
@@ -320,13 +346,24 @@ export const suppliersRoutes: FastifyPluginAsync = async (app) => {
   );
 
   // GET /suppliers/business/:businessId - get by business
-  app.get<{ Params: SupplierByBusinessParams }>(
+  app.get<{
+    Params: SupplierByBusinessParams;
+    Querystring: SupplierIncludeDeletedQuery;
+  }>(
     "/business/:businessId",
-    { schema: { params: supplierByBusinessParamsSchema } },
+    {
+      schema: {
+        params: supplierByBusinessParamsSchema,
+        querystring: supplierIncludeDeletedQuerySchema,
+      },
+    },
     async (req, reply) => {
       const { businessId } = req.params;
+      const { includeDeleted = false } = req.query;
 
-      const suppliers = await Supplier.find({ businessId }).lean();
+      const suppliers = await Supplier.find(
+        withSoftDeleteFilter({ businessId }, includeDeleted),
+      ).lean();
 
       if (!suppliers.length) {
         throw notFound("No suppliers found!");

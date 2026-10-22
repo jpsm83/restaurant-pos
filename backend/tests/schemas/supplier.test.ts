@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 
 import {
   createSupplierBodySchema,
+  supplierIncludeDeletedQuerySchema,
   supplierByBusinessParamsSchema,
   supplierIdParamsSchema,
   updateSupplierBodySchema,
@@ -183,6 +184,27 @@ describe("supplier path params", () => {
   it("reject unknown keys", () => {
     expect(
       supplierIdParamsSchema.safeParse({ supplierId: VALID_ID, extra: "x" })
+        .success,
+    ).toBe(false);
+  });
+});
+
+describe("supplierIncludeDeletedQuerySchema", () => {
+  it("accepts omitted, true and false includeDeleted values", () => {
+    expect(supplierIncludeDeletedQuerySchema.safeParse({}).success).toBe(true);
+    expect(
+      supplierIncludeDeletedQuerySchema.safeParse({ includeDeleted: "true" })
+        .success,
+    ).toBe(true);
+    expect(
+      supplierIncludeDeletedQuerySchema.safeParse({ includeDeleted: "false" })
+        .success,
+    ).toBe(true);
+  });
+
+  it("rejects malformed includeDeleted values", () => {
+    expect(
+      supplierIncludeDeletedQuerySchema.safeParse({ includeDeleted: "maybe" })
         .success,
     ).toBe(false);
   });

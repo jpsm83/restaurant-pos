@@ -1,5 +1,6 @@
 import mongoose, { Schema, model } from "mongoose";
 import { addressSchema } from "./address.ts";
+import { softDeleteSchemaFields } from "./softDelete.ts";
 
 const supplierSchema = new Schema(
   {
@@ -17,7 +18,6 @@ const supplierSchema = new Schema(
     taxNumber: {
       type: String,
       required: [true, "Tax number is required!"],
-      unique: true,
     }, // Tax number of the suplier
     businessId: {
       type: Schema.Types.ObjectId,
@@ -31,11 +31,26 @@ const supplierSchema = new Schema(
     // optional fields
     imageUrl: { type: String }, // Logo of the suplier company
     contactPerson: { type: String }, // Contact person of the suplier
+    ...softDeleteSchemaFields,
   },
   {
     timestamps: true,
     trim: true,
   }
+);
+
+// Supplier uniqueness applies to active records only; deleted values may be reused.
+supplierSchema.index(
+  { businessId: 1, legalName: 1 },
+  { unique: true, partialFilterExpression: { deleted: { $ne: true } } },
+);
+supplierSchema.index(
+  { businessId: 1, email: 1 },
+  { unique: true, partialFilterExpression: { deleted: { $ne: true } } },
+);
+supplierSchema.index(
+  { businessId: 1, taxNumber: 1 },
+  { unique: true, partialFilterExpression: { deleted: { $ne: true } } },
 );
 
 const Supplier = mongoose.models.Supplier || model("Supplier", supplierSchema);

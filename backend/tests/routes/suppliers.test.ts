@@ -5,9 +5,9 @@
  * RFC 9457 `application/problem+json` documents, never `{ message }`.
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from "vitest";
 import { Types } from "mongoose";
-import { getTestApp } from "../setup.ts";
+import { getTestApp, resetTestApp } from "../setup.ts";
 import Supplier from "../../src/models/supplier.ts";
 import SupplierGood from "../../src/models/supplierGood.ts";
 import BusinessGood from "../../src/models/businessGood.ts";
@@ -18,6 +18,14 @@ import {
   errorPaths,
   isProblemDetails,
 } from "../helpers/problemDetails.ts";
+
+const deleteFolderCloudinaryMock = vi.hoisted(() =>
+  vi.fn().mockResolvedValue(true),
+);
+
+vi.mock("../../src/cloudinary/deleteFolderCloudinary.ts", () => ({
+  default: deleteFolderCloudinaryMock,
+}));
 
 describe("Suppliers Routes", () => {
   let businessId: Types.ObjectId;
@@ -42,6 +50,14 @@ describe("Suppliers Routes", () => {
     businessId: businessId.toString(),
   });
 
+  beforeAll(async () => {
+    await resetTestApp();
+  });
+
+  afterAll(async () => {
+    await resetTestApp();
+  });
+
   beforeEach(async () => {
     const business = await Business.create({
       tradeName: "Test Restaurant",
@@ -57,7 +73,7 @@ describe("Suppliers Routes", () => {
   });
 
   describe("GET /api/v1/suppliers", () => {
-    it("lists all suppliers", async () => {
+    it("lists only active suppliers by default", async () => {
       const app = await getTestApp();
 
       await Supplier.create({
@@ -69,6 +85,18 @@ describe("Suppliers Routes", () => {
         taxNumber: "SUP-001",
         currentlyInUse: true,
         address: validAddress,
+      });
+      await Supplier.create({
+        businessId,
+        tradeName: "Supplier Deleted",
+        legalName: "Supplier Deleted LLC",
+        email: "supplierdeleted@test.com",
+        phoneNumber: "9990009999",
+        taxNumber: "SUP-DEL-001",
+        currentlyInUse: true,
+        address: validAddress,
+        deleted: true,
+        deletedAt: new Date(),
       });
 
       const response = await app.inject({
@@ -83,6 +111,46 @@ describe("Suppliers Routes", () => {
       expect(body[0].tradeName).toBe("Supplier A");
     });
 
+    it("includes deleted suppliers when includeDeleted=true", async () => {
+      const app = await getTestApp();
+
+      await Supplier.create({
+        businessId,
+        tradeName: "Supplier A",
+        legalName: "Supplier A LLC",
+        email: "suppliera@test.com",
+        phoneNumber: "1111111111",
+        taxNumber: "SUP-001",
+        currentlyInUse: true,
+        address: validAddress,
+      });
+      await Supplier.create({
+        businessId,
+        tradeName: "Supplier Deleted",
+        legalName: "Supplier Deleted LLC",
+        email: "supplierdeleted@test.com",
+        phoneNumber: "9990009999",
+        taxNumber: "SUP-DEL-001",
+        currentlyInUse: true,
+        address: validAddress,
+        deleted: true,
+        deletedAt: new Date(),
+      });
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/suppliers?includeDeleted=true",
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(Array.isArray(body)).toBe(true);
+      expect(body.length).toBe(2);
+      expect(body.some((supplier: { deleted?: boolean }) => supplier.deleted)).toBe(
+        true,
+      );
+    });
+
     it("returns a problem-details 404 when no suppliers exist", async () => {
       const app = await getTestApp();
 
@@ -94,6 +162,19 @@ describe("Suppliers Routes", () => {
       expect(response.statusCode).toBe(404);
       expect(isProblemDetails(response)).toBe(true);
       expect(JSON.parse(response.body).detail).toBe("No suppliers found!");
+    });
+
+    it("returns a problem-details 400 for an invalid includeDeleted query value", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/suppliers?includeDeleted=maybe",
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(isProblemDetails(response)).toBe(true);
+      expect(errorPaths(response)).toContain("includeDeleted");
     });
   });
 
@@ -231,6 +312,40 @@ describe("Suppliers Routes", () => {
       expect(JSON.parse(response.body).detail).toContain("already exists");
     });
 
+    it("creates a supplier when only a soft-deleted supplier has matching identity fields", async () => {
+      const app = await getTestApp();
+
+      await Supplier.create({
+        businessId,
+        tradeName: "Old Supplier",
+        legalName: "Existing Supplier LLC",
+        email: "existing@supplier.com",
+        phoneNumber: "8888888888",
+        taxNumber: "EXIST-001",
+        currentlyInUse: true,
+        address: validAddress,
+        deleted: true,
+        deletedAt: new Date(),
+      });
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/suppliers",
+        payload: multipart({
+          ...validSupplierFields(),
+          legalName: "Existing Supplier LLC",
+          email: "existing@supplier.com",
+          taxNumber: "EXIST-001",
+        }),
+        headers: { "content-type": "multipart/form-data" },
+      });
+
+      expect(response.statusCode).toBe(201);
+      expect(JSON.parse(response.body).message).toBe(
+        "Supplier Existing Supplier LLC created successfully!",
+      );
+    });
+
     it("creates a supplier, normalizing the email and parsing the address", async () => {
       const app = await getTestApp();
 
@@ -307,6 +422,56 @@ describe("Suppliers Routes", () => {
       expect(response.statusCode).toBe(404);
       expect(isProblemDetails(response)).toBe(true);
       expect(JSON.parse(response.body).detail).toBe("No suppliers found!");
+    });
+
+    it("returns a problem-details 404 for a soft-deleted supplier by default", async () => {
+      const app = await getTestApp();
+      const supplier = await Supplier.create({
+        businessId,
+        tradeName: "Soft Deleted Supplier",
+        legalName: "Soft Deleted Supplier LLC",
+        email: "softdeleted@supplier.com",
+        phoneNumber: "1111112222",
+        taxNumber: "SUP-SOFT-001",
+        currentlyInUse: true,
+        address: validAddress,
+        deleted: true,
+        deletedAt: new Date(),
+      });
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/suppliers/${supplier._id}`,
+      });
+
+      expect(response.statusCode).toBe(404);
+      expect(isProblemDetails(response)).toBe(true);
+      expect(JSON.parse(response.body).detail).toBe("No suppliers found!");
+    });
+
+    it("returns a soft-deleted supplier when includeDeleted=true", async () => {
+      const app = await getTestApp();
+      const supplier = await Supplier.create({
+        businessId,
+        tradeName: "Soft Deleted Supplier",
+        legalName: "Soft Deleted Supplier LLC",
+        email: "softdeleted@supplier.com",
+        phoneNumber: "1111112222",
+        taxNumber: "SUP-SOFT-001",
+        currentlyInUse: true,
+        address: validAddress,
+        deleted: true,
+        deletedAt: new Date(),
+      });
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/suppliers/${supplier._id}?includeDeleted=true`,
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.deleted).toBe(true);
     });
   });
 
@@ -520,10 +685,96 @@ describe("Suppliers Routes", () => {
         "Supplier is in use in some business goods!",
       );
     });
+
+    it("soft-deletes a supplier instead of hard-deleting", async () => {
+      const app = await getTestApp();
+
+      const supplier = await Supplier.create({
+        businessId,
+        tradeName: "Delete Me Supplier",
+        legalName: "Delete Me Supplier LLC",
+        email: "deleteme@supplier.com",
+        phoneNumber: "6677778888",
+        taxNumber: "SOFT-DEL-001",
+        currentlyInUse: true,
+        address: validAddress,
+      });
+
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/suppliers/${supplier._id}`,
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.body).message).toBe(
+        "Supplier deleted successfully!",
+      );
+
+      const persisted = await Supplier.findById(supplier._id).lean();
+      expect(persisted).not.toBeNull();
+      expect(persisted?.deleted).toBe(true);
+      expect(persisted?.deletedAt).toBeInstanceOf(Date);
+    });
+
+    it("returns a problem-details 409 when supplier is already soft-deleted", async () => {
+      const app = await getTestApp();
+      const supplier = await Supplier.create({
+        businessId,
+        tradeName: "Delete Me Supplier",
+        legalName: "Delete Me Supplier LLC",
+        email: "deleteme@supplier.com",
+        phoneNumber: "6677778888",
+        taxNumber: "SOFT-DEL-001",
+        currentlyInUse: true,
+        address: validAddress,
+        deleted: true,
+        deletedAt: new Date(),
+      });
+
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/suppliers/${supplier._id}`,
+      });
+
+      expect(response.statusCode).toBe(409);
+      expect(isProblemDetails(response)).toBe(true);
+      expect(JSON.parse(response.body).detail).toBe("Supplier already deleted!");
+    });
+
+    it("returns 409 on a second delete after a successful soft-delete", async () => {
+      const app = await getTestApp();
+      const supplier = await Supplier.create({
+        businessId,
+        tradeName: "Delete Me Supplier",
+        legalName: "Delete Me Supplier LLC",
+        email: "deleteme@supplier.com",
+        phoneNumber: "6677778888",
+        taxNumber: "SOFT-DEL-001",
+        currentlyInUse: true,
+        address: validAddress,
+      });
+
+      const firstDelete = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/suppliers/${supplier._id}`,
+      });
+      expect(firstDelete.statusCode).toBe(200);
+
+      const secondDelete = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/suppliers/${supplier._id}`,
+      });
+
+      expect(secondDelete.statusCode).toBe(409);
+      expect(isProblemDetails(secondDelete)).toBe(true);
+      expect(JSON.parse(secondDelete.body).detail).toBe(
+        "Supplier already deleted!",
+      );
+    });
   });
 
   describe("GET /api/v1/suppliers/business/:businessId", () => {
-    it("lists suppliers by business", async () => {
+    it("lists active suppliers by business by default", async () => {
       const app = await getTestApp();
 
       await Supplier.create({
@@ -536,6 +787,18 @@ describe("Suppliers Routes", () => {
         currentlyInUse: true,
         address: validAddress,
       });
+      await Supplier.create({
+        businessId,
+        tradeName: "Supplier Deleted",
+        legalName: "Supplier Deleted LLC",
+        email: "supplierdeleted@test.com",
+        phoneNumber: "0000011111",
+        taxNumber: "SUP-DEL-003",
+        currentlyInUse: true,
+        address: validAddress,
+        deleted: true,
+        deletedAt: new Date(),
+      });
 
       const response = await app.inject({
         method: "GET",
@@ -546,6 +809,42 @@ describe("Suppliers Routes", () => {
       const body = JSON.parse(response.body);
       expect(Array.isArray(body)).toBe(true);
       expect(body.length).toBe(1);
+    });
+
+    it("lists deleted suppliers by business when includeDeleted=true", async () => {
+      const app = await getTestApp();
+
+      await Supplier.create({
+        businessId,
+        tradeName: "Supplier C",
+        legalName: "Supplier C LLC",
+        email: "supplierc@test.com",
+        phoneNumber: "5555555555",
+        taxNumber: "SUP-003",
+        currentlyInUse: true,
+        address: validAddress,
+      });
+      await Supplier.create({
+        businessId,
+        tradeName: "Supplier Deleted",
+        legalName: "Supplier Deleted LLC",
+        email: "supplierdeleted@test.com",
+        phoneNumber: "0000011111",
+        taxNumber: "SUP-DEL-003",
+        currentlyInUse: true,
+        address: validAddress,
+        deleted: true,
+        deletedAt: new Date(),
+      });
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/suppliers/business/${businessId}?includeDeleted=true`,
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.length).toBe(2);
     });
 
     it("returns a problem-details 400 for an invalid businessId", async () => {

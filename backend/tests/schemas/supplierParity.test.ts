@@ -46,13 +46,23 @@ describe("supplier DTO ↔ model parity", () => {
     );
   });
 
-  it("server-owned imageUrl is on the model but in no DTO", () => {
+  it("server-owned fields are on the model but in no DTO", () => {
     expect(supplierOwns("imageUrl")).toBe(true);
+    expect(supplierOwns("deleted")).toBe(true);
+    expect(supplierOwns("deletedAt")).toBe(true);
     for (const [name, schema] of Object.entries(allDtos)) {
       expect(
         Object.keys(schema.shape),
         `${name} should not accept imageUrl`,
       ).not.toContain("imageUrl");
+      expect(
+        Object.keys(schema.shape),
+        `${name} should not accept deleted`,
+      ).not.toContain("deleted");
+      expect(
+        Object.keys(schema.shape),
+        `${name} should not accept deletedAt`,
+      ).not.toContain("deletedAt");
     }
   });
 
