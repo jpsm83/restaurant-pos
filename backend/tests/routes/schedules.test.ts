@@ -724,6 +724,47 @@ describe("Schedules Routes", () => {
       expect(updatedSchedule?.totalEmployeesScheduled).toBe(1);
     });
 
+    it("rejects a soft-deleted employee", async () => {
+      const app = await getTestApp();
+      await Employee.updateOne(
+        { _id: employeeId },
+        { $set: { deleted: true, deletedAt: new Date() } },
+      );
+
+      const futureDate = new Date();
+      futureDate.setDate(futureDate.getDate() + 9);
+      const schedule = await Schedule.create({
+        businessId,
+        date: futureDate,
+        weekNumber: 12,
+        totalEmployeesScheduled: 0,
+      });
+      const startTime = new Date(futureDate);
+      startTime.setHours(9, 0, 0, 0);
+      const endTime = new Date(futureDate);
+      endTime.setHours(17, 0, 0, 0);
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/schedules/${schedule._id}/addEmployee`,
+        payload: {
+          employeeSchedule: {
+            employeeId: employeeId.toString(),
+            role: "Waiter",
+            timeRange: {
+              startTime: startTime.toISOString(),
+              endTime: endTime.toISOString(),
+            },
+          },
+        },
+      });
+
+      const body = expectProblem(response, 404, "not-found");
+      expect(body.detail).toBe("Employee not found!");
+      const stored = await Schedule.findById(schedule._id).lean();
+      expect(stored?.employeesSchedules ?? []).toHaveLength(0);
+    });
+
     it("adds employee vacation and decrements vacationDaysLeft", async () => {
       const app = await getTestApp();
 

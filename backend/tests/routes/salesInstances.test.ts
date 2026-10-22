@@ -9,11 +9,12 @@
 
 import { describe, it, expect, beforeEach } from "vitest";
 import { Types } from "mongoose";
-import { getTestApp } from "../setup.ts";
+import { getTestApp, generateTestToken } from "../setup.ts";
 import SalesInstance from "../../src/models/salesInstance.ts";
 import SalesPoint from "../../src/models/salesPoint.ts";
 import Business from "../../src/models/business.ts";
 import User from "../../src/models/user.ts";
+import Employee from "../../src/models/employee.ts";
 
 const expectProblem = (
   response: {
@@ -198,6 +199,102 @@ describe("SalesInstances Routes", () => {
 
       expect(response.statusCode).toBe(401);
     });
+
+    it("does not treat a soft-deleted sales instance as occupying the sales point", async () => {
+      const app = await getTestApp();
+      const manager = await User.create({
+        personalDetails: {
+          email: "opener@test.com",
+          password: "hashedpassword",
+          firstName: "Open",
+          lastName: "Manager",
+          phoneNumber: "1234567890",
+          birthDate: new Date("1990-01-01"),
+          gender: "Man",
+          nationality: "USA",
+          address: {
+            country: "USA",
+            state: "CA",
+            city: "LA",
+            street: "Main St",
+            buildingNumber: "123",
+            postCode: "90001",
+          },
+          idNumber: "ID-OPENER",
+          idType: "Passport",
+          username: "opener",
+        },
+      });
+      const employee = await Employee.create({
+        businessId,
+        userId: manager._id,
+        allEmployeeRoles: ["Manager"],
+        taxNumber: "EMP-OPENER",
+        joinDate: new Date(),
+        active: true,
+        onDuty: true,
+        vacationDaysPerYear: 20,
+      });
+      await User.updateOne(
+        { _id: manager._id },
+        { $set: { employeeDetails: employee._id } },
+      );
+      const auth = await generateTestToken({
+        id: String(manager._id),
+        email: "opener@test.com",
+        type: "user",
+        role: "Manager",
+      });
+
+      await SalesInstance.create({
+        businessId,
+        salesPointId,
+        dailyReferenceNumber: 1,
+        guests: 2,
+        salesInstanceStatus: "Occupied",
+        openedAsRole: "employee",
+        openedByUserId: manager._id,
+        deleted: true,
+        deletedAt: new Date(),
+      });
+
+      const opened = await app.inject({
+        method: "POST",
+        url: "/api/v1/salesInstances",
+        headers: { authorization: auth },
+        payload: {
+          salesPointId: salesPointId.toString(),
+          guests: 2,
+          businessId: businessId.toString(),
+        },
+      });
+      expect(opened.statusCode, opened.body).toBe(201);
+
+      await SalesInstance.create({
+        businessId,
+        salesPointId,
+        dailyReferenceNumber: 2,
+        guests: 2,
+        salesInstanceStatus: "Occupied",
+        openedAsRole: "employee",
+        openedByUserId: manager._id,
+      });
+
+      const blocked = await app.inject({
+        method: "POST",
+        url: "/api/v1/salesInstances",
+        headers: { authorization: auth },
+        payload: {
+          salesPointId: salesPointId.toString(),
+          guests: 2,
+          businessId: businessId.toString(),
+        },
+      });
+      const body = expectProblem(blocked, 409, "conflict");
+      expect(body.detail).toBe(
+        "SalesInstance already exists and it is not closed!",
+      );
+    });
   });
 
   describe("PATCH /api/v1/salesInstances/:salesInstanceId", () => {
@@ -245,6 +342,51 @@ describe("SalesInstances Routes", () => {
       });
 
       expectProblem(response, 400, "validation");
+    });
+
+    it("keeps an empty sitting when the update is not a close", async () => {
+      const app = await getTestApp();
+      const salesInstance = await SalesInstance.create({
+        businessId,
+        salesPointId,
+        dailyReferenceNumber: 1,
+        guests: 2,
+        salesInstanceStatus: "Occupied",
+        openedByUserId: userId,
+      });
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/salesInstances/${salesInstance._id}`,
+        payload: { clientName: "Ada" },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const stored = await SalesInstance.findById(salesInstance._id).lean();
+      expect(stored?.clientName).toBe("Ada");
+      expect(stored?.deleted).not.toBe(true);
+    });
+
+    it("discards an empty sitting when it is closed", async () => {
+      const app = await getTestApp();
+      const salesInstance = await SalesInstance.create({
+        businessId,
+        salesPointId,
+        dailyReferenceNumber: 1,
+        guests: 2,
+        salesInstanceStatus: "Occupied",
+        openedByUserId: userId,
+      });
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/salesInstances/${salesInstance._id}`,
+        payload: { salesInstanceStatus: "Closed" },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const stored = await SalesInstance.findById(salesInstance._id).lean();
+      expect(stored).toBeNull();
     });
   });
 

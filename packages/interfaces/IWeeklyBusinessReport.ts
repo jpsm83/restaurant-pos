@@ -109,5 +109,6 @@ export interface IWeeklyBusinessReport {
   posSystemCommission: number;
   deleted?: boolean;
   deletedAt?: Date;
+  deletedBy?: Types.ObjectId;
 }
 

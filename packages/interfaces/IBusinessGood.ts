@@ -31,4 +31,5 @@ export interface IBusinessGood {
   deliveryTime?: number;
   deleted?: boolean;
   deletedAt?: Date;
+  deletedBy?: Types.ObjectId;
 }

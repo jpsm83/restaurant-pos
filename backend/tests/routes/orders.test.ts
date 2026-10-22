@@ -14,6 +14,7 @@ import SalesInstance from "../../src/models/salesInstance.ts";
 import SalesPoint from "../../src/models/salesPoint.ts";
 import User from "../../src/models/user.ts";
 import Employee from "../../src/models/employee.ts";
+import Promotion from "../../src/models/promotion.ts";
 import sendOrderConfirmation from "../../src/orderConfirmation/sendOrderConfirmation.ts";
 
 vi.mock("../../src/inventories/updateDynamicCountSupplierGood.ts", () => ({
@@ -417,6 +418,86 @@ describe("Orders Routes", () => {
 
       const body = expectProblem(response, 400, "bad-request");
       expect(body.detail).toBe("orderGrossPrice must have a value!");
+    });
+
+    it("does not apply a soft-deleted promotion when creating an order", async () => {
+      const app = await getTestApp();
+      const now = new Date();
+      const weekDays = [
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+      ];
+      await Promotion.create({
+        businessId,
+        promotionName: "Retired 20% Off",
+        activePromotion: true,
+        promotionPeriod: {
+          start: new Date(now.getTime() - 86_400_000),
+          end: new Date(now.getTime() + 86_400_000),
+        },
+        weekDays,
+        promotionType: { discountPercent: 20 },
+        deleted: true,
+        deletedAt: now,
+      });
+
+      const auth = await authFor(userId);
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/orders",
+        headers: { authorization: auth },
+        payload: validBody(),
+      });
+
+      expect(response.statusCode, response.body).toBe(201);
+      const stored = await Order.findOne({ salesInstanceId }).lean();
+      expect(stored?.orderNetPrice).toBe(12.99);
+      expect(stored?.promotionApplyed).toBeUndefined();
+    });
+
+    it("does not add an order to a soft-deleted sales instance", async () => {
+      const app = await getTestApp();
+      await SalesInstance.updateOne(
+        { _id: salesInstanceId },
+        { $set: { deleted: true, deletedAt: new Date() } },
+      );
+
+      const auth = await authFor(userId);
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/orders",
+        headers: { authorization: auth },
+        payload: validBody(),
+      });
+
+      const body = expectProblem(response, 400, "bad-request");
+      expect(body.detail).toBe("SalesInstance not found for this business!");
+      expect(await Order.countDocuments({ salesInstanceId })).toBe(0);
+    });
+
+    it("does not add an order when the sales point is soft-deleted", async () => {
+      const app = await getTestApp();
+      await SalesPoint.updateOne(
+        { _id: salesPointId },
+        { $set: { deleted: true, deletedAt: new Date() } },
+      );
+
+      const auth = await authFor(userId);
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/orders",
+        headers: { authorization: auth },
+        payload: validBody(),
+      });
+
+      const body = expectProblem(response, 400, "bad-request");
+      expect(body.detail).toBe("SalesPoint not found for this business!");
+      expect(await Order.countDocuments({ salesInstanceId })).toBe(0);
     });
   });
 

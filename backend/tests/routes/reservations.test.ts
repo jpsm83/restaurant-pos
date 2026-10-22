@@ -902,6 +902,39 @@ describe("Reservations Routes", () => {
       expect(finalUser?.notifications?.length ?? 0).toBeGreaterThanOrEqual(1);
     });
 
+    it("rejects a soft-deleted sales point", async () => {
+      const app = await getTestApp();
+      const { business, user, token } = await createManagerContext();
+      const reservation = await Reservation.create({
+        businessId: business._id,
+        createdByUserId: user._id,
+        createdByRole: "customer",
+        guestCount: 4,
+        reservationStart: new Date("2024-08-15T19:00:00Z"),
+        reservationEnd: new Date("2024-08-15T21:00:00Z"),
+        status: "Pending",
+      });
+      const point = await SalesPoint.create({
+        businessId: business._id,
+        salesPointName: "Retired table",
+        salesPointType: "Table",
+        deleted: true,
+        deletedAt: new Date(),
+      });
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/reservations/${reservation._id}`,
+        headers: { authorization: token },
+        payload: { salesPointId: point._id.toString() },
+      });
+
+      const body = expectProblem(response, 404, "not-found");
+      expect(body.detail).toBe("SalesPoint not found for this business!");
+      const stored = await Reservation.findById(reservation._id).lean();
+      expect(stored?.salesPointId).toBeUndefined();
+    });
+
     it("returns a bad-request problem for an invalid status transition", async () => {
       const app = await getTestApp();
       const { business, user, token } = await createManagerContext();

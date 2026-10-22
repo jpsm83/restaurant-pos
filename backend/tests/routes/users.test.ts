@@ -15,8 +15,12 @@ vi.mock("../../src/auth/authEmailSend.ts", () => ({
   sendAuthTransactionalEmail: sendEmailMock,
 }));
 
+const deleteFolderCloudinaryMock = vi.hoisted(() =>
+  vi.fn().mockResolvedValue(true),
+);
+
 vi.mock("../../src/cloudinary/deleteFolderCloudinary.ts", () => ({
-  default: vi.fn().mockResolvedValue(true),
+  default: deleteFolderCloudinaryMock,
 }));
 
 import { Types } from "mongoose";
@@ -173,6 +177,54 @@ describe("Users Routes", () => {
       expect(rows).toHaveLength(1);
       expect(rows[0].deleted).toBe(true);
       expect(rows[0].verificationToken).toBeTruthy();
+    });
+
+    it("reactivates the soft-deleted user when a business shares the email and the username is taken", async () => {
+      const app = await getTestApp();
+      sendEmailMock.mockClear();
+      const existing = await createValidUser("reactivate-shared");
+      await User.updateOne(
+        { _id: existing._id },
+        { $set: { deleted: true, deletedAt: new Date() } },
+      );
+      await createValidUser("taken-name");
+      const business = await Business.create({
+        tradeName: "Shared Email Venue",
+        legalName: "Shared Email Venue LLC",
+        email: "reactivate-shared@test.com",
+        password: "hashedpassword",
+        phoneNumber: "1234567890",
+        taxNumber: `TAX-SHARED-${Date.now()}`,
+        currencyTrade: "USD",
+        address: validAddress,
+      });
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/users",
+        payload: multipart(
+          validCreateFields({
+            email: "reactivate-shared@test.com",
+            username: "taken-nameuser",
+            idNumber: "ID-SHARED-REACT",
+          }),
+        ),
+        headers: { "content-type": "multipart/form-data" },
+      });
+
+      expect(response.statusCode).toBe(202);
+      expect(response.json().message).toContain("reactivation");
+
+      const rows = await User.find({
+        "personalDetails.email": "reactivate-shared@test.com",
+      })
+        .setOptions({ includeDeleted: true })
+        .lean();
+      expect(rows).toHaveLength(1);
+      expect(rows[0].verificationToken).toBeTruthy();
+
+      const venue = await Business.findById(business._id).lean();
+      expect(venue?.verificationToken).toBeUndefined();
     });
 
     it("lets a new email reuse a username freed by a soft-deleted user", async () => {
@@ -580,6 +632,7 @@ describe("Users Routes", () => {
 
     it("soft-deletes a user and keeps the record for includeDeleted reads", async () => {
       const app = await getTestApp();
+      deleteFolderCloudinaryMock.mockClear();
       const user = await createValidUser("softdelete-user");
 
       const response = await app.inject({
@@ -608,6 +661,33 @@ describe("Users Routes", () => {
       });
       expect(visibleWhenIncluded.statusCode).toBe(200);
       expect(visibleWhenIncluded.json().deleted).toBe(true);
+      expect(deleteFolderCloudinaryMock).not.toHaveBeenCalled();
+    });
+
+    it("records the signed-in account that deleted the user", async () => {
+      const app = await getTestApp();
+      const actor = await createValidUser("delete-actor");
+      const target = await createValidUser("delete-target");
+      const auth = await generateTestToken({
+        id: String(actor._id),
+        email: actor.personalDetails.email,
+        type: "user",
+        role: "Customer",
+      });
+
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/users/${target._id}`,
+        headers: { authorization: auth },
+      });
+      expect(response.statusCode, response.body).toBe(200);
+
+      const persisted = await User.findById(target._id)
+        .setOptions({ includeDeleted: true })
+        .select("deleted deletedBy")
+        .lean();
+      expect(persisted?.deleted).toBe(true);
+      expect(String(persisted?.deletedBy)).toBe(String(actor._id));
     });
   });
 

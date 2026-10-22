@@ -27,6 +27,7 @@ export interface ISchedule {
   comments?: string;
   deleted?: boolean;
   deletedAt?: Date;
+  deletedBy?: Types.ObjectId;
 }
 
 /**

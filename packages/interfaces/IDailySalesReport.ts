@@ -58,4 +58,5 @@ export interface IDailySalesReport {
   dailyPosSystemCommission?: number;
   deleted?: boolean;
   deletedAt?: Date;
+  deletedBy?: Types.ObjectId;
 }

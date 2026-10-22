@@ -19,6 +19,7 @@ import validateDaysOfTheWeek from "../../promotions/validateDaysOfTheWeek.ts";
 import validatePromotionType from "../../promotions/validatePromotionType.ts";
 import Promotion from "../../models/promotion.ts";
 import BusinessGood from "../../models/businessGood.ts";
+import { createOptionalAuthHook } from "../../auth/middleware.ts";
 import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
 import { badRequest, conflict, notFound } from "../../errors/appError.ts";
 import {
@@ -253,7 +254,10 @@ export const promotionsRoutes: FastifyPluginAsync = async (app) => {
   // DELETE /promotions/:promotionId - delete
   app.delete<{ Params: PromotionIdParams }>(
     "/:promotionId",
-    { schema: { params: promotionIdParamsSchema } },
+    {
+      preValidation: [createOptionalAuthHook(app)],
+      schema: { params: promotionIdParamsSchema },
+    },
     async (req, reply) => {
       const { promotionId } = req.params;
       const promotion = await Promotion.findById(promotionId)
@@ -271,6 +275,7 @@ export const promotionsRoutes: FastifyPluginAsync = async (app) => {
       const wasDeleted = await markAsDeletedById(
         Promotion as mongoose.Model<IPromotion & { deleted: boolean }>,
         promotionId,
+        { deletedBy: req.authSession?.id },
       );
       if (!wasDeleted) {
         throw conflict("Promotion already deleted!");

@@ -21,6 +21,7 @@ import Business from "../../models/business.ts";
 import User from "../../models/user.ts";
 import notificationService from "../../communications/services/notificationService.ts";
 import { runTxnWithTransientRetry } from "../../mongo/runTxnWithTransientRetry.ts";
+import { createOptionalAuthHook } from "../../auth/middleware.ts";
 import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
 import { badRequest, conflict, notFound } from "../../errors/appError.ts";
 import {
@@ -499,7 +500,10 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
   // DELETE /notifications/:notificationId - delete (transaction)
   app.delete<{ Params: NotificationIdParams }>(
     "/:notificationId",
-    { schema: { params: notificationIdParamsSchema } },
+    {
+      preValidation: [createOptionalAuthHook(app)],
+      schema: { params: notificationIdParamsSchema },
+    },
     async (req, reply) => {
       const correlationId = req.id;
       const { notificationId } = req.params;
@@ -528,7 +532,7 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
         const wasDeleted = await markAsDeletedById(
           Notification as mongoose.Model<{ deleted: boolean }>,
           notificationId,
-          session,
+          { session, deletedBy: req.authSession?.id },
         );
         if (!wasDeleted) {
           throw conflict("Notification already deleted!");

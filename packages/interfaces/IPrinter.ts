@@ -20,4 +20,5 @@ export interface IPrinter {
     configurationSetupToPrintOrders?: IConfigurationSetupToPrintOrders[];
     deleted?: boolean;
     deletedAt?: Date;
+    deletedBy?: Types.ObjectId;
 }

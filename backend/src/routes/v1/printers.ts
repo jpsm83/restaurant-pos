@@ -17,6 +17,7 @@ import checkPrinterConnection from "../../printers/checkPrinterConnection.ts";
 import Printer from "../../models/printer.ts";
 import Employee from "../../models/employee.ts";
 import SalesPoint from "../../models/salesPoint.ts";
+import { createOptionalAuthHook } from "../../auth/middleware.ts";
 import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
 import {
   badRequest,
@@ -273,7 +274,10 @@ export const printersRoutes: FastifyPluginAsync = async (app) => {
   // DELETE /printers/:printerId - delete (transaction)
   app.delete<{ Params: PrinterIdParams }>(
     "/:printerId",
-    { schema: { params: printerIdParamsSchema } },
+    {
+      preValidation: [createOptionalAuthHook(app)],
+      schema: { params: printerIdParamsSchema },
+    },
     async (req, reply) => {
       const { printerId } = req.params;
 
@@ -316,7 +320,7 @@ export const printersRoutes: FastifyPluginAsync = async (app) => {
         const wasDeleted = await markAsDeletedById(
           Printer as mongoose.Model<IPrinter & { deleted: boolean }>,
           printerId,
-          session,
+          { session, deletedBy: req.authSession?.id },
         );
         if (!wasDeleted) {
           await session.abortTransaction();

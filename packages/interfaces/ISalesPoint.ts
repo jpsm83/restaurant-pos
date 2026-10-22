@@ -9,4 +9,5 @@ export interface ISalesPoint {
   businessId: Types.ObjectId;
   deleted?: boolean;
   deletedAt?: Date;
+  deletedBy?: Types.ObjectId;
 }

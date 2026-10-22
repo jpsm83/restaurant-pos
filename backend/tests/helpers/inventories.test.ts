@@ -4,13 +4,15 @@
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
-import { Types } from "mongoose";
+import mongoose, { Types } from "mongoose";
 import Inventory from "../../src/models/inventory.ts";
 import SupplierGood from "../../src/models/supplierGood.ts";
 import Supplier from "../../src/models/supplier.ts";
 import Employee from "../../src/models/employee.ts";
 import Notification from "../../src/models/notification.ts";
 import checkLowStockAndNotify from "../../src/inventories/checkLowStockAndNotify.ts";
+import BusinessGood from "../../src/models/businessGood.ts";
+import updateDynamicCountSupplierGood from "../../src/inventories/updateDynamicCountSupplierGood.ts";
 
 describe("Inventory Helpers", () => {
   const businessId = new Types.ObjectId();
@@ -221,11 +223,173 @@ describe("Inventory Helpers", () => {
   });
 
   describe("updateDynamicCountSupplierGood", () => {
-    it("function exists and is callable", async () => {
-      const { default: updateDynamicCountSupplierGood } = await import(
-        "../../src/inventories/updateDynamicCountSupplierGood.ts"
+    const menuGood = (name: string, extra: Record<string, unknown> = {}) =>
+      BusinessGood.create({
+        businessId,
+        name,
+        keyword: name,
+        mainCategory: "Food",
+        sellingPrice: 5,
+        ...extra,
+      });
+
+    const runCount = async (ids: Types.ObjectId[]) => {
+      const session = await mongoose.startSession();
+      session.startTransaction();
+      try {
+        return await updateDynamicCountSupplierGood(ids, "remove", session);
+      } finally {
+        await session.abortTransaction().catch(() => undefined);
+        session.endSession();
+      }
+    };
+
+    it("does not move stock when a soft-deleted good has no recipe", async () => {
+      const good = await menuGood("retired-plate", {
+        deleted: true,
+        deletedAt: new Date(),
+      });
+
+      expect(await runCount([good._id])).toBe(true);
+    });
+
+    it("still moves stock for a soft-deleted recipe", async () => {
+      const supplier = await Supplier.create({
+        businessId,
+        tradeName: "Recipe Supplier",
+        legalName: "Recipe Supplier LLC",
+        taxNumber: "TAX-RECIPE-001",
+        email: "recipe-supplier@test.com",
+        phoneNumber: "123456789",
+        address: {
+          country: "US",
+          state: "CA",
+          city: "LA",
+          street: "Main St",
+          buildingNumber: "123",
+          postCode: "90001",
+        },
+      });
+      const supplierGood = await SupplierGood.create({
+        businessId,
+        supplierId: supplier._id,
+        name: "Flour",
+        keyword: "flour",
+        mainCategory: "Food",
+        measurementUnit: "kg",
+        parLevel: 10,
+        pricePerMeasurementUnit: 5,
+      });
+      await Inventory.create({
+        businessId,
+        setFinalCount: false,
+        inventoryGoods: [
+          {
+            supplierGoodId: supplierGood._id,
+            dynamicSystemCount: 10,
+            monthlyCounts: [],
+          },
+        ],
+      });
+      const good = await menuGood("retired-recipe", {
+        deleted: true,
+        deletedAt: new Date(),
+        ingredients: [
+          {
+            supplierGoodId: supplierGood._id,
+            measurementUnit: "kg",
+            requiredQuantity: 2,
+          },
+        ],
+      });
+
+      const session = await mongoose.startSession();
+      session.startTransaction();
+      const result = await updateDynamicCountSupplierGood(
+        [good._id],
+        "remove",
+        session,
       );
-      expect(typeof updateDynamicCountSupplierGood).toBe("function");
+      await session.commitTransaction();
+      session.endSession();
+
+      expect(result).toBe(true);
+      const inventory = await Inventory.findOne({ businessId }).lean();
+      expect(inventory?.inventoryGoods?.[0]?.dynamicSystemCount).toBe(8);
+    });
+
+    it("still moves stock for a soft-deleted set-menu component", async () => {
+      const supplier = await Supplier.create({
+        businessId,
+        tradeName: "Combo Supplier",
+        legalName: "Combo Supplier LLC",
+        taxNumber: "TAX-COMBO-001",
+        email: "combo-supplier@test.com",
+        phoneNumber: "123456789",
+        address: {
+          country: "US",
+          state: "CA",
+          city: "LA",
+          street: "Main St",
+          buildingNumber: "123",
+          postCode: "90001",
+        },
+      });
+      const supplierGood = await SupplierGood.create({
+        businessId,
+        supplierId: supplier._id,
+        name: "Bun",
+        keyword: "bun",
+        mainCategory: "Food",
+        measurementUnit: "kg",
+        parLevel: 10,
+        pricePerMeasurementUnit: 5,
+      });
+      await Inventory.create({
+        businessId,
+        setFinalCount: false,
+        inventoryGoods: [
+          {
+            supplierGoodId: supplierGood._id,
+            dynamicSystemCount: 10,
+            monthlyCounts: [],
+          },
+        ],
+      });
+      const component = await menuGood("retired-component", {
+        deleted: true,
+        deletedAt: new Date(),
+        ingredients: [
+          {
+            supplierGoodId: supplierGood._id,
+            measurementUnit: "kg",
+            requiredQuantity: 1,
+          },
+        ],
+      });
+      const combo = await menuGood("live-combo", {
+        setMenuIds: [component._id],
+      });
+
+      const session = await mongoose.startSession();
+      session.startTransaction();
+      const result = await updateDynamicCountSupplierGood(
+        [combo._id],
+        "remove",
+        session,
+      );
+      await session.commitTransaction();
+      session.endSession();
+
+      expect(result).toBe(true);
+      const inventory = await Inventory.findOne({ businessId }).lean();
+      expect(inventory?.inventoryGoods?.[0]?.dynamicSystemCount).toBe(9);
+    });
+
+    it("reports an id that was never a business good", async () => {
+      expect(await runCount([new Types.ObjectId()])).toBe(
+        "Business goods not found!",
+      );
     });
   });
 

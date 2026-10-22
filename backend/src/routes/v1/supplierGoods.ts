@@ -18,7 +18,7 @@ import SupplierGood from "../../models/supplierGood.ts";
 import Supplier from "../../models/supplier.ts";
 import BusinessGood from "../../models/businessGood.ts";
 import Inventory from "../../models/inventory.ts";
-import deleteFolderCloudinary from "../../cloudinary/deleteFolderCloudinary.ts";
+import { createOptionalAuthHook } from "../../auth/middleware.ts";
 import addSupplierGoodToInventory from "../../inventories/addSupplierGoodToInventory.ts";
 import deleteSupplierGoodFromInventory from "../../inventories/deleteSupplierGoodFromInventory.ts";
 import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
@@ -413,7 +413,10 @@ export const supplierGoodsRoutes: FastifyPluginAsync = async (app) => {
   // DELETE /supplierGoods/:supplierGoodId - delete (transaction)
   app.delete<{ Params: SupplierGoodIdParams }>(
     "/:supplierGoodId",
-    { schema: { params: supplierGoodIdParamsSchema } },
+    {
+      preValidation: [createOptionalAuthHook(app)],
+      schema: { params: supplierGoodIdParamsSchema },
+    },
     async (req, reply) => {
       const { supplierGoodId } = req.params;
 
@@ -448,7 +451,7 @@ export const supplierGoodsRoutes: FastifyPluginAsync = async (app) => {
         const wasDeleted = await markAsDeletedById(
           SupplierGood as mongoose.Model<ISupplierGood & { deleted: boolean }>,
           supplierGoodId,
-          session,
+          { session, deletedBy: req.authSession?.id },
         );
         if (!wasDeleted) {
           throw conflict("Supplier good already deleted!");
@@ -462,19 +465,6 @@ export const supplierGoodsRoutes: FastifyPluginAsync = async (app) => {
 
         if (deleteFromInventoryResult !== true) {
           throw badRequest(deleteFromInventoryResult);
-        }
-
-        const folderPath = `/business/${supplierGood.businessId}/suppliersGoods/${supplierGoodId}`;
-
-        const deleteFolderCloudinaryResult =
-          await deleteFolderCloudinary(folderPath);
-
-        if (deleteFolderCloudinaryResult !== true) {
-          throw badRequest(
-            typeof deleteFolderCloudinaryResult === "string"
-              ? deleteFolderCloudinaryResult
-              : "DeleteCloudinaryFolder failed!",
-          );
         }
 
         await session.commitTransaction();

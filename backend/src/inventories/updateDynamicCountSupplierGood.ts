@@ -9,21 +9,31 @@ const updateDynamicCountSupplierGood = async (
   session: ClientSession
 ): Promise<true | string> => {
   try {
+    const uniqueIds = [
+      ...new Set(businessGoodsIds.map((id) => id.toString())),
+    ];
+    // A sale or cancel still moves the stock a soft-deleted recipe already used.
     const businessGoodsIngredients = await BusinessGood.find({
       _id: { $in: businessGoodsIds },
     })
+      .setOptions({ includeDeleted: true })
       .select(
         "ingredients.supplierGoodId ingredients.measurementUnit ingredients.requiredQuantity setMenuIds"
       )
       .populate({
         path: "setMenuIds",
         select:
-          "ingredients.supplierGoodId ingredients.measurementUnit ingredients.requiredQuantity",
+          "ingredients.supplierGoodId ingredients.measurementUnit ingredients.requiredQuantity deleted",
+        options: { includeDeleted: true },
         model: BusinessGood,
       })
+      .session(session)
       .lean();
 
-    if (!businessGoodsIngredients || businessGoodsIngredients.length === 0) {
+    if (
+      !businessGoodsIngredients ||
+      businessGoodsIngredients.length !== uniqueIds.length
+    ) {
       return "Business goods not found!";
     }
 
@@ -40,12 +50,12 @@ const updateDynamicCountSupplierGood = async (
         measurementUnit: string;
       }>;
       setMenuIds?: Array<{
-        ingredients: Array<{
+        ingredients?: Array<{
           supplierGoodId: Types.ObjectId;
           requiredQuantity: number;
           measurementUnit: string;
         }>;
-      }>;
+      } | null>;
     }>) {
       if (businessGood.ingredients) {
         for (const ing of businessGood.ingredients) {
@@ -70,7 +80,9 @@ const updateDynamicCountSupplierGood = async (
       }
     }
 
-    if (allIngredientsRequired.length === 0) return "No ingredients found!";
+    if (allIngredientsRequired.length === 0) {
+      return true;
+    }
 
     const inventoryItems = await Inventory.aggregate([
       {

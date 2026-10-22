@@ -16,7 +16,7 @@ import mongoose, { Types } from "mongoose";
 import type { IEmployee } from "restaurant-pos-packages/interfaces/IEmployee";
 import type { IUser } from "restaurant-pos-packages/interfaces/IUser";
 
-import deleteFolderCloudinary from "../../cloudinary/deleteFolderCloudinary.ts";
+import { createOptionalAuthHook } from "../../auth/middleware.ts";
 import calculateVacationProportional from "../../employees/calculateVacationProportional.ts";
 import validateEmployeeDates from "../../employees/validateEmployeeDates.ts";
 import Employee from "../../models/employee.ts";
@@ -477,7 +477,10 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
   // DELETE /employees/:employeeId - delete (transaction)
   app.delete<{ Params: EmployeeIdParams }>(
     "/:employeeId",
-    { schema: { params: employeeIdParamsSchema } },
+    {
+      preValidation: [createOptionalAuthHook(app)],
+      schema: { params: employeeIdParamsSchema },
+    },
     async (req, reply) => {
       const { employeeId } = req.params;
 
@@ -502,7 +505,7 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
         const wasDeleted = await markAsDeletedById(
           Employee as mongoose.Model<IEmployee & { deleted: boolean }>,
           employeeId,
-          session,
+          { session, deletedBy: req.authSession?.id },
         );
         if (!wasDeleted) {
           throw conflict("Employee already deleted!");
@@ -534,19 +537,6 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
           { $unset: { employeeDetails: null } },
           { returnDocument: "after", lean: true, session },
         );
-
-        const folderPath = `/business/${employee.businessId}/employees/${employeeId}`;
-
-        const deleteFolderCloudinaryResult: string | boolean =
-          await deleteFolderCloudinary(folderPath);
-
-        if (deleteFolderCloudinaryResult !== true) {
-          throw badRequest(
-            typeof deleteFolderCloudinaryResult === "string"
-              ? deleteFolderCloudinaryResult
-              : "DeleteCloudinaryFolder failed!",
-          );
-        }
 
         await session.commitTransaction();
 

@@ -1,8 +1,8 @@
 import {
+  Schema,
   type ClientSession,
   type Model,
   type Query,
-  type Schema,
 } from "mongoose";
 
 export const softDeleteSchemaFields = {
@@ -13,6 +13,11 @@ export const softDeleteSchemaFields = {
   },
   deletedAt: {
     type: Date,
+    default: undefined,
+  },
+  /** Authenticated account id (User or Business) that marked the row deleted. */
+  deletedBy: {
+    type: Schema.Types.ObjectId,
     default: undefined,
   },
 } as const;
@@ -59,7 +64,20 @@ export function applyActiveOnlySoftDelete(schema: Schema): void {
 type SoftDeleteRecord = {
   deleted: boolean;
   deletedAt?: Date;
+  deletedBy?: unknown;
 };
+
+export type MarkDeletedOptions = {
+  session?: ClientSession;
+  /** Signed-in User or Business id. Omitted when the delete has no session. */
+  deletedBy?: string;
+};
+
+function isClientSession(
+  value: ClientSession | MarkDeletedOptions,
+): value is ClientSession {
+  return typeof (value as ClientSession).inTransaction === "function";
+}
 
 /**
  * Active-only reads are the default; callers must opt in to include deleted.
@@ -94,17 +112,30 @@ export function withSoftDeleteFilter(
 export async function markAsDeletedById<TRecord extends SoftDeleteRecord>(
   model: Model<TRecord>,
   id: string,
-  session?: ClientSession,
+  sessionOrOptions?: ClientSession | MarkDeletedOptions,
 ): Promise<boolean> {
+  const options =
+    sessionOrOptions == null
+      ? undefined
+      : isClientSession(sessionOrOptions)
+        ? { session: sessionOrOptions }
+        : sessionOrOptions;
+  const set: {
+    deleted: true;
+    deletedAt: Date;
+    deletedBy?: string;
+  } = {
+    deleted: true,
+    deletedAt: new Date(),
+  };
+  if (options?.deletedBy) {
+    set.deletedBy = options.deletedBy;
+  }
+
   const result = await model.updateOne(
     { _id: id, deleted: { $ne: true } },
-    {
-      $set: {
-        deleted: true,
-        deletedAt: new Date(),
-      },
-    },
-    session ? { session } : undefined,
+    { $set: set },
+    options?.session ? { session: options.session } : undefined,
   );
 
   return result.modifiedCount === 1;

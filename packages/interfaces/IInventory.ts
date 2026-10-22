@@ -37,4 +37,5 @@ export interface IInventory {
   inventoryGoods: IInventoryGood[];
   deleted?: boolean;
   deletedAt?: Date;
+  deletedBy?: Types.ObjectId;
 }

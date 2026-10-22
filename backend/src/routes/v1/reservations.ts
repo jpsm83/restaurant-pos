@@ -34,7 +34,7 @@ import SalesPoint from "../../models/salesPoint.ts";
 import SalesInstance from "../../models/salesInstance.ts";
 import DailySalesReport from "../../models/dailySalesReport.ts";
 import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
-import { createAuthHook } from "../../auth/middleware.ts";
+import { createAuthHook, createOptionalAuthHook } from "../../auth/middleware.ts";
 import {
   badRequest,
   conflict,
@@ -533,7 +533,10 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
   // DELETE /reservations/:reservationId - delete
   app.delete<{ Params: ReservationIdParams }>(
     "/:reservationId",
-    { schema: { params: reservationIdParamsSchema } },
+    {
+      preValidation: [createOptionalAuthHook(app)],
+      schema: { params: reservationIdParamsSchema },
+    },
     async (req, reply) => {
       const { reservationId } = req.params;
       const reservation = await Reservation.findById(reservationId)
@@ -550,6 +553,7 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
       const wasDeleted = await markAsDeletedById(
         Reservation as mongoose.Model<IReservation & { deleted: boolean }>,
         reservationId,
+        { deletedBy: req.authSession?.id },
       );
       if (!wasDeleted) {
         throw conflict("Reservation already deleted!");

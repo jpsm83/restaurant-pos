@@ -107,6 +107,23 @@ describe("salesInstanceConflicts helpers", () => {
     expect(busy).toBe(true);
   });
 
+  it("pointBusyForEmployee ignores a soft-deleted employee instance", async () => {
+    await SalesInstance.create({
+      businessId,
+      salesPointId,
+      dailyReferenceNumber: 1,
+      guests: 2,
+      salesInstanceStatus: "Occupied",
+      openedByUserId: userId,
+      openedAsRole: "employee",
+      deleted: true,
+      deletedAt: new Date(),
+    });
+
+    const busy = await pointBusyForEmployee({ salesPointId, businessId });
+    expect(busy).toBe(false);
+  });
+
   it("pointBusyForEmployee ignores closed employee instances", async () => {
     await SalesInstance.create({
       businessId,

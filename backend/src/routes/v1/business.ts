@@ -20,6 +20,7 @@ import User from "../../models/user.ts";
 import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
 import {
   createAuthHook,
+  createOptionalAuthHook,
   requireBusinessIdMatchesSessionHook,
 } from "../../auth/middleware.ts";
 import { issueSessionWithRefreshCookie } from "../../auth/issueSession.ts";
@@ -27,7 +28,6 @@ import type { AuthBusiness } from "../../auth/types.ts";
 import { handleRequestEmailConfirmation } from "../../auth/requestEmailConfirmation.ts";
 import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
 import deleteFilesCloudinary from "../../cloudinary/deleteFilesCloudinary.ts";
-import deleteFolderCloudinary from "../../cloudinary/deleteFolderCloudinary.ts";
 import {
   badRequest,
   conflict,
@@ -682,7 +682,10 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
 
   app.delete<{ Params: BusinessIdParams }>(
     "/:businessId",
-    { schema: { params: businessIdParamsSchema } },
+    {
+      preValidation: [createOptionalAuthHook(app)],
+      schema: { params: businessIdParamsSchema },
+    },
     async (req, reply) => {
       const { businessId } = req.params;
 
@@ -700,21 +703,10 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
       const wasDeleted = await markAsDeletedById(
         Business as mongoose.Model<IBusiness & { deleted: boolean }>,
         businessId,
+        { deletedBy: req.authSession?.id },
       );
       if (!wasDeleted) {
         throw conflict("Business already deleted!");
-      }
-
-      const folderPath = `business/${businessId}`;
-      const deleteFolderCloudinaryResult =
-        await deleteFolderCloudinary(folderPath);
-
-      if (deleteFolderCloudinaryResult !== true) {
-        throw badRequest(
-          typeof deleteFolderCloudinaryResult === "string"
-            ? deleteFolderCloudinaryResult
-            : "DeleteCloudinaryFolder failed!",
-        );
       }
 
       return reply.code(200).send({ message: "Business deleted successfully" });

@@ -348,6 +348,7 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
       const wasDeleted = await markAsDeletedById(
         DailySalesReport as mongoose.Model<IDailySalesReport & { deleted: boolean }>,
         dailySalesReportId,
+        { deletedBy: req.authSession?.id },
       );
       if (!wasDeleted) {
         throw conflict("Daily report already deleted!");

@@ -32,4 +32,5 @@ export interface IEmployee {
   notifications?: INotificationEntry[];
   deleted?: boolean;
   deletedAt?: Date;
+  deletedBy?: Types.ObjectId;
 }

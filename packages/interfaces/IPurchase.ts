@@ -26,4 +26,5 @@ export interface IPurchase {
   comment?: string;
   deleted?: boolean;
   deletedAt?: Date;
+  deletedBy?: Types.ObjectId;
 }

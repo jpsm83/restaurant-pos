@@ -12,9 +12,9 @@ import mongoose, { Types } from "mongoose";
 import type { ISalesPoint } from "restaurant-pos-packages/interfaces/ISalesPoint";
 
 import SalesPoint from "../../models/salesPoint.ts";
+import { createOptionalAuthHook } from "../../auth/middleware.ts";
 import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
 import generateQrCode from "../../salesPoints/generateQrCode.ts";
-import deleteFilesCloudinary from "../../cloudinary/deleteFilesCloudinary.ts";
 import {
   conflict,
   internal,
@@ -194,7 +194,10 @@ export const salesPointsRoutes: FastifyPluginAsync = async (app) => {
   // DELETE /salesPoints/:salesPointId - delete
   app.delete<{ Params: SalesPointIdParams }>(
     "/:salesPointId",
-    { schema: { params: salesPointIdParamsSchema } },
+    {
+      preValidation: [createOptionalAuthHook(app)],
+      schema: { params: salesPointIdParamsSchema },
+    },
     async (req, reply) => {
       const { salesPointId } = req.params;
 
@@ -209,23 +212,14 @@ export const salesPointsRoutes: FastifyPluginAsync = async (app) => {
         throw conflict("SalesPoint already deleted!");
       }
 
-      const qrCode = salesPoint.qrCode;
-
       const wasDeleted = await markAsDeletedById(
         SalesPoint as mongoose.Model<ISalesPoint & { deleted: boolean }>,
         salesPointId,
+        { deletedBy: req.authSession?.id },
       );
 
       if (!wasDeleted) {
         throw conflict("SalesPoint already deleted!");
-      }
-
-      if (qrCode) {
-        const deleteResult = await deleteFilesCloudinary(qrCode);
-
-        if (deleteResult !== true) {
-          throw internal(String(deleteResult));
-        }
       }
 
       return reply.code(200).send({

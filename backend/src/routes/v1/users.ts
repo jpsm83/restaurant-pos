@@ -18,8 +18,8 @@ import type { IEmployee } from "restaurant-pos-packages/interfaces/IEmployee";
 
 import { createOptionalAuthHook } from "../../auth/middleware.ts";
 import {
-  handleRequestEmailConfirmation,
   REACTIVATION_REQUIRED_MESSAGE,
+  sendSoftDeletedUserConfirmation,
 } from "../../auth/requestEmailConfirmation.ts";
 import {
   buildAuthUserSessionFromUserId,
@@ -27,7 +27,6 @@ import {
 } from "../../auth/issueSession.ts";
 import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
 import deleteFilesCloudinary from "../../cloudinary/deleteFilesCloudinary.ts";
-import deleteFolderCloudinary from "../../cloudinary/deleteFolderCloudinary.ts";
 import User from "../../models/user.ts";
 import Employee from "../../models/employee.ts";
 import Notification from "../../models/notification.ts";
@@ -36,6 +35,7 @@ import {
   badRequest,
   conflict,
   forbidden,
+  internal,
   notFound,
   unauthorized,
 } from "../../errors/appError.ts";
@@ -149,18 +149,24 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
   app.post("/", async (req, reply) => {
     const { fields, files } = await parseMultipart(req, createUserBodySchema);
 
-    await assertNoDuplicateUser(fields);
-
     const deletedByEmail = await User.findOne({
       "personalDetails.email": fields.email,
       deleted: true,
     })
-      .select("_id")
+      .select("_id personalDetails.username personalDetails.firstName")
       .lean();
     if (deletedByEmail) {
-      await handleRequestEmailConfirmation(fields.email);
+      const sent = await sendSoftDeletedUserConfirmation(
+        deletedByEmail,
+        fields.email,
+      );
+      if (sent.kind === "server_error_500") {
+        throw internal(sent.message);
+      }
       return reply.code(202).send({ message: REACTIVATION_REQUIRED_MESSAGE });
     }
+
+    await assertNoDuplicateUser(fields);
 
     const userId = new mongoose.Types.ObjectId();
     const newUser = toNewUser(
@@ -338,7 +344,10 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
   // DELETE /users/:userId - delete
   app.delete<{ Params: UserIdParams }>(
     "/:userId",
-    { schema: { params: userIdParamsSchema } },
+    {
+      preValidation: [createOptionalAuthHook(app)],
+      schema: { params: userIdParamsSchema },
+    },
     async (req, reply) => {
       const { userId } = req.params;
 
@@ -366,22 +375,10 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
       const wasDeleted = await markAsDeletedById(
         User as mongoose.Model<IUser & { deleted: boolean }>,
         userId,
+        { deletedBy: req.authSession?.id },
       );
       if (!wasDeleted) {
         throw conflict("User already deleted!");
-      }
-
-      const folderPath = `/users/${userId}`;
-
-      const deleteFolderCloudinaryResult: string | boolean =
-        await deleteFolderCloudinary(folderPath);
-
-      if (deleteFolderCloudinaryResult !== true) {
-        throw badRequest(
-          typeof deleteFolderCloudinaryResult === "string"
-            ? deleteFolderCloudinaryResult
-            : "DeleteCloudinaryFolder failed!",
-        );
       }
 
       return reply.code(200).send({ message: "User deleted successfully" });

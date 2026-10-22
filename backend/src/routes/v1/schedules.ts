@@ -28,7 +28,7 @@ import Schedule from "../../models/schedule.ts";
 import Employee from "../../models/employee.ts";
 import User from "../../models/user.ts";
 import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
-import { createAuthHook } from "../../auth/middleware.ts";
+import { createAuthHook, createOptionalAuthHook } from "../../auth/middleware.ts";
 import type { AuthUser } from "../../auth/types.ts";
 import {
   badRequest,
@@ -320,7 +320,10 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
   // DELETE /schedules/:scheduleId - delete
   app.delete<{ Params: ScheduleIdParams }>(
     "/:scheduleId",
-    { schema: { params: scheduleIdParamsSchema } },
+    {
+      preValidation: [createOptionalAuthHook(app)],
+      schema: { params: scheduleIdParamsSchema },
+    },
     async (req, reply) => {
       const { scheduleId } = req.params;
 
@@ -349,6 +352,7 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
       const wasDeleted = await markAsDeletedById(
         Schedule as mongoose.Model<ISchedule & { deleted: boolean }>,
         scheduleId,
+        { deletedBy: req.authSession?.id },
       );
       if (!wasDeleted) {
         throw conflict("Schedule already deleted!");

@@ -513,7 +513,7 @@ describe("SalesPoints Routes", () => {
   });
 
   describe.skipIf(!hasCloudinaryCredentials)("Cloudinary Integration - DELETE /api/v1/salesPoints/:salesPointId", () => {
-    it("deletes sales point and cleans up QR code", async () => {
+    it("soft-deletes a sales point and keeps its QR code", async () => {
       const app = await getTestApp();
       const salesPointName = `ToDelete ${Date.now()}`;
 
@@ -545,12 +545,13 @@ describe("SalesPoints Routes", () => {
       const body = JSON.parse(deleteResponse.body);
       expect(body.message).toBe("Sales point deleted successfully");
 
-      // Verify it was soft-deleted in database
+      // Verify it was soft-deleted in database and the QR file pointer remains.
       const deleted = await SalesPoint.findById(salesPoint?._id)
         .setOptions({ includeDeleted: true })
         .lean();
       expect(deleted?.deleted).toBe(true);
       expect(deleted?.deletedAt).toBeDefined();
+      expect(deleted?.qrCode).toContain("cloudinary.com");
     });
   });
 });

@@ -9,7 +9,7 @@ import type {
   FastifyInstance,
   preValidationHookHandler,
 } from "fastify";
-import { forbidden, unauthorized } from "../errors/appError.ts";
+import { AppError, forbidden, unauthorized } from "../errors/appError.ts";
 import Business from "../models/business.ts";
 import User from "../models/user.ts";
 import type { AuthSession, AuthUser } from "./types.ts";
@@ -18,6 +18,27 @@ declare module "fastify" {
   interface FastifyRequest {
     authSession?: AuthSession;
   }
+}
+
+/** JWT and deleted-account refusals. Database and other failures must not look like a bad token. */
+function isRejectedCredential(error: unknown): boolean {
+  if (error instanceof AppError && error.statusCode === 401) {
+    return true;
+  }
+  if (error instanceof Error) {
+    if (
+      error.name === "JsonWebTokenError" ||
+      error.name === "TokenExpiredError" ||
+      error.name === "NotBeforeError"
+    ) {
+      return true;
+    }
+  }
+  const candidate = error as { statusCode?: unknown; code?: unknown } | null;
+  if (candidate?.statusCode === 401) {
+    return true;
+  }
+  return typeof candidate?.code === "string" && candidate.code.startsWith("FST_JWT");
 }
 
 /**
@@ -38,8 +59,11 @@ export function createAuthHook(app: FastifyInstance): preValidationHookHandler {
       const decoded = app.jwt.verify<AuthSession>(token);
       await assertAccountCanUseSession(decoded);
       req.authSession = decoded;
-    } catch {
-      throw unauthorized("Invalid or expired access token");
+    } catch (error) {
+      if (isRejectedCredential(error)) {
+        throw unauthorized("Invalid or expired access token");
+      }
+      throw error;
     }
   };
 }
@@ -65,8 +89,11 @@ export function createOptionalAuthHook(
       const decoded = app.jwt.verify<AuthSession>(token);
       await assertAccountCanUseSession(decoded);
       req.authSession = decoded;
-    } catch {
-      // Token invalid, but we allow the request to proceed
+    } catch (error) {
+      if (isRejectedCredential(error)) {
+        return;
+      }
+      throw error;
     }
   };
 }

@@ -88,4 +88,5 @@ export interface IMonthlyBusinessReport {
   posSystemCommission: number; // POS system commission
   deleted?: boolean;
   deletedAt?: Date;
+  deletedBy?: Types.ObjectId;
 }

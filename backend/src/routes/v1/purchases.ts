@@ -29,8 +29,8 @@ import Inventory from "../../models/inventory.ts";
 import Supplier from "../../models/supplier.ts";
 import SupplierGood from "../../models/supplierGood.ts";
 import Employee from "../../models/employee.ts";
-import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
 import { createOptionalAuthHook } from "../../auth/middleware.ts";
+import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
 import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
 import deleteFilesCloudinary from "../../cloudinary/deleteFilesCloudinary.ts";
 import * as enums from "restaurant-pos-packages/enums";
@@ -423,7 +423,10 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
   // DELETE /purchases/:purchaseId - delete (transaction)
   app.delete<{ Params: PurchaseIdParams }>(
     "/:purchaseId",
-    { schema: { params: purchaseIdParamsSchema } },
+    {
+      preValidation: [createOptionalAuthHook(app)],
+      schema: { params: purchaseIdParamsSchema },
+    },
     async (req, reply) => {
       const { purchaseId } = req.params;
 
@@ -447,7 +450,7 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
         const wasDeleted = await markAsDeletedById(
           Purchase as mongoose.Model<IPurchase & { deleted: boolean }>,
           purchaseId,
-          session,
+          { session, deletedBy: req.authSession?.id },
         );
         if (!wasDeleted) {
           throw conflict("Purchase already deleted!");

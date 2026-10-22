@@ -26,4 +26,5 @@ export interface ISalesInstance {
   closedByUserId?: Types.ObjectId;
   deleted?: boolean;
   deletedAt?: Date;
+  deletedBy?: Types.ObjectId;
 }

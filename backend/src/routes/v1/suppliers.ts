@@ -20,7 +20,7 @@ import SupplierGood from "../../models/supplierGood.ts";
 import BusinessGood from "../../models/businessGood.ts";
 import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
 import deleteFilesCloudinary from "../../cloudinary/deleteFilesCloudinary.ts";
-import deleteFolderCloudinary from "../../cloudinary/deleteFolderCloudinary.ts";
+import { createOptionalAuthHook } from "../../auth/middleware.ts";
 import { badRequest, conflict, notFound } from "../../errors/appError.ts";
 import { parseMultipart } from "../../schemas/multipart.ts";
 import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
@@ -297,7 +297,10 @@ export const suppliersRoutes: FastifyPluginAsync = async (app) => {
   // DELETE /suppliers/:supplierId - delete
   app.delete<{ Params: SupplierIdParams }>(
     "/:supplierId",
-    { schema: { params: supplierIdParamsSchema } },
+    {
+      preValidation: [createOptionalAuthHook(app)],
+      schema: { params: supplierIdParamsSchema },
+    },
     async (req, reply) => {
       const { supplierId } = req.params;
       const supplier = await Supplier.findById(supplierId)
@@ -331,18 +334,14 @@ export const suppliersRoutes: FastifyPluginAsync = async (app) => {
         }
       }
 
-      const folderPath = `/business/${supplier.businessId}/suppliers/${supplierId}`;
-
       const wasDeleted = await markAsDeletedById(
         Supplier as mongoose.Model<ISupplier & { deleted: boolean }>,
         supplierId,
+        { deletedBy: req.authSession?.id },
       );
       if (!wasDeleted) {
         throw conflict("Supplier already deleted!");
       }
-
-      // Cleanup is best-effort; deletion state is already durable.
-      await deleteFolderCloudinary(folderPath);
 
       return reply.code(200).send({
         message: `Supplier deleted successfully!`,

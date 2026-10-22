@@ -509,19 +509,35 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
           }
         }
 
-        if (
-          salesInstance.salesInstanceStatus === "Occupied" &&
-          (!salesInstance.salesGroup ||
-            salesInstance.salesGroup.length === 0) &&
-          salesInstanceStatus !== "Reserved"
-        ) {
+        const hasOrders = Boolean(
+          salesInstance.salesGroup?.some(
+            (group: { ordersIds?: unknown[] }) =>
+              Array.isArray(group.ordersIds) && group.ordersIds.length > 0,
+          ),
+        );
+
+        // ADR-0003: only a tab that is closed with no orders is discarded.
+        // A name, guest, or reservation update leaves the empty sitting in place.
+        if (!hasOrders && salesInstanceStatus === "Closed") {
           const deleteResult = await SalesInstance.deleteOne(
-            withSoftDeleteFilter({ _id: salesInstanceId }),
+            {
+              ...withSoftDeleteFilter({ _id: salesInstanceId }),
+              salesGroup: {
+                $not: {
+                  $elemMatch: {
+                    ordersIds: { $exists: true, $ne: [] },
+                  },
+                },
+              },
+            },
             { session },
           );
 
-          if (deleteResult.deletedCount === 0) {
-            throw notFound("Empty salesInstance not deleted!");
+          if (deleteResult.deletedCount === 1) {
+            await session.commitTransaction();
+            return reply
+              .code(200)
+              .send({ message: "SalesInstance updated successfully!" });
           }
         }
 
@@ -677,7 +693,10 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
 
   app.delete<{ Params: SalesInstanceIdParams }>(
     "/:salesInstanceId",
-    { schema: { params: salesInstanceIdParamsSchema } },
+    {
+      preValidation: [createOptionalAuthHook(app)],
+      schema: { params: salesInstanceIdParamsSchema },
+    },
     async (req, reply) => {
       const { salesInstanceId } = req.params;
 
@@ -728,6 +747,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
       const wasDeleted = await markAsDeletedById(
         SalesInstance as mongoose.Model<ISalesInstance & { deleted: boolean }>,
         salesInstanceId,
+        { deletedBy: req.authSession?.id },
       );
       if (!wasDeleted) {
         throw conflict("Sales instance already deleted!");

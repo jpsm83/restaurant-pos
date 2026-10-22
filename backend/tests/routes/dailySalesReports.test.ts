@@ -11,6 +11,7 @@ import SalesInstance from "../../src/models/salesInstance.ts";
 import BusinessGood from "../../src/models/businessGood.ts";
 import WeeklyBusinessReport from "../../src/models/weeklyBusinessReport.ts";
 import MonthlyBusinessReport from "../../src/models/monthlyBusinessReport.ts";
+import Schedule from "../../src/models/schedule.ts";
 import { buildReconciledDailyPayload } from "../../src/dailySalesReports/reconciliationCore.ts";
 import {
   resolveLocalDate,
@@ -314,6 +315,63 @@ describe("DailySalesReports routes - Task T2 integration", () => {
     expect(refreshed?.dailyNetPaidAmount).toBe(140);
     expect(refreshed?.dailyCostOfGoodsSold).toBe(60);
     expect(refreshed?.dailyTipsReceived).toBe(10);
+  });
+
+  it("calculateBusinessReport keeps soft-deleted dailies and schedules in both rollups", async () => {
+    const app = await getTestApp();
+    const business = await createTestBusiness();
+    const token = await createManagerToken(business._id as Types.ObjectId);
+    const report = await createActorSeededReport(business._id as Types.ObjectId);
+
+    await DailySalesReport.create({
+      businessId: business._id,
+      dailyReferenceNumber: Number(`${Date.now()}9`),
+      isDailyReportOpen: false,
+      timeCountdownToClose: Date.now() + 86400000,
+      deleted: true,
+      deletedAt: new Date(),
+      dailyTotalSalesBeforeAdjustments: 80,
+      dailyNetPaidAmount: 70,
+      dailyCostOfGoodsSold: 16,
+      dailyTipsReceived: 2,
+      dailyTotalVoidValue: 0,
+      dailyTotalInvitedValue: 0,
+      dailyCustomersServed: 3,
+      dailyPosSystemCommission: 2,
+      businessPaymentMethods: [],
+      dailySoldGoods: [],
+      dailyVoidedGoods: [],
+      dailyInvitedGoods: [],
+    });
+    await Schedule.create({
+      businessId: business._id,
+      date: new Date(),
+      weekNumber: 1,
+      totalDayEmployeesCost: 40,
+      deleted: true,
+      deletedAt: new Date(),
+    });
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/dailySalesReports/${report._id}/calculateBusinessReport`,
+      headers: { authorization: token },
+    });
+    expect(response.statusCode, response.body).toBe(200);
+
+    const weekly = await WeeklyBusinessReport.findOne({
+      businessId: business._id,
+    }).lean();
+    expect(weekly?.financialSummary?.totalSalesForWeek).toBe(230);
+    expect(weekly?.financialSummary?.totalNetRevenue).toBe(210);
+    expect(weekly?.costBreakdown?.totalLaborCost).toBe(40);
+
+    const monthly = await MonthlyBusinessReport.findOne({
+      businessId: business._id,
+    }).lean();
+    expect(monthly?.financialSummary?.totalSalesForMonth).toBe(230);
+    expect(monthly?.financialSummary?.totalNetRevenue).toBe(210);
+    expect(monthly?.costBreakdown?.totalLaborCost).toBe(40);
   });
 
   it("manager close validates open orders, then aggregates and closes", async () => {

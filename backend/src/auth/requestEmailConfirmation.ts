@@ -26,6 +26,53 @@ export type RequestEmailConfirmationHandlerResult =
       message: string;
     };
 
+type ConfirmationUser = {
+  _id: unknown;
+  personalDetails?: { username?: string; firstName?: string } | null;
+};
+
+/**
+ * Writes the confirmation token on this User. Reactivation must not follow the
+ * public helper, which prefers a Business that happens to share the address.
+ */
+export async function sendSoftDeletedUserConfirmation(
+  user: ConfirmationUser,
+  normalizedEmail: string,
+): Promise<RequestEmailConfirmationHandlerResult> {
+  const pd = user.personalDetails ?? undefined;
+  const greetingName =
+    pd?.username?.trim() || pd?.firstName?.trim() || undefined;
+
+  const sent = await sendAuthTokenEmailOrRollback({
+    to: normalizedEmail,
+    persist: (token) =>
+      User.updateOne(
+        withSoftDeleteFilter({ _id: user._id }, true),
+        { $set: { verificationToken: token } },
+      ),
+    buildLink: buildConfirmEmailLink,
+    buildContent: (link) =>
+      buildEmailConfirmationContent({ confirmUrl: link, greetingName }),
+    rollback: () =>
+      User.updateOne(
+        withSoftDeleteFilter({ _id: user._id }, true),
+        { $unset: { verificationToken: "" } },
+      ),
+  });
+
+  if (!sent) {
+    return {
+      kind: "server_error_500",
+      message: "Failed to send confirmation email. Please try again later.",
+    };
+  }
+
+  return {
+    kind: "success_200",
+    message: EMAIL_CONFIRMATION_SENT_MESSAGE,
+  };
+}
+
 export async function handleRequestEmailConfirmation(
   normalizedEmail: string,
 ): Promise<RequestEmailConfirmationHandlerResult> {
@@ -91,38 +138,5 @@ export async function handleRequestEmailConfirmation(
     };
   }
 
-  const pd = user!.personalDetails as
-    | { username?: string; firstName?: string }
-    | undefined;
-  const greetingName =
-    pd?.username?.trim() || pd?.firstName?.trim() || undefined;
-
-  const sent = await sendAuthTokenEmailOrRollback({
-    to: normalizedEmail,
-      persist: (token) =>
-        User.updateOne(
-          withSoftDeleteFilter({ _id: user!._id }, true),
-          { $set: { verificationToken: token } },
-        ),
-    buildLink: buildConfirmEmailLink,
-    buildContent: (link) =>
-      buildEmailConfirmationContent({ confirmUrl: link, greetingName }),
-      rollback: () =>
-        User.updateOne(
-          withSoftDeleteFilter({ _id: user!._id }, true),
-          { $unset: { verificationToken: "" } },
-        ),
-  });
-
-  if (!sent) {
-    return {
-      kind: "server_error_500",
-      message: "Failed to send confirmation email. Please try again later.",
-    };
-  }
-
-  return {
-    kind: "success_200",
-    message: EMAIL_CONFIRMATION_SENT_MESSAGE,
-  };
+  return sendSoftDeletedUserConfirmation(user!, normalizedEmail);
 }

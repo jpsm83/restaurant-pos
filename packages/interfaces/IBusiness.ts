@@ -79,6 +79,7 @@ export interface IBusiness {
   reportingConfig?: IReportingConfig;
   deleted?: boolean;
   deletedAt?: Date;
+  deletedBy?: Types.ObjectId;
 }
 
 /**

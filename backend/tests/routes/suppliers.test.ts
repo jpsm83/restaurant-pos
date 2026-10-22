@@ -771,6 +771,7 @@ describe("Suppliers Routes", () => {
       expect(persisted).not.toBeNull();
       expect(persisted?.deleted).toBe(true);
       expect(persisted?.deletedAt).toBeInstanceOf(Date);
+      expect(deleteFolderCloudinaryMock).not.toHaveBeenCalled();
     });
 
     it("returns a problem-details 409 when supplier is already soft-deleted", async () => {

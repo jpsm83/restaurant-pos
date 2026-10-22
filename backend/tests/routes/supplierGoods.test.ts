@@ -474,9 +474,8 @@ describe("SupplierGoods Routes", () => {
       expect(persisted?.deleted).toBe(true);
     });
 
-    it("rolls the soft-delete marker back when a later step in the transaction fails", async () => {
+    it("rolls the soft-delete marker back when the open inventory is missing", async () => {
       const app = await getTestApp();
-      deleteFolderCloudinaryMock.mockResolvedValueOnce("cloudinary failed");
 
       const supplierGood = await SupplierGood.create({
         businessId,
@@ -498,6 +497,45 @@ describe("SupplierGoods Routes", () => {
       const stillActive = await SupplierGood.findById(supplierGood._id).lean();
       expect(stillActive).not.toBeNull();
       expect(stillActive?.deleted).toBe(false);
+    });
+
+    it("soft-deletes the good and leaves its image folder in place", async () => {
+      const app = await getTestApp();
+      deleteFolderCloudinaryMock.mockClear();
+
+      const supplierGood = await SupplierGood.create({
+        businessId,
+        supplierId,
+        name: "Kept Folder Flour",
+        keyword: "kept-folder",
+        mainCategory: "Food",
+        currentlyInUse: true,
+      });
+
+      await Inventory.create({
+        businessId,
+        setFinalCount: false,
+        inventoryGoods: [
+          {
+            supplierGoodId: supplierGood._id,
+            currentCountQuantity: 0,
+            dynamicCountQuantity: 0,
+          },
+        ],
+      });
+
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/supplierGoods/${supplierGood._id}`,
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(deleteFolderCloudinaryMock).not.toHaveBeenCalled();
+
+      const persisted = await SupplierGood.findById(supplierGood._id)
+        .setOptions({ includeDeleted: true })
+        .lean();
+      expect(persisted?.deleted).toBe(true);
     });
   });
 

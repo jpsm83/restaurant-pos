@@ -21,4 +21,5 @@ export interface IUser {
   refreshSessionVersion?: number;
   deleted?: boolean;
   deletedAt?: Date;
+  deletedBy?: Types.ObjectId;
 }

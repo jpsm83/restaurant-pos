@@ -80,4 +80,5 @@ export interface IPromotion {
   description?: string;
   deleted?: boolean;
   deletedAt?: Date;
+  deletedBy?: Types.ObjectId;
 }

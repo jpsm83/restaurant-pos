@@ -45,7 +45,7 @@ export async function handleConfirmEmail(
           emailVerified: true,
           deleted: false,
         },
-        $unset: { verificationToken: "", deletedAt: "" },
+        $unset: { verificationToken: "", deletedAt: "", deletedBy: "" },
       },
     );
 

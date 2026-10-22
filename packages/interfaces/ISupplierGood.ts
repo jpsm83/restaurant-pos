@@ -24,4 +24,5 @@ export interface ISupplierGood {
   pricePerMeasurementUnit?: number;
   deleted?: boolean;
   deletedAt?: Date;
+  deletedBy?: Types.ObjectId;
 }

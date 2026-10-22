@@ -44,6 +44,7 @@ import {
   GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE,
   handleRequestEmailConfirmation,
   REACTIVATION_REQUIRED_MESSAGE,
+  sendSoftDeletedUserConfirmation,
 } from "../../auth/requestEmailConfirmation.ts";
 import { handleRequestPasswordReset } from "../../auth/requestPasswordReset.ts";
 import { handleRequestEmailChange } from "../../auth/requestEmailChange.ts";
@@ -98,16 +99,22 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
           "personalDetails.email": email,
           deleted: true,
         })
-          .select("_id")
+          .select("_id personalDetails.username personalDetails.firstName")
           .lean(),
       ]);
 
-      if (existingBusiness || existingUser) {
+      if (existingUser) {
         throw conflict("Account with this email already exists");
       }
       if (deletedUser) {
-        await handleRequestEmailConfirmation(email);
+        const sent = await sendSoftDeletedUserConfirmation(deletedUser, email);
+        if (sent.kind === "server_error_500") {
+          throw internal(sent.message);
+        }
         return reply.code(202).send({ message: REACTIVATION_REQUIRED_MESSAGE });
+      }
+      if (existingBusiness) {
+        throw conflict("Account with this email already exists");
       }
 
       const hashedPassword = await bcrypt.hash(password, 10);

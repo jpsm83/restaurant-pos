@@ -15,4 +15,5 @@ export interface ISupplier {
   contactPerson?: string;
   deleted?: boolean;
   deletedAt?: Date;
+  deletedBy?: Types.ObjectId;
 }

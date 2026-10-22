@@ -239,6 +239,128 @@ describe("Notifications Routes", () => {
       expect(body.detail).toBe("One or more recipients do not exist!");
     });
 
+    it("rejects a soft-deleted employee recipient and a closed business", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      const user = await User.create({
+        personalDetails: {
+          username: `notify${Date.now()}`,
+          email: `notify${Date.now()}@test.com`,
+          password: "hashedpassword",
+          firstName: "Notify",
+          lastName: "User",
+          phoneNumber: "1234567890",
+          birthDate: new Date("1990-01-01"),
+          gender: "Man",
+          nationality: "USA",
+          idType: "National ID",
+          idNumber: `NOTIFY-${Date.now()}`,
+          address: {
+            country: "USA",
+            state: "CA",
+            city: "Los Angeles",
+            street: "Main St",
+            buildingNumber: "123",
+            postCode: "90001",
+          },
+        },
+      });
+      const employee = await Employee.create({
+        businessId: business._id,
+        userId: user._id,
+        allEmployeeRoles: ["Waiter"],
+        taxNumber: `NOTIFY-EMP-${Date.now()}`,
+        joinDate: new Date(),
+        active: true,
+        onDuty: false,
+        vacationDaysPerYear: 20,
+        deleted: true,
+        deletedAt: new Date(),
+      });
+
+      const recipientResponse = await app.inject({
+        method: "POST",
+        url: "/api/v1/notifications",
+        payload: {
+          notificationType: "Info",
+          message: "Retired staff",
+          businessId: business._id.toString(),
+          employeesRecipientsIds: [employee._id.toString()],
+        },
+      });
+      expect(recipientResponse.statusCode).toBe(400);
+      expect(recipientResponse.json().detail).toBe(
+        "One or more recipients do not exist!",
+      );
+
+      const deletedCustomer = await User.create({
+        personalDetails: {
+          username: `gone${Date.now()}`,
+          email: `gone${Date.now()}@test.com`,
+          password: "hashedpassword",
+          firstName: "Gone",
+          lastName: "Customer",
+          phoneNumber: "1234567890",
+          birthDate: new Date("1990-01-01"),
+          gender: "Man",
+          nationality: "USA",
+          idType: "National ID",
+          idNumber: `GONE-${Date.now()}`,
+          address: {
+            country: "USA",
+            state: "CA",
+            city: "Los Angeles",
+            street: "Main St",
+            buildingNumber: "123",
+            postCode: "90001",
+          },
+        },
+        deleted: true,
+        deletedAt: new Date(),
+      });
+      const customerResponse = await app.inject({
+        method: "POST",
+        url: "/api/v1/notifications",
+        payload: {
+          notificationType: "Info",
+          message: "Retired customer",
+          businessId: business._id.toString(),
+          customersRecipientsIds: [deletedCustomer._id.toString()],
+        },
+      });
+      expect(customerResponse.statusCode).toBe(400);
+      expect(customerResponse.json().detail).toBe(
+        "One or more recipients do not exist!",
+      );
+
+      await Business.updateOne(
+        { _id: business._id },
+        { $set: { deleted: true, deletedAt: new Date() } },
+      );
+      const liveEmployee = await Employee.create({
+        businessId: business._id,
+        userId: user._id,
+        allEmployeeRoles: ["Waiter"],
+        taxNumber: `NOTIFY-LIVE-${Date.now()}`,
+        joinDate: new Date(),
+        active: true,
+        onDuty: false,
+        vacationDaysPerYear: 20,
+      });
+      const businessResponse = await app.inject({
+        method: "POST",
+        url: "/api/v1/notifications",
+        payload: {
+          notificationType: "Info",
+          message: "Closed venue",
+          businessId: business._id.toString(),
+          employeesRecipientsIds: [liveEmployee._id.toString()],
+        },
+      });
+      expect(businessResponse.statusCode).toBe(404);
+      expect(businessResponse.json().detail).toBe("Business not found!");
+    });
+
     it("returns 404 when the business does not exist", async () => {
       const app = await getTestApp();
       const user = await createTestUser(`notif-no-biz-${Date.now()}`);

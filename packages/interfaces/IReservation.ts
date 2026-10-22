@@ -22,5 +22,6 @@ export interface IReservation {
   salesInstanceId?: Types.ObjectId;
   deleted?: boolean;
   deletedAt?: Date;
+  deletedBy?: Types.ObjectId;
 }
 

@@ -23,7 +23,7 @@ import Employee from "../../models/employee.ts";
 import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
 import createNextPeriodInventory from "../../inventories/createNextPeriodInventory.ts";
 import getVarianceReport from "../../inventories/getVarianceReport.ts";
-import { createAuthHook } from "../../auth/middleware.ts";
+import { createAuthHook, createOptionalAuthHook } from "../../auth/middleware.ts";
 import {
   badRequest,
   conflict,
@@ -257,7 +257,10 @@ export const inventoriesRoutes: FastifyPluginAsync = async (app) => {
   // DELETE /inventories/:inventoryId - delete
   app.delete<{ Params: InventoryIdParams }>(
     "/:inventoryId",
-    { schema: { params: inventoryIdParamsSchema } },
+    {
+      preValidation: [createOptionalAuthHook(app)],
+      schema: { params: inventoryIdParamsSchema },
+    },
     async (req, reply) => {
       const { inventoryId } = req.params;
       const inventory = await Inventory.findById(inventoryId)
@@ -275,6 +278,7 @@ export const inventoriesRoutes: FastifyPluginAsync = async (app) => {
       const wasDeleted = await markAsDeletedById(
         Inventory as mongoose.Model<IInventory & { deleted: boolean }>,
         inventoryId,
+        { deletedBy: req.authSession?.id },
       );
       if (!wasDeleted) {
         throw conflict("Inventory already deleted!");

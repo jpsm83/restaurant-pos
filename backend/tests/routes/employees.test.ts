@@ -7,7 +7,11 @@
  * Phase 5: Cloudinary tests for document uploads (skipped - ESM mocking limitation)
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+
+vi.mock("../../src/cloudinary/deleteFolderCloudinary.ts", () => ({
+  default: vi.fn(async () => true),
+}));
 import { Types } from "mongoose";
 import { getTestApp } from "../setup.ts";
 import Employee from "../../src/models/employee.ts";
@@ -507,6 +511,37 @@ describe("Employees Routes", () => {
       expect(response.statusCode).toBe(409);
       expect(isProblemDetails(response)).toBe(true);
       expect(detail(response)).toBe("Employee already deleted!");
+    });
+
+    it("retains the employee as deleted and clears the user link", async () => {
+      const app = await getTestApp();
+
+      const created = await app.inject({
+        method: "POST",
+        url: "/api/v1/employees",
+        payload: multipart(validCreateFields()),
+        headers: { "content-type": "multipart/form-data" },
+      });
+      expect(created.statusCode).toBe(201);
+
+      const employee = await Employee.findOne({ businessId, userId }).lean();
+      expect(employee).not.toBeNull();
+
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/employees/${employee?._id}`,
+      });
+      expect(response.statusCode).toBe(200);
+
+      const retained = await Employee.findById(employee?._id)
+        .setOptions({ includeDeleted: true })
+        .lean();
+      expect(retained?.deleted).toBe(true);
+      expect(retained?.deletedAt).toBeTruthy();
+      expect(await Employee.findById(employee?._id).lean()).toBeNull();
+
+      const updatedUser = await User.findById(userId).lean();
+      expect(updatedUser?.employeeDetails).toBeUndefined();
     });
   });
 

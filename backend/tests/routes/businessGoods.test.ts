@@ -7,7 +7,7 @@
  * RFC 9457 `application/problem+json` documents, never `{ message }`.
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { Types } from "mongoose";
 import { getTestApp } from "../setup.ts";
 import BusinessGood from "../../src/models/businessGood.ts";
@@ -15,6 +15,10 @@ import Business from "../../src/models/business.ts";
 import Supplier from "../../src/models/supplier.ts";
 import SupplierGood from "../../src/models/supplierGood.ts";
 import { isProblemDetails } from "../helpers/problemDetails.ts";
+
+vi.mock("../../src/cloudinary/deleteFolderCloudinary.ts", () => ({
+  default: vi.fn(async () => true),
+}));
 
 const boundary = "----formdata";
 const multipartHeaders = {
@@ -619,6 +623,39 @@ describe("BusinessGoods Routes", () => {
       expect(response.statusCode).toBe(400);
       expect(isProblemDetails(response)).toBe(true);
       expect(JSON.parse(response.body).errors[0].path).toBe("businessGoodId");
+    });
+
+    it("ignores a soft-deleted set menu when deleting a component", async () => {
+      const app = await getTestApp();
+      const component = await BusinessGood.create({
+        businessId,
+        name: "Component",
+        keyword: "component",
+        mainCategory: "Food",
+        sellingPrice: 4,
+      });
+      await BusinessGood.create({
+        businessId,
+        name: "Retired combo",
+        keyword: "retired-combo",
+        mainCategory: "Food",
+        sellingPrice: 12,
+        setMenuIds: [component._id],
+        deleted: true,
+        deletedAt: new Date(),
+      });
+
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/businessGoods/${component._id}`,
+      });
+
+      expect(response.statusCode, response.body).toBe(200);
+      const stored = await BusinessGood.findById(component._id)
+        .setOptions({ includeDeleted: true })
+        .select("deleted")
+        .lean();
+      expect(stored?.deleted).toBe(true);
     });
   });
 
