@@ -390,6 +390,7 @@ Overlaps Stage 3 in week 12 — fine, they reinforce each other.
 ## 🟡 Stage 7 — Evaluation & Applied LLM Engineering (Weeks 23–24 · ~12 h) — PHASE 6
 
 - [ ] ✅ `Evaluating AI Agents` (Arize AI) — 2h36m — structured assessments, iteration.
+- [ ] ✅ `Context Engineering` (DeepLearning.AI) — ~1–2h — designing/curating dynamic context windows, retrieval payloads, and prompt scaffolds for reliable agent behavior.
 - [ ] ✅ `Pydantic for LLM Workflows` (DeepLearning.AI) — 1h50m — **structured outputs, schema validation, retries** (roadmap Phase 6 resiliency).
 - [ ] ✅ `MCP: Build Rich-Context AI Apps with Anthropic` (Anthropic) — 1h58m — **fills the MCP gap** — server/client tools, data, prompts.
 - [ ] ✅ `Build AI Apps with MCP Server: Working with Box Files` (Box) — 36m — MCP + multi-agent A2A.
