@@ -312,14 +312,18 @@ export const suppliersRoutes: FastifyPluginAsync = async (app) => {
         throw conflict("Supplier already deleted!");
       }
 
-      const supplierGoodIds = await SupplierGood.find({
-        supplierId,
-      }).distinct("_id");
+      const supplierGoodIds = await SupplierGood.find(
+        withSoftDeleteFilter({
+          supplierId,
+        }),
+      ).distinct("_id");
 
       if (supplierGoodIds.length > 0) {
-        const isInUse = await BusinessGood.exists({
-          "ingredients.supplierGoodId": { $in: supplierGoodIds },
-        });
+        const isInUse = await BusinessGood.exists(
+          withSoftDeleteFilter({
+            "ingredients.supplierGoodId": { $in: supplierGoodIds },
+          }),
+        );
 
         if (isInUse) {
           throw conflict("Supplier is in use in some business goods!");

@@ -686,6 +686,59 @@ describe("Suppliers Routes", () => {
       );
     });
 
+    it("ignores soft-deleted business goods in the in-use guard", async () => {
+      const app = await getTestApp();
+
+      const supplier = await Supplier.create({
+        businessId,
+        tradeName: "In Use Supplier",
+        legalName: "In Use Supplier LLC",
+        email: "inuse-softdeleted@supplier.com",
+        phoneNumber: "6666666667",
+        taxNumber: "INUSE-002",
+        currentlyInUse: true,
+        address: validAddress,
+      });
+
+      const supplierGood = await SupplierGood.create({
+        businessId,
+        supplierId: supplier._id,
+        name: "Flour",
+        keyword: "flour",
+        mainCategory: "Food",
+      });
+
+      await BusinessGood.create({
+        businessId,
+        name: "Deleted Bread",
+        keyword: "deleted-bread",
+        mainCategory: "Food",
+        sellingPrice: 5,
+        ingredients: [
+          {
+            supplierGoodId: supplierGood._id,
+            measurementUnit: "g",
+            requiredQuantity: 500,
+          },
+        ],
+        deleted: true,
+        deletedAt: new Date(),
+      });
+
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/suppliers/${supplier._id}`,
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.body).message).toBe(
+        "Supplier deleted successfully!",
+      );
+
+      const persisted = await Supplier.findById(supplier._id).lean();
+      expect(persisted?.deleted).toBe(true);
+    });
+
     it("soft-deletes a supplier instead of hard-deleting", async () => {
       const app = await getTestApp();
 

@@ -483,6 +483,31 @@ describe("Employees Routes", () => {
       expect(isProblemDetails(response)).toBe(true);
       expect(detail(response)).toBe("Employee not found!");
     });
+
+    it("returns a problem-details 409 for an already soft-deleted employee", async () => {
+      const app = await getTestApp();
+
+      const employee = await Employee.create({
+        businessId,
+        userId,
+        taxNumber: "EMP-DELETED-001",
+        joinDate: new Date(),
+        vacationDaysPerYear: 20,
+        vacationDaysLeft: 20,
+        allEmployeeRoles: ["Waiter"],
+        deleted: true,
+        deletedAt: new Date(),
+      });
+
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/employees/${employee._id}`,
+      });
+
+      expect(response.statusCode).toBe(409);
+      expect(isProblemDetails(response)).toBe(true);
+      expect(detail(response)).toBe("Employee already deleted!");
+    });
   });
 
   describe("GET /api/v1/employees/business/:businessId", () => {

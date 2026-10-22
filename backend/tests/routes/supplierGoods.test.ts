@@ -7,7 +7,7 @@
  * Phase 5: Cloudinary tests for image uploads (skipped without credentials).
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { Types } from "mongoose";
 import { getTestApp } from "../setup.ts";
 import SupplierGood from "../../src/models/supplierGood.ts";
@@ -21,6 +21,14 @@ import {
   errorPaths,
   isProblemDetails,
 } from "../helpers/problemDetails.ts";
+
+const deleteFolderCloudinaryMock = vi.hoisted(() =>
+  vi.fn().mockResolvedValue(true),
+);
+
+vi.mock("../../src/cloudinary/deleteFolderCloudinary.ts", () => ({
+  default: deleteFolderCloudinaryMock,
+}));
 
 describe("SupplierGoods Routes", () => {
   let businessId: Types.ObjectId;
@@ -197,6 +205,38 @@ describe("SupplierGoods Routes", () => {
       expect(errorMessages(response).some((m) => m.includes("imagesUrl"))).toBe(
         true,
       );
+    });
+
+    it("creates supplier good when only a soft-deleted duplicate exists", async () => {
+      const app = await getTestApp();
+
+      await Inventory.create({
+        businessId,
+        setFinalCount: false,
+        inventoryGoods: [],
+      });
+
+      await SupplierGood.create({
+        businessId,
+        supplierId,
+        name: "All Purpose Flour",
+        keyword: "flour",
+        mainCategory: "Food",
+        currentlyInUse: true,
+        deleted: true,
+        deletedAt: new Date(),
+      });
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/supplierGoods",
+        payload: multipart(validGoodFields()),
+        headers: { "content-type": "multipart/form-data" },
+      });
+
+      expect(response.statusCode).toBe(201);
+      const body = JSON.parse(response.body);
+      expect(body.message).toContain("created");
     });
   });
 
@@ -375,6 +415,61 @@ describe("SupplierGoods Routes", () => {
       expect(response.statusCode).toBe(409);
       expect(isProblemDetails(response)).toBe(true);
       expect(JSON.parse(response.body).detail).toContain("in use");
+    });
+
+    it("ignores soft-deleted business goods in the in-use guard", async () => {
+      const app = await getTestApp();
+
+      const supplierGood = await SupplierGood.create({
+        businessId,
+        supplierId,
+        name: "Used Only by Deleted Good",
+        keyword: "used-only-by-deleted-good",
+        mainCategory: "Food",
+        currentlyInUse: true,
+      });
+
+      await Inventory.create({
+        businessId,
+        setFinalCount: false,
+        inventoryGoods: [
+          {
+            supplierGoodId: supplierGood._id,
+            currentCountQuantity: 0,
+            dynamicCountQuantity: 0,
+          },
+        ],
+      });
+
+      await BusinessGood.create({
+        businessId,
+        name: "Deleted Menu Item",
+        keyword: "deleted-menu-item",
+        mainCategory: "Food",
+        onMenu: true,
+        available: true,
+        sellingPrice: 10,
+        ingredients: [
+          {
+            supplierGoodId: supplierGood._id,
+            measurementUnit: "kg",
+            requiredQuantity: 1,
+            costOfRequiredQuantity: 1,
+          },
+        ],
+        deleted: true,
+        deletedAt: new Date(),
+      });
+
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/supplierGoods/${supplierGood._id}`,
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.body).message).toContain("deleted");
+      const persisted = await SupplierGood.findById(supplierGood._id).lean();
+      expect(persisted?.deleted).toBe(true);
     });
   });
 

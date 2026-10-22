@@ -140,11 +140,13 @@ export const supplierGoodsRoutes: FastifyPluginAsync = async (app) => {
     session.startTransaction();
 
     try {
-      const duplicateSupplierGood = await SupplierGood.exists({
-        businessId: fields.businessId,
-        supplierId: fields.supplierId,
-        name: fields.name,
-      }).session(session);
+      const duplicateSupplierGood = await SupplierGood.exists(
+        withSoftDeleteFilter({
+          businessId: fields.businessId,
+          supplierId: fields.supplierId,
+          name: fields.name,
+        }),
+      ).session(session);
 
       if (duplicateSupplierGood) {
         throw badRequest(`${fields.name} already exists on supplier goods!`);
@@ -431,10 +433,12 @@ export const supplierGoodsRoutes: FastifyPluginAsync = async (app) => {
           throw conflict("Supplier good already deleted!");
         }
 
-        const isInUse = await BusinessGood.exists({
-          businessId: supplierGood.businessId,
-          "ingredients.supplierGoodId": supplierGoodId,
-        }).session(session);
+        const isInUse = await BusinessGood.exists(
+          withSoftDeleteFilter({
+            businessId: supplierGood.businessId,
+            "ingredients.supplierGoodId": supplierGoodId,
+          }),
+        ).session(session);
 
         if (isInUse) {
           throw conflict("Supplier good is in use in some business goods!");
