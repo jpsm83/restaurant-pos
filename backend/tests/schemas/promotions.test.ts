@@ -6,6 +6,7 @@ import {
   promotionIdParamsSchema,
   promotionsByBusinessParamsSchema,
   promotionsByBusinessQuerySchema,
+  promotionsIncludeDeletedQuerySchema,
   updatePromotionBodySchema,
 } from "restaurant-pos-packages/schemas/promotions";
 import { weekDaysEnums } from "restaurant-pos-packages/enums";
@@ -351,6 +352,67 @@ describe("promotionsByBusinessQuerySchema", () => {
       promotionsByBusinessQuerySchema.safeParse({ limit: 10 }).success,
     ).toBe(false);
   });
+
+  it("coerces includeDeleted and treats a blank value as omitted", () => {
+    expect(
+      promotionsByBusinessQuerySchema.parse({ includeDeleted: "true" })
+        .includeDeleted,
+    ).toBe(true);
+    expect(
+      promotionsByBusinessQuerySchema.parse({ includeDeleted: "false" })
+        .includeDeleted,
+    ).toBe(false);
+    expect(
+      promotionsByBusinessQuerySchema.parse({ includeDeleted: "" })
+        .includeDeleted,
+    ).toBeUndefined();
+  });
+
+  it("rejects a non-boolean includeDeleted", () => {
+    expect(
+      promotionsByBusinessQuerySchema.safeParse({ includeDeleted: "maybe" })
+        .success,
+    ).toBe(false);
+  });
+});
+
+describe("promotionsIncludeDeletedQuerySchema", () => {
+  it("accepts an omitted includeDeleted", () => {
+    expect(
+      promotionsIncludeDeletedQuerySchema.parse({}).includeDeleted,
+    ).toBeUndefined();
+  });
+
+  it("treats a blank includeDeleted as omitted", () => {
+    expect(
+      promotionsIncludeDeletedQuerySchema.parse({ includeDeleted: "" })
+        .includeDeleted,
+    ).toBeUndefined();
+  });
+
+  it("coerces string booleans", () => {
+    expect(
+      promotionsIncludeDeletedQuerySchema.parse({ includeDeleted: "true" })
+        .includeDeleted,
+    ).toBe(true);
+    expect(
+      promotionsIncludeDeletedQuerySchema.parse({ includeDeleted: "false" })
+        .includeDeleted,
+    ).toBe(false);
+  });
+
+  it("rejects a non-boolean includeDeleted and unknown keys", () => {
+    expect(
+      promotionsIncludeDeletedQuerySchema.safeParse({ includeDeleted: "maybe" })
+        .success,
+    ).toBe(false);
+    expect(
+      promotionsIncludeDeletedQuerySchema.safeParse({
+        includeDeleted: true,
+        createdAt: "x",
+      }).success,
+    ).toBe(false);
+  });
 });
 
 describe("server-owned fields are excluded from every promotions DTO", () => {
@@ -359,6 +421,8 @@ describe("server-owned fields are excluded from every promotions DTO", () => {
     promotionIdParamsSchema,
     updatePromotionBodySchema,
     promotionsByBusinessParamsSchema,
+    promotionsByBusinessQuerySchema,
+    promotionsIncludeDeletedQuerySchema,
   };
 
   it.each(Object.entries(dtoSchemas))(

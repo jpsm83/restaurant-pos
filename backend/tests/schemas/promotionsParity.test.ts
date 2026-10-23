@@ -7,6 +7,8 @@ import {
   createPromotionBodySchema,
   promotionIdParamsSchema,
   promotionsByBusinessParamsSchema,
+  promotionsByBusinessQuerySchema,
+  promotionsIncludeDeletedQuerySchema,
   updatePromotionBodySchema,
 } from "restaurant-pos-packages/schemas/promotions";
 
@@ -26,6 +28,8 @@ const allDtos: Record<string, z.ZodObject> = {
   promotionIdParamsSchema,
   updatePromotionBodySchema,
   promotionsByBusinessParamsSchema,
+  promotionsByBusinessQuerySchema,
+  promotionsIncludeDeletedQuerySchema,
 };
 
 describe("promotions DTO ↔ model parity", () => {

@@ -10,7 +10,7 @@
 
 import { describe, it, expect, beforeEach } from "vitest";
 import { Types } from "mongoose";
-import { getTestApp } from "../setup.ts";
+import { generateTestToken, getTestApp } from "../setup.ts";
 import Schedule from "../../src/models/schedule.ts";
 import Employee from "../../src/models/employee.ts";
 import Business from "../../src/models/business.ts";
@@ -162,6 +162,18 @@ describe("Schedules Routes", () => {
 
       const body = expectProblem(response, 404, "not-found");
       expect(body.detail).toBe("No schedules found!");
+    });
+
+    it("returns a validation problem for an invalid includeDeleted query value", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/schedules?includeDeleted=maybe",
+      });
+
+      const body = expectProblem(response, 400, "validation");
+      expect(fieldPaths(body)).toContain("includeDeleted");
     });
   });
 
@@ -532,6 +544,27 @@ describe("Schedules Routes", () => {
 
       const body = expectProblem(response, 400, "validation");
       expect(fieldPaths(body)).toContain("scheduleId");
+    });
+  });
+
+  describe("GET /api/v1/schedules/business/:businessId/daily", () => {
+    it("returns a validation problem for an invalid dayKey", async () => {
+      const app = await getTestApp();
+      const authorization = await generateTestToken({
+        id: userId.toString(),
+        email: "scheduleuser@test.com",
+        type: "user",
+        role: "Waiter",
+      });
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/schedules/business/${businessId}/daily?dayKey=not-a-date`,
+        headers: { authorization },
+      });
+
+      const body = expectProblem(response, 400, "validation");
+      expect(fieldPaths(body)).toContain("dayKey");
     });
   });
 

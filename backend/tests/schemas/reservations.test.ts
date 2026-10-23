@@ -5,6 +5,7 @@ import {
   reservationIdParamsSchema,
   reservationsByBusinessParamsSchema,
   reservationsByBusinessQuerySchema,
+  reservationsIncludeDeletedQuerySchema,
   reservationsQuerySchema,
   reservationStatusValues,
   updateReservationBodySchema,
@@ -263,6 +264,24 @@ describe("reservationsQuerySchema", () => {
   it("rejects unknown keys", () => {
     expect(reservationsQuerySchema.safeParse({ limit: 10 }).success).toBe(false);
   });
+
+  it("coerces includeDeleted and treats a blank value as omitted", () => {
+    expect(
+      reservationsQuerySchema.parse({ includeDeleted: "true" }).includeDeleted,
+    ).toBe(true);
+    expect(
+      reservationsQuerySchema.parse({ includeDeleted: "false" }).includeDeleted,
+    ).toBe(false);
+    expect(
+      reservationsQuerySchema.parse({ includeDeleted: "" }).includeDeleted,
+    ).toBeUndefined();
+  });
+
+  it("rejects a non-boolean includeDeleted", () => {
+    expect(
+      reservationsQuerySchema.safeParse({ includeDeleted: "maybe" }).success,
+    ).toBe(false);
+  });
 });
 
 describe("reservationsByBusinessParamsSchema", () => {
@@ -304,6 +323,64 @@ describe("reservationsByBusinessQuerySchema", () => {
   it("rejects unknown keys", () => {
     expect(
       reservationsByBusinessQuerySchema.safeParse({ limit: 10 }).success,
+    ).toBe(false);
+  });
+
+  it("coerces includeDeleted and treats a blank value as omitted", () => {
+    expect(
+      reservationsByBusinessQuerySchema.parse({ includeDeleted: "true" })
+        .includeDeleted,
+    ).toBe(true);
+    expect(
+      reservationsByBusinessQuerySchema.parse({ includeDeleted: "" })
+        .includeDeleted,
+    ).toBeUndefined();
+  });
+
+  it("rejects a non-boolean includeDeleted", () => {
+    expect(
+      reservationsByBusinessQuerySchema.safeParse({ includeDeleted: "maybe" })
+        .success,
+    ).toBe(false);
+  });
+});
+
+describe("reservationsIncludeDeletedQuerySchema", () => {
+  it("accepts an omitted includeDeleted", () => {
+    expect(
+      reservationsIncludeDeletedQuerySchema.parse({}).includeDeleted,
+    ).toBeUndefined();
+  });
+
+  it("treats a blank includeDeleted as omitted", () => {
+    expect(
+      reservationsIncludeDeletedQuerySchema.parse({ includeDeleted: "" })
+        .includeDeleted,
+    ).toBeUndefined();
+  });
+
+  it("coerces string booleans", () => {
+    expect(
+      reservationsIncludeDeletedQuerySchema.parse({ includeDeleted: "true" })
+        .includeDeleted,
+    ).toBe(true);
+    expect(
+      reservationsIncludeDeletedQuerySchema.parse({ includeDeleted: "false" })
+        .includeDeleted,
+    ).toBe(false);
+  });
+
+  it("rejects a non-boolean includeDeleted and unknown keys", () => {
+    expect(
+      reservationsIncludeDeletedQuerySchema.safeParse({
+        includeDeleted: "maybe",
+      }).success,
+    ).toBe(false);
+    expect(
+      reservationsIncludeDeletedQuerySchema.safeParse({
+        includeDeleted: true,
+        createdAt: "x",
+      }).success,
     ).toBe(false);
   });
 });

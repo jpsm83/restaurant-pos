@@ -8,6 +8,7 @@ import {
   employeeScheduleSchema,
   scheduleBusinessParamsSchema,
   scheduleIdParamsSchema,
+  schedulesIncludeDeletedQuerySchema,
   scheduleUserParamsSchema,
   updateEmployeeBodySchema,
   updateScheduleBodySchema,
@@ -180,6 +181,45 @@ describe("dailyScheduleQuerySchema", () => {
     expect(
       dailyScheduleQuerySchema.safeParse({ dayKey: "2026-10-11", extra: "x" })
         .success,
+    ).toBe(false);
+  });
+});
+
+describe("schedulesIncludeDeletedQuerySchema", () => {
+  it("accepts an omitted includeDeleted", () => {
+    expect(
+      schedulesIncludeDeletedQuerySchema.parse({}).includeDeleted,
+    ).toBeUndefined();
+  });
+
+  it("treats a blank includeDeleted as omitted", () => {
+    expect(
+      schedulesIncludeDeletedQuerySchema.parse({ includeDeleted: "" })
+        .includeDeleted,
+    ).toBeUndefined();
+  });
+
+  it("coerces string booleans", () => {
+    expect(
+      schedulesIncludeDeletedQuerySchema.parse({ includeDeleted: "true" })
+        .includeDeleted,
+    ).toBe(true);
+    expect(
+      schedulesIncludeDeletedQuerySchema.parse({ includeDeleted: "false" })
+        .includeDeleted,
+    ).toBe(false);
+  });
+
+  it("rejects a non-boolean includeDeleted and unknown keys", () => {
+    expect(
+      schedulesIncludeDeletedQuerySchema.safeParse({ includeDeleted: "maybe" })
+        .success,
+    ).toBe(false);
+    expect(
+      schedulesIncludeDeletedQuerySchema.safeParse({
+        includeDeleted: true,
+        createdAt: "x",
+      }).success,
     ).toBe(false);
   });
 });
