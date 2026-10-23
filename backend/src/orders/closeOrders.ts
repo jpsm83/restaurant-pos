@@ -105,7 +105,7 @@ const closeOrders = async (
 
     const bulkUpdateOrders = finalizedOrders.map(({ order, updateData }) => ({
       updateOne: {
-        filter: { _id: order._id, billingStatus: "Open" },
+        filter: { _id: order._id, billingStatus: "Open", deleted: { $ne: true } },
         update: { $set: updateData },
       },
     }));
@@ -130,6 +130,9 @@ const closeOrders = async (
         path: "salesGroup.ordersIds",
         select: "billingStatus",
         model: Order,
+        // The group can still list an order that was marked deleted. This
+        // check has to see that row; the active-only hook would drop it.
+        options: { includeDeleted: true },
       })
       .session(session)
       .lean()) as unknown as ISalesInstance | null;
@@ -212,7 +215,7 @@ const closeOrders = async (
 
     const allOrdersPaid = salesInstance?.salesGroup?.every((group) =>
       group.ordersIds.every(
-        (order: Partial<IOrder>) => order.billingStatus === "Paid"
+        (order: Partial<IOrder> | null) => order?.billingStatus === "Paid"
       )
     );
 

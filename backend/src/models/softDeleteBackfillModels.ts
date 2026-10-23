@@ -7,6 +7,7 @@ import Employee from "./employee.ts";
 import Inventory from "./inventory.ts";
 import MonthlyBusinessReport from "./monthlyBusinessReport.ts";
 import Notification from "./notification.ts";
+import Order from "./order.ts";
 import Printer from "./printer.ts";
 import Promotion from "./promotion.ts";
 import Purchase from "./purchase.ts";
@@ -33,6 +34,7 @@ export const softDeleteBackfillModels: Array<{
   { label: "Inventory", model: Inventory as SoftDeleteModel },
   { label: "MonthlyBusinessReport", model: MonthlyBusinessReport as SoftDeleteModel },
   { label: "Notification", model: Notification as SoftDeleteModel },
+  { label: "Order", model: Order as SoftDeleteModel },
   { label: "Printer", model: Printer as SoftDeleteModel },
   { label: "Promotion", model: Promotion as SoftDeleteModel },
   { label: "Purchase", model: Purchase as SoftDeleteModel },

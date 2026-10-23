@@ -1,7 +1,7 @@
 /**
  * Orders Routes - Order CRUD and listing.
  *
- * Every route declares its body/params as a strict zod DTO from
+ * Every route declares its body/params/query as a strict zod DTO from
  * `packages/schemas/orders.ts`; validation and sanitization happen at the
  * boundary and every error is raised as an `AppError` so the global handler
  * emits RFC 9457 `application/problem+json`. `ordersArrValidation` and the
@@ -22,6 +22,7 @@ import toPreparedOrders from "../../orders/toPreparedOrders.ts";
 import orderPriceMatches from "../../orders/orderPriceMatches.ts";
 import applyPromotionsToOrders from "../../promotions/applyPromotions.ts";
 import { createAuthHook } from "../../auth/middleware.ts";
+import { withSoftDeleteFilter } from "../../models/softDelete.ts";
 import {
   badRequest,
   forbidden,
@@ -33,10 +34,12 @@ import {
   orderIdParamsSchema,
   ordersBySalesInstanceParamsSchema,
   ordersByUserParamsSchema,
+  ordersIncludeDeletedQuerySchema,
   type CreateOrderBody,
   type OrderIdParams,
   type OrdersBySalesInstanceParams,
   type OrdersByUserParams,
+  type OrdersIncludeDeletedQuery,
 } from "restaurant-pos-packages/schemas/orders";
 import * as enums from "restaurant-pos-packages/enums";
 
@@ -73,15 +76,22 @@ const ORDER_POPULATE = [
 ];
 
 export const ordersRoutes: FastifyPluginAsync = async (app) => {
-  app.get("/", async (_req, reply) => {
-    const orders = await Order.find().populate(ORDER_POPULATE).lean();
+  app.get<{ Querystring: OrdersIncludeDeletedQuery }>(
+    "/",
+    { schema: { querystring: ordersIncludeDeletedQuerySchema } },
+    async (req, reply) => {
+      const { includeDeleted = false } = req.query;
+      const orders = await Order.find(withSoftDeleteFilter({}, includeDeleted))
+        .populate(ORDER_POPULATE)
+        .lean();
 
-    if (!orders.length) {
-      throw notFound("No orders found!");
-    }
+      if (!orders.length) {
+        throw notFound("No orders found!");
+      }
 
-    return reply.code(200).send(orders);
-  });
+      return reply.code(200).send(orders);
+    },
+  );
 
   app.post<{ Body: CreateOrderBody }>(
     "/",
@@ -151,13 +161,21 @@ export const ordersRoutes: FastifyPluginAsync = async (app) => {
     },
   );
 
-  app.get<{ Params: OrderIdParams }>(
+  app.get<{ Params: OrderIdParams; Querystring: OrdersIncludeDeletedQuery }>(
     "/:orderId",
-    { schema: { params: orderIdParamsSchema } },
+    {
+      schema: {
+        params: orderIdParamsSchema,
+        querystring: ordersIncludeDeletedQuerySchema,
+      },
+    },
     async (req, reply) => {
       const { orderId } = req.params;
+      const { includeDeleted = false } = req.query;
 
-      const order = await Order.findById(orderId)
+      const order = await Order.findOne(
+        withSoftDeleteFilter({ _id: orderId }, includeDeleted),
+      )
         .populate(ORDER_POPULATE)
         .lean();
 
@@ -249,13 +267,24 @@ export const ordersRoutes: FastifyPluginAsync = async (app) => {
     },
   );
 
-  app.get<{ Params: OrdersBySalesInstanceParams }>(
+  app.get<{
+    Params: OrdersBySalesInstanceParams;
+    Querystring: OrdersIncludeDeletedQuery;
+  }>(
     "/salesInstance/:salesInstanceId",
-    { schema: { params: ordersBySalesInstanceParamsSchema } },
+    {
+      schema: {
+        params: ordersBySalesInstanceParamsSchema,
+        querystring: ordersIncludeDeletedQuerySchema,
+      },
+    },
     async (req, reply) => {
       const { salesInstanceId } = req.params;
+      const { includeDeleted = false } = req.query;
 
-      const orders = await Order.find({ salesInstanceId })
+      const orders = await Order.find(
+        withSoftDeleteFilter({ salesInstanceId }, includeDeleted),
+      )
         .populate(ORDER_POPULATE)
         .lean();
 
@@ -267,13 +296,24 @@ export const ordersRoutes: FastifyPluginAsync = async (app) => {
     },
   );
 
-  app.get<{ Params: OrdersByUserParams }>(
+  app.get<{
+    Params: OrdersByUserParams;
+    Querystring: OrdersIncludeDeletedQuery;
+  }>(
     "/user/:userId",
-    { schema: { params: ordersByUserParamsSchema } },
+    {
+      schema: {
+        params: ordersByUserParamsSchema,
+        querystring: ordersIncludeDeletedQuerySchema,
+      },
+    },
     async (req, reply) => {
       const { userId } = req.params;
+      const { includeDeleted = false } = req.query;
 
-      const orders = await Order.find({ createdByUserId: userId })
+      const orders = await Order.find(
+        withSoftDeleteFilter({ createdByUserId: userId }, includeDeleted),
+      )
         .populate(ORDER_POPULATE)
         .lean();
 

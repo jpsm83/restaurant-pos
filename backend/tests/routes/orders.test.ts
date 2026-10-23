@@ -4,9 +4,10 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { Types } from "mongoose";
+import mongoose, { Types } from "mongoose";
 import { getTestApp, generateTestToken } from "../setup.ts";
 import Order from "../../src/models/order.ts";
+import DailySalesReport from "../../src/models/dailySalesReport.ts";
 import Business from "../../src/models/business.ts";
 import BusinessGood from "../../src/models/businessGood.ts";
 import Notification from "../../src/models/notification.ts";
@@ -16,6 +17,8 @@ import User from "../../src/models/user.ts";
 import Employee from "../../src/models/employee.ts";
 import Promotion from "../../src/models/promotion.ts";
 import sendOrderConfirmation from "../../src/orderConfirmation/sendOrderConfirmation.ts";
+import closeOrders from "../../src/orders/closeOrders.ts";
+import finalizeOrdersBillingStatus from "../../src/orders/finalizeOrdersBillingStatus.ts";
 
 vi.mock("../../src/inventories/updateDynamicCountSupplierGood.ts", () => ({
   default: vi.fn(async () => true as const),
@@ -236,16 +239,113 @@ describe("Orders Routes", () => {
       expect(body.detail).toBe("No orders found!");
     });
 
-    it("does not treat a stray query as a validation problem", async () => {
+    it.each(["deleted", "deletedAt", "deletedBy", "paymentId"] as const)(
+      "rejects an unknown order-list query key %s",
+      async (key) => {
+        const app = await getTestApp();
+
+        const response = await app.inject({
+          method: "GET",
+          url: `/api/v1/orders?${key}=true`,
+        });
+
+        expectProblem(response, 400, "validation");
+      },
+    );
+
+    it("omits a deleted order from ordinary reads and returns it when includeDeleted is set", async () => {
       const app = await getTestApp();
-
-      const response = await app.inject({
-        method: "GET",
-        url: "/api/v1/orders?paymentId=pay-1",
+      const active = await Order.create({
+        businessId,
+        businessGoodId,
+        salesInstanceId,
+        createdByUserId: userId,
+        dailyReferenceNumber: 1,
+        billingStatus: "Open",
+        orderGrossPrice: 12.99,
+        orderNetPrice: 12.99,
+        orderCostPrice: 4,
+        orderStatus: "Sent",
       });
+      const deleted = await Order.create({
+        businessId,
+        businessGoodId,
+        salesInstanceId,
+        createdByUserId: userId,
+        dailyReferenceNumber: 1,
+        billingStatus: "Open",
+        orderGrossPrice: 7.5,
+        orderNetPrice: 7.5,
+        orderCostPrice: 2,
+        orderStatus: "Sent",
+      });
+      await Order.collection.updateOne(
+        { _id: deleted._id },
+        { $set: { deleted: true, deletedAt: new Date(), deletedBy: userId } },
+      );
 
-      const body = expectProblem(response, 404, "not-found");
-      expect(body.detail).toBe("No orders found!");
+      const list = await app.inject({ method: "GET", url: "/api/v1/orders" });
+      expect(list.statusCode).toBe(200);
+      expect(list.headers["content-type"]).toContain("application/json");
+      expect(list.json().map((order: { _id: string }) => order._id)).toEqual([
+        String(active._id),
+      ]);
+
+      const listWithDeleted = await app.inject({
+        method: "GET",
+        url: "/api/v1/orders?includeDeleted=true",
+      });
+      expect(listWithDeleted.statusCode).toBe(200);
+      expect(
+        listWithDeleted.json().map((order: { _id: string }) => order._id),
+      ).toEqual(expect.arrayContaining([String(active._id), String(deleted._id)]));
+      expect(listWithDeleted.json()).toHaveLength(2);
+
+      const hidden = await app.inject({
+        method: "GET",
+        url: `/api/v1/orders/${deleted._id}`,
+      });
+      expectProblem(hidden, 404, "not-found");
+
+      const shown = await app.inject({
+        method: "GET",
+        url: `/api/v1/orders/${deleted._id}?includeDeleted=true`,
+      });
+      expect(shown.statusCode).toBe(200);
+      expect(shown.json()._id).toBe(String(deleted._id));
+      expect(shown.json().deleted).toBe(true);
+
+      const byInstance = await app.inject({
+        method: "GET",
+        url: `/api/v1/orders/salesInstance/${salesInstanceId}`,
+      });
+      expect(byInstance.json().map((order: { _id: string }) => order._id)).toEqual([
+        String(active._id),
+      ]);
+
+      const byInstanceWithDeleted = await app.inject({
+        method: "GET",
+        url: `/api/v1/orders/salesInstance/${salesInstanceId}?includeDeleted=true`,
+      });
+      expect(byInstanceWithDeleted.json()).toHaveLength(2);
+
+      const byUser = await app.inject({
+        method: "GET",
+        url: `/api/v1/orders/user/${userId}`,
+      });
+      expect(byUser.json().map((order: { _id: string }) => order._id)).toEqual([
+        String(active._id),
+      ]);
+
+      const byUserWithDeleted = await app.inject({
+        method: "GET",
+        url: `/api/v1/orders/user/${userId}?includeDeleted=true`,
+      });
+      expect(byUserWithDeleted.json()).toHaveLength(2);
+
+      const stored = await Order.collection.findOne({ _id: deleted._id });
+      expect(stored).not.toBeNull();
+      expect(stored?.deleted).toBe(true);
     });
   });
 
@@ -412,6 +512,62 @@ describe("Orders Routes", () => {
       });
 
       expectProblem(response, 400, "validation");
+    });
+
+    it.each(["deleted", "deletedAt", "deletedBy"] as const)(
+      "rejects a create body that sets %s",
+      async (field) => {
+        const app = await getTestApp();
+        const auth = await authFor(userId);
+        const marker = field === "deleted" ? true : new Types.ObjectId().toString();
+
+        const onBody = await app.inject({
+          method: "POST",
+          url: "/api/v1/orders",
+          headers: { authorization: auth },
+          payload: { ...validBody(), [field]: marker },
+        });
+        expectProblem(onBody, 400, "validation");
+
+        const onLine = await app.inject({
+          method: "POST",
+          url: "/api/v1/orders",
+          headers: { authorization: auth },
+          payload: {
+            ...validBody(),
+            ordersArr: [{ ...validOrderItem(), [field]: marker }],
+          },
+        });
+        expectProblem(onLine, 400, "validation");
+        expect(await Order.countDocuments({ salesInstanceId })).toBe(0);
+      },
+    );
+
+    it("returns a newly created order on an ordinary read", async () => {
+      const app = await getTestApp();
+      const auth = await authFor(userId);
+
+      const created = await app.inject({
+        method: "POST",
+        url: "/api/v1/orders",
+        headers: { authorization: auth },
+        payload: validBody(),
+      });
+
+      expect(created.statusCode).toBe(201);
+      expect(created.headers["content-type"]).toContain("application/json");
+
+      const list = await app.inject({
+        method: "GET",
+        url: `/api/v1/orders/salesInstance/${salesInstanceId}`,
+      });
+      expect(list.statusCode).toBe(200);
+      expect(list.json()).toEqual([
+        expect.objectContaining({
+          orderGrossPrice: 12.99,
+          billingStatus: "Open",
+        }),
+      ]);
     });
 
     it("preserves the ordersArrValidation price-presence post-parse check", async () => {
@@ -581,8 +737,41 @@ describe("Orders Routes", () => {
       expect(response.statusCode, response.body).toBe(200);
       expect(response.json().message).toBe("Order deleted successfully!");
 
-      const erasedOrder = await Order.findById(order._id).lean();
+      const erasedOrder = await Order.findById(order._id)
+        .setOptions({ includeDeleted: true })
+        .lean();
       expect(erasedOrder).toBeNull();
+    });
+
+    it("does not erase an open order that is already done", async () => {
+      const app = await getTestApp();
+      const order = await Order.create({
+        businessId,
+        businessGoodId,
+        salesInstanceId,
+        createdByUserId: userId,
+        dailyReferenceNumber: 1,
+        billingStatus: "Open",
+        orderGrossPrice: 12.99,
+        orderNetPrice: 12.99,
+        orderCostPrice: 4,
+        orderStatus: "Done",
+      });
+
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/orders/${order._id}`,
+        headers: { authorization: managerAuth },
+      });
+
+      const body = expectProblem(response, 400, "bad-request");
+      expect(body.detail).toBe("Cannot cancel orders with status 'Done'!");
+      const retained = await Order.findById(order._id)
+        .setOptions({ includeDeleted: true })
+        .lean();
+      expect(retained).not.toBeNull();
+      expect(retained?.billingStatus).toBe("Open");
+      expect(retained?.orderStatus).toBe("Done");
     });
 
     it.each(["Void", "Invitation", "Paid"] as const)(
@@ -612,8 +801,11 @@ describe("Orders Routes", () => {
         expect(body.detail).toBe(
           "Only orders with billing status Open can be cancelled.",
         );
-        const retained = await Order.findById(order._id).lean();
+        const retained = await Order.findById(order._id)
+          .setOptions({ includeDeleted: true })
+          .lean();
         expect(retained).not.toBeNull();
+        expect(retained?.deleted).not.toBe(true);
         expect(retained?.billingStatus).toBe(billingStatus);
       },
     );
@@ -721,6 +913,145 @@ describe("Orders Routes", () => {
       });
 
       expectProblem(response, 404, "not-found");
+    });
+  });
+
+  describe("closing and finalizing billing", () => {
+    const openOrder = () =>
+      Order.create({
+        businessId,
+        businessGoodId,
+        salesInstanceId,
+        createdByUserId: userId,
+        dailyReferenceNumber: 1,
+        billingStatus: "Open",
+        orderGrossPrice: 12.99,
+        orderNetPrice: 12.99,
+        orderCostPrice: 4,
+        orderStatus: "Sent",
+      });
+
+    it("does not change a deleted order when closing it", async () => {
+      const order = await openOrder();
+      await Order.collection.updateOne(
+        { _id: order._id },
+        { $set: { deleted: true, deletedAt: new Date() } },
+      );
+
+      const session = await mongoose.startSession();
+      session.startTransaction();
+      try {
+        const result = await closeOrders(
+          [order._id],
+          [
+            {
+              paymentMethodType: "Card",
+              methodBranch: "Visa",
+              methodSalesTotal: 12.99,
+            },
+          ],
+          salesInstanceId,
+          session,
+        );
+        expect(result).not.toBe(true);
+
+        const stored = await Order.findById(order._id)
+          .setOptions({ includeDeleted: true })
+          .session(session)
+          .lean();
+        expect(stored?.billingStatus).toBe("Open");
+        expect(stored?.deleted).toBe(true);
+        expect(stored?.paymentMethod).toBeUndefined();
+      } finally {
+        await session.abortTransaction().catch(() => undefined);
+        session.endSession();
+      }
+    });
+
+    it("closes an open order and leaves a deleted order on the same sitting unchanged", async () => {
+      await DailySalesReport.create({
+        businessId,
+        dailyReferenceNumber: 1,
+        isDailyReportOpen: true,
+        timeCountdownToClose: Date.now() + 86_400_000,
+      });
+      const active = await openOrder();
+      const deleted = await openOrder();
+      await Order.collection.updateOne(
+        { _id: deleted._id },
+        { $set: { deleted: true, deletedAt: new Date() } },
+      );
+      await SalesInstance.updateOne(
+        { _id: salesInstanceId },
+        {
+          $set: {
+            salesGroup: [
+              { orderCode: "SIT-1", ordersIds: [active._id, deleted._id] },
+            ],
+          },
+        },
+      );
+
+      const session = await mongoose.startSession();
+      session.startTransaction();
+      try {
+        const result = await closeOrders(
+          [active._id],
+          [
+            {
+              paymentMethodType: "Card",
+              methodBranch: "Visa",
+              methodSalesTotal: 12.99,
+            },
+          ],
+          salesInstanceId,
+          session,
+        );
+        expect(result).toBe(true);
+
+        const storedActive = await Order.findById(active._id).session(session).lean();
+        expect(storedActive?.billingStatus).toBe("Paid");
+
+        const storedDeleted = await Order.findById(deleted._id)
+          .setOptions({ includeDeleted: true })
+          .session(session)
+          .lean();
+        expect(storedDeleted?.billingStatus).toBe("Open");
+        expect(storedDeleted?.deleted).toBe(true);
+      } finally {
+        await session.abortTransaction().catch(() => undefined);
+        session.endSession();
+      }
+    });
+
+    it("does not change a deleted order when finalizing its billing status", async () => {
+      const order = await openOrder();
+      await Order.collection.updateOne(
+        { _id: order._id },
+        { $set: { deleted: true, deletedAt: new Date() } },
+      );
+
+      const session = await mongoose.startSession();
+      session.startTransaction();
+      try {
+        const result = await finalizeOrdersBillingStatus(
+          [order._id],
+          salesInstanceId,
+          "Void",
+          session,
+        );
+        expect(result).not.toBe(true);
+
+        const stored = await Order.findById(order._id)
+          .setOptions({ includeDeleted: true })
+          .session(session)
+          .lean();
+        expect(stored?.billingStatus).toBe("Open");
+        expect(stored?.deleted).toBe(true);
+      } finally {
+        await session.abortTransaction().catch(() => undefined);
+        session.endSession();
+      }
     });
   });
 

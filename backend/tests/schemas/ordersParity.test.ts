@@ -9,6 +9,7 @@ import {
   orderIdParamsSchema,
   ordersBySalesInstanceParamsSchema,
   ordersByUserParamsSchema,
+  ordersIncludeDeletedQuerySchema,
 } from "restaurant-pos-packages/schemas/orders";
 
 /**
@@ -26,6 +27,7 @@ const allDtos: Record<string, z.ZodObject> = {
   orderIdParamsSchema,
   ordersBySalesInstanceParamsSchema,
   ordersByUserParamsSchema,
+  ordersIncludeDeletedQuerySchema,
 };
 
 describe("orders DTO ↔ model parity", () => {
@@ -55,6 +57,9 @@ describe("orders DTO ↔ model parity", () => {
       "billingStatus",
       "orderStatus",
       "discountPercentage",
+      "deleted",
+      "deletedAt",
+      "deletedBy",
     ];
 
     for (const field of serverOwned) {

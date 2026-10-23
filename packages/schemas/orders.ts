@@ -4,8 +4,9 @@
  *
  * Strict (unknown keys rejected) and client-settable only: the server-owned
  * fields (`createdByUserId`, `createdAsRole`, `billingStatus`, `orderStatus`,
- * the promotion-derived `discountPercentage`) never appear in a DTO, so a
- * client that sends them gets a `400`. ObjectIds inside the order array are
+ * the promotion-derived `discountPercentage`, `deleted`, `deletedAt`,
+ * `deletedBy`) never appear in a DTO, so a client that sends them gets a
+ * `400`. ObjectIds inside the order array are
  * validated with the shared ObjectId schema; the per-order key whitelist is
  * enforced here by `z.strictObject`, while `ordersArrValidation` and the
  * price-tolerance check stay in the route as named post-parse checks.
@@ -14,8 +15,10 @@ import { z } from "zod";
 
 import { allergensEnums } from "../enums.ts";
 import {
+  coercedBooleanSchema,
   coercedIntSchema,
   coercedNumberSchema,
+  emptyToUndefined,
   freeTextString,
   objectIdSchema,
   sanitizedString,
@@ -52,6 +55,11 @@ export const createOrderBodySchema = z.strictObject({
   dailyReferenceNumber: coercedIntSchema,
 });
 
+/** Optional query for order reads: include soft-deleted orders explicitly. */
+export const ordersIncludeDeletedQuerySchema = z.strictObject({
+  includeDeleted: z.preprocess(emptyToUndefined, coercedBooleanSchema.optional()),
+});
+
 /** Path params for `GET`/`DELETE /orders/:orderId`. */
 export const orderIdParamsSchema = z.strictObject({
   orderId: objectIdSchema,
@@ -69,6 +77,9 @@ export const ordersByUserParamsSchema = z.strictObject({
 
 export type OrderItem = z.infer<typeof orderItemSchema>;
 export type CreateOrderBody = z.infer<typeof createOrderBodySchema>;
+export type OrdersIncludeDeletedQuery = z.infer<
+  typeof ordersIncludeDeletedQuerySchema
+>;
 export type OrderIdParams = z.infer<typeof orderIdParamsSchema>;
 export type OrdersBySalesInstanceParams = z.infer<
   typeof ordersBySalesInstanceParamsSchema

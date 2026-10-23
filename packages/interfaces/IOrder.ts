@@ -21,4 +21,7 @@ export interface IOrder {
   promotionApplyed?: string;
   discountPercentage?: number;
   comments?: string;
+  deleted?: boolean;
+  deletedAt?: Date;
+  deletedBy?: Types.ObjectId;
 }

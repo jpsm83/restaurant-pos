@@ -1,5 +1,6 @@
 import mongoose, { Schema, model } from "mongoose";
 import { paymentMethod } from "./paymentMethod.ts";
+import { applyActiveOnlySoftDelete, softDeleteSchemaFields } from "./softDelete.ts";
 import * as enums from "restaurant-pos-packages/enums";
 
 const { allergensEnums, billingStatusEnums, orderStatusEnums } = enums;
@@ -77,12 +78,15 @@ const orderSchema = new Schema(
     promotionApplyed: { type: String }, // check if promotion is applyed by promotion date and time - done on the front end
     discountPercentage: { type: Number }, // percentage discount applyed manually to the order - cannot apply discount if promotion is applyed
     comments: { type: String }, // if discount, void or cancel are applyed, the reason for it or if or if kitchen needs to know something
+    ...softDeleteSchemaFields,
   },
   {
     timestamps: true,
     trim: true,
   }
 );
+
+applyActiveOnlySoftDelete(orderSchema);
 
 const Order = mongoose.models.Order || model("Order", orderSchema);
 export default Order;

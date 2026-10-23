@@ -89,6 +89,7 @@ describe("Soft-delete contracts", () => {
       "Inventory",
       "MonthlyBusinessReport",
       "Notification",
+      "Order",
       "Printer",
       "Promotion",
       "Purchase",

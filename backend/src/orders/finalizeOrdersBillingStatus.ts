@@ -52,7 +52,7 @@ const finalizeOrdersBillingStatus = async (
 
     const bulkUpdateOrders = orders.map((order) => ({
       updateOne: {
-        filter: { _id: order._id, billingStatus: "Open" },
+        filter: { _id: order._id, billingStatus: "Open", deleted: { $ne: true } },
         update: { $set: { billingStatus: finalStatus } },
       },
     }));
