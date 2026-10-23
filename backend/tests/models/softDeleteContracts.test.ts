@@ -7,6 +7,7 @@ import MonthlyBusinessReport from "../../src/models/monthlyBusinessReport.ts";
 import Printer from "../../src/models/printer.ts";
 import Promotion from "../../src/models/promotion.ts";
 import Supplier from "../../src/models/supplier.ts";
+import SalesInstance from "../../src/models/salesInstance.ts";
 import User from "../../src/models/user.ts";
 import WeeklyBusinessReport from "../../src/models/weeklyBusinessReport.ts";
 import { softDeleteBackfillModels } from "../../src/models/softDeleteBackfillModels.ts";
@@ -76,6 +77,17 @@ describe("Soft-delete contracts", () => {
       const match = findIndex(indexes, entry.key);
       expect(match?.unique, entry.label).toBe(true);
       expect(match?.partialFilterExpression, entry.label).toEqual(entry.partial);
+    }
+  });
+
+  it("keeps the sales-instance payment id unique across active and deleted rows", async () => {
+    const indexes = await listIndexes(SalesInstance);
+    const paymentIndexes = indexes.filter((ix) =>
+      sameKey(ix.key as Record<string, number> | undefined, { paymentId: 1 }),
+    );
+    expect(paymentIndexes.some((ix) => ix.unique === true)).toBe(true);
+    for (const ix of paymentIndexes) {
+      expect(ix.partialFilterExpression).toBeUndefined();
     }
   });
 

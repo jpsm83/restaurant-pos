@@ -518,6 +518,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
 
         // ADR-0003: only a tab that is closed with no orders is discarded.
         // A name, guest, or reservation update leaves the empty sitting in place.
+        // If orders land before the discard write, keep the sitting and mark it deleted.
         if (!hasOrders && salesInstanceStatus === "Closed") {
           const deleteResult = await SalesInstance.deleteOne(
             {
@@ -534,6 +535,21 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
           );
 
           if (deleteResult.deletedCount === 1) {
+            await session.commitTransaction();
+            return reply
+              .code(200)
+              .send({ message: "SalesInstance updated successfully!" });
+          }
+
+          const retainedAfterOrdersArrived = await markAsDeletedById(
+            SalesInstance as mongoose.Model<ISalesInstance & { deleted: boolean }>,
+            salesInstanceId,
+            {
+              session,
+              deletedBy: sessionUserId ? String(sessionUserId) : undefined,
+            },
+          );
+          if (retainedAfterOrdersArrived) {
             await session.commitTransaction();
             return reply
               .code(200)
@@ -1394,6 +1410,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
             const existingSalesInstanceDoc = await SalesInstance.findById(
               existing._id,
             )
+              .setOptions({ includeDeleted: true })
               .select(
                 "dailyReferenceNumber salesGroup.orderCode salesGroup.ordersIds",
               )
@@ -1792,6 +1809,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
             const existingSalesInstanceDoc = await SalesInstance.findById(
               existing._id,
             )
+              .setOptions({ includeDeleted: true })
               .select(
                 "dailyReferenceNumber salesGroup.orderCode salesGroup.ordersIds",
               )

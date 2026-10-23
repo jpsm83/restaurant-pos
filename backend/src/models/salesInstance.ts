@@ -50,7 +50,8 @@ const salesInstanceSchema = new Schema(
     }, // business where the table is located
     /**
      * Idempotency key for customer self-order/delivery payment acceptance.
-     * When provided, the backend can safely retry without creating duplicates.
+     * Unique across active and soft-deleted sittings. A retry must resolve to
+     * the sitting that already holds it, so this index is not active-only.
      */
     paymentId: {
       type: String,
