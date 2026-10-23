@@ -282,19 +282,18 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
   app.post("/", async (req, reply) => {
     const { fields, files } = await parseMultipart(req, createBusinessBodySchema);
 
+    // An office email is not a unique sign-in identity. Legal name and tax
+    // number stay unique among active venues; a deleted venue frees both.
     const duplicateBusiness = await Business.exists(
       withSoftDeleteFilter({
         $or: [
           { legalName: fields.legalName },
-          { email: fields.email },
           { taxNumber: fields.taxNumber },
         ],
       }),
     );
     if (duplicateBusiness) {
-      throw conflict(
-        `Business ${fields.legalName}, ${fields.email} or ${fields.taxNumber} already exists!`,
-      );
+      throw conflict("Business legal name or tax number already exists!");
     }
 
     const hashedPassword = await hash(fields.password, 10);

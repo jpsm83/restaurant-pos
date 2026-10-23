@@ -664,6 +664,59 @@ describe("Business Routes", () => {
 
       expect(response.statusCode).toBe(409);
     });
+
+    it("lets a second venue share an office email", async () => {
+      const app = await getTestApp();
+
+      await Business.create({
+        tradeName: "First Venue",
+        legalName: "First Venue LLC",
+        email: "office@business.com",
+        password: "hashedpassword",
+        phoneNumber: "1234567890",
+        taxNumber: "TAX-OFFICE-001",
+        currencyTrade: "USD",
+        address: validAddress,
+      });
+
+      const boundary = "----formdata";
+      const payload = [
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="tradeName"\r\n\r\nSecond Venue',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="legalName"\r\n\r\nSecond Venue LLC',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="email"\r\n\r\noffice@business.com',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="password"\r\n\r\nPassword123!',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="phoneNumber"\r\n\r\n1234567890',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="taxNumber"\r\n\r\nTAX-OFFICE-002',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="subscription"\r\n\r\nFree',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="currencyTrade"\r\n\r\nUSD',
+        `--${boundary}`,
+        `Content-Disposition: form-data; name="address"\r\n\r\n${JSON.stringify(validAddress)}`,
+        `--${boundary}--`,
+      ].join("\r\n");
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/business",
+        headers: { "content-type": `multipart/form-data; boundary=${boundary}` },
+        payload,
+      });
+
+      expect(response.statusCode).toBe(201);
+      expect(response.headers["content-type"]).toContain("application/json");
+
+      const venues = await Business.find({ email: "office@business.com" })
+        .select("legalName")
+        .lean();
+      expect(venues).toHaveLength(2);
+    });
   });
 
   describe("Business timezone", () => {
