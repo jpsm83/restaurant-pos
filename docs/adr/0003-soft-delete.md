@@ -40,7 +40,7 @@ Concretely:
 - **Uniqueness is enforced among active documents** through partial unique
   indexes, so a value freed by a deleted document can be reused; reusing a
   soft-deleted identity's email means **reactivating** that document, not
-  creating a duplicate.
+  creating a duplicate. The sales-instance payment id is the exception below.
 - **Reactivation** clears the marker and the timestamp. For identities where
   access must be re-proven, reactivation additionally requires a confirmation
   delivered out of band (email), so possession of a value alone cannot restore
@@ -51,10 +51,17 @@ Concretely:
   whose businesses would be orphaned must transfer or close them first; deletion
   does not cascade into other people's records.
 - **Transient, order-less sales instances are discarded, not soft-deleted.** A
-  sales instance that recorded no orders — a tab opened and closed empty — is
-  removed outright. It captured nothing and nothing references it, and keeping
-  it would leave phantom sittings in availability, reports, and audits. A
-  transient session that holds no lasting record may be dropped.
+  sales instance that recorded no orders — a tab opened and closed empty, or
+  deleted while empty — is removed outright. It captured nothing and nothing
+  references it, and keeping it would leave phantom sittings in availability,
+  reports, and audits. The discard re-checks at write time, outside the read
+  that decided the sitting was empty. If orders appeared before that write, the
+  sitting is marked deleted and kept. A transient session that holds no lasting
+  record may be dropped.
+- **A sales-instance payment id is not an active-only unique value.** It is the
+  idempotency key for a delivery or self-order payment. The unique index covers
+  active and soft-deleted sittings, so a retry resolves to the sitting that
+  already holds the key.
 - **Cancelled orders are hard-deleted.** Cancelling a sent order removes it from
   the bill and from reporting and restores the stock it moved; it leaves no
   billable record to keep. A cancelled order is therefore erased rather than

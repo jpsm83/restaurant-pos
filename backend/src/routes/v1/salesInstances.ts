@@ -518,43 +518,45 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
 
         // ADR-0003: only a tab that is closed with no orders is discarded.
         // A name, guest, or reservation update leaves the empty sitting in place.
-        // If orders land before the discard write, keep the sitting and mark it deleted.
+        // The discard runs outside this read transaction. A concurrent order write
+        // then misses the filter and the sitting is marked deleted, instead of
+        // aborting the transaction on a write conflict.
         if (!hasOrders && salesInstanceStatus === "Closed") {
-          const deleteResult = await SalesInstance.deleteOne(
-            {
-              ...withSoftDeleteFilter({ _id: salesInstanceId }),
-              salesGroup: {
-                $not: {
-                  $elemMatch: {
-                    ordersIds: { $exists: true, $ne: [] },
-                  },
+          await session.abortTransaction();
+
+          const discardFilter = {
+            ...withSoftDeleteFilter({ _id: salesInstanceId }),
+            salesGroup: {
+              $not: {
+                $elemMatch: {
+                  ordersIds: { $exists: true, $ne: [] },
                 },
               },
             },
-            { session },
-          );
+          };
+          const deleteResult = await SalesInstance.deleteOne(discardFilter);
+          const retainedAfterOrdersArrived =
+            deleteResult.deletedCount === 1
+              ? false
+              : await markAsDeletedById(
+                  SalesInstance as mongoose.Model<
+                    ISalesInstance & { deleted: boolean }
+                  >,
+                  salesInstanceId,
+                  {
+                    deletedBy: sessionUserId
+                      ? String(sessionUserId)
+                      : undefined,
+                  },
+                );
 
-          if (deleteResult.deletedCount === 1) {
-            await session.commitTransaction();
+          if (deleteResult.deletedCount === 1 || retainedAfterOrdersArrived) {
             return reply
               .code(200)
               .send({ message: "SalesInstance updated successfully!" });
           }
 
-          const retainedAfterOrdersArrived = await markAsDeletedById(
-            SalesInstance as mongoose.Model<ISalesInstance & { deleted: boolean }>,
-            salesInstanceId,
-            {
-              session,
-              deletedBy: sessionUserId ? String(sessionUserId) : undefined,
-            },
-          );
-          if (retainedAfterOrdersArrived) {
-            await session.commitTransaction();
-            return reply
-              .code(200)
-              .send({ message: "SalesInstance updated successfully!" });
-          }
+          throw notFound("SalesInstance not found!");
         }
 
         if (responsibleByUserId && !sessionUserId) {

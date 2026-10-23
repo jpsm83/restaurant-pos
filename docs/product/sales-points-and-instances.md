@@ -113,7 +113,8 @@ Terms reused rather than redefined here: **Business**, **Order**, **Business goo
 
 ### 3.8 Empty instances
 
-- An instance that recorded **no orders** and is closed is **discarded outright** rather than soft-deleted: it captured nothing, and keeping it would leave phantom sittings in availability, reports, and audits.
+- An instance that recorded **no orders** and is closed or deleted is **discarded outright** rather than soft-deleted: it captured nothing, and keeping it would leave phantom sittings in availability, reports, and audits.
+- The discard re-checks at write time. If orders were recorded after the empty check and before that write, the instance is **marked deleted and kept**.
 - This is a deliberate exception to the platform's soft-delete rule, which otherwise retains every domain document.
 
 ### 3.9 Deletion of a point
