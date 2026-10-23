@@ -5,6 +5,7 @@
 
 import { describe, it, expect } from "vitest";
 import { Types } from "mongoose";
+import type { IRating } from "restaurant-pos-packages/interfaces/IRating";
 import { getTestApp, generateTestToken } from "../setup.ts";
 import { detail, isProblemDetails } from "../helpers/problemDetails.ts";
 import Rating from "../../src/models/rating.ts";
@@ -344,9 +345,25 @@ describe("Ratings Routes", () => {
         business._id as Types.ObjectId,
         user._id as Types.ObjectId,
       );
+      const deletedAt = new Date("2026-03-01T00:00:00.000Z");
+      const marker: IRating = {
+        businessId: business._id as Types.ObjectId,
+        userId: user._id as Types.ObjectId,
+        score: 4,
+        deleted: true,
+        deletedAt,
+        deletedBy: user._id as Types.ObjectId,
+      };
+
       await Rating.updateOne(
         { _id: rating._id },
-        { $set: { deleted: true, deletedAt: new Date() } },
+        {
+          $set: {
+            deleted: marker.deleted,
+            deletedAt: marker.deletedAt,
+            deletedBy: marker.deletedBy,
+          },
+        },
       );
 
       const hiddenList = await app.inject({
@@ -369,6 +386,8 @@ describe("Ratings Routes", () => {
       expect(visibleList.statusCode).toBe(200);
       expect(visibleList.json()).toHaveLength(1);
       expect(visibleList.json()[0].deleted).toBe(true);
+      expect(visibleList.json()[0].deletedAt).toBe("2026-03-01T00:00:00.000Z");
+      expect(visibleList.json()[0].deletedBy).toBe(String(user._id));
 
       const visibleDetail = await app.inject({
         method: "GET",
@@ -376,6 +395,8 @@ describe("Ratings Routes", () => {
       });
       expect(visibleDetail.statusCode).toBe(200);
       expect(visibleDetail.json().deleted).toBe(true);
+      expect(visibleDetail.json().deletedAt).toBe("2026-03-01T00:00:00.000Z");
+      expect(visibleDetail.json().deletedBy).toBe(String(user._id));
     });
 
     it("lists ratings by business", async () => {

@@ -323,12 +323,6 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
       schema: { params: dailySalesReportIdParamsSchema },
     },
     async (req, reply) => {
-      if (process.env.NODE_ENV === "production") {
-        throw forbidden(
-          "Hard delete of financial reports is disabled in production.",
-        );
-      }
-
       const managerBusinessId = await resolveManagerBusinessId(req);
       const { dailySalesReportId } = req.params;
       const report = await DailySalesReport.findOne({

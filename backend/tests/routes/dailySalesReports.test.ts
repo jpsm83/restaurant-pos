@@ -295,6 +295,38 @@ describe("DailySalesReports routes - Task T2 integration", () => {
       const conflict = expectProblem(secondDelete, 409, "conflict");
       expect(conflict.detail).toBe("Daily report already deleted!");
     });
+
+    it("marks a daily report deleted in production and keeps the document", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      const token = await createManagerToken(business._id as Types.ObjectId);
+      const report = await DailySalesReport.create({
+        businessId: business._id,
+        dailyReferenceNumber: Date.now() + 5,
+        isDailyReportOpen: true,
+        timeCountdownToClose: 3600,
+      });
+
+      const previousEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = "production";
+      try {
+        const deleted = await app.inject({
+          method: "DELETE",
+          url: `/api/v1/dailySalesReports/${report._id}`,
+          headers: { authorization: token },
+        });
+        expect(deleted.statusCode, deleted.body).toBe(200);
+
+        const persisted = await DailySalesReport.findById(report._id)
+          .setOptions({ includeDeleted: true })
+          .lean();
+        expect(persisted).not.toBeNull();
+        expect(persisted?.deleted).toBe(true);
+        expect(persisted?.deletedAt).toBeInstanceOf(Date);
+      } finally {
+        process.env.NODE_ENV = previousEnv;
+      }
+    });
   });
 
   it("manager calculate aggregates from actor rows (without order recompute dependency)", async () => {

@@ -7,4 +7,7 @@ export interface IRating {
   orderId?: Types.ObjectId;
   score: number;
   comment?: string;
+  deleted?: boolean;
+  deletedAt?: Date;
+  deletedBy?: Types.ObjectId;
 }

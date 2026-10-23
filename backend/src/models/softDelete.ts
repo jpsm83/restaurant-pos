@@ -23,8 +23,8 @@ export const softDeleteSchemaFields = {
 } as const;
 
 /**
- * Ordinary finds, counts, and updates. `deleteOne` stays unhooked so the two
- * ADR-0003 discards can still remove a document.
+ * Ordinary finds, counts, and updates. `deleteOne` and `deleteMany` stay
+ * unhooked so the two ADR-0003 discards can still remove a document.
  */
 const ACTIVE_ONLY_QUERY_HOOKS = [
   "count",
