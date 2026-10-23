@@ -1,16 +1,43 @@
 # Build order — Project Imperium
 
-> **About this document.** This is the **recommended implementation sequence** for Project Imperium. It is not a product subject: it does not redefine behaviour. Behaviour lives in `docs/product/`. Use this file to decide *what to specify and ticket next*.
+> **About this document.** This is the **recommended implementation sequence** for Project Imperium. It is not a product subject: it does not redefine behaviour. Behaviour lives in `docs/product/`. Use this file to decide *what to specify and ticket next*. Specs, tickets, and implementation of a row pass the **Spec gate**.
 
 ---
 
 ## How to use this
 
-1. Work **one the phase and order requested**.
-2. For each step, open **only** the linked docs in **Docs to open**, implement **only** the slice described.
-3. Review [`docs/product/overview.md`](product/overview.md) if you need vocabulary refresh.
-4. Review [`docs/conventions`](conventions/*overview.md*) coding conventions.
-5. Review the code already existed on the project.
+1. Work the single phase row that was requested.
+2. Open only that row's **Docs to open**, plus [`overview.md`](product/overview.md) for vocabulary and [`docs/coding-standards.md`](coding-standards.md) for the conventions index.
+3. Pass the **Spec gate** before writing a spec, splitting tickets, or implementing the row.
+4. Mark the row done only when the Spec gate's implement step is true. Where the row has a **Done when** line, that line is true as well. The exit criterion under a phase is the milestone for the whole phase. It does not finish a single row.
+
+## Spec gate
+
+This is the coverage rule for every phase row in this repo. Follow it when a row becomes a spec, a set of tickets, or code, including while a shared skill is running. The spec's **Call-site inventory** names the files. Each ticket names the in-scope files it finishes. A ticket stays open while an acceptance criterion is open. Acceptance lists every in-scope item.
+
+A row is a cut through the linked docs. Those docs are the target state of the whole subject. Finish the slice on every existing place it already applies, and build the new behaviour the row requires end to end for this slice. Behaviour a later row owns stays on that later row.
+
+1. **Inventory.** Search the repo for every model, route, service, job, and screen that already implements the slice or does the opposite of it. Record the file names in the spec under **Call-site inventory**. When the search finds nothing, write that the inventory is empty.
+
+   The inventory is done when every related file is on that list, or the spec states the search found none.
+
+2. **Sort.** Place each inventoried item in the slice, or under **Out of scope** with one reason: the later phase row that owns it, an exception the linked ADR already allows, or code the slice does not touch. Words already in the row (`defer`, `stub`, `can stay`, `no … yet`) start that out-of-scope list.
+
+   Sorting is done when no related file is missing from both lists.
+
+3. **Specify the slice.** For each in-scope item, state the end state, including reads and writes that are not the obvious create or delete route. New behaviour the row requires is specified end to end for this slice: schema, API, tests, and UI when the row includes UI. A stub is specified at the seam the row names.
+
+   The spec is done when each in-scope item has an end state and each deferral names its phase row or ADR exception.
+
+4. **Ticket the inventory.** Each ticket names the in-scope items it finishes, by the file names from the inventory. The last ticket is blocked by the others. Its acceptance fails while any in-scope item still has the old behaviour.
+
+   Tickets are ready when each in-scope item appears on exactly one ticket.
+
+5. **Implement to the criteria.** Close a ticket only when every acceptance criterion is met. The row is finished when every in-scope item matches the slice and the row's **Done when** line is true. A row with no **Done when** line is finished when the slice is true for every in-scope item.
+
+Phase 0 rows carry a **Done when** line because a rail is easy to sample on one route. Later rows use the same test through this gate.
+
+---
 
 **Coverage.** Every written product subject under `docs/product/` (except `_template.md`) appears in the tables below — sometimes more than once, when a later phase deepens an earlier slice. [`overview.md`](product/overview.md) is orientation only, not a build step.
 
@@ -30,20 +57,20 @@
 
 Engineering and cross-cutting rails every later subject assumes. Prefer ADRs and shared packages over feature UI.
 
-| done | Order | Focus | Slice | Docs to open |
-| --- | --- | --- | --- | --- |
-| [x] | 0.1 | Request validation, problem details, shared schemas | Zod validation + problem details rail | [ADR-0001](adr/0001-zod-request-validation-and-problem-details.md) |
-| [x] | 0.2 | Soft-delete conventions | Soft-delete behaviour and reactivation rules | [ADR-0003](adr/0003-soft-delete.md), [overview](product/overview.md) (soft-delete vocabulary only) |
-| [ ] | 0.3 | Auth session plumbing stub | Issue/revoke access + refresh sessions | [users](product/users.md), [staff-sessions](product/staff-sessions.md) |
-| [ ] | 0.4 | Transactional email delivery rail | Send + retry plumbing (no full catalogue UI) | [emails](product/emails.md) |
-| [ ] | 0.5 | Notification persistence + push rail | Inbox store + live push when online | [notifications](product/notifications.md), [ADR-0006](adr/0006-realtime-transport-and-concurrency.md) |
-| [ ] | 0.6 | Live transport + blocked writes offline | WebSocket; no offline write queue | [realtime-and-concurrency](product/realtime-and-concurrency.md), [ADR-0006](adr/0006-realtime-transport-and-concurrency.md) |
-| [ ] | 0.7 | Append-only audit entry rail | Who/what/when write API | [audit-trail](product/audit-trail.md) |
-| [ ] | 0.8 | Operational-reason catalogues as data | Closed lists for void, discount, refund, … | [operational-reasons](product/operational-reasons.md) |
-| [ ] | 0.9 | Feature-flag resolution stub | Default-on kill-switch resolution | [feature-flags](product/feature-flags.md) |
-| [ ] | 0.10 | Error monitoring | Unexpected-error reporting | [ADR-0007](adr/0007-sentry-error-monitoring.md) |
+| done | Order | Focus | Slice | Done when | Docs to open |
+| --- | --- | --- | --- | --- | --- |
+| [ ] | 0.1 | Request validation, problem details, shared schemas | Zod validation + problem details rail | Every route that accepts a body, query, or params validates it on the shared Zod rail and returns problem details on failure. | [ADR-0001](adr/0001-zod-request-validation-and-problem-details.md) |
+| [ ] | 0.2 | Soft-delete conventions | Soft-delete behaviour and reactivation rules | Every current domain model and every ordinary read and write follows ADR-0003; the only physical deletes are the two ADR exceptions; reusing a soft-deleted sign-in identity reactivates that same record after confirmation. Pending-deletion UX and retention purge stay on their later rows. | [ADR-0003](adr/0003-soft-delete.md), [overview](product/overview.md) (soft-delete vocabulary only) |
+| [ ] | 0.3 | Auth session plumbing stub | Issue/revoke access + refresh sessions | Existing sign-in paths can issue and revoke an access session and a refresh session. Profile, verification, and reset stay in phase 1. | [users](product/users.md), [staff-sessions](product/staff-sessions.md) |
+| [ ] | 0.4 | Transactional email delivery rail | Send + retry plumbing (no full catalogue UI) | A message can be sent and a failed send retried, and every existing outbound mail uses that rail. Catalogue UI and messages owned by later rows stay on those rows. | [emails](product/emails.md) |
+| [ ] | 0.5 | Notification persistence + push rail | Inbox store + live push when online | A notification is stored and pushed to an online client, and every existing notification write uses that rail. Inbox UI stays in 1.9. | [notifications](product/notifications.md), [ADR-0006](adr/0006-realtime-transport-and-concurrency.md) |
+| [ ] | 0.6 | Live transport + blocked writes offline | WebSocket; no offline write queue | Live updates use this WebSocket rail, a disconnected client cannot commit a write, and the client keeps no offline write queue. Surfaces that do not exist yet are added by their own rows. | [realtime-and-concurrency](product/realtime-and-concurrency.md), [ADR-0006](adr/0006-realtime-transport-and-concurrency.md) |
+| [ ] | 0.7 | Append-only audit entry rail | Who/what/when write API | One append-only API records who, what, and when, and every audited act already in the code writes through it. Acts a later row introduces are audited on that row. | [audit-trail](product/audit-trail.md) |
+| [ ] | 0.8 | Operational-reason catalogues as data | Closed lists for void, discount, refund, … | The closed catalogues exist as data, and every current void, discount, refund, or reopen path reads them. Flows that do not exist yet are built on their own rows. | [operational-reasons](product/operational-reasons.md) |
+| [ ] | 0.9 | Feature-flag resolution stub | Default-on kill-switch resolution | Resolution returns default-on, and every existing feature check calls it. The console and flag-then-plan composition stay in phase 9. | [feature-flags](product/feature-flags.md) |
+| [ ] | 0.10 | Error monitoring | Unexpected-error reporting | Unexpected server and client errors are reported. Problem-details responses stay ordinary results. | [ADR-0007](adr/0007-sentry-error-monitoring.md) |
 
-**Exit criteria:** a signed-in request can hit an authenticated API, soft-delete a record, send a test email, write a notification, push a live event, and record an audit entry — without any venue POS yet.
+**Exit criteria:** a signed-in request can hit an authenticated API, soft-delete a record, send a test email, write a notification, push a live event, and record an audit entry — without any venue POS yet. A row is done when its **Done when** cell and the Spec gate are both true.
 
 ---
 
