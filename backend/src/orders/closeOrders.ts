@@ -4,6 +4,7 @@ import type { ISalesInstance } from "restaurant-pos-packages/interfaces/ISalesIn
 import type { IPaymentMethod } from "restaurant-pos-packages/interfaces/IPaymentMethod";
 import type { IGoodsReduced } from "restaurant-pos-packages/interfaces/IDailySalesReport";
 import Order from "../models/order.ts";
+import { withSoftDeleteFilter } from "../models/softDelete.ts";
 import SalesInstance from "../models/salesInstance.ts";
 import SalesPoint from "../models/salesPoint.ts";
 import Reservation from "../models/reservation.ts";
@@ -105,7 +106,10 @@ const closeOrders = async (
 
     const bulkUpdateOrders = finalizedOrders.map(({ order, updateData }) => ({
       updateOne: {
-        filter: { _id: order._id, billingStatus: "Open", deleted: { $ne: true } },
+        filter: withSoftDeleteFilter({
+          _id: order._id,
+          billingStatus: "Open",
+        }),
         update: { $set: updateData },
       },
     }));

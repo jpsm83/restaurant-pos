@@ -6,6 +6,7 @@ import {
   orderIdParamsSchema,
   ordersBySalesInstanceParamsSchema,
   ordersByUserParamsSchema,
+  ordersIncludeDeletedQuerySchema,
 } from "restaurant-pos-packages/schemas/orders";
 
 const VALID_ID = "507f1f77bcf86cd799439011";
@@ -209,12 +210,52 @@ describe("ordersByUserParamsSchema", () => {
   });
 });
 
+describe("ordersIncludeDeletedQuerySchema", () => {
+  it("accepts an omitted includeDeleted", () => {
+    expect(
+      ordersIncludeDeletedQuerySchema.parse({}).includeDeleted,
+    ).toBeUndefined();
+  });
+
+  it("treats a blank includeDeleted as omitted", () => {
+    expect(
+      ordersIncludeDeletedQuerySchema.parse({ includeDeleted: "" })
+        .includeDeleted,
+    ).toBeUndefined();
+  });
+
+  it("coerces string booleans", () => {
+    expect(
+      ordersIncludeDeletedQuerySchema.parse({ includeDeleted: "true" })
+        .includeDeleted,
+    ).toBe(true);
+    expect(
+      ordersIncludeDeletedQuerySchema.parse({ includeDeleted: "false" })
+        .includeDeleted,
+    ).toBe(false);
+  });
+
+  it("rejects a non-boolean includeDeleted and unknown keys", () => {
+    expect(
+      ordersIncludeDeletedQuerySchema.safeParse({ includeDeleted: "maybe" })
+        .success,
+    ).toBe(false);
+    expect(
+      ordersIncludeDeletedQuerySchema.safeParse({
+        includeDeleted: true,
+        deleted: true,
+      }).success,
+    ).toBe(false);
+  });
+});
+
 describe("server-owned fields are excluded from every orders DTO", () => {
   const dtoSchemas: Record<string, z.ZodObject> = {
     createOrderBodySchema,
     orderIdParamsSchema,
     ordersBySalesInstanceParamsSchema,
     ordersByUserParamsSchema,
+    ordersIncludeDeletedQuerySchema,
   };
 
   it.each(Object.entries(dtoSchemas))(
@@ -226,6 +267,9 @@ describe("server-owned fields are excluded from every orders DTO", () => {
       expect(keys).not.toContain("billingStatus");
       expect(keys).not.toContain("orderStatus");
       expect(keys).not.toContain("discountPercentage");
+      expect(keys).not.toContain("deleted");
+      expect(keys).not.toContain("deletedAt");
+      expect(keys).not.toContain("deletedBy");
     },
   );
 });

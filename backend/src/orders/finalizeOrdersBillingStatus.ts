@@ -2,6 +2,7 @@ import { ClientSession, Types } from "mongoose";
 import type { IOrder } from "restaurant-pos-packages/interfaces/IOrder";
 import type { IGoodsReduced } from "restaurant-pos-packages/interfaces/IDailySalesReport";
 import Order from "../models/order.ts";
+import { withSoftDeleteFilter } from "../models/softDelete.ts";
 import SalesInstance from "../models/salesInstance.ts";
 import SalesPoint from "../models/salesPoint.ts";
 import applyOrderFinalizationToActorReport from "../dailySalesReports/applyOrderFinalizationToActorReport.ts";
@@ -52,7 +53,10 @@ const finalizeOrdersBillingStatus = async (
 
     const bulkUpdateOrders = orders.map((order) => ({
       updateOne: {
-        filter: { _id: order._id, billingStatus: "Open", deleted: { $ne: true } },
+        filter: withSoftDeleteFilter({
+          _id: order._id,
+          billingStatus: "Open",
+        }),
         update: { $set: { billingStatus: finalStatus } },
       },
     }));
