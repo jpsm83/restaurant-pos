@@ -95,6 +95,19 @@ describe("BusinessGoods Routes", () => {
       expect(isProblemDetails(response)).toBe(true);
       expect(JSON.parse(response.body).detail).toBe("No businessId goods found!");
     });
+
+    it("returns a problem-details 400 for an invalid includeDeleted query value", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/businessGoods?includeDeleted=maybe",
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(isProblemDetails(response)).toBe(true);
+      expect(JSON.parse(response.body).errors[0].path).toBe("includeDeleted");
+    });
   });
 
   describe("GET /api/v1/businessGoods/:businessGoodId", () => {
@@ -470,6 +483,38 @@ describe("BusinessGoods Routes", () => {
       expect(response.statusCode).toBe(400);
       expect(isProblemDetails(response)).toBe(true);
       expect(JSON.parse(response.body).errors[0].path).toBe("businessGoodId");
+    });
+
+    it("returns a problem-details 400 for an invalid mainCategory on update", async () => {
+      const app = await getTestApp();
+
+      const businessGood = await BusinessGood.create({
+        businessId,
+        name: "Original Item",
+        keyword: "originalitem",
+        mainCategory: "Food",
+        onMenu: true,
+        available: true,
+        sellingPrice: 10.0,
+      });
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/businessGoods/${businessGood._id}`,
+        headers: multipartHeaders,
+        payload: multipartPayload({
+          name: "Updated Item",
+          keyword: "originalitem",
+          mainCategory: "InvalidCategory",
+          onMenu: "true",
+          available: "true",
+          sellingPrice: "15.00",
+        }),
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(isProblemDetails(response)).toBe(true);
+      expect(JSON.parse(response.body).errors[0].path).toBe("mainCategory");
     });
 
     it("returns 404 for non-existent business good", async () => {

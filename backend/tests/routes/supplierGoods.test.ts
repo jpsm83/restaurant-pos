@@ -114,6 +114,19 @@ describe("SupplierGoods Routes", () => {
       expect(isProblemDetails(response)).toBe(true);
       expect(JSON.parse(response.body).detail).toBe("No supplier goods found!");
     });
+
+    it("returns a problem-details 400 for an invalid includeDeleted query value", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/supplierGoods?includeDeleted=maybe",
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(isProblemDetails(response)).toBe(true);
+      expect(errorPaths(response)).toContain("includeDeleted");
+    });
   });
 
   describe("POST /api/v1/supplierGoods", () => {
