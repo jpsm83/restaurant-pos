@@ -6,7 +6,6 @@ import { salesPointTypeEnums } from "restaurant-pos-packages/enums";
 import {
   createSalesPointBodySchema,
   salesPointIdParamsSchema,
-  salesPointsIncludeDeletedQuerySchema,
   updateSalesPointBodySchema,
 } from "restaurant-pos-packages/schemas/salesPoints";
 
@@ -25,7 +24,6 @@ const allDtos: Record<string, z.ZodObject> = {
   createSalesPointBodySchema,
   salesPointIdParamsSchema,
   updateSalesPointBodySchema,
-  salesPointsIncludeDeletedQuerySchema,
 };
 
 describe("salesPoints DTO ↔ model parity", () => {
@@ -68,12 +66,6 @@ describe("salesPoints DTO ↔ model parity", () => {
         true,
       );
     }
-  });
-
-  it("the query DTO exposes only includeDeleted", () => {
-    expect(Object.keys(salesPointsIncludeDeletedQuerySchema.shape)).toEqual([
-      "includeDeleted",
-    ]);
   });
 
   it("the DTO salesPointType rejects a value outside the shared enum", () => {

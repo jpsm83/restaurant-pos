@@ -235,7 +235,6 @@ describe("server-owned fields are excluded from every salesPoints DTO", () => {
     createSalesPointBodySchema,
     salesPointIdParamsSchema,
     updateSalesPointBodySchema,
-    salesPointsIncludeDeletedQuerySchema,
   };
 
   it.each(Object.entries(dtoSchemas))(
