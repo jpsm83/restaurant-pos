@@ -1074,6 +1074,47 @@ describe("DailySalesReports routes - Task T2 integration", () => {
       expect(fieldPaths(body)).toContain("businessId");
     });
 
+    it("returns a validation problem for an invalid includeDeleted query value", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      const token = await createManagerToken(business._id as Types.ObjectId);
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/dailySalesReports?includeDeleted=maybe",
+        headers: { authorization: token },
+      });
+
+      const body = expectProblem(response, 400, "validation");
+      expect(fieldPaths(body)).toContain("includeDeleted");
+    });
+
+    it.each([
+      ["DELETE", "/api/v1/dailySalesReports/not-an-object-id"],
+      [
+        "PATCH",
+        "/api/v1/dailySalesReports/not-an-object-id/calculateBusinessReport",
+      ],
+      ["PATCH", "/api/v1/dailySalesReports/not-an-object-id/close"],
+      ["PATCH", "/api/v1/dailySalesReports/not-an-object-id/reconcile"],
+    ] as const)(
+      "returns 400 validation for a malformed id on %s %s",
+      async (method, url) => {
+        const app = await getTestApp();
+        const business = await createTestBusiness();
+        const token = await createManagerToken(business._id as Types.ObjectId);
+
+        const response = await app.inject({
+          method,
+          url,
+          headers: { authorization: token },
+        });
+
+        const body = expectProblem(response, 400, "validation");
+        expect(fieldPaths(body)).toContain("dailySalesReportId");
+      },
+    );
+
     it("returns 400 validation when calculateUsersReport userIds are missing", async () => {
       const app = await getTestApp();
       const business = await createTestBusiness();

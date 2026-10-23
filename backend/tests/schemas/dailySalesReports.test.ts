@@ -5,6 +5,7 @@ import {
   dailySalesReportIdParamsSchema,
   dailySalesReportsBusinessParamsSchema,
   dailySalesReportsBusinessQuerySchema,
+  dailySalesReportsIncludeDeletedQuerySchema,
 } from "restaurant-pos-packages/schemas/dailySalesReports";
 import {
   dailySalesReportBodySchemas,
@@ -222,6 +223,69 @@ describe("dailySalesReportsBusinessQuerySchema", () => {
       dailySalesReportsBusinessQuerySchema.safeParse({
         startDate: "2026-10-11",
         isDailyReportOpen: "true",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("coerces includeDeleted and treats a blank value as omitted", () => {
+    expect(
+      dailySalesReportsBusinessQuerySchema.parse({ includeDeleted: "true" })
+        .includeDeleted,
+    ).toBe(true);
+    expect(
+      dailySalesReportsBusinessQuerySchema.parse({ includeDeleted: "false" })
+        .includeDeleted,
+    ).toBe(false);
+    expect(
+      dailySalesReportsBusinessQuerySchema.parse({ includeDeleted: "" })
+        .includeDeleted,
+    ).toBeUndefined();
+  });
+
+  it("rejects a non-boolean includeDeleted", () => {
+    expect(
+      dailySalesReportsBusinessQuerySchema.safeParse({ includeDeleted: "maybe" })
+        .success,
+    ).toBe(false);
+  });
+});
+
+describe("dailySalesReportsIncludeDeletedQuerySchema", () => {
+  it("accepts an omitted includeDeleted", () => {
+    expect(
+      dailySalesReportsIncludeDeletedQuerySchema.parse({}).includeDeleted,
+    ).toBeUndefined();
+  });
+
+  it("treats a blank includeDeleted as omitted", () => {
+    expect(
+      dailySalesReportsIncludeDeletedQuerySchema.parse({ includeDeleted: "" })
+        .includeDeleted,
+    ).toBeUndefined();
+  });
+
+  it("coerces string booleans", () => {
+    expect(
+      dailySalesReportsIncludeDeletedQuerySchema.parse({ includeDeleted: "true" })
+        .includeDeleted,
+    ).toBe(true);
+    expect(
+      dailySalesReportsIncludeDeletedQuerySchema.parse({
+        includeDeleted: "false",
+      }).includeDeleted,
+    ).toBe(false);
+  });
+
+  it("rejects a non-boolean includeDeleted and unknown keys", () => {
+    expect(
+      dailySalesReportsIncludeDeletedQuerySchema.safeParse({
+        includeDeleted: "maybe",
+      }).success,
+    ).toBe(false);
+    expect(
+      dailySalesReportsIncludeDeletedQuerySchema.safeParse({
+        includeDeleted: true,
+        createdAt: "x",
       }).success,
     ).toBe(false);
   });

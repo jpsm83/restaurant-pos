@@ -7,6 +7,8 @@ import {
   createRatingBodySchema,
   ratingIdParamsSchema,
   ratingsByBusinessParamsSchema,
+  ratingsIncludeDeletedQuerySchema,
+  ratingsPaginationQuerySchema,
 } from "restaurant-pos-packages/schemas/ratings";
 
 /**
@@ -19,6 +21,8 @@ const allDtos: Record<string, z.ZodObject> = {
   createRatingBodySchema,
   ratingIdParamsSchema,
   ratingsByBusinessParamsSchema,
+  ratingsPaginationQuerySchema,
+  ratingsIncludeDeletedQuerySchema,
 };
 
 const VALID_ID = "507f1f77bcf86cd799439011";

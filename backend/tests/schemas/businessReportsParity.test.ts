@@ -8,6 +8,7 @@ import {
   monthlyBusinessReportListQuerySchema,
   monthlyBusinessReportRangeQuerySchema,
   monthlyReportIdParamsSchema,
+  reportIncludeDeletedQuerySchema,
   updateMonthlyBusinessReportBodySchema,
   weeklyBusinessParamsSchema,
   weeklyBusinessReportListQuerySchema,
@@ -126,6 +127,16 @@ describe("weekly business report DTO ↔ model parity", () => {
     expect(weeklyOwns("startWeek")).toBe(false);
     expect(weeklyOwns("endWeek")).toBe(false);
     expect(weeklyOwns("weekReference")).toBe(true);
+    expect(
+      reportIncludeDeletedQuerySchema.parse({ includeDeleted: "true" })
+        .includeDeleted,
+    ).toBe(true);
+    expect(
+      reportIncludeDeletedQuerySchema.safeParse({
+        includeDeleted: "true",
+        createdAt: "x",
+      }).success,
+    ).toBe(false);
   });
 });
 

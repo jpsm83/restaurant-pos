@@ -6,6 +6,7 @@ import {
   dailySalesReportIdParamsSchema,
   dailySalesReportsBusinessParamsSchema,
   dailySalesReportsBusinessQuerySchema,
+  dailySalesReportsIncludeDeletedQuerySchema,
 } from "restaurant-pos-packages/schemas/dailySalesReports";
 import {
   dailySalesReportBodySchemas,
@@ -85,5 +86,19 @@ describe("dailySalesReports DTO ↔ model parity", () => {
     expect(dailyReportOwns("startDate")).toBe(false);
     expect(dailyReportOwns("endDate")).toBe(false);
     expect(dailyReportOwns("createdAt")).toBe(true);
+  });
+
+  it("the includeDeleted query accepts only that read-only filter", () => {
+    expect(
+      dailySalesReportsIncludeDeletedQuerySchema.parse({ includeDeleted: "true" })
+        .includeDeleted,
+    ).toBe(true);
+    expect(dailyReportOwns("includeDeleted")).toBe(false);
+    expect(
+      dailySalesReportsIncludeDeletedQuerySchema.safeParse({
+        includeDeleted: "true",
+        createdAt: "x",
+      }).success,
+    ).toBe(false);
   });
 });

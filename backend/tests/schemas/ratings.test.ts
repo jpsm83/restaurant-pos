@@ -5,6 +5,7 @@ import {
   createRatingBodySchema,
   ratingIdParamsSchema,
   ratingsByBusinessParamsSchema,
+  ratingsIncludeDeletedQuerySchema,
   ratingsPaginationQuerySchema,
   RATINGS_DEFAULT_LIMIT,
   RATINGS_MAX_LIMIT,
@@ -179,6 +180,62 @@ describe("ratingsPaginationQuerySchema", () => {
       ratingsPaginationQuerySchema.safeParse({ sort: "asc" }).success,
     ).toBe(false);
   });
+
+  it("coerces includeDeleted and treats a blank value as omitted", () => {
+    const withFlag = ratingsPaginationQuerySchema.parse({
+      includeDeleted: "true",
+    });
+    expect(withFlag.includeDeleted).toBe(true);
+    expect(withFlag.limit).toBe(RATINGS_DEFAULT_LIMIT);
+    expect(
+      ratingsPaginationQuerySchema.parse({ includeDeleted: "" }).includeDeleted,
+    ).toBeUndefined();
+  });
+
+  it("rejects a non-boolean includeDeleted", () => {
+    expect(
+      ratingsPaginationQuerySchema.safeParse({ includeDeleted: "maybe" }).success,
+    ).toBe(false);
+  });
+});
+
+describe("ratingsIncludeDeletedQuerySchema", () => {
+  it("accepts an omitted includeDeleted", () => {
+    expect(
+      ratingsIncludeDeletedQuerySchema.parse({}).includeDeleted,
+    ).toBeUndefined();
+  });
+
+  it("treats a blank includeDeleted as omitted", () => {
+    expect(
+      ratingsIncludeDeletedQuerySchema.parse({ includeDeleted: "" })
+        .includeDeleted,
+    ).toBeUndefined();
+  });
+
+  it("coerces string booleans", () => {
+    expect(
+      ratingsIncludeDeletedQuerySchema.parse({ includeDeleted: "true" })
+        .includeDeleted,
+    ).toBe(true);
+    expect(
+      ratingsIncludeDeletedQuerySchema.parse({ includeDeleted: "false" })
+        .includeDeleted,
+    ).toBe(false);
+  });
+
+  it("rejects a non-boolean includeDeleted and unknown keys", () => {
+    expect(
+      ratingsIncludeDeletedQuerySchema.safeParse({ includeDeleted: "maybe" })
+        .success,
+    ).toBe(false);
+    expect(
+      ratingsIncludeDeletedQuerySchema.safeParse({
+        includeDeleted: true,
+        createdAt: "x",
+      }).success,
+    ).toBe(false);
+  });
 });
 
 describe("server-owned fields are excluded from every ratings DTO", () => {
@@ -186,6 +243,8 @@ describe("server-owned fields are excluded from every ratings DTO", () => {
     createRatingBodySchema,
     ratingIdParamsSchema,
     ratingsByBusinessParamsSchema,
+    ratingsPaginationQuerySchema,
+    ratingsIncludeDeletedQuerySchema,
   };
 
   it.each(Object.entries(dtoSchemas))(
