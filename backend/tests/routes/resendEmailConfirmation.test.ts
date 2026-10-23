@@ -112,6 +112,13 @@ describe("POST /api/v1/auth/resend-email-confirmation", () => {
       url: "/api/v1/auth/resend-email-confirmation",
     });
     expect(response.statusCode).toBe(401);
+    expect(response.headers["content-type"]).toContain(
+      "application/problem+json",
+    );
+    const body = JSON.parse(response.body);
+    expect(body.type).toBe("https://restaurant-pos.app/errors/unauthorized");
+    expect(body.status).toBe(401);
+    expect(body.detail).toBe("No access token provided");
   });
 
   it("returns 401 for invalid token", async () => {

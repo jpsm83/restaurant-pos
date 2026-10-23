@@ -146,6 +146,9 @@ describe("Auth Routes", () => {
       });
 
       expect(response.statusCode).toBe(400);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
       const body = response.json();
       expect(body.type).toBe("https://restaurant-pos.app/errors/validation");
       expect(body.detail).toBe("Request body is invalid");
@@ -349,6 +352,9 @@ describe("Auth Routes", () => {
       });
 
       expect(response.statusCode).toBe(401);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
       const body = response.json();
       expect(body.type).toBe("https://restaurant-pos.app/errors/unauthorized");
       expect(body.detail).toBe("No refresh token provided");
@@ -629,6 +635,9 @@ describe("Auth Routes", () => {
       });
 
       expect(response.statusCode).toBe(401);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
       const body = response.json();
       expect(body.type).toBe("https://restaurant-pos.app/errors/unauthorized");
       expect(body.detail).toBe("No access token provided");
@@ -707,6 +716,14 @@ describe("Auth Routes", () => {
       });
 
       expect(response.statusCode).toBe(400);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      const body = response.json();
+      expect(body.type).toBe("https://restaurant-pos.app/errors/validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([expect.objectContaining({ path: "mode" })]),
+      );
     });
 
     it("sets customer mode successfully", async () => {
@@ -806,8 +823,34 @@ describe("Auth Routes", () => {
       });
 
       expect(response.statusCode).toBe(400);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
       const body = response.json();
       expect(body.type).toBe("https://restaurant-pos.app/errors/validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([expect.objectContaining({ path: "" })]),
+      );
+    });
+
+    it("rejects an invalid signup email with a field path", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/signup",
+        payload: { email: "not-an-email", password: "TestPassword123!" },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      const body = response.json();
+      expect(body.type).toBe("https://restaurant-pos.app/errors/validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([expect.objectContaining({ path: "email" })]),
+      );
     });
 
     it("normalizes the login email (trim + lowercase)", async () => {

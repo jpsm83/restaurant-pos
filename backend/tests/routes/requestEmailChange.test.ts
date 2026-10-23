@@ -427,7 +427,11 @@ describe("POST /api/v1/auth/request-email-change", () => {
     });
 
     expect(response.statusCode).toBe(400);
+    expect(response.headers["content-type"]).toContain(
+      "application/problem+json",
+    );
     const body = JSON.parse(response.body);
+    expect(body.type).toBe("https://restaurant-pos.app/errors/validation");
     expect(body.errors?.map((e: { path: string }) => e.path)).toContain(
       "newEmail",
     );

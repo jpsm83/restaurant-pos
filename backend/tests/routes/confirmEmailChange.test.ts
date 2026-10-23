@@ -201,6 +201,10 @@ describe("POST /api/v1/auth/confirm-email-change", () => {
       payload: {},
     });
     expect(missing.statusCode).toBe(400);
+    expect(missing.headers["content-type"]).toContain(
+      "application/problem+json",
+    );
+    expect(JSON.parse(missing.body).errors[0].path).toBe("token");
 
     const blank = await app.inject({
       method: "POST",

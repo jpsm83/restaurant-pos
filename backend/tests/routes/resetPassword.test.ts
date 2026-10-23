@@ -139,7 +139,10 @@ describe("POST /api/v1/auth/reset-password", () => {
       payload: { token: "", newPassword: newPassword },
     });
     expect(empty.statusCode).toBe(400);
-    expect(JSON.parse(empty.body).errors[0].message).toBe(
+    expect(empty.headers["content-type"]).toContain("application/problem+json");
+    const emptyBody = JSON.parse(empty.body);
+    expect(emptyBody.errors[0].path).toBe("token");
+    expect(emptyBody.errors[0].message).toBe(
       RESET_PASSWORD_MISSING_TOKEN_MESSAGE,
     );
 
