@@ -282,8 +282,7 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
   app.post("/", async (req, reply) => {
     const { fields, files } = await parseMultipart(req, createBusinessBodySchema);
 
-    // An office email is not a unique sign-in identity. Legal name and tax
-    // number stay unique among active venues; a deleted venue frees both.
+    // An office email is not a unique sign-in identity.
     const duplicateBusiness = await Business.exists(
       withSoftDeleteFilter({
         $or: [

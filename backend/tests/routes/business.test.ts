@@ -668,7 +668,7 @@ describe("Business Routes", () => {
     it("lets a second venue share an office email", async () => {
       const app = await getTestApp();
 
-      await Business.create({
+      const first = await Business.create({
         tradeName: "First Venue",
         legalName: "First Venue LLC",
         email: "office@business.com",
@@ -711,6 +711,14 @@ describe("Business Routes", () => {
 
       expect(response.statusCode).toBe(201);
       expect(response.headers["content-type"]).toContain("application/json");
+      const body = response.json() as {
+        message: string;
+        user?: { id?: string; type?: string; email?: string };
+      };
+      expect(body.message).toContain("created");
+      expect(body.user?.type).toBe("business");
+      expect(body.user?.email).toBe("office@business.com");
+      expect(body.user?.id).not.toBe(String(first._id));
 
       const venues = await Business.find({ email: "office@business.com" })
         .select("legalName")
