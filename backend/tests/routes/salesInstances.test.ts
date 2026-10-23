@@ -128,6 +128,22 @@ describe("SalesInstances Routes", () => {
 
       expect(response.statusCode).toBe(404);
     });
+
+    it("returns a validation problem for an invalid includeDeleted query value", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/salesInstances?includeDeleted=maybe",
+      });
+
+      const body = expectProblem(response, 400, "validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: "includeDeleted" }),
+        ]),
+      );
+    });
   });
 
   describe("GET /api/v1/salesInstances/:salesInstanceId", () => {

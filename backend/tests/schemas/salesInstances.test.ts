@@ -11,6 +11,7 @@ import {
   salesInstanceStatusValues,
   salesInstancesByBusinessParamsSchema,
   salesInstancesByUserParamsSchema,
+  salesInstancesIncludeDeletedQuerySchema,
   selfOrderingLocationIdParamsSchema,
   transferSalesPointBodySchema,
   updateSalesInstanceBodySchema,
@@ -264,6 +265,50 @@ describe("salesInstances params schemas", () => {
       transferSalesPointBodySchema.safeParse({ salesPointId: "bad" }).success,
     ).toBe(false);
   });
+
+  it("rejects paymentId on the transfer body", () => {
+    expect(
+      transferSalesPointBodySchema.safeParse({
+        salesPointId: VALID_ID,
+        paymentId: "pay-123",
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe("salesInstancesIncludeDeletedQuerySchema", () => {
+  it("accepts an omitted includeDeleted", () => {
+    const parsed = salesInstancesIncludeDeletedQuerySchema.parse({});
+    expect(parsed.includeDeleted).toBeUndefined();
+  });
+
+  it("coerces string booleans", () => {
+    expect(
+      salesInstancesIncludeDeletedQuerySchema.parse({ includeDeleted: "true" })
+        .includeDeleted,
+    ).toBe(true);
+    expect(
+      salesInstancesIncludeDeletedQuerySchema.parse({ includeDeleted: "false" })
+        .includeDeleted,
+    ).toBe(false);
+  });
+
+  it("rejects a non-boolean includeDeleted", () => {
+    expect(
+      salesInstancesIncludeDeletedQuerySchema.safeParse({
+        includeDeleted: "maybe",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects paymentId (only delivery and self-order bodies may set it)", () => {
+    expect(
+      salesInstancesIncludeDeletedQuerySchema.safeParse({
+        includeDeleted: true,
+        paymentId: "pay-123",
+      }).success,
+    ).toBe(false);
+  });
 });
 
 const validAddress = {
@@ -456,6 +501,22 @@ describe("createSelfOrderBodySchema", () => {
     expect(createSelfOrderBodySchema.safeParse(validSelfOrder).success).toBe(
       true,
     );
+  });
+
+  it("requires paymentId", () => {
+    expect(
+      createSelfOrderBodySchema.safeParse({
+        businessId: VALID_ID,
+        ordersArr: [validOrder],
+        paymentMethodArr: [validPayment],
+      }).success,
+    ).toBe(false);
+    expect(
+      createSelfOrderBodySchema.safeParse({
+        ...validSelfOrder,
+        paymentId: "   ",
+      }).success,
+    ).toBe(false);
   });
 
   it("requires ordersArr and paymentMethodArr", () => {

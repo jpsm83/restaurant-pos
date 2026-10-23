@@ -204,8 +204,10 @@ describe("SalesInstances flows (Task 12)", () => {
       expect(res.headers["content-type"]).toContain(
         "application/problem+json",
       );
-      expect(JSON.parse(res.body).type).toBe(
-        "https://restaurant-pos.app/errors/validation",
+      const body = JSON.parse(res.body);
+      expect(body.type).toBe("https://restaurant-pos.app/errors/validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([expect.objectContaining({ path: "" })]),
       );
     });
   });
@@ -222,8 +224,15 @@ describe("SalesInstances flows (Task 12)", () => {
       });
 
       expect(res.statusCode).toBe(400);
-      expect(JSON.parse(res.body).type).toBe(
-        "https://restaurant-pos.app/errors/validation",
+      expect(res.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      const body = JSON.parse(res.body);
+      expect(body.type).toBe("https://restaurant-pos.app/errors/validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: "salesPointId" }),
+        ]),
       );
     });
   });
@@ -1106,7 +1115,11 @@ describe("SalesInstances flows (Task 12)", () => {
       });
 
       const body = expectValidationProblem(res);
-      expect(body.errors.some((e: any) => e.path === "paymentId")).toBe(true);
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: "paymentId" }),
+        ]),
+      );
     });
 
     it("rejects a delivery body with a malformed order id", async () => {
@@ -1124,7 +1137,12 @@ describe("SalesInstances flows (Task 12)", () => {
         },
       });
 
-      expectValidationProblem(res);
+      const body = expectValidationProblem(res);
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: "ordersArr.0.businessGoodId" }),
+        ]),
+      );
     });
 
     it("rejects a delivery body carrying a server-owned field", async () => {
@@ -1160,7 +1178,12 @@ describe("SalesInstances flows (Task 12)", () => {
         },
       });
 
-      expectValidationProblem(res);
+      const body = expectValidationProblem(res);
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: "ordersArr" }),
+        ]),
+      );
     });
 
     it("rejects a non-ObjectId selfOrderingLocationId param", async () => {
@@ -1178,7 +1201,12 @@ describe("SalesInstances flows (Task 12)", () => {
         },
       });
 
-      expectValidationProblem(res);
+      const body = expectValidationProblem(res);
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: "selfOrderingLocationId" }),
+        ]),
+      );
     });
 
     it("rejects an openTable body carrying a server-owned field", async () => {
@@ -1195,7 +1223,10 @@ describe("SalesInstances flows (Task 12)", () => {
         },
       });
 
-      expectValidationProblem(res);
+      const body = expectValidationProblem(res);
+      expect(body.errors).toEqual(
+        expect.arrayContaining([expect.objectContaining({ path: "" })]),
+      );
     });
   });
 });

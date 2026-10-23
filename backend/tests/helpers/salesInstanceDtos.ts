@@ -5,6 +5,7 @@ import {
   salesInstanceIdParamsSchema,
   salesInstancesByBusinessParamsSchema,
   salesInstancesByUserParamsSchema,
+  salesInstancesIncludeDeletedQuerySchema,
   transferSalesPointBodySchema,
   updateSalesInstanceBodySchema,
 } from "restaurant-pos-packages/schemas/salesInstances";
@@ -21,4 +22,5 @@ export const salesInstanceDtoSchemas: Record<string, z.ZodObject> = {
   transferSalesPointBodySchema,
   salesInstancesByBusinessParamsSchema,
   salesInstancesByUserParamsSchema,
+  salesInstancesIncludeDeletedQuerySchema,
 };
