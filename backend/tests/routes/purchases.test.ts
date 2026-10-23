@@ -441,6 +441,24 @@ describe("Purchases Routes", () => {
       const updated = await Purchase.findById(purchase._id).lean();
       expect(updated?.title).toBe("Renamed");
     });
+
+    it("returns a validation problem for an invalid businessId sent as JSON", async () => {
+      const app = await getTestApp();
+      const fakeId = new Types.ObjectId();
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/purchases/${fakeId}`,
+        payload: {
+          businessId: "invalid-id",
+          purchasedByEmployeeId: employeeId.toString(),
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(isProblemDetails(response)).toBe(true);
+      expect(errorPaths(response)).toContain("businessId");
+    });
   });
 
   describe("DELETE /api/v1/purchases/:purchaseId", () => {
@@ -513,6 +531,24 @@ describe("Purchases Routes", () => {
       expect(response.statusCode).toBe(401);
       expect(isProblemDetails(response)).toBe(true);
       expect(detail(response)).toBe("Authentication required");
+    });
+
+    it("returns a validation problem for an invalid purchaseInventoryItemsId", async () => {
+      const app = await getTestApp();
+      const fakeId = new Types.ObjectId();
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/purchases/${fakeId}/editSupplierGood`,
+        payload: {
+          purchaseInventoryItemsId: "not-an-id",
+          reason: "Correcting a line",
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(isProblemDetails(response)).toBe(true);
+      expect(errorPaths(response)).toContain("purchaseInventoryItemsId");
     });
   });
 
