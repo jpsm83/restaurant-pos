@@ -4,6 +4,7 @@ import { z } from "zod";
 import {
   createSalesPointBodySchema,
   salesPointIdParamsSchema,
+  salesPointsIncludeDeletedQuerySchema,
   updateSalesPointBodySchema,
 } from "restaurant-pos-packages/schemas/salesPoints";
 import { salesPointTypeEnums } from "restaurant-pos-packages/enums";
@@ -195,11 +196,46 @@ describe("updateSalesPointBodySchema", () => {
   });
 });
 
+describe("salesPointsIncludeDeletedQuerySchema", () => {
+  it("accepts an omitted includeDeleted", () => {
+    const parsed = salesPointsIncludeDeletedQuerySchema.parse({});
+    expect(parsed.includeDeleted).toBeUndefined();
+  });
+
+  it("coerces string booleans", () => {
+    expect(
+      salesPointsIncludeDeletedQuerySchema.parse({ includeDeleted: "true" })
+        .includeDeleted,
+    ).toBe(true);
+    expect(
+      salesPointsIncludeDeletedQuerySchema.parse({ includeDeleted: "false" })
+        .includeDeleted,
+    ).toBe(false);
+  });
+
+  it("rejects a non-boolean includeDeleted", () => {
+    expect(
+      salesPointsIncludeDeletedQuerySchema.safeParse({ includeDeleted: "maybe" })
+        .success,
+    ).toBe(false);
+  });
+
+  it("rejects unknown keys", () => {
+    expect(
+      salesPointsIncludeDeletedQuerySchema.safeParse({
+        includeDeleted: true,
+        qrCode: "x",
+      }).success,
+    ).toBe(false);
+  });
+});
+
 describe("server-owned fields are excluded from every salesPoints DTO", () => {
   const dtoSchemas: Record<string, z.ZodObject> = {
     createSalesPointBodySchema,
     salesPointIdParamsSchema,
     updateSalesPointBodySchema,
+    salesPointsIncludeDeletedQuerySchema,
   };
 
   it.each(Object.entries(dtoSchemas))(
