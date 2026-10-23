@@ -6,6 +6,7 @@ import { salesPointTypeEnums } from "restaurant-pos-packages/enums";
 import {
   createSalesPointBodySchema,
   salesPointIdParamsSchema,
+  salesPointsIncludeDeletedQuerySchema,
   updateSalesPointBodySchema,
 } from "restaurant-pos-packages/schemas/salesPoints";
 
@@ -24,6 +25,7 @@ const allDtos: Record<string, z.ZodObject> = {
   createSalesPointBodySchema,
   salesPointIdParamsSchema,
   updateSalesPointBodySchema,
+  salesPointsIncludeDeletedQuerySchema,
 };
 
 describe("salesPoints DTO ↔ model parity", () => {
