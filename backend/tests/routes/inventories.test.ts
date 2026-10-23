@@ -156,6 +156,22 @@ describe("Inventories Routes", () => {
       const body = expectProblem(response, 404, "not-found");
       expect(body.detail).toBe("No inventories found");
     });
+
+    it("returns a validation problem for an invalid includeDeleted query value", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/inventories?includeDeleted=maybe",
+      });
+
+      const body = expectProblem(response, 400, "validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: "includeDeleted" }),
+        ]),
+      );
+    });
   });
 
   describe("POST /api/v1/inventories", () => {
@@ -388,18 +404,27 @@ describe("Inventories Routes", () => {
       expect(response.statusCode).toBe(401);
     });
 
-    it("returns 400 for invalid inventoryId with auth", async () => {
+    it("returns a validation problem for an invalid inventoryId when authenticated", async () => {
       const app = await getTestApp();
+      const authorization = await generateTestToken({
+        id: new Types.ObjectId().toString(),
+        email: "invmanager@test.com",
+        type: "user",
+        role: "Customer",
+      });
 
       const response = await app.inject({
         method: "PATCH",
         url: "/api/v1/inventories/invalid-id/close",
-        headers: {
-          authorization: "Bearer fake-token",
-        },
+        headers: { authorization },
       });
 
-      expect(response.statusCode).toBe(401);
+      const body = expectProblem(response, 400, "validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: "inventoryId" }),
+        ]),
+      );
     });
   });
 
@@ -492,6 +517,30 @@ describe("Inventories Routes", () => {
       });
 
       expect(response.statusCode).toBe(401);
+    });
+
+    it("returns a validation problem for an invalid countId when authenticated", async () => {
+      const app = await getTestApp();
+      const authorization = await generateTestToken({
+        id: new Types.ObjectId().toString(),
+        email: "invmanager@test.com",
+        type: "user",
+        role: "Customer",
+      });
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/inventories/${new Types.ObjectId()}/supplierGood/${new Types.ObjectId()}/updateCount`,
+        headers: { authorization },
+        payload: { countId: "not-an-id", reason: "Recount" },
+      });
+
+      const body = expectProblem(response, 400, "validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: "countId" }),
+        ]),
+      );
     });
   });
 

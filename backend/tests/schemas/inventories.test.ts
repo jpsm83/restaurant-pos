@@ -6,7 +6,9 @@ import {
   businessIdParamsSchema,
   createInventoryBodySchema,
   inventoryIdParamsSchema,
+  inventoryIncludeDeletedQuerySchema,
   inventoryMonthDateQuerySchema,
+  inventoriesByBusinessQuerySchema,
   inventorySupplierGoodParamsSchema,
   updateInventoryCountBodySchema,
   varianceReportQuerySchema,
@@ -114,6 +116,89 @@ describe("inventoryMonthDateQuerySchema", () => {
     expect(
       inventoryMonthDateQuerySchema.safeParse({ monthDate: "2024-06-15", x: "1" })
         .success,
+    ).toBe(false);
+  });
+});
+
+describe("inventoryIncludeDeletedQuerySchema", () => {
+  it("accepts an omitted includeDeleted", () => {
+    expect(
+      inventoryIncludeDeletedQuerySchema.parse({}).includeDeleted,
+    ).toBeUndefined();
+  });
+
+  it("treats a blank includeDeleted as omitted", () => {
+    expect(
+      inventoryIncludeDeletedQuerySchema.parse({ includeDeleted: "" })
+        .includeDeleted,
+    ).toBeUndefined();
+  });
+
+  it("coerces string booleans", () => {
+    expect(
+      inventoryIncludeDeletedQuerySchema.parse({ includeDeleted: "true" })
+        .includeDeleted,
+    ).toBe(true);
+    expect(
+      inventoryIncludeDeletedQuerySchema.parse({ includeDeleted: "false" })
+        .includeDeleted,
+    ).toBe(false);
+  });
+
+  it("rejects a non-boolean includeDeleted and unknown keys", () => {
+    expect(
+      inventoryIncludeDeletedQuerySchema.safeParse({ includeDeleted: "maybe" })
+        .success,
+    ).toBe(false);
+    expect(
+      inventoryIncludeDeletedQuerySchema.safeParse({
+        includeDeleted: true,
+        setFinalCount: true,
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe("inventoriesByBusinessQuerySchema", () => {
+  it("accepts an empty query", () => {
+    const parsed = inventoriesByBusinessQuerySchema.parse({});
+    expect(parsed.monthDate).toBeUndefined();
+    expect(parsed.includeDeleted).toBeUndefined();
+  });
+
+  it("treats blank monthDate and includeDeleted as omitted", () => {
+    const parsed = inventoriesByBusinessQuerySchema.parse({
+      monthDate: "",
+      includeDeleted: "",
+    });
+    expect(parsed.monthDate).toBeUndefined();
+    expect(parsed.includeDeleted).toBeUndefined();
+  });
+
+  it("coerces a monthDate and a string boolean together", () => {
+    const parsed = inventoriesByBusinessQuerySchema.parse({
+      monthDate: "2024-06-15",
+      includeDeleted: "true",
+    });
+    expect(parsed.monthDate).toBeInstanceOf(Date);
+    expect(parsed.monthDate?.getUTCFullYear()).toBe(2024);
+    expect(parsed.includeDeleted).toBe(true);
+  });
+
+  it("rejects a non-boolean includeDeleted, an unparseable monthDate, and unknown keys", () => {
+    expect(
+      inventoriesByBusinessQuerySchema.safeParse({ includeDeleted: "maybe" })
+        .success,
+    ).toBe(false);
+    expect(
+      inventoriesByBusinessQuerySchema.safeParse({ monthDate: "not-a-date" })
+        .success,
+    ).toBe(false);
+    expect(
+      inventoriesByBusinessQuerySchema.safeParse({
+        includeDeleted: false,
+        setFinalCount: true,
+      }).success,
     ).toBe(false);
   });
 });
@@ -281,6 +366,8 @@ describe("server-owned fields are excluded from every inventories DTO", () => {
     inventorySupplierGoodParamsSchema,
     businessIdParamsSchema,
     inventoryMonthDateQuerySchema,
+    inventoryIncludeDeletedQuerySchema,
+    inventoriesByBusinessQuerySchema,
     addInventoryCountBodySchema,
     updateInventoryCountBodySchema,
     varianceReportQuerySchema,

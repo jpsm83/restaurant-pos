@@ -121,6 +121,22 @@ describe("Printers Routes", () => {
       const body = expectProblem(response, 404, "not-found");
       expect(body.detail).toContain("No printers");
     });
+
+    it("returns a validation problem for an invalid includeDeleted query value", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/printers?includeDeleted=maybe",
+      });
+
+      const body = expectProblem(response, 400, "validation");
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: "includeDeleted" }),
+        ]),
+      );
+    });
   });
 
   describe("POST /api/v1/printers", () => {
