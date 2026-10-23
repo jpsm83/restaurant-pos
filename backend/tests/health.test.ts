@@ -19,6 +19,18 @@ describe("Health Check", () => {
     expect(response.json()).toEqual({ ok: true });
   });
 
+  it("ignores a stray query and stays without a request DTO", async () => {
+    const app = await getTestApp();
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/health?paymentId=pay-1",
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ ok: true });
+  });
+
   it("returns problem details for an unmatched route", async () => {
     const app = await getTestApp();
 

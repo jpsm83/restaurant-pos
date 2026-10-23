@@ -29,7 +29,8 @@ function isRejectedCredential(error: unknown): boolean {
     if (
       error.name === "JsonWebTokenError" ||
       error.name === "TokenExpiredError" ||
-      error.name === "NotBeforeError"
+      error.name === "NotBeforeError" ||
+      error.name === "TokenError"
     ) {
       return true;
     }
@@ -38,7 +39,11 @@ function isRejectedCredential(error: unknown): boolean {
   if (candidate?.statusCode === 401) {
     return true;
   }
-  return typeof candidate?.code === "string" && candidate.code.startsWith("FST_JWT");
+  return (
+    typeof candidate?.code === "string" &&
+    (candidate.code.startsWith("FST_JWT") ||
+      candidate.code.startsWith("FAST_JWT"))
+  );
 }
 
 /**

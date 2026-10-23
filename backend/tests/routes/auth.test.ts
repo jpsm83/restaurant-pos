@@ -340,6 +340,19 @@ describe("Auth Routes", () => {
       const body = JSON.parse(response.body);
       expect(body.message).toBe("Logged out successfully");
     });
+
+    it("ignores a body and stays without a request DTO", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/logout",
+        payload: { paymentId: "pay-1" },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json().message).toBe("Logged out successfully");
+    });
   });
 
   describe("POST /api/v1/auth/refresh", () => {
@@ -349,6 +362,24 @@ describe("Auth Routes", () => {
       const response = await app.inject({
         method: "POST",
         url: "/api/v1/auth/refresh",
+      });
+
+      expect(response.statusCode).toBe(401);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      const body = response.json();
+      expect(body.type).toBe("https://restaurant-pos.app/errors/unauthorized");
+      expect(body.detail).toBe("No refresh token provided");
+    });
+
+    it("does not treat a body as a validation problem when the cookie is missing", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/refresh",
+        payload: { paymentId: "pay-1" },
       });
 
       expect(response.statusCode).toBe(401);
@@ -643,6 +674,23 @@ describe("Auth Routes", () => {
       expect(body.detail).toBe("No access token provided");
     });
 
+    it("does not treat a stray query as a validation problem", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/auth/me?paymentId=pay-1",
+      });
+
+      expect(response.statusCode).toBe(401);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      const body = response.json();
+      expect(body.type).toBe("https://restaurant-pos.app/errors/unauthorized");
+      expect(body.detail).toBe("No access token provided");
+    });
+
     it("returns 401 for invalid token", async () => {
       const app = await getTestApp();
 
@@ -788,9 +836,46 @@ describe("Auth Routes", () => {
       const body = JSON.parse(response.body);
       expect(body.mode).toBe("customer");
     });
+
+    it("ignores a stray query and stays without a request DTO", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/auth/mode?paymentId=pay-1",
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({ mode: "customer" });
+    });
   });
 
   describe("request DTO contract", () => {
+    it("rejects paymentId on the login body", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: {
+          email: "a@b.com",
+          password: "x",
+          paymentId: "pay-1",
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      const body = response.json();
+      expect(body.type).toBe("https://restaurant-pos.app/errors/validation");
+      expect(body.status).toBe(400);
+      expect(body.detail).toBe("Request body is invalid");
+      expect(body.instance).toBe("/api/v1/auth/login");
+      expect(Array.isArray(body.errors)).toBe(true);
+    });
+
     it("rejects unknown keys with a validation problem document", async () => {
       const app = await getTestApp();
 
