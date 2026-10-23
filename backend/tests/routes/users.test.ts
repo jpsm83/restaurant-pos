@@ -140,6 +140,19 @@ describe("Users Routes", () => {
       expect(includeDeleted.statusCode).toBe(200);
       expect(includeDeleted.json().length).toBe(2);
     });
+
+    it("returns a validation problem for an invalid includeDeleted query value", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/users?includeDeleted=maybe",
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(isProblemDetails(response)).toBe(true);
+      expect(errorPaths(response)).toContain("includeDeleted");
+    });
   });
 
   describe("POST /api/v1/users", () => {

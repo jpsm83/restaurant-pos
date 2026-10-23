@@ -145,6 +145,24 @@ describe("Business Routes", () => {
       expect(body.length).toBe(1);
       expect(body[0].tradeName).toBe("Pizza Paradise");
     });
+
+    it("returns 400 for an out-of-range rating", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/business?rating=6",
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      const body = JSON.parse(response.body);
+      expect(body.errors?.map((e: { path: string }) => e.path)).toContain(
+        "rating",
+      );
+    });
   });
 
   describe("GET /api/v1/business/:businessId", () => {

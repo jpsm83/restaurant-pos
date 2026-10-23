@@ -126,6 +126,19 @@ describe("Employees Routes", () => {
       expect(isProblemDetails(response)).toBe(true);
       expect(detail(response)).toBe("No employees found!");
     });
+
+    it("returns a problem-details 400 for an invalid includeDeleted query value", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/employees?includeDeleted=maybe",
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(isProblemDetails(response)).toBe(true);
+      expect(errorPaths(response)).toContain("includeDeleted");
+    });
   });
 
   describe("POST /api/v1/employees", () => {
@@ -542,6 +555,21 @@ describe("Employees Routes", () => {
 
       const updatedUser = await User.findById(userId).lean();
       expect(updatedUser?.employeeDetails).toBeUndefined();
+    });
+  });
+
+  describe("GET /api/v1/employees/business/:businessId/management-contacts", () => {
+    it("returns a problem-details 400 for an invalid businessId", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/employees/business/invalid-id/management-contacts",
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(isProblemDetails(response)).toBe(true);
+      expect(errorPaths(response)).toContain("businessId");
     });
   });
 
