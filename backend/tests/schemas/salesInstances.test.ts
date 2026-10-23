@@ -301,7 +301,7 @@ describe("salesInstancesIncludeDeletedQuerySchema", () => {
     ).toBe(false);
   });
 
-  it("rejects paymentId (only delivery and self-order bodies may set it)", () => {
+  it("rejects an unknown paymentId key", () => {
     expect(
       salesInstancesIncludeDeletedQuerySchema.safeParse({
         includeDeleted: true,

@@ -185,7 +185,7 @@ describe("SalesInstances flows (Task 12)", () => {
       expect(body.detail).toMatch(/does not belong to this business/i);
     });
 
-    it("rejects a server-owned field as a validation problem", async () => {
+    it("rejects a malformed salesPointId as a validation problem", async () => {
       const { token } = await createManagerActor(businessId);
 
       const res = await app.inject({
@@ -193,10 +193,9 @@ describe("SalesInstances flows (Task 12)", () => {
         url: "/api/v1/salesInstances",
         headers: { authorization: token },
         payload: {
-          salesPointId: salesPointId.toString(),
+          salesPointId: "not-an-id",
           guests: 2,
           businessId: businessId.toString(),
-          openedByUserId: "server-owned",
         },
       });
 
@@ -207,7 +206,9 @@ describe("SalesInstances flows (Task 12)", () => {
       const body = JSON.parse(res.body);
       expect(body.type).toBe("https://restaurant-pos.app/errors/validation");
       expect(body.errors).toEqual(
-        expect.arrayContaining([expect.objectContaining({ path: "" })]),
+        expect.arrayContaining([
+          expect.objectContaining({ path: "salesPointId" }),
+        ]),
       );
     });
   });
@@ -1209,7 +1210,7 @@ describe("SalesInstances flows (Task 12)", () => {
       );
     });
 
-    it("rejects an openTable body carrying a server-owned field", async () => {
+    it("rejects an openTable body with a malformed businessId", async () => {
       const { token } = await createManagerActor(businessId);
 
       const res = await app.inject({
@@ -1217,15 +1218,16 @@ describe("SalesInstances flows (Task 12)", () => {
         url: `/api/v1/salesInstances/selfOrderingLocation/${salesPointId}/openTable`,
         headers: { authorization: token },
         payload: {
-          businessId: businessId.toString(),
+          businessId: "not-an-id",
           guests: 2,
-          openedAsRole: "employee",
         },
       });
 
       const body = expectValidationProblem(res);
       expect(body.errors).toEqual(
-        expect.arrayContaining([expect.objectContaining({ path: "" })]),
+        expect.arrayContaining([
+          expect.objectContaining({ path: "businessId" }),
+        ]),
       );
     });
   });
