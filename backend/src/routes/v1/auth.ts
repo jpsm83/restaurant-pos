@@ -297,6 +297,8 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       throw unauthorized("Invalid or expired access token");
     }
 
+    await assertAccountCanUseSession(session);
+
     const result =
       await handleResendEmailConfirmationForAuthenticatedAccount(session);
 
@@ -644,6 +646,8 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       } catch {
         throw unauthorized("Invalid or expired access token");
       }
+
+      await assertAccountCanUseSession(session);
 
       if (session.type !== "user") {
         throw badRequest("Only users can set auth mode");

@@ -616,6 +616,64 @@ describe("Auth Routes", () => {
   });
 
   describe("GET /api/v1/auth/me", () => {
+    it("refuses an access session after the user is soft-deleted", async () => {
+      const app = await getTestApp();
+      const user = await User.create({
+        personalDetails: {
+          email: "me-deleted@test.com",
+          password: hashedPassword,
+          firstName: "Me",
+          lastName: "Deleted",
+          phoneNumber: "1234567890",
+          birthDate: new Date("1990-01-01"),
+          gender: "Man",
+          nationality: "USA",
+          address: {
+            country: "USA",
+            state: "CA",
+            city: "LA",
+            street: "Main St",
+            buildingNumber: "123",
+            postCode: "90001",
+          },
+          idNumber: "ID-ME-DELETED",
+          idType: "Passport",
+          username: "medeleted",
+        },
+      });
+
+      const loginRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: { email: "me-deleted@test.com", password: testPassword },
+      });
+      expect(loginRes.statusCode).toBe(200);
+      const { accessToken } = JSON.parse(loginRes.body);
+
+      await User.updateOne(
+        { _id: user._id },
+        { $set: { deleted: true, deletedAt: new Date(), deletedBy: user._id } },
+      );
+
+      const sessionRead = await app.inject({
+        method: "GET",
+        url: "/api/v1/auth/me",
+        headers: { authorization: `Bearer ${accessToken}` },
+      });
+      expect(sessionRead.statusCode).toBe(401);
+      expect(sessionRead.headers["content-type"]).toContain("application/problem+json");
+      expect(sessionRead.json().detail).toBe("Invalid or expired access token");
+
+      const protectedRead = await app.inject({
+        method: "GET",
+        url: `/api/v1/business/${user._id}`,
+        headers: { authorization: `Bearer ${accessToken}` },
+      });
+      expect(protectedRead.statusCode).toBe(401);
+      expect(protectedRead.headers["content-type"]).toContain("application/problem+json");
+      expect(protectedRead.json().detail).toBe("Invalid or expired access token");
+    });
+
     it("returns user session with valid token", async () => {
       const app = await getTestApp();
 
@@ -708,6 +766,102 @@ describe("Auth Routes", () => {
   });
 
   describe("POST /api/v1/auth/set-mode", () => {
+    it("refuses an access session after the user is soft-deleted", async () => {
+      const app = await getTestApp();
+      const user = await User.create({
+        personalDetails: {
+          email: "set-mode-deleted@test.com",
+          password: hashedPassword,
+          firstName: "Mode",
+          lastName: "Deleted",
+          phoneNumber: "1234567890",
+          birthDate: new Date("1990-01-01"),
+          gender: "Man",
+          nationality: "USA",
+          address: {
+            country: "USA",
+            state: "CA",
+            city: "LA",
+            street: "Main St",
+            buildingNumber: "123",
+            postCode: "90001",
+          },
+          idNumber: "ID-SET-MODE-DELETED",
+          idType: "Passport",
+          username: "setmodedeleted",
+        },
+      });
+
+      const loginRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: { email: "set-mode-deleted@test.com", password: testPassword },
+      });
+      expect(loginRes.statusCode).toBe(200);
+      const { accessToken } = JSON.parse(loginRes.body);
+
+      await User.updateOne(
+        { _id: user._id },
+        { $set: { deleted: true, deletedAt: new Date(), deletedBy: user._id } },
+      );
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/set-mode",
+        headers: { authorization: `Bearer ${accessToken}` },
+        payload: { mode: "customer" },
+      });
+
+      expect(response.statusCode).toBe(401);
+      expect(response.headers["content-type"]).toContain("application/problem+json");
+      expect(response.json().detail).toBe("Invalid or expired access token");
+    });
+
+    it("refuses an access session after the business is closed", async () => {
+      const app = await getTestApp();
+      const business = await Business.create({
+        tradeName: "Set Mode Closed Biz",
+        legalName: "Set Mode Closed Biz Legal",
+        email: "set-mode-closed-biz@test.com",
+        password: hashedPassword,
+        taxNumber: "TAX-SET-MODE-CLOSED",
+        phoneNumber: "1234567890",
+        currencyTrade: "USD",
+        address: {
+          country: "USA",
+          state: "CA",
+          city: "LA",
+          street: "Main St",
+          buildingNumber: "123",
+          postCode: "90001",
+        },
+      });
+
+      const loginRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: { email: "set-mode-closed-biz@test.com", password: testPassword },
+      });
+      expect(loginRes.statusCode).toBe(200);
+      const { accessToken } = JSON.parse(loginRes.body);
+
+      await Business.updateOne(
+        { _id: business._id },
+        { $set: { deleted: true, deletedAt: new Date(), deletedBy: business._id } },
+      );
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/set-mode",
+        headers: { authorization: `Bearer ${accessToken}` },
+        payload: { mode: "customer" },
+      });
+
+      expect(response.statusCode).toBe(401);
+      expect(response.headers["content-type"]).toContain("application/problem+json");
+      expect(response.json().detail).toBe("Invalid or expired access token");
+    });
+
     it("returns 401 without token", async () => {
       const app = await getTestApp();
 

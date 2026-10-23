@@ -251,4 +251,70 @@ describe("POST /api/v1/auth/resend-email-confirmation", () => {
     expect(response.statusCode).toBe(200);
     expect(sendEmailMock).toHaveBeenCalledTimes(1);
   });
+
+  it("refuses a soft-deleted user's access session", async () => {
+    const app = await getTestApp();
+    const user = await createTestUser("resend-deleted@example.com", {
+      emailVerified: false,
+    });
+    await User.updateOne(
+      { _id: user._id },
+      { $set: { deleted: true, deletedAt: new Date(), deletedBy: user._id } },
+    );
+    const token = await generateTestToken({
+      id: String(user._id),
+      email: "resend-deleted@example.com",
+      type: "user",
+      role: "Customer",
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/resend-email-confirmation",
+      headers: { authorization: token },
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.headers["content-type"]).toContain("application/problem+json");
+    expect(response.json().detail).toBe("Invalid or expired access token");
+    expect(sendEmailMock).not.toHaveBeenCalled();
+    const stored = await User.findById(user._id)
+      .setOptions({ includeDeleted: true })
+      .select("deleted")
+      .lean();
+    expect(stored?.deleted).toBe(true);
+  });
+
+  it("refuses a closed business access session", async () => {
+    const app = await getTestApp();
+    const business = await createTestBusiness("resend-closed@example.com", {
+      emailVerified: false,
+    });
+    await Business.updateOne(
+      { _id: business._id },
+      { $set: { deleted: true, deletedAt: new Date() } },
+    );
+    const token = await generateTestToken({
+      id: String(business._id),
+      email: "resend-closed@example.com",
+      type: "business",
+      role: "Tenant",
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/resend-email-confirmation",
+      headers: { authorization: token },
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.headers["content-type"]).toContain("application/problem+json");
+    expect(response.json().detail).toBe("Invalid or expired access token");
+    expect(sendEmailMock).not.toHaveBeenCalled();
+    const stored = await Business.findById(business._id)
+      .setOptions({ includeDeleted: true })
+      .select("deleted")
+      .lean();
+    expect(stored?.deleted).toBe(true);
+  });
 });
