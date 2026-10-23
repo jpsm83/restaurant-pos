@@ -91,6 +91,28 @@ describe("Notifications Routes", () => {
       expect(Array.isArray(body)).toBe(true);
       expect(body.length).toBe(1);
     });
+
+    it("returns a validation problem for a non-numeric page query", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/notifications?page=abc",
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      const body = JSON.parse(response.body);
+      expect(body.type).toBe("https://restaurant-pos.app/errors/validation");
+      expect(body.status).toBe(400);
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          { path: "page", message: expect.any(String) },
+        ]),
+      );
+    });
   });
 
   describe("POST /api/v1/notifications", () => {
@@ -516,8 +538,12 @@ describe("Notifications Routes", () => {
       );
       const body = JSON.parse(response.body);
       expect(body.type).toBe("https://restaurant-pos.app/errors/validation");
-      expect(Array.isArray(body.errors)).toBe(true);
-      expect(body.errors.length).toBeGreaterThan(0);
+      expect(body.status).toBe(400);
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          { path: "notificationId", message: expect.any(String) },
+        ]),
+      );
     });
   });
 

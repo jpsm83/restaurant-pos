@@ -6,6 +6,7 @@ import {
   notificationIdParamsSchema,
   notificationsByBusinessParamsSchema,
   notificationsByUserParamsSchema,
+  notificationsIncludeDeletedQuerySchema,
   notificationsPaginationQuerySchema,
   updateNotificationBodySchema,
   NOTIFICATIONS_DEFAULT_LIMIT,
@@ -222,9 +223,59 @@ describe("notificationsPaginationQuerySchema", () => {
     ).toBe(false);
   });
 
+  it("coerces includeDeleted string forms to a boolean", () => {
+    expect(
+      notificationsPaginationQuerySchema.parse({ includeDeleted: "true" })
+        .includeDeleted,
+    ).toBe(true);
+    expect(
+      notificationsPaginationQuerySchema.parse({ includeDeleted: "false" })
+        .includeDeleted,
+    ).toBe(false);
+    expect(
+      notificationsPaginationQuerySchema.safeParse({ includeDeleted: "maybe" })
+        .success,
+    ).toBe(false);
+  });
+
   it("rejects unknown keys", () => {
     expect(
       notificationsPaginationQuerySchema.safeParse({ sort: "asc" }).success,
+    ).toBe(false);
+  });
+});
+
+describe("notificationsIncludeDeletedQuerySchema", () => {
+  it("accepts an omitted includeDeleted", () => {
+    const parsed = notificationsIncludeDeletedQuerySchema.parse({});
+    expect(parsed.includeDeleted).toBeUndefined();
+  });
+
+  it("coerces string booleans", () => {
+    expect(
+      notificationsIncludeDeletedQuerySchema.parse({ includeDeleted: "true" })
+        .includeDeleted,
+    ).toBe(true);
+    expect(
+      notificationsIncludeDeletedQuerySchema.parse({ includeDeleted: "false" })
+        .includeDeleted,
+    ).toBe(false);
+  });
+
+  it("rejects a non-boolean includeDeleted", () => {
+    expect(
+      notificationsIncludeDeletedQuerySchema.safeParse({
+        includeDeleted: "maybe",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects unknown keys", () => {
+    expect(
+      notificationsIncludeDeletedQuerySchema.safeParse({
+        includeDeleted: true,
+        createdAt: "x",
+      }).success,
     ).toBe(false);
   });
 });
@@ -236,6 +287,7 @@ describe("server-owned fields are excluded from every notifications DTO", () => 
     notificationIdParamsSchema,
     notificationsByBusinessParamsSchema,
     notificationsByUserParamsSchema,
+    notificationsIncludeDeletedQuerySchema,
     notificationsPaginationQuerySchema,
   };
 

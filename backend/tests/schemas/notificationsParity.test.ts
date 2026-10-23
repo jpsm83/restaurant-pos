@@ -8,6 +8,7 @@ import {
   notificationTypeSchema,
   notificationsByBusinessParamsSchema,
   notificationsByUserParamsSchema,
+  notificationsIncludeDeletedQuerySchema,
   notificationsPaginationQuerySchema,
   updateNotificationBodySchema,
 } from "../../src/schemas/notifications.ts";
@@ -26,6 +27,7 @@ const allDtos: Record<string, z.ZodObject> = {
   notificationIdParamsSchema,
   notificationsByBusinessParamsSchema,
   notificationsByUserParamsSchema,
+  notificationsIncludeDeletedQuerySchema,
   notificationsPaginationQuerySchema,
 };
 
