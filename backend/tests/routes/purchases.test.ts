@@ -474,6 +474,76 @@ describe("Purchases Routes", () => {
       expect(isProblemDetails(response)).toBe(true);
       expect(errorPaths(response)).toContain("purchaseId");
     });
+
+    it("keeps a deleted purchase, hides it, and refuses a second delete", async () => {
+      const app = await getTestApp();
+      const receiptId = "REC-SOFT-DELETE";
+      const purchase = await Purchase.create({
+        businessId,
+        supplierId,
+        purchasedByEmployeeId: employeeId,
+        purchaseDate: new Date(),
+        receiptId,
+        totalAmount: 100,
+        purchaseInventoryItems: [
+          {
+            supplierGoodId,
+            quantityPurchased: 10,
+            purchasePrice: 100,
+          },
+        ],
+      });
+
+      const removed = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/purchases/${purchase._id}`,
+      });
+      expect(removed.statusCode).toBe(200);
+
+      const hidden = await app.inject({
+        method: "GET",
+        url: `/api/v1/purchases/${purchase._id}`,
+      });
+      expect(hidden.statusCode).toBe(404);
+      expect(isProblemDetails(hidden)).toBe(true);
+
+      const listed = await app.inject({
+        method: "GET",
+        url: "/api/v1/purchases",
+      });
+      expect(listed.statusCode).toBe(404);
+
+      const shown = await app.inject({
+        method: "GET",
+        url: `/api/v1/purchases/${purchase._id}?includeDeleted=true`,
+      });
+      expect(shown.statusCode).toBe(200);
+      expect(shown.headers["content-type"]).toContain("application/json");
+      expect(shown.json()).toMatchObject({
+        receiptId,
+        deleted: true,
+      });
+      expect(shown.json().deletedAt).toBeTruthy();
+
+      const listedDeleted = await app.inject({
+        method: "GET",
+        url: "/api/v1/purchases?includeDeleted=true",
+      });
+      expect(listedDeleted.statusCode).toBe(200);
+      expect(listedDeleted.json()).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ receiptId, deleted: true }),
+        ]),
+      );
+
+      const again = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/purchases/${purchase._id}`,
+      });
+      expect(again.statusCode).toBe(409);
+      expect(isProblemDetails(again)).toBe(true);
+      expect(detail(again)).toBe("Purchase already deleted!");
+    });
   });
 
   describe("PATCH /api/v1/purchases/:purchaseId/addSupplierGood", () => {
@@ -697,6 +767,63 @@ describe("Purchases Routes", () => {
         updatedInventory?.inventoryGoods?.[0]?.dynamicSystemCount ?? 0;
       expect(updatedCount).toBe(initialCount + 25);
     });
+
+    it("adds received stock only on the active inventory", async () => {
+      const app = await getTestApp();
+      await Inventory.deleteMany({});
+      const retired = await Inventory.create({
+        businessId,
+        setFinalCount: false,
+        deleted: true,
+        deletedAt: new Date(),
+        inventoryGoods: [
+          {
+            supplierGoodId,
+            dynamicSystemCount: 40,
+            monthlyCounts: [],
+          },
+        ],
+      });
+      const activeInventory = await Inventory.create({
+        businessId,
+        setFinalCount: false,
+        inventoryGoods: [
+          {
+            supplierGoodId,
+            dynamicSystemCount: 100,
+            monthlyCounts: [],
+          },
+        ],
+      });
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/purchases",
+        payload: {
+          supplierId: supplierId.toString(),
+          purchaseDate: new Date().toISOString(),
+          businessId: businessId.toString(),
+          purchasedByEmployeeId: employeeId.toString(),
+          receiptId: `REC-ACTIVE-ONLY-${Date.now()}`,
+          purchaseInventoryItems: [
+            {
+              supplierGoodId: supplierGoodId.toString(),
+              quantityPurchased: 25,
+              purchasePrice: 250,
+            },
+          ],
+        },
+      });
+
+      expect(response.statusCode, response.body).toBe(201);
+
+      const active = await Inventory.findById(activeInventory._id).lean();
+      const deleted = await Inventory.findById(retired._id)
+        .setOptions({ includeDeleted: true })
+        .lean();
+      expect(active?.inventoryGoods?.[0]?.dynamicSystemCount).toBe(125);
+      expect(deleted?.inventoryGoods?.[0]?.dynamicSystemCount).toBe(40);
+    });
   });
 
   describe("Transaction Tests - DELETE /api/v1/purchases/:purchaseId", () => {
@@ -749,6 +876,68 @@ describe("Purchases Routes", () => {
       const countAfterDelete =
         afterDelete?.inventoryGoods?.[0]?.dynamicSystemCount ?? 0;
       expect(countAfterDelete).toBe(countBeforeDelete - 15);
+    });
+
+    it("removes stock only from the active inventory when a purchase is deleted", async () => {
+      const app = await getTestApp();
+      await Inventory.deleteMany({});
+      const retired = await Inventory.create({
+        businessId,
+        setFinalCount: false,
+        deleted: true,
+        deletedAt: new Date(),
+        inventoryGoods: [
+          {
+            supplierGoodId,
+            dynamicSystemCount: 40,
+            monthlyCounts: [],
+          },
+        ],
+      });
+      const activeInventory = await Inventory.create({
+        businessId,
+        setFinalCount: false,
+        inventoryGoods: [
+          {
+            supplierGoodId,
+            dynamicSystemCount: 100,
+            monthlyCounts: [],
+          },
+        ],
+      });
+      const purchase = await Purchase.create({
+        businessId,
+        supplierId,
+        purchasedByEmployeeId: employeeId,
+        purchaseDate: new Date(),
+        receiptId: `REC-DEL-ACTIVE-${Date.now()}`,
+        totalAmount: 150,
+        purchaseInventoryItems: [
+          {
+            supplierGoodId,
+            quantityPurchased: 15,
+            purchasePrice: 150,
+          },
+        ],
+      });
+      await Inventory.findOneAndUpdate(
+        { _id: activeInventory._id, "inventoryGoods.supplierGoodId": supplierGoodId },
+        { $inc: { "inventoryGoods.$.dynamicSystemCount": 15 } },
+      );
+
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/purchases/${purchase._id}`,
+      });
+
+      expect(response.statusCode, response.body).toBe(200);
+
+      const active = await Inventory.findById(activeInventory._id).lean();
+      const deleted = await Inventory.findById(retired._id)
+        .setOptions({ includeDeleted: true })
+        .lean();
+      expect(active?.inventoryGoods?.[0]?.dynamicSystemCount).toBe(100);
+      expect(deleted?.inventoryGoods?.[0]?.dynamicSystemCount).toBe(40);
     });
   });
 

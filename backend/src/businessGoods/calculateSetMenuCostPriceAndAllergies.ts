@@ -14,22 +14,17 @@ export const calculateSetMenuCostPriceAndAllergies = async (
       return "Invalid setMenuIds!";
     }
 
+    // A combo may already name a soft-deleted component. Read its cost and
+    // allergens so the recipe still sees that good.
     const businessGoods = await BusinessGood.find({
       _id: { $in: setMenuIds },
     })
+      .setOptions({ includeDeleted: true })
       .select("costPrice allergens")
       .lean();
 
     if (businessGoods.length !== setMenuIds.length) {
-      const activeIds = new Set(businessGoods.map((good) => String(good._id)));
-      const missingIds = setMenuIds.filter((id) => !activeIds.has(String(id)));
-      const deletedCount = await BusinessGood.countDocuments({
-        _id: { $in: missingIds },
-        deleted: true,
-      });
-      if (deletedCount !== missingIds.length) {
-        return "Some business goods found!";
-      }
+      return "Some business goods found!";
     }
 
     let totalCostPrice = 0;

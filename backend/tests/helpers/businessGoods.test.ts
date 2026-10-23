@@ -216,7 +216,7 @@ describe("BusinessGoods Helpers", () => {
       }
     });
 
-    it("omits the price and allergens of a soft-deleted supplier good", async () => {
+    it("prices a soft-deleted supplier good from its measurement unit", async () => {
       const live = await SupplierGood.create({
         businessId,
         supplierId,
@@ -242,15 +242,13 @@ describe("BusinessGoods Helpers", () => {
         pricePerMeasurementUnit: 8,
         parLevel: 10,
         allergens: ["Nuts"],
+        deleted: true,
+        deletedAt: new Date(),
       });
-      await SupplierGood.updateOne(
-        { _id: retired._id },
-        { $set: { deleted: true, deletedAt: new Date() } },
-      );
 
       const result = await calculateIngredientsCostPriceAndAllergies([
         { supplierGoodId: live._id, measurementUnit: "kg", requiredQuantity: 2 },
-        { supplierGoodId: retired._id, measurementUnit: "kg", requiredQuantity: 1 },
+        { supplierGoodId: retired._id, measurementUnit: "g", requiredQuantity: 500 },
       ] as any);
 
       expect(Array.isArray(result)).toBe(true);
@@ -258,14 +256,14 @@ describe("BusinessGoods Helpers", () => {
         expect(result).toHaveLength(2);
         expect(result[0].costOfRequiredQuantity).toBe(4);
         expect(result[0].allergens).toEqual(["Gluten"]);
-        expect(result[1].costOfRequiredQuantity).toBe(0);
-        expect(result[1].allergens).toBeUndefined();
+        expect(result[1].costOfRequiredQuantity).toBe(4);
+        expect(result[1].allergens).toEqual(["Nuts"]);
       }
     });
   });
 
   describe("calculateSetMenuCostPriceAndAllergies", () => {
-    it("prices only active components when a set-menu item is soft-deleted", async () => {
+    it("includes a soft-deleted component in the set-menu cost and allergens", async () => {
       const live = await BusinessGood.create({
         businessId,
         name: "Live component",
@@ -292,7 +290,13 @@ describe("BusinessGoods Helpers", () => {
         retired._id,
       ]);
 
-      expect(result).toEqual({ costPrice: 4, allergens: ["Gluten"] });
+      expect(result).toMatchObject({ costPrice: 13 });
+      if (typeof result === "object") {
+        expect(result.allergens).toEqual(
+          expect.arrayContaining(["Gluten", "Nuts"]),
+        );
+        expect(result.allergens).toHaveLength(2);
+      }
     });
   });
 });

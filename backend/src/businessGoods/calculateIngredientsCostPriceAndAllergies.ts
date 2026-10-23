@@ -17,29 +17,16 @@ const calculateIngredientsCostPriceAndAllergies = async (
     }[] = [];
 
     for (const ingredient of ingredients) {
+      // A recipe line may already name a soft-deleted supplier good. Read it,
+      // including its measurement unit, so the cost conversion still runs.
       const supplierGood = (await SupplierGood.findOne({
         _id: ingredient.supplierGoodId,
       })
+        .setOptions({ includeDeleted: true })
         .select("measurementUnit pricePerMeasurementUnit allergens")
         .lean()) as ISupplierGood | null;
 
       if (!supplierGood) {
-        const retained = await SupplierGood.findOne({
-          _id: ingredient.supplierGoodId,
-          deleted: true,
-        })
-          .select("_id")
-          .lean();
-        if (retained) {
-          newIngredientsArray.push({
-            supplierGoodId: ingredient.supplierGoodId,
-            measurementUnit: ingredient.measurementUnit,
-            requiredQuantity: ingredient.requiredQuantity,
-            costOfRequiredQuantity: 0,
-            allergens: undefined,
-          });
-          continue;
-        }
         return "Supplier good not found!";
       }
 

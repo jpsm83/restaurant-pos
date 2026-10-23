@@ -396,6 +396,114 @@ describe("BusinessGoods Routes", () => {
       expect(created?.allergens).toContain("Gluten");
     });
 
+    it("prices a soft-deleted supplier good using that good's measurement unit", async () => {
+      const app = await getTestApp();
+
+      const supplier = await Supplier.create({
+        businessId,
+        tradeName: "Retired Supplier",
+        legalName: "Retired Supplier Legal",
+        taxNumber: "TAX-SUP-RETIRED",
+        email: "retired-supplier@test.com",
+        phoneNumber: "1234567890",
+        address: {
+          country: "USA",
+          state: "CA",
+          city: "LA",
+          street: "Main St",
+          buildingNumber: "123",
+          postCode: "90001",
+        },
+      });
+      const supplierGood = await SupplierGood.create({
+        businessId,
+        supplierId: supplier._id,
+        name: "Sugar",
+        keyword: "sugar",
+        mainCategory: "Food",
+        currentlyInUse: true,
+        measurementUnit: "kg",
+        pricePerMeasurementUnit: 3,
+        parLevel: 5,
+        allergens: ["Nuts"],
+        deleted: true,
+        deletedAt: new Date(),
+      });
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/businessGoods",
+        headers: multipartHeaders,
+        payload: multipartPayload({
+          name: "Retired Recipe",
+          keyword: "retiredrecipe",
+          mainCategory: "Food",
+          onMenu: "true",
+          available: "true",
+          sellingPrice: "10.00",
+          businessId: String(businessId),
+          ingredients: JSON.stringify([
+            {
+              supplierGoodId: String(supplierGood._id),
+              measurementUnit: "g",
+              requiredQuantity: 500,
+            },
+          ]),
+        }),
+      });
+
+      expect(response.statusCode, response.body).toBe(201);
+      const created = await BusinessGood.findOne({ name: "Retired Recipe" }).lean();
+      expect(created?.costPrice).toBe(1.5);
+      expect(created?.allergens).toContain("Nuts");
+    });
+
+    it("includes a soft-deleted set-menu component in the cost and allergens", async () => {
+      const app = await getTestApp();
+
+      const live = await BusinessGood.create({
+        businessId,
+        name: "Live component",
+        keyword: "live-component",
+        mainCategory: "Food",
+        sellingPrice: 10,
+        costPrice: 4,
+        allergens: ["Gluten"],
+      });
+      const retired = await BusinessGood.create({
+        businessId,
+        name: "Retired component",
+        keyword: "retired-component",
+        mainCategory: "Food",
+        sellingPrice: 12,
+        costPrice: 9,
+        allergens: ["Nuts"],
+        deleted: true,
+        deletedAt: new Date(),
+      });
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/businessGoods",
+        headers: multipartHeaders,
+        payload: multipartPayload({
+          name: "Combo",
+          keyword: "combo",
+          mainCategory: "Food",
+          onMenu: "true",
+          available: "true",
+          sellingPrice: "20.00",
+          businessId: String(businessId),
+          setMenuIds: JSON.stringify([String(live._id), String(retired._id)]),
+        }),
+      });
+
+      expect(response.statusCode, response.body).toBe(201);
+      const created = await BusinessGood.findOne({ name: "Combo" }).lean();
+      expect(created?.costPrice).toBe(13);
+      expect(created?.allergens).toEqual(expect.arrayContaining(["Gluten", "Nuts"]));
+    });
+
     it("returns a problem-details 400 for more than three files", async () => {
       const app = await getTestApp();
 

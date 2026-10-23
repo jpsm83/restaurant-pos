@@ -2,6 +2,7 @@ import convert, { Unit } from "convert-units";
 import { ClientSession, Types } from "mongoose";
 import BusinessGood from "../models/businessGood.ts";
 import Inventory from "../models/inventory.ts";
+import SupplierGood from "../models/supplierGood.ts";
 
 const updateDynamicCountSupplierGood = async (
   businessGoodsIds: Types.ObjectId[],
@@ -128,7 +129,33 @@ const updateDynamicCountSupplierGood = async (
       },
     ]).session(session);
 
-    if (!inventoryItems || inventoryItems.length === 0) return "Inventory not found!";
+    if (!inventoryItems || inventoryItems.length === 0) {
+      // The open inventory no longer holds a line for a soft-deleted supplier
+      // good. Read that good, including its measurement unit, and let the sale
+      // or cancellation finish without moving a deleted inventory.
+      const retainedGoods = await SupplierGood.find({
+        _id: {
+          $in: allIngredientsRequired.map((ingredient) => ingredient.ingredientId),
+        },
+      })
+        .setOptions({ includeDeleted: true })
+        .select("measurementUnit deleted")
+        .session(session)
+        .lean();
+      const retainedById = new Map(
+        retainedGoods.map((good) => [String(good._id), good]),
+      );
+      const everyLineNamesADeletedGood = allIngredientsRequired.every(
+        (ingredient) => {
+          const good = retainedById.get(String(ingredient.ingredientId));
+          return (
+            good?.deleted === true && typeof good.measurementUnit === "string"
+          );
+        },
+      );
+      if (everyLineNamesADeletedGood) return true;
+      return "Inventory not found!";
+    }
 
     const supplierGoodUnitsMap = (inventoryItems[0].supplierGoods as Array<{
       _id: Types.ObjectId;
@@ -167,6 +194,7 @@ const updateDynamicCountSupplierGood = async (
           updateOne: {
             filter: {
               deleted: { $ne: true },
+              setFinalCount: false,
               "inventoryGoods.supplierGoodId": ingredientObj.ingredientId,
             },
             update: {
