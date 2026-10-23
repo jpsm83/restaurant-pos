@@ -346,25 +346,13 @@ describe("Ratings Routes", () => {
         user._id as Types.ObjectId,
       );
       const deletedAt = new Date("2026-03-01T00:00:00.000Z");
-      const marker: IRating = {
-        businessId: business._id as Types.ObjectId,
-        userId: user._id as Types.ObjectId,
-        score: 4,
+      const stamp: Pick<IRating, "deleted" | "deletedAt" | "deletedBy"> = {
         deleted: true,
         deletedAt,
         deletedBy: user._id as Types.ObjectId,
       };
 
-      await Rating.updateOne(
-        { _id: rating._id },
-        {
-          $set: {
-            deleted: marker.deleted,
-            deletedAt: marker.deletedAt,
-            deletedBy: marker.deletedBy,
-          },
-        },
-      );
+      await Rating.updateOne({ _id: rating._id }, { $set: stamp });
 
       const hiddenList = await app.inject({
         method: "GET",
