@@ -40,15 +40,15 @@ export interface JwtPayload {
   businessId?: string;
   canLogAsEmployee?: boolean;
   role?: string;
+  /** Server-owned id of the refresh session this access token was issued for. */
+  sessionId?: string;
   iat?: number;
   exp?: number;
 }
 
+/** Signed refresh cookie. `sid` identifies one stored refresh session. */
 export interface RefreshTokenPayload {
-  id: string;
-  type: "business" | "user";
-  /** Monotonic session generation; missing/undefined treated as **0** (legacy cookies). */
-  v?: number;
+  sid: string;
   iat?: number;
   exp?: number;
 }

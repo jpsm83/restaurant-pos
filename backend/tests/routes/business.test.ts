@@ -495,6 +495,21 @@ describe("Business Routes", () => {
       expect(body.accessToken).toBeDefined();
       expect(body.user?.type).toBe("business");
       expect(body.user?.email).toBe("new@business.com");
+      expect(body.user.sessionId).toBeUndefined();
+
+      const refreshCookie = response.cookies.find(
+        (cookie) => cookie.name === "refresh_token",
+      );
+      expect(refreshCookie?.value).toBeTruthy();
+      expect(response.body).not.toContain(refreshCookie!.value);
+      const refreshRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/refresh",
+        headers: { cookie: `refresh_token=${refreshCookie!.value}` },
+      });
+      expect(refreshRes.statusCode).toBe(200);
+      expect(refreshRes.json().user.type).toBe("business");
+      expect(refreshRes.json().user.sessionId).toBeUndefined();
 
       const created = await Business.findOne({ email: "new@business.com" });
       expect(created).not.toBeNull();
@@ -1722,6 +1737,21 @@ describe("Business Routes", () => {
       const body = JSON.parse(response.body);
       expect(body.accessToken).toBeDefined();
       expect(body.user?.type).toBe("business");
+      expect(body.user.sessionId).toBeUndefined();
+
+      const refreshCookie = response.cookies.find(
+        (cookie) => cookie.name === "refresh_token",
+      );
+      expect(refreshCookie?.value).toBeTruthy();
+      expect(response.body).not.toContain(refreshCookie!.value);
+      const refreshRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/refresh",
+        headers: { cookie: `refresh_token=${refreshCookie!.value}` },
+      });
+      expect(refreshRes.statusCode).toBe(200);
+      expect(refreshRes.json().user.type).toBe("business");
+      expect(refreshRes.json().user.sessionId).toBeUndefined();
 
       const updated = await Business.findById(business._id);
       expect(updated?.tradeName).toBe("Updated Business");

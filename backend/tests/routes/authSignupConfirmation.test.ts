@@ -22,6 +22,7 @@ vi.mock("../../src/auth/authEmailSend.ts", () => ({
 
 import { getTestApp, resetTestApp } from "../setup.ts";
 import Business from "../../src/models/business.ts";
+import RefreshSession from "../../src/models/refreshSession.ts";
 import User from "../../src/models/user.ts";
 
 async function waitForUserVerificationToken(
@@ -91,6 +92,22 @@ describe("POST /api/v1/auth/signup (confirmation email)", () => {
     expect(body.accessToken).toBeDefined();
     expect(body.user?.type).toBe("user");
     expect(body.user?.email).toBe(email);
+    expect(body.user.sessionId).toBeUndefined();
+    expect(body.refreshToken).toBeUndefined();
+
+    const refreshCookie = res.cookies.find(
+      (cookie) => cookie.name === "refresh_token",
+    );
+    expect(refreshCookie?.value).toBeTruthy();
+    expect(res.body).not.toContain(refreshCookie!.value);
+    const refreshRes = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/refresh",
+      headers: { cookie: `refresh_token=${refreshCookie!.value}` },
+    });
+    expect(refreshRes.statusCode).toBe(200);
+    expect(refreshRes.json().user.email).toBe(email);
+    expect(refreshRes.json().user.sessionId).toBeUndefined();
 
     await waitForUserVerificationToken(email);
     expect(sendEmailMock).toHaveBeenCalledTimes(1);
@@ -163,6 +180,11 @@ describe("POST /api/v1/auth/signup (confirmation email)", () => {
     expect(res.statusCode).toBe(202);
     const body = JSON.parse(res.body);
     expect(body.message).toContain("reactivation");
+    expect(body.accessToken).toBeUndefined();
+    expect(
+      res.cookies.find((cookie) => cookie.name === "refresh_token"),
+    ).toBeUndefined();
+    expect(await RefreshSession.countDocuments()).toBe(0);
 
     const allRows = await User.find({ "personalDetails.email": email })
       .setOptions({ includeDeleted: true })

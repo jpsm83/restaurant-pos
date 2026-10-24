@@ -84,7 +84,7 @@ const businessSchema = new Schema(
     pendingEmailExpires: { type: Date, default: undefined },
     /** When the last change link was sent; drives the per-account request cooldown. */
     pendingEmailRequestedAt: { type: Date, default: undefined },
-    /** Increment on password reset / password change to invalidate outstanding refresh JWTs. */
+    /** Increment on password reset or a confirmed sign-in email change to refuse refresh sessions from the previous generation. */
     refreshSessionVersion: { type: Number, default: 0 },
     phoneNumber: {
       type: String,

@@ -10,6 +10,26 @@ import { getTestApp } from "../setup.ts";
 import User from "../../src/models/user.ts";
 import Business from "../../src/models/business.ts";
 import Employee from "../../src/models/employee.ts";
+import RefreshSession from "../../src/models/refreshSession.ts";
+
+function accessTokenLifetimeSeconds(token: string): number {
+  const payload = accessTokenClaims(token);
+  return payload.exp - payload.iat;
+}
+
+function accessTokenSessionId(token: string): string | undefined {
+  return accessTokenClaims(token).sessionId;
+}
+
+function accessTokenClaims(token: string): {
+  iat: number;
+  exp: number;
+  sessionId?: string;
+} {
+  return JSON.parse(
+    Buffer.from(token.split(".")[1], "base64url").toString(),
+  ) as { iat: number; exp: number; sessionId?: string };
+}
 
 describe("Auth Routes", () => {
   const testPassword = "TestPassword123!";
@@ -339,6 +359,13 @@ describe("Auth Routes", () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.message).toBe("Logged out successfully");
+      expect(
+        response.cookies.find((cookie) => cookie.name === "refresh_token")
+          ?.value,
+      ).toBe("");
+      expect(
+        response.cookies.find((cookie) => cookie.name === "auth_mode")?.value,
+      ).toBe("");
     });
 
     it("ignores a body and stays without a request DTO", async () => {
@@ -371,6 +398,10 @@ describe("Auth Routes", () => {
       const body = response.json();
       expect(body.type).toBe("https://restaurant-pos.app/errors/unauthorized");
       expect(body.detail).toBe("No refresh token provided");
+      expect(
+        response.cookies.find((cookie) => cookie.name === "refresh_token")
+          ?.value,
+      ).toBe("");
     });
 
     it("does not treat a body as a validation problem when the cookie is missing", async () => {
@@ -404,6 +435,10 @@ describe("Auth Routes", () => {
       const body = response.json();
       expect(body.type).toBe("https://restaurant-pos.app/errors/unauthorized");
       expect(body.detail).toBe("Invalid or expired refresh token");
+      expect(
+        response.cookies.find((cookie) => cookie.name === "refresh_token")
+          ?.value,
+      ).toBe("");
     });
 
     it("returns 200 with new access token when refresh cookie matches session version", async () => {
@@ -454,6 +489,11 @@ describe("Auth Routes", () => {
       const body = JSON.parse(refreshRes.body);
       expect(body.accessToken).toBeDefined();
       expect(body.user?.type).toBe("business");
+      expect(body.user.sessionId).toBeUndefined();
+      expect(body.refreshToken).toBeUndefined();
+      expect(
+        refreshRes.cookies.find((cookie) => cookie.name === "refresh_token"),
+      ).toBeUndefined();
     });
 
     it("returns 401 after a logged-in user account is soft-deleted", async () => {
@@ -612,6 +652,337 @@ describe("Auth Routes", () => {
       });
       expect(sessionRead.statusCode).toBe(401);
       expect(sessionRead.json().detail).toBe("Invalid or expired access token");
+    });
+  });
+
+  describe("refresh session issuance", () => {
+    it("returns an access token and a refresh cookie that can be exchanged until that session is revoked", async () => {
+      const app = await getTestApp();
+      const email = "refresh-session@test.com";
+      const user = await User.create({
+        personalDetails: {
+          email,
+          password: hashedPassword,
+          firstName: "Refresh",
+          lastName: "Session",
+          phoneNumber: "1234567890",
+          birthDate: new Date("1990-01-01"),
+          gender: "Man",
+          nationality: "USA",
+          address: {
+            country: "USA",
+            state: "CA",
+            city: "LA",
+            street: "Main St",
+            buildingNumber: "123",
+            postCode: "90001",
+          },
+          idNumber: "ID-REFRESH-SESSION",
+          idType: "Passport",
+          username: "refreshsession",
+        },
+      });
+
+      const loginRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: { email, password: testPassword },
+      });
+
+      expect(loginRes.statusCode).toBe(200);
+      expect(loginRes.headers["content-type"]).toContain("application/json");
+      const loginBody = loginRes.json();
+      expect(typeof loginBody.accessToken).toBe("string");
+      expect(accessTokenLifetimeSeconds(loginBody.accessToken)).toBe(15 * 60);
+      expect(loginBody.user.sessionId).toBeUndefined();
+      expect(loginBody.refreshToken).toBeUndefined();
+
+      const refreshCookie = loginRes.cookies.find(
+        (cookie) => cookie.name === "refresh_token",
+      );
+      expect(refreshCookie).toBeDefined();
+      expect(refreshCookie!.httpOnly).toBe(true);
+      expect(refreshCookie!.sameSite?.toLowerCase()).toBe("lax");
+      expect(refreshCookie!.path).toBe("/");
+      expect(refreshCookie!.maxAge).toBe(60 * 60 * 24 * 7);
+      expect(refreshCookie!.secure).toBeFalsy();
+      expect(loginRes.body).not.toContain(refreshCookie!.value);
+
+      const refreshRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/refresh",
+        headers: { cookie: `refresh_token=${refreshCookie!.value}` },
+      });
+
+      expect(refreshRes.statusCode).toBe(200);
+      expect(refreshRes.headers["content-type"]).toContain("application/json");
+      const refreshBody = refreshRes.json();
+      expect(typeof refreshBody.accessToken).toBe("string");
+      expect(accessTokenLifetimeSeconds(refreshBody.accessToken)).toBe(15 * 60);
+      expect(refreshBody.user.sessionId).toBeUndefined();
+      expect(refreshBody.user.type).toBe("user");
+      expect(refreshBody.refreshToken).toBeUndefined();
+      expect(refreshRes.body).not.toContain(refreshCookie!.value);
+      expect(
+        refreshRes.cookies.find((cookie) => cookie.name === "refresh_token"),
+      ).toBeUndefined();
+
+      const sessionRead = await app.inject({
+        method: "GET",
+        url: "/api/v1/auth/me",
+        headers: { authorization: `Bearer ${refreshBody.accessToken}` },
+      });
+      expect(sessionRead.statusCode).toBe(200);
+      expect(sessionRead.json().user.sessionId).toBeUndefined();
+      expect(sessionRead.json().user.type).toBe("user");
+
+      const stored = await RefreshSession.findOne({
+        accountId: user._id,
+        accountType: "user",
+      });
+      expect(stored).not.toBeNull();
+      expect(accessTokenSessionId(loginBody.accessToken)).toEqual(
+        expect.any(String),
+      );
+      expect(accessTokenSessionId(refreshBody.accessToken)).toBe(
+        accessTokenSessionId(loginBody.accessToken),
+      );
+      stored!.revoked = true;
+      await stored!.save();
+
+      const revoked = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/refresh",
+        headers: { cookie: `refresh_token=${refreshCookie!.value}` },
+      });
+
+      expect(revoked.statusCode).toBe(401);
+      expect(revoked.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      expect(revoked.json().detail).toBe("Invalid or expired refresh token");
+      const cleared = revoked.cookies.find(
+        (cookie) => cookie.name === "refresh_token",
+      );
+      expect(cleared).toBeDefined();
+      expect(cleared!.value).toBe("");
+    });
+
+    it("returns the current failure and creates no refresh session for a wrong password", async () => {
+      const app = await getTestApp();
+      await User.create({
+        personalDetails: {
+          email: "wrong-password@test.com",
+          password: hashedPassword,
+          firstName: "Wrong",
+          lastName: "Password",
+          phoneNumber: "1234567890",
+          birthDate: new Date("1990-01-01"),
+          gender: "Man",
+          nationality: "USA",
+          address: {
+            country: "USA",
+            state: "CA",
+            city: "LA",
+            street: "Main St",
+            buildingNumber: "123",
+            postCode: "90001",
+          },
+          idNumber: "ID-WRONG-PASSWORD",
+          idType: "Passport",
+          username: "wrongpassword",
+        },
+      });
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: { email: "wrong-password@test.com", password: "not-the-password" },
+      });
+
+      expect(response.statusCode).toBe(401);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      expect(response.json().detail).toBe("Invalid credentials");
+      expect(response.json().accessToken).toBeUndefined();
+      expect(
+        response.cookies.find((cookie) => cookie.name === "refresh_token"),
+      ).toBeUndefined();
+      expect(await RefreshSession.countDocuments()).toBe(0);
+    });
+
+    it("keeps both refresh cookies live after a second sign-in", async () => {
+      const app = await getTestApp();
+      const email = "two-sessions@test.com";
+      await User.create({
+        personalDetails: {
+          email,
+          password: hashedPassword,
+          firstName: "Two",
+          lastName: "Sessions",
+          phoneNumber: "1234567890",
+          birthDate: new Date("1990-01-01"),
+          gender: "Man",
+          nationality: "USA",
+          address: {
+            country: "USA",
+            state: "CA",
+            city: "LA",
+            street: "Main St",
+            buildingNumber: "123",
+            postCode: "90001",
+          },
+          idNumber: "ID-TWO-SESSIONS",
+          idType: "Passport",
+          username: "twosessions",
+        },
+      });
+
+      const first = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: { email, password: testPassword },
+      });
+      const second = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: { email, password: testPassword },
+      });
+      const firstCookie = first.cookies.find(
+        (cookie) => cookie.name === "refresh_token",
+      );
+      const secondCookie = second.cookies.find(
+        (cookie) => cookie.name === "refresh_token",
+      );
+      expect(firstCookie?.value).toBeTruthy();
+      expect(secondCookie?.value).toBeTruthy();
+      expect(secondCookie!.value).not.toBe(firstCookie!.value);
+      expect(await RefreshSession.countDocuments()).toBe(2);
+
+      for (const cookie of [firstCookie!, secondCookie!]) {
+        const refreshRes = await app.inject({
+          method: "POST",
+          url: "/api/v1/auth/refresh",
+          headers: { cookie: `refresh_token=${cookie.value}` },
+        });
+        expect(refreshRes.statusCode).toBe(200);
+        expect(refreshRes.json().accessToken).toEqual(expect.any(String));
+        expect(refreshRes.json().user.sessionId).toBeUndefined();
+      }
+    });
+
+    it("refuses an unknown refresh session and clears the cookie", async () => {
+      const app = await getTestApp();
+      const email = "unknown-session@test.com";
+      const user = await User.create({
+        personalDetails: {
+          email,
+          password: hashedPassword,
+          firstName: "Unknown",
+          lastName: "Session",
+          phoneNumber: "1234567890",
+          birthDate: new Date("1990-01-01"),
+          gender: "Man",
+          nationality: "USA",
+          address: {
+            country: "USA",
+            state: "CA",
+            city: "LA",
+            street: "Main St",
+            buildingNumber: "123",
+            postCode: "90001",
+          },
+          idNumber: "ID-UNKNOWN-SESSION",
+          idType: "Passport",
+          username: "unknownsession",
+        },
+      });
+
+      const loginRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: { email, password: testPassword },
+      });
+      const refreshCookie = loginRes.cookies.find(
+        (cookie) => cookie.name === "refresh_token",
+      );
+      expect(refreshCookie?.value).toBeTruthy();
+      await RefreshSession.deleteMany({ accountId: user._id });
+
+      const refreshRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/refresh",
+        headers: { cookie: `refresh_token=${refreshCookie!.value}` },
+      });
+
+      expect(refreshRes.statusCode).toBe(401);
+      expect(refreshRes.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      expect(refreshRes.json().detail).toBe("Invalid or expired refresh token");
+      expect(
+        refreshRes.cookies.find((cookie) => cookie.name === "refresh_token")
+          ?.value,
+      ).toBe("");
+    });
+
+    it("refuses an expired refresh session and clears the cookie", async () => {
+      const app = await getTestApp();
+      const email = "expired-session@test.com";
+      const user = await User.create({
+        personalDetails: {
+          email,
+          password: hashedPassword,
+          firstName: "Expired",
+          lastName: "Session",
+          phoneNumber: "1234567890",
+          birthDate: new Date("1990-01-01"),
+          gender: "Man",
+          nationality: "USA",
+          address: {
+            country: "USA",
+            state: "CA",
+            city: "LA",
+            street: "Main St",
+            buildingNumber: "123",
+            postCode: "90001",
+          },
+          idNumber: "ID-EXPIRED-SESSION",
+          idType: "Passport",
+          username: "expiredsession",
+        },
+      });
+
+      const loginRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: { email, password: testPassword },
+      });
+      const refreshCookie = loginRes.cookies.find(
+        (cookie) => cookie.name === "refresh_token",
+      );
+      expect(refreshCookie?.value).toBeTruthy();
+      await RefreshSession.updateOne(
+        { accountId: user._id },
+        { $set: { expiresAt: new Date(Date.now() - 1000) } },
+      );
+
+      const refreshRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/refresh",
+        headers: { cookie: `refresh_token=${refreshCookie!.value}` },
+      });
+
+      expect(refreshRes.statusCode).toBe(401);
+      expect(refreshRes.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      expect(refreshRes.json().detail).toBe("Invalid or expired refresh token");
+      expect(
+        refreshRes.cookies.find((cookie) => cookie.name === "refresh_token")
+          ?.value,
+      ).toBe("");
     });
   });
 
@@ -1028,6 +1399,26 @@ describe("Auth Routes", () => {
       expect(body.detail).toBe("Request body is invalid");
       expect(body.instance).toBe("/api/v1/auth/login");
       expect(Array.isArray(body.errors)).toBe(true);
+    });
+
+    it("rejects a session id and refreshSessionVersion", async () => {
+      const app = await getTestApp();
+
+      for (const field of ["sessionId", "refreshSessionVersion"]) {
+        const response = await app.inject({
+          method: "POST",
+          url: "/api/v1/auth/login",
+          payload: { email: "a@b.com", password: "x", [field]: "owned" },
+        });
+
+        expect(response.statusCode, response.body).toBe(400);
+        expect(response.headers["content-type"]).toContain(
+          "application/problem+json",
+        );
+        expect(response.json().type).toBe(
+          "https://restaurant-pos.app/errors/validation",
+        );
+      }
     });
 
     it("rejects unknown keys with a validation problem document", async () => {

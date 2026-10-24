@@ -54,7 +54,7 @@ const userSchema = new Schema(
     verificationToken: { type: String, default: undefined },
     resetPasswordToken: { type: String, default: undefined },
     resetPasswordExpires: { type: Date, default: undefined },
-    /** Increment on password reset / password change to invalidate outstanding refresh JWTs. */
+    /** Increment on password reset / password change to refuse refresh sessions from the previous generation. */
     refreshSessionVersion: { type: Number, default: 0 },
     ...softDeleteSchemaFields,
   },

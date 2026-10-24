@@ -322,7 +322,7 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
       if (!session) {
         throw notFound("User not found!");
       }
-      const { accessToken, user: userOut } = issueSessionWithRefreshCookie(
+      const { accessToken, user: userOut } = await issueSessionWithRefreshCookie(
         app,
         reply,
         session,

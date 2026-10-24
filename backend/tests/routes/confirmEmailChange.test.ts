@@ -259,6 +259,23 @@ describe("POST /api/v1/auth/confirm-email-change", () => {
       headers: { cookie: `refresh_token=${refreshValue}` },
     });
     expect(refreshAfter.statusCode).toBe(401);
+
+    const loginAfter = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/login",
+      payload: { email: newEmail, password: testPassword },
+    });
+    expect(loginAfter.statusCode).toBe(200);
+    const nextCookie = loginAfter.cookies.find(
+      (cookie) => cookie.name === "refresh_token",
+    );
+    const refreshNext = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/refresh",
+      headers: { cookie: `refresh_token=${nextCookie!.value}` },
+    });
+    expect(refreshNext.statusCode).toBe(200);
+    expect(refreshNext.json().user.sessionId).toBeUndefined();
   });
 
   it("does not send a notice when the token is invalid", async () => {

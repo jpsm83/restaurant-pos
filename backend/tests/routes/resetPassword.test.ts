@@ -261,6 +261,29 @@ describe("POST /api/v1/auth/reset-password", () => {
     expect(JSON.parse(refreshAfter.body).detail).toBe(
       "Invalid or expired refresh token",
     );
+
+    const stored = await User.findById(user._id)
+      .select("refreshSessionVersion")
+      .lean();
+    expect(stored?.refreshSessionVersion).toBe(1);
+
+    const loginAfter = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/login",
+      payload: { email: "refresh-invalidate@example.com", password: newPassword },
+    });
+    expect(loginAfter.statusCode).toBe(200);
+    const nextCookie = loginAfter.cookies.find(
+      (cookie) => cookie.name === "refresh_token",
+    );
+    expect(nextCookie?.value).toBeTruthy();
+    const refreshNext = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/refresh",
+      headers: { cookie: `refresh_token=${nextCookie!.value}` },
+    });
+    expect(refreshNext.statusCode).toBe(200);
+    expect(refreshNext.json().user.sessionId).toBeUndefined();
   });
 
   it("returns 400 for wrong or expired token", async () => {
@@ -341,6 +364,69 @@ describe("POST /api/v1/auth/reset-password", () => {
       payload: { email: "biz-reset@example.com", password: newPassword },
     });
     expect(login.statusCode).toBe(200);
+  });
+
+  it("refuses a business refresh session from before password reset and accepts one issued after", async () => {
+    const app = await getTestApp();
+    const biz = await createTestBusiness("biz-refresh-invalidate@example.com");
+
+    const loginRes = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/login",
+      payload: {
+        email: "biz-refresh-invalidate@example.com",
+        password: oldPassword,
+      },
+    });
+    expect(loginRes.statusCode).toBe(200);
+    const refreshVal = refreshCookieValueFromLoginResponse({
+      headers: loginRes.headers as Record<string, unknown>,
+    });
+    expect(refreshVal).toBeDefined();
+
+    const raw = await setBusinessResetToken(biz._id);
+    const resetRes = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/reset-password",
+      payload: { token: raw, newPassword },
+    });
+    expect(resetRes.statusCode).toBe(200);
+
+    const stored = await Business.findById(biz._id)
+      .select("refreshSessionVersion")
+      .lean();
+    expect(stored?.refreshSessionVersion).toBe(1);
+
+    const refreshAfter = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/refresh",
+      headers: { cookie: `refresh_token=${refreshVal}` },
+    });
+    expect(refreshAfter.statusCode).toBe(401);
+    expect(JSON.parse(refreshAfter.body).detail).toBe(
+      "Invalid or expired refresh token",
+    );
+
+    const loginAfter = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/login",
+      payload: {
+        email: "biz-refresh-invalidate@example.com",
+        password: newPassword,
+      },
+    });
+    expect(loginAfter.statusCode).toBe(200);
+    const nextCookie = loginAfter.cookies.find(
+      (cookie) => cookie.name === "refresh_token",
+    );
+    const refreshNext = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/refresh",
+      headers: { cookie: `refresh_token=${nextCookie!.value}` },
+    });
+    expect(refreshNext.statusCode).toBe(200);
+    expect(refreshNext.json().user.type).toBe("business");
+    expect(refreshNext.json().user.sessionId).toBeUndefined();
   });
 
   it("updates business only when both accounts share the same reset token", async () => {

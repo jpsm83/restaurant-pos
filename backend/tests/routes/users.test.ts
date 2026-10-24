@@ -24,6 +24,7 @@ vi.mock("../../src/cloudinary/deleteFolderCloudinary.ts", () => ({
 }));
 
 import { Types } from "mongoose";
+import bcrypt from "bcrypt";
 import { getTestApp, generateTestToken } from "../setup.ts";
 import User from "../../src/models/user.ts";
 import Notification from "../../src/models/notification.ts";
@@ -346,7 +347,7 @@ describe("Users Routes", () => {
     it("rejects unknown and server-owned fields", async () => {
       const app = await getTestApp();
 
-      for (const field of ["isAdmin", "refreshSessionVersion"]) {
+      for (const field of ["isAdmin", "refreshSessionVersion", "sessionId"]) {
         const response = await app.inject({
           method: "POST",
           url: "/api/v1/users",
@@ -604,6 +605,21 @@ describe("Users Routes", () => {
       expect(response.statusCode, response.body).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.accessToken).toBeTruthy();
+      expect(body.user.sessionId).toBeUndefined();
+
+      const refreshCookie = response.cookies.find(
+        (cookie) => cookie.name === "refresh_token",
+      );
+      expect(refreshCookie?.value).toBeTruthy();
+      expect(response.body).not.toContain(refreshCookie!.value);
+      const refreshRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/refresh",
+        headers: { cookie: `refresh_token=${refreshCookie!.value}` },
+      });
+      expect(refreshRes.statusCode).toBe(200);
+      expect(refreshRes.json().user.type).toBe("user");
+      expect(refreshRes.json().user.sessionId).toBeUndefined();
 
       const fetched = await app.inject({
         method: "GET",
@@ -612,6 +628,178 @@ describe("Users Routes", () => {
       expect(JSON.parse(fetched.body).personalDetails.firstName).toBe(
         "Updated",
       );
+    });
+
+    it("issues a refresh session at the current generation when the password stays", async () => {
+      const app = await getTestApp();
+      const email = "keep-password@test.com";
+      const password = "TestPassword123!";
+      const user = await User.create({
+        personalDetails: {
+          username: "keeppassworduser",
+          email,
+          password: await bcrypt.hash(password, 10),
+          firstName: "Pat",
+          lastName: "Lee",
+          phoneNumber: "1234567890",
+          birthDate: new Date("1990-01-01"),
+          gender: "Man",
+          nationality: "USA",
+          idType: "National ID",
+          idNumber: "ID-keep-password",
+          address: validAddress,
+        },
+      });
+
+      const signIn = async () => {
+        const loginRes = await app.inject({
+          method: "POST",
+          url: "/api/v1/auth/login",
+          payload: { email, password },
+        });
+        expect(loginRes.statusCode).toBe(200);
+        return {
+          accessToken: loginRes.json().accessToken as string,
+          refreshCookie: loginRes.cookies.find(
+            (cookie) => cookie.name === "refresh_token",
+          )!.value,
+        };
+      };
+
+      const first = await signIn();
+      const second = await signIn();
+      const profile = validCreateFields({
+        username: "keeppassworduser",
+        email,
+        idNumber: "ID-keep-password",
+        firstName: "Pat",
+        phoneNumber: "1234567890",
+        password: "",
+      });
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/users/${user._id}`,
+        payload: multipart(profile),
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: `Bearer ${first.accessToken}`,
+        },
+      });
+
+      expect(response.statusCode, response.body).toBe(200);
+      expect(response.json().user.sessionId).toBeUndefined();
+      const issued = response.cookies.find(
+        (cookie) => cookie.name === "refresh_token",
+      );
+      expect(issued?.value).toBeTruthy();
+      const stored = await User.findById(user._id)
+        .select("refreshSessionVersion")
+        .lean();
+      expect(stored?.refreshSessionVersion ?? 0).toBe(0);
+
+      for (const cookie of [first.refreshCookie, second.refreshCookie, issued!.value]) {
+        const refreshRes = await app.inject({
+          method: "POST",
+          url: "/api/v1/auth/refresh",
+          headers: { cookie: `refresh_token=${cookie}` },
+        });
+        expect(refreshRes.statusCode).toBe(200);
+      }
+    });
+
+    it("moves the generation on a password change and issues a session at the new generation", async () => {
+      const app = await getTestApp();
+      const email = "change-password@test.com";
+      const password = "TestPassword123!";
+      const user = await User.create({
+        personalDetails: {
+          username: "changepassworduser",
+          email,
+          password: await bcrypt.hash(password, 10),
+          firstName: "Pat",
+          lastName: "Lee",
+          phoneNumber: "1234567890",
+          birthDate: new Date("1990-01-01"),
+          gender: "Man",
+          nationality: "USA",
+          idType: "National ID",
+          idNumber: "ID-change-password",
+          address: validAddress,
+        },
+      });
+
+      const signIn = async () => {
+        const loginRes = await app.inject({
+          method: "POST",
+          url: "/api/v1/auth/login",
+          payload: { email, password },
+        });
+        expect(loginRes.statusCode).toBe(200);
+        return loginRes.cookies.find(
+          (cookie) => cookie.name === "refresh_token",
+        )!.value;
+      };
+
+      const firstCookie = await signIn();
+      const secondCookie = await signIn();
+      const loginRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: { email, password },
+      });
+      const accessToken = loginRes.json().accessToken as string;
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/users/${user._id}`,
+        payload: multipart(
+          validCreateFields({
+            username: "changepassworduser",
+            email,
+            idNumber: "ID-change-password",
+            firstName: "Pat",
+            phoneNumber: "1234567890",
+            password: "NewPassword456!",
+          }),
+        ),
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      expect(response.statusCode, response.body).toBe(200);
+      expect(response.json().user.sessionId).toBeUndefined();
+      const issued = response.cookies.find(
+        (cookie) => cookie.name === "refresh_token",
+      );
+      expect(issued?.value).toBeTruthy();
+      const stored = await User.findById(user._id)
+        .select("refreshSessionVersion")
+        .lean();
+      expect(stored?.refreshSessionVersion).toBe(1);
+
+      for (const cookie of [firstCookie, secondCookie]) {
+        const refused = await app.inject({
+          method: "POST",
+          url: "/api/v1/auth/refresh",
+          headers: { cookie: `refresh_token=${cookie}` },
+        });
+        expect(refused.statusCode).toBe(401);
+        expect(refused.headers["content-type"]).toContain(
+          "application/problem+json",
+        );
+        expect(refused.json().detail).toBe("Invalid or expired refresh token");
+      }
+
+      const refreshRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/refresh",
+        headers: { cookie: `refresh_token=${issued!.value}` },
+      });
+      expect(refreshRes.statusCode).toBe(200);
+      expect(refreshRes.json().user.sessionId).toBeUndefined();
     });
   });
 

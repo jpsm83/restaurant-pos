@@ -356,7 +356,7 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
       emailVerified: false,
       role: "Tenant",
     };
-    const { accessToken, user } = issueSessionWithRefreshCookie(
+    const { accessToken, user } = await issueSessionWithRefreshCookie(
       app,
       reply,
       session,
@@ -659,7 +659,7 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
         emailVerified: updatedBusiness.emailVerified === true,
         role: "Tenant",
       };
-      const { accessToken, user } = issueSessionWithRefreshCookie(
+      const { accessToken, user } = await issueSessionWithRefreshCookie(
         app,
         reply,
         session,

@@ -27,14 +27,10 @@ import type {
   AuthSession,
   AuthBusiness,
   AuthUser,
-  RefreshTokenPayload,
 } from "../../auth/types.ts";
 import {
-  buildAuthBusinessSessionFromId,
-  buildAuthUserSessionFromUserId,
+  exchangeRefreshSession,
   issueSessionWithRefreshCookie,
-  readRefreshSessionVersionForAccount,
-  refreshTokenPayloadVersionMatchesDb,
   signAccessToken,
 } from "../../auth/issueSession.ts";
 import {
@@ -157,7 +153,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         role: "Customer",
       };
 
-      const { accessToken, user } = issueSessionWithRefreshCookie(
+      const { accessToken, user } = await issueSessionWithRefreshCookie(
         app,
         reply,
         session,
@@ -425,7 +421,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
           role: "Tenant",
         };
 
-        const { accessToken, user } = issueSessionWithRefreshCookie(
+        const { accessToken, user } = await issueSessionWithRefreshCookie(
           app,
           reply,
           session,
@@ -513,7 +509,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         }
       }
 
-      const { accessToken, user: userOut } = issueSessionWithRefreshCookie(
+      const { accessToken, user: userOut } = await issueSessionWithRefreshCookie(
         app,
         reply,
         session,
@@ -536,57 +532,33 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     const refreshToken = req.cookies[AUTH_CONFIG.REFRESH_COOKIE_NAME];
 
     if (!refreshToken) {
+      reply.clearCookie(AUTH_CONFIG.REFRESH_COOKIE_NAME, { path: "/" });
       throw unauthorized("No refresh token provided");
     }
 
-    let payload: RefreshTokenPayload;
-    try {
-      payload = app.jwt.verify<RefreshTokenPayload>(refreshToken, {
-        key: AUTH_CONFIG.REFRESH_SECRET,
-      });
-    } catch {
+    const exchanged = await exchangeRefreshSession(app, refreshToken);
+    if (exchanged.kind === "invalid") {
       reply.clearCookie(AUTH_CONFIG.REFRESH_COOKIE_NAME, { path: "/" });
       throw unauthorized("Invalid or expired refresh token");
     }
-
-    const dbVersion = await readRefreshSessionVersionForAccount(
-      payload.type,
-      payload.id,
-    );
-    if (dbVersion === null) {
+    if (exchanged.kind === "account_missing") {
       reply.clearCookie(AUTH_CONFIG.REFRESH_COOKIE_NAME, { path: "/" });
       throw unauthorized(
-        payload.type === "business" ? "Business not found" : "User not found",
+        exchanged.accountType === "business"
+          ? "Business not found"
+          : "User not found",
       );
     }
-    if (!refreshTokenPayloadVersionMatchesDb(payload, dbVersion)) {
-      reply.clearCookie(AUTH_CONFIG.REFRESH_COOKIE_NAME, { path: "/" });
-      throw unauthorized("Invalid or expired refresh token");
-    }
 
-    let session: AuthSession;
-
-    if (payload.type === "business") {
-      const businessSession = await buildAuthBusinessSessionFromId(payload.id);
-      if (!businessSession) {
-        reply.clearCookie(AUTH_CONFIG.REFRESH_COOKIE_NAME, { path: "/" });
-        throw unauthorized("Business not found");
-      }
-      session = businessSession;
-    } else {
-      const userSession = await buildAuthUserSessionFromUserId(payload.id);
-      if (!userSession) {
-        reply.clearCookie(AUTH_CONFIG.REFRESH_COOKIE_NAME, { path: "/" });
-        throw unauthorized("User not found");
-      }
-      session = userSession;
-    }
-
-    const accessToken = signAccessToken(app, session);
+    const accessToken = signAccessToken(
+      app,
+      exchanged.session,
+      exchanged.sessionId,
+    );
 
     return reply.code(200).send({
       accessToken,
-      user: session,
+      user: exchanged.session,
     });
   });
 
@@ -615,9 +587,12 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     const token = authHeader.slice(7);
 
     try {
-      const session = app.jwt.verify<AuthSession>(token);
+      const session = app.jwt.verify<AuthSession & { sessionId?: string }>(
+        token,
+      );
       await assertAccountCanUseSession(session);
-      return reply.code(200).send({ user: session });
+      const { sessionId: _sessionId, ...user } = session;
+      return reply.code(200).send({ user });
     } catch {
       throw unauthorized("Invalid or expired access token");
     }
