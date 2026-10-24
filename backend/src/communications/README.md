@@ -26,7 +26,10 @@ It consolidates architecture, API contracts, WebSocket contracts, runbook operat
 ### 2) Channel boundaries
 
 - `email` channel:
-  - SMTP send path with retry/backoff.
+  - One recipient per send, with a plain part and a rich part, from the platform address and the platform display name `POS`. No reply-to address is set.
+  - A transient SMTP failure is retried. A permanent failure, or missing or invalid platform mail configuration, fails once.
+  - The channel returns a success or failure result.
+  - Outside production, `AUTH_EMAIL_DEV_SINK_ENABLED=true` accepts the message, logs a local preview, and returns success without SMTP. Production ignores that switch.
 - `inApp` channel:
   - Delegates to `notificationService.createAndDeliver(...)`.
   - Persists notification and fans out inbox refs in `User.notifications`.
@@ -65,7 +68,7 @@ It consolidates architecture, API contracts, WebSocket contracts, runbook operat
 - **Payload:** typed in `backend/src/communications/types.ts` (`businessId`, `actor` snapshot from session, flattened `changedFields` + count, `occurredAt`, optional `context` with correlation/operation id and request metadata).
 - **Correlation / idempotency:** route forwards `X-Correlation-Id` and `X-Idempotency-Key` (when present) into `dispatchEvent` options so repeated saves can dedupe within `COMMUNICATIONS_IDEMPOTENCY_WINDOW_MS`.
 - **Recipients:** management employees resolved via `resolveManagersByPolicy`. Default policy for this event is **`allManagers`**; override with env `BUSINESS_PROFILE_UPDATED_MANAGER_POLICY` (`onDutyManagers` | `allManagers`), consistent with other events.
-- **Channels:** in-app notification to manager `employeeIds` (persisted path); email to resolved manager user emails when the email channel is enabled and SMTP is available. Copy is built by `templates/businessProfileUpdatedTemplate.ts` (sensitive field paths are not echoed verbatim in message text).
+- **Channels:** in-app notification to manager `employeeIds` (persisted path); one email per resolved manager address when the email channel is enabled. One manager's delivery failure does not cancel the others. The event's email result fails when any of those sends fail, and its sent count is how many succeeded. Copy is built by `templates/businessProfileUpdatedTemplate.ts` (sensitive field paths are not echoed verbatim in message text).
 - **Failure semantics:** route uses `fireAndForget: true` and a local `.catch` log so **HTTP 200 profile save is not blocked** by communications failures.
 
 ## Reliability model
@@ -275,12 +278,13 @@ SMTP transport (`email` channel; provider disables when host/port are missing):
 - `SMTP_HOST`, `SMTP_PORT`
 - `SMTP_USER` and `SMTP_PASS` (both set, or both empty)
 - `SMTP_FROM`
+- `AUTH_EMAIL_DEV_SINK_ENABLED` — outside production, accept the message locally instead of contacting SMTP. Ignored when `NODE_ENV` is `production`.
 
 Reliability tuning:
 
 - `COMMUNICATIONS_IDEMPOTENCY_WINDOW_MS`
-- `COMMUNICATIONS_EMAIL_RETRY_ATTEMPTS`
-- `COMMUNICATIONS_EMAIL_RETRY_BASE_DELAY_MS`
+- `COMMUNICATIONS_EMAIL_RETRY_ATTEMPTS` — retries after the first attempt. Default `2`.
+- `COMMUNICATIONS_EMAIL_RETRY_BASE_DELAY_MS` — exponential backoff base. Default `250`. `0` retries without waiting.
 
 Event policy overrides (`onDutyManagers` | `allManagers`):
 

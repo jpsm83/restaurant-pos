@@ -132,7 +132,13 @@ interface DispatchContext {
     };
   }) => Promise<void>;
   safeEmailSend: (input: {
-    to: string | string[];
+    to: string;
+    subject: string;
+    text: string;
+    businessId: Types.ObjectId;
+  }) => Promise<void>;
+  safeEmailSendToEach: (input: {
+    recipients: string[];
     subject: string;
     text: string;
     businessId: Types.ObjectId;
@@ -324,10 +330,11 @@ const handleBusinessProfileUpdated: EventHandler<"BUSINESS_PROFILE_UPDATED"> = a
   const managerEmails = await getUserEmails(managers.userIds);
   if (managerEmails.length === 0) return;
 
-  await ctx.safeEmailSend({
-    to: managerEmails,
+  const text = buildBusinessProfileUpdatedEmailBody(p);
+  await ctx.safeEmailSendToEach({
+    recipients: managerEmails,
     subject: "Business profile updated",
-    text: buildBusinessProfileUpdatedEmailBody(p),
+    text,
     businessId: p.businessId,
   });
 };
@@ -415,27 +422,68 @@ export const dispatchEvent = async <E extends CommunicationsEventName>(
       correlationId,
       fireAndForget,
     });
+    publishChannelResult(result);
+  };
+
+  const deliverEmail = async (input: {
+    to: string;
+    subject: string;
+    text: string;
+    businessId: Types.ObjectId;
+  }): Promise<CommunicationsChannelResult | null> => {
+    if (!canUseEmailChannel) return null;
+    return emailChannel.send({
+      to: input.to,
+      subject: input.subject,
+      text: input.text,
+      businessId: input.businessId,
+      eventName,
+      correlationId,
+    });
+  };
+
+  const publishChannelResult = (result: CommunicationsChannelResult) => {
     channelResults.push(result);
     recordChannelResult(eventName, result.channel, result.success);
     logChannelResult({ eventName, correlationId, businessId, result });
   };
 
   const safeEmailSend = async (input: {
-    to: string | string[];
+    to: string;
     subject: string;
     text: string;
     businessId: Types.ObjectId;
   }) => {
-    if (!canUseEmailChannel) return;
-    const result = await emailChannel.send({
-      ...input,
-      eventName,
-      correlationId,
-      fireAndForget,
+    const result = await deliverEmail(input);
+    if (result) publishChannelResult(result);
+  };
+
+  const safeEmailSendToEach = async (input: {
+    recipients: string[];
+    subject: string;
+    text: string;
+    businessId: Types.ObjectId;
+  }) => {
+    const sends: CommunicationsChannelResult[] = [];
+    for (const to of input.recipients) {
+      const result = await deliverEmail({
+        to,
+        subject: input.subject,
+        text: input.text,
+        businessId: input.businessId,
+      });
+      if (result) sends.push(result);
+    }
+    if (sends.length === 0) return;
+
+    const sentCount = sends.filter((result) => result.success).length;
+    const failure = sends.find((result) => !result.success);
+    publishChannelResult({
+      channel: "email",
+      success: sentCount === sends.length,
+      sentCount,
+      ...(failure ? { error: failure.error ?? "Email send failed" } : {}),
     });
-    channelResults.push(result);
-    recordChannelResult(eventName, result.channel, result.success);
-    logChannelResult({ eventName, correlationId, businessId, result });
   };
 
   const handler = eventHandlers[eventName];
@@ -449,6 +497,7 @@ export const dispatchEvent = async <E extends CommunicationsEventName>(
     businessId,
     safeInAppSend,
     safeEmailSend,
+    safeEmailSendToEach,
   });
 
   const success = channelResults.length === 0 || channelResults.every((r) => r.success);

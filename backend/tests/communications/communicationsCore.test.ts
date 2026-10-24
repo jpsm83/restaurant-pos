@@ -187,7 +187,7 @@ describe("Communications Core - Dispatcher Event Routing", () => {
     const emailSpy = vi.spyOn(emailChannel, "send").mockResolvedValue({
       channel: "email",
       success: true,
-      sentCount: 2,
+      sentCount: 1,
     });
 
     const result = await dispatchEvent(
@@ -215,15 +215,97 @@ describe("Communications Core - Dispatcher Event Routing", () => {
 
     expect(result.success).toBe(true);
     expect(inAppSpy).toHaveBeenCalled();
-    expect(emailSpy).toHaveBeenCalledTimes(1);
-    const emailPayload = emailSpy.mock.calls[0][0];
-    expect(Array.isArray(emailPayload.to)).toBe(true);
-    expect((emailPayload.to as string[]).length).toBe(2);
-    expect(emailPayload.text).not.toContain("credentials.password");
-    expect(emailPayload.text).toContain("Protected account fields");
+    expect(emailSpy).toHaveBeenCalledTimes(2);
+    const addresses = emailSpy.mock.calls.map((call) => call[0].to);
+    expect(addresses).toEqual(
+      expect.arrayContaining([
+        managerOneUser.personalDetails.email,
+        managerTwoUser.personalDetails.email,
+      ]),
+    );
+    expect(new Set(addresses).size).toBe(2);
+    for (const payload of emailSpy.mock.calls.map((call) => call[0])) {
+      expect(typeof payload.to).toBe("string");
+      expect(payload.text).not.toContain("credentials.password");
+      expect(payload.text).toContain("Protected account fields");
+    }
 
     emailSpy.mockRestore();
     inAppSpy.mockRestore();
+
+    if (previousEmailToggle === undefined) delete process.env.COMMUNICATIONS_EMAIL_ENABLED;
+    else process.env.COMMUNICATIONS_EMAIL_ENABLED = previousEmailToggle;
+
+    if (previousInAppToggle === undefined) delete process.env.COMMUNICATIONS_INAPP_ENABLED;
+    else process.env.COMMUNICATIONS_INAPP_ENABLED = previousInAppToggle;
+  });
+
+  it("reports one failed profile-updated email result and still sends the other manager", async () => {
+    const previousEmailToggle = process.env.COMMUNICATIONS_EMAIL_ENABLED;
+    const previousInAppToggle = process.env.COMMUNICATIONS_INAPP_ENABLED;
+    process.env.COMMUNICATIONS_EMAIL_ENABLED = "true";
+    process.env.COMMUNICATIONS_INAPP_ENABLED = "true";
+
+    const businessId = new Types.ObjectId();
+    const managerOneUser = await createTestUser("profile-updated-fail-1");
+    const managerTwoUser = await createTestUser("profile-updated-fail-2");
+    await createTestEmployee({
+      businessId,
+      userId: managerOneUser._id,
+      taxSuffix: "bpf1",
+    });
+    await createTestEmployee({
+      businessId,
+      userId: managerTwoUser._id,
+      taxSuffix: "bpf2",
+    });
+
+    const failingAddress = managerOneUser.personalDetails.email;
+    const emailSpy = vi.spyOn(emailChannel, "send").mockImplementation(async (payload) => {
+      if (payload.to === failingAddress) {
+        return {
+          channel: "email",
+          success: false,
+          sentCount: 0,
+          error: "mailbox unavailable",
+        };
+      }
+      return {
+        channel: "email",
+        success: true,
+        sentCount: 1,
+      };
+    });
+
+    const result = await dispatchEvent(
+      "BUSINESS_PROFILE_UPDATED",
+      {
+        businessId,
+        actor: { source: "businessOwner", email: "owner@example.com" },
+        changedFields: ["tradeName"],
+        changedFieldCount: 1,
+        occurredAt: new Date("2026-04-02T18:45:00.000Z"),
+      },
+      { fireAndForget: true, idempotencyKey: "biz-profile-update-partial" }
+    );
+
+    expect(emailSpy).toHaveBeenCalledTimes(2);
+    expect(emailSpy.mock.calls.map((call) => call[0].to)).toEqual(
+      expect.arrayContaining([
+        managerOneUser.personalDetails.email,
+        managerTwoUser.personalDetails.email,
+      ]),
+    );
+    expect(result.channels.filter((channel) => channel.channel === "email")).toEqual([
+      {
+        channel: "email",
+        success: false,
+        sentCount: 1,
+        error: "mailbox unavailable",
+      },
+    ]);
+
+    emailSpy.mockRestore();
 
     if (previousEmailToggle === undefined) delete process.env.COMMUNICATIONS_EMAIL_ENABLED;
     else process.env.COMMUNICATIONS_EMAIL_ENABLED = previousEmailToggle;

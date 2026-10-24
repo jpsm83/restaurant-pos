@@ -143,14 +143,13 @@ export interface CommunicationsDispatchResult {
 }
 
 export interface EmailSendInput {
-  to: string | string[];
+  to: string;
   subject: string;
   text?: string;
   html?: string;
   eventName?: CommunicationsEventName;
   businessId?: Types.ObjectId;
   correlationId?: string;
-  fireAndForget?: boolean;
 }
 
 export interface InAppSendInput {
