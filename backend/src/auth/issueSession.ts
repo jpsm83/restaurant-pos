@@ -1,6 +1,7 @@
 /**
- * Mint an access token bound to a stored refresh session and set the refresh
- * cookie — shared by login, signup, business create/update, and user self PATCH.
+ * Issue, exchange, and revoke one stored refresh session.
+ * Issuance mints the access token and sets the refresh cookie — shared by
+ * login, signup, business create/update, and user self PATCH.
  */
 
 import type { FastifyInstance, FastifyReply } from "fastify";
@@ -137,6 +138,33 @@ export async function exchangeRefreshSession(
   }
 
   return { kind: "issued", session, sessionId: payload.sid };
+}
+
+/**
+ * Revoke the one refresh session the cookie identifies.
+ * A missing or unreadable cookie leaves every session as it is.
+ */
+export async function revokePresentedRefreshSession(
+  app: FastifyInstance,
+  refreshToken: string | undefined,
+): Promise<void> {
+  if (!refreshToken) return;
+
+  let payload: RefreshTokenPayload;
+  try {
+    payload = app.jwt.verify<RefreshTokenPayload>(refreshToken, {
+      key: AUTH_CONFIG.REFRESH_SECRET,
+    });
+  } catch {
+    return;
+  }
+
+  if (!payload.sid || !Types.ObjectId.isValid(payload.sid)) return;
+
+  await RefreshSession.updateOne(
+    { _id: payload.sid },
+    { $set: { revoked: true } },
+  );
 }
 
 /** `null` if the account document is missing. */

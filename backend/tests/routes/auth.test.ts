@@ -357,6 +357,7 @@ describe("Auth Routes", () => {
       });
 
       expect(response.statusCode).toBe(200);
+      expect(response.headers["content-type"]).toContain("application/json");
       const body = JSON.parse(response.body);
       expect(body.message).toBe("Logged out successfully");
       expect(
@@ -379,6 +380,337 @@ describe("Auth Routes", () => {
 
       expect(response.statusCode).toBe(200);
       expect(response.json().message).toBe("Logged out successfully");
+    });
+
+    it("revokes the presented refresh session, clears both cookies, and returns the success message", async () => {
+      const app = await getTestApp();
+      const email = "logout-one-session@test.com";
+      await User.create({
+        personalDetails: {
+          email,
+          password: hashedPassword,
+          firstName: "Logout",
+          lastName: "One",
+          phoneNumber: "1234567890",
+          birthDate: new Date("1990-01-01"),
+          gender: "Man",
+          nationality: "USA",
+          address: {
+            country: "USA",
+            state: "CA",
+            city: "LA",
+            street: "Main St",
+            buildingNumber: "123",
+            postCode: "90001",
+          },
+          idNumber: "ID-LOGOUT-ONE",
+          idType: "Passport",
+          username: "logoutone",
+        },
+      });
+
+      const loginRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: { email, password: testPassword },
+      });
+      expect(loginRes.statusCode).toBe(200);
+      const refreshCookie = loginRes.cookies.find(
+        (cookie) => cookie.name === "refresh_token",
+      );
+      expect(refreshCookie?.value).toBeTruthy();
+
+      const logoutRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/logout",
+        headers: { cookie: `refresh_token=${refreshCookie!.value}` },
+      });
+
+      expect(logoutRes.statusCode).toBe(200);
+      expect(logoutRes.headers["content-type"]).toContain("application/json");
+      expect(logoutRes.json()).toEqual({ message: "Logged out successfully" });
+      expect(
+        logoutRes.cookies.find((cookie) => cookie.name === "refresh_token")
+          ?.value,
+      ).toBe("");
+      expect(
+        logoutRes.cookies.find((cookie) => cookie.name === "auth_mode")?.value,
+      ).toBe("");
+
+      const refreshRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/refresh",
+        headers: { cookie: `refresh_token=${refreshCookie!.value}` },
+      });
+
+      expect(refreshRes.statusCode).toBe(401);
+      expect(refreshRes.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      expect(refreshRes.json().detail).toBe("Invalid or expired refresh token");
+      expect(refreshRes.json().accessToken).toBeUndefined();
+      expect(
+        refreshRes.cookies.find((cookie) => cookie.name === "refresh_token")
+          ?.value,
+      ).toBe("");
+    });
+
+    it("leaves the account generation unchanged", async () => {
+      const app = await getTestApp();
+      const email = "logout-generation@test.com";
+      const user = await User.create({
+        personalDetails: {
+          email,
+          password: hashedPassword,
+          firstName: "Logout",
+          lastName: "Generation",
+          phoneNumber: "1234567890",
+          birthDate: new Date("1990-01-01"),
+          gender: "Man",
+          nationality: "USA",
+          address: {
+            country: "USA",
+            state: "CA",
+            city: "LA",
+            street: "Main St",
+            buildingNumber: "123",
+            postCode: "90001",
+          },
+          idNumber: "ID-LOGOUT-GEN",
+          idType: "Passport",
+          username: "logoutgen",
+        },
+      });
+
+      const loginRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: { email, password: testPassword },
+      });
+      const refreshCookie = loginRes.cookies.find(
+        (cookie) => cookie.name === "refresh_token",
+      );
+      expect(refreshCookie?.value).toBeTruthy();
+
+      const logoutRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/logout",
+        headers: { cookie: `refresh_token=${refreshCookie!.value}` },
+      });
+      expect(logoutRes.statusCode).toBe(200);
+
+      const stored = await User.findById(user._id).select("refreshSessionVersion");
+      expect(stored?.refreshSessionVersion ?? 0).toBe(0);
+    });
+
+    it("leaves the other user session able to refresh and call current-user", async () => {
+      const app = await getTestApp();
+      const email = "logout-peer-user@test.com";
+      const user = await User.create({
+        personalDetails: {
+          email,
+          password: hashedPassword,
+          firstName: "Logout",
+          lastName: "Peer",
+          phoneNumber: "1234567890",
+          birthDate: new Date("1990-01-01"),
+          gender: "Man",
+          nationality: "USA",
+          address: {
+            country: "USA",
+            state: "CA",
+            city: "LA",
+            street: "Main St",
+            buildingNumber: "123",
+            postCode: "90001",
+          },
+          idNumber: "ID-LOGOUT-PEER",
+          idType: "Passport",
+          username: "logoutpeer",
+        },
+      });
+
+      const first = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: { email, password: testPassword },
+      });
+      const second = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: { email, password: testPassword },
+      });
+      const firstCookie = first.cookies.find(
+        (cookie) => cookie.name === "refresh_token",
+      );
+      const secondCookie = second.cookies.find(
+        (cookie) => cookie.name === "refresh_token",
+      );
+      expect(firstCookie?.value).toBeTruthy();
+      expect(secondCookie?.value).toBeTruthy();
+      expect(secondCookie!.value).not.toBe(firstCookie!.value);
+
+      for (const cookie of [firstCookie!, secondCookie!]) {
+        const beforeLogout = await app.inject({
+          method: "POST",
+          url: "/api/v1/auth/refresh",
+          headers: { cookie: `refresh_token=${cookie.value}` },
+        });
+        expect(beforeLogout.statusCode).toBe(200);
+        expect(beforeLogout.headers["content-type"]).toContain("application/json");
+        expect(typeof beforeLogout.json().accessToken).toBe("string");
+      }
+
+      const logoutRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/logout",
+        headers: { cookie: `refresh_token=${firstCookie!.value}` },
+      });
+      expect(logoutRes.statusCode).toBe(200);
+      expect(logoutRes.headers["content-type"]).toContain("application/json");
+      expect(logoutRes.json()).toEqual({ message: "Logged out successfully" });
+
+      const signedOut = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/refresh",
+        headers: { cookie: `refresh_token=${firstCookie!.value}` },
+      });
+      expect(signedOut.statusCode).toBe(401);
+      expect(signedOut.json().accessToken).toBeUndefined();
+
+      const stillIn = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/refresh",
+        headers: { cookie: `refresh_token=${secondCookie!.value}` },
+      });
+      expect(stillIn.statusCode).toBe(200);
+      expect(stillIn.headers["content-type"]).toContain("application/json");
+      const stillInBody = stillIn.json();
+      expect(typeof stillInBody.accessToken).toBe("string");
+      expect(stillInBody.user.id).toBe(String(user._id));
+      expect(stillInBody.user.sessionId).toBeUndefined();
+
+      const currentUser = await app.inject({
+        method: "GET",
+        url: "/api/v1/auth/me",
+        headers: { authorization: `Bearer ${stillInBody.accessToken}` },
+      });
+      expect(currentUser.statusCode).toBe(200);
+      expect(currentUser.headers["content-type"]).toContain("application/json");
+      expect(currentUser.json().user.id).toBe(String(user._id));
+      expect(currentUser.json().user.sessionId).toBeUndefined();
+
+      const stored = await User.findById(user._id).select("refreshSessionVersion");
+      expect(stored?.refreshSessionVersion ?? 0).toBe(0);
+    });
+
+    it("leaves the other business session able to refresh and call current-user", async () => {
+      const app = await getTestApp();
+      const email = "logout-peer-biz@test.com";
+      const business = await Business.create({
+        tradeName: "Logout Peer Biz",
+        legalName: "Logout Peer Biz Legal",
+        email,
+        password: hashedPassword,
+        taxNumber: "TAX-LOGOUT-PEER",
+        phoneNumber: "1234567890",
+        currencyTrade: "USD",
+        address: {
+          country: "USA",
+          state: "CA",
+          city: "LA",
+          street: "Main St",
+          buildingNumber: "123",
+          postCode: "90001",
+        },
+      });
+
+      const first = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: { email, password: testPassword },
+      });
+      const second = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: { email, password: testPassword },
+      });
+      const firstCookie = first.cookies.find(
+        (cookie) => cookie.name === "refresh_token",
+      );
+      const secondCookie = second.cookies.find(
+        (cookie) => cookie.name === "refresh_token",
+      );
+      expect(firstCookie?.value).toBeTruthy();
+      expect(secondCookie?.value).toBeTruthy();
+      expect(secondCookie!.value).not.toBe(firstCookie!.value);
+
+      for (const cookie of [firstCookie!, secondCookie!]) {
+        const beforeLogout = await app.inject({
+          method: "POST",
+          url: "/api/v1/auth/refresh",
+          headers: { cookie: `refresh_token=${cookie.value}` },
+        });
+        expect(beforeLogout.statusCode).toBe(200);
+        expect(beforeLogout.headers["content-type"]).toContain("application/json");
+        expect(typeof beforeLogout.json().accessToken).toBe("string");
+      }
+
+      const logoutRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/logout",
+        headers: { cookie: `refresh_token=${secondCookie!.value}` },
+      });
+      expect(logoutRes.statusCode).toBe(200);
+      expect(logoutRes.headers["content-type"]).toContain("application/json");
+      expect(logoutRes.json()).toEqual({ message: "Logged out successfully" });
+      expect(
+        logoutRes.cookies.find((cookie) => cookie.name === "refresh_token")
+          ?.value,
+      ).toBe("");
+      expect(
+        logoutRes.cookies.find((cookie) => cookie.name === "auth_mode")?.value,
+      ).toBe("");
+
+      const signedOut = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/refresh",
+        headers: { cookie: `refresh_token=${secondCookie!.value}` },
+      });
+      expect(signedOut.statusCode).toBe(401);
+      expect(signedOut.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      expect(signedOut.json().detail).toBe("Invalid or expired refresh token");
+      expect(signedOut.json().accessToken).toBeUndefined();
+
+      const stillIn = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/refresh",
+        headers: { cookie: `refresh_token=${firstCookie!.value}` },
+      });
+      expect(stillIn.statusCode).toBe(200);
+      expect(stillIn.headers["content-type"]).toContain("application/json");
+      const stillInBody = stillIn.json();
+      expect(typeof stillInBody.accessToken).toBe("string");
+      expect(stillInBody.user.id).toBe(String(business._id));
+      expect(stillInBody.user.type).toBe("business");
+      expect(stillInBody.user.sessionId).toBeUndefined();
+
+      const currentUser = await app.inject({
+        method: "GET",
+        url: "/api/v1/auth/me",
+        headers: { authorization: `Bearer ${stillInBody.accessToken}` },
+      });
+      expect(currentUser.statusCode).toBe(200);
+      expect(currentUser.headers["content-type"]).toContain("application/json");
+      expect(currentUser.json().user.id).toBe(String(business._id));
+      expect(currentUser.json().user.type).toBe("business");
+
+      const stored = await Business.findById(business._id).select(
+        "refreshSessionVersion",
+      );
+      expect(stored?.refreshSessionVersion ?? 0).toBe(0);
     });
   });
 

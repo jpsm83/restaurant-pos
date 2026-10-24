@@ -31,6 +31,7 @@ import type {
 import {
   exchangeRefreshSession,
   issueSessionWithRefreshCookie,
+  revokePresentedRefreshSession,
   signAccessToken,
 } from "../../auth/issueSession.ts";
 import {
@@ -564,9 +565,14 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
 
   /**
    * POST /auth/logout
-   * Clear refresh token cookie.
+   * Revoke the presented refresh session, then clear the refresh and auth-mode cookies.
+   * A missing cookie still succeeds and still clears both cookies.
    */
-  app.post("/logout", async (_req, reply) => {
+  app.post("/logout", async (req, reply) => {
+    await revokePresentedRefreshSession(
+      app,
+      req.cookies[AUTH_CONFIG.REFRESH_COOKIE_NAME],
+    );
     reply.clearCookie(AUTH_CONFIG.REFRESH_COOKIE_NAME, { path: "/" });
     reply.clearCookie(AUTH_CONFIG.AUTH_MODE_COOKIE_NAME, { path: "/" });
     return reply.code(200).send({ message: "Logged out successfully" });
