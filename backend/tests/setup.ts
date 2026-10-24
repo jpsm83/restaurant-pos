@@ -13,7 +13,13 @@ import { MongoMemoryReplSet } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import { beforeAll, afterAll, afterEach } from "vitest";
 import type { FastifyInstance } from "fastify";
+import { AUTH_CONFIG } from "../src/auth/config.ts";
+import {
+  readRefreshSessionVersionForAccount,
+  signAccessToken,
+} from "../src/auth/issueSession.ts";
 import type { AuthSession } from "../src/auth/types.ts";
+import RefreshSession from "../src/models/refreshSession.ts";
 
 let mongoReplSet: MongoMemoryReplSet | null = null;
 let testApp: FastifyInstance | null = null;
@@ -66,13 +72,37 @@ export async function getTestApp(): Promise<FastifyInstance> {
 }
 
 /**
+ * Sign an access token bound to a live refresh session for this account.
+ * Route tests that present a bearer stay authenticated; a token with no
+ * session id is refused by access-token acceptance.
+ */
+export async function signAccessTokenForLiveSession(
+  app: FastifyInstance,
+  session: AuthSession,
+): Promise<string> {
+  const refreshSessionVersion =
+    (await readRefreshSessionVersionForAccount(session.type, session.id)) ?? 0;
+  const expiresAt = new Date(
+    Date.now() + AUTH_CONFIG.COOKIE_MAX_AGE_SECONDS * 1000,
+  );
+  const stored = await RefreshSession.create({
+    accountId: session.id,
+    accountType: session.type,
+    refreshSessionVersion,
+    expiresAt,
+    revoked: false,
+  });
+  return signAccessToken(app, session, String(stored._id));
+}
+
+/**
  * Generate a valid JWT token for testing auth-protected routes
  * @param session - The auth session to encode in the token
  * @returns Bearer token string ready to use in Authorization header
  */
 export async function generateTestToken(session: AuthSession): Promise<string> {
   const app = await getTestApp();
-  const token = app.jwt.sign(session);
+  const token = await signAccessTokenForLiveSession(app, session);
   return `Bearer ${token}`;
 }
 

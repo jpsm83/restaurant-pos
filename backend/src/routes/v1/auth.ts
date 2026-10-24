@@ -19,15 +19,11 @@ import { withSoftDeleteFilter } from "../../models/softDelete.ts";
 import canLogAsEmployee from "../../auth/canLogAsEmployee.ts";
 import { AUTH_CONFIG } from "../../auth/config.ts";
 import {
-  assertAccountCanUseSession,
   createAuthHook,
   requireBusinessHook,
+  requireLiveAccessSession,
 } from "../../auth/middleware.ts";
-import type {
-  AuthSession,
-  AuthBusiness,
-  AuthUser,
-} from "../../auth/types.ts";
+import type { AuthBusiness, AuthUser } from "../../auth/types.ts";
 import {
   exchangeRefreshSession,
   issueSessionWithRefreshCookie,
@@ -286,15 +282,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     }
 
     const token = authHeader.slice(7);
-
-    let session: AuthSession;
-    try {
-      session = app.jwt.verify<AuthSession>(token);
-    } catch {
-      throw unauthorized("Invalid or expired access token");
-    }
-
-    await assertAccountCanUseSession(session);
+    const session = await requireLiveAccessSession(app, token);
 
     const result =
       await handleResendEmailConfirmationForAuthenticatedAccount(session);
@@ -593,11 +581,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     const token = authHeader.slice(7);
 
     try {
-      const session = app.jwt.verify<AuthSession & { sessionId?: string }>(
-        token,
-      );
-      await assertAccountCanUseSession(session);
-      const { sessionId: _sessionId, ...user } = session;
+      const user = await requireLiveAccessSession(app, token);
       return reply.code(200).send({ user });
     } catch {
       throw unauthorized("Invalid or expired access token");
@@ -620,15 +604,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       }
 
       const token = authHeader.slice(7);
-
-      let session: AuthSession;
-      try {
-        session = app.jwt.verify<AuthSession>(token);
-      } catch {
-        throw unauthorized("Invalid or expired access token");
-      }
-
-      await assertAccountCanUseSession(session);
+      const session = await requireLiveAccessSession(app, token);
 
       if (session.type !== "user") {
         throw badRequest("Only users can set auth mode");

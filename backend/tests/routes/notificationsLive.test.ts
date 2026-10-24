@@ -1,10 +1,27 @@
 import { describe, expect, it } from "vitest";
 import WebSocket from "ws";
 import type { AddressInfo } from "node:net";
+import { Types } from "mongoose";
+import type { FastifyInstance } from "fastify";
 import { buildApp } from "../../src/server.ts";
 import Business from "../../src/models/business.ts";
+import RefreshSession from "../../src/models/refreshSession.ts";
 import User from "../../src/models/user.ts";
 import { getCommunicationsMetricsSnapshot } from "../../src/communications/observability/metrics.ts";
+import { signAccessTokenForLiveSession } from "../setup.ts";
+
+function liveUserToken(
+  app: FastifyInstance,
+  id: string,
+  email: string,
+): Promise<string> {
+  return signAccessTokenForLiveSession(app, {
+    id,
+    email,
+    type: "user",
+    role: "Customer",
+  });
+}
 
 const withLiveServer = async <T>(
   callback: (input: { baseUrl: string; app: Awaited<ReturnType<typeof buildApp>> }) => Promise<T>
@@ -84,6 +101,89 @@ describe("Notifications Live Route", () => {
     });
   });
 
+  it("closes a revoked access token the same way as an invalid token", async () => {
+    await withLiveServer(async ({ baseUrl, app }) => {
+      const user = await createTestUser("live-revoked");
+      const userToken = await signAccessTokenForLiveSession(app, {
+        id: user._id.toString(),
+        email: user.personalDetails.email,
+        type: "user",
+        role: "Customer",
+      });
+      await RefreshSession.updateMany(
+        { accountId: user._id },
+        { $set: { revoked: true } },
+      );
+
+      const closed = await new Promise<{ code: number; reason: string }>(
+        (resolve, reject) => {
+          const timer = setTimeout(
+            () => reject(new Error("socket stayed open")),
+            3_000,
+          );
+          const socket = new WebSocket(baseUrl, {
+            headers: { Authorization: `Bearer ${userToken}` },
+          });
+          socket.on("close", (code, reason) => {
+            clearTimeout(timer);
+            resolve({ code, reason: reason.toString() });
+          });
+          socket.on("message", () => {
+            clearTimeout(timer);
+            socket.close();
+            reject(new Error("revoked token was accepted"));
+          });
+          socket.on("error", (error) => {
+            clearTimeout(timer);
+            reject(error);
+          });
+        },
+      );
+
+      expect(closed.code).toBe(1008);
+      expect(closed.reason).toBe("Unauthorized");
+    });
+  });
+
+  it("closes a session-less access token the same way as an invalid token", async () => {
+    await withLiveServer(async ({ baseUrl, app }) => {
+      const userToken = app.jwt.sign({
+        id: new Types.ObjectId().toString(),
+        email: "session-less@test.com",
+        type: "user",
+        role: "Customer",
+      });
+
+      const closed = await new Promise<{ code: number; reason: string }>(
+        (resolve, reject) => {
+          const timer = setTimeout(
+            () => reject(new Error("socket stayed open")),
+            3_000,
+          );
+          const socket = new WebSocket(baseUrl, {
+            headers: { Authorization: `Bearer ${userToken}` },
+          });
+          socket.on("close", (code, reason) => {
+            clearTimeout(timer);
+            resolve({ code, reason: reason.toString() });
+          });
+          socket.on("message", () => {
+            clearTimeout(timer);
+            socket.close();
+            reject(new Error("session-less token was accepted"));
+          });
+          socket.on("error", (error) => {
+            clearTimeout(timer);
+            reject(error);
+          });
+        },
+      );
+
+      expect(closed.code).toBe(1008);
+      expect(closed.reason).toBe("Unauthorized");
+    });
+  });
+
   it("rejects websocket connection with invalid bearer token", async () => {
     await withLiveServer(async ({ baseUrl }) => {
       const closed = await new Promise<{ code: number; reason: string }>((resolve) => {
@@ -102,10 +202,11 @@ describe("Notifications Live Route", () => {
 
   it("rejects websocket connection for non-user session token", async () => {
     await withLiveServer(async ({ baseUrl, app }) => {
-      const businessToken = app.jwt.sign({
-        id: "business-id",
+      const businessToken = await signAccessTokenForLiveSession(app, {
+        id: new Types.ObjectId().toString(),
         email: "owner@test.com",
         type: "business",
+        role: "Tenant",
       });
 
       const closed = await new Promise<{ code: number; reason: string }>((resolve) => {
@@ -125,11 +226,7 @@ describe("Notifications Live Route", () => {
   it("accepts user token and returns connection ack payload contract", async () => {
     await withLiveServer(async ({ baseUrl, app }) => {
       const userId = "65f0c2b6a2e42e8d4f8d1111";
-      const userToken = app.jwt.sign({
-        id: userId,
-        email: "customer@test.com",
-        type: "user",
-      });
+      const userToken = await liveUserToken(app, userId, "customer@test.com");
 
       const message = await new Promise<string>((resolve, reject) => {
         const socket = new WebSocket(baseUrl, {
@@ -151,14 +248,56 @@ describe("Notifications Live Route", () => {
     });
   });
 
+  it("keeps a soft-deleted user's live access token connected", async () => {
+    await withLiveServer(async ({ baseUrl, app }) => {
+      const user = await createTestUser("live-deleted");
+      const userToken = await liveUserToken(
+        app,
+        user._id.toString(),
+        String(user.personalDetails.email),
+      );
+      await User.updateOne(
+        { _id: user._id },
+        { $set: { deleted: true, deletedAt: new Date(), deletedBy: user._id } },
+      );
+
+      const message = await new Promise<string>((resolve, reject) => {
+        const timer = setTimeout(
+          () => reject(new Error("socket did not connect")),
+          3_000,
+        );
+        const socket = new WebSocket(baseUrl, {
+          headers: { Authorization: `Bearer ${userToken}` },
+        });
+        socket.on("message", (data) => {
+          clearTimeout(timer);
+          socket.close();
+          resolve(data.toString());
+        });
+        socket.on("close", (code, reason) => {
+          clearTimeout(timer);
+          reject(new Error(`closed ${code} ${reason.toString()}`));
+        });
+        socket.on("error", (error) => {
+          clearTimeout(timer);
+          reject(error);
+        });
+      });
+
+      const parsed = JSON.parse(message);
+      expect(parsed.type).toBe("notification.live.connected");
+      expect(parsed.data).toEqual({ userId: user._id.toString() });
+    });
+  });
+
   it("accepts token via access_token query parameter", async () => {
     await withLiveServer(async ({ baseUrl, app }) => {
       const userId = "65f0c2b6a2e42e8d4f8d2222";
-      const userToken = app.jwt.sign({
-        id: userId,
-        email: "customer-query@test.com",
-        type: "user",
-      });
+      const userToken = await liveUserToken(
+        app,
+        userId,
+        "customer-query@test.com",
+      );
 
       const message = await new Promise<string>((resolve, reject) => {
         const socket = new WebSocket(`${baseUrl}?access_token=${encodeURIComponent(userToken)}`);
@@ -180,11 +319,11 @@ describe("Notifications Live Route", () => {
     await withLiveServer(async ({ baseUrl, app }) => {
       const business = await createTestBusiness();
       const user = await createTestUser("live-post");
-      const userToken = app.jwt.sign({
-        id: user._id.toString(),
-        email: user.personalDetails.email,
-        type: "user",
-      });
+      const userToken = await liveUserToken(
+        app,
+        user._id.toString(),
+        String(user.personalDetails.email),
+      );
 
       const pushedPayload = await new Promise<string>((resolve, reject) => {
         const socket = new WebSocket(baseUrl, {
@@ -241,16 +380,16 @@ describe("Notifications Live Route", () => {
       const nonTargetUser = await createTestUser("live-non-target");
       const offlineUser = await createTestUser("live-offline");
 
-      const targetToken = app.jwt.sign({
-        id: targetUser._id.toString(),
-        email: targetUser.personalDetails.email,
-        type: "user",
-      });
-      const nonTargetToken = app.jwt.sign({
-        id: nonTargetUser._id.toString(),
-        email: nonTargetUser.personalDetails.email,
-        type: "user",
-      });
+      const targetToken = await liveUserToken(
+        app,
+        targetUser._id.toString(),
+        String(targetUser.personalDetails.email),
+      );
+      const nonTargetToken = await liveUserToken(
+        app,
+        nonTargetUser._id.toString(),
+        String(nonTargetUser.personalDetails.email),
+      );
 
       const targetSocket = new WebSocket(baseUrl, {
         headers: { Authorization: `Bearer ${targetToken}` },

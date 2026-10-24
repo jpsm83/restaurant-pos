@@ -604,6 +604,162 @@ describe("Auth Routes", () => {
       expect(stored?.refreshSessionVersion ?? 0).toBe(0);
     });
 
+    it("refuses the signed-out session's access token and still accepts the peer session", async () => {
+      const app = await getTestApp();
+      const email = "logout-access-peer@test.com";
+      await User.create({
+        personalDetails: {
+          email,
+          password: hashedPassword,
+          firstName: "Logout",
+          lastName: "Access",
+          phoneNumber: "1234567890",
+          birthDate: new Date("1990-01-01"),
+          gender: "Man",
+          nationality: "USA",
+          address: {
+            country: "USA",
+            state: "CA",
+            city: "LA",
+            street: "Main St",
+            buildingNumber: "123",
+            postCode: "90001",
+          },
+          idNumber: "ID-LOGOUT-ACCESS",
+          idType: "Passport",
+          username: "logoutaccess",
+        },
+      });
+
+      const first = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: { email, password: testPassword },
+      });
+      const second = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: { email, password: testPassword },
+      });
+      expect(first.statusCode).toBe(200);
+      expect(second.statusCode).toBe(200);
+      const firstToken = first.json().accessToken as string;
+      const secondToken = second.json().accessToken as string;
+      const firstCookie = first.cookies.find(
+        (cookie) => cookie.name === "refresh_token",
+      );
+      expect(firstCookie?.value).toBeTruthy();
+
+      const logoutRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/logout",
+        headers: { cookie: `refresh_token=${firstCookie!.value}` },
+      });
+      expect(logoutRes.statusCode).toBe(200);
+
+      const signedOut = await app.inject({
+        method: "GET",
+        url: "/api/v1/auth/me",
+        headers: { authorization: `Bearer ${firstToken}` },
+      });
+      expect(signedOut.statusCode).toBe(401);
+      expect(signedOut.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      expect(signedOut.json().detail).toBe("Invalid or expired access token");
+
+      const stillIn = await app.inject({
+        method: "GET",
+        url: "/api/v1/auth/me",
+        headers: { authorization: `Bearer ${secondToken}` },
+      });
+      expect(stillIn.statusCode).toBe(200);
+      expect(stillIn.headers["content-type"]).toContain("application/json");
+      expect(stillIn.json().user.sessionId).toBeUndefined();
+    });
+
+    it("refuses a revoked access token on a protected route, resend-confirmation, and set-mode", async () => {
+      const app = await getTestApp();
+      const email = "logout-access-routes@test.com";
+      await User.create({
+        personalDetails: {
+          email,
+          password: hashedPassword,
+          emailVerified: true,
+          firstName: "Logout",
+          lastName: "Routes",
+          phoneNumber: "1234567890",
+          birthDate: new Date("1990-01-01"),
+          gender: "Man",
+          nationality: "USA",
+          address: {
+            country: "USA",
+            state: "CA",
+            city: "LA",
+            street: "Main St",
+            buildingNumber: "123",
+            postCode: "90001",
+          },
+          idNumber: "ID-LOGOUT-ROUTES",
+          idType: "Passport",
+          username: "logoutroutes",
+        },
+      });
+
+      const loginRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: { email, password: testPassword },
+      });
+      expect(loginRes.statusCode).toBe(200);
+      const accessToken = loginRes.json().accessToken as string;
+      const refreshCookie = loginRes.cookies.find(
+        (cookie) => cookie.name === "refresh_token",
+      );
+      expect(refreshCookie?.value).toBeTruthy();
+
+      const before = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/set-mode",
+        headers: { authorization: `Bearer ${accessToken}` },
+        payload: { mode: "customer" },
+      });
+      expect(before.statusCode).toBe(200);
+
+      const logoutRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/logout",
+        headers: { cookie: `refresh_token=${refreshCookie!.value}` },
+      });
+      expect(logoutRes.statusCode).toBe(200);
+
+      const authorization = { authorization: `Bearer ${accessToken}` };
+      const protectedRead = await app.inject({
+        method: "GET",
+        url: `/api/v1/business/${new Types.ObjectId().toString()}`,
+        headers: authorization,
+      });
+      const resend = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/resend-email-confirmation",
+        headers: authorization,
+      });
+      const setMode = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/set-mode",
+        headers: authorization,
+        payload: { mode: "customer" },
+      });
+
+      for (const response of [protectedRead, resend, setMode]) {
+        expect(response.statusCode).toBe(401);
+        expect(response.headers["content-type"]).toContain(
+          "application/problem+json",
+        );
+        expect(response.json().detail).toBe("Invalid or expired access token");
+      }
+    });
+
     it("leaves the other business session able to refresh and call current-user", async () => {
       const app = await getTestApp();
       const email = "logout-peer-biz@test.com";
@@ -1315,6 +1471,168 @@ describe("Auth Routes", () => {
         refreshRes.cookies.find((cookie) => cookie.name === "refresh_token")
           ?.value,
       ).toBe("");
+    });
+  });
+
+  describe("access token refresh session", () => {
+    async function signInCustomer(email: string, username: string, idNumber: string) {
+      const user = await User.create({
+        personalDetails: {
+          email,
+          password: hashedPassword,
+          emailVerified: true,
+          firstName: "Access",
+          lastName: "Session",
+          phoneNumber: "1234567890",
+          birthDate: new Date("1990-01-01"),
+          gender: "Man",
+          nationality: "USA",
+          address: {
+            country: "USA",
+            state: "CA",
+            city: "LA",
+            street: "Main St",
+            buildingNumber: "123",
+            postCode: "90001",
+          },
+          idNumber,
+          idType: "Passport",
+          username,
+        },
+      });
+      const app = await getTestApp();
+      const loginRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: { email, password: testPassword },
+      });
+      expect(loginRes.statusCode).toBe(200);
+      return {
+        app,
+        user,
+        accessToken: loginRes.json().accessToken as string,
+      };
+    }
+
+    async function expectAccessRefused(
+      app: Awaited<ReturnType<typeof getTestApp>>,
+      accessToken: string,
+    ) {
+      const authorization = { authorization: `Bearer ${accessToken}` };
+      const currentUser = await app.inject({
+        method: "GET",
+        url: "/api/v1/auth/me",
+        headers: authorization,
+      });
+      const protectedRead = await app.inject({
+        method: "GET",
+        url: `/api/v1/business/${new Types.ObjectId().toString()}`,
+        headers: authorization,
+      });
+      const resend = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/resend-email-confirmation",
+        headers: authorization,
+      });
+      const setMode = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/set-mode",
+        headers: authorization,
+        payload: { mode: "customer" },
+      });
+
+      for (const response of [currentUser, protectedRead, resend, setMode]) {
+        expect(response.statusCode).toBe(401);
+        expect(response.headers["content-type"]).toContain(
+          "application/problem+json",
+        );
+        expect(response.json().detail).toBe("Invalid or expired access token");
+      }
+    }
+
+    it("refuses a missing refresh session", async () => {
+      const { app, user, accessToken } = await signInCustomer(
+        "missing-access-session@test.com",
+        "missingaccess",
+        "ID-MISSING-ACCESS",
+      );
+      await RefreshSession.deleteMany({ accountId: user._id });
+      await expectAccessRefused(app, accessToken);
+    });
+
+    it("refuses an expired refresh session", async () => {
+      const { app, user, accessToken } = await signInCustomer(
+        "expired-access-session@test.com",
+        "expiredaccess",
+        "ID-EXPIRED-ACCESS",
+      );
+      await RefreshSession.updateOne(
+        { accountId: user._id },
+        { $set: { expiresAt: new Date(Date.now() - 1000) } },
+      );
+      await expectAccessRefused(app, accessToken);
+    });
+
+    it("refuses a generation-mismatched refresh session and accepts one issued after", async () => {
+      const { app, user, accessToken } = await signInCustomer(
+        "generation-access-session@test.com",
+        "generationaccess",
+        "ID-GENERATION-ACCESS",
+      );
+      await User.updateOne(
+        { _id: user._id },
+        { $inc: { refreshSessionVersion: 1 } },
+      );
+      await expectAccessRefused(app, accessToken);
+
+      const nextLogin = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: {
+          email: "generation-access-session@test.com",
+          password: testPassword,
+        },
+      });
+      expect(nextLogin.statusCode).toBe(200);
+      const nextToken = nextLogin.json().accessToken as string;
+      const currentUser = await app.inject({
+        method: "GET",
+        url: "/api/v1/auth/me",
+        headers: { authorization: `Bearer ${nextToken}` },
+      });
+      expect(currentUser.statusCode).toBe(200);
+      expect(currentUser.json().user.sessionId).toBeUndefined();
+
+      const protectedRead = await app.inject({
+        method: "GET",
+        url: `/api/v1/business/${user._id}`,
+        headers: { authorization: `Bearer ${nextToken}` },
+      });
+      expect(protectedRead.statusCode).toBe(403);
+
+      const setMode = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/set-mode",
+        headers: { authorization: `Bearer ${nextToken}` },
+        payload: { mode: "customer" },
+      });
+      expect(setMode.statusCode).toBe(200);
+      expect(setMode.json().mode).toBe("customer");
+    });
+
+    it("refuses a bearer with no session id", async () => {
+      const { app, user } = await signInCustomer(
+        "no-session-access@test.com",
+        "nosessionaccess",
+        "ID-NO-SESSION-ACCESS",
+      );
+      const token = app.jwt.sign({
+        id: String(user._id),
+        email: "no-session-access@test.com",
+        type: "user",
+        role: "Customer",
+      });
+      await expectAccessRefused(app, token);
     });
   });
 

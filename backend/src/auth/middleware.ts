@@ -9,9 +9,12 @@ import type {
   FastifyInstance,
   preValidationHookHandler,
 } from "fastify";
+import { Types } from "mongoose";
 import { AppError, forbidden, unauthorized } from "../errors/appError.ts";
 import Business from "../models/business.ts";
+import RefreshSession from "../models/refreshSession.ts";
 import User from "../models/user.ts";
+import { readRefreshSessionVersionForAccount } from "./issueSession.ts";
 import type { AuthSession, AuthUser } from "./types.ts";
 
 declare module "fastify" {
@@ -21,7 +24,7 @@ declare module "fastify" {
 }
 
 /** JWT and deleted-account refusals. Database and other failures must not look like a bad token. */
-function isRejectedCredential(error: unknown): boolean {
+export function isRejectedCredential(error: unknown): boolean {
   if (error instanceof AppError && error.statusCode === 401) {
     return true;
   }
@@ -61,9 +64,7 @@ export function createAuthHook(app: FastifyInstance): preValidationHookHandler {
     const token = authHeader.slice(7);
 
     try {
-      const decoded = app.jwt.verify<AuthSession>(token);
-      await assertAccountCanUseSession(decoded);
-      req.authSession = decoded;
+      req.authSession = await requireLiveAccessSession(app, token);
     } catch (error) {
       if (isRejectedCredential(error)) {
         throw unauthorized("Invalid or expired access token");
@@ -91,9 +92,7 @@ export function createOptionalAuthHook(
     const token = authHeader.slice(7);
 
     try {
-      const decoded = app.jwt.verify<AuthSession>(token);
-      await assertAccountCanUseSession(decoded);
-      req.authSession = decoded;
+      req.authSession = await requireLiveAccessSession(app, token);
     } catch (error) {
       if (isRejectedCredential(error)) {
         return;
@@ -101,6 +100,68 @@ export function createOptionalAuthHook(
       throw error;
     }
   };
+}
+
+/**
+ * An access token is live only when its refresh session exists, is unrevoked,
+ * is unexpired, and — when that account row exists — matches the account
+ * generation. A token with no session id is refused. This does not apply the
+ * deleted-account check; callers that already do keep doing so.
+ */
+export async function assertAccessTokenRefreshSessionLive(
+  session: AuthSession & { sessionId?: string },
+): Promise<void> {
+  const sessionId = session.sessionId;
+  if (!sessionId || !Types.ObjectId.isValid(sessionId)) {
+    throw unauthorized("Invalid or expired access token");
+  }
+
+  const stored = (await RefreshSession.findById(sessionId).lean()) as {
+    accountId: Types.ObjectId;
+    accountType: "user" | "business";
+    refreshSessionVersion: number;
+    expiresAt: Date;
+    revoked?: boolean;
+  } | null;
+  if (
+    !stored ||
+    stored.revoked === true ||
+    stored.expiresAt.getTime() <= Date.now()
+  ) {
+    throw unauthorized("Invalid or expired access token");
+  }
+
+  const dbVersion = await readRefreshSessionVersionForAccount(
+    stored.accountType,
+    String(stored.accountId),
+  );
+  if (dbVersion !== null && stored.refreshSessionVersion !== dbVersion) {
+    throw unauthorized("Invalid or expired access token");
+  }
+}
+
+/**
+ * Verify an access token, require its refresh session to be live, and refuse
+ * a soft-deleted User or deleted Business. The session id stays off the
+ * returned session. Database failures propagate.
+ */
+export async function requireLiveAccessSession(
+  app: FastifyInstance,
+  token: string,
+): Promise<AuthSession> {
+  let decoded: AuthSession & { sessionId?: string };
+  try {
+    decoded = app.jwt.verify<AuthSession & { sessionId?: string }>(token);
+  } catch (error) {
+    if (isRejectedCredential(error)) {
+      throw unauthorized("Invalid or expired access token");
+    }
+    throw error;
+  }
+  await assertAccessTokenRefreshSessionLive(decoded);
+  await assertAccountCanUseSession(decoded);
+  const { sessionId: _sessionId, ...session } = decoded;
+  return session;
 }
 
 /**

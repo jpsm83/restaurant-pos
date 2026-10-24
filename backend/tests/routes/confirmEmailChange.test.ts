@@ -226,6 +226,7 @@ describe("POST /api/v1/auth/confirm-email-change", () => {
       payload: { email: oldEmail, password: testPassword },
     });
     expect(loginRes.statusCode).toBe(200);
+    const accessToken = loginRes.json().accessToken as string;
     const refreshValue = refreshCookieFrom(loginRes.headers);
 
     const refreshOk = await app.inject({
@@ -259,6 +260,14 @@ describe("POST /api/v1/auth/confirm-email-change", () => {
       headers: { cookie: `refresh_token=${refreshValue}` },
     });
     expect(refreshAfter.statusCode).toBe(401);
+    const meAfter = await app.inject({
+      method: "GET",
+      url: "/api/v1/auth/me",
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+    expect(meAfter.statusCode).toBe(401);
+    expect(meAfter.headers["content-type"]).toContain("application/problem+json");
+    expect(meAfter.json().detail).toBe("Invalid or expired access token");
 
     const loginAfter = await app.inject({
       method: "POST",
@@ -276,6 +285,14 @@ describe("POST /api/v1/auth/confirm-email-change", () => {
     });
     expect(refreshNext.statusCode).toBe(200);
     expect(refreshNext.json().user.sessionId).toBeUndefined();
+    const meNext = await app.inject({
+      method: "GET",
+      url: "/api/v1/auth/me",
+      headers: { authorization: `Bearer ${loginAfter.json().accessToken}` },
+    });
+    expect(meNext.statusCode).toBe(200);
+    expect(meNext.json().user.type).toBe("business");
+    expect(meNext.json().user.sessionId).toBeUndefined();
   });
 
   it("does not send a notice when the token is invalid", async () => {

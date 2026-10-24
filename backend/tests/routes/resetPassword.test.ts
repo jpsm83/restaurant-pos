@@ -232,6 +232,7 @@ describe("POST /api/v1/auth/reset-password", () => {
       payload: { email: "refresh-invalidate@example.com", password: oldPassword },
     });
     expect(loginRes.statusCode).toBe(200);
+    const accessToken = loginRes.json().accessToken as string;
     const refreshVal = refreshCookieValueFromLoginResponse({
       headers: loginRes.headers as Record<string, unknown>,
     });
@@ -261,6 +262,14 @@ describe("POST /api/v1/auth/reset-password", () => {
     expect(JSON.parse(refreshAfter.body).detail).toBe(
       "Invalid or expired refresh token",
     );
+    const meAfter = await app.inject({
+      method: "GET",
+      url: "/api/v1/auth/me",
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+    expect(meAfter.statusCode).toBe(401);
+    expect(meAfter.headers["content-type"]).toContain("application/problem+json");
+    expect(meAfter.json().detail).toBe("Invalid or expired access token");
 
     const stored = await User.findById(user._id)
       .select("refreshSessionVersion")
@@ -284,6 +293,13 @@ describe("POST /api/v1/auth/reset-password", () => {
     });
     expect(refreshNext.statusCode).toBe(200);
     expect(refreshNext.json().user.sessionId).toBeUndefined();
+    const meNext = await app.inject({
+      method: "GET",
+      url: "/api/v1/auth/me",
+      headers: { authorization: `Bearer ${loginAfter.json().accessToken}` },
+    });
+    expect(meNext.statusCode).toBe(200);
+    expect(meNext.json().user.sessionId).toBeUndefined();
   });
 
   it("returns 400 for wrong or expired token", async () => {
@@ -379,6 +395,7 @@ describe("POST /api/v1/auth/reset-password", () => {
       },
     });
     expect(loginRes.statusCode).toBe(200);
+    const accessToken = loginRes.json().accessToken as string;
     const refreshVal = refreshCookieValueFromLoginResponse({
       headers: loginRes.headers as Record<string, unknown>,
     });
@@ -406,6 +423,14 @@ describe("POST /api/v1/auth/reset-password", () => {
     expect(JSON.parse(refreshAfter.body).detail).toBe(
       "Invalid or expired refresh token",
     );
+    const meAfter = await app.inject({
+      method: "GET",
+      url: "/api/v1/auth/me",
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+    expect(meAfter.statusCode).toBe(401);
+    expect(meAfter.headers["content-type"]).toContain("application/problem+json");
+    expect(meAfter.json().detail).toBe("Invalid or expired access token");
 
     const loginAfter = await app.inject({
       method: "POST",
@@ -427,6 +452,14 @@ describe("POST /api/v1/auth/reset-password", () => {
     expect(refreshNext.statusCode).toBe(200);
     expect(refreshNext.json().user.type).toBe("business");
     expect(refreshNext.json().user.sessionId).toBeUndefined();
+    const meNext = await app.inject({
+      method: "GET",
+      url: "/api/v1/auth/me",
+      headers: { authorization: `Bearer ${loginAfter.json().accessToken}` },
+    });
+    expect(meNext.statusCode).toBe(200);
+    expect(meNext.json().user.type).toBe("business");
+    expect(meNext.json().user.sessionId).toBeUndefined();
   });
 
   it("updates business only when both accounts share the same reset token", async () => {

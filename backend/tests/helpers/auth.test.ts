@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach } from "vitest";
 import { Types } from "mongoose";
-import { getTestApp } from "./app.ts";
+import { getTestApp, signAccessTokenForLiveSession } from "../setup.ts";
 import canLogAsEmployee from "../../src/auth/canLogAsEmployee.ts";
 import {
   createAuthHook,
@@ -191,7 +191,7 @@ describe("Auth Helpers", () => {
         type: "business",
         role: "Tenant",
       };
-      const token = app.jwt.sign(payload);
+      const token = await signAccessTokenForLiveSession(app, payload);
 
       const mockReq = {
         headers: {
@@ -209,6 +209,34 @@ describe("Auth Helpers", () => {
       expect(mockReq.authSession).toBeDefined();
       expect(mockReq.authSession.type).toBe("business");
       expect(mockReq.authSession.id).toBe(businessId.toString());
+      expect(mockReq.authSession.sessionId).toBeUndefined();
+    });
+
+    it("refuses a token with no session id", async () => {
+      const app = await getTestApp();
+      const authHook = createAuthHook(app);
+
+      const payload: AuthBusiness = {
+        id: businessId.toString(),
+        email: "test@example.com",
+        type: "business",
+        role: "Tenant",
+      };
+      const token = app.jwt.sign(payload);
+
+      const mockReq = {
+        headers: {
+          authorization: `Bearer ${token}`,
+        },
+      } as any;
+
+      await expect(
+        authHook.call(app as any, mockReq, {} as any, () => {}),
+      ).rejects.toMatchObject({
+        name: "AppError",
+        statusCode: 401,
+        message: "Invalid or expired access token",
+      });
     });
   });
 

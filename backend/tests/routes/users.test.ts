@@ -27,6 +27,7 @@ import { Types } from "mongoose";
 import bcrypt from "bcrypt";
 import { getTestApp, generateTestToken } from "../setup.ts";
 import User from "../../src/models/user.ts";
+import RefreshSession from "../../src/models/refreshSession.ts";
 import Notification from "../../src/models/notification.ts";
 import Business from "../../src/models/business.ts";
 import { multipart } from "../helpers/multipart.ts";
@@ -574,6 +575,45 @@ describe("Users Routes", () => {
       expect(detail(response)).toBe("Authentication required");
     });
 
+    it("treats a revoked or session-less access token as signed out", async () => {
+      const app = await getTestApp();
+      const user = await createValidUser("optionaldeadtoken");
+      const auth = await generateTestToken({
+        id: user._id.toString(),
+        email: "optionaldeadtoken@test.com",
+        type: "user",
+        role: "Customer",
+      });
+      await RefreshSession.updateMany(
+        { accountId: user._id },
+        { $set: { revoked: true } },
+      );
+
+      const revoked = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/users/${user._id}`,
+        headers: { authorization: auth },
+      });
+      expect(revoked.statusCode).toBe(401);
+      expect(isProblemDetails(revoked)).toBe(true);
+      expect(detail(revoked)).toBe("Authentication required");
+
+      const sessionLess = app.jwt.sign({
+        id: user._id.toString(),
+        email: "optionaldeadtoken@test.com",
+        type: "user",
+        role: "Customer",
+      });
+      const unsigned = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/users/${user._id}`,
+        headers: { authorization: `Bearer ${sessionLess}` },
+      });
+      expect(unsigned.statusCode).toBe(401);
+      expect(isProblemDetails(unsigned)).toBe(true);
+      expect(detail(unsigned)).toBe("Authentication required");
+    });
+
     it("updates the user and returns a session", async () => {
       const app = await getTestApp();
 
@@ -706,6 +746,14 @@ describe("Users Routes", () => {
         });
         expect(refreshRes.statusCode).toBe(200);
       }
+
+      const stillCurrent = await app.inject({
+        method: "GET",
+        url: "/api/v1/auth/me",
+        headers: { authorization: `Bearer ${first.accessToken}` },
+      });
+      expect(stillCurrent.statusCode).toBe(200);
+      expect(stillCurrent.json().user.sessionId).toBeUndefined();
     });
 
     it("moves the generation on a password change and issues a session at the new generation", async () => {
@@ -800,6 +848,26 @@ describe("Users Routes", () => {
       });
       expect(refreshRes.statusCode).toBe(200);
       expect(refreshRes.json().user.sessionId).toBeUndefined();
+
+      const previousAccess = await app.inject({
+        method: "GET",
+        url: "/api/v1/auth/me",
+        headers: { authorization: `Bearer ${accessToken}` },
+      });
+      expect(previousAccess.statusCode).toBe(401);
+      expect(previousAccess.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      expect(previousAccess.json().detail).toBe(
+        "Invalid or expired access token",
+      );
+      const nextAccess = await app.inject({
+        method: "GET",
+        url: "/api/v1/auth/me",
+        headers: { authorization: `Bearer ${response.json().accessToken}` },
+      });
+      expect(nextAccess.statusCode).toBe(200);
+      expect(nextAccess.json().user.sessionId).toBeUndefined();
     });
   });
 
