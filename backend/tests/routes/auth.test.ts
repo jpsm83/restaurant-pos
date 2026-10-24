@@ -1620,6 +1620,27 @@ describe("Auth Routes", () => {
       expect(setMode.json().mode).toBe("customer");
     });
 
+    it("refuses an access token bound to another account's refresh session", async () => {
+      const first = await signInCustomer(
+        "bound-access-a@test.com",
+        "boundaccessa",
+        "ID-BOUND-ACCESS-A",
+      );
+      const second = await signInCustomer(
+        "bound-access-b@test.com",
+        "boundaccessb",
+        "ID-BOUND-ACCESS-B",
+      );
+      const token = first.app.jwt.sign({
+        id: String(first.user._id),
+        email: "bound-access-a@test.com",
+        type: "user",
+        role: "Customer",
+        sessionId: accessTokenSessionId(second.accessToken),
+      });
+      await expectAccessRefused(first.app, token);
+    });
+
     it("refuses a bearer with no session id", async () => {
       const { app, user } = await signInCustomer(
         "no-session-access@test.com",

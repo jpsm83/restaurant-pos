@@ -579,13 +579,8 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     }
 
     const token = authHeader.slice(7);
-
-    try {
-      const user = await requireLiveAccessSession(app, token);
-      return reply.code(200).send({ user });
-    } catch {
-      throw unauthorized("Invalid or expired access token");
-    }
+    const user = await requireLiveAccessSession(app, token);
+    return reply.code(200).send({ user });
   });
 
   /**

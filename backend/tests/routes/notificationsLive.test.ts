@@ -248,6 +248,52 @@ describe("Notifications Live Route", () => {
     });
   });
 
+  it("closes a generation-mismatched token for a soft-deleted user the same way as an invalid token", async () => {
+    await withLiveServer(async ({ baseUrl, app }) => {
+      const user = await createTestUser("live-deleted-generation");
+      const userToken = await liveUserToken(
+        app,
+        user._id.toString(),
+        String(user.personalDetails.email),
+      );
+      await User.updateOne(
+        { _id: user._id },
+        {
+          $inc: { refreshSessionVersion: 1 },
+          $set: { deleted: true, deletedAt: new Date(), deletedBy: user._id },
+        },
+      );
+
+      const closed = await new Promise<{ code: number; reason: string }>(
+        (resolve, reject) => {
+          const timer = setTimeout(
+            () => reject(new Error("socket stayed open")),
+            3_000,
+          );
+          const socket = new WebSocket(baseUrl, {
+            headers: { Authorization: `Bearer ${userToken}` },
+          });
+          socket.on("close", (code, reason) => {
+            clearTimeout(timer);
+            resolve({ code, reason: reason.toString() });
+          });
+          socket.on("message", () => {
+            clearTimeout(timer);
+            socket.close();
+            reject(new Error("generation-mismatched token was accepted"));
+          });
+          socket.on("error", (error) => {
+            clearTimeout(timer);
+            reject(error);
+          });
+        },
+      );
+
+      expect(closed.code).toBe(1008);
+      expect(closed.reason).toBe("Unauthorized");
+    });
+  });
+
   it("keeps a soft-deleted user's live access token connected", async () => {
     await withLiveServer(async ({ baseUrl, app }) => {
       const user = await createTestUser("live-deleted");

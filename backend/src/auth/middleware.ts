@@ -14,7 +14,6 @@ import { AppError, forbidden, unauthorized } from "../errors/appError.ts";
 import Business from "../models/business.ts";
 import RefreshSession from "../models/refreshSession.ts";
 import User from "../models/user.ts";
-import { readRefreshSessionVersionForAccount } from "./issueSession.ts";
 import type { AuthSession, AuthUser } from "./types.ts";
 
 declare module "fastify" {
@@ -126,18 +125,34 @@ export async function assertAccessTokenRefreshSessionLive(
   if (
     !stored ||
     stored.revoked === true ||
-    stored.expiresAt.getTime() <= Date.now()
+    stored.expiresAt.getTime() <= Date.now() ||
+    stored.accountType !== session.type ||
+    String(stored.accountId) !== session.id
   ) {
     throw unauthorized("Invalid or expired access token");
   }
 
-  const dbVersion = await readRefreshSessionVersionForAccount(
-    stored.accountType,
-    String(stored.accountId),
+  const dbVersion = await accountGenerationIfRowExists(
+    session.type,
+    session.id,
   );
   if (dbVersion !== null && stored.refreshSessionVersion !== dbVersion) {
     throw unauthorized("Invalid or expired access token");
   }
+}
+
+/** `null` when no account document exists, including a hard-deleted row. Soft-deleted rows still count. */
+async function accountGenerationIfRowExists(
+  type: "user" | "business",
+  id: string,
+): Promise<number | null> {
+  const query = type === "business" ? Business.findById(id) : User.findById(id);
+  const doc = (await query
+    .setOptions({ includeDeleted: true })
+    .select("refreshSessionVersion")
+    .lean()) as { refreshSessionVersion?: number } | null;
+  if (!doc) return null;
+  return doc.refreshSessionVersion ?? 0;
 }
 
 /**
