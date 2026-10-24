@@ -13,13 +13,22 @@ import {
 } from "vitest";
 
 const sendEmailMock = vi.hoisted(() =>
-  vi.fn().mockResolvedValue(undefined),
+  vi.fn().mockResolvedValue({
+    channel: "email",
+    success: true,
+    sentCount: 1,
+  }),
 );
 
-vi.mock("../../src/auth/authEmailSend.ts", () => ({
-  sendAuthTransactionalEmail: sendEmailMock,
+vi.mock("../../src/communications/channels/emailChannel.ts", () => ({
+  default: { send: sendEmailMock },
 }));
 
+import {
+  emailRailFailure,
+  emailRailSuccess,
+  expectOneAccountSend,
+} from "../helpers/accountEmailRail.ts";
 import { getTestApp, resetTestApp } from "../setup.ts";
 import Business from "../../src/models/business.ts";
 
@@ -98,7 +107,7 @@ describe("POST /api/v1/business (registration confirmation email)", () => {
 
   beforeEach(() => {
     sendEmailMock.mockReset();
-    sendEmailMock.mockResolvedValue(undefined);
+    sendEmailMock.mockResolvedValue(emailRailSuccess);
   });
 
   it("returns 201 with session and stores verification token after send", async () => {
@@ -129,7 +138,14 @@ describe("POST /api/v1/business (registration confirmation email)", () => {
     expect(body.user?.email).toBe(emailLower);
 
     await waitForBusinessVerificationToken(emailLower);
-    expect(sendEmailMock).toHaveBeenCalledTimes(1);
+    const stored = await Business.findOne({ email: emailLower })
+      .select("verificationToken")
+      .lean();
+    expectOneAccountSend(sendEmailMock, {
+      to: emailLower,
+      subject: "Confirm Your Email - POS",
+      link: `/confirm-email?token=${stored?.verificationToken}`,
+    });
   });
 
   it("normalizes email for storage and confirmation", async () => {
@@ -170,7 +186,7 @@ describe("POST /api/v1/business (registration confirmation email)", () => {
     const tax = `TAX-BR3-${Date.now()}`;
     const email = `rollback-biz-${Date.now()}@example.com`;
 
-    sendEmailMock.mockRejectedValue(new Error("SMTP down"));
+    sendEmailMock.mockResolvedValue(emailRailFailure);
 
     const res = await app.inject({
       method: "POST",

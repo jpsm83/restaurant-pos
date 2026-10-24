@@ -14,13 +14,22 @@ import {
 import bcrypt from "bcrypt";
 
 const sendEmailMock = vi.hoisted(() =>
-  vi.fn().mockResolvedValue(undefined),
+  vi.fn().mockResolvedValue({
+    channel: "email",
+    success: true,
+    sentCount: 1,
+  }),
 );
 
-vi.mock("../../src/auth/authEmailSend.ts", () => ({
-  sendAuthTransactionalEmail: sendEmailMock,
+vi.mock("../../src/communications/channels/emailChannel.ts", () => ({
+  default: { send: sendEmailMock },
 }));
 
+import {
+  emailRailFailure,
+  emailRailSuccess,
+  expectOneAccountSend,
+} from "../helpers/accountEmailRail.ts";
 import { getTestApp, resetTestApp } from "../setup.ts";
 import User from "../../src/models/user.ts";
 import Business from "../../src/models/business.ts";
@@ -97,7 +106,7 @@ describe("POST /api/v1/auth/request-password-reset", () => {
 
   beforeEach(() => {
     sendEmailMock.mockReset();
-    sendEmailMock.mockResolvedValue(undefined);
+    sendEmailMock.mockResolvedValue(emailRailSuccess);
   });
 
   it("returns 400 for invalid email", async () => {
@@ -146,7 +155,6 @@ describe("POST /api/v1/auth/request-password-reset", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(sendEmailMock).toHaveBeenCalledTimes(1);
     const updated = await User.findOne({
       "personalDetails.email": "verified-reset@example.com",
     })
@@ -154,6 +162,11 @@ describe("POST /api/v1/auth/request-password-reset", () => {
       .lean();
     expect(updated?.resetPasswordToken).toBeTruthy();
     expect(updated?.resetPasswordExpires).toBeTruthy();
+    expectOneAccountSend(sendEmailMock, {
+      to: "verified-reset@example.com",
+      subject: "Password Reset Request - POS",
+      link: `/reset-password?token=${updated?.resetPasswordToken}`,
+    });
   });
 
   it("issues reset token and sends email for unverified user", async () => {
@@ -180,7 +193,7 @@ describe("POST /api/v1/auth/request-password-reset", () => {
   it("clears reset token and returns 500 when send fails", async () => {
     const app = await getTestApp();
     await createTestUser("fail-reset@example.com");
-    sendEmailMock.mockRejectedValue(new Error("SMTP down"));
+    sendEmailMock.mockResolvedValue(emailRailFailure);
 
     const response = await app.inject({
       method: "POST",
@@ -189,6 +202,10 @@ describe("POST /api/v1/auth/request-password-reset", () => {
     });
 
     expect(response.statusCode).toBe(500);
+    expect(response.headers["content-type"]).toContain("application/problem+json");
+    expect(response.json().detail).toBe(
+      "Failed to send password reset email. Please try again later.",
+    );
     const updated = await User.findOne({
       "personalDetails.email": "fail-reset@example.com",
     })
@@ -237,7 +254,6 @@ describe("POST /api/v1/auth/request-password-reset", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(sendEmailMock).toHaveBeenCalledTimes(1);
 
     const biz = await Business.findOne({ email })
       .select("resetPasswordToken")
@@ -247,5 +263,10 @@ describe("POST /api/v1/auth/request-password-reset", () => {
       .lean();
     expect(biz?.resetPasswordToken).toBeTruthy();
     expect(usr?.resetPasswordToken).toBeFalsy();
+    expectOneAccountSend(sendEmailMock, {
+      to: email,
+      subject: "Password Reset Request - POS",
+      link: `/reset-password?token=${biz?.resetPasswordToken}`,
+    });
   });
 });

@@ -1,12 +1,13 @@
 import crypto from "crypto";
-import { sendAuthTransactionalEmail } from "./authEmailSend.ts";
+import emailChannel from "../communications/channels/emailChannel.ts";
 import type { AuthEmailTemplateContent } from "./emailTemplates.ts";
 
 /**
- * Shared one-time-token email flow for the auth modules: generate a CSPRNG
- * token, persist it, build and email the link, and run the caller's rollback if
- * the send fails. Returns `false` after a rolled-back failure so the caller can
- * map it to its own `server_error_500` result.
+ * One-time-link mail on the delivery rail. Persists the token, sends that one
+ * address the template's plain and rich parts, and clears the pending link when
+ * the rail reports failure. Returns `false` so the caller can map it to the
+ * server error it already returns. The operational-email switch does not apply:
+ * this calls the rail directly.
  */
 export async function sendAuthTokenEmailOrRollback(options: {
   to: string;
@@ -20,10 +21,17 @@ export async function sendAuthTokenEmailOrRollback(options: {
 
   try {
     const link = options.buildLink(token);
-    await sendAuthTransactionalEmail({
+    const content = options.buildContent(link);
+    const result = await emailChannel.send({
       to: options.to,
-      content: options.buildContent(link),
+      subject: content.subject,
+      text: content.text,
+      html: content.html,
     });
+    if (!result.success) {
+      await options.rollback();
+      return false;
+    }
     return true;
   } catch {
     await options.rollback();

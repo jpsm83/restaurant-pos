@@ -18,13 +18,22 @@ import bcrypt from "bcrypt";
 import { Types } from "mongoose";
 
 const sendEmailMock = vi.hoisted(() =>
-  vi.fn().mockResolvedValue(undefined),
+  vi.fn().mockResolvedValue({
+    channel: "email",
+    success: true,
+    sentCount: 1,
+  }),
 );
 
-vi.mock("../../src/auth/authEmailSend.ts", () => ({
-  sendAuthTransactionalEmail: sendEmailMock,
+vi.mock("../../src/communications/channels/emailChannel.ts", () => ({
+  default: { send: sendEmailMock },
 }));
 
+import {
+  emailRailFailure,
+  emailRailSuccess,
+  expectOneAccountSend,
+} from "../helpers/accountEmailRail.ts";
 import { getTestApp, generateTestToken, resetTestApp } from "../setup.ts";
 import Business from "../../src/models/business.ts";
 import User from "../../src/models/user.ts";
@@ -127,7 +136,7 @@ describe("POST /api/v1/auth/request-email-change", () => {
 
   beforeEach(() => {
     sendEmailMock.mockReset();
-    sendEmailMock.mockResolvedValue(undefined);
+    sendEmailMock.mockResolvedValue(emailRailSuccess);
   });
 
   it("stores the pending email, emails the new address, and leaves the current email unchanged", async () => {
@@ -144,10 +153,6 @@ describe("POST /api/v1/auth/request-email-change", () => {
 
     expect(response.statusCode).toBe(200);
     expect(JSON.parse(response.body).message).toBe(EMAIL_CHANGE_REQUESTED_MESSAGE);
-    expect(sendEmailMock).toHaveBeenCalledTimes(1);
-    expect(sendEmailMock).toHaveBeenCalledWith(
-      expect.objectContaining({ to: newEmail }),
-    );
 
     const stored = await Business.findById(business._id).lean();
     expect(stored?.pendingEmail).toBe(newEmail);
@@ -155,9 +160,11 @@ describe("POST /api/v1/auth/request-email-change", () => {
     expect(stored?.pendingEmailExpires?.getTime()).toBeGreaterThan(Date.now());
     expect(stored?.email).toBe("owner-happy@example.com");
     expect(stored?.emailVerified).toBe(false);
-
-    const html = sendEmailMock.mock.calls[0][0].content.html as string;
-    expect(html).toContain(`/confirm-email-change?token=${stored?.pendingEmailToken}`);
+    expectOneAccountSend(sendEmailMock, {
+      to: newEmail,
+      subject: "Confirm Your New Sign-in Email - POS",
+      link: `/confirm-email-change?token=${stored?.pendingEmailToken}`,
+    });
   });
 
   it("returns 401 when the current password is wrong and stores nothing", async () => {
@@ -272,7 +279,7 @@ describe("POST /api/v1/auth/request-email-change", () => {
     const app = await getTestApp();
     const business = await createBusiness("owner-sendfail@example.com");
     const auth = await businessTokenFor(business);
-    sendEmailMock.mockRejectedValue(new Error("SMTP down"));
+    sendEmailMock.mockResolvedValue(emailRailFailure);
 
     const response = await app.inject({
       method: "POST",
@@ -282,6 +289,10 @@ describe("POST /api/v1/auth/request-email-change", () => {
     });
 
     expect(response.statusCode).toBe(500);
+    expect(response.headers["content-type"]).toContain("application/problem+json");
+    expect(response.json().detail).toBe(
+      "Failed to send confirmation email. Please try again later.",
+    );
 
     const stored = await Business.findById(business._id).lean();
     expect(stored?.pendingEmail).toBeUndefined();
@@ -337,7 +348,7 @@ describe("POST /api/v1/auth/request-email-change", () => {
 
     await agePendingRequestCooldown(business._id);
 
-    sendEmailMock.mockRejectedValue(new Error("SMTP down"));
+    sendEmailMock.mockResolvedValue(emailRailFailure);
     const second = await app.inject({
       method: "POST",
       url: "/api/v1/auth/request-email-change",
@@ -345,6 +356,10 @@ describe("POST /api/v1/auth/request-email-change", () => {
       payload: { newEmail: "never-sent@example.com", currentPassword: testPassword },
     });
     expect(second.statusCode).toBe(500);
+    expect(second.headers["content-type"]).toContain("application/problem+json");
+    expect(second.json().detail).toBe(
+      "Failed to send confirmation email. Please try again later.",
+    );
 
     const restored = await Business.findById(business._id).lean();
     expect(restored?.pendingEmail).toBe("still-valid@example.com");

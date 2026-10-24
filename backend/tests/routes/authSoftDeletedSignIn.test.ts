@@ -18,12 +18,22 @@ import {
 import { Types } from "mongoose";
 import bcrypt from "bcrypt";
 
-const sendEmailMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+const sendEmailMock = vi.hoisted(() =>
+  vi.fn().mockResolvedValue({
+    channel: "email",
+    success: true,
+    sentCount: 1,
+  }),
+);
 
-vi.mock("../../src/auth/authEmailSend.ts", () => ({
-  sendAuthTransactionalEmail: sendEmailMock,
+vi.mock("../../src/communications/channels/emailChannel.ts", () => ({
+  default: { send: sendEmailMock },
 }));
 
+import {
+  emailRailSuccess,
+  expectOneAccountSend,
+} from "../helpers/accountEmailRail.ts";
 import { getTestApp, resetTestApp } from "../setup.ts";
 import User from "../../src/models/user.ts";
 import Business from "../../src/models/business.ts";
@@ -93,7 +103,7 @@ describe("soft-deleted sign-in reactivation", () => {
 
   beforeEach(() => {
     sendEmailMock.mockReset();
-    sendEmailMock.mockResolvedValue(undefined);
+    sendEmailMock.mockResolvedValue(emailRailSuccess);
   });
 
   it("creates one user when the email is unused and refuses an active user's email", async () => {
@@ -176,7 +186,6 @@ describe("soft-deleted sign-in reactivation", () => {
     expect(signup.statusCode).toBe(202);
     expect(signup.headers["content-type"]).toContain("application/json");
     expect(signup.json()).toEqual({ message: REACTIVATION_REQUIRED_MESSAGE });
-    expect(sendEmailMock).toHaveBeenCalledTimes(1);
 
     const pending = await User.find({ "personalDetails.email": email })
       .setOptions({ includeDeleted: true })
@@ -190,6 +199,11 @@ describe("soft-deleted sign-in reactivation", () => {
     expect(pending[0]?.personalDetails?.firstName).toBe("Same");
     const token = pending[0]?.verificationToken;
     expect(typeof token).toBe("string");
+    expectOneAccountSend(sendEmailMock, {
+      to: email,
+      subject: "Confirm Your Email - POS",
+      link: `/confirm-email?token=${token}`,
+    });
 
     const stillDeleted = await app.inject({
       method: "POST",

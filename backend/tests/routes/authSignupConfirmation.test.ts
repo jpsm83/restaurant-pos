@@ -13,13 +13,22 @@ import {
 } from "vitest";
 
 const sendEmailMock = vi.hoisted(() =>
-  vi.fn().mockResolvedValue(undefined),
+  vi.fn().mockResolvedValue({
+    channel: "email",
+    success: true,
+    sentCount: 1,
+  }),
 );
 
-vi.mock("../../src/auth/authEmailSend.ts", () => ({
-  sendAuthTransactionalEmail: sendEmailMock,
+vi.mock("../../src/communications/channels/emailChannel.ts", () => ({
+  default: { send: sendEmailMock },
 }));
 
+import {
+  emailRailFailure,
+  emailRailSuccess,
+  expectOneAccountSend,
+} from "../helpers/accountEmailRail.ts";
 import { getTestApp, resetTestApp } from "../setup.ts";
 import Business from "../../src/models/business.ts";
 import RefreshSession from "../../src/models/refreshSession.ts";
@@ -69,7 +78,7 @@ describe("POST /api/v1/auth/signup (confirmation email)", () => {
 
   beforeEach(() => {
     sendEmailMock.mockReset();
-    sendEmailMock.mockResolvedValue(undefined);
+    sendEmailMock.mockResolvedValue(emailRailSuccess);
   });
 
   it("returns 201 with session immediately and persists verification token after send", async () => {
@@ -110,14 +119,21 @@ describe("POST /api/v1/auth/signup (confirmation email)", () => {
     expect(refreshRes.json().user.sessionId).toBeUndefined();
 
     await waitForUserVerificationToken(email);
-    expect(sendEmailMock).toHaveBeenCalledTimes(1);
+    const stored = await User.findOne({ "personalDetails.email": email })
+      .select("verificationToken")
+      .lean();
+    expectOneAccountSend(sendEmailMock, {
+      to: email,
+      subject: "Confirm Your Email - POS",
+      link: `/confirm-email?token=${stored?.verificationToken}`,
+    });
   });
 
   it("still returns 201 when confirmation send fails (token cleared)", async () => {
     const app = await getTestApp();
     const email = `rollback-${Date.now()}@example.com`;
 
-    sendEmailMock.mockRejectedValue(new Error("SMTP down"));
+    sendEmailMock.mockResolvedValue(emailRailFailure);
 
     const res = await app.inject({
       method: "POST",
@@ -192,7 +208,11 @@ describe("POST /api/v1/auth/signup (confirmation email)", () => {
     expect(allRows).toHaveLength(1);
     expect(allRows[0].deleted).toBe(true);
     expect(allRows[0].verificationToken).toBeTruthy();
-    expect(sendEmailMock).toHaveBeenCalledTimes(1);
+    expectOneAccountSend(sendEmailMock, {
+      to: email,
+      subject: "Confirm Your Email - POS",
+      link: `/confirm-email?token=${allRows[0].verificationToken}`,
+    });
   });
 
   it("reactivates the soft-deleted user when a business shares the signup email", async () => {

@@ -3,8 +3,8 @@
  *
  * Request, confirmation, and failure each leave one structured log line that
  * carries the account id and outcome and never the raw token or full address.
- * The email channel and the logger are mocked so the tests observe exactly what
- * the domain emits.
+ * The delivery rail, the old-address notice sender, and the logger are mocked
+ * so the tests observe exactly what the domain emits.
  */
 
 import {
@@ -19,12 +19,28 @@ import {
 import bcrypt from "bcrypt";
 import type { FastifyBaseLogger } from "fastify";
 
+const railSendMock = vi.hoisted(() =>
+  vi.fn().mockResolvedValue({
+    channel: "email",
+    success: true,
+    sentCount: 1,
+  }),
+);
+
 const sendEmailMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+
+vi.mock("../../src/communications/channels/emailChannel.ts", () => ({
+  default: { send: railSendMock },
+}));
 
 vi.mock("../../src/auth/authEmailSend.ts", () => ({
   sendAuthTransactionalEmail: sendEmailMock,
 }));
 
+import {
+  emailRailFailure,
+  emailRailSuccess,
+} from "../helpers/accountEmailRail.ts";
 import { resetTestApp } from "../setup.ts";
 import Business from "../../src/models/business.ts";
 import {
@@ -154,6 +170,8 @@ describe("email change audit emission", () => {
   });
 
   beforeEach(() => {
+    railSendMock.mockReset();
+    railSendMock.mockResolvedValue(emailRailSuccess);
     sendEmailMock.mockReset();
     sendEmailMock.mockResolvedValue(undefined);
   });
@@ -205,7 +223,7 @@ describe("email change audit emission", () => {
   it("logs a failed outcome when the confirmation send fails", async () => {
     const logger = recordingLogger();
     const business = await createBusiness("audit-sendfail@example.com");
-    sendEmailMock.mockRejectedValue(new Error("SMTP down"));
+    railSendMock.mockResolvedValue(emailRailFailure);
 
     await handleRequestEmailChange(
       businessSession(business),

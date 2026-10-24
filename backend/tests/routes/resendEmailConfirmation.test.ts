@@ -15,13 +15,21 @@ import bcrypt from "bcrypt";
 import { Types } from "mongoose";
 
 const sendEmailMock = vi.hoisted(() =>
-  vi.fn().mockResolvedValue(undefined),
+  vi.fn().mockResolvedValue({
+    channel: "email",
+    success: true,
+    sentCount: 1,
+  }),
 );
 
-vi.mock("../../src/auth/authEmailSend.ts", () => ({
-  sendAuthTransactionalEmail: sendEmailMock,
+vi.mock("../../src/communications/channels/emailChannel.ts", () => ({
+  default: { send: sendEmailMock },
 }));
 
+import {
+  emailRailSuccess,
+  expectOneAccountSend,
+} from "../helpers/accountEmailRail.ts";
 import { generateTestToken, getTestApp, resetTestApp } from "../setup.ts";
 import User from "../../src/models/user.ts";
 import Business from "../../src/models/business.ts";
@@ -102,7 +110,7 @@ describe("POST /api/v1/auth/resend-email-confirmation", () => {
 
   beforeEach(() => {
     sendEmailMock.mockReset();
-    sendEmailMock.mockResolvedValue(undefined);
+    sendEmailMock.mockResolvedValue(emailRailSuccess);
   });
 
   it("returns 401 without Bearer token", async () => {
@@ -207,7 +215,16 @@ describe("POST /api/v1/auth/resend-email-confirmation", () => {
     expect(response.statusCode).toBe(200);
     const body = JSON.parse(response.body);
     expect(body.message).toBe(GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE);
-    expect(sendEmailMock).toHaveBeenCalledTimes(1);
+    const stored = await User.findOne({
+      "personalDetails.email": "pending-resend@example.com",
+    })
+      .select("verificationToken")
+      .lean();
+    expectOneAccountSend(sendEmailMock, {
+      to: "pending-resend@example.com",
+      subject: "Confirm Your Email - POS",
+      link: `/confirm-email?token=${stored?.verificationToken}`,
+    });
   });
 
   it("returns 400 already verified for business without sending", async () => {
@@ -249,7 +266,14 @@ describe("POST /api/v1/auth/resend-email-confirmation", () => {
       headers: { authorization: token },
     });
     expect(response.statusCode).toBe(200);
-    expect(sendEmailMock).toHaveBeenCalledTimes(1);
+    const stored = await Business.findOne({ email: "biz-pending@example.com" })
+      .select("verificationToken")
+      .lean();
+    expectOneAccountSend(sendEmailMock, {
+      to: "biz-pending@example.com",
+      subject: "Confirm Your Email - POS",
+      link: `/confirm-email?token=${stored?.verificationToken}`,
+    });
   });
 
   it("refuses a soft-deleted user's access session", async () => {

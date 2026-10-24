@@ -15,13 +15,21 @@ import crypto from "crypto";
 import bcrypt from "bcrypt";
 
 const sendEmailMock = vi.hoisted(() =>
-  vi.fn().mockResolvedValue(undefined),
+  vi.fn().mockResolvedValue({
+    channel: "email",
+    success: true,
+    sentCount: 1,
+  }),
 );
 
-vi.mock("../../src/auth/authEmailSend.ts", () => ({
-  sendAuthTransactionalEmail: sendEmailMock,
+vi.mock("../../src/communications/channels/emailChannel.ts", () => ({
+  default: { send: sendEmailMock },
 }));
 
+import {
+  emailRailSuccess,
+  expectOneAccountSend,
+} from "../helpers/accountEmailRail.ts";
 import { getTestApp, resetTestApp } from "../setup.ts";
 import User from "../../src/models/user.ts";
 import {
@@ -116,7 +124,7 @@ describe("auth-email routes (checklist)", () => {
 
   beforeEach(() => {
     sendEmailMock.mockReset();
-    sendEmailMock.mockResolvedValue(undefined);
+    sendEmailMock.mockResolvedValue(emailRailSuccess);
   });
 
   describe("POST /api/v1/auth/request-email-confirmation", () => {
@@ -144,7 +152,16 @@ describe("auth-email routes (checklist)", () => {
       });
       expect(res.statusCode).toBe(200);
       expect(JSON.parse(res.body).message).toBe(EMAIL_CONFIRMATION_SENT_MESSAGE);
-      expect(sendEmailMock).toHaveBeenCalledTimes(1);
+      const stored = await User.findOne({
+        "personalDetails.email": "phase71-known-confirm@example.com",
+      })
+        .select("verificationToken")
+        .lean();
+      expectOneAccountSend(sendEmailMock, {
+        to: "phase71-known-confirm@example.com",
+        subject: "Confirm Your Email - POS",
+        link: `/confirm-email?token=${stored?.verificationToken}`,
+      });
     });
   });
 
@@ -242,7 +259,16 @@ describe("auth-email routes (checklist)", () => {
         payload: { email: "phase71-known-reset@example.com" },
       });
       expect(res.statusCode).toBe(200);
-      expect(sendEmailMock).toHaveBeenCalledTimes(1);
+      const stored = await User.findOne({
+        "personalDetails.email": "phase71-known-reset@example.com",
+      })
+        .select("resetPasswordToken")
+        .lean();
+      expectOneAccountSend(sendEmailMock, {
+        to: "phase71-known-reset@example.com",
+        subject: "Password Reset Request - POS",
+        link: `/reset-password?token=${stored?.resetPasswordToken}`,
+      });
     });
   });
 

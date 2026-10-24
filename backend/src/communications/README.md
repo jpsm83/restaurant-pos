@@ -30,6 +30,7 @@ It consolidates architecture, API contracts, WebSocket contracts, runbook operat
   - A transient SMTP failure is retried. A permanent failure, or missing or invalid platform mail configuration, fails once.
   - The channel returns a success or failure result.
   - Outside production, `AUTH_EMAIL_DEV_SINK_ENABLED=true` accepts the message, logs a local preview, and returns success without SMTP. Production ignores that switch.
+  - Account one-time-link mail calls this channel directly: sign-in verification, verification resend, password reset (including the existing business sign-in), sign-in email-change confirmation to the new address, business email verification, and soft-deleted reactivation. `COMMUNICATIONS_EMAIL_ENABLED=false` does not skip those sends. A failed send clears the pending link in the account module and the request returns its existing server error. A sink success keeps the link. The notice to the previous sign-in address is not on this path.
 - `inApp` channel:
   - Delegates to `notificationService.createAndDeliver(...)`.
   - Persists notification and fans out inbox refs in `User.notifications`.
@@ -298,7 +299,7 @@ Recommended local/staging baseline:
 
 - `COMMUNICATIONS_INAPP_ENABLED=true`
 - `COMMUNICATIONS_INAPP_LIVE_ENABLED=true`
-- `COMMUNICATIONS_EMAIL_ENABLED=false` (optional local simplification)
+- `COMMUNICATIONS_EMAIL_ENABLED=false` (optional local simplification for operational email; account one-time links still send)
 
 ### Manual WebSocket checks
 
@@ -332,7 +333,7 @@ Push/fallback:
 ### Rollback checklist
 
 1. Disable live quickly if needed: `COMMUNICATIONS_INAPP_LIVE_ENABLED=false`
-2. Optionally disable email channel: `COMMUNICATIONS_EMAIL_ENABLED=false`
+2. Optionally disable operational email: `COMMUNICATIONS_EMAIL_ENABLED=false` (account one-time links still send)
 3. Keep durability path on: `COMMUNICATIONS_INAPP_ENABLED=true`
 4. Re-run focused regression tests
 5. Validate manual create, domain dispatch, inbox reads, and WS connect behavior

@@ -1,27 +1,37 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const sendEmailMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+const sendEmailMock = vi.hoisted(() =>
+  vi.fn().mockResolvedValue({
+    channel: "email",
+    success: true,
+    sentCount: 1,
+  }),
+);
 
-vi.mock("../../src/auth/authEmailSend.ts", () => ({
-  sendAuthTransactionalEmail: sendEmailMock,
+vi.mock("../../src/communications/channels/emailChannel.ts", () => ({
+  default: { send: sendEmailMock },
 }));
 
 import { sendAuthTokenEmailOrRollback } from "../../src/auth/authEmailTokenFlow.ts";
 import type { AuthEmailTemplateContent } from "../../src/auth/emailTemplates.ts";
+import {
+  emailRailFailure,
+  emailRailSuccess,
+} from "../helpers/accountEmailRail.ts";
 
 const content: AuthEmailTemplateContent = {
   subject: "Subject",
-  text: "Text",
-  html: "<p>Html</p>",
+  text: "Plain words",
+  html: "<p>Rich words</p>",
 };
 
 describe("sendAuthTokenEmailOrRollback", () => {
   beforeEach(() => {
     sendEmailMock.mockReset();
-    sendEmailMock.mockResolvedValue(undefined);
+    sendEmailMock.mockResolvedValue(emailRailSuccess);
   });
 
-  it("persists a CSPRNG token, emails the built link, and returns true", async () => {
+  it("persists a token and sends that one address the template plain and rich parts", async () => {
     const persist = vi.fn().mockResolvedValue(undefined);
     const rollback = vi.fn().mockResolvedValue(undefined);
     const buildLink = vi.fn((token: string) => `https://app.test/go?token=${token}`);
@@ -39,15 +49,19 @@ describe("sendAuthTokenEmailOrRollback", () => {
     const token = persist.mock.calls[0][0] as string;
     expect(token).toMatch(/^[0-9a-f]{64}$/);
     expect(buildLink).toHaveBeenCalledWith(token);
+    expect(sendEmailMock).toHaveBeenCalledTimes(1);
     expect(sendEmailMock).toHaveBeenCalledWith({
       to: "new@example.com",
-      content,
+      subject: content.subject,
+      text: content.text,
+      html: content.html,
     });
+    expect(sendEmailMock.mock.calls[0][0]).not.toHaveProperty("replyTo");
     expect(rollback).not.toHaveBeenCalled();
   });
 
-  it("rolls back and returns false when the send fails", async () => {
-    sendEmailMock.mockRejectedValue(new Error("SMTP down"));
+  it("clears the pending link and returns false when the rail reports failure", async () => {
+    sendEmailMock.mockResolvedValue(emailRailFailure);
     const rollback = vi.fn().mockResolvedValue(undefined);
 
     const sent = await sendAuthTokenEmailOrRollback({

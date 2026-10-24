@@ -9,10 +9,16 @@
 
 import { describe, it, expect, vi, beforeAll } from "vitest";
 
-const sendEmailMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+const sendEmailMock = vi.hoisted(() =>
+  vi.fn().mockResolvedValue({
+    channel: "email",
+    success: true,
+    sentCount: 1,
+  }),
+);
 
-vi.mock("../../src/auth/authEmailSend.ts", () => ({
-  sendAuthTransactionalEmail: sendEmailMock,
+vi.mock("../../src/communications/channels/emailChannel.ts", () => ({
+  default: { send: sendEmailMock },
 }));
 
 const deleteFolderCloudinaryMock = vi.hoisted(() =>
@@ -30,6 +36,7 @@ import User from "../../src/models/user.ts";
 import RefreshSession from "../../src/models/refreshSession.ts";
 import Notification from "../../src/models/notification.ts";
 import Business from "../../src/models/business.ts";
+import { expectOneAccountSend } from "../helpers/accountEmailRail.ts";
 import { multipart } from "../helpers/multipart.ts";
 import {
   detail,
@@ -182,7 +189,6 @@ describe("Users Routes", () => {
 
       expect(response.statusCode).toBe(202);
       expect(response.json().message).toContain("reactivation");
-      expect(sendEmailMock).toHaveBeenCalledTimes(1);
 
       const rows = await User.find({
         "personalDetails.email": "reactivate-create@test.com",
@@ -192,6 +198,11 @@ describe("Users Routes", () => {
       expect(rows).toHaveLength(1);
       expect(rows[0].deleted).toBe(true);
       expect(rows[0].verificationToken).toBeTruthy();
+      expectOneAccountSend(sendEmailMock, {
+        to: "reactivate-create@test.com",
+        subject: "Confirm Your Email - POS",
+        link: `/confirm-email?token=${rows[0].verificationToken}`,
+      });
     });
 
     it("reactivates the soft-deleted user when a business shares the email and the username is taken", async () => {

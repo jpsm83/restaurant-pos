@@ -14,13 +14,22 @@ import {
 import bcrypt from "bcrypt";
 
 const sendEmailMock = vi.hoisted(() =>
-  vi.fn().mockResolvedValue(undefined),
+  vi.fn().mockResolvedValue({
+    channel: "email",
+    success: true,
+    sentCount: 1,
+  }),
 );
 
-vi.mock("../../src/auth/authEmailSend.ts", () => ({
-  sendAuthTransactionalEmail: sendEmailMock,
+vi.mock("../../src/communications/channels/emailChannel.ts", () => ({
+  default: { send: sendEmailMock },
 }));
 
+import {
+  emailRailFailure,
+  emailRailSuccess,
+  expectOneAccountSend,
+} from "../helpers/accountEmailRail.ts";
 import { getTestApp, resetTestApp } from "../setup.ts";
 import User from "../../src/models/user.ts";
 import Business from "../../src/models/business.ts";
@@ -103,7 +112,7 @@ describe("POST /api/v1/auth/request-email-confirmation", () => {
 
   beforeEach(() => {
     sendEmailMock.mockReset();
-    sendEmailMock.mockResolvedValue(undefined);
+    sendEmailMock.mockResolvedValue(emailRailSuccess);
   });
 
   it("returns 400 for invalid email", async () => {
@@ -167,7 +176,6 @@ describe("POST /api/v1/auth/request-email-confirmation", () => {
 
     expect(response.statusCode).toBe(200);
     expect(JSON.parse(response.body).message).toBe(EMAIL_CONFIRMATION_SENT_MESSAGE);
-    expect(sendEmailMock).toHaveBeenCalledTimes(1);
 
     const updated = await User.findOne({
       "personalDetails.email": "pending@example.com",
@@ -175,12 +183,17 @@ describe("POST /api/v1/auth/request-email-confirmation", () => {
       .select("verificationToken")
       .lean();
     expect(updated?.verificationToken).toBeTruthy();
+    expectOneAccountSend(sendEmailMock, {
+      to: "pending@example.com",
+      subject: "Confirm Your Email - POS",
+      link: `/confirm-email?token=${updated?.verificationToken}`,
+    });
   });
 
   it("clears token and returns 500 when send fails", async () => {
     const app = await getTestApp();
     await createTestUser("failsend@example.com", { emailVerified: false });
-    sendEmailMock.mockRejectedValue(new Error("SMTP down"));
+    sendEmailMock.mockResolvedValue(emailRailFailure);
 
     const response = await app.inject({
       method: "POST",
@@ -189,6 +202,10 @@ describe("POST /api/v1/auth/request-email-confirmation", () => {
     });
 
     expect(response.statusCode).toBe(500);
+    expect(response.headers["content-type"]).toContain("application/problem+json");
+    expect(response.json().detail).toBe(
+      "Failed to send confirmation email. Please try again later.",
+    );
     const updated = await User.findOne({
       "personalDetails.email": "failsend@example.com",
     })
@@ -236,7 +253,6 @@ describe("POST /api/v1/auth/request-email-confirmation", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(sendEmailMock).toHaveBeenCalledTimes(1);
 
     const biz = await Business.findOne({ email }).select("verificationToken").lean();
     const usr = await User.findOne({ "personalDetails.email": email })
@@ -244,5 +260,10 @@ describe("POST /api/v1/auth/request-email-confirmation", () => {
       .lean();
     expect(biz?.verificationToken).toBeTruthy();
     expect(usr?.verificationToken).toBeFalsy();
+    expectOneAccountSend(sendEmailMock, {
+      to: email,
+      subject: "Confirm Your Email - POS",
+      link: `/confirm-email?token=${biz?.verificationToken}`,
+    });
   });
 });
