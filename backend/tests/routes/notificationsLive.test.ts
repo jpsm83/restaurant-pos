@@ -200,26 +200,42 @@ describe("Notifications Live Route", () => {
     });
   });
 
-  it("rejects websocket connection for non-user session token", async () => {
+  it("accepts a tenant (business) session and acknowledges a live connection", async () => {
     await withLiveServer(async ({ baseUrl, app }) => {
+      const accountId = new Types.ObjectId().toString();
       const businessToken = await signAccessTokenForLiveSession(app, {
-        id: new Types.ObjectId().toString(),
+        id: accountId,
         email: "owner@test.com",
         type: "business",
         role: "Tenant",
       });
 
-      const closed = await new Promise<{ code: number; reason: string }>((resolve) => {
+      const message = await new Promise<string>((resolve, reject) => {
+        const timer = setTimeout(
+          () => reject(new Error("tenant session was not acknowledged")),
+          3_000,
+        );
         const socket = new WebSocket(baseUrl, {
           headers: { Authorization: `Bearer ${businessToken}` },
         });
-        socket.on("close", (code, reason) =>
-          resolve({ code, reason: reason.toString() })
-        );
+        socket.on("message", (data) => {
+          clearTimeout(timer);
+          socket.close();
+          resolve(data.toString());
+        });
+        socket.on("close", (code, reason) => {
+          clearTimeout(timer);
+          reject(new Error(`closed ${code} ${reason.toString()}`));
+        });
+        socket.on("error", (error) => {
+          clearTimeout(timer);
+          reject(error);
+        });
       });
 
-      expect(closed.code).toBe(1008);
-      expect(closed.reason).toBe("Forbidden");
+      const parsed = JSON.parse(message);
+      expect(parsed.type).toBe("live.connected");
+      expect(parsed.data).toEqual({ accountId });
     });
   });
 
@@ -243,8 +259,8 @@ describe("Notifications Live Route", () => {
       });
 
       const parsed = JSON.parse(message);
-      expect(parsed.type).toBe("notification.live.connected");
-      expect(parsed.data).toEqual({ userId });
+      expect(parsed.type).toBe("live.connected");
+      expect(parsed.data).toEqual({ accountId: userId });
     });
   });
 
@@ -331,8 +347,8 @@ describe("Notifications Live Route", () => {
       });
 
       const parsed = JSON.parse(message);
-      expect(parsed.type).toBe("notification.live.connected");
-      expect(parsed.data).toEqual({ userId: user._id.toString() });
+      expect(parsed.type).toBe("live.connected");
+      expect(parsed.data).toEqual({ accountId: user._id.toString() });
     });
   });
 
@@ -356,8 +372,8 @@ describe("Notifications Live Route", () => {
       });
 
       const parsed = JSON.parse(message);
-      expect(parsed.type).toBe("notification.live.connected");
-      expect(parsed.data).toEqual({ userId });
+      expect(parsed.type).toBe("live.connected");
+      expect(parsed.data).toEqual({ accountId: userId });
     });
   });
 
@@ -379,7 +395,7 @@ describe("Notifications Live Route", () => {
         socket.on("message", async (raw) => {
           const message = raw.toString();
           const parsed = JSON.parse(message);
-          if (parsed.type === "notification.live.connected") {
+          if (parsed.type === "live.connected") {
             const response = await app.inject({
               method: "POST",
               url: "/api/v1/notifications",
@@ -455,7 +471,7 @@ describe("Notifications Live Route", () => {
           );
           socket.on("message", (raw) => {
             const parsed = JSON.parse(raw.toString());
-            if (parsed.type === "notification.live.connected") {
+            if (parsed.type === "live.connected") {
               clearTimeout(timeout);
               resolve();
             }
@@ -534,6 +550,83 @@ describe("Notifications Live Route", () => {
       } finally {
         targetSocket.close();
         nonTargetSocket.close();
+      }
+    });
+  });
+
+  it("two open connections of the same user each receive live.connected and notification.created once", async () => {
+    await withLiveServer(async ({ baseUrl, app }) => {
+      const business = await createTestBusiness();
+      const user = await createTestUser("live-two-tabs");
+      const token = await liveUserToken(
+        app,
+        user._id.toString(),
+        String(user.personalDetails.email),
+      );
+
+      const waitForAck = (socket: WebSocket): Promise<void> =>
+        new Promise((resolve, reject) => {
+          const timeout = setTimeout(
+            () => reject(new Error("Timed out waiting for live.connected")),
+            5_000,
+          );
+          socket.on("message", (raw) => {
+            const parsed = JSON.parse(raw.toString());
+            if (parsed.type === "live.connected") {
+              clearTimeout(timeout);
+              resolve();
+            }
+          });
+          socket.on("error", (error) => {
+            clearTimeout(timeout);
+            reject(error);
+          });
+        });
+
+      const first = new WebSocket(baseUrl, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const second = new WebSocket(baseUrl, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const firstCreated: string[] = [];
+      const secondCreated: string[] = [];
+      first.on("message", (raw) => {
+        const parsed = JSON.parse(raw.toString());
+        if (parsed.type === "notification.created") {
+          firstCreated.push(parsed.data?.message ?? "");
+        }
+      });
+      second.on("message", (raw) => {
+        const parsed = JSON.parse(raw.toString());
+        if (parsed.type === "notification.created") {
+          secondCreated.push(parsed.data?.message ?? "");
+        }
+      });
+
+      try {
+        await Promise.all([waitForAck(first), waitForAck(second)]);
+
+        const response = await app.inject({
+          method: "POST",
+          url: "/api/v1/notifications",
+          payload: {
+            notificationType: "Info",
+            message: "Pushed to both tabs",
+            businessId: business._id.toString(),
+            customersRecipientsIds: [user._id.toString()],
+          },
+        });
+        expect(response.statusCode).toBe(201);
+
+        await new Promise((resolve) => setTimeout(resolve, 250));
+
+        expect(firstCreated).toEqual(["Pushed to both tabs"]);
+        expect(secondCreated).toEqual(["Pushed to both tabs"]);
+      } finally {
+        first.close();
+        second.close();
       }
     });
   });

@@ -10,6 +10,7 @@ It consolidates architecture, API contracts, WebSocket contracts, runbook operat
 - REST base path: `/api/v1/notifications`
 - WebSocket path: `/api/v1/notifications/live`
 - Source of truth: persisted in-app notification (live push is best-effort acceleration).
+- The same WebSocket is the signed-in browser's live connection; notification push is one event on that rail.
 
 ## Core architecture
 
@@ -210,16 +211,17 @@ Auth methods:
 Auth failure close behavior:
 
 - missing token -> `1008 Unauthorized`
-- invalid token -> `1008 Unauthorized`
-- non-user session -> `1008 Forbidden`
+- invalid or revoked token -> `1008 Unauthorized`
+
+A signed-in user session and a signed-in tenant (business) session both connect. `COMMUNICATIONS_INAPP_LIVE_ENABLED=false` still accepts the upgrade; it only skips `notification.created` push.
 
 ### Connection ack event
 
 ```json
 {
-  "type": "notification.live.connected",
+  "type": "live.connected",
   "data": {
-    "userId": "..."
+    "accountId": "..."
   }
 }
 ```
@@ -310,8 +312,7 @@ Connection/auth:
 
 1. No token -> close `1008 Unauthorized`
 2. Invalid token -> close `1008 Unauthorized`
-3. Non-user token -> close `1008 Forbidden`
-4. Valid user token -> receive `notification.live.connected`
+3. Valid user or tenant token -> receive `live.connected`
 
 Push/fallback:
 
@@ -326,8 +327,7 @@ Push/fallback:
 | Symptom | Likely cause | Check | Fix |
 |---|---|---|---|
 | No `notification.created` | live disabled | `COMMUNICATIONS_INAPP_LIVE_ENABLED` | enable and restart |
-| WS unauthorized | missing/invalid token | auth header/query token | send valid user JWT |
-| WS forbidden | non-user session | token payload `type` | use user token |
+| WS unauthorized | missing/invalid token | auth header/query token | send a valid signed-in JWT |
 | Persisted but no live push | user offline/no socket | live counters/registry logs | expected; use REST inbox |
 | Slow read endpoints | query/index mismatch | explain stats, query params | tune indexes/projections |
 | Auth failure spike | token lifecycle issue | `authFailuresByReason` | fix token refresh/session |
@@ -335,7 +335,7 @@ Push/fallback:
 
 ### Rollback checklist
 
-1. Disable live quickly if needed: `COMMUNICATIONS_INAPP_LIVE_ENABLED=false`
+1. Disable live *push* quickly if needed: `COMMUNICATIONS_INAPP_LIVE_ENABLED=false` (the upgrade still accepts a signed-in connection)
 2. Optionally disable operational email: `COMMUNICATIONS_EMAIL_ENABLED=false` (account one-time links still send)
 3. Keep durability path on: `COMMUNICATIONS_INAPP_ENABLED=true`
 4. Re-run focused regression tests

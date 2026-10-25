@@ -4,6 +4,7 @@
  * ## Wiring
  * - Mounted in **`main.tsx`** inside **`QueryClientProvider`** and **`ErrorBoundary`** (order documented there).
  * - **Bootstrap (once on mount):** load persisted access token → `GET /me`; else `POST /refresh` then `GET /me`; set `auth_had_session` / expired notice flags as in code.
+ * - **Live connection:** follows the access session via `setAccessToken` in `api.ts` (open on sign-in, close on sign-out).
  * - **Consumers:** route guards, `Navbar`, login/signup pages, `AccountMenuPopover`, `SelectUserModePage`, `AuthModeContext` (reads session to enable mode query), etc.
  *
  * ## Actions

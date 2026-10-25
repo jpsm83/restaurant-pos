@@ -11,10 +11,15 @@ vi.mock("@/auth/api", () => ({
   getCurrentUser: () => getCurrentUser(),
   refreshSession: () => refreshSession(),
   setAccessToken: (...args: unknown[]) => setAccessToken(...args),
+  getAccessToken: () => null,
 }));
 
 vi.mock("@/hooks/use-mobile", () => ({
   useIsMobile: () => false,
+}));
+
+vi.mock("@/live/connection", () => ({
+  syncLiveConnection: () => undefined,
 }));
 
 const mockRender = vi.fn();

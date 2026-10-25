@@ -38,7 +38,7 @@ frontend (:5173) --/api proxy--> backend (:4000) --> MongoDB Atlas
 | Validation / serialization | Zod 4 through `@fastify/type-provider-zod` |
 | Database | MongoDB Atlas via Mongoose 9 |
 | Auth | JWT access token + refresh cookie (`@fastify/jwt`, `@fastify/cookie`), bcrypt |
-| Realtime | WebSockets (`@fastify/websocket`) for live in-app notifications |
+| Realtime | WebSockets (`@fastify/websocket`) for the signed-in live connection (notification push travels on it) |
 | Files | `@fastify/multipart` + Cloudinary |
 | Email | Nodemailer. Account one-time links and the sign-in email-change notice use the SMTP rail. |
 | Tests | Vitest + `mongodb-memory-server` (in-memory replica set) |

@@ -9,11 +9,6 @@ import {
 } from "../../auth/middleware.ts";
 import type { AuthSession } from "../../auth/types.ts";
 
-const LOG_PREFIX = "[communications][notificationsLiveRoute]";
-
-const isLiveInAppEnabled = (): boolean =>
-  process.env.COMMUNICATIONS_INAPP_LIVE_ENABLED !== "false";
-
 const parseBearerToken = (authorization?: string): string | null => {
   if (!authorization?.startsWith("Bearer ")) return null;
   return authorization.slice(7).trim() || null;
@@ -30,14 +25,8 @@ const parseTokenFromQuery = (url?: string): string | null => {
 export const notificationsLiveRoutes: FastifyPluginAsync = async (app) => {
   // Route boundary:
   // - Connection/authentication/registry concerns only.
+  // - Live notification push is switched in the bridge, not here.
   // - No notification persistence or fanout writes occur here.
-  if (!isLiveInAppEnabled()) {
-    app.log.info(
-      `${LOG_PREFIX} Live in-app notifications disabled by COMMUNICATIONS_INAPP_LIVE_ENABLED`
-    );
-    return;
-  }
-
   liveConnectionRegistry.startHeartbeat(app.log);
 
   app.get(
@@ -86,33 +75,22 @@ export const notificationsLiveRoutes: FastifyPluginAsync = async (app) => {
           return;
         }
 
-        if (session.type !== "user") {
-          liveConnectionRegistry.markAuthFailure("non_user_session");
-          app.log.warn({
-            scope: "communications.live.auth",
-            outcome: "failed",
-            reason: "non_user_session",
-            correlationId,
-          });
-          socket.close(1008, "Forbidden");
-          return;
-        }
-
-        const userId = new Types.ObjectId(session.id);
-        liveConnectionRegistry.registerSocket(userId, socket);
+        const accountId = new Types.ObjectId(session.id);
+        liveConnectionRegistry.registerSocket(accountId, socket);
 
         const metrics = liveConnectionRegistry.getLiveMetrics();
         app.log.info({
           scope: "communications.live.connection",
           outcome: "connected",
-          userId: userId.toString(),
+          accountId: accountId.toString(),
+          sessionType: session.type,
           connectedUsers: metrics.connectedUsers,
           connectedSockets: metrics.connectedSockets,
           correlationId,
         });
 
         socket.send(
-          JSON.stringify(toLiveConnectedMessage(userId.toString())),
+          JSON.stringify(toLiveConnectedMessage(accountId.toString())),
         );
       })();
     }

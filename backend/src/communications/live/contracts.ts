@@ -1,8 +1,8 @@
 import type { LiveInAppNotificationEvent } from "../types.ts";
 
-export interface NotificationLiveConnectedMessage {
-  type: "notification.live.connected";
-  data: { userId: string };
+export interface LiveConnectedMessage {
+  type: "live.connected";
+  data: { accountId: string };
 }
 
 export interface NotificationCreatedMessage {
@@ -17,10 +17,10 @@ export interface NotificationCreatedMessage {
 }
 
 export const toLiveConnectedMessage = (
-  userId: string
-): NotificationLiveConnectedMessage => ({
-  type: "notification.live.connected",
-  data: { userId },
+  accountId: string
+): LiveConnectedMessage => ({
+  type: "live.connected",
+  data: { accountId },
 });
 
 export const toNotificationCreatedMessage = (

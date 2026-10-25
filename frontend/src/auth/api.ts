@@ -11,6 +11,7 @@
  * - **Pages** use `login`, `signup`, `logout`, `getCurrentUser`, and public email/password flows from **`@/auth/api`**.
  * - **`businessService.createBusiness`** calls **`setAccessToken`** when registration returns a token.
  * - **`logout`** clears token and **`queryClient.removeQueries`** for `auth.mode` (TanStack cache); broader invalidation can be added here if needed.
+ * - **`setAccessToken`** opens the live connection with the access session just received, and closes it when the token is cleared.
  *
  * **401 handling:** `authRequest` retries once after **`refreshSession`** (except when `retryOnUnauthorized` is false for login/signup/refresh/logout).
  */
@@ -23,6 +24,7 @@ import type {
 import { queryClient } from "@/services/queryClient";
 import { queryKeys } from "@/services/queryKeys";
 import { extractProblemDetailsMessage } from "@/services/serviceErrors";
+import { syncLiveConnection } from "@/live/connection";
 
 const ACCESS_TOKEN_STORAGE_KEY = "restaurant_pos_auth_access";
 
@@ -73,13 +75,17 @@ let accessToken: string | null = null;
 /** Persists access JWT for same-tab reloads; refresh cookie remains the long-lived secret (httpOnly). */
 export function setAccessToken(token: string | null) {
   accessToken = token;
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined") {
+    syncLiveConnection(token);
+    return;
+  }
   try {
     if (token) sessionStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, token);
     else sessionStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
   } catch {
     // private mode / quota
   }
+  syncLiveConnection(token);
 }
 
 /** Read token saved for this tab (before in-memory module state is set). */

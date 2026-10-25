@@ -15,6 +15,7 @@ import resolveEmployeeUserRecipients from "../../src/communications/recipientRes
 import notificationRepository from "../../src/communications/repositories/notificationRepository.ts";
 import notificationService from "../../src/communications/services/notificationService.ts";
 import { buildApp } from "../../src/server.ts";
+import { signAccessTokenForLiveSession } from "../setup.ts";
 import * as liveInAppEvents from "../../src/communications/channels/liveInAppEvents.ts";
 import buildOrderReceiptTemplate from "../../src/communications/templates/orderReceiptTemplate.ts";
 import buildReservationTemplate from "../../src/communications/templates/reservationTemplate.ts";
@@ -1022,7 +1023,7 @@ describe("Communications Core - Feature Flags", () => {
     else process.env.COMMUNICATIONS_EMAIL_ENABLED = previousEmailToggle;
   });
 
-  it("COMMUNICATIONS_INAPP_LIVE_ENABLED=false disables /notifications/live websocket route", async () => {
+  it("COMMUNICATIONS_INAPP_LIVE_ENABLED=false still accepts a live connection", async () => {
     const previousLiveToggle = process.env.COMMUNICATIONS_INAPP_LIVE_ENABLED;
     process.env.COMMUNICATIONS_INAPP_LIVE_ENABLED = "false";
 
@@ -1030,19 +1031,48 @@ describe("Communications Core - Feature Flags", () => {
     await app.listen({ port: 0, host: "127.0.0.1" });
     const address = app.server.address() as AddressInfo;
     const wsUrl = `ws://127.0.0.1:${address.port}/api/v1/notifications/live`;
+    const accountId = new Types.ObjectId().toString();
+    const token = await signAccessTokenForLiveSession(app, {
+      id: accountId,
+      email: "live-off@test.com",
+      type: "user",
+      role: "Customer",
+    });
 
     try {
-      const closedCode = await new Promise<number>((resolve) => {
-        const socket = new WebSocket(wsUrl);
-        socket.on("unexpected-response", (request, response) => {
-          resolve(response.statusCode ?? 0);
-          request.destroy();
+      const message = await new Promise<string>((resolve, reject) => {
+        const timer = setTimeout(
+          () => reject(new Error("upgrade was not accepted")),
+          3_000,
+        );
+        const socket = new WebSocket(wsUrl, {
+          headers: { Authorization: `Bearer ${token}` },
         });
-        socket.on("close", (code) => resolve(code));
+        socket.on("message", (data) => {
+          clearTimeout(timer);
+          socket.close();
+          resolve(data.toString());
+        });
+        socket.on("unexpected-response", (_request, response) => {
+          clearTimeout(timer);
+          reject(new Error(`upgrade refused with HTTP ${response.statusCode}`));
+        });
+        socket.on("close", (code, reason) => {
+          clearTimeout(timer);
+          reject(new Error(`closed ${code} ${reason.toString()}`));
+        });
+        socket.on("error", (error) => {
+          clearTimeout(timer);
+          reject(error);
+        });
       });
 
-      // With route disabled, upgrade is rejected by HTTP layer (expected non-101).
-      expect(closedCode).not.toBe(101);
+      const parsed = JSON.parse(message) as {
+        type?: string;
+        data?: { accountId?: string };
+      };
+      expect(parsed.type).toBe("live.connected");
+      expect(parsed.data).toEqual({ accountId });
     } finally {
       await app.close();
       if (previousLiveToggle === undefined)
