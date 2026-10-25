@@ -65,6 +65,11 @@ const richPartFor = (payload: EmailSendInput): string | undefined => {
   return `<p>${escapeHtml(payload.text)}</p>`;
 };
 
+const senderNameFor = (payload: EmailSendInput): string => {
+  const supplied = payload.displayName?.trim();
+  return supplied || PLATFORM_EMAIL_DISPLAY_NAME;
+};
+
 const resolveRecipient = (
   to: unknown,
 ): { recipient: string } | { error: string } => {
@@ -146,7 +151,7 @@ const send = async (payload: EmailSendInput): Promise<CommunicationsChannelResul
     try {
       await smtpState.transport.sendMail({
         from: {
-          name: PLATFORM_EMAIL_DISPLAY_NAME,
+          name: senderNameFor(payload),
           address: smtpState.fromAddress,
         },
         to: recipient,

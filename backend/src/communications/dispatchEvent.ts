@@ -1,5 +1,6 @@
 import { Types } from "mongoose";
 import User from "../models/user.ts";
+import Business from "../models/business.ts";
 import emailChannel from "./channels/emailChannel.ts";
 import inAppChannel from "./channels/inAppChannel.ts";
 import buildOrderReceiptTemplate from "./templates/orderReceiptTemplate.ts";
@@ -29,6 +30,24 @@ import {
   recordDispatchAttempt,
   recordDispatchResult,
 } from "./observability/metrics.ts";
+
+const VENUE_INITIATED_EMAIL_EVENTS = new Set<CommunicationsEventName>([
+  "ORDER_CONFIRMED",
+  "RESERVATION_PENDING",
+  "RESERVATION_DECIDED",
+  "BUSINESS_PROFILE_UPDATED",
+]);
+
+const readVenueTradeName = async (
+  businessId?: Types.ObjectId,
+): Promise<string | undefined> => {
+  if (!businessId) return undefined;
+  const business = (await Business.findById(businessId)
+    .select("tradeName")
+    .lean()) as { tradeName?: string } | null;
+  const tradeName = business?.tradeName?.trim();
+  return tradeName || undefined;
+};
 
 const LOG_PREFIX = "[communications][dispatchEvent]";
 const DISPATCH_SCOPE = "communications.dispatch";
@@ -425,6 +444,17 @@ export const dispatchEvent = async <E extends CommunicationsEventName>(
     publishChannelResult(result);
   };
 
+  let venueTradeName: string | undefined;
+  let venueTradeNameLoaded = false;
+  const venueSenderName = async (): Promise<string | undefined> => {
+    if (!VENUE_INITIATED_EMAIL_EVENTS.has(eventName)) return undefined;
+    if (!venueTradeNameLoaded) {
+      venueTradeNameLoaded = true;
+      venueTradeName = await readVenueTradeName(businessId);
+    }
+    return venueTradeName;
+  };
+
   const deliverEmail = async (input: {
     to: string;
     subject: string;
@@ -432,6 +462,7 @@ export const dispatchEvent = async <E extends CommunicationsEventName>(
     businessId: Types.ObjectId;
   }): Promise<CommunicationsChannelResult | null> => {
     if (!canUseEmailChannel) return null;
+    const displayName = await venueSenderName();
     return emailChannel.send({
       to: input.to,
       subject: input.subject,
@@ -439,6 +470,7 @@ export const dispatchEvent = async <E extends CommunicationsEventName>(
       businessId: input.businessId,
       eventName,
       correlationId,
+      ...(displayName ? { displayName } : {}),
     });
   };
 

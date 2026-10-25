@@ -26,7 +26,7 @@ It consolidates architecture, API contracts, WebSocket contracts, runbook operat
 ### 2) Channel boundaries
 
 - `email` channel:
-  - One recipient per send, with a plain part and a rich part, from the platform address and the platform display name `POS`. No reply-to address is set.
+  - One recipient per send, with a plain part and a rich part, from the platform address. Account mail uses the platform display name `POS`. Venue-initiated mail (order confirmed, reservation pending, reservation decided, business profile updated) uses the Business trade name when that Business has one, and `POS` when it does not. The send still proceeds when the trade name is missing. No reply-to address is set.
   - A transient SMTP failure is retried. A permanent failure, or missing or invalid platform mail configuration, fails once.
   - The channel returns a success or failure result.
   - Outside production, `AUTH_EMAIL_DEV_SINK_ENABLED=true` accepts the message, logs a local preview, and returns success without SMTP. Production ignores that switch.

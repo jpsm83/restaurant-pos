@@ -147,6 +147,8 @@ export interface EmailSendInput {
   subject: string;
   text?: string;
   html?: string;
+  /** Sender display name. Blank or omitted uses the platform display name. */
+  displayName?: string;
   eventName?: CommunicationsEventName;
   businessId?: Types.ObjectId;
   correlationId?: string;

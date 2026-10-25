@@ -66,6 +66,64 @@ describe("emailChannel dev sink behavior", () => {
       text: "Plain words",
       html: "<p>Rich words</p>",
     });
+    expect(sendMail.mock.calls[0][0]).not.toHaveProperty("replyTo");
+  });
+
+  it("uses a supplied sender name with the platform address and no reply-to", async () => {
+    const sendMail = vi.fn().mockResolvedValue({ messageId: "ok" });
+    getSmtpProviderStateMock.mockReturnValue({
+      enabled: true,
+      fromAddress: "platform@example.com",
+      transport: { sendMail },
+    });
+
+    const result = await emailChannel.send({
+      to: "guest@example.com",
+      subject: "Order confirmation",
+      text: "Total is 5 < 12 & drinks are ready",
+      displayName: "  Harbour Kitchen  ",
+    });
+
+    expect(result).toEqual({
+      channel: "email",
+      success: true,
+      sentCount: 1,
+    });
+    expect(sendMail).toHaveBeenCalledTimes(1);
+    expect(sendMail).toHaveBeenCalledWith({
+      from: { name: "Harbour Kitchen", address: "platform@example.com" },
+      to: "guest@example.com",
+      subject: "Order confirmation",
+      text: "Total is 5 < 12 & drinks are ready",
+      html: "<p>Total is 5 &lt; 12 &amp; drinks are ready</p>",
+    });
+    expect(sendMail.mock.calls[0][0]).not.toHaveProperty("replyTo");
+  });
+
+  it("uses the platform display name when the supplied sender name is blank", async () => {
+    const sendMail = vi.fn().mockResolvedValue({ messageId: "ok" });
+    getSmtpProviderStateMock.mockReturnValue({
+      enabled: true,
+      fromAddress: "platform@example.com",
+      transport: { sendMail },
+    });
+
+    const result = await emailChannel.send({
+      to: "guest@example.com",
+      subject: "Reservation pending",
+      text: "Reservation received",
+      displayName: "   ",
+    });
+
+    expect(result.success).toBe(true);
+    expect(sendMail).toHaveBeenCalledWith({
+      from: { name: "POS", address: "platform@example.com" },
+      to: "guest@example.com",
+      subject: "Reservation pending",
+      text: "Reservation received",
+      html: "<p>Reservation received</p>",
+    });
+    expect(sendMail.mock.calls[0][0]).not.toHaveProperty("replyTo");
   });
 
   it("sends supplied text plus that text escaped into one paragraph when no rich part is given", async () => {

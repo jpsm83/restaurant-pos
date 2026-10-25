@@ -4,6 +4,9 @@ import type { AddressInfo } from "node:net";
 import WebSocket from "ws";
 import User from "../../src/models/user.ts";
 import Employee from "../../src/models/employee.ts";
+import Business from "../../src/models/business.ts";
+import Order from "../../src/models/order.ts";
+import Reservation from "../../src/models/reservation.ts";
 import Notification from "../../src/models/notification.ts";
 import dispatchEvent from "../../src/communications/dispatchEvent.ts";
 import emailChannel from "../../src/communications/channels/emailChannel.ts";
@@ -53,6 +56,21 @@ const createTestUser = async (prefix: string) => {
       address: validAddress,
     },
     allUserRoles: ["Customer"],
+  });
+};
+
+const createVenue = async (tradeName: string) => {
+  const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  return Business.create({
+    tradeName,
+    legalName: `${tradeName || "Venue"} LLC`,
+    email: `venue-${suffix}@test.com`,
+    password: "hashedpassword",
+    phoneNumber: "1234567890",
+    taxNumber: `TAX-${suffix}`,
+    currencyTrade: "USD",
+    subscription: "Free",
+    address: validAddress,
   });
 };
 
@@ -349,6 +367,440 @@ describe("Communications Core - Dispatcher Event Routing", () => {
 
     if (previousInAppToggle === undefined) delete process.env.COMMUNICATIONS_INAPP_ENABLED;
     else process.env.COMMUNICATIONS_INAPP_ENABLED = previousInAppToggle;
+  });
+});
+
+describe("venue-initiated mail sender name", () => {
+  const withEmailEnabled = async (run: () => Promise<void>) => {
+    const previousEmailToggle = process.env.COMMUNICATIONS_EMAIL_ENABLED;
+    process.env.COMMUNICATIONS_EMAIL_ENABLED = "true";
+    try {
+      await run();
+    } finally {
+      if (previousEmailToggle === undefined) delete process.env.COMMUNICATIONS_EMAIL_ENABLED;
+      else process.env.COMMUNICATIONS_EMAIL_ENABLED = previousEmailToggle;
+    }
+  };
+
+  it("sends order confirmation to one recipient using the business trade name", async () => {
+    await withEmailEnabled(async () => {
+      const business = await createVenue("  Harbour Kitchen  ");
+      const user = await createTestUser("order-trade-name");
+      const emailSpy = vi.spyOn(emailChannel, "send").mockResolvedValue({
+        channel: "email",
+        success: true,
+        sentCount: 1,
+      });
+
+      try {
+        await dispatchEvent(
+          "ORDER_CONFIRMED",
+          {
+            businessId: business._id,
+            userId: user._id,
+            dailyReferenceNumber: "R-9",
+            orderCode: "CODE-9",
+            totalNetPaidAmount: 12.5,
+            orderCount: 2,
+          },
+          { fireAndForget: true },
+        );
+
+        expect(emailSpy).toHaveBeenCalledTimes(1);
+        const payload = emailSpy.mock.calls[0][0];
+        expect(payload.to).toBe(user.personalDetails.email);
+        expect(payload.displayName).toBe("Harbour Kitchen");
+        expect(payload.subject).toBe("Order confirmation - Ref CODE-9");
+        expect(payload.text).toBe(
+          [
+            "Order confirmed.",
+            "Ref: CODE-9",
+            "Items: 2",
+            "Total paid: 12.50",
+            "Keep this receipt for your records.",
+          ].join("\n"),
+        );
+      } finally {
+        emailSpy.mockRestore();
+      }
+    });
+  });
+
+  it("sends the reservation pending message to one recipient using the business trade name", async () => {
+    await withEmailEnabled(async () => {
+      const business = await createVenue("Harbour Kitchen");
+      const user = await createTestUser("reservation-pending-trade");
+      const reservationId = new Types.ObjectId();
+      const emailSpy = vi.spyOn(emailChannel, "send").mockResolvedValue({
+        channel: "email",
+        success: true,
+        sentCount: 1,
+      });
+
+      try {
+        await dispatchEvent(
+          "RESERVATION_PENDING",
+          {
+            businessId: business._id,
+            userId: user._id,
+            reservationId,
+            reservationStart: new Date("2026-06-01T18:00:00.000Z"),
+            guestCount: 4,
+            description: "Window table",
+          },
+          { fireAndForget: true },
+        );
+
+        expect(emailSpy).toHaveBeenCalledTimes(1);
+        const payload = emailSpy.mock.calls[0][0];
+        expect(payload.to).toBe(user.personalDetails.email);
+        expect(payload.displayName).toBe("Harbour Kitchen");
+        expect(payload.subject).toBe(
+          `Reservation request received - Ref ${reservationId.toString()}`,
+        );
+        expect(payload.text).toContain(`Reservation – Ref ${reservationId.toString()}`);
+        expect(payload.text).toContain("Status: Pending");
+        expect(payload.text).toContain("Guests: 4");
+        expect(payload.text).toContain("Reason: Window table");
+      } finally {
+        emailSpy.mockRestore();
+      }
+    });
+  });
+
+  it("sends the reservation decided message to one recipient using the business trade name", async () => {
+    await withEmailEnabled(async () => {
+      const business = await createVenue("Harbour Kitchen");
+      const user = await createTestUser("reservation-decided-trade");
+      const reservationId = new Types.ObjectId();
+      const emailSpy = vi.spyOn(emailChannel, "send").mockResolvedValue({
+        channel: "email",
+        success: true,
+        sentCount: 1,
+      });
+
+      try {
+        await dispatchEvent(
+          "RESERVATION_DECIDED",
+          {
+            businessId: business._id,
+            userId: user._id,
+            reservationId,
+            reservationStart: new Date("2026-06-01T18:00:00.000Z"),
+            guestCount: 2,
+            status: "Cancelled",
+          },
+          { fireAndForget: true },
+        );
+
+        expect(emailSpy).toHaveBeenCalledTimes(1);
+        const payload = emailSpy.mock.calls[0][0];
+        expect(payload.to).toBe(user.personalDetails.email);
+        expect(payload.displayName).toBe("Harbour Kitchen");
+        expect(payload.subject).toBe(
+          `Reservation cancelled - Ref ${reservationId.toString()}`,
+        );
+        expect(payload.text).toContain("Status: Cancelled");
+        expect(payload.text).toContain("Guests: 2");
+      } finally {
+        emailSpy.mockRestore();
+      }
+    });
+  });
+
+  it("sends each manager their own profile-updated copy using the business trade name", async () => {
+    await withEmailEnabled(async () => {
+      const business = await createVenue("Harbour Kitchen");
+      const managerOneUser = await createTestUser("profile-trade-1");
+      const managerTwoUser = await createTestUser("profile-trade-2");
+      await createTestEmployee({
+        businessId: business._id,
+        userId: managerOneUser._id,
+        taxSuffix: "trade1",
+      });
+      await createTestEmployee({
+        businessId: business._id,
+        userId: managerTwoUser._id,
+        taxSuffix: "trade2",
+      });
+      const emailSpy = vi.spyOn(emailChannel, "send").mockResolvedValue({
+        channel: "email",
+        success: true,
+        sentCount: 1,
+      });
+      const occurredAt = new Date("2026-04-02T18:30:00.000Z");
+
+      try {
+        await dispatchEvent(
+          "BUSINESS_PROFILE_UPDATED",
+          {
+            businessId: business._id,
+            actor: { source: "businessOwner", email: "owner@example.com" },
+            changedFields: ["phoneNumber"],
+            changedFieldCount: 1,
+            occurredAt,
+          },
+          { fireAndForget: true },
+        );
+
+        expect(emailSpy).toHaveBeenCalledTimes(2);
+        const payloads = emailSpy.mock.calls.map((call) => call[0]);
+        const addresses = payloads.map((payload) => payload.to);
+        expect(addresses).toEqual(
+          expect.arrayContaining([
+            managerOneUser.personalDetails.email,
+            managerTwoUser.personalDetails.email,
+          ]),
+        );
+        expect(new Set(addresses).size).toBe(2);
+        const expectedText = [
+          "The business profile was updated.",
+          "",
+          `Business ID: ${business._id.toString()}`,
+          "Updated by: owner@example.com",
+          "Time (UTC): 2026-04-02T18:30:00.000Z",
+          "",
+          "What changed:",
+          "- phoneNumber",
+          "",
+          "This is an automated message. For security, do not send sign-in secrets by email.",
+        ].join("\n");
+        for (const payload of payloads) {
+          expect(typeof payload.to).toBe("string");
+          expect(payload.to).not.toContain(",");
+          expect(payload.displayName).toBe("Harbour Kitchen");
+          expect(payload.subject).toBe("Business profile updated");
+          expect(payload.text).toBe(expectedText);
+          expect(payload.text).not.toContain(managerOneUser.personalDetails.email);
+          expect(payload.text).not.toContain(managerTwoUser.personalDetails.email);
+        }
+      } finally {
+        emailSpy.mockRestore();
+      }
+    });
+  });
+
+  it("still sends venue mail when the trade name is missing", async () => {
+    await withEmailEnabled(async () => {
+      const business = await createVenue("Temporary Name");
+      await Business.collection.updateOne(
+        { _id: business._id },
+        { $unset: { tradeName: "" } },
+      );
+      const user = await createTestUser("missing-trade-name");
+      const manager = await createTestUser("missing-trade-manager");
+      await createTestEmployee({
+        businessId: business._id,
+        userId: manager._id,
+        taxSuffix: "missing-trade",
+      });
+      const reservationId = new Types.ObjectId();
+      const emailSpy = vi.spyOn(emailChannel, "send").mockResolvedValue({
+        channel: "email",
+        success: true,
+        sentCount: 1,
+      });
+
+      try {
+        await dispatchEvent(
+          "ORDER_CONFIRMED",
+          {
+            businessId: business._id,
+            userId: user._id,
+            dailyReferenceNumber: "R-1",
+            totalNetPaidAmount: 5,
+            orderCount: 1,
+          },
+          { fireAndForget: true },
+        );
+        await dispatchEvent(
+          "RESERVATION_PENDING",
+          {
+            businessId: business._id,
+            userId: user._id,
+            reservationId,
+            reservationStart: new Date("2026-06-01T18:00:00.000Z"),
+            guestCount: 2,
+          },
+          { fireAndForget: true },
+        );
+        await dispatchEvent(
+          "RESERVATION_DECIDED",
+          {
+            businessId: business._id,
+            userId: user._id,
+            reservationId,
+            reservationStart: new Date("2026-06-01T18:00:00.000Z"),
+            guestCount: 2,
+            status: "Confirmed",
+          },
+          { fireAndForget: true },
+        );
+        await dispatchEvent(
+          "BUSINESS_PROFILE_UPDATED",
+          {
+            businessId: business._id,
+            actor: { source: "businessOwner", email: "owner@example.com" },
+            changedFields: ["phoneNumber"],
+            changedFieldCount: 1,
+            occurredAt: new Date("2026-04-02T18:30:00.000Z"),
+          },
+          { fireAndForget: true },
+        );
+
+        expect(emailSpy).toHaveBeenCalledTimes(4);
+        for (const [payload] of emailSpy.mock.calls) {
+          expect(payload).not.toHaveProperty("displayName");
+          expect(typeof payload.to).toBe("string");
+          expect(payload.to).not.toContain(",");
+        }
+      } finally {
+        emailSpy.mockRestore();
+      }
+    });
+  });
+
+  it("still sends order confirmation when the trade name is blank", async () => {
+    await withEmailEnabled(async () => {
+      const business = await createVenue("Temporary Name");
+      await Business.collection.updateOne(
+        { _id: business._id },
+        { $set: { tradeName: "   " } },
+      );
+      const user = await createTestUser("blank-trade-name");
+      const emailSpy = vi.spyOn(emailChannel, "send").mockResolvedValue({
+        channel: "email",
+        success: true,
+        sentCount: 1,
+      });
+
+      try {
+        const result = await dispatchEvent(
+          "ORDER_CONFIRMED",
+          {
+            businessId: business._id,
+            userId: user._id,
+            dailyReferenceNumber: "R-2",
+            totalNetPaidAmount: 5,
+            orderCount: 1,
+          },
+          { fireAndForget: true },
+        );
+
+        expect(result.channels.some((channel) => channel.channel === "email" && channel.success)).toBe(
+          true,
+        );
+        expect(emailSpy).toHaveBeenCalledTimes(1);
+        expect(emailSpy.mock.calls[0][0]).not.toHaveProperty("displayName");
+      } finally {
+        emailSpy.mockRestore();
+      }
+    });
+  });
+
+  it("leaves the order, reservation, and saved profile in place when those emails fail", async () => {
+    await withEmailEnabled(async () => {
+      const business = await createVenue("Harbour Kitchen");
+      const user = await createTestUser("failed-venue-mail");
+      const manager = await createTestUser("failed-venue-manager");
+      await createTestEmployee({
+        businessId: business._id,
+        userId: manager._id,
+        taxSuffix: "failed-venue",
+      });
+      const order = await Order.create({
+        dailyReferenceNumber: 9,
+        orderGrossPrice: 12.5,
+        orderNetPrice: 12.5,
+        orderCostPrice: 4,
+        salesInstanceId: new Types.ObjectId(),
+        businessGoodId: new Types.ObjectId(),
+        businessId: business._id,
+        createdByUserId: user._id,
+      });
+      const reservation = await Reservation.create({
+        businessId: business._id,
+        createdByUserId: user._id,
+        createdByRole: "customer",
+        guestCount: 4,
+        reservationStart: new Date("2026-06-01T18:00:00.000Z"),
+        status: "Pending",
+        description: "Window table",
+      });
+      const emailSpy = vi.spyOn(emailChannel, "send").mockResolvedValue({
+        channel: "email",
+        success: false,
+        sentCount: 0,
+        error: "mailbox unavailable",
+      });
+
+      try {
+        const orderResult = await dispatchEvent(
+          "ORDER_CONFIRMED",
+          {
+            businessId: business._id,
+            userId: user._id,
+            dailyReferenceNumber: "R-9",
+            totalNetPaidAmount: 12.5,
+            orderCount: 1,
+          },
+          { fireAndForget: true },
+        );
+        const pendingResult = await dispatchEvent(
+          "RESERVATION_PENDING",
+          {
+            businessId: business._id,
+            userId: user._id,
+            reservationId: reservation._id,
+            reservationStart: reservation.reservationStart,
+            guestCount: reservation.guestCount,
+            description: reservation.description,
+          },
+          { fireAndForget: true },
+        );
+        const decidedResult = await dispatchEvent(
+          "RESERVATION_DECIDED",
+          {
+            businessId: business._id,
+            userId: user._id,
+            reservationId: reservation._id,
+            reservationStart: reservation.reservationStart,
+            guestCount: reservation.guestCount,
+            status: "Confirmed",
+          },
+          { fireAndForget: true },
+        );
+        const profileResult = await dispatchEvent(
+          "BUSINESS_PROFILE_UPDATED",
+          {
+            businessId: business._id,
+            actor: { source: "businessOwner", email: "owner@example.com" },
+            changedFields: ["phoneNumber"],
+            changedFieldCount: 1,
+            occurredAt: new Date("2026-04-02T18:30:00.000Z"),
+          },
+          { fireAndForget: true },
+        );
+
+        expect(orderResult.success).toBe(false);
+        expect(pendingResult.success).toBe(false);
+        expect(decidedResult.success).toBe(false);
+        expect(profileResult.success).toBe(false);
+
+        const storedOrder = await Order.findById(order._id).lean();
+        expect(storedOrder?.orderNetPrice).toBe(12.5);
+        expect(storedOrder?.billingStatus).toBe("Open");
+
+        const storedReservation = await Reservation.findById(reservation._id).lean();
+        expect(storedReservation?.status).toBe("Pending");
+        expect(storedReservation?.guestCount).toBe(4);
+
+        const storedBusiness = await Business.findById(business._id).select("tradeName").lean();
+        expect(storedBusiness?.tradeName).toBe("Harbour Kitchen");
+      } finally {
+        emailSpy.mockRestore();
+      }
+    });
   });
 });
 
