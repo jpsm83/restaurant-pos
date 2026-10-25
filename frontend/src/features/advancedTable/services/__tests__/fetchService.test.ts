@@ -52,7 +52,10 @@ describe("advancedTable fetchService", () => {
     });
 
     const result = await options.queryFn({});
-    expect(httpPost).toHaveBeenCalledWith("/api/test", { page: 1 }, { signal: undefined });
+    expect(httpPost).toHaveBeenCalledWith("/api/test", { page: 1 }, {
+      signal: undefined,
+      skipWriteGate: true,
+    });
     expect(result.rows).toEqual([{ id: "p1" }]);
 
     const noEndpoint = createTableQueryOptions({

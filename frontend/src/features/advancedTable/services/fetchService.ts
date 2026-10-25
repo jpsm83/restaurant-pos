@@ -53,7 +53,10 @@ export function createTableQueryOptions<TData = TableRowData, TParams = TableFet
 
     const response =
       method === "POST"
-        ? await http.post(endpoint.url, mappedParams, { signal })
+        ? await http.post(endpoint.url, mappedParams, {
+            signal,
+            skipWriteGate: true,
+          })
         : await http.get(endpoint.url, { params: mappedParams, signal });
 
     const rows = adapters.mapResponse(response.data);

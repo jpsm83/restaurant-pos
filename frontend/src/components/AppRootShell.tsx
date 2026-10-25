@@ -1,5 +1,6 @@
 import { useLocation } from "react-router-dom";
 import App from "@/App";
+import LiveConnectionBanner from "@/components/LiveConnectionBanner";
 import Navbar from "@/components/Navbar";
 import { cn } from "@/lib/utils";
 import { SidebarProvider } from "@/components/ui/sidebar";
@@ -21,6 +22,7 @@ export default function AppRootShell() {
     <TooltipProvider>
       <div className="flex h-dvh max-h-dvh min-h-0 w-full flex-col overflow-hidden">
         {!minimalChrome ? <Navbar /> : null}
+        {!minimalChrome ? <LiveConnectionBanner /> : null}
         <SidebarProvider
           defaultOpen={false}
           className={cn(

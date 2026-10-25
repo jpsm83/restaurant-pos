@@ -31,6 +31,12 @@ function isTransientStatus(status: number): boolean {
   return status === 408 || status === 429 || status >= 500;
 }
 
+function isWriteBlockedError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const named = error as { name?: unknown; code?: unknown };
+  return named.name === "WriteBlockedError" || named.code === "LIVE_WRITE_BLOCKED";
+}
+
 function shouldRetryByStatus(
   failureCount: number,
   error: unknown,
@@ -43,6 +49,13 @@ function shouldRetryByStatus(
   if (status === undefined) return true;
 
   return isTransientStatus(status);
+}
+
+function shouldRetryMutation(failureCount: number, error: unknown): boolean {
+  if (isWriteBlockedError(error)) return false;
+  // A dropped write must not be sent later when the tab is live again.
+  if (getHttpStatus(error) === undefined) return false;
+  return shouldRetryByStatus(failureCount, error, MAX_MUTATION_RETRIES);
 }
 
 function retryDelay(attemptIndex: number): number {
@@ -64,8 +77,7 @@ export const queryClient = new QueryClient({
       throwOnError: false,
     },
     mutations: {
-      retry: (failureCount, error) =>
-        shouldRetryByStatus(failureCount, error, MAX_MUTATION_RETRIES),
+      retry: shouldRetryMutation,
       retryDelay,
       throwOnError: false,
     },

@@ -1,6 +1,14 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { setAccessToken } from "../api";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { canCommitWrite } from "@/live/writeGate";
 import { resetLiveConnectionForTests } from "@/live/connection";
+import {
+  login,
+  logout,
+  refreshSession,
+  requestPasswordReset,
+  resetPassword,
+  setAccessToken,
+} from "../api";
 
 class RecordingSocket {
   static urls: string[] = [];
@@ -68,5 +76,33 @@ describe("access session opens and closes the live connection", () => {
 
     expect(RecordingSocket.instances).toHaveLength(2);
     expect(RecordingSocket.urls[1]).toContain("access_token=refreshed-access");
+  });
+
+  it("keeps sign-in, refresh, sign-out, and password reset working without the write gate", async () => {
+    setAccessToken("signed-in-but-not-acked");
+    expect(canCommitWrite()).toBe(false);
+
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ message: "ok", accessToken: "x", user: null }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      login({ email: "a@b.co", password: "secret" }),
+    ).resolves.toMatchObject({ ok: true });
+    await expect(refreshSession()).resolves.toMatchObject({ ok: true });
+    await expect(logout()).resolves.toMatchObject({ ok: true });
+    await expect(requestPasswordReset("a@b.co")).resolves.toMatchObject({
+      ok: true,
+    });
+    await expect(resetPassword("tok", "NewPass1!")).resolves.toMatchObject({
+      ok: true,
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(5);
+    vi.unstubAllGlobals();
   });
 });

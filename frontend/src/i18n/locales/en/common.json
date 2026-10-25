@@ -4,6 +4,11 @@
     "route": "Loading…",
     "checkingWorkspaceMode": "Checking workspace mode…"
   },
+  "live": {
+    "disconnected": "Disconnected",
+    "reconnecting": "Reconnecting",
+    "writeBlocked": "This action is blocked until the connection is live again."
+  },
   "languageSwitcher": {
     "ariaLabel": "Change language"
   },

@@ -31,6 +31,16 @@ describe("queryClient defaults", () => {
     expect(mutationRetry(0, axiosLikeError(500))).toBe(true);
     expect(mutationRetry(1, axiosLikeError(500))).toBe(false);
   });
+
+  it("does not retry a blocked or dropped mutation", () => {
+    const mutationRetry = defaultsRetry("mutations");
+    const blocked = Object.assign(new Error("blocked"), {
+      name: "WriteBlockedError",
+      code: "LIVE_WRITE_BLOCKED",
+    });
+    expect(mutationRetry(0, blocked)).toBe(false);
+    expect(mutationRetry(0, axiosLikeError())).toBe(false);
+  });
 });
 
 function defaultsRetry(type: "queries" | "mutations") {

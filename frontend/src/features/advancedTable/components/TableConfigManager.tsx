@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components -- shouldDisableSave is a small pure helper colocated with its only consumer and imported by its test. */
 import React from "react";
 import { useTranslation } from "react-i18next";
+import { Alert } from "@/components/ui/alert";
 import {
   useTableConfigData,
   type TableConfigEndpointConfig,
@@ -60,6 +61,7 @@ export const TableConfigManager: React.FC<TableConfigManagerProps> = ({
           }
         }}
       />
+      {error ? <Alert className="mt-2">{error}</Alert> : null}
       {shouldDisableSave(isLoading, isSaving, columns) && columns.length === 0 && (
         <p className="mt-2 text-xs text-gray-500">
           {t("advancedTable.configManager.noColumnsToSave", {

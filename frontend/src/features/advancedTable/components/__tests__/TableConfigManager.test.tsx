@@ -43,4 +43,22 @@ describe("TableConfigManager", () => {
     expect(screen.getByText("editor-mock")).toBeInTheDocument();
     expect(screen.getByText("No columns available to save.")).toBeInTheDocument();
   });
+
+  it("tells the person when a table-layout save is blocked", () => {
+    mockUseTableConfigData.mockReturnValue({
+      columns: [
+        { columnKey: "id", columnName: "ID", order: 0, enable: true, visible: true },
+      ],
+      isLoading: false,
+      isSaving: false,
+      error: "This action is blocked until the connection is live again.",
+      save: vi.fn(),
+    });
+
+    render(<TableConfigManager endpoint={{ loadUrl: "/load", saveUrl: "/save" }} />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "This action is blocked until the connection is live again.",
+    );
+  });
 });

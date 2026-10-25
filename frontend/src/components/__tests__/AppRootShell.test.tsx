@@ -8,6 +8,13 @@ vi.mock("@/hooks/use-mobile", () => ({
   useIsMobile: () => false,
 }));
 
+vi.mock("@/auth/store/AuthContext", () => ({
+  useAuth: () => ({
+    state: { user: null, status: "unauthenticated", error: null },
+    dispatch: vi.fn(),
+  }),
+}));
+
 vi.mock("@/components/Navbar", () => ({
   default: () => <nav data-testid="test-navbar">Navbar</nav>,
 }));
@@ -42,6 +49,18 @@ describe("AppRootShell", () => {
       </MemoryRouter>,
     );
     expect(screen.queryByTestId("test-navbar")).not.toBeInTheDocument();
+    expect(screen.getByTestId("test-app")).toBeInTheDocument();
+  });
+
+  it("omits live chrome on guest recovery pages", async () => {
+    await renderWithI18n(
+      <MemoryRouter initialEntries={["/reset-password"]}>
+        <Routes>
+          <Route path="/reset-password" element={<ShellRoute />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
     expect(screen.getByTestId("test-app")).toBeInTheDocument();
   });
 
