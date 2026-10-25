@@ -18,6 +18,7 @@
     "@radix-ui/react-select": "^2.3.8",
     "@radix-ui/react-slot": "^1.4.0",
     "@react-oauth/google": "^0.13.5",
+    "@sentry/react": "^11.9.0",
     "@tailwindcss/postcss": "^4.3.3",
     "@tanstack/react-query": "^5.104.1",
     "@tanstack/react-table": "^9.2.8",
@@ -47,6 +48,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@sentry/vite-plugin": "^11.9.0",
     "@tanstack/react-query-devtools": "^5.104.1",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
