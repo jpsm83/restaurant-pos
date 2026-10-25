@@ -269,7 +269,7 @@ This document maps every topic needed for the transition, prioritized by industr
 
 Get the mental model before any code. Pick one (or both if new to GenAI).
 
-- [ ] 💳 `AI for Everyone` — 6h54m — what AI can/can't do, societal impact.
+- [x] 💳 `AI for Everyone` — 6h54m — what AI can/can't do, societal impact.
 - [ ] 💳 `Generative AI for Everyone` — 5h1m — GenAI capabilities, limits, business framing. *(often free to audit)*
 
 🎯 **Milestone:** Write a one-page note defining "AI Engineer" vs "ML Engineer" vs "Data Scientist" in your own words.
