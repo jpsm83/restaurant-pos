@@ -26,6 +26,7 @@ It consolidates architecture, API contracts, WebSocket contracts, runbook operat
 ### 2) Channel boundaries
 
 - `email` channel:
+  - One SMTP rail. The separate Gmail account sender is retired.
   - One recipient per send, with a plain part and a rich part, from the platform address. Account mail uses the platform display name `POS`. Venue-initiated mail (order confirmed, reservation pending, reservation decided, business profile updated) uses the Business trade name when that Business has one, and `POS` when it does not. The send still proceeds when the trade name is missing. No reply-to address is set.
   - A transient SMTP failure is retried. A permanent failure, or missing or invalid platform mail configuration, fails once.
   - The channel returns a success or failure result.
@@ -274,12 +275,14 @@ Channel switches:
 - `COMMUNICATIONS_INAPP_ENABLED`
 - `COMMUNICATIONS_INAPP_LIVE_ENABLED`
 
-SMTP transport (`email` channel; provider disables when host/port are missing):
+SMTP transport (one rail for account mail and operational mail; provider disables when host/port are missing):
 
 - `SMTP_HOST`, `SMTP_PORT`
 - `SMTP_USER` and `SMTP_PASS` (both set, or both empty)
-- `SMTP_FROM`
-- `AUTH_EMAIL_DEV_SINK_ENABLED` — outside production, accept the message locally instead of contacting SMTP. Ignored when `NODE_ENV` is `production`.
+- `SMTP_FROM` — platform from-address when set; otherwise `SMTP_USER`; otherwise the provider's local fallback `no-reply@localhost`
+- The Gmail account pair (`EMAIL_USER`, `EMAIL_PASSWORD`) is retired and is not read
+- `AUTH_EMAIL_DEV_SINK_ENABLED` — outside production, accept the message locally instead of contacting SMTP. Ignored when `NODE_ENV` is `production`
+- `COMMUNICATIONS_EMAIL_ENABLED=false` skips operational email and does not suppress account mail
 
 Reliability tuning:
 
