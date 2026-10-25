@@ -3,6 +3,7 @@ import resolveEmployeeUserRecipients from "../recipientResolvers/resolveEmployee
 import { toUniqueObjectIds } from "../recipientResolvers/utils.ts";
 import notificationRepository from "../repositories/notificationRepository.ts";
 import { emitLiveInAppNotification } from "../channels/liveInAppEvents.ts";
+import { runAfterCommit } from "../live/afterCommit.ts";
 import type {
   NotificationCreateAndDeliverInput,
   NotificationCreateAndDeliverResult,
@@ -46,21 +47,28 @@ const createAndDeliver = async (
     session: input.session,
   });
 
-  emitLiveInAppNotification({
-    notificationId: fanout.notificationId,
-    businessId: input.businessId,
-    message: input.message,
-    notificationType: input.notificationType ?? "Info",
-    recipientUserIds: fanout.recipientUserIds,
-    eventName: input.eventName,
-    correlationId: input.correlationId,
+  // Push only after the store has committed. Inside an open transaction the
+  // push is held until commit; with no transaction it follows the write.
+  const pushDeferredUntilCommit = Boolean(input.session?.inTransaction());
+  runAfterCommit(input.session, () => {
+    emitLiveInAppNotification({
+      notificationId: fanout.notificationId,
+      businessId: input.businessId,
+      message: input.message,
+      notificationType: input.notificationType ?? "Info",
+      recipientUserIds: fanout.recipientUserIds,
+      eventName: input.eventName,
+      correlationId: input.correlationId,
+    });
   });
 
   return {
     ...fanout,
     eventName: input.eventName,
     correlationId: input.correlationId,
-    emittedLiveEvent: true,
+    // False while the push is still held for an open transaction; the emit
+    // happens on commit, not during this call.
+    emittedLiveEvent: !pushDeferredUntilCommit,
   };
 };
 

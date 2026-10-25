@@ -185,6 +185,11 @@ export interface NotificationCreateAndDeliverInput {
 export interface NotificationCreateAndDeliverResult extends NotificationFanoutResult {
   eventName?: CommunicationsEventName;
   correlationId?: string;
+  /**
+   * True when the live event was emitted during this call. False when the push
+   * is held for an open transaction and only emitted once that transaction
+   * commits.
+   */
   emittedLiveEvent: boolean;
 }
 
