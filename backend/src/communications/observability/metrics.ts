@@ -75,7 +75,7 @@ export const recordLivePushMetrics = (input: {
 };
 
 export const recordLiveAuthFailure = (
-  reason: "missing_bearer_token" | "invalid_token" | "non_user_session"
+  reason: "missing_bearer_token" | "invalid_token"
 ): void => {
   liveAuthFailures += 1;
   increment(liveAuthFailuresByReason, reason);
