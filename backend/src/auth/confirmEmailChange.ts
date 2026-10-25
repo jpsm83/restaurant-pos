@@ -1,7 +1,7 @@
 import type { FastifyBaseLogger } from "fastify";
+import emailChannel from "../communications/channels/emailChannel.ts";
 import Business from "../models/business.ts";
 import { CONFIRM_EMAIL_CONSUMPTION_ERROR_MESSAGE } from "./confirmEmail.ts";
-import { sendAuthTransactionalEmail } from "./authEmailSend.ts";
 import {
   EMAIL_CHANGE_CONFIRM_EVENT,
   logEmailChange,
@@ -23,8 +23,9 @@ export type ConfirmEmailChangeResult =
  * Atomically matches the pending token against an unexpired expiry, then swaps
  * the sign-in email to the pending address, marks it verified, clears the
  * pending fields, and bumps `refreshSessionVersion` so existing refresh tokens
- * stop working. A security notice goes to the *previous* address, best-effort:
- * a send failure never fails the confirmation.
+ * stop working. A security notice then goes to the previous address on the
+ * delivery rail. That send is best-effort: a failure leaves the stored change
+ * in place and still confirms.
  *
  * Invalid, expired, unknown, or already-used tokens all return the same
  * non-revealing message so account state is not leaked.
@@ -93,14 +94,15 @@ export async function handleConfirmEmailChange(
 
     const previousEmail = String(pending.email ?? "").trim();
     if (previousEmail) {
-      void sendAuthTransactionalEmail({
+      const content = buildEmailChangeNoticeContent({
+        newEmail: pending.pendingEmail,
+        greetingName: pending.tradeName?.trim() || undefined,
+      });
+      await emailChannel.send({
         to: previousEmail,
-        content: buildEmailChangeNoticeContent({
-          newEmail: pending.pendingEmail,
-          greetingName: pending.tradeName?.trim() || undefined,
-        }),
-      }).catch(() => {
-        // Best-effort: the change already succeeded; a failed notice is not fatal.
+        subject: content.subject,
+        text: content.text,
+        html: content.html,
       });
     }
 

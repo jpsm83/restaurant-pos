@@ -19,11 +19,15 @@ import bcrypt from "bcrypt";
 import { Types } from "mongoose";
 
 const sendEmailMock = vi.hoisted(() =>
-  vi.fn().mockResolvedValue(undefined),
+  vi.fn().mockResolvedValue({
+    channel: "email",
+    success: true,
+    sentCount: 1,
+  }),
 );
 
-vi.mock("../../src/auth/authEmailSend.ts", () => ({
-  sendAuthTransactionalEmail: sendEmailMock,
+vi.mock("../../src/communications/channels/emailChannel.ts", () => ({
+  default: { send: sendEmailMock },
 }));
 
 import { getTestApp, resetTestApp } from "../setup.ts";
@@ -32,6 +36,10 @@ import { CONFIRM_EMAIL_CONSUMPTION_ERROR_MESSAGE } from "../../src/auth/confirmE
 import {
   CONFIRM_EMAIL_CHANGE_SUCCESS_MESSAGE,
 } from "../../src/auth/confirmEmailChange.ts";
+import {
+  emailRailFailure,
+  emailRailSuccess,
+} from "../helpers/accountEmailRail.ts";
 
 const testPassword = "TestPassword123!";
 const oldEmail = "owner-old@example.com";
@@ -69,6 +77,8 @@ function futureExpiry(): Date {
 }
 
 describe("POST /api/v1/auth/confirm-email-change", () => {
+  const previousEmailToggle = process.env.COMMUNICATIONS_EMAIL_ENABLED;
+
   beforeAll(async () => {
     if (!process.env.APP_BASE_URL?.trim()) {
       process.env.APP_BASE_URL = "http://127.0.0.1:3000";
@@ -82,10 +92,19 @@ describe("POST /api/v1/auth/confirm-email-change", () => {
 
   beforeEach(() => {
     sendEmailMock.mockReset();
-    sendEmailMock.mockResolvedValue(undefined);
+    sendEmailMock.mockResolvedValue(emailRailSuccess);
+    process.env.COMMUNICATIONS_EMAIL_ENABLED = "false";
   });
 
-  it("swaps the sign-in email, marks it verified, clears pending fields, bumps the session version, and notifies the old address", async () => {
+  afterEach(() => {
+    if (previousEmailToggle === undefined) {
+      delete process.env.COMMUNICATIONS_EMAIL_ENABLED;
+    } else {
+      process.env.COMMUNICATIONS_EMAIL_ENABLED = previousEmailToggle;
+    }
+  });
+
+  it("stores the new sign-in email, then sends the notice to the old address on the delivery rail", async () => {
     const app = await getTestApp();
     const business = await createBusiness(oldEmail, {
       pendingEmail: newEmail,
@@ -95,6 +114,17 @@ describe("POST /api/v1/auth/confirm-email-change", () => {
       refreshSessionVersion: 0,
     });
 
+    let emailAtSend: string | undefined;
+    let pendingAtSend: string | undefined;
+    sendEmailMock.mockImplementation(async () => {
+      const atSend = await Business.findById(business._id)
+        .select("email pendingEmail")
+        .lean();
+      emailAtSend = atSend?.email;
+      pendingAtSend = atSend?.pendingEmail;
+      return emailRailSuccess;
+    });
+
     const response = await app.inject({
       method: "POST",
       url: "/api/v1/auth/confirm-email-change",
@@ -102,6 +132,7 @@ describe("POST /api/v1/auth/confirm-email-change", () => {
     });
 
     expect(response.statusCode).toBe(200);
+    expect(response.headers["content-type"]).toContain("application/json");
     expect(JSON.parse(response.body).message).toBe(
       CONFIRM_EMAIL_CHANGE_SUCCESS_MESSAGE,
     );
@@ -116,7 +147,54 @@ describe("POST /api/v1/auth/confirm-email-change", () => {
     expect(stored?.refreshSessionVersion).toBe(1);
 
     expect(sendEmailMock).toHaveBeenCalledTimes(1);
-    expect(sendEmailMock).toHaveBeenCalledWith(
+    const payload = sendEmailMock.mock.calls[0]?.[0] as {
+      to?: unknown;
+      subject?: unknown;
+      text?: unknown;
+      html?: unknown;
+    };
+    expect(payload.to).toBe(oldEmail);
+    expect(payload.subject).toBe("Your POS Sign-In Email Was Changed");
+    expect(payload.text).toEqual(expect.stringContaining(newEmail));
+    expect(payload.html).toEqual(expect.stringContaining(newEmail));
+    expect(payload).not.toHaveProperty("replyTo");
+    expect(payload).not.toHaveProperty("from");
+    expect(payload).not.toHaveProperty("displayName");
+    expect(emailAtSend).toBe(newEmail);
+    expect(pendingAtSend).toBeUndefined();
+  });
+
+  it("leaves the completed email change in place when the notice cannot be delivered", async () => {
+    const app = await getTestApp();
+    const business = await createBusiness(oldEmail, {
+      pendingEmail: newEmail,
+      pendingEmailToken: token,
+      pendingEmailExpires: futureExpiry(),
+      refreshSessionVersion: 2,
+    });
+    sendEmailMock.mockResolvedValue(emailRailFailure);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/confirm-email-change",
+      payload: { token },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["content-type"]).toContain("application/json");
+    expect(JSON.parse(response.body).message).toBe(
+      CONFIRM_EMAIL_CHANGE_SUCCESS_MESSAGE,
+    );
+
+    const stored = await Business.findById(business._id).lean();
+    expect(stored?.email).toBe(newEmail);
+    expect(stored?.emailVerified).toBe(true);
+    expect(stored?.pendingEmail).toBeUndefined();
+    expect(stored?.pendingEmailToken).toBeUndefined();
+    expect(stored?.refreshSessionVersion).toBe(3);
+
+    expect(sendEmailMock).toHaveBeenCalledTimes(1);
+    expect(sendEmailMock.mock.calls[0]?.[0]).toEqual(
       expect.objectContaining({ to: oldEmail }),
     );
   });

@@ -40,7 +40,7 @@ frontend (:5173) --/api proxy--> backend (:4000) --> MongoDB Atlas
 | Auth | JWT access token + refresh cookie (`@fastify/jwt`, `@fastify/cookie`), bcrypt |
 | Realtime | WebSockets (`@fastify/websocket`) for live in-app notifications |
 | Files | `@fastify/multipart` + Cloudinary |
-| Email | Nodemailer. Account one-time links use the SMTP rail. The sign-in email-change notice still uses Gmail. |
+| Email | Nodemailer. Account one-time links and the sign-in email-change notice use the SMTP rail. |
 | Tests | Vitest + `mongodb-memory-server` (in-memory replica set) |
 | Shared contracts | `restaurant-pos-packages` (enums, interfaces, zod schemas) |
 
@@ -91,7 +91,7 @@ baked into images). Key groups:
 - **Auth (required)**: `JWT_SECRET`, `REFRESH_SECRET` (dev fallbacks exist)
 - **CORS**: `CORS_ORIGINS` (comma-separated browser origins)
 - **Cloudinary (required for uploads)**: `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`
-- **Email**: `SMTP_*` for the delivery rail, including account one-time links. `EMAIL_USER` and `EMAIL_PASSWORD` remain for the sign-in email-change notice. `COMMUNICATIONS_EMAIL_ENABLED=false` skips operational email and does not stop account one-time links.
+- **Email**: `SMTP_*` for the delivery rail, including account one-time links and the sign-in email-change notice. `EMAIL_USER` and `EMAIL_PASSWORD` remain on the unused Gmail sender. `COMMUNICATIONS_EMAIL_ENABLED=false` skips operational email and does not stop account mail.
 - **Communications toggles**: `COMMUNICATIONS_EMAIL_ENABLED`, `COMMUNICATIONS_INAPP_ENABLED`, `COMMUNICATIONS_INAPP_LIVE_ENABLED`
 - **Frontend link targets**: `APP_BASE_URL` / `PUBLIC_APP_URL` / `FRONTEND_URL`, `BASE_URL`
 

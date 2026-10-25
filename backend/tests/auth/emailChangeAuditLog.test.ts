@@ -3,8 +3,8 @@
  *
  * Request, confirmation, and failure each leave one structured log line that
  * carries the account id and outcome and never the raw token or full address.
- * The delivery rail, the old-address notice sender, and the logger are mocked
- * so the tests observe exactly what the domain emits.
+ * The delivery rail and the logger are mocked so the tests observe exactly
+ * what the domain emits. The old-address notice uses that same rail.
  */
 
 import {
@@ -27,14 +27,8 @@ const railSendMock = vi.hoisted(() =>
   }),
 );
 
-const sendEmailMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
-
 vi.mock("../../src/communications/channels/emailChannel.ts", () => ({
   default: { send: railSendMock },
-}));
-
-vi.mock("../../src/auth/authEmailSend.ts", () => ({
-  sendAuthTransactionalEmail: sendEmailMock,
 }));
 
 import {
@@ -172,8 +166,6 @@ describe("email change audit emission", () => {
   beforeEach(() => {
     railSendMock.mockReset();
     railSendMock.mockResolvedValue(emailRailSuccess);
-    sendEmailMock.mockReset();
-    sendEmailMock.mockResolvedValue(undefined);
   });
 
   it("logs a requested outcome with the account id and no address or token", async () => {
