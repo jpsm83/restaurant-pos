@@ -430,6 +430,237 @@ describe("Notification delivery after commit (#160)", () => {
     }
   });
 
+  describe("Add a recipient on the existing notification (#161)", () => {
+    it("stores one new unread, not-deleted entry on the same notification and pushes only the new person when online", async () => {
+      await getTestApp();
+      const businessId = new Types.ObjectId();
+      const original = await createTestUser("add-original");
+      const added = await createTestUser("add-new");
+
+      const created = await notificationService.createAndDeliver({
+        message: "Shared notice",
+        businessId,
+        recipients: { customerUserIds: [original._id] },
+        notificationType: "Info",
+      });
+
+      const originalSocket = registerFakeSocket(original._id);
+      const addedSocket = registerFakeSocket(added._id);
+
+      const result = await notificationService.addRecipientsAndDeliver({
+        notificationId: created.notificationId,
+        businessId,
+        message: "Shared notice",
+        notificationType: "Info",
+        recipientUserIds: [added._id],
+      });
+
+      expect(result.newlyAddedUserIds.map(String)).toEqual([String(added._id)]);
+
+      // The existing notification stays the one notification.
+      const stored = await Notification.find({ businessId }).lean();
+      expect(stored.length).toBe(1);
+
+      // The new person gets one unread, not-deleted entry on that notification.
+      const addedAfter = await User.findById(added._id)
+        .select("notifications")
+        .lean();
+      expect(addedAfter?.notifications?.length ?? 0).toBe(1);
+      expect(addedAfter?.notifications?.[0].readFlag).toBe(false);
+      expect(addedAfter?.notifications?.[0].deletedFlag).toBe(false);
+      expect(String(addedAfter?.notifications?.[0].notificationId)).toBe(
+        String(created.notificationId),
+      );
+
+      // Only the newly addressed person is pushed.
+      expect(addedSocket.sentPayloads.length).toBe(1);
+      expect(originalSocket.sentPayloads.length).toBe(0);
+    });
+
+    it("does not store or push a person who already holds the entry", async () => {
+      await getTestApp();
+      const businessId = new Types.ObjectId();
+      const original = await createTestUser("already-holds");
+
+      const created = await notificationService.createAndDeliver({
+        message: "Shared notice",
+        businessId,
+        recipients: { customerUserIds: [original._id] },
+        notificationType: "Info",
+      });
+
+      const socket = registerFakeSocket(original._id);
+
+      const result = await notificationService.addRecipientsAndDeliver({
+        notificationId: created.notificationId,
+        businessId,
+        message: "Shared notice",
+        notificationType: "Info",
+        recipientUserIds: [original._id],
+      });
+
+      expect(result.newlyAddedUserIds.length).toBe(0);
+      const after = await User.findById(original._id)
+        .select("notifications")
+        .lean();
+      expect(after?.notifications?.length ?? 0).toBe(1);
+      expect(socket.sentPayloads.length).toBe(0);
+    });
+
+    it("stores an offline added recipient without pushing", async () => {
+      await getTestApp();
+      const businessId = new Types.ObjectId();
+      const original = await createTestUser("add-offline-original");
+      const added = await createTestUser("add-offline-new");
+
+      const created = await notificationService.createAndDeliver({
+        message: "Offline add",
+        businessId,
+        recipients: { customerUserIds: [original._id] },
+      });
+
+      const result = await notificationService.addRecipientsAndDeliver({
+        notificationId: created.notificationId,
+        businessId,
+        message: "Offline add",
+        recipientUserIds: [added._id],
+      });
+
+      expect(result.newlyAddedUserIds.length).toBe(1);
+      const after = await User.findById(added._id)
+        .select("notifications")
+        .lean();
+      expect(after?.notifications?.length ?? 0).toBe(1);
+    });
+
+    it("still stores and pushes an added recipient when operational in-app delivery is switched off", async () => {
+      await getTestApp();
+      const previousInAppToggle = process.env.COMMUNICATIONS_INAPP_ENABLED;
+      process.env.COMMUNICATIONS_INAPP_ENABLED = "false";
+
+      const businessId = new Types.ObjectId();
+      const original = await createTestUser("add-inapp-off-original");
+      const added = await createTestUser("add-inapp-off-new");
+
+      try {
+        const created = await notificationService.createAndDeliver({
+          message: "Inapp off add",
+          businessId,
+          recipients: { customerUserIds: [original._id] },
+        });
+
+        const addedSocket = registerFakeSocket(added._id);
+
+        const result = await notificationService.addRecipientsAndDeliver({
+          notificationId: created.notificationId,
+          businessId,
+          message: "Inapp off add",
+          recipientUserIds: [added._id],
+        });
+
+        expect(result.newlyAddedUserIds.length).toBe(1);
+        expect(addedSocket.sentPayloads.length).toBe(1);
+        const after = await User.findById(added._id)
+          .select("notifications")
+          .lean();
+        expect(after?.notifications?.length ?? 0).toBe(1);
+      } finally {
+        if (previousInAppToggle === undefined)
+          delete process.env.COMMUNICATIONS_INAPP_ENABLED;
+        else process.env.COMMUNICATIONS_INAPP_ENABLED = previousInAppToggle;
+      }
+    });
+
+    it("leaves the new inbox entry in place when the added recipient's push fails", async () => {
+      await getTestApp();
+      const businessId = new Types.ObjectId();
+      const original = await createTestUser("add-pushfail-original");
+      const added = await createTestUser("add-pushfail-new");
+
+      const created = await notificationService.createAndDeliver({
+        message: "Push fail add",
+        businessId,
+        recipients: { customerUserIds: [original._id] },
+      });
+
+      const failingSocket = new FakeSocket();
+      failingSocket.send = () => {
+        throw new Error("forced send failure");
+      };
+      liveConnectionRegistry.registerSocket(
+        added._id,
+        failingSocket as unknown as WebSocket,
+      );
+
+      await expect(
+        notificationService.addRecipientsAndDeliver({
+          notificationId: created.notificationId,
+          businessId,
+          message: "Push fail add",
+          recipientUserIds: [added._id],
+        }),
+      ).resolves.toBeDefined();
+
+      // A failed push leaves the stored inbox entry in place.
+      const after = await User.findById(added._id)
+        .select("notifications")
+        .lean();
+      expect(after?.notifications?.length ?? 0).toBe(1);
+    });
+
+    it("holds the added push until commit and drops it with no entry on abort", async () => {
+      await getTestApp();
+      const businessId = new Types.ObjectId();
+      const original = await createTestUser("add-txn-original");
+      const addedCommit = await createTestUser("add-commit");
+      const addedAbort = await createTestUser("add-abort");
+
+      const created = await notificationService.createAndDeliver({
+        message: "Txn add",
+        businessId,
+        recipients: { customerUserIds: [original._id] },
+      });
+
+      // An aborted add leaves no inbox entry and no push.
+      const abortSocket = registerFakeSocket(addedAbort._id);
+      await withRetriedTransaction(async (session) => {
+        await notificationService.addRecipientsAndDeliver({
+          notificationId: created.notificationId,
+          businessId,
+          message: "Txn add",
+          recipientUserIds: [addedAbort._id],
+          session,
+        });
+        expect(abortSocket.sentPayloads.length).toBe(0);
+        await session.abortTransaction();
+      });
+      expect(abortSocket.sentPayloads.length).toBe(0);
+      const abortAfter = await User.findById(addedAbort._id)
+        .select("notifications")
+        .lean();
+      expect(abortAfter?.notifications?.length ?? 0).toBe(0);
+
+      // A committed add pushes once, after commit.
+      const commitSocket = registerFakeSocket(addedCommit._id);
+      await withRetriedTransaction(async (session) => {
+        await notificationService.addRecipientsAndDeliver({
+          notificationId: created.notificationId,
+          businessId,
+          message: "Txn add",
+          recipientUserIds: [addedCommit._id],
+          session,
+        });
+        expect(commitSocket.sentPayloads.length).toBe(0);
+        await session.commitTransaction();
+      });
+      expect(commitSocket.sentPayloads.length).toBe(1);
+      const commitAfter = await User.findById(addedCommit._id)
+        .select("notifications")
+        .lean();
+      expect(commitAfter?.notifications?.length ?? 0).toBe(1);
+    });
+  });
+
   it("still stores and pushes a hand-created delivery when operational in-app delivery is switched off", async () => {
     await getTestApp();
     const previousInAppToggle = process.env.COMMUNICATIONS_INAPP_ENABLED;

@@ -20,6 +20,7 @@ import Employee from "../../models/employee.ts";
 import Business from "../../models/business.ts";
 import User from "../../models/user.ts";
 import notificationService from "../../communications/services/notificationService.ts";
+import type { NotificationType } from "../../communications/types.ts";
 import { runTxnWithTransientRetry } from "../../mongo/runTxnWithTransientRetry.ts";
 import { createOptionalAuthHook } from "../../auth/middleware.ts";
 import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
@@ -313,10 +314,12 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
         const existingNotification = (await Notification.findOne(
           withSoftDeleteFilter({ _id: notificationId }),
         )
-          .select(`${notificationField} message`)
+          .select(`${notificationField} message notificationType businessId`)
           .lean()
           .session(session)) as {
           message?: string;
+          notificationType?: NotificationType;
+          businessId?: Types.ObjectId;
           employeesRecipientsIds?: Types.ObjectId[];
           customersRecipientsIds?: Types.ObjectId[];
         } | null;
@@ -413,14 +416,25 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
               )
             : { acknowledged: true };
 
-        const employeeNotificationAdded =
-          addedRecipientUserIds.length > 0
-            ? await User.updateMany(
-                { _id: { $in: addedRecipientUserIds } },
-                { $push: { notifications: { notificationId } } },
-                { session },
-              )
-            : true;
+        // Newly addressed people go through the same store-then-push rail as a
+        // new notification: the rail stores their inbox entry on this existing
+        // notification and pushes it to them after the transaction commits. The
+        // route never writes the new inbox entry by a side path.
+        if (addedRecipientUserIds.length > 0) {
+          const effectiveMessage =
+            typeof message === "string" ? message : existingNotification.message;
+          await notificationService.addRecipientsAndDeliver({
+            notificationId: new Types.ObjectId(notificationId),
+            businessId: existingNotification.businessId as Types.ObjectId,
+            message: effectiveMessage ?? "",
+            notificationType:
+              (notificationType as NotificationType | undefined) ??
+              existingNotification.notificationType,
+            recipientUserIds: addedRecipientUserIds as Types.ObjectId[],
+            correlationId,
+            session,
+          });
+        }
 
         const employeeNotificationRemoved =
           removedRecipientUserIds.length > 0
@@ -452,7 +466,6 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
 
         if (
           !updatedNotification ||
-          !employeeNotificationAdded ||
           !employeeNotificationRemoved ||
           !employeeFlagUpdated
         ) {

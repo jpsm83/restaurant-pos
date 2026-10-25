@@ -193,6 +193,33 @@ export interface NotificationCreateAndDeliverResult extends NotificationFanoutRe
   emittedLiveEvent: boolean;
 }
 
+export interface NotificationAddRecipientsInput {
+  notificationId: Types.ObjectId;
+  businessId: Types.ObjectId;
+  message: string;
+  recipientUserIds: Types.ObjectId[];
+  notificationType?: NotificationType;
+  eventName?: CommunicationsEventName;
+  correlationId?: string;
+  session?: ClientSession;
+}
+
+export interface NotificationAddRecipientsResult {
+  notificationId: Types.ObjectId;
+  /**
+   * The resolved user ids that were newly stored on this call. People who
+   * already held the inbox entry are excluded, so they are neither stored nor
+   * pushed again.
+   */
+  newlyAddedUserIds: Types.ObjectId[];
+  /**
+   * True when the live event was emitted during this call. False when nobody
+   * was newly added, or when the push is held for an open transaction and only
+   * emitted once that transaction commits.
+   */
+  emittedLiveEvent: boolean;
+}
+
 export interface LiveInAppNotificationEvent {
   notificationId: Types.ObjectId;
   businessId: Types.ObjectId;

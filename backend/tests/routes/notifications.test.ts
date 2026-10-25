@@ -4,13 +4,14 @@
  * Includes transaction tests for POST/PATCH/DELETE with recipient sync
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { Types } from "mongoose";
 import { getTestApp } from "../setup.ts";
 import Notification from "../../src/models/notification.ts";
 import Business from "../../src/models/business.ts";
 import Employee from "../../src/models/employee.ts";
 import User from "../../src/models/user.ts";
+import notificationService from "../../src/communications/services/notificationService.ts";
 
 describe("Notifications Routes", () => {
   const createTestBusiness = async () => {
@@ -937,6 +938,95 @@ describe("Notifications Routes", () => {
       );
       expect(userNotif?.readFlag).toBe(true);
       expect(userNotif?.deletedFlag).toBe(true);
+    });
+
+    it("adds a recipient through the delivery rail and does not write the inbox entry by a side path", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness();
+      const userA = await createTestUser(`rail-a-${Date.now()}`);
+      const userB = await createTestUser(`rail-b-${Date.now()}`);
+
+      const employeeA = await Employee.create({
+        businessId: business._id,
+        userId: userA._id,
+        taxNumber: `EMP-RAIL-A-${Date.now()}`,
+        joinDate: new Date(),
+        vacationDaysPerYear: 20,
+        vacationDaysLeft: 20,
+        allEmployeeRoles: ["Waiter"],
+      });
+      const employeeB = await Employee.create({
+        businessId: business._id,
+        userId: userB._id,
+        taxNumber: `EMP-RAIL-B-${Date.now()}`,
+        joinDate: new Date(),
+        vacationDaysPerYear: 20,
+        vacationDaysLeft: 20,
+        allEmployeeRoles: ["Waiter"],
+      });
+
+      const createResponse = await app.inject({
+        method: "POST",
+        url: "/api/v1/notifications",
+        payload: {
+          notificationType: "Info",
+          message: "Rail add baseline",
+          businessId: business._id.toString(),
+          employeesRecipientsIds: [employeeA._id.toString()],
+        },
+      });
+      expect(createResponse.statusCode, createResponse.body).toBe(201);
+
+      const notification = await Notification.findOne({
+        businessId: business._id,
+        message: "Rail add baseline",
+      }).lean();
+      expect(notification).not.toBeNull();
+
+      const spy = vi
+        .spyOn(notificationService, "addRecipientsAndDeliver")
+        .mockResolvedValue({
+          notificationId: notification?._id as Types.ObjectId,
+          newlyAddedUserIds: [],
+          emittedLiveEvent: false,
+        });
+
+      try {
+        const patchResponse = await app.inject({
+          method: "PATCH",
+          url: `/api/v1/notifications/${notification?._id}`,
+          payload: {
+            employeesRecipientsIds: [
+              employeeA._id.toString(),
+              employeeB._id.toString(),
+            ],
+          },
+        });
+        expect(patchResponse.statusCode, patchResponse.body).toBe(200);
+
+        // The route delegates the added recipient to the rail, for userB only.
+        expect(spy).toHaveBeenCalledTimes(1);
+        const callArg = spy.mock.calls[0][0];
+        expect(callArg.recipientUserIds.map(String)).toEqual([
+          String(userB._id),
+        ]);
+        expect(String(callArg.notificationId)).toBe(
+          String(notification?._id),
+        );
+
+        // The rail is the only writer: with it mocked out, no inbox entry is
+        // written for userB by a route side path.
+        const userBAfter = await User.findById(userB._id)
+          .select("notifications")
+          .lean();
+        const hasEntry = (userBAfter?.notifications ?? []).some(
+          (n: { notificationId: { toString: () => string } }) =>
+            n.notificationId.toString() === notification?._id?.toString(),
+        );
+        expect(hasEntry).toBe(false);
+      } finally {
+        spy.mockRestore();
+      }
     });
   });
 

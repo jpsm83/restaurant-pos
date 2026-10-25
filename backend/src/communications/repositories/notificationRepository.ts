@@ -33,6 +33,12 @@ interface CreateAndFanoutInput {
   session?: ClientSession;
 }
 
+interface AddRecipientsFanoutInput {
+  notificationId: Types.ObjectId;
+  recipientUserIds: Types.ObjectId[];
+  session?: ClientSession;
+}
+
 export const createAndFanoutResolved = async (
   input: CreateAndFanoutResolvedInput
 ): Promise<NotificationFanoutResult> => {
@@ -114,7 +120,64 @@ export const createAndFanout = async (
   });
 };
 
-const notificationRepository = { createAndFanout, createAndFanoutResolved };
+/**
+ * Fans out inbox entries for people newly addressed on a notification that
+ * already exists, keeping that one notification. Entries are stored only for
+ * users who do not already hold one on this notification, so a repeat add is
+ * not stored again. Returns the users that were newly stored.
+ */
+export const addRecipientsFanout = async (
+  input: AddRecipientsFanoutInput
+): Promise<{ newlyAddedUserIds: Types.ObjectId[] }> => {
+  const candidateUserIds = toUniqueObjectIds(input.recipientUserIds ?? []);
+
+  if (candidateUserIds.length === 0) {
+    return { newlyAddedUserIds: [] };
+  }
+
+  const alreadyHolding = await User.find(
+    {
+      _id: { $in: candidateUserIds },
+      "notifications.notificationId": input.notificationId,
+    },
+    { _id: 1 }
+  )
+    .session(input.session ?? null)
+    .lean();
+
+  const alreadyHoldingSet = new Set(
+    alreadyHolding.map((user) => String(user._id))
+  );
+  const newlyAddedUserIds = candidateUserIds.filter(
+    (id) => !alreadyHoldingSet.has(String(id))
+  );
+
+  if (newlyAddedUserIds.length === 0) {
+    return { newlyAddedUserIds: [] };
+  }
+
+  await User.updateMany(
+    { _id: { $in: newlyAddedUserIds } },
+    {
+      $push: {
+        notifications: {
+          notificationId: input.notificationId,
+          readFlag: false,
+          deletedFlag: false,
+        },
+      },
+    },
+    input.session ? { session: input.session } : undefined
+  );
+
+  return { newlyAddedUserIds };
+};
+
+const notificationRepository = {
+  createAndFanout,
+  createAndFanoutResolved,
+  addRecipientsFanout,
+};
 
 export default notificationRepository;
 
