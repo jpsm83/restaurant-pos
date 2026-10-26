@@ -140,6 +140,11 @@ Conventions:
 - **Shared contracts** are imported by package name
   (`restaurant-pos-packages/schemas/auth`), never by relative `../packages`
   paths — resolved through the workspace symlink.
+- **Operational reasons are platform-defined shared data.**
+  `restaurant-pos-packages/operationalReasons` exports the seven closed
+  catalogues and the one selection resolver. Every reason-bearing route
+  resolves its selection there; there is no database collection, seed,
+  migration, editor, or HTTP catalogue CRUD.
 - **Domain modules** (`orders/`, `inventories/`, ...) hold business logic;
   routes stay thin.
 - **Audit entries are append-only ledger records** written through

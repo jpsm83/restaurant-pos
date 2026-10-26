@@ -34,6 +34,7 @@ frontend (:5173) --/api proxy--> backend (:4000) --> MongoDB Atlas
 | Path | Exports | Purpose |
 |------|---------|---------|
 | `enums.ts` | `mainCategoriesEnums`, `paymentMethodsEnums`, `userRolesEnums`, `orderStatusEnums`, ... | Domain value lists (as `string[]`) |
+| `operationalReasons.ts` | `OPERATIONAL_REASON_ACTS`, `OPERATIONAL_REASON_CATALOGUES`, `resolveOperationalReason`, types | Closed platform-defined reason catalogues and their selection resolver |
 | `interfaces/` | `IUser`, `IBusiness`, `IOrder`, `IEmployee`, ... | Mongoose-shaped TypeScript interfaces (`I*.ts`) |
 | `schemas/` | zod DTOs + primitives | Request/response and form validation |
 | `utils/` | `passwordPolicy`, `emailRegex`, `timezoneData`, `timezoneFromAddress` | Pure helpers shared by both sides |
@@ -48,6 +49,7 @@ frontend (:5173) --/api proxy--> backend (:4000) --> MongoDB Atlas
   | Import specifier | Resolves to |
   |------------------|-------------|
   | `restaurant-pos-packages/enums` | `enums.ts` |
+  | `restaurant-pos-packages/operationalReasons` | `operationalReasons.ts` |
   | `restaurant-pos-packages/interfaces/*` | `interfaces/*.ts` |
   | `restaurant-pos-packages/schemas` | `schemas/index.ts` (barrel) |
   | `restaurant-pos-packages/schemas/primitives` | `schemas/primitives.ts` |
@@ -77,6 +79,10 @@ frontend (:5173) --/api proxy--> backend (:4000) --> MongoDB Atlas
   timezone validation. Prefer these over ad-hoc validators.
 - **Primitives stay Node/Mongoose-free** so the frontend can reuse them for form
   validation unchanged.
+- **Operational reasons are closed product data.** `operationalReasons.ts` owns
+  the seven catalogues and the one selection resolver. There is no database
+  collection, seed, migration, editor, or HTTP CRUD route; a product amendment
+  changes the module.
 - **Names follow the domain:** `IPascalCase.ts` interfaces, `camelCase.ts`
   schemas; `schemas/index.ts` re-exports everything.
 

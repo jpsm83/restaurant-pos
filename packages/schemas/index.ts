@@ -22,3 +22,4 @@ export * from "./schedules.ts";
 export * from "./dailySalesReports.ts";
 export * from "./businessReports.ts";
 export * from "./purchase.ts";
+export * from "./operationalReasons.ts";

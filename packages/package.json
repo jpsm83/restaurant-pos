@@ -6,6 +6,7 @@
   "exports": {
     "./package.json": "./package.json",
     "./enums": "./enums.ts",
+    "./operationalReasons": "./operationalReasons.ts",
     "./interfaces/*": "./interfaces/*.ts",
     "./schemas": "./schemas/index.ts",
     "./schemas/primitives": "./schemas/primitives.ts",
