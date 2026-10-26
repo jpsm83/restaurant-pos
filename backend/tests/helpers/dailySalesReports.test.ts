@@ -574,6 +574,7 @@ describe("Daily Sales Report Helpers", () => {
         [deliveryOrder._id],
         deliverySi._id,
         "Void",
+        { code: "kitchenPrepError" },
         s1,
       );
       expect(firstVoid).toBe(true);
@@ -586,6 +587,7 @@ describe("Daily Sales Report Helpers", () => {
         [selfOrder._id],
         selfSi._id,
         "Invitation",
+        { code: "guestRecovery" },
         s2,
       );
       expect(firstInvitation).toBe(true);
@@ -607,6 +609,7 @@ describe("Daily Sales Report Helpers", () => {
         [deliveryOrder._id],
         deliverySi._id,
         "Void",
+        { code: "wrongItem" },
         s3,
       );
       expect(secondVoid).toBe("No open orders found!");
@@ -619,6 +622,7 @@ describe("Daily Sales Report Helpers", () => {
         [selfOrder._id],
         selfSi._id,
         "Invitation",
+        { code: "vipMarketing" },
         s4,
       );
       expect(secondInvitation).toBe("No open orders found!");

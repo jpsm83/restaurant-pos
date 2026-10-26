@@ -52,6 +52,10 @@ import {
   type TransferSalesPointBody,
   type UpdateSalesInstanceBody,
 } from "restaurant-pos-packages/schemas/salesInstances";
+import {
+  OPERATIONAL_REASON_ACTS,
+  resolveOperationalReason,
+} from "restaurant-pos-packages/operationalReasons";
 import SalesInstance from "../../models/salesInstance.ts";
 import SalesPoint from "../../models/salesPoint.ts";
 import User from "../../models/user.ts";
@@ -361,6 +365,8 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
         ordersIdsArr,
         cancel,
         ordersNewBillingStatus,
+        reasonCode,
+        reasonNote,
         paymentMethodArr,
         toSalesInstanceId,
         guests,
@@ -400,6 +406,19 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
             (ordersNewBillingStatus === "Void" ||
               ordersNewBillingStatus === "Invitation"),
         );
+        const isFinalizationStatus =
+          ordersNewBillingStatus === "Void" ||
+          ordersNewBillingStatus === "Invitation";
+
+        if (
+          !isFinalizationStatus &&
+          (reasonCode !== undefined || reasonNote !== undefined)
+        ) {
+          throw badRequest(
+            "A reason is only accepted when finalizing orders as Void or Invitation.",
+          );
+        }
+
         const wantsAnyRestrictedOperation =
           wantsCancel ||
           wantsCloseWithPayment ||
@@ -623,11 +642,29 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
             );
           }
 
+          if (reasonCode === undefined) {
+            throw badRequest(
+              "A reason code is required to finalize orders as Void or Invitation.",
+            );
+          }
+
           const status = ordersNewBillingStatus as "Void" | "Invitation";
+          const resolvedReason = resolveOperationalReason(
+            status === "Void"
+              ? OPERATIONAL_REASON_ACTS.VOID
+              : OPERATIONAL_REASON_ACTS.INVITATION,
+            reasonCode,
+            reasonNote,
+          );
+          if (!resolvedReason.success) {
+            throw badRequest(resolvedReason.error);
+          }
+
           const finalizeResult = await finalizeOrdersBillingStatus(
             ordersIdsArr.map((id) => new Types.ObjectId(id)),
             new Types.ObjectId(salesInstanceId),
             status,
+            { code: resolvedReason.code, note: resolvedReason.note },
             session,
           );
 

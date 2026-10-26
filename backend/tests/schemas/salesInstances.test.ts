@@ -159,6 +159,51 @@ describe("updateSalesInstanceBodySchema", () => {
     ).toBe(true);
   });
 
+  it("sanitizes a reason code and accepts a named reason without a note", () => {
+    const parsed = updateSalesInstanceBodySchema.parse({
+      ordersNewBillingStatus: "Void",
+      reasonCode: "  <b>wrongItem</b>  ",
+    });
+    expect(parsed.reasonCode).toBe("wrongItem");
+    expect(parsed.reasonNote).toBeUndefined();
+  });
+
+  it("accepts and sanitizes an Other note", () => {
+    const parsed = updateSalesInstanceBodySchema.parse({
+      ordersNewBillingStatus: "Invitation",
+      reasonCode: "other",
+      reasonNote: "  <b>Guest</b> recovery   gesture ",
+    });
+    expect(parsed.reasonNote).toBe("Guest recovery gesture");
+  });
+
+  it("treats a blank reason note as absent", () => {
+    const parsed = updateSalesInstanceBodySchema.parse({
+      reasonCode: "other",
+      reasonNote: "   ",
+    });
+    expect(parsed.reasonNote).toBeUndefined();
+  });
+
+  it("rejects an empty reason code and an over-long note", () => {
+    expect(
+      updateSalesInstanceBodySchema.safeParse({ reasonCode: "   " }).success,
+    ).toBe(false);
+    expect(
+      updateSalesInstanceBodySchema.safeParse({
+        reasonCode: "other",
+        reasonNote: "a".repeat(281),
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects the retired free-text voidReason field", () => {
+    expect(
+      updateSalesInstanceBodySchema.safeParse({ voidReason: "Wrong item" })
+        .success,
+    ).toBe(false);
+  });
+
   it("rejects an invalid salesInstanceStatus", () => {
     expect(
       updateSalesInstanceBodySchema.safeParse({ salesInstanceStatus: "Nope" })

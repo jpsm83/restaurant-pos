@@ -16,10 +16,17 @@ import {
 
 type SupportedFinalStatus = "Void" | "Invitation";
 
+/** The resolved catalogue selection written to every finalized order. */
+export interface BillingReasonSelection {
+  code: string;
+  note?: string;
+}
+
 const finalizeOrdersBillingStatus = async (
   ordersIdsArr: Types.ObjectId[],
   salesInstanceId: Types.ObjectId,
   finalStatus: SupportedFinalStatus,
+  reason: BillingReasonSelection,
   session: ClientSession,
 ): Promise<true | string> => {
   try {
@@ -51,13 +58,19 @@ const finalizeOrdersBillingStatus = async (
       return "No open orders found!";
     }
 
+    const billingReasonFields =
+      reason.note === undefined
+        ? { billingReasonCode: reason.code }
+        : { billingReasonCode: reason.code, billingReasonNote: reason.note };
     const bulkUpdateOrders = orders.map((order) => ({
       updateOne: {
         filter: withSoftDeleteFilter({
           _id: order._id,
           billingStatus: "Open",
         }),
-        update: { $set: { billingStatus: finalStatus } },
+        update: {
+          $set: { billingStatus: finalStatus, ...billingReasonFields },
+        },
       },
     }));
     const bulkUpdateResult = await Order.bulkWrite(bulkUpdateOrders, { session });

@@ -376,6 +376,49 @@ describe("Orders Routes", () => {
       expect(body.orderGrossPrice).toBe(12.99);
     });
 
+    it("hides the billing reason fields from ordinary list and detail reads", async () => {
+      const app = await getTestApp();
+
+      const order = await Order.create({
+        businessId,
+        businessGoodId,
+        salesInstanceId,
+        createdByUserId: userId,
+        dailyReferenceNumber: 1,
+        billingStatus: "Open",
+        orderGrossPrice: 12.99,
+        orderNetPrice: 12.99,
+        orderCostPrice: 4.00,
+        orderStatus: "Sent",
+      });
+      await Order.updateOne(
+        { _id: order._id },
+        {
+          $set: {
+            billingStatus: "Void",
+            billingReasonCode: "wrongItem",
+            billingReasonNote: "Staff-only context",
+          },
+        },
+      );
+
+      const detail = await app.inject({
+        method: "GET",
+        url: `/api/v1/orders/${order._id}`,
+      });
+      expect(detail.statusCode).toBe(200);
+      expect(detail.json()).not.toHaveProperty("billingReasonCode");
+      expect(detail.json()).not.toHaveProperty("billingReasonNote");
+
+      const list = await app.inject({ method: "GET", url: "/api/v1/orders" });
+      const listed = list
+        .json()
+        .find((candidate: { _id: string }) => candidate._id === String(order._id));
+      expect(listed).toBeDefined();
+      expect(listed).not.toHaveProperty("billingReasonCode");
+      expect(listed).not.toHaveProperty("billingReasonNote");
+    });
+
     it("returns a validation problem for invalid ID format", async () => {
       const app = await getTestApp();
 
@@ -1038,6 +1081,7 @@ describe("Orders Routes", () => {
           [order._id],
           salesInstanceId,
           "Void",
+          { code: "wrongItem" },
           session,
         );
         expect(result).not.toBe(true);

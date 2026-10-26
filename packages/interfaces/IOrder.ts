@@ -5,6 +5,8 @@ export interface IOrder {
   _id: Types.ObjectId;
   dailyReferenceNumber: number;
   billingStatus?: string;
+  billingReasonCode?: string;
+  billingReasonNote?: string;
   orderStatus?: string;
   orderGrossPrice: number;
   orderNetPrice: number;

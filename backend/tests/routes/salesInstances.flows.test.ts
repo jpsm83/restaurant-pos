@@ -14,10 +14,51 @@ import Order from "../../src/models/order.ts";
 import BusinessGood from "../../src/models/businessGood.ts";
 import DailySalesReport from "../../src/models/dailySalesReport.ts";
 import Promotion from "../../src/models/promotion.ts";
+import AuditEntry from "../../src/models/auditEntry.ts";
 
 vi.mock("../../src/inventories/updateDynamicCountSupplierGood.ts", () => ({
   default: vi.fn(async () => true as const),
 }));
+
+// Synthetic retired codes prove the HTTP rejection without retiring a product
+// code in this slice.
+vi.mock("restaurant-pos-packages/operationalReasons", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("restaurant-pos-packages/operationalReasons")
+    >();
+  const catalogues = {
+    ...actual.OPERATIONAL_REASON_CATALOGUES,
+    void: [
+      ...actual.OPERATIONAL_REASON_CATALOGUES.void,
+      {
+        code: "retiredVoidReason",
+        label: "Retired void reason",
+        retired: true,
+        allowsNote: false,
+      },
+    ],
+    invitation: [
+      ...actual.OPERATIONAL_REASON_CATALOGUES.invitation,
+      {
+        code: "retiredInvitationReason",
+        label: "Retired invitation reason",
+        retired: true,
+        allowsNote: false,
+      },
+    ],
+  };
+
+  return {
+    ...actual,
+    OPERATIONAL_REASON_CATALOGUES: catalogues,
+    resolveOperationalReason: (
+      act: string | null | undefined,
+      code: string | null | undefined,
+      note?: string | null,
+    ) => actual.resolveOperationalReason(act, code, note, catalogues),
+  };
+});
 
 const addr = {
   country: "USA",
@@ -43,13 +84,17 @@ const deliveryWindowsAllDays = [0, 1, 2, 3, 4, 5, 6].map((dayOfWeek) => ({
   windows: [{ openTime: "00:00", closeTime: "23:59" }],
 }));
 
-async function createManagerActor(businessId: Types.ObjectId) {
+async function createEmployeeActor(
+  businessId: Types.ObjectId,
+  role: "Manager" | "Waiter",
+) {
+  const suffix = Math.random().toString(36).slice(2);
   const user = await User.create({
     personalDetails: {
-      email: `mgr-${Date.now()}-${Math.random().toString(36).slice(2)}@t.com`,
+      email: `${role}-${Date.now()}-${suffix}@t.com`,
       password: "hashed",
-      firstName: "M",
-      lastName: "R",
+      firstName: role,
+      lastName: "Actor",
       phoneNumber: "555",
       birthDate: new Date("1990-01-01"),
       gender: "Man",
@@ -57,15 +102,15 @@ async function createManagerActor(businessId: Types.ObjectId) {
       address: addr,
       idNumber: "ID",
       idType: "Passport",
-      username: "mgr",
+      username: role,
     },
-    allUserRoles: ["Manager"],
+    allUserRoles: [role],
   });
   const employee = await Employee.create({
     businessId,
     userId: user._id,
-    allEmployeeRoles: ["Manager"],
-    taxNumber: `TAX-MGR-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    allEmployeeRoles: [role],
+    taxNumber: `TAX-${role}-${Date.now()}-${suffix}`,
     joinDate: new Date(),
     active: true,
     onDuty: true,
@@ -77,10 +122,13 @@ async function createManagerActor(businessId: Types.ObjectId) {
     id: user._id.toString(),
     email: user.personalDetails.email,
     type: "user",
-    role: "Manager",
+    role,
   });
   return { user, employee, token };
 }
+
+const createManagerActor = (businessId: Types.ObjectId) =>
+  createEmployeeActor(businessId, "Manager");
 
 async function createCustomerActor() {
   const user = await User.create({
@@ -944,9 +992,16 @@ describe("SalesInstances flows (Task 12)", () => {
         payload: {
           ordersIdsArr: [order._id.toString()],
           ordersNewBillingStatus: "Void",
+          reasonCode: "kitchenPrepError",
         },
       });
       expect(first.statusCode, first.body).toBe(200);
+
+      const finalized = await Order.findById(order._id)
+        .select("+billingReasonCode +billingReasonNote")
+        .lean();
+      expect(finalized?.billingReasonCode).toBe("kitchenPrepError");
+      expect(finalized?.billingReasonNote).toBeUndefined();
 
       const reportAfterFirst = await DailySalesReport.findOne({
         businessId,
@@ -963,9 +1018,15 @@ describe("SalesInstances flows (Task 12)", () => {
         payload: {
           ordersIdsArr: [order._id.toString()],
           ordersNewBillingStatus: "Void",
+          reasonCode: "wrongItem",
         },
       });
       expect(second.statusCode, second.body).toBe(400);
+
+      const afterRetry = await Order.findById(order._id)
+        .select("+billingReasonCode +billingReasonNote")
+        .lean();
+      expect(afterRetry?.billingReasonCode).toBe("kitchenPrepError");
 
       const reportAfterSecond = await DailySalesReport.findOne({
         businessId,
@@ -1038,9 +1099,16 @@ describe("SalesInstances flows (Task 12)", () => {
         payload: {
           ordersIdsArr: [order._id.toString()],
           ordersNewBillingStatus: "Invitation",
+          reasonCode: "guestRecovery",
         },
       });
       expect(first.statusCode, first.body).toBe(200);
+
+      const finalized = await Order.findById(order._id)
+        .select("+billingReasonCode +billingReasonNote")
+        .lean();
+      expect(finalized?.billingReasonCode).toBe("guestRecovery");
+      expect(finalized?.billingReasonNote).toBeUndefined();
 
       const reportAfterFirst = await DailySalesReport.findOne({
         businessId,
@@ -1057,9 +1125,15 @@ describe("SalesInstances flows (Task 12)", () => {
         payload: {
           ordersIdsArr: [order._id.toString()],
           ordersNewBillingStatus: "Invitation",
+          reasonCode: "vipMarketing",
         },
       });
       expect(second.statusCode, second.body).toBe(400);
+
+      const afterRetry = await Order.findById(order._id)
+        .select("+billingReasonCode +billingReasonNote")
+        .lean();
+      expect(afterRetry?.billingReasonCode).toBe("guestRecovery");
 
       const reportAfterSecond = await DailySalesReport.findOne({
         businessId,
@@ -1068,6 +1142,353 @@ describe("SalesInstances flows (Task 12)", () => {
       expect(
         (reportAfterSecond?.selfOrderingSalesReport?.[0] as any)?.totalInvitedValue,
       ).toBe(22);
+    });
+  });
+
+  describe("finalization reason contract", () => {
+    type FinalStatus = "Void" | "Invitation";
+
+    let referenceSeed = 0;
+
+    async function createFixture(finalStatus: FinalStatus, orderCount = 1) {
+      const manager = await createManagerActor(businessId);
+      const customer = await createCustomerActor();
+      const dailyReferenceNumber = Date.now() + (referenceSeed += 7);
+      await DailySalesReport.create({
+        businessId,
+        dailyReferenceNumber,
+        isDailyReportOpen: true,
+        timeCountdownToClose: Date.now() + 86400000,
+        employeesDailySalesReport: [],
+        selfOrderingSalesReport: [],
+      });
+      const point = await SalesPoint.create({
+        businessId,
+        salesPointName: `Reason ${finalStatus} ${referenceSeed}`,
+        salesPointType: finalStatus === "Void" ? "delivery" : "table",
+        selfOrdering: finalStatus === "Invitation",
+      });
+      const good = await BusinessGood.create({
+        businessId,
+        name: `Reason ${finalStatus} item ${referenceSeed}`,
+        keyword: `reason-${finalStatus.toLowerCase()}-${referenceSeed}`,
+        mainCategory: "Food",
+        onMenu: true,
+        available: true,
+        sellingPrice: 10,
+        costPrice: 3,
+      });
+      const si = await SalesInstance.create({
+        businessId,
+        salesPointId: point._id,
+        dailyReferenceNumber,
+        guests: 1,
+        salesInstanceStatus: "Occupied",
+        openedByUserId: manager.user._id,
+        openedAsRole: "employee",
+        salesGroup: [{ orderCode: `REASON-${referenceSeed}`, ordersIds: [] }],
+      });
+      const orders = [];
+      for (let index = 0; index < orderCount; index += 1) {
+        orders.push(
+          await Order.create({
+            businessId,
+            businessGoodId: good._id,
+            salesInstanceId: si._id,
+            createdByUserId: customer.user._id,
+            dailyReferenceNumber,
+            billingStatus: "Open",
+            orderGrossPrice: 10,
+            orderNetPrice: 10,
+            orderCostPrice: 3,
+            orderStatus: "Sent",
+          }),
+        );
+      }
+      await SalesInstance.updateOne(
+        { _id: si._id },
+        { $set: { "salesGroup.0.ordersIds": orders.map((order) => order._id) } },
+      );
+      return { manager, si, orders };
+    }
+
+    const readOrder = async (id: Types.ObjectId) =>
+      (await Order.findById(id)
+        .select("+billingReasonCode +billingReasonNote")
+        .lean()) as
+        | {
+            billingStatus?: string;
+            billingReasonCode?: string;
+            billingReasonNote?: string;
+          }
+        | null;
+
+    const expectReasonProblem = (
+      res: { statusCode: number; headers: Record<string, unknown>; body: string },
+      detail?: RegExp,
+    ) => {
+      expect(res.statusCode, res.body).toBe(400);
+      expect(res.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      const body = JSON.parse(res.body);
+      expect(body.status).toBe(400);
+      if (detail) expect(body.detail).toMatch(detail);
+    };
+
+    const expectOrdersOpen = async (orderIds: Types.ObjectId[]) => {
+      for (const orderId of orderIds) {
+        const stored = await readOrder(orderId);
+        expect(stored?.billingStatus).toBe("Open");
+        expect(stored?.billingReasonCode).toBeUndefined();
+        expect(stored?.billingReasonNote).toBeUndefined();
+      }
+    };
+
+    it("stores the same Void Other note on every affected order", async () => {
+      const { manager, si, orders } = await createFixture("Void", 2);
+      const beforeAudit = await AuditEntry.countDocuments({});
+
+      const res = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/salesInstances/${si._id}`,
+        headers: { authorization: manager.token },
+        payload: {
+          ordersIdsArr: orders.map((order) => order._id.toString()),
+          ordersNewBillingStatus: "Void",
+          reasonCode: "other",
+          reasonNote: "  Guest left <b>early</b>  ",
+        },
+      });
+
+      expect(res.statusCode, res.body).toBe(200);
+      for (const order of orders) {
+        const stored = await readOrder(order._id);
+        expect(stored?.billingStatus).toBe("Void");
+        expect(stored?.billingReasonCode).toBe("other");
+        expect(stored?.billingReasonNote).toBe("Guest left early");
+      }
+      expect(await AuditEntry.countDocuments({})).toBe(beforeAudit);
+    });
+
+    it("stores the same Invitation code on every affected order", async () => {
+      const { manager, si, orders } = await createFixture("Invitation", 2);
+
+      const res = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/salesInstances/${si._id}`,
+        headers: { authorization: manager.token },
+        payload: {
+          ordersIdsArr: orders.map((order) => order._id.toString()),
+          ordersNewBillingStatus: "Invitation",
+          reasonCode: "staffEmployeeMeal",
+        },
+      });
+
+      expect(res.statusCode, res.body).toBe(200);
+      for (const order of orders) {
+        const stored = await readOrder(order._id);
+        expect(stored?.billingStatus).toBe("Invitation");
+        expect(stored?.billingReasonCode).toBe("staffEmployeeMeal");
+        expect(stored?.billingReasonNote).toBeUndefined();
+      }
+    });
+
+    it("stores an Invitation Other note", async () => {
+      const { manager, si, orders } = await createFixture("Invitation");
+
+      const res = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/salesInstances/${si._id}`,
+        headers: { authorization: manager.token },
+        payload: {
+          ordersIdsArr: [orders[0]._id.toString()],
+          ordersNewBillingStatus: "Invitation",
+          reasonCode: "other",
+          reasonNote: "Owner comped the table",
+        },
+      });
+
+      expect(res.statusCode, res.body).toBe(200);
+      const stored = await readOrder(orders[0]._id);
+      expect(stored?.billingStatus).toBe("Invitation");
+      expect(stored?.billingReasonCode).toBe("other");
+      expect(stored?.billingReasonNote).toBe("Owner comped the table");
+    });
+
+    it.each(["Void", "Invitation"] as const)(
+      "rejects a %s finalization without a reason code",
+      async (finalStatus) => {
+        const { manager, si, orders } = await createFixture(finalStatus);
+
+        const res = await app.inject({
+          method: "PATCH",
+          url: `/api/v1/salesInstances/${si._id}`,
+          headers: { authorization: manager.token },
+          payload: {
+            ordersIdsArr: [orders[0]._id.toString()],
+            ordersNewBillingStatus: finalStatus,
+          },
+        });
+
+        expectReasonProblem(res, /reason code is required/i);
+        await expectOrdersOpen([orders[0]._id]);
+      },
+    );
+
+    it.each([
+      ["Void", "guestRecovery"],
+      ["Invitation", "wrongItem"],
+    ] as const)(
+      "rejects a %s finalization with a code from another catalogue",
+      async (finalStatus, code) => {
+        const { manager, si, orders } = await createFixture(finalStatus);
+
+        const res = await app.inject({
+          method: "PATCH",
+          url: `/api/v1/salesInstances/${si._id}`,
+          headers: { authorization: manager.token },
+          payload: {
+            ordersIdsArr: [orders[0]._id.toString()],
+            ordersNewBillingStatus: finalStatus,
+            reasonCode: code,
+          },
+        });
+
+        expectReasonProblem(res, /unknown reason code/i);
+        await expectOrdersOpen([orders[0]._id]);
+      },
+    );
+
+    it.each(["Void", "Invitation"] as const)(
+      "rejects a %s finalization with an unknown code",
+      async (finalStatus) => {
+        const { manager, si, orders } = await createFixture(finalStatus);
+
+        const res = await app.inject({
+          method: "PATCH",
+          url: `/api/v1/salesInstances/${si._id}`,
+          headers: { authorization: manager.token },
+          payload: {
+            ordersIdsArr: [orders[0]._id.toString()],
+            ordersNewBillingStatus: finalStatus,
+            reasonCode: "notARealReason",
+          },
+        });
+
+        expectReasonProblem(res, /unknown reason code/i);
+        await expectOrdersOpen([orders[0]._id]);
+      },
+    );
+
+    it.each([
+      ["Void", "retiredVoidReason"],
+      ["Invitation", "retiredInvitationReason"],
+    ] as const)(
+      "rejects a retired %s catalogue code",
+      async (finalStatus, code) => {
+        const { manager, si, orders } = await createFixture(finalStatus);
+
+        const res = await app.inject({
+          method: "PATCH",
+          url: `/api/v1/salesInstances/${si._id}`,
+          headers: { authorization: manager.token },
+          payload: {
+            ordersIdsArr: [orders[0]._id.toString()],
+            ordersNewBillingStatus: finalStatus,
+            reasonCode: code,
+          },
+        });
+
+        expectReasonProblem(res, /retired/i);
+        await expectOrdersOpen([orders[0]._id]);
+      },
+    );
+
+    it.each(["Void", "Invitation"] as const)(
+      "rejects a note supplied with a named %s reason",
+      async (finalStatus) => {
+        const { manager, si, orders } = await createFixture(finalStatus);
+
+        const res = await app.inject({
+          method: "PATCH",
+          url: `/api/v1/salesInstances/${si._id}`,
+          headers: { authorization: manager.token },
+          payload: {
+            ordersIdsArr: [orders[0]._id.toString()],
+            ordersNewBillingStatus: finalStatus,
+            reasonCode: finalStatus === "Void" ? "wrongItem" : "guestRecovery",
+            reasonNote: "Extra context",
+          },
+        });
+
+        expectReasonProblem(res, /note is only allowed/i);
+        await expectOrdersOpen([orders[0]._id]);
+      },
+    );
+
+    it("rejects reason fields without a Void or Invitation status", async () => {
+      const { manager, si, orders } = await createFixture("Void");
+
+      const withCode = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/salesInstances/${si._id}`,
+        headers: { authorization: manager.token },
+        payload: {
+          ordersIdsArr: [orders[0]._id.toString()],
+          ordersNewBillingStatus: "Paid",
+          reasonCode: "wrongItem",
+        },
+      });
+      expectReasonProblem(withCode, /only accepted when finalizing/i);
+
+      const noteOnly = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/salesInstances/${si._id}`,
+        headers: { authorization: manager.token },
+        payload: {
+          ordersIdsArr: [orders[0]._id.toString()],
+          reasonNote: "Extra context",
+        },
+      });
+      expectReasonProblem(noteOnly, /only accepted when finalizing/i);
+
+      await expectOrdersOpen([orders[0]._id]);
+    });
+
+    it("keeps the management-role guard and leaves orders Open", async () => {
+      const { si, orders } = await createFixture("Void");
+      const staff = await createEmployeeActor(businessId, "Waiter");
+
+      const res = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/salesInstances/${si._id}`,
+        headers: { authorization: staff.token },
+        payload: {
+          ordersIdsArr: [orders[0]._id.toString()],
+          ordersNewBillingStatus: "Void",
+          reasonCode: "wrongItem",
+        },
+      });
+
+      expect(res.statusCode, res.body).toBe(403);
+      expect(res.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      expect(JSON.parse(res.body).detail).toMatch(/management roles/i);
+
+      const withoutReason = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/salesInstances/${si._id}`,
+        headers: { authorization: staff.token },
+        payload: {
+          ordersIdsArr: [orders[0]._id.toString()],
+          ordersNewBillingStatus: "Void",
+        },
+      });
+      expect(withoutReason.statusCode, withoutReason.body).toBe(403);
+
+      await expectOrdersOpen([orders[0]._id]);
     });
   });
 

@@ -26,6 +26,7 @@ import {
   trimmedString,
 } from "./primitives.ts";
 import { orderItemSchema } from "./orders.ts";
+import { reasonCode, reasonNote } from "./operationalReasons.ts";
 
 /**
  * The salesInstance statuses. Pinned locally so `z.enum` carries the literal
@@ -123,7 +124,8 @@ export const updateSalesInstanceBodySchema = z.strictObject({
   comments: freeTextString().optional(),
   cancel: coercedBooleanSchema.optional(),
   ordersNewBillingStatus: ordersNewBillingStatusSchema.optional(),
-  voidReason: freeTextString().optional(),
+  reasonCode: reasonCode.optional(),
+  reasonNote,
   ordersNewStatus: ordersNewStatusSchema.optional(),
   paymentMethodArr: z.array(paymentMethodItemSchema).optional(),
   toSalesInstanceId: objectIdSchema.optional(),

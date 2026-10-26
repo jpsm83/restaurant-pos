@@ -78,6 +78,8 @@ const orderSchema = new Schema(
     promotionApplyed: { type: String }, // check if promotion is applyed by promotion date and time - done on the front end
     discountPercentage: { type: Number }, // percentage discount applyed manually to the order - cannot apply discount if promotion is applyed
     comments: { type: String }, // if discount, void or cancel are applyed, the reason for it or if or if kitchen needs to know something
+    billingReasonCode: { type: String, select: false }, // operational-reason code recorded when the billing status is finalized; staff-only, never on a guest projection
+    billingReasonNote: { type: String, select: false }, // optional Other note paired with billingReasonCode; staff-only
     ...softDeleteSchemaFields,
   },
   {
