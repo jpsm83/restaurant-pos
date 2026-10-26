@@ -10,7 +10,7 @@ This subject owns **venue reviews**: the customer feedback a live venue collects
 
 - the **review** itself — a required **score** and optional **text**, always tied to one closed **sales instance**;
 - **eligibility** — only after the instance's bill is fully settled and the instance is closed;
-- **review invites** — the **receipt QR** printed at close, the **delivery review email**, and review from **order history**;
+- **review invites** — the **review QR** printed at close, the **delivery review email**, and review from **order history**;
 - **invite lifetime** — unused expiry and one-shot spend on submit;
 - **sign-in and sign-up** through the invite when the guest has no account yet;
 - **public surfacing** on the venue's discovery profile and the **cached average rating and rating count** published onto the business;
@@ -44,16 +44,16 @@ It deliberately does **not** cover:
 
 - **Score** — an integer from **0** through **5** inclusive; whole stars only.
 - **Review text** — the optional free-text comment on the venue that accompanies the score.
-- **Review invite** — a one-time link that opens review for a specific closed sales instance: the **receipt QR**, the matching link in a **delivery review email**, or the same eligibility opened from **order history**.
-- **Receipt QR** — the review invite printed on the sales receipt when a sales instance closes, beside the bill information.
-- **Delivery review email** — the operational email that invites the customer to review a delivery sitting a few hours after handover.
+- **Review invite** — a one-time link that opens review for a specific closed sales instance: the **review QR**, the matching link in a **delivery review email**, or the same eligibility opened from **order history**.
+- **Review QR** — the review invite printed on the sales receipt when a sales instance closes, in a separate **Review us** block. It is **not** the **handover QR**: the handover QR releases a self-service batch, while the review QR only opens the review.
+- **Delivery review email** — the operational email that invites the customer to review a delivery sitting a few hours after a **recorded handover**. A delivery completed only by the daily close, with no staff-recorded handover, receives no timed email.
 - **Invite lifetime** — how long an unused review invite stays valid from instance close (**30 days**); submitting a review **spends** every invite for that instance.
 - **Average rating** — the mean of the venue's non-deleted review scores, cached on the business for discovery; only Project Imperium updates it.
 - **Rating count** — the number of non-deleted reviews for the venue, cached on the business for discovery; only Project Imperium updates it.
 - **Removal request** — a venue's ask that **superadmin** soft-delete a review for abuse.
 - **Author label** — the short public name shown with a review (for example the author's first name).
 
-Terms reused rather than redefined here: **Business**, **Customer**, **Sales instance**, **Bill**, **Order**, **Channel**, **Delivery**, **managers and above**, **soft delete**, **go-live** / **live** venue, and **discovery**.
+Terms reused rather than redefined here: **Business**, **Customer**, **Sales instance**, **Bill**, **Order**, **Channel**, **Delivery**, **Handover QR**, **managers and above**, **soft delete**, **go-live** / **live** venue, and **discovery**.
 
 ---
 
@@ -73,23 +73,23 @@ Terms reused rather than redefined here: **Business**, **Customer**, **Sales ins
 - There is **at most one review per sales instance**. The same customer may review the same venue again on a **later** closed instance.
 - An instance closed with **no orders** is discarded by the sales-points-and-instances subject and never becomes reviewable.
 
-### 3.3 Invites: receipt QR, delivery email, order history
+### 3.3 Invites: review QR, delivery email, order history
 
-- **On close**, when the **customer receipt** is issued, Project Imperium includes a **receipt QR** beside the bill information. That QR is the review invite for that sales instance. This applies to meal sittings that receive a customer receipt (dine-in, QR table service, kiosk, delivery, and other surfaces) per the receipts-and-bills subject.
-- **Delivery.** When a delivery sitting reaches **handover** and still has no review, Project Imperium sends a **delivery review email** to the attributed customer **three hours after handover**. The email carries the review invite for that instance. If a review already exists, the email is skipped.
+- **On close**, when the **customer receipt** is issued, Project Imperium includes a **review QR** in a separate **Review us** block. That QR is the review invite for that sales instance. It is distinct from the **handover QR** that QR self-ordering and kiosk receipts carry; the two never share a block and never share a job. This applies to meal sittings that receive a customer receipt (dine-in, QR table service, kiosk, delivery, and other surfaces) per the receipts-and-bills subject.
+- **Delivery.** When a delivery sitting has a **recorded handover** and still has no review, Project Imperium sends a **delivery review email** to the attributed customer **three hours after handover**. The email carries the review invite for that instance. If a review already exists, the email is skipped. A delivery completed only by the **daily close**, with no staff-recorded handover, receives **no timed delivery review email**; the customer can still review from order history or the receipt.
 - **Order history.** A signed-in customer may open review from **order history** for any of their eligible closed instances that still have no review and whose invite has not expired, without needing the printed QR or the email.
 - All three paths share the same eligibility rules and the same one-review-per-instance rule.
 
 ### 3.4 Sign-in, sign-up, and who may submit
 
 - Only a **signed-in customer** may submit a review.
-- A guest who scans the receipt QR (or opens the email invite) **without an account** may **create an account through that same invite**, then submit the review for that instance.
-- When the sales instance already has an **attributed customer**, only that customer may submit (after sign-in). When the sitting has **no attributed customer** (for example a walk-in settled without an account), the signed-in user who completes the invite — including after **sign-up via the receipt QR** — becomes the author and is bound to that instance.
+- A guest who scans the review QR (or opens the email invite) **without an account** may **create an account through that same invite**, then submit the review for that instance.
+- When the sales instance already has an **attributed customer**, only that customer may submit (after sign-in). When the sitting has **no attributed customer** (for example a walk-in settled without an account), the signed-in user who completes the invite — including after **sign-up via the review QR** — becomes the author and is bound to that instance.
 
 ### 3.5 Invite lifetime and one-shot spend
 
 - An unused review invite remains valid for **30 days** from instance close, then **expires**.
-- When a review is successfully submitted, **every invite for that instance is spent** — the receipt QR and any matching email or history action no longer accept a second submit.
+- When a review is successfully submitted, **every invite for that instance is spent** — the review QR and any matching email or history action no longer accept a second submit.
 - After submit, the review is **immutable** for the customer: no edit and no self-delete.
 
 ### 3.6 Public surfacing and cached aggregates
@@ -120,7 +120,7 @@ This subject raises the following events; the notifications and emails subjects 
 | New review | The venue's managers and above | In-app |
 | Business reply posted or edited | The reviewing customer | In-app + email |
 | Removal request decided | The managers who requested removal | In-app |
-| Delivery review invite | The attributed delivery customer | In-app + email (three hours after handover, if still unreviewed) |
+| Delivery review invite | The attributed delivery customer | In-app + email (three hours after a recorded handover, if still unreviewed; not for a close-swept delivery with no recorded handover) |
 
 - No blast goes to all staff on a new review. Peer customers are not notified when someone else reviews the venue.
 

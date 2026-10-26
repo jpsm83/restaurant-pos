@@ -13,6 +13,7 @@ This subject covers the **daily sales report**: how a venue's one-day activity i
 - the **per-employee** and **channel** buckets and the venue's **business totals**;
 - the **operational dimension breakdowns** for the day, including **reason code** for void, invitation, manual discount, and refund figures;
 - the **open / closed / reopened** lifecycle, including close preconditions, lock, and fulfilment sweep;
+- the **delivery-integration status** per delivery batch — courier request, courier handover, and whether completion came from a staff screen or the close sweep — with failed calls listed as exceptions;
 - a **day-level commission estimate** (finalisation and collection belong to the weekly business report);
 - **download/export** of the entire daily report;
 - **bill-driven recalculation** and the **edited** flags on the report and on amended bills and payments;
@@ -24,6 +25,7 @@ It deliberately does **not** cover:
 - the **definition, units, formulas, dimensions, and benchmarks of the metrics themselves** — the business-metrics subject owns those; this subject presents the day's operational sales figures using those definitions;
 - **platform commission finalisation and collection** — the business-reports subject owns those at weekly close; this subject only shows a day-level **estimate**;
 - the **raw sales, order, payment, labour, and stock data** the report is built from — the orders, payments-and-tax, sales-points-and-instances, and related subjects own those; this subject only aggregates them;
+- the **courier provider catalogue, connection, courier request, handover, cancellation, and retries** — the delivery-integrations subject. This subject surfaces their status and exceptions on the daily report;
 - **employee cash-out** (personal wallet, expected business cash, peer/house cash movements, cash-out resume, approval) — the employee cash-out subject owns those. This subject surfaces **staff cash collected**, cash-out / uncashed visibility, and an **operational audit** of cash movements from that subject; **close does not require** a cash-out or cash attestation, and there is **no** business over/short variance line;
 - the **delivery of notifications** — the notifications subject owns inbox and channels; this subject raises **no** daily report-ready or closed signal;
 - **how reports are exported or laid out on screen** — outside this subject;
@@ -54,8 +56,9 @@ It deliberately does **not** cover:
 - **Close** — lock the day: block further changes until reopen, and run the fulfilment sweep for that work day.
 - **Reopen** — unlock a closed day so belonging bills and payments may change again; moves the report to **reopened**.
 - **Commission estimate** — a day-level preview of platform commission on that day's commissionable sales; **not charged**. Finalisation and owing happen when the weekly business report closes; collection belongs to platform-billing.
+- **Delivery integration status** — the operational status attached to each delivery batch: its **courier request status**, its **courier handover status**, and its **completion source**. It is not a money metric and does not change the day's sales, cost, or commission figures.
 
-Terms reused from other subjects rather than redefined here: **business**, **sales instance**, **sales point**, **order**, **bill**, **payment**, **guest count**, **covers**, **total sales**, **net revenue**, **cost of goods sold**, **tip**, **void**, **invitation**, **manual discount**, **refund**, **gift card**, **reservation deposit**, **fulfilment slice**, **managers and above**, **operational reason** / **reason code**, and the metric names defined by the business-metrics subject.
+Terms reused from other subjects rather than redefined here: **business**, **sales instance**, **sales point**, **order**, **batch**, **bill**, **payment**, **guest count**, **covers**, **total sales**, **net revenue**, **cost of goods sold**, **tip**, **void**, **invitation**, **manual discount**, **refund**, **gift card**, **reservation deposit**, **fulfilment slice**, **courier request**, **courier handover**, **delivery method**, **Own delivery**, **managers and above**, **operational reason** / **reason code**, and the metric names defined by the business-metrics subject.
 
 ---
 
@@ -107,22 +110,33 @@ Terms reused from other subjects rather than redefined here: **business**, **sal
 - The daily report surfaces **staff cash collected** from approved cash-outs for that work day, **cash-out / uncashed** status per employee, and an **operational audit** of peer and house cash movements (amounts, parties, receipt numbers) for supervisors and above (employees see their own). Those figures do **not** create an over/short P&L line; cash movements are not sales; shortfalls never approve on cash-out.
 - On close, Project Imperium:
   - moves the report to **closed** and **locks the day** — belonging bills and payments cannot change until reopen;
-  - runs the **fulfilment sweep** (§3.6).
+  - runs the **fulfilment sweep** (§3.6);
+  - records any delivery-integration exceptions on the report. A failed courier request or handover **never blocks** the close; the batch is completed by the sweep and marked with **close sweep** as its completion source.
 - A first-pass close (the day was never closed before) does **not** set the edited flag.
 - Closing the day does **not** charge platform commission; the commission estimate remains an estimate until the weekly business report closes.
 
 ### 3.6 Fulfilment sweep on close
 
 - When the daily sales report **closes**, every fulfilment slice for that business work day that is not yet **Delivered** is moved to **Delivered** (advancing through Preparing and Ready as needed) so queues are clear.
-- The printers-and-screens and orders subjects own fulfilment status mechanics; this subject owns that close triggers that sweep.
+- A delivery batch completed this way is recorded with **close sweep** as its completion source. It has no recorded handover time, so the timed delivery review email is not sent; the customer can still review from order history or the receipt.
+- The printers-and-screens and orders subjects own fulfilment status mechanics; the delivery-integrations subject owns the provider calls and sync log; this subject owns that close triggers that sweep and surfaces the exception.
 
-### 3.7 Commission estimate
+### 3.7 Delivery integration status
+
+- For each delivery batch in the work day, the daily report shows the **delivery method** (`Own delivery` or a connected provider) and the provider's **courier request status**: **requested**, **request failed**, **cancelled**, **not connected**, or **own delivery**.
+- It shows the **courier handover status**: **synced**, **handover failed**, or **not used**. **Not used** covers a venue with no staff handover action and a venue that never recorded Delivered.
+- It shows the **completion source**: **staff screen** when a staff handover or Delivered action completed the batch, or **close sweep** when the daily close completed it.
+- A failed courier request, failed handover, or failed cancellation is listed as an **exception** with the provider, batch reference, last error, and attempt time. The list is operational; it does not change the day's sales, cost, profit, or commission estimate.
+- A delivery batch completed only by the close sweep has no recorded handover time. It is identified as **close sweep** so the venue can see that the provider's own app, not an Imperium screen, recorded pickup.
+- The delivery-integration status is **derived** and never hand-edited. It is captured as a **snapshot at close**; a provider action retried after the day closed updates the delivery screen and the sync log but does **not** rewrite the closed report, and it does not require a daily reopen because it changes no bill or payment.
+
+### 3.8 Commission estimate
 
 - The daily report shows a **commission estimate** using the same formula the business-reports subject uses for the week: **base plan rate × that day's commissionable sales**. Commissionable sales are **paid product sales after voids and refunds** across **all payment methods**, including sales paid with **gift card** tender (paid or granted cards); **invitations**, gift-card **deposit intake**, **forfeitures**, and **tips** are excluded. The base rate comes from the monetization catalogue.
 - The rates are **fixed by the subscription plan / catalogue** and are not editable on the report.
 - The estimate is **never charged** from the daily report. **Finalisation and owing** happen when the **weekly business report closes** (business-reports subject); **collection** belongs to platform-billing.
 
-### 3.8 Reopen, bill edits, and the edited flag
+### 3.9 Reopen, bill edits, and the edited flag
 
 - Changing a bill or payment that belongs to a **closed** day requires **reopening** that day first.
 - **Managers and above** reopen with a **mandatory operational reason** from the **daily reopen** catalogue (operational reasons subject). Reopen moves the report to **reopened** (not plain **open**).
@@ -134,12 +148,12 @@ Terms reused from other subjects rather than redefined here: **business**, **sal
 - After reopen, the manager must **close** again to lock the day and re-run the fulfilment sweep as needed. The day's commission estimate recalculates with the figures; any already-closed weekly report that absorbed the day is re-finalised by the business-reports subject.
 - A day closed once with no prior close does **not** get the edited flag — only days that went **closed → reopened → (bill or payment change) → closed** again.
 
-### 3.9 Refunds and payment history
+### 3.10 Refunds and payment history
 
 - Refunds and payment status follow the payments-and-tax subject: the original sale stays visible; the refund sits beside it.
 - Those changes adjust the day's derived figures. If the day is already **closed**, it must be **reopened** before the bill or payment may change and the report recalculates.
 
-### 3.10 Cascade into weekly and monthly reports
+### 3.11 Cascade into weekly and monthly reports
 
 - Weekly and monthly business reports aggregate **closed** dailies (the business-reports subject owns those roll-ups).
 - When a closed daily is reopened, amended through bill or payment changes, and closed again:
@@ -149,12 +163,12 @@ Terms reused from other subjects rather than redefined here: **business**, **sal
   - a closed weekly report's **commission is re-finalised** under the business-reports subject's rules.
 - There is no separate manager reopen of each roll-up for this path; the daily's reopen reason is the justification.
 
-### 3.11 Export
+### 3.12 Export
 
 - Managers and above (and employees granted view access) can **download/export the entire** daily sales report.
 - Export format and on-screen layout are outside this subject; the capability to take the whole report away is in scope.
 
-### 3.12 No daily notifications
+### 3.13 No daily notifications
 
 - The daily sales report raises **no** report-ready and **no** closed notification. Closing the day is an operational act for managers on duty.
 - Weekly and monthly report-ready signalling belongs to the business-reports subject.

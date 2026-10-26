@@ -376,4 +376,4 @@ The cost targets follow the industry convention that **prime cost** (food plus b
 | Set or edit the reporting-week start day | Managers and above |
 | View metrics, benchmarks, and the target comparison | Whoever may view the weekly/monthly business report (the business-reports subject's rule) |
 
-Editing metrics is an operational, not an ownership, act; it sits with the managers who own reporting and cost control, consistent with opening hours, delivery configuration, and inventory closure.
+Editing metrics is an operational, not an ownership, act; it sits with the managers who own reporting and cost control, consistent with opening hours, delivery radius and windows, and inventory closure.

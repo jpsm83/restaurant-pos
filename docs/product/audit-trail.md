@@ -48,6 +48,7 @@ Terms reused rather than redefined here: **User**, **Business**, **Customer**, *
 - Project Imperium leaves an **audit entry** when the act is a **controlled correction**, a **money, tax, or settlement** change, a **privilege or support** action, or an act a sibling already commits as **audited**.
 - Ordinary day-of service work — creating, sending, or fulfilling orders, and similar — is **not** audited merely for happening.
 - Explicit sibling exceptions stand (for example a fulfilment force-ready that the printers-and-screens subject states is not audited).
+- A normal **handover pass** scan, a fallback handover by entering the identification code, and a **delivery provider** request, handover, or cancellation attempt are **not** audit entries. The scan and the provider attempt are operational fulfilment and integration events recorded on the batch and in the delivery sync log. A **manager-and-above override** that marks Delivered without a pass **is** audited with its actor, time, batch, and override note.
 - This subject states the rule; owning subjects apply it to their acts.
 
 ### 3.2 Audit entry shape
@@ -73,8 +74,8 @@ Every audit entry carries at least:
 ### 3.5 Where trails surface
 
 - Stage 1 has **no** dedicated venue-wide audit-log application and **no** portfolio-wide searchable audit browser for Owners.
-- Trails are **object- and report-attached**: history on the count, purchase, refund, gift card, day reopen, cash movement, and so on, plus any roll-up a sibling already surfaces (for example cash-movement audit on the daily sales report).
-- The Superadmin console keeps its own trails for platform acts such as feature-flag edits and impersonation sessions.
+- Trails are **object- and report-attached**: history on the count, purchase, refund, gift card, day reopen, cash movement, handover override, and so on, plus any roll-up a sibling already surfaces (for example cash-movement audit on the daily sales report, or delivery-integration exceptions on that report).
+- The Superadmin console keeps its own trails for platform acts such as feature-flag edits, delivery provider catalogue edits, and impersonation sessions.
 
 ### 3.6 Visibility
 

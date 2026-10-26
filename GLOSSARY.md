@@ -97,3 +97,82 @@ conflict and the client must reload server truth before retrying with a new
 intent. Complements lifecycle checks and idempotency keys (ADR-0006).
 
 _Avoid_: "last-write-wins" for checks, payments, or kitchen sends.
+
+## Handover pass
+
+The self-service batch's handover identity: an opaque token, the batch
+identification code, and — for QR self-ordering and kiosk — a handover QR. It is
+receipt content, not a fiscal number, and it is distinct from the sales point QR,
+the gift card QR, and the review QR.
+
+## Handover QR
+
+The QR that encodes a handover pass token. Staff scan it in their own signed-in
+Business session, or enter the identification code as a fallback, to mark the
+selected Ready items (QR self-ordering) or the whole batch (kiosk and delivery)
+Delivered.
+
+_Avoid_: calling it the "receipt QR" or the "review QR".
+
+## Order reference
+
+The customer-facing label for the batch identification code on a delivery
+receipt. Delivery receipts carry no handover QR.
+
+## Delivery method
+
+How a venue fulfils delivery: **Own delivery** or one connected third-party
+courier provider. One method is active at a time.
+
+## Own delivery
+
+The venue arranges its own courier outside Project Imperium. No provider call is
+made; staff may record handover on a screen or POS, and the daily close
+reconciles a batch with no staff handover action.
+
+## Courier provider
+
+A third-party delivery company in the global provider catalogue. Project Imperium
+requests, confirms, and cancels courier work through a provider-agnostic
+boundary; the provider's own courier app remains authoritative for pickup and
+last mile.
+
+## Courier provider connection
+
+A Business's connection to one provider, carrying write-only credentials, a
+connection status, who connected it, when, and the last error.
+
+## External delivery reference
+
+The provider's identifier for one delivery, stored so later handover and
+cancellation calls refer to the same delivery.
+
+## Courier request
+
+The outbound action that asks a connected provider to dispatch a courier for a
+paid delivery batch at batch send. It carries the batch deadline as the ready
+time.
+
+## Courier handover
+
+The outbound action that tells a connected provider the batch was handed to its
+courier. It is raised only when a staff screen or POS action records Delivered; a
+venue with no staff handover action skips it.
+
+## Courier cancellation
+
+The outbound action that tells a connected provider to cancel a requested
+delivery because the order was cancelled before handover. A refund alone does not
+trigger it.
+
+## Delivery sync state
+
+The current state of one provider action: not requested, requesting, requested,
+request failed, handover synced, handover failed, not used, cancelled, not
+connected, or own delivery.
+
+## Delivery sync log
+
+The operational record of provider call attempts: provider, action, external
+delivery reference, attempt number, response code, error, and time. It is not an
+audit-trail entry and never stores credentials.

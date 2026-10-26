@@ -14,6 +14,7 @@ This subject owns the **Superadmin console**: the Imperium-staff surface that ad
 - management of **Owners** (the paying portfolio accounts): visibility into their Companies and Businesses, plan assignment, suspend / resume, soft delete, and term-change acceptance;
 - the **plan catalogue** — monthly prices, **base commission** per plan, venue caps, entitlement flags, **creation quotas**, and platform **retention** and lifecycle constants (owned in meaning by the plan quotas and data retention subject);
 - **feature flags** at platform-wide and per-Owner scope (console read/edit powers; catalogue meaning and off outcomes belong to the feature-flags subject);
+- the **delivery provider catalogue** — the global list of third-party courier providers and their country/region availability (connection and courier-call meaning belong to the delivery-integrations subject);
 - **scoped impersonation** for support;
 - the **review abuse-removal** decision queue;
 - **late-payment** notification and automatic **freeze** behaviour (Owner portfolio vs single venue) as it appears to console operators;
@@ -29,6 +30,8 @@ It deliberately does **not** cover:
 - the **named feature-flag catalogue, default-on kill-switch outcomes, effective-flag resolution, and composition with plan entitlements** — the feature-flags subject owns those. This subject owns console operators' power to read and edit flags at platform-wide or per-Owner scope.
 - **User** identity in the Customer/Business realm, membership, and venue HR — the users and employees subjects own those.
 - **which integrated payment processor venues use** — stage 1 is Stripe Connect only (payments-and-tax; ADR-0005). There is no Superadmin payment-provider catalogue or venue choice among processors.
+- **per-business delivery provider connections, courier requests, handovers, cancellations, retries, and no-handover reconciliation** — the delivery-integrations subject owns those. This subject owns only the global catalogue and its availability.
+- **venue delivery configuration and the Delivery partner selection** — the business subject. Superadmin never connects a provider for a venue.
 - **review authoring and business replies** — the ratings-and-comments subject owns them; this subject owns only accept/reject of a venue's abuse-removal request.
 - a **general helpdesk** or ticket product — out of scope; support here is ops tools plus the abuse queue.
 - **visual design, exact labels, and copy** — out of scope for the product set.
@@ -53,6 +56,7 @@ It deliberately does **not** cover:
 - **Console role** — exactly one of **Owner**, **Manager**, or **Staff** on a console-operator account. These names are **console roles** only; they are not the venue job roles or base access layers of the Business app.
 - **Enrollment** — the invite flow by which a Manager or console Owner creates a console operator and the person sets credentials and MFA via email before first access.
 - **Plan catalogue** — the Superadmin-managed set of plans, base commission rates, and entitlements.
+- **Delivery provider catalogue** — the global list of third-party courier providers a Business may connect: provider key, display name, supported countries and optional regions, supported actions, credential requirements, support contact, documentation reference, and enabled state.
 - **Term change** — an edit to catalogue terms, rates, or policies that bind existing paying Owners; triggers email and an explicit accept-or-decline choice.
 - **Payment deadline** — the date by which an overdue subscription or venue commission must be paid before automatic freeze (portfolio-wide for subscription; that venue only for weekly commission).
 - **Abuse-removal queue** — the Superadmin list of venue requests to soft-delete a review for abuse.
@@ -120,7 +124,15 @@ Terms reused rather than redefined here: **User**, **Owner** (paying account), *
 - The console shows **portfolio aggregates** across Owners and venues: plan mix, commission owed and collected, suspensions, go-live counts, and similar roll-ups.
 - It does **not** show day-of POS, kitchen, or other operational detail that belongs inside the Business app.
 
-### 3.10 Support scope
+### 3.10 Delivery provider catalogue
+
+- Superadmin maintains the **global delivery provider catalogue**: provider key, display name, supported countries and optional regions, supported actions (courier request, courier handover, courier cancellation), credential requirements, support contact, documentation reference, and enabled state.
+- **Any console operator** may read the catalogue; **Managers and console Owners** may create, edit, enable, or disable entries. Every catalogue edit is **audited** (who, when, provider, old → new).
+- The catalogue decides which providers a Business can see in its **Delivery partner** settings. The Business's Owner or Admin connects one provider; Superadmin never connects a provider on a Business's behalf.
+- Stage 1 ships the catalogue **empty** while venues run **Own delivery**. A provider is added only when a real integration and API access exist.
+- The console does **not** show a venue's provider credentials, courier requests, handovers, cancellations, or sync log; those belong to the Business app and the delivery-integrations subject.
+
+### 3.11 Support scope
 
 - Support on this surface is **ops tooling**: Owner lifecycle, plan and flag overrides, impersonation, and the abuse-removal queue.
 - There is **no** general helpdesk or ticket product inside Superadmin.
@@ -135,8 +147,8 @@ Venue **base access layers** and job roles do not apply inside the Superadmin co
 
 | Console role | Powers |
 | --- | --- |
-| **Staff** | Read Owners and venues; read feature-flag state; work the abuse-removal queue; open scoped impersonation sessions; view portfolio analytics. |
-| **Manager** | Everything Staff can do, plus create and disable console operators (enrollment), assign or override plans, edit feature flags (platform-wide or per-Owner), suspend/resume paying Owners, soft-delete paying Owners, and override payment deadlines. |
+| **Staff** | Read Owners and venues; read feature-flag state; read the delivery provider catalogue; work the abuse-removal queue; open scoped impersonation sessions; view portfolio analytics. |
+| **Manager** | Everything Staff can do, plus create and disable console operators (enrollment), assign or override plans, edit feature flags (platform-wide or per-Owner), edit the delivery provider catalogue, suspend/resume paying Owners, soft-delete paying Owners, and override payment deadlines. |
 | **Owner** | **Same tool entitlements as Manager.** Additionally marks **ownership of the Imperium application** (multiple console Owners allowed). |
 
 ### Who can do what
@@ -153,8 +165,11 @@ Venue **base access layers** and job roles do not apply inside the Superadmin co
 | Edit the plan catalogue (prices, base rates, entitlements, creation quotas, retention and lifecycle constants) | Console Manager or console Owner |
 | Read feature flag state | Any console operator |
 | Edit feature flags | Console Manager or console Owner |
+| Read the delivery provider catalogue | Any console operator |
+| Create, edit, enable, or disable a delivery provider catalogue entry | Console Manager or console Owner |
 | Manually suspend / resume a paying Owner | Console Manager or console Owner |
 | Override deadline or resume a portfolio/venue freeze (arrears) | Console Manager or console Owner |
+| Connect or disconnect a delivery provider for a Business | No one in Superadmin — Business Owner/Admin |
 | Soft-delete a paying Owner | Console Manager or console Owner |
 | Override a payment deadline | Console Manager or console Owner |
 | View portfolio analytics | Any console operator |

@@ -10,8 +10,8 @@ This subject owns the **customer bill** and **customer receipt** as issued docum
 
 - the **bill** — the pre-settlement check presented when a staff tab requests the bill;
 - the **receipt** — the post-settlement proof issued when a sales instance (or gift-card deposit checkout) is fully settled;
-- **required content** for each document kind;
-- **bill numbers** and **receipt numbers**, and how they relate to (and differ from) batch **identification codes**;
+- **required content** for each document kind, including the **handover pass** and **handover QR** on self-service receipts;
+- **bill numbers** and **receipt numbers**, and how they relate to (and differ from) batch **identification codes** and the handover pass;
 - **reprint** of an unchanged document; and
 - **replacement** when a previously issued document's underlying bill or payments change (including after a reopened work day).
 
@@ -26,6 +26,8 @@ It deliberately does **not** cover:
 - the **gift-card virtual card** email and card identity — the **gift-cards** subject. This subject owns the **deposit receipt** that proves payment for a paid card; gift-cards owns delivering the card itself.
 - **platform billing documents** — the **platform-billing** subject.
 - **batch identification codes** — the **orders** subject issues them for kitchen and handover; they may appear on bill and receipt content but are never the fiscal document number.
+- **handover pass verification and the handover action** — the **sales-points-and-instances** and **order-flow** subjects own scanning, fallback code entry, partial versus whole-batch handover, and invalidation. This subject owns the pass and QR as receipt content.
+- **delivery provider calls** — the **delivery-integrations** subject owns courier requests, handover calls, cancellations, and retries. This subject owns what the receipt shows.
 - the **review invite** mechanics beyond requiring the **review QR** on a meal receipt — the **ratings-and-comments** subject.
 - **daily reopen** of a work day — the **sales-reports** subject. This subject states how document identity follows an amended bill or payment after reopen.
 - the **cash-out resume** and **cash-movement receipt** (employee wallet documents) — the **employee cash-out** subject owns those documents, their numbers, and reprint rules. They are not customer bills or receipts.
@@ -45,7 +47,10 @@ It deliberately does **not** cover:
 - **Receipt number** — the platform-issued identity of a customer receipt for one Business. Unique within that Business's receipt sequence; never chosen by a client.
 - **Reprint** — a further print or delivery of an **unchanged** current bill or receipt that keeps the **same** number and is marked as a reprint.
 - **Replacement** — a new bill or receipt issued because the underlying lines or payments **changed** after a prior document was issued. It receives a **new** number and states that it **supersedes** the prior number; the prior number remains on file.
-- **Deposit receipt** — a customer receipt for a paid **gift-card deposit checkout** (not a meal sales instance). It has no review QR and no bill document.
+- **Deposit receipt** — a customer receipt for a paid **gift-card deposit checkout** (not a meal sales instance). It has no review QR, no handover pass, and no bill document.
+- **Handover pass** — the self-service batch's handover identity: an opaque token, the batch identification code, and — for QR self-ordering and kiosk — a **handover QR**. It is receipt content, not a fiscal number.
+- **Handover QR** — the QR on a QR self-ordering or kiosk receipt that encodes the handover pass token. Staff scan it at handover. It is **not** the **review QR**.
+- **Order reference** — the customer-facing label for the batch identification code on a **delivery** receipt. Delivery receipts carry no handover QR.
 
 Terms reused rather than redefined here: **Business**, **Sales instance**, **Sales point**, **Order**, **Batch**, **Identification code**, **Bill** (aggregation), **Payment**, **Tip**, **Outstanding balance**, **Gift card**, **Review QR**, **print permission**, **edited flag**, **soft delete**, **business currency**, and **trade name**.
 
@@ -94,10 +99,13 @@ Every **meal** customer receipt carries at least:
 - **gift-card tender** when used — amount applied and enough card identity to reconcile with the gift-cards subject (without exposing secrets beyond what that subject already shows a holder);
 - **tax breakdown** on amounts **actually paid**;
 - **zero outstanding** (or close after over-tender, with owed / tendered / change or tip as below);
-- the **receipt number**; and
-- the **review QR** required by the ratings-and-comments subject.
+- the **receipt number**;
+- for a **QR self-ordering** or **kiosk** meal sitting, the **handover pass**: the batch **identification code** and the **handover QR**, in a clearly labelled **Handover** block; for a **delivery** meal sitting, the **order reference**; and
+- the **review QR** required by the ratings-and-comments subject, in a separate **Review us** block.
 
-A **deposit receipt** carries venue identity, datetime, amount paid, tender, receipt number, and gift-card identity as the gift-cards subject defines for the new card. It carries **no** review QR and no meal line items.
+A **delivery** receipt still carries the handover pass internally for consistency, but it renders the **order reference** only: the identification code and no handover QR, with no “show this QR” instruction. A **deposit receipt** carries venue identity, datetime, amount paid, tender, receipt number, and gift-card identity as the gift-cards subject defines for the new card. It carries **no** review QR, no handover pass, and no meal line items.
+
+The **handover QR** and the **review QR** are different codes with different jobs. Only the review QR is the review invite; only the handover QR releases a batch.
 
 When tender **surpasses** outstanding, the receipt shows amount **owed**, amount **tendered**, and either **change returned** or the surplus taken as **tip** — whichever the guest chose at settlement (payments-and-tax).
 
@@ -106,10 +114,12 @@ When tender **surpasses** outstanding, the receipt shows amount **owed**, amount
 - Each Business has **two** lifelong sequences: one for **bill numbers** and one for **receipt numbers**. Numbers are platform-issued, monotonic per sequence, and do not reset each work day.
 - Bill numbers and receipt numbers are **independent**. A bill number never becomes a receipt number.
 - **Batch identification codes** remain a third scheme owned by orders. They appear on bill and receipt content for kitchen and handover reconciliation; they are never the bill or receipt number.
+- The **handover pass** is not a fourth document number. It is an opaque handover token tied to one batch, and it never appears in the bill or receipt sequence.
 
 ### 3.6 Reprint
 
 - Reprinting or re-delivering an **unchanged** current bill or receipt keeps the **same** number and is marked **reprint**. A reprint is not a new fiscal document.
+- A reprint or re-delivery keeps the **same handover pass and QR** for that batch. It never issues a new handover token, and a reprint after the batch is fully delivered still resolves to the delivered state.
 - Who may trigger a paper reprint follows **print permission** (printers-and-screens). Customers may receive another copy of their own receipt through in-app order history or email without consuming a new number.
 
 ### 3.7 Unpaid bill updates vs paid immutability
@@ -122,6 +132,7 @@ When tender **surpasses** outstanding, the receipt shows amount **owed**, amount
 ### 3.8 Channels and layout
 
 - Required content applies whether the document is **shown on screen**, **printed**, or **emailed**. There is no thinner content set for email.
+- The **Handover** block appears on a self-service receipt as follows: heading **“Handover QR”** with instruction **“Show this QR when we hand over your order.”** for QR self-ordering; the same heading with **“Show this QR at the counter to collect your order.”** for kiosk; and **“Order reference”** with **“We’ll hand your order to the courier. Keep this reference.”** for delivery. The review block is separate and always labelled **“Review us”**.
 - This subject owns **what** must appear; the printers-and-screens subject owns **how** those fields are laid out on paper (platform layout only — no venue template editor) and which receipt printer prints them. Layout must not omit or invent required content.
 - A venue that issues printed bills or receipts needs a usable receipt-printer path as printers-and-screens requires. The same required content is also available in-app and by email.
 
@@ -135,7 +146,7 @@ When tender **surpasses** outstanding, the receipt shows amount **owed**, amount
 
 | Layer | Receipts and bills powers |
 | --- | --- |
-| **Customer** | Receives own bill (when a staff tab shows or shares it) and own receipt (in-app, email, or print at the venue); may request another copy of their own receipt from order history; never issues another guest's document or changes numbering. |
+| **Customer** | Receives own bill (when a staff tab shows or shares it) and own receipt (in-app, email, or print at the venue), including the self-service handover pass where the receipt carries one; may request another copy of their own receipt from order history; never issues another guest's document or changes numbering. |
 | **Employee** | Requests the bill on a tab they run; takes payments that lead to receipt issue; prints and reprints customer bills and receipts only with **print permission**. |
 | **Supervisor** | Same as employee for bill request and settlement on tabs they may run; print permission by layer default. |
 | **Manager** | Everything a supervisor can do; may act on reopen-driven replacements when amending bills and payments under sales-reports and orders rules. |
@@ -148,7 +159,8 @@ When tender **surpasses** outstanding, the receipt shows amount **owed**, amount
 | First Bill request (assigns bill number) | On-duty staff who may move the tab to Bill (order-flow) |
 | Issue receipt at full settlement | Automatic with settlement close; staff or customer completes payment per payments-and-tax |
 | Print or reprint bill or receipt on paper | Users with **print permission** |
-| Receive own receipt in-app or by email | The ordering / paying customer (emails and notifications) |
+| Receive own receipt in-app or by email, including the handover pass | The ordering / paying customer (emails and notifications) |
+| Scan the handover QR or enter the identification code at collection | Staff fulfilling the batch on an entitled handover surface (sales-points-and-instances) |
 | Issue deposit receipt on gift-card purchase | Automatic with deposit settlement (gift-cards + payments-and-tax) |
 | Replacement after amended bill or payment | Follows who may change the bill or payment; document identity updates automatically |
 

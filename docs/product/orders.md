@@ -11,7 +11,7 @@ This subject owns the **order** — the billable line a venue sells — and the 
 - the **order** and its composition: one **main good** plus its **add-ons**;
 - **add-ons** on an order — several, and repeats of the same one;
 - **guest allergen flags** on an order — the structured allergen set stamped when an allergen menu filter is active at add time;
-- the **batch** — the group of orders sent to the kitchen/bar together — and its **identification code**;
+- the **batch** — the group of orders sent to the kitchen/bar together — its **identification code**, and the **handover pass** a self-service batch carries;
 - **drafting and sending** — the freely editable draft, the send that commits a batch, and the immutability that follows;
 - **attribution** — who created an order and who sent a batch, and in what capacity;
 - **pricing and cost** — the price and cost an order records;
@@ -41,7 +41,7 @@ It deliberately does **not** cover:
 ### Entities
 
 - **Order** — one **billable line**: a single **main good** plus its **add-ons**. It belongs to exactly one **Business**, exactly one **sales instance**, and — once sent — exactly one **batch**. It records who created it and in what capacity, the price and cost it was sold at, the promotion or manual discount it carries, an optional comment, optional **guest allergen flags**, and its **billing state**.
-- **Batch** — a group of orders **sent to the kitchen/bar together**. It carries one **identification code** shared by all its orders, the attribution of the person who sent it, and one **fulfilment slice** per prep area that received lines. It is the unit that was sent together; preparation and delivery may complete **per slice** on independent timelines. A batch may mix orders **with** and **without** guest allergen flags; the flag lives on the order, not on the batch.
+- **Batch** — a group of orders **sent to the kitchen/bar together**. It carries one **identification code** shared by all its orders, the attribution of the person who sent it, and one **fulfilment slice** per prep area that received lines. A **self-service batch** also carries one **handover pass** (owned by the sales-points-and-instances subject). It is the unit that was sent together; preparation and delivery may complete **per slice** on independent timelines. A batch may mix orders **with** and **without** guest allergen flags; the flag lives on the order, not on the batch.
 
 ### Terms this subject introduces
 
@@ -64,7 +64,7 @@ It deliberately does **not** cover:
 - **Deadline** — the kitchen's visual target time for a batch, drawn from its orders' preparation times; it is for display only.
 - **Bill** — the aggregation of a sales instance's batches as presented for settlement. An order is a bill's building block.
 
-Terms reused rather than redefined here: **Business**, **Sales instance**, **Sales point**, **Business good**, **Promotion**, **Employee**, **Customer**, **on duty**, **business currency**, **soft delete**, **allergen menu filter**, **canonical allergen set** (business-goods), and **operational reason** (reason code and optional Other note from the operational reasons subject).
+Terms reused rather than redefined here: **Business**, **Sales instance**, **Sales point**, **Business good**, **Promotion**, **Employee**, **Customer**, **on duty**, **business currency**, **handover pass**, **handover QR**, **courier request**, **courier handover**, **soft delete**, **allergen menu filter**, **canonical allergen set** (business-goods), and **operational reason** (reason code and optional Other note from the operational reasons subject).
 
 ---
 
@@ -95,8 +95,10 @@ Terms reused rather than redefined here: **Business**, **Sales instance**, **Sal
 
 - A **batch** is the group of orders sent to the kitchen/bar together. It is the unit the kitchen prepares and the venue collects or delivers, and the **bill aggregates the instance's batches**.
 - A batch carries **one identification code**, shared by **all** its orders. Project Imperium issues the code; no client chooses it.
+- A **self-service batch** also carries the **handover pass** the sales-points-and-instances subject defines: an opaque token and, for QR self-ordering and kiosk, a handover QR. The pass is not a second identification code and never replaces the batch code on the bill or receipt.
+- A self-service order that is paid once and sent once creates **one batch**. A later self-service order is a **new** sales instance, batch, receipt, and handover pass; it never joins the earlier batch.
 - A batch records **who sent it and in what capacity**; for self-ordering, kiosk, and delivery it is owned by the **ordering customer**.
-- A batch is sent either **ready-to-make** or **held** — never a mix.
+- A batch is sent either **ready-to-make** or **held** — never a mix. Self-service batches are always ready-to-make and exist only after full payment is accepted.
 
 ### 3.4 Drafting and sending
 
@@ -137,7 +139,9 @@ Terms reused rather than redefined here: **Business**, **Sales instance**, **Sal
 
 - On send, a batch produces one **fulfilment slice** per prep area that receives lines. Each slice carries the fulfilment status **Sent → Preparing → Ready → Delivered** on its **own timeline**. Food and drinks (and any other areas) do not wait on each other.
 - The batch reaches stations by **ticket or screen** (the printers-and-screens subject owns routing, main and sub-screens, and the gestures). Its orders' preparation times draw a **deadline** each prep surface sees for its own control.
-- The prep area's **main screen** (or the POS under the same entitlements) sets a slice **Preparing**, then **Ready**. Venue staff on the **delivery screen** (or the POS under the same entitlements) — typically a **runner** — set a **Ready** slice **Delivered** when the items are handed to the guest (dine-in / pickup) or to the **third-party courier** (delivery). **Delivered** for a delivery order means Imperium's job is done; last mile is the courier company's responsibility. A courier **never** signs into Project Imperium or marks Delivered. A slice may be Delivered while another slice of the same batch is still Preparing or Ready.
+- The prep area's **main screen** (or the POS under the same entitlements) sets a slice **Preparing**, then **Ready**. Venue staff on the **delivery screen** (or the POS under the same entitlements) — typically a **runner** — set a **Ready** slice **Delivered** when the items are handed to the guest (dine-in / pickup) or to the courier (delivery, whether the venue's own courier or a connected third-party provider). **Delivered** for a delivery order means the venue handed the batch to the courier; last mile is the courier company's responsibility. A courier **never** signs into Project Imperium or marks Delivered. A slice may be Delivered while another slice of the same batch is still Preparing or Ready.
+- On **QR self-ordering**, the customer's **handover pass** scan sets only the selected **Ready** slices Delivered; the batch may be handed over in parts. On **kiosk** and **delivery**, the handover is **all-or-nothing**: the scan or Delivered action is blocked until every slice is Ready and then marks the whole batch Delivered. The sales-points-and-instances subject owns the pass and verification rules.
+- On **delivery**, a connected courier provider may receive a **courier request** at batch send and a **courier handover** call when staff mark Delivered; those calls belong to the delivery-integrations subject. A venue that records no staff handover raises no handover call, and the daily close completes any undelivered slice.
 - A batch is **fully fulfilled** when every slice is **Delivered** (or the batch never created a slice).
 - A **held** batch is sent on its own (never mixed with a ready-to-make batch), waits at the **end of each affected prep area's ticket queue**, and, when an **employee on the tab releases** it, joins the **end of that area's ready-to-make queue**.
 - An **employee on the tab** may mark an order **don't make** while taking it. A don't-make order needs no reason and is treated as **done**: it is **charged normally** and its stock is **deducted** like any other.
@@ -165,7 +169,7 @@ Terms reused rather than redefined here: **Business**, **Sales instance**, **Sal
 
 | Layer | Order powers |
 | --- | --- |
-| **Customer** | Self-orders through self-ordering, kiosk, or delivery; holds the identification code of their batch; never sees a void or invitation reason; never manages an order. |
+| **Customer** | Self-orders through self-ordering, kiosk, or delivery; holds the identification code and, where the receipt carries one, the handover pass of their batch; never sees a void or invitation reason; never manages an order. |
 | **Employee** | Builds and sends orders as drafts; marks don't-make; holds and releases batches; prep areas set slices preparing and ready and the delivery area delivers ready slices; reads sent orders but cannot change them. |
 | **Supervisor** | Same floor order powers as employee. Does not edit, transfer, void, invite, cancel, or manually discount a **sent** order. |
 | **Manager** | Everything an employee can do, plus editing, transferring, cancelling, voiding, or inviting a **sent** order and applying a manual discount. |
@@ -179,6 +183,8 @@ Terms reused rather than redefined here: **Business**, **Sales instance**, **Sal
 | Send a batch; hold and release a batch | The tab's staff |
 | Set a fulfilment slice preparing or ready | The prep area for that slice (main screen or POS) |
 | Set a ready fulfilment slice delivered | The delivery area |
+| Verify a self-service handover pass and set the selected Ready slices (QR) or the whole batch (kiosk / delivery) Delivered | Staff fulfilling the batch on an entitled handover surface |
+| Override a missing handover pass and mark Delivered | Managers and above (recorded) |
 | Transfer draft orders between tabs | The tab's staff, with the receiving tab's approval unless moving to one's own tabs |
 | Transfer a sent order (with its whole batch) | Managers and above, with the same approval rule |
 | Edit, void, invite, or cancel a sent order; apply a manual discount | Managers and above |

@@ -12,6 +12,7 @@ This subject owns **live data** and **conflict outcomes** across Project Imperiu
 - **reconnect** and **disconnected** behaviour (including that mutating actions are blocked while offline);
 - **stale action** outcomes when a client’s view has fallen behind;
 - concurrency rules for **sales instances**, **draft and send**, **settlement**, and **fulfilment**;
+- **handover pass** scans and **delivery provider** action idempotency;
 - **ordering-session** isolation for concurrent self-service baskets; and
 - that transport and attempt-identity mechanics are decided in **ADR-0006**, not here.
 
@@ -36,10 +37,10 @@ This subject introduces **no new persistent business entity**. It constrains how
 
 - **Ordering session** — the client session that owns one self-service **basket** from the moment ordering starts until pay-to-commit, abandon, or session end. Many ordering sessions may target the same sales point (or the virtual Delivery point) at once; baskets never merge across sessions.
 - **Stale action** — a mutating attempt the server rejects because the client’s view no longer matches server truth (or the lifecycle no longer allows the act). The actor is told clearly; the UI must refresh to current truth before they retry with a new intent.
-- **Same attempt** — a retry or double-tap of one intentional act (one Send, one Pay, one fulfilment advance). A same attempt yields the **same business outcome**, never a second kitchen ticket or a second charge.
+- **Same attempt** — a retry or double-tap of one intentional act (one Send, one Pay, one fulfilment advance, one handover scan, one courier call). A same attempt yields the **same business outcome**, never a second kitchen ticket, second charge, second delivery, or second courier dispatch.
 - **Live surface** — any entitled open screen in the Customer app, Business app, or Superadmin console. While connected, it reflects server truth continuously.
 
-Terms reused rather than redefined here: **Business**, **Sales point**, **Sales instance**, **Staff tab**, **Order**, **Batch**, **Identification code**, **Fulfilment slice**, **Fulfilment status**, **Bill**, **Payment**, **Outstanding balance**, **Guest basket**, **Pay-to-commit**, **Notification**, and **soft delete**.
+Terms reused rather than redefined here: **Business**, **Sales point**, **Sales instance**, **Staff tab**, **Order**, **Batch**, **Identification code**, **Handover pass**, **Handover QR**, **Courier request**, **Courier handover**, **Courier cancellation**, **Fulfilment slice**, **Fulfilment status**, **Bill**, **Payment**, **Outstanding balance**, **Guest basket**, **Pay-to-commit**, **Notification**, and **soft delete**.
 
 ---
 
@@ -82,7 +83,7 @@ Stage 1 uses **no exclusive editor lock**. Two staff may open the same staff tab
 
 - On **QR self-ordering**, **kiosk**, and **delivery**, many customers order at the same time. Each **ordering session** owns its own basket from the start of ordering.
 - Baskets **never merge** because they share a sales point or the virtual Delivery point. Sharing a table QR does not share a basket.
-- Each successful **pay-to-commit** creates its **own** sales instance, batch(es), and **identification code** (handover ticket). Abandoned sessions leave no shared basket for others.
+- Each successful **pay-to-commit** creates its **own** sales instance, one batch, **identification code**, and **handover pass**. No instance or batch exists before full payment is accepted. Abandoned sessions leave no shared basket for others.
 - A **kiosk** is one ordering session per terminal use. Journey sequencing remains with the order-flow subject; sales-points-and-instances owns instance creation at pay.
 
 ### 3.6 Settlement
@@ -91,13 +92,24 @@ Stage 1 uses **no exclusive editor lock**. Two staff may open the same staff tab
 - Two **different** attempts that would **fully settle** the same bill: the first valid payment applies; the second is blocked (or cannot over-collect). An instance already **Closed** rejects further settle.
 - Concurrent **partial** payments that each fit under the remaining outstanding balance both succeed in server commit order; live UI updates between them. Outstanding balance and over-tender rules stay with the payments-and-tax subject.
 
-### 3.7 Fulfilment
+### 3.7 Fulfilment and handover
 
 - Advancing a fulfilment slice (Sent → Preparing → Ready → Delivered) is **forward-only**. Same-attempt replay and a client that applies a status the slice **already holds** succeed as success / no-op.
 - An **invalid or backward** jump is a lifecycle block. There is **no** audited reverse mutation — prep history is view/reprint only (printers-and-screens).
 - Different slices of the same batch remain independent (orders subject).
+- A **handover pass** scan is a same-attempt act. Two devices scanning the same pass at once: the first successful scan applies to the items it selected; the second sees the updated batch and applies only to items still Ready and undelivered. Already-delivered items are a **no-op**, never a second delivery.
+- **QR self-ordering** handover is cumulative: later scans may deliver remaining Ready items under the same pass. **Kiosk** and **delivery** handover is whole-batch: the first successful action marks the batch Delivered; a concurrent second action is a no-op.
+- A pass scan while disconnected is blocked under §3.2. A cancelled or fully delivered pass is a lifecycle block; a refunded-but-not-cancelled batch remains collectable. The staff surface shows the current state without exposing customer data.
+- A **manager-and-above override** that marks Delivered without a pass is a distinct act with its own recorded actor and time; it is not a same-attempt replay of a scan.
 
-### 3.8 Stock, inbox, and other live domains
+### 3.8 Delivery provider actions
+
+- A **courier request**, **courier handover**, and **courier cancellation** are idempotent per delivery batch and action. A same-attempt retry returns the same outcome and the same **external delivery reference**; it never dispatches a second courier or sends a second handover.
+- A request and a cancellation racing on the same batch resolve in server commit order. Cancellation before the request means no request is sent; request before cancellation means the cancellation is sent for that external delivery. There is no silent dual success.
+- Provider retries use the same idempotency identity as the original attempt. A provider timeout does not create a second logical delivery; the platform records the attempt and retries under the same identity.
+- Provider state is **not** live inbound truth in stage 1. The delivery screen shows the platform's last known sync state; the provider's own app remains authoritative for pickup and last mile.
+
+### 3.9 Stock, inbox, and other live domains
 
 - Stock movement, availability (including day-of sold-out), inbox contents, and every other domain record shown on a live surface update under the same live and conflict rules: observers see server truth; racing writers hit stale-action, lifecycle, or same-attempt replay as the act requires.
 - Noisy notification triggers keep the cooldown and repeat-suppression the notifications subject already defines; this subject does not replace that catalogue.

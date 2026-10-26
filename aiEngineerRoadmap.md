@@ -339,7 +339,7 @@ Build these in order. Each one is a production-shaped artifact, not a tutorial.
 The mental model before any code. Do this instead of a full ML course.
 
 - [x] 💳 `AI for Everyone` — 6h54m — what AI can/can't do, societal impact. *(already done)*
-- [ ] ✅ `Generative AI for Everyone` — 5h1m — GenAI capabilities, limits, business framing. *(often free to audit; skim)*
+- [x] ✅ `Generative AI for Everyone` — 5h1m — GenAI capabilities, limits, business framing. *(often free to audit; skim)*
 - [ ] Read/watch: evaluation metrics in retrieval (precision/recall@k, MRR), embeddings intuition, sampling parameters. Use the OpenAI Cookbook + provider docs.
 
 🎯 **Milestone:** The "prompt vs. RAG vs. fine-tune vs. train" decision guide from Phase 0.

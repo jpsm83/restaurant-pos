@@ -15,12 +15,13 @@ This subject covers **how Project Imperium tells a person something** — the in
 - **venue engagement messaging** to customers — the automatic birthday, promotion, and event **broadcasts**, and the venue events that trigger them;
 - **surfacing staff conversation threads** in the same inbox (unread/read and live push for new messages);
 - the **reliability behaviour** of delivery — idempotency, cooldown, and email resilience;
+- the **delivery-integration failure** alert raised when a courier request, handover, or cancellation call gives up retrying;
 - the single **engagement mute** a user holds;
 - that engagement **broadcasts** also require the person's **marketing consent** (owned by the privacy, consent, and DSAR subject) to be on.
 
 It deliberately does **not** cover:
 
-- the **detection of triggering conditions** — low-stock and negative-stock detection belong to the inventories and supplier-goods subjects, overtime detection to the time-control subject, report readiness to the business-reports subject, profile-change detection to the business subject, print-failure detection to the printers-and-screens subject, and platform-charge overdue / freeze / billing-document events to the platform-billing subject. This subject owns what happens once a condition is detected, not how it is detected.
+- the **detection of triggering conditions** — low-stock and negative-stock detection belong to the inventories and supplier-goods subjects, overtime detection to the time-control subject, report readiness to the business-reports subject, profile-change detection to the business subject, print-failure detection to the printers-and-screens subject, delivery-integration failure detection to the delivery-integrations subject, and platform-charge overdue / freeze / billing-document events to the platform-billing subject. This subject owns what happens once a condition is detected, not how it is detected.
 - the **transactional email flows themselves** — sign-in verification, password reset, an email change, order receipts, and reservation decisions. The emails subject owns their templates, copy, and retry mechanics; this subject owns which of them notify and the in-app side of each.
 - **customer bill and receipt required content and numbering** — the **receipts-and-bills** subject owns document kinds, required fields, and bill/receipt numbers. An in-app order-confirmed (receipt) notification must present that subject's receipt content; this subject does not invent a thinner inbox-only set.
 - the **inbox's ownership and a user's preference storage** — the users subject owns the person's identity and preferences. This subject owns the notifications the inbox holds and the meaning of the engagement mute, not where a preference is stored.
@@ -53,7 +54,7 @@ It deliberately does **not** cover:
 - **Idempotency** — suppressing a repeat dispatch of the same event within a brief window (five minutes in §3.7).
 - **Cooldown** — the minimum gap between repeats of a noisy alert.
 
-Terms reused from the product overview's core vocabulary rather than defined here: **Notification**, with its **severities** (Info, Warning, Emergency) and **engagement kinds** (Promotion, Birthday, Event); **User**, **Business**, **Employee**, **Customer**, **Order**, **Reservation**, **Promotion**, **Report** (daily, weekly, monthly), **shift session** and **on duty**, **low-stock**, **overtime**, and **soft delete**. **Conversation** is owned by the conversations subject. Terms from sibling subjects are named as that subject defines them.
+Terms reused from the product overview's core vocabulary rather than defined here: **Notification**, with its **severities** (Info, Warning, Emergency) and **engagement kinds** (Promotion, Birthday, Event); **User**, **Business**, **Employee**, **Customer**, **Order**, **Batch**, **Handover pass**, **Handover QR**, **Reservation**, **Promotion**, **Report** (daily, weekly, monthly), **shift session** and **on duty**, **low-stock**, **overtime**, and **soft delete**. **Conversation** is owned by the conversations subject. Terms from sibling subjects are named as that subject defines them.
 
 ---
 
@@ -80,6 +81,7 @@ Terms reused from the product overview's core vocabulary rather than defined her
 | Event | Who is notified | Channel | Severity | Repeats |
 | --- | --- | --- | --- | --- |
 | Order confirmed (receipt) | The ordering customer | In-app + email | Info | Once |
+| Delivery integration failure | The venue's managers on duty; if none are on duty, all manager-layer users for the business | In-app | Warning | Once per failed courier request, handover, or cancellation after the retry policy gives up |
 | Reservation pending | The customer; and the venue's Host and managers, prompted to review it | Customer: in-app + email; Host and managers: in-app | Info | Once |
 | Deposit requested | The customer | In-app + email (payment link) | Info | Once |
 | Reservation decided (reserved or cancelled) | The customer | In-app + email | Info | Once |
@@ -99,7 +101,7 @@ Terms reused from the product overview's core vocabulary rather than defined her
 | New review | The venue's managers and above | In-app | Info | Once |
 | Business reply to a review | The reviewing customer | In-app + email | Info | Once per post or edit |
 | Review removal decided | The managers who requested removal | In-app | Info | Once |
-| Delivery review invite | The attributed delivery customer | In-app + email | Info | Once, three hours after handover if still unreviewed |
+| Delivery review invite | The attributed delivery customer | In-app + email | Info | Once, three hours after a recorded handover if still unreviewed; not for a close-swept delivery with no recorded handover |
 | Pay run version recalculated | The venue's managers and above | In-app | Info | Once per recalculation after a prior release when upstream sources change |
 | Pay run released to accountant | The configured accountant contact | Email (CSV package) | Info | Once per Release |
 | Platform billing document | The Owner | Email (billing document) | Info | Once per charge, invoice, or adjustment |
@@ -114,10 +116,12 @@ Terms reused from the product overview's core vocabulary rather than defined her
 - A **report-ready** notification fires when the weekly or monthly report for the period is ready for review; detecting readiness belongs to the business-reports subject.
 - The **business-profile-updated** notification fires when a change to the business profile actually persists, and reports which fields changed; detecting the change belongs to the business subject.
 - The **print-failure** notification fires when a print cannot be completed and no usable backup takes the job; detecting that condition belongs to the printers-and-screens subject.
+- The **order-confirmed** notification carries the receipt content the receipts-and-bills subject requires. For QR self-ordering and kiosk it carries the **handover pass** with the **handover QR**; for delivery it carries the **order reference** only and **no handover QR**. A delivery receipt on the customer's device never advertises a scan the courier will not perform.
+- The **delivery-integration failure** notification fires when a connected provider's **courier request**, **courier handover**, or **courier cancellation** call has exhausted its retries. It never blocks the physical handover or the daily close; it tells managers on duty that the provider's state may lag the venue's state. Detecting the failure belongs to the delivery-integrations subject.
 - The **cash movement recorded** notification fires when a peer cash-in, house paid-in/out, or reverse completes (receipt number issued); raising it belongs to the employee cash-out subject. It is the confirmation path when paper print fails after backup.
 - The **schedule-changed** notification batches every add, change, or removal for one employee from a single schedules editing session into one ping when the manager leaves the schedules main page; detecting those edits belongs to the schedules subject.
 - The **time-off request pending** and **time-off request decided** notifications are raised by the schedules subject's request workflow.
-- The **new review**, **business reply to a review**, **review removal decided**, and **delivery review invite** events are raised by the ratings-and-comments subject.
+- The **new review**, **business reply to a review**, **review removal decided**, and **delivery review invite** events are raised by the ratings-and-comments subject. A delivery sitting completed only by the daily close, with no staff-recorded handover, does **not** raise a timed delivery review invite; the customer can still review from order history or the receipt.
 - The **pay run version recalculated** and **pay run released to accountant** events are raised by the payroll subject; the accountant recipient is the venue's configured accountant contact, which need not be a User.
 - The **platform billing document**, **platform charge overdue**, **platform service frozen**, and **platform post-freeze pay-to-restart** events are raised by the platform-billing subject. The billing document is **email-primary** to the Owner (in-app history lives in platform-billing). Portfolio subscription arrears fan out as business-scoped in-app notifications to every venue under the Owner so each inbox stays business-scoped; venue commission arrears stay on that Business. The Owner always receives the emailed dunning copy as well.
 - No catalogued event carries the **Emergency** severity; it is reserved for a critical operational failure.
@@ -167,7 +171,7 @@ Terms reused from the product overview's core vocabulary rather than defined her
 | **Customer** | Holds the inbox; receives notifications (not staff conversations); may mute engagement; receives business replies to their reviews and delivery review invites. |
 | **Employee** | Everything a customer can do; as Active staff, also receives staff conversation inbox entries for threads they participate in (conversations subject owns who may converse). |
 | **Supervisor** | Same inbox powers as employee. Does not publish venue events; does not receive manager-targeted operational alerts unless also on duty as a manager-layer person. |
-| **Manager** | Everything an employee can do, plus publishing venue events. Receives the manager-targeted operational alerts, including overtime and sign-out requests when on duty, new reviews, and review-removal decisions. |
+| **Manager** | Everything an employee can do, plus publishing venue events. Receives the manager-targeted operational alerts, including overtime and sign-out requests when on duty, print and delivery-integration failures, new reviews, and review-removal decisions. |
 | **Admin** | Everything a manager can do. |
 
 The owning user is an admin at every venue they own. Job roles and per-user capabilities follow the global model; this subject names only the entitlements that bear on notifications.
@@ -181,7 +185,7 @@ The owning user is an admin at every venue they own. Job roles and per-user capa
 | Grant or withdraw marketing consent | The person (their own; privacy, consent, and DSAR subject; age-gated) |
 | Receive staff conversation inbox entries | Active Employees who are current participants (conversations subject) |
 | Publish a venue event | Managers and above |
-| Receive low-stock, negative-stock, overtime, sign-out-request, and print-failure alerts | The venue's managers on duty; overtime and print-failure fall back to all manager-layer users when none are on duty |
+| Receive low-stock, negative-stock, overtime, sign-out-request, print-failure, and delivery-integration failure alerts | The venue's managers on duty; overtime, print-failure, and delivery-integration failure fall back to all manager-layer users when none are on duty |
 | Receive report-ready and profile-updated alerts | The venue's managers and above |
 | Receive platform-billing arrears, freeze, and post-freeze alerts | Owner always; Manager and above at every venue (subscription / portfolio) or at that venue only (commission), per platform-billing |
 | Operate the application business | The superadmin, in a separate realm; never a recipient of a venue's notifications |
