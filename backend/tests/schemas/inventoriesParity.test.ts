@@ -72,7 +72,8 @@ describe("inventories DTO ↔ model parity", () => {
   it("every update-count field maps to the inventory count subdocument", () => {
     const fields: Record<string, string> = {
       countId: "_id",
-      reason: "reedited.reason",
+      reasonCode: "reedited.reasonCode",
+      reasonNote: "reedited.reasonNote",
       currentCountQuantity: "currentCountQuantity",
       comments: "comments",
     };

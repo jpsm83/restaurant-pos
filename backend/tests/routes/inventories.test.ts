@@ -34,6 +34,37 @@ vi.mock("../../src/audit/appendAuditEntry.ts", async (importOriginal) => {
   return { ...actual, appendAuditEntry: appendAuditEntryMock };
 });
 
+// A synthetic retired code proves the HTTP rejection without retiring a product
+// code in this slice.
+vi.mock("restaurant-pos-packages/operationalReasons", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("restaurant-pos-packages/operationalReasons")
+    >();
+  const catalogues = {
+    ...actual.OPERATIONAL_REASON_CATALOGUES,
+    countReedit: [
+      ...actual.OPERATIONAL_REASON_CATALOGUES.countReedit,
+      {
+        code: "retiredCountReeditReason",
+        label: "Retired count re-edit reason",
+        retired: true,
+        allowsNote: false,
+      },
+    ],
+  };
+
+  return {
+    ...actual,
+    OPERATIONAL_REASON_CATALOGUES: catalogues,
+    resolveOperationalReason: (
+      act: string | null | undefined,
+      code: string | null | undefined,
+      note?: string | null,
+    ) => actual.resolveOperationalReason(act, code, note, catalogues),
+  };
+});
+
 const expectProblem = (
   response: {
     statusCode: number;
@@ -531,7 +562,10 @@ describe("Inventories Routes", () => {
       const response = await app.inject({
         method: "PATCH",
         url: `/api/v1/inventories/${fakeInventoryId}/supplierGood/${fakeSupplierGoodId}/updateCount`,
-        payload: { countId: new Types.ObjectId().toString(), reason: "test" },
+        payload: {
+          countId: new Types.ObjectId().toString(),
+          reasonCode: "miscount",
+        },
       });
 
       expect(response.statusCode).toBe(401);
@@ -550,7 +584,7 @@ describe("Inventories Routes", () => {
         method: "PATCH",
         url: `/api/v1/inventories/${new Types.ObjectId()}/supplierGood/${new Types.ObjectId()}/updateCount`,
         headers: { authorization },
-        payload: { countId: "not-an-id", reason: "Recount" },
+        payload: { countId: "not-an-id", reasonCode: "miscount" },
       });
 
       const body = expectProblem(response, 400, "validation");
@@ -561,7 +595,9 @@ describe("Inventories Routes", () => {
       );
     });
 
-    const seedCountReeditFixture = async () => {
+    const seedCountReeditFixture = async (
+      role: "Manager" | "Waiter" = "Manager",
+    ) => {
       const user = await User.create({
         personalDetails: {
           username: "countreediter",
@@ -582,7 +618,7 @@ describe("Inventories Routes", () => {
       const employee = await Employee.create({
         businessId,
         userId: user._id,
-        currentShiftRole: "Manager",
+        currentShiftRole: role,
         joinDate: new Date(),
         taxNumber: "COUNT-REEDIT-TAX-001",
         vacationDaysPerYear: 20,
@@ -595,7 +631,7 @@ describe("Inventories Routes", () => {
         employeeId: employee._id.toString(),
         businessId: businessId.toString(),
         canLogAsEmployee: true,
-        role: "Manager",
+        role,
       });
 
       const countId = new Types.ObjectId();
@@ -647,13 +683,17 @@ describe("Inventories Routes", () => {
       const app = await getTestApp();
       const { user, employee, authorization, countId, inventory } =
         await seedCountReeditFixture();
-      const reason = "Supplier delivery was misread";
+      const reasonCode = "goodsArrivedAfterCount";
 
       const response = await app.inject({
         method: "PATCH",
         url: `/api/v1/inventories/${inventory._id}/supplierGood/${supplierGoodId}/updateCount`,
         headers: { authorization },
-        payload: { countId: countId.toString(), currentCountQuantity: 55, reason },
+        payload: {
+          countId: countId.toString(),
+          currentCountQuantity: 55,
+          reasonCode,
+        },
       });
 
       expect(response.statusCode).toBe(200);
@@ -687,7 +727,7 @@ describe("Inventories Routes", () => {
       expect(entry.payload).toEqual({
         countBefore: 40,
         countAfter: 55,
-        reason,
+        reasonCode,
       });
       expect(entry.retentionClass).toBe(
         AUDIT_RETENTION_CLASSES.LEGAL_AND_FINANCIAL,
@@ -699,13 +739,203 @@ describe("Inventories Routes", () => {
 
       const storedCount = await findStoredCount(inventory._id, countId);
       expect(storedCount?.currentCountQuantity).toBe(55);
-      expect(storedCount?.reedited?.reason).toBe(reason);
+      expect(storedCount?.reedited?.reasonCode).toBe(reasonCode);
+      expect(storedCount?.reedited?.reasonNote).toBeUndefined();
       expect(String(storedCount?.reedited?.reeditedByEmployeeId)).toBe(
         String(employee._id),
       );
       expect(
         storedCount?.reedited?.originalValues.currentCountQuantity,
       ).toBe(40);
+    });
+
+    it("stores an Other note on the snapshot and the audit payload", async () => {
+      const app = await getTestApp();
+      const { authorization, countId, inventory } =
+        await seedCountReeditFixture();
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/inventories/${inventory._id}/supplierGood/${supplierGoodId}/updateCount`,
+        headers: { authorization },
+        payload: {
+          countId: countId.toString(),
+          currentCountQuantity: 55,
+          reasonCode: "other",
+          reasonNote: "  Delivery arrived after the count  ",
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const storedCount = await findStoredCount(inventory._id, countId);
+      expect(storedCount?.reedited?.reasonCode).toBe("other");
+      expect(storedCount?.reedited?.reasonNote).toBe(
+        "Delivery arrived after the count",
+      );
+
+      const entries = await AuditEntry.find({}).lean();
+      expect(entries).toHaveLength(1);
+      expect(entries[0].payload).toEqual({
+        countBefore: 40,
+        countAfter: 55,
+        reasonCode: "other",
+        reasonNote: "Delivery arrived after the count",
+      });
+    });
+
+    it.each([
+      ["a code from another catalogue", { reasonCode: "kitchenPrepError" }],
+      ["an unknown code", { reasonCode: "notARealReason" }],
+      ["a retired code", { reasonCode: "retiredCountReeditReason" }],
+      [
+        "a note supplied with a named reason",
+        { reasonCode: "miscount", reasonNote: "free text" },
+      ],
+    ])(
+      "rejects %s and leaves the count unchanged",
+      async (_label, selection) => {
+        const app = await getTestApp();
+        const { authorization, countId, inventory } =
+          await seedCountReeditFixture();
+
+        const response = await app.inject({
+          method: "PATCH",
+          url: `/api/v1/inventories/${inventory._id}/supplierGood/${supplierGoodId}/updateCount`,
+          headers: { authorization },
+          payload: {
+            countId: countId.toString(),
+            currentCountQuantity: 55,
+            ...selection,
+          },
+        });
+
+        expectProblem(response, 400, "bad-request");
+        expect(appendAuditEntryMock).not.toHaveBeenCalled();
+
+        const storedCount = await findStoredCount(inventory._id, countId);
+        expect(storedCount?.currentCountQuantity).toBe(40);
+        expect(storedCount?.reedited?.reason).toBe("Initial correction");
+        expect(storedCount?.reedited?.reasonCode).toBeUndefined();
+      },
+    );
+
+    it("rejects a missing code and a legacy free-text reason before touching the count", async () => {
+      const app = await getTestApp();
+      const { authorization, countId, inventory } =
+        await seedCountReeditFixture();
+      const url = `/api/v1/inventories/${inventory._id}/supplierGood/${supplierGoodId}/updateCount`;
+
+      const missingCode = await app.inject({
+        method: "PATCH",
+        url,
+        headers: { authorization },
+        payload: { countId: countId.toString(), currentCountQuantity: 55 },
+      });
+      const missingBody = expectProblem(missingCode, 400, "validation");
+      expect(missingBody.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: "reasonCode" }),
+        ]),
+      );
+
+      const legacyReason = await app.inject({
+        method: "PATCH",
+        url,
+        headers: { authorization },
+        payload: {
+          countId: countId.toString(),
+          currentCountQuantity: 55,
+          reason: "Legacy free text",
+        },
+      });
+      expectProblem(legacyReason, 400, "validation");
+
+      expect(appendAuditEntryMock).not.toHaveBeenCalled();
+      const storedCount = await findStoredCount(inventory._id, countId);
+      expect(storedCount?.currentCountQuantity).toBe(40);
+      expect(storedCount?.reedited?.reason).toBe("Initial correction");
+    });
+
+    it("keeps an older free-text audit payload readable and unchanged", async () => {
+      const app = await getTestApp();
+      const { user, authorization, countId, inventory } =
+        await seedCountReeditFixture();
+      await AuditEntry.create({
+        actorKind: AUDIT_ACTOR_KINDS.USER,
+        actorId: user._id,
+        actKind: AUDIT_ACT_KINDS.INVENTORY_COUNT_REEDITED,
+        target: {
+          kind: AUDIT_TARGET_KINDS.INVENTORY,
+          id: inventory._id,
+        },
+        relatedTargets: [
+          { kind: AUDIT_TARGET_KINDS.INVENTORY_COUNT, id: countId },
+        ],
+        businessId,
+        occurredAt: new Date("2026-01-01"),
+        payload: {
+          countBefore: 35,
+          countAfter: 40,
+          reason: "Initial correction",
+        },
+        retentionClass: AUDIT_RETENTION_CLASSES.LEGAL_AND_FINANCIAL,
+      });
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/inventories/${inventory._id}/supplierGood/${supplierGoodId}/updateCount`,
+        headers: { authorization },
+        payload: {
+          countId: countId.toString(),
+          currentCountQuantity: 55,
+          reasonCode: "miscount",
+        },
+      });
+      expect(response.statusCode).toBe(200);
+
+      const entries = await AuditEntry.find({}).lean();
+      expect(entries).toHaveLength(2);
+      const legacyEntry = entries.find(
+        (entry) =>
+          (entry.payload as { reason?: string } | undefined)?.reason ===
+          "Initial correction",
+      );
+      expect(legacyEntry?.payload).toEqual({
+        countBefore: 35,
+        countAfter: 40,
+        reason: "Initial correction",
+      });
+      const structuredEntry = entries.find(
+        (entry) => entry._id !== legacyEntry?._id,
+      );
+      expect(structuredEntry?.payload).toEqual({
+        countBefore: 40,
+        countAfter: 55,
+        reasonCode: "miscount",
+      });
+    });
+
+    it("keeps the existing role failure unchanged", async () => {
+      const app = await getTestApp();
+      const { authorization, countId, inventory } =
+        await seedCountReeditFixture("Waiter");
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/inventories/${inventory._id}/supplierGood/${supplierGoodId}/updateCount`,
+        headers: { authorization },
+        payload: {
+          countId: countId.toString(),
+          currentCountQuantity: 55,
+          reasonCode: "miscount",
+        },
+      });
+
+      expectProblem(response, 403, "forbidden");
+      expect(appendAuditEntryMock).not.toHaveBeenCalled();
+      const storedCount = await findStoredCount(inventory._id, countId);
+      expect(storedCount?.currentCountQuantity).toBe(40);
     });
 
     it("appends a second entry and leaves the first unchanged", async () => {
@@ -721,7 +951,7 @@ describe("Inventories Routes", () => {
         payload: {
           countId: countId.toString(),
           currentCountQuantity: 55,
-          reason: "First correction",
+          reasonCode: "miscount",
         },
       });
       const second = await app.inject({
@@ -731,7 +961,7 @@ describe("Inventories Routes", () => {
         payload: {
           countId: countId.toString(),
           currentCountQuantity: 60,
-          reason: "Second correction",
+          reasonCode: "wrongUnit",
         },
       });
 
@@ -750,12 +980,12 @@ describe("Inventories Routes", () => {
         {
           countBefore: 40,
           countAfter: 55,
-          reason: "First correction",
+          reasonCode: "miscount",
         },
         {
           countBefore: 55,
           countAfter: 60,
-          reason: "Second correction",
+          reasonCode: "wrongUnit",
         },
       ]);
 
@@ -778,7 +1008,7 @@ describe("Inventories Routes", () => {
         payload: {
           countId: countId.toString(),
           currentCountQuantity: 40,
-          reason: "No quantity change",
+          reasonCode: "miscount",
         },
       });
 
@@ -810,7 +1040,7 @@ describe("Inventories Routes", () => {
         payload: {
           countId: countId.toString(),
           currentCountQuantity: 55,
-          reason: "Should not commit",
+          reasonCode: "entryError",
         },
       });
 

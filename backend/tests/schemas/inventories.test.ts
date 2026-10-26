@@ -285,15 +285,15 @@ describe("addInventoryCountBodySchema", () => {
 describe("updateInventoryCountBodySchema", () => {
   const valid = {
     countId: VALID_ID,
-    reason: "mistyped quantity",
+    reasonCode: "miscount",
   };
 
   it("accepts the minimum required fields", () => {
     expect(updateInventoryCountBodySchema.safeParse(valid).success).toBe(true);
   });
 
-  it("requires countId and reason", () => {
-    for (const key of ["countId", "reason"] as const) {
+  it("requires countId and reasonCode", () => {
+    for (const key of ["countId", "reasonCode"] as const) {
       const payload: Record<string, unknown> = { ...valid };
       delete payload[key];
       expect(
@@ -301,6 +301,42 @@ describe("updateInventoryCountBodySchema", () => {
         `missing ${key} should fail`,
       ).toBe(false);
     }
+  });
+
+  it("accepts an optional Other note, sanitized and blank-to-absent", () => {
+    const parsed = updateInventoryCountBodySchema.parse({
+      ...valid,
+      reasonCode: "other",
+      reasonNote: "  <b>counted</b> the wrong shelf  ",
+    });
+    expect(parsed.reasonNote).toBe("counted the wrong shelf");
+
+    expect(
+      updateInventoryCountBodySchema.parse({
+        ...valid,
+        reasonCode: "other",
+        reasonNote: "   ",
+      }).reasonNote,
+    ).toBeUndefined();
+  });
+
+  it("caps the Other note at 280 characters", () => {
+    expect(
+      updateInventoryCountBodySchema.safeParse({
+        ...valid,
+        reasonCode: "other",
+        reasonNote: "x".repeat(281),
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects the legacy free-text reason", () => {
+    const payload: Record<string, unknown> = { ...valid };
+    delete payload.reasonCode;
+    payload.reason = "mistyped quantity";
+    expect(updateInventoryCountBodySchema.safeParse(payload).success).toBe(
+      false,
+    );
   });
 
   it("accepts optional currentCountQuantity and comments", () => {
@@ -313,7 +349,11 @@ describe("updateInventoryCountBodySchema", () => {
     expect(parsed.comments).toBe("recounted");
   });
 
-  it("rejects a malformed countId and unknown keys", () => {
+  it("rejects an empty reasonCode, a malformed countId and unknown keys", () => {
+    expect(
+      updateInventoryCountBodySchema.safeParse({ ...valid, reasonCode: "  " })
+        .success,
+    ).toBe(false);
     expect(
       updateInventoryCountBodySchema.safeParse({ ...valid, countId: "nope" })
         .success,

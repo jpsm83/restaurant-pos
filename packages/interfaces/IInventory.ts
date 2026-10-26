@@ -3,7 +3,12 @@ import type { Types } from "mongoose";
 export interface IReedited {
   reeditedByEmployeeId: Types.ObjectId;
   date: Date;
-  reason: string;
+  /** Legacy free-text reason kept for historical and dummy records. */
+  reason?: string;
+  /** Selected code from the closed count-reedit catalogue. */
+  reasonCode?: string;
+  /** Optional Other note, only stored when the code is `other`. */
+  reasonNote?: string;
   originalValues: {
     currentCountQuantity: number;
     dynamicSystemCount: number;

@@ -29,6 +29,10 @@ import {
   AUDIT_ACT_KINDS,
   AUDIT_TARGET_KINDS,
 } from "../../audit/auditCatalogue.ts";
+import {
+  OPERATIONAL_REASON_ACTS,
+  resolveOperationalReason,
+} from "restaurant-pos-packages/operationalReasons";
 import { createAuthHook, createOptionalAuthHook } from "../../auth/middleware.ts";
 import {
   badRequest,
@@ -568,7 +572,27 @@ export const inventoriesRoutes: FastifyPluginAsync = async (app) => {
       }
       const userIdObj = new Types.ObjectId(req.authSession.id);
 
-      const { currentCountQuantity, comments, countId, reason } = req.body;
+      const { currentCountQuantity, comments, countId, reasonCode, reasonNote } =
+        req.body;
+
+      // Resolve the catalogue selection before any read or write so a rejected
+      // reason leaves the count untouched.
+      const resolvedReason = resolveOperationalReason(
+        OPERATIONAL_REASON_ACTS.COUNT_REEDIT,
+        reasonCode,
+        reasonNote,
+      );
+      if (!resolvedReason.success) {
+        throw badRequest(resolvedReason.error);
+      }
+
+      const resolvedReasonFields =
+        resolvedReason.note === undefined
+          ? { reasonCode: resolvedReason.code }
+          : {
+              reasonCode: resolvedReason.code,
+              reasonNote: resolvedReason.note,
+            };
 
       const session = await mongoose.startSession();
       session.startTransaction();
@@ -673,7 +697,7 @@ export const inventoriesRoutes: FastifyPluginAsync = async (app) => {
           reedited: {
             reeditedByEmployeeId: employee._id as Types.ObjectId,
             date: new Date(),
-            reason,
+            ...resolvedReasonFields,
             originalValues: {
               currentCountQuantity: currentCountObject.currentCountQuantity,
               deviationPercent: currentCountObject.deviationPercent ?? 0,
@@ -762,7 +786,7 @@ export const inventoriesRoutes: FastifyPluginAsync = async (app) => {
             payload: {
               countBefore: currentCountObject.currentCountQuantity,
               countAfter: newQuantity,
-              reason,
+              ...resolvedReasonFields,
             },
             session,
           });

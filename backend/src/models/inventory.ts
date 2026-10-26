@@ -32,10 +32,9 @@ const inventoryCountSchema = new Schema(
         index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
       }, // Employee who re-edited - employee in session
       date: { type: Date }, // Date when the re-edit occurred
-      reason: {
-        type: String,
-        required: [true, "Reedited reason is required!"],
-      }, // Reason for the re-edit
+      reason: { type: String }, // Legacy free-text reason kept readable on historical and dummy records
+      reasonCode: { type: String }, // Selected code from the closed count-reedit catalogue
+      reasonNote: { type: String }, // Optional Other note paired with reasonCode
       originalValues: {
         currentCountQuantity: {
           type: Number,

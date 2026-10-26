@@ -19,6 +19,10 @@ import {
   freeTextString,
   objectIdSchema,
 } from "restaurant-pos-packages/schemas/primitives";
+import {
+  reasonCode,
+  reasonNote,
+} from "restaurant-pos-packages/schemas/operationalReasons";
 
 /** Treat a blank string (an empty query value) as "not provided". */
 const emptyToUndefined = <T extends z.ZodType>(schema: T) =>
@@ -94,12 +98,14 @@ export const addInventoryCountBodySchema = z.strictObject({
 
 /**
  * Body for `PATCH /inventories/:inventoryId/supplierGood/:supplierGoodId/updateCount`.
- * `countId` targets the count being re-edited; `reason` is required for the
- * audit trail the route records under `reedited`.
+ * `countId` targets the count being re-edited; `reasonCode` is required and is
+ * resolved against the closed count-reedit catalogue in the route. `reasonNote`
+ * is the optional Other note; the legacy free-text `reason` is not accepted.
  */
 export const updateInventoryCountBodySchema = z.strictObject({
   countId: objectIdSchema,
-  reason: freeTextString("Reason is required!"),
+  reasonCode,
+  reasonNote,
   currentCountQuantity: coercedNumberSchema.optional(),
   comments: freeTextString().optional(),
 });
