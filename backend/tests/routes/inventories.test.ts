@@ -8,7 +8,7 @@
  * shape rather than a bare `{ message }`.
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { Types } from "mongoose";
 import { getTestApp, generateTestToken } from "../setup.ts";
 import Inventory from "../../src/models/inventory.ts";
@@ -17,6 +17,22 @@ import Supplier from "../../src/models/supplier.ts";
 import Business from "../../src/models/business.ts";
 import User from "../../src/models/user.ts";
 import Employee from "../../src/models/employee.ts";
+import AuditEntry from "../../src/models/auditEntry.ts";
+import {
+  AUDIT_ACT_KINDS,
+  AUDIT_ACTOR_KINDS,
+  AUDIT_RETENTION_CLASSES,
+  AUDIT_TARGET_KINDS,
+} from "../../src/audit/auditCatalogue.ts";
+
+const appendAuditEntryMock = vi.hoisted(() => vi.fn());
+
+vi.mock("../../src/audit/appendAuditEntry.ts", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../src/audit/appendAuditEntry.ts")>();
+  appendAuditEntryMock.mockImplementation(actual.appendAuditEntry);
+  return { ...actual, appendAuditEntry: appendAuditEntryMock };
+});
 
 const expectProblem = (
   response: {
@@ -50,6 +66,8 @@ describe("Inventories Routes", () => {
   };
 
   beforeEach(async () => {
+    appendAuditEntryMock.mockClear();
+
     const business = await Business.create({
       tradeName: "Test Restaurant",
       legalName: "Test Restaurant LLC",
@@ -541,6 +559,272 @@ describe("Inventories Routes", () => {
           expect.objectContaining({ path: "countId" }),
         ]),
       );
+    });
+
+    const seedCountReeditFixture = async () => {
+      const user = await User.create({
+        personalDetails: {
+          username: "countreediter",
+          email: "countreediter@test.com",
+          password: "hashedpassword123",
+          firstName: "Count",
+          lastName: "Reediter",
+          phoneNumber: "1234567890",
+          birthDate: new Date("1990-01-01"),
+          gender: "Man",
+          nationality: "USA",
+          idType: "National ID",
+          idNumber: "COUNT-REEDIT-001",
+          address: validAddress,
+        },
+      });
+
+      const employee = await Employee.create({
+        businessId,
+        userId: user._id,
+        currentShiftRole: "Manager",
+        joinDate: new Date(),
+        taxNumber: "COUNT-REEDIT-TAX-001",
+        vacationDaysPerYear: 20,
+      });
+
+      const authorization = await generateTestToken({
+        id: user._id.toString(),
+        email: "countreediter@test.com",
+        type: "user",
+        employeeId: employee._id.toString(),
+        businessId: businessId.toString(),
+        canLogAsEmployee: true,
+        role: "Manager",
+      });
+
+      const countId = new Types.ObjectId();
+      const inventory = await Inventory.create({
+        businessId,
+        setFinalCount: false,
+        inventoryGoods: [
+          {
+            supplierGoodId,
+            dynamicSystemCount: 100,
+            monthlyCounts: [
+              {
+                _id: countId,
+                currentCountQuantity: 40,
+                countedByEmployeeId: employee._id,
+                deviationPercent: 20,
+                comments: "Original count",
+                reedited: {
+                  reeditedByEmployeeId: employee._id,
+                  date: new Date("2026-01-01"),
+                  reason: "Initial correction",
+                  originalValues: {
+                    currentCountQuantity: 35,
+                    deviationPercent: 15,
+                    dynamicSystemCount: 80,
+                  },
+                },
+              },
+            ],
+          },
+        ],
+      });
+
+      return { user, employee, authorization, countId, inventory };
+    };
+
+    const findStoredCount = async (
+      inventoryId: Types.ObjectId,
+      countId: Types.ObjectId,
+    ) => {
+      const inventory = await Inventory.findById(inventoryId).lean();
+      return inventory?.inventoryGoods?.[0]?.monthlyCounts?.find(
+        (count: { _id?: Types.ObjectId }) =>
+          count._id?.toString() === countId.toString(),
+      );
+    };
+
+    it("appends one audit entry when a re-edit changes the stored quantity", async () => {
+      const app = await getTestApp();
+      const { user, employee, authorization, countId, inventory } =
+        await seedCountReeditFixture();
+      const reason = "Supplier delivery was misread";
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/inventories/${inventory._id}/supplierGood/${supplierGoodId}/updateCount`,
+        headers: { authorization },
+        payload: { countId: countId.toString(), currentCountQuantity: 55, reason },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({
+        message: "Count updated successfully!",
+      });
+
+      const entries = await AuditEntry.find({}).lean();
+      expect(entries).toHaveLength(1);
+      const [entry] = entries;
+      expect(entry.actorKind).toBe(AUDIT_ACTOR_KINDS.USER);
+      expect(String(entry.actorId)).toBe(String(user._id));
+      expect(entry.actKind).toBe(AUDIT_ACT_KINDS.INVENTORY_COUNT_REEDITED);
+      expect(entry.target).toEqual({
+        kind: AUDIT_TARGET_KINDS.INVENTORY,
+        id: inventory._id,
+      });
+      expect(entry.relatedTargets).toEqual(
+        expect.arrayContaining([
+          {
+            kind: AUDIT_TARGET_KINDS.INVENTORY_COUNT,
+            id: countId,
+          },
+          {
+            kind: AUDIT_TARGET_KINDS.SUPPLIER_GOOD,
+            id: supplierGoodId,
+          },
+        ]),
+      );
+      expect(String(entry.businessId)).toBe(String(businessId));
+      expect(entry.payload).toEqual({
+        countBefore: 40,
+        countAfter: 55,
+        reason,
+      });
+      expect(entry.retentionClass).toBe(
+        AUDIT_RETENTION_CLASSES.LEGAL_AND_FINANCIAL,
+      );
+      expect(entry.impersonation).toBe(false);
+
+      expect(appendAuditEntryMock).toHaveBeenCalledTimes(1);
+      expect(appendAuditEntryMock.mock.calls[0][0].session).toBeDefined();
+
+      const storedCount = await findStoredCount(inventory._id, countId);
+      expect(storedCount?.currentCountQuantity).toBe(55);
+      expect(storedCount?.reedited?.reason).toBe(reason);
+      expect(String(storedCount?.reedited?.reeditedByEmployeeId)).toBe(
+        String(employee._id),
+      );
+      expect(
+        storedCount?.reedited?.originalValues.currentCountQuantity,
+      ).toBe(40);
+    });
+
+    it("appends a second entry and leaves the first unchanged", async () => {
+      const app = await getTestApp();
+      const { authorization, countId, inventory } =
+        await seedCountReeditFixture();
+      const url = `/api/v1/inventories/${inventory._id}/supplierGood/${supplierGoodId}/updateCount`;
+
+      const first = await app.inject({
+        method: "PATCH",
+        url,
+        headers: { authorization },
+        payload: {
+          countId: countId.toString(),
+          currentCountQuantity: 55,
+          reason: "First correction",
+        },
+      });
+      const second = await app.inject({
+        method: "PATCH",
+        url,
+        headers: { authorization },
+        payload: {
+          countId: countId.toString(),
+          currentCountQuantity: 60,
+          reason: "Second correction",
+        },
+      });
+
+      expect(first.statusCode).toBe(200);
+      expect(second.statusCode).toBe(200);
+
+      const entries = await AuditEntry.find({}).lean();
+      expect(entries).toHaveLength(2);
+      expect(
+        entries.map((entry) => entry.payload).sort((a, b) => {
+          const left = (a as { countBefore: number }).countBefore;
+          const right = (b as { countBefore: number }).countBefore;
+          return left - right;
+        }),
+      ).toEqual([
+        {
+          countBefore: 40,
+          countAfter: 55,
+          reason: "First correction",
+        },
+        {
+          countBefore: 55,
+          countAfter: 60,
+          reason: "Second correction",
+        },
+      ]);
+
+      const storedCount = await findStoredCount(inventory._id, countId);
+      expect(storedCount?.currentCountQuantity).toBe(60);
+      expect(
+        storedCount?.reedited?.originalValues.currentCountQuantity,
+      ).toBe(55);
+    });
+
+    it("appends nothing and keeps the no-op response for the same quantity", async () => {
+      const app = await getTestApp();
+      const { authorization, countId, inventory } =
+        await seedCountReeditFixture();
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/inventories/${inventory._id}/supplierGood/${supplierGoodId}/updateCount`,
+        headers: { authorization },
+        payload: {
+          countId: countId.toString(),
+          currentCountQuantity: 40,
+          reason: "No quantity change",
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({
+        message: "Count is the same, no need to update!",
+      });
+      expect(await AuditEntry.countDocuments()).toBe(0);
+      expect(appendAuditEntryMock).not.toHaveBeenCalled();
+
+      const storedCount = await findStoredCount(inventory._id, countId);
+      expect(storedCount?.currentCountQuantity).toBe(40);
+      expect(storedCount?.reedited?.reason).toBe("Initial correction");
+    });
+
+    it("rolls back the re-edit and surfaces a server error when the append fails", async () => {
+      const app = await getTestApp();
+      const { authorization, countId, inventory } =
+        await seedCountReeditFixture();
+      appendAuditEntryMock.mockResolvedValueOnce({
+        success: false,
+        error: "audit unavailable",
+      });
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/inventories/${inventory._id}/supplierGood/${supplierGoodId}/updateCount`,
+        headers: { authorization },
+        payload: {
+          countId: countId.toString(),
+          currentCountQuantity: 55,
+          reason: "Should not commit",
+        },
+      });
+
+      expectProblem(response, 500, "internal");
+      expect(await AuditEntry.countDocuments()).toBe(0);
+
+      const storedCount = await findStoredCount(inventory._id, countId);
+      expect(storedCount?.currentCountQuantity).toBe(40);
+      expect(storedCount?.reedited?.reason).toBe("Initial correction");
+
+      const storedInventory = await Inventory.findById(inventory._id).lean();
+      expect(
+        storedInventory?.inventoryGoods?.[0]?.dynamicSystemCount,
+      ).toBe(100);
     });
   });
 

@@ -23,6 +23,12 @@ import Employee from "../../models/employee.ts";
 import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
 import createNextPeriodInventory from "../../inventories/createNextPeriodInventory.ts";
 import getVarianceReport from "../../inventories/getVarianceReport.ts";
+import { appendAuditEntry } from "../../audit/appendAuditEntry.ts";
+import {
+  AUDIT_ACTOR_KINDS,
+  AUDIT_ACT_KINDS,
+  AUDIT_TARGET_KINDS,
+} from "../../audit/auditCatalogue.ts";
 import { createAuthHook, createOptionalAuthHook } from "../../auth/middleware.ts";
 import {
   badRequest,
@@ -564,152 +570,219 @@ export const inventoriesRoutes: FastifyPluginAsync = async (app) => {
 
       const { currentCountQuantity, comments, countId, reason } = req.body;
 
-      const [inventory, supplierGood] = await Promise.all([
-        Inventory.findOne({
+      const session = await mongoose.startSession();
+      session.startTransaction();
+
+      try {
+        const inventory = (await Inventory.findOne({
           ...withSoftDeleteFilter({
             _id: inventoryId,
             "inventoryGoods.supplierGoodId": supplierGoodId,
           }),
         })
           .select("businessId setFinalCount inventoryGoods")
-          .lean() as Promise<IInventory | null>,
-        SupplierGood.findById(supplierGoodId)
+          .session(session)
+          .lean()) as IInventory | null;
+
+        const supplierGood = (await SupplierGood.findById(supplierGoodId)
           .select("parLevel")
-          .lean() as Promise<ISupplierGood | null>,
-      ]);
+          .session(session)
+          .lean()) as ISupplierGood | null;
 
-      if (!supplierGood || !inventory) {
-        throw badRequest(
-          !supplierGood ? "Supplier good not found!" : "Inventory not found!",
+        if (!supplierGood || !inventory) {
+          throw badRequest(
+            !supplierGood ? "Supplier good not found!" : "Inventory not found!",
+          );
+        }
+
+        const businessId = inventory.businessId as Types.ObjectId;
+        const employee = (await Employee.findOne({
+          userId: userIdObj,
+          businessId,
+        })
+          .select("_id currentShiftRole")
+          .session(session)
+          .lean()) as IEmployee | null;
+
+        if (
+          !employee ||
+          !managementRolesEnums.some(
+            (role) => role === employee.currentShiftRole,
+          )
+        ) {
+          throw forbidden(
+            "Only managers or supervisors can re-edit inventory counts!",
+          );
+        }
+
+        if (inventory.setFinalCount) {
+          throw badRequest(
+            "Inventory already set as final count! Cannot update!",
+          );
+        }
+
+        const supplierGoodObject = inventory.inventoryGoods.find(
+          (good) => good.supplierGoodId.toString() === supplierGoodId,
         );
-      }
 
-      const businessId = inventory.businessId as Types.ObjectId;
-      const employee = (await Employee.findOne({
-        userId: userIdObj,
-        businessId,
-      })
-        .select("_id currentShiftRole")
-        .lean()) as IEmployee | null;
+        if (!supplierGoodObject) {
+          throw badRequest("Supplier good not found in inventory!");
+        }
 
-      if (
-        !employee ||
-        !managementRolesEnums.some(
-          (role) => role === employee.currentShiftRole,
-        )
-      ) {
-        throw forbidden(
-          "Only managers or supervisors can re-edit inventory counts!",
+        const currentCountObject = supplierGoodObject.monthlyCounts.find(
+          (count) => count._id && count._id.toString() === countId,
         );
-      }
 
-      if (inventory.setFinalCount) {
-        throw badRequest(
-          "Inventory already set as final count! Cannot update!",
+        if (!currentCountObject) {
+          throw notFound("Count not found!");
+        }
+
+        const newQuantity =
+          currentCountQuantity !== undefined
+            ? currentCountQuantity
+            : currentCountObject.currentCountQuantity;
+
+        if (
+          currentCountQuantity !== undefined &&
+          currentCountObject.currentCountQuantity === currentCountQuantity
+        ) {
+          await session.abortTransaction();
+
+          return reply
+            .code(200)
+            .send({ message: "Count is the same, no need to update!" });
+        }
+
+        let previewDynamicSystemCount = 0;
+        if (currentCountObject.deviationPercent !== 100) {
+          previewDynamicSystemCount =
+            currentCountObject.currentCountQuantity /
+            (1 - (currentCountObject.deviationPercent ?? 0) / 100);
+        }
+
+        const updateInventoryCount: IInventoryCount = {
+          _id: new Types.ObjectId(countId),
+          currentCountQuantity: newQuantity,
+          quantityNeeded: (supplierGood.parLevel || 0) - newQuantity,
+          countedByEmployeeId: currentCountObject.countedByEmployeeId,
+          deviationPercent:
+            ((previewDynamicSystemCount - newQuantity) /
+              (previewDynamicSystemCount || 1)) *
+            100,
+          comments,
+          reedited: {
+            reeditedByEmployeeId: employee._id as Types.ObjectId,
+            date: new Date(),
+            reason,
+            originalValues: {
+              currentCountQuantity: currentCountObject.currentCountQuantity,
+              deviationPercent: currentCountObject.deviationPercent ?? 0,
+              dynamicSystemCount: previewDynamicSystemCount,
+            },
+          },
+        };
+
+        const totalDeviationPercent =
+          supplierGoodObject.monthlyCounts.reduce(
+            (acc: number, count: IInventoryCount) =>
+              acc + (count.deviationPercent ?? 0),
+            0,
+          ) -
+          (currentCountObject.deviationPercent ?? 0) +
+          (updateInventoryCount.deviationPercent ?? 0);
+
+        const monthlyCountsWithDeviation =
+          supplierGoodObject.monthlyCounts.filter(
+            (count: IInventoryCount) => (count.deviationPercent ?? 0) !== 0,
+          ).length;
+
+        const averageDeviationPercentCalculation =
+          totalDeviationPercent / monthlyCountsWithDeviation;
+
+        // Mongoose adds a nested updatedAt for the count subdocument, so setting
+        // the whole array element conflicts with it. Set its fields instead.
+        const countPath =
+          "inventoryGoods.$[supplierGood].monthlyCounts.$[count]";
+
+        await Inventory.updateOne(
+          {
+            ...withSoftDeleteFilter({ _id: inventoryId }),
+            "inventoryGoods.supplierGoodId": supplierGoodId,
+            "inventoryGoods.monthlyCounts._id": countId,
+          },
+          {
+            $set: {
+              "inventoryGoods.$[supplierGood].dynamicSystemCount": newQuantity,
+              "inventoryGoods.$[supplierGood].averageDeviationPercent":
+                averageDeviationPercentCalculation,
+              [`${countPath}.currentCountQuantity`]: newQuantity,
+              [`${countPath}.quantityNeeded`]:
+                updateInventoryCount.quantityNeeded,
+              [`${countPath}.countedByEmployeeId`]:
+                updateInventoryCount.countedByEmployeeId,
+              [`${countPath}.deviationPercent`]:
+                updateInventoryCount.deviationPercent,
+              [`${countPath}.comments`]: updateInventoryCount.comments,
+              [`${countPath}.reedited`]: updateInventoryCount.reedited,
+            },
+          },
+          {
+            arrayFilters: [
+              {
+                "supplierGood.supplierGoodId": new Types.ObjectId(
+                  supplierGoodId,
+                ),
+              },
+              { "count._id": new Types.ObjectId(countId) },
+            ],
+            session,
+          },
         );
-      }
 
-      const supplierGoodObject = inventory.inventoryGoods.find(
-        (good) => good.supplierGoodId.toString() === supplierGoodId,
-      );
+        if (newQuantity !== currentCountObject.currentCountQuantity) {
+          const appended = await appendAuditEntry({
+            actor: {
+              kind: AUDIT_ACTOR_KINDS.USER,
+              id: req.authSession.id,
+            },
+            actKind: AUDIT_ACT_KINDS.INVENTORY_COUNT_REEDITED,
+            target: {
+              kind: AUDIT_TARGET_KINDS.INVENTORY,
+              id: inventoryId,
+            },
+            relatedTargets: [
+              { kind: AUDIT_TARGET_KINDS.INVENTORY_COUNT, id: countId },
+              {
+                kind: AUDIT_TARGET_KINDS.SUPPLIER_GOOD,
+                id: supplierGoodId,
+              },
+            ],
+            businessId,
+            occurredAt: new Date(),
+            payload: {
+              countBefore: currentCountObject.currentCountQuantity,
+              countAfter: newQuantity,
+              reason,
+            },
+            session,
+          });
 
-      if (!supplierGoodObject) {
-        throw badRequest("Supplier good not found in inventory!");
-      }
+          if (!appended.success) {
+            throw internal("Failed to append the count re-edit audit entry!");
+          }
+        }
 
-      const currentCountObject = supplierGoodObject.monthlyCounts.find(
-        (count) => count._id && count._id.toString() === countId,
-      );
+        await session.commitTransaction();
 
-      if (!currentCountObject) {
-        throw notFound("Count not found!");
-      }
-
-      const newQuantity =
-        currentCountQuantity !== undefined
-          ? currentCountQuantity
-          : currentCountObject.currentCountQuantity;
-
-      if (
-        currentCountQuantity !== undefined &&
-        currentCountObject.currentCountQuantity === currentCountQuantity
-      ) {
         return reply
           .code(200)
-          .send({ message: "Count is the same, no need to update!" });
+          .send({ message: "Count updated successfully!" });
+      } catch (error) {
+        await session.abortTransaction().catch(() => undefined);
+        throw error;
+      } finally {
+        await session.endSession();
       }
-
-      let previewDynamicSystemCount = 0;
-      if (currentCountObject.deviationPercent !== 100) {
-        previewDynamicSystemCount =
-          currentCountObject.currentCountQuantity /
-          (1 - (currentCountObject.deviationPercent ?? 0) / 100);
-      }
-
-      const updateInventoryCount: IInventoryCount = {
-        _id: new Types.ObjectId(countId),
-        currentCountQuantity: newQuantity,
-        quantityNeeded: (supplierGood.parLevel || 0) - newQuantity,
-        countedByEmployeeId: currentCountObject.countedByEmployeeId,
-        deviationPercent:
-          ((previewDynamicSystemCount - newQuantity) /
-            (previewDynamicSystemCount || 1)) *
-          100,
-        comments,
-        reedited: {
-          reeditedByEmployeeId: employee._id as Types.ObjectId,
-          date: new Date(),
-          reason,
-          originalValues: {
-            currentCountQuantity: currentCountObject.currentCountQuantity,
-            deviationPercent: currentCountObject.deviationPercent ?? 0,
-            dynamicSystemCount: previewDynamicSystemCount,
-          },
-        },
-      };
-
-      const totalDeviationPercent =
-        supplierGoodObject.monthlyCounts.reduce(
-          (acc: number, count: IInventoryCount) =>
-            acc + (count.deviationPercent ?? 0),
-          0,
-        ) -
-        (currentCountObject.deviationPercent ?? 0) +
-        (updateInventoryCount.deviationPercent ?? 0);
-
-      const monthlyCountsWithDeviation = supplierGoodObject.monthlyCounts.filter(
-        (count: IInventoryCount) => (count.deviationPercent ?? 0) !== 0,
-      ).length;
-
-      const averageDeviationPercentCalculation =
-        totalDeviationPercent / monthlyCountsWithDeviation;
-
-      await Inventory.updateOne(
-        {
-          ...withSoftDeleteFilter({ _id: inventoryId }),
-          "inventoryGoods.supplierGoodId": supplierGoodId,
-          "inventoryGoods.monthlyCounts._id": countId,
-        },
-        {
-          $set: {
-            "inventoryGoods.$[supplierGood].dynamicSystemCount": newQuantity,
-            "inventoryGoods.$[supplierGood].averageDeviationPercent":
-              averageDeviationPercentCalculation,
-            "inventoryGoods.$[supplierGood].monthlyCounts.$[count]":
-              updateInventoryCount,
-          },
-        },
-        {
-          arrayFilters: [
-            {
-              "supplierGood.supplierGoodId": new Types.ObjectId(supplierGoodId),
-            },
-            { "count._id": new Types.ObjectId(countId) },
-          ],
-        },
-      );
-
-      return reply.code(200).send({ message: "Count updated successfully!" });
     },
   );
 
