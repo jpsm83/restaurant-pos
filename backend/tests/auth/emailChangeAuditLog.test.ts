@@ -1,10 +1,13 @@
 /**
  * Audit logging for the sign-in email change flow.
  *
- * Request, confirmation, and failure each leave one structured log line that
- * carries the account id and outcome and never the raw token or full address.
- * The delivery rail and the logger are mocked so the tests observe exactly
- * what the domain emits. The old-address notice uses that same rail.
+ * A successful request and confirmation each append one entry to the
+ * append-only audit rail and write no success process-log line. Failures stay
+ * on the process log and append nothing. Neither the log nor the entry ever
+ * carries the raw token or full address. The delivery rail and the logger are
+ * mocked so the tests observe exactly what the domain emits; the old-address
+ * notice uses that same rail. The append operation is wrapped so a failed
+ * append can be proved to leave the completed change in place.
  */
 
 import {
@@ -18,6 +21,7 @@ import {
 } from "vitest";
 import bcrypt from "bcrypt";
 import type { FastifyBaseLogger } from "fastify";
+import mongoose from "mongoose";
 
 const railSendMock = vi.hoisted(() =>
   vi.fn().mockResolvedValue({
@@ -30,6 +34,15 @@ const railSendMock = vi.hoisted(() =>
 vi.mock("../../src/communications/channels/emailChannel.ts", () => ({
   default: { send: railSendMock },
 }));
+
+const appendAuditEntryMock = vi.hoisted(() => vi.fn());
+
+vi.mock("../../src/audit/appendAuditEntry.ts", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../src/audit/appendAuditEntry.ts")>();
+  appendAuditEntryMock.mockImplementation(actual.appendAuditEntry);
+  return { ...actual, appendAuditEntry: appendAuditEntryMock };
+});
 
 import {
   emailRailFailure,
@@ -44,6 +57,11 @@ import {
 } from "../../src/auth/emailChangeAuditLog.ts";
 import { handleRequestEmailChange } from "../../src/auth/requestEmailChange.ts";
 import { handleConfirmEmailChange } from "../../src/auth/confirmEmailChange.ts";
+import {
+  AUDIT_ACT_KINDS,
+  AUDIT_ACTOR_KINDS,
+  AUDIT_TARGET_KINDS,
+} from "../../src/audit/auditCatalogue.ts";
 import type { AuthBusiness } from "../../src/auth/types.ts";
 
 const testPassword = "TestPassword123!";
@@ -93,22 +111,39 @@ function businessSession(business: { _id: unknown; email: string }): AuthBusines
   };
 }
 
+interface RawAuditEntry {
+  actorKind?: string;
+  actorId?: unknown;
+  actKind?: string;
+  target?: { kind?: string; id?: unknown };
+  businessId?: unknown;
+  occurredAt?: Date;
+  payload?: unknown;
+}
+
+async function auditEntries(): Promise<RawAuditEntry[]> {
+  return (await mongoose.connection
+    .collection("auditentries")
+    .find({})
+    .toArray()) as unknown as RawAuditEntry[];
+}
+
 describe("logEmailChange", () => {
-  it("logs a success outcome at info with the event, account id, and outcome", () => {
+  it("does not write a success process-log line", () => {
     const logger = recordingLogger();
     logEmailChange(logger as unknown as FastifyBaseLogger, {
       event: EMAIL_CHANGE_REQUEST_EVENT,
       accountId: "acct-1",
       outcome: "sent",
     });
-
-    expect(logger.info).toHaveBeenCalledTimes(1);
-    expect(logger.warn).not.toHaveBeenCalled();
-    expect(logger.info).toHaveBeenCalledWith({
-      event: EMAIL_CHANGE_REQUEST_EVENT,
+    logEmailChange(logger as unknown as FastifyBaseLogger, {
+      event: EMAIL_CHANGE_CONFIRM_EVENT,
       accountId: "acct-1",
-      outcome: "sent",
+      outcome: "confirmed",
     });
+
+    expect(logger.info).not.toHaveBeenCalled();
+    expect(logger.warn).not.toHaveBeenCalled();
   });
 
   it("logs a failure outcome at warn", () => {
@@ -166,28 +201,144 @@ describe("email change audit emission", () => {
   beforeEach(() => {
     railSendMock.mockReset();
     railSendMock.mockResolvedValue(emailRailSuccess);
+    appendAuditEntryMock.mockClear();
   });
 
-  it("logs a requested outcome with the account id and no address or token", async () => {
+  it("appends one request entry for the signed-in Business and no success log line", async () => {
     const logger = recordingLogger();
     const business = await createBusiness("audit-request@example.com");
     const newEmail = "audit-request-new@example.com";
 
-    await handleRequestEmailChange(
+    const result = await handleRequestEmailChange(
       businessSession(business),
       { newEmail, currentPassword: testPassword },
       logger as unknown as FastifyBaseLogger,
     );
 
+    expect(result.kind).toBe("success_200");
+    expect(appendAuditEntryMock).toHaveBeenCalledTimes(1);
+    expect(logger.info).not.toHaveBeenCalled();
+    expect(logger.warn).not.toHaveBeenCalled();
+
     const outcome = await Business.findById(business._id).lean();
-    const logged = JSON.stringify(logger.info.mock.calls);
-    expect(logger.info).toHaveBeenCalledWith({
+    const entries = await auditEntries();
+    expect(entries).toHaveLength(1);
+    const [entry] = entries;
+    expect(entry.actorKind).toBe(AUDIT_ACTOR_KINDS.BUSINESS);
+    expect(String(entry.actorId)).toBe(String(business._id));
+    expect(entry.actKind).toBe(AUDIT_ACT_KINDS.EMAIL_CHANGE_REQUESTED);
+    expect(entry.target?.kind).toBe(AUDIT_TARGET_KINDS.BUSINESS);
+    expect(String(entry.target?.id)).toBe(String(business._id));
+    expect(String(entry.businessId)).toBe(String(business._id));
+    expect(entry.occurredAt).toBeInstanceOf(Date);
+    expect(entry.payload).toEqual({ outcome: "sent" });
+
+    const stored = JSON.stringify(entry);
+    expect(stored).not.toContain(newEmail);
+    expect(stored).not.toContain(String(outcome?.pendingEmailToken));
+  });
+
+  it("appends one confirmation entry for the Business whose token was consumed", async () => {
+    const logger = recordingLogger();
+    const token = "c".repeat(64);
+    const oldEmail = "audit-confirm@example.com";
+    const newEmail = "audit-confirm-new@example.com";
+    const business = await createBusiness(oldEmail, {
+      pendingEmail: newEmail,
+      pendingEmailToken: token,
+      pendingEmailExpires: new Date(Date.now() + 3_600_000),
+    });
+
+    const result = await handleConfirmEmailChange(
+      token,
+      logger as unknown as FastifyBaseLogger,
+    );
+
+    expect(result.kind).toBe("success_200");
+    expect(appendAuditEntryMock).toHaveBeenCalledTimes(1);
+    expect(logger.info).not.toHaveBeenCalled();
+    expect(logger.warn).not.toHaveBeenCalled();
+
+    const entries = await auditEntries();
+    expect(entries).toHaveLength(1);
+    const [entry] = entries;
+    expect(entry.actorKind).toBe(AUDIT_ACTOR_KINDS.BUSINESS);
+    expect(String(entry.actorId)).toBe(String(business._id));
+    expect(entry.actKind).toBe(AUDIT_ACT_KINDS.EMAIL_CHANGE_CONFIRMED);
+    expect(entry.target?.kind).toBe(AUDIT_TARGET_KINDS.BUSINESS);
+    expect(String(entry.target?.id)).toBe(String(business._id));
+    expect(String(entry.businessId)).toBe(String(business._id));
+    expect(entry.occurredAt).toBeInstanceOf(Date);
+    expect(entry.payload).toEqual({ outcome: "confirmed" });
+
+    const stored = JSON.stringify(entry);
+    expect(stored).not.toContain(token);
+    expect(stored).not.toContain(oldEmail);
+    expect(stored).not.toContain(newEmail);
+  });
+
+  it("logs a wrong-password outcome and appends nothing", async () => {
+    const logger = recordingLogger();
+    const business = await createBusiness("audit-wrongpass@example.com");
+
+    await handleRequestEmailChange(
+      businessSession(business),
+      {
+        newEmail: "audit-wrongpass-new@example.com",
+        currentPassword: "WrongPassword123!",
+      },
+      logger as unknown as FastifyBaseLogger,
+    );
+
+    expect(logger.warn).toHaveBeenCalledWith({
       event: EMAIL_CHANGE_REQUEST_EVENT,
       accountId: String(business._id),
-      outcome: "sent",
+      outcome: "invalid_password",
     });
-    expect(logged).not.toContain(newEmail);
-    expect(logged).not.toContain(String(outcome?.pendingEmailToken));
+    expect(appendAuditEntryMock).not.toHaveBeenCalled();
+    expect(await auditEntries()).toHaveLength(0);
+  });
+
+  it("logs a same-email outcome and appends nothing", async () => {
+    const logger = recordingLogger();
+    const business = await createBusiness("audit-same@example.com");
+
+    await handleRequestEmailChange(
+      businessSession(business),
+      { newEmail: "audit-same@example.com", currentPassword: testPassword },
+      logger as unknown as FastifyBaseLogger,
+    );
+
+    expect(logger.warn).toHaveBeenCalledWith({
+      event: EMAIL_CHANGE_REQUEST_EVENT,
+      accountId: String(business._id),
+      outcome: "same_email",
+    });
+    expect(appendAuditEntryMock).not.toHaveBeenCalled();
+    expect(await auditEntries()).toHaveLength(0);
+  });
+
+  it("logs a taken-email outcome and appends nothing", async () => {
+    const logger = recordingLogger();
+    const business = await createBusiness("audit-taken@example.com");
+    await createBusiness("audit-taken-other@example.com");
+
+    await handleRequestEmailChange(
+      businessSession(business),
+      {
+        newEmail: "audit-taken-other@example.com",
+        currentPassword: testPassword,
+      },
+      logger as unknown as FastifyBaseLogger,
+    );
+
+    expect(logger.warn).toHaveBeenCalledWith({
+      event: EMAIL_CHANGE_REQUEST_EVENT,
+      accountId: String(business._id),
+      outcome: "email_taken",
+    });
+    expect(appendAuditEntryMock).not.toHaveBeenCalled();
+    expect(await auditEntries()).toHaveLength(0);
   });
 
   it("logs a throttled outcome when a request lands inside the cooldown", async () => {
@@ -210,9 +361,11 @@ describe("email change audit emission", () => {
       accountId: String(business._id),
       outcome: "throttled",
     });
+    expect(appendAuditEntryMock).not.toHaveBeenCalled();
+    expect(await auditEntries()).toHaveLength(0);
   });
 
-  it("logs a failed outcome when the confirmation send fails", async () => {
+  it("logs a send-failed outcome when the confirmation send fails", async () => {
     const logger = recordingLogger();
     const business = await createBusiness("audit-sendfail@example.com");
     railSendMock.mockResolvedValue(emailRailFailure);
@@ -228,24 +381,8 @@ describe("email change audit emission", () => {
       accountId: String(business._id),
       outcome: "send_failed",
     });
-  });
-
-  it("logs a confirmation outcome with the account id", async () => {
-    const logger = recordingLogger();
-    const token = "c".repeat(64);
-    const business = await createBusiness("audit-confirm@example.com", {
-      pendingEmail: "audit-confirm-new@example.com",
-      pendingEmailToken: token,
-      pendingEmailExpires: new Date(Date.now() + 3_600_000),
-    });
-
-    await handleConfirmEmailChange(token, logger as unknown as FastifyBaseLogger);
-
-    expect(logger.info).toHaveBeenCalledWith({
-      event: EMAIL_CHANGE_CONFIRM_EVENT,
-      accountId: String(business._id),
-      outcome: "confirmed",
-    });
+    expect(appendAuditEntryMock).not.toHaveBeenCalled();
+    expect(await auditEntries()).toHaveLength(0);
   });
 
   it("logs a rejected confirmation outcome with a null account id and no token", async () => {
@@ -263,5 +400,95 @@ describe("email change audit emission", () => {
       outcome: "invalid_token",
     });
     expect(JSON.stringify(logger.warn.mock.calls)).not.toContain("d".repeat(64));
+    expect(appendAuditEntryMock).not.toHaveBeenCalled();
+    expect(await auditEntries()).toHaveLength(0);
+  });
+
+  it("logs a handler error and appends nothing", async () => {
+    const logger = recordingLogger();
+    const token = "f".repeat(64);
+    await createBusiness("audit-handler-error@example.com", {
+      pendingEmail: "audit-handler-error-new@example.com",
+      pendingEmailToken: token,
+      pendingEmailExpires: new Date(Date.now() + 3_600_000),
+    });
+    const updateOneSpy = vi
+      .spyOn(Business, "updateOne")
+      .mockRejectedValueOnce(new Error("boom"));
+
+    const result = await handleConfirmEmailChange(
+      token,
+      logger as unknown as FastifyBaseLogger,
+    );
+    updateOneSpy.mockRestore();
+
+    expect(result.kind).toBe("server_error_500");
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({ outcome: "error" }),
+    );
+    expect(appendAuditEntryMock).not.toHaveBeenCalled();
+    expect(await auditEntries()).toHaveLength(0);
+  });
+
+  it("keeps a completed request in place and logs when the append fails", async () => {
+    const logger = recordingLogger();
+    const business = await createBusiness("audit-request-appendfail@example.com");
+    const newEmail = "audit-request-appendfail-new@example.com";
+    appendAuditEntryMock.mockResolvedValueOnce({
+      success: false,
+      error: "audit unavailable",
+    });
+
+    const result = await handleRequestEmailChange(
+      businessSession(business),
+      { newEmail, currentPassword: testPassword },
+      logger as unknown as FastifyBaseLogger,
+    );
+
+    expect(result.kind).toBe("success_200");
+    const stored = await Business.findById(business._id).lean();
+    expect(stored?.pendingEmail).toBe(newEmail);
+    expect(stored?.pendingEmailToken).toBeTruthy();
+    expect(logger.warn).toHaveBeenCalledWith({
+      event: EMAIL_CHANGE_REQUEST_EVENT,
+      accountId: String(business._id),
+      outcome: "audit_append_failed",
+    });
+    expect(logger.info).not.toHaveBeenCalled();
+    expect(await auditEntries()).toHaveLength(0);
+  });
+
+  it("keeps a completed confirmation in place and logs when the append fails", async () => {
+    const logger = recordingLogger();
+    const token = "a".repeat(64);
+    const oldEmail = "audit-confirm-appendfail@example.com";
+    const newEmail = "audit-confirm-appendfail-new@example.com";
+    const business = await createBusiness(oldEmail, {
+      pendingEmail: newEmail,
+      pendingEmailToken: token,
+      pendingEmailExpires: new Date(Date.now() + 3_600_000),
+    });
+    appendAuditEntryMock.mockResolvedValueOnce({
+      success: false,
+      error: "audit unavailable",
+    });
+
+    const result = await handleConfirmEmailChange(
+      token,
+      logger as unknown as FastifyBaseLogger,
+    );
+
+    expect(result.kind).toBe("success_200");
+    const stored = await Business.findById(business._id).lean();
+    expect(stored?.email).toBe(newEmail);
+    expect(stored?.emailVerified).toBe(true);
+    expect(stored?.pendingEmail).toBeUndefined();
+    expect(logger.warn).toHaveBeenCalledWith({
+      event: EMAIL_CHANGE_CONFIRM_EVENT,
+      accountId: String(business._id),
+      outcome: "audit_append_failed",
+    });
+    expect(logger.info).not.toHaveBeenCalled();
+    expect(await auditEntries()).toHaveLength(0);
   });
 });

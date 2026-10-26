@@ -8,8 +8,10 @@ import { buildEmailChangeConfirmationContent } from "./emailTemplates.ts";
 import {
   EMAIL_CHANGE_REQUEST_EVENT,
   logEmailChange,
+  recordEmailChangeAudit,
   type EmailChangeAuditOutcome,
 } from "./emailChangeAuditLog.ts";
+import { AUDIT_ACT_KINDS } from "../audit/auditCatalogue.ts";
 import { normalizeRequestEmail } from "./requestEmailConfirmation.ts";
 import type { AuthBusiness } from "./types.ts";
 import type { RequestEmailChangeBody } from "restaurant-pos-packages/schemas/auth";
@@ -149,7 +151,14 @@ export async function handleRequestEmailChange(
     };
   }
 
-  audit("sent");
+  await recordEmailChangeAudit({
+    logger,
+    event: EMAIL_CHANGE_REQUEST_EVENT,
+    accountId,
+    actKind: AUDIT_ACT_KINDS.EMAIL_CHANGE_REQUESTED,
+    outcome: "sent",
+  });
+
   return { kind: "success_200", message: EMAIL_CHANGE_REQUESTED_MESSAGE };
 }
 

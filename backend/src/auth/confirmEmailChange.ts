@@ -5,8 +5,10 @@ import { CONFIRM_EMAIL_CONSUMPTION_ERROR_MESSAGE } from "./confirmEmail.ts";
 import {
   EMAIL_CHANGE_CONFIRM_EVENT,
   logEmailChange,
+  recordEmailChangeAudit,
   type EmailChangeAuditOutcome,
 } from "./emailChangeAuditLog.ts";
+import { AUDIT_ACT_KINDS } from "../audit/auditCatalogue.ts";
 import { buildEmailChangeNoticeContent } from "./emailTemplates.ts";
 
 export const CONFIRM_EMAIL_CHANGE_SUCCESS_MESSAGE =
@@ -64,7 +66,8 @@ export async function handleConfirmEmailChange(
       };
     }
 
-    accountId = String(pending._id);
+    const businessId = String(pending._id);
+    accountId = businessId;
 
     const result = await Business.updateOne(
       {
@@ -106,7 +109,13 @@ export async function handleConfirmEmailChange(
       });
     }
 
-    audit("confirmed");
+    await recordEmailChangeAudit({
+      logger,
+      event: EMAIL_CHANGE_CONFIRM_EVENT,
+      accountId: businessId,
+      actKind: AUDIT_ACT_KINDS.EMAIL_CHANGE_CONFIRMED,
+      outcome: "confirmed",
+    });
 
     return {
       kind: "success_200",
