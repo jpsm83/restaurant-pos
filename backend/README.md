@@ -119,11 +119,12 @@ never touch Atlas. Run them from `backend/` (or via root `npm test`).
 src/
 ├── server.ts            # buildApp(): plugins, zod compilers, error handler, routes, DB, listen
 ├── routes/v1/           # one Fastify plugin per resource, mounted under /api/v1
-├── models/              # Mongoose schemas (23: business, user, employee, order, ...)
+├── models/              # Mongoose schemas (business, user, employee, order, auditEntry, ...)
 ├── auth/                # JWT session issue/refresh, email confirmation, password reset
 ├── errors/              # AppError helpers + RFC 9457 application/problem+json handler
 ├── communications/      # notifications: channels, providers, dispatch, live WS bridge
 ├── orders/              # order lifecycle (create, close, cancel, transfer, billing)
+├── audit/               # append-only audit entry write (internal API, no route)
 ├── db/connectDb.ts      # idempotent mongoose connection (dbName: "pos")
 ├── config/cors.ts       # CORS origin policy
 └── <domain>/            # business logic per domain (inventories, salesInstances, purchases, ...)
@@ -141,6 +142,10 @@ Conventions:
   paths — resolved through the workspace symlink.
 - **Domain modules** (`orders/`, `inventories/`, ...) hold business logic;
   routes stay thin.
+- **Audit entries are append-only ledger records** written through
+  `audit/appendAuditEntry.ts`. The `AuditEntry` model carries no soft-delete
+  marker, is not in the soft-delete backfill set, and has no HTTP route, read
+  API, or client DTO. The store only inserts.
 
 ### API resources
 

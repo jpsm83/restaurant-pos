@@ -1,6 +1,6 @@
 # ADR-0003: Soft delete across all domain models
 
-- **Status:** Accepted (amended 2026-10-18)
+- **Status:** Accepted (amended 2026-10-26)
 - **Date:** 2026-10-13
 
 ## Context
@@ -111,6 +111,27 @@ solely to force eligibility is forbidden.
 retention purge; integrity and recoverability during the soft-delete window
 remain. Product behaviour and catalogue constants live in the plan-quotas-and-
 data-retention subject, not in this ADR’s implementation notes.
+
+## Amendment (2026-10-26) — audit entries are outside soft delete
+
+**Context.** The append-only audit entry rail records who performed a
+controlled act, what was done to which business object, and when. An audit
+entry is a ledger record, not an ordinary domain document: history cannot be
+rewritten, and a later correction is a new entry beside the prior one.
+
+**Decision addendum.** An audit entry is an **append-only ledger record outside
+the soft-delete model**. It carries no `deleted` marker and no `deletedAt`, is
+not registered in the soft-delete backfill set, and has no ordinary delete
+route. The store only inserts; it exposes no update and no delete. Retention
+purge of a parent remains the concern of the later plan-quotas-and-data-
+retention row, which may remove the parent only under the data-integrity rule;
+this amendment does not add a staff or console purge of the trail alone.
+
+**Consequences.** The ADR's "all domain models" rule now has a named exception:
+audit entries are outside it by design. A soft-delete or ordinary delete path
+must never be pointed at the audit collection, and a later physical-retention
+row must treat trails together with their parent rather than as ordinary
+soft-deletable documents.
 
 ## Alternatives considered
 
