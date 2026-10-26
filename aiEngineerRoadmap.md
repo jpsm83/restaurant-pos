@@ -1,256 +1,325 @@
-# AI Engineer Roadmap for Full-Stack Developers
-### Self-Study Topic Map — From Full-Stack to AI Engineering
+# AI Application Engineer Roadmap for Full-Stack Developers
+### Self-Study Topic Map — From Full-Stack to Building AI-Powered Products
 
-As a Full-Stack Developer with 5+ years of experience, you already possess **80% of the required skills** to excel as an AI Engineer. You understand system integration, state management, databases, security, and deployment. The remaining 20% involves shifting from deterministic programming to probabilistic AI architectures.
+You are **not** becoming an ML researcher or model trainer. Your target role is the one described in most "AI Engineer" job ads today: a strong full-stack engineer who builds **production AI applications** — RAG systems, MCP servers, chatbots, agents, and AI features wired front-to-back into real products.
 
-This document maps every topic needed for the transition, prioritized by industry relevance, with progress checkboxes for self-tracking.
+As a Full-Stack Developer with 5+ years of experience, you already have **~85% of the required skills**. The gap is not machine learning theory. It is:
 
----
+1. **Probabilistic architecture** — designing around non-deterministic models.
+2. **Retrieval & context engineering** — grounding models in your data.
+3. **Evaluation** — measuring AI behavior instead of asserting it.
+4. **AI product engineering** — streaming UX, cost controls, security, observability.
 
-## 🔴 PHASE 1: Foundations — HIGH PRIORITY
-*Prerequisites — learn these before touching LLMs.*
+This document maps that path, prioritized by relevance to building AI products, with progress checkboxes for self-tracking.
 
-### 1.1 Pre-Course Foundations
-- [ ] Python fundamentals (data structures, OOP, generators, decorators)
-- [ ] Virtual environments & dependency management (venv, conda, poetry)
-
-### 1.2 Natural Language Processing (NLP)
-- [ ] Text preprocessing: tokenization, stopword removal, lemmatization, stemming
-- [ ] Word embeddings: Word2Vec, GloVe, FastText
-- [ ] Named Entity Recognition (NER) with spaCy & HuggingFace Transformers
-- [ ] Text classification & sequence labeling
-- [ ] Sentence similarity & embedding models (SBERT, USE)
-
-### 1.3 Machine Learning Foundations
-- [ ] Supervised vs. Unsupervised Learning overview
-- [ ] Linear & Logistic Regression
-- [ ] Decision Trees & Random Forests
-- [ ] XGBoost (Extreme Gradient Boosting)
-- [ ] Deep Learning basics (neural networks, backpropagation)
-- [ ] Reinforcement Learning overview
-- [ ] Model evaluation metrics: Accuracy, Precision, Recall, F1, AUC-ROC
-- [ ] Cross-validation & hyperparameter tuning (GridSearchCV, Optuna)
-
-### 1.4 GenAI Fundamentals
-- [ ] GPU basics (CUDA cores, VRAM, tensor cores)
-- [ ] CUDA & NVIDIA driver setup
-- [ ] Whisper (Speech-to-Text model)
-- [ ] Multimodal models & image processing overview
+> **Design principle:** learn the *minimum* ML needed to make good engineering decisions, then spend the rest of your time shipping AI features end-to-end.
 
 ---
 
-## 🔴 PHASE 2: LLM Theory — HIGH PRIORITY
-*Understanding how LLMs work under the hood.*
+## 🎯 Target Role & Scope
 
-- [ ] Transformer architecture (self-attention, multi-head attention, positional encoding)
-- [ ] Encoder-only vs. Decoder-only vs. Encoder-Decoder
-- [ ] Autoregressive generation & sampling strategies
-- [ ] Pretraining (next-token prediction, masked language modeling)
-- [ ] Fine-tuning (full fine-tuning, LoRA, QLoRA)
-- [ ] Model families:
-  - [ ] GPT (OpenAI)
-  - [ ] Claude (Anthropic)
-  - [ ] LLaMA (Meta)
-  - [ ] Mistral, Falcon, Cohere
+**You are optimizing for:** AI Application Engineer / AI Product Engineer / LLM Engineer — the "build RAGs, MCPs, chatbots, and full AI solutions front-to-back" role.
+
+**You are NOT optimizing for:** ML Engineer / Applied Scientist / Research Engineer — the "train, fine-tune, and serve models" role.
+
+**The one hard rule:** don't spend 100 hours training models you will never ship. Learn what a model *is* and *how it fails*; let the model vendors handle the weights.
 
 ---
 
-## 🔴 PHASE 3: Using LLMs — HIGH PRIORITY
-*Core daily work — prompting, integrating, and building with LLMs.*
+## 🔴 PHASE 0: Orientation & ML Literacy — HIGH PRIORITY
+*A small, deliberate dose of ML — concepts only. This replaces the old 95-hour ML specialization.*
+
+- [x] What AI can and can't do; the AI Engineer vs. ML Engineer vs. Data Scientist distinction
+- [ ] Probabilistic vs. deterministic systems: why the same input can produce different output
+- [ ] Supervised vs. unsupervised learning in one page (what "training" means, at a high level)
+- [ ] Overfitting / train-val-test split — the intuition, not the math
+- [ ] Evaluation metrics **in the retrieval context**: precision, recall, precision@k, recall@k, MRR, nDCG
+- [ ] Embeddings intuition: what a vector represents, why similar meaning → nearby points
+- [ ] Distance metrics: cosine similarity, dot product, Euclidean (when each is used)
+- [ ] Sampling parameters: temperature, top-p, top-k; determinism vs. creativity
+- [ ] What fine-tuning is (conceptually) and **why you usually shouldn't start there** — compare prompting vs. RAG vs. fine-tuning
+- [ ] Token economics: tokens, context limits, input/output pricing, rough cost math
+
+**Deliberately excluded from this phase:** backpropagation, gradient descent, XGBoost, random forests, CNNs, RNNs, reinforcement learning. You will never need these to build RAG or agent products.
+
+🎯 **Milestone:** Write a one-page decision guide — "When do I prompt, when do I add RAG, when do I fine-tune, when do I train a model?" — and explain it to a non-technical colleague.
+
+---
+
+## 🟡 PHASE 1: Python & AI Dev Fluency — MEDIUM PRIORITY (fast-track)
+*Skip most of this if you already write Python. The goal is AI idioms, not the language.*
+
+- [ ] Python fluency check: type hints, async/await, generators, decorators, Pydantic
+- [ ] Environments & dependency management (uv/poetry/venv)
+- [ ] Project layout for AI services (config, secrets, logging, tests)
+
+🎯 **Milestone:** Rebuild one small existing script of yours as a typed, tested Python service.
+
+---
+
+## 🔴 PHASE 2: LLM Literacy — HIGH PRIORITY
+*Enough theory to debug behavior and budget cost — not enough to build a model.*
+
+- [ ] Transformer at a conceptual level: tokens in → next-token probabilities out
+- [ ] Tokenization: why "characters ≠ tokens," and how it affects cost and truncation
+- [ ] Context window: what fits, what gets dropped, and how to manage it
+- [ ] Encoder-only vs. decoder-only vs. encoder-decoder (one paragraph each)
+- [ ] Model families & provider trade-offs: GPT, Claude, Gemini, Llama, Mistral
+- [ ] Chat vs. completion vs. reasoning models — when each is appropriate
+- [ ] Structured outputs & tool calling as first-class model features
+- [ ] Hallucination: why it happens and the engineering responses (grounding, citations, evals)
+- [ ] What fine-tuning is — and the decision rule from Phase 0
+
+**Deferred (know they exist, don't study deeply):** pretraining from scratch, masked language modeling, attention math, LoRA/QLoRA internals, model distillation.
+
+🎯 **Milestone:** Whiteboard "what happens between sending a prompt and receiving a token," including where cost and latency come from.
+
+---
+
+## 🔴 PHASE 3: Prompting & LLM Integration — HIGH PRIORITY
+*Core daily work — the interface between your code and the model.*
 
 ### 3.1 Prompt Engineering
-- [ ] Core principles: instruction following, temperature, top-p, top-k
-- [ ] Role prompting & system instructions
+- [ ] Instruction-following principles; temperature/top-p/top-k in practice
+- [ ] System instructions & role prompting
 - [ ] Chain of Thought (CoT) & ReAct patterns
-- [ ] Few-shot vs. Zero-shot prompting
-- [ ] Prompt evaluation & iteration strategies
+- [ ] Few-shot vs. zero-shot; example selection
+- [ ] Prompt evaluation & iteration (treat prompts as code under test)
+- [ ] Context engineering: what goes in, in what order, and why
 
 ### 3.2 LLM Integration
-- [ ] OpenAI API (Chat Completions, Assistants, structured outputs)
+- [ ] OpenAI API (Chat Completions, structured outputs, tool use)
 - [ ] Anthropic Claude API (Messages API, tool use)
-- [ ] AWS Bedrock (multi-model abstraction, auth, cost, latency)
-- [ ] Open WebUI setup & configuration
-- [ ] Llama.cpp (local LLM runtime, quantization, system requirements)
+- [ ] One cloud abstraction layer (Bedrock, Vertex, or Azure OpenAI) — auth, cost, latency
+- [ ] LiteLLM or equivalent model-agnostic abstraction (provider switching, fallbacks)
+- [ ] Pure Python integration with no framework — understand what frameworks hide
 - [ ] LangChain & LangGraph fundamentals
-- [ ] LiteLLM (model-agnostic API abstraction)
-- [ ] Pure Python LLM integration (no frameworks)
+- [ ] Streaming responses (SSE / token streaming)
 
-### 3.3 Claude Code (Engineering Workflows)
-- [ ] Code generation, debugging & refactoring
-- [ ] Large codebase context (multi-file navigation)
-- [ ] Test generation & code validation
-- [ ] Tool use & system interaction
-- [ ] Prompt-driven development workflows
-- [ ] Iterative development & rapid prototyping
-- [ ] Integration into daily dev workflows
+### 3.3 AI-Assisted Engineering Workflows
+- [ ] Code generation, debugging & refactoring with AI agents
+- [ ] Large-codebase context and multi-file navigation
+- [ ] Test generation & validation
+- [ ] Spec-driven development with coding agents
 - [x] AI Hero: AI Coding Crash Course — agent skills, steering, planning workflows (aihero.dev)
+
+**Skip unless a job requires it:** Open WebUI, Llama.cpp, local GGUF quantization. These are self-hosting concerns, not application-building concerns. Add later only if you need on-prem inference.
+
+🎯 **Milestone → Portfolio Project 1:** `Strict Schema Data Extractor` — messy text → validated JSON via structured outputs + Pydantic, with retries and failure routing.
 
 ---
 
 ## 🔴 PHASE 4: Embeddings & RAG — HIGH PRIORITY
-*Most common production pattern — grounding LLMs in your data.*
+*The most common production AI pattern — grounding models in real data.*
 
 ### 4.1 Embeddings & Vector Search
-- [ ] Word embeddings (Word2Vec, GloVe, FastText)
-- [ ] Sentence & document embeddings (SBERT, USE, OpenAI embeddings)
-- [ ] Vector databases: ChromaDB, Pinecone, Qdrant, Weaviate
-- [ ] Vector search algorithms: KNN (k-Nearest Neighbors), ANN (Approximate Nearest Neighbors)
-- [ ] FAISS (Facebook AI Similarity Search)
-- [ ] Distance metrics: cosine similarity, dot product, Euclidean
+- [ ] Sentence & document embeddings (OpenAI embeddings, SBERT, Cohere, open models)
+- [ ] Vector databases: ChromaDB, Qdrant, Pinecone, pgvector (pick one to start)
+- [ ] KNN vs. ANN; what an index actually buys you
+- [ ] Distance metrics and normalization (cosine, dot product, Euclidean)
+- [ ] Embedding dimension, cost, and re-embedding strategy
+- [ ] Metadata filtering and hybrid (dense + keyword) search
+- [ ] FAISS basics (optional; useful for local experiments)
 
 ### 4.2 RAG Architecture
-- [ ] RAG pipeline: ingest → chunk → embed → store → retrieve → generate
-- [ ] Document chunking strategies (fixed-size, semantic, recursive)
-- [ ] Retrieval strategies: dense vs. sparse, hybrid search
-- [ ] Basic RAG pipeline with open-source tools (FAISS + HuggingFace)
-- [ ] Document Q&A systems
-- [ ] Knowledge-grounded chatbots
-- [ ] Advanced RAG: re-ranking, contextual compression, query transformation
+- [ ] Full pipeline: ingest → parse → chunk → embed → store → retrieve → rerank → generate
+- [ ] Chunking strategies: fixed-size, semantic, recursive, structure-aware
+- [ ] Retrieval strategies: dense vs. sparse vs. hybrid
+- [ ] Reranking and contextual compression
+- [ ] Query transformation (rewriting, HyDE, multi-query)
+- [ ] Citations & grounding; refusing when retrieval is empty
+- [ ] RAG evaluation: retrieval metrics + answer groundedness/faithfulness
+- [ ] Document Q&A and knowledge-grounded chatbots
+
+**Skip:** Word2Vec, GloVe, FastText, classical NLP preprocessing pipelines. They are historically important and practically irrelevant to your stack.
+
+🎯 **Milestone → Portfolio Project 2:** `Multi-Document RAG Application` — parse PDFs, chunk, embed in a vector DB, retrieve + rerank, answer with citations, and an eval set that scores retrieval.
 
 ---
 
-## 🟡 PHASE 5: AI Agents — MEDIUM PRIORITY
-*Rapidly growing in importance — agents are the next frontier.*
+## 🔴 PHASE 5: Agents, Tool Use & Conversational UX — HIGH PRIORITY
+*The difference between a demo and a product.*
 
-- [ ] Context management & windowing strategies
-- [ ] Chatbot development (conversation state, multi-turn)
-- [ ] History management (summarization, sliding window, selective retention)
-- [ ] Agent design patterns: Agent loop vs. DAG
-- [ ] Planning & decision-making: tool use, memory, goal decomposition
-- [ ] Implementation patterns:
-  - [ ] LangChain Agents
-  - [ ] ReAct (Reasoning + Acting) loop
-  - [ ] Finite State Agents
-- [ ] Runtime management & cost implications (token budgeting)
-- [ ] Multi-agent architectures with CrewAI
+### 5.1 Agent Fundamentals
+- [ ] Agent loop vs. DAG / workflow; when *not* to use an agent
+- [ ] Tool/function calling: schemas, validation, error feedback to the model
+- [ ] Planning, goal decomposition, and bounded autonomy
+- [ ] Memory: conversation state, sliding window, summarization, long-term memory
+- [ ] Multi-step and multi-agent orchestration (LangGraph, CrewAI)
+- [ ] Human-in-the-loop checkpoints — where automation must stop
+- [ ] Failure modes: loops, tool misuse, runaway cost, stale state
 
-### 5.2 Domain-Specific Agents
-- [ ] Designing agents scoped to a vertical (healthcare, legal, finance, etc.)
-- [ ] Domain-specific tool sets — curating APIs and functions for a single domain
-- [ ] Domain knowledge injection (ontologies, regulations, terminology via RAG or system prompts)
-- [ ] Domain guardrails & compliance (safety boundaries, regulatory constraints, PII handling)
-- [ ] Domain-specific evaluation — expert-driven metrics beyond generic LLM evals
-- [ ] Vertical SaaS agent patterns — embedding agents into industry-specific products
+### 5.2 Conversational Product Engineering
+- [ ] Chatbot development: multi-turn state, history management, interrupts
+- [ ] Streaming UX: token streaming, stop/cancel, optimistic UI, error states
+- [ ] Conversation persistence and resumability
+- [ ] Guardrails: input/output validation, PII handling, refusal behavior
 
----
+### 5.3 Domain Scoping (optional depth)
+- [ ] Vertical agents: curated tool sets and domain terminology
+- [ ] Domain knowledge injection via RAG or system prompts
+- [ ] Compliance boundaries and domain-specific evaluation
 
-## 🟡 PHASE 6: Applied LLM Engineering — MEDIUM PRIORITY
-*Advanced patterns for production systems.*
-
-- [ ] Model distillation (large → small model knowledge transfer)
-- [ ] MCP (Model Context Protocol) Server/Client architecture:
-  - [ ] Server: queuing, scheduling, inference management
-  - [ ] Client: structured requests, retries, output handling
-- [ ] Vibe Coding (LLM-powered development workflows)
-- [ ] Async processing (asyncio, concurrent.futures)
-- [ ] Resiliency: error handling, retries, exponential backoff, schema validation
-- [ ] Context engineering (prompt chaining, dynamic context injection)
-- [ ] Progressive disclosure (revealing complexity gradually to LLMs)
-- [ ] Agent skills development (composable capabilities: `grill-me`, `tdd`, `handoff`, `review`, `to-prd`, `to-issues`)
+🎯 **Milestone → Portfolio Project 3:** `The Autonomous Database Agent` — NL → safe tool calls → SQL/database → plain-English answer, with a human-review step for destructive actions.
 
 ---
 
-## 🟡 PHASE 7: Infrastructure & Deployment — MEDIUM PRIORITY
-*You already have DevOps skills — adapt them for AI workloads.*
+## 🔴 PHASE 6: MCP & Applied LLM Engineering — HIGH PRIORITY
+*Production patterns that turn a prototype into a reliable system.*
 
-- [ ] Containerization with Docker (GPU passthrough, multi-stage builds)
-- [ ] Serving APIs via FastAPI / Flask
-- [ ] Inference at scale (batching, request queuing, load balancing)
-- [ ] GPU resource management (VRAM allocation, concurrent inference)
-- [ ] Monitoring & logging: LangFuse, OpenTelemetry
-- [ ] Model serving with vLLM (PagedAttention, continuous batching)
-- [ ] CI/CD for ML pipelines (model versioning, A/B testing)
-- [ ] Ethics, compliance & security in AI systems (bias, hallucination guards, PII redaction)
+- [ ] MCP (Model Context Protocol): server/client architecture, tools, resources, prompts
+- [ ] Building an MCP server that exposes your app's capabilities
+- [ ] Building an MCP client with structured requests, retries, and timeouts
+- [ ] Structured outputs & schema validation (Pydantic), with repair/retry loops
+- [ ] Resiliency: error handling, exponential backoff, idempotency, rate limits
+- [ ] Async processing (asyncio, concurrency, background jobs)
+- [ ] Context engineering: prompt chaining, dynamic injection, progressive disclosure
+- [ ] Prompt-injection defense and tool sandboxing
+- [ ] Cost control: token budgeting, caching, model routing/fallbacks
+- [ ] Composable agent skills (`grill-me`, `tdd`, `review`, `to-spec`, etc.)
 
----
-
-## 🟢 PHASE 8: Model Reasoning — ADVANCED
-*Specialized knowledge — understand LLM reasoning capabilities and limitations.*
-
-- [ ] Reasoning vs. pattern completion in LLMs
-- [ ] Inductive, deductive & abductive reasoning modes
-- [ ] Multi-hop reasoning & intermediate steps
-- [ ] Tool use to extend reasoning (calculators, retrievers, code executors)
-- [ ] Evaluation methods for reasoning quality:
-  - [ ] TruthfulQA
-  - [ ] BIG-Bench Hard (BBH)
-  - [ ] GSM8K (grade school math)
+🎯 **Milestone:** Add MCP, schema validation, retries, and guardrails to Portfolio Project 3.
 
 ---
 
-## 🟢 PHASE 9: Advanced ML — NICE-TO-HAVE
-*Optional depth — industry-adjacent but not required daily.*
+## 🔴 PHASE 7: Full-Stack AI Features (Front-to-Back) — HIGH PRIORITY
+*The part the generic AI roadmap misses — and your biggest advantage as a full-stack dev.*
 
-- [ ] Deep Learning deep dive (CNNs, RNNs, LSTMs, GANs)
-- [ ] Reinforcement Learning (Q-learning, policy gradients, PPO)
-- [ ] Advanced XGBoost: hyperparameter optimization, feature importance
-- [ ] Optuna for automated hyperparameter search
+- [ ] Streaming chat UI end-to-end (SSE or AI SDK; React/Next.js integration)
+- [ ] Server routes / API design for AI endpoints (timeouts, cancellation, retries)
+- [ ] Auth & multi-tenancy for AI features (per-user/per-org isolation of data and vectors)
+- [ ] Usage metering, quotas, and per-user cost attribution
+- [ ] Caching layers: exact-match, semantic cache, prompt caching
+- [ ] Persistence: conversations, messages, feedback, embeddings, job state
+- [ ] File ingestion UX: upload → parse → index → status, with progress + failures
+- [ ] Security: prompt injection, output handling/XSS, PII redaction, secret management
+- [ ] Background/async workloads and long-running job orchestration
+- [ ] Accessibility & failure UX for probabilistic outputs (retry, edit, regenerate)
+
+**Recommended stack anchor:** Vercel AI SDK for the front-to-back streaming path, plus your existing backend/framework for persistence and business logic.
+
+🎯 **Milestone → Portfolio Project 4:** `Full-Stack AI Product` — a real app with auth, tenancy, streaming UI, RAG, one agentic workflow, usage limits, and eval dashboards.
 
 ---
 
-## 📚 Free Resource Hub
+## 🔴 PHASE 8: Evaluation & Observability — HIGH PRIORITY
+*The single most differentiating AI engineering skill. Treat it as a deliverable, not an afterthought.*
+
+- [ ] Build a golden dataset: representative inputs + expected properties
+- [ ] Deterministic checks vs. LLM-as-judge; when each is appropriate
+- [ ] Retrieval evals (precision@k, recall@k, MRR) and answer evals (groundedness, relevance, safety)
+- [ ] Regression testing prompts and models across versions
+- [ ] Online evaluation: user feedback, thumbs, correction capture
+- [ ] Tracing & observability: LangFuse / OpenTelemetry / provider dashboards
+- [ ] Quality/latency/cost dashboards; alerting on failure modes
+- [ ] A/B testing model or prompt changes safely
+
+🎯 **Milestone:** Add an eval harness + tracing + a quality/latency/cost dashboard to Portfolio Project 4, with a documented baseline.
+
+---
+
+## 🟡 PHASE 9: Deployment & LLMOps — MEDIUM PRIORITY
+*You already know DevOps — adapt it for AI workloads. API-first; self-hosting is optional.*
+
+- [ ] Containerize the AI service (multi-stage builds)
+- [ ] Serving APIs via FastAPI (or your existing backend framework)
+- [ ] CI/CD including prompt/config versioning and eval gates
+- [ ] Secrets, environment separation, and provider key management
+- [ ] Rate limiting, request queuing, retries, and graceful degradation
+- [ ] Model/config versioning and rollback
+- [ ] Ethics, compliance & responsible AI (bias, hallucination guards, PII, retention)
+
+**Optional, only if self-hosting:** vLLM, batching, GPU/VRAM management, Cerebras/other inference providers. Most product roles call hosted APIs instead.
+
+🎯 **Milestone:** Deploy Portfolio Project 4 with CI eval gates, tracing, and a rollback plan.
+
+---
+
+## 🟢 DEFERRED / OPTIONAL: The ML-Engineer Track
+*Everything below is intentionally out of scope for your target role. Revisit only if you pivot toward model training.*
+
+- [ ] Classical ML: linear/logistic regression, decision trees, random forests, XGBoost
+- [ ] Deep learning: neural networks, backpropagation, CNNs, RNNs, LSTMs, GANs
+- [ ] Reinforcement learning and RLHF/GRPO
+- [ ] Pretraining, full fine-tuning, LoRA/QLoRA
+- [ ] Classical NLP: Word2Vec, GloVe, FastText, spaCy NER pipelines
+- [ ] GPU internals, CUDA setup, local quantization (Llama.cpp/GGUF)
+- [ ] Research reasoning benchmarks (TruthfulQA, BBH, GSM8K)
+
+---
+
+## 📚 Resource Hub
 
 | Resource / Platform | Topics Covered | Where to Find It |
 | :--- | :--- | :--- |
-| **DeepLearning.AI** *(Short Courses)* | LangChain, RAG, prompt engineering, vector databases, agents | [deeplearning.ai/short-courses](https://deeplearning.ai) |
-| **Andrej Karpathy** *(YouTube)* | LLM fundamentals, neural networks zero-to-hero | [YouTube @AndrejKarpathy](https://youtube.com) |
-| **OpenAI Cookbook** *(Official)* | Embeddings, structured outputs, token optimization | [cookbook.openai.com](https://cookbook.openai.com) |
-| **Vercel AI SDK Docs** *(Official)* | Streaming, multi-agent UI, conversational state | [sdk.vercel.ai/docs](https://sdk.vercel.ai) |
-| **HuggingFace Course** *(Free)* | Transformer models, NLP pipelines, fine-tuning | [huggingface.co/learn](https://huggingface.co/learn) |
-| **Fast.ai Practical Deep Learning** *(Free)* | Deep learning fundamentals, practical code-first approach | [course.fast.ai](https://course.fast.ai) |
+| **DeepLearning.AI** *(Short Courses)* | LangChain, RAG, prompt engineering, agents, evals | [deeplearning.ai/short-courses](https://deeplearning.ai) |
+| **Vercel AI SDK Docs** *(Official)* | Streaming, chat UI, tool calls, front-to-back AI features | [sdk.vercel.ai/docs](https://sdk.vercel.ai/docs) |
+| **OpenAI Cookbook** *(Official)* | Embeddings, structured outputs, token optimization, evals | [cookbook.openai.com](https://cookbook.openai.com) |
+| **Anthropic Docs** *(Official)* | Tool use, MCP, context engineering, prompt guidance | [docs.anthropic.com](https://docs.anthropic.com) |
 | **LangChain Docs** *(Official)* | Chains, agents, RAG, tools | [python.langchain.com](https://python.langchain.com) |
 | **LangGraph Docs** *(Official)* | Agent orchestration, state graphs, multi-agent | [langchain-ai.github.io/langgraph](https://langchain-ai.github.io/langgraph) |
-| **LiteLLM Docs** *(Official)* | 100+ LLM providers, unified API | [docs.litellm.ai](https://docs.litellm.ai) |
-| **FAISS Docs** *(Meta)* | Vector search library, GPU-accelerated similarity search | [github.com/facebookresearch/faiss](https://github.com/facebookresearch/faiss) |
+| **LiteLLM Docs** *(Official)* | 100+ LLM providers, unified API, fallbacks | [docs.litellm.ai](https://docs.litellm.ai) |
 | **ChromaDB Docs** *(Official)* | Vector database for RAG, local-first | [docs.trychroma.com](https://docs.trychroma.com) |
-| **vLLM Docs** *(Official)* | High-throughput LLM serving | [docs.vllm.ai](https://docs.vllm.ai) |
-| **LangFuse** *(Open Source)* | LLM observability, monitoring, tracing | [langfuse.com/docs](https://langfuse.com) |
+| **Qdrant Docs** *(Official)* | Vector search, filtering, hybrid retrieval | [qdrant.tech/documentation](https://qdrant.tech/documentation) |
+| **LangFuse** *(Open Source)* | LLM observability, tracing, evals, cost | [langfuse.com/docs](https://langfuse.com/docs) |
 | **CrewAI Docs** *(Official)* | Multi-agent orchestration | [docs.crewai.com](https://docs.crewai.com) |
-| **Llama.cpp** *(GitHub)* | Local LLM inference, quantization | [github.com/ggerganov/llama.cpp](https://github.com/ggerganov/llama.cpp) |
+| **HuggingFace Course** *(Free)* | Transformer concepts, embeddings, model landscape | [huggingface.co/learn](https://huggingface.co/learn) |
+| **Andrej Karpathy** *(YouTube)* | Deep intuition for how LLMs work (watch selectively) | [YouTube @AndrejKarpathy](https://youtube.com) |
+| **FAISS Docs** *(Meta)* | Local similarity search | [github.com/facebookresearch/faiss](https://github.com/facebookresearch/faiss) |
+| **vLLM Docs** *(Official)* | Self-hosted inference (optional) | [docs.vllm.ai](https://docs.vllm.ai) |
 
 ---
 
 ## 🛠️ Portfolio Projects (The Build Syllabus)
 
+Build these in order. Each one is a production-shaped artifact, not a tutorial.
+
 ### Project 1: Strict Schema Data Extractor — 🔴 HIGH
-- **The Goal**: Send messy text (raw medical logs or customer receipts) to an LLM and force it to yield a perfectly clean JSON output validated by a TypeScript schema.
-- **Skills Learned**: Structured output constraints, schema validation, exception routing.
+- **Goal:** Send messy text (receipts, logs, emails) to an LLM and force clean, validated JSON against a schema.
+- **Stack:** Python/Pydantic (or TypeScript/Zod), provider API, retries.
+- **Skills:** Structured outputs, schema validation, repair loops, failure routing.
+- **Eval:** Field-level accuracy on a hand-labeled set.
 
 ### Project 2: Multi-Document RAG Application — 🔴 HIGH
-- **The Goal**: Build a local backend using Ollama (running Llama 3 or Mistral), split an uploaded PDF manual into 500-token chunks, vector-index them in ChromaDB, and chat with the documentation.
-- **Skills Learned**: Text chunking strategy, vector databases, prompt context injection.
+- **Goal:** Ingest PDFs/docs, chunk and embed them, retrieve + rerank, and chat with citations.
+- **Stack:** Vector DB (Chroma/Qdrant/pgvector), embedding model, LLM API, simple UI.
+- **Skills:** Parsing, chunking, indexing, hybrid retrieval, reranking, grounding.
+- **Eval:** Retrieval precision/recall@k + answer groundedness. **This eval is part of the deliverable.**
 
-### Project 3: The Autonomous Database Agent — 🔴 HIGH
-- **The Goal**: Connect an LLM chat input safely to an SQL or NoSQL database. Allow the LLM to inspect user intent, pick custom tool functions you built, run queries safely, and return plain-English results.
-- **Skills Learned**: Function calling, sandboxed tool orchestration, stochastic safety design.
+### Project 3: The Autonomous Database/Tool Agent — 🔴 HIGH
+- **Goal:** NL input → safe tool calls → database/API → plain-English answer, with human approval for risky actions.
+- **Stack:** Tool calling, LangGraph or plain loop, sandboxed tools.
+- **Skills:** Function calling, bounded autonomy, tool validation, human-in-the-loop.
+- **Eval:** Task success rate + unsafe-action rate (should be zero).
 
-### Project 4: Production AI-Powered MCP Application — 🟡 MEDIUM
-*A 3-phase rolling project mirroring real-world production development.*
+### Project 4: Full-Stack AI Product (Capstone) — 🔴 HIGH
+*A rolling, 3-phase project that mirrors real product development.*
 
-**Phase 1 — Foundation Build: AI-Powered Microservice**
-- [ ] Set up development environment & manage dependencies
-- [ ] Write clean, modular Python code with proper error handling
-- [ ] Integrate an LLM with basic prompting capabilities
-- [ ] Handle input/output & prepare for automation
-- [ ] Apply ML concepts & prompt engineering in a functional prototype
+**Phase 1 — Foundation**
+- [ ] Auth + multi-tenancy (users/orgs, data isolation)
+- [ ] Core domain model + database
+- [ ] LLM integration with structured outputs
+- [ ] Streaming server endpoint + basic chat UI
 
-**Phase 2 — Workflow Integration: Modular Automation & Orchestration**
-- [ ] Wrap the microservice in an MCP client-server structure (queuing, retries, structured requests)
-- [ ] Build a real-world agentic ReAct loop with reasoning & tool use
-- [ ] Containerize the system with Docker for repeatable deployment
-- [ ] Add logging, modular components, and performance handling
+**Phase 2 — Intelligence & Workflow**
+- [ ] RAG over the product's own data, with citations
+- [ ] One agentic workflow with tools and human-in-the-loop
+- [ ] MCP server exposing app capabilities (and/or an MCP client)
+- [ ] Guardrails, PII handling, prompt-injection defenses
+- [ ] Usage metering, quotas, caching, cost controls
+- [ ] Dockerize the stack
 
-**Phase 3 — Production Deployment: Prototype to Live System**
-- [ ] Implement CI/CD pipelines for continuous updates & deployment
-- [ ] Optimize for real-time or batch inference & resource efficiency
-- [ ] Integrate monitoring & observability (LangFuse, OpenTelemetry)
-- [ ] Address compliance, failover planning & responsible AI use
+**Phase 3 — Production**
+- [ ] Evaluation harness with golden dataset + regression gates
+- [ ] Tracing, observability, quality/latency/cost dashboard
+- [ ] CI/CD with eval gates and config/prompt versioning
+- [ ] Failure UX, rate limiting, rollback plan, compliance notes
 
 ---
 
 # 🗺️ DeepLearning.AI — Sequenced Learning Timeline
 
-> A course-by-course route through the DeepLearning.AI catalog that covers every 🔴 HIGH-priority phase (1–4) and most 🟡/🟢 phases, using the smallest sensible set of courses. Built for a working Full-Stack developer.
+> A reduced, application-focused route through the DeepLearning.AI catalog. It covers the HIGH-priority phases (0–8) with the smallest sensible set of courses, and drops the ML-training specialization entirely. Built for a working full-stack developer.
 
 ## How to read this plan
 
@@ -261,225 +330,195 @@ This document maps every topic needed for the transition, prioritized by industr
 - 🎯 Every stage ends in a **milestone output** — a project or artifact, never just "completed a course."
 - 🧩 The roadmap's own **Portfolio Projects** are slotted at the end of the relevant stages.
 
-**The only 💳 anchors on the core path:** `Machine Learning Specialization`, `Retrieval Augmented Generation (RAG)`, `Agentic AI`, and `Generative AI for Software Development`. Everything else on the critical path is a free short course.
+**The only 💳 anchors on the core path:** `Retrieval Augmented Generation (RAG)` and `Agentic AI`. Everything else on the critical path is free. The old `Machine Learning Specialization` anchor is **dropped** — it served the model-training path, not yours.
 
 ---
 
-## 🟢 Stage 0 — Orientation (Week 1 · ~7 h)
+## 🟢 Stage 0 — Orientation & ML Literacy (Week 1 · ~4 h)
 
-Get the mental model before any code. Pick one (or both if new to GenAI).
+The mental model before any code. Do this instead of a full ML course.
 
-- [x] 💳 `AI for Everyone` — 6h54m — what AI can/can't do, societal impact.
-- [ ] 💳 `Generative AI for Everyone` — 5h1m — GenAI capabilities, limits, business framing. *(often free to audit)*
+- [x] 💳 `AI for Everyone` — 6h54m — what AI can/can't do, societal impact. *(already done)*
+- [ ] ✅ `Generative AI for Everyone` — 5h1m — GenAI capabilities, limits, business framing. *(often free to audit; skim)*
+- [ ] Read/watch: evaluation metrics in retrieval (precision/recall@k, MRR), embeddings intuition, sampling parameters. Use the OpenAI Cookbook + provider docs.
 
-🎯 **Milestone:** Write a one-page note defining "AI Engineer" vs "ML Engineer" vs "Data Scientist" in your own words.
+🎯 **Milestone:** The "prompt vs. RAG vs. fine-tune vs. train" decision guide from Phase 0.
 
----
-
-## 🟢 Stage 1 — Python & AI Fluency (Weeks 1–2 · ~12 h · fast-track)
-
-You already program, so treat this as an AI-idiom speedrun, not a from-zero course.
-
-- [ ] 💳 `AI Python for Beginners` — 11h30m — Python with AI assistance; writing, testing, debugging; first AI apps.
-
-🎯 **Milestone:** Rebuild one small existing script of yours using the AI-assisted workflow from the course.
-
-> Skip entirely if you're already fluent in Python (you'll pick up the AI-specific idioms in Stage 5).
+> **Skip:** `Machine Learning Specialization` (95 h), `Mathematics for ML` (94 h). Not on this path.
 
 ---
 
-## 🔴 Stage 2 — Machine Learning Foundations (Weeks 3–10 · ~95 h) — PHASE 1.3
+## 🟢 Stage 1 — Python & AI Fluency (Weeks 1–2 · fast-track)
 
-The theory spine. This single specialization covers almost all of Phase 1.3.
+You already program. Treat this as an AI-idiom speedrun, not a from-zero course.
 
-- [ ] 💳 `Machine Learning Specialization` (DeepLearning.AI + Stanford Online) — 94h58m
-  - Supervised vs. unsupervised, linear & logistic regression
-  - Decision trees, random forests, XGBoost / ensemble methods
-  - Regularization, evaluation metrics (precision/recall/F1/AUC), cross-validation
-  - A taste of neural networks and the deep-learning path forward
+- [ ] 💳 `AI Python for Beginners` — 11h30m — *only if* your Python is weak. Otherwise skip and pick up idioms on the fly.
 
-**Optional depth (Phase 1 math / Phase 9):**
-- [ ] 💳 `Mathematics for Machine Learning and Data Science` — 94h29m — calculus, linear algebra, statistics, probability. *(only if the math feels shaky; otherwise learn just-in-time)*
-
-🎯 **Milestone → Roadmap Portfolio Project 1 (part 1):** Train and evaluate a classifier on a real dataset, report metrics, and explain the bias/variance trade-off.
-📌 *Covers roadmap Phase 1.3 and the "ML concepts" line of Portfolio Project 4 – Phase 1.*
+🎯 **Milestone:** Rebuild one small existing script as a typed, tested Python service.
 
 ---
 
-## 🔴 Stage 3 — LLM Theory: Transformers (Weeks 11–12 · ~14 h) — PHASE 2
+## 🔴 Stage 2 — LLM Literacy: How Models Behave (Week 2 · ~4 h) — PHASE 2
 
-The phase both Codecademy and DataCamp under-serve. Do these even if you skip the Deep Learning Specialization.
+Concepts, not training. Prefer docs and short videos over long courses.
 
-- [ ] ✅ `Attention in Transformers: Concepts and Code in PyTorch` (StatQuest) — 1h16m — self-attention implemented by hand.
-- [ ] 💳 `Transformers in Practice` (AMD) — 11h1m — how transformers behave, how to debug and deploy them.
-- [ ] ✅ `Build and Train an LLM with JAX` (Google) — 49m — **pretraining from scratch** (next-token prediction) on a tiny model.
-- [ ] ✅ `Finetuning Large Language Models` (Lamini) — ~1h — full fine-tune vs. PEFT/LoRA.
-- [ ] 💳 *(optional anchor)* `Generative AI with Large Language Models` (AWS) — 13h18m — the full GenAI lifecycle: transformer architecture → training/tuning → inference, plus AWS/Bedrock context.
+- [ ] ✅ `Attention in Transformers: Concepts and Code in PyTorch` (StatQuest) — 1h16m — watch for intuition; you won't implement it in production.
+- [ ] ✅ `Finetuning Large Language Models` (Lamini) — ~1h — understand full fine-tune vs. PEFT/LoRA **as a decision**, not a skill.
+- [ ] 💳 *(optional)* `Generative AI with Large Language Models` (AWS) — 13h18m — only if you want the lifecycle narrative and Bedrock context.
 
-**Optional deep-dive (Phase 9 backfill):**
-- [ ] 💳 `Deep Learning Specialization` — 127h29m — do **Course 1 (NN & DL), Course 2 (improving models), Course 5 (Sequence Models → RNN/LSTM/attention/transformers)**. Skip 3–4 unless CNNs matter to you.
+**Drop from the old plan:** `Transformers in Practice` (11 h), `Build and Train an LLM with JAX`, `Deep Learning Specialization`. These serve the ML path.
 
-🎯 **Milestone:** Whiteboard the transformer forward pass from memory and explain encoder-only vs. decoder-only vs. encoder-decoder.
-📌 *Covers roadmap Phase 2 and Phase 9 (CNN/RNN/LSTM), plus the model-family breadth via the Meta/Llama and AWS courses.*
+🎯 **Milestone:** Whiteboard prompt → tokens → output, including where latency and cost come from.
 
 ---
 
-## 🔴 Stage 4 — Prompting, Integration & AI Coding (Weeks 12–14 · ~20 h) — PHASE 3
-
-Overlaps Stage 3 in week 12 — fine, they reinforce each other.
+## 🔴 Stage 3 — Prompting, Integration & AI Coding (Weeks 3–4 · ~15 h) — PHASE 3
 
 **3.1 Prompt engineering**
 - [ ] 💳 `AI Prompting for Everyone` (Andrew Ng) — 7h4m — from finding info to building apps.
 - [ ] ✅ `ChatGPT Prompt Engineering for Developers` (OpenAI) — ~1h — zero/few-shot, CoT, instruction refinement.
-- [ ] ✅ `Reasoning with o1` (OpenAI) — 1h44m — prompting reasoning models, sampling/temperature intuition.
+- [ ] ✅ `Reasoning with o1` (OpenAI) — 1h44m — prompting reasoning models, sampling intuition.
 
 **3.2 LLM integration**
 - [ ] ✅ `Building Systems with the ChatGPT API` (OpenAI) — ~1h — chat completions, structured outputs, moderation.
 - [ ] ✅ `LangChain for LLM Application Development` (LangChain) — ~1h30m — chains, memory, agents.
 - [ ] ✅ `Functions, Tools and Agents with LangChain` (LangChain) — ~1h — tool/function calling.
-- [ ] ✅ `LangChain: Chat with Your Data` (LangChain) — ~1h — RAG with LangChain (preview of Stage 5).
-- [ ] ✅ `Serverless LLM Apps with Amazon Bedrock` (AWS) — ~1h — **fills the Bedrock gap** (auth, multi-model, cost/latency).
+- [ ] ✅ `LangChain: Chat with Your Data` (LangChain) — ~1h — RAG with LangChain (preview of Stage 4).
+- [ ] ✅ `Serverless LLM Apps with Amazon Bedrock` (AWS) — ~1h — cloud provider auth, multi-model, cost/latency.
 
-**3.3 Claude Code & engineering workflows (Phase 3.3 / Phase 6 vibe coding)**
+**3.3 AI-assisted engineering workflows**
 - [ ] ✅ `Claude Code: A Highly Agentic Coding Assistant` (Anthropic) — 2h
-- [ ] ✅ `Spec-Driven Development with Coding Agents` (JetBrains) — 1h16m — replaces vibe coding with specs + context.
-- [ ] ✅ `AI Coding Workflows: From Cloud to Local` (JetBrains) — 1h32m — switch agents/providers, cloud → local, cost/speed trade-offs.
-- [ ] ✅ `AI Code Review` (Qodo) — 1h4m — review agents and context.
+- [ ] ✅ `Spec-Driven Development with Coding Agents` (JetBrains) — 1h16m
+- [ ] ✅ `AI Coding Workflows: From Cloud to Local` (JetBrains) — 1h32m
+- [ ] ✅ `AI Code Review` (Qodo) — 1h4m
 
-**Optional:** 💳 `Generative AI for Software Development` — 31h32m — a full certificate in AI pair-programming and prompt engineering. Take only if you want structured depth here.
-
-🎯 **Milestone → Roadmap Portfolio Project 1:** `Strict Schema Data Extractor` — messy text → validated JSON, using structured outputs + Pydantic (see Stage 7).
-📌 *Covers roadmap Phase 3.1, 3.2 (minus LiteLLM/Open WebUI/Llama.cpp), and 3.3.*
+🎯 **Milestone → Portfolio Project 1:** `Strict Schema Data Extractor`.
 
 ---
 
-## 🔴 Stage 5 — Embeddings, Vector Search & RAG (Weeks 15–18 · ~40 h) — PHASE 4
+## 🔴 Stage 4 — Embeddings, Vector Search & RAG (Weeks 5–8 · ~35 h) — PHASE 4
 
 - [ ] 💳 `Retrieval Augmented Generation (RAG)` (DeepLearning.AI) — 26h3m — **the anchor**: architecture → chunking → retrieval → deployment → evaluation.
-- [ ] ✅ `Advanced Retrieval for AI with Chroma` (Chroma) — 1h2m — re-ranking, query improvement, spotting bad retrievals.
-- [ ] ✅ `Building and Evaluating Advanced RAG` (LlamaIndex / TruEra) — ~1h30m — advanced retrieval + eval metrics.
-- [ ] ✅ `Preprocessing Unstructured Data for LLM Applications` (Unstructured) — 1h22m — PDF/PPTX/HTML extraction (chunking inputs).
-- [ ] ✅ `Building AI Assistants with On-Device Memory` (Qdrant) — 1h4m — vector memory across text/voice/images.
-- [ ] ✅ `Multi-vector Image Retrieval` (Qdrant) — 1h43m — multimodal retrieval.
-- [ ] ✅ `Event-Driven Agentic Document Workflows` (LlamaIndex) — 1h19m — RAG + human-in-the-loop.
+- [ ] ✅ `Advanced Retrieval for AI with Chroma` (Chroma) — 1h2m — reranking, query improvement, spotting bad retrieval.
+- [ ] ✅ `Building and Evaluating Advanced RAG` (LlamaIndex / TruEra) — ~1h30m — retrieval + eval metrics.
+- [ ] ✅ `Preprocessing Unstructured Data for LLM Applications` (Unstructured) — 1h22m — PDF/PPTX/HTML extraction.
+- [ ] ✅ `Building AI Assistants with On-Device Memory` (Qdrant) — 1h4m — vector memory.
+- [ ] ✅ `Multi-vector Image Retrieval` (Qdrant) — 1h43m — multimodal retrieval (optional).
 
-**Deployment of RAG apps (bridges to Stage 8):**
-- [ ] 💳 `Fast Prototyping of GenAI Apps with Streamlit` (Snowflake) — 9h21m — MVP → deploy with prompt engineering + RAG.
+**Shipping the RAG app (front-to-back bridge):**
+- [ ] 💳 `Fast Prototyping of GenAI Apps with Streamlit` (Snowflake) — 9h21m — or build the UI yourself with the Vercel AI SDK (preferred for your goal).
 
-🎯 **Milestone → Roadmap Portfolio Project 2:** `Multi-Document RAG Application` — Ollama + Llama 3 + ChromaDB, 500-token chunks, chat with a PDF manual.
-📌 *Covers roadmap Phase 4.1 and 4.2 (FAISS and distance-metric internals remain — see gap table).*
+🎯 **Milestone → Portfolio Project 2:** `Multi-Document RAG Application` with retrieval + answer evals.
 
 ---
 
-## 🟡 Stage 6 — Agents & Tool Use (Weeks 19–22 · ~30 h) — PHASE 5
+## 🔴 Stage 5 — Agents, Tool Use & Chat UX (Weeks 9–11 · ~20 h) — PHASE 5
 
-- [ ] 💳 `Agentic AI` (Andrew Ng) — 9h55m — **the anchor**: agent loops, reflection, tool use, planning, multi-step workflows.
-- [ ] ✅ `Multi AI Agent Systems with crewAI` (crewAI) — 3h1m — **fills the CrewAI gap** — multi-agent orchestration.
-- [ ] ✅ `Long-Term Agentic Memory With LangGraph` (LangChain) — 1h24m — memory + state graphs (LangGraph).
-- [ ] ✅ `Building Adaptive AI Agents` (Oracle) — 1h3m — agent traces → reusable skills; knowledge graphs.
-- [ ] ✅ `Building AI Browser Agents` (AGI Inc) — 1h5m — computer/browser-use agents.
-- [ ] ✅ `Agentic Knowledge Graph Construction` (Neo4j) — 3h8m — planning multi-agent systems.
-- [ ] ✅ `Knowledge Graphs for AI Agent API Discovery` (SAP) — 1h14m — domain tool/API curation.
-- [ ] ✅ `DSPy: Build and Optimize Agentic Apps` (Databricks) — 59m — programmatic agent optimization + MLflow.
+- [ ] 💳 `Agentic AI` (Andrew Ng) — 9h55m — **the anchor**: agent loops, reflection, tool use, planning.
+- [ ] ✅ `Multi AI Agent Systems with crewAI` (crewAI) — 3h1m — multi-agent orchestration.
+- [ ] ✅ `Long-Term Agentic Memory With LangGraph` (LangChain) — 1h24m — memory + state graphs.
+- [ ] ✅ `Building Adaptive AI Agents` (Oracle) — 1h3m — agent traces → reusable skills.
+- [ ] ✅ `DSPy: Build and Optimize Agentic Apps` (Databricks) — 59m — programmatic optimization.
 
-🎯 **Milestone → Roadmap Portfolio Project 3:** `The Autonomous Database Agent` — NL → safe tool calls → SQL → plain-English results.
-📌 *Covers roadmap Phase 5 (implementation patterns, ReAct loop, multi-agent). Domain-specific agent guardrails are covered in Stage 7 + gap table.*
+**Chat UX (fill from docs, not courses):**
+- [ ] Vercel AI SDK: streaming chat, tool calls, generative UI
+- [ ] Conversation state, cancellation, error/retry states
+
+**Optional:** `Building AI Browser Agents`, `Agentic Knowledge Graph Construction`, `Knowledge Graphs for AI Agent API Discovery` — only if your product needs them.
+
+🎯 **Milestone → Portfolio Project 3:** `The Autonomous Database/Tool Agent`.
 
 ---
 
-## 🟡 Stage 7 — Evaluation & Applied LLM Engineering (Weeks 23–24 · ~12 h) — PHASE 6
+## 🔴 Stage 6 — MCP & Applied LLM Engineering (Weeks 12–13 · ~10 h) — PHASE 6
 
-- [ ] ✅ `Evaluating AI Agents` (Arize AI) — 2h36m — structured assessments, iteration.
-- [ ] ✅ `Context Engineering` (DeepLearning.AI) — ~1–2h — designing/curating dynamic context windows, retrieval payloads, and prompt scaffolds for reliable agent behavior.
-- [ ] ✅ `Pydantic for LLM Workflows` (DeepLearning.AI) — 1h50m — **structured outputs, schema validation, retries** (roadmap Phase 6 resiliency).
-- [ ] ✅ `MCP: Build Rich-Context AI Apps with Anthropic` (Anthropic) — 1h58m — **fills the MCP gap** — server/client tools, data, prompts.
-- [ ] ✅ `Build AI Apps with MCP Server: Working with Box Files` (Box) — 36m — MCP + multi-agent A2A.
+- [ ] ✅ `MCP: Build Rich-Context AI Apps with Anthropic` (Anthropic) — 1h58m — **the MCP anchor**.
+- [ ] ✅ `Build AI Apps with MCP Server: Working with Box Files` (Box) — 36m — MCP + multi-agent.
+- [ ] ✅ `Pydantic for LLM Workflows` (DeepLearning.AI) — 1h50m — structured outputs, validation, retries.
+- [ ] ✅ `Context Engineering` (DeepLearning.AI) — ~1–2h — dynamic context windows and scaffolds.
 - [ ] ✅ `Safe and reliable AI via guardrails` (GuardrailsAI) — 1h42m — safety boundaries, PII, production guardrails.
 
-🎯 **Milestone:** Add guardrails + schema validation + an eval harness to Portfolio Project 3.
-📌 *Covers roadmap Phase 6 (MCP, resiliency, context engineering) and Phase 5.2 domain guardrails.*
+🎯 **Milestone:** Add MCP + validation + guardrails to Portfolio Project 3.
 
 ---
 
-## 🟡 Stage 8 — Deployment, Serving & LLMOps (Weeks 24–25 · ~14 h) — PHASE 7
+## 🔴 Stage 7 — Evaluation & Observability (Weeks 14–15 · ~10 h) — PHASE 8
 
-- [ ] ✅ `Fast & Efficient LLM Inference with vLLM` (Red Hat) — 1h38m — **fills the vLLM gap** — batching, benchmarking, serving.
-- [ ] ✅ `Efficiently Serving LLMs` — ~1h — inference at scale, throughput/latency trade-offs.
-- [ ] ✅ `Fast LLM Inference with Cerebras` (Cerebras) — 1h41m — real-time, latency-sensitive serving.
-- [ ] ✅ `Orchestrating Workflows for GenAI Applications` (Astronomer) — 1h48m — Airflow pipelines for GenAI.
-- [ ] 💳 *(optional)* `Data Engineering` (AWS) — 106h48m — only if you want the ingestion/serving pipeline background.
+- [ ] ✅ `Evaluating AI Agents` (Arize AI) — 2h36m — structured assessments, iteration.
+- [ ] LangFuse docs — tracing, datasets, evals, cost dashboards (hands-on).
+- [ ] Build your own eval harness for Projects 2–4 (golden set + regression gate).
 
-🎯 **Milestone → Roadmap Portfolio Project 4 (Phase 1–2):** containerize the microservice, add MCP client/server, async + retries.
-📌 *Covers roadmap Phase 7 (FastAPI, vLLM, batching, CI/CD basics). LangFuse/OpenTelemetry remain — see gap table.*
+🎯 **Milestone:** Eval harness + tracing + quality/latency/cost dashboard on Portfolio Project 4.
 
 ---
 
-## 🟢 Stage 9 — Fine-tuning, Reasoning & Advanced (Weeks 26+ · optional) — PHASES 8–9
+## 🟡 Stage 8 — Deployment & LLMOps (Weeks 15–16 · ~8 h) — PHASE 9
 
-- [ ] ✅ `Post-training of LLMs` (UW / NexusFlow) — 1h26m — SFT, DPO, online RL.
-- [ ] ✅ `Reinforcement Fine-Tuning LLMs With GRPO` (Predibase) — 1h53m — reward functions, reasoning improvement.
-- [ ] 💳 `Fine-tuning & RL for LLMs: Intro to Post-training` (AMD) — 13h19m — deeper fine-tuning/RL.
-- [ ] ✅ `Reasoning with o1` (OpenAI) — 1h44m *(repeat for depth)* — reasoning vs. pattern completion.
-- [ ] 💳 `Deep Learning Specialization` — finish remaining courses (CNNs, GANs-adjacent) for Phase 9.
+- [ ] ✅ `Orchestrating Workflows for GenAI Applications` (Astronomer) — 1h48m — background/async pipelines.
+- [ ] Vercel/your host: deploy the full-stack AI product with secrets and rate limiting.
+- [ ] CI/CD with prompt/config versioning + eval gates.
 
-🎯 **Milestone:** Fine-tune a small open model with LoRA and compare against a prompted baseline on the same eval.
+**Skip unless self-hosting:** `Fast & Efficient LLM Inference with vLLM`, `Efficiently Serving LLMs`, `Fast LLM Inference with Cerebras`. Hosted APIs are the product default.
 
----
-
-## 🟢 Stage 10 — Multimodal & Voice (interspersed) — PHASE 1.4
-
-- [ ] ✅ `Introducing Multimodal Llama 3.2` (Meta) — 1h39m
-- [ ] ✅ `Building with Llama 4` (Meta) — 1h20m
-- [ ] ✅ `AI Agents for Image and Video Generation` (Google) — 1h34m — generation + automatic output evaluation.
-- [ ] ✅ `Voice for AI Agents and Applications` (Vocal Bridge) — 1h26m — embedded/layered/tool voice.
-- [ ] ✅ `Document AI: From OCR to Agentic Doc Extraction` (LandingAI) — 3h11m — vision-grounded extraction.
-
-🎯 **Milestone → Roadmap Portfolio Project 1 (variant):** schema-extract structured fields from scanned receipts/images.
+🎯 **Milestone → Portfolio Project 4 complete and deployed.**
 
 ---
 
-## 📌 Roadmap Phase → DeepLearning.AI Coverage Map
+## 🟢 Stage 9 — Optional Depth (Weeks 17+)
+
+- [ ] ✅ `Post-training of LLMs` (UW / NexusFlow) — 1h26m — SFT, DPO, online RL (concepts only).
+- [ ] ✅ `Reasoning with o1` (OpenAI) — 1h44m *(repeat for depth)*.
+- [ ] ✅ `Introducing Multimodal Llama 3.2` (Meta) — 1h39m — only if your product is multimodal.
+- [ ] ✅ `Voice for AI Agents and Applications` (Vocal Bridge) — 1h26m — only if voice is in scope.
+- [ ] ✅ `Document AI: From OCR to Agentic Doc Extraction` (LandingAI) — 3h11m — useful for ingestion-heavy products.
+
+**Removed entirely from the old plan:** `Machine Learning Specialization`, `Mathematics for ML`, `Deep Learning Specialization`, `Fine-tuning & RL for LLMs`, `Reinforcement Fine-Tuning with GRPO`, `Transformers in Practice`, `Build and Train an LLM with JAX`.
+
+🎯 **Milestone:** Extend Portfolio Project 4 with whichever optional capability is relevant to your product.
+
+---
+
+## 📌 Roadmap Phase → Course Coverage Map
 
 | Roadmap Phase | Covered by | Coverage |
 | :--- | :--- | :--- |
-| **Phase 1.1** Python & envs | AI Python for Beginners | Partial (env/deps you already know) |
-| **Phase 1.2** NLP | *(no dedicated NLP course on DL.AI)* | ❌ → HuggingFace Course, spaCy docs |
-| **Phase 1.3** ML foundations | Machine Learning Specialization | ✅ Strong |
-| **Phase 1.4** GPU / Whisper / multimodal | Voice, Llama 3.2/4, Image-Video Agents | Partial (no CUDA/Whisper internals) |
-| **Phase 2** LLM theory | Attention in Transformers, Transformers in Practice, JAX, Fine-tuning, GenAI with LLMs, DLS C5 | ✅ Strong |
+| **Phase 0** Orientation & ML literacy | AI for Everyone, GenAI for Everyone, docs | ✅ Sufficient (deliberately shallow) |
+| **Phase 1** Python & AI fluency | AI Python for Beginners (optional) | ✅ |
+| **Phase 2** LLM literacy | Attention (StatQuest), Fine-tuning (Lamini) | ✅ Conceptual |
 | **Phase 3.1** Prompt engineering | AI Prompting, ChatGPT Prompt Eng, Reasoning with o1 | ✅ Strong |
-| **Phase 3.2** LLM integration | ChatGPT API, LangChain ×3, Bedrock | ✅ Strong (no LiteLLM/Open WebUI/Llama.cpp) |
-| **Phase 3.3** Claude Code | Claude Code, Spec-Driven Dev, AI Code Review | ✅ Strong |
-| **Phase 4.1** Embeddings & vector search | RAG course, On-Device Memory, Multi-vector | ✅ Strong (no FAISS-specific) |
-| **Phase 4.2** RAG architecture | RAG (26h), Advanced Retrieval, Advanced RAG, Unstructured, Streamlit | ✅ Strong |
-| **Phase 5** AI agents | Agentic AI, crewAI, LangGraph memory, Adaptive Agents, Browser Agents, DSPy | ✅ Strong |
-| **Phase 5.2** Domain-specific agents | Knowledge Graphs (SAP/Neo4j), Guardrails | Partial |
-| **Phase 6** Applied LLM engineering | Pydantic, MCP ×2, Guardrails, DSPy, Eval Agents | ✅ Strong |
-| **Phase 7** Infra & deployment | vLLM, Serving LLMs, Cerebras, Airflow, Streamlit | Partial (no LangFuse/OpenTelemetry) |
-| **Phase 8** Reasoning | Reasoning with o1, GRPO, Post-training | Partial (no TruthfulQA/BBH/GSM8K) |
-| **Phase 9** Advanced ML | Deep Learning Specialization, Fine-tuning & RL | ✅ Strong |
+| **Phase 3.2** LLM integration | ChatGPT API, LangChain ×3, Bedrock | ✅ Strong (add Vercel AI SDK for UI) |
+| **Phase 3.3** AI coding workflows | Claude Code, Spec-Driven Dev, AI Code Review | ✅ Strong |
+| **Phase 4.1** Embeddings & vector search | RAG course, On-Device Memory, Multi-vector | ✅ Strong |
+| **Phase 4.2** RAG architecture | RAG (26h), Advanced Retrieval, Advanced RAG, Unstructured | ✅ Strong |
+| **Phase 5** Agents & chat UX | Agentic AI, crewAI, LangGraph memory, DSPy + AI SDK docs | ✅ Strong |
+| **Phase 6** MCP & applied engineering | MCP ×2, Pydantic, Context Engineering, Guardrails | ✅ Strong |
+| **Phase 7** Full-stack AI features | *(no single course — build + AI SDK docs)* | ⚠️ Build-driven |
+| **Phase 8** Evaluation & observability | Evaluating AI Agents + LangFuse docs | ✅ Strong (hands-on required) |
+| **Phase 9** Deployment & LLMOps | Airflow, deploy hands-on | ✅ Sufficient |
+| **Deferred ML track** | Machine Learning Specialization, DLS, RL, fine-tuning | ⏸️ Intentionally skipped |
 
-## ⚠️ Gaps DL.AI Does Not Fill (and where to get them)
+## ⚠️ Gaps Courses Don't Fill (and where to get them)
 
 | Missing topic | Roadmap item | Where to get it |
 | :--- | :--- | :--- |
-| CUDA / NVIDIA driver / GPU internals | Phase 1.4 | NVIDIA CUDA docs, `fast.ai` Part 2 |
-| Whisper (speech-to-text) | Phase 1.4 | OpenAI Whisper repo, HF Audio course |
-| Dedicated NLP preprocessing / Word2Vec / GloVe / FastText / spaCy NER | Phase 1.2 | HuggingFace NLP Course, spaCy docs |
-| FAISS + distance metrics internals | Phase 4.1 | FAISS docs (Meta) |
-| LiteLLM (model-agnostic abstraction) | Phase 3.2 | LiteLLM docs |
-| Open WebUI setup | Phase 3.2 | Open WebUI docs |
-| Llama.cpp / local GGUF quantization | Phase 3.2 | llama.cpp GitHub |
-| LangFuse + OpenTelemetry observability | Phase 7 | LangFuse docs, OpenTelemetry docs |
-| Formal reasoning benchmarks (TruthfulQA, BBH, GSM8K) | Phase 8 | Original papers / EleutherAI lm-eval-harness |
-| Domain-specific vertical SaaS agent patterns | Phase 5.2 | Build your own; no course exists |
+| Streaming chat UI / front-to-back AI UX | Phase 7 | Vercel AI SDK docs, build it |
+| Auth, multi-tenancy & per-user cost isolation | Phase 7 | Your existing full-stack patterns |
+| Prompt-injection defense & tool sandboxing | Phase 6–7 | OWASP LLM Top 10, provider security docs |
+| Retrieval metrics (precision@k, MRR, nDCG) | Phase 0/4 | Search/IR references, build the eval |
+| LangFuse + OpenTelemetry tracing | Phase 8 | LangFuse docs, OpenTelemetry docs |
+| LiteLLM / model routing & fallbacks | Phase 3 | LiteLLM docs |
+| pgvector / production vector DB ops | Phase 4 | Postgres + pgvector docs, Qdrant docs |
+| Domain-specific vertical agent patterns | Phase 5.3 | Build your own; no course exists |
+| Self-hosting / vLLM / quantization *(optional)* | Deferred | vLLM docs, llama.cpp docs |
 
-## 🧭 Suggested cadence
+## 🧭 Suggested Cadence
 
-1. **Weeks 1–10** — Stages 0–2 (orientation, Python, ML). No Pro needed until ML Specialization.
-2. **Weeks 11–14** — Stages 3–4 (transformers + prompting + Claude Code). Mostly free.
-3. **Weeks 15–22** — Stages 5–6 (RAG + agents). This is the highest-value stretch — build both portfolio projects.
-4. **Weeks 23–25** — Stages 7–8 (eval, MCP, deployment). Assemble Portfolio Project 4.
-5. **Week 26+** — Stage 9–10 (fine-tuning, reasoning, multimodal) as ongoing depth.
+1. **Weeks 1–2** — Stages 0–2 (orientation, ML literacy, LLM literacy). Cheap and fast; no ML specialization.
+2. **Weeks 3–4** — Stage 3 (prompting + integration + AI coding). Mostly free; ship Project 1.
+3. **Weeks 5–8** — Stage 4 (RAG). The anchor course; ship Project 2 **with evals**.
+4. **Weeks 9–11** — Stage 5 (agents + chat UX). Ship Project 3.
+5. **Weeks 12–15** — Stages 6–7 (MCP, applied engineering, eval/observability).
+6. **Weeks 15–16** — Stage 8 (deployment). Finish and deploy Project 4.
+7. **Week 17+** — Stage 9 optional depth, driven by your product.
 
-**Subscription strategy:** stay free through Stages 0, 1, 3 (short courses). Buy **Pro for 2–3 consecutive months** to knock out `Machine Learning Specialization` (Stage 2) + `RAG` (Stage 5) + `Agentic AI` (Stage 6), then cancel. Re-subscribe briefly for `Fast Prototyping`/`Generative AI for SW Dev` if needed. Most of this roadmap costs **$0** in short courses.
+**Subscription strategy:** stay free through Stages 0–1 and most of Stage 3. Buy **Pro for ~2 months** to cover `RAG` (Stage 4) + `Agentic AI` (Stage 5), then cancel. Everything else is free short courses plus docs and building. Expected total cost is far lower than the old plan — and you skip ~200 hours of ML theory you would never use.

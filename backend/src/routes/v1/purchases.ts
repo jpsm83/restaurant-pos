@@ -24,6 +24,12 @@ import type { IEmployee } from "restaurant-pos-packages/interfaces/IEmployee";
 
 import validateInventoryPurchaseItems from "../../purchases/validateInventoryPurchaseItems.ts";
 import oneTimePurchaseSupplier from "../../suppliers/oneTimePurchaseSupplier.ts";
+import { appendAuditEntry } from "../../audit/appendAuditEntry.ts";
+import {
+  AUDIT_ACT_KINDS,
+  AUDIT_ACTOR_KINDS,
+  AUDIT_TARGET_KINDS,
+} from "../../audit/auditCatalogue.ts";
 import Purchase from "../../models/purchase.ts";
 import Inventory from "../../models/inventory.ts";
 import Supplier from "../../models/supplier.ts";
@@ -722,12 +728,25 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
         throw forbidden("Purchase does not belong to your business!");
       }
 
-      await runTxnWithTransientRetry(async (session) => {
-        const previousQuantity =
-          purchaseItem?.purchaseInventoryItems?.[0].quantityPurchased ?? 0;
-        const previousPrice =
-          purchaseItem?.purchaseInventoryItems?.[0].purchasePrice ?? 0;
+      const purchaseLine = purchaseItem.purchaseInventoryItems?.[0];
+      if (!purchaseLine) {
+        throw notFound("Purchase item not found!");
+      }
 
+      const previousQuantity = purchaseLine.quantityPurchased;
+      const previousPrice = purchaseLine.purchasePrice;
+      const supplierGoodId = purchaseLine.supplierGoodId;
+
+      const newQuantity = newQuantityPurchased ?? previousQuantity;
+      const newPrice = newPurchasePrice ?? previousPrice;
+
+      if (newQuantity === previousQuantity && newPrice === previousPrice) {
+        return reply.code(200).send({
+          message: "Supplier good line updated successfully!",
+        });
+      }
+
+      await runTxnWithTransientRetry(async (session) => {
         const now = new Date();
         const updatePurchase = await Purchase.findOneAndUpdate(
           withSoftDeleteFilter({
@@ -736,9 +755,8 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
           }),
           {
             $set: {
-              "purchaseInventoryItems.$.quantityPurchased":
-                newQuantityPurchased,
-              "purchaseInventoryItems.$.purchasePrice": newPurchasePrice,
+              "purchaseInventoryItems.$.quantityPurchased": newQuantity,
+              "purchaseInventoryItems.$.purchasePrice": newPrice,
               "purchaseInventoryItems.$.lastEditByEmployeeId": employee._id,
               "purchaseInventoryItems.$.lastEditReason": reason,
               "purchaseInventoryItems.$.lastEditDate": now,
@@ -747,7 +765,7 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
               "purchaseInventoryItems.$.lastEditOriginalPrice": previousPrice,
             },
             $inc: {
-              totalAmount: (newPurchasePrice ?? 0) - previousPrice,
+              totalAmount: newPrice - previousPrice,
             },
           },
           { returnDocument: "after", lean: true, session },
@@ -760,14 +778,13 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
         const updatedInventory = await Inventory.findOneAndUpdate(
           {
             businessId: purchaseItem.businessId,
-            "inventoryGoods.supplierGoodId":
-              purchaseItem?.purchaseInventoryItems?.[0].supplierGoodId,
+            "inventoryGoods.supplierGoodId": supplierGoodId,
             setFinalCount: false,
           },
           {
             $inc: {
               "inventoryGoods.$.dynamicSystemCount":
-                (newQuantityPurchased ?? 0) - previousQuantity,
+                newQuantity - previousQuantity,
             },
           },
           { returnDocument: "after", lean: true, session },
@@ -775,6 +792,44 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
 
         if (!updatedInventory) {
           throw notFound("Inventory not found or update failed.");
+        }
+
+        const appended = await appendAuditEntry({
+          actor: {
+            kind: AUDIT_ACTOR_KINDS.USER,
+            id: userIdObj,
+          },
+          actKind: AUDIT_ACT_KINDS.PURCHASE_LINE_EDITED,
+          target: {
+            kind: AUDIT_TARGET_KINDS.PURCHASE,
+            id: purchaseId,
+          },
+          relatedTargets: [
+            {
+              kind: AUDIT_TARGET_KINDS.PURCHASE_LINE,
+              id: purchaseInventoryItemsId,
+            },
+            {
+              kind: AUDIT_TARGET_KINDS.SUPPLIER_GOOD,
+              id: supplierGoodId,
+            },
+          ],
+          businessId,
+          occurredAt: now,
+          payload: {
+            quantityBefore: previousQuantity,
+            quantityAfter: newQuantity,
+            priceBefore: previousPrice,
+            priceAfter: newPrice,
+            reason,
+          },
+          session,
+        });
+
+        if (!appended.success) {
+          throw internal(
+            "Failed to append the purchase-line edit audit entry!",
+          );
         }
 
         return { type: "commit" as const, value: undefined };

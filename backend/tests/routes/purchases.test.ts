@@ -7,7 +7,7 @@
  * RFC 9457 `application/problem+json` documents, never `{ message }`.
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { Types } from "mongoose";
 import { getTestApp, generateTestToken } from "../setup.ts";
 import Purchase from "../../src/models/purchase.ts";
@@ -17,12 +17,28 @@ import Business from "../../src/models/business.ts";
 import Employee from "../../src/models/employee.ts";
 import User from "../../src/models/user.ts";
 import Inventory from "../../src/models/inventory.ts";
+import AuditEntry from "../../src/models/auditEntry.ts";
+import {
+  AUDIT_ACT_KINDS,
+  AUDIT_ACTOR_KINDS,
+  AUDIT_RETENTION_CLASSES,
+  AUDIT_TARGET_KINDS,
+} from "../../src/audit/auditCatalogue.ts";
 import { multipart } from "../helpers/multipart.ts";
 import {
   detail,
   errorPaths,
   isProblemDetails,
 } from "../helpers/problemDetails.ts";
+
+const appendAuditEntryMock = vi.hoisted(() => vi.fn());
+
+vi.mock("../../src/audit/appendAuditEntry.ts", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../src/audit/appendAuditEntry.ts")>();
+  appendAuditEntryMock.mockImplementation(actual.appendAuditEntry);
+  return { ...actual, appendAuditEntry: appendAuditEntryMock };
+});
 
 describe("Purchases Routes", () => {
   let businessId: Types.ObjectId;
@@ -42,6 +58,8 @@ describe("Purchases Routes", () => {
   };
 
   beforeEach(async () => {
+    appendAuditEntryMock.mockClear();
+
     const business = await Business.create({
       tradeName: "Test Restaurant",
       legalName: "Test Restaurant LLC",
@@ -1091,6 +1109,281 @@ describe("Purchases Routes", () => {
         25,
       );
       expect(updatedPurchase?.totalAmount).toBe(250);
+    });
+  });
+
+  describe("Audit rail - PATCH /api/v1/purchases/:purchaseId/editSupplierGood", () => {
+    const seedEditFixture = async () => {
+      const purchase = await Purchase.create({
+        businessId,
+        supplierId,
+        purchasedByEmployeeId: employeeId,
+        purchaseDate: new Date(),
+        receiptId: "REC-AUDIT-001",
+        totalAmount: 100,
+        purchaseInventoryItems: [
+          {
+            supplierGoodId,
+            quantityPurchased: 10,
+            purchasePrice: 100,
+            lastEditByEmployeeId: employeeId,
+            lastEditReason: "Initial correction",
+            lastEditDate: new Date("2026-01-01"),
+            lastEditOriginalQuantity: 8,
+            lastEditOriginalPrice: 80,
+          },
+        ],
+      });
+
+      await Inventory.findByIdAndUpdate(inventoryId, {
+        $set: { "inventoryGoods.0.dynamicSystemCount": 50 },
+      });
+
+      const authorization = await generateTestToken({
+        id: userId.toString(),
+        email: "purchaseuser@test.com",
+        type: "user",
+        employeeId: employeeId.toString(),
+        businessId: businessId.toString(),
+        canLogAsEmployee: true,
+        role: "Manager",
+      });
+
+      return {
+        purchase,
+        purchaseItemId: purchase.purchaseInventoryItems?.[0]._id,
+        authorization,
+      };
+    };
+
+    const storedLine = async (purchaseId: Types.ObjectId) => {
+      const purchase = await Purchase.findById(purchaseId).lean();
+      return purchase?.purchaseInventoryItems?.[0];
+    };
+
+    it("appends one entry on the edit transaction with the actor, targets, and before/after values", async () => {
+      const app = await getTestApp();
+      const { purchase, purchaseItemId, authorization } =
+        await seedEditFixture();
+      const reason = "Receipt quantity was misread";
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/purchases/${purchase._id}/editSupplierGood`,
+        headers: { authorization },
+        payload: {
+          purchaseInventoryItemsId: purchaseItemId?.toString(),
+          newQuantityPurchased: 25,
+          newPurchasePrice: 250,
+          reason,
+        },
+      });
+
+      expect(response.statusCode, response.body).toBe(200);
+      expect(response.json()).toEqual({
+        message: "Supplier good line updated successfully!",
+      });
+
+      const entries = await AuditEntry.find({}).lean();
+      expect(entries).toHaveLength(1);
+      const [entry] = entries;
+      expect(entry.actorKind).toBe(AUDIT_ACTOR_KINDS.USER);
+      expect(String(entry.actorId)).toBe(String(userId));
+      expect(String(entry.actorId)).not.toBe(String(employeeId));
+      expect(entry.actKind).toBe(AUDIT_ACT_KINDS.PURCHASE_LINE_EDITED);
+      expect(entry.target).toEqual({
+        kind: AUDIT_TARGET_KINDS.PURCHASE,
+        id: purchase._id,
+      });
+      expect(entry.relatedTargets).toEqual(
+        expect.arrayContaining([
+          {
+            kind: AUDIT_TARGET_KINDS.PURCHASE_LINE,
+            id: purchaseItemId,
+          },
+          {
+            kind: AUDIT_TARGET_KINDS.SUPPLIER_GOOD,
+            id: supplierGoodId,
+          },
+        ]),
+      );
+      expect(String(entry.businessId)).toBe(String(businessId));
+      expect(entry.payload).toEqual({
+        quantityBefore: 10,
+        quantityAfter: 25,
+        priceBefore: 100,
+        priceAfter: 250,
+        reason,
+      });
+      expect(entry.retentionClass).toBe(
+        AUDIT_RETENTION_CLASSES.LEGAL_AND_FINANCIAL,
+      );
+      expect(entry.impersonation).toBe(false);
+
+      expect(appendAuditEntryMock).toHaveBeenCalledTimes(1);
+      expect(appendAuditEntryMock.mock.calls[0][0].session).toBeDefined();
+
+      const line = await storedLine(purchase._id);
+      expect(line?.quantityPurchased).toBe(25);
+      expect(line?.purchasePrice).toBe(250);
+      expect(line?.lastEditReason).toBe(reason);
+      expect(String(line?.lastEditByEmployeeId)).toBe(String(employeeId));
+      expect(line?.lastEditOriginalQuantity).toBe(10);
+      expect(line?.lastEditOriginalPrice).toBe(100);
+
+      const updatedPurchase = await Purchase.findById(purchase._id).lean();
+      expect(updatedPurchase?.totalAmount).toBe(250);
+
+      const inventory = await Inventory.findById(inventoryId).lean();
+      expect(inventory?.inventoryGoods?.[0]?.dynamicSystemCount).toBe(65);
+    });
+
+    it("appends a second entry and leaves the first unchanged", async () => {
+      const app = await getTestApp();
+      const { purchase, purchaseItemId, authorization } =
+        await seedEditFixture();
+      const url = `/api/v1/purchases/${purchase._id}/editSupplierGood`;
+
+      const first = await app.inject({
+        method: "PATCH",
+        url,
+        headers: { authorization },
+        payload: {
+          purchaseInventoryItemsId: purchaseItemId?.toString(),
+          newQuantityPurchased: 25,
+          newPurchasePrice: 250,
+          reason: "First correction",
+        },
+      });
+      const second = await app.inject({
+        method: "PATCH",
+        url,
+        headers: { authorization },
+        payload: {
+          purchaseInventoryItemsId: purchaseItemId?.toString(),
+          newQuantityPurchased: 30,
+          newPurchasePrice: 300,
+          reason: "Second correction",
+        },
+      });
+
+      expect(first.statusCode, first.body).toBe(200);
+      expect(second.statusCode, second.body).toBe(200);
+
+      const entries = await AuditEntry.find({}).lean();
+      expect(entries).toHaveLength(2);
+      expect(
+        entries.map((entry) => entry.payload).sort((a, b) => {
+          const left = (a as { quantityBefore: number }).quantityBefore;
+          const right = (b as { quantityBefore: number }).quantityBefore;
+          return left - right;
+        }),
+      ).toEqual([
+        {
+          quantityBefore: 10,
+          quantityAfter: 25,
+          priceBefore: 100,
+          priceAfter: 250,
+          reason: "First correction",
+        },
+        {
+          quantityBefore: 25,
+          quantityAfter: 30,
+          priceBefore: 250,
+          priceAfter: 300,
+          reason: "Second correction",
+        },
+      ]);
+
+      const line = await storedLine(purchase._id);
+      expect(line?.quantityPurchased).toBe(30);
+      expect(line?.purchasePrice).toBe(300);
+      expect(line?.lastEditReason).toBe("Second correction");
+      expect(line?.lastEditOriginalQuantity).toBe(25);
+      expect(line?.lastEditOriginalPrice).toBe(250);
+
+      const inventory = await Inventory.findById(inventoryId).lean();
+      expect(inventory?.inventoryGoods?.[0]?.dynamicSystemCount).toBe(70);
+    });
+
+    it("appends nothing and keeps the latest-edit snapshot when quantity and price stay the same", async () => {
+      const app = await getTestApp();
+      const { purchase, purchaseItemId, authorization } =
+        await seedEditFixture();
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/purchases/${purchase._id}/editSupplierGood`,
+        headers: { authorization },
+        payload: {
+          purchaseInventoryItemsId: purchaseItemId?.toString(),
+          newQuantityPurchased: 10,
+          newPurchasePrice: 100,
+          reason: "No change",
+        },
+      });
+
+      expect(response.statusCode, response.body).toBe(200);
+      expect(response.json()).toEqual({
+        message: "Supplier good line updated successfully!",
+      });
+      expect(await AuditEntry.countDocuments()).toBe(0);
+      expect(appendAuditEntryMock).not.toHaveBeenCalled();
+
+      const line = await storedLine(purchase._id);
+      expect(line?.quantityPurchased).toBe(10);
+      expect(line?.purchasePrice).toBe(100);
+      expect(line?.lastEditReason).toBe("Initial correction");
+      expect(line?.lastEditOriginalQuantity).toBe(8);
+      expect(line?.lastEditOriginalPrice).toBe(80);
+
+      const updatedPurchase = await Purchase.findById(purchase._id).lean();
+      expect(updatedPurchase?.totalAmount).toBe(100);
+
+      const inventory = await Inventory.findById(inventoryId).lean();
+      expect(inventory?.inventoryGoods?.[0]?.dynamicSystemCount).toBe(50);
+    });
+
+    it("rolls back the edit and surfaces the route's server error when the append fails", async () => {
+      const app = await getTestApp();
+      const { purchase, purchaseItemId, authorization } =
+        await seedEditFixture();
+      appendAuditEntryMock.mockResolvedValueOnce({
+        success: false,
+        error: "audit unavailable",
+      });
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/purchases/${purchase._id}/editSupplierGood`,
+        headers: { authorization },
+        payload: {
+          purchaseInventoryItemsId: purchaseItemId?.toString(),
+          newQuantityPurchased: 25,
+          newPurchasePrice: 250,
+          reason: "Should not commit",
+        },
+      });
+
+      expect(response.statusCode, response.body).toBe(500);
+      expect(isProblemDetails(response)).toBe(true);
+      expect(JSON.parse(response.body).type).toBe(
+        "https://restaurant-pos.app/errors/internal",
+      );
+      expect(await AuditEntry.countDocuments()).toBe(0);
+
+      const line = await storedLine(purchase._id);
+      expect(line?.quantityPurchased).toBe(10);
+      expect(line?.purchasePrice).toBe(100);
+      expect(line?.lastEditReason).toBe("Initial correction");
+      expect(line?.lastEditOriginalQuantity).toBe(8);
+      expect(line?.lastEditOriginalPrice).toBe(80);
+
+      const updatedPurchase = await Purchase.findById(purchase._id).lean();
+      expect(updatedPurchase?.totalAmount).toBe(100);
+
+      const inventory = await Inventory.findById(inventoryId).lean();
+      expect(inventory?.inventoryGoods?.[0]?.dynamicSystemCount).toBe(50);
     });
   });
 });
