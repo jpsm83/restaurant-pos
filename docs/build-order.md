@@ -66,7 +66,7 @@ Engineering and cross-cutting rails every later subject assumes. Prefer ADRs and
 | [x] | 0.5 | Notification persistence + push rail | Inbox store + live push when online | A notification is stored and pushed to an online client, and every existing notification write uses that rail. Inbox UI stays in 1.9. | [notifications](product/notifications.md), [ADR-0006](adr/0006-realtime-transport-and-concurrency.md) |
 | [x] | 0.6 | Live transport + blocked writes offline | WebSocket; no offline write queue | Live updates use this WebSocket rail, a disconnected client cannot commit a write, and the client keeps no offline write queue. Surfaces that do not exist yet are added by their own rows. | [realtime-and-concurrency](product/realtime-and-concurrency.md), [ADR-0006](adr/0006-realtime-transport-and-concurrency.md) |
 | [x] | 0.7 | Append-only audit entry rail | Who/what/when write API | One append-only API records who, what, and when, and every audited act already in the code writes through it. Acts a later row introduces are audited on that row. | [audit-trail](product/audit-trail.md) |
-| [ ] | 0.8 | Operational-reason catalogues as data | Closed lists for void, discount, refund, … | The closed catalogues exist as data, and every current void, discount, refund, or reopen path reads them. Flows that do not exist yet are built on their own rows. | [operational-reasons](product/operational-reasons.md) |
+| [x] | 0.8 | Operational-reason catalogues as data | Closed lists for void, discount, refund, … | The closed catalogues exist as data, and every current void, discount, refund, or reopen path reads them. Flows that do not exist yet are built on their own rows. | [operational-reasons](product/operational-reasons.md) |
 | [ ] | 0.9 | Feature-flag resolution stub | Default-on kill-switch resolution | Resolution returns default-on, and every existing feature check calls it. The console and flag-then-plan composition stay in phase 9. | [feature-flags](product/feature-flags.md) |
 | [ ] | 0.10 | Error monitoring | Unexpected-error reporting | Unexpected server and client errors are reported. Problem-details responses stay ordinary results. | [ADR-0007](adr/0007-sentry-error-monitoring.md) |
 
@@ -106,7 +106,7 @@ One venue can sell a served night: menu → open table → send orders → take 
 | [ ] | 2.4 | Draft → send batch, identification code, pricing, void / invitation / cancel, fulfilment slice statuses | [orders](product/orders.md), [operational-reasons](product/operational-reasons.md) |
 | [ ] | 2.5 | Business tax rates; **record** cash and card on staff tabs; tips on digital recorded methods; **no** Stripe Connect yet | [payments-and-tax](product/payments-and-tax.md) |
 | [ ] | 2.6 | **Dine-in staff POS path only** (open → order → bill → pay → close) | [order-flow](product/order-flow.md), [orders](product/orders.md), [sales-points-and-instances](product/sales-points-and-instances.md), [payments-and-tax](product/payments-and-tax.md) |
-| [ ] | 2.7 | Bill and receipt content + numbering; reprint / replacement rules | [receipts-and-bills](product/receipts-and-bills.md) |
+| [ ] | 2.7 | Bill and receipt content + numbering; Review QR (review flow arrives in 7.4); reprint / replacement rules | [receipts-and-bills](product/receipts-and-bills.md) |
 | [ ] | 2.8 | Auto-open daily on first send; close day; export can wait | [sales-reports](product/sales-reports.md) |
 | [ ] | 2.9 | Audit the controlled acts this phase introduces | [audit-trail](product/audit-trail.md), [operational-reasons](product/operational-reasons.md) |
 | [ ] | 2.10 | Live POS / fulfilment / stale-action rejects for this loop | [realtime-and-concurrency](product/realtime-and-concurrency.md), [ADR-0006](adr/0006-realtime-transport-and-concurrency.md) |
@@ -123,7 +123,7 @@ Make the same loop operable for floor staff and prep.
 | done | Order | Slice | Docs to open |
 | --- | --- | --- | --- |
 | [ ] | 3.1 | Manage editor + Service POS map (list/grid fallback) | [floor-plans](product/floor-plans.md), [user-navigation](product/user-navigation.md) (Floor plans / POS destinations) |
-| [ ] | 3.2 | Logical printers; prep-area screens; fulfilment gestures; print connector when paper is needed | [printers-and-screens](product/printers-and-screens.md), [ADR-0008](adr/0008-print-connector-path.md) |
+| [ ] | 3.2 | Logical printers; prep-area screens; delivery screen shell; fulfilment gestures; print connector when paper is needed. Courier status/retry and handover scan stay on 4.9/4.10 | [printers-and-screens](product/printers-and-screens.md), [ADR-0008](adr/0008-print-connector-path.md) |
 | [ ] | 3.3 | Held batches, don’t-make, allergen flags on prep — only what prep surfaces need | [orders](product/orders.md), [order-flow](product/order-flow.md), [printers-and-screens](product/printers-and-screens.md) |
 
 **Exit criteria:** staff can run service from a floor map; kitchen/bar can advance fulfilment without standing at the POS.
@@ -137,17 +137,17 @@ Same platform, guest-initiated paths and Imperium-processed pay.
 | done | Order | Slice | Docs to open |
 | --- | --- | --- | --- |
 | [ ] | 4.1 | Stripe Connect (venue merchant of record); self-channel capture | [payments-and-tax](product/payments-and-tax.md), [ADR-0005](adr/0005-stripe-connect-direction.md) |
-| [ ] | 4.2 | Self-ordering enable; delivery enable + delivery method / partner (Owner/Admin) + radius / minimum / windows; all kiosks full digital | [business](product/business.md) |
-| [ ] | 4.3 | Channel acceptance; reserved hold; virtual Delivery point; self-service instances; handover pass and verification | [sales-points-and-instances](product/sales-points-and-instances.md) |
-| [ ] | 4.4 | QR self-ordering, kiosk, delivery; guest basket; still-there / idle expiry; allergen pre-pay; to-go packaging | [order-flow](product/order-flow.md), [orders](product/orders.md), [payments-and-tax](product/payments-and-tax.md) |
+| [ ] | 4.2 | Self-ordering enable; delivery enable + delivery method / partner shell (Owner/Admin) + radius / minimum / windows; all kiosks full digital. Third-party activation waits on an enabled catalogue provider; the catalogue console arrives in 9.5 | [business](product/business.md), [delivery-integrations](product/delivery-integrations.md), [payments-and-tax](product/payments-and-tax.md) |
+| [ ] | 4.3 | Channel acceptance; reserved hold; virtual Delivery point; self-service instances; one batch and handover-pass creation | [sales-points-and-instances](product/sales-points-and-instances.md), [orders](product/orders.md) |
+| [ ] | 4.4 | QR self-ordering, kiosk, delivery; guest basket; still-there / idle expiry; allergen pre-pay; to-go packaging; pay-to-commit creates one instance, batch, and pass | [order-flow](product/order-flow.md), [orders](product/orders.md), [payments-and-tax](product/payments-and-tax.md) |
 | [ ] | 4.5 | Self-channel age floors on the journey | [privacy](product/privacy.md), [order-flow](product/order-flow.md) |
 | [ ] | 4.6 | Guest allergen display + menu filter (if not done in Phase 2) | [business-goods](product/business-goods.md), [order-flow](product/order-flow.md) |
 | [ ] | 4.7 | Channel buckets (self-ordering, kiosk, delivery) | [sales-reports](product/sales-reports.md) |
 | [ ] | 4.8 | Ordering-session isolation for baskets | [realtime-and-concurrency](product/realtime-and-concurrency.md), [order-flow](product/order-flow.md) |
-| [ ] | 4.9 | Handover pass and handover QR on receipts; scan / code fallback; partial QR handover; whole-batch kiosk and delivery; manager override; receipt and notification copy | [receipts-and-bills](product/receipts-and-bills.md), [printers-and-screens](product/printers-and-screens.md), [order-flow](product/order-flow.md), [notifications](product/notifications.md) |
-| [ ] | 4.10 | Delivery provider gate: Own delivery, Superadmin catalogue, per-business connection, courier request at send, optional handover call, cancellation, retries, failure alerts, no-handover close reconciliation, daily report status | [delivery-integrations](product/delivery-integrations.md), [ADR-0009](adr/0009-courier-provider-adapter.md), [sales-reports](product/sales-reports.md), [notifications](product/notifications.md) |
+| [ ] | 4.9 | Handover pass verification and handover QR on receipts; scan / code fallback; partial QR handover; whole-batch kiosk and delivery; audited manager override; receipt, email, and notification copy; reprint keeps the same pass | [receipts-and-bills](product/receipts-and-bills.md), [printers-and-screens](product/printers-and-screens.md), [order-flow](product/order-flow.md), [orders](product/orders.md), [sales-points-and-instances](product/sales-points-and-instances.md), [emails](product/emails.md), [notifications](product/notifications.md), [realtime-and-concurrency](product/realtime-and-concurrency.md), [audit-trail](product/audit-trail.md) |
+| [ ] | 4.10 | Delivery provider gate: Own delivery; provider catalogue model and availability (console UI in 9.5); per-business connection; courier request at send; optional handover call; cancellation; retries; failure alerts; delivery-screen status/retry; no-handover close reconciliation; daily report status | [delivery-integrations](product/delivery-integrations.md), [ADR-0009](adr/0009-courier-provider-adapter.md), [order-flow](product/order-flow.md), [printers-and-screens](product/printers-and-screens.md), [realtime-and-concurrency](product/realtime-and-concurrency.md), [sales-reports](product/sales-reports.md), [notifications](product/notifications.md) |
 
-**Exit criteria:** a guest can complete at least one of QR / kiosk / delivery pay-to-commit; the receipt carries the correct handover pass (QR for QR/kiosk, order reference for delivery); daily report shows channel buckets and delivery-integration status; staff can fulfil and hand over; a venue with no provider or no screen still completes delivery.
+**Exit criteria:** a guest can complete at least one of QR / kiosk / delivery pay-to-commit; the receipt carries the correct handover pass (QR for QR/kiosk, order reference for delivery); daily report shows channel buckets and delivery-integration status; staff can fulfil and hand over; a venue with no provider or no screen still completes delivery. The third-party provider path is verified with an internal test double; the catalogue console arrives in 9.5.
 
 ---
 
@@ -194,7 +194,7 @@ Workforce planning and the cash the person holds while on duty.
 | [ ] | 7.1 | Six types, subcategory scope, overlap rule, real-time apply on tab and basket | [promotions](product/promotions.md), [orders](product/orders.md), [order-flow](product/order-flow.md) |
 | [ ] | 7.2 | Issue, redeem, ledger, expiry/forfeit, reporting buckets | [gift-cards](product/gift-cards.md), [ADR-0004](adr/0004-gift-card-liability-and-tax-at-redemption.md), [payments-and-tax](product/payments-and-tax.md), [receipts-and-bills](product/receipts-and-bills.md) |
 | [ ] | 7.3 | Booking lifecycle, deposit, multi-table assign, seat → sales instance | [reservations](product/reservations.md), [sales-points-and-instances](product/sales-points-and-instances.md) |
-| [ ] | 7.4 | Post-close reviews, receipt/delivery invites, public aggregates, abuse queue hook | [ratings-and-comments](product/ratings-and-comments.md), [receipts-and-bills](product/receipts-and-bills.md), [emails](product/emails.md) |
+| [ ] | 7.4 | Post-close reviews; Review QR and delivery invites (delivery invite only after a recorded handover); public aggregates; abuse queue hook | [ratings-and-comments](product/ratings-and-comments.md), [receipts-and-bills](product/receipts-and-bills.md), [emails](product/emails.md), [notifications](product/notifications.md) |
 | [ ] | 7.5 | Gift-card and forfeiture buckets; reservation forfeit if applicable | [sales-reports](product/sales-reports.md), [gift-cards](product/gift-cards.md), [reservations](product/reservations.md) |
 
 **Exit criteria:** each of promotions, gift cards, and reservations can complete one happy path in a live venue; reviews can be left after a closed sitting.
@@ -221,10 +221,10 @@ Workforce planning and the cash the person holds while on duty.
 | [ ] | 9.2 | Subscription collection, weekly commission collection, dunning, invoices | [platform-billing](product/platform-billing.md), [monetization](product/monetization.md), [business-reports](product/business-reports.md) |
 | [ ] | 9.3 | Plan quotas, retention classes, purge vs integrity | [data-retention](product/data-retention.md), [monetization](product/monetization.md) |
 | [ ] | 9.4 | Full catalogue + Superadmin toggle semantics | [feature-flags](product/feature-flags.md), [superadmin](product/superadmin.md) |
-| [ ] | 9.5 | Separate app/realm: Owners, plans, flags, impersonation, abuse queue, portfolio analytics | [superadmin](product/superadmin.md), [monetization](product/monetization.md), [feature-flags](product/feature-flags.md), [ratings-and-comments](product/ratings-and-comments.md) (abuse queue) |
+| [ ] | 9.5 | Separate app/realm: Owners, plans, flags, delivery provider catalogue, impersonation, abuse queue, portfolio analytics | [superadmin](product/superadmin.md), [monetization](product/monetization.md), [feature-flags](product/feature-flags.md), [delivery-integrations](product/delivery-integrations.md), [ratings-and-comments](product/ratings-and-comments.md) (abuse queue), [audit-trail](product/audit-trail.md) |
 | [ ] | 9.6 | Compose flag → plan → layer → capability everywhere entitlements matter | [access-and-permissions](product/access-and-permissions.md), [feature-flags](product/feature-flags.md), [monetization](product/monetization.md) |
 
-**Exit criteria:** an Owner is on a plan; weekly commission can be collected or dunned; Superadmin can manage Owners without using venue Business mode.
+**Exit criteria:** an Owner is on a plan; weekly commission can be collected or dunned; Superadmin can manage Owners and maintain the delivery provider catalogue without using venue Business mode.
 
 ---
 
@@ -250,12 +250,12 @@ Phase 0 rails
         → business-goods → sales points → orders → payments (record) → order-flow (dine-in)
             → receipts → daily sales report
                 → floor plans / printers
-                    → Stripe + self channels
+                    → Stripe + self channels + handover + delivery provider gate
                         → suppliers → supplier-goods → purchases → inventories → recipe goods
                             → schedules → time-control → cash-out → payroll
                                 → promotions / gift-cards / reservations / ratings
                                     → metrics → weekly/monthly reports
-                                        → monetization → platform-billing → superadmin
+                                        → monetization → platform-billing → superadmin (incl. delivery catalogue)
                                             → conversations / engagement / DSAR polish
 ```
 
