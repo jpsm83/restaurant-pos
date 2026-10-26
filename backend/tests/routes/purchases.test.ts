@@ -1230,12 +1230,52 @@ describe("Purchases Routes", () => {
       expect(String(line?.lastEditByEmployeeId)).toBe(String(employeeId));
       expect(line?.lastEditOriginalQuantity).toBe(10);
       expect(line?.lastEditOriginalPrice).toBe(100);
+      expect(line?.lastEditDate?.getTime()).toBeGreaterThan(
+        new Date("2026-01-01").getTime(),
+      );
 
       const updatedPurchase = await Purchase.findById(purchase._id).lean();
       expect(updatedPurchase?.totalAmount).toBe(250);
 
       const inventory = await Inventory.findById(inventoryId).lean();
       expect(inventory?.inventoryGoods?.[0]?.dynamicSystemCount).toBe(65);
+    });
+
+    it("appends one entry for a price-only change and leaves the stock unchanged", async () => {
+      const app = await getTestApp();
+      const { purchase, purchaseItemId, authorization } =
+        await seedEditFixture();
+      const reason = "Receipt price was misread";
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/purchases/${purchase._id}/editSupplierGood`,
+        headers: { authorization },
+        payload: {
+          purchaseInventoryItemsId: purchaseItemId?.toString(),
+          newQuantityPurchased: 10,
+          newPurchasePrice: 150,
+          reason,
+        },
+      });
+
+      expect(response.statusCode, response.body).toBe(200);
+
+      const entries = await AuditEntry.find({}).lean();
+      expect(entries).toHaveLength(1);
+      expect(entries[0].payload).toEqual({
+        quantityBefore: 10,
+        quantityAfter: 10,
+        priceBefore: 100,
+        priceAfter: 150,
+        reason,
+      });
+
+      const updatedPurchase = await Purchase.findById(purchase._id).lean();
+      expect(updatedPurchase?.totalAmount).toBe(150);
+
+      const inventory = await Inventory.findById(inventoryId).lean();
+      expect(inventory?.inventoryGoods?.[0]?.dynamicSystemCount).toBe(50);
     });
 
     it("appends a second entry and leaves the first unchanged", async () => {
@@ -1310,6 +1350,7 @@ describe("Purchases Routes", () => {
       const app = await getTestApp();
       const { purchase, purchaseItemId, authorization } =
         await seedEditFixture();
+      const initialLine = purchase.purchaseInventoryItems?.[0];
 
       const response = await app.inject({
         method: "PATCH",
@@ -1336,6 +1377,12 @@ describe("Purchases Routes", () => {
       expect(line?.lastEditReason).toBe("Initial correction");
       expect(line?.lastEditOriginalQuantity).toBe(8);
       expect(line?.lastEditOriginalPrice).toBe(80);
+      expect(line?.lastEditDate?.toISOString()).toBe(
+        initialLine?.lastEditDate?.toISOString(),
+      );
+      expect(String(line?.lastEditByEmployeeId)).toBe(
+        String(initialLine?.lastEditByEmployeeId),
+      );
 
       const updatedPurchase = await Purchase.findById(purchase._id).lean();
       expect(updatedPurchase?.totalAmount).toBe(100);
@@ -1348,6 +1395,7 @@ describe("Purchases Routes", () => {
       const app = await getTestApp();
       const { purchase, purchaseItemId, authorization } =
         await seedEditFixture();
+      const initialLine = purchase.purchaseInventoryItems?.[0];
       appendAuditEntryMock.mockResolvedValueOnce({
         success: false,
         error: "audit unavailable",
@@ -1378,6 +1426,12 @@ describe("Purchases Routes", () => {
       expect(line?.lastEditReason).toBe("Initial correction");
       expect(line?.lastEditOriginalQuantity).toBe(8);
       expect(line?.lastEditOriginalPrice).toBe(80);
+      expect(line?.lastEditDate?.toISOString()).toBe(
+        initialLine?.lastEditDate?.toISOString(),
+      );
+      expect(String(line?.lastEditByEmployeeId)).toBe(
+        String(initialLine?.lastEditByEmployeeId),
+      );
 
       const updatedPurchase = await Purchase.findById(purchase._id).lean();
       expect(updatedPurchase?.totalAmount).toBe(100);

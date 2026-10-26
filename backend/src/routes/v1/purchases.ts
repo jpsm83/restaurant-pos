@@ -728,25 +728,36 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
         throw forbidden("Purchase does not belong to your business!");
       }
 
-      const purchaseLine = purchaseItem.purchaseInventoryItems?.[0];
-      if (!purchaseLine) {
-        throw notFound("Purchase item not found!");
-      }
-
-      const previousQuantity = purchaseLine.quantityPurchased;
-      const previousPrice = purchaseLine.purchasePrice;
-      const supplierGoodId = purchaseLine.supplierGoodId;
-
-      const newQuantity = newQuantityPurchased ?? previousQuantity;
-      const newPrice = newPurchasePrice ?? previousPrice;
-
-      if (newQuantity === previousQuantity && newPrice === previousPrice) {
-        return reply.code(200).send({
-          message: "Supplier good line updated successfully!",
-        });
-      }
-
       await runTxnWithTransientRetry(async (session) => {
+        const currentPurchase = (await Purchase.findOne(
+          withSoftDeleteFilter({
+            _id: purchaseId,
+            "purchaseInventoryItems._id": purchaseInventoryItemsId,
+          }),
+          {
+            businessId: 1,
+            "purchaseInventoryItems.$": 1,
+          },
+        )
+          .session(session)
+          .lean()) as unknown as IPurchase | null;
+
+        const purchaseLine = currentPurchase?.purchaseInventoryItems?.[0];
+        if (!purchaseLine) {
+          throw notFound("Purchase item not found!");
+        }
+
+        const previousQuantity = purchaseLine.quantityPurchased;
+        const previousPrice = purchaseLine.purchasePrice;
+        const supplierGoodId = purchaseLine.supplierGoodId;
+
+        const newQuantity = newQuantityPurchased ?? previousQuantity;
+        const newPrice = newPurchasePrice ?? previousPrice;
+
+        if (newQuantity === previousQuantity && newPrice === previousPrice) {
+          return { type: "commit" as const, value: undefined };
+        }
+
         const now = new Date();
         const updatePurchase = await Purchase.findOneAndUpdate(
           withSoftDeleteFilter({
@@ -777,7 +788,7 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
 
         const updatedInventory = await Inventory.findOneAndUpdate(
           {
-            businessId: purchaseItem.businessId,
+            businessId,
             "inventoryGoods.supplierGoodId": supplierGoodId,
             setFinalCount: false,
           },
