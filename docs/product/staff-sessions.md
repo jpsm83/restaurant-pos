@@ -57,6 +57,8 @@ Terms reused rather than redefined here: **User**, **sign-in email**, **password
 - When a venue device passes from one employee to another, the previous User **signs out** (or their session ends) and the next employee signs in with **their own** email and password. There is no PIN handoff.
 - Project Imperium sells no staff hardware and does not enroll, name, or manage staff devices.
 - Venue-owned **printers**, **print connectors**, **prep and customer screens**, and **customer kiosk** terminals remain as their own subjects describe. Any Business action on a browser still belongs to whoever signed in on that session with their own credentials.
+- A **print connector** runs as a system service on the venue PC under its own connector credential. It is not a staff session and never signs in as a person.
+- A **display lease** for a prep, delivery, or pickup screen is **not a staff session** and authenticates **no person**. It is a route- and action-scoped device grant opened by a manager; actions taken under it attribute to the lease opener, and it never replaces any person's own signed-in session for acting in Business (printers-and-screens subject).
 
 ### 3.3 Concurrent multi-session
 

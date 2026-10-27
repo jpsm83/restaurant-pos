@@ -56,6 +56,7 @@ Terms reused rather than redefined here: **Business**, **Sales point**, **Sales 
 ### 3.2 Disconnect and reconnect
 
 - Connectivity is required. There is **no offline mode** and **no offline write queue**.
+- **Print work is different.** Print jobs are durably queued server-side per logical printer and delivered to a connector when it reconnects, idempotently, with per-kind expiry (printers-and-screens subject). That queue is server-side print work, not an offline write queue; a failed print is retried and alerted and never blocks payment, and the queue never lets a person's blocked mutation through.
 - When the live connection drops, the UI shows a clear **disconnected / reconnecting** state. The person may still see the last known screen **read-only**.
 - **Mutating actions are blocked** until the connection is restored and the client has **resynced** to server truth.
 - On reconnect, the client loads server truth. Any local draft that lost a conflict or lifecycle race is **discarded or replaced** from the server — never silently applied on top of newer truth.

@@ -77,7 +77,7 @@ The business contact email is a term the users subject introduces; this subject 
 Registering a business is an **authenticated action by an existing user** — there is no unauthenticated business registration. The UI presents it as **add your venue**.
 
 - A user with **no business** reaches the action from the customer app; a user who **already owns businesses** reaches it from the business app's venue tabs (typically from **Manage**).
-- Registering a user's **first business creates that user's Owner** and a **Company**; each later business is added to that Owner and the user chooses whether it **joins an existing Company** (sharing that tax entity, so stock can move internally) or **forms a new one** (a separate taxpayer). An Owner always has at least one Company; a Company always has at least one Business. A **new Company** carries **legal name** and **tax number** (users subject); they may be incomplete while the venue is a draft and must be complete before go-live (§3.12). Joining an existing Company inherits that tax identity.
+- Registering a user's **first business creates that user's Owner** and a **Company**; each later business is added to that Owner and the user chooses whether it **joins an existing Company** (sharing that tax entity, so stock can move internally) or **forms a new one** (a separate taxpayer). An Owner always has at least one Company; a Company always has at least one Business. A **new Company** carries **legal name** and **tax number** (users subject); they may be incomplete while the venue is a draft and must be complete before go-live (§3.13). Joining an existing Company inherits that tax identity.
 - Every Business under one Owner must be in the **same country** as that Owner's portfolio (currency and tax regime stay aligned). A venue in another country cannot join that Owner.
 - A business is **owned by exactly one user**. That user gains **Owner access** (admin-equivalent powers within plan entitlements) **without** an Employee membership. An Owner job-role membership is created only if they later join the workforce on a paid plan (employees subject).
 - After sign-in, a user who owns businesses may switch to **business mode** via the **Customer | Business** toggle and work in Manage (or Service); a user who owns none stays on the customer surface with no Business side on the toggle. These surfaces belong to the user-navigation subject; this subject owns the action and the form behind them.
@@ -155,7 +155,17 @@ Peer cash transfer is a **per-venue** switch.
 - **Enable/disable** — default **on**. When on, on-duty staff may record **peer cash-in** (receiver-recorded cash obligation moves between wallets). When off, peer cash-in is unavailable.
 - **House paid-in and paid-out** are not toggled here; they are always available. Behaviour of both peer and house cash movements belongs to the employee cash-out subject; this subject only stores the peer switch.
 
-### 3.10 Discovery fields
+### 3.10 Print and receipt kit
+
+The venue's print and receipt kit is **operational hardware**, not a preference.
+
+- **Required to go live.** A **venue PC** (Windows 10/11 or macOS) running a paired **print connector**; at least one **receipt printer** for each active payment sales point (points may share one) with a successful test print; a **supported router** on a dedicated **POS VLAN** with a **primary WAN**; and a **UPS** on the router, every print PC (or laptop battery), the counter receipt printer, and the network switch.
+- **Paper is the normal receipt path.** Every active payment sales point has a receipt printer. A print failure **never blocks payment**: the customer pays, may leave without a receipt, and may receive it by email when an address is provided (receipts-and-bills; printers-and-screens).
+- **Optional.** Prep printers, control screens, the optional 5G SIM, and email receipts. The product does not check whether a prep area has a printer or a screen; the business chooses its service mix.
+- **Cash.** A venue that records cash payments must have a receipt printer with a **drawer-kick port** at the counter or expeditor.
+- **Configuration.** Managers and above create and bind logical printers and assign each active payment sales point its receipt printer (printers-and-screens).
+
+### 3.11 Discovery fields
 
 A business is **discoverable only while live**. Its discovery fields are:
 
@@ -164,14 +174,14 @@ A business is **discoverable only while live**. Its discovery fields are:
 - **Cuisine type and categories are edited by managers and above** at the venue; they are among the filters customers use. The identity discovery fields (trade name, logo, phone, address) are edited by admins/owners.
 - Customers find live venues in either of two ways: **search and filter** (trade name, cuisine type, categories, rating, and location / geo radius), or a **map of the closest venues** near them. A customer's location search and the closest-venues map both measure from the address coordinates.
 
-### 3.11 Subscription pointer
+### 3.12 Subscription pointer
 
 - The **subscription is held on the Owner** and covers the owner's venues.
 - A business carries **no subscription field of its own**; it exposes the **effective plan read-only** so the venue can see what its Owner's plan provides.
 - Which features a plan unlocks is the **monetization** subject's concern; this subject only surfaces the plan.
 - On a **paid** plan, go-live also requires the Owner's subscription **paid-in-full** for the period (monetization subject); Free has no subscription invoice gate.
 
-### 3.12 Go-live, live, and offline
+### 3.13 Go-live, live, and offline
 
 A business's own state is server-owned. Its go-live status has three states — **ready to go live**, **live**, and **not live** — moved between by an admin/owner using the **go-live toggle**.
 
@@ -186,22 +196,23 @@ The **go-live checklist** is:
 | --- | --- |
 | **Identity / contact** | Trade name, phone, currency, address (so the timezone resolves), a **verified business contact email**, and the venue's **Company** **legal name** and **tax number**. |
 | **Service** | **Opening hours** (at least one day with at least one range) and **at least one cuisine type** (so the venue can be discovered). |
-| **Minimum service kit** | **At least one on-menu business good** (business-goods), and **at least one active order path**: either **at least one active** served or kiosk **sales point**, or **delivery enabled** (which produces the virtual Delivery point — sales-points-and-instances). |
+| **Menu and order path** | **At least one on-menu business good** (business-goods), and **at least one active order path**: either **at least one active** served or kiosk **sales point**, or **delivery enabled** (which produces the virtual Delivery point — sales-points-and-instances). |
 | **Payments** | **Stripe connected payment account** able to **accept charges and receive payouts** (payments-and-tax; required on Free and paid — delivery and self-order are stage-1 channels). |
+| **Print and receipt kit** | A **venue PC** (Windows 10/11 or macOS) with a **paired, online print connector**; at least one **receipt printer** for each active payment sales point (points may share one) with a successful **test print**; a **supported router** on the dedicated **POS VLAN** with a **primary WAN** passing 10 Mbps down / 2 Mbps up / under 100 ms; a **UPS** on the router, every print PC (or laptop battery), the counter receipt printer, and the network switch; a **DK-port receipt printer** when the venue records cash. The **5G SIM** is recommended, not gating. |
 | **Conditional** | When delivery is enabled: delivery radius, minimum order, at least one delivery window, and a delivery method (defaults to **Own delivery**). A third-party provider is **not** required to go live. |
-| **Not gating** | Logo, categories, primary contact, metrics, delivery when disabled, a **receipt printer**, and a **print connector**. Going live does **not** require paper printing hardware; issuing paper bills or receipts still requires a usable receipt printer binding (and the connector or other print path that serves it) at print time (printers-and-screens). |
+| **Not gating** | Logo, categories, primary contact, metrics, delivery when disabled, prep printers, control screens, email receipts, and the optional 5G SIM. The product does not gate or warn on prep-output completeness; the business chooses whether a prep area uses a printer, a screen, both, or neither. |
 
 The **profile read exposes the completeness signal** — which checklist items are missing — so the settings surface can show what remains and the go-live toggle can be disabled with reasons.
 
-### 3.13 Closure
+### 3.14 Closure
 
 - Closing a business is a **deliberate soft delete** of the tenant record. It is **not** the same as going offline.
 - Closure requires **no open sales instances** and an **explicit confirmation**. Operators do not physically remove operational data on close; records are retained and marked deleted (ADR-0003). Later physical removal of soft-deleted venue data follows the plan quotas and data retention subject under the **data-integrity rule**.
 - A closed business leaves discovery and stops taking customer orders; the platform does not silently destroy data other people depend on.
 
-### 3.14 Dormant businesses
+### 3.15 Dormant businesses
 
-A venue with no qualifying **venue activity** for a long window may be soft-deleted after Owner notice and no confirmation. Activity definition, windows, and purge afterward belong to the plan quotas and data retention subject. Deliberate closure (§3.13) remains the Owner-driven path.
+A venue with no qualifying **venue activity** for a long window may be soft-deleted after Owner notice and no confirmation. Activity definition, windows, and purge afterward belong to the plan quotas and data retention subject. Deliberate closure (§3.14) remains the Owner-driven path.
 
 ---
 

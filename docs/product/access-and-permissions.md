@@ -157,6 +157,7 @@ This subject owns the authoritative list. Feature subjects own behaviour for eac
 - **Host** under Service — **Host** job role, and anyone whose effective layer already includes full Service (supervisor, manager, admin).
 - **Counts** under Service — physical count and **inventory count re-edit** (with reason and audit) — **supervisor** layer and above; full inventory admin remains Manage → Supply for managers (inventories; user-navigation).
 - **Cash-out** under Service — **approve employee cash-out** (another person's wallet only) and **house paid-in / paid-out and cash-movement reverses** (another person's wallet only) — **supervisor** layer and above; peer cash-in when the Business setting is on is any on-duty employee as receiver — employee cash-out subject.
+- **Print connectors and printers** under Service setup — pair and revoke print connectors on the venue PC, view connector version/status/WAN path, create, bind, rebind, and retire logical printers, set routing and backups, and grant or revoke **display leases** for control screens — **manager** layer and above. This is a layer power, not a catalogue grant; it is never granted to supervisor or employee.
 
 ### 3.9 Assignment surface
 

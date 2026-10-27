@@ -176,3 +176,32 @@ connected, or own delivery.
 The operational record of provider call attempts: provider, action, external
 delivery reference, attempt number, response code, error, and time. It is not an
 audit-trail entry and never stores credentials.
+
+## Print connector
+
+The always-on system service, run on a venue-owned Windows 10/11 or macOS PC,
+that the cloud hands print work to and that alone drives local USB or network
+printers. The PC may also run the POS or back office. It is not a staff session,
+not a self-hosted copy of the product, and not a shared login.
+
+_Avoid_: "print server", "print agent", "headless box".
+
+## Primary WAN
+
+The venue's main internet path through the supported router. It must pass the
+onboarding speed and latency test. The optional 5G SIM is failover, never a
+primary path.
+
+## POS VLAN
+
+The dedicated network and SSID for the venue PC, printers, screens, and staff
+devices, separate from guest WiFi.
+
+## Display lease
+
+A route- and action-scoped device grant opened by a manager so a prep, delivery,
+or pickup screen can run at a location. It survives the manager signing out, is
+revocable in Manage, cannot reach money or configuration, and is **not** a staff
+session and authenticates no person.
+
+_Avoid_: "kiosk mode", "device login", "shared screen session".

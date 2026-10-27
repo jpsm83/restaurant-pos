@@ -95,9 +95,10 @@ A completed password reset or sign-in email change has session effects owned by 
 
 ### 3.4 Operational email
 
-Project Imperium emails the operational notifications that the notifications subject marks as emailed, each concerning **one business**:
+Project Imperium emails the operational notifications that the notifications subject marks as emailed, plus the direct bill copies the receipts-and-bills subject raises, each concerning **one business**:
 
-- **Order confirmed (receipt)** — sent to the ordering customer when a sales instance (or the relevant paid order path) is settled; it is the emailed **customer receipt** and must carry the full receipt content the receipts-and-bills subject requires (venue identity, lines, tax breakdown, payments and tips, gift-card tender when used, receipt number, identification codes, handover pass, and review QR on meal receipts). For **QR self-ordering** and **kiosk** it carries the **handover QR**; for **delivery** it carries the **order reference** only and **no handover QR**.
+- **Order confirmed (receipt)** — sent to the ordering customer when a sales instance (or the relevant paid order path) is settled. It is the emailed **customer receipt** and must carry the full receipt content the receipts-and-bills subject requires (venue identity, lines, tax breakdown, payments and tips, gift-card tender when used, receipt number, identification codes, handover pass, and review QR on meal receipts). For **QR self-ordering** and **kiosk** it carries the **handover QR**; for **delivery** it carries the **order reference** only and **no handover QR**. Paper is the normal receipt path; this email is an optional copy for staff tabs and an automatic copy for delivery/self-order where the email is already held. A print failure never blocks settlement; the email is the fallback when the customer provides an address. The address need not belong to a User account. If it matches an existing account, the receipt is linked there server-side; no account is created and staff are never told whether one exists.
+- **Bill copy (requested or forwarded)** — sent to a customer email when a bill is issued or a manager forwards an already-issued paid bill or receipt. It carries the same required content as the matching bill or receipt, keeps the **same** number, and is marked as a **forwarded copy** when forwarded. Raising it belongs to the receipts-and-bills subject.
 - **Reservation pending** — sent to the customer when a request is placed or a customer edit re-pends it; it carries the arrival date and time, party size, and status.
 - **Deposit requested** — sent to the customer when the venue asks for a deposit; it carries the amount, the payment link, and that an account is required before paying.
 - **Reservation decided** — sent to the customer when the request becomes reserved or is cancelled; it carries the decision and the reservation details. A reserved confirmation states late-arrival and grace rules clearly and never shows the staff-only end time; it may include an optional account-invite link when the guest has no account.
@@ -131,7 +132,7 @@ An operational email is the **emailed copy** of an in-app notification where one
 
 ### 3.7 Delivery and retry
 
-- Email is **best-effort**: a failed send is **retried on a transient failure** and then **logged**. It never blocks the action that triggered it, consistent with the platform rule that a communication failure never blocks a business action.
+- Email is **best-effort**: a failed send is **retried on a transient failure** and then **logged**. It never blocks the action that triggered it, consistent with the platform rule that a communication failure never blocks a business action. An emailed receipt is never a settlement requirement; paper is the normal path and a print failure never blocks payment.
 - A **permanent** failure is not retried and is dropped for operational and engagement email.
 - **Account email is the exception.** Because the person is waiting to complete an action, its send failure is **surfaced to the requester** and the pending link is **rolled back** (§3.2).
 - Project Imperium does **not** track bounces or spam complaints; delivery is best-effort and there is no committed bounce or complaint handling.

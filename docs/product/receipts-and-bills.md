@@ -51,6 +51,8 @@ It deliberately does **not** cover:
 - **Handover pass** — the self-service batch's handover identity: an opaque token, the batch identification code, and — for QR self-ordering and kiosk — a **handover QR**. It is receipt content, not a fiscal number.
 - **Handover QR** — the QR on a QR self-ordering or kiosk receipt that encodes the handover pass token. Staff scan it at handover. It is **not** the **review QR**.
 - **Order reference** — the customer-facing label for the batch identification code on a **delivery** receipt. Delivery receipts carry no handover QR.
+- **Customer receipt email** — the email address captured at the bill on request, or already held for a delivery/self-order, for delivering the customer's bill or receipt as a copy of the normal paper path. It need not belong to a User account, and capturing one never creates an account.
+- **Forwarded copy** — a further delivery of an already-issued paid bill or receipt to a customer email chosen by a manager. It keeps the **same** number and is marked as a forwarded copy; it is not a new or replacement document.
 
 Terms reused rather than redefined here: **Business**, **Sales instance**, **Sales point**, **Order**, **Batch**, **Identification code**, **Bill** (aggregation), **Payment**, **Tip**, **Outstanding balance**, **Gift card**, **Review QR**, **print permission**, **edited flag**, **soft delete**, **business currency**, and **trade name**.
 
@@ -121,6 +123,7 @@ When tender **surpasses** outstanding, the receipt shows amount **owed**, amount
 - Reprinting or re-delivering an **unchanged** current bill or receipt keeps the **same** number and is marked **reprint**. A reprint is not a new fiscal document.
 - A reprint or re-delivery keeps the **same handover pass and QR** for that batch. It never issues a new handover token, and a reprint after the batch is fully delivered still resolves to the delivered state.
 - Who may trigger a paper reprint follows **print permission** (printers-and-screens). Customers may receive another copy of their own receipt through in-app order history or email without consuming a new number.
+- A manager and above may send a **forwarded copy** of an already-issued paid bill or receipt to a customer email. It keeps the **same** number, is marked as a forwarded copy, and is audited. It never edits the document body and never creates a replacement.
 
 ### 3.7 Unpaid bill updates vs paid immutability
 
@@ -134,9 +137,19 @@ When tender **surpasses** outstanding, the receipt shows amount **owed**, amount
 - Required content applies whether the document is **shown on screen**, **printed**, or **emailed**. There is no thinner content set for email.
 - The **Handover** block appears on a self-service receipt as follows: heading **“Handover QR”** with instruction **“Show this QR when we hand over your order.”** for QR self-ordering; the same heading with **“Show this QR at the counter to collect your order.”** for kiosk; and **“Order reference”** with **“We’ll hand your order to the courier. Keep this reference.”** for delivery. The review block is separate and always labelled **“Review us”**.
 - This subject owns **what** must appear; the printers-and-screens subject owns **how** those fields are laid out on paper (platform layout only — no venue template editor) and which receipt printer prints them, including the closer's **closing receipt printer override**. Layout must not omit or invent required content.
-- A venue that issues printed bills or receipts needs a usable receipt-printer path as printers-and-screens requires. The same required content is also available in-app and by email.
+- Paper is the normal path. A failed print never blocks settlement, and the same required content is also available in-app and by email.
 
-### 3.9 Retention
+### 3.9 Customer email delivery
+
+- **Paper is the normal path.** A receipt is printed at the venue for every settled sale when the receipt printer is working. A print failure **never blocks payment**; the customer may leave without a receipt, and may receive it by email when an address is provided (printers-and-screens).
+- **Staff tabs.** The customer is offered an email copy only on request. Staff capture the address at the bill; there is no prompt, and the paper still prints. If the address matches an existing User, the receipt is linked to the account **server-side**; no account is created and staff are never told whether one exists.
+- **Delivery and self-order.** When the channel already holds the ordering customer's email, the receipt is emailed automatically at settlement, with **no opt-out**. The paper receipt still prints at the venue. A QR self-order is a self-order channel and follows this rule; a staff tab does not auto-send even when a customer is identified.
+- **No account required.** A receipt email need not belong to a User account. Capturing one never creates an account and never reveals account existence to staff.
+- **Forwarding.** A manager and above may forward any paid bill or receipt to another email as a **forwarded copy** (§3.6), which covers a wrong or inaccessible address.
+- **Delivery.** Emails are best-effort and never block the action that triggered them (emails subject). A failed email does not affect the paper path.
+- **Self-service paper.** A paper receipt is produced for every settled sale, including delivery and self-order, when the receipt printer is working. Kiosk already prints its handover ticket; the paper receipt is separate from the guest's digital copy.
+
+### 3.10 Retention
 
 - Issued bills and receipts are retained with the legal and financial class under the plan quotas and data retention subject. Soft-delete of a sales instance or payment never erases the need to reconstruct what the customer was shown. **Paid and closed** document bodies are the snapshots that satisfy that need.
 
@@ -146,10 +159,10 @@ When tender **surpasses** outstanding, the receipt shows amount **owed**, amount
 
 | Layer | Receipts and bills powers |
 | --- | --- |
-| **Customer** | Receives own bill (when a staff tab shows or shares it) and own receipt (in-app, email, or print at the venue), including the self-service handover pass where the receipt carries one; may request another copy of their own receipt from order history; never issues another guest's document or changes numbering. |
-| **Employee** | Requests the bill on a tab they run; takes payments that lead to receipt issue; prints and reprints customer bills and receipts only with **print permission**. |
+| **Customer** | Receives own bill (when a staff tab shows or shares it) and own receipt (in-app, email, or print at the venue), including the self-service handover pass where the receipt carries one; receives an automatic receipt email for delivery and self-order; may request another copy of their own receipt from order history; never issues another guest's document or changes numbering. |
+| **Employee** | Requests the bill on a tab they run; captures a customer receipt email on request; takes payments that lead to receipt issue; prints and reprints customer bills and receipts only with **print permission**. |
 | **Supervisor** | Same as employee for bill request and settlement on tabs they may run; print permission by layer default. |
-| **Manager** | Everything a supervisor can do; may act on reopen-driven replacements when amending bills and payments under sales-reports and orders rules. |
+| **Manager** | Everything a supervisor can do; may forward a paid bill or receipt to a customer email as a forwarded copy; may act on reopen-driven replacements when amending bills and payments under sales-reports and orders rules. |
 | **Admin/owner** | Full venue control over the same operational acts; no separate numbering configuration — sequences are platform-owned per Business. |
 
 ### Who can do what
@@ -158,6 +171,9 @@ When tender **surpasses** outstanding, the receipt shows amount **owed**, amount
 | --- | --- |
 | First Bill request (assigns bill number) | On-duty staff who may move the tab to Bill (order-flow) |
 | Issue receipt at full settlement | Automatic with settlement close; staff or customer completes payment per payments-and-tax |
+| Capture a customer receipt email on request (staff tab) | Any staff member who may work the tab |
+| Receive an automatic receipt email for delivery or self-order | The ordering customer |
+| Forward a paid bill or receipt to a customer email | Managers and above; audited; same number, marked as a forwarded copy |
 | Print or reprint bill or receipt on paper | Users with **print permission** |
 | Receive own receipt in-app or by email, including the handover pass | The ordering / paying customer (emails and notifications) |
 | Scan the handover QR or enter the identification code at collection | Staff fulfilling the batch on an entitled handover surface (sales-points-and-instances) |

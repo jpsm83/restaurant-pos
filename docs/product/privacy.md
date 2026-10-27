@@ -69,6 +69,7 @@ Terms reused rather than redefined here: **User**, **Customer**, **Business**, *
 
 - Creating a **User** requires a clear **accept** step for the **privacy notice** and account terms before the account is created.
 - **Necessary service processing** — account use, ordering, payment, receipts, security, and **operational** notifications and emails — needs **no marketing-style consent**. It is covered by that notice and terms acceptance (and by identity-at-payment when a guest becomes a User).
+- A **customer receipt email** captured at the bill on request, or already held for a delivery/self-order, is necessary service processing for delivering the receipt. It is not marketing consent, it may belong to a person with no User account, and capturing it never creates an account.
 - Later edits to the published notice do **not** invent a stage-1 re-consent product flow for necessary processing. **Marketing consent** remains the separate opt-in in §3.4.
 - **Cookie banners and non-essential analytics** are out of stage-1 product scope.
 
