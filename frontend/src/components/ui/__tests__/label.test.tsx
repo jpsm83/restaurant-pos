@@ -12,4 +12,9 @@ describe("Label", () => {
     );
     expect(screen.getByText("Field")).toHaveAttribute("for", "f1");
   });
+
+  it("uses the foreground token", () => {
+    render(<Label>Field</Label>);
+    expect(screen.getByText("Field")).toHaveClass("text-foreground");
+  });
 });

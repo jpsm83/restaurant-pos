@@ -1,3 +1,5 @@
+/* eslint-disable react-refresh/only-export-components -- buttonVariants is the single variant source shared with Calendar. */
+
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { Slot } from "radix-ui"
@@ -64,4 +66,4 @@ function Button({
   )
 }
 
-export { Button }
+export { Button, buttonVariants }

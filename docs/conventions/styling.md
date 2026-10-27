@@ -223,12 +223,6 @@ npx shadcn@latest add <component> --overwrite  # restore plain upstream if desir
 
 Keep edits small and purposeful so the diff stays readable. Git history is the second safety net. Editing a primitive for a colour that a token can express is not allowed.
 
-### Current drift to remove
-
-- Reset `frontend/src/components/ui/card.tsx` to upstream: it hardcodes `bg-white`, `border-neutral-200`, and `text-neutral-900` instead of the semantic tokens upstream uses.
-- Delete `frontend/src/components/ui/button-variants.ts` and its test. `button.tsx` and `calendar.tsx` must import one set of variants, not two divergent ones.
-- Move the global `h1`/`h2` sizing out of base styles and into `styles/marketing.css`.
-
 ## Directory boundary
 
 | Path | Owns |
