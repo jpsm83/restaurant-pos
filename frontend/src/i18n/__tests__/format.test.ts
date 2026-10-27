@@ -6,7 +6,7 @@ import {
   formatNumber,
   getDateFnsLocale,
   resolveFormattingLanguage,
-} from "../formatting";
+} from "../format";
 
 const sampleDateTime = new Date(2026, 2, 27, 10, 15, 42);
 

@@ -10,7 +10,7 @@ import {
   getDateFnsLocale,
   resolveFormattingLanguage,
   type DisplayDateInput,
-} from "@/lib/formatting";
+} from "@/i18n/format";
 
 export interface LocaleFormatters {
   language: SupportedLanguage;

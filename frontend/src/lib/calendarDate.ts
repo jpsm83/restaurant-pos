@@ -3,7 +3,7 @@
  *
  * These values carry no time-of-day or offset. Parsing builds a browser-local
  * midnight so the calendar day never shifts across a timezone. Display
- * formatting lives in `@/lib/formatting`.
+ * formatting lives in `@/i18n/format`.
  */
 
 const CALENDAR_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;

@@ -2,7 +2,7 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { Calendar } from "@/components/ui/calendar";
-import { getDateFnsLocale } from "@/lib/formatting";
+import { getDateFnsLocale } from "@/i18n/format";
 import { renderWithI18n } from "@/test/i18nTestUtils";
 
 describe("ui/calendar", () => {
