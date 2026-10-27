@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b",
-    "lint": "eslint .",
+    "check:styles": "node scripts/check-styles.mjs",
+    "lint": "eslint . && node scripts/check-styles.mjs",
     "test": "vitest run",
     "preview": "vite preview"
   },

@@ -110,8 +110,12 @@ Only `VITE_`-prefixed variables are exposed to client code.
 | `npm run build --workspace frontend` | `tsc -b` then `vite build` → `dist/` |
 | `npm run preview --workspace frontend` | Serve the production build locally |
 | `npm run typecheck --workspace frontend` | `tsc -b` (project references) |
-| `npm run lint --workspace frontend` | ESLint |
+| `npm run check:styles --workspace frontend` | Style guard: raw colours and arbitrary values |
+| `npm run lint --workspace frontend` | ESLint and the style guard |
 | `npm run test --workspace frontend` | Vitest run (jsdom) |
+
+Styling rules and the allowlist live in
+[`docs/conventions/styling.md`](../docs/conventions/styling.md).
 
 ## Architecture
 
