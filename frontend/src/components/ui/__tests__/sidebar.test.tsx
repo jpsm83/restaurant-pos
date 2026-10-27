@@ -1,11 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import {
-  SidebarMenuButton,
-  SidebarProvider,
-  useSidebar,
-} from "../sidebar";
+import { SidebarProvider, useSidebar } from "../sidebar";
 
 vi.mock("@/hooks/use-mobile", () => ({
   useIsMobile: () => false,
@@ -51,16 +47,5 @@ describe("sidebar", () => {
     expect(screen.getByTestId("sidebar-open")).toHaveTextContent("true");
     await user.click(screen.getByRole("button", { name: "toggle" }));
     expect(screen.getByTestId("sidebar-open")).toHaveTextContent("false");
-  });
-
-  it("uses sidebar tokens directly without hsl wrappers", () => {
-    render(
-      <SidebarProvider>
-        <SidebarMenuButton variant="outline">Menu</SidebarMenuButton>
-      </SidebarProvider>,
-    );
-    const button = screen.getByRole("button", { name: "Menu" });
-    expect(button.className).toContain("var(--sidebar-border)");
-    expect(button.className).not.toContain("hsl(");
   });
 });

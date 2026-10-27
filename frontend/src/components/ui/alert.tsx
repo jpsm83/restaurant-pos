@@ -25,7 +25,6 @@ export function Alert({
   return (
     <div
       role="alert"
-      data-tone={tone ?? "error"}
       className={cn(alertVariants({ tone }), className)}
       {...props}
     />

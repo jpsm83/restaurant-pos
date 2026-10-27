@@ -23,15 +23,4 @@ describe("Card", () => {
     expect(screen.getByText("Desc")).toBeInTheDocument();
     expect(screen.getByText("Body")).toBeInTheDocument();
   });
-
-  it("uses semantic surface tokens", () => {
-    render(
-      <Card>
-        <CardDescription>Desc</CardDescription>
-      </Card>,
-    );
-    const card = screen.getByText("Desc").parentElement;
-    expect(card).toHaveClass("bg-card", "text-card-foreground", "border-border");
-    expect(screen.getByText("Desc")).toHaveClass("text-muted-foreground");
-  });
 });

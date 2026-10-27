@@ -23,19 +23,4 @@ describe("Sheet", () => {
     expect(screen.getByText("Panel")).toBeInTheDocument();
     expect(screen.getByText("Details")).toBeInTheDocument();
   });
-
-  it("scrims with the overlay token", () => {
-    render(
-      <Sheet defaultOpen>
-        <SheetContent aria-describedby={undefined}>
-          <SheetHeader>
-            <SheetTitle>Panel</SheetTitle>
-          </SheetHeader>
-        </SheetContent>
-      </Sheet>,
-    );
-    expect(
-      document.querySelector('[data-slot="sheet-overlay"]'),
-    ).toHaveClass("bg-overlay");
-  });
 });

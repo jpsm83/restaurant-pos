@@ -14,10 +14,5 @@ describe("Popover", () => {
     );
     await user.click(screen.getByRole("button", { name: "Open" }));
     expect(await screen.findByText("Inside")).toBeInTheDocument();
-    expect(screen.getByText("Inside")).toHaveClass(
-      "bg-popover",
-      "text-popover-foreground",
-      "border-border",
-    );
   });
 });

@@ -106,9 +106,7 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           {flashMessage ? (
-            <Alert className="border-green-200 bg-green-50 text-green-700">
-              {flashMessage}
-            </Alert>
+            <Alert tone="success">{flashMessage}</Alert>
           ) : null}
           <form
             className="space-y-4"
