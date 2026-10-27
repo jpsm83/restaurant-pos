@@ -27,7 +27,6 @@
     "@fastify/type-provider-zod": "^1.0.0",
     "@fastify/websocket": "^11.3.4",
     "@sentry/node": "^11.9.0",
-    "@sentry/profiling-node": "^11.9.0",
     "bcrypt": "^6.0.0",
     "cloudinary": "^2.11.0",
     "convert-units": "^2.3.4",

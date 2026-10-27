@@ -17,6 +17,17 @@ import {
   titleForStatus,
   type ProblemFieldError,
 } from "./appError.ts";
+import {
+  buildFailureReportContext,
+  type FailureReporter,
+} from "./failureReporting.ts";
+import { sentryFailureReporter } from "./sentryFailureReporter.ts";
+
+export type {
+  FailureReporter,
+  FailureReportContext,
+  FailureReportSession,
+} from "./failureReporting.ts";
 
 export interface ProblemDetails {
   type: string;
@@ -108,18 +119,45 @@ function sendProblem(reply: FastifyReply, problem: ProblemDetails): void {
   reply.status(problem.status).type("application/problem+json").send(problem);
 }
 
+export interface ProblemDetailsHandlerOptions {
+  /** Injection point for tests; defaults to the Sentry-backed reporter. */
+  failureReporter?: FailureReporter;
+}
+
 /**
  * Register the global error handler that emits problem-details documents, plus
  * a not-found handler so unmatched routes use the same envelope instead of
  * Fastify's default `{ message, error, statusCode }` body.
+ *
+ * This is the single observer for unexpected server failures: the reply is
+ * computed first, reported second, and sent unchanged. Reporter failures are
+ * swallowed and logged locally so telemetry can never alter the response.
  */
-export function registerProblemDetailsHandler(app: FastifyInstance): void {
+export function registerProblemDetailsHandler(
+  app: FastifyInstance,
+  options: ProblemDetailsHandlerOptions = {},
+): void {
+  const failureReporter = options.failureReporter ?? sentryFailureReporter;
+
   app.setErrorHandler(
     (err: unknown, req: FastifyRequest, reply: FastifyReply) => {
       const problem = toProblemDetails(err, req.url);
+
       if (problem.status >= 500) {
         req.log.error(err);
+        try {
+          failureReporter.report(
+            err,
+            buildFailureReportContext(req, problem.status),
+          );
+        } catch (reportingError) {
+          req.log.error(
+            { err: reportingError },
+            "Failed to report unexpected error",
+          );
+        }
       }
+
       sendProblem(reply, problem);
     },
   );
