@@ -41,10 +41,10 @@ export default function CustomerProfilePage() {
           className="mt-4 max-w-lg rounded-md border border-warning/40 bg-warning/20 px-3 py-3 text-sm text-foreground"
           role="status"
         >
-          <p className="font-medium text-foreground">
+          <p className="font-medium">
             {t("profile.emailVerify.bannerTitle")}
           </p>
-          <p className="mt-1 text-muted-foreground">
+          <p className="mt-1">
             {t("profile.emailVerify.bannerDescription")}
           </p>
           <Button
