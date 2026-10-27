@@ -20,9 +20,7 @@
     "src/pages/customer/CustomerFavoritesPage.tsx",
     "src/pages/customer/CustomerProfilePage.tsx",
     "src/pages/employee/EmployeeDashboardPage.tsx",
-    "src/pages/employee/EmployeeProfilePage.tsx",
-    "src/pages/marketing/BusinessMarketingPage.tsx",
-    "src/pages/marketing/CustomerMarketingPage.tsx"
+    "src/pages/employee/EmployeeProfilePage.tsx"
   ],
   "arbitraryValues": [
     "src/components/AccountMenuPopover.tsx",

@@ -11,19 +11,19 @@ export default function CustomerMarketingPage() {
   ];
 
   return (
-    <main className="marketing flex min-h-0 flex-1 flex-col items-center justify-center bg-neutral-100 px-4 py-10 sm:px-6 lg:px-8">
+    <main className="marketing flex min-h-0 flex-1 flex-col items-center justify-center bg-surface px-4 py-10 sm:px-6 lg:px-8">
       <Card className="w-full max-w-2xl">
         <CardHeader>
           <CardTitle>{t("marketing.customer.title")}</CardTitle>
           <CardDescription>{t("marketing.customer.description")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
-          <ul className="list-disc space-y-2 pl-5 text-sm text-neutral-700">
+          <ul className="list-disc space-y-2 pl-5 text-sm text-muted-foreground">
             {highlights.map((item) => (
               <li key={item}>{item}</li>
             ))}
           </ul>
-          <p className="text-sm text-neutral-700">
+          <p className="text-sm text-muted-foreground">
             {t("marketing.customer.footer")}
           </p>
           <Button asChild>
