@@ -14,6 +14,15 @@
   "profile": {
     "title": "Perfil del negocio",
     "notBuiltYet": "Esta página aún no está disponible.",
+    "loadingTitle": "Cargando el perfil del negocio...",
+    "loadError": "No se pudo cargar el perfil del negocio.",
+    "errorTitle": "No se pudo cargar el perfil",
+    "errorDescription": "Revisa el error y vuelve a intentar cargar el perfil.",
+    "retry": "Reintentar",
+    "noData": "No se devolvieron datos del perfil. Inténtalo de nuevo.",
+    "reset": "Descartar cambios",
+    "save": "Guardar cambios",
+    "saving": "Guardando...",
     "validationSummary": "Corrige los campos marcados antes de guardar."
   },
   "profileForm": {

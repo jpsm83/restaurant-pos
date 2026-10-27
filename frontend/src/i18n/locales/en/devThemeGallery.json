@@ -8,6 +8,9 @@
     "light": "Light",
     "dark": "Dark"
   },
+  "themes": {
+    "default": "Default"
+  },
   "sections": {
     "tokens": "Token swatches",
     "typography": "Typography",

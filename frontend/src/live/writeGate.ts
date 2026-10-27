@@ -8,13 +8,10 @@ import { canCommitWrite as connectionCanCommitWrite } from "./connection";
 
 export const WRITE_BLOCKED_CODE = "LIVE_WRITE_BLOCKED";
 
-export const WRITE_BLOCKED_MESSAGE =
-  "This action is blocked until the connection is live again.";
-
 export class WriteBlockedError extends Error {
   readonly code = WRITE_BLOCKED_CODE;
 
-  constructor(message = WRITE_BLOCKED_MESSAGE) {
+  constructor(message: string) {
     super(message);
     this.name = "WriteBlockedError";
   }
@@ -26,8 +23,6 @@ export function canCommitWrite(): boolean {
 
 export function assertWritesAllowed(): void {
   if (!canCommitWrite()) {
-    throw new WriteBlockedError(
-      i18n.t("live.writeBlocked", { defaultValue: WRITE_BLOCKED_MESSAGE }),
-    );
+    throw new WriteBlockedError(i18n.t("live.writeBlocked"));
   }
 }

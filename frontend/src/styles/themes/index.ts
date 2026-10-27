@@ -1,4 +1,4 @@
-export const THEMES = [{ id: "default", label: "Default" }] as const;
+export const THEMES = [{ id: "default" }] as const;
 
 export type ThemeId = (typeof THEMES)[number]["id"];
 

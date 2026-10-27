@@ -15,5 +15,19 @@
   "languages": {
     "en": "English",
     "es": "Español"
+  },
+  "sidebar": {
+    "title": "Sidebar",
+    "mobileDescription": "Displays the mobile sidebar."
+  },
+  "sheet": {
+    "close": "Close"
+  },
+  "unsavedChanges": {
+    "title": "You have unsaved changes",
+    "description": "If you leave now, your changes will be lost. Do you want to continue?",
+    "stay": "Stay on page",
+    "leave": "Leave without saving",
+    "leaving": "Leaving..."
   }
 }

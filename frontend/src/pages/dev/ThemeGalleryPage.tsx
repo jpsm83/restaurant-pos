@@ -463,10 +463,10 @@ function ChartSample() {
 
 function ThemePanel(props: {
   themeId: ThemeId;
-  themeLabel: string;
   mode: ResolvedThemeMode;
 }) {
   const { t } = useTranslation("common");
+  const themeLabel = t(`devThemeGallery.themes.${props.themeId}`);
 
   return (
     <article
@@ -481,7 +481,7 @@ function ThemePanel(props: {
       <header className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-heading text-xl font-semibold">
           {t("devThemeGallery.panelTitle", {
-            theme: props.themeLabel,
+            theme: themeLabel,
             mode: t(`devThemeGallery.modes.${props.mode}`),
           })}
         </h2>
@@ -535,7 +535,6 @@ export default function ThemeGalleryPage() {
               <ThemePanel
                 key={`${theme.id}-${mode}`}
                 themeId={theme.id}
-                themeLabel={theme.label}
                 mode={mode}
               />
             )),

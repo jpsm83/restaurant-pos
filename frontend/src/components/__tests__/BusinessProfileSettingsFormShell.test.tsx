@@ -100,6 +100,95 @@ describe("BusinessProfileSettingsFormShell", () => {
     expect(screen.getByRole("button", { name: /save changes/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /reset changes/i })).toBeDisabled();
   });
+
+  it("renders loading, error, and no-data copy in Spanish", async () => {
+    useBusinessProfileSettingsController.mockReturnValue({ kind: "loading" });
+
+    const loading = await renderWithI18n(
+      <BusinessProfileSettingsFormShell>
+        {() => <p>Never</p>}
+      </BusinessProfileSettingsFormShell>,
+      { language: "es" },
+    );
+
+    expect(
+      screen.getByRole("status", {
+        name: "Cargando el perfil del negocio...",
+      }),
+    ).toBeInTheDocument();
+    loading.unmount();
+
+    useBusinessProfileSettingsController.mockReturnValue({
+      kind: "error",
+      refetch: vi.fn(),
+    });
+
+    const error = await renderWithI18n(
+      <BusinessProfileSettingsFormShell>
+        {() => <p>Never</p>}
+      </BusinessProfileSettingsFormShell>,
+      { language: "es" },
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "No se pudo cargar el perfil" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Revisa el error y vuelve a intentar cargar el perfil.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("No se pudo cargar el perfil del negocio."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Reintentar" }),
+    ).toBeInTheDocument();
+    error.unmount();
+
+    useBusinessProfileSettingsController.mockReturnValue({ kind: "no-data" });
+
+    await renderWithI18n(
+      <BusinessProfileSettingsFormShell>
+        {() => <p>Never</p>}
+      </BusinessProfileSettingsFormShell>,
+      { language: "es" },
+    );
+
+    expect(
+      screen.getByText(
+        "No se devolvieron datos del perfil. Inténtalo de nuevo.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("renders translated save, reset, saving, and validation copy", async () => {
+    useBusinessProfileSettingsController.mockReturnValue({
+      ...readyFormController(),
+      isSubmitted: true,
+      isValid: false,
+      updateMutation: {
+        isPending: true,
+      } as BusinessProfileSettingsReady["updateMutation"],
+    });
+
+    await renderWithI18n(
+      <BusinessProfileSettingsFormShell>
+        {() => <p>Form body</p>}
+      </BusinessProfileSettingsFormShell>,
+      { language: "es" },
+    );
+
+    expect(
+      screen.getByText("Corrige los campos marcados antes de guardar."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Descartar cambios" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Guardando..." }),
+    ).toBeInTheDocument();
+  });
 });
 
 describe("BusinessProfileSettingsStaticShell", () => {

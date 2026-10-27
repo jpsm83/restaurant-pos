@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import i18n from "@/i18n/i18n";
 import { queryClient } from "@/services/queryClient";
 import {
   createLiveConnection,
@@ -9,7 +10,6 @@ import {
 import {
   assertWritesAllowed,
   canCommitWrite,
-  WRITE_BLOCKED_MESSAGE,
   WriteBlockedError,
 } from "../writeGate";
 import { HarnessSocket, liveAckAndBecomeLive } from "./socketHarness";
@@ -57,13 +57,26 @@ describe("live connection write gate", () => {
     expect(getLiveStatus()).toBe("connecting");
     expect(canCommitWrite()).toBe(false);
     expect(() => assertWritesAllowed()).toThrow(WriteBlockedError);
-    expect(() => assertWritesAllowed()).toThrow(WRITE_BLOCKED_MESSAGE);
+    expect(() => assertWritesAllowed()).toThrow(i18n.t("live.writeBlocked"));
 
     liveAckAndBecomeLive(HarnessSocket.latest());
 
     expect(getLiveStatus()).toBe("live");
     expect(canCommitWrite()).toBe(true);
     expect(() => assertWritesAllowed()).not.toThrow();
+  });
+
+  it("localizes the blocked-write message at throw time", async () => {
+    syncLiveConnection("session-token");
+
+    await i18n.changeLanguage("es");
+    try {
+      expect(() => assertWritesAllowed()).toThrow(
+        "Esta acción está bloqueada hasta que la conexión vuelva a estar en vivo.",
+      );
+    } finally {
+      await i18n.changeLanguage("en");
+    }
   });
 
   it("shows disconnected while the socket is down and not yet reconnecting", () => {

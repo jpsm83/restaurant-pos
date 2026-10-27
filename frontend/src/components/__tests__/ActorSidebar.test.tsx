@@ -40,6 +40,7 @@ describe("ActorSidebar", () => {
 
     const home = screen.getByRole("link", { name: /home/i });
     expect(home).toHaveAttribute("href", "/dashboard");
+    expect(screen.queryByText("Footer Footer Footer")).not.toBeInTheDocument();
   });
 
   it("renders collapsible group and sub-links from subPages", async () => {

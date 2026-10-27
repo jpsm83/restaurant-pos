@@ -3,7 +3,6 @@ import type { LucideIcon } from "lucide-react";
 import { ChevronDown, Settings } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
-  SidebarFooter,
   SidebarContent,
   SidebarHeader,
   SidebarMenu,
@@ -169,17 +168,6 @@ export default function ActorSidebar({
           ))}
         </SidebarMenu>
       </SidebarContent>
-
-      {/* Sidebar Footer */}
-      <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton tooltip="Footer">
-              Footer Footer Footer
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
     </>
   );
 }

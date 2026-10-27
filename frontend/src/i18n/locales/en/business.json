@@ -14,6 +14,15 @@
   "profile": {
     "title": "Business profile",
     "notBuiltYet": "This page is not built yet.",
+    "loadingTitle": "Loading business profile...",
+    "loadError": "Failed to load business profile.",
+    "errorTitle": "Could not load profile",
+    "errorDescription": "Review the error and retry profile fetch.",
+    "retry": "Retry",
+    "noData": "No profile data was returned. Please retry.",
+    "reset": "Reset changes",
+    "save": "Save changes",
+    "saving": "Saving...",
     "validationSummary": "Fix the highlighted fields before saving."
   },
   "profileForm": {

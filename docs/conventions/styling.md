@@ -148,13 +148,13 @@ Rules:
 
 ```ts
 // src/styles/themes/index.ts
-export const THEMES = [{ id: "default", label: "Default" }] as const;
+export const THEMES = [{ id: "default" }] as const;
 
 export type ThemeId = (typeof THEMES)[number]["id"];
 export const DEFAULT_THEME_ID: ThemeId = "default";
 ```
 
-Registry IDs are stable, kebab-case, and carry no mode suffix. CSS filenames match the ID. Labels are separate, human-readable strings. Adding a theme requires both a registry entry and an import in `index.css`; a test asserts they agree.
+Registry IDs are stable, kebab-case, and carry no mode suffix. CSS filenames match the ID. The registry stores ids only; display labels are resolved at render time from the active locale (see [i18n](./i18n.md)). Adding a theme requires both a registry entry and an import in `index.css`; a test asserts they agree.
 
 ### Runtime
 
@@ -299,7 +299,7 @@ There is no Playwright visual regression suite. Add one only when theme count or
 A theme is complete only when all of these are true:
 
 - [ ] CSS file in `src/styles/themes/` named after the ID.
-- [ ] Registry entry with a stable kebab-case ID and a human-readable label.
+- [ ] Registry entry with a stable kebab-case ID (no display label; resolve the label through i18n at render time).
 - [ ] Import in `src/index.css`.
 - [ ] Complete light set in `[data-theme="<id>"]:not(.dark)`.
 - [ ] Complete dark set in `[data-theme="<id>"].dark`.

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -22,13 +23,19 @@ export function UnsavedChangesDialog({
   open,
   onStay,
   onLeave,
-  title = "You have unsaved changes",
-  description = "If you leave now, your changes will be lost. Do you want to continue?",
-  stayLabel = "Stay on page",
-  leaveLabel = "Leave without saving",
+  title,
+  description,
+  stayLabel,
+  leaveLabel,
   isLeaving = false,
   className,
 }: UnsavedChangesDialogProps) {
+  const { t } = useTranslation("common");
+  const resolvedTitle = title ?? t("unsavedChanges.title");
+  const resolvedDescription = description ?? t("unsavedChanges.description");
+  const resolvedStayLabel = stayLabel ?? t("unsavedChanges.stay");
+  const resolvedLeaveLabel = leaveLabel ?? t("unsavedChanges.leave");
+
   return (
     <DialogPrimitive.Root
       open={open}
@@ -51,20 +58,22 @@ export function UnsavedChangesDialog({
           )}
         >
           <DialogPrimitive.Title className="text-base font-semibold text-popover-foreground">
-            {title}
+            {resolvedTitle}
           </DialogPrimitive.Title>
           <DialogPrimitive.Description
             id="unsaved-changes-description"
             className="mt-2 text-sm text-muted-foreground"
           >
-            {description}
+            {resolvedDescription}
           </DialogPrimitive.Description>
           <div className="mt-5 flex flex-wrap justify-end gap-2">
             <Button type="button" variant="outline" onClick={onStay}>
-              {stayLabel}
+              {resolvedStayLabel}
             </Button>
             <Button type="button" variant="destructive" onClick={onLeave} disabled={isLeaving}>
-              {isLeaving ? "Leaving..." : leaveLabel}
+              {isLeaving
+                ? (leaveLabel ?? t("unsavedChanges.leaving"))
+                : resolvedLeaveLabel}
             </Button>
           </div>
         </DialogPrimitive.Content>

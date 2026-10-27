@@ -46,4 +46,35 @@ describe("UnsavedChangesDialog", () => {
 
     expect(screen.getByRole("button", { name: "Leaving..." })).toBeDisabled();
   });
+
+  it("renders its default copy in Spanish", async () => {
+    await renderWithI18n(
+      <UnsavedChangesDialog open onStay={vi.fn()} onLeave={vi.fn()} />,
+      { language: "es" },
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "Tienes cambios sin guardar" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Si sales ahora, perderás los cambios. ¿Quieres continuar?",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Quedarme en la página" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Salir sin guardar" }),
+    ).toBeInTheDocument();
+  });
+
+  it("translates the leaving state in Spanish", async () => {
+    await renderWithI18n(
+      <UnsavedChangesDialog open onStay={vi.fn()} onLeave={vi.fn()} isLeaving />,
+      { language: "es" },
+    );
+
+    expect(screen.getByRole("button", { name: "Saliendo..." })).toBeDisabled();
+  });
 });

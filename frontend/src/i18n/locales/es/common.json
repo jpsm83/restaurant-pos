@@ -15,5 +15,19 @@
   "languages": {
     "en": "English",
     "es": "Español"
+  },
+  "sidebar": {
+    "title": "Barra lateral",
+    "mobileDescription": "Muestra la barra lateral móvil."
+  },
+  "sheet": {
+    "close": "Cerrar"
+  },
+  "unsavedChanges": {
+    "title": "Tienes cambios sin guardar",
+    "description": "Si sales ahora, perderás los cambios. ¿Quieres continuar?",
+    "stay": "Quedarme en la página",
+    "leave": "Salir sin guardar",
+    "leaving": "Saliendo..."
   }
 }

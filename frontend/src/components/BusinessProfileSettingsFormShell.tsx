@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog";
 import { Alert } from "@/components/ui/alert";
@@ -82,12 +83,10 @@ type BusinessProfileSettingsStaticShellProps = {
 function renderProfileSettingsBlockedMain(
   loadingSlot: ReactNode | undefined,
   blocked: BusinessProfileSettingsPageBlocked,
-  t: (key: string, options?: { defaultValue?: string }) => string,
+  t: TFunction<"business">,
 ): ReactNode {
   if (blocked.kind === "loading") {
-    const loadingLabel = t("profile.loadingTitle", {
-      defaultValue: "Loading business profile...",
-    });
+    const loadingLabel = t("profile.loadingTitle");
     return (
       <main
         className="w-full min-w-0 p-6"
@@ -102,23 +101,15 @@ function renderProfileSettingsBlockedMain(
   }
 
   if (blocked.kind === "error") {
-    const message =
-      blocked.message ??
-      t("profile.loadError", {
-        defaultValue: "Failed to load business profile.",
-      });
+    const message = blocked.message ?? t("profile.loadError");
     return (
       <main className="w-full min-w-0 p-6">
         <div className="max-w-2xl space-y-4">
           <h2 className="text-xl font-semibold tracking-tight text-foreground">
-            {t("profile.errorTitle", {
-              defaultValue: "Could not load profile",
-            })}
+            {t("profile.errorTitle")}
           </h2>
           <p className="text-sm text-muted-foreground">
-            {t("profile.errorDescription", {
-              defaultValue: "Review the error and retry profile fetch.",
-            })}
+            {t("profile.errorDescription")}
           </p>
           <Alert>{message}</Alert>
           <Button
@@ -126,7 +117,7 @@ function renderProfileSettingsBlockedMain(
             variant="outline"
             onClick={() => void blocked.refetch()}
           >
-            {t("profile.retry", { defaultValue: "Retry" })}
+            {t("profile.retry")}
           </Button>
         </div>
       </main>
@@ -136,11 +127,7 @@ function renderProfileSettingsBlockedMain(
   if (blocked.kind === "no-data") {
     return (
       <main className="w-full min-w-0 p-6">
-        <Alert>
-          {t("profile.noData", {
-            defaultValue: "No profile data was returned. Please retry.",
-          })}
-        </Alert>
+        <Alert>{t("profile.noData")}</Alert>
       </main>
     );
   }
@@ -220,10 +207,10 @@ export function BusinessProfileSettingsFormShell({
             disabled={updateMutation.isPending || !isDirty}
             onClick={handleResetToLastSaved}
           >
-            Reset changes
+            {t("profile.reset")}
           </Button>
           <Button type="submit" disabled={updateMutation.isPending || !isDirty}>
-            {updateMutation.isPending ? "Saving..." : "Save changes"}
+            {updateMutation.isPending ? t("profile.saving") : t("profile.save")}
           </Button>
         </section>
       </form>

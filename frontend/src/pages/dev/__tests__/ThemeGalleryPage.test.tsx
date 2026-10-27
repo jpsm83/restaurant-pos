@@ -86,13 +86,13 @@ describe("ThemeGalleryPage", () => {
     expect(
       within(screen.getByTestId("theme-panel-default-light")).getByRole(
         "heading",
-        { level: 2, name: "Default · Claro" },
+        { level: 2, name: "Predeterminado · Claro" },
       ),
     ).toBeInTheDocument();
     expect(
       within(screen.getByTestId("theme-panel-default-dark")).getByRole(
         "heading",
-        { level: 2, name: "Default · Oscuro" },
+        { level: 2, name: "Predeterminado · Oscuro" },
       ),
     ).toBeInTheDocument();
     expect(
