@@ -34,7 +34,7 @@ function GenericSettingsFieldSkeletonBlocks() {
 
 function FormActionsSkeletonRow() {
   return (
-    <section className="flex flex-wrap justify-end gap-3 border-t border-neutral-200 pt-5">
+    <section className="flex flex-wrap justify-end gap-3 border-t border-border pt-5">
       <Skeleton className="h-10 w-28" aria-hidden />
       <Skeleton className="h-10 w-36" aria-hidden />
     </section>
@@ -110,12 +110,12 @@ function renderProfileSettingsBlockedMain(
     return (
       <main className="w-full min-w-0 p-6">
         <div className="max-w-2xl space-y-4">
-          <h2 className="text-xl font-semibold tracking-tight text-neutral-900">
+          <h2 className="text-xl font-semibold tracking-tight text-foreground">
             {t("profile.errorTitle", {
               defaultValue: "Could not load profile",
             })}
           </h2>
-          <p className="text-sm text-neutral-600">
+          <p className="text-sm text-muted-foreground">
             {t("profile.errorDescription", {
               defaultValue: "Review the error and retry profile fetch.",
             })}

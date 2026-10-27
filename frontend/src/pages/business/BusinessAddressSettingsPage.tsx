@@ -43,13 +43,13 @@ function AddressSettingsLoadingBody() {
         </div>
         <div className="flex min-h-0 min-w-0 flex-col gap-2 lg:col-span-1">
           <div
-            className="text-sm font-semibold text-neutral-800"
+            className="text-sm font-semibold text-foreground"
             aria-hidden
           >
             <Skeleton className="h-4 w-36" />
           </div>
           <Skeleton
-            className="h-64 min-h-64 w-full rounded-lg md:h-[min(50vh,22rem)] md:min-h-72"
+            className="map-preview-height min-h-64 w-full rounded-lg md:min-h-72"
             aria-hidden
           />
         </div>
@@ -124,10 +124,10 @@ function AddressSection({ ctx }: { ctx: BusinessProfileSettingsReady }) {
   return (
     <section className="space-y-4">
       <header className="space-y-1.5">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-700">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground">
           {t("addressSettings.sectionTitle")}
         </h2>
-        <p className="text-sm text-neutral-600">
+        <p className="text-sm text-muted-foreground">
           {t("addressSettings.sectionDescription")}
         </p>
       </header>
@@ -200,7 +200,7 @@ function AddressSection({ ctx }: { ctx: BusinessProfileSettingsReady }) {
           </div>
         </div>
         <div className="flex min-h-0 min-w-0 flex-col gap-2 lg:col-span-1">
-          <h3 className="text-sm font-semibold text-neutral-800">
+          <h3 className="text-sm font-semibold text-foreground">
             {t("addressSettings.locationPreview")}
           </h3>
           <BusinessAddressLocationMap addressQuery={addressQuery} />

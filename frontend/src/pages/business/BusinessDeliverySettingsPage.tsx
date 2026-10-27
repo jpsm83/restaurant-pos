@@ -27,7 +27,7 @@ function DeliverySettingsLoadingBody() {
           ))}
         </div>
       </section>
-      <section className="space-y-3 rounded-md border border-neutral-200 p-4">
+      <section className="space-y-3 rounded-md border border-border p-4">
         <div className="flex items-center justify-between">
           <Skeleton className="h-5 w-52" aria-hidden />
           <Skeleton className="h-8 w-36" aria-hidden />
@@ -38,7 +38,7 @@ function DeliverySettingsLoadingBody() {
             <Skeleton className="h-4 w-16" aria-hidden />
             <Skeleton className="h-10 max-w-xs w-full" aria-hidden />
           </div>
-          <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+          <div className="grid gap-3 form-grid-2-action">
             <Skeleton className="h-10 w-full" aria-hidden />
             <Skeleton className="h-10 w-full" aria-hidden />
             <Skeleton className="h-10 w-24" aria-hidden />
@@ -74,7 +74,7 @@ function DeliverySections({ ctx }: { ctx: BusinessProfileSettingsReady }) {
   return (
     <>
       <section className="space-y-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-700">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground">
           Delivery options
         </h2>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -86,7 +86,7 @@ function DeliverySections({ ctx }: { ctx: BusinessProfileSettingsReady }) {
               render={({ field }) => (
                 <select
                   id="bp-accepts-delivery"
-                  className="flex h-10 w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   value={field.value ? "yes" : "no"}
                   onChange={(event) => field.onChange(event.target.value === "yes")}
                 >
@@ -121,9 +121,9 @@ function DeliverySections({ ctx }: { ctx: BusinessProfileSettingsReady }) {
         </div>
       </section>
 
-      <section className="space-y-3 rounded-md border border-neutral-200 p-4">
+      <section className="space-y-3 rounded-md border border-border p-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-neutral-800">Delivery opening windows</h3>
+          <h3 className="text-sm font-semibold text-foreground">Delivery opening windows</h3>
           <Button
             type="button"
             variant="outline"
@@ -139,7 +139,7 @@ function DeliverySections({ ctx }: { ctx: BusinessProfileSettingsReady }) {
           </Button>
         </div>
         {deliveryWindowsFieldArray.fields.length === 0 ? (
-          <p className="text-sm text-neutral-500">No delivery windows configured yet.</p>
+          <p className="text-sm text-muted-foreground">No delivery windows configured yet.</p>
         ) : null}
         {deliveryWindowsFieldArray.fields.map((field, dayIndex) => (
           <div key={field.id} className="space-y-3">
@@ -151,7 +151,7 @@ function DeliverySections({ ctx }: { ctx: BusinessProfileSettingsReady }) {
                 render={({ field: dayField }) => (
                   <select
                     id={`bp-delivery-day-${dayIndex}`}
-                    className="flex h-10 w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm sm:max-w-xs"
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm sm:max-w-xs"
                     value={dayField.value}
                     onChange={(event) => dayField.onChange(Number(event.target.value))}
                   >
@@ -190,17 +190,17 @@ function DeliveryWindowsRow({ control, dayIndex, onRemoveDay }: DeliveryWindowsR
   });
 
   return (
-    <div className="space-y-3 rounded-md border border-neutral-200 p-3">
+    <div className="space-y-3 rounded-md border border-border p-3">
       <div className="flex justify-end">
         <Button type="button" variant="ghost" size="sm" onClick={onRemoveDay}>
           Remove day
         </Button>
       </div>
       {windowsFieldArray.fields.length === 0 ? (
-        <p className="text-sm text-neutral-500">No windows configured yet for this day.</p>
+        <p className="text-sm text-muted-foreground">No windows configured yet for this day.</p>
       ) : null}
       {windowsFieldArray.fields.map((windowField, windowIndex) => (
-        <div key={windowField.id} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+        <div key={windowField.id} className="grid gap-3 form-grid-2-action">
           <div className="space-y-2">
             <Label htmlFor={`bp-delivery-open-${dayIndex}-${windowIndex}`}>
               Delivery open

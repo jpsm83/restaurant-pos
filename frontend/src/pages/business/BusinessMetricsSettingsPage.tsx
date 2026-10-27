@@ -59,7 +59,7 @@ function MetricsSections({ ctx }: { ctx: BusinessProfileSettingsReady }) {
   return (
     <>
       <section className="space-y-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-700">Metrics</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground">Metrics</h2>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="bp-metric-food">Food cost percentage</Label>
@@ -156,7 +156,7 @@ function MetricsSections({ ctx }: { ctx: BusinessProfileSettingsReady }) {
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-700">Reporting</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground">Reporting</h2>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="bp-weekly-start-day">Weekly report start day</Label>
@@ -166,7 +166,7 @@ function MetricsSections({ ctx }: { ctx: BusinessProfileSettingsReady }) {
               render={({ field }) => (
                 <select
                   id="bp-weekly-start-day"
-                  className="flex h-10 w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   value={field.value ?? ""}
                   onChange={(event) =>
                     field.onChange(

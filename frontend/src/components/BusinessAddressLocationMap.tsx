@@ -126,7 +126,7 @@ function AddressPreviewMapBody({
   return (
     <div className={cn("flex min-h-0 flex-col gap-2", className)}>
       {/* Clip Leaflet panes (high z-index); without this, tiles can paint over the form action bar. */}
-      <div className="relative isolate z-0 h-64 w-full min-h-0 overflow-hidden rounded-lg border border-neutral-200 md:h-[min(50vh,22rem)] md:min-h-72">
+      <div className="relative isolate z-0 map-preview-height w-full min-h-0 overflow-hidden rounded-lg border border-border md:min-h-72">
         <MapContainer
           center={center}
           zoom={zoom}
@@ -134,7 +134,6 @@ function AddressPreviewMapBody({
             "z-0 h-full! w-full! rounded-none border-0",
             mapContainerClassName,
           )}
-          style={{ height: "100%", width: "100%" }}
           scrollWheelZoom
         >
           <MapViewSync center={center} zoom={zoom} />
@@ -148,7 +147,7 @@ function AddressPreviewMapBody({
         </MapContainer>
         {isMapLoading ? (
           <div
-            className="pointer-events-none absolute inset-0 z-2000 flex bg-white/75"
+            className="pointer-events-none absolute inset-0 z-overlay flex bg-overlay"
             aria-busy="true"
             aria-live="polite"
             aria-label={t("addressMap.loadingAriaLabel")}
@@ -159,16 +158,19 @@ function AddressPreviewMapBody({
         ) : null}
       </div>
       {query.length > 0 && query.length < MIN_QUERY_LEN ? (
-        <p className="text-xs text-neutral-500">
+        <p className="text-xs text-muted-foreground">
           {t("addressMap.shortQueryHint")}
         </p>
       ) : null}
       {geoHint ? (
-        <p className="text-xs text-amber-800" role="status">
+        <p
+          className="rounded-md bg-warning/20 px-2 py-1 text-xs text-foreground"
+          role="status"
+        >
           {geoHint}
         </p>
       ) : null}
-      <p className="text-[11px] leading-snug text-neutral-400">
+      <p className="text-xs leading-snug text-muted-foreground">
         {t("addressMap.footerNotice")}
       </p>
     </div>

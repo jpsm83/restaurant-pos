@@ -2,6 +2,7 @@ import { useWatch } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { subscriptionEnums } from "restaurant-pos-packages/enums";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 import {
   BusinessProfileSettingsFormShell,
   BusinessProfileSettingsLoadingCard,
@@ -43,7 +44,7 @@ function SubscriptionSection({ ctx }: { ctx: BusinessProfileSettingsReady }) {
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-700">
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground">
         {t("subscriptionSettings.sectionTitle")}
       </h2>
       <div
@@ -60,18 +61,20 @@ function SubscriptionSection({ ctx }: { ctx: BusinessProfileSettingsReady }) {
               role="radio"
               aria-checked={isSelected}
               aria-label={t("subscriptionSettings.selectPlanAriaLabel", { plan })}
-              className={`rounded-lg border p-4 text-left transition ${
+              className={cn(
+                "rounded-lg border p-4 text-left transition",
                 isSelected
-                  ? "border-neutral-900 bg-neutral-900 text-white"
-                  : "border-neutral-300 bg-white text-neutral-900 hover:border-neutral-500"
-              }`}
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-card text-card-foreground hover:border-ring",
+              )}
               onClick={() => setValue("subscription", plan, { shouldDirty: true })}
             >
               <p className="font-semibold">{plan}</p>
               <p
-                className={`mt-1 text-xs ${
-                  isSelected ? "text-neutral-200" : "text-neutral-500"
-                }`}
+                className={cn(
+                  "mt-1 text-xs",
+                  isSelected ? "text-primary-foreground/80" : "text-muted-foreground",
+                )}
               >
                 {t("subscriptionSettings.selectedPlanDescription")}
               </p>

@@ -340,7 +340,7 @@ export default function BusinessAdvancedTableSection({
           })}
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-1 text-sm text-neutral-600">
+      <CardContent className="space-y-1 text-sm text-muted-foreground">
         <p>
           {t("advancedTable.section.businessId", { defaultValue: "Business ID" })}:{" "}
           {businessId ?? t("advancedTable.section.unavailable", { defaultValue: "Unavailable" })}
@@ -349,7 +349,7 @@ export default function BusinessAdvancedTableSection({
           {t("advancedTable.section.businessEmail", { defaultValue: "Business Email" })}:{" "}
           {businessEmail ?? t("advancedTable.section.unavailable", { defaultValue: "Unavailable" })}
         </p>
-        <div className="mt-4 h-[520px] rounded border p-3">
+        <div className="mt-4 h-130 rounded border p-3">
           <StandaloneAdvancedTable
             fetchConfig={fetchConfig}
             columns={columns}

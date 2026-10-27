@@ -41,7 +41,7 @@ function CredentialsSettingsLoadingBody() {
           </div>
         </div>
         <div className="flex min-h-0 min-w-0 flex-col gap-2 lg:col-span-1">
-          <div className="text-sm font-semibold text-neutral-800" aria-hidden>
+          <div className="text-sm font-semibold text-foreground" aria-hidden>
             <Skeleton className="h-4 w-36" />
           </div>
           <Skeleton className="h-11 w-full max-w-full rounded-md" aria-hidden />
@@ -128,23 +128,23 @@ function CredentialsContent({
   return (
     <section className="space-y-4">
       <header className="space-y-1.5">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-700">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground">
           {t("credentialsSettings.sectionTitle")}
         </h2>
-        <p className="text-sm text-neutral-600">
+        <p className="text-sm text-muted-foreground">
           {t("credentialsSettings.sectionDescription")}
         </p>
       </header>
 
       {showEmailVerifyBanner ? (
         <div
-          className="rounded-md border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-neutral-800"
+          className="rounded-md border border-warning/40 bg-warning/20 px-3 py-3 text-sm text-foreground"
           role="status"
         >
-          <p className="font-medium text-neutral-900">
+          <p className="font-medium text-foreground">
             {t("credentialsSettings.emailVerify.bannerTitle")}
           </p>
-          <p className="mt-1 text-neutral-700">
+          <p className="mt-1 text-muted-foreground">
             {t("credentialsSettings.emailVerify.bannerDescription")}
           </p>
           <Button
@@ -162,9 +162,9 @@ function CredentialsContent({
         </div>
       ) : null}
 
-      <div className="flex min-h-[min(70vh,40rem)] w-full flex-col gap-6">
+      <div className="flex settings-min-height w-full flex-col gap-6">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-between gap-2">
-          <h3 className="text-sm font-semibold text-neutral-800">
+          <h3 className="text-sm font-semibold text-foreground">
             {t("credentialsSettings.actionsColumnTitle")}
           </h3>
           <Button
@@ -180,7 +180,7 @@ function CredentialsContent({
           </Button>
         </div>
 
-        <div className="flex shrink-0 flex-col items-center justify-center gap-6 text-center text-sm text-neutral-700">
+        <div className="flex shrink-0 flex-col items-center justify-center gap-6 text-center text-sm text-muted-foreground">
           <p className="font-bold">
             {t("credentialsSettings.passwordChangeEmail.introBody")}
           </p>
@@ -193,7 +193,7 @@ function CredentialsContent({
               {t("credentialsSettings.passwordChangeEmail.stepChoosePassword")}
             </li>
           </ul>
-          <p className="text-red-600 font-bold">
+          <p className="text-destructive font-bold">
             {t("credentialsSettings.passwordChangeEmail.signInEmailLabel", {
               email: signInEmail || "—",
             })}

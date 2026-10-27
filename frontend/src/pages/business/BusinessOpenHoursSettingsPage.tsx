@@ -14,13 +14,13 @@ import {
 
 function OpenHoursSettingsLoadingBody() {
   return (
-    <section className="space-y-3 rounded-md border border-neutral-200 p-4">
+    <section className="space-y-3 rounded-md border border-border p-4">
       <div className="flex items-center justify-between">
         <Skeleton className="h-5 w-56" aria-hidden />
         <Skeleton className="h-8 w-36" aria-hidden />
       </div>
       <Skeleton className="h-4 w-full max-w-md" aria-hidden />
-      <div className="grid gap-3 sm:grid-cols-[1fr_1fr_1fr_auto]">
+      <div className="grid gap-3 form-grid-3-action">
         <Skeleton className="h-10 w-full" aria-hidden />
         <Skeleton className="h-10 w-full" aria-hidden />
         <Skeleton className="h-10 w-full" aria-hidden />
@@ -53,9 +53,9 @@ function OpenHoursSection({ ctx }: { ctx: BusinessProfileSettingsReady }) {
   });
 
   return (
-    <section className="space-y-3 rounded-md border border-neutral-200 p-4">
+    <section className="space-y-3 rounded-md border border-border p-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-neutral-800">Business opening hours</h2>
+        <h2 className="text-sm font-semibold text-foreground">Business opening hours</h2>
         <Button
           type="button"
           variant="outline"
@@ -72,10 +72,10 @@ function OpenHoursSection({ ctx }: { ctx: BusinessProfileSettingsReady }) {
         </Button>
       </div>
       {openingHoursFieldArray.fields.length === 0 ? (
-        <p className="text-sm text-neutral-500">No opening hours configured yet.</p>
+        <p className="text-sm text-muted-foreground">No opening hours configured yet.</p>
       ) : null}
       {openingHoursFieldArray.fields.map((field, index) => (
-        <div key={field.id} className="grid gap-3 sm:grid-cols-[1fr_1fr_1fr_auto]">
+        <div key={field.id} className="grid gap-3 form-grid-3-action">
           <div className="space-y-2">
             <Label htmlFor={`bp-opening-day-${index}`}>Day</Label>
             <Controller
@@ -84,7 +84,7 @@ function OpenHoursSection({ ctx }: { ctx: BusinessProfileSettingsReady }) {
               render={({ field: dayField }) => (
                 <select
                   id={`bp-opening-day-${index}`}
-                  className="flex h-10 w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   value={dayField.value}
                   onChange={(event) => dayField.onChange(Number(event.target.value))}
                 >

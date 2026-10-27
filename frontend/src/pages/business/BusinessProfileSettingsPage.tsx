@@ -68,10 +68,10 @@ function ProfileSettingsLoadingBody() {
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 md:gap-8 lg:items-start">
           <div className="flex min-w-0 flex-col items-center gap-2 justify-self-center md:justify-self-start lg:justify-self-center">
-            <div className="text-sm font-semibold text-neutral-800 md:sr-only">
+            <div className="text-sm font-semibold text-foreground md:sr-only">
               <Skeleton className="h-4 w-32" />
             </div>
-            <Skeleton className="h-44 w-full max-w-54 rounded-lg border border-neutral-300 md:max-w-60 lg:max-w-68" />
+            <Skeleton className="h-44 w-full max-w-54 rounded-lg border border-border md:max-w-60 lg:max-w-68" />
           </div>
 
           <div className="min-w-0 space-y-4 md:col-span-1 lg:col-span-2">
@@ -155,14 +155,14 @@ function ProfileEnumMultiSelect<T extends string>({
           </Button>
         </PopoverTrigger>
         <PopoverContent
-          className="w-[var(--radix-popover-trigger-width)] max-w-[min(100vw-2rem,24rem)] p-2"
+          className="w-(--radix-popover-trigger-width) max-w-96 p-2"
           align="start"
         >
           <div className="max-h-60 space-y-2 overflow-y-auto p-1">
             {options.map((opt) => (
               <label
                 key={opt}
-                className="flex cursor-pointer items-center gap-2 rounded-md px-1 py-1 text-sm hover:bg-neutral-100"
+                className="flex cursor-pointer items-center gap-2 rounded-md px-1 py-1 text-sm hover:bg-accent hover:text-accent-foreground"
               >
                 <Checkbox
                   checked={values.includes(opt)}
@@ -182,7 +182,7 @@ function ProfileEnumMultiSelect<T extends string>({
       {showSelectedSummary ? (
         <p
           id={summaryId}
-          className="text-xs leading-snug wrap-break-word text-neutral-600"
+          className="text-xs leading-snug wrap-break-word text-muted-foreground"
           aria-live="polite"
         >
           {values.join(", ")}
@@ -247,10 +247,10 @@ function BusinessProfileSections({
     <>
       <section className="space-y-4">
         <header className="space-y-1.5">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-700">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground">
             {t("profileSettings.core.sectionTitle")}
           </h2>
-          <p className="text-sm text-neutral-600">
+          <p className="text-sm text-muted-foreground">
             {t("profileSettings.core.sectionDescription")}
           </p>
         </header>
@@ -260,23 +260,22 @@ function BusinessProfileSections({
           {/* Logo section */}
           <div className="flex flex-col items-center gap-2 justify-self-center h-auto w-auto">
             <div
-              className="group relative flex items-center justify-center overflow-hidden rounded-lg border border-neutral-300 bg-neutral-100"
+              className="group relative flex items-center justify-center overflow-hidden rounded-lg border border-border bg-muted"
             >
               {hasImage ? (
                 <img
                   src={imagePreviewUrl ?? imageUrl}
                   alt={t("profileSettings.logo.logoAlt")}
-                  className="object-contain"
-                  style={{ display: "block" }}
+                  className="block object-contain"
                 />
               ) : (
-                <div className="flex items-center justify-center text-neutral-500">
+                <div className="flex items-center justify-center text-muted-foreground">
                   <Building2 className="h-14 w-14 shrink-0" />
                 </div>
               )}
               <Label
                 htmlFor="bp-image-file"
-                className="absolute inset-0 flex cursor-pointer items-center justify-center bg-black/50 text-xs font-medium text-white opacity-0 transition-opacity group-hover:opacity-100"
+                className="absolute inset-0 flex cursor-pointer items-center justify-center bg-primary/80 text-xs font-medium text-primary-foreground opacity-0 transition-opacity group-hover:opacity-100"
               >
                 <Camera className="mr-1 h-4 w-4 shrink-0" />
                 {t("profileSettings.logo.uploadLabel")}
@@ -339,7 +338,7 @@ function BusinessProfileSections({
                 {changeEmail.pendingEmail ? (
                   <p
                     role="status"
-                    className="text-xs leading-snug text-amber-700"
+                    className="rounded-md bg-warning/20 px-2 py-1 text-xs leading-snug text-foreground"
                   >
                     {t("profileSettings.core.pendingEmail", {
                       email: changeEmail.pendingEmail,
@@ -349,9 +348,9 @@ function BusinessProfileSections({
               </div>
               <div className="flex shrink-0 flex-col items-stretch justify-end sm:items-end sm:pb-0.5">
                 {emailVerified ? (
-                  <div className="flex items-center gap-2 text-sm font-medium text-green-700">
+                  <div className="flex items-center gap-2 text-sm font-medium text-success">
                     <CircleCheck
-                      className="size-4 shrink-0 text-green-700"
+                      className="size-4 shrink-0 text-success"
                       aria-hidden
                     />
                     <span>
@@ -362,7 +361,7 @@ function BusinessProfileSections({
                   <Button
                     type="button"
                     variant="ghost"
-                    className="h-auto min-h-0 justify-start gap-2 px-2 py-2 bg-red-200 text-sm font-medium text-red-700 no-underline hover:no-underline hover:cursor-pointer hover:text-red-700 disabled:opacity-60 hover:bg-red-100 sm:justify-end"
+                    className="h-auto min-h-0 justify-start gap-2 px-2 py-2 bg-destructive/10 text-sm font-medium text-destructive no-underline hover:no-underline hover:cursor-pointer hover:text-destructive disabled:opacity-60 hover:bg-destructive/20 sm:justify-end"
                     disabled={resendPending}
                     onClick={() => {
                       setResendPending(true);
@@ -392,7 +391,7 @@ function BusinessProfileSections({
                     }}
                   >
                     <Mail
-                      className="size-4 shrink-0 text-red-700"
+                      className="size-4 shrink-0 text-destructive"
                       aria-hidden
                     />
                     {t("profileSettings.core.emailVerification.confirmCta")}
@@ -469,7 +468,7 @@ function BusinessProfileSections({
             {timezoneIsDefault ? (
               <p
                 id="bp-timezone-hint"
-                className="text-xs leading-snug text-amber-700"
+                className="rounded-md bg-warning/20 px-2 py-1 text-xs leading-snug text-foreground"
               >
                 {t("profileSettings.core.timezoneDefaultHint")}
               </p>

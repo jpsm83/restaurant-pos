@@ -43,3 +43,27 @@
 @utility dialog-width {
   width: calc(100vw - 2rem);
 }
+
+@utility map-preview-height {
+  height: 16rem;
+
+  @media (width >= 48rem) {
+    height: min(50vh, 22rem);
+  }
+}
+
+@utility settings-min-height {
+  min-height: min(70vh, 40rem);
+}
+
+@utility form-grid-2-action {
+  @media (width >= 40rem) {
+    grid-template-columns: 1fr 1fr auto;
+  }
+}
+
+@utility form-grid-3-action {
+  @media (width >= 40rem) {
+    grid-template-columns: 1fr 1fr 1fr auto;
+  }
+}
