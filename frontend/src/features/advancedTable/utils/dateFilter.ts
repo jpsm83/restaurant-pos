@@ -1,4 +1,14 @@
-const CALENDAR_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+import {
+  formatCalendarDate,
+  parseCalendarDate,
+} from "@/lib/calendarDate";
+
+export {
+  formatCalendarDate,
+  isValidCalendarDate,
+  parseCalendarDate,
+} from "@/lib/calendarDate";
+
 const DATE_TIME_PATTERN = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})$/;
 
 export type QuickRangeOption = "today" | "thisWeek" | "thisMonth";
@@ -57,50 +67,6 @@ function normalizeQuickRangeOption(option: string): QuickRangeOption | null {
       ? (option as QuickRangeOption)
       : null)
   );
-}
-
-/**
- * Formats a `Date` as a plain `YYYY-MM-DD` calendar date using its browser-local
- * date components. No time or offset is emitted.
- */
-export function formatCalendarDate(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-/** True when `value` is a real `YYYY-MM-DD` calendar date (no time, no offset). */
-export function isValidCalendarDate(value: string): boolean {
-  const match = CALENDAR_DATE_PATTERN.exec(value);
-  if (!match) return false;
-
-  const [, year, month, day] = match;
-  const date = createCalendarDate(Number(year), Number(month), Number(day));
-  return (
-    date.getFullYear() === Number(year) &&
-    date.getMonth() === Number(month) - 1 &&
-    date.getDate() === Number(day)
-  );
-}
-
-function createCalendarDate(year: number, month: number, day: number): Date {
-  // `new Date(year, ...)` maps years 0-99 to 1900-1999, so set the full year
-  // explicitly to preserve four-digit calendar years.
-  const date = new Date(0);
-  date.setFullYear(year, month - 1, day);
-  date.setHours(0, 0, 0, 0);
-  return date;
-}
-
-/**
- * Parses a plain `YYYY-MM-DD` calendar date into a browser-local `Date` at
- * midnight. Returns `null` for any other shape, including date-times.
- */
-export function parseCalendarDate(value: string): Date | null {
-  if (!isValidCalendarDate(value)) return null;
-  const [year, month, day] = value.split("-").map(Number);
-  return createCalendarDate(year, month, day);
 }
 
 /**
@@ -230,19 +196,4 @@ export function parseDateTime(
   }
 
   return { date, time: `${hh}:${mm}:${ss}` };
-}
-
-/** Formats a `YYYY-MM-DD` value or `Date` for display, returning the input when invalid. */
-export function formatReadableDate(
-  value: string | Date,
-  locale = "es-ES",
-): string {
-  const date = value instanceof Date ? value : parseCalendarDate(value);
-  if (!date) return String(value);
-
-  return date.toLocaleDateString(locale, {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
 }

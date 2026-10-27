@@ -28,12 +28,12 @@ import {
 } from "@/components/ui/popover";
 import {
   formatCalendarDate,
-  formatReadableDate,
   getQuickRange,
   isValidCalendarDate,
   parseCalendarDate,
   resolveQuickRangeSelection,
 } from "@/features/advancedTable/utils/dateFilter";
+import { useFormatting } from "@/hooks/useFormatting";
 
 // Types
 export interface GenericSearchBarProps {
@@ -67,6 +67,7 @@ function DateRangeFilter({
   onDateChange: (startDate: string, endDate: string) => void;
 }) {
   const { t } = useTranslation("business");
+  const { formatDate, dateFnsLocale } = useFormatting();
   const quickOptions = [
     {
       value: "today",
@@ -238,7 +239,7 @@ function DateRangeFilter({
                         })}
                       >
                         {localStartDate
-                          ? formatReadableDate(localStartDate)
+                          ? formatDate(localStartDate)
                           : t("dateFilter.selectDate", {
                               defaultValue: "Select date",
                             })}
@@ -259,6 +260,7 @@ function DateRangeFilter({
                         }}
                         className="rounded-md border shadow-md"
                         captionLayout="dropdown"
+                        locale={dateFnsLocale}
                       />
                     </PopoverContent>
                   </Popover>
@@ -277,7 +279,7 @@ function DateRangeFilter({
                         })}
                       >
                         {localEndDate
-                          ? formatReadableDate(localEndDate)
+                          ? formatDate(localEndDate)
                           : t("dateFilter.selectDate", {
                               defaultValue: "Select date",
                             })}
@@ -298,6 +300,7 @@ function DateRangeFilter({
                         }}
                         className="rounded-md border shadow-md"
                         captionLayout="dropdown"
+                        locale={dateFnsLocale}
                       />
                     </PopoverContent>
                   </Popover>
@@ -330,11 +333,11 @@ function DateRangeFilter({
               <span className="text-muted-foreground">
                 {t("dateFilter.from", { defaultValue: "From" })}
               </span>{" "}
-              {formatReadableDate(startDate)}{" "}
+              {formatDate(startDate)}{" "}
               <span className="text-muted-foreground">
                 {t("dateFilter.until", { defaultValue: "Until" })}
               </span>{" "}
-              {formatReadableDate(endDate)}
+              {formatDate(endDate)}
             </>
           )}
         </Label>

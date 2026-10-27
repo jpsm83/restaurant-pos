@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   formatCalendarDate,
-  formatReadableDate,
   getQuickRange,
   isValidCalendarDate,
   parseCalendarDate,
@@ -85,9 +84,5 @@ describe("dateFilter utils", () => {
   it("guards invalid date-time values", () => {
     expect(parseDateTime("not-a-date")).toBeNull();
     expect(parseDateTime("2026-13-99T77:88:99")).toBeNull();
-  });
-
-  it("returns input when formatting readable invalid dates", () => {
-    expect(formatReadableDate("invalid")).toBe("invalid");
   });
 });
