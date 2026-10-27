@@ -85,9 +85,12 @@ export function changeAppLanguage(code: string): Promise<void> {
   return i18n.changeLanguage(code).then(() => undefined);
 }
 
-/** Eager glob: one JSON module per locale file under `locales/<lang>/<namespace>.json`. */
+/**
+ * Eager glob: one JSON module per locale file under `locales/<lang>/<namespace>.json`.
+ * The dev-only theme gallery copy is loaded by its own dev-gated module instead.
+ */
 const localeModules = import.meta.glob<{ default: Record<string, unknown> }>(
-  "./locales/*/*.json",
+  ["./locales/*/*.json", "!./locales/*/devThemeGallery.json"],
   { eager: true },
 );
 

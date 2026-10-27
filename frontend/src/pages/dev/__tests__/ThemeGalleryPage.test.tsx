@@ -1,7 +1,7 @@
 import { screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import esCommon from "@/i18n/locales/es/common.json";
 import ThemeGalleryPage from "@/pages/dev/ThemeGalleryPage";
+import { registerThemeGalleryResources } from "@/pages/dev/themeGalleryResources";
 import { THEME_TOKEN_CONTRACT } from "@/styles/theme-contract";
 import { THEMES } from "@/styles/themes";
 import { createTestI18n, renderWithI18n } from "@/test/i18nTestUtils";
@@ -37,7 +37,10 @@ const REQUIRED_GROUPS = [
 
 describe("ThemeGalleryPage", () => {
   it("renders default light and dark panels with every token group and gallery section", async () => {
-    await renderWithI18n(<ThemeGalleryPage />);
+    const i18n = await createTestI18n();
+    registerThemeGalleryResources(i18n);
+
+    await renderWithI18n(<ThemeGalleryPage />, { i18n });
 
     expect(
       screen.getByRole("heading", { level: 1, name: "Theme gallery" }),
@@ -71,7 +74,7 @@ describe("ThemeGalleryPage", () => {
 
   it("renders translated panel and section copy", async () => {
     const i18n = await createTestI18n();
-    await i18n.addResourceBundle("es", "common", esCommon);
+    registerThemeGalleryResources(i18n);
     await i18n.changeLanguage("es");
 
     await renderWithI18n(<ThemeGalleryPage />, { i18n });

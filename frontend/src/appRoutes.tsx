@@ -69,9 +69,18 @@ const EmployeeProfilePage = lazy(() => import("@/pages/employee/EmployeeProfileP
 const EmployeeDashboardPage = lazy(() => import("@/pages/employee/EmployeeDashboardPage"));
 
 // Dev-only review surface: the static `DEV` check lets the production build
-// drop the dynamic import and its chunk entirely.
+// drop the dynamic imports, their chunks, and the gallery's locale copy.
 const DevThemeGalleryPage = import.meta.env.DEV
-  ? lazy(() => import("@/pages/dev/ThemeGalleryPage"))
+  ? lazy(async () => {
+      const [{ default: Page }, { registerThemeGalleryResources }] =
+        await Promise.all([
+          import("@/pages/dev/ThemeGalleryPage"),
+          import("@/pages/dev/themeGalleryResources"),
+        ]);
+      const { default: appI18n } = await import("@/i18n/i18n");
+      registerThemeGalleryResources(appI18n);
+      return { default: Page };
+    })
   : null;
 
 function LegacyAppRedirect() {
