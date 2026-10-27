@@ -34,17 +34,17 @@ export default function CustomerProfilePage() {
 
   return (
     <main className="flex min-h-0 flex-1 flex-col p-6">
-      <h1 className="text-xl font-semibold text-neutral-900">{t("profile.title")}</h1>
+      <h1 className="text-xl font-semibold text-foreground">{t("profile.title")}</h1>
 
       {needsVerification ? (
         <div
-          className="mt-4 max-w-lg rounded-md border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-neutral-800"
+          className="mt-4 max-w-lg rounded-md border border-warning/40 bg-warning/20 px-3 py-3 text-sm text-foreground"
           role="status"
         >
-          <p className="font-medium text-neutral-900">
+          <p className="font-medium text-foreground">
             {t("profile.emailVerify.bannerTitle")}
           </p>
-          <p className="mt-1 text-neutral-700">
+          <p className="mt-1 text-muted-foreground">
             {t("profile.emailVerify.bannerDescription")}
           </p>
           <Button
@@ -61,7 +61,7 @@ export default function CustomerProfilePage() {
           </Button>
         </div>
       ) : (
-        <p className="mt-2 text-sm text-neutral-600">{t("notBuiltYet")}</p>
+        <p className="mt-2 text-sm text-muted-foreground">{t("notBuiltYet")}</p>
       )}
     </main>
   );
