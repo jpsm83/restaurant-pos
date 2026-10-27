@@ -57,9 +57,7 @@ export default function ConfirmEmailChangePage() {
         return;
       }
 
-      setErrorMessage(
-        result.error || t("confirmEmailChange.errors.confirmationFailed"),
-      );
+      setErrorMessage(result.error.message);
       setStatus("failure");
     };
 

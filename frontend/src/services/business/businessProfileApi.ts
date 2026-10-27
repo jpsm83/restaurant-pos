@@ -4,7 +4,12 @@ import { setAccessToken } from "@/auth/api";
 import type { AuthBusiness } from "@/auth/types";
 import { http } from "../http";
 import { queryKeys } from "../queryKeys";
-import { ServiceRequestError, toServiceRequestError } from "../serviceErrors";
+import {
+  makeServiceErrorCode,
+  ServiceRequestError,
+  toServiceRequestError,
+  type ServiceFailure,
+} from "../serviceErrors";
 import type {
   BusinessProfileDto,
   CreateBusinessResponseBody,
@@ -21,8 +26,8 @@ const inFlightProfileUpdates = new Map<
 const DIAGNOSTICS_SCOPE = "services.businessProfile";
 
 export class BusinessServiceError extends ServiceRequestError {
-  constructor(message: string, status?: number) {
-    super(message, status);
+  constructor(failure: ServiceFailure, options?: { cause?: unknown }) {
+    super(failure, options);
     this.name = "BusinessServiceError";
   }
 }
@@ -44,51 +49,12 @@ const multipartFormDataConfig: AxiosRequestConfig = {
   ],
 };
 
-function getDefaultBusinessErrorMessage(
-  action: "create" | "fetch" | "update",
-  status?: number,
-): string {
-  if (action === "create") return "Business registration failed";
-  if (action === "fetch") {
-    if (status === 401) return "Please sign in to view the business profile.";
-    if (status === 403)
-      return "You do not have permission to view this business profile.";
-    if (status === 404) return "Business profile was not found.";
-    return "Failed to load business profile.";
-  }
-
-  if (status === 401) return "Please sign in to save business profile changes.";
-  if (status === 403)
-    return "You do not have permission to update this business profile.";
-  if (status === 404) return "Business profile was not found.";
-  if (status === 409)
-    return "A business with the same legal name or tax number already exists.";
-  return "Failed to update business profile.";
-}
-
 function toBusinessServiceError(
   error: unknown,
-  action: "create" | "fetch" | "update",
+  operation: "businessCreate" | "businessFetch" | "businessUpdate",
 ): BusinessServiceError {
-  const mapped = toServiceRequestError(error, {
-    fallback: getDefaultBusinessErrorMessage(action),
-    byStatus:
-      action === "fetch"
-        ? {
-            401: getDefaultBusinessErrorMessage("fetch", 401),
-            403: getDefaultBusinessErrorMessage("fetch", 403),
-            404: getDefaultBusinessErrorMessage("fetch", 404),
-          }
-        : action === "update"
-          ? {
-              401: getDefaultBusinessErrorMessage("update", 401),
-              403: getDefaultBusinessErrorMessage("update", 403),
-              404: getDefaultBusinessErrorMessage("update", 404),
-              409: getDefaultBusinessErrorMessage("update", 409),
-            }
-          : undefined,
-  });
-  return new BusinessServiceError(mapped.message, mapped.status);
+  const mapped = toServiceRequestError(error, operation);
+  return new BusinessServiceError(mapped, { cause: error });
 }
 
 /**
@@ -143,7 +109,10 @@ export async function createBusiness(
     );
 
     if (!data?.user || data.user.type !== "business") {
-      throw new Error(data?.message ?? "Business registration failed");
+      throw new BusinessServiceError({
+        code: makeServiceErrorCode("businessCreate", "internal"),
+        serverMessage: data?.message,
+      });
     }
 
     if (data.accessToken) {
@@ -156,7 +125,7 @@ export async function createBusiness(
       user: data.user as AuthBusiness,
     };
   } catch (e) {
-    throw toBusinessServiceError(e, "create");
+    throw toBusinessServiceError(e, "businessCreate");
   }
 }
 
@@ -170,11 +139,15 @@ export async function fetchManagementContactOptions(
   businessId: string,
   signal?: AbortSignal,
 ): Promise<ManagementContactOption[]> {
-  const { data } = await http.get<ManagementContactOption[]>(
-    `/api/v1/employees/business/${businessId}/management-contacts`,
-    { signal },
-  );
-  return Array.isArray(data) ? data : [];
+  try {
+    const { data } = await http.get<ManagementContactOption[]>(
+      `/api/v1/employees/business/${businessId}/management-contacts`,
+      { signal },
+    );
+    return Array.isArray(data) ? data : [];
+  } catch (e) {
+    throw toBusinessServiceError(e, "businessFetch");
+  }
 }
 
 export async function getBusinessById(
@@ -195,7 +168,7 @@ export async function getBusinessById(
     });
     return data;
   } catch (e) {
-    const mapped = toBusinessServiceError(e, "fetch");
+    const mapped = toBusinessServiceError(e, "businessFetch");
     logProfileDiagnostics({
       action: "fetch",
       stage: "error",
@@ -250,7 +223,9 @@ export function updateBusinessProfile(
       }
 
       if (data.user && data.user.type !== "business") {
-        throw new BusinessServiceError("Unexpected session type returned by API.");
+        throw new BusinessServiceError({
+          code: makeServiceErrorCode("businessUpdate", "internal"),
+        });
       }
 
       const result = {
@@ -267,7 +242,7 @@ export function updateBusinessProfile(
       });
       return result;
     } catch (e) {
-      const mapped = toBusinessServiceError(e, "update");
+      const mapped = toBusinessServiceError(e, "businessUpdate");
       logProfileDiagnostics({
         action: "save",
         stage: "error",

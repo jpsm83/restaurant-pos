@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   confirmEmail,
   confirmEmailChange,
+  login,
   requestEmailChange,
   requestEmailConfirmation,
   requestPasswordReset,
@@ -20,6 +21,21 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
+function expectFailure(
+  result: unknown,
+  failure: {
+    code: string;
+    status?: number;
+    serverMessage?: string;
+    fieldErrors?: unknown;
+  },
+) {
+  expect(result).toMatchObject({
+    ok: false,
+    error: expect.objectContaining(failure),
+  });
+}
+
 describe("auth api — email / password-reset endpoints", () => {
   const fetchMock = vi.fn<typeof fetch>();
 
@@ -31,6 +47,23 @@ describe("auth api — email / password-reset endpoints", () => {
   afterEach(() => {
     setAccessToken(null);
     vi.unstubAllGlobals();
+  });
+
+  it("login maps a legacy 401 message to a sign-in machine failure", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ message: "Invalid email or password" }, 401),
+    );
+
+    const result = await login({
+      email: "user@example.com",
+      password: "wrong",
+    });
+
+    expectFailure(result, {
+      code: "signIn.unauthorized",
+      status: 401,
+      serverMessage: "Invalid email or password",
+    });
   });
 
   it("requestEmailConfirmation POSTs JSON email", async () => {
@@ -63,7 +96,11 @@ describe("auth api — email / password-reset endpoints", () => {
 
     const result = await requestEmailConfirmation("user@example.com");
 
-    expect(result).toEqual({ ok: false, error: "Too many requests" });
+    expectFailure(result, {
+      code: "resendConfirmation.conflict",
+      status: 429,
+      serverMessage: "Too many requests",
+    });
   });
 
   it("requestEmailConfirmation falls back to errors[] when detail is absent", async () => {
@@ -80,7 +117,12 @@ describe("auth api — email / password-reset endpoints", () => {
 
     const result = await requestEmailConfirmation("user@example.com");
 
-    expect(result).toEqual({ ok: false, error: "Invalid email" });
+    expectFailure(result, {
+      code: "resendConfirmation.validation",
+      status: 400,
+      serverMessage: "Invalid email",
+      fieldErrors: [{ field: "email", message: "Invalid email" }],
+    });
   });
 
   it("requestEmailConfirmation uses generic copy when body has no problem details", async () => {
@@ -88,7 +130,10 @@ describe("auth api — email / password-reset endpoints", () => {
 
     const result = await requestEmailConfirmation("user@example.com");
 
-    expect(result).toEqual({ ok: false, error: "Request failed" });
+    expectFailure(result, {
+      code: "resendConfirmation.internal",
+      status: 500,
+    });
   });
 
   it("confirmEmail POSTs token", async () => {
@@ -120,9 +165,9 @@ describe("auth api — email / password-reset endpoints", () => {
 
     const result = await requestPasswordReset("a@b.co");
 
-    expect(result).toEqual({
-      ok: false,
-      error: "Failed to fetch",
+    expectFailure(result, {
+      code: "passwordReset.transport",
+      serverMessage: "Failed to fetch",
     });
   });
 
@@ -197,9 +242,10 @@ describe("auth api — email / password-reset endpoints", () => {
 
     const result = await requestEmailChange("new@example.com", "wrong");
 
-    expect(result).toEqual({
-      ok: false,
-      error: "Current password is incorrect.",
+    expectFailure(result, {
+      code: "emailChange.unauthorized",
+      status: 401,
+      serverMessage: "Current password is incorrect.",
     });
   });
 
@@ -242,9 +288,10 @@ describe("auth api — email / password-reset endpoints", () => {
 
     const result = await requestEmailChange("taken@example.com", "CurrentPass1!");
 
-    expect(result).toEqual({
-      ok: false,
-      error: "That email is already used by another account.",
+    expectFailure(result, {
+      code: "emailChange.conflict",
+      status: 409,
+      serverMessage: "That email is already used by another account.",
     });
   });
 
@@ -253,7 +300,10 @@ describe("auth api — email / password-reset endpoints", () => {
 
     const result = await requestEmailChange("new@example.com", "CurrentPass1!");
 
-    expect(result).toEqual({ ok: false, error: "Failed to fetch" });
+    expectFailure(result, {
+      code: "emailChange.transport",
+      serverMessage: "Failed to fetch",
+    });
   });
 
   it("confirmEmailChange POSTs the token without an Authorization header", async () => {
@@ -286,9 +336,11 @@ describe("auth api — email / password-reset endpoints", () => {
 
     const result = await confirmEmailChange("stale");
 
-    expect(result).toEqual({
-      ok: false,
-      error: "This link is invalid or has expired. Please request a new one.",
+    expectFailure(result, {
+      code: "emailChange.badRequest",
+      status: 400,
+      serverMessage:
+        "This link is invalid or has expired. Please request a new one.",
     });
   });
 });

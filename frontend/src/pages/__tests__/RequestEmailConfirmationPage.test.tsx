@@ -79,7 +79,13 @@ describe("RequestEmailConfirmationPage", () => {
     const user = userEvent.setup();
     mockRequestEmailConfirmation.mockResolvedValue({
       ok: false,
-      error: "Something went wrong",
+      error: {
+        code: "resendConfirmation.internal",
+        status: 500,
+        message: "Something went wrong",
+        serverMessage: "Something went wrong",
+        fieldErrors: [],
+      },
     });
 
     await renderPage();

@@ -16,5 +16,16 @@
   "navigation": {
     "home": "Inicio",
     "goBack": "Volver"
+  },
+  "api": {
+    "validation_one": "Un campo necesita tu atención. Revísalo e inténtalo de nuevo.",
+    "validation_other": "{{count}} campos necesitan tu atención. Revísalos e inténtalo de nuevo.",
+    "badRequest": "No se pudo procesar la solicitud. Revisa los datos e inténtalo de nuevo.",
+    "unauthorized": "Inicia sesión para continuar.",
+    "forbidden": "No tienes permiso para hacer eso.",
+    "notFound": "No se encontró el elemento solicitado.",
+    "conflict": "Ese cambio entra en conflicto con los datos actuales. Actualiza e inténtalo de nuevo.",
+    "internal": "Algo salió mal por nuestra parte. Inténtalo de nuevo.",
+    "transport": "No pudimos conectar con el servidor. Comprueba tu conexión e inténtalo de nuevo."
   }
 }

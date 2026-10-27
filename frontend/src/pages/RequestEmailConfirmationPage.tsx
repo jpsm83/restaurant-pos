@@ -67,7 +67,7 @@ export default function RequestEmailConfirmationPage() {
     try {
       const result = await requestEmailConfirmation(data.email.trim());
       if (!result.ok) {
-        setSubmitError(result.error);
+        setSubmitError(result.error.message);
         return;
       }
       navigate("/", { replace: true });

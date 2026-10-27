@@ -112,7 +112,7 @@ export function useChangeBusinessEmailController(
     );
 
     if (!result.ok) {
-      setSubmitError(result.error);
+      setSubmitError(result.error.message);
       return;
     }
 

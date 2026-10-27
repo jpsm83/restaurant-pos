@@ -378,12 +378,12 @@ function BusinessProfileSections({
                             await syncSessionAndProfileAfterEmailFlow();
                             return;
                           }
-                          if (/already verified/i.test(result.error)) {
-                            toast.success(result.error);
+                          if (/already verified/i.test(result.error.message)) {
+                            toast.success(result.error.message);
                             await syncSessionAndProfileAfterEmailFlow();
                             return;
                           }
-                          toast.error(result.error);
+                          toast.error(result.error.message);
                         } finally {
                           setResendPending(false);
                         }

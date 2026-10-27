@@ -651,7 +651,13 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
     });
     mockRequestEmailChange.mockResolvedValue({
       ok: false,
-      error: "Current password is incorrect.",
+      error: {
+        code: "emailChange.unauthorized",
+        status: 401,
+        message: "Current password is incorrect.",
+        serverMessage: "Current password is incorrect.",
+        fieldErrors: [],
+      },
     });
     const user = userEvent.setup();
 
@@ -821,10 +827,12 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
 
     it("surfaces 409 conflict message, error toast, and preserves edits after failed save", async () => {
       const mutateAsync = vi.fn().mockRejectedValue(
-        new BusinessServiceError(
-          "A business with the same legal name or tax number already exists.",
-          409,
-        ),
+        new BusinessServiceError({
+          code: "businessUpdate.conflict",
+          status: 409,
+          serverMessage:
+            "A business with the same legal name or tax number already exists.",
+        }),
       );
       mockUseUpdateBusinessProfileMutation.mockReturnValue({
         mutateAsync,
@@ -860,10 +868,11 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
 
     it("surfaces 401 auth message and preserves edits after failed save", async () => {
       const mutateAsync = vi.fn().mockRejectedValue(
-        new BusinessServiceError(
-          "Please sign in to save business profile changes.",
-          401,
-        ),
+        new BusinessServiceError({
+          code: "businessUpdate.unauthorized",
+          status: 401,
+          serverMessage: "Please sign in to save business profile changes.",
+        }),
       );
       mockUseUpdateBusinessProfileMutation.mockReturnValue({
         mutateAsync,
@@ -897,10 +906,12 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
 
     it("surfaces 403 permission message and preserves edits after failed save", async () => {
       const mutateAsync = vi.fn().mockRejectedValue(
-        new BusinessServiceError(
-          "You do not have permission to update this business profile.",
-          403,
-        ),
+        new BusinessServiceError({
+          code: "businessUpdate.forbidden",
+          status: 403,
+          serverMessage:
+            "You do not have permission to update this business profile.",
+        }),
       );
       mockUseUpdateBusinessProfileMutation.mockReturnValue({
         mutateAsync,
@@ -934,7 +945,11 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
 
     it("surfaces API validation (400) message and preserves edits after failed save", async () => {
       const mutateAsync = vi.fn().mockRejectedValue(
-        new BusinessServiceError("Invalid opening hours: close must be after open.", 400),
+        new BusinessServiceError({
+          code: "businessUpdate.validation",
+          status: 400,
+          serverMessage: "Invalid opening hours: close must be after open.",
+        }),
       );
       mockUseUpdateBusinessProfileMutation.mockReturnValue({
         mutateAsync,

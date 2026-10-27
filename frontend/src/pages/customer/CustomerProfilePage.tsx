@@ -25,7 +25,7 @@ export default function CustomerProfilePage() {
           result.data?.message ?? t("profile.emailVerify.resendSuccessFallback"),
         );
       } else {
-        toast.error(result.error);
+        toast.error(result.error.message);
       }
     } finally {
       setResendPending(false);

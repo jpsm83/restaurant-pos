@@ -16,5 +16,16 @@
   "navigation": {
     "home": "Home",
     "goBack": "Go back"
+  },
+  "api": {
+    "validation_one": "One field needs your attention. Check it and try again.",
+    "validation_other": "{{count}} fields need your attention. Check them and try again.",
+    "badRequest": "The request could not be processed. Check the details and try again.",
+    "unauthorized": "Please sign in to continue.",
+    "forbidden": "You do not have permission to do that.",
+    "notFound": "The requested item could not be found.",
+    "conflict": "That change conflicts with the current data. Refresh and try again.",
+    "internal": "Something went wrong on our side. Try again.",
+    "transport": "We could not reach the server. Check your connection and try again."
   }
 }

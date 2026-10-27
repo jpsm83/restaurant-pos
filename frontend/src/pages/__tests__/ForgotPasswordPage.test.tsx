@@ -71,7 +71,13 @@ describe("ForgotPasswordPage", () => {
     const user = userEvent.setup();
     mockRequestPasswordReset.mockResolvedValue({
       ok: false,
-      error: "Rate limited",
+      error: {
+        code: "passwordReset.conflict",
+        status: 429,
+        message: "Rate limited",
+        serverMessage: "Rate limited",
+        fieldErrors: [],
+      },
     });
 
     await renderPage();

@@ -79,7 +79,9 @@ export default function LoginPage() {
     });
 
     if (!result.ok || !result.data?.user) {
-      const errMsg = result.ok ? t("login.errors.loginFailed") : result.error;
+      const errMsg = result.ok
+        ? t("login.errors.loginFailed")
+        : result.error.message;
       dispatch({
         type: "AUTH_ERROR",
         payload: errMsg,

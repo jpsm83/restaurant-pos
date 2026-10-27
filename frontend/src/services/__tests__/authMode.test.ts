@@ -36,7 +36,6 @@ vi.mock("@tanstack/react-query", () => ({
 }));
 
 import {
-  EMPLOYEE_MODE_NOT_ALLOWED_MESSAGE,
   getAuthMode,
   setAuthMode,
   useAuthModeQuery,
@@ -68,20 +67,22 @@ describe("authMode service", () => {
     mockToServiceRequestError.mockReturnValueOnce(mapped);
 
     await expect(getAuthMode()).rejects.toBe(mapped);
+    expect(mockToServiceRequestError).toHaveBeenCalledWith(original, "modeLoad");
   });
 
-  it("posts mode and maps error message for set", async () => {
+  it("posts mode and maps the failure code for set", async () => {
     await setAuthMode("customer");
     expect(mockHttpPost).toHaveBeenCalledWith("/api/v1/auth/set-mode", {
       mode: "customer",
     });
 
     mockHttpPost.mockRejectedValueOnce(new Error("403"));
-    mockToServiceRequestError.mockReturnValueOnce({
-      message: EMPLOYEE_MODE_NOT_ALLOWED_MESSAGE,
-    });
-    await expect(setAuthMode("employee")).rejects.toThrow(
-      EMPLOYEE_MODE_NOT_ALLOWED_MESSAGE,
+    const mapped = new Error("mapped");
+    mockToServiceRequestError.mockReturnValueOnce(mapped);
+    await expect(setAuthMode("employee")).rejects.toBe(mapped);
+    expect(mockToServiceRequestError).toHaveBeenLastCalledWith(
+      expect.any(Error),
+      "modeSave",
     );
   });
 

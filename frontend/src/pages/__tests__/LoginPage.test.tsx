@@ -88,7 +88,13 @@ describe("LoginPage", () => {
     const user = userEvent.setup();
     mockLogin.mockResolvedValue({
       ok: false,
-      error: "Invalid credentials",
+      error: {
+        code: "signIn.unauthorized",
+        status: 401,
+        message: "Invalid credentials",
+        serverMessage: "Invalid credentials",
+        fieldErrors: [],
+      },
     });
 
     await renderWithI18n(

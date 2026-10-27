@@ -62,7 +62,7 @@ export default function ConfirmEmailPage() {
       return;
     }
 
-    setMessage(result.error);
+    setMessage(result.error.message);
     setSubmissionFailed(true);
   });
 

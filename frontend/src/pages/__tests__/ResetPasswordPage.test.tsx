@@ -108,7 +108,13 @@ describe("ResetPasswordPage", () => {
     const user = userEvent.setup();
     mockResetPassword.mockResolvedValue({
       ok: false,
-      error: "Invalid or expired token",
+      error: {
+        code: "passwordReset.badRequest",
+        status: 400,
+        message: "Invalid or expired token",
+        serverMessage: "Invalid or expired token",
+        fieldErrors: [],
+      },
     });
 
     await renderAt("/reset-password?token=tok");

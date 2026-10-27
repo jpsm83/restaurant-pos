@@ -118,7 +118,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem("auth_had_session");
         dispatch({
           type: "AUTH_ERROR",
-          payload: meResult.ok ? "Session restore failed" : meResult.error,
+          payload: meResult.ok
+            ? "Session restore failed"
+            : meResult.error.message,
         });
         return;
       }

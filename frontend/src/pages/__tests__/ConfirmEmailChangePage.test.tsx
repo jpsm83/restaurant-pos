@@ -84,7 +84,15 @@ describe("ConfirmEmailChangePage", () => {
   it("shows a non-revealing error when the token is invalid or expired", async () => {
     mockConfirmEmailChange.mockResolvedValue({
       ok: false,
-      error: "This link is invalid or has expired. Please request a new one.",
+      error: {
+        code: "emailChange.badRequest",
+        status: 400,
+        message:
+          "This link is invalid or has expired. Please request a new one.",
+        serverMessage:
+          "This link is invalid or has expired. Please request a new one.",
+        fieldErrors: [],
+      },
     });
 
     await renderAt("/confirm-email-change?token=expired");

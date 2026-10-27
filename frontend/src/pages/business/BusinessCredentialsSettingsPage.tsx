@@ -94,7 +94,7 @@ function CredentialsContent({
             t("credentialsSettings.emailVerify.resendSuccessFallback"),
         );
       } else {
-        toast.error(result.error);
+        toast.error(result.error.message);
       }
     } finally {
       setResendPending(false);
@@ -115,10 +115,7 @@ function CredentialsContent({
             t("credentialsSettings.passwordChangeEmail.successFallback"),
         );
       } else {
-        toast.error(
-          result.error ??
-            t("credentialsSettings.passwordChangeEmail.errorFallback"),
-        );
+        toast.error(result.error.message);
       }
     } finally {
       setResetEmailPending(false);

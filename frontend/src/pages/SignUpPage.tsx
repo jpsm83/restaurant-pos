@@ -99,7 +99,7 @@ export default function SignUpPage() {
     if (!result.ok || !result.data?.user) {
       const errorMessage = result.ok
         ? t("signup.errors.signUpFailed")
-        : result.error;
+        : result.error.message;
       dispatch({ type: "AUTH_ERROR", payload: errorMessage });
       setSubmitError(errorMessage);
       return;

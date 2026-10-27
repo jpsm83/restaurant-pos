@@ -57,6 +57,10 @@ describe("schedulesService", () => {
     await expect(fetchDailyEmployeeSchedule("b-1", "2026-04-07")).rejects.toBe(
       mapped,
     );
+    expect(mockToServiceRequestError).toHaveBeenCalledWith(
+      original,
+      "scheduleLoad",
+    );
   });
 
   it("uses pending key when required identifiers are missing", () => {

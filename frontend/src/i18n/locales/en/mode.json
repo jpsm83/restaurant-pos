@@ -12,6 +12,7 @@
     "unlocksIn": "Unlocks in {{time}}"
   },
   "errors": {
-    "generic": "Something went wrong"
+    "generic": "Something went wrong",
+    "notAllowed": "Employee mode is not allowed for this account right now."
   }
 }

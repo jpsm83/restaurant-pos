@@ -151,7 +151,13 @@ describe("useChangeBusinessEmailController", () => {
   it("surfaces a wrong-password / duplicate / network error from the request", async () => {
     mockRequestEmailChange.mockResolvedValue({
       ok: false,
-      error: "Current password is incorrect.",
+      error: {
+        code: "emailChange.unauthorized",
+        status: 401,
+        message: "Current password is incorrect.",
+        serverMessage: "Current password is incorrect.",
+        fieldErrors: [],
+      },
     });
     const { result } = renderHook(() =>
       useChangeBusinessEmailController(CURRENT_EMAIL),

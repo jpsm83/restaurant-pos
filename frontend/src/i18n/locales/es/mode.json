@@ -12,6 +12,7 @@
     "unlocksIn": "Se desbloquea en {{time}}"
   },
   "errors": {
-    "generic": "Algo salió mal"
+    "generic": "Algo salió mal",
+    "notAllowed": "El modo empleado no está permitido para esta cuenta ahora mismo."
   }
 }

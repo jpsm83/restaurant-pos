@@ -23,7 +23,12 @@ import type {
 } from "./types";
 import { queryClient } from "@/services/queryClient";
 import { queryKeys } from "@/services/queryKeys";
-import { extractProblemDetailsMessage } from "@/services/serviceErrors";
+import {
+  toServiceRequestErrorFromResponse,
+  toServiceTransportError,
+  type ServiceOperation,
+  type ServiceRequestError,
+} from "@/services/serviceErrors";
 import { syncLiveConnection } from "@/live/connection";
 
 const ACCESS_TOKEN_STORAGE_KEY = "restaurant_pos_auth_access";
@@ -130,10 +135,13 @@ function getAuthHeaders(headers?: HeadersInit, hasBody = false): HeadersInit {
 }
 
 async function authRequest<T>(
+  operation: ServiceOperation,
   path: string,
   options?: RequestInit,
   retryOnUnauthorized = true
-): Promise<{ ok: true; data: T | null } | { ok: false; error: string }> {
+): Promise<
+  { ok: true; data: T | null } | { ok: false; error: ServiceRequestError }
+> {
   try {
     const hasBody = options?.body !== undefined && options?.body !== null;
     const response = await fetch(`${resolveAuthFetchBaseUrl()}${path}`, {
@@ -148,27 +156,30 @@ async function authRequest<T>(
       const refreshed = await refreshSession();
 
       if (refreshed.ok) {
-        return authRequest<T>(path, options, false);
+        return authRequest<T>(operation, path, options, false);
       }
     }
 
     if (!response.ok) {
       return {
         ok: false,
-        error: extractProblemDetailsMessage(payload) ?? "Request failed",
+        error: toServiceRequestErrorFromResponse(
+          operation,
+          response.status,
+          payload,
+        ),
       };
     }
 
     return { ok: true, data: payload };
   } catch (e) {
-    const message =
-      e instanceof Error ? e.message : "Could not reach the server.";
-    return { ok: false, error: message };
+    return { ok: false, error: toServiceTransportError(operation, e) };
   }
 }
 
 export async function login(credentials: LoginCredentials) {
   const result = await authRequest<AuthTokenResponseBody>(
+    "signIn",
     "/api/v1/auth/login",
     {
       method: "POST",
@@ -193,6 +204,7 @@ export async function login(credentials: LoginCredentials) {
 
 export async function signup(credentials: SignupCredentials) {
   const result = await authRequest<AuthTokenResponseBody>(
+    "signUp",
     "/api/v1/auth/signup",
     {
       method: "POST",
@@ -217,6 +229,7 @@ export async function signup(credentials: SignupCredentials) {
 
 export async function refreshSession() {
   const result = await authRequest<AuthTokenResponseBody>(
+    "session",
     "/api/v1/auth/refresh",
     {
       method: "POST",
@@ -240,9 +253,13 @@ export async function refreshSession() {
 }
 
 export async function getCurrentUser() {
-  const result = await authRequest<{ user?: AuthSession }>("/api/v1/auth/me", {
-    method: "GET",
-  });
+  const result = await authRequest<{ user?: AuthSession }>(
+    "session",
+    "/api/v1/auth/me",
+    {
+      method: "GET",
+    },
+  );
 
   if (result.ok) {
     return { ok: true as const, data: result.data?.user ?? null };
@@ -254,6 +271,7 @@ export async function getCurrentUser() {
 /** Unauthenticated: request a sign-in email verification message (anti-enumeration; **200** + generic message). */
 export async function requestEmailConfirmation(email: string) {
   return authRequest<AuthMessageResponseBody>(
+    "resendConfirmation",
     "/api/v1/auth/request-email-confirmation",
     {
       method: "POST",
@@ -266,6 +284,7 @@ export async function requestEmailConfirmation(email: string) {
 /** Unauthenticated: consume email verification **token** from the link (one-time). */
 export async function confirmEmail(token: string) {
   return authRequest<AuthMessageResponseBody>(
+    "confirmEmail",
     "/api/v1/auth/confirm-email",
     {
       method: "POST",
@@ -278,6 +297,7 @@ export async function confirmEmail(token: string) {
 /** Unauthenticated: request a password-reset email (same generic **200** body as confirmation request). */
 export async function requestPasswordReset(email: string) {
   return authRequest<AuthMessageResponseBody>(
+    "passwordReset",
     "/api/v1/auth/request-password-reset",
     {
       method: "POST",
@@ -290,6 +310,7 @@ export async function requestPasswordReset(email: string) {
 /** Unauthenticated: set a new password using the reset **token** from the email link. */
 export async function resetPassword(token: string, newPassword: string) {
   return authRequest<AuthMessageResponseBody>(
+    "passwordReset",
     "/api/v1/auth/reset-password",
     {
       method: "POST",
@@ -302,6 +323,7 @@ export async function resetPassword(token: string, newPassword: string) {
 /** Authenticated: resend sign-in email confirmation for the current account (server uses DB email). */
 export async function resendEmailConfirmation() {
   return authRequest<AuthMessageResponseBody>(
+    "resendConfirmation",
     "/api/v1/auth/resend-email-confirmation",
     {
       method: "POST",
@@ -321,6 +343,7 @@ export async function requestEmailChange(
   currentPassword: string,
 ) {
   return authRequest<AuthMessageResponseBody>(
+    "emailChange",
     "/api/v1/auth/request-email-change",
     {
       method: "POST",
@@ -336,6 +359,7 @@ export async function requestEmailChange(
  */
 export async function confirmEmailChange(token: string) {
   return authRequest<AuthMessageResponseBody>(
+    "emailChange",
     "/api/v1/auth/confirm-email-change",
     {
       method: "POST",
@@ -347,6 +371,7 @@ export async function confirmEmailChange(token: string) {
 
 export async function logout() {
   const result = await authRequest<{ message?: string }>(
+    "logout",
     "/api/v1/auth/logout",
     {
       method: "POST",

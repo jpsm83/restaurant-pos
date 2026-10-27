@@ -32,14 +32,7 @@ export async function fetchDailyEmployeeSchedule(
     );
     return data;
   } catch (e) {
-    throw toServiceRequestError(e, {
-      fallback: "Failed to fetch employee schedule",
-      byStatus: {
-        401: "Please sign in to view employee schedule.",
-        403: "You do not have permission to view this employee schedule.",
-        404: "Schedule data was not found for this day.",
-      },
-    });
+    throw toServiceRequestError(e, "scheduleLoad");
   }
 }
 

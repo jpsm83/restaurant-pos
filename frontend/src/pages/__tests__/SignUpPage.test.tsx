@@ -69,7 +69,16 @@ describe("SignUpPage", () => {
 
   it("shows API error when signup fails", async () => {
     const user = userEvent.setup();
-    mockSignup.mockResolvedValue({ ok: false, error: "Email taken" });
+    mockSignup.mockResolvedValue({
+      ok: false,
+      error: {
+        code: "signUp.conflict",
+        status: 409,
+        message: "Email taken",
+        serverMessage: "Email taken",
+        fieldErrors: [],
+      },
+    });
 
     await renderWithI18n(
       <MemoryRouter>

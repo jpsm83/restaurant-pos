@@ -122,7 +122,13 @@ describe("ConfirmEmailPage", () => {
     const user = userEvent.setup();
     mockConfirmEmail.mockResolvedValue({
       ok: false,
-      error: "Token expired",
+      error: {
+        code: "confirmEmail.badRequest",
+        status: 400,
+        message: "Token expired",
+        serverMessage: "Token expired",
+        fieldErrors: [],
+      },
     });
 
     await renderAt("/confirm-email?token=expired");

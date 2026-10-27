@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import type { TableConfigColumn } from "@/features/advancedTable/components/TableConfigEditor";
 import { http } from "@/services/http";
+import { toServiceRequestError } from "@/services/serviceErrors";
 
 export interface TableConfigEndpointConfig {
   loadUrl: string;
@@ -88,8 +89,12 @@ export function useTableConfigData(
   const loadQuery = useQuery<TableConfigColumn[], Error>({
     queryKey: ["advancedTable", "tableConfig", endpoint.loadUrl],
     queryFn: async () => {
-      const response = await http.get(endpoint.loadUrl);
-      return mapLoadResponse(response.data);
+      try {
+        const response = await http.get(endpoint.loadUrl);
+        return mapLoadResponse(response.data);
+      } catch (e) {
+        throw toServiceRequestError(e, "tableConfigLoad");
+      }
     },
   });
 
@@ -100,19 +105,19 @@ export function useTableConfigData(
 
   const saveMutation = useMutation<boolean, Error, TableConfigColumn[]>({
     mutationFn: async (nextColumns) => {
-      await http.post(endpoint.saveUrl, mapSaveRequest(nextColumns));
-      setDraftColumns(nextColumns);
-      return true;
+      try {
+        await http.post(endpoint.saveUrl, mapSaveRequest(nextColumns));
+        setDraftColumns(nextColumns);
+        return true;
+      } catch (e) {
+        throw toServiceRequestError(e, "tableConfigSave");
+      }
     },
   });
 
   const errorMessage = useMemo(() => {
-    if (saveMutation.error) {
-      return saveMutation.error.message || "Failed to save table config.";
-    }
-    if (loadQuery.error) {
-      return loadQuery.error.message || "Failed to load table config.";
-    }
+    if (saveMutation.error) return saveMutation.error.message;
+    if (loadQuery.error) return loadQuery.error.message;
     return null;
   }, [loadQuery.error, saveMutation.error]);
 

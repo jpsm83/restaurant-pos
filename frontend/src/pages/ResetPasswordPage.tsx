@@ -81,7 +81,7 @@ export default function ResetPasswordPage() {
     try {
       const result = await resetPassword(token, data.password);
       if (!result.ok) {
-        setSubmitError(result.error);
+        setSubmitError(result.error.message);
         return;
       }
       navigate("/login", { replace: true });

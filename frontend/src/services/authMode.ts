@@ -23,9 +23,6 @@ import { toServiceRequestError } from "./serviceErrors";
 
 export type AuthMode = IAuthMode;
 
-/** UI fallback when `POST /auth/set-mode` returns 403 without a body message (Phase 3.1.3). */
-export const EMPLOYEE_MODE_NOT_ALLOWED_MESSAGE = "Employee mode not allowed";
-
 /** `GET /api/v1/auth/mode` — reads `auth_mode` cookie (defaults to `customer`). */
 export async function getAuthMode(signal?: AbortSignal): Promise<AuthMode> {
   try {
@@ -34,33 +31,20 @@ export async function getAuthMode(signal?: AbortSignal): Promise<AuthMode> {
     });
     return data.mode === "employee" ? "employee" : "customer";
   } catch (e) {
-    throw toServiceRequestError(e, {
-      fallback: "Failed to fetch auth mode",
-      byStatus: {
-        401: "Please sign in to access workspace mode.",
-        403: "You do not have permission to access workspace mode.",
-      },
-    });
+    throw toServiceRequestError(e, "modeLoad");
   }
 }
 
 /**
  * `POST /api/v1/auth/set-mode` — sets HttpOnly `auth_mode` cookie (Bearer required).
- * @throws Error with server `message` or {@link EMPLOYEE_MODE_NOT_ALLOWED_MESSAGE} on 403.
+ * @throws ServiceRequestError with a `modeSave.*` code.
  */
 export async function setAuthMode(mode: AuthMode): Promise<void> {
   try {
     const body: ISetAuthModeBody = { mode };
     await http.post("/api/v1/auth/set-mode", body);
   } catch (e) {
-    const mapped = toServiceRequestError(e, {
-      fallback: "Failed to set auth mode",
-      byStatus: {
-        401: "Please sign in to set workspace mode.",
-        403: EMPLOYEE_MODE_NOT_ALLOWED_MESSAGE,
-      },
-    });
-    throw new Error(mapped.message, { cause: e });
+    throw toServiceRequestError(e, "modeSave");
   }
 }
 

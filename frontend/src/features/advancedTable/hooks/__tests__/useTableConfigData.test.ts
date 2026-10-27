@@ -8,6 +8,8 @@ import {
 
 const mockUseQuery = vi.fn();
 const mockUseMutation = vi.fn();
+const mockHttpGet = vi.fn();
+const mockHttpPost = vi.fn();
 
 vi.mock("@tanstack/react-query", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@tanstack/react-query")>();
@@ -17,6 +19,13 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
     useMutation: (...args: unknown[]) => mockUseMutation(...args),
   };
 });
+
+vi.mock("@/services/http", () => ({
+  http: {
+    get: (...args: unknown[]) => mockHttpGet(...args),
+    post: (...args: unknown[]) => mockHttpPost(...args),
+  },
+}));
 
 describe("useTableConfigData", () => {
   it("normalizes load and save payloads", () => {
@@ -33,6 +42,66 @@ describe("useTableConfigData", () => {
       false,
     );
     expect(payload.tableConfig.columns[0]).toMatchObject({ order: 0, visible: true });
+  });
+
+  it("maps load failures to tableConfigLoad machine codes", async () => {
+    mockHttpGet.mockRejectedValueOnce({
+      isAxiosError: true,
+      message: "Request failed",
+      response: { status: 403, data: { detail: "Forbidden" } },
+    });
+    mockUseQuery.mockReturnValueOnce({
+      data: undefined,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    mockUseMutation.mockReturnValueOnce({
+      isPending: false,
+      error: null,
+      mutateAsync: vi.fn(),
+    });
+
+    renderHook(() => useTableConfigData({ loadUrl: "/load", saveUrl: "/save" }));
+
+    const queryConfig = mockUseQuery.mock.calls.at(-1)?.[0] as {
+      queryFn: () => Promise<unknown>;
+    };
+    await expect(queryConfig.queryFn()).rejects.toMatchObject({
+      code: "tableConfigLoad.forbidden",
+      status: 403,
+      serverMessage: "Forbidden",
+    });
+  });
+
+  it("maps save failures to tableConfigSave machine codes", async () => {
+    mockHttpPost.mockRejectedValueOnce({
+      isAxiosError: true,
+      message: "Request failed",
+      response: { status: 409, data: { detail: "Conflict" } },
+    });
+    mockUseQuery.mockReturnValueOnce({
+      data: [],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    mockUseMutation.mockReturnValueOnce({
+      isPending: false,
+      error: null,
+      mutateAsync: vi.fn(),
+    });
+
+    renderHook(() => useTableConfigData({ loadUrl: "/load", saveUrl: "/save" }));
+
+    const mutationConfig = mockUseMutation.mock.calls.at(-1)?.[0] as {
+      mutationFn: (columns: unknown[]) => Promise<unknown>;
+    };
+    await expect(mutationConfig.mutationFn([])).rejects.toMatchObject({
+      code: "tableConfigSave.conflict",
+      status: 409,
+      serverMessage: "Conflict",
+    });
   });
 
   it("returns computed state and handles save/reload paths", async () => {

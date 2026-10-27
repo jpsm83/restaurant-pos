@@ -67,7 +67,7 @@ export default function ForgotPasswordPage() {
     try {
       const result = await requestPasswordReset(data.email.trim());
       if (!result.ok) {
-        setSubmitError(result.error);
+        setSubmitError(result.error.message);
         return;
       }
       navigate("/login", { replace: true });

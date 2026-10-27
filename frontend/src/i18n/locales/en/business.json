@@ -6,6 +6,11 @@
     "sessionUnavailable": "Session details unavailable.",
     "accountMenuHint": "Use the account menu (top right) for profile, favorites, dashboard, or to sign out."
   },
+  "errors": {
+    "createConflict": "A business with the same legal name or tax number already exists.",
+    "notFound": "Business profile was not found.",
+    "updateConflict": "These changes conflict with the saved business profile. Refresh and try again."
+  },
   "profile": {
     "title": "Business profile",
     "notBuiltYet": "This page is not built yet.",

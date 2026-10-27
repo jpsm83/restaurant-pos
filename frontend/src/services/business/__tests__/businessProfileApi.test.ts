@@ -85,12 +85,13 @@ describe("businessProfileApi", () => {
 
     await expect(createBusiness(new FormData())).rejects.toMatchObject({
       name: "BusinessServiceError",
-      message: "A business with the same tax number already exists",
+      code: "businessCreate.conflict",
+      serverMessage: "A business with the same tax number already exists",
       status: 409,
     });
   });
 
-  it("maps getBusinessById problem details, then falls back to status copy", async () => {
+  it("maps getBusinessById status to a machine failure code", async () => {
     mockHttpGet.mockRejectedValueOnce({
       isAxiosError: true,
       message: "Request failed with status code 404",
@@ -99,7 +100,7 @@ describe("businessProfileApi", () => {
 
     await expect(getBusinessById("b-1")).rejects.toMatchObject({
       name: "BusinessServiceError",
-      message: "Business profile was not found.",
+      code: "businessFetch.notFound",
       status: 404,
     });
   });
@@ -118,7 +119,8 @@ describe("businessProfileApi", () => {
       updateBusinessProfile("b-1", new FormData()),
     ).rejects.toMatchObject({
       name: "BusinessServiceError",
-      message: "You cannot edit this business",
+      code: "businessUpdate.forbidden",
+      serverMessage: "You cannot edit this business",
       status: 403,
     });
   });

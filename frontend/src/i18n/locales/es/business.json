@@ -6,6 +6,11 @@
     "sessionUnavailable": "No hay datos de sesión disponibles.",
     "accountMenuHint": "Usa el menú de cuenta (arriba a la derecha) para el perfil, favoritos, el panel o para cerrar sesión."
   },
+  "errors": {
+    "createConflict": "Ya existe un negocio con la misma razón social o identificación fiscal.",
+    "notFound": "No se encontró el perfil del negocio.",
+    "updateConflict": "Estos cambios entran en conflicto con el perfil guardado del negocio. Actualiza e inténtalo de nuevo."
+  },
   "profile": {
     "title": "Perfil del negocio",
     "notBuiltYet": "Esta página aún no está disponible.",
