@@ -6,6 +6,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { z } from "zod";
 import { login } from "@/auth/api";
+import { useErrorMessage, type ErrorFailure } from "@/i18n/errorCopy";
 import { getPostLoginDestination } from "@/auth/postLoginRedirect";
 import { useAuth } from "@/auth/store/AuthContext";
 import { FieldError } from "@/components/FieldError";
@@ -37,7 +38,9 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { state, dispatch } = useAuth();
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitFailure, setSubmitFailure] = useState<ErrorFailure | null>(null);
+  const [sessionExpired, setSessionExpired] = useState(false);
+  const resolveError = useErrorMessage();
 
   const flashMessage =
     (location.state as { flashMessage?: string } | null)?.flashMessage ?? null;
@@ -62,7 +65,7 @@ export default function LoginPage() {
     if (!shouldShowExpiredNotice) return;
     sessionStorage.removeItem("auth_session_expired_notice");
     const id = requestAnimationFrame(() => {
-      setSubmitError(t("login.errors.sessionExpired"));
+      setSessionExpired(true);
     });
     return () => cancelAnimationFrame(id);
   }, [t]);
@@ -70,7 +73,8 @@ export default function LoginPage() {
   const isSubmitting = state.status === "loading";
 
   const onSubmit = async (data: LoginFormValues) => {
-    setSubmitError(null);
+    setSubmitFailure(null);
+    setSessionExpired(false);
     dispatch({ type: "AUTH_LOADING" });
 
     const result = await login({
@@ -79,14 +83,11 @@ export default function LoginPage() {
     });
 
     if (!result.ok || !result.data?.user) {
-      const errMsg = result.ok
-        ? t("login.errors.loginFailed")
-        : result.error.message;
-      dispatch({
-        type: "AUTH_ERROR",
-        payload: errMsg,
-      });
-      setSubmitError(errMsg);
+      const failure: ErrorFailure = result.ok
+        ? { code: "signIn.internal" }
+        : result.error;
+      dispatch({ type: "AUTH_ERROR", payload: failure.code });
+      setSubmitFailure(failure);
       return;
     }
 
@@ -98,6 +99,16 @@ export default function LoginPage() {
     }
     navigate(getPostLoginDestination(sessionUser), { replace: true });
   };
+
+  const stateFailure: ErrorFailure | null = state.error
+    ? { code: state.error }
+    : null;
+  const failure = submitFailure ?? stateFailure;
+  const alertMessage = sessionExpired
+    ? t("login.errors.sessionExpired")
+    : failure
+      ? resolveError(failure)
+      : null;
 
   return (
     <main className="flex min-h-0 flex-1 flex-col items-center justify-center bg-surface px-4 py-8 sm:px-6 lg:px-8">
@@ -147,9 +158,7 @@ export default function LoginPage() {
               <FieldError message={errors.password?.message} />
             </div>
 
-            {(submitError || state.error) && (
-              <Alert>{submitError || state.error}</Alert>
-            )}
+            {alertMessage ? <Alert>{alertMessage}</Alert> : null}
 
             <Button type="submit" className="w-full" disabled={isSubmitting}>
               {isSubmitting ? t("login.submitting") : t("login.submit")}

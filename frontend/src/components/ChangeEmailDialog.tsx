@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { ChangeBusinessEmailController } from "@/hooks/useChangeBusinessEmailController";
+import { useErrorMessage } from "@/i18n/errorCopy";
 
 /**
  * Modal for the business "change sign-in email" action. Collects the new
@@ -21,6 +22,7 @@ export function ChangeEmailDialog({
   controller: ChangeBusinessEmailController;
 }) {
   const { t } = useTranslation("business");
+  const resolveError = useErrorMessage();
   const descriptionId = useId();
   const {
     open,
@@ -118,7 +120,9 @@ export function ChangeEmailDialog({
                 <FieldError message={fieldErrors.currentPassword} />
               </div>
 
-              {submitError ? <Alert>{submitError}</Alert> : null}
+              {submitError ? (
+                <Alert>{resolveError(submitError)}</Alert>
+              ) : null}
 
               <div className="flex flex-wrap justify-end gap-2">
                 <Button

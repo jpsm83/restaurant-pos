@@ -164,7 +164,92 @@ describe("BusinessCredentialsSettingsPage", () => {
     await waitFor(() => {
       expect(mockRequestPasswordReset).toHaveBeenCalledWith("owner@demo.test");
     });
-    expect(mockToastSuccess).toHaveBeenCalled();
+    expect(mockToastSuccess).toHaveBeenCalledWith(
+      "If an account exists for that address, we sent reset instructions.",
+    );
+  });
+
+  it("uses local success copy for a resend confirmation", async () => {
+    mockUseBusinessProfileQuery.mockReturnValue({
+      data: makeBusinessProfileDto({ emailVerified: false }),
+      isLoading: false,
+      isPending: false,
+      isFetching: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    mockResendEmailConfirmation.mockResolvedValue({
+      ok: true,
+      data: { message: "Server success copy" },
+    });
+
+    const user = userEvent.setup();
+    await renderWithQueryClient(
+      <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/credentials"]}>
+        <Routes>
+          <Route
+            path="/business/:businessId/settings/credentials"
+            element={<BusinessCredentialsSettingsPage />}
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await user.click(
+      await screen.findByRole("button", { name: /resend confirmation email/i }),
+    );
+
+    await waitFor(() => {
+      expect(mockToastSuccess).toHaveBeenCalledWith(
+        "Confirmation email sent. Check your inbox.",
+      );
+    });
+    expect(mockToastSuccess).not.toHaveBeenCalledWith("Server success copy");
+  });
+
+  it("treats an already-verified resend as success by machine code", async () => {
+    mockUseBusinessProfileQuery.mockReturnValue({
+      data: makeBusinessProfileDto({ emailVerified: false }),
+      isLoading: false,
+      isPending: false,
+      isFetching: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    mockResendEmailConfirmation.mockResolvedValue({
+      ok: false,
+      error: {
+        code: "resendConfirmation.badRequest",
+        status: 400,
+        serverMessage: "Your email is already verified.",
+        fieldErrors: [],
+      },
+    });
+
+    const user = userEvent.setup();
+    await renderWithQueryClient(
+      <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/credentials"]}>
+        <Routes>
+          <Route
+            path="/business/:businessId/settings/credentials"
+            element={<BusinessCredentialsSettingsPage />}
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await user.click(
+      await screen.findByRole("button", { name: /resend confirmation email/i }),
+    );
+
+    await waitFor(() => {
+      expect(mockToastSuccess).toHaveBeenCalledWith(
+        "Your email is already verified.",
+      );
+    });
+    expect(mockToastError).not.toHaveBeenCalled();
   });
 
   it("shows resend confirmation when email is not verified", async () => {
@@ -201,6 +286,9 @@ describe("BusinessCredentialsSettingsPage", () => {
 
     await waitFor(() => {
       expect(mockResendEmailConfirmation).toHaveBeenCalledTimes(1);
+      expect(mockToastSuccess).toHaveBeenCalledWith(
+        "Confirmation email sent. Check your inbox.",
+      );
     });
   });
 });

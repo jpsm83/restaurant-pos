@@ -11,7 +11,7 @@
       "bannerDescription": "Enviamos un enlace a tu correo de acceso. Vuelve a enviar si no lo recibiste (pueden aplicarse límites).",
       "resendButton": "Reenviar correo de confirmación",
       "resendSending": "Enviando…",
-      "resendSuccessFallback": "Si la cuenta necesita verificación, enviamos instrucciones."
+      "resendSuccess": "Correo de confirmación enviado. Revisa tu bandeja de entrada."
     }
   },
   "favorites": {

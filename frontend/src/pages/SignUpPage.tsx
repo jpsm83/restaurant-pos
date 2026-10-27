@@ -6,6 +6,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { z } from "zod";
 import { signup } from "@/auth/api";
+import { useErrorMessage, type ErrorFailure } from "@/i18n/errorCopy";
 import { getPostLoginDestination } from "@/auth/postLoginRedirect";
 import { useAuth } from "@/auth/store/AuthContext";
 import { FieldError } from "@/components/FieldError";
@@ -60,7 +61,8 @@ export default function SignUpPage() {
   const { t } = useTranslation("auth");
   const navigate = useNavigate();
   const { state, dispatch } = useAuth();
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitFailure, setSubmitFailure] = useState<ErrorFailure | null>(null);
+  const resolveError = useErrorMessage();
   const isSubmitting = state.status === "loading";
 
   const schema = useMemo(
@@ -88,7 +90,7 @@ export default function SignUpPage() {
   });
 
   const onSubmit = async (data: SignUpFormValues) => {
-    setSubmitError(null);
+    setSubmitFailure(null);
     dispatch({ type: "AUTH_LOADING" });
 
     const result = await signup({
@@ -97,11 +99,11 @@ export default function SignUpPage() {
     });
 
     if (!result.ok || !result.data?.user) {
-      const errorMessage = result.ok
-        ? t("signup.errors.signUpFailed")
-        : result.error.message;
-      dispatch({ type: "AUTH_ERROR", payload: errorMessage });
-      setSubmitError(errorMessage);
+      const failure: ErrorFailure = result.ok
+        ? { code: "signUp.internal" }
+        : result.error;
+      dispatch({ type: "AUTH_ERROR", payload: failure.code });
+      setSubmitFailure(failure);
       return;
     }
 
@@ -167,7 +169,9 @@ export default function SignUpPage() {
               <FieldError message={errors.confirmPassword?.message} />
             </div>
 
-            {submitError && <Alert>{submitError}</Alert>}
+            {submitFailure ? (
+              <Alert>{resolveError(submitFailure)}</Alert>
+            ) : null}
 
             <Button type="submit" className="w-full" disabled={isSubmitting}>
               {isSubmitting ? t("signup.submitting") : t("signup.submit")}

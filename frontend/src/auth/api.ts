@@ -359,7 +359,7 @@ export async function requestEmailChange(
  */
 export async function confirmEmailChange(token: string) {
   return authRequest<AuthMessageResponseBody>(
-    "emailChange",
+    "confirmEmailChange",
     "/api/v1/auth/confirm-email-change",
     {
       method: "POST",

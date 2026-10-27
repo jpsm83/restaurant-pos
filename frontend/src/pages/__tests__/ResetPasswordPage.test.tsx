@@ -128,7 +128,9 @@ describe("ResetPasswordPage", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("Invalid or expired token"),
+        screen.getByText(
+          "This password reset link is invalid or has expired. Request a new reset email.",
+        ),
       ).toBeInTheDocument();
     });
   });

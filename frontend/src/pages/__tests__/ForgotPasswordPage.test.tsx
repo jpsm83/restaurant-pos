@@ -86,7 +86,11 @@ describe("ForgotPasswordPage", () => {
     await user.click(screen.getByRole("button", { name: /send reset link/i }));
 
     await waitFor(() => {
-      expect(screen.getByText("Rate limited")).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "That change conflicts with the current data. Refresh and try again.",
+        ),
+      ).toBeInTheDocument();
     });
   });
 });

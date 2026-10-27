@@ -11,7 +11,7 @@
       "bannerDescription": "We sent a link to your sign-in email. Resend if you did not receive it (rate limits may apply).",
       "resendButton": "Resend confirmation email",
       "resendSending": "Sending…",
-      "resendSuccessFallback": "If an account needs verification, we sent instructions."
+      "resendSuccess": "Confirmation email sent. Check your inbox."
     }
   },
   "favorites": {

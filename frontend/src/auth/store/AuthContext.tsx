@@ -29,12 +29,13 @@ import {
   setAccessToken,
 } from "../api";
 import type { AuthSession, AuthState } from "../types";
+import type { ServiceErrorCode } from "@/services/serviceErrors";
 
 type AuthAction =
   | { type: "AUTH_LOADING" }
   | { type: "AUTH_SUCCESS"; payload: AuthSession }
   | { type: "AUTH_CLEAR" }
-  | { type: "AUTH_ERROR"; payload: string | null };
+  | { type: "AUTH_ERROR"; payload: ServiceErrorCode | null };
 
 const initialState: AuthState = {
   user: null,
@@ -119,8 +120,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         dispatch({
           type: "AUTH_ERROR",
           payload: meResult.ok
-            ? "Session restore failed"
-            : meResult.error.message,
+            ? "session.internal"
+            : meResult.error.code,
         });
         return;
       }

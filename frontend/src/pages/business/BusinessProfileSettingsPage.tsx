@@ -8,9 +8,9 @@ import {
   CircleCheck,
   Mail,
 } from "lucide-react";
-import { toast } from "sonner";
-import { refreshSession, resendEmailConfirmation } from "@/auth/api";
+import { refreshSession } from "@/auth/api";
 import { useAuth } from "@/auth/store/AuthContext";
+import { useResendEmailConfirmation } from "@/hooks/useResendEmailConfirmation";
 import { ChangeEmailDialog } from "@/components/ChangeEmailDialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -230,7 +230,6 @@ function BusinessProfileSections({
   // Timezone is derived server-side from the business address (read-only here).
   const timezone = profileQuery.data?.timezone?.trim() || "UTC";
   const timezoneIsDefault = profileQuery.data?.timezoneIsDefault === true;
-  const [resendPending, setResendPending] = useState(false);
   const changeEmail = useChangeBusinessEmailController(
     profileQuery.data?.email ?? "",
   );
@@ -242,6 +241,12 @@ function BusinessProfileSections({
     }
     await profileQuery.refetch();
   }
+
+  const { resend: resendConfirmation, pending: resendPending } =
+    useResendEmailConfirmation({
+      successMessage: t("credentialsSettings.emailVerify.resendSuccess"),
+      onSuccess: syncSessionAndProfileAfterEmailFlow,
+    });
 
   return (
     <>
@@ -363,32 +368,7 @@ function BusinessProfileSections({
                     variant="ghost"
                     className="h-auto min-h-0 justify-start gap-2 px-2 py-2 bg-destructive/10 text-sm font-medium text-destructive no-underline hover:no-underline hover:cursor-pointer hover:text-destructive disabled:opacity-60 hover:bg-destructive/20 sm:justify-end"
                     disabled={resendPending}
-                    onClick={() => {
-                      setResendPending(true);
-                      void (async () => {
-                        try {
-                          const result = await resendEmailConfirmation();
-                          if (result.ok) {
-                            toast.success(
-                              result.data?.message ??
-                                t(
-                                  "credentialsSettings.emailVerify.resendSuccessFallback",
-                                ),
-                            );
-                            await syncSessionAndProfileAfterEmailFlow();
-                            return;
-                          }
-                          if (/already verified/i.test(result.error.message)) {
-                            toast.success(result.error.message);
-                            await syncSessionAndProfileAfterEmailFlow();
-                            return;
-                          }
-                          toast.error(result.error.message);
-                        } finally {
-                          setResendPending(false);
-                        }
-                      })();
-                    }}
+                    onClick={() => void resendConfirmation()}
                   >
                     <Mail
                       className="size-4 shrink-0 text-destructive"

@@ -141,6 +141,31 @@ describe("AuthContext", () => {
     expect(localStorage.getItem("auth_had_session")).toBeNull();
   });
 
+  it("stores the machine error code when restoring the session fails", async () => {
+    loadPersistedAccessToken.mockReturnValue(null);
+    refreshSession.mockResolvedValue({
+      ok: true,
+      data: { accessToken: "new-jwt", user: null },
+    });
+    getCurrentUser.mockResolvedValue({
+      ok: false,
+      error: { code: "session.unauthorized", status: 401 },
+    });
+
+    render(
+      <AuthProvider>
+        <StatusProbe />
+      </AuthProvider>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId("status")).toHaveTextContent("unauthenticated"),
+    );
+    expect(screen.getByTestId("error")).toHaveTextContent(
+      "session.unauthorized",
+    );
+  });
+
   it("dispatch AUTH_CLEAR from a child updates state", async () => {
     const user = userEvent.setup();
     loadPersistedAccessToken.mockReturnValue(null);

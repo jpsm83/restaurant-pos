@@ -6,6 +6,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { getPostLoginDestination } from "@/auth/postLoginRedirect";
 import { useAuth } from "@/auth/store/AuthContext";
+import { useErrorMessage, type ErrorFailure } from "@/i18n/errorCopy";
 import { FieldError } from "@/components/FieldError";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCreateBusinessMutation } from "@/services/business/businessService";
+import { toServiceRequestError } from "@/services/serviceErrors";
 import { currenctyEnums, subscriptionEnums } from "restaurant-pos-packages/enums";
 import { isValidPassword } from "restaurant-pos-packages/utils/passwordPolicy";
 import emailRegex from "restaurant-pos-packages/utils/emailRegex";
@@ -88,7 +90,8 @@ export default function BusinessRegisterPage() {
   const navigate = useNavigate();
   const { dispatch } = useAuth();
   const mutation = useCreateBusinessMutation();
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitFailure, setSubmitFailure] = useState<ErrorFailure | null>(null);
+  const resolveError = useErrorMessage();
 
   const schema = useMemo(
     () =>
@@ -134,7 +137,7 @@ export default function BusinessRegisterPage() {
   });
 
   const onSubmit = async (data: BusinessRegisterFormValues) => {
-    setSubmitError(null);
+    setSubmitFailure(null);
 
     const address: Record<string, string> = {
       country: data.country.trim(),
@@ -170,9 +173,7 @@ export default function BusinessRegisterPage() {
       dispatch({ type: "AUTH_SUCCESS", payload: result.user });
       navigate(getPostLoginDestination(result.user), { replace: true });
     } catch (e) {
-      setSubmitError(
-        e instanceof Error ? e.message : t("businessRegister.errors.registrationFailed"),
-      );
+      setSubmitFailure(toServiceRequestError(e, "businessCreate"));
     }
   };
 
@@ -188,7 +189,9 @@ export default function BusinessRegisterPage() {
             className="space-y-6"
             onSubmit={(e) => void handleSubmit(onSubmit)(e)}
           >
-            {submitError ? <Alert>{submitError}</Alert> : null}
+            {submitFailure ? (
+              <Alert>{resolveError(submitFailure)}</Alert>
+            ) : null}
 
             <section className="space-y-3">
               <h2 className="text-sm font-semibold text-foreground">

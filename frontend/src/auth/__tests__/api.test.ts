@@ -337,7 +337,7 @@ describe("auth api — email / password-reset endpoints", () => {
     const result = await confirmEmailChange("stale");
 
     expectFailure(result, {
-      code: "emailChange.badRequest",
+      code: "confirmEmailChange.badRequest",
       status: 400,
       serverMessage:
         "This link is invalid or has expired. Please request a new one.",

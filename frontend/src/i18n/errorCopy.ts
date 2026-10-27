@@ -72,6 +72,14 @@ const OVERRIDES: Partial<Record<ServiceErrorCode, ErrorCopyTemplate>> = {
     namespace: "auth",
     key: "api.signInRequired",
   },
+  /**
+   * The authenticated resend endpoint only returns 400 for an account whose
+   * email is already verified; validation failures use the `validation` code.
+   */
+  "resendConfirmation.badRequest": {
+    namespace: "auth",
+    key: "api.emailAlreadyVerified",
+  },
   "passwordReset.validation": {
     namespace: "auth",
     key: "api.invalidResetLink",
@@ -84,11 +92,27 @@ const OVERRIDES: Partial<Record<ServiceErrorCode, ErrorCopyTemplate>> = {
     namespace: "auth",
     key: "api.invalidResetLink",
   },
+  "emailChange.badRequest": {
+    namespace: "auth",
+    key: "api.sameEmail",
+  },
   "emailChange.unauthorized": {
     namespace: "auth",
     key: "api.incorrectCurrentPassword",
   },
   "emailChange.conflict": { namespace: "auth", key: "api.emailInUse" },
+  "confirmEmailChange.validation": {
+    namespace: "auth",
+    key: "api.invalidEmailChangeLink",
+  },
+  "confirmEmailChange.badRequest": {
+    namespace: "auth",
+    key: "api.invalidEmailChangeLink",
+  },
+  "confirmEmailChange.notFound": {
+    namespace: "auth",
+    key: "api.invalidEmailChangeLink",
+  },
   "businessCreate.conflict": {
     namespace: "business",
     key: "errors.createConflict",
@@ -121,6 +145,17 @@ export const ERROR_COPY: Record<ServiceErrorCode, ErrorCopyTemplate> =
   buildErrorCopyMap();
 
 const FALLBACK_COPY: ErrorCopyTemplate = GENERIC_OUTCOME_COPY.transport;
+
+/**
+ * True when a failure is the existing-account branch of a confirmation resend.
+ * The API has no dedicated status for it, and this operation maps 400 to the
+ * already-verified outcome, so pages must branch on the machine code.
+ */
+export function isAlreadyVerifiedFailure(
+  failure: Pick<ServiceFailure, "code"> | null | undefined,
+): boolean {
+  return failure?.code === "resendConfirmation.badRequest";
+}
 
 /** Resolves a failure code to the localized namespace, key, and values. */
 export type ErrorFailure = Pick<

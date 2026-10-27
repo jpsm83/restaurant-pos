@@ -15,6 +15,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useAuthMode } from "@/context/AuthModeContext";
+import { useErrorMessage, type ErrorFailure } from "@/i18n/errorCopy";
+import { toServiceRequestError } from "@/services/serviceErrors";
 import { useNextShiftForEmployee } from "@/services/schedulesService";
 import {
   deriveEmployeeModeFromSchedule,
@@ -112,8 +114,13 @@ export default function SelectUserModePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { state, dispatch } = useAuth();
-  const { setModeAndRefresh, isSettingMode } = useAuthMode();
-  const [error, setError] = useState<string | null>(null);
+  const {
+    setModeAndRefresh,
+    isSettingMode,
+    error: modeLoadError,
+  } = useAuthMode();
+  const [submitFailure, setSubmitFailure] = useState<ErrorFailure | null>(null);
+  const resolveError = useErrorMessage();
 
   const [dayKey, setDayKey] = useState(() => formatDayKeyLocal(new Date()));
   useEffect(() => {
@@ -142,6 +149,16 @@ export default function SelectUserModePage() {
     const id = window.setInterval(() => setNowMs(Date.now()), 1000);
     return () => window.clearInterval(id);
   }, [linked, canEmployee]);
+
+  const scheduleFailure = scheduleQuery.isError
+    ? toServiceRequestError(scheduleQuery.error, "scheduleLoad")
+    : null;
+  const modeLoadFailure = modeLoadError
+    ? toServiceRequestError(modeLoadError, "modeLoad")
+    : null;
+  // Submit feedback is the most direct; otherwise prefer the schedule check
+  // (it drives employee eligibility) over a failed mode load.
+  const failure = submitFailure ?? scheduleFailure ?? modeLoadFailure;
 
   const derived = useMemo(
     () => deriveEmployeeModeFromSchedule(nowMs, scheduleQuery.data?.entries ?? []),
@@ -191,23 +208,23 @@ export default function SelectUserModePage() {
       : t("employeeHelp.blocked");
 
   const goCustomer = async () => {
-    setError(null);
+    setSubmitFailure(null);
     try {
       await setModeAndRefresh("customer");
       navigate(canonicalUserCustomerDashboardPath(sessionUser), { replace: true });
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("errors.generic"));
+      setSubmitFailure(toServiceRequestError(e, "modeSave"));
     }
   };
 
   const goEmployee = async () => {
     if (!canEmployee) return;
-    setError(null);
+    setSubmitFailure(null);
     try {
       await setModeAndRefresh("employee");
       navigate(canonicalUserEmployeeDashboardPath(sessionUser), { replace: true });
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("errors.generic"));
+      setSubmitFailure(toServiceRequestError(e, "modeSave"));
     }
   };
 
@@ -220,7 +237,7 @@ export default function SelectUserModePage() {
             <CardDescription>{t("description")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {error ? <Alert>{error}</Alert> : null}
+            {failure ? <Alert>{resolveError(failure)}</Alert> : null}
             <Button
               type="button"
               className="w-full"

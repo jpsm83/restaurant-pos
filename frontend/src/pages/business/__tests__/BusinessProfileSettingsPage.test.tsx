@@ -275,7 +275,9 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
       screen.getByRole("button", { name: "Click to confirm email" }),
     );
     expect(mockResendEmailConfirmation).toHaveBeenCalledTimes(1);
-    expect(mockToastSuccess).toHaveBeenCalledWith("Sent.");
+    expect(mockToastSuccess).toHaveBeenCalledWith(
+      "Confirmation email sent. Check your inbox.",
+    );
     expect(mockRefreshSession).toHaveBeenCalledTimes(1);
     expect(mockDispatch).toHaveBeenCalledWith({
       type: "AUTH_SUCCESS",
@@ -684,12 +686,66 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("Current password is incorrect."),
+        screen.getByText("The current password is incorrect."),
       ).toBeInTheDocument();
     });
     expect(
       screen.queryByText("Check your new inbox"),
     ).not.toBeInTheDocument();
+  });
+
+  it("explains a same-email failure from the server in the active language", async () => {
+    mockUseBusinessProfileQuery.mockReturnValue({
+      data: makeBusinessProfileDto(),
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn().mockResolvedValue({ data: makeBusinessProfileDto() }),
+    });
+    mockRequestEmailChange.mockResolvedValue({
+      ok: false,
+      error: {
+        code: "emailChange.badRequest",
+        status: 400,
+        message: "The new email must be different from the current sign-in email.",
+        serverMessage:
+          "The new email must be different from the current sign-in email.",
+        fieldErrors: [
+          {
+            field: "newEmail",
+            message: "Enter an address different from your current one.",
+          },
+        ],
+      },
+    });
+    const user = userEvent.setup();
+
+    await renderWithQueryClient(
+      <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
+        <Routes>
+          <Route
+            path="/business/:businessId/settings/profile"
+            element={<BusinessProfileSettingsPage />}
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Change email" }));
+    await user.type(
+      screen.getByLabelText("New sign-in email"),
+      "newowner@demo.test",
+    );
+    await user.type(screen.getByLabelText("Current password"), "CurrentPass1!");
+    await user.click(
+      screen.getByRole("button", { name: "Send confirmation link" }),
+    );
+
+    expect(
+      await screen.findByText(
+        "Choose a different email from your current sign-in address.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("validates the new email format before calling the request endpoint", async () => {

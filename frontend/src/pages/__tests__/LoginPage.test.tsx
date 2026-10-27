@@ -84,7 +84,7 @@ describe("LoginPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows backend error on failed login", async () => {
+  it("shows localized copy on failed login", async () => {
     const user = userEvent.setup();
     mockLogin.mockResolvedValue({
       ok: false,
@@ -107,7 +107,65 @@ describe("LoginPage", () => {
     await user.type(screen.getByLabelText(/password/i), "wrong-password");
     await user.click(screen.getByRole("button", { name: /sign in/i }));
 
-    expect(screen.getByText("Invalid credentials")).toBeInTheDocument();
+    expect(
+      screen.getByText("The email or password is incorrect."),
+    ).toBeInTheDocument();
+  });
+
+  it("renders the sign-in failure in Spanish", async () => {
+    const user = userEvent.setup();
+    mockLogin.mockResolvedValue({
+      ok: false,
+      error: {
+        code: "signIn.unauthorized",
+        status: 401,
+        serverMessage: "Invalid credentials",
+        fieldErrors: [],
+      },
+    });
+
+    await renderWithI18n(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+      { language: "es" },
+    );
+
+    await user.type(screen.getByLabelText(/correo electrónico/i), "john@doe.com");
+    await user.type(screen.getByLabelText(/^contraseña$/i), "wrong-password");
+    await user.click(screen.getByRole("button", { name: /iniciar sesión/i }));
+
+    expect(
+      screen.getByText("El correo o la contraseña no son correctos."),
+    ).toBeInTheDocument();
+  });
+
+  it("explains an unreachable server in the active language", async () => {
+    const user = userEvent.setup();
+    mockLogin.mockResolvedValue({
+      ok: false,
+      error: {
+        code: "signIn.transport",
+        serverMessage: "Failed to fetch",
+        fieldErrors: [],
+      },
+    });
+
+    await renderWithI18n(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+    );
+
+    await user.type(screen.getByLabelText(/email/i), "john@doe.com");
+    await user.type(screen.getByLabelText(/password/i), "wrong-password");
+    await user.click(screen.getByRole("button", { name: /sign in/i }));
+
+    expect(
+      screen.getByText(
+        "We could not reach the server. Check your connection and try again.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("navigates to /business/:id/dashboard after business login", async () => {

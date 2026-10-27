@@ -85,7 +85,7 @@ describe("ConfirmEmailChangePage", () => {
     mockConfirmEmailChange.mockResolvedValue({
       ok: false,
       error: {
-        code: "emailChange.badRequest",
+        code: "confirmEmailChange.badRequest",
         status: 400,
         message:
           "This link is invalid or has expired. Please request a new one.",
@@ -100,7 +100,7 @@ describe("ConfirmEmailChangePage", () => {
     await waitFor(() => {
       expect(
         screen.getByText(
-          "This link is invalid or has expired. Please request a new one.",
+          "This confirmation link is invalid or has expired. Request a new email change.",
         ),
       ).toBeInTheDocument();
     });

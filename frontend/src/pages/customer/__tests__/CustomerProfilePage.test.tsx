@@ -78,7 +78,9 @@ describe("CustomerProfilePage", () => {
     await user.click(screen.getByRole("button", { name: "Resend confirmation email" }));
     await waitFor(() => {
       expect(mockResendEmailConfirmation).toHaveBeenCalledTimes(1);
-      expect(toastSuccess).toHaveBeenCalled();
+      expect(toastSuccess).toHaveBeenCalledWith(
+        "Confirmation email sent. Check your inbox.",
+      );
     });
   });
 });

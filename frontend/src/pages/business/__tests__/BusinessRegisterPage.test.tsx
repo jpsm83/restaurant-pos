@@ -2,6 +2,7 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { renderWithI18n } from "@/test/i18nTestUtils";
+import { ServiceRequestError } from "@/services/serviceErrors";
 import BusinessRegisterPage from "../BusinessRegisterPage";
 
 const mockDispatch = vi.fn();
@@ -124,7 +125,46 @@ describe("BusinessRegisterPage", () => {
       await fillValidBusinessRegistration(user);
       await user.click(screen.getByRole("button", { name: /create business/i }));
 
-      expect(await screen.findByText("Network down")).toBeInTheDocument();
+      expect(
+        await screen.findByText(
+          "We could not reach the server. Check your connection and try again.",
+        ),
+      ).toBeInTheDocument();
+    },
+    15_000,
+  );
+
+  it(
+    "explains a duplicate business in the active language",
+    async () => {
+      const user = userEvent.setup({ delay: null });
+      mockMutateAsync.mockImplementation(() =>
+        Promise.reject(
+          new ServiceRequestError({
+            code: "businessCreate.conflict",
+            status: 409,
+            serverMessage:
+              "A business with the same legal name or tax number already exists.",
+          }),
+        ),
+      );
+
+      await renderWithI18n(
+        <MemoryRouter initialEntries={["/business/register"]}>
+          <Routes>
+            <Route path="/business/register" element={<BusinessRegisterPage />} />
+          </Routes>
+        </MemoryRouter>,
+      );
+
+      await fillValidBusinessRegistration(user);
+      await user.click(screen.getByRole("button", { name: /create business/i }));
+
+      expect(
+        await screen.findByText(
+          "A business with the same legal name or tax number already exists.",
+        ),
+      ).toBeInTheDocument();
     },
     15_000,
   );

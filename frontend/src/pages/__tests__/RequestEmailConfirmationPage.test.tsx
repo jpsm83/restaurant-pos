@@ -96,7 +96,9 @@ describe("RequestEmailConfirmationPage", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Something went wrong")).toBeInTheDocument();
+      expect(
+        screen.getByText("Something went wrong on our side. Try again."),
+      ).toBeInTheDocument();
     });
   });
 });

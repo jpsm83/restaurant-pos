@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { requestPasswordReset } from "@/auth/api";
+import { useErrorMessage, type ErrorFailure } from "@/i18n/errorCopy";
 import { FieldError } from "@/components/FieldError";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -32,7 +33,8 @@ type FormValues = { email: string };
 export default function ForgotPasswordPage() {
   const { t } = useTranslation(["auth", "nav"]);
   const navigate = useNavigate();
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitFailure, setSubmitFailure] = useState<ErrorFailure | null>(null);
+  const resolveError = useErrorMessage();
   const [submitting, setSubmitting] = useState(false);
 
   const emailSchema = useMemo(
@@ -62,12 +64,12 @@ export default function ForgotPasswordPage() {
   });
 
   const onSubmit = async (data: FormValues) => {
-    setSubmitError(null);
+    setSubmitFailure(null);
     setSubmitting(true);
     try {
       const result = await requestPasswordReset(data.email.trim());
       if (!result.ok) {
-        setSubmitError(result.error.message);
+        setSubmitFailure(result.error);
         return;
       }
       navigate("/login", { replace: true });
@@ -114,7 +116,9 @@ export default function ForgotPasswordPage() {
               <FieldError message={errors.email?.message} />
             </div>
 
-            {submitError ? <Alert>{submitError}</Alert> : null}
+            {submitFailure ? (
+              <Alert>{resolveError(submitFailure)}</Alert>
+            ) : null}
 
             <Button type="submit" className="w-full" disabled={submitting}>
               {submitting

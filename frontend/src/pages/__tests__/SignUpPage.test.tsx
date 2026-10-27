@@ -92,7 +92,11 @@ describe("SignUpPage", () => {
     await user.click(screen.getByRole("button", { name: /create account$/i }));
 
     await waitFor(() => {
-      expect(screen.getByText("Email taken")).toBeInTheDocument();
+      expect(
+      screen.getByText(
+        "That email address is already used by another account.",
+      ),
+    ).toBeInTheDocument();
     });
   });
 

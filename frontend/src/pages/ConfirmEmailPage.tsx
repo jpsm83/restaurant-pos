@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { confirmEmail, refreshSession } from "@/auth/api";
+import { useErrorMessage, type ErrorFailure } from "@/i18n/errorCopy";
 import { useAuth } from "@/auth/store/AuthContext";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -26,10 +27,9 @@ export default function ConfirmEmailPage() {
   const token = (searchParams.get("token") ?? "").trim();
 
   const missingToken = !token;
-  const [message, setMessage] = useState<string | null>(
-    missingToken ? t("confirmEmail.errors.missingToken") : null,
-  );
+  const [failure, setFailure] = useState<ErrorFailure | null>(null);
   const [submissionFailed, setSubmissionFailed] = useState(false);
+  const resolveError = useErrorMessage();
 
   const {
     handleSubmit,
@@ -40,7 +40,7 @@ export default function ConfirmEmailPage() {
 
   const onSubmit = handleSubmit(async () => {
     if (!token) return;
-    setMessage(null);
+    setFailure(null);
     setSubmissionFailed(false);
 
     const result = await confirmEmail(token);
@@ -62,7 +62,7 @@ export default function ConfirmEmailPage() {
       return;
     }
 
-    setMessage(result.error.message);
+    setFailure(result.error);
     setSubmissionFailed(true);
   });
 
@@ -105,8 +105,12 @@ export default function ConfirmEmailPage() {
             </form>
           ) : null}
 
-          {(missingToken || submissionFailed) && message ? (
-            <Alert>{message}</Alert>
+          {missingToken ? (
+            <Alert>{t("confirmEmail.errors.missingToken")}</Alert>
+          ) : null}
+
+          {submissionFailed && failure ? (
+            <Alert>{resolveError(failure)}</Alert>
           ) : null}
 
           <Button asChild variant="outline" className="w-full">

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { confirmEmailChange, setAccessToken } from "@/auth/api";
+import { useErrorMessage, type ErrorFailure } from "@/i18n/errorCopy";
 import { useAuth } from "@/auth/store/AuthContext";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -32,7 +33,8 @@ export default function ConfirmEmailChangePage() {
   const [status, setStatus] = useState<Status>(
     token ? "confirming" : "missingToken",
   );
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [failure, setFailure] = useState<ErrorFailure | null>(null);
+  const resolveError = useErrorMessage();
   const hasConfirmed = useRef(false);
 
   useEffect(() => {
@@ -57,7 +59,7 @@ export default function ConfirmEmailChangePage() {
         return;
       }
 
-      setErrorMessage(result.error.message);
+      setFailure(result.error);
       setStatus("failure");
     };
 
@@ -98,8 +100,8 @@ export default function ConfirmEmailChangePage() {
             <Alert>{t("confirmEmailChange.errors.missingToken")}</Alert>
           ) : null}
 
-          {status === "failure" && errorMessage ? (
-            <Alert>{errorMessage}</Alert>
+          {status === "failure" && failure ? (
+            <Alert>{resolveError(failure)}</Alert>
           ) : null}
 
           <Button asChild variant="outline" className="w-full">

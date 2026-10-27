@@ -4,6 +4,7 @@ import { useForm, type UseFormRegister } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import { requestEmailChange } from "@/auth/api";
+import type { ErrorFailure } from "@/i18n/errorCopy";
 import emailRegex from "restaurant-pos-packages/utils/emailRegex";
 
 export type ChangeBusinessEmailFormValues = {
@@ -22,8 +23,8 @@ export type ChangeBusinessEmailController = {
     currentPassword?: string;
   };
   isSubmitting: boolean;
-  /** Submission failure copy (wrong password, duplicate email, network). */
-  submitError: string | null;
+  /** Submission failure; the dialog resolves it to localized copy. */
+  submitError: ErrorFailure | null;
   /**
    * New address awaiting confirmation after a successful request; drives the
    * "check your new inbox" success state. `null` until a request succeeds.
@@ -65,7 +66,7 @@ export function useChangeBusinessEmailController(
 ): ChangeBusinessEmailController {
   const { t } = useTranslation("business");
   const [open, setOpen] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<ErrorFailure | null>(null);
   const [pendingEmail, setPendingEmail] = useState<string | null>(null);
 
   const schema = useMemo(
@@ -112,7 +113,7 @@ export function useChangeBusinessEmailController(
     );
 
     if (!result.ok) {
-      setSubmitError(result.error.message);
+      setSubmitError(result.error);
       return;
     }
 

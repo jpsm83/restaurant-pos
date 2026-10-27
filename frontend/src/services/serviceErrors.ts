@@ -14,6 +14,7 @@ export const SERVICE_OPERATIONS = [
   "resendConfirmation",
   "passwordReset",
   "emailChange",
+  "confirmEmailChange",
   "session",
   "logout",
   "businessCreate",

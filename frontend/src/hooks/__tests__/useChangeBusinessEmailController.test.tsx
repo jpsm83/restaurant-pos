@@ -177,7 +177,9 @@ describe("useChangeBusinessEmailController", () => {
     });
 
     await waitFor(() => {
-      expect(result.current.submitError).toBe("Current password is incorrect.");
+      expect(result.current.submitError).toMatchObject({
+        code: "emailChange.unauthorized",
+      });
     });
     expect(result.current.pendingEmail).toBeNull();
   });

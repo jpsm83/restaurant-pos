@@ -223,7 +223,7 @@
       "bannerDescription": "Enviamos un enlace a tu correo de acceso. Vuelve a enviar si no lo recibiste (pueden aplicarse límites).",
       "resendButton": "Reenviar correo de confirmación",
       "resendSending": "Enviando…",
-      "resendSuccessFallback": "Si la cuenta necesita verificación, enviamos instrucciones."
+      "resendSuccess": "Correo de confirmación enviado. Revisa tu bandeja de entrada."
     },
     "passwordChangeEmail": {
       "introBody": "Por seguridad no pedimos la nueva contraseña en esta pantalla. Usa el botón de la columna derecha para enviar un correo a tu dirección de acceso actual con un enlace de un solo uso.",

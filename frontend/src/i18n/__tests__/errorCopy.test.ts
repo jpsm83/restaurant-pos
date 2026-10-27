@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   ERROR_COPY,
   getErrorCopy,
+  isAlreadyVerifiedFailure,
   resolveErrorMessage,
   type ErrorCopy,
 } from "../errorCopy";
@@ -121,6 +122,22 @@ describe("ERROR_COPY", () => {
       namespace: "auth",
       key: "api.invalidResetLink",
     });
+    expect(getErrorCopy(failure("emailChange.badRequest"))).toMatchObject({
+      namespace: "auth",
+      key: "api.sameEmail",
+    });
+    expect(
+      getErrorCopy(failure("confirmEmailChange.badRequest")),
+    ).toMatchObject({
+      namespace: "auth",
+      key: "api.invalidEmailChangeLink",
+    });
+    expect(
+      getErrorCopy(failure("resendConfirmation.badRequest")),
+    ).toMatchObject({
+      namespace: "auth",
+      key: "api.emailAlreadyVerified",
+    });
     expect(getErrorCopy(failure("businessCreate.conflict"))).toMatchObject({
       namespace: "business",
       key: "errors.createConflict",
@@ -133,6 +150,16 @@ describe("ERROR_COPY", () => {
       namespace: "mode",
       key: "errors.notAllowed",
     });
+  });
+
+  it("detects the already-verified outcome by machine code", () => {
+    expect(
+      isAlreadyVerifiedFailure({ code: "resendConfirmation.badRequest" }),
+    ).toBe(true);
+    expect(
+      isAlreadyVerifiedFailure({ code: "resendConfirmation.unauthorized" }),
+    ).toBe(false);
+    expect(isAlreadyVerifiedFailure(null)).toBe(false);
   });
 
   it("falls back to generic transport copy for an unknown runtime code", () => {

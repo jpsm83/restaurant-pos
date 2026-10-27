@@ -136,7 +136,11 @@ describe("ConfirmEmailPage", () => {
     await user.click(screen.getByRole("button", { name: /confirm email/i }));
 
     await waitFor(() => {
-      expect(screen.getByText("Token expired")).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "This confirmation link is invalid or has expired. Request a new confirmation email.",
+        ),
+      ).toBeInTheDocument();
     });
   });
 });

@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { requestPasswordReset, resendEmailConfirmation } from "@/auth/api";
+import { requestPasswordReset } from "@/auth/api";
 import { useAuth } from "@/auth/store/AuthContext";
+import { useErrorMessage } from "@/i18n/errorCopy";
+import { useResendEmailConfirmation } from "@/hooks/useResendEmailConfirmation";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -72,9 +74,12 @@ function CredentialsContent({
 }) {
   const { t } = useTranslation("business");
   const { state } = useAuth();
+  const resolveError = useErrorMessage();
   const session = state.user;
-  const [resendPending, setResendPending] = useState(false);
   const [resetEmailPending, setResetEmailPending] = useState(false);
+  const { resend, pending: resendPending } = useResendEmailConfirmation({
+    successMessage: t("credentialsSettings.emailVerify.resendSuccess"),
+  });
 
   const profile = ctx.profile;
   const sessionNeedsVerification =
@@ -83,23 +88,6 @@ function CredentialsContent({
     sessionNeedsVerification && profile.emailVerified === false;
   const signInEmail =
     session?.type === "business" ? session.email.trim() : profile.email.trim();
-
-  async function onResendConfirmation() {
-    setResendPending(true);
-    try {
-      const result = await resendEmailConfirmation();
-      if (result.ok) {
-        toast.success(
-          result.data?.message ??
-            t("credentialsSettings.emailVerify.resendSuccessFallback"),
-        );
-      } else {
-        toast.error(result.error.message);
-      }
-    } finally {
-      setResendPending(false);
-    }
-  }
 
   async function onRequestPasswordResetEmail() {
     if (!signInEmail) {
@@ -111,11 +99,10 @@ function CredentialsContent({
       const result = await requestPasswordReset(signInEmail);
       if (result.ok) {
         toast.success(
-          result.data?.message ??
-            t("credentialsSettings.passwordChangeEmail.successFallback"),
+          t("credentialsSettings.passwordChangeEmail.successFallback"),
         );
       } else {
-        toast.error(result.error.message);
+        toast.error(resolveError(result.error));
       }
     } finally {
       setResetEmailPending(false);
@@ -150,7 +137,7 @@ function CredentialsContent({
             size="sm"
             className="mt-3"
             disabled={resendPending}
-            onClick={() => void onResendConfirmation()}
+            onClick={() => void resend()}
           >
             {resendPending
               ? t("credentialsSettings.emailVerify.resendSending")

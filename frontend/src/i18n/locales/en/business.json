@@ -223,7 +223,7 @@
       "bannerDescription": "We sent a link to your sign-in email. Resend if you did not receive it (rate limits may apply).",
       "resendButton": "Resend confirmation email",
       "resendSending": "Sending…",
-      "resendSuccessFallback": "If an account needs verification, we sent instructions."
+      "resendSuccess": "Confirmation email sent. Check your inbox."
     },
     "passwordChangeEmail": {
       "introBody": "For security, we do not collect a new password on this screen. Use the button in the right column to send one email to your current business sign-in address with a time-limited link.",

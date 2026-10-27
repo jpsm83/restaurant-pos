@@ -4,6 +4,8 @@
  *
  * Shapes mirror **`backend/src/auth/types.ts`** where noted — keep in sync when the API changes.
  */
+import type { ServiceErrorCode } from "@/services/serviceErrors";
+
 export type AuthStatus = "idle" | "loading" | "authenticated" | "unauthenticated";
 
 /**
@@ -71,5 +73,6 @@ export interface AuthState {
   /** Current JWT session (business or user); `state.user` naming kept for existing code. */
   user: AuthSession | null;
   status: AuthStatus;
-  error: string | null;
+  /** Machine code only; UI surfaces resolve it to localized copy at render time. */
+  error: ServiceErrorCode | null;
 }
