@@ -21,10 +21,10 @@ export default function LiveConnectionBanner() {
     <div
       role="status"
       className={cn(
-        "fixed left-0 right-0 top-14 z-40 border-b px-4 py-1.5 text-center text-sm font-medium",
+        "fixed left-0 right-0 top-14 z-sticky border-b px-4 py-1.5 text-center text-sm font-medium",
         status === "disconnected"
-          ? "border-amber-200 bg-amber-50 text-amber-900"
-          : "border-sky-200 bg-sky-50 text-sky-900",
+          ? "border-warning/40 bg-warning/20 text-foreground"
+          : "border-info/30 bg-info/10 text-foreground",
       )}
     >
       {status === "disconnected"

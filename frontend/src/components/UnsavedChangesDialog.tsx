@@ -42,20 +42,20 @@ export function UnsavedChangesDialog({
     >
       <DialogPrimitive.Portal>
         {/* Radix omits `Dialog.Overlay` when `modal={false}`; this div does not use RemoveScroll. */}
-        <div className="fixed inset-0 z-50 bg-black/35" aria-hidden />
+        <div className="fixed inset-0 z-overlay bg-overlay" aria-hidden />
         <DialogPrimitive.Content
           aria-describedby="unsaved-changes-description"
           className={cn(
-            "fixed left-1/2 top-1/2 z-51 w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-md border border-neutral-200 bg-white p-5 shadow-lg outline-none",
+            "fixed left-1/2 top-1/2 z-modal dialog-width max-w-md -translate-x-1/2 -translate-y-1/2 rounded-md border border-border bg-popover p-5 shadow-lg outline-none",
             className,
           )}
         >
-          <DialogPrimitive.Title className="text-base font-semibold text-neutral-900">
+          <DialogPrimitive.Title className="text-base font-semibold text-popover-foreground">
             {title}
           </DialogPrimitive.Title>
           <DialogPrimitive.Description
             id="unsaved-changes-description"
-            className="mt-2 text-sm text-neutral-600"
+            className="mt-2 text-sm text-muted-foreground"
           >
             {description}
           </DialogPrimitive.Description>

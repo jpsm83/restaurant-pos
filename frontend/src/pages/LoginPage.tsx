@@ -98,7 +98,7 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="flex min-h-0 flex-1 flex-col items-center justify-center bg-neutral-100 px-4 py-8 sm:px-6 lg:px-8">
+    <main className="flex min-h-0 flex-1 flex-col items-center justify-center bg-surface px-4 py-8 sm:px-6 lg:px-8">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>{t("login.title")}</CardTitle>
@@ -129,7 +129,7 @@ export default function LoginPage() {
                 <Label htmlFor="login-password">{t("login.passwordLabel")}</Label>
                 <Link
                   to="/forgot-password"
-                  className="text-sm font-medium text-neutral-700 underline-offset-4 hover:underline"
+                  className="text-sm font-medium text-muted-foreground underline-offset-4 hover:underline"
                 >
                   {t("login.forgotPasswordLink")}
                 </Link>

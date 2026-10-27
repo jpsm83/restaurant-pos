@@ -9,6 +9,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 
 function isEs(code: string): boolean {
@@ -56,7 +57,12 @@ function CircularFlag({
 }) {
   return (
     <span
-      className={`relative shrink-0 overflow-hidden rounded-full ${withBorder && "border border-neutral-200 shadow-sm"} ${sizeClass} aria-hidden`}
+      aria-hidden
+      className={cn(
+        "relative shrink-0 overflow-hidden rounded-full",
+        withBorder && "border border-border shadow-sm",
+        sizeClass,
+      )}
     >
       <LanguageFlagIcon
         code={code}
@@ -88,7 +94,7 @@ export function LanguageSwitcher() {
       <DropdownMenuContent
         align="end"
         sideOffset={8}
-        className="min-w-[180px] max-w-sm p-2"
+        className="min-w-45 max-w-sm p-2"
         onFocusOutside={(e: Event) => e.preventDefault() }
       >
         <DropdownMenuRadioGroup

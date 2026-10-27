@@ -33,7 +33,7 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       const t = (key: string) => i18n.t(key, { ns: "errors" });
       return (
-        <div className="flex min-h-0 w-full flex-1 flex-col bg-neutral-100">
+        <div className="flex min-h-0 w-full flex-1 flex-col bg-surface">
           <main className="flex min-h-0 flex-1 flex-col items-center justify-center p-4">
             <Card className="w-full max-w-md">
               <CardHeader className="text-center">
@@ -47,7 +47,7 @@ export class ErrorBoundary extends Component<Props, State> {
               </CardHeader>
               <CardContent className="flex flex-col gap-2">
                 {import.meta.env.DEV && this.state.error ? (
-                  <pre className="max-h-40 overflow-auto rounded-md border border-neutral-200 bg-neutral-50 p-3 text-left text-xs text-neutral-800">
+                  <pre className="max-h-40 overflow-auto rounded-md border border-border bg-muted p-3 text-left text-xs text-foreground">
                     {this.state.error.message}
                   </pre>
                 ) : null}

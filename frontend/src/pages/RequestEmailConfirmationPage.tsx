@@ -77,7 +77,7 @@ export default function RequestEmailConfirmationPage() {
   };
 
   return (
-    <main className="flex min-h-0 flex-1 flex-col items-center justify-center bg-neutral-100 px-4 py-8 sm:px-6 lg:px-8">
+    <main className="flex min-h-0 flex-1 flex-col items-center justify-center bg-surface px-4 py-8 sm:px-6 lg:px-8">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>{t("requestEmailConfirmation.title")}</CardTitle>

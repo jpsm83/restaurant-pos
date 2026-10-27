@@ -16,6 +16,6 @@ describe("FieldError", () => {
     render(<FieldError message="Something went wrong" />);
     const alert = screen.getByRole("alert");
     expect(alert).toHaveTextContent("Something went wrong");
-    expect(alert).toHaveClass("text-red-600");
+    expect(alert).toHaveClass("text-destructive");
   });
 });

@@ -38,7 +38,7 @@ export default function Navbar() {
 
   return (
     <nav
-      className="fixed left-0 right-0 top-0 z-50 h-14 shrink-0 border-b border-neutral-200 bg-white"
+      className="fixed left-0 right-0 top-0 z-sticky h-14 shrink-0 border-b border-border bg-background"
       aria-label={t("mainNav.ariaLabel")}
     >
       <div className="flex h-full w-full items-center justify-between gap-3 px-6 sm:px-8">
@@ -51,7 +51,7 @@ export default function Navbar() {
               width={32}
               height={32}
             />
-            <span className="text-md font-semibold text-neutral-800">
+            <span className="text-base font-semibold text-foreground">
               {t("brand.title")}
             </span>
           </Link>
@@ -61,7 +61,7 @@ export default function Navbar() {
           {!isLoading && !isAuthenticated && audience === "customer" ? (
             <Button
               variant="ghost"
-              className="h-auto px-2 py-1 text-red-500 hover:bg-transparent hover:text-red-600"
+              className="h-auto px-2 py-1 text-primary hover:bg-transparent hover:text-primary/80"
               asChild
             >
               <Link to="/business">{t("audience.switchToBusiness")}</Link>
@@ -70,7 +70,7 @@ export default function Navbar() {
           {!isLoading && !isAuthenticated && audience === "business" ? (
             <Button
               variant="ghost"
-              className="h-auto px-2 py-1 text-red-500 hover:bg-transparent hover:text-red-600"
+              className="h-auto px-2 py-1 text-primary hover:bg-transparent hover:text-primary/80"
               asChild
             >
               <Link to="/">{t("audience.switchToUser")}</Link>

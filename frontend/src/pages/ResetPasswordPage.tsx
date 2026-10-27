@@ -93,7 +93,7 @@ export default function ResetPasswordPage() {
   const missingToken = !token;
 
   return (
-    <main className="flex min-h-0 flex-1 flex-col items-center justify-center bg-neutral-100 px-4 py-8 sm:px-6 lg:px-8">
+    <main className="flex min-h-0 flex-1 flex-col items-center justify-center bg-surface px-4 py-8 sm:px-6 lg:px-8">
       <Card className="w-full max-w-md">
         <CardHeader>
           <div className="flex flex-col items-center justify-center gap-2">
@@ -104,11 +104,11 @@ export default function ResetPasswordPage() {
               width={48}
               height={40}
             />
-            <span className="text-base font-semibold text-neutral-800">
+            <span className="text-base font-semibold text-foreground">
               {t("nav:brand.title")}
             </span>
           </div>
-          <hr className="my-4 w-full border-0 border-t border-neutral-200" />
+          <hr className="my-4 w-full border-0 border-t border-border" />
           <CardTitle>{t("resetPassword.title")}</CardTitle>
           <CardDescription>{t("resetPassword.description")}</CardDescription>
         </CardHeader>

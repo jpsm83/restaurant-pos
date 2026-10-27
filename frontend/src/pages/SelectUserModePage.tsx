@@ -212,7 +212,7 @@ export default function SelectUserModePage() {
   };
 
   return (
-    <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-y-auto bg-neutral-100">
+    <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-y-auto bg-surface">
       <main className="flex min-h-0 flex-1 flex-col items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
         <Card className="w-full max-w-md">
           <CardHeader>
@@ -230,13 +230,13 @@ export default function SelectUserModePage() {
             >
               {t("continueCustomer")}
             </Button>
-            <div className="space-y-2 border-t border-neutral-200 pt-4">
+            <div className="space-y-2 border-t border-border pt-4">
               <CardDescription>{employeeDescription}</CardDescription>
               {showCountdown && derived.countdownTargetMs !== null ? (
                 <EmployeeModeCountdown
                   targetMs={derived.countdownTargetMs}
                   onReachZero={() => void onCountdownComplete()}
-                  className="text-center text-sm font-medium text-neutral-700"
+                  className="text-center text-sm font-medium text-muted-foreground"
                 />
               ) : null}
               <Button

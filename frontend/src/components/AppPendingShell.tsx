@@ -1,10 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Skeleton } from "@/components/ui/skeleton";
 
-/** Shared outer chrome for route + session pending so refresh and lazy load feel the same. */
-const PENDING_SHELL_CLASS =
-  "flex min-h-0 min-w-0 w-full flex-1 flex-col gap-4 bg-neutral-100 p-4";
-
 /**
  * Shared full-area pending UI (only shadcn `Skeleton` for placeholder visuals). Two reasons we wait:
  * - **route**: lazy route chunks (`React.lazy` / dynamic `import()`).
@@ -25,7 +21,7 @@ export function AppPendingShell({
 
   if (variant === "route") {
     return (
-      <div className={PENDING_SHELL_CLASS}>
+      <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col gap-4 bg-surface p-4">
         <span className="sr-only">{routeLabel}</span>
         {/* Single block: lazy chunk has no stable layout to mirror yet. */}
         <Skeleton className="min-h-0 flex-1 w-full" aria-hidden />
@@ -35,7 +31,7 @@ export function AppPendingShell({
 
   return (
     <div
-      className={PENDING_SHELL_CLASS}
+      className="flex min-h-0 min-w-0 w-full flex-1 flex-col gap-4 bg-surface p-4"
       role="status"
       aria-live="polite"
       aria-busy="true"

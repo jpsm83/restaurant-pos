@@ -24,7 +24,7 @@ vi.mock("@/auth/store/AuthContext", () => ({
 }));
 
 describe("Navbar", () => {
-  it("renders red Business link on customer marketing home", async () => {
+  it("renders the Business link on customer marketing home", async () => {
     const user = userEvent.setup();
     await renderWithI18n(
       <MemoryRouter initialEntries={["/"]}>
@@ -49,7 +49,7 @@ describe("Navbar", () => {
     expect(await screen.findByText("Business page")).toBeInTheDocument();
   });
 
-  it("renders red User link on business marketing path", async () => {
+  it("renders the User link on business marketing path", async () => {
     const user = userEvent.setup();
     await renderWithI18n(
       <MemoryRouter initialEntries={["/business"]}>
