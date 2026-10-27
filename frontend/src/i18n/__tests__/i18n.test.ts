@@ -12,6 +12,7 @@ describe("i18n module", () => {
   beforeEach(async () => {
     vi.restoreAllMocks();
     localStorage.clear();
+    sessionStorage.clear();
     await i18n.changeLanguage(DEFAULT_LANGUAGE);
   });
 
@@ -56,6 +57,7 @@ describe("i18n module", () => {
   it("changes only UI-language state, not Business or session state", async () => {
     localStorage.setItem("pos.theme", "default");
     localStorage.setItem("auth_had_session", "1");
+    sessionStorage.setItem("restaurant_pos_auth_access", "access-token");
     const fetchSpy = vi.spyOn(globalThis, "fetch");
 
     await changeAppLanguage("es");
@@ -63,5 +65,8 @@ describe("i18n module", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(localStorage.getItem("pos.theme")).toBe("default");
     expect(localStorage.getItem("auth_had_session")).toBe("1");
+    expect(sessionStorage.getItem("restaurant_pos_auth_access")).toBe(
+      "access-token",
+    );
   });
 });

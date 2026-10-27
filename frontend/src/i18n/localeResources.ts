@@ -1,4 +1,10 @@
-/** Shared locale-bundle assembly for the production singleton, tests, and parity checks. */
+/**
+ * Shared locale-bundle assembly for the production singleton, tests, and parity checks.
+ *
+ * Each caller supplies its own `import.meta.glob`: the production singleton excludes the
+ * dev-only theme gallery bundle, while tests and the parity check load every locale file
+ * and filter by namespace themselves.
+ */
 
 export type LocaleModule = { default: Record<string, unknown> };
 

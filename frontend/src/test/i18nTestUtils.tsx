@@ -10,7 +10,7 @@ import {
 } from "@/i18n/config";
 import { buildLocaleResources } from "@/i18n/localeResources";
 
-/** Eager locale bundles — the same JSON files as production, keyed by language and namespace. */
+/** Eager locale bundles, filtered to the production namespace list when the instance is built. */
 const localeModules = import.meta.glob<{ default: Record<string, unknown> }>(
   "../i18n/locales/*/*.json",
   { eager: true },

@@ -23,8 +23,6 @@ export const NAMESPACES = [
   "errors",
 ] as const;
 
-export type I18nNamespace = (typeof NAMESPACES)[number];
-
 /** Persisted via `languageChanged`; read synchronously at init to avoid a locale flash before first paint. */
 export const I18N_STORAGE_KEY = "restaurant_pos_i18n_lng";
 

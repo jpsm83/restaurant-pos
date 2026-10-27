@@ -49,6 +49,7 @@ const namespaces = [
   ),
 ].sort();
 const languages = [...SUPPORTED_LANGUAGES].sort();
+const referenceLanguage = languages[0];
 
 describe("locale parity", () => {
   it("loads every supported language and locale namespace", () => {
@@ -63,39 +64,50 @@ describe("locale parity", () => {
 
   it("keeps every namespace's key set identical across languages", () => {
     for (const namespace of namespaces) {
-      const en = flattenKeys(locales.en[namespace]).sort();
-      const es = flattenKeys(locales.es[namespace]).sort();
-      expect(es, `namespace: ${namespace}`).toEqual(en);
+      const reference = flattenKeys(locales[referenceLanguage][namespace]).sort();
+      for (const language of languages) {
+        expect(
+          flattenKeys(locales[language][namespace]).sort(),
+          `${language}/${namespace}`,
+        ).toEqual(reference);
+      }
     }
   });
 
   it("keeps plural-key families identical across languages", () => {
-    const enFamilies = Object.fromEntries(
-      namespaces.map((namespace) => [
-        namespace,
-        pluralFamilies(locales.en[namespace]),
-      ]),
-    );
-    const esFamilies = Object.fromEntries(
-      namespaces.map((namespace) => [
-        namespace,
-        pluralFamilies(locales.es[namespace]),
+    const families = Object.fromEntries(
+      languages.map((language) => [
+        language,
+        Object.fromEntries(
+          namespaces.map((namespace) => [
+            namespace,
+            pluralFamilies(locales[language][namespace]),
+          ]),
+        ),
       ]),
     );
 
-    expect(esFamilies).toEqual(enFamilies);
-    expect(enFamilies.devThemeGallery.tokenSummary).toEqual(["one", "other"]);
+    for (const language of languages) {
+      expect(families[language], language).toEqual(
+        families[referenceLanguage],
+      );
+    }
+    expect(
+      families[referenceLanguage].devThemeGallery.tokenSummary,
+    ).toEqual(["one", "other"]);
   });
 
   it("keeps interpolation placeholders identical across languages", () => {
     for (const namespace of namespaces) {
-      const en = flattenKeys(locales.en[namespace]);
-      const es = locales.es[namespace];
+      const reference = locales[referenceLanguage][namespace];
 
-      for (const key of en) {
-        expect(placeholders(readByPath(es, key)), `${namespace}.${key}`).toEqual(
-          placeholders(readByPath(locales.en[namespace], key)),
-        );
+      for (const key of flattenKeys(reference)) {
+        for (const language of languages) {
+          expect(
+            placeholders(readByPath(locales[language][namespace], key)),
+            `${language}/${namespace}.${key}`,
+          ).toEqual(placeholders(readByPath(reference, key)));
+        }
       }
     }
   });
