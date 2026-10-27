@@ -38,7 +38,7 @@ frontend (:5173) --/api proxy--> backend (:4000) --> MongoDB Atlas
 | `operationalReasons.ts` | `OPERATIONAL_REASON_ACTS`, `OPERATIONAL_REASON_CATALOGUES`, `resolveOperationalReason`, types | Closed platform-defined reason catalogues and their selection resolver |
 | `interfaces/` | `IUser`, `IBusiness`, `IOrder`, `IEmployee`, ... | Mongoose-shaped TypeScript interfaces (`I*.ts`) |
 | `schemas/` | zod DTOs + primitives | Request/response and form validation |
-| `utils/` | `passwordPolicy`, `emailRegex`, `timezoneData`, `timezoneFromAddress` | Pure helpers shared by both sides |
+| `utils/` | `passwordPolicy`, `emailRegex`, `timezoneData`, `timezoneFromAddress`, `sentryScrubbing` | Pure helpers shared by both sides |
 
 ## Package format
 
@@ -93,6 +93,11 @@ frontend (:5173) --/api proxy--> backend (:4000) --> MongoDB Atlas
   the seven catalogues and the one selection resolver. There is no database
   collection, seed, migration, editor, or HTTP CRUD route; a product amendment
   changes the module.
+- **Telemetry scrubbing is pure and shared.** `utils/sentryScrubbing.ts`
+  recursively replaces sensitive values, strips URL userinfo and query strings,
+  bounds depth and cycles, and never mutates its input. It is the single seam
+  both Sentry surfaces are designed to apply to a final event before send; its
+  tests live in `backend/tests/utils/sentryScrubbing.test.ts`.
 - **Names follow the domain:** `IPascalCase.ts` interfaces, `camelCase.ts`
   schemas; `schemas/index.ts` re-exports everything.
 
@@ -102,14 +107,16 @@ frontend (:5173) --/api proxy--> backend (:4000) --> MongoDB Atlas
 |---------|--------------|
 | `npm test --workspace restaurant-pos-packages` | `vitest run --passWithNoTests` (no local tests) |
 
-This package has **no tests of its own**. Its schemas are exercised from the
-backend workspace:
+This package has **no tests of its own**. Its shared modules are exercised from
+the backend workspace:
 
 - `backend/tests/schemas/*.test.ts` — schema behavior (validation, sanitization,
   multipart).
 - `backend/tests/schemas/*Parity.test.ts` — parity between every DTO and its
   Mongoose model (client-settable fields exist on the model; server-owned fields
   stay out of DTOs).
+- `backend/tests/utils/*.test.ts` — pure shared utils, including telemetry
+  scrubbing.
 
 Run them with `npm test --workspace backend` or root `npm test` (all
 workspaces).
