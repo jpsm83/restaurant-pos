@@ -23,7 +23,8 @@
     "reset": "Reset changes",
     "save": "Save changes",
     "saving": "Saving...",
-    "validationSummary": "Fix the highlighted fields before saving."
+    "validationSummary": "Fix the highlighted fields before saving.",
+    "saveSuccess": "Business profile saved successfully."
   },
   "profileForm": {
     "validation": {
@@ -33,7 +34,10 @@
       "invalidTime": "Time must be in HH:MM format.",
       "invalidDayOfWeek": "Day of week must be an integer from 0 to 6.",
       "invalidNonNegative": "Value must be a non-negative number.",
-      "invalidWeeklyStartDay": "Weekly report start day must be between 0 and 6."
+      "invalidWeeklyStartDay": "Weekly report start day must be between 0 and 6.",
+      "invalidImage": "Invalid image file.",
+      "openingRange": "Opening range must have closeTime after openTime.",
+      "deliveryRange": "Delivery range must have closeTime after openTime."
     }
   },
   "profileSettings": {
@@ -252,5 +256,56 @@
     "planGroupAriaLabel": "Subscription plan",
     "selectPlanAriaLabel": "Select {{plan}} plan",
     "selectedPlanDescription": "Selected plan for this business."
+  },
+  "weekdays": {
+    "sunday": "Sunday",
+    "monday": "Monday",
+    "tuesday": "Tuesday",
+    "wednesday": "Wednesday",
+    "thursday": "Thursday",
+    "friday": "Friday",
+    "saturday": "Saturday"
+  },
+  "openHoursSettings": {
+    "sectionTitle": "Business opening hours",
+    "addDay": "Add opening day",
+    "empty": "No opening hours configured yet.",
+    "day": "Day",
+    "open": "Open",
+    "close": "Close",
+    "remove": "Remove"
+  },
+  "deliverySettings": {
+    "sectionTitle": "Delivery options",
+    "acceptsDelivery": "Accepts delivery",
+    "yes": "Yes",
+    "no": "No",
+    "deliveryRadius": "Delivery radius",
+    "minOrder": "Minimum order",
+    "windowsSectionTitle": "Delivery opening windows",
+    "addDay": "Add delivery day",
+    "empty": "No delivery windows configured yet.",
+    "day": "Day",
+    "removeDay": "Remove day",
+    "emptyWindows": "No windows configured yet for this day.",
+    "openTime": "Delivery open",
+    "closeTime": "Delivery close",
+    "removeWindow": "Remove window",
+    "addWindow": "Add delivery window"
+  },
+  "metricsSettings": {
+    "sectionTitle": "Metrics",
+    "foodCost": "Food cost percentage",
+    "beverageCost": "Beverage cost percentage",
+    "laborCost": "Labor cost percentage",
+    "fixedCost": "Fixed cost percentage",
+    "wasteVeryLow": "Waste very low impact",
+    "wasteLow": "Waste low impact",
+    "wasteMedium": "Waste medium impact",
+    "wasteHigh": "Waste high impact",
+    "wasteVeryHigh": "Waste very high impact",
+    "reportingTitle": "Reporting",
+    "weeklyStartDay": "Weekly report start day",
+    "notSet": "Not set"
   }
 }

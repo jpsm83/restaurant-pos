@@ -5,6 +5,7 @@ import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useErrorMessage, type ErrorFailure } from "@/i18n/errorCopy";
 import type { BusinessProfileSettingsReady } from "../hooks/useBusinessProfileSettingsController";
 import {
   useBusinessProfileSettingsController,
@@ -84,6 +85,7 @@ function renderProfileSettingsBlockedMain(
   loadingSlot: ReactNode | undefined,
   blocked: BusinessProfileSettingsPageBlocked,
   t: TFunction<"business">,
+  resolveError: (failure: ErrorFailure | null | undefined) => string,
 ): ReactNode {
   if (blocked.kind === "loading") {
     const loadingLabel = t("profile.loadingTitle");
@@ -101,7 +103,9 @@ function renderProfileSettingsBlockedMain(
   }
 
   if (blocked.kind === "error") {
-    const message = blocked.message ?? t("profile.loadError");
+    const message = blocked.failure
+      ? resolveError(blocked.failure)
+      : t("profile.loadError");
     return (
       <main className="w-full min-w-0 p-6">
         <div className="max-w-2xl space-y-4">
@@ -144,10 +148,11 @@ export function BusinessProfileSettingsStaticShell({
   children,
 }: BusinessProfileSettingsStaticShellProps) {
   const { t } = useTranslation("business");
+  const resolveError = useErrorMessage();
   const gate = useBusinessProfileSettingsGate();
 
   if (gate.kind !== "ready") {
-    return renderProfileSettingsBlockedMain(loadingSlot, gate, t);
+    return renderProfileSettingsBlockedMain(loadingSlot, gate, t, resolveError);
   }
 
   return (
@@ -166,10 +171,11 @@ export function BusinessProfileSettingsFormShell({
   children,
 }: BusinessProfileSettingsFormShellProps) {
   const { t } = useTranslation("business");
+  const resolveError = useErrorMessage();
   const ctrl = useBusinessProfileSettingsController();
 
   if (ctrl.kind !== "ready") {
-    return renderProfileSettingsBlockedMain(loadingSlot, ctrl, t);
+    return renderProfileSettingsBlockedMain(loadingSlot, ctrl, t, resolveError);
   }
 
   const {
@@ -198,7 +204,7 @@ export function BusinessProfileSettingsFormShell({
           {isSubmitted && !isValid ? (
             <Alert>{t("profile.validationSummary")}</Alert>
           ) : null}
-          {submitError ? <Alert>{submitError}</Alert> : null}
+          {submitError ? <Alert>{resolveError(submitError)}</Alert> : null}
         </div>
         <section className="relative z-10 flex flex-wrap items-center justify-end gap-3 pt-5">
           <Button

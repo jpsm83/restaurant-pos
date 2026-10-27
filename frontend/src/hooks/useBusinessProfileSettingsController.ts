@@ -14,6 +14,7 @@ import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/auth/store/AuthContext";
+import { useErrorMessage, type ErrorFailure } from "@/i18n/errorCopy";
 import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
 import { useQuery } from "@tanstack/react-query";
 import type { UseMutationResult, UseQueryResult } from "@tanstack/react-query";
@@ -29,6 +30,7 @@ import {
   useUpdateBusinessProfileMutation,
 } from "@/services/business/businessService";
 import { queryKeys } from "@/services/queryKeys";
+import { toServiceRequestError } from "@/services/serviceErrors";
 import { buildBusinessProfileSchema } from "@/services/business/businessProfileFormSchema";
 
 /** RHF defaults for business profile PATCH; must stay aligned with `businessDtoToFormValues` shape. */
@@ -78,15 +80,18 @@ const EMPTY_PROFILE_FORM_VALUES: BusinessProfileFormValues = {
   },
 };
 
-/** Weekday labels for opening hours / delivery / reporting selects (shared across settings pages). */
+/**
+ * Weekday options for opening hours / delivery / reporting selects.
+ * Values stay numeric and stable; labels are translated at render time.
+ */
 export const DAY_OPTIONS = [
-  { value: 0, label: "Sunday" },
-  { value: 1, label: "Monday" },
-  { value: 2, label: "Tuesday" },
-  { value: 3, label: "Wednesday" },
-  { value: 4, label: "Thursday" },
-  { value: 5, label: "Friday" },
-  { value: 6, label: "Saturday" },
+  { value: 0, labelKey: "weekdays.sunday" },
+  { value: 1, labelKey: "weekdays.monday" },
+  { value: 2, labelKey: "weekdays.tuesday" },
+  { value: 3, labelKey: "weekdays.wednesday" },
+  { value: 4, labelKey: "weekdays.thursday" },
+  { value: 5, labelKey: "weekdays.friday" },
+  { value: 6, labelKey: "weekdays.saturday" },
 ] as const;
 
 /** Profile loaded; same React Query cache key as {@link useBusinessProfileSettingsController}. */
@@ -101,7 +106,7 @@ export type BusinessProfileSettingsGateResult =
   | { kind: "wrong-session" }
   | { kind: "no-business-id" }
   | { kind: "loading" }
-  | { kind: "error"; message?: string; refetch: () => Promise<unknown> }
+  | { kind: "error"; failure?: ErrorFailure; refetch: () => Promise<unknown> }
   | { kind: "no-data" }
   | BusinessProfileSettingsGateReady;
 
@@ -154,13 +159,11 @@ export function useBusinessProfileSettingsGate(): BusinessProfileSettingsGateRes
   }
 
   if (profileQuery.isError) {
-    const message =
-      profileQuery.error instanceof Error
-        ? profileQuery.error.message
-        : undefined;
     return {
       kind: "error",
-      message,
+      failure: profileQuery.error
+        ? toServiceRequestError(profileQuery.error, "businessFetch")
+        : undefined,
       refetch: () => profileQuery.refetch(),
     };
   }
@@ -195,8 +198,8 @@ export type BusinessProfileSettingsReady = {
     Error,
     { businessId: string; formData: FormData }
   >;
-  submitError: string | null;
-  setSubmitError: (value: string | null) => void;
+  submitError: ErrorFailure | null;
+  setSubmitError: (value: ErrorFailure | null) => void;
   onSubmit: (values: BusinessProfileFormValues) => Promise<void>;
   handleResetToLastSaved: () => void;
   handleImageUpload: (event: ChangeEvent<HTMLInputElement>) => void;
@@ -221,7 +224,8 @@ export function useBusinessProfileSettingsController(): BusinessProfileSettingsC
   const gate = useBusinessProfileSettingsGate();
   const { dispatch } = useAuth();
   const { t } = useTranslation("business");
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const resolveError = useErrorMessage();
+  const [submitError, setSubmitError] = useState<ErrorFailure | null>(null);
   const [navigationBypassAfterSave, setNavigationBypassAfterSave] = useState(false);
 
   const profileSchema = useMemo(
@@ -234,6 +238,9 @@ export function useBusinessProfileSettingsController(): BusinessProfileSettingsC
         invalidDayOfWeek: t("profileForm.validation.invalidDayOfWeek"),
         invalidNonNegative: t("profileForm.validation.invalidNonNegative"),
         invalidWeeklyStartDay: t("profileForm.validation.invalidWeeklyStartDay"),
+        invalidImage: t("profileForm.validation.invalidImage"),
+        openingRange: t("profileForm.validation.openingRange"),
+        deliveryRange: t("profileForm.validation.deliveryRange"),
       }),
     [t],
   );
@@ -350,14 +357,11 @@ export function useBusinessProfileSettingsController(): BusinessProfileSettingsC
       }
 
       setNavigationBypassAfterSave(true);
-      toast.success("Business profile saved successfully.");
+      toast.success(t("profile.saveSuccess"));
     } catch (error) {
-      setSubmitError(
-        error instanceof Error
-          ? error.message
-          : "Failed to save business profile changes.",
-      );
-      toast.error("Failed to save business profile.");
+      const failure = toServiceRequestError(error, "businessUpdate");
+      setSubmitError(failure);
+      toast.error(resolveError(failure));
     }
   };
 

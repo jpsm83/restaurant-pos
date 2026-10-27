@@ -162,6 +162,29 @@ describe("BusinessProfileSettingsFormShell", () => {
     ).toBeInTheDocument();
   });
 
+  it("resolves a machine load failure to localized copy", async () => {
+    useBusinessProfileSettingsController.mockReturnValue({
+      kind: "error",
+      failure: {
+        code: "businessFetch.notFound",
+        status: 404,
+        fieldErrors: [],
+      },
+      refetch: vi.fn(),
+    });
+
+    await renderWithI18n(
+      <BusinessProfileSettingsFormShell>
+        {() => <p>Never</p>}
+      </BusinessProfileSettingsFormShell>,
+      { language: "es" },
+    );
+
+    expect(
+      screen.getByText("No se encontró el perfil del negocio."),
+    ).toBeInTheDocument();
+  });
+
   it("renders translated save, reset, saving, and validation copy", async () => {
     useBusinessProfileSettingsController.mockReturnValue({
       ...readyFormController(),

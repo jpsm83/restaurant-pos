@@ -57,4 +57,31 @@ describe("BusinessMetricsSettingsPage", () => {
     );
     expect(screen.getByRole("heading", { level: 2, name: "Metrics" })).toBeInTheDocument();
   });
+
+  it("renders metric and reporting copy in Spanish", async () => {
+    await renderWithI18n(
+      <MemoryRouter initialEntries={["/business/1/settings/metrics"]}>
+        <Routes>
+          <Route
+            path="/business/:businessId/settings/metrics"
+            element={<BusinessMetricsSettingsPage />}
+          />
+        </Routes>
+      </MemoryRouter>,
+      { language: "es" },
+    );
+
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Métricas" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Porcentaje de coste de comida"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Día de inicio del informe semanal"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: "Sin establecer" }),
+    ).toBeInTheDocument();
+  });
 });

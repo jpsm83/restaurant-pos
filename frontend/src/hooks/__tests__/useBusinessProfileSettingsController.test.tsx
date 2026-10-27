@@ -38,10 +38,10 @@ describe("useBusinessProfileSettingsController exports", () => {
     mockUseBusinessProfileQuery.mockReset();
   });
 
-  it("exposes full weekday options from Sunday to Saturday", () => {
+  it("keeps stable numeric weekday values with translation keys", () => {
     expect(DAY_OPTIONS).toHaveLength(7);
-    expect(DAY_OPTIONS[0]).toEqual({ value: 0, label: "Sunday" });
-    expect(DAY_OPTIONS[6]).toEqual({ value: 6, label: "Saturday" });
+    expect(DAY_OPTIONS[0]).toEqual({ value: 0, labelKey: "weekdays.sunday" });
+    expect(DAY_OPTIONS[6]).toEqual({ value: 6, labelKey: "weekdays.saturday" });
   });
 });
 

@@ -168,4 +168,60 @@ describe("BusinessRegisterPage", () => {
     },
     15_000,
   );
+
+  it(
+    "renders a duplicate-business failure in Spanish",
+    async () => {
+      const user = userEvent.setup({ delay: null });
+      mockMutateAsync.mockImplementation(() =>
+        Promise.reject(
+          new ServiceRequestError({
+            code: "businessCreate.conflict",
+            status: 409,
+            serverMessage:
+              "A business with the same legal name or tax number already exists.",
+          }),
+        ),
+      );
+
+      await renderWithI18n(
+        <MemoryRouter initialEntries={["/business/register"]}>
+          <Routes>
+            <Route path="/business/register" element={<BusinessRegisterPage />} />
+          </Routes>
+        </MemoryRouter>,
+        { language: "es" },
+      );
+
+      await user.type(screen.getByLabelText("Nombre comercial"), "Café Demo");
+      await user.type(screen.getByLabelText("Razón social"), "Café Demo LLC");
+      await user.type(screen.getByLabelText("Correo electrónico"), "owner@demo.test");
+      await user.type(screen.getByLabelText("Teléfono"), "+1000000000");
+      await user.type(
+        screen.getByLabelText("NIF / identificación fiscal"),
+        "TAX-001",
+      );
+      await user.type(screen.getByLabelText("Contraseña"), "Secret1!a");
+      await user.type(
+        screen.getByLabelText("Confirmar contraseña"),
+        "Secret1!a",
+      );
+      await user.type(screen.getByLabelText("País"), "CH");
+      await user.type(screen.getByLabelText("Provincia / región"), "VD");
+      await user.type(screen.getByLabelText("Ciudad"), "Lausana");
+      await user.type(screen.getByLabelText("Calle"), "Rue Test");
+      await user.type(screen.getByLabelText("Número"), "1");
+      await user.type(screen.getByLabelText("Código postal"), "1000");
+      await user.click(
+        screen.getByRole("button", { name: "Crear negocio" }),
+      );
+
+      expect(
+        await screen.findByText(
+          "Ya existe un negocio con la misma razón social o identificación fiscal.",
+        ),
+      ).toBeInTheDocument();
+    },
+    15_000,
+  );
 });

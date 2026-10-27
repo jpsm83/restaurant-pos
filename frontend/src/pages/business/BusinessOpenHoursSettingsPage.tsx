@@ -1,4 +1,5 @@
 import { Controller, useFieldArray } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -46,6 +47,7 @@ export default function BusinessOpenHoursSettingsPage() {
 }
 
 function OpenHoursSection({ ctx }: { ctx: BusinessProfileSettingsReady }) {
+  const { t } = useTranslation("business");
   const { control } = ctx;
   const openingHoursFieldArray = useFieldArray({
     control,
@@ -55,7 +57,9 @@ function OpenHoursSection({ ctx }: { ctx: BusinessProfileSettingsReady }) {
   return (
     <section className="space-y-3 rounded-md border border-border p-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-foreground">Business opening hours</h2>
+        <h2 className="text-sm font-semibold text-foreground">
+          {t("openHoursSettings.sectionTitle")}
+        </h2>
         <Button
           type="button"
           variant="outline"
@@ -68,16 +72,20 @@ function OpenHoursSection({ ctx }: { ctx: BusinessProfileSettingsReady }) {
             })
           }
         >
-          Add opening day
+          {t("openHoursSettings.addDay")}
         </Button>
       </div>
       {openingHoursFieldArray.fields.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No opening hours configured yet.</p>
+        <p className="text-sm text-muted-foreground">
+          {t("openHoursSettings.empty")}
+        </p>
       ) : null}
       {openingHoursFieldArray.fields.map((field, index) => (
         <div key={field.id} className="grid gap-3 form-grid-3-action">
           <div className="space-y-2">
-            <Label htmlFor={`bp-opening-day-${index}`}>Day</Label>
+            <Label htmlFor={`bp-opening-day-${index}`}>
+              {t("openHoursSettings.day")}
+            </Label>
             <Controller
               control={control}
               name={`businessOpeningHours.${index}.dayOfWeek`}
@@ -90,7 +98,7 @@ function OpenHoursSection({ ctx }: { ctx: BusinessProfileSettingsReady }) {
                 >
                   {DAY_OPTIONS.map((day) => (
                     <option key={day.value} value={day.value}>
-                      {day.label}
+                      {t(day.labelKey)}
                     </option>
                   ))}
                 </select>
@@ -98,7 +106,9 @@ function OpenHoursSection({ ctx }: { ctx: BusinessProfileSettingsReady }) {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor={`bp-opening-open-${index}`}>Open</Label>
+            <Label htmlFor={`bp-opening-open-${index}`}>
+              {t("openHoursSettings.open")}
+            </Label>
             <Controller
               control={control}
               name={`businessOpeningHours.${index}.openTime`}
@@ -113,7 +123,9 @@ function OpenHoursSection({ ctx }: { ctx: BusinessProfileSettingsReady }) {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor={`bp-opening-close-${index}`}>Close</Label>
+            <Label htmlFor={`bp-opening-close-${index}`}>
+              {t("openHoursSettings.close")}
+            </Label>
             <Controller
               control={control}
               name={`businessOpeningHours.${index}.closeTime`}
@@ -134,7 +146,7 @@ function OpenHoursSection({ ctx }: { ctx: BusinessProfileSettingsReady }) {
               size="sm"
               onClick={() => openingHoursFieldArray.remove(index)}
             >
-              Remove
+              {t("openHoursSettings.remove")}
             </Button>
           </div>
         </div>

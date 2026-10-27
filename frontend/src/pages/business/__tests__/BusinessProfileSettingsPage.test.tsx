@@ -11,13 +11,17 @@ import {
 } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithI18n } from "@/test/i18nTestUtils";
+import type { SupportedLanguage } from "@/i18n/config";
 import {
   BusinessServiceError,
   type BusinessProfileDto,
 } from "@/services/business/businessService";
 import BusinessProfileSettingsPage from "../BusinessProfileSettingsPage";
 
-async function renderWithQueryClient(ui: ReactElement) {
+async function renderWithQueryClient(
+  ui: ReactElement,
+  language?: SupportedLanguage,
+) {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false },
@@ -25,6 +29,7 @@ async function renderWithQueryClient(ui: ReactElement) {
     },
   });
   return renderWithI18n(ui, {
+    ...(language ? { language } : {}),
     wrapper: ({ children }) => (
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     ),
@@ -881,7 +886,7 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
       });
     });
 
-    it("surfaces 409 conflict message, error toast, and preserves edits after failed save", async () => {
+    it("surfaces a localized 409 conflict, error toast, and preserves edits after failed save", async () => {
       const mutateAsync = vi.fn().mockRejectedValue(
         new BusinessServiceError({
           code: "businessUpdate.conflict",
@@ -912,17 +917,19 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
       await user.click(screen.getByRole("button", { name: "Save changes" }));
 
       await waitFor(() => {
-        expect(mockToastError).toHaveBeenCalledWith("Failed to save business profile.");
+        expect(mockToastError).toHaveBeenCalledWith(
+          "These changes conflict with the saved business profile. Refresh and try again.",
+        );
       });
       expect(
         screen.getByText(
-          "A business with the same legal name or tax number already exists.",
+          "These changes conflict with the saved business profile. Refresh and try again.",
         ),
       ).toBeInTheDocument();
       expect(screen.getByLabelText("Trade name")).toHaveValue("Edited For Conflict");
     });
 
-    it("surfaces 401 auth message and preserves edits after failed save", async () => {
+    it("surfaces a localized 401 auth failure and preserves edits after failed save", async () => {
       const mutateAsync = vi.fn().mockRejectedValue(
         new BusinessServiceError({
           code: "businessUpdate.unauthorized",
@@ -952,15 +959,15 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
       await user.click(screen.getByRole("button", { name: "Save changes" }));
 
       await waitFor(() => {
-        expect(mockToastError).toHaveBeenCalledWith("Failed to save business profile.");
+        expect(mockToastError).toHaveBeenCalledWith("Please sign in to continue.");
       });
       expect(
-        screen.getByText("Please sign in to save business profile changes."),
+        screen.getByText("Please sign in to continue."),
       ).toBeInTheDocument();
       expect(screen.getByLabelText("Legal name")).toHaveValue("Needs Reauth LLC");
     });
 
-    it("surfaces 403 permission message and preserves edits after failed save", async () => {
+    it("surfaces a localized 403 permission failure and preserves edits after failed save", async () => {
       const mutateAsync = vi.fn().mockRejectedValue(
         new BusinessServiceError({
           code: "businessUpdate.forbidden",
@@ -991,15 +998,17 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
       await user.click(screen.getByRole("button", { name: "Save changes" }));
 
       await waitFor(() => {
-        expect(mockToastError).toHaveBeenCalledWith("Failed to save business profile.");
+        expect(mockToastError).toHaveBeenCalledWith(
+          "You do not have permission to do that.",
+        );
       });
       expect(
-        screen.getByText("You do not have permission to update this business profile."),
+        screen.getByText("You do not have permission to do that."),
       ).toBeInTheDocument();
       expect(screen.getByLabelText("Phone number")).toHaveValue("+19995550123");
     });
 
-    it("surfaces API validation (400) message and preserves edits after failed save", async () => {
+    it("surfaces a localized API validation failure and preserves edits after failed save", async () => {
       const mutateAsync = vi.fn().mockRejectedValue(
         new BusinessServiceError({
           code: "businessUpdate.validation",
@@ -1029,15 +1038,19 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
       await user.click(screen.getByRole("button", { name: "Save changes" }));
 
       await waitFor(() => {
-        expect(mockToastError).toHaveBeenCalledWith("Failed to save business profile.");
+        expect(mockToastError).toHaveBeenCalledWith(
+          "One field needs your attention. Check it and try again.",
+        );
       });
       expect(
-        screen.getByText("Invalid opening hours: close must be after open."),
+        screen.getByText(
+          "One field needs your attention. Check it and try again.",
+        ),
       ).toBeInTheDocument();
       expect(screen.getByLabelText("Trade name")).toHaveValue("Invalid Hours Bistro");
     });
 
-    it("surfaces generic failure message on network-style errors and preserves edits", async () => {
+    it("surfaces a localized transport failure and preserves edits", async () => {
       const mutateAsync = vi
         .fn()
         .mockRejectedValue(new Error("Network request failed"));
@@ -1063,10 +1076,62 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
       await user.click(screen.getByRole("button", { name: "Save changes" }));
 
       await waitFor(() => {
-        expect(mockToastError).toHaveBeenCalledWith("Failed to save business profile.");
+        expect(mockToastError).toHaveBeenCalledWith(
+          "We could not reach the server. Check your connection and try again.",
+        );
       });
-      expect(screen.getByText("Network request failed")).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "We could not reach the server. Check your connection and try again.",
+        ),
+      ).toBeInTheDocument();
       expect(screen.getByLabelText("Phone number")).toHaveValue("+19995558888");
+    });
+
+    it("renders a localized save failure in Spanish", async () => {
+      const mutateAsync = vi.fn().mockRejectedValue(
+        new BusinessServiceError({
+          code: "businessUpdate.forbidden",
+          status: 403,
+          serverMessage:
+            "You do not have permission to update this business profile.",
+        }),
+      );
+      mockUseUpdateBusinessProfileMutation.mockReturnValue({
+        mutateAsync,
+        isPending: false,
+      });
+      const user = userEvent.setup();
+
+      await renderWithQueryClient(
+        <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
+          <Routes>
+            <Route
+              path="/business/:businessId/settings/profile"
+              element={<BusinessProfileSettingsPage />}
+            />
+          </Routes>
+        </MemoryRouter>,
+        "es",
+      );
+
+      await user.clear(screen.getByLabelText("Nombre comercial"));
+      await user.type(screen.getByLabelText("Nombre comercial"), "Sin permiso");
+      await user.click(
+        screen.getByRole("button", { name: "Guardar cambios" }),
+      );
+
+      await waitFor(() => {
+        expect(mockToastError).toHaveBeenCalledWith(
+          "No tienes permiso para hacer eso.",
+        );
+      });
+      expect(
+        screen.getByText("No tienes permiso para hacer eso."),
+      ).toBeInTheDocument();
+      expect(screen.getByLabelText("Nombre comercial")).toHaveValue(
+        "Sin permiso",
+      );
     });
   });
 });

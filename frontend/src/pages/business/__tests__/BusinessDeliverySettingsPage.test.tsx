@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { useForm } from "react-hook-form";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
@@ -57,6 +58,38 @@ describe("BusinessDeliverySettingsPage", () => {
     );
     expect(
       screen.getByRole("heading", { level: 2, name: "Delivery options" }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders delivery copy and options in Spanish", async () => {
+    const user = userEvent.setup();
+    await renderWithI18n(
+      <MemoryRouter initialEntries={["/business/1/settings/delivery"]}>
+        <Routes>
+          <Route
+            path="/business/:businessId/settings/delivery"
+            element={<BusinessDeliverySettingsPage />}
+          />
+        </Routes>
+      </MemoryRouter>,
+      { language: "es" },
+    );
+
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Opciones de entrega" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Acepta entregas")).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Sí" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "No" })).toBeInTheDocument();
+    expect(
+      screen.getByText("Aún no hay horarios de entrega configurados."),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: "Añadir día de entrega" }),
+    );
+    expect(
+      screen.getByRole("button", { name: "Añadir franja de entrega" }),
     ).toBeInTheDocument();
   });
 });

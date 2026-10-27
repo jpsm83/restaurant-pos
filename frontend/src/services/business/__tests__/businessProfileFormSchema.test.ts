@@ -6,6 +6,19 @@ import {
 } from "../businessService";
 import { buildBusinessProfileSchema } from "../businessProfileFormSchema";
 
+const schemaMessages = {
+  required: "Required.",
+  invalidSubscription: "Invalid subscription.",
+  invalidCurrency: "Invalid currency.",
+  invalidTime: "Invalid time.",
+  invalidDayOfWeek: "Invalid day of week.",
+  invalidNonNegative: "Invalid non-negative.",
+  invalidWeeklyStartDay: "Invalid weekly start day.",
+  invalidImage: "Invalid image file.",
+  openingRange: "Opening range must increase.",
+  deliveryRange: "Delivery range must increase.",
+};
+
 function makeBusinessDto(overrides?: Partial<BusinessProfileDto>): BusinessProfileDto {
   return {
     _id: "64b000000000000000000001",
@@ -109,14 +122,14 @@ describe("Business profile schema + mappers", () => {
   });
 
   it("accepts a valid profile model", () => {
-    const schema = buildBusinessProfileSchema();
+    const schema = buildBusinessProfileSchema(schemaMessages);
     const values = businessDtoToFormValues(makeBusinessDto());
     const parsed = schema.safeParse(values);
     expect(parsed.success).toBe(true);
   });
 
   it("rejects invalid day/time windows", () => {
-    const schema = buildBusinessProfileSchema();
+    const schema = buildBusinessProfileSchema(schemaMessages);
     const values = businessDtoToFormValues(makeBusinessDto());
     values.businessOpeningHours = [
       { dayOfWeek: 8, openTime: "25:00", closeTime: "18:00" },
@@ -130,6 +143,35 @@ describe("Business profile schema + mappers", () => {
           i.path.join(".").startsWith("businessOpeningHours.0"),
         ),
       ).toBe(true);
+    }
+  });
+
+  it("uses caller-supplied image and range messages", () => {
+    const schema = buildBusinessProfileSchema({
+      ...schemaMessages,
+      invalidImage: "Imagen no válida.",
+      openingRange: "La apertura debe terminar después.",
+      deliveryRange: "La entrega debe terminar después.",
+    });
+    const values = businessDtoToFormValues(makeBusinessDto());
+    values.imageFile = "not-a-file" as unknown as File;
+    values.businessOpeningHours = [
+      { dayOfWeek: 1, openTime: "18:00", closeTime: "09:00" },
+    ];
+    values.deliveryOpeningWindows = [
+      {
+        dayOfWeek: 1,
+        windows: [{ openTime: "18:00", closeTime: "09:00" }],
+      },
+    ];
+
+    const parsed = schema.safeParse(values);
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      const messages = parsed.error.issues.map((issue) => issue.message);
+      expect(messages).toContain("Imagen no válida.");
+      expect(messages).toContain("La apertura debe terminar después.");
+      expect(messages).toContain("La entrega debe terminar después.");
     }
   });
 });

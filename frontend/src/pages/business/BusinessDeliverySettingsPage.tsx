@@ -1,4 +1,5 @@
 import { Controller, useFieldArray, type Control } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -65,6 +66,7 @@ export default function BusinessDeliverySettingsPage() {
 }
 
 function DeliverySections({ ctx }: { ctx: BusinessProfileSettingsReady }) {
+  const { t } = useTranslation("business");
   const { register, control } = ctx;
   const deliveryWindowsFieldArray = useFieldArray({
     control,
@@ -75,11 +77,11 @@ function DeliverySections({ ctx }: { ctx: BusinessProfileSettingsReady }) {
     <>
       <section className="space-y-4">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground">
-          Delivery options
+          {t("deliverySettings.sectionTitle")}
         </h2>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="bp-accepts-delivery">Accepts delivery</Label>
+            <Label htmlFor="bp-accepts-delivery">{t("deliverySettings.acceptsDelivery")}</Label>
             <Controller
               control={control}
               name="acceptsDelivery"
@@ -90,14 +92,14 @@ function DeliverySections({ ctx }: { ctx: BusinessProfileSettingsReady }) {
                   value={field.value ? "yes" : "no"}
                   onChange={(event) => field.onChange(event.target.value === "yes")}
                 >
-                  <option value="yes">Yes</option>
-                  <option value="no">No</option>
+                  <option value="yes">{t("deliverySettings.yes")}</option>
+                  <option value="no">{t("deliverySettings.no")}</option>
                 </select>
               )}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="bp-delivery-radius">Delivery radius</Label>
+            <Label htmlFor="bp-delivery-radius">{t("deliverySettings.deliveryRadius")}</Label>
             <Input
               id="bp-delivery-radius"
               type="number"
@@ -108,7 +110,7 @@ function DeliverySections({ ctx }: { ctx: BusinessProfileSettingsReady }) {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="bp-min-order">Minimum order</Label>
+            <Label htmlFor="bp-min-order">{t("deliverySettings.minOrder")}</Label>
             <Input
               id="bp-min-order"
               type="number"
@@ -123,7 +125,7 @@ function DeliverySections({ ctx }: { ctx: BusinessProfileSettingsReady }) {
 
       <section className="space-y-3 rounded-md border border-border p-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-foreground">Delivery opening windows</h3>
+          <h3 className="text-sm font-semibold text-foreground">{t("deliverySettings.windowsSectionTitle")}</h3>
           <Button
             type="button"
             variant="outline"
@@ -135,16 +137,16 @@ function DeliverySections({ ctx }: { ctx: BusinessProfileSettingsReady }) {
               })
             }
           >
-            Add delivery day
+            {t("deliverySettings.addDay")}
           </Button>
         </div>
         {deliveryWindowsFieldArray.fields.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No delivery windows configured yet.</p>
+          <p className="text-sm text-muted-foreground">{t("deliverySettings.empty")}</p>
         ) : null}
         {deliveryWindowsFieldArray.fields.map((field, dayIndex) => (
           <div key={field.id} className="space-y-3">
             <div className="space-y-2">
-              <Label htmlFor={`bp-delivery-day-${dayIndex}`}>Day</Label>
+              <Label htmlFor={`bp-delivery-day-${dayIndex}`}>{t("deliverySettings.day")}</Label>
               <Controller
                 control={control}
                 name={`deliveryOpeningWindows.${dayIndex}.dayOfWeek`}
@@ -157,7 +159,7 @@ function DeliverySections({ ctx }: { ctx: BusinessProfileSettingsReady }) {
                   >
                     {DAY_OPTIONS.map((day) => (
                       <option key={day.value} value={day.value}>
-                        {day.label}
+                        {t(day.labelKey)}
                       </option>
                     ))}
                   </select>
@@ -184,6 +186,7 @@ type DeliveryWindowsRowProps = {
 
 /** Nested time windows for one `deliveryOpeningWindows` day entry. */
 function DeliveryWindowsRow({ control, dayIndex, onRemoveDay }: DeliveryWindowsRowProps) {
+  const { t } = useTranslation("business");
   const windowsFieldArray = useFieldArray({
     control,
     name: `deliveryOpeningWindows.${dayIndex}.windows` as const,
@@ -193,17 +196,17 @@ function DeliveryWindowsRow({ control, dayIndex, onRemoveDay }: DeliveryWindowsR
     <div className="space-y-3 rounded-md border border-border p-3">
       <div className="flex justify-end">
         <Button type="button" variant="ghost" size="sm" onClick={onRemoveDay}>
-          Remove day
+          {t("deliverySettings.removeDay")}
         </Button>
       </div>
       {windowsFieldArray.fields.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No windows configured yet for this day.</p>
+        <p className="text-sm text-muted-foreground">{t("deliverySettings.emptyWindows")}</p>
       ) : null}
       {windowsFieldArray.fields.map((windowField, windowIndex) => (
         <div key={windowField.id} className="grid gap-3 form-grid-2-action">
           <div className="space-y-2">
             <Label htmlFor={`bp-delivery-open-${dayIndex}-${windowIndex}`}>
-              Delivery open
+              {t("deliverySettings.openTime")}
             </Label>
             <Controller
               control={control}
@@ -220,7 +223,7 @@ function DeliveryWindowsRow({ control, dayIndex, onRemoveDay }: DeliveryWindowsR
           </div>
           <div className="space-y-2">
             <Label htmlFor={`bp-delivery-close-${dayIndex}-${windowIndex}`}>
-              Delivery close
+              {t("deliverySettings.closeTime")}
             </Label>
             <Controller
               control={control}
@@ -242,7 +245,7 @@ function DeliveryWindowsRow({ control, dayIndex, onRemoveDay }: DeliveryWindowsR
               size="sm"
               onClick={() => windowsFieldArray.remove(windowIndex)}
             >
-              Remove window
+              {t("deliverySettings.removeWindow")}
             </Button>
           </div>
         </div>
@@ -253,7 +256,7 @@ function DeliveryWindowsRow({ control, dayIndex, onRemoveDay }: DeliveryWindowsR
         size="sm"
         onClick={() => windowsFieldArray.append({ openTime: "09:00", closeTime: "17:00" })}
       >
-        Add delivery window
+        {t("deliverySettings.addWindow")}
       </Button>
     </div>
   );

@@ -5,10 +5,14 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithI18n } from "@/test/i18nTestUtils";
+import type { SupportedLanguage } from "@/i18n/config";
 import type { BusinessProfileDto } from "@/services/business/businessService";
 import BusinessCredentialsSettingsPage from "../BusinessCredentialsSettingsPage";
 
-async function renderWithQueryClient(ui: ReactElement) {
+async function renderWithQueryClient(
+  ui: ReactElement,
+  language?: SupportedLanguage,
+) {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false },
@@ -16,6 +20,7 @@ async function renderWithQueryClient(ui: ReactElement) {
     },
   });
   return renderWithI18n(ui, {
+    ...(language ? { language } : {}),
     wrapper: ({ children }) => (
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     ),
@@ -288,6 +293,41 @@ describe("BusinessCredentialsSettingsPage", () => {
       expect(mockResendEmailConfirmation).toHaveBeenCalledTimes(1);
       expect(mockToastSuccess).toHaveBeenCalledWith(
         "Confirmation email sent. Check your inbox.",
+      );
+    });
+  });
+
+  it("renders a reset-email failure in Spanish", async () => {
+    mockRequestPasswordReset.mockResolvedValue({
+      ok: false,
+      error: {
+        code: "passwordReset.transport",
+        fieldErrors: [],
+      },
+    });
+
+    const user = userEvent.setup();
+    await renderWithQueryClient(
+      <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/credentials"]}>
+        <Routes>
+          <Route
+            path="/business/:businessId/settings/credentials"
+            element={<BusinessCredentialsSettingsPage />}
+          />
+        </Routes>
+      </MemoryRouter>,
+      "es",
+    );
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Enviarme un enlace para cambiar la contraseña",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(mockToastError).toHaveBeenCalledWith(
+        "No pudimos conectar con el servidor. Comprueba tu conexión e inténtalo de nuevo.",
       );
     });
   });

@@ -23,7 +23,8 @@
     "reset": "Descartar cambios",
     "save": "Guardar cambios",
     "saving": "Guardando...",
-    "validationSummary": "Corrige los campos marcados antes de guardar."
+    "validationSummary": "Corrige los campos marcados antes de guardar.",
+    "saveSuccess": "Perfil del negocio guardado correctamente."
   },
   "profileForm": {
     "validation": {
@@ -33,7 +34,10 @@
       "invalidTime": "La hora debe tener formato HH:MM.",
       "invalidDayOfWeek": "El día de la semana debe ser un entero de 0 a 6.",
       "invalidNonNegative": "El valor debe ser un número no negativo.",
-      "invalidWeeklyStartDay": "El inicio de semana del informe debe estar entre 0 y 6."
+      "invalidWeeklyStartDay": "El inicio de semana del informe debe estar entre 0 y 6.",
+      "invalidImage": "Archivo de imagen no válido.",
+      "openingRange": "El horario de apertura debe terminar después de empezar.",
+      "deliveryRange": "El horario de entrega debe terminar después de empezar."
     }
   },
   "profileSettings": {
@@ -252,5 +256,56 @@
     "planGroupAriaLabel": "Plan de suscripción",
     "selectPlanAriaLabel": "Seleccionar plan {{plan}}",
     "selectedPlanDescription": "Plan seleccionado para este negocio."
+  },
+  "weekdays": {
+    "sunday": "Domingo",
+    "monday": "Lunes",
+    "tuesday": "Martes",
+    "wednesday": "Miércoles",
+    "thursday": "Jueves",
+    "friday": "Viernes",
+    "saturday": "Sábado"
+  },
+  "openHoursSettings": {
+    "sectionTitle": "Horario de apertura del negocio",
+    "addDay": "Añadir día de apertura",
+    "empty": "Aún no hay horarios de apertura configurados.",
+    "day": "Día",
+    "open": "Apertura",
+    "close": "Cierre",
+    "remove": "Eliminar"
+  },
+  "deliverySettings": {
+    "sectionTitle": "Opciones de entrega",
+    "acceptsDelivery": "Acepta entregas",
+    "yes": "Sí",
+    "no": "No",
+    "deliveryRadius": "Radio de entrega",
+    "minOrder": "Pedido mínimo",
+    "windowsSectionTitle": "Horarios de entrega",
+    "addDay": "Añadir día de entrega",
+    "empty": "Aún no hay horarios de entrega configurados.",
+    "day": "Día",
+    "removeDay": "Eliminar día",
+    "emptyWindows": "Aún no hay franjas configuradas para este día.",
+    "openTime": "Apertura de entrega",
+    "closeTime": "Cierre de entrega",
+    "removeWindow": "Eliminar franja",
+    "addWindow": "Añadir franja de entrega"
+  },
+  "metricsSettings": {
+    "sectionTitle": "Métricas",
+    "foodCost": "Porcentaje de coste de comida",
+    "beverageCost": "Porcentaje de coste de bebidas",
+    "laborCost": "Porcentaje de coste de personal",
+    "fixedCost": "Porcentaje de coste fijo",
+    "wasteVeryLow": "Desperdicio de impacto muy bajo",
+    "wasteLow": "Desperdicio de impacto bajo",
+    "wasteMedium": "Desperdicio de impacto medio",
+    "wasteHigh": "Desperdicio de impacto alto",
+    "wasteVeryHigh": "Desperdicio de impacto muy alto",
+    "reportingTitle": "Informes",
+    "weeklyStartDay": "Día de inicio del informe semanal",
+    "notSet": "Sin establecer"
   }
 }

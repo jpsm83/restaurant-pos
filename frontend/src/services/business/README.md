@@ -159,9 +159,9 @@ Builds the **multipart PATCH** body expected by the backend:
 
 ## `businessProfileFormSchema.ts` (Zod)
 
-### `buildBusinessProfileSchema(partialMessages?)`
+### `buildBusinessProfileSchema(messages)`
 
-Returns a Zod object schema whose shape mirrors **`BusinessProfileFormValues`**:
+Returns a Zod object schema whose shape mirrors **`BusinessProfileFormValues`**. Every validation message (required, enum, time, day, non-negative, weekly start day, image, opening range, and delivery range) is caller-supplied, so the schema has no English defaults and the active locale owns the copy:
 
 - Subscription and currency enums from `restaurant-pos-packages/enums`.
 - The sign-in `email` and credentials are **not** part of the form shape or this schema; they change only through the verified email-change and reset-password flows.

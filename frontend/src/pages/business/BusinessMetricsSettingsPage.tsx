@@ -1,4 +1,5 @@
 import { Controller } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -54,15 +55,16 @@ export default function BusinessMetricsSettingsPage() {
 }
 
 function MetricsSections({ ctx }: { ctx: BusinessProfileSettingsReady }) {
+  const { t } = useTranslation("business");
   const { register, control } = ctx;
 
   return (
     <>
       <section className="space-y-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground">Metrics</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground">{t("metricsSettings.sectionTitle")}</h2>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="bp-metric-food">Food cost percentage</Label>
+            <Label htmlFor="bp-metric-food">{t("metricsSettings.foodCost")}</Label>
             <Input
               id="bp-metric-food"
               type="number"
@@ -71,7 +73,7 @@ function MetricsSections({ ctx }: { ctx: BusinessProfileSettingsReady }) {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="bp-metric-beverage">Beverage cost percentage</Label>
+            <Label htmlFor="bp-metric-beverage">{t("metricsSettings.beverageCost")}</Label>
             <Input
               id="bp-metric-beverage"
               type="number"
@@ -80,7 +82,7 @@ function MetricsSections({ ctx }: { ctx: BusinessProfileSettingsReady }) {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="bp-metric-labor">Labor cost percentage</Label>
+            <Label htmlFor="bp-metric-labor">{t("metricsSettings.laborCost")}</Label>
             <Input
               id="bp-metric-labor"
               type="number"
@@ -89,7 +91,7 @@ function MetricsSections({ ctx }: { ctx: BusinessProfileSettingsReady }) {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="bp-metric-fixed">Fixed cost percentage</Label>
+            <Label htmlFor="bp-metric-fixed">{t("metricsSettings.fixedCost")}</Label>
             <Input
               id="bp-metric-fixed"
               type="number"
@@ -98,7 +100,7 @@ function MetricsSections({ ctx }: { ctx: BusinessProfileSettingsReady }) {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="bp-metric-vlow">Waste very low impact</Label>
+            <Label htmlFor="bp-metric-vlow">{t("metricsSettings.wasteVeryLow")}</Label>
             <Input
               id="bp-metric-vlow"
               type="number"
@@ -109,7 +111,7 @@ function MetricsSections({ ctx }: { ctx: BusinessProfileSettingsReady }) {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="bp-metric-low">Waste low impact</Label>
+            <Label htmlFor="bp-metric-low">{t("metricsSettings.wasteLow")}</Label>
             <Input
               id="bp-metric-low"
               type="number"
@@ -120,7 +122,7 @@ function MetricsSections({ ctx }: { ctx: BusinessProfileSettingsReady }) {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="bp-metric-medium">Waste medium impact</Label>
+            <Label htmlFor="bp-metric-medium">{t("metricsSettings.wasteMedium")}</Label>
             <Input
               id="bp-metric-medium"
               type="number"
@@ -131,7 +133,7 @@ function MetricsSections({ ctx }: { ctx: BusinessProfileSettingsReady }) {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="bp-metric-high">Waste high impact</Label>
+            <Label htmlFor="bp-metric-high">{t("metricsSettings.wasteHigh")}</Label>
             <Input
               id="bp-metric-high"
               type="number"
@@ -142,7 +144,7 @@ function MetricsSections({ ctx }: { ctx: BusinessProfileSettingsReady }) {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="bp-metric-vhigh">Waste very high impact</Label>
+            <Label htmlFor="bp-metric-vhigh">{t("metricsSettings.wasteVeryHigh")}</Label>
             <Input
               id="bp-metric-vhigh"
               type="number"
@@ -156,10 +158,10 @@ function MetricsSections({ ctx }: { ctx: BusinessProfileSettingsReady }) {
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground">Reporting</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground">{t("metricsSettings.reportingTitle")}</h2>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="bp-weekly-start-day">Weekly report start day</Label>
+            <Label htmlFor="bp-weekly-start-day">{t("metricsSettings.weeklyStartDay")}</Label>
             <Controller
               control={control}
               name="reportingConfig.weeklyReportStartDay"
@@ -174,10 +176,10 @@ function MetricsSections({ ctx }: { ctx: BusinessProfileSettingsReady }) {
                     )
                   }
                 >
-                  <option value="">Not set</option>
+                  <option value="">{t("metricsSettings.notSet")}</option>
                   {DAY_OPTIONS.map((day) => (
                     <option key={day.value} value={day.value}>
-                      {day.label}
+                      {t(day.labelKey)}
                     </option>
                   ))}
                 </select>
