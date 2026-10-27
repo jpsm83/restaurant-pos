@@ -1,24 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { NAMESPACES, SUPPORTED_LANGUAGES } from "../config";
+import { buildLocaleResources } from "../localeResources";
 
 const localeModules = import.meta.glob<{ default: Record<string, unknown> }>(
   "../locales/*/*.json",
   { eager: true },
 );
-
-type LocaleBundles = Record<string, Record<string, Record<string, unknown>>>;
-
-function loadLocales(): LocaleBundles {
-  const locales: LocaleBundles = {};
-  for (const [path, module] of Object.entries(localeModules)) {
-    const match = /^\.\.\/locales\/([^/]+)\/([^/]+)\.json$/.exec(path);
-    if (!match) continue;
-    const [, language, namespace] = match;
-    if (!locales[language]) locales[language] = {};
-    locales[language][namespace] = module.default;
-  }
-  return locales;
-}
 
 function flattenKeys(value: Record<string, unknown>, prefix = ""): string[] {
   return Object.entries(value).flatMap(([key, entry]) => {
@@ -55,7 +42,7 @@ function pluralFamilies(
   return families;
 }
 
-const locales = loadLocales();
+const locales = buildLocaleResources(localeModules);
 const namespaces = [
   ...new Set(
     Object.values(locales).flatMap((bundles) => Object.keys(bundles)),

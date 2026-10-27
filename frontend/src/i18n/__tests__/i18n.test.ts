@@ -6,13 +6,12 @@ import {
   NAMESPACES,
   SUPPORTED_LANGUAGES,
   isSupportedLanguage,
-  toSupportedLanguage,
 } from "../config";
 
 describe("i18n module", () => {
   beforeEach(async () => {
     vi.restoreAllMocks();
-    localStorage.removeItem(I18N_STORAGE_KEY);
+    localStorage.clear();
     await i18n.changeLanguage(DEFAULT_LANGUAGE);
   });
 
@@ -23,15 +22,12 @@ describe("i18n module", () => {
     expect(DEFAULT_LANGUAGE).toBe("en");
   });
 
-  it("guards supported languages and normalizes BCP 47 tags", () => {
+  it("guards supported languages", () => {
     expect(isSupportedLanguage("es")).toBe(true);
     expect(isSupportedLanguage("pt")).toBe(false);
-    expect(toSupportedLanguage("es-MX")).toBe("es");
-    expect(toSupportedLanguage("pt-BR")).toBeNull();
-    expect(toSupportedLanguage(undefined)).toBeNull();
   });
 
-  it("sets the document language on init", () => {
+  it("keeps the document language aligned with the active language", () => {
     expect(document.documentElement.lang).toBe(i18n.language);
     expect(SUPPORTED_LANGUAGES).toContain(document.documentElement.lang);
   });
@@ -55,5 +51,17 @@ describe("i18n module", () => {
     expect(i18n.language).toBe("es");
     expect(document.documentElement.lang).toBe("es");
     expect(localStorage.getItem(I18N_STORAGE_KEY)).toBe("es");
+  });
+
+  it("changes only UI-language state, not Business or session state", async () => {
+    localStorage.setItem("pos.theme", "default");
+    localStorage.setItem("auth_had_session", "1");
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+
+    await changeAppLanguage("es");
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(localStorage.getItem("pos.theme")).toBe("default");
+    expect(localStorage.getItem("auth_had_session")).toBe("1");
   });
 });

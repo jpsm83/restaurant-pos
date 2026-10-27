@@ -7,15 +7,16 @@
  * **Source of truth:** supported languages, namespaces, storage key, and the language guard live
  * in `./config`.
  *
- * **Exports:** default `i18n` instance (e.g. `ErrorBoundary` uses `i18n.t(...)` outside React),
- * `changeAppLanguage` (used by `LanguageSwitcher`), and re-exported config values.
+ * **Exports:** default `i18n` instance (e.g. `ErrorBoundary` uses `i18n.t(...)` outside React) and
+ * `changeAppLanguage` (used by `LanguageSwitcher`). Shared language/namespace values live in
+ * `./config`.
  *
  * **Initial language:** `readInitialLanguage()` — valid `localStorage[I18N_STORAGE_KEY]` wins,
  * else first supported base tag from `navigator.language` / `navigator.languages`, else `en`.
  * **`languageChanged`** persists the chosen code and updates `document.documentElement.lang`.
  *
  * **Locale files:** co-located under `./locales/<lang>/<namespace>.json`, discovered via
- * `import.meta.glob` (see `buildResources`).
+ * `import.meta.glob` and assembled by `buildLocaleResources`.
  *
  * **Tests:** prefer `createTestI18n` / `renderWithI18n` from `@/test/i18nTestUtils` instead
  * of importing this module, so assertions do not mutate the app singleton.
@@ -28,17 +29,16 @@ import {
   NAMESPACES,
   SUPPORTED_LANGUAGES,
   isSupportedLanguage,
-  toSupportedLanguage,
-  type I18nNamespace,
   type SupportedLanguage,
 } from "./config";
+import { buildLocaleResources } from "./localeResources";
 
 function readBrowserLanguage(): SupportedLanguage {
   if (typeof navigator === "undefined") return DEFAULT_LANGUAGE;
   const tags = [navigator.language, ...(navigator.languages ?? [])];
   for (const tag of tags) {
-    const supported = toSupportedLanguage(tag);
-    if (supported) return supported;
+    const base = tag?.split("-")[0]?.toLowerCase();
+    if (base && isSupportedLanguage(base)) return base;
   }
   return DEFAULT_LANGUAGE;
 }
@@ -48,8 +48,7 @@ function readInitialLanguage(): SupportedLanguage {
   if (typeof localStorage !== "undefined") {
     try {
       const raw = localStorage.getItem(I18N_STORAGE_KEY);
-      const stored = toSupportedLanguage(raw);
-      if (stored) return stored;
+      if (raw && isSupportedLanguage(raw)) return raw;
     } catch {
       /* private mode / blocked storage */
     }
@@ -58,10 +57,9 @@ function readInitialLanguage(): SupportedLanguage {
 }
 
 function persistLanguage(lng: string): void {
-  const supported = toSupportedLanguage(lng);
-  if (!supported) return;
+  if (!isSupportedLanguage(lng)) return;
   try {
-    localStorage.setItem(I18N_STORAGE_KEY, supported);
+    localStorage.setItem(I18N_STORAGE_KEY, lng);
   } catch {
     /* ignore */
   }
@@ -69,9 +67,8 @@ function persistLanguage(lng: string): void {
 
 /** Runtime owns the real document language; unsupported values never touch the document. */
 function syncDocumentLanguage(lng: string): void {
-  const supported = toSupportedLanguage(lng);
-  if (!supported || typeof document === "undefined") return;
-  document.documentElement.lang = supported;
+  if (!isSupportedLanguage(lng) || typeof document === "undefined") return;
+  document.documentElement.lang = lng;
 }
 
 /** Validates against the shared guard, then `i18n.changeLanguage` (persistence + html lang run in `languageChanged`). */
@@ -89,43 +86,13 @@ const localeModules = import.meta.glob<{ default: Record<string, unknown> }>(
   { eager: true },
 );
 
-function buildResources(): Record<
-  string,
-  Partial<Record<I18nNamespace, Record<string, unknown>>>
-> {
-  const resources: Record<
-    string,
-    Partial<Record<I18nNamespace, Record<string, unknown>>>
-  > = {};
-
-  for (const path of Object.keys(localeModules)) {
-    const match = /^\.\/locales\/([^/]+)\/([^/]+)\.json$/.exec(path);
-    if (!match) continue;
-    const lang = match[1];
-    const ns = match[2] as I18nNamespace;
-    if (!NAMESPACES.includes(ns)) continue;
-
-    const mod = localeModules[path];
-    const data = mod.default;
-    if (!resources[lang]) resources[lang] = {};
-    resources[lang][ns] = data;
-  }
-
-  return resources;
-}
-
 const initialLanguage = readInitialLanguage();
-
-i18n.on("languageChanged", (lng) => {
-  persistLanguage(lng);
-  syncDocumentLanguage(lng);
-});
 
 void i18n.use(initReactI18next).init({
   lng: initialLanguage,
   fallbackLng: DEFAULT_LANGUAGE,
   supportedLngs: [...SUPPORTED_LANGUAGES],
-  resources: buildResources(),
+  resources: buildLocaleResources(localeModules, NAMESPACES),
   ns: [...NAMESPACES],
   defaultNS: "common",
   react: {
@@ -141,13 +108,10 @@ void i18n.use(initReactI18next).init({
 
 syncDocumentLanguage(initialLanguage);
 
+i18n.on("languageChanged", (lng) => {
+  persistLanguage(lng);
+  syncDocumentLanguage(lng);
+});
+
 export default i18n;
-export {
-  DEFAULT_LANGUAGE,
-  I18N_STORAGE_KEY,
-  NAMESPACES,
-  SUPPORTED_LANGUAGES,
-  isSupportedLanguage,
-  toSupportedLanguage,
-};
-export type { I18nNamespace, SupportedLanguage };
+

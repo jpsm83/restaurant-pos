@@ -6,38 +6,15 @@ import {
   DEFAULT_LANGUAGE,
   NAMESPACES,
   SUPPORTED_LANGUAGES,
-  type I18nNamespace,
   type SupportedLanguage,
 } from "@/i18n/config";
+import { buildLocaleResources } from "@/i18n/localeResources";
 
 /** Eager locale bundles — the same JSON files as production, keyed by language and namespace. */
 const localeModules = import.meta.glob<{ default: Record<string, unknown> }>(
   "../i18n/locales/*/*.json",
   { eager: true },
 );
-
-export function testResources(): Record<
-  string,
-  Partial<Record<I18nNamespace, Record<string, unknown>>>
-> {
-  const resources: Record<
-    string,
-    Partial<Record<I18nNamespace, Record<string, unknown>>>
-  > = {};
-
-  for (const path of Object.keys(localeModules)) {
-    const match = /^\.\.\/i18n\/locales\/([^/]+)\/([^/]+)\.json$/.exec(path);
-    if (!match) continue;
-    const lang = match[1];
-    const ns = match[2] as I18nNamespace;
-    if (!NAMESPACES.includes(ns)) continue;
-
-    if (!resources[lang]) resources[lang] = {};
-    resources[lang][ns] = localeModules[path].default;
-  }
-
-  return resources;
-}
 
 /**
  * Isolated i18n instance for tests (avoids mutating the app singleton from `@/i18n/i18n`).
@@ -52,7 +29,7 @@ export async function createTestI18n(
     lng: language,
     fallbackLng: DEFAULT_LANGUAGE,
     supportedLngs: [...SUPPORTED_LANGUAGES],
-    resources: testResources(),
+    resources: buildLocaleResources(localeModules, NAMESPACES),
     ns: [...NAMESPACES],
     defaultNS: "common",
     interpolation: { escapeValue: false },

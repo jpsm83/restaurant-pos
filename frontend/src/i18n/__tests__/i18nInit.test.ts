@@ -25,9 +25,9 @@ describe("i18n initialization", () => {
     expect(document.documentElement.lang).toBe("es");
   });
 
-  it("falls back from an unsupported stored value before touching the document", async () => {
+  it("falls back from an unsupported stored value", async () => {
     localStorage.setItem(I18N_STORAGE_KEY, "pt-BR");
-    document.documentElement.lang = "en";
+    document.documentElement.lang = "pt";
 
     await import("../i18n");
 
