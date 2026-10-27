@@ -21,5 +21,6 @@ Use the latest stable syntax and best practices for the stack; prefer the framew
 - **Frontend is declarative** — compose from props, state, hooks, and derived data; follow existing routing, data-fetching, form, and i18n conventions; reuse shared schemas in forms.
 - **TypeScript**: strong typing, avoid `any`.
 - **UI**: reuse existing shadcn/ui primitives; use `Skeleton` for loading placeholders; follow [styling.md](./styling.md) for tokens, shadcn customisation, and themes.
+- **User-facing copy**: no hardcoded first-party strings; follow [i18n.md](./i18n.md) for locale files, namespaces, formatting, and system-email language.
 - **Comments**: brief file headers, section headings, and notes on non-obvious rules — skip the obvious.
 - **Design for all clients**: `/api/v1` must work for clients without a browser.

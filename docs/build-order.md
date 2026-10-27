@@ -68,12 +68,13 @@ Engineering and cross-cutting rails every later subject assumes. Prefer ADRs and
 | [x] | 0.7 | Append-only audit entry rail | Who/what/when write API | One append-only API records who, what, and when, and every audited act already in the code writes through it. Acts a later row introduces are audited on that row. | [audit-trail](product/audit-trail.md) |
 | [x] | 0.8 | Operational-reason catalogues as data | Closed lists for void, discount, refund, … | The closed catalogues exist as data, and every current void, discount, refund, or reopen path reads them. Flows that do not exist yet are built on their own rows. | [operational-reasons](product/operational-reasons.md) |
 | [x] | 0.9 | Feature-flag resolution stub | Default-on kill-switch resolution | Resolution returns default-on, and every existing feature check calls it. The console and flag-then-plan composition stay in phase 9. | [feature-flags](product/feature-flags.md) |
-| [ ] | 0.10 | Error monitoring | Unexpected-error reporting | Unexpected server and client errors are reported. Problem-details responses stay ordinary results. | [ADR-0007](adr/0007-sentry-error-monitoring.md) |
+| [x] | 0.10 | Error monitoring | Unexpected-error reporting | Unexpected server and client errors are reported. Problem-details responses stay ordinary results. | [ADR-0007](adr/0007-sentry-error-monitoring.md) |
 | [ ] | 0.11 | Frontend styling substrate and migration | Tailwind v4 tokens, two-axis themes, shadcn customisation ladder, style CI guard; migrate the existing UI | No raw palette or arbitrary values outside `src/styles/**` (and arbitrary sizes in `components/ui/**`); allowlist empty; token completeness, contrast, and registry tests pass; `useTheme` + System preference + account-menu toggle work; `/dev/themes` renders default light and dark. | [styling](conventions/styling.md), [ADR-0010](adr/0010-tailwind-theme-architecture.md) |
+| [ ] | 0.12 | Internationalization rail and migration | English/Spanish UI, locale files, formatting, server-copy mapping | Every first-party user-facing frontend string resolves through i18next in both `en` and `es` (third-party/vendor copy excepted); `en`/`es` key sets and interpolation placeholders match under test; no hardcoded first-party copy; dates, numbers, and currency follow the active UI language and Business currency; the SPA maps server failures to localized copy instead of rendering raw English problem details. Recipient-language email is wired on 1.8. | [i18n](conventions/i18n.md), [overview](product/overview.md) (language and currency), [emails](product/emails.md) (language) |
 
-**Exit criteria:** a signed-in request can hit an authenticated API, soft-delete a record, send a test email, write a notification, push a live event, and record an audit entry, and the frontend styling rail is in place — without any venue POS yet. A row is done when its **Done when** cell and the Spec gate are both true.
+**Exit criteria:** a signed-in request can hit an authenticated API, soft-delete a record, send a test email, write a notification, push a live event, and record an audit entry, and the frontend styling and internationalization rails are in place — without any venue POS yet. A row is done when its **Done when** cell and the Spec gate are both true.
 
-**Frontend gate:** row 0.11 blocks every Phase 1 row that adds or changes frontend UI. New screens start on the token and theme system; they do not add to the migration backlog.
+**Frontend gate:** rows 0.11 and 0.12 block every Phase 1 row that adds or changes frontend UI. New screens start on the token and theme system and ship with English and Spanish copy; they do not add to either migration backlog.
 
 ---
 
@@ -83,14 +84,14 @@ Stand up who people are, what a venue is, and how they move between Customer and
 
 | done | Order | Slice | Docs to open |
 | --- | --- | --- | --- |
-| [ ] | 1.1 | Sign-up / sign-in, email verify, password reset, User profile, Owner + Company creation hooks, sessions | [users](product/users.md) |
+| [ ] | 1.1 | Sign-up / sign-in, email verify, password reset, User profile (including language preference), Owner + Company creation hooks, sessions | [users](product/users.md) |
 | [ ] | 1.2 | Privacy notice acceptance at account create; birth date; marketing consent off-by-default | [privacy](product/privacy.md), [users](product/users.md) (accept-to-create / birth-date hooks only) |
 | [ ] | 1.3 | One User per browser session; peer multi-session; no shared login / PIN / quick-switch | [staff-sessions](product/staff-sessions.md) |
 | [ ] | 1.4 | Register venue, draft profile, currency, address → timezone, Company tax number / legal name, go-live checklist fields (go-live can stay blocked until Phase 2) | [business](product/business.md), [users](product/users.md) (Owner / Company only) |
 | [ ] | 1.5 | Five layers, job-role → layer map, Owner access = admin-equivalent; thin capability catalogue | [access-and-permissions](product/access-and-permissions.md) |
 | [ ] | 1.6 | Membership record; Free = Owner-only Business is enough; hire flow can stay minimal | [employees](product/employees.md), [access-and-permissions](product/access-and-permissions.md) (layers on membership) |
 | [ ] | 1.7 | Customer chrome, Customer \| Business toggle, Service / Manage / Me shells, Owner venue tabs | [user-navigation](product/user-navigation.md) |
-| [ ] | 1.8 | Wire verify / reset / business-contact verify to the Phase 0 email rail | [emails](product/emails.md), [users](product/users.md) (which messages), [business](product/business.md) (contact email verify) |
+| [ ] | 1.8 | Wire verify / reset / business-contact verify to the Phase 0 email rail, in the recipient's language preference with English fallback | [emails](product/emails.md) (which messages and language), [users](product/users.md) (language preference), [business](product/business.md) (contact email verify) |
 | [ ] | 1.9 | Inbox UI against the Phase 0 notification rail | [notifications](product/notifications.md) |
 
 **Exit criteria:** a user can register, create a draft Business under a Company, sign in, toggle into Business mode as Owner, and see empty Manage / Service / Me shells.

@@ -94,6 +94,7 @@ baked into images). Key groups:
 - **Email**: One SMTP rail (`SMTP_HOST`, `SMTP_PORT`, optional `SMTP_USER` and `SMTP_PASS`, `SMTP_FROM`) sends account one-time links and the sign-in email-change notice as well as operational mail. The platform from-address is `SMTP_FROM` when set, otherwise the SMTP user, otherwise the provider's local fallback. The Gmail account pair (`EMAIL_USER`, `EMAIL_PASSWORD`) is retired. `COMMUNICATIONS_EMAIL_ENABLED=false` skips operational email and does not stop account mail.
 - **Communications toggles**: `COMMUNICATIONS_EMAIL_ENABLED`, `COMMUNICATIONS_INAPP_ENABLED`, `COMMUNICATIONS_INAPP_LIVE_ENABLED`
 - **Frontend link targets**: `APP_BASE_URL` / `PUBLIC_APP_URL` / `FRONTEND_URL`, `BASE_URL`
+- **Sentry (optional)**: `SENTRY_DSN` enables error monitoring; `SENTRY_ENVIRONMENT` (default `NODE_ENV`) and `SENTRY_RELEASE` (default `restaurant-pos-backend@<package version>`) tag events. Without a DSN the SDK is not initialized and makes no network calls; it is also never initialized under Vitest or `NODE_ENV=test`. Only unexpected failures reported by the global problem-details handler (`>= 500`) are sent.
 
 `src/server.ts` fails fast if `JWT_SECRET` or `REFRESH_SECRET` is missing.
 

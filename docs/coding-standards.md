@@ -13,6 +13,7 @@ a task loads only what it needs.
 |------|--------------|
 | [`conventions/principles.md`](./conventions/principles.md) | Always — simplicity, consistency, scope, priorities. |
 | [`conventions/building.md`](./conventions/building.md) | Writing or changing code — architecture, schemas/DTOs, errors, React, TypeScript, UI, comments. |
+| [`conventions/i18n.md`](./conventions/i18n.md) | Writing user-facing copy, adding a locale string or language, formatting dates/numbers/currency, or localizing system email. |
 | [`conventions/styling.md`](./conventions/styling.md) | Writing or changing styles, Tailwind classes, shadcn components, design tokens, or themes. |
 | [`conventions/selective-ddd.md`](./conventions/selective-ddd.md) | Designing or refactoring complex business slices — where to apply DDD and where to keep CRUD simple. |
 | [`conventions/debugging.md`](./conventions/debugging.md) | Diagnosing or fixing a bug — root cause, verifying real flows. |

@@ -91,6 +91,14 @@ the root `.env`:
 
 - `VITE_API_BASE_URL` — API base; leave empty in dev to use the proxy.
 - `VITE_PROXY_API_TARGET` — dev proxy target (default `http://localhost:4000`).
+- `VITE_SENTRY_DSN` — optional; enables error monitoring outside test mode.
+- `VITE_SENTRY_ENVIRONMENT` — optional environment tag (defaults to the Vite mode).
+- `VITE_SENTRY_RELEASE` — optional release tag (defaults to `restaurant-pos-frontend@<package version>`).
+- `SENTRY_AUTH_TOKEN` — optional build-time token for local source-map upload; it is never exposed to the browser.
+
+Without `VITE_SENTRY_DSN` the SDK is not initialized and makes no network calls,
+and it is never initialized under Vitest. Only unexpected render/global errors
+are reported; handled API `4xx` failures are not.
 
 Only `VITE_`-prefixed variables are exposed to client code.
 
@@ -136,6 +144,12 @@ Conventions:
   `/:userId/employee`, `/business/:businessId`. Guards live in
   `routes/AuthRouteGuards.tsx`. Pages are `React.lazy`-loaded behind a Suspense
   shell; unknown URLs render `NotFoundPage`.
+- **Internationalization:** user-facing copy goes through `react-i18next`, never
+  hardcoded. The singleton in `src/i18n/i18n.ts` is imported once from
+  `main.tsx`; locale JSON lives under `src/i18n/locales/<en|es>/<namespace>.json`
+  and is discovered with `import.meta.glob`. The chosen language persists under
+  `restaurant_pos_i18n_lng` and falls back to the browser language, then English.
+  See [i18n conventions](../docs/conventions/i18n.md).
 - **UI primitives** are shadcn/ui components generated with the `radix-nova`
   style (`components.json`), aliased to `@/components/ui`.
 
