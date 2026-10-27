@@ -70,7 +70,7 @@ Terms reused rather than redefined here: **User**, **sign-in email**, **password
 - **Signing in** is not **on duty**. Becoming on duty remains scanning the daily attendance QR under the time-control subject, from the person’s own signed-in Business session (or from a manager-layer user presenting the QR on **their** own signed-in session for others to scan on theirs).
 - **Schedule gating** and **entry window** rules for employee- and supervisor-layer Business access remain exactly as the users and schedules subjects define them. A second device does not bypass those rules.
 - **Effective layer** and **per-user capabilities** resolve for the signed-in User as the access-and-permissions subject defines. Peer sessions do not carry different layers for the same person at the same moment.
-- Tab **responsibility handover** and similar approvals require the receiving person to act in **their own** signed-in session — never by entering a PIN on someone else’s open session.
+- Tab **responsibility handover** and similar requests require **both** people to act in **their own** signed-in session: the receiver **requests** the tab, and the current responsible employee **accepts or declines** — never by entering a PIN on someone else’s open session.
 
 ### 3.5 Out of scope
 
@@ -111,6 +111,6 @@ No new capabilities. Catalogue powers apply to the signed-in User on the session
 | Sign in with email and password on a personal or venue staff device | The User who owns those credentials |
 | Hold concurrent sessions on several devices | That same User |
 | Act in Business on a session | The signed-in User, when mode-eligible and otherwise permitted |
-| Approve a tab handover or similar receiver action | The receiving User, in their own signed-in session |
+| Request, accept, or decline a tab handover | Each person in their own signed-in session (the receiver requests; the current owner accepts or declines) |
 | Take over a venue device after a colleague | Previous User signs out (or session ends); next User signs in with full email and password — no PIN switch |
 | Configure shared staff login, PIN, or quick-switch | Nobody — not in the product |

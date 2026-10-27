@@ -46,7 +46,7 @@ Phase 0 rows carry a **Done when** line because a rail is easy to sample on one 
 | Topic | Why it is not its own row |
 | --- | --- |
 | Allergens | No standalone product file. Stage 1 rules live inside [business-goods](product/business-goods.md), [orders](product/orders.md), and [order-flow](product/order-flow.md) (Phases 2–5). |
-| Cash drawers | Explicitly **out of product scope** (see [employee-cash-out](product/employee-cash-out.md)). Not something to build. |
+| Cash drawers | **Optional hardware on top of the wallet model** — no drawer money subject and no separate row. The **drawer kick**, **manual open**, and per-staff **closing receipt printer override** live in [printers-and-screens](product/printers-and-screens.md); they attach to row 3.2 (connector, override, bill payment/refund) and row 6.5 (manual open, cash movements, cash-out approval). |
 | Payment facilitator | **No product doc yet** — future / not stage 1. Stripe Connect is already covered via [payments-and-tax](product/payments-and-tax.md) + ADR-0005. |
 | Alcohol / age-assurance packs | **Deferred** by the product docs (ID-at-table, etc.). Stage 1 only has age floors in [privacy](product/privacy.md) / [order-flow](product/order-flow.md). |
 | Menu localisation | **Deferred**. Stage 1 is single authored language per field; UI languages are English/Spanish only. |
@@ -69,8 +69,11 @@ Engineering and cross-cutting rails every later subject assumes. Prefer ADRs and
 | [x] | 0.8 | Operational-reason catalogues as data | Closed lists for void, discount, refund, … | The closed catalogues exist as data, and every current void, discount, refund, or reopen path reads them. Flows that do not exist yet are built on their own rows. | [operational-reasons](product/operational-reasons.md) |
 | [x] | 0.9 | Feature-flag resolution stub | Default-on kill-switch resolution | Resolution returns default-on, and every existing feature check calls it. The console and flag-then-plan composition stay in phase 9. | [feature-flags](product/feature-flags.md) |
 | [ ] | 0.10 | Error monitoring | Unexpected-error reporting | Unexpected server and client errors are reported. Problem-details responses stay ordinary results. | [ADR-0007](adr/0007-sentry-error-monitoring.md) |
+| [ ] | 0.11 | Frontend styling substrate and migration | Tailwind v4 tokens, two-axis themes, shadcn customisation ladder, style CI guard; migrate the existing UI | No raw palette or arbitrary values outside `src/styles/**` (and arbitrary sizes in `components/ui/**`); allowlist empty; token completeness, contrast, and registry tests pass; `useTheme` + System preference + account-menu toggle work; `/dev/themes` renders default light and dark. | [styling](conventions/styling.md), [ADR-0010](adr/0010-tailwind-theme-architecture.md) |
 
-**Exit criteria:** a signed-in request can hit an authenticated API, soft-delete a record, send a test email, write a notification, push a live event, and record an audit entry — without any venue POS yet. A row is done when its **Done when** cell and the Spec gate are both true.
+**Exit criteria:** a signed-in request can hit an authenticated API, soft-delete a record, send a test email, write a notification, push a live event, and record an audit entry, and the frontend styling rail is in place — without any venue POS yet. A row is done when its **Done when** cell and the Spec gate are both true.
+
+**Frontend gate:** row 0.11 blocks every Phase 1 row that adds or changes frontend UI. New screens start on the token and theme system; they do not add to the migration backlog.
 
 ---
 
@@ -101,7 +104,7 @@ One venue can sell a served night: menu → open table → send orders → take 
 | done | Order | Slice | Docs to open |
 | --- | --- | --- | --- |
 | [ ] | 2.1 | Simple on-menu items: selling price, tax category, categories, add-ons; day-of 86 / sold out. **Defer** full recipe costing and supplier-derived allergens until Phase 5 | [business-goods](product/business-goods.md) |
-| [ ] | 2.2 | Served points (table/bar/…); open staff tab; one-open rule; QR can exist unused | [sales-points-and-instances](product/sales-points-and-instances.md) |
+| [ ] | 2.2 | Served points (table/bar/…); open staff tab; one-open rule; receiver-initiated tab handover with accept/decline notifications; QR can exist unused | [sales-points-and-instances](product/sales-points-and-instances.md), [notifications](product/notifications.md), [staff-sessions](product/staff-sessions.md) |
 | [ ] | 2.3 | Void, invitation, manual discount catalogues live | [operational-reasons](product/operational-reasons.md) |
 | [ ] | 2.4 | Draft → send batch, identification code, pricing, void / invitation / cancel, fulfilment slice statuses | [orders](product/orders.md), [operational-reasons](product/operational-reasons.md) |
 | [ ] | 2.5 | Business tax rates; **record** cash and card on staff tabs; tips on digital recorded methods; **no** Stripe Connect yet | [payments-and-tax](product/payments-and-tax.md) |
@@ -123,10 +126,10 @@ Make the same loop operable for floor staff and prep.
 | done | Order | Slice | Docs to open |
 | --- | --- | --- | --- |
 | [ ] | 3.1 | Manage editor + Service POS map (list/grid fallback) | [floor-plans](product/floor-plans.md), [user-navigation](product/user-navigation.md) (Floor plans / POS destinations) |
-| [ ] | 3.2 | Logical printers; prep-area screens; delivery screen shell; fulfilment gestures; print connector when paper is needed. Courier status/retry and handover scan stay on 4.9/4.10 | [printers-and-screens](product/printers-and-screens.md), [ADR-0008](adr/0008-print-connector-path.md) |
+| [ ] | 3.2 | Logical printers; prep-area screens; delivery screen shell; fulfilment gestures; print connector when paper is needed; optional **drawer kick** on bill payment/refund; per-staff **closing receipt printer override**. Courier status/retry and handover scan stay on 4.9/4.10 | [printers-and-screens](product/printers-and-screens.md), [ADR-0008](adr/0008-print-connector-path.md) |
 | [ ] | 3.3 | Held batches, don’t-make, allergen flags on prep — only what prep surfaces need | [orders](product/orders.md), [order-flow](product/order-flow.md), [printers-and-screens](product/printers-and-screens.md) |
 
-**Exit criteria:** staff can run service from a floor map; kitchen/bar can advance fulfilment without standing at the POS.
+**Exit criteria:** staff can run service from a floor map; kitchen/bar can advance fulfilment without standing at the POS; when a receipt printer with a drawer is bound, a bill payment or refund kicks it, and a missing drawer never blocks the payment.
 
 ---
 
@@ -178,12 +181,12 @@ Workforce planning and the cash the person holds while on duty.
 | [ ] | 6.2 | Full capability catalogue + assignment UI; supervisor layer day-to-day | [access-and-permissions](product/access-and-permissions.md), [employees](product/employees.md) |
 | [ ] | 6.3 | Daily schedule, overlap rules, copy/bulk, time-off, planned labour aggregates | [schedules](product/schedules.md) |
 | [ ] | 6.4 | Attendance QR, late lock, breaks, sign-out rules, worked hours, overtime alerts | [time-control](product/time-control.md), [schedules](product/schedules.md), [staff-sessions](product/staff-sessions.md) |
-| [ ] | 6.5 | Wallet, peer cash-in, house paid-in/out, cash-out approval, uncashed vs sign-out | [employee-cash-out](product/employee-cash-out.md), [time-control](product/time-control.md) (sign-out blocker) |
+| [ ] | 6.5 | Wallet, peer cash-in, house paid-in/out, cash-out approval, uncashed vs sign-out; manual drawer open; drawer kick on cash movements and cash-out approval | [employee-cash-out](product/employee-cash-out.md), [time-control](product/time-control.md) (sign-out blocker), [printers-and-screens](product/printers-and-screens.md) (drawer kick) |
 | [ ] | 6.6 | Pay periods, earnings from closed attendance, tip pool, CSV release email | [payroll](product/payroll.md), [emails](product/emails.md), [time-control](product/time-control.md) |
 | [ ] | 6.7 | Schedule-gated Business entry for employee and supervisor layers | [user-navigation](product/user-navigation.md), [access-and-permissions](product/access-and-permissions.md), [schedules](product/schedules.md), [time-control](product/time-control.md) |
 | [ ] | 6.8 | Staff cash collected / cash-out status hooks on the daily | [sales-reports](product/sales-reports.md), [employee-cash-out](product/employee-cash-out.md) |
 
-**Exit criteria:** scheduled staff can enter Business only in the entry window; scan in/out; cash-out before sign-out when required; accountant CSV can be released.
+**Exit criteria:** scheduled staff can enter Business only in the entry window; scan in/out; cash-out before sign-out when required; manual drawer open is audited; when a receipt printer with a drawer is bound, cash movements and cash-out approval kick it; accountant CSV can be released.
 
 ---
 
@@ -249,10 +252,10 @@ Phase 0 rails
     → users / privacy / staff-sessions / business / access / employees / navigation
         → business-goods → sales points → orders → payments (record) → order-flow (dine-in)
             → receipts → daily sales report
-                → floor plans / printers
+                → floor plans / printers (incl. drawer kick)
                     → Stripe + self channels + handover + delivery provider gate
                         → suppliers → supplier-goods → purchases → inventories → recipe goods
-                            → schedules → time-control → cash-out → payroll
+                            → schedules → time-control → cash-out (incl. drawer-kick events) → payroll
                                 → promotions / gift-cards / reservations / ratings
                                     → metrics → weekly/monthly reports
                                         → monetization → platform-billing → superadmin (incl. delivery catalogue)

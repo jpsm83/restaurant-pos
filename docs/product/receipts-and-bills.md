@@ -20,7 +20,7 @@ It deliberately does **not** cover:
 - the **bill as line aggregation** — composition of orders, voids, invitations, cancellations, transfers, and discounts belong to the **orders** subject. This subject presents that aggregation as a customer document.
 - **settlement** — payment methods, splits, partial payments, tips, over-tender, refunds, and tax calculation belong to the **payments-and-tax** subject. This subject records on the document what that settlement produced.
 - the **service journey** — when a tab enters Bill, settles, and closes belong to the **order-flow** subject. This subject owns the documents those moments issue.
-- **printing and routing** — which receipt printer, backup, print failure, and **print permission** belong to the **printers-and-screens** subject. That subject may arrange the **layout** of the fields this subject requires; it does not add or remove required content.
+- **printing and routing** — which receipt printer (including a staff member's **closing receipt printer override**), backup, print failure, and **print permission** belong to the **printers-and-screens** subject. That subject may arrange the **layout** of the fields this subject requires; it does not add or remove required content.
 - **notifications and emails** — delivering a receipt in-app or by email belongs to the **notifications** and **emails** subjects. Their payload must satisfy this subject's receipt content; they do not invent a thinner email-only set.
 - **prep tickets**, **kiosk handover tickets**, and the **customer pickup board** — printers-and-screens.
 - the **gift-card virtual card** email and card identity — the **gift-cards** subject. This subject owns the **deposit receipt** that proves payment for a paid card; gift-cards owns delivering the card itself.
@@ -133,7 +133,7 @@ When tender **surpasses** outstanding, the receipt shows amount **owed**, amount
 
 - Required content applies whether the document is **shown on screen**, **printed**, or **emailed**. There is no thinner content set for email.
 - The **Handover** block appears on a self-service receipt as follows: heading **“Handover QR”** with instruction **“Show this QR when we hand over your order.”** for QR self-ordering; the same heading with **“Show this QR at the counter to collect your order.”** for kiosk; and **“Order reference”** with **“We’ll hand your order to the courier. Keep this reference.”** for delivery. The review block is separate and always labelled **“Review us”**.
-- This subject owns **what** must appear; the printers-and-screens subject owns **how** those fields are laid out on paper (platform layout only — no venue template editor) and which receipt printer prints them. Layout must not omit or invent required content.
+- This subject owns **what** must appear; the printers-and-screens subject owns **how** those fields are laid out on paper (platform layout only — no venue template editor) and which receipt printer prints them, including the closer's **closing receipt printer override**. Layout must not omit or invent required content.
 - A venue that issues printed bills or receipts needs a usable receipt-printer path as printers-and-screens requires. The same required content is also available in-app and by email.
 
 ### 3.9 Retention

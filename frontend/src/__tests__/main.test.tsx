@@ -22,6 +22,13 @@ vi.mock("@/live/connection", () => ({
   syncLiveConnection: () => undefined,
 }));
 
+const sentryInit = vi.fn();
+vi.mock("@sentry/react", () => ({
+  init: (...args: unknown[]) => sentryInit(...args),
+  captureException: vi.fn(),
+  getClient: () => undefined,
+}));
+
 const mockRender = vi.fn();
 const mockCreateRoot = vi.fn<(container: unknown) => { render: typeof mockRender }>(
   () => ({
@@ -38,6 +45,7 @@ describe("main.tsx", () => {
     document.body.innerHTML = '<div id="root"></div>';
     mockCreateRoot.mockClear();
     mockRender.mockClear();
+    sentryInit.mockClear();
     loadPersistedAccessToken.mockReturnValue(null);
     refreshSession.mockResolvedValue({ ok: false, error: "no session" });
     Object.defineProperty(window, "matchMedia", {
@@ -63,5 +71,6 @@ describe("main.tsx", () => {
     await waitFor(() => expect(mockCreateRoot).toHaveBeenCalledTimes(1));
     expect(mockCreateRoot).toHaveBeenCalledWith(root);
     expect(mockRender).toHaveBeenCalledTimes(1);
+    expect(sentryInit).not.toHaveBeenCalled();
   });
 });

@@ -28,7 +28,7 @@ It deliberately does **not** cover:
 - the **daily sales report** — the sales-reports subject owns it; this subject owns the work-day anchor it opens on.
 - **notification, email, and ticket delivery** — their own subjects own delivery; this subject names the triggers.
 - **inventory effects** — the inventories subject owns what a sold order consumes.
-- **staff sessions** (one User per browser session on personal or venue-provided devices) and the exclusion of shared login / PIN / quick-switch identity — the staff-sessions subject. Tab handover approval runs on the receiver's own signed-in session.
+- **staff sessions** (one User per browser session on personal or venue-provided devices) and the exclusion of shared login / PIN / quick-switch identity — the staff-sessions subject. A tab handover runs on both people's own signed-in sessions: the receiver requests and the current owner accepts or declines.
 
 ---
 
@@ -121,7 +121,7 @@ Terms reused rather than redefined here: **Business**, **Order**, **Batch**, **I
 ### 3.8 Attribution and moving a tab
 
 - Every instance records its opener and role, its optional client name, and its guest count, which may be edited while the instance is open.
-- A staff tab has a **responsible employee**. Responsibility moves with the tab. The responsible employee may **hand the tab over** to another on-duty employee, who must **approve** the handover in **their own signed-in session** before it takes effect; after that the tab belongs to the receiver. There is no PIN or quick-switch for handover (staff-sessions subject).
+- A staff tab has a **responsible employee**. Responsibility moves with the tab. A handover is **receiver-initiated**: another on-duty employee **requests** the tab from its current responsible employee. The current owner is notified instantly and **accepts or declines** in their own signed-in session. A **decline is a no-op** and changes nothing; on acceptance the tab belongs to the receiver. Both people must be on duty at that Business. There is no PIN or quick-switch for handover (staff-sessions subject).
 - The **opening employee or admin and above** may move a tab that has **no orders**. Once a tab has orders, only its **responsible employee or admin and above** may move it, together with its orders. Moving a tab to an **empty served point** needs no approval and does not change responsibility — the tab is simply relocated.
 - Orders may be moved between staff tabs; only employee-opened tabs take part. The receiving tab's responsible employee approves, unless the mover is responsible for the destination; the orders subject owns the transfer and its approval rule.
 - A **Host cannot move** a tab; the Host's tool is the reserved hold.
@@ -172,7 +172,7 @@ Terms reused rather than redefined here: **Business**, **Order**, **Batch**, **I
 | Request the bill | An employee on the tab |
 | Move an empty tab | The **opening employee** or admin and above |
 | Move a tab with orders, together with its orders | The **responsible employee** or admin and above |
-| Hand a tab's responsibility to another on-duty employee | The responsible employee, with the receiving employee's approval |
+| Hand a tab's responsibility to another on-duty employee | The receiving employee requests; the current responsible employee accepts or declines |
 | Move orders between staff tabs | The tab's staff for draft orders, managers and above for sent orders (which move with their whole batch); the receiving tab approves unless moving to their own tabs |
 | Settle and close a tab | An employee on the tab |
 | Discard an empty instance | An employee on the tab |

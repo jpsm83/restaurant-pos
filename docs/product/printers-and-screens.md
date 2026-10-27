@@ -13,6 +13,7 @@ This subject owns **how work leaves the till and how stations see and control it
 - **routing** — which printer and which prep area or station receive a ticket, by category, subcategory, and sales point;
 - **backup printers** and what happens when a print fails;
 - **per-employee print permissions** for issuing and reprinting documents;
+- **cash drawers** — the optional physical latch wired to a **receipt printer**'s drawer-kick port, the per-staff **closing receipt printer override**, the **money events** that fire a **drawer kick**, and **manual open**;
 - **prep areas and stations** — configurable main screens and sub-screens for kitchen, bar, and any other prep the venue defines;
 - the **control screens** — kitchen, bar, delivery/runner, and the **customer pickup board** — their gestures, queues, and history; and
 - the **handover scan** surface that reads a self-service **handover QR** or accepts its identification code and advances the selected or whole batch to **Delivered**; and
@@ -26,6 +27,7 @@ It deliberately does **not** cover:
 - **billing and payment** — settlement belongs to the payments-and-tax subject.
 - **customer bill and receipt content, numbering, and reprint/replacement identity** — the **receipts-and-bills** subject owns document kinds, required fields, bill and receipt numbers, and when a reprint or replacement applies. This subject **prints** those documents on the sales point's receipt printer, applies the **platform layout** of those required fields, and gates paper issue with **print permission**; it does not invent or omit required content. There is **no venue layout editor** and no optional marketing footer.
 - **cash-out resume and cash-movement receipt content and numbering** — the **employee cash-out** subject owns those documents and when a cash movement is complete. This subject **prints** them on the receipt path (primary then **backup printer**) and raises print-failure when neither can print; movement completion still follows employee cash-out rules when paper fails after backup.
+- the **employee cash session, expected business cash, cash-out, and cash movements** — the **employee cash-out** subject owns those. A cash drawer is hardware and never holds a balance, a wallet, or an obligation; this subject only opens it on the **money events** that subject defines as money movements.
 - the **daily sales report close** — the sales-reports subject owns closing the day; this subject states the fulfilment sweep that close triggers.
 - **notifications and emails** — their subjects own delivery; this subject names the print-failure condition that notifies managers.
 - **courier provider calls and delivery-integration status** — the **delivery-integrations** subject owns the provider catalogue, connection, courier request, handover call, cancellation, retries, and no-handover reconciliation. This subject displays the provider sync state and exposes the retry action on the delivery screen.
@@ -39,6 +41,8 @@ It deliberately does **not** cover:
 ### Entities
 
 - **Printer** — a **logical** output device the venue configures: a stable name, what it is for (receipt and/or prep), its routing participation, its optional **backup printer**, and its **binding** to physical hardware. The configuration survives hardware changes.
+- **Cash drawer** — a physical latch wired to a **receipt printer**'s drawer-kick (DK) port. It has no network or software identity; Project Imperium never discovers or identifies it. A **drawer kick** is a pulse sent to the bound printer. A drawer is **not** a money object and has no balance, cash session, or obligation.
+- **Closing receipt printer override** — an optional per-staff logical **receipt printer** used for that staff member's closure documents and **drawer kick** instead of the bill's sales-point receipt printer. Managers and above set it.
 - **Print connector** — Project Imperium's small always-on helper that runs on a local internet device at the venue. That device is **infrastructure left plugged in** (for example a mini computer or single-board computer) — not a staff workstation with screen and keyboard for daily use. After install it normally runs **headless**. It is the only path from the cloud product to ordinary venue printers: it discovers the physical printers that device can reach on USB or the local network, reports them to Project Imperium, receives print work from Imperium, and drives those printers. Staff phones, tablets, and screens never talk to printers directly. A venue may run one or many connectors; one connector may expose many physical printers.
 - **Binding** — the link from a logical **printer** to one physical printer exposed by a **print connector** (or by an optional manufacturer cloud-print path treated as a physical target). Rebinding changes hardware without changing routing or permissions.
 - **Connector pairing** — the one-time step that attaches a running print connector to a **Business** so Imperium trusts it. A manager starts pairing in Project Imperium and completes it on the connector device (for example with a short code); afterwards discovery, print work, and success or failure reports flow through that link.
@@ -64,6 +68,9 @@ It deliberately does **not** cover:
 - **Display mode** — a locked presentation of the customer pickup board on a device the staff have signed into, safe to leave facing guests (codes and status only — no prices, names, or payment detail).
 - **Force-ready** — a main-screen choice to mark every open station line on a ticket done and set the area slice **Ready** when sub-screens are still incomplete.
 - **Print permission** — a per-employee capability that gates who may issue or reprint customer and prep prints.
+- **Drawer kick** — the best-effort pulse command sent to a **receipt printer**'s DK port on a **money event** or **manual open**. It is not a document and never prints.
+- **Money event** — a closed list of cash-affecting acts that fire a drawer kick (§3.12).
+- **Manual open** — an explicit, audited request to open a bound drawer that is not a sale or other money event.
 
 Terms reused rather than redefined here: **Business**, **Batch**, **Identification code**, **Handover pass**, **Handover QR**, **Fulfilment slice**, **Fulfilment status** (**Sent**, **Preparing**, **Ready**, **Delivered**), **Held batch**, **Don't make**, **guest allergen flags**, **Sales point**, **Menu category**, **Menu subcategory**, **Business good**, **Deadline**, **courier request**, **courier handover**, **delivery method**, **Own delivery**, **managers on duty**, **managers and above**, **soft delete**, and **daily sales report**.
 
@@ -143,10 +150,12 @@ flowchart LR
 - Each logical printer may name **one backup printer**. When the primary is unavailable (marked offline or detected failed), output goes to the backup automatically. Screens have no backup device.
 - If the primary fails and there is no usable backup, that print is **blocked** with a clear error — it is never silently skipped. Prep screen flow and order taking continue. Staff retry or a manager rebinds or changes routing.
 - A failed print **notifies the managers on duty** (or all manager-layer users for the business if none are on duty). Detecting the failure belongs to this subject; delivering the alert belongs to the notifications subject.
+- A **drawer kick** follows the same logical printer and backup, but its failure is **best-effort** and never blocks the money event (§3.12).
 
 ### 3.5 What prints
 
 - This subject prints **prep tickets** (when a route names a prep printer), **customer receipts**, **bills**, and **kiosk handover tickets**.
+- A **drawer kick** is not a document and is never queued by report, prep, kiosk, or reprint work; it fires only on the money events in §3.12.
 - A **kiosk handover ticket** carries the **handover QR** and identification code, in the same **Handover** block as the receipt. A **delivery receipt** carries the **order reference** only and no handover QR. The **review QR** stays in its separate block.
 - Prep paper is optional per route; the control screens always show the work. Customer documents always require a usable receipt-printer path when paper is requested.
 - Customer bill and receipt **content and numbering** come from the receipts-and-bills subject. This subject owns **paper presentation only**: a fixed **platform layout** of the required fields on the sales point's receipt printer. Venues do **not** design templates, reorder fields, or add optional marketing content. A paper **reprint** of an unchanged bill or receipt keeps that subject's number and reprint mark; layout still follows current routing and backup rules and is audited. Screens and email show the **same required content** (receipts-and-bills); screens re-show work from **history** rather than reprinting.
@@ -189,6 +198,24 @@ flowchart LR
 
 - A logical printer may be **deactivated** or removed from routing under the platform's soft-delete convention; print history remains. The venue cannot retire its **only** receipt printer while it still issues receipts or bills — another receipt printer must be assigned first. Backup links are cleared or reassigned on retire.
 
+### 3.12 Cash drawers and the drawer kick
+
+- **Hardware truth.** A cash drawer is a dumb electromechanical latch wired to a receipt printer's **drawer-kick (DK) port** (some printers expose two ports). It has no network or USB identity the cloud can see; Project Imperium does not discover it. The only software handle is the **receipt printer** the connector already drives. Smart cash recyclers with their own API are a future hardware class and out of scope here.
+- **No drawer entity and no binding.** There is no separate drawer record and no staff-to-drawer binding. The drawer is whatever is physically plugged into the receipt printer that serves the closure. A printer with nothing on its DK port is a harmless no-op.
+- **Closing receipt printer override.** A staff member may have one optional **closing receipt printer** set by managers and above. When set, that staff member's closure documents (bill and receipt) and drawer kick use it instead of the bill's sales-point receipt printer. When unset, the bill's sales-point receipt printer is used. This lets a cashier closing a transferred tab print and open at the counter rather than at the table. The logical printer's **backup printer** still applies.
+- **Kick target.** The kick targets the **closing receipt printer** of the staff member whose wallet the cash enters or leaves: the staff member who records a bill payment or refund (the closer), the receiver for a peer cash-in, the affected employee for a house paid-in/out, and the employee being cashed out for a cash-out. If that staff member has no override, a bill event falls back to the bill's sales-point receipt printer; a non-bill event has no venue-wide default and the kick is a no-op. Manual open uses the acting staff member's override, or the receipt printer that serves the current closure.
+- **Money events that kick.** A drawer kick is enqueued on:
+  - each **payment** recorded on a bill, any method (cash, card, crypto, gift card, other), including each partial payment;
+  - each **refund** recorded, any method;
+  - each **peer cash-in**, **house paid-in**, **house paid-out**, and their **reverses**;
+  - **cash-out approval**;
+  - **manual open**.
+- **Never kicks.** Reports, prep tickets, kiosk tickets, reprints, and configuration or document reprints; a **pre-payment bill** print (no money moved yet); an **order-line void without money**, a **manual discount**, or an **invitation**; a **gift-card grant** or **forfeiture**; and any settings or report download. A void that reverses a recorded payment is a **refund** and kicks as such.
+- **Best-effort, never gating.** A drawer kick is fire-and-forget. It can ride on the receipt print job or be sent as a standalone kick when no receipt prints (paperless). A missing binding, offline printer, missing connector, or a printer with no drawer is a **no-op**: the money event still commits, and there is **no** "drawer did not open" gate. Document print failure follows §3.4; the kick does not.
+- **No open/closed sensor in v1.** The product does not claim to know whether the drawer opened. Optional printer-specific sensor support is a later addition.
+- **Manual open.** An on-duty employee may open a bound drawer manually; the act is **audited** (actor, time, printer) and is not a sale. Manual open does not use an operational reason catalogue.
+- **Staff device is not the bridge.** A tablet or phone browser never reaches the drawer; the **print connector** sends the pulse to the printer. A venue that uses one **counter receipt printer** gets the drawer behaviour everywhere that printer serves bills; a mobile-only staff member with no receipt printer simply has no drawer.
+
 ---
 
 ## 4. Roles and entitlements
@@ -198,9 +225,9 @@ flowchart LR
 | Layer | Printer and screen powers |
 | --- | --- |
 | **Customer** | Sees own order readiness on customer surfaces and the public-facing pickup board codes; never configures devices or routing. |
-| **Employee** | Opens the control screens their job role or capability allows; runs prep, delivery, handover-scan, and history gestures on those screens; retries a failed courier request or handover on the delivery screen; prints and reprints only with **print permission**. |
-| **Supervisor** | Opens any Service control screen by default (prep, delivery, pickup); scans a handover pass and retries a failed courier call; prints and reprints with print permission by layer default. Does not configure connectors, printers, routing, or grant print permissions; does not override a missing handover pass. |
-| **Manager** | Everything a supervisor can do, plus configuring connectors, logical printers, bindings, backups, prep areas, stations, routing, print permissions, and opening any control screen (including the pickup board in display mode). May override a missing handover pass with a recorded override. Receives print-failure and delivery-integration-failure alerts when on duty. |
+| **Employee** | Opens the control screens their job role or capability allows; runs prep, delivery, handover-scan, and history gestures on those screens; retries a failed courier request or handover on the delivery screen; prints and reprints only with **print permission**; may open a bound cash drawer manually (audited). |
+| **Supervisor** | Opens any Service control screen by default (prep, delivery, pickup); scans a handover pass and retries a failed courier call; prints and reprints with print permission by layer default; may open a bound cash drawer manually (audited). Does not configure connectors, printers, routing, or grant print permissions; does not override a missing handover pass. |
+| **Manager** | Everything a supervisor can do, plus configuring connectors, logical printers, bindings, backups, prep areas, stations, routing, print permissions, and a staff member's **closing receipt printer override**; and opening any control screen (including the pickup board in display mode). May override a missing handover pass with a recorded override. Receives print-failure and delivery-integration-failure alerts when on duty. |
 | **Admin/owner** | Everything a manager can do, with full venue control. |
 
 ### Who can do what
@@ -209,6 +236,8 @@ flowchart LR
 | --- | --- |
 | Install and pair print connectors; create, bind, rebind, and retire logical printers; set backups | Managers and above |
 | Define prep areas, stations, and routing rules; assign sales-point receipt printers | Managers and above |
+| Set a staff member's closing receipt printer override | Managers and above |
+| Open a bound cash drawer manually | Any on-duty employee; audited |
 | Grant per-employee print permissions | Managers and above |
 | Issue or reprint receipts, bills, kiosk tickets, and prep tickets | Users with **print permission** (supervisor layer and above always; employees when granted) |
 | Open kitchen / bar (or other area) main and sub-screens | Job roles for that area; supervisors; managers and above; employees with the granting capability |

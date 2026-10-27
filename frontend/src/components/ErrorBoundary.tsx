@@ -2,6 +2,7 @@ import { Component, type ErrorInfo, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { TriangleAlert } from "lucide-react";
 import i18n from "@/i18n/i18n";
+import { reportRenderError } from "@/monitoring/errorMonitoring";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -25,6 +26,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
     console.error("ErrorBoundary", error, info.componentStack);
+    reportRenderError(error, info.componentStack);
   }
 
   render() {

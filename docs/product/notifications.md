@@ -93,6 +93,8 @@ Terms reused from the product overview's core vocabulary rather than defined her
 | Business profile updated | The venue's managers and above | In-app + email | Info | Once |
 | Overtime alert | The venue's managers on duty; if none are on duty, all manager-layer users for the business | In-app | Warning | Every 5 minutes until the employee signs off or a manager mutes that session's overtime alert |
 | Sign-out request | The venue's managers on duty | In-app | Info | Once per request |
+| Tab handover requested | The tab's current responsible employee | In-app | Info | Once per request |
+| Tab handover decided | The requesting employee | In-app | Info | Once per decision |
 | Print failure | The venue's managers on duty; if none are on duty, all manager-layer users for the business | In-app | Warning | Once per failed print attempt |
 | Cash movement recorded | Peer cash-in: paying and receiving employees. House paid-in/out or reverse: affected employee and the supervisor+ who recorded it | In-app | Info | Once per completed movement |
 | Schedule changed | Each employee whose schedule entries were added, changed, or removed in the manager's editing session | In-app | Info | Once per employee when the manager leaves the schedules main page (batched across that employee's entries) |
@@ -113,6 +115,7 @@ Terms reused from the product overview's core vocabulary rather than defined her
 - The **negative-stock alert** fires when a good's stock on hand falls **below zero**, as a management-error signal that purchases or counts are missing; detecting that condition belongs to the inventories subject.
 - The **overtime alert** concerns any employee other than an admin or owner who is still on duty past their scheduled end, and repeats until they sign off or a manager mutes that open session's overtime alert; detecting that condition and the mute belong to the time-control subject. Recipients are the venue's **managers on duty**; if none are on duty, the alert **falls back** to all manager-layer users at that venue (same pattern as print-failure). The schedules subject keeps a manager-layer shift on every day that plans work so someone is always in charge on the plan.
 - The **sign-out request** notifies managers on duty when an employee asks to end duty; completing sign-out belongs to the time-control subject.
+- The **tab handover requested** notification fires when an on-duty employee asks for another employee's open staff tab; the current responsible employee accepts or declines. The **tab handover decided** notification tells the requester the outcome. Both are instant; raising them belongs to the sales-points-and-instances subject. A declined request changes nothing.
 - A **report-ready** notification fires when the weekly or monthly report for the period is ready for review; detecting readiness belongs to the business-reports subject.
 - The **business-profile-updated** notification fires when a change to the business profile actually persists, and reports which fields changed; detecting the change belongs to the business subject.
 - The **print-failure** notification fires when a print cannot be completed and no usable backup takes the job; detecting that condition belongs to the printers-and-screens subject.
