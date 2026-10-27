@@ -23,7 +23,7 @@ export default function BusinessDashboardPage() {
 
   return (
     <main className="min-h-0 flex-1 p-6">
-      <h1 className="mb-4 text-xl font-semibold text-neutral-900">{t("dashboard.title")}</h1>
+      <h1 className="mb-4 text-xl font-semibold text-foreground">{t("dashboard.title")}</h1>
       <Card className="mx-auto max-w-lg">
         <CardHeader>
           <CardTitle>{t("dashboard.tenantCardTitle")}</CardTitle>
@@ -31,7 +31,7 @@ export default function BusinessDashboardPage() {
             {email ? (
               <>
                 {t("dashboard.signedInPrefix")}{" "}
-                <span className="font-medium text-neutral-800">{email}</span>
+                <span className="font-medium text-foreground">{email}</span>
               </>
             ) : (
               t("dashboard.sessionUnavailable")
@@ -39,7 +39,7 @@ export default function BusinessDashboardPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-neutral-600">{t("dashboard.accountMenuHint")}</p>
+          <p className="text-sm text-muted-foreground">{t("dashboard.accountMenuHint")}</p>
         </CardContent>
       </Card>
       <div className="mx-auto mt-6 w-full max-w-4xl">

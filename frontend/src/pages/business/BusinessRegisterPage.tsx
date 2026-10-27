@@ -24,8 +24,6 @@ import { currenctyEnums, subscriptionEnums } from "restaurant-pos-packages/enums
 import { isValidPassword } from "restaurant-pos-packages/utils/passwordPolicy";
 import emailRegex from "restaurant-pos-packages/utils/emailRegex";
 
-const selectClassName = "flex h-10 w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 disabled:cursor-not-allowed disabled:opacity-50";
-
 const subscriptionTuple = subscriptionEnums as [string, ...string[]];
 const currencyTuple = currenctyEnums as [string, ...string[]];
 
@@ -179,7 +177,7 @@ export default function BusinessRegisterPage() {
   };
 
   return (
-    <main className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-neutral-100 px-4 py-8 sm:px-6 lg:px-8">
+    <main className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-surface px-4 py-8 sm:px-6 lg:px-8">
       <Card className="w-full">
         <CardHeader>
           <CardTitle>{t("businessRegister.title")}</CardTitle>
@@ -193,7 +191,7 @@ export default function BusinessRegisterPage() {
             {submitError ? <Alert>{submitError}</Alert> : null}
 
             <section className="space-y-3">
-              <h2 className="text-sm font-semibold text-neutral-900">
+              <h2 className="text-sm font-semibold text-foreground">
                 {t("businessRegister.sections.business")}
               </h2>
               <div className="grid gap-4 sm:grid-cols-2">
@@ -268,7 +266,7 @@ export default function BusinessRegisterPage() {
                       >
                         <SelectTrigger
                           id="br-sub"
-                          className={selectClassName}
+                          className="w-full"
                           aria-invalid={errors.subscription ? true : undefined}
                         >
                           <SelectValue
@@ -299,7 +297,7 @@ export default function BusinessRegisterPage() {
                       >
                         <SelectTrigger
                           id="br-currency"
-                          className={selectClassName}
+                          className="w-full"
                           aria-invalid={
                             errors.currencyTrade ? true : undefined
                           }
@@ -324,7 +322,7 @@ export default function BusinessRegisterPage() {
             </section>
 
             <section className="space-y-3">
-              <h2 className="text-sm font-semibold text-neutral-900">
+              <h2 className="text-sm font-semibold text-foreground">
                 {t("businessRegister.sections.password")}
               </h2>
               <div className="grid gap-4 sm:grid-cols-2">
@@ -356,7 +354,7 @@ export default function BusinessRegisterPage() {
             </section>
 
             <section className="space-y-3">
-              <h2 className="text-sm font-semibold text-neutral-900">
+              <h2 className="text-sm font-semibold text-foreground">
                 {t("businessRegister.sections.address")}
               </h2>
               <div className="grid gap-4 sm:grid-cols-2">
