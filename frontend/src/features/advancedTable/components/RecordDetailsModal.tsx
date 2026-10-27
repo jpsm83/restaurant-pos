@@ -297,25 +297,25 @@ export const RecordDetailsModal: React.FC<RecordDetailsModalProps> = ({
             <div className="flex items-center gap-2">
               <Button
                 type="button"
-                aria-label={t("advancedTable.modal.previousRecord", { defaultValue: "Previous record" })}
+                aria-label={t("advancedTable.modal.previousRecord")}
                 variant="outline"
                 size="icon"
                 className="h-8 w-8"
                 onClick={onPrevious}
                 disabled={!canGoPrevious}
-                title={t("advancedTable.modal.previousRecord", { defaultValue: "Previous record" })}
+                title={t("advancedTable.modal.previousRecord")}
               >
                 ▲
               </Button>
               <Button
                 type="button"
-                aria-label={t("advancedTable.modal.nextRecord", { defaultValue: "Next record" })}
+                aria-label={t("advancedTable.modal.nextRecord")}
                 variant="outline"
                 size="icon"
                 className="h-8 w-8"
                 onClick={onNext}
                 disabled={!canGoNext}
-                title={t("advancedTable.modal.nextRecord", { defaultValue: "Next record" })}
+                title={t("advancedTable.modal.nextRecord")}
               >
                 ▼
               </Button>
@@ -323,12 +323,12 @@ export const RecordDetailsModal: React.FC<RecordDetailsModalProps> = ({
               <Button
                 ref={closeButtonRef}
                 type="button"
-                aria-label={t("advancedTable.modal.closeDetailsModal", { defaultValue: "Close details modal" })}
+                aria-label={t("advancedTable.modal.closeDetailsModal")}
                 variant="outline"
                 size="icon"
                 className="h-8 w-8"
                 onClick={onClose}
-                title={t("advancedTable.modal.close", { defaultValue: "Close" })}
+                title={t("advancedTable.modal.close")}
               >
                 ✕
               </Button>
@@ -338,8 +338,8 @@ export const RecordDetailsModal: React.FC<RecordDetailsModalProps> = ({
           <div
             className="absolute -right-0.75 top-2 bottom-2 w-2 cursor-ew-resize"
             onMouseDown={(event) => handleResizeMouseDown(event, "right")}
-            aria-label={t("advancedTable.modal.resizeHandle", { defaultValue: "Resize modal" })}
-            title={t("advancedTable.modal.resizeHandle", { defaultValue: "Resize modal" })}
+            aria-label={t("advancedTable.modal.resizeHandle")}
+            title={t("advancedTable.modal.resizeHandle")}
           />
           <div
             className="absolute -left-0.75 top-2 bottom-2 w-2 cursor-ew-resize"

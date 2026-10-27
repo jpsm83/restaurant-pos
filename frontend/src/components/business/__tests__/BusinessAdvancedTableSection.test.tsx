@@ -10,6 +10,17 @@ vi.mock("@/features/advancedTable/components/StandaloneAdvancedTable", () => ({
   ),
 }));
 
+vi.mock("@/services/business/businessService", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/services/business/businessService")>();
+  return {
+    ...actual,
+    useBusinessProfileQuery: () => ({
+      data: { currencyTrade: "USD" },
+    }),
+  };
+});
+
 function renderSection(
   props: { businessId?: string; businessEmail?: string } = {},
 ) {

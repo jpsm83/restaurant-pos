@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import {
   Card,
   CardContent,
@@ -15,6 +16,8 @@ import {
   buildTablePersistenceKeyPrefix,
   createPersistenceAdapter,
 } from "@/features/advancedTable/services/persistenceService";
+import { useFormatting } from "@/hooks/useFormatting";
+import { useBusinessProfileQuery } from "@/services/business/businessService";
 import { queryKeys } from "@/services/queryKeys";
 import {
   getQuickRange,
@@ -34,11 +37,24 @@ interface MockBusinessRow {
   ticketNumber: string;
   tableLabel: string;
   status: string;
-  total: string;
+  total: number;
   createdAt: string;
 }
 
 const MOCK_BASE_TIME_MS = Date.now();
+
+const BUSINESS_STATUS_OPTIONS = [
+  { value: "Open", labelKey: "advancedTable.status.open" },
+  { value: "In prep", labelKey: "advancedTable.status.inPrep" },
+  { value: "Paid", labelKey: "advancedTable.status.paid" },
+] as const;
+
+function getBusinessStatusLabel(status: string, t: TFunction): string {
+  const option = BUSINESS_STATUS_OPTIONS.find(
+    (candidate) => candidate.value === status,
+  );
+  return option ? t(option.labelKey) : status;
+}
 
 function getRowValue(row: MockBusinessRow, key: string): string {
   return String((row as unknown as Record<string, unknown>)[key] ?? "");
@@ -52,20 +68,6 @@ function toLocalDateTimeString(date: Date): string {
   const minutes = String(date.getMinutes()).padStart(2, "0");
   const seconds = String(date.getSeconds()).padStart(2, "0");
   return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
-}
-
-function formatCreatedAtForDisplay(value: string): string {
-  const parsed = parseDateTime(value);
-  if (!parsed) return value;
-
-  const date = parsed.date;
-  const day = String(date.getDate()).padStart(2, "0");
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const year = date.getFullYear();
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  const seconds = String(date.getSeconds()).padStart(2, "0");
-  return `${day}-${month}-${year} ${hours}:${minutes}:${seconds}`;
 }
 
 function seededNumber(seed: string): number {
@@ -87,6 +89,9 @@ export default function BusinessAdvancedTableSection({
   enableDateToolbarFilter = true,
 }: BusinessAdvancedTableSectionProps) {
   const { t } = useTranslation("business");
+  const { formatCurrency, formatDateTime, formatNumber } = useFormatting();
+  const profileQuery = useBusinessProfileQuery(businessId);
+  const currencyTrade = profileQuery.data?.currencyTrade;
   const [searchParams, setSearchParams] = useSearchParams();
   const startDate = searchParams.get("start-date") ?? "";
   const endDate = searchParams.get("end-date") ?? "";
@@ -108,53 +113,57 @@ export default function BusinessAdvancedTableSection({
     return [
       {
         id: "ticketNumber",
-        header: t("advancedTable.fields.ticket", { defaultValue: "Ticket" }),
+        header: t("advancedTable.fields.ticket"),
         accessorKey: "ticketNumber",
         enableColumnFilter: true,
         enableSorting: true,
         enableHiding: true,
-        meta: { label: t("advancedTable.fields.ticket", { defaultValue: "Ticket" }) },
+        meta: { label: t("advancedTable.fields.ticket") },
       },
       {
         id: "tableLabel",
-        header: t("advancedTable.fields.table", { defaultValue: "Table" }),
+        header: t("advancedTable.fields.table"),
         accessorKey: "tableLabel",
         enableColumnFilter: true,
         enableSorting: true,
         enableHiding: true,
-        meta: { label: t("advancedTable.fields.table", { defaultValue: "Table" }) },
+        meta: { label: t("advancedTable.fields.table") },
       },
       {
         id: "status",
-        header: t("advancedTable.fields.status", { defaultValue: "Status" }),
+        header: t("advancedTable.fields.status"),
         accessorKey: "status",
         enableColumnFilter: true,
         enableSorting: true,
         enableHiding: true,
-        meta: { label: t("advancedTable.fields.status", { defaultValue: "Status" }) },
+        cell: ({ row }: { row: { original: MockBusinessRow } }) =>
+          getBusinessStatusLabel(row.original.status, t),
+        meta: { label: t("advancedTable.fields.status") },
       },
       {
         id: "total",
-        header: t("advancedTable.fields.total", { defaultValue: "Total" }),
+        header: t("advancedTable.fields.total"),
         accessorKey: "total",
         enableColumnFilter: true,
         enableSorting: true,
         enableHiding: true,
-        meta: { label: t("advancedTable.fields.total", { defaultValue: "Total" }) },
+        cell: ({ row }: { row: { original: MockBusinessRow } }) =>
+          formatCurrency(row.original.total, currencyTrade),
+        meta: { label: t("advancedTable.fields.total") },
       },
       {
         id: "createdAt",
-        header: t("advancedTable.fields.createdAt", { defaultValue: "Created at" }),
-        accessorFn: (row) => formatCreatedAtForDisplay(row.createdAt),
+        header: t("advancedTable.fields.createdAt"),
+        accessorFn: (row) => formatDateTime(row.createdAt),
         enableColumnFilter: true,
         enableSorting: true,
         enableHiding: true,
         cell: ({ row }: { row: { original: MockBusinessRow } }) =>
-          formatCreatedAtForDisplay(row.original.createdAt),
-        meta: { label: t("advancedTable.fields.createdAt", { defaultValue: "Created at" }) },
+          formatDateTime(row.original.createdAt),
+        meta: { label: t("advancedTable.fields.createdAt") },
       },
     ] as TableColumnConfig<MockBusinessRow>[];
-  }, [t]);
+  }, [currencyTrade, formatCurrency, formatDateTime, t]);
 
   const mockRows = useMemo<MockBusinessRow[]>(
     () =>
@@ -173,7 +182,7 @@ export default function BusinessAdvancedTableSection({
           ticketNumber: `T-${String(ticket).padStart(4, "0")}`,
           tableLabel: `Table ${((ticket - 1) % 12) + 1}`,
           status: ticket % 3 === 0 ? "Open" : ticket % 2 === 0 ? "In prep" : "Paid",
-          total: `$${(10 + (ticket % 9) * 3).toFixed(2)}`,
+          total: 10 + (ticket % 9) * 3,
           createdAt: toLocalDateTimeString(createdAtDate),
         };
       }),
@@ -185,11 +194,10 @@ export default function BusinessAdvancedTableSection({
       {
         columnId: "status",
         filterType: "dropdown",
-        options: [
-          { value: "Open", label: t("advancedTable.status.open", { defaultValue: "Open" }) },
-          { value: "In prep", label: t("advancedTable.status.inPrep", { defaultValue: "In prep" }) },
-          { value: "Paid", label: t("advancedTable.status.paid", { defaultValue: "Paid" }) },
-        ],
+        options: BUSINESS_STATUS_OPTIONS.map((option) => ({
+          value: option.value,
+          label: t(option.labelKey),
+        })),
       },
       { columnId: "ticketNumber", filterType: "input", realtime: true },
       { columnId: "tableLabel", filterType: "input", realtime: true },
@@ -235,7 +243,13 @@ export default function BusinessAdvancedTableSection({
           }
           if (raw == null || String(raw).trim() === "") continue;
           const needle = String(raw).toLowerCase();
-          rows = rows.filter((row) => getRowValue(row, filterId).toLowerCase().includes(needle));
+          rows = rows.filter((row) => {
+            const searchable =
+              filterId === "total"
+                ? `${getRowValue(row, filterId)} ${formatCurrency(row.total, currencyTrade)}`
+                : getRowValue(row, filterId);
+            return searchable.toLowerCase().includes(needle);
+          });
         }
 
         const startDateFilterValue =
@@ -273,7 +287,7 @@ export default function BusinessAdvancedTableSection({
         return pagedRows;
       },
     }),
-    [businessId, mockRows]
+    [businessId, currencyTrade, formatCurrency, mockRows]
   );
 
   const exportStoreColumns = useMemo(
@@ -303,27 +317,28 @@ export default function BusinessAdvancedTableSection({
         <div className="space-y-2 p-4 text-sm">
           <p>
             {t("advancedTable.modal.recordCounter", {
-              defaultValue: "Record {{index}} of {{total}}",
-              index: context.index + 1,
-              total: context.total,
+              index: formatNumber(context.index + 1),
+              total: formatNumber(context.total),
             })}
           </p>
           <p>
-            {t("advancedTable.fields.ticket", { defaultValue: "Ticket" })}: {record.ticketNumber}
+            {t("advancedTable.fields.ticket")}: {record.ticketNumber}
           </p>
           <p>
-            {t("advancedTable.fields.table", { defaultValue: "Table" })}: {record.tableLabel}
+            {t("advancedTable.fields.table")}: {record.tableLabel}
           </p>
           <p>
-            {t("advancedTable.fields.status", { defaultValue: "Status" })}: {record.status}
+            {t("advancedTable.fields.status")}:{" "}
+            {getBusinessStatusLabel(record.status, t)}
           </p>
           <p>
-            {t("advancedTable.fields.total", { defaultValue: "Total" })}: {record.total}
+            {t("advancedTable.fields.total")}:{" "}
+            {formatCurrency(record.total, currencyTrade)}
           </p>
         </div>
       ),
     }),
-    [t]
+    [currencyTrade, formatCurrency, formatNumber, t]
   );
 
   const defaultColumnOrder = useMemo(() => columns.map((column) => column.id), [columns]);
@@ -332,22 +347,20 @@ export default function BusinessAdvancedTableSection({
     <Card className="w-full">
       <CardHeader>
         <CardTitle>
-          {t("advancedTable.section.title", { defaultValue: "Advanced table integration target" })}
+          {t("advancedTable.section.title")}
         </CardTitle>
         <CardDescription>
-          {t("advancedTable.section.description", {
-            defaultValue: "First production wiring will use this section as the integration boundary.",
-          })}
+          {t("advancedTable.section.description")}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-1 text-sm text-muted-foreground">
         <p>
-          {t("advancedTable.section.businessId", { defaultValue: "Business ID" })}:{" "}
-          {businessId ?? t("advancedTable.section.unavailable", { defaultValue: "Unavailable" })}
+          {t("advancedTable.section.businessId")}:{" "}
+          {businessId ?? t("advancedTable.section.unavailable")}
         </p>
         <p>
-          {t("advancedTable.section.businessEmail", { defaultValue: "Business Email" })}:{" "}
-          {businessEmail ?? t("advancedTable.section.unavailable", { defaultValue: "Unavailable" })}
+          {t("advancedTable.section.businessEmail")}:{" "}
+          {businessEmail ?? t("advancedTable.section.unavailable")}
         </p>
         <div className="mt-4 h-130 rounded border p-3">
           <StandaloneAdvancedTable
@@ -374,7 +387,7 @@ export default function BusinessAdvancedTableSection({
                       return params;
                     });
                   }}
-                  searchLabel={t("advancedTable.section.filters", { defaultValue: "Filters" })}
+                  searchLabel={t("advancedTable.section.filters")}
                   showExportButton={false}
                 />
               ) : undefined
@@ -396,12 +409,8 @@ export default function BusinessAdvancedTableSection({
             }}
             defaultColumnOrder={defaultColumnOrder}
             initialColumnOrder={defaultColumnOrder}
-            emptyStateMessage={t("advancedTable.states.emptyMessage", {
-              defaultValue: "No business records available.",
-            })}
-            emptyStateSubMessage={t("advancedTable.states.emptySubMessage", {
-              defaultValue: "Try changing filters or check back later.",
-            })}
+            emptyStateMessage={t("advancedTable.states.emptyMessage")}
+            emptyStateSubMessage={t("advancedTable.states.emptySubMessage")}
           />
         </div>
       </CardContent>

@@ -1,35 +1,36 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { renderWithI18n } from "@/test/i18nTestUtils";
 import { TableFilterRow } from "../TableFilterRow";
 
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (_key: string, opts?: { defaultValue?: string }) => opts?.defaultValue ?? _key,
-  }),
-}));
+function createTable(columnId = "name", label = "Name") {
+  const setFilterValue = vi.fn();
+  const table = {
+    getHeaderGroups: () => [
+      {
+        headers: [
+          {
+            isPlaceholder: false,
+            column: {
+              id: columnId,
+              columnDef: { meta: { label } },
+              getCanFilter: () => true,
+              setFilterValue,
+            },
+          },
+        ],
+      },
+    ],
+  } as never;
+  return { table, setFilterValue };
+}
 
 describe("TableFilterRow", () => {
-  it("renders input filter and applies filter on Enter for non-realtime columns", async () => {
-    const setFilterValue = vi.fn();
-    const table = {
-      getHeaderGroups: () => [
-        {
-          headers: [
-            {
-              isPlaceholder: false,
-              column: {
-                id: "name",
-                getCanFilter: () => true,
-                setFilterValue,
-              },
-            },
-          ],
-        },
-      ],
-    } as never;
+  it("renders input filter with the column display label and applies on Enter", async () => {
+    const { table, setFilterValue } = createTable("name", "Name");
 
     const setFilterInputs = vi.fn((updater) => updater({}));
-    render(
+    await renderWithI18n(
       <table>
         <tbody>
           <TableFilterRow
@@ -42,9 +43,25 @@ describe("TableFilterRow", () => {
       </table>,
     );
 
-    const input = screen.getByRole("textbox", { name: "Filter name" });
+    const input = screen.getByRole("textbox", { name: "Filter Name" });
     fireEvent.keyDown(input, { key: "Enter", code: "Enter", charCode: 13 });
     expect(setFilterValue).toHaveBeenCalledWith("abc");
     expect(setFilterInputs).not.toHaveBeenCalled();
+  });
+
+  it("localizes the filter aria label and placeholders in Spanish", async () => {
+    const { table } = createTable("status", "Estado");
+
+    await renderWithI18n(
+      <table>
+        <tbody>
+          <TableFilterRow table={table} isRealtimeFilterColumn={() => true} />
+        </tbody>
+      </table>,
+      { language: "es" },
+    );
+
+    const input = screen.getByRole("textbox", { name: "Filtrar Estado" });
+    expect(input).toHaveAttribute("placeholder", "Escribe para filtrar");
   });
 });

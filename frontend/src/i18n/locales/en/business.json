@@ -115,13 +115,15 @@
       "description": "First production wiring will use this section as the integration boundary.",
       "businessId": "Business ID",
       "businessEmail": "Business Email",
-      "unavailable": "Unavailable"
+      "unavailable": "Unavailable",
+      "filters": "Filters"
     },
     "fields": {
       "ticket": "Ticket",
       "table": "Table",
       "status": "Status",
-      "total": "Total"
+      "total": "Total",
+      "createdAt": "Created at"
     },
     "status": {
       "open": "Open",
@@ -140,7 +142,8 @@
       "selectedCount": "{{count}} selected",
       "selectAll": "Select all",
       "typeToFilter": "Type to filter",
-      "pressEnterToFilter": "Press Enter to filter"
+      "pressEnterToFilter": "Press Enter to filter",
+      "filterColumnAriaLabel": "Filter {{column}}"
     },
     "header": {
       "dragToReorder": "Drag to reorder column",
@@ -163,7 +166,33 @@
       "exportFiltered": "Export filtered",
       "exporting": "Exporting...",
       "exportSuccess": "Export completed successfully.",
-      "exportError": "Failed to export filtered data."
+      "exportError": "Failed to export filtered data.",
+      "resetSuccess": "Columns were reset successfully."
+    },
+    "dateFilter": {
+      "quickOptions": {
+        "today": "Today",
+        "thisWeek": "This week",
+        "thisMonth": "This month"
+      },
+      "filterByDate": "Filter by date",
+      "quickDateRange": "Quick date range",
+      "selectQuickTimeRange": "Select quick time range",
+      "customDateRange": "Custom date range",
+      "startDate": "Start date",
+      "endDate": "End date",
+      "selectDate": "Select date",
+      "applyDateRange": "Apply date range",
+      "noChanges": "No changes",
+      "from": "From",
+      "until": "Until"
+    },
+    "searchBar": {
+      "search": "Search",
+      "exportSuccess": "Export completed successfully.",
+      "exportError": "Failed to export data.",
+      "exporting": "Exporting...",
+      "exportAll": "Export all"
     },
     "config": {
       "editEditor": "Edit table config",

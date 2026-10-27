@@ -1,5 +1,6 @@
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { renderWithI18n } from "@/test/i18nTestUtils";
 import { StandaloneAdvancedTable } from "../StandaloneAdvancedTable";
 
 const mockUseDynamicTableData = vi.fn();
@@ -7,12 +8,6 @@ const mockUseEnhancedTable = vi.fn();
 const mockUseTableFilters = vi.fn();
 const mockUseColumnPersistence = vi.fn();
 const mockUseTableExport = vi.fn();
-
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (_key: string, opts?: { defaultValue?: string }) => opts?.defaultValue ?? _key,
-  }),
-}));
 
 vi.mock("@/features/advancedTable/hooks/useDynamicTableData", () => ({
   useDynamicTableData: (...args: unknown[]) => mockUseDynamicTableData(...args),
@@ -47,7 +42,7 @@ vi.mock("@/features/advancedTable/components/RecordDetailsModal", () => ({
 }));
 
 describe("StandaloneAdvancedTable", () => {
-  it("renders ready table shell with generic table subcomponents", () => {
+  it("renders ready table shell with generic table subcomponents", async () => {
     mockUseDynamicTableData.mockReturnValue({
       rows: [],
       isLoading: false,
@@ -90,7 +85,7 @@ describe("StandaloneAdvancedTable", () => {
       handleExportFiltered: vi.fn(),
     });
 
-    render(
+    await renderWithI18n(
       <StandaloneAdvancedTable
         columns={[
           {

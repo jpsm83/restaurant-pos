@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   columnFilteringFeature,
   columnOrderingFeature,
@@ -146,6 +147,7 @@ export const useEnhancedTable = <TData extends RowData = TableRowData>({
   onTableStateChange,
   onResetColumnState,
 }: UseEnhancedTableConfig<TData>): UseEnhancedTableReturn<TData> => {
+  const { t } = useTranslation("business");
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize });
@@ -254,7 +256,7 @@ export const useEnhancedTable = <TData extends RowData = TableRowData>({
     onColumnOrderChange?.(orderToUse);
     onColumnVisibilityChange?.(defaultColumnVisibility);
 
-    toast.success("Columns were reset successfully.", {
+    toast.success(t("advancedTable.pagination.resetSuccess"), {
       duration: 2000,
       closeButton: false,
     });
@@ -264,6 +266,7 @@ export const useEnhancedTable = <TData extends RowData = TableRowData>({
     onColumnOrderChange,
     onColumnVisibilityChange,
     onResetColumnState,
+    t,
   ]);
 
   return useMemo(

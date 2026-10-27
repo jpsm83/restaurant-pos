@@ -2,7 +2,10 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import type { TableConfigColumn } from "@/features/advancedTable/components/TableConfigEditor";
 import { http } from "@/services/http";
-import { toServiceRequestError } from "@/services/serviceErrors";
+import {
+  toServiceRequestError,
+  type ServiceRequestError,
+} from "@/services/serviceErrors";
 
 export interface TableConfigEndpointConfig {
   loadUrl: string;
@@ -86,7 +89,7 @@ export function useTableConfigData(
     [adapters?.mapSaveRequest, endpoint.showVisibilityControl]
   );
 
-  const loadQuery = useQuery<TableConfigColumn[], Error>({
+  const loadQuery = useQuery<TableConfigColumn[], ServiceRequestError>({
     queryKey: ["advancedTable", "tableConfig", endpoint.loadUrl],
     queryFn: async () => {
       try {
@@ -103,7 +106,7 @@ export function useTableConfigData(
     [draftColumns, loadQuery.data]
   );
 
-  const saveMutation = useMutation<boolean, Error, TableConfigColumn[]>({
+  const saveMutation = useMutation<boolean, ServiceRequestError, TableConfigColumn[]>({
     mutationFn: async (nextColumns) => {
       try {
         await http.post(endpoint.saveUrl, mapSaveRequest(nextColumns));
@@ -115,17 +118,13 @@ export function useTableConfigData(
     },
   });
 
-  const errorMessage = useMemo(() => {
-    if (saveMutation.error) return saveMutation.error.message;
-    if (loadQuery.error) return loadQuery.error.message;
-    return null;
-  }, [loadQuery.error, saveMutation.error]);
+  const failure = saveMutation.error ?? loadQuery.error ?? null;
 
   return {
     columns,
     isLoading: loadQuery.isLoading,
     isSaving: saveMutation.isPending,
-    error: errorMessage,
+    error: failure,
     setColumns: setDraftColumns,
     reload: async () => {
       setDraftColumns(null);

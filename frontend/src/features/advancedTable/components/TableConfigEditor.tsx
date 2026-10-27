@@ -105,30 +105,20 @@ export const TableConfigEditor: React.FC<TableConfigEditorProps> = ({
           <thead className="sticky top-0 bg-muted">
             <tr>
               <th className="p-2 text-left">
-                {t("advancedTable.configEditor.order", {
-                  defaultValue: "Order",
-                })}
+                {t("advancedTable.configEditor.order")}
               </th>
               <th className="p-2 text-left">
-                {t("advancedTable.configEditor.enable", {
-                  defaultValue: "Enable",
-                })}
+                {t("advancedTable.configEditor.enable")}
               </th>
               <th className="p-2 text-left">
-                {t("advancedTable.configEditor.columnKey", {
-                  defaultValue: "Column key",
-                })}
+                {t("advancedTable.configEditor.columnKey")}
               </th>
               <th className="p-2 text-left">
-                {t("advancedTable.configEditor.columnName", {
-                  defaultValue: "Column name",
-                })}
+                {t("advancedTable.configEditor.columnName")}
               </th>
               {showVisibilityControl && (
                 <th className="p-2 text-left">
-                  {t("advancedTable.configEditor.visible", {
-                    defaultValue: "Visible",
-                  })}
+                  {t("advancedTable.configEditor.visible")}
                 </th>
               )}
             </tr>
@@ -231,7 +221,7 @@ export const TableConfigEditor: React.FC<TableConfigEditorProps> = ({
           disabled={isDisabled}
           onClick={onCancel}
         >
-          {t("advancedTable.configEditor.cancel", { defaultValue: "Cancel" })}
+          {t("advancedTable.configEditor.cancel")}
         </Button>
         <Button
           type="button"
@@ -241,10 +231,8 @@ export const TableConfigEditor: React.FC<TableConfigEditorProps> = ({
           onClick={() => onSave?.(orderedColumns)}
         >
           {isSaving
-            ? t("advancedTable.configEditor.saving", {
-                defaultValue: "Saving...",
-              })
-            : t("advancedTable.configEditor.save", { defaultValue: "Save" })}
+            ? t("advancedTable.configEditor.saving")
+            : t("advancedTable.configEditor.save")}
         </Button>
       </div>
     </div>

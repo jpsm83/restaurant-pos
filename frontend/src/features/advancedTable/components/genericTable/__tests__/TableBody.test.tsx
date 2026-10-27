@@ -1,24 +1,39 @@
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { renderWithI18n } from "@/test/i18nTestUtils";
 import { TableBody } from "../TableBody";
 
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (_key: string, opts?: { defaultValue?: string }) => opts?.defaultValue ?? _key,
-  }),
-}));
-
 describe("TableBody", () => {
-  it("renders empty state when there are no rows", () => {
+  it("renders empty state when there are no rows", async () => {
     const table = {
       getPaginatedRowModel: () => ({ rows: [] }),
     } as never;
 
-    render(<table><TableBody table={table} columns={[{}]} /></table>);
+    await renderWithI18n(
+      <table>
+        <TableBody table={table} columns={[{}]} />
+      </table>,
+    );
 
     expect(screen.getByText("No data found")).toBeInTheDocument();
     expect(screen.getByText("Try adjusting your filters")).toBeInTheDocument();
+  });
+
+  it("renders the empty state in Spanish", async () => {
+    const table = {
+      getPaginatedRowModel: () => ({ rows: [] }),
+    } as never;
+
+    await renderWithI18n(
+      <table>
+        <TableBody table={table} columns={[{}]} />
+      </table>,
+      { language: "es" },
+    );
+
+    expect(screen.getByText("No se encontraron datos")).toBeInTheDocument();
+    expect(screen.getByText("Intenta ajustar tus filtros")).toBeInTheDocument();
   });
 
   it("renders rows and triggers onRowClick on double click", async () => {
@@ -39,7 +54,7 @@ describe("TableBody", () => {
       getPaginatedRowModel: () => ({ rows: [row] }),
     } as never;
 
-    render(
+    await renderWithI18n(
       <table>
         <TableBody table={table} columns={[{}]} onRowClick={onRowClick} selectedRowId="row-1" />
       </table>,

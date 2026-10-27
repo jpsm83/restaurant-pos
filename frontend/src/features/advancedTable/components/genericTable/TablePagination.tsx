@@ -14,12 +14,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { AdvancedTableFeatures } from "@/features/advancedTable/hooks/useEnhancedTable";
+import { useFormatting } from "@/hooks/useFormatting";
 
 const PAGE_SIZES = [25, 50, 100, 150] as const;
-
-function getPageLabel(pageIndex: number, pageCount: number): string {
-  return `Page ${pageIndex + 1} of ${pageCount}`;
-}
 
 export interface StandaloneTablePaginationProps<TData extends RowData> {
   table: ReactTable<AdvancedTableFeatures, TData>;
@@ -37,6 +34,7 @@ export const TablePagination = <TData extends RowData,>({
   enabledColumnIds,
 }: StandaloneTablePaginationProps<TData>) => {
   const { t } = useTranslation("business");
+  const { formatNumber } = useFormatting();
   const [showColumnMenu, setShowColumnMenu] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const columnMenuRef = useRef<HTMLDivElement | null>(null);
@@ -54,12 +52,12 @@ export const TablePagination = <TData extends RowData,>({
     try {
       setIsExporting(true);
       await onExport();
-      toast.success(t("advancedTable.pagination.exportSuccess", { defaultValue: "Export completed successfully." }), {
+      toast.success(t("advancedTable.pagination.exportSuccess"), {
         duration: 2500,
         closeButton: false,
       });
     } catch {
-      toast.error(t("advancedTable.pagination.exportError", { defaultValue: "Failed to export filtered data." }), {
+      toast.error(t("advancedTable.pagination.exportError"), {
         duration: 2500,
         closeButton: false,
       });
@@ -84,15 +82,16 @@ export const TablePagination = <TData extends RowData,>({
     <div className="flex flex-wrap items-center justify-between gap-3 pt-4">
       <div className="shrink-0 whitespace-nowrap text-sm text-muted-foreground">
         {t("advancedTable.pagination.selectedCount", {
-          defaultValue: "{{selected}} of {{total}} selected",
-          selected: table.getFilteredSelectedRowModel().rows.length,
-          total: table.getFilteredRowModel().rows.length,
+          selected: formatNumber(
+            table.getFilteredSelectedRowModel().rows.length,
+          ),
+          total: formatNumber(table.getFilteredRowModel().rows.length),
         })}
       </div>
 
       <div className="flex shrink-0 flex-wrap items-center justify-center gap-2">
         <Button
-          aria-label={t("advancedTable.pagination.goFirstPage", { defaultValue: "Go to first page" })}
+          aria-label={t("advancedTable.pagination.goFirstPage")}
           variant="outline"
           size="icon"
           className="h-8 w-8"
@@ -102,7 +101,7 @@ export const TablePagination = <TData extends RowData,>({
           <ChevronsLeft className="h-4 w-4" />
         </Button>
         <Button
-          aria-label={t("advancedTable.pagination.goPreviousPage", { defaultValue: "Go to previous page" })}
+          aria-label={t("advancedTable.pagination.goPreviousPage")}
           variant="outline"
           size="icon"
           className="h-8 w-8"
@@ -113,13 +112,12 @@ export const TablePagination = <TData extends RowData,>({
         </Button>
         <span className="text-sm font-medium">
           {t("advancedTable.pagination.pageLabel", {
-            defaultValue: getPageLabel(table.state.pagination.pageIndex, table.getPageCount()),
-            page: table.state.pagination.pageIndex + 1,
-            totalPages: table.getPageCount(),
+            page: formatNumber(table.state.pagination.pageIndex + 1),
+            totalPages: formatNumber(table.getPageCount()),
           })}
         </span>
         <Button
-          aria-label={t("advancedTable.pagination.goNextPage", { defaultValue: "Go to next page" })}
+          aria-label={t("advancedTable.pagination.goNextPage")}
           variant="outline"
           size="icon"
           className="h-8 w-8"
@@ -129,7 +127,7 @@ export const TablePagination = <TData extends RowData,>({
           <ChevronRight className="h-4 w-4" />
         </Button>
         <Button
-          aria-label={t("advancedTable.pagination.goLastPage", { defaultValue: "Go to last page" })}
+          aria-label={t("advancedTable.pagination.goLastPage")}
           variant="outline"
           size="icon"
           className="h-8 w-8"
@@ -165,13 +163,13 @@ export const TablePagination = <TData extends RowData,>({
             onClick={onClearFilters}
           >
             <X className="h-4 w-4" />
-            {t("advancedTable.pagination.clearFilters", { defaultValue: "Clear filters" })}
+            {t("advancedTable.pagination.clearFilters")}
           </Button>
         )}
 
         <div ref={columnMenuRef} className="relative">
           <Button
-            aria-label={t("advancedTable.pagination.openColumnMenu", { defaultValue: "Open column visibility menu" })}
+            aria-label={t("advancedTable.pagination.openColumnMenu")}
             aria-haspopup="menu"
             aria-expanded={showColumnMenu}
             variant="outline"
@@ -179,15 +177,13 @@ export const TablePagination = <TData extends RowData,>({
             className="h-8"
             onClick={() => setShowColumnMenu((prev) => !prev)}
           >
-            {t("advancedTable.pagination.columns", { defaultValue: "Columns" })} <ChevronDown className="h-4 w-4" />
+            {t("advancedTable.pagination.columns")} <ChevronDown className="h-4 w-4" />
           </Button>
           {showColumnMenu && (
             <div className="absolute bottom-full right-0 z-dropdown mb-1 w-56 rounded border border-border bg-card p-2 shadow">
               {onResetColumns && (
                 <Button variant="ghost" className="mb-2 w-full justify-start px-2" onClick={onResetColumns}>
-                  {t("advancedTable.pagination.resetOrderVisibility", {
-                    defaultValue: "Reset order & visibility",
-                  })}
+                  {t("advancedTable.pagination.resetOrderVisibility")}
                 </Button>
               )}
               {hideableColumns.map((column) => (
@@ -206,8 +202,8 @@ export const TablePagination = <TData extends RowData,>({
         <Button
           aria-label={
             isExporting
-              ? t("advancedTable.pagination.exportingAria", { defaultValue: "Exporting filtered table data" })
-              : t("advancedTable.pagination.exportAria", { defaultValue: "Export filtered table data" })
+              ? t("advancedTable.pagination.exportingAria")
+              : t("advancedTable.pagination.exportAria")
           }
           variant="outline"
           size="sm"
@@ -217,8 +213,8 @@ export const TablePagination = <TData extends RowData,>({
         >
           <Download className="h-4 w-4" />
           {isExporting
-            ? t("advancedTable.pagination.exporting", { defaultValue: "Exporting..." })
-            : t("advancedTable.pagination.exportFiltered", { defaultValue: "Export filtered" })}
+            ? t("advancedTable.pagination.exporting")
+            : t("advancedTable.pagination.exportFiltered")}
         </Button>
       </div>
     </div>

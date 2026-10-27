@@ -115,13 +115,15 @@
       "description": "La primera integración en producción usará esta sección como límite de integración.",
       "businessId": "ID del negocio",
       "businessEmail": "Correo del negocio",
-      "unavailable": "No disponible"
+      "unavailable": "No disponible",
+      "filters": "Filtros"
     },
     "fields": {
       "ticket": "Ticket",
       "table": "Mesa",
       "status": "Estado",
-      "total": "Total"
+      "total": "Total",
+      "createdAt": "Creado el"
     },
     "status": {
       "open": "Abierto",
@@ -140,7 +142,8 @@
       "selectedCount": "{{count}} seleccionados",
       "selectAll": "Seleccionar todo",
       "typeToFilter": "Escribe para filtrar",
-      "pressEnterToFilter": "Presiona Enter para filtrar"
+      "pressEnterToFilter": "Presiona Enter para filtrar",
+      "filterColumnAriaLabel": "Filtrar {{column}}"
     },
     "header": {
       "dragToReorder": "Arrastra para reordenar la columna",
@@ -163,7 +166,33 @@
       "exportFiltered": "Exportar filtrado",
       "exporting": "Exportando...",
       "exportSuccess": "Exportación completada correctamente.",
-      "exportError": "No se pudieron exportar los datos filtrados."
+      "exportError": "No se pudieron exportar los datos filtrados.",
+      "resetSuccess": "Las columnas se restablecieron correctamente."
+    },
+    "dateFilter": {
+      "quickOptions": {
+        "today": "Hoy",
+        "thisWeek": "Esta semana",
+        "thisMonth": "Este mes"
+      },
+      "filterByDate": "Filtrar por fecha",
+      "quickDateRange": "Rango de fechas rápido",
+      "selectQuickTimeRange": "Seleccionar rango rápido",
+      "customDateRange": "Rango de fechas personalizado",
+      "startDate": "Fecha de inicio",
+      "endDate": "Fecha de fin",
+      "selectDate": "Seleccionar fecha",
+      "applyDateRange": "Aplicar rango de fechas",
+      "noChanges": "Sin cambios",
+      "from": "Desde",
+      "until": "Hasta"
+    },
+    "searchBar": {
+      "search": "Buscar",
+      "exportSuccess": "Exportación completada correctamente.",
+      "exportError": "No se pudieron exportar los datos.",
+      "exporting": "Exportando...",
+      "exportAll": "Exportar todo"
     },
     "config": {
       "editEditor": "Editar configuración de tabla",

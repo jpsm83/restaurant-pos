@@ -11,13 +11,15 @@ import {
   TableConfigEditor,
   type TableConfigColumn,
 } from "@/features/advancedTable/components/TableConfigEditor";
+import { useErrorMessage } from "@/i18n/errorCopy";
+import type { ServiceFailure } from "@/services/serviceErrors";
 
 export interface TableConfigManagerProps {
   endpoint: TableConfigEndpointConfig;
   adapters?: TableConfigPayloadAdapters;
   onSaved?: (columns: TableConfigColumn[]) => void;
   onCancel?: () => void;
-  onError?: (error: string) => void;
+  onError?: (error: ServiceFailure) => void;
 }
 
 export function shouldDisableSave(
@@ -40,7 +42,9 @@ export const TableConfigManager: React.FC<TableConfigManagerProps> = ({
   onError,
 }) => {
   const { t } = useTranslation("business");
+  const resolveErrorMessage = useErrorMessage();
   const { columns, isLoading, isSaving, error, save } = useTableConfigData(endpoint, adapters);
+  const errorCopy = resolveErrorMessage(error);
 
   React.useEffect(() => {
     if (error) onError?.(error);
@@ -61,12 +65,10 @@ export const TableConfigManager: React.FC<TableConfigManagerProps> = ({
           }
         }}
       />
-      {error ? <Alert className="mt-2">{error}</Alert> : null}
+      {error ? <Alert className="mt-2">{errorCopy}</Alert> : null}
       {shouldDisableSave(isLoading, isSaving, columns) && columns.length === 0 && (
         <p className="mt-2 text-xs text-muted-foreground">
-          {t("advancedTable.configManager.noColumnsToSave", {
-            defaultValue: "No columns available to save.",
-          })}
+          {t("advancedTable.configManager.noColumnsToSave")}
         </p>
       )}
     </div>

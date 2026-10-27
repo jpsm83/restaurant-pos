@@ -97,7 +97,7 @@ describe("advanced table date range integration", () => {
     const firstTicket = ticketCells[0]?.textContent ?? "";
     expect(firstTicket).toMatch(/^T-\d{4}$/);
 
-    const ticketInput = await screen.findByLabelText("Filter ticketNumber");
+    const ticketInput = await screen.findByLabelText("Filter Ticket");
     await user.clear(ticketInput);
     await user.type(ticketInput, firstTicket);
 
@@ -150,13 +150,13 @@ describe("advanced table date range integration", () => {
     const user = userEvent.setup();
     await renderBusinessSection();
 
-    const ticketInput = await screen.findByLabelText("Filter ticketNumber");
+    const ticketInput = await screen.findByLabelText("Filter Ticket");
     await user.type(ticketInput, "T-0001");
     expect((ticketInput as HTMLInputElement).value).toBe("T-0001");
 
     await user.click(screen.getByRole("button", { name: /clear filters/i }));
 
-    expect((await screen.findByLabelText("Filter ticketNumber") as HTMLInputElement).value).toBe("");
+    expect((await screen.findByLabelText("Filter Ticket") as HTMLInputElement).value).toBe("");
     const search = screen.getByTestId("location-search").textContent ?? "";
     expect(search).toMatch(/start-date=\d{4}-\d{2}-\d{2}/);
     expect(search).toMatch(/end-date=\d{4}-\d{2}-\d{2}/);

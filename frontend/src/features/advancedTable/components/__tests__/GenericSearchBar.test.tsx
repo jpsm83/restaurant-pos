@@ -172,6 +172,28 @@ describe("GenericSearchBar", () => {
     expect(screen.queryByText(/quick date range/i)).not.toBeInTheDocument();
   });
 
+  it("localizes the date filter and search toolbar in Spanish", async () => {
+    const user = userEvent.setup();
+    await renderWithI18n(
+      <GenericSearchBar
+        startDate="2026-03-10"
+        endDate="2026-03-20"
+        onDateChange={vi.fn()}
+      />,
+      { language: "es" },
+    );
+
+    expect(screen.getByText("Desde")).toBeInTheDocument();
+    expect(screen.getByText("Hasta")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Filtrar por fecha" }));
+    expect(screen.getByText("Rango de fechas rápido")).toBeInTheDocument();
+    expect(screen.getByText("Rango de fechas personalizado")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Fecha de inicio" }),
+    ).toBeInTheDocument();
+  });
+
   it("keeps config and export controls stable in toolbar layout", async () => {
     const user = userEvent.setup();
     const onConfigClick = vi.fn();

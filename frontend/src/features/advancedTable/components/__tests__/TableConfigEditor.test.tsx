@@ -1,19 +1,14 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { renderWithI18n } from "@/test/i18nTestUtils";
 import { TableConfigEditor } from "../TableConfigEditor";
 
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (_key: string, opts?: { defaultValue?: string }) => opts?.defaultValue ?? _key,
-  }),
-}));
-
 describe("TableConfigEditor", () => {
-  it("renders columns and triggers save/cancel handlers", () => {
+  it("renders columns and triggers save/cancel handlers", async () => {
     const onSave = vi.fn();
     const onCancel = vi.fn();
 
-    render(
+    await renderWithI18n(
       <TableConfigEditor
         columns={[
           {
@@ -35,5 +30,26 @@ describe("TableConfigEditor", () => {
 
     expect(onCancel).toHaveBeenCalledTimes(1);
     expect(onSave).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders the column configuration labels in Spanish", async () => {
+    await renderWithI18n(
+      <TableConfigEditor
+        columns={[
+          {
+            columnKey: "id",
+            columnName: "ID",
+            order: 0,
+            enable: true,
+            visible: true,
+          },
+        ]}
+      />,
+      { language: "es" },
+    );
+
+    expect(screen.getByRole("columnheader", { name: "Orden" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Guardar" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cancelar" })).toBeInTheDocument();
   });
 });

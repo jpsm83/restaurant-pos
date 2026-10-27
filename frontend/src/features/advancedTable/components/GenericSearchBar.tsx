@@ -71,19 +71,15 @@ function DateRangeFilter({
   const quickOptions = [
     {
       value: "today",
-      label: t("dateFilter.quickOptions.today", { defaultValue: "Today" }),
+      label: t("advancedTable.dateFilter.quickOptions.today"),
     },
     {
       value: "thisWeek",
-      label: t("dateFilter.quickOptions.thisWeek", {
-        defaultValue: "This week",
-      }),
+      label: t("advancedTable.dateFilter.quickOptions.thisWeek"),
     },
     {
       value: "thisMonth",
-      label: t("dateFilter.quickOptions.thisMonth", {
-        defaultValue: "This month",
-      }),
+      label: t("advancedTable.dateFilter.quickOptions.thisMonth"),
     },
   ] as const;
   const quickOptionLabelMap = Object.fromEntries(
@@ -178,9 +174,7 @@ function DateRangeFilter({
               variant="outline"
               size="default"
               className="flex items-center gap-2 disabled:cursor-not-allowed"
-              title={t("dateFilter.filterByDate", {
-                defaultValue: "Filter by date",
-              })}
+              title={t("advancedTable.dateFilter.filterByDate")}
               disabled={disabled}
             >
               <CalendarIcon className="h-4 w-4" />
@@ -189,9 +183,7 @@ function DateRangeFilter({
           <PopoverContent className="w-auto p-4 shadow-lg" align="start">
             <div className="flex min-w-75 flex-col gap-2">
               <Label className="mb-2 text-sm font-medium text-foreground">
-                {t("dateFilter.quickDateRange", {
-                  defaultValue: "Quick date range",
-                })}
+                {t("advancedTable.dateFilter.quickDateRange")}
               </Label>
               <Select
                 value={selectedQuickOption}
@@ -199,9 +191,7 @@ function DateRangeFilter({
               >
                 <SelectTrigger className="w-full">
                   <SelectValue
-                    placeholder={t("dateFilter.selectQuickTimeRange", {
-                      defaultValue: "Select quick time range",
-                    })}
+                    placeholder={t("advancedTable.dateFilter.selectQuickTimeRange")}
                   />
                 </SelectTrigger>
                 <SelectContent className="shadow-lg">
@@ -218,31 +208,23 @@ function DateRangeFilter({
               </Select>
               <hr className="my-4 border-border" />
               <Label className="mb-2 text-sm font-medium text-foreground">
-                {t("dateFilter.customDateRange", {
-                  defaultValue: "Custom date range",
-                })}
+                {t("advancedTable.dateFilter.customDateRange")}
               </Label>
               <div className="flex gap-4">
                 <div className="flex flex-col gap-3">
                   <Label className="px-1">
-                    {t("dateFilter.startDate", {
-                      defaultValue: "Start date",
-                    })}
+                    {t("advancedTable.dateFilter.startDate")}
                   </Label>
                   <Popover open={startDateOpen} onOpenChange={setStartDateOpen}>
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
                         className="w-32 justify-between font-normal"
-                        aria-label={t("dateFilter.startDate", {
-                          defaultValue: "Start date",
-                        })}
+                        aria-label={t("advancedTable.dateFilter.startDate")}
                       >
                         {localStartDate
                           ? formatDate(localStartDate)
-                          : t("dateFilter.selectDate", {
-                              defaultValue: "Select date",
-                            })}
+                          : t("advancedTable.dateFilter.selectDate")}
                         <CalendarIcon className="h-4 w-4" />
                       </Button>
                     </PopoverTrigger>
@@ -267,22 +249,18 @@ function DateRangeFilter({
                 </div>
                 <div className="flex flex-col gap-3">
                   <Label className="px-1">
-                    {t("dateFilter.endDate", { defaultValue: "End date" })}
+                    {t("advancedTable.dateFilter.endDate")}
                   </Label>
                   <Popover open={endDateOpen} onOpenChange={setEndDateOpen}>
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
                         className="w-32 justify-between font-normal"
-                        aria-label={t("dateFilter.endDate", {
-                          defaultValue: "End date",
-                        })}
+                        aria-label={t("advancedTable.dateFilter.endDate")}
                       >
                         {localEndDate
                           ? formatDate(localEndDate)
-                          : t("dateFilter.selectDate", {
-                              defaultValue: "Select date",
-                            })}
+                          : t("advancedTable.dateFilter.selectDate")}
                         <CalendarIcon className="h-4 w-4" />
                       </Button>
                     </PopoverTrigger>
@@ -314,10 +292,8 @@ function DateRangeFilter({
               >
                 <Search className="h-4 w-4 mr-2" />
                 {hasDateRangeChanged
-                  ? t("dateFilter.applyDateRange", {
-                      defaultValue: "Apply date range",
-                    })
-                  : t("dateFilter.noChanges", { defaultValue: "No changes" })}
+                  ? t("advancedTable.dateFilter.applyDateRange")
+                  : t("advancedTable.dateFilter.noChanges")}
               </Button>
             </div>
           </PopoverContent>
@@ -331,11 +307,11 @@ function DateRangeFilter({
           ) : (
             <>
               <span className="text-muted-foreground">
-                {t("dateFilter.from", { defaultValue: "From" })}
+                {t("advancedTable.dateFilter.from")}
               </span>{" "}
               {formatDate(startDate)}{" "}
               <span className="text-muted-foreground">
-                {t("dateFilter.until", { defaultValue: "Until" })}
+                {t("advancedTable.dateFilter.until")}
               </span>{" "}
               {formatDate(endDate)}
             </>
@@ -381,7 +357,7 @@ const GenericSearchBar: React.FC<GenericSearchBarProps> = ({
 
   // Use translation if searchLabel is not provided
   const displaySearchLabel =
-    searchLabel || t("searchBar.search", { defaultValue: "Search" });
+    searchLabel || t("advancedTable.searchBar.search");
 
   // Effects
   useEffect(() => {
@@ -415,9 +391,7 @@ const GenericSearchBar: React.FC<GenericSearchBarProps> = ({
     try {
       await onExport();
       toast.success(
-        t("searchBar.exportSuccess", {
-          defaultValue: "Export completed successfully.",
-        }),
+        t("advancedTable.searchBar.exportSuccess"),
         {
           duration: 3000,
           closeButton: false,
@@ -426,7 +400,7 @@ const GenericSearchBar: React.FC<GenericSearchBarProps> = ({
     } catch (error) {
       console.error("Export error:", error);
       toast.error(
-        t("searchBar.exportError", { defaultValue: "Failed to export data." }),
+        t("advancedTable.searchBar.exportError"),
         {
           duration: 3000,
           closeButton: false,
@@ -478,8 +452,8 @@ const GenericSearchBar: React.FC<GenericSearchBarProps> = ({
               <Download className="h-4 w-4" />
             )}
             {isExporting
-              ? t("searchBar.exporting", { defaultValue: "Exporting..." })
-              : t("searchBar.exportAll", { defaultValue: "Export all" })}
+              ? t("advancedTable.searchBar.exporting")
+              : t("advancedTable.searchBar.exportAll")}
           </Button>
         )}
         {onConfigClick && showConfigButton && (

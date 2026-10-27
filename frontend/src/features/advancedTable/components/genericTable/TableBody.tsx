@@ -36,10 +36,10 @@ export const TableBody = <TData extends RowData,>({
   const { t } = useTranslation("business");
   const rows = table.getPaginatedRowModel().rows;
   const resolvedEmptyMessage =
-    emptyStateMessage ?? t("advancedTable.body.emptyMessage", { defaultValue: "No data found" });
+    emptyStateMessage ?? t("advancedTable.body.emptyMessage");
   const resolvedEmptySubMessage =
     emptyStateSubMessage ??
-    t("advancedTable.body.emptySubMessage", { defaultValue: "Try adjusting your filters" });
+    t("advancedTable.body.emptySubMessage");
 
   return (
     <tbody className="h-full">

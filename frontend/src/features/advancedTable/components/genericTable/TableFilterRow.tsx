@@ -23,12 +23,15 @@ export interface StandaloneTableFilterRowProps<TData extends RowData> {
   onCloseAllDropdowns?: () => void;
 }
 
-function getFilterDisplayText(selectedValues: string[] | undefined, total: number): string {
-  const selectedCount = selectedValues?.length ?? 0;
-  if (selectedCount === 0) return "All";
-  if (selectedCount === 1) return selectedValues?.[0] ?? "All";
-  if (selectedCount === total) return "All";
-  return `${selectedCount} selected`;
+function getColumnLabelForAria<TData extends RowData>(
+  column: Column<AdvancedTableFeatures, TData, unknown>,
+): string {
+  const metaLabel = (column.columnDef.meta as { label?: unknown } | undefined)
+    ?.label;
+  if (typeof metaLabel === "string" && metaLabel.trim()) return metaLabel;
+  const header = column.columnDef.header;
+  if (typeof header === "string" && header.trim()) return header;
+  return column.id;
 }
 
 export const TableFilterRow = <TData extends RowData,>({
@@ -64,13 +67,15 @@ export const TableFilterRow = <TData extends RowData,>({
     const isRealtime = isRealtimeFilterColumn?.(columnId) ?? false;
     return (
       <Input
-        aria-label={`Filter ${columnId}`}
+        aria-label={t("advancedTable.filters.filterColumnAriaLabel", {
+          column: getColumnLabelForAria(column),
+        })}
         className="h-8"
         value={getFilterValue?.(columnId) ?? ""}
         placeholder={
           isRealtime
-            ? t("advancedTable.filters.typeToFilter", { defaultValue: "Type to filter" })
-            : t("advancedTable.filters.pressEnterToFilter", { defaultValue: "Press Enter to filter" })
+            ? t("advancedTable.filters.typeToFilter")
+            : t("advancedTable.filters.pressEnterToFilter")
         }
         onChange={(event) => {
           const value = event.target.value;
@@ -97,29 +102,31 @@ export const TableFilterRow = <TData extends RowData,>({
       ((column.getFilterValue() as string[] | undefined) ?? []);
     const isOpen = dropdownState?.[columnId]?.isOpen ?? false;
     const isAllSelected = options.length > 0 && selectedValues.length === options.length;
+    const displayText =
+      selectedValues.length === 0 || selectedValues.length === options.length
+        ? t("advancedTable.filters.all")
+        : selectedValues.length === 1
+          ? (options.find((option) => option.value === selectedValues[0])?.label ??
+            selectedValues[0])
+          : t("advancedTable.filters.selectedCount", {
+              count: selectedValues.length,
+            });
 
     return (
       <div className="relative" data-table-filter-dropdown="true">
         <Button
-          aria-label={`Filter ${columnId}`}
+          aria-label={t("advancedTable.filters.filterColumnAriaLabel", {
+            column: getColumnLabelForAria(column),
+          })}
           aria-haspopup="listbox"
           aria-expanded={isOpen}
           variant="outline"
           size="sm"
           className="h-8 w-full justify-between px-2 text-left text-sm"
-          title={getFilterDisplayText(selectedValues, options.length)}
+          title={displayText}
           onClick={() => onDropdownOpenChange?.(columnId, !isOpen)}
         >
-          <span className="truncate">
-            {selectedValues.length === 0 || selectedValues.length === options.length
-              ? t("advancedTable.filters.all", { defaultValue: "All" })
-              : selectedValues.length === 1
-                ? selectedValues[0]
-                : t("advancedTable.filters.selectedCount", {
-                    defaultValue: "{{count}} selected",
-                    count: selectedValues.length,
-                  })}
-          </span>
+          <span className="truncate">{displayText}</span>
           <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
         </Button>
         {isOpen && (
@@ -129,7 +136,7 @@ export const TableFilterRow = <TData extends RowData,>({
                 checked={isAllSelected}
                 onCheckedChange={() => onDropdownSelectAllToggle?.(columnId)}
               />
-              <span>{t("advancedTable.filters.selectAll", { defaultValue: "Select all" })}</span>
+              <span>{t("advancedTable.filters.selectAll")}</span>
             </Label>
             {options.map((option) => {
               const checked = selectedValues.includes(option.value);

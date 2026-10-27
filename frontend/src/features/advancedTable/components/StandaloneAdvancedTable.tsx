@@ -404,12 +404,8 @@ export const StandaloneAdvancedTable = <TData extends RowData = TableRowData,>({
     options:
       exportConfig?.options ??
       ({
-        fileName: t("advancedTable.export.defaultFileName", {
-          defaultValue: "table-export.xlsx",
-        }),
-        sheetName: t("advancedTable.export.defaultSheetName", {
-          defaultValue: "Table",
-        }),
+        fileName: t("advancedTable.export.defaultFileName"),
+        sheetName: t("advancedTable.export.defaultSheetName"),
       } as TableExportOptions),
     onError: exportConfig?.onError,
   });
@@ -484,9 +480,7 @@ export const StandaloneAdvancedTable = <TData extends RowData = TableRowData,>({
   if (renderState === "loading") {
     return (
       <div className="h-full w-full flex items-center justify-center text-sm text-muted-foreground">
-        {t("advancedTable.states.loading", {
-          defaultValue: "Loading table data...",
-        })}
+        {t("advancedTable.states.loading")}
       </div>
     );
   }
@@ -495,9 +489,7 @@ export const StandaloneAdvancedTable = <TData extends RowData = TableRowData,>({
     return (
       <div className="h-full w-full flex flex-col items-center justify-center gap-2 text-sm text-destructive">
         <p>
-          {t("advancedTable.states.error", {
-            defaultValue: "Failed to load table data.",
-          })}
+          {t("advancedTable.states.error")}
         </p>
         <Button
           variant="outline"
@@ -506,7 +498,7 @@ export const StandaloneAdvancedTable = <TData extends RowData = TableRowData,>({
             void dynamicData.refetch();
           }}
         >
-          {t("advancedTable.states.retry", { defaultValue: "Retry" })}
+          {t("advancedTable.states.retry")}
         </Button>
       </div>
     );
