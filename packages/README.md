@@ -34,6 +34,7 @@ frontend (:5173) --/api proxy--> backend (:4000) --> MongoDB Atlas
 | Path | Exports | Purpose |
 |------|---------|---------|
 | `enums.ts` | `mainCategoriesEnums`, `paymentMethodsEnums`, `userRolesEnums`, `orderStatusEnums`, ... | Domain value lists (as `string[]`) |
+| `featureFlags.ts` | `FEATURE_FLAG_CATALOGUE`, `FEATURE_FLAG_STATES`, `resolveFeatureFlag`, `isFeatureFlagOn`, types | Closed stage-1 flag catalogue and pure effective-flag resolver |
 | `operationalReasons.ts` | `OPERATIONAL_REASON_ACTS`, `OPERATIONAL_REASON_CATALOGUES`, `resolveOperationalReason`, types | Closed platform-defined reason catalogues and their selection resolver |
 | `interfaces/` | `IUser`, `IBusiness`, `IOrder`, `IEmployee`, ... | Mongoose-shaped TypeScript interfaces (`I*.ts`) |
 | `schemas/` | zod DTOs + primitives | Request/response and form validation |
@@ -49,6 +50,7 @@ frontend (:5173) --/api proxy--> backend (:4000) --> MongoDB Atlas
   | Import specifier | Resolves to |
   |------------------|-------------|
   | `restaurant-pos-packages/enums` | `enums.ts` |
+  | `restaurant-pos-packages/featureFlags` | `featureFlags.ts` |
   | `restaurant-pos-packages/operationalReasons` | `operationalReasons.ts` |
   | `restaurant-pos-packages/interfaces/*` | `interfaces/*.ts` |
   | `restaurant-pos-packages/schemas` | `schemas/index.ts` (barrel) |
@@ -79,6 +81,14 @@ frontend (:5173) --/api proxy--> backend (:4000) --> MongoDB Atlas
   timezone validation. Prefer these over ad-hoc validators.
 - **Primitives stay Node/Mongoose-free** so the frontend can reuse them for form
   validation unchanged.
+- **Feature flags are closed product data and pure resolution.**
+  `featureFlags.ts` owns the thirteen stage-1 flags (each defaulting `on`), the
+  `on`/`off` state type, the optional platform-wide/per-Owner scope shape, and
+  the effective-flag resolver plus boolean helper. Unset means on; platform
+  `off` beats per-Owner `on`; an invalid key or state throws. There is no
+  database collection, seed, migration, HTTP route, client DTO, console, audit
+  entry, notification, plan/layer composition, or per-venue/per-user scope; a
+  product amendment changes the module.
 - **Operational reasons are closed product data.** `operationalReasons.ts` owns
   the seven catalogues and the one selection resolver. There is no database
   collection, seed, migration, editor, or HTTP CRUD route; a product amendment

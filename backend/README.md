@@ -140,6 +140,13 @@ Conventions:
 - **Shared contracts** are imported by package name
   (`restaurant-pos-packages/schemas/auth`), never by relative `../packages`
   paths — resolved through the workspace symlink.
+- **Feature flags are platform-defined shared data with no backend wrapper.**
+  `restaurant-pos-packages/featureFlags` exports the thirteen stage-1 flags, the
+  `on`/`off` state type, the optional platform-wide/per-Owner scope shape, and
+  the pure effective-flag resolver plus boolean helper. This slice adds no
+  collection, seed, migration, route, client DTO, console, audit entry,
+  notification, plan/layer composition, or per-venue/per-user scope, and no
+  existing product route, job, service, or screen is flag-gated yet.
 - **Operational reasons are platform-defined shared data.**
   `restaurant-pos-packages/operationalReasons` exports the seven closed
   catalogues and the one selection resolver. Every reason-bearing route
