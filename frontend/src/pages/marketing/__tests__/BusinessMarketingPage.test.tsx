@@ -13,6 +13,7 @@ describe("BusinessMarketingPage", () => {
         </Routes>
       </MemoryRouter>,
     );
+    expect(screen.getByRole("main")).toHaveClass("marketing");
     expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
       "href",
       "/login?audience=business",

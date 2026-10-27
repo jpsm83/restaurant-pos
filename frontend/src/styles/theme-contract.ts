@@ -1,0 +1,67 @@
+export const THEME_TOKEN_GROUPS = {
+  surfaces: [
+    "background",
+    "foreground",
+    "card",
+    "card-foreground",
+    "popover",
+    "popover-foreground",
+    "surface",
+    "surface-foreground",
+    "elevated",
+    "elevated-foreground",
+    "overlay",
+  ],
+  brand: [
+    "primary",
+    "primary-foreground",
+    "secondary",
+    "secondary-foreground",
+    "accent",
+    "accent-foreground",
+  ],
+  muted: ["muted", "muted-foreground"],
+  states: [
+    "destructive",
+    "destructive-foreground",
+    "success",
+    "success-foreground",
+    "warning",
+    "warning-foreground",
+    "info",
+    "info-foreground",
+  ],
+  borders: ["border", "input", "ring"],
+  charts: ["chart-1", "chart-2", "chart-3", "chart-4", "chart-5"],
+  sidebar: [
+    "sidebar",
+    "sidebar-foreground",
+    "sidebar-primary",
+    "sidebar-primary-foreground",
+    "sidebar-accent",
+    "sidebar-accent-foreground",
+    "sidebar-border",
+    "sidebar-ring",
+  ],
+  shapeAndType: ["radius", "sans", "heading", "mono"],
+  elevationAndLayout: ["elevation-panel", "elevation-overlay", "page-width"],
+  motion: [
+    "motion-fast",
+    "motion-base",
+    "motion-slow",
+    "motion-ease-standard",
+    "motion-ease-emphasized",
+  ],
+  zIndex: [
+    "z-dropdown",
+    "z-sticky",
+    "z-overlay",
+    "z-modal",
+    "z-toast",
+    "z-tooltip",
+  ],
+} as const;
+
+export const THEME_TOKEN_CONTRACT = Object.values(THEME_TOKEN_GROUPS).flat();
+
+export type ThemeToken = (typeof THEME_TOKEN_CONTRACT)[number];

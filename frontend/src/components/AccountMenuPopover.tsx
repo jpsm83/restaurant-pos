@@ -5,10 +5,14 @@ import type { AuthSession } from "@/auth/types";
 import { logout, setAccessToken } from "@/auth/api";
 import { useAuth } from "@/auth/store/AuthContext";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { isThemeMode, useTheme } from "@/hooks/useTheme";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -47,6 +51,7 @@ export function AccountMenuPopover({ session }: AccountMenuPopoverProps) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { dispatch } = useAuth();
+  const { mode, setMode } = useTheme();
   const profileTo = profilePathForSession(session);
 
   const userShell =
@@ -62,6 +67,10 @@ export function AccountMenuPopover({ session }: AccountMenuPopoverProps) {
       : userShell?.onEmployee
         ? t("account.actorType.employee")
         : t("account.actorType.customer");
+
+  const handleModeChange = (value: string) => {
+    if (isThemeMode(value)) setMode(value);
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -158,6 +167,19 @@ export function AccountMenuPopover({ session }: AccountMenuPopoverProps) {
             </DropdownMenuItem>
           </>
         ) : null}
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel>{t("account.theme.label")}</DropdownMenuLabel>
+        <DropdownMenuRadioGroup value={mode} onValueChange={handleModeChange}>
+          <DropdownMenuRadioItem value="light">
+            {t("account.theme.light")}
+          </DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="dark">
+            {t("account.theme.dark")}
+          </DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="system">
+            {t("account.theme.system")}
+          </DropdownMenuRadioItem>
+        </DropdownMenuRadioGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           variant="destructive"

@@ -1,0 +1,113 @@
+.leaflet-container {
+  background: var(--muted);
+  color: var(--foreground);
+  font-family: var(--sans);
+}
+
+.leaflet-control,
+.leaflet-bar,
+.leaflet-touch .leaflet-bar {
+  border-color: var(--border);
+  color: var(--foreground);
+}
+
+.leaflet-bar a,
+.leaflet-touch .leaflet-bar a,
+.leaflet-control-geocoder,
+.leaflet-control-geocoder-form input {
+  background: var(--popover);
+  color: var(--popover-foreground);
+  border-color: var(--border);
+}
+
+.leaflet-bar a:hover,
+.leaflet-bar a:focus,
+.leaflet-control-geocoder-icon:hover {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip,
+.leaflet-control-geocoder-form,
+.leaflet-control-geocoder-result {
+  background: var(--popover);
+  color: var(--popover-foreground);
+  border-color: var(--border);
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: var(--radius);
+  box-shadow: var(--elevation-overlay);
+}
+
+.leaflet-popup-close-button {
+  color: var(--muted-foreground);
+}
+
+.leaflet-control-attribution,
+.leaflet-control-scale-line {
+  background: color-mix(in oklch, var(--background) 82%, transparent);
+  color: var(--muted-foreground);
+  border-color: var(--border);
+}
+
+.leaflet-control-attribution a {
+  color: var(--info);
+}
+
+[data-sonner-toaster] [data-sonner-toast].pos-toast {
+  background: var(--background);
+  color: var(--foreground);
+  border-color: var(--border);
+}
+
+[data-sonner-toaster] [data-sonner-toast].pos-toast .pos-toast-title {
+  color: inherit;
+}
+
+[data-sonner-toaster] [data-sonner-toast].pos-toast .pos-toast-description {
+  color: var(--muted-foreground);
+}
+
+[data-sonner-toaster] [data-sonner-toast].pos-toast .pos-toast-action {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+[data-sonner-toaster] [data-sonner-toast].pos-toast .pos-toast-cancel {
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
+
+[data-sonner-toaster] [data-sonner-toast].pos-toast.pos-toast-error {
+  background: var(--destructive);
+  color: var(--destructive-foreground);
+  border-color: var(--destructive);
+}
+
+[data-sonner-toaster] [data-sonner-toast].pos-toast.pos-toast-success {
+  background: var(--success);
+  color: var(--success-foreground);
+  border-color: var(--success);
+}
+
+[data-sonner-toaster] [data-sonner-toast].pos-toast.pos-toast-warning {
+  background: var(--warning);
+  color: var(--warning-foreground);
+  border-color: var(--warning);
+}
+
+[data-sonner-toaster] [data-sonner-toast].pos-toast.pos-toast-info {
+  background: var(--info);
+  color: var(--info-foreground);
+  border-color: var(--info);
+}
+
+[data-sonner-toaster] [data-sonner-toast].pos-toast.pos-toast-error .pos-toast-description,
+[data-sonner-toaster] [data-sonner-toast].pos-toast.pos-toast-success .pos-toast-description,
+[data-sonner-toaster] [data-sonner-toast].pos-toast.pos-toast-warning .pos-toast-description,
+[data-sonner-toaster] [data-sonner-toast].pos-toast.pos-toast-info .pos-toast-description {
+  color: inherit;
+  opacity: 0.85;
+}

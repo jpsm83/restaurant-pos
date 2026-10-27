@@ -5,6 +5,25 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>frontend</title>
+    <script>
+      (() => {
+        try {
+          const modes = ["light", "dark", "system"];
+          const storedMode = localStorage.getItem("pos.mode");
+          const theme = localStorage.getItem("pos.theme") || "default";
+          const mode = modes.includes(storedMode) ? storedMode : "system";
+          const prefersDark =
+            typeof window.matchMedia === "function" &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches;
+          const dark = mode === "dark" || (mode === "system" && prefersDark);
+          document.documentElement.dataset.theme = theme;
+          document.documentElement.classList.toggle("dark", dark);
+        } catch {
+          document.documentElement.dataset.theme = "default";
+          document.documentElement.classList.remove("dark");
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

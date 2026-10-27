@@ -28,7 +28,13 @@
     "employeeArea": "Área de empleado",
     "customerHome": "Inicio cliente",
     "language": "Idioma",
-    "logOut": "Cerrar sesión"
+    "logOut": "Cerrar sesión",
+    "theme": {
+      "label": "Tema",
+      "light": "Claro",
+      "dark": "Oscuro",
+      "system": "Sistema"
+    }
   },
   "settings": {
     "title": "Ajustes",

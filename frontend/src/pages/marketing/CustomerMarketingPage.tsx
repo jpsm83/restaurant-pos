@@ -11,7 +11,7 @@ export default function CustomerMarketingPage() {
   ];
 
   return (
-    <main className="flex min-h-0 flex-1 flex-col items-center justify-center bg-neutral-100 px-4 py-10 sm:px-6 lg:px-8">
+    <main className="marketing flex min-h-0 flex-1 flex-col items-center justify-center bg-neutral-100 px-4 py-10 sm:px-6 lg:px-8">
       <Card className="w-full max-w-2xl">
         <CardHeader>
           <CardTitle>{t("marketing.customer.title")}</CardTitle>

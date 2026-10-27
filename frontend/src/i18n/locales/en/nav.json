@@ -28,7 +28,13 @@
     "employeeArea": "Employee area",
     "customerHome": "Customer home",
     "language": "Language",
-    "logOut": "Log out"
+    "logOut": "Log out",
+    "theme": {
+      "label": "Theme",
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System"
+    }
   },
   "settings": {
     "title": "Settings",

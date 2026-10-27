@@ -1,8 +1,9 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AccountMenuPopover } from "@/components/AccountMenuPopover";
+import { MODE_STORAGE_KEY, resetThemeStore } from "@/hooks/useTheme";
 import { renderWithI18n } from "@/test/i18nTestUtils";
 
 const { mockDispatch, mockLogout, mockSetAccessToken } = vi.hoisted(() => ({
@@ -28,6 +29,20 @@ describe("AccountMenuPopover (actor summary)", () => {
     mockDispatch.mockReset();
     mockLogout.mockReset();
     mockSetAccessToken.mockReset();
+    localStorage.clear();
+    Object.defineProperty(window, "matchMedia", {
+      writable: true,
+      configurable: true,
+      value: () => ({
+        matches: false,
+        media: "(prefers-color-scheme: dark)",
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+      }),
+    });
+    document.documentElement.removeAttribute("data-theme");
+    document.documentElement.classList.remove("dark");
+    resetThemeStore();
   });
 
   it("shows actor summary, profile, business settings links, and log out", async () => {
@@ -59,5 +74,42 @@ describe("AccountMenuPopover (actor summary)", () => {
     expect(screen.getByRole("menuitem", { name: /^address$/i })).toBeInTheDocument();
     expect(screen.getByRole("menuitem", { name: /credentials/i })).toBeInTheDocument();
     expect(screen.getByRole("menuitem", { name: /log out/i })).toBeInTheDocument();
+  });
+
+  it("offers Light, Dark, and System and persists the chosen mode", async () => {
+    const user = userEvent.setup();
+
+    await renderWithI18n(
+      <MemoryRouter initialEntries={["/business/64b000000000000000000001/dashboard"]}>
+        <AccountMenuPopover
+          session={{
+            id: "64b000000000000000000001",
+            email: "owner@restaurant.com",
+            type: "business",
+            role: "Tenant",
+          }}
+        />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole("button", { name: /account menu/i }));
+
+    expect(
+      screen.getByRole("menuitemradio", { name: "Light" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("menuitemradio", { name: "Dark" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("menuitemradio", { name: "System" }),
+    ).toHaveAttribute("aria-checked", "true");
+
+    await user.click(screen.getByRole("menuitemradio", { name: "Dark" }));
+
+    await waitFor(() => {
+      expect(localStorage.getItem(MODE_STORAGE_KEY)).toBe("dark");
+    });
+    expect(document.documentElement).toHaveClass("dark");
+    expect(document.documentElement.dataset.theme).toBe("default");
   });
 });
