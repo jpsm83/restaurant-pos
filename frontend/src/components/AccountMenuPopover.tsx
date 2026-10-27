@@ -169,7 +169,11 @@ export function AccountMenuPopover({ session }: AccountMenuPopoverProps) {
         ) : null}
         <DropdownMenuSeparator />
         <DropdownMenuLabel>{t("account.theme.label")}</DropdownMenuLabel>
-        <DropdownMenuRadioGroup value={mode} onValueChange={handleModeChange}>
+        <DropdownMenuRadioGroup
+          value={mode}
+          onValueChange={handleModeChange}
+          aria-label={t("account.theme.groupLabel")}
+        >
           <DropdownMenuRadioItem value="light">
             {t("account.theme.light")}
           </DropdownMenuRadioItem>

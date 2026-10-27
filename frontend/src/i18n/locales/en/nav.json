@@ -31,6 +31,7 @@
     "logOut": "Log out",
     "theme": {
       "label": "Theme",
+      "groupLabel": "Theme mode",
       "light": "Light",
       "dark": "Dark",
       "system": "System"

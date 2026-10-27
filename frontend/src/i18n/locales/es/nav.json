@@ -31,6 +31,7 @@
     "logOut": "Cerrar sesión",
     "theme": {
       "label": "Tema",
+      "groupLabel": "Modo de tema",
       "light": "Claro",
       "dark": "Oscuro",
       "system": "Sistema"
