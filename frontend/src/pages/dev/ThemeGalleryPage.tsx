@@ -77,19 +77,19 @@ function GallerySection(props: {
 }
 
 function TokenSwatches() {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("devThemeGallery");
 
   return (
     <GallerySection
       id="tokens"
-      title={t("devThemeGallery.sections.tokens")}
+      title={t("sections.tokens")}
     >
       <div className="space-y-4">
         {(Object.entries(THEME_TOKEN_GROUPS) as [TokenGroup, readonly string[]][]).map(
           ([group, tokens]) => (
             <div key={group} data-token-group={group} className="space-y-2">
               <h4 className="text-sm font-medium text-muted-foreground">
-                {t(`devThemeGallery.tokenGroups.${group}`)}
+                {t(`tokenGroups.${group}`)}
               </h4>
               <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
                 {tokens.map((token) => (
@@ -117,25 +117,25 @@ function TokenSwatches() {
 }
 
 function TypographySample() {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("devThemeGallery");
 
   return (
     <GallerySection
       id="typography"
-      title={t("devThemeGallery.sections.typography")}
+      title={t("sections.typography")}
     >
       <div className="space-y-2">
         <p className="font-heading text-3xl font-semibold tracking-tight">
-          {t("devThemeGallery.samples.heading")}
+          {t("samples.heading")}
         </p>
         <p className="text-xl font-medium">
-          {t("devThemeGallery.samples.subheading")}
+          {t("samples.subheading")}
         </p>
         <p className="max-w-prose text-sm text-muted-foreground">
-          {t("devThemeGallery.samples.body")}
+          {t("samples.body")}
         </p>
         <code className="inline-block rounded-md bg-muted px-2 py-1 font-mono text-sm text-muted-foreground">
-          {t("devThemeGallery.samples.mono")}
+          {t("samples.mono")}
         </code>
       </div>
     </GallerySection>
@@ -143,13 +143,13 @@ function TypographySample() {
 }
 
 function ButtonSample() {
-  const { t } = useTranslation("common");
-  const label = t("devThemeGallery.samples.button");
+  const { t } = useTranslation("devThemeGallery");
+  const label = t("samples.button");
 
   return (
     <GallerySection
       id="buttons"
-      title={t("devThemeGallery.sections.buttons")}
+      title={t("sections.buttons")}
     >
       <div className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
@@ -169,7 +169,7 @@ function ButtonSample() {
             <Button
               key={size}
               size={size}
-              aria-label={t("devThemeGallery.samples.buttonIconLabel")}
+              aria-label={t("samples.buttonIconLabel")}
             >
               <PlusIcon />
             </Button>
@@ -181,42 +181,42 @@ function ButtonSample() {
 }
 
 function InputSample() {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("devThemeGallery");
 
   return (
     <GallerySection
       id="inputs"
-      title={t("devThemeGallery.sections.inputs")}
+      title={t("sections.inputs")}
     >
       <div className="grid gap-3 sm:grid-cols-2">
         <Label className="block space-y-1.5">
-          <span>{t("devThemeGallery.samples.inputLabel")}</span>
-          <Input placeholder={t("devThemeGallery.samples.inputPlaceholder")} />
+          <span>{t("samples.inputLabel")}</span>
+          <Input placeholder={t("samples.inputPlaceholder")} />
         </Label>
         <div className="space-y-1.5">
           <p className="text-sm font-medium">
-            {t("devThemeGallery.samples.selectLabel")}
+            {t("samples.selectLabel")}
           </p>
           <Select defaultValue="main">
             <SelectTrigger
               className="w-full"
-              aria-label={t("devThemeGallery.samples.selectLabel")}
+              aria-label={t("samples.selectLabel")}
             >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="main">
-                {t("devThemeGallery.samples.selectOptionOne")}
+                {t("samples.selectOptionOne")}
               </SelectItem>
               <SelectItem value="terrace">
-                {t("devThemeGallery.samples.selectOptionTwo")}
+                {t("samples.selectOptionTwo")}
               </SelectItem>
             </SelectContent>
           </Select>
         </div>
         <Label className="flex items-center gap-2">
           <Checkbox defaultChecked />
-          <span>{t("devThemeGallery.samples.checkLabel")}</span>
+          <span>{t("samples.checkLabel")}</span>
         </Label>
       </div>
     </GallerySection>
@@ -224,23 +224,23 @@ function InputSample() {
 }
 
 function CardSample() {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("devThemeGallery");
 
   return (
-    <GallerySection id="card" title={t("devThemeGallery.sections.card")}>
+    <GallerySection id="card" title={t("sections.card")}>
       <Card>
         <CardHeader>
-          <CardTitle>{t("devThemeGallery.samples.cardTitle")}</CardTitle>
+          <CardTitle>{t("samples.cardTitle")}</CardTitle>
           <CardDescription>
-            {t("devThemeGallery.samples.cardDescription")}
+            {t("samples.cardDescription")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            {t("devThemeGallery.samples.cardBody")}
+            {t("samples.cardBody")}
           </p>
           <Button variant="outline">
-            {t("devThemeGallery.samples.cardAction")}
+            {t("samples.cardAction")}
           </Button>
         </CardContent>
       </Card>
@@ -249,14 +249,14 @@ function CardSample() {
 }
 
 function AlertSample() {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("devThemeGallery");
 
   return (
-    <GallerySection id="alert" title={t("devThemeGallery.sections.alert")}>
+    <GallerySection id="alert" title={t("sections.alert")}>
       <div className="grid gap-2">
         {ALERT_TONES.map(({ tone, key }) => (
           <Alert key={tone} tone={tone}>
-            {t(`devThemeGallery.samples.${key}`)}
+            {t(`samples.${key}`)}
           </Alert>
         ))}
       </div>
@@ -265,37 +265,37 @@ function AlertSample() {
 }
 
 function TableSample() {
-  const { t, i18n } = useTranslation("common");
+  const { t, i18n } = useTranslation("devThemeGallery");
   const amountFormat = new Intl.NumberFormat(i18n.language, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
 
   return (
-    <GallerySection id="table" title={t("devThemeGallery.sections.table")}>
+    <GallerySection id="table" title={t("sections.table")}>
       <div className="overflow-x-auto rounded-lg border border-border">
         <table className="w-full text-left text-sm">
           <thead className="bg-muted text-muted-foreground">
             <tr>
               <th className="px-3 py-2 font-medium">
-                {t("devThemeGallery.samples.tableName")}
+                {t("samples.tableName")}
               </th>
               <th className="px-3 py-2 font-medium">
-                {t("devThemeGallery.samples.tableStatus")}
+                {t("samples.tableStatus")}
               </th>
               <th className="px-3 py-2 text-right font-medium">
-                {t("devThemeGallery.samples.tableAmount")}
+                {t("samples.tableAmount")}
               </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             <tr>
               <td className="px-3 py-2">
-                {t("devThemeGallery.samples.tableRowOne")}
+                {t("samples.tableRowOne")}
               </td>
               <td className="px-3 py-2">
                 <span className="rounded-full bg-success/15 px-2 py-0.5 text-xs">
-                  {t("devThemeGallery.samples.tableStatusActive")}
+                  {t("samples.tableStatusActive")}
                 </span>
               </td>
               <td className="px-3 py-2 text-right tabular-nums">
@@ -304,11 +304,11 @@ function TableSample() {
             </tr>
             <tr>
               <td className="px-3 py-2">
-                {t("devThemeGallery.samples.tableRowTwo")}
+                {t("samples.tableRowTwo")}
               </td>
               <td className="px-3 py-2">
                 <span className="rounded-full bg-info/15 px-2 py-0.5 text-xs">
-                  {t("devThemeGallery.samples.tableStatusPending")}
+                  {t("samples.tableStatusPending")}
                 </span>
               </td>
               <td className="px-3 py-2 text-right tabular-nums">
@@ -323,29 +323,29 @@ function TableSample() {
 }
 
 function SidebarSample() {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("devThemeGallery");
 
   return (
     <GallerySection
       id="sidebar"
-      title={t("devThemeGallery.sections.sidebar")}
+      title={t("sections.sidebar")}
     >
       <div className="w-full max-w-xs rounded-xl border border-sidebar-border bg-sidebar p-3 text-sidebar-foreground">
         <p className="px-2 pb-3 text-sm font-semibold">
-          {t("devThemeGallery.samples.sidebarBrand")}
+          {t("samples.sidebarBrand")}
         </p>
         <p className="px-2 pb-1 text-xs text-sidebar-foreground/70">
-          {t("devThemeGallery.samples.sidebarGroup")}
+          {t("samples.sidebarGroup")}
         </p>
         <ul className="space-y-1">
           <li>
             <span className="flex h-8 items-center rounded-md bg-sidebar-accent px-2 text-sm font-medium text-sidebar-accent-foreground">
-              {t("devThemeGallery.samples.sidebarItemOne")}
+              {t("samples.sidebarItemOne")}
             </span>
           </li>
           <li>
             <span className="flex h-8 items-center rounded-md px-2 text-sm text-sidebar-foreground">
-              {t("devThemeGallery.samples.sidebarItemTwo")}
+              {t("samples.sidebarItemTwo")}
             </span>
           </li>
         </ul>
@@ -355,24 +355,24 @@ function SidebarSample() {
 }
 
 function DialogSample() {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("devThemeGallery");
 
   return (
-    <GallerySection id="dialog" title={t("devThemeGallery.sections.dialog")}>
+    <GallerySection id="dialog" title={t("sections.dialog")}>
       <div className="relative min-h-48 overflow-hidden rounded-lg border border-border bg-surface p-4">
         <div aria-hidden="true" className="absolute inset-0 bg-overlay" />
         <div className="relative mx-auto mt-6 max-w-xs rounded-xl border border-border bg-popover p-4 text-popover-foreground shadow-overlay">
           <h4 className="font-heading text-base font-semibold">
-            {t("devThemeGallery.samples.dialogTitle")}
+            {t("samples.dialogTitle")}
           </h4>
           <p className="mt-1 text-sm text-muted-foreground">
-            {t("devThemeGallery.samples.dialogDescription")}
+            {t("samples.dialogDescription")}
           </p>
           <div className="mt-4 flex justify-end gap-2">
             <Button variant="outline">
-              {t("devThemeGallery.samples.dialogCancel")}
+              {t("samples.dialogCancel")}
             </Button>
-            <Button>{t("devThemeGallery.samples.dialogConfirm")}</Button>
+            <Button>{t("samples.dialogConfirm")}</Button>
           </div>
         </div>
       </div>
@@ -381,19 +381,19 @@ function DialogSample() {
 }
 
 function ToastSample() {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("devThemeGallery");
 
   return (
-    <GallerySection id="toast" title={t("devThemeGallery.sections.toast")}>
+    <GallerySection id="toast" title={t("sections.toast")}>
       <div className="max-w-sm rounded-lg border border-border bg-popover p-3 text-popover-foreground shadow-overlay">
         <div className="flex items-start gap-2">
           <CheckCircle2Icon className="mt-0.5 size-4 text-success" />
           <div className="space-y-1">
             <p className="text-sm font-medium">
-              {t("devThemeGallery.samples.toastTitle")}
+              {t("samples.toastTitle")}
             </p>
             <p className="text-sm text-muted-foreground">
-              {t("devThemeGallery.samples.toastDescription")}
+              {t("samples.toastDescription")}
             </p>
           </div>
         </div>
@@ -403,18 +403,18 @@ function ToastSample() {
 }
 
 function FocusSample() {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("devThemeGallery");
 
   return (
-    <GallerySection id="focus" title={t("devThemeGallery.sections.focus")}>
+    <GallerySection id="focus" title={t("sections.focus")}>
       <div className="flex flex-wrap items-center gap-3">
         <Button className="border-ring ring-3 ring-ring/50">
-          {t("devThemeGallery.samples.focusLabel")}
+          {t("samples.focusLabel")}
         </Button>
         <Input
-          aria-label={t("devThemeGallery.samples.focusLabel")}
+          aria-label={t("samples.focusLabel")}
           className="max-w-56 border-ring ring-3 ring-ring/50"
-          defaultValue={t("devThemeGallery.samples.focusLabel")}
+          defaultValue={t("samples.focusLabel")}
         />
       </div>
     </GallerySection>
@@ -422,18 +422,18 @@ function FocusSample() {
 }
 
 function ChartSample() {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("devThemeGallery");
 
   return (
-    <GallerySection id="charts" title={t("devThemeGallery.sections.charts")}>
+    <GallerySection id="charts" title={t("sections.charts")}>
       <div className="space-y-3">
         <p className="text-sm font-medium">
-          {t("devThemeGallery.samples.chartTitle")}
+          {t("samples.chartTitle")}
         </p>
         <div
           className="flex h-32 items-end gap-2"
           role="img"
-          aria-label={t("devThemeGallery.samples.chartTitle")}
+          aria-label={t("samples.chartTitle")}
         >
           <div className="flex flex-1 flex-col items-center gap-1">
             <div className="h-20 w-full rounded-t-md bg-chart-1" />
@@ -465,8 +465,8 @@ function ThemePanel(props: {
   themeId: ThemeId;
   mode: ResolvedThemeMode;
 }) {
-  const { t } = useTranslation("common");
-  const themeLabel = t(`devThemeGallery.themes.${props.themeId}`);
+  const { t } = useTranslation("devThemeGallery");
+  const themeLabel = t(`themes.${props.themeId}`);
 
   return (
     <article
@@ -480,9 +480,9 @@ function ThemePanel(props: {
     >
       <header className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-heading text-xl font-semibold">
-          {t("devThemeGallery.panelTitle", {
+          {t("panelTitle", {
             theme: themeLabel,
-            mode: t(`devThemeGallery.modes.${props.mode}`),
+            mode: t(`modes.${props.mode}`),
           })}
         </h2>
         <code className="rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
@@ -507,20 +507,20 @@ function ThemePanel(props: {
 }
 
 export default function ThemeGalleryPage() {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("devThemeGallery");
 
   return (
     <main className="min-h-screen bg-background p-6 text-foreground">
       <div className="mx-auto max-w-7xl space-y-6">
         <header className="space-y-2">
           <h1 className="font-heading text-3xl font-semibold tracking-tight">
-            {t("devThemeGallery.title")}
+            {t("title")}
           </h1>
           <p className="max-w-2xl text-sm text-muted-foreground">
-            {t("devThemeGallery.description")}
+            {t("description")}
           </p>
           <p className="text-xs text-muted-foreground">
-            {t("devThemeGallery.tokenSummary", {
+            {t("tokenSummary", {
               count: THEMES.length,
               tokens: THEME_TOKEN_CONTRACT.length,
               themes: THEMES.length,

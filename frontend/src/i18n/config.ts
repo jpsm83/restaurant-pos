@@ -23,6 +23,12 @@ export const NAMESPACES = [
   "errors",
 ] as const;
 
+/**
+ * Dev-only namespace whose copy is registered lazily by its dev-gated module.
+ * Deliberately kept out of `NAMESPACES` so the production bundle never includes it.
+ */
+export const DEV_THEME_GALLERY_NAMESPACE = "devThemeGallery";
+
 /** Persisted via `languageChanged`; read synchronously at init to avoid a locale flash before first paint. */
 export const I18N_STORAGE_KEY = "restaurant_pos_i18n_lng";
 

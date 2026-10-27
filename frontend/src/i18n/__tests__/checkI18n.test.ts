@@ -2,7 +2,8 @@
 import { spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   findLocaleViolations,
@@ -590,9 +591,16 @@ function writeTempFile(root: string, path: string, content: string) {
   writeFileSync(fullPath, content);
 }
 
+// Vitest exposes a filesystem path; native ESM exposes a `file:` URL.
+const moduleUrl = import.meta.url;
+const moduleDirectory = moduleUrl.startsWith("file:")
+  ? dirname(fileURLToPath(moduleUrl))
+  : dirname(moduleUrl);
+const CHECK_I18N_SCRIPT = join(moduleDirectory, "../../../scripts/check-i18n.mjs");
+const FRONTEND_ROOT = join(moduleDirectory, "../../..");
+
 function runCli(root: string) {
-  const scriptPath = resolve(process.cwd(), "scripts/check-i18n.mjs");
-  return spawnSync(process.execPath, [scriptPath, root], {
+  return spawnSync(process.execPath, [CHECK_I18N_SCRIPT, root], {
     encoding: "utf8",
   });
 }
@@ -604,6 +612,13 @@ afterEach(() => {
 });
 
 describe("i18n guard CLI", () => {
+  it("reports no violations in the frontend tree", () => {
+    const result = runCli(FRONTEND_ROOT);
+
+    expect(result.stderr).toBe("");
+    expect(result.status).toBe(0);
+  });
+
   it("exits non-zero on violations and zero when clean", () => {
     const root = makeTempRoot();
     writeTempFile(

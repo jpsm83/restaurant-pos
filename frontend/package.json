@@ -9,7 +9,7 @@
     "typecheck": "tsc -b",
     "check:styles": "node scripts/check-styles.mjs",
     "check:i18n": "node scripts/check-i18n.mjs",
-    "lint": "eslint . && node scripts/check-styles.mjs",
+    "lint": "eslint . && node scripts/check-styles.mjs && node scripts/check-i18n.mjs",
     "test": "vitest run",
     "preview": "vite preview"
   },

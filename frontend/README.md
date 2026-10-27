@@ -111,11 +111,14 @@ Only `VITE_`-prefixed variables are exposed to client code.
 | `npm run preview --workspace frontend` | Serve the production build locally |
 | `npm run typecheck --workspace frontend` | `tsc -b` (project references) |
 | `npm run check:styles --workspace frontend` | Style guard: raw colours and arbitrary values |
-| `npm run lint --workspace frontend` | ESLint and the style guard |
+| `npm run check:i18n --workspace frontend` | i18n guard: locale parity, used keys, and hardcoded copy |
+| `npm run lint --workspace frontend` | ESLint, the style guard, and the i18n guard |
 | `npm run test --workspace frontend` | Vitest run (jsdom) |
 
 Styling rules and the allowlist live in
-[`docs/conventions/styling.md`](../docs/conventions/styling.md).
+[`docs/conventions/styling.md`](../docs/conventions/styling.md). The i18n guard,
+locale authoring rules, formatting seam, and localized error seams live in
+[`docs/conventions/i18n.md`](../docs/conventions/i18n.md).
 
 ## Architecture
 
