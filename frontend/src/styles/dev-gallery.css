@@ -1,0 +1,302 @@
+/*
+ * Dev-only token previews for `/dev/themes`. Imported by the gallery page, so
+ * this file and its selectors stay out of the production bundle.
+ */
+[data-token-swatch] {
+  background-color: var(--surface);
+}
+
+[data-token-swatch="background"] {
+  background-color: var(--background);
+}
+
+[data-token-swatch="foreground"] {
+  background-color: var(--foreground);
+}
+
+[data-token-swatch="card"] {
+  background-color: var(--card);
+}
+
+[data-token-swatch="card-foreground"] {
+  background-color: var(--card-foreground);
+}
+
+[data-token-swatch="popover"] {
+  background-color: var(--popover);
+}
+
+[data-token-swatch="popover-foreground"] {
+  background-color: var(--popover-foreground);
+}
+
+[data-token-swatch="surface"] {
+  background-color: var(--surface);
+}
+
+[data-token-swatch="surface-foreground"] {
+  background-color: var(--surface-foreground);
+}
+
+[data-token-swatch="elevated"] {
+  background-color: var(--elevated);
+}
+
+[data-token-swatch="elevated-foreground"] {
+  background-color: var(--elevated-foreground);
+}
+
+[data-token-swatch="overlay"] {
+  background-color: var(--overlay);
+}
+
+[data-token-swatch="primary"] {
+  background-color: var(--primary);
+}
+
+[data-token-swatch="primary-foreground"] {
+  background-color: var(--primary-foreground);
+}
+
+[data-token-swatch="secondary"] {
+  background-color: var(--secondary);
+}
+
+[data-token-swatch="secondary-foreground"] {
+  background-color: var(--secondary-foreground);
+}
+
+[data-token-swatch="accent"] {
+  background-color: var(--accent);
+}
+
+[data-token-swatch="accent-foreground"] {
+  background-color: var(--accent-foreground);
+}
+
+[data-token-swatch="muted"] {
+  background-color: var(--muted);
+}
+
+[data-token-swatch="muted-foreground"] {
+  background-color: var(--muted-foreground);
+}
+
+[data-token-swatch="destructive"] {
+  background-color: var(--destructive);
+}
+
+[data-token-swatch="destructive-foreground"] {
+  background-color: var(--destructive-foreground);
+}
+
+[data-token-swatch="success"] {
+  background-color: var(--success);
+}
+
+[data-token-swatch="success-foreground"] {
+  background-color: var(--success-foreground);
+}
+
+[data-token-swatch="warning"] {
+  background-color: var(--warning);
+}
+
+[data-token-swatch="warning-foreground"] {
+  background-color: var(--warning-foreground);
+}
+
+[data-token-swatch="info"] {
+  background-color: var(--info);
+}
+
+[data-token-swatch="info-foreground"] {
+  background-color: var(--info-foreground);
+}
+
+[data-token-swatch="border"] {
+  background-color: var(--border);
+}
+
+[data-token-swatch="input"] {
+  background-color: var(--input);
+}
+
+[data-token-swatch="ring"] {
+  background-color: var(--ring);
+}
+
+[data-token-swatch="chart-1"] {
+  background-color: var(--chart-1);
+}
+
+[data-token-swatch="chart-2"] {
+  background-color: var(--chart-2);
+}
+
+[data-token-swatch="chart-3"] {
+  background-color: var(--chart-3);
+}
+
+[data-token-swatch="chart-4"] {
+  background-color: var(--chart-4);
+}
+
+[data-token-swatch="chart-5"] {
+  background-color: var(--chart-5);
+}
+
+[data-token-swatch="sidebar"] {
+  background-color: var(--sidebar);
+}
+
+[data-token-swatch="sidebar-foreground"] {
+  background-color: var(--sidebar-foreground);
+}
+
+[data-token-swatch="sidebar-primary"] {
+  background-color: var(--sidebar-primary);
+}
+
+[data-token-swatch="sidebar-primary-foreground"] {
+  background-color: var(--sidebar-primary-foreground);
+}
+
+[data-token-swatch="sidebar-accent"] {
+  background-color: var(--sidebar-accent);
+}
+
+[data-token-swatch="sidebar-accent-foreground"] {
+  background-color: var(--sidebar-accent-foreground);
+}
+
+[data-token-swatch="sidebar-border"] {
+  background-color: var(--sidebar-border);
+}
+
+[data-token-swatch="sidebar-ring"] {
+  background-color: var(--sidebar-ring);
+}
+
+[data-token-swatch="radius"] {
+  border-radius: var(--radius);
+}
+
+[data-token-swatch="sans"]::before,
+[data-token-swatch="heading"]::before,
+[data-token-swatch="mono"]::before {
+  content: "Aa";
+}
+
+[data-token-swatch="sans"]::before {
+  font-family: var(--sans);
+}
+
+[data-token-swatch="heading"]::before {
+  font-family: var(--heading);
+}
+
+[data-token-swatch="mono"]::before {
+  font-family: var(--mono);
+}
+
+[data-token-swatch="elevation-panel"] {
+  box-shadow: var(--elevation-panel);
+}
+
+[data-token-swatch="elevation-overlay"] {
+  box-shadow: var(--elevation-overlay);
+}
+
+[data-token-swatch="page-width"]::before {
+  content: "↔";
+}
+
+[data-token-swatch="motion-fast"]::after,
+[data-token-swatch="motion-base"]::after,
+[data-token-swatch="motion-slow"]::after,
+[data-token-swatch="motion-ease-standard"]::after,
+[data-token-swatch="motion-ease-emphasized"]::after {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background-color: var(--foreground);
+  animation-name: dev-gallery-motion;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+}
+
+[data-token-swatch="motion-fast"]::after {
+  animation-duration: var(--motion-fast);
+  animation-timing-function: var(--motion-ease-standard);
+}
+
+[data-token-swatch="motion-base"]::after {
+  animation-duration: var(--motion-base);
+  animation-timing-function: var(--motion-ease-standard);
+}
+
+[data-token-swatch="motion-slow"]::after {
+  animation-duration: var(--motion-slow);
+  animation-timing-function: var(--motion-ease-standard);
+}
+
+[data-token-swatch="motion-ease-standard"]::after {
+  animation-duration: var(--motion-base);
+  animation-timing-function: var(--motion-ease-standard);
+}
+
+[data-token-swatch="motion-ease-emphasized"]::after {
+  animation-duration: var(--motion-base);
+  animation-timing-function: var(--motion-ease-emphasized);
+}
+
+[data-token-swatch="z-dropdown"]::before,
+[data-token-swatch="z-sticky"]::before,
+[data-token-swatch="z-overlay"]::before,
+[data-token-swatch="z-modal"]::before,
+[data-token-swatch="z-toast"]::before,
+[data-token-swatch="z-tooltip"]::before {
+  content: "z";
+}
+
+[data-token-swatch="z-dropdown"] {
+  z-index: var(--z-dropdown);
+}
+
+[data-token-swatch="z-sticky"] {
+  z-index: var(--z-sticky);
+}
+
+[data-token-swatch="z-overlay"] {
+  z-index: var(--z-overlay);
+}
+
+[data-token-swatch="z-modal"] {
+  z-index: var(--z-modal);
+}
+
+[data-token-swatch="z-toast"] {
+  z-index: var(--z-toast);
+}
+
+[data-token-swatch="z-tooltip"] {
+  z-index: var(--z-tooltip);
+}
+
+@keyframes dev-gallery-motion {
+  from {
+    transform: translateX(-0.5rem);
+  }
+
+  to {
+    transform: translateX(0.5rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-token-swatch]::after {
+    animation: none;
+  }
+}

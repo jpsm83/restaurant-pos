@@ -68,6 +68,12 @@ const CustomerDashboardPage = lazy(() => import("@/pages/customer/CustomerDashbo
 const EmployeeProfilePage = lazy(() => import("@/pages/employee/EmployeeProfilePage"));
 const EmployeeDashboardPage = lazy(() => import("@/pages/employee/EmployeeDashboardPage"));
 
+// Dev-only review surface: the static `DEV` check lets the production build
+// drop the dynamic import and its chunk entirely.
+const DevThemeGalleryPage = import.meta.env.DEV
+  ? lazy(() => import("@/pages/dev/ThemeGalleryPage"))
+  : null;
+
 function LegacyAppRedirect() {
   const { state } = useAuth();
   if (!state.user) {
@@ -182,6 +188,10 @@ export function AppRoutes() {
           </Route>
 
           <Route path="/access-denied" element={<AccessDenied />} />
+
+          {DevThemeGalleryPage ? (
+            <Route path="/dev/themes" element={<DevThemeGalleryPage />} />
+          ) : null}
 
           <Route
             path="/business/:businessId"

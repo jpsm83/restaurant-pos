@@ -18,12 +18,19 @@ export function getThemeCssIds(): string[] {
 }
 
 export function extractRuleBlock(css: string, selector: string): string {
-  const selectorIndex = css.indexOf(selector);
-  if (selectorIndex === -1) {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const selectorPattern = new RegExp(
+    `(?:^|[,\\n])\\s*${escaped}\\s*(?=,|\\{)`,
+  );
+  const selectorMatch = selectorPattern.exec(css);
+  if (!selectorMatch) {
     throw new Error(`Missing selector "${selector}"`);
   }
 
-  const blockStart = css.indexOf("{", selectorIndex + selector.length);
+  const blockStart = css.indexOf(
+    "{",
+    selectorMatch.index + selectorMatch[0].length,
+  );
   if (blockStart === -1) {
     throw new Error(`Missing block for selector "${selector}"`);
   }

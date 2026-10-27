@@ -118,7 +118,7 @@ Every theme therefore has a light and a dark token set, and a brand theme works 
 
 ### Default theme is the base
 
-`default` is the only theme without its own `[data-theme]` block. Its light set is `:root` and its dark set is `.dark`, with `.dark` declared after `:root` so it wins at equal specificity. Both blocks set `color-scheme` (`light` / `dark`). The boot script still sets `data-theme="default"` so the attribute is always present and the registry is honest. An unknown `data-theme` falls back to the `:root` defaults.
+`default` is the base theme. Its light set is `:root` plus the scoped `[data-theme="default"]:not(.dark)` selector, so a preview subtree can force light tokens even under a dark root (the `/dev/themes` light panel needs this). Its dark set is `.dark`, with `.dark` declared after `:root` so it wins at equal specificity. Both blocks set `color-scheme` (`light` / `dark`). The boot script still sets `data-theme="default"` so the attribute is always present and the registry is honest. An unknown `data-theme` falls back to the `:root` defaults.
 
 ### Complete sets, explicit selectors
 

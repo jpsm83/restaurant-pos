@@ -129,6 +129,16 @@ describe("theme token contract", () => {
     ).toContain("color-scheme: dark;");
   });
 
+  it("scopes the default light set for preview subtrees", () => {
+    const css = getThemeCss("default");
+    const scopedLight = extractRuleBlock(
+      css,
+      '[data-theme="default"]:not(.dark)',
+    );
+    expect(scopedLight).toContain("color-scheme: light;");
+    expect(scopedLight).toContain("--background:");
+  });
+
   it.each(THEMES.map((theme) => theme.id))(
     "passes the documented contrast pairs for %s",
     (themeId) => {
