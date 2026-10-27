@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 export interface TableConfigColumn {
   columnKey: string;
@@ -99,9 +100,9 @@ export const TableConfigEditor: React.FC<TableConfigEditorProps> = ({
 
   return (
     <div className="w-full h-full flex flex-col gap-3">
-      <div className="border rounded bg-white overflow-auto">
+      <div className="overflow-auto rounded border border-border bg-card">
         <table className="w-full text-sm">
-          <thead className="sticky top-0 bg-gray-50">
+          <thead className="sticky top-0 bg-muted">
             <tr>
               <th className="p-2 text-left">
                 {t("advancedTable.configEditor.order", {
@@ -136,7 +137,10 @@ export const TableConfigEditor: React.FC<TableConfigEditorProps> = ({
             {orderedColumns.map((column, index) => (
               <tr
                 key={column.columnKey}
-                className={`border-t ${draggedKey === column.columnKey ? "opacity-50" : ""}`}
+                className={cn(
+                  "border-t border-border",
+                  draggedKey === column.columnKey && "opacity-50",
+                )}
                 onDragOver={(event) => event.preventDefault()}
                 onDrop={() => handleDrop(column.columnKey)}
               >

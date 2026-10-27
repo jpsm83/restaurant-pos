@@ -145,7 +145,7 @@ export const TablePagination = <TData extends RowData,>({
           value={String(table.state.pagination.pageSize)}
           onValueChange={(value) => table.setPageSize(Number(value))}
         >
-          <SelectTrigger className="h-8 w-[84px]">
+          <SelectTrigger className="h-8 w-21">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -182,7 +182,7 @@ export const TablePagination = <TData extends RowData,>({
             {t("advancedTable.pagination.columns", { defaultValue: "Columns" })} <ChevronDown className="h-4 w-4" />
           </Button>
           {showColumnMenu && (
-            <div className="absolute bottom-full right-0 z-20 mb-1 w-56 rounded border border-border bg-card p-2 shadow">
+            <div className="absolute bottom-full right-0 z-dropdown mb-1 w-56 rounded border border-border bg-card p-2 shadow">
               {onResetColumns && (
                 <Button variant="ghost" className="mb-2 w-full justify-start px-2" onClick={onResetColumns}>
                   {t("advancedTable.pagination.resetOrderVisibility", {

@@ -63,7 +63,7 @@ export const TableConfigManager: React.FC<TableConfigManagerProps> = ({
       />
       {error ? <Alert className="mt-2">{error}</Alert> : null}
       {shouldDisableSave(isLoading, isSaving, columns) && columns.length === 0 && (
-        <p className="mt-2 text-xs text-gray-500">
+        <p className="mt-2 text-xs text-muted-foreground">
           {t("advancedTable.configManager.noColumnsToSave", {
             defaultValue: "No columns available to save.",
           })}

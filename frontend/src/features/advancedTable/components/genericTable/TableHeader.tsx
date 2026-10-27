@@ -8,6 +8,7 @@ import {
 import { ArrowDown, ArrowUp, ArrowUpDown, GripVertical } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import type { AdvancedTableFeatures } from "@/features/advancedTable/hooks/useEnhancedTable";
 
 export interface StandaloneTableHeaderProps<TData extends RowData> {
@@ -21,10 +22,6 @@ export interface StandaloneTableHeaderProps<TData extends RowData> {
     onDrop?: (event: React.DragEvent, columnId: string) => void;
     onDragEnd?: () => void;
   };
-}
-
-function getHeaderDragClass(isDragging: boolean): string {
-  return isDragging ? "opacity-50" : "";
 }
 
 export const TableHeader = <TData extends RowData,>({
@@ -55,9 +52,10 @@ export const TableHeader = <TData extends RowData,>({
             return (
               <th
                 key={header.id}
-                className={`group bg-muted/70 p-2 text-left text-foreground ${getHeaderDragClass(
-                  isDragging
-                )}`}
+                className={cn(
+                  "group bg-muted/70 p-2 text-left text-foreground",
+                  isDragging && "opacity-50",
+                )}
                 draggable={canDragColumn}
                 onDragStart={
                   canDragColumn && onDragStart

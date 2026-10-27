@@ -1,15 +1,8 @@
 {
   "colors": [
-    "src/components/AccountMenuPopover.tsx",
-    "src/features/advancedTable/components/GenericSearchBar.tsx",
-    "src/features/advancedTable/components/TableConfigEditor.tsx",
-    "src/features/advancedTable/components/TableConfigManager.tsx"
+    "src/components/AccountMenuPopover.tsx"
   ],
   "arbitraryValues": [
-    "src/components/AccountMenuPopover.tsx",
-    "src/features/advancedTable/components/GenericSearchBar.tsx",
-    "src/features/advancedTable/components/RecordDetailsModal.tsx",
-    "src/features/advancedTable/components/genericTable/TableBody.tsx",
-    "src/features/advancedTable/components/genericTable/TablePagination.tsx"
+    "src/components/AccountMenuPopover.tsx"
   ]
 }

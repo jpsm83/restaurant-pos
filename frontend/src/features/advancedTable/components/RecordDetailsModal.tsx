@@ -270,7 +270,7 @@ export const RecordDetailsModal: React.FC<RecordDetailsModalProps> = ({
   if (!open || !rect) return null;
 
   return (
-    <div className="fixed inset-0 z-50 pointer-events-none">
+    <div className="pointer-events-none fixed inset-0 z-modal">
       <div
         role="dialog"
         aria-modal="true"
@@ -336,37 +336,37 @@ export const RecordDetailsModal: React.FC<RecordDetailsModalProps> = ({
           </div>
           <div className="flex-1 min-h-0 overflow-auto">{children}</div>
           <div
-            className="absolute right-[-3px] top-[8px] bottom-[8px] w-2 cursor-ew-resize"
+            className="absolute -right-0.75 top-2 bottom-2 w-2 cursor-ew-resize"
             onMouseDown={(event) => handleResizeMouseDown(event, "right")}
             aria-label={t("advancedTable.modal.resizeHandle", { defaultValue: "Resize modal" })}
             title={t("advancedTable.modal.resizeHandle", { defaultValue: "Resize modal" })}
           />
           <div
-            className="absolute left-[-3px] top-[8px] bottom-[8px] w-2 cursor-ew-resize"
+            className="absolute -left-0.75 top-2 bottom-2 w-2 cursor-ew-resize"
             onMouseDown={(event) => handleResizeMouseDown(event, "left")}
           />
           <div
-            className="absolute bottom-[-3px] left-[8px] right-[8px] h-2 cursor-ns-resize"
+            className="absolute -bottom-0.75 left-2 right-2 h-2 cursor-ns-resize"
             onMouseDown={(event) => handleResizeMouseDown(event, "bottom")}
           />
           <div
-            className="absolute top-[-3px] left-[8px] right-[8px] h-2 cursor-ns-resize"
+            className="absolute -top-0.75 left-2 right-2 h-2 cursor-ns-resize"
             onMouseDown={(event) => handleResizeMouseDown(event, "top")}
           />
           <div
-            className="absolute top-[-3px] left-[-3px] h-3 w-3 cursor-nwse-resize"
+            className="absolute -top-0.75 -left-0.75 h-3 w-3 cursor-nwse-resize"
             onMouseDown={(event) => handleResizeMouseDown(event, "top-left")}
           />
           <div
-            className="absolute top-[-3px] right-[-3px] h-3 w-3 cursor-nesw-resize"
+            className="absolute -top-0.75 -right-0.75 h-3 w-3 cursor-nesw-resize"
             onMouseDown={(event) => handleResizeMouseDown(event, "top-right")}
           />
           <div
-            className="absolute bottom-[-3px] left-[-3px] h-3 w-3 cursor-nesw-resize"
+            className="absolute -bottom-0.75 -left-0.75 h-3 w-3 cursor-nesw-resize"
             onMouseDown={(event) => handleResizeMouseDown(event, "bottom-left")}
           />
           <div
-            className="absolute bottom-[-3px] right-[-3px] h-3 w-3 cursor-nwse-resize"
+            className="absolute -bottom-0.75 -right-0.75 h-3 w-3 cursor-nwse-resize"
             onMouseDown={(event) => handleResizeMouseDown(event, "bottom-right")}
           />
         </div>

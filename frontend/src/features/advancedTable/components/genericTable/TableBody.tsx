@@ -6,6 +6,7 @@ import {
   type Table,
 } from "@tanstack/react-table";
 import { useTranslation } from "react-i18next";
+import { cn } from "@/lib/utils";
 import type { AdvancedTableFeatures } from "@/features/advancedTable/hooks/useEnhancedTable";
 
 export interface StandaloneTableBodyProps<TData extends RowData> {
@@ -49,9 +50,11 @@ export const TableBody = <TData extends RowData,>({
             <tr
               key={row.id}
               data-state={selected ? "selected" : undefined}
-              className={`text-center text-[12px] leading-none ${selected ? "bg-primary/15" : "hover:bg-muted/70"} ${
-                onRowClick ? "cursor-pointer" : ""
-              }`}
+              className={cn(
+                "text-center text-xs leading-none",
+                selected ? "bg-primary/15" : "hover:bg-muted/70",
+                onRowClick && "cursor-pointer",
+              )}
               style={
                 rowHeightPx
                   ? {
@@ -74,7 +77,7 @@ export const TableBody = <TData extends RowData,>({
       ) : (
         <tr className="h-full">
           <td colSpan={columns.length} className="h-full text-center text-muted-foreground">
-            <div className="flex flex-col items-center justify-center min-h-[320px] w-full pointer-events-none">
+            <div className="pointer-events-none flex min-h-80 w-full flex-col items-center justify-center">
               <p className="text-xl font-medium mb-2">{resolvedEmptyMessage}</p>
               <p className="text-sm font-medium">{resolvedEmptySubMessage}</p>
             </div>

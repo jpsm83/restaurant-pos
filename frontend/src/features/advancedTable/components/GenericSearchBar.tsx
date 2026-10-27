@@ -12,6 +12,7 @@ import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Select,
@@ -184,12 +185,9 @@ function DateRangeFilter({
               <CalendarIcon className="h-4 w-4" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent
-            className="w-auto p-4 bg-white border border-gray-200 shadow-lg"
-            align="start"
-          >
-            <div className="flex flex-col gap-2 min-w-[300px]">
-              <Label className="text-sm font-medium text-gray-900 mb-2">
+          <PopoverContent className="w-auto p-4 shadow-lg" align="start">
+            <div className="flex min-w-75 flex-col gap-2">
+              <Label className="mb-2 text-sm font-medium text-foreground">
                 {t("dateFilter.quickDateRange", {
                   defaultValue: "Quick date range",
                 })}
@@ -205,20 +203,20 @@ function DateRangeFilter({
                     })}
                   />
                 </SelectTrigger>
-                <SelectContent className="bg-white border border-gray-200 shadow-lg">
+                <SelectContent className="shadow-lg">
                   {quickOptions.map((option) => (
                     <SelectItem
                       key={option.value}
                       value={option.value}
-                      className="hover:bg-gray-200"
+                      className="hover:bg-accent"
                     >
                       {option.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <hr className="my-4 border-gray-300" />
-              <Label className="text-sm font-medium text-gray-900 mb-2">
+              <hr className="my-4 border-border" />
+              <Label className="mb-2 text-sm font-medium text-foreground">
                 {t("dateFilter.customDateRange", {
                   defaultValue: "Custom date range",
                 })}
@@ -248,7 +246,7 @@ function DateRangeFilter({
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent
-                      className="w-auto overflow-hidden p-0 bg-white"
+                      className="w-auto overflow-hidden p-0"
                       align="start"
                     >
                       <Calendar
@@ -287,7 +285,7 @@ function DateRangeFilter({
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent
-                      className="w-auto overflow-hidden p-0 bg-white"
+                      className="w-auto overflow-hidden p-0"
                       align="start"
                     >
                       <Calendar
@@ -322,18 +320,18 @@ function DateRangeFilter({
           </PopoverContent>
         </Popover>
 
-        <Label className="w-full text-xs text-gray-700 font-bold bg-[#f1f4f8] px-4 py-1 border border-gray-400 rounded-md h-9 whitespace-nowrap">
+        <Label className="h-9 w-full whitespace-nowrap rounded-md border border-border bg-muted px-4 py-1 text-xs font-bold text-foreground">
           {selectedQuickOption ? (
-            <span className="text-gray-600">
+            <span className="text-muted-foreground">
               {quickOptionLabelMap[selectedQuickOption] ?? selectedQuickOption}
             </span>
           ) : (
             <>
-              <span className="text-gray-600">
+              <span className="text-muted-foreground">
                 {t("dateFilter.from", { defaultValue: "From" })}
               </span>{" "}
               {formatReadableDate(startDate)}{" "}
-              <span className="text-gray-600">
+              <span className="text-muted-foreground">
                 {t("dateFilter.until", { defaultValue: "Until" })}
               </span>{" "}
               {formatReadableDate(endDate)}
@@ -343,7 +341,10 @@ function DateRangeFilter({
         <Button
           onClick={handleRefreshQuickDate}
           variant="outline"
-          className={`${selectedQuickOption ? "visible" : "hidden"} w-[36.6px] disabled:cursor-not-allowed`}
+          className={cn(
+            "w-9 disabled:cursor-not-allowed",
+            selectedQuickOption ? "visible" : "hidden",
+          )}
         >
           <RefreshCw className="h-4 w-4" />
         </Button>
@@ -440,8 +441,8 @@ const GenericSearchBar: React.FC<GenericSearchBarProps> = ({
       {/* Left Section - Search Controls */}
       <div className="flex justify-center items-center gap-2 flex-wrap">
         <div className="relative flex justify-center items-center gap-2">
-          <Search className="h-4 w-4 text-gray-600" />
-          <h3 className="text-sm font-semibold text-gray-600 mr-2">
+          <Search className="h-4 w-4 text-muted-foreground" />
+          <h3 className="mr-2 text-sm font-semibold text-muted-foreground">
             {displaySearchLabel}
           </h3>
 

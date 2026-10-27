@@ -123,7 +123,7 @@ export const TableFilterRow = <TData extends RowData,>({
           <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
         </Button>
         {isOpen && (
-          <div className="absolute z-20 mt-1 max-h-72 w-64 overflow-y-auto rounded border border-border bg-card p-2 shadow">
+          <div className="absolute z-dropdown mt-1 max-h-72 w-64 overflow-y-auto rounded border border-border bg-card p-2 shadow">
             <Label className="mb-1 flex items-center gap-2 border-b border-border py-1 text-sm font-normal">
               <Checkbox
                 checked={isAllSelected}
