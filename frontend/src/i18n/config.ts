@@ -1,0 +1,41 @@
+/**
+ * Single source of truth for the frontend i18n rail.
+ *
+ * The app singleton, the language-options hook, and the test helper all consume these exports;
+ * adding or removing a language or namespace happens here once.
+ */
+
+export const SUPPORTED_LANGUAGES = ["en", "es"] as const;
+
+export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
+
+export const DEFAULT_LANGUAGE: SupportedLanguage = "en";
+
+export const NAMESPACES = [
+  "common",
+  "nav",
+  "auth",
+  "marketing",
+  "business",
+  "customer",
+  "employee",
+  "mode",
+  "errors",
+] as const;
+
+export type I18nNamespace = (typeof NAMESPACES)[number];
+
+/** Persisted via `languageChanged`; read synchronously at init to avoid a locale flash before first paint. */
+export const I18N_STORAGE_KEY = "restaurant_pos_i18n_lng";
+
+export function isSupportedLanguage(code: string): code is SupportedLanguage {
+  return (SUPPORTED_LANGUAGES as readonly string[]).includes(code);
+}
+
+/** First segment of a BCP 47 tag (`es-MX` → `es`), or `null` when the base language is unsupported. */
+export function toSupportedLanguage(
+  tag: string | null | undefined,
+): SupportedLanguage | null {
+  const base = tag?.split("-")[0]?.toLowerCase();
+  return base && isSupportedLanguage(base) ? base : null;
+}

@@ -1,6 +1,7 @@
 import { renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { SUPPORTED_LANGUAGES, useLanguageOptions } from "../useLanguageOptions";
+import { SUPPORTED_LANGUAGES } from "@/i18n/config";
+import { useLanguageOptions } from "../useLanguageOptions";
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -9,13 +10,10 @@ vi.mock("react-i18next", () => ({
 }));
 
 describe("useLanguageOptions", () => {
-  it("returns 2 entries with expected value codes", () => {
+  it("returns one option per shared supported language", () => {
     const { result } = renderHook(() => useLanguageOptions());
 
-    expect(result.current).toHaveLength(2);
-    expect(result.current.map((o) => o.value)).toEqual(
-      SUPPORTED_LANGUAGES.map((l) => l.code),
-    );
+    expect(result.current.map((o) => o.value)).toEqual([...SUPPORTED_LANGUAGES]);
   });
 
   it("uses mocked useTranslation for labels", () => {
