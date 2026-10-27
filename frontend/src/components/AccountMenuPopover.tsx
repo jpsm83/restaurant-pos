@@ -85,15 +85,15 @@ export function AccountMenuPopover({ session }: AccountMenuPopoverProps) {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:ring-offset-2"
+          className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           aria-label={t("account.menuAriaLabel")}
         >
           <div
-            className="flex h-9 w-9 shrink-0 overflow-hidden rounded-full border border-neutral-200 bg-white shadow-sm"
+            className="flex h-9 w-9 shrink-0 overflow-hidden rounded-full border border-border bg-background shadow-sm"
             aria-hidden
           >
             <span
-              className="flex h-full w-full items-center justify-center bg-neutral-100 text-[11px] font-semibold uppercase tracking-tight text-neutral-600"
+              className="flex h-full w-full items-center justify-center bg-muted text-xs font-semibold uppercase tracking-tight text-muted-foreground"
               aria-hidden
             >
               {initialsFromEmail(session.email)}
@@ -104,14 +104,14 @@ export function AccountMenuPopover({ session }: AccountMenuPopoverProps) {
       <DropdownMenuContent
         align="end"
         sideOffset={8}
-        className="min-w-[240px] max-w-sm p-2"
+        className="min-w-60 max-w-sm p-2"
       >
         <div
           className="flex flex-row items-center justify-between gap-2 px-1.5 pb-2 pt-0.5"
           onPointerDown={(e) => e.preventDefault()}
         >
           <div className="min-w-0 flex-1 cursor-default">
-            <p className="truncate text-sm font-semibold text-neutral-900">
+            <p className="truncate text-sm font-semibold text-foreground">
               {actorTypeLabel}
             </p>
             <p className="truncate text-xs text-muted-foreground">

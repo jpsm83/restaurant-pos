@@ -1,8 +1,4 @@
 {
-  "colors": [
-    "src/components/AccountMenuPopover.tsx"
-  ],
-  "arbitraryValues": [
-    "src/components/AccountMenuPopover.tsx"
-  ]
+  "colors": [],
+  "arbitraryValues": []
 }

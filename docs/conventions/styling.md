@@ -95,8 +95,6 @@ Use `@theme inline` whenever the value references a raw variable; plain `@theme`
 | Motion | `motion-fast`, `motion-base`, `motion-slow`, `motion-ease-standard`, `motion-ease-emphasized` |
 | Z-index | `z-dropdown`, `z-sticky`, `z-overlay`, `z-modal`, `z-toast`, `z-tooltip` |
 
-`--destructive-foreground` currently has a Tailwind mapping in `index.css` but no value. It is required by the contract and must be defined by every theme.
-
 ### Contrast pairs
 
 Every theme, in both modes, must pass:
@@ -275,26 +273,11 @@ A single script, `frontend/scripts/check-styles.mjs`, runs from `frontend` lint/
 
 ```json
 {
-  "colors": [
-    "src/pages/**",
-    "src/layouts/**",
-    "src/features/**",
-    "src/components/ui-kit/**",
-    "src/components/business/**",
-    "src/components/*.tsx"
-  ],
-  "arbitraryValues": [
-    "src/pages/**",
-    "src/layouts/**",
-    "src/features/**",
-    "src/components/ui-kit/**",
-    "src/components/business/**",
-    "src/components/*.tsx"
-  ]
+  "colors": [],
+  "arbitraryValues": []
 }
 ```
 
-- The allowlist shrinks as migration slices land. It must end empty.
 - Inline disable comments are forbidden. The allowlist is central, auditable, and removable.
 - `src/components/ui/**` is a permanent exception for arbitrary sizes because upstream shadcn uses them. It is never an exception for raw colours; the allowlist must not include that path.
 - A new exception requires a spec amendment and review; it is not a drive-by change.
@@ -332,7 +315,9 @@ A theme is complete only when all of these are true:
 
 Any contributor may author a theme; the frontend owner reviews it. A new token is a contract change, not a theme detail.
 
-## Migration plan
+## Migration plan (complete)
+
+All steps are complete.
 
 1. **Foundation.**
    - Reset drifted primitives (`card.tsx`, `button-variants.ts` removal).
@@ -348,9 +333,9 @@ Any contributor may author a theme; the frontend owner reviews it. A new token i
 4. **Customer and employee.** Layouts and pages.
 5. **Business settings.** Business pages, business components, profile/settings shells.
 6. **Advanced table.** Feature components and table primitives.
-7. **Exit.** Allowlist `colors` and `arbitraryValues` are empty; strict rules apply everywhere except the built-in `components/ui` arbitrary-size exception. Remove the allowlist file or leave it empty with a comment that entries require a spec amendment.
+7. **Exit.** The allowlist `colors` and `arbitraryValues` are empty; strict rules apply everywhere except the built-in `components/ui` arbitrary-size exception. The allowlist file may be removed or left empty; entries require a spec amendment.
 
-Each slice removes its own allowlist globs and runs the contrast, completeness, and style checks before merging.
+Each slice removed its own allowlist globs and ran the contrast, completeness, and style checks before merging.
 
 ## Out of scope
 
