@@ -18,15 +18,7 @@ export const sentryFailureReporter: FailureReporter = {
 
       if (context.session) {
         scope.setUser({ id: context.session.id });
-        scope.setContext("session", {
-          type: context.session.type,
-          ...(context.session.employeeId
-            ? { employeeId: context.session.employeeId }
-            : {}),
-          ...(context.session.businessId
-            ? { businessId: context.session.businessId }
-            : {}),
-        });
+        scope.setContext("session", { ...context.session });
       }
 
       Sentry.captureException(error);

@@ -23,12 +23,6 @@ import {
 } from "./failureReporting.ts";
 import { sentryFailureReporter } from "./sentryFailureReporter.ts";
 
-export type {
-  FailureReporter,
-  FailureReportContext,
-  FailureReportSession,
-} from "./failureReporting.ts";
-
 export interface ProblemDetails {
   type: string;
   title: string;

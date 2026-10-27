@@ -93,11 +93,39 @@ describe("Sentry backend initialization", () => {
       integrations: NamedIntegration[],
     ) => NamedIntegration[];
 
-    const kept = applyIntegrations([{ name: "Fastify" }, { name: "LinkedErrors" }]);
+    const kept = applyIntegrations([
+      { name: "Fastify" },
+      { name: "LinkedErrors" },
+    ]);
 
     expect(kept.map((integration) => integration.name)).toEqual([
       "LinkedErrors",
     ]);
+  });
+
+  it("wires the shared scrubber into beforeSend", () => {
+    const options = buildSentryOptions(
+      {
+        SENTRY_DSN: "https://public@example.invalid/1",
+        NODE_ENV: "production",
+      },
+      "2.3.4",
+    );
+    const beforeSend = options.beforeSend as (
+      event: ErrorEvent,
+    ) => ErrorEvent | null;
+    const event = {
+      request: { url: "/api?token=query-secret", method: "GET" },
+      extra: { token: "extra-secret", keep: "ok" },
+    } as unknown as ErrorEvent;
+
+    const scrubbed = beforeSend(event);
+
+    expect(scrubbed?.request).toBeUndefined();
+    expect(scrubbed?.extra).toEqual({
+      token: REDACTION_MARKER,
+      keep: "ok",
+    });
   });
 });
 

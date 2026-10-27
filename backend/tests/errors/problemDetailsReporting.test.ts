@@ -16,12 +16,12 @@ import {
 } from "@fastify/type-provider-zod";
 import { z } from "zod";
 
+import { registerProblemDetailsHandler } from "../../src/errors/problemDetails.ts";
 import {
-  registerProblemDetailsHandler,
+  buildFailureReportContext,
   type FailureReporter,
   type FailureReportContext,
-} from "../../src/errors/problemDetails.ts";
-import { buildFailureReportContext } from "../../src/errors/failureReporting.ts";
+} from "../../src/errors/failureReporting.ts";
 import {
   badRequest,
   internal,
@@ -40,6 +40,9 @@ const validationBodySchema = z.strictObject({
 });
 const validationQuerySchema = z.strictObject({
   limit: z.coerce.number().int().positive(),
+});
+const validationParamsSchema = z.strictObject({
+  thingId: z.string().uuid(),
 });
 
 let app: FastifyInstance;
@@ -99,6 +102,12 @@ beforeAll(async () => {
     "/validated-query",
     { schema: { querystring: validationQuerySchema } },
     async (request) => request.query,
+  );
+
+  app.get(
+    "/validated-params/:thingId",
+    { schema: { params: validationParamsSchema } },
+    async (request) => request.params,
   );
 
   await app.ready();
@@ -212,6 +221,7 @@ describe("problem-details failure reporting", () => {
         payload: { name: "" },
       }),
       app.inject({ method: "GET", url: "/validated-query?limit=nope" }),
+      app.inject({ method: "GET", url: "/validated-params/not-a-uuid" }),
       app.inject({ method: "GET", url: "/bad-request" }),
       app.inject({ method: "GET", url: "/missing" }),
       app.inject({ method: "GET", url: "/no-such-route" }),
