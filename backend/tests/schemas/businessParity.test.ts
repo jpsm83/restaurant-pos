@@ -4,7 +4,6 @@ import type { z } from "zod";
 import Business from "../../src/models/business.ts";
 import {
   businessIdParamsSchema,
-  createBusinessBodySchema,
   discoverBusinessesQuerySchema,
   updateBusinessBodySchema,
 } from "restaurant-pos-packages/schemas/business";
@@ -20,7 +19,6 @@ import {
 const REQUEST_ONLY_FIELDS = new Set(["imageUrl"]);
 
 const allDtos: Record<string, z.ZodObject> = {
-  createBusinessBodySchema,
   updateBusinessBodySchema,
   businessIdParamsSchema,
   discoverBusinessesQuerySchema,
@@ -30,15 +28,13 @@ const businessOwns = (field: string): boolean =>
   Boolean(Business.schema.path(field));
 
 describe("business DTO ↔ model parity", () => {
-  it("every create/update body field maps to a Business model field", () => {
-    for (const schema of [createBusinessBodySchema, updateBusinessBodySchema]) {
-      for (const key of Object.keys(schema.shape)) {
-        if (REQUEST_ONLY_FIELDS.has(key)) continue;
-        expect(
-          businessOwns(key),
-          `${key} should map to a Business model field`,
-        ).toBe(true);
-      }
+  it("every update body field maps to a Business model field", () => {
+    for (const key of Object.keys(updateBusinessBodySchema.shape)) {
+      if (REQUEST_ONLY_FIELDS.has(key)) continue;
+      expect(
+        businessOwns(key),
+        `${key} should map to a Business model field`,
+      ).toBe(true);
     }
   });
 
@@ -54,16 +50,8 @@ describe("business DTO ↔ model parity", () => {
     }
   });
 
-  it("server-owned auth/session fields are in no DTO", () => {
-    const serverOwned = [
-      "timezone",
-      "emailVerified",
-      "refreshSessionVersion",
-      "verificationToken",
-      "resetPasswordToken",
-      "resetPasswordExpires",
-    ];
-    for (const field of serverOwned) {
+  it("server-owned venue fields are in no DTO", () => {
+    for (const field of ["timezone", "emailVerified"]) {
       expect(businessOwns(field), `${field} should be on the model`).toBe(true);
       for (const [name, schema] of Object.entries(allDtos)) {
         expect(
@@ -71,6 +59,21 @@ describe("business DTO ↔ model parity", () => {
           `${name} should not accept ${field}`,
         ).not.toContain(field);
       }
+    }
+  });
+
+  it("Business carries no credential or session-generation fields", () => {
+    for (const field of [
+      "password",
+      "verificationToken",
+      "resetPasswordToken",
+      "resetPasswordExpires",
+      "pendingEmail",
+      "pendingEmailToken",
+      "pendingEmailExpires",
+      "refreshSessionVersion",
+    ]) {
+      expect(businessOwns(field), `${field} should be gone`).toBe(false);
     }
   });
 

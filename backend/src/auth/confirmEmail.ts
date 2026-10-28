@@ -1,4 +1,3 @@
-import Business from "../models/business.ts";
 import User from "../models/user.ts";
 import { withSoftDeleteFilter } from "../models/softDelete.ts";
 
@@ -24,18 +23,6 @@ export async function handleConfirmEmail(
   const verificationToken = token.trim().toLowerCase();
 
   try {
-    const businessResult = await Business.updateOne(
-      { verificationToken },
-      {
-        $set: { emailVerified: true },
-        $unset: { verificationToken: "" },
-      },
-    );
-
-    if (businessResult.matchedCount > 0) {
-      return { kind: "success_200", message: CONFIRM_EMAIL_SUCCESS_MESSAGE };
-    }
-
     const userResult = await User.updateOne(
       withSoftDeleteFilter({ verificationToken }, true),
       {

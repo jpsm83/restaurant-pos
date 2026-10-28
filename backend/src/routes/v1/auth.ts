@@ -12,19 +12,16 @@
 
 import type { FastifyPluginAsync } from "fastify";
 import bcrypt from "bcrypt";
-import Business from "../../models/business.ts";
 import User from "../../models/user.ts";
 import { withSoftDeleteFilter } from "../../models/softDelete.ts";
 import { AUTH_CONFIG } from "../../auth/config.ts";
 import {
-  createAuthHook,
   isRejectedCredential,
-  requireBusinessHook,
   requireLiveAccessSession,
   requireLiveAccessSessionWithRefreshId,
 } from "../../auth/middleware.ts";
 import { issueLiveTicket } from "../../auth/liveTicketStore.ts";
-import type { AuthBusiness, AuthUser } from "../../auth/types.ts";
+import type { AuthUser } from "../../auth/types.ts";
 import { canUseBusinessMode } from "../../auth/canLogAsEmployee.ts";
 import {
   buildAuthUserSessionFromUserId,
@@ -46,31 +43,24 @@ import {
 } from "../../auth/requestEmailConfirmation.ts";
 import { sendAccountExistsEmail } from "../../auth/accountExistsEmail.ts";
 import { handleRequestPasswordReset } from "../../auth/requestPasswordReset.ts";
-import { handleRequestEmailChange } from "../../auth/requestEmailChange.ts";
-import { handleConfirmEmailChange } from "../../auth/confirmEmailChange.ts";
 import { handleResendEmailConfirmationForAuthenticatedAccount } from "../../auth/resendEmailConfirmation.ts";
 import { handleResetPassword } from "../../auth/resetPassword.ts";
 import {
   badRequest,
-  conflict,
   forbidden,
   internal,
   unauthorized,
 } from "../../errors/appError.ts";
 import {
   confirmEmailBodySchema,
-  confirmEmailChangeBodySchema,
   loginBodySchema,
-  requestEmailChangeBodySchema,
   requestEmailConfirmationBodySchema,
   requestPasswordResetBodySchema,
   resetPasswordBodySchema,
   setModeBodySchema,
   signupBodySchema,
   type ConfirmEmailBody,
-  type ConfirmEmailChangeBody,
   type LoginBody,
-  type RequestEmailChangeBody,
   type RequestEmailConfirmationBody,
   type RequestPasswordResetBody,
   type ResetPasswordBody,
@@ -100,8 +90,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         languagePreference,
       } = req.body;
 
-      const [existingBusiness, existingUser, deletedUser] = await Promise.all([
-        Business.findOne({ email }).select("_id tradeName").lean(),
+      const [existingUser, deletedUser] = await Promise.all([
         User.findOne(withSoftDeleteFilter({ "personalDetails.email": email }))
           .select(
             "_id personalDetails.username personalDetails.firstName personalDetails.lastName",
@@ -139,21 +128,6 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
           throw internal(sent.message);
         }
         return reply.code(202).send({ message: REACTIVATION_REQUIRED_MESSAGE });
-      }
-      if (existingBusiness) {
-        const sent = await sendAccountExistsEmail({
-          to: email,
-          greetingName: existingBusiness.tradeName?.trim(),
-        });
-        if (!sent) {
-          req.log.error(
-            { errHint: "signup_account_exists_send" },
-            "Account-exists email failed",
-          );
-        }
-        return reply.code(202).send({
-          message: GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE,
-        });
       }
 
       const hashedPassword = await bcrypt.hash(password, 10);
@@ -331,83 +305,13 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
   });
 
   /**
-   * POST /auth/request-email-change
-   * Authenticated business: start a verified sign-in email change. The current
-   * email stays active until the new address confirms the emailed link.
-   */
-  app.post<{ Body: RequestEmailChangeBody }>(
-    "/request-email-change",
-    {
-      preValidation: [createAuthHook(app), requireBusinessHook()],
-      schema: { body: requestEmailChangeBodySchema },
-    },
-    async (req, reply) => {
-      const session = req.authSession as AuthBusiness;
-      const result = await handleRequestEmailChange(session, req.body, req.log);
-
-      if (result.kind === "account_not_found") {
-        throw unauthorized("Account not found.");
-      }
-      if (result.kind === "invalid_password") {
-        throw unauthorized("Current password is incorrect.");
-      }
-      if (result.kind === "same_email") {
-        throw badRequest(
-          "The new email must be different from the current sign-in email.",
-          [
-            {
-              path: "newEmail",
-              message: "Enter an address different from your current one.",
-            },
-          ],
-        );
-      }
-      if (result.kind === "email_taken") {
-        throw conflict("That email is already used by another account.");
-      }
-      if (result.kind === "throttled") {
-        return reply.code(200).send({ message: result.message });
-      }
-      if (result.kind === "server_error_500") {
-        throw internal(result.message);
-      }
-
-      return reply.code(200).send({ message: result.message });
-    },
-  );
-
-  /**
-   * POST /auth/confirm-email-change
-   * Unauthenticated: consume the pending sign-in email change token (one-time).
-   * On success the pending address becomes the sign-in email, all refresh
-   * sessions are revoked, and the previous address is notified.
-   */
-  app.post<{ Body: ConfirmEmailChangeBody }>(
-    "/confirm-email-change",
-    { schema: { body: confirmEmailChangeBodySchema } },
-    async (req, reply) => {
-      const result = await handleConfirmEmailChange(req.body.token, req.log);
-
-      if (result.kind === "client_error") {
-        throw badRequest(result.message);
-      }
-      if (result.kind === "server_error_500") {
-        throw internal(result.message);
-      }
-
-      return reply.code(200).send({ message: result.message });
-    },
-  );
-
-  /**
    * POST /auth/login
    * Authenticate with email/password, returns access token and sets refresh cookie.
    *
    * Flow:
-   * 1. Check Business collection by email
-   * 2. If not found, check User collection by personalDetails.email
-   * 3. Resolve any active Employee membership and its canLogAsEmployee gate
-   * 4. Return access token + user session data
+   * 1. Check the User collection by personalDetails.email
+   * 2. Resolve any active Employee membership and its canLogAsEmployee gate
+   * 3. Return access token + user session data
    */
   app.post<{ Body: LoginBody }>(
     "/login",
@@ -415,47 +319,6 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     async (req, reply) => {
       const { email, password } = req.body;
 
-      // 1. Check Business collection first
-      const business = (await Business.findOne({ email })
-        .select("_id email password emailVerified refreshSessionVersion")
-        .lean()) as {
-        _id: unknown;
-        email: string;
-        password: string;
-        emailVerified?: boolean;
-        refreshSessionVersion?: number;
-      } | null;
-
-      if (business) {
-        const passwordMatch = await bcrypt.compare(password, business.password);
-        if (!passwordMatch) {
-          throw unauthorized("Invalid credentials");
-        }
-
-        const session: AuthBusiness = {
-          id: String(business._id),
-          email: business.email,
-          type: "business",
-          emailVerified: business.emailVerified === true,
-          role: "Tenant",
-        };
-
-        const { accessToken, user } = await issueSessionWithRefreshCookie(
-          app,
-          reply,
-          session,
-          {
-            refreshSessionVersion: business.refreshSessionVersion ?? 0,
-          },
-        );
-
-        return reply.code(200).send({
-          accessToken,
-          user,
-        });
-      }
-
-      // 2. Check User collection
       const user = (await User.findOne({
         ...withSoftDeleteFilter({ "personalDetails.email": email }),
       })
@@ -483,7 +346,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         throw unauthorized("Invalid credentials");
       }
 
-      // 3. Resolve the active Employee membership, if any
+      // Resolve the active Employee membership, if any
       const session = await buildAuthUserSessionFromUserId(String(user._id));
       if (!session) {
         throw unauthorized("Invalid credentials");
@@ -523,11 +386,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     }
     if (exchanged.kind === "account_missing") {
       reply.clearCookie(AUTH_CONFIG.REFRESH_COOKIE_NAME, { path: "/" });
-      throw unauthorized(
-        exchanged.accountType === "business"
-          ? "Business not found"
-          : "User not found",
-      );
+      throw unauthorized("User not found");
     }
 
     const accessToken = signAccessToken(
@@ -574,19 +433,15 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     // The User's profile is DB-authoritative: a profile save does not mint a
     // new access token, so the JWT claim may lag the stored language/verified
     // flag. Rebuild the User session on read, including the issued mode.
-    if (live.session.type === "user") {
-      const mode = await readRefreshSessionMode(live.sessionId);
-      const freshUser = await buildAuthUserSessionFromUserId(
-        live.session.id,
-        mode,
-      );
-      if (!freshUser) {
-        throw unauthorized("Invalid or expired access token");
-      }
-      return reply.code(200).send({ user: freshUser });
+    const mode = await readRefreshSessionMode(live.sessionId);
+    const freshUser = await buildAuthUserSessionFromUserId(
+      live.session.id,
+      mode,
+    );
+    if (!freshUser) {
+      throw unauthorized("Invalid or expired access token");
     }
-
-    return reply.code(200).send({ user: live.session });
+    return reply.code(200).send({ user: freshUser });
   });
 
   /**
@@ -637,11 +492,6 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
 
       const token = authHeader.slice(7);
       const live = await requireLiveAccessSessionWithRefreshId(app, token);
-
-      if (live.session.type !== "user") {
-        throw badRequest("Only users can set auth mode");
-      }
-
       const { mode } = req.body;
 
       if (mode === "business" && !(await canUseBusinessMode(live.session.id))) {

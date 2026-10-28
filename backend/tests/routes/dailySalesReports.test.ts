@@ -61,7 +61,6 @@ describe("DailySalesReports routes - Task T2 integration", () => {
       tradeName: "Test Restaurant",
       legalName: "Test Restaurant LLC",
       email: `test${Date.now()}@restaurant.com`,
-      password: "hashedpassword",
       phoneNumber: "1234567890",
       taxNumber: `TAX-${Date.now()}`,
       currencyTrade: "USD",
@@ -74,7 +73,6 @@ describe("DailySalesReports routes - Task T2 integration", () => {
     const user = await User.create({
       personalDetails: {
         email: `manager-${Date.now()}@test.com`,
-        password: "hashed",
         firstName: "Manager",
         lastName: "User",
         phoneNumber: "999",
@@ -631,7 +629,6 @@ describe("DailySalesReports routes - Task T2 integration", () => {
     const customer = await User.create({
       personalDetails: {
         email: `cust-${Date.now()}@test.com`,
-        password: "hashed",
         firstName: "Customer",
         lastName: "User",
         phoneNumber: "888",

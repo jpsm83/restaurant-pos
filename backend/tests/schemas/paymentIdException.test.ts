@@ -6,19 +6,14 @@ import { describe, expect, it } from "vitest";
 
 import {
   confirmEmailBodySchema,
-  confirmEmailChangeBodySchema,
   loginBodySchema,
-  requestEmailChangeBodySchema,
   requestEmailConfirmationBodySchema,
   requestPasswordResetBodySchema,
   resetPasswordBodySchema,
   setModeBodySchema,
   signupBodySchema,
 } from "restaurant-pos-packages/schemas/auth";
-import {
-  createBusinessBodySchema,
-  updateBusinessBodySchema,
-} from "restaurant-pos-packages/schemas/business";
+import { updateBusinessBodySchema } from "restaurant-pos-packages/schemas/business";
 import {
   createBusinessGoodBodySchema,
   updateBusinessGoodBodySchema,
@@ -105,12 +100,9 @@ const bodiesThatRejectPaymentId: Record<string, BodySchema> = {
   loginBodySchema,
   requestEmailConfirmationBodySchema,
   requestPasswordResetBodySchema,
-  requestEmailChangeBodySchema,
   confirmEmailBodySchema,
-  confirmEmailChangeBodySchema,
   resetPasswordBodySchema,
   setModeBodySchema,
-  createBusinessBodySchema,
   updateBusinessBodySchema,
   createBusinessGoodBodySchema,
   updateBusinessGoodBodySchema,

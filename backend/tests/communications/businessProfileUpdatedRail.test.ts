@@ -85,7 +85,6 @@ const createVenue = async (tradeName: string) => {
     tradeName,
     legalName: `${tradeName} LLC`,
     email: `venue-${suffix}@test.com`,
-    password: "hashedpassword",
     phoneNumber: "1234567890",
     taxNumber: `TAX-${suffix}`,
     currencyTrade: "USD",
@@ -261,16 +260,19 @@ describe("Business profile updated on the rail (#166)", () => {
     await withEnv({ COMMUNICATIONS_EMAIL_ENABLED: "false" }, async () => {
       const app = await getTestApp();
       const business = await createVenue("Saved Profile");
-      await createManager(business._id, "fail");
+      const manager = await createManager(business._id, "fail");
       const deliverSpy = vi
         .spyOn(notificationService, "createAndDeliver")
         .mockRejectedValue(new Error("forced in-app delivery failure"));
 
       const auth = await generateTestToken({
-        id: business._id.toString(),
-        email: business.email,
-        type: "business",
-        role: "Tenant",
+        id: manager.userId.toString(),
+        email: "manager@test.com",
+        type: "user",
+        role: "Manager",
+        businessId: business._id.toString(),
+        employeeId: manager._id.toString(),
+        canLogAsEmployee: true,
       });
       const boundary = "----formdata";
       const payload = [

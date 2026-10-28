@@ -1,8 +1,8 @@
 import bcrypt from "bcrypt";
-import Business from "../models/business.ts";
 import User from "../models/user.ts";
 import { withSoftDeleteFilter } from "../models/softDelete.ts";
 import { CONFIRM_EMAIL_CONSUMPTION_ERROR_MESSAGE } from "./confirmEmail.ts";
+import { revokeAllRefreshSessionsForUser } from "./issueSession.ts";
 
 export const RESET_PASSWORD_SUCCESS_MESSAGE =
   "Your password has been reset successfully.";
@@ -29,26 +29,6 @@ export async function handleResetPassword(
   const passwordHash = await bcrypt.hash(plain, 10);
 
   try {
-    const business = await Business.findOneAndUpdate(
-      {
-        resetPasswordToken: resetToken,
-        resetPasswordExpires: { $gt: now },
-      },
-      {
-        $set: { password: passwordHash },
-        $unset: {
-          resetPasswordToken: "",
-          resetPasswordExpires: "",
-        },
-        $inc: { refreshSessionVersion: 1 },
-      },
-      { returnDocument: "after" },
-    ).lean();
-
-    if (business) {
-      return { kind: "success_200", message: RESET_PASSWORD_SUCCESS_MESSAGE };
-    }
-
     const user = await User.findOneAndUpdate(
       withSoftDeleteFilter({
         resetPasswordToken: resetToken,
@@ -66,6 +46,7 @@ export async function handleResetPassword(
     ).lean();
 
     if (user) {
+      await revokeAllRefreshSessionsForUser(String(user._id));
       return { kind: "success_200", message: RESET_PASSWORD_SUCCESS_MESSAGE };
     }
 

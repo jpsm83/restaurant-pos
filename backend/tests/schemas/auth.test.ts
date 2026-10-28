@@ -3,9 +3,7 @@ import { z } from "zod";
 
 import {
   confirmEmailBodySchema,
-  confirmEmailChangeBodySchema,
   loginBodySchema,
-  requestEmailChangeBodySchema,
   requestEmailConfirmationBodySchema,
   requestPasswordResetBodySchema,
   resetPasswordBodySchema,
@@ -135,45 +133,6 @@ describe("requestPasswordResetBodySchema", () => {
   });
 });
 
-describe("requestEmailChangeBodySchema", () => {
-  it("normalizes the new email and requires a current password", () => {
-    const parsed = requestEmailChangeBodySchema.parse({
-      newEmail: "  New.Address@Example.COM ",
-      currentPassword: "Secret123!",
-    });
-    expect(parsed.newEmail).toBe("new.address@example.com");
-    expect(parsed.currentPassword).toBe("Secret123!");
-  });
-
-  it("rejects a malformed new email", () => {
-    expect(
-      requestEmailChangeBodySchema.safeParse({
-        newEmail: "nope",
-        currentPassword: "Secret123!",
-      }).success,
-    ).toBe(false);
-  });
-
-  it("rejects a blank current password", () => {
-    expect(
-      requestEmailChangeBodySchema.safeParse({
-        newEmail: "a@b.com",
-        currentPassword: "",
-      }).success,
-    ).toBe(false);
-  });
-
-  it("rejects unknown keys", () => {
-    expect(
-      requestEmailChangeBodySchema.safeParse({
-        newEmail: "a@b.com",
-        currentPassword: "Secret123!",
-        email: "x@y.com",
-      }).success,
-    ).toBe(false);
-  });
-});
-
 describe("confirmEmailBodySchema", () => {
   it("trims the token", () => {
     expect(confirmEmailBodySchema.parse({ token: "  abc  " }).token).toBe("abc");
@@ -196,26 +155,6 @@ describe("confirmEmailBodySchema", () => {
       expect(result.error.issues[0].message).toBe(
         "Please provide a confirmation token.",
       );
-    }
-  });
-});
-
-describe("confirmEmailChangeBodySchema", () => {
-  it("trims the token", () => {
-    expect(
-      confirmEmailChangeBodySchema.parse({ token: "  abc  " }).token,
-    ).toBe("abc");
-  });
-
-  it("rejects a blank or missing token with the confirmation message", () => {
-    for (const payload of [{ token: "   " }, {}]) {
-      const result = confirmEmailChangeBodySchema.safeParse(payload);
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error.issues[0].message).toBe(
-          "Please provide a confirmation token.",
-        );
-      }
     }
   });
 });
@@ -300,10 +239,8 @@ describe("server-owned fields are excluded from every auth DTO", () => {
     loginBodySchema,
     requestEmailConfirmationBodySchema,
     requestPasswordResetBodySchema,
-    requestEmailChangeBodySchema,
-    confirmEmailBodySchema,
-    confirmEmailChangeBodySchema,
-    resetPasswordBodySchema,
+      confirmEmailBodySchema,
+      resetPasswordBodySchema,
     setModeBodySchema,
   };
 

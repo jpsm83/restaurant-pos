@@ -66,7 +66,6 @@ const createVenue = async (tradeName: string) => {
     tradeName,
     legalName: `${tradeName || "Venue"} LLC`,
     email: `venue-${suffix}@test.com`,
-    password: "hashedpassword",
     phoneNumber: "1234567890",
     taxNumber: `TAX-${suffix}`,
     currencyTrade: "USD",

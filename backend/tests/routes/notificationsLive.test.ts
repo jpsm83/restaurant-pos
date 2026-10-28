@@ -78,7 +78,6 @@ describe("Notifications Live Route", () => {
       tradeName: "WS Test Restaurant",
       legalName: "WS Test Restaurant LLC",
       email: `ws-test-${Date.now()}@restaurant.com`,
-      password: "hashedpassword",
       phoneNumber: "1234567890",
       taxNumber: `WS-TAX-${Date.now()}`,
       currencyTrade: "USD",
@@ -185,44 +184,6 @@ describe("Notifications Live Route", () => {
         (afterMetrics.live.authFailuresByReason.invalid_ticket ?? 0) -
           (beforeMetrics.live.authFailuresByReason.invalid_ticket ?? 0)
       ).toBeGreaterThanOrEqual(1);
-    });
-  });
-
-  it("accepts a tenant (business) session and acknowledges a live connection", async () => {
-    await withLiveServer(async ({ baseUrl, app }) => {
-      const business = await createTestBusiness();
-      const businessToken = await signAccessTokenForLiveSession(app, {
-        id: business._id.toString(),
-        email: business.email,
-        type: "business",
-        role: "Tenant",
-      });
-      const ticket = await issueLiveTicket(app, businessToken);
-
-      const message = await new Promise<string>((resolve, reject) => {
-        const timer = setTimeout(
-          () => reject(new Error("tenant session was not acknowledged")),
-          3_000,
-        );
-        const socket = new WebSocket(socketUrl(baseUrl, ticket));
-        socket.on("message", (data) => {
-          clearTimeout(timer);
-          socket.close();
-          resolve(data.toString());
-        });
-        socket.on("close", (code, reason) => {
-          clearTimeout(timer);
-          reject(new Error(`closed ${code} ${reason.toString()}`));
-        });
-        socket.on("error", (error) => {
-          clearTimeout(timer);
-          reject(error);
-        });
-      });
-
-      const parsed = JSON.parse(message);
-      expect(parsed.type).toBe("live.connected");
-      expect(parsed.data).toEqual({ accountId: business._id.toString() });
     });
   });
 

@@ -28,7 +28,6 @@ describe("applyPromotionsToOrders delivery scope", () => {
       tradeName: "Promo Biz",
       legalName: "Promo LLC",
       email: `promo-${Date.now()}@t.com`,
-      password: "h",
       phoneNumber: "1",
       taxNumber: `TAX-PR-${Date.now()}-${Math.random().toString(36).slice(2)}`,
       currencyTrade: "USD",

@@ -1,4 +1,3 @@
-import Business from "../models/business.ts";
 import User from "../models/user.ts";
 import { withSoftDeleteFilter } from "../models/softDelete.ts";
 import { sendAuthTokenEmailOrRollback } from "./authEmailTokenFlow.ts";
@@ -31,10 +30,7 @@ type ConfirmationUser = {
   personalDetails?: { username?: string; firstName?: string } | null;
 };
 
-/**
- * Writes the confirmation token on this User. Reactivation must not follow the
- * public helper, which prefers a Business that happens to share the address.
- */
+/** Writes the confirmation token on this User. */
 export async function sendSoftDeletedUserConfirmation(
   user: ConfirmationUser,
   normalizedEmail: string,
@@ -76,66 +72,25 @@ export async function sendSoftDeletedUserConfirmation(
 export async function handleRequestEmailConfirmation(
   normalizedEmail: string,
 ): Promise<RequestEmailConfirmationHandlerResult> {
-  const business = await Business.findOne({ email: normalizedEmail })
-    .select("_id tradeName")
+  const user = await User.findOne(
+    withSoftDeleteFilter(
+      { "personalDetails.email": normalizedEmail },
+      true,
+    ),
+  )
+    .select(
+      "_id personalDetails.username personalDetails.firstName personalDetails.emailVerified deleted",
+    )
     .lean();
 
-  const user =
-    business == null
-      ? await User.findOne(
-          withSoftDeleteFilter(
-            { "personalDetails.email": normalizedEmail },
-            true,
-          ),
-        )
-          .select(
-            "_id personalDetails.username personalDetails.firstName personalDetails.emailVerified deleted",
-          )
-          .lean()
-      : null;
-
-  if (!business && !user) {
+  if (!user) {
     return { kind: "success_200", message: GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE };
   }
 
-  const userEmailVerified = user?.personalDetails?.emailVerified === true;
-  if (userEmailVerified && user?.deleted !== true) {
+  const userEmailVerified = user.personalDetails?.emailVerified === true;
+  if (userEmailVerified && user.deleted !== true) {
     return { kind: "already_verified_400", message: "Email is already verified." };
   }
 
-  if (business) {
-    const sent = await sendAuthTokenEmailOrRollback({
-      to: normalizedEmail,
-      persist: (token) =>
-        Business.updateOne(
-          { _id: business._id },
-          { $set: { verificationToken: token } },
-        ),
-      buildLink: buildConfirmEmailLink,
-      buildContent: (link) =>
-        buildEmailConfirmationContent({
-          confirmUrl: link,
-          greetingName: business.tradeName?.trim() || undefined,
-        }),
-      rollback: () =>
-        Business.updateOne(
-          { _id: business._id },
-          { $unset: { verificationToken: "" } },
-        ),
-    });
-
-    if (!sent) {
-      return {
-        kind: "server_error_500",
-        message: "Failed to send confirmation email. Please try again later.",
-      };
-    }
-
-    return {
-      kind: "success_200",
-      message: EMAIL_CONFIRMATION_SENT_MESSAGE,
-    };
-  }
-
-  return sendSoftDeletedUserConfirmation(user!, normalizedEmail);
+  return sendSoftDeletedUserConfirmation(user, normalizedEmail);
 }

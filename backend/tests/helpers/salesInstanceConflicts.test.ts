@@ -23,7 +23,6 @@ describe("salesInstanceConflicts helpers", () => {
       tradeName: "Conflict Test Biz",
       legalName: "Conflict Test LLC",
       email: "conflict@test.com",
-      password: "hashed",
       phoneNumber: "111",
       taxNumber: `TAX-CNF-${Date.now()}-${Math.random().toString(36).slice(2)}`,
       currencyTrade: "USD",
@@ -48,7 +47,6 @@ describe("salesInstanceConflicts helpers", () => {
     const user = await User.create({
       personalDetails: {
         email: `u-${Date.now()}@test.com`,
-        password: "hashed",
         firstName: "U",
         lastName: "T",
         phoneNumber: "222",

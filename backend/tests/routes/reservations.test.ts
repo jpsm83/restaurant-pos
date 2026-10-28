@@ -40,7 +40,6 @@ describe("Reservations Routes", () => {
       tradeName: "Test Restaurant",
       legalName: "Test Restaurant LLC",
       email: `test${Date.now()}@restaurant.com`,
-      password: "hashedpassword",
       phoneNumber: "1234567890",
       taxNumber: `TAX-${Date.now()}`,
       currencyTrade: "USD",

@@ -9,10 +9,7 @@ import {
   assertAccountCanUseSession,
   isRejectedCredential,
 } from "../../auth/middleware.ts";
-import {
-  buildAuthBusinessSessionFromId,
-  buildAuthUserSessionFromUserId,
-} from "../../auth/issueSession.ts";
+import { buildAuthUserSessionFromUserId } from "../../auth/issueSession.ts";
 import type { AuthSession } from "../../auth/types.ts";
 import { unauthorized } from "../../errors/appError.ts";
 
@@ -36,11 +33,7 @@ async function sessionForTicket(ticket: string): Promise<AuthSession> {
     sessionId: record.sessionId,
   } as AuthSession & { sessionId: string });
 
-  const session =
-    record.accountType === "user"
-      ? await buildAuthUserSessionFromUserId(record.accountId)
-      : await buildAuthBusinessSessionFromId(record.accountId);
-
+  const session = await buildAuthUserSessionFromUserId(record.accountId);
   if (!session) {
     throw unauthorized("Invalid or expired live ticket");
   }

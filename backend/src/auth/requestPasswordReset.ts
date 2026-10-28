@@ -1,4 +1,3 @@
-import Business from "../models/business.ts";
 import User from "../models/user.ts";
 import { withSoftDeleteFilter } from "../models/softDelete.ts";
 import { sendAuthTokenEmailOrRollback } from "./authEmailTokenFlow.ts";
@@ -18,60 +17,17 @@ export type RequestPasswordResetHandlerResult =
 export async function handleRequestPasswordReset(
   normalizedEmail: string,
 ): Promise<RequestPasswordResetHandlerResult> {
-  const business = await Business.findOne({ email: normalizedEmail })
-    .select("_id tradeName")
+  const user = await User.findOne(
+    withSoftDeleteFilter({ "personalDetails.email": normalizedEmail }),
+  )
+    .select("_id personalDetails.username personalDetails.firstName")
     .lean();
 
-  const user =
-    business == null
-      ? await User.findOne(
-          withSoftDeleteFilter({ "personalDetails.email": normalizedEmail }),
-        )
-          .select("_id personalDetails.username personalDetails.firstName")
-          .lean()
-      : null;
-
-  if (!business && !user) {
+  if (!user) {
     return { kind: "success_200", message: GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE };
   }
 
-  if (business) {
-    const sent = await sendAuthTokenEmailOrRollback({
-      to: normalizedEmail,
-      persist: (token) =>
-        Business.updateOne(
-          { _id: business._id },
-          {
-            $set: {
-              resetPasswordToken: token,
-              resetPasswordExpires: new Date(Date.now() + RESET_TOKEN_TTL_MS),
-            },
-          },
-        ),
-      buildLink: buildResetPasswordLink,
-      buildContent: (link) =>
-        buildPasswordResetEmailContent({
-          resetUrl: link,
-          greetingName: business.tradeName?.trim() || undefined,
-        }),
-      rollback: () =>
-        Business.updateOne(
-          { _id: business._id },
-          { $unset: { resetPasswordToken: "", resetPasswordExpires: "" } },
-        ),
-    });
-
-    if (!sent) {
-      return {
-        kind: "server_error_500",
-        message: "Failed to send password reset email. Please try again later.",
-      };
-    }
-
-    return { kind: "success_200", message: GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE };
-  }
-
-  const pd = user!.personalDetails as
+  const pd = user.personalDetails as
     | { username?: string; firstName?: string }
     | undefined;
   const greetingName =
@@ -81,7 +37,7 @@ export async function handleRequestPasswordReset(
     to: normalizedEmail,
     persist: (token) =>
       User.updateOne(
-        { _id: user!._id },
+        { _id: user._id },
         {
           $set: {
             resetPasswordToken: token,
@@ -94,7 +50,7 @@ export async function handleRequestPasswordReset(
       buildPasswordResetEmailContent({ resetUrl: link, greetingName }),
     rollback: () =>
       User.updateOne(
-        { _id: user!._id },
+        { _id: user._id },
         { $unset: { resetPasswordToken: "", resetPasswordExpires: "" } },
       ),
   });

@@ -32,7 +32,6 @@ import {
 } from "../helpers/accountEmailRail.ts";
 import { getTestApp, resetTestApp } from "../setup.ts";
 import User from "../../src/models/user.ts";
-import Business from "../../src/models/business.ts";
 import { GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE } from "../../src/auth/requestEmailConfirmation.ts";
 
 const testPassword = "TestPassword123!";
@@ -66,28 +65,6 @@ async function createTestUser(
       ...(overrides?.emailVerified !== undefined
         ? { emailVerified: overrides.emailVerified }
         : {}),
-    },
-  });
-}
-
-async function createTestBusiness(email: string) {
-  const hashedPassword = await bcrypt.hash(testPassword, 10);
-  return Business.create({
-    tradeName: "Café Reset",
-    legalName: "Café Reset Legal",
-    email,
-    password: hashedPassword,
-    taxNumber: `TAX-${email.replace(/[@.]/g, "-")}`,
-    phoneNumber: "1234567890",
-    currencyTrade: "USD",
-    emailVerified: true,
-    address: {
-      country: "USA",
-      state: "CA",
-      city: "LA",
-      street: "Main St",
-      buildingNumber: "123",
-      postCode: "90001",
     },
   });
 }
@@ -215,58 +192,4 @@ describe("POST /api/v1/auth/request-password-reset", () => {
     expect(updated?.resetPasswordExpires).toBeFalsy();
   });
 
-  it("does not store a reset token for a closed business", async () => {
-    const app = await getTestApp();
-    const email = "closed-reset@example.com";
-    const business = await createTestBusiness(email);
-    await Business.updateOne(
-      { _id: business._id },
-      { $set: { deleted: true, deletedAt: new Date() } },
-    );
-
-    const response = await app.inject({
-      method: "POST",
-      url: "/api/v1/auth/request-password-reset",
-      payload: { email },
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(response.json().message).toBe(GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE);
-    expect(sendEmailMock).not.toHaveBeenCalled();
-
-    const stored = await Business.findById(business._id)
-      .setOptions({ includeDeleted: true })
-      .select("resetPasswordToken")
-      .lean();
-    expect(stored?.resetPasswordToken).toBeFalsy();
-  });
-
-  it("prefers business over user for the same email", async () => {
-    const app = await getTestApp();
-    const email = "shared-reset@example.com";
-    await createTestBusiness(email);
-    await createTestUser(email);
-
-    const response = await app.inject({
-      method: "POST",
-      url: "/api/v1/auth/request-password-reset",
-      payload: { email },
-    });
-
-    expect(response.statusCode).toBe(200);
-
-    const biz = await Business.findOne({ email })
-      .select("resetPasswordToken")
-      .lean();
-    const usr = await User.findOne({ "personalDetails.email": email })
-      .select("resetPasswordToken")
-      .lean();
-    expect(biz?.resetPasswordToken).toBeTruthy();
-    expect(usr?.resetPasswordToken).toBeFalsy();
-    expectOneAccountSend(sendEmailMock, {
-      to: email,
-      subject: "Password Reset Request - POS",
-      link: `/reset-password?token=${biz?.resetPasswordToken}`,
-    });
-  });
 });

@@ -7,7 +7,6 @@ import crypto from "crypto";
 import bcrypt from "bcrypt";
 import { getTestApp, resetTestApp } from "../setup.ts";
 import User from "../../src/models/user.ts";
-import Business from "../../src/models/business.ts";
 import { CONFIRM_EMAIL_CONSUMPTION_ERROR_MESSAGE } from "../../src/auth/confirmEmail.ts";
 import {
   RESET_PASSWORD_MISSING_NEW_PASSWORD_MESSAGE,
@@ -55,46 +54,10 @@ async function createTestUser(email: string) {
   });
 }
 
-async function createTestBusiness(email: string) {
-  const hashedPassword = await bcrypt.hash(oldPassword, 10);
-  return Business.create({
-    tradeName: "Café ResetPwd",
-    legalName: "Café ResetPwd Legal",
-    email,
-    password: hashedPassword,
-    taxNumber: `TAX-${email.replace(/[@.]/g, "-")}`,
-    phoneNumber: "1234567890",
-    currencyTrade: "USD",
-    emailVerified: true,
-    address: {
-      country: "USA",
-      state: "CA",
-      city: "LA",
-      street: "Main St",
-      buildingNumber: "123",
-      postCode: "90001",
-    },
-  });
-}
-
 async function setUserResetToken(userId: unknown) {
   const raw = randomToken();
   await User.updateOne(
     { _id: userId },
-    {
-      $set: {
-        resetPasswordToken: raw,
-        resetPasswordExpires: futureResetExpiry(),
-      },
-    },
-  );
-  return raw;
-}
-
-async function setBusinessResetToken(businessId: unknown) {
-  const raw = randomToken();
-  await Business.updateOne(
-    { _id: businessId },
     {
       $set: {
         resetPasswordToken: raw,
@@ -356,158 +319,4 @@ describe("POST /api/v1/auth/reset-password", () => {
     expect(second.statusCode).toBe(400);
   });
 
-  it("resets business password when token matches business", async () => {
-    const app = await getTestApp();
-    const biz = await createTestBusiness("biz-reset@example.com");
-    const raw = await setBusinessResetToken(biz._id);
-
-    const response = await app.inject({
-      method: "POST",
-      url: "/api/v1/auth/reset-password",
-      payload: { token: raw, newPassword },
-    });
-    expect(response.statusCode).toBe(200);
-
-    const updated = await Business.findById(biz._id)
-      .select("password resetPasswordToken")
-      .lean();
-    expect(updated?.resetPasswordToken).toBeFalsy();
-    expect(await bcrypt.compare(newPassword, updated!.password)).toBe(true);
-
-    const login = await app.inject({
-      method: "POST",
-      url: "/api/v1/auth/login",
-      payload: { email: "biz-reset@example.com", password: newPassword },
-    });
-    expect(login.statusCode).toBe(200);
-  });
-
-  it("refuses a business refresh session from before password reset and accepts one issued after", async () => {
-    const app = await getTestApp();
-    const biz = await createTestBusiness("biz-refresh-invalidate@example.com");
-
-    const loginRes = await app.inject({
-      method: "POST",
-      url: "/api/v1/auth/login",
-      payload: {
-        email: "biz-refresh-invalidate@example.com",
-        password: oldPassword,
-      },
-    });
-    expect(loginRes.statusCode).toBe(200);
-    const accessToken = loginRes.json().accessToken as string;
-    const refreshVal = refreshCookieValueFromLoginResponse({
-      headers: loginRes.headers as Record<string, unknown>,
-    });
-    expect(refreshVal).toBeDefined();
-
-    const raw = await setBusinessResetToken(biz._id);
-    const resetRes = await app.inject({
-      method: "POST",
-      url: "/api/v1/auth/reset-password",
-      payload: { token: raw, newPassword },
-    });
-    expect(resetRes.statusCode).toBe(200);
-
-    const stored = await Business.findById(biz._id)
-      .select("refreshSessionVersion")
-      .lean();
-    expect(stored?.refreshSessionVersion).toBe(1);
-
-    const refreshAfter = await app.inject({
-      method: "POST",
-      url: "/api/v1/auth/refresh",
-      headers: { cookie: `refresh_token=${refreshVal}` },
-    });
-    expect(refreshAfter.statusCode).toBe(401);
-    expect(JSON.parse(refreshAfter.body).detail).toBe(
-      "Invalid or expired refresh token",
-    );
-    const meAfter = await app.inject({
-      method: "GET",
-      url: "/api/v1/auth/me",
-      headers: { authorization: `Bearer ${accessToken}` },
-    });
-    expect(meAfter.statusCode).toBe(401);
-    expect(meAfter.headers["content-type"]).toContain("application/problem+json");
-    expect(meAfter.json().detail).toBe("Invalid or expired access token");
-
-    const loginAfter = await app.inject({
-      method: "POST",
-      url: "/api/v1/auth/login",
-      payload: {
-        email: "biz-refresh-invalidate@example.com",
-        password: newPassword,
-      },
-    });
-    expect(loginAfter.statusCode).toBe(200);
-    const nextCookie = loginAfter.cookies.find(
-      (cookie) => cookie.name === "refresh_token",
-    );
-    const refreshNext = await app.inject({
-      method: "POST",
-      url: "/api/v1/auth/refresh",
-      headers: { cookie: `refresh_token=${nextCookie!.value}` },
-    });
-    expect(refreshNext.statusCode).toBe(200);
-    expect(refreshNext.json().user.type).toBe("business");
-    expect(refreshNext.json().user.sessionId).toBeUndefined();
-    const meNext = await app.inject({
-      method: "GET",
-      url: "/api/v1/auth/me",
-      headers: { authorization: `Bearer ${loginAfter.json().accessToken}` },
-    });
-    expect(meNext.statusCode).toBe(200);
-    expect(meNext.json().user.type).toBe("business");
-    expect(meNext.json().user.sessionId).toBeUndefined();
-  });
-
-  it("updates business only when both accounts share the same reset token", async () => {
-    const app = await getTestApp();
-    const sharedRaw = randomToken();
-    const expiresAt = futureResetExpiry();
-
-    const biz = await createTestBusiness("biz-hash@example.com");
-    await Business.updateOne(
-      { _id: biz._id },
-      {
-        $set: {
-          resetPasswordToken: sharedRaw,
-          resetPasswordExpires: expiresAt,
-        },
-      },
-    );
-
-    const usr = await createTestUser("user-hash@example.com");
-    await User.updateOne(
-      { _id: usr._id },
-      {
-        $set: {
-          resetPasswordToken: sharedRaw,
-          resetPasswordExpires: expiresAt,
-        },
-      },
-    );
-
-    const response = await app.inject({
-      method: "POST",
-      url: "/api/v1/auth/reset-password",
-      payload: { token: sharedRaw, newPassword },
-    });
-    expect(response.statusCode).toBe(200);
-
-    const bizAfter = await Business.findById(biz._id)
-      .select("password resetPasswordToken")
-      .lean();
-    expect(await bcrypt.compare(newPassword, bizAfter!.password)).toBe(true);
-    expect(bizAfter?.resetPasswordToken).toBeFalsy();
-
-    const usrAfter = await User.findById(usr._id)
-      .select("personalDetails.password resetPasswordToken")
-      .lean();
-    expect(
-      await bcrypt.compare(oldPassword, usrAfter!.personalDetails!.password!),
-    ).toBe(true);
-    expect(usrAfter?.resetPasswordToken).toBe(sharedRaw);
-  });
 });

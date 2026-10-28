@@ -12,7 +12,7 @@ import crypto from "node:crypto";
 export interface LiveTicketRecord {
   sessionId: string;
   accountId: string;
-  accountType: "user" | "business";
+  accountType: "user";
 }
 
 interface StoredLiveTicket extends LiveTicketRecord {

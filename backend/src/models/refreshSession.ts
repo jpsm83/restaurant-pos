@@ -1,5 +1,5 @@
 /**
- * Refresh session — one stored issuance for a User or a Business.
+ * Refresh session — one stored issuance for a User.
  *
  * The httpOnly refresh cookie identifies this row. `refreshSessionVersion` is
  * the account generation copied at issuance; a later move refuses the session.
@@ -18,7 +18,7 @@ const refreshSessionSchema = new Schema({
   accountType: {
     type: String,
     required: true,
-    enum: ["user", "business"],
+    enum: ["user"],
   },
   /** Copy of the account `refreshSessionVersion` at issuance. */
   refreshSessionVersion: {

@@ -11,7 +11,7 @@ import type { FastifyRequest } from "fastify";
 import type { AuthSession } from "../auth/types.ts";
 
 export interface FailureReportSession {
-  type: "user" | "business";
+  type: "user";
   id: string;
   employeeId?: string;
   businessId?: string;
@@ -38,10 +38,8 @@ function safeSession(
     id: authSession.id,
   };
 
-  if (authSession.type === "user") {
-    if (authSession.employeeId) session.employeeId = authSession.employeeId;
-    if (authSession.businessId) session.businessId = authSession.businessId;
-  }
+  if (authSession.employeeId) session.employeeId = authSession.employeeId;
+  if (authSession.businessId) session.businessId = authSession.businessId;
 
   return session;
 }

@@ -29,7 +29,6 @@ describe("createOrders validation", () => {
       tradeName: "Ord Val Biz",
       legalName: "Ord Val LLC",
       email: `ordval-${Date.now()}@test.com`,
-      password: "hashed",
       phoneNumber: "111",
       taxNumber: `TAX-ORD-${Date.now()}-${Math.random().toString(36).slice(2)}`,
       currencyTrade: "USD",
@@ -48,7 +47,6 @@ describe("createOrders validation", () => {
       tradeName: "Other Biz",
       legalName: "Other LLC",
       email: `other-${Date.now()}@test.com`,
-      password: "hashed",
       phoneNumber: "112",
       taxNumber: `TAX-OTH-${Date.now()}-${Math.random().toString(36).slice(2)}`,
       currencyTrade: "USD",
@@ -95,7 +93,6 @@ describe("createOrders validation", () => {
     const user = await User.create({
       personalDetails: {
         email: `orduser-${Date.now()}@test.com`,
-        password: "hashed",
         firstName: "O",
         lastName: "U",
         phoneNumber: "333",

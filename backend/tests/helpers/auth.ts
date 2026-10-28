@@ -4,15 +4,8 @@
 
 import type { FastifyInstance } from "fastify";
 import bcrypt from "bcrypt";
-import Business from "../../src/models/business.ts";
 import User from "../../src/models/user.ts";
 import Employee from "../../src/models/employee.ts";
-
-export interface TestBusinessCredentials {
-  email: string;
-  password: string;
-  businessId: string;
-}
 
 export interface TestUserCredentials {
   email: string;
@@ -20,37 +13,6 @@ export interface TestUserCredentials {
   userId: string;
   employeeId?: string;
   businessId?: string;
-}
-
-/**
- * Create a test business account and return credentials
- */
-export async function createTestBusiness(
-  overrides: Partial<{ email: string; password: string; businessTradeName: string }> = {}
-): Promise<TestBusinessCredentials> {
-  const email = overrides.email ?? `business-${Date.now()}@test.com`;
-  const password = overrides.password ?? "TestPassword123!";
-  const hashedPassword = await bcrypt.hash(password, 10);
-
-  const business = await Business.create({
-    email,
-    password: hashedPassword,
-    businessTradeName: overrides.businessTradeName ?? "Test Business",
-    address: {
-      country: "Test Country",
-      state: "Test State",
-      city: "Test City",
-      street: "Test Street",
-      buildingNumber: "123",
-      postCode: "12345",
-    },
-  });
-
-  return {
-    email,
-    password,
-    businessId: business._id.toString(),
-  };
 }
 
 /**
@@ -66,10 +28,10 @@ export async function createTestUser(
   const user = await User.create({
     personalDetails: {
       email,
+      password: hashedPassword,
       firstName: overrides.firstName ?? "Test",
       lastName: overrides.lastName ?? "User",
     },
-    password: hashedPassword,
   });
 
   return {
@@ -96,30 +58,6 @@ export async function createTestEmployee(
   });
 
   return employee._id.toString();
-}
-
-/**
- * Login and get access token for a business account
- */
-export async function loginAsBusiness(
-  app: FastifyInstance,
-  credentials: TestBusinessCredentials
-): Promise<string> {
-  const response = await app.inject({
-    method: "POST",
-    url: "/api/v1/auth/login",
-    payload: {
-      email: credentials.email,
-      password: credentials.password,
-    },
-  });
-
-  if (response.statusCode !== 200) {
-    throw new Error(`Login failed: ${response.body}`);
-  }
-
-  const body = response.json<{ accessToken: string }>();
-  return body.accessToken;
 }
 
 /**

@@ -92,7 +92,6 @@ async function createEmployeeActor(
   const user = await User.create({
     personalDetails: {
       email: `${role}-${Date.now()}-${suffix}@t.com`,
-      password: "hashed",
       firstName: role,
       lastName: "Actor",
       phoneNumber: "555",
@@ -132,7 +131,6 @@ async function createCustomerActor() {
   const user = await User.create({
     personalDetails: {
       email: `cust-${Date.now()}-${Math.random().toString(36).slice(2)}@t.com`,
-      password: "hashed",
       firstName: "C",
       lastName: "U",
       phoneNumber: "556",
@@ -174,7 +172,6 @@ describe("SalesInstances flows (Task 12)", () => {
       tradeName: "Flow Biz",
       legalName: "Flow LLC",
       email: `flow-${Date.now()}@t.com`,
-      password: "hashed",
       phoneNumber: "1",
       taxNumber: `TAX-FLOW-${Date.now()}-${Math.random().toString(36).slice(2)}`,
       currencyTrade: "USD",
@@ -196,7 +193,6 @@ describe("SalesInstances flows (Task 12)", () => {
       tradeName: "Foreign Biz",
       legalName: "Foreign LLC",
       email: `foreign-${Date.now()}@t.com`,
-      password: "hashed",
       phoneNumber: "2",
       taxNumber: `TAX-FOR-${Date.now()}-${Math.random().toString(36).slice(2)}`,
       currencyTrade: "USD",

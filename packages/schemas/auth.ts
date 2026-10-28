@@ -64,26 +64,7 @@ export const requestPasswordResetBodySchema = z.strictObject({
   email: emailSchema,
 });
 
-/**
- * The new sign-in address for an email change. Uses the shared `emailSchema`,
- * the single server-side email rule every auth DTO already validates with.
- */
-export const requestEmailChangeBodySchema = z.strictObject({
-  newEmail: emailSchema,
-  currentPassword: z
-    .string({ error: "Current password is required" })
-    .min(1, "Current password is required"),
-});
-
 export const confirmEmailBodySchema = z.strictObject({
-  token: z
-    .string({ error: "Please provide a confirmation token." })
-    .trim()
-    .min(1, "Please provide a confirmation token."),
-});
-
-/** Consumes the pending sign-in email change token emailed to the new address. */
-export const confirmEmailChangeBodySchema = z.strictObject({
   token: z
     .string({ error: "Please provide a confirmation token." })
     .trim()
@@ -113,12 +94,6 @@ export type RequestEmailConfirmationBody = z.infer<
 export type RequestPasswordResetBody = z.infer<
   typeof requestPasswordResetBodySchema
 >;
-export type RequestEmailChangeBody = z.infer<
-  typeof requestEmailChangeBodySchema
->;
 export type ConfirmEmailBody = z.infer<typeof confirmEmailBodySchema>;
-export type ConfirmEmailChangeBody = z.infer<
-  typeof confirmEmailChangeBodySchema
->;
 export type ResetPasswordBody = z.infer<typeof resetPasswordBodySchema>;
 export type SetModeBody = z.infer<typeof setModeBodySchema>;

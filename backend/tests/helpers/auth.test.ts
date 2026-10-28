@@ -12,7 +12,7 @@ import {
   createAuthHook,
   hasBusinessAccess,
 } from "../../src/auth/middleware.ts";
-import type { AuthSession, AuthUser, AuthBusiness } from "../../src/auth/types.ts";
+import type { AuthSession, AuthUser } from "../../src/auth/types.ts";
 import Employee from "../../src/models/employee.ts";
 import Schedule from "../../src/models/schedule.ts";
 
@@ -186,11 +186,11 @@ describe("Auth Helpers", () => {
       const app = await getTestApp();
       const authHook = createAuthHook(app);
 
-      const payload: AuthBusiness = {
-        id: businessId.toString(),
+      const payload: AuthUser = {
+        id: userId.toString(),
         email: "test@example.com",
-        type: "business",
-        role: "Tenant",
+        type: "user",
+        role: "Customer",
       };
       const token = await signAccessTokenForLiveSession(app, payload);
 
@@ -208,8 +208,8 @@ describe("Auth Helpers", () => {
       await authHook.call(app as any, mockReq, mockReply, () => {});
 
       expect(mockReq.authSession).toBeDefined();
-      expect(mockReq.authSession.type).toBe("business");
-      expect(mockReq.authSession.id).toBe(businessId.toString());
+      expect(mockReq.authSession.type).toBe("user");
+      expect(mockReq.authSession.id).toBe(userId.toString());
       expect(mockReq.authSession.sessionId).toBeUndefined();
     });
 
@@ -217,11 +217,11 @@ describe("Auth Helpers", () => {
       const app = await getTestApp();
       const authHook = createAuthHook(app);
 
-      const payload: AuthBusiness = {
-        id: businessId.toString(),
+      const payload: AuthUser = {
+        id: userId.toString(),
         email: "test@example.com",
-        type: "business",
-        role: "Tenant",
+        type: "user",
+        role: "Customer",
       };
       const token = app.jwt.sign(payload);
 
@@ -369,28 +369,6 @@ describe("Auth Helpers", () => {
 
   describe("hasBusinessAccess", () => {
     const testBusinessId = new Types.ObjectId().toString();
-
-    it("returns true for business account with matching ID", () => {
-      const session: AuthBusiness = {
-        id: testBusinessId,
-        email: "business@example.com",
-        type: "business",
-        role: "Tenant",
-      };
-
-      expect(hasBusinessAccess(session, testBusinessId)).toBe(true);
-    });
-
-    it("returns false for business account with different ID", () => {
-      const session: AuthBusiness = {
-        id: new Types.ObjectId().toString(),
-        email: "business@example.com",
-        type: "business",
-        role: "Tenant",
-      };
-
-      expect(hasBusinessAccess(session, testBusinessId)).toBe(false);
-    });
 
     it("returns true for employee with matching businessId and canLogAsEmployee", () => {
       const session: AuthUser = {

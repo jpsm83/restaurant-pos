@@ -32,7 +32,6 @@ import {
 } from "../helpers/accountEmailRail.ts";
 import { getTestApp, resetTestApp } from "../setup.ts";
 import User from "../../src/models/user.ts";
-import Business from "../../src/models/business.ts";
 import {
   EMAIL_CONFIRMATION_SENT_MESSAGE,
   GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE,
@@ -69,31 +68,6 @@ async function createTestUser(
       ...(overrides?.emailVerified !== undefined
         ? { emailVerified: overrides.emailVerified }
         : {}),
-    },
-  });
-}
-
-async function createTestBusiness(
-  email: string,
-  overrides?: { emailVerified?: boolean },
-) {
-  const hashedPassword = await bcrypt.hash(testPassword, 10);
-  return Business.create({
-    tradeName: "Café Test",
-    legalName: "Café Test Legal",
-    email,
-    password: hashedPassword,
-    taxNumber: `TAX-${email.replace(/[@.]/g, "-")}`,
-    phoneNumber: "1234567890",
-    currencyTrade: "USD",
-    emailVerified: overrides?.emailVerified ?? false,
-    address: {
-      country: "USA",
-      state: "CA",
-      city: "LA",
-      street: "Main St",
-      buildingNumber: "123",
-      postCode: "90001",
     },
   });
 }
@@ -214,56 +188,4 @@ describe("POST /api/v1/auth/request-email-confirmation", () => {
     expect(updated?.verificationToken).toBeFalsy();
   });
 
-  it("does not store a confirmation token for a closed business", async () => {
-    const app = await getTestApp();
-    const email = "closed-confirm@example.com";
-    const business = await createTestBusiness(email, { emailVerified: false });
-    await Business.updateOne(
-      { _id: business._id },
-      { $set: { deleted: true, deletedAt: new Date() } },
-    );
-
-    const response = await app.inject({
-      method: "POST",
-      url: "/api/v1/auth/request-email-confirmation",
-      payload: { email },
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(response.json().message).toBe(GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE);
-    expect(sendEmailMock).not.toHaveBeenCalled();
-
-    const stored = await Business.findById(business._id)
-      .setOptions({ includeDeleted: true })
-      .select("verificationToken")
-      .lean();
-    expect(stored?.verificationToken).toBeFalsy();
-  });
-
-  it("prefers business over user for the same email", async () => {
-    const app = await getTestApp();
-    const email = "shared@example.com";
-    await createTestBusiness(email, { emailVerified: false });
-    await createTestUser(email, { emailVerified: false });
-
-    const response = await app.inject({
-      method: "POST",
-      url: "/api/v1/auth/request-email-confirmation",
-      payload: { email },
-    });
-
-    expect(response.statusCode).toBe(200);
-
-    const biz = await Business.findOne({ email }).select("verificationToken").lean();
-    const usr = await User.findOne({ "personalDetails.email": email })
-      .select("verificationToken")
-      .lean();
-    expect(biz?.verificationToken).toBeTruthy();
-    expect(usr?.verificationToken).toBeFalsy();
-    expectOneAccountSend(sendEmailMock, {
-      to: email,
-      subject: "Confirm Your Email - POS",
-      link: `/confirm-email?token=${biz?.verificationToken}`,
-    });
-  });
 });

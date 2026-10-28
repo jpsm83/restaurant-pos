@@ -76,12 +76,10 @@ async function createUser(email: string) {
 }
 
 async function createBusiness(email: string, taxNumber: string) {
-  const password = await bcrypt.hash(originalPassword, 10);
   return Business.create({
     tradeName: "Shared Office",
     legalName: "Shared Office LLC",
     email,
-    password,
     phoneNumber: "1234567890",
     taxNumber,
     currencyTrade: "USD",
@@ -364,7 +362,7 @@ describe("soft-deleted sign-in reactivation", () => {
     expect(originalLogin.json().detail).toBe("Invalid credentials");
   });
 
-  it("keeps a business email non-unique and does not reactivate a closed business by reusing it", async () => {
+  it("keeps a business contact email non-unique and independent of User sign-up", async () => {
     const app = await getTestApp();
     const email = `office-${Date.now()}@example.com`;
     const first = await createBusiness(email, `TAX-A-${Date.now()}`);
@@ -388,10 +386,10 @@ describe("soft-deleted sign-in reactivation", () => {
       payload: { email, password: signupPassword },
     });
 
-    expect(signup.statusCode).toBe(202);
+    expect(signup.statusCode).toBe(201);
     expect(signup.headers["content-type"]).toContain("application/json");
-    expect(signup.json().message).not.toContain("already exists");
-    expect(signup.json().accessToken).toBeUndefined();
+    expect(signup.json().user.type).toBe("user");
+    expect(signup.json().user.email).toBe(email);
 
     const closed = await Business.findById(second._id)
       .setOptions({ includeDeleted: true })
@@ -408,89 +406,7 @@ describe("soft-deleted sign-in reactivation", () => {
       .setOptions({ includeDeleted: true })
       .select("_id")
       .lean();
-    expect(users).toHaveLength(0);
-
-    await Business.updateOne(
-      { _id: first._id },
-      { $set: { deleted: true, deletedAt: new Date("2026-01-03T00:00:00.000Z") } },
-    );
-
-    const reuse = await app.inject({
-      method: "POST",
-      url: "/api/v1/auth/signup",
-      payload: { email, password: signupPassword, firstName: "Pat", lastName: "Lee" },
-    });
-    expect(reuse.statusCode).toBe(201);
-    expect(reuse.headers["content-type"]).toContain("application/json");
-    expect(reuse.json().user.type).toBe("user");
-
-    const venues = await Business.find({ email })
-      .setOptions({ includeDeleted: true })
-      .select("deleted")
-      .lean();
-    expect(venues).toHaveLength(2);
-    expect(venues.every((venue) => venue.deleted === true)).toBe(true);
+    expect(users).toHaveLength(1);
   });
 
-  it("does not restore a closed business from a confirmation or reset link issued before closure", async () => {
-    const app = await getTestApp();
-    const email = `closed-link-${Date.now()}@example.com`;
-    const business = await createBusiness(email, `TAX-CLOSED-${Date.now()}`);
-    const deletedBy = new Types.ObjectId();
-    const confirmationToken = "confirm-token-issued-before-closure";
-    const resetToken = "reset-token-issued-before-closure";
-
-    await Business.updateOne(
-      { _id: business._id },
-      {
-        $set: {
-          verificationToken: confirmationToken,
-          resetPasswordToken: resetToken,
-          resetPasswordExpires: new Date(Date.now() + 60 * 60 * 1000),
-          deleted: true,
-          deletedAt: new Date("2026-01-02T00:00:00.000Z"),
-          deletedBy,
-        },
-      },
-    );
-
-    const confirmed = await app.inject({
-      method: "POST",
-      url: "/api/v1/auth/confirm-email",
-      payload: { token: confirmationToken },
-    });
-    expect(confirmed.statusCode).toBe(400);
-    expect(confirmed.headers["content-type"]).toContain("application/problem+json");
-    expect(confirmed.json().detail).toBe(
-      "This link is invalid or has expired. Please request a new one.",
-    );
-
-    const reset = await app.inject({
-      method: "POST",
-      url: "/api/v1/auth/reset-password",
-      payload: { token: resetToken, newPassword: "Replacement123!" },
-    });
-    expect(reset.statusCode).toBe(400);
-    expect(reset.headers["content-type"]).toContain("application/problem+json");
-    expect(reset.json().detail).toBe(
-      "This link is invalid or has expired. Please request a new one.",
-    );
-
-    const stored = await Business.findById(business._id)
-      .setOptions({ includeDeleted: true })
-      .select("deleted deletedAt deletedBy")
-      .lean();
-    expect(stored?.deleted).toBe(true);
-    expect(stored?.deletedAt).toBeInstanceOf(Date);
-    expect(String(stored?.deletedBy)).toBe(String(deletedBy));
-
-    const login = await app.inject({
-      method: "POST",
-      url: "/api/v1/auth/login",
-      payload: { email, password: originalPassword },
-    });
-    expect(login.statusCode).toBe(401);
-    expect(login.headers["content-type"]).toContain("application/problem+json");
-    expect(login.json().detail).toBe("Invalid credentials");
-  });
 });

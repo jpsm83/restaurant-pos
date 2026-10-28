@@ -1,5 +1,5 @@
 /**
- * Business auth-email fields persist and are queryable.
+ * Business contact-email fields persist as venue data; no credentials exist.
  */
 import { describe, it, expect } from "vitest";
 import Business from "../../src/models/business.ts";
@@ -8,7 +8,6 @@ const minimalBusiness = {
   tradeName: "Schema Test Bistro",
   legalName: "Schema Test Bistro LLC",
   email: "biz-schema-test@example.com",
-  password: "hashed-placeholder",
   phoneNumber: "1234567890",
   taxNumber: "TAX-SCHEMA-BIZ-001",
   currencyTrade: "USD",
@@ -22,99 +21,47 @@ const minimalBusiness = {
   },
 };
 
-describe("Business email security schema", () => {
-  it("defaults emailVerified to false and stores verification + reset tokens", async () => {
-    const expiresReset = new Date(Date.now() + 3_600_000);
-
+describe("Business contact email schema", () => {
+  it("defaults emailVerified to false and stores the venue contact email", async () => {
     const created = await Business.create({
       ...minimalBusiness,
       taxNumber: "TAX-SCHEMA-BIZ-002",
       email: "biz-schema-a@example.com",
-      verificationToken: "biz-confirm-token",
-      resetPasswordToken: "biz-reset-token",
-      resetPasswordExpires: expiresReset,
     });
 
-    expect(created.refreshSessionVersion ?? 0).toBe(0);
+    expect(created.email).toBe("biz-schema-a@example.com");
     expect(created.emailVerified).toBe(false);
-    expect(created.verificationToken).toBe("biz-confirm-token");
-    expect(created.resetPasswordToken).toBe("biz-reset-token");
-    expect(created.resetPasswordExpires?.getTime()).toBe(expiresReset.getTime());
 
     const fromDb = await Business.findById(created._id).lean();
+    expect(fromDb?.email).toBe("biz-schema-a@example.com");
     expect(fromDb?.emailVerified).toBe(false);
-    expect(fromDb?.verificationToken).toBe("biz-confirm-token");
-    expect(fromDb?.resetPasswordToken).toBe("biz-reset-token");
   });
 
-  it("finds business by resetPasswordToken", async () => {
-    await Business.create({
-      ...minimalBusiness,
-      taxNumber: "TAX-SCHEMA-BIZ-003",
-      email: "biz-find-reset@example.com",
-      resetPasswordToken: "unique-biz-reset-token",
-      resetPasswordExpires: new Date(Date.now() + 60_000),
-    });
-
-    const found = await Business.findOne({
-      resetPasswordToken: "unique-biz-reset-token",
-    }).lean();
-    expect(found?.email).toBe("biz-find-reset@example.com");
-  });
-
-  it("clears token fields when unset", async () => {
-    const doc = await Business.create({
-      ...minimalBusiness,
-      taxNumber: "TAX-SCHEMA-BIZ-004",
-      email: "biz-clear@example.com",
-      resetPasswordToken: "to-clear-biz",
-      resetPasswordExpires: new Date(),
-    });
-
-    await Business.findByIdAndUpdate(doc._id, {
-      $unset: {
-        resetPasswordToken: "",
-        resetPasswordExpires: "",
-      },
-    });
-
-    const after = await Business.findById(doc._id).lean();
-    expect(after?.resetPasswordToken).toBeUndefined();
-    expect(after?.resetPasswordExpires).toBeUndefined();
-  });
-
-  it("stores and clears the pending sign-in email change fields", async () => {
-    const pendingExpires = new Date(Date.now() + 3_600_000);
-    const requestedAt = new Date();
-
+  it("stores a verified contact email", async () => {
     const created = await Business.create({
       ...minimalBusiness,
-      taxNumber: "TAX-SCHEMA-BIZ-005",
-      email: "biz-pending@example.com",
-      pendingEmail: "biz-pending-new@example.com",
-      pendingEmailToken: "biz-pending-token",
-      pendingEmailExpires: pendingExpires,
-      pendingEmailRequestedAt: requestedAt,
+      taxNumber: "TAX-SCHEMA-BIZ-003",
+      email: "biz-verified@example.com",
+      emailVerified: true,
     });
 
-    expect(created.pendingEmail).toBe("biz-pending-new@example.com");
-    expect(created.pendingEmailToken).toBe("biz-pending-token");
-    expect(created.pendingEmailExpires?.getTime()).toBe(pendingExpires.getTime());
-    expect(created.pendingEmailRequestedAt?.getTime()).toBe(requestedAt.getTime());
+    const fromDb = await Business.findById(created._id).lean();
+    expect(fromDb?.emailVerified).toBe(true);
+  });
 
-    await Business.findByIdAndUpdate(created._id, {
-      $unset: {
-        pendingEmail: "",
-        pendingEmailToken: "",
-        pendingEmailExpires: "",
-        pendingEmailRequestedAt: "",
-      },
-    });
-
-    const after = await Business.findById(created._id).lean();
-    expect(after?.pendingEmail).toBeUndefined();
-    expect(after?.pendingEmailToken).toBeUndefined();
-    expect(after?.pendingEmailExpires).toBeUndefined();
-    expect(after?.pendingEmailRequestedAt).toBeUndefined();
+  it("defines no credential or session-generation fields", () => {
+    for (const field of [
+      "password",
+      "verificationToken",
+      "resetPasswordToken",
+      "resetPasswordExpires",
+      "pendingEmail",
+      "pendingEmailToken",
+      "pendingEmailExpires",
+      "pendingEmailRequestedAt",
+      "refreshSessionVersion",
+    ]) {
+      expect(Business.schema.path(field), field).toBeUndefined();
+    }
   });
 });

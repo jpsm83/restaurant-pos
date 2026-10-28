@@ -8,16 +8,6 @@ import type { IAuthMode } from "restaurant-pos-packages/interfaces/IAuth";
 
 export type AuthMode = IAuthMode;
 
-export interface AuthBusiness {
-  id: string;
-  email: string;
-  type: "business";
-  /** Present when issued by login / refresh / signup; drives verification UI. */
-  emailVerified?: boolean;
-  /** Tenant sign-in actor; use for future route guards (not `User` employee role enums). */
-  role: "Tenant";
-}
-
 export interface AuthUser {
   id: string;
   email: string;
@@ -37,12 +27,12 @@ export interface AuthUser {
   role: string;
 }
 
-export type AuthSession = AuthBusiness | AuthUser;
+export type AuthSession = AuthUser;
 
 export interface JwtPayload {
   id: string;
   email: string;
-  type: "business" | "user";
+  type: "user";
   emailVerified?: boolean;
   languagePreference?: "en" | "es";
   mode?: AuthMode;

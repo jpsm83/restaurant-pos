@@ -45,13 +45,10 @@ export interface IBusiness {
   tradeName: string;
   legalName: string;
   imageUrl?: string;
+  /** Venue contact email; never a sign-in credential. */
   email: string;
-  password: string;
-  /** When true, tenant `email` is treated as verified for auth-email flows. */
+  /** Whether the venue contact email has been verified. */
   emailVerified?: boolean;
-  verificationToken?: string;
-  resetPasswordToken?: string;
-  resetPasswordExpires?: Date;
   phoneNumber: string;
   taxNumber: string;
   currencyTrade: string;
@@ -86,18 +83,10 @@ export interface IBusiness {
 
 /**
  * API-safe business profile payload shared across backend and frontend.
- * Mirrors GET `/api/v1/business/:businessId` response shape (`password` excluded).
+ * Mirrors GET `/api/v1/business/:businessId` response shape.
  */
 export interface IBusinessProfileDto
-  extends Omit<
-    IBusiness,
-    | "_id"
-    | "password"
-    | "reportingConfig"
-    | "verificationToken"
-    | "resetPasswordToken"
-    | "resetPasswordExpires"
-  > {
+  extends Omit<IBusiness, "_id" | "reportingConfig"> {
   _id: string;
   reportingConfig?: Partial<IReportingConfig>;
   /** True when no valid zone is stored and the response fell back to `UTC`. */

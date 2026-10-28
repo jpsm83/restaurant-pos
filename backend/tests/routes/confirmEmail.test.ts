@@ -7,7 +7,6 @@ import crypto from "crypto";
 import bcrypt from "bcrypt";
 import { getTestApp, resetTestApp } from "../setup.ts";
 import User from "../../src/models/user.ts";
-import Business from "../../src/models/business.ts";
 import {
   CONFIRM_EMAIL_CONSUMPTION_ERROR_MESSAGE,
   CONFIRM_EMAIL_MISSING_TOKEN_MESSAGE,
@@ -43,28 +42,6 @@ async function createTestUser(email: string) {
       idNumber: `ID-${email}`,
       idType: "Passport",
       username: "testuser",
-    },
-  });
-}
-
-async function createTestBusiness(email: string) {
-  const hashedPassword = await bcrypt.hash(testPassword, 10);
-  return Business.create({
-    tradeName: "Café Confirm",
-    legalName: "Café Confirm Legal",
-    email,
-    password: hashedPassword,
-    taxNumber: `TAX-${email.replace(/[@.]/g, "-")}`,
-    phoneNumber: "1234567890",
-    currencyTrade: "USD",
-    emailVerified: false,
-    address: {
-      country: "USA",
-      state: "CA",
-      city: "LA",
-      street: "Main St",
-      buildingNumber: "123",
-      postCode: "90001",
     },
   });
 }
@@ -127,9 +104,9 @@ describe("POST /api/v1/auth/confirm-email", () => {
 
   it("accepts uppercase hex token matching stored verificationToken", async () => {
     const app = await getTestApp();
-    const biz = await createTestBusiness("confirm-biz-upper@example.com");
+    const user = await createTestUser("confirm-upper@example.com");
     const raw = randomToken();
-    await Business.updateOne({ _id: biz._id }, { $set: { verificationToken: raw } });
+    await User.updateOne({ _id: user._id }, { $set: { verificationToken: raw } });
 
     const response = await app.inject({
       method: "POST",
@@ -138,10 +115,10 @@ describe("POST /api/v1/auth/confirm-email", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const updated = await Business.findById(biz._id)
-      .select("emailVerified verificationToken")
+    const updated = await User.findById(user._id)
+      .select("personalDetails.emailVerified verificationToken")
       .lean();
-    expect(updated?.emailVerified).toBe(true);
+    expect(updated?.personalDetails?.emailVerified).toBe(true);
     expect(updated?.verificationToken).toBeFalsy();
   });
 
@@ -183,63 +160,6 @@ describe("POST /api/v1/auth/confirm-email", () => {
     expect(JSON.parse(second.body).detail).toBe(
       CONFIRM_EMAIL_CONSUMPTION_ERROR_MESSAGE,
     );
-  });
-
-  it("updates business when token matches business row", async () => {
-    const app = await getTestApp();
-    const biz = await createTestBusiness("confirm-biz@example.com");
-    const raw = randomToken();
-    await Business.updateOne({ _id: biz._id }, { $set: { verificationToken: raw } });
-
-    const response = await app.inject({
-      method: "POST",
-      url: "/api/v1/auth/confirm-email",
-      payload: { token: raw },
-    });
-
-    expect(response.statusCode).toBe(200);
-
-    const updated = await Business.findById(biz._id)
-      .select("emailVerified verificationToken")
-      .lean();
-    expect(updated?.emailVerified).toBe(true);
-    expect(updated?.verificationToken).toBeFalsy();
-  });
-
-  it("does not consume user token when business has the same token (business wins)", async () => {
-    const app = await getTestApp();
-    const sharedRaw = randomToken();
-
-    const biz = await createTestBusiness("biz-wins@example.com");
-    await Business.updateOne(
-      { _id: biz._id },
-      { $set: { verificationToken: sharedRaw } },
-    );
-
-    const usr = await createTestUser("user-same-token@example.com");
-    await User.updateOne(
-      { _id: usr._id },
-      { $set: { verificationToken: sharedRaw } },
-    );
-
-    const response = await app.inject({
-      method: "POST",
-      url: "/api/v1/auth/confirm-email",
-      payload: { token: sharedRaw },
-    });
-    expect(response.statusCode).toBe(200);
-
-    const bizAfter = await Business.findById(biz._id)
-      .select("emailVerified verificationToken")
-      .lean();
-    expect(bizAfter?.emailVerified).toBe(true);
-    expect(bizAfter?.verificationToken).toBeFalsy();
-
-    const usrAfter = await User.findById(usr._id)
-      .select("personalDetails.emailVerified verificationToken")
-      .lean();
-    expect(usrAfter?.personalDetails?.emailVerified).toBe(false);
-    expect(usrAfter?.verificationToken).toBe(sharedRaw);
   });
 
   it("reactivates a soft-deleted user when consuming a valid token", async () => {

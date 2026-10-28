@@ -54,8 +54,7 @@ export function fakeBusiness(overrides: Partial<{
 }> = {}) {
   return {
     email: overrides.email ?? faker.internet.email(),
-    password: "TestPassword123!",
-    businessTradeName: overrides.businessTradeName ?? faker.company.name(),
+    tradeName: overrides.businessTradeName ?? faker.company.name(),
     address: fakeAddress(),
   };
 }
@@ -103,7 +102,6 @@ export function fakeBusinessRecord(
     tradeName: faker.company.name(),
     legalName: faker.company.name(),
     email: faker.internet.email(),
-    password: "TestPassword123!",
     phoneNumber: faker.phone.number(),
     taxNumber: `TAX-${faker.string.alphanumeric(10)}`,
     currencyTrade: "EUR",

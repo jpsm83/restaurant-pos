@@ -3,11 +3,10 @@
  * accept.
  *
  * Strict (unknown keys rejected) and client-settable only: the server-owned
- * `averageRating`, `ratingCount`, `timezone`, `emailVerified`, token fields and
- * `refreshSessionVersion` never appear in a DTO, so a client that sends them
- * gets a `400`. The registration and profile-update bodies are consumed through
- * the shared multipart helper, so JSON-encoded fields (`address`,
- * `businessOpeningHours`, `deliveryOpeningWindows`, `metrics`,
+ * `averageRating`, `ratingCount`, `timezone` and `emailVerified` never appear in
+ * a DTO, so a client that sends them gets a `400`. The profile-update body is
+ * consumed through the shared multipart helper, so JSON-encoded fields
+ * (`address`, `businessOpeningHours`, `deliveryOpeningWindows`, `metrics`,
  * `reportingConfig`) are parsed and validated here. Enum values come from
  * `packages/enums.ts`.
  */
@@ -19,13 +18,11 @@ import {
   foodSubCategoryEnums,
   subscriptionEnums,
 } from "../enums.ts";
-import { passwordSchema } from "./auth.ts";
 import { addressSchema } from "./address.ts";
 import {
   coercedBooleanSchema,
   coercedIntSchema,
   coercedNumberSchema,
-  emailSchema,
   emptyToUndefined,
   type EnumValues,
   jsonField,
@@ -109,32 +106,6 @@ const cuisineTypeValueSchema = z.enum(
   "Invalid cuisineType!",
 );
 
-/**
- * A cuisine list. Canonical clients send a JSON array; a legacy client may send
- * a single enum value as a bare string, which normalizes to a one-item list.
- */
-const cuisineTypeSchema = z
-  .preprocess(
-    (value, ctx) => {
-      if (typeof value !== "string") return value;
-      const raw = value.trim();
-      if (raw === "") return undefined;
-      if (raw.startsWith("[")) {
-        try {
-          return JSON.parse(raw);
-        } catch {
-          ctx.addIssue({ code: "custom", message: "Invalid JSON" });
-          return z.NEVER;
-        }
-      }
-      return raw;
-    },
-    z
-      .union([z.array(cuisineTypeValueSchema), cuisineTypeValueSchema])
-      .transform((value) => (Array.isArray(value) ? value : [value])),
-  )
-  .optional();
-
 const foodSubCategorySchema = z.enum(
   foodSubCategoryEnums as EnumValues,
   "Invalid category!",
@@ -162,37 +133,10 @@ const optionalDeliveryWindowsSchema = optionalJsonField(
 );
 
 /**
- * Body for `POST /business` (multipart). The uploaded logo is collected by the
- * multipart helper as a file, not a field. `averageRating` and `ratingCount` are
- * server-owned and rejected here.
- */
-export const createBusinessBodySchema = z.strictObject({
-  tradeName: sanitizedString("Trade name is required!"),
-  legalName: sanitizedString("Legal name is required!"),
-  email: emailSchema,
-  password: passwordSchema,
-  phoneNumber: sanitizedString("Phone number is required!"),
-  taxNumber: sanitizedString("Tax number is required!"),
-  subscription: z.enum(subscriptionEnums as EnumValues, "Invalid subscription!"),
-  currencyTrade: z.enum(currenctyEnums as EnumValues, "Invalid currencyTrade!"),
-  address: jsonField(businessAddressSchema),
-  contactPerson: sanitizedString().optional(),
-  cuisineType: cuisineTypeSchema,
-  categories: optionalCategoriesSchema,
-  acceptsDelivery: optionalBooleanSchema,
-  deliveryRadius: optionalNonNegativeNumberSchema,
-  minOrder: optionalNonNegativeNumberSchema,
-  businessOpeningHours: optionalOpeningHoursSchema,
-  deliveryOpeningWindows: optionalDeliveryWindowsSchema,
-});
-
-/**
  * Body for `PATCH /business/:businessId` (multipart). The identity fields are
  * required (the profile form always submits them); everything else is optional.
- * The sign-in `email` and the credentials (`password`/`currentPassword`) are not
- * part of this contract: email changes go through the verified email-change flow
- * and password changes through the reset-password flow, so a client that sends
- * them gets a `400` as unknown keys.
+ * The contact `email` is not part of this contract, so a client that sends it
+ * gets a `400` as an unknown key.
  */
 export const updateBusinessBodySchema = z.strictObject({
   tradeName: sanitizedString("Trade name is required!"),
@@ -263,7 +207,6 @@ export type BusinessMetrics = z.infer<typeof businessMetricsSchema>;
 export type BusinessReportingConfig = z.infer<
   typeof businessReportingConfigSchema
 >;
-export type CreateBusinessBody = z.infer<typeof createBusinessBodySchema>;
 export type UpdateBusinessBody = z.infer<typeof updateBusinessBodySchema>;
 export type BusinessIdParams = z.infer<typeof businessIdParamsSchema>;
 export type DiscoverBusinessesQuery = z.infer<

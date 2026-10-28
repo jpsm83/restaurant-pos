@@ -1,4 +1,3 @@
-import Business from "../models/business.ts";
 import User from "../models/user.ts";
 import type { AuthSession } from "./types.ts";
 import {
@@ -22,30 +21,6 @@ export type ResendEmailConfirmationResult =
 export async function handleResendEmailConfirmationForAuthenticatedAccount(
   session: AuthSession,
 ): Promise<ResendEmailConfirmationResult> {
-  if (session.type === "business") {
-    const b = await Business.findById(session.id)
-      .select("email emailVerified")
-      .lean();
-    if (!b?.email) {
-      return { kind: "account_not_found" };
-    }
-    if (b.emailVerified === true) {
-      return {
-        kind: "already_verified",
-        message: RESEND_EMAIL_ALREADY_VERIFIED_MESSAGE,
-      };
-    }
-    const normalized = normalizeRequestEmail(String(b.email));
-    const r = await handleRequestEmailConfirmation(normalized);
-    if (r.kind === "server_error_500") {
-      return r;
-    }
-    return {
-      kind: "success",
-      message: GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE,
-    };
-  }
-
   const u = await User.findById(session.id)
     .select("personalDetails.email personalDetails.emailVerified")
     .lean();

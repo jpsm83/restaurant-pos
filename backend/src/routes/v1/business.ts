@@ -11,28 +11,17 @@
  */
 import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
-import { hash } from "bcrypt";
 import dispatchEvent from "../../communications/dispatchEvent.ts";
 import Business from "../../models/business.ts";
-import Employee from "../../models/employee.ts";
-import Notification from "../../models/notification.ts";
-import User from "../../models/user.ts";
 import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
 import {
   createAuthHook,
   createOptionalAuthHook,
-  requireBusinessIdMatchesSessionHook,
+  requireBusinessAccessHook,
 } from "../../auth/middleware.ts";
-import { issueSessionWithRefreshCookie } from "../../auth/issueSession.ts";
-import type { AuthBusiness } from "../../auth/types.ts";
-import { handleRequestEmailConfirmation } from "../../auth/requestEmailConfirmation.ts";
 import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
 import deleteFilesCloudinary from "../../cloudinary/deleteFilesCloudinary.ts";
-import {
-  badRequest,
-  conflict,
-  notFound,
-} from "../../errors/appError.ts";
+import { badRequest, conflict, notFound } from "../../errors/appError.ts";
 import { parseMultipart } from "../../schemas/multipart.ts";
 import {
   isSupportedTimezone,
@@ -40,7 +29,6 @@ import {
 } from "restaurant-pos-packages/schemas";
 import {
   businessIdParamsSchema,
-  createBusinessBodySchema,
   discoverBusinessesQuerySchema,
   businessIncludeDeletedQuerySchema,
   updateBusinessBodySchema,
@@ -57,10 +45,6 @@ import {
   resolveTimezoneFromAddress,
   type AddressLike,
 } from "restaurant-pos-packages/utils/timezoneFromAddress";
-
-/** Public JSON must omit password and auth-email secrets (see `TODO-auth-email-security-flows-implementation.md`). */
-const BUSINESS_PUBLIC_LEAN_SELECT =
-  "-password -verificationToken -resetPasswordToken -resetPasswordExpires -pendingEmail -pendingEmailToken -pendingEmailExpires -pendingEmailRequestedAt";
 
 const DEFAULT_DISCOVERY_LIMIT = 50;
 
@@ -161,7 +145,6 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
         businesses = await Business.find(
           withSoftDeleteFilter({}, query.includeDeleted ?? false),
         )
-          .select(BUSINESS_PUBLIC_LEAN_SELECT)
           .lean();
       } else {
         const filter: Record<string, unknown> = {};
@@ -193,7 +176,6 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
         businesses = await Business.find(
           withSoftDeleteFilter(filter as Record<string, unknown>, query.includeDeleted ?? false),
         )
-          .select(BUSINESS_PUBLIC_LEAN_SELECT)
           .limit(limit)
           .lean();
       }
@@ -244,7 +226,7 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
     "/:businessId",
     {
       preValidation: [createAuthHook(app)],
-      preHandler: [requireBusinessIdMatchesSessionHook()],
+      preHandler: [requireBusinessAccessHook()],
       schema: {
         params: businessIdParamsSchema,
         querystring: businessIncludeDeletedQuerySchema,
@@ -257,7 +239,6 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
       const business = await Business.findOne(
         withSoftDeleteFilter({ _id: businessId }, includeDeleted),
       )
-        .select(BUSINESS_PUBLIC_LEAN_SELECT)
         .lean();
 
       if (!business) {
@@ -279,122 +260,11 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
     },
   );
 
-  app.post("/", async (req, reply) => {
-    const { fields, files } = await parseMultipart(req, createBusinessBodySchema);
-
-    // An office email is not a unique sign-in identity.
-    const duplicateBusiness = await Business.exists(
-      withSoftDeleteFilter({
-        $or: [
-          { legalName: fields.legalName },
-          { taxNumber: fields.taxNumber },
-        ],
-      }),
-    );
-    if (duplicateBusiness) {
-      throw conflict("Business legal name or tax number already exists!");
-    }
-
-    const hashedPassword = await hash(fields.password, 10);
-    const businessId = new Types.ObjectId();
-
-    const newBusiness: Record<string, unknown> = {
-      _id: businessId,
-      tradeName: fields.tradeName,
-      legalName: fields.legalName,
-      email: fields.email,
-      password: hashedPassword,
-      phoneNumber: fields.phoneNumber,
-      taxNumber: fields.taxNumber,
-      currencyTrade: fields.currencyTrade,
-      subscription: fields.subscription,
-      timezone: deriveStoredTimezone(fields.address),
-      address: fields.address,
-    };
-
-    if (fields.contactPerson) newBusiness.contactPerson = fields.contactPerson;
-    if (fields.cuisineType !== undefined)
-      newBusiness.cuisineType = fields.cuisineType;
-    if (fields.categories !== undefined)
-      newBusiness.categories = fields.categories;
-    if (fields.acceptsDelivery !== undefined)
-      newBusiness.acceptsDelivery = fields.acceptsDelivery;
-    if (fields.deliveryRadius !== undefined)
-      newBusiness.deliveryRadius = fields.deliveryRadius;
-    if (fields.minOrder !== undefined) newBusiness.minOrder = fields.minOrder;
-    if (fields.businessOpeningHours !== undefined)
-      newBusiness.businessOpeningHours = fields.businessOpeningHours;
-    if (fields.deliveryOpeningWindows !== undefined)
-      newBusiness.deliveryOpeningWindows = fields.deliveryOpeningWindows;
-
-    const imageFile = files.find((file) => file.fieldname === "imageUrl");
-    if (imageFile && imageFile.buffer.length > 0) {
-      const folder = `/business/${businessId}`;
-      const uploaded = await uploadFilesCloudinary({
-        folder,
-        filesArr: [{ buffer: imageFile.buffer, mimeType: imageFile.mimetype }],
-        onlyImages: true,
-      });
-
-      if (
-        typeof uploaded === "string" ||
-        uploaded.length === 0 ||
-        !uploaded.every((url) => url.includes("https://"))
-      ) {
-        throw badRequest(`Error uploading image: ${uploaded}`);
-      }
-
-      newBusiness.imageUrl = uploaded[0];
-    }
-
-    await Business.create(newBusiness);
-
-    const session: AuthBusiness = {
-      id: String(businessId),
-      email: fields.email,
-      type: "business",
-      emailVerified: false,
-      role: "Tenant",
-    };
-    const { accessToken, user } = await issueSessionWithRefreshCookie(
-      app,
-      reply,
-      session,
-      { refreshSessionVersion: 0 },
-    );
-
-    // Phase 4.2: confirmation email (non-blocking; session unchanged).
-    handleRequestEmailConfirmation(fields.email)
-      .then((result) => {
-        if (
-          result.kind === "server_error_500" ||
-          result.kind === "already_verified_400"
-        ) {
-          req.log.error(
-            { errHint: "business_registration_confirmation_send" },
-            result.message,
-          );
-        }
-      })
-      .catch((err) => {
-        req.log.error(
-          { err },
-          "Business registration confirmation email failed",
-        );
-      });
-
-    return reply.code(201).send({
-      message: `Business ${fields.legalName} created`,
-      accessToken,
-      user,
-    });
-  });
-
   app.patch<{ Params: BusinessIdParams }>(
     "/:businessId",
     {
       preValidation: [createAuthHook(app)],
-      preHandler: [requireBusinessIdMatchesSessionHook()],
+      preHandler: [requireBusinessAccessHook()],
       schema: { params: businessIdParamsSchema },
     },
     async (req, reply) => {
@@ -598,6 +468,7 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
         throw notFound("Business to update not found!");
       }
 
+
       const changedFields = flattenChangedFieldPaths(updateBusinessObj);
       if (changedFields.length > 0) {
         const authSession = req.authSession;
@@ -617,8 +488,7 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
           {
             businessId: new Types.ObjectId(businessId),
             actor: {
-              source:
-                authSession?.type === "business" ? "businessOwner" : "system",
+              source: authSession ? "businessOwner" : "system",
               email: authSession?.email,
             },
             changedFields,
@@ -652,28 +522,8 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
         });
       }
 
-      const session: AuthBusiness = {
-        id: String(updatedBusiness._id),
-        email: updatedBusiness.email,
-        type: "business",
-        emailVerified: updatedBusiness.emailVerified === true,
-        role: "Tenant",
-      };
-      const { accessToken, user } = await issueSessionWithRefreshCookie(
-        app,
-        reply,
-        session,
-        {
-          refreshSessionVersion:
-            (updatedBusiness as { refreshSessionVersion?: number })
-              .refreshSessionVersion ?? 0,
-        },
-      );
-
       return reply.code(200).send({
         message: "Business updated successfully",
-        accessToken,
-        user,
       });
     },
   );

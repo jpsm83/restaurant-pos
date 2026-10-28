@@ -340,9 +340,7 @@ describe("appendAuditEntry", () => {
     ]);
     expect(AUDIT_TARGET_KINDS.BUSINESS).toBe("Business");
     expect(AUDIT_TARGET_KINDS.PURCHASE).toBe("Purchase");
-    expect(AUDIT_ACT_KINDS.EMAIL_CHANGE_REQUESTED).toBe(
-      "emailChange.requested",
-    );
+    expect(AUDIT_ACT_KINDS.PURCHASE_LINE_EDITED).toBe("purchase.lineEdited");
     expect(AUDIT_RETENTION_CLASSES.LEGAL_AND_FINANCIAL).toBe(
       "legalAndFinancial",
     );

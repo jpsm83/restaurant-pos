@@ -15,7 +15,7 @@ import { beforeAll, afterAll, afterEach } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { AUTH_CONFIG } from "../src/auth/config.ts";
 import {
-  readRefreshSessionVersionForAccount,
+  readRefreshSessionVersionForUser,
   signAccessToken,
 } from "../src/auth/issueSession.ts";
 import type { AuthSession } from "../src/auth/types.ts";
@@ -81,11 +81,11 @@ export async function signAccessTokenForLiveSession(
   session: AuthSession,
 ): Promise<string> {
   const refreshSessionVersion =
-    (await readRefreshSessionVersionForAccount(session.type, session.id)) ?? 0;
+    (await readRefreshSessionVersionForUser(session.id)) ?? 0;
   const expiresAt = new Date(
     Date.now() + AUTH_CONFIG.COOKIE_MAX_AGE_SECONDS * 1000,
   );
-  const mode = session.type === "user" ? (session.mode ?? "customer") : "customer";
+  const mode = session.mode ?? "customer";
   const stored = await RefreshSession.create({
     accountId: session.id,
     accountType: session.type,
@@ -94,11 +94,7 @@ export async function signAccessTokenForLiveSession(
     expiresAt,
     revoked: false,
   });
-  return signAccessToken(
-    app,
-    session.type === "user" ? { ...session, mode } : session,
-    String(stored._id),
-  );
+  return signAccessToken(app, { ...session, mode }, String(stored._id));
 }
 
 /**

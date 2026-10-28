@@ -346,7 +346,6 @@ describe("POST /api/v1/auth/signup (confirmation email)", () => {
       tradeName: "Shared Venue",
       legalName: "Shared Venue LLC",
       email,
-      password: "hashedpassword",
       phoneNumber: "1234567890",
       taxNumber: `TAX-SHARED-${Date.now()}`,
       currencyTrade: "USD",
@@ -378,6 +377,6 @@ describe("POST /api/v1/auth/signup (confirmation email)", () => {
     expect(user?.deleted).toBe(true);
     expect(user?.verificationToken).toBeTruthy();
     const venue = await Business.findById(business._id).lean();
-    expect(venue?.verificationToken).toBeUndefined();
+    expect(venue?.email).toBe(email);
   });
 });

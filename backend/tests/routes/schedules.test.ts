@@ -55,7 +55,6 @@ describe("Schedules Routes", () => {
       tradeName: "Test Restaurant",
       legalName: "Test Restaurant LLC",
       email: "test@restaurant.com",
-      password: "hashedpassword",
       phoneNumber: "1234567890",
       taxNumber: "TAX-001",
       currencyTrade: "USD",

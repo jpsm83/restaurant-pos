@@ -32,7 +32,6 @@ import {
 } from "../helpers/accountEmailRail.ts";
 import { generateTestToken, getTestApp, resetTestApp } from "../setup.ts";
 import User from "../../src/models/user.ts";
-import Business from "../../src/models/business.ts";
 import { GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE } from "../../src/auth/requestEmailConfirmation.ts";
 import { RESEND_EMAIL_ALREADY_VERIFIED_MESSAGE } from "../../src/auth/resendEmailConfirmation.ts";
 
@@ -67,31 +66,6 @@ async function createTestUser(
       ...(overrides?.emailVerified !== undefined
         ? { emailVerified: overrides.emailVerified }
         : {}),
-    },
-  });
-}
-
-async function createTestBusiness(
-  email: string,
-  overrides?: { emailVerified?: boolean },
-) {
-  const hashedPassword = await bcrypt.hash(testPassword, 10);
-  return Business.create({
-    tradeName: "Café Test",
-    legalName: "Café Test Legal",
-    email,
-    password: hashedPassword,
-    taxNumber: `TAX-${email.replace(/[@.]/g, "-")}`,
-    phoneNumber: "1234567890",
-    currencyTrade: "USD",
-    emailVerified: overrides?.emailVerified ?? false,
-    address: {
-      country: "USA",
-      state: "CA",
-      city: "LA",
-      street: "Main St",
-      buildingNumber: "123",
-      postCode: "90001",
     },
   });
 }
@@ -227,55 +201,6 @@ describe("POST /api/v1/auth/resend-email-confirmation", () => {
     });
   });
 
-  it("returns 400 already verified for business without sending", async () => {
-    const app = await getTestApp();
-    const b = await createTestBusiness("biz-verified@example.com", {
-      emailVerified: true,
-    });
-    const token = await generateTestToken({
-      id: String(b._id),
-      email: "biz-verified@example.com",
-      type: "business",
-      role: "Tenant",
-    });
-    const response = await app.inject({
-      method: "POST",
-      url: "/api/v1/auth/resend-email-confirmation",
-      headers: { authorization: token },
-    });
-    expect(response.statusCode).toBe(400);
-    const body = JSON.parse(response.body);
-    expect(body.detail).toBe(RESEND_EMAIL_ALREADY_VERIFIED_MESSAGE);
-    expect(sendEmailMock).not.toHaveBeenCalled();
-  });
-
-  it("returns 200 and sends for unverified business", async () => {
-    const app = await getTestApp();
-    const b = await createTestBusiness("biz-pending@example.com", {
-      emailVerified: false,
-    });
-    const token = await generateTestToken({
-      id: String(b._id),
-      email: "biz-pending@example.com",
-      type: "business",
-      role: "Tenant",
-    });
-    const response = await app.inject({
-      method: "POST",
-      url: "/api/v1/auth/resend-email-confirmation",
-      headers: { authorization: token },
-    });
-    expect(response.statusCode).toBe(200);
-    const stored = await Business.findOne({ email: "biz-pending@example.com" })
-      .select("verificationToken")
-      .lean();
-    expectOneAccountSend(sendEmailMock, {
-      to: "biz-pending@example.com",
-      subject: "Confirm Your Email - POS",
-      link: `/confirm-email?token=${stored?.verificationToken}`,
-    });
-  });
-
   it("refuses a soft-deleted user's access session", async () => {
     const app = await getTestApp();
     const user = await createTestUser("resend-deleted@example.com", {
@@ -309,36 +234,4 @@ describe("POST /api/v1/auth/resend-email-confirmation", () => {
     expect(stored?.deleted).toBe(true);
   });
 
-  it("refuses a closed business access session", async () => {
-    const app = await getTestApp();
-    const business = await createTestBusiness("resend-closed@example.com", {
-      emailVerified: false,
-    });
-    await Business.updateOne(
-      { _id: business._id },
-      { $set: { deleted: true, deletedAt: new Date() } },
-    );
-    const token = await generateTestToken({
-      id: String(business._id),
-      email: "resend-closed@example.com",
-      type: "business",
-      role: "Tenant",
-    });
-
-    const response = await app.inject({
-      method: "POST",
-      url: "/api/v1/auth/resend-email-confirmation",
-      headers: { authorization: token },
-    });
-
-    expect(response.statusCode).toBe(401);
-    expect(response.headers["content-type"]).toContain("application/problem+json");
-    expect(response.json().detail).toBe("Invalid or expired access token");
-    expect(sendEmailMock).not.toHaveBeenCalled();
-    const stored = await Business.findById(business._id)
-      .setOptions({ includeDeleted: true })
-      .select("deleted")
-      .lean();
-    expect(stored?.deleted).toBe(true);
-  });
 });

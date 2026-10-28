@@ -60,32 +60,12 @@ const businessSchema = new Schema(
     tradeName: { type: String, required: [true, "Trade name is required!"] }, // Company Name for the public
     legalName: { type: String, required: [true, "Legal name is required!"] }, // Legal Name of the company, not unique because could happens of same name bussines in different countries
     imageUrl: { type: String }, // Logo of the company as url link to cloudinary
-    email: { type: String, required: [true, "Email is required!"] }, // Email of the company, not unique because could happens of one office managing multiple companies
-    password: {
-      type: String,
-      required: [true, "Password is required!"],
-    },
-    /**
-     * Tenant sign-in email (`email`) lifecycle: opaque tokens for confirm + reset flows.
-     */
+    email: { type: String, required: [true, "Email is required!"] }, // Venue contact email, not unique because one office may manage multiple companies
+    /** Whether the venue contact email has been verified. Not a sign-in credential. */
     emailVerified: {
       type: Boolean,
       default: false,
     },
-    verificationToken: { type: String, default: undefined },
-    resetPasswordToken: { type: String, default: undefined },
-    resetPasswordExpires: { type: Date, default: undefined },
-    /**
-     * Pending sign-in email change (`email` stays active until confirmed).
-     * Server-owned; excluded from every DTO and the public read projection.
-     */
-    pendingEmail: { type: String, default: undefined },
-    pendingEmailToken: { type: String, default: undefined },
-    pendingEmailExpires: { type: Date, default: undefined },
-    /** When the last change link was sent; drives the per-account request cooldown. */
-    pendingEmailRequestedAt: { type: Date, default: undefined },
-    /** Increment on password reset or a confirmed sign-in email change to refuse refresh sessions from the previous generation. */
-    refreshSessionVersion: { type: Number, default: 0 },
     phoneNumber: {
       type: String,
       required: [true, "Phone number is required!"],
@@ -142,9 +122,6 @@ const businessSchema = new Schema(
   }
 );
 
-businessSchema.index({ verificationToken: 1 }, { sparse: true });
-businessSchema.index({ resetPasswordToken: 1 }, { sparse: true });
-businessSchema.index({ pendingEmailToken: 1 }, { sparse: true });
 businessSchema.index(
   { taxNumber: 1 },
   { unique: true, partialFilterExpression: { deleted: false } },

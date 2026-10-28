@@ -1,13 +1,12 @@
 /**
  * Issue, exchange, and revoke one stored refresh session.
  * Issuance mints the access token and sets the refresh cookie — shared by
- * login, signup, business create/update, and user self PATCH.
+ * login, signup, and user self PATCH.
  */
 
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { Types } from "mongoose";
 
-import Business from "../models/business.ts";
 import RefreshSession from "../models/refreshSession.ts";
 import User from "../models/user.ts";
 import { withSoftDeleteFilter } from "../models/softDelete.ts";
@@ -15,7 +14,6 @@ import canLogAsEmployee from "./canLogAsEmployee.ts";
 import findActiveEmployeeMembership from "./employeeMembership.ts";
 import { AUTH_CONFIG } from "./config.ts";
 import type {
-  AuthBusiness,
   AuthMode,
   AuthSession,
   AuthUser,
@@ -23,7 +21,7 @@ import type {
 } from "./types.ts";
 
 export type IssueSessionOptions = {
-  /** Must match `User.refreshSessionVersion` / `Business.refreshSessionVersion` in DB. */
+  /** Must match `User.refreshSessionVersion` in DB. */
   refreshSessionVersion?: number;
   /** Active Customer | Business mode to store on this refresh session. */
   mode?: AuthMode;
@@ -32,11 +30,11 @@ export type IssueSessionOptions = {
 export type RefreshExchange =
   | { kind: "issued"; session: AuthSession; sessionId: string }
   | { kind: "invalid" }
-  | { kind: "account_missing"; accountType: "user" | "business" };
+  | { kind: "account_missing" };
 
 type StoredRefreshSession = {
   accountId: Types.ObjectId;
-  accountType: "user" | "business";
+  accountType: "user";
   refreshSessionVersion: number;
   mode?: AuthMode;
   expiresAt: Date;
@@ -65,9 +63,7 @@ export async function issueSessionWithRefreshCookie(
   options?: IssueSessionOptions,
 ): Promise<{ accessToken: string; user: AuthSession }> {
   const refreshSessionVersion = options?.refreshSessionVersion ?? 0;
-  const mode = normalizeMode(
-    options?.mode ?? (session.type === "user" ? session.mode : undefined),
-  );
+  const mode = normalizeMode(options?.mode ?? session.mode);
   const expiresAt = new Date(
     Date.now() + AUTH_CONFIG.COOKIE_MAX_AGE_SECONDS * 1000,
   );
@@ -80,8 +76,7 @@ export async function issueSessionWithRefreshCookie(
     revoked: false,
   });
   const sessionId = String(stored._id);
-  const issuedSession: AuthSession =
-    session.type === "user" ? { ...session, mode } : session;
+  const issuedSession: AuthSession = { ...session, mode };
   const accessToken = signAccessToken(app, issuedSession, sessionId);
   const refreshPayload: RefreshTokenPayload = { sid: sessionId };
   const refreshToken = app.jwt.sign(refreshPayload, {
@@ -132,26 +127,20 @@ export async function exchangeRefreshSession(
   }
 
   const accountId = String(stored.accountId);
-  const dbVersion = await readRefreshSessionVersionForAccount(
-    stored.accountType,
-    accountId,
-  );
+  const dbVersion = await readRefreshSessionVersionForUser(accountId);
   if (dbVersion === null) {
-    return { kind: "account_missing", accountType: stored.accountType };
+    return { kind: "account_missing" };
   }
   if (stored.refreshSessionVersion !== dbVersion) {
     return { kind: "invalid" };
   }
 
-  const session =
-    stored.accountType === "business"
-      ? await buildAuthBusinessSessionFromId(accountId)
-      : await buildAuthUserSessionFromUserId(
-          accountId,
-          normalizeMode(stored.mode),
-        );
+  const session = await buildAuthUserSessionFromUserId(
+    accountId,
+    normalizeMode(stored.mode),
+  );
   if (!session) {
-    return { kind: "account_missing", accountType: stored.accountType };
+    return { kind: "account_missing" };
   }
 
   return { kind: "issued", session, sessionId: payload.sid };
@@ -208,25 +197,31 @@ export async function revokePresentedRefreshSession(
   );
 }
 
-/** `null` if the account document is missing. */
-export async function readRefreshSessionVersionForAccount(
-  type: "business" | "user",
-  id: string,
+/** `null` if the User document is missing. */
+export async function readRefreshSessionVersionForUser(
+  userId: string,
 ): Promise<number | null> {
-  if (type === "business") {
-    const doc = (await Business.findById(id)
-      .select("refreshSessionVersion")
-      .lean()) as { refreshSessionVersion?: number } | null;
-    if (!doc) return null;
-    return doc.refreshSessionVersion ?? 0;
-  }
   const doc = (await User.findOne(
-    withSoftDeleteFilter({ _id: id }),
+    withSoftDeleteFilter({ _id: userId }),
   )
     .select("refreshSessionVersion")
     .lean()) as { refreshSessionVersion?: number } | null;
   if (!doc) return null;
   return doc.refreshSessionVersion ?? 0;
+}
+
+/**
+ * Revoke every stored refresh session for one User. Used by password reset so a
+ * stolen session cannot survive a credential change.
+ */
+export async function revokeAllRefreshSessionsForUser(
+  userId: string,
+): Promise<void> {
+  if (!Types.ObjectId.isValid(userId)) return;
+  await RefreshSession.updateMany(
+    { accountId: userId, accountType: "user" },
+    { $set: { revoked: true } },
+  );
 }
 
 export async function buildAuthUserSessionFromUserId(
@@ -278,22 +273,3 @@ export async function buildAuthUserSessionFromUserId(
   return userSession;
 }
 
-export async function buildAuthBusinessSessionFromId(
-  businessId: string,
-): Promise<AuthBusiness | null> {
-  const business = (await Business.findById(businessId)
-    .select("_id email emailVerified")
-    .lean()) as {
-    _id: unknown;
-    email: string;
-    emailVerified?: boolean;
-  } | null;
-  if (!business) return null;
-  return {
-    id: String(business._id),
-    email: business.email,
-    type: "business",
-    emailVerified: business.emailVerified === true,
-    role: "Tenant",
-  };
-}

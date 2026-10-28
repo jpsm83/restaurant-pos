@@ -71,7 +71,6 @@ describe("Stock movement and soft-deleted recipe goods", () => {
       tradeName: "Stock Restaurant",
       legalName: "Stock Restaurant LLC",
       email: "stock@restaurant.com",
-      password: "hashedpassword",
       phoneNumber: "1234567890",
       taxNumber: "TAX-STOCK",
       currencyTrade: "USD",

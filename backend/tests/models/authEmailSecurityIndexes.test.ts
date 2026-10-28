@@ -1,5 +1,5 @@
 /**
- * Sparse indexes on auth-email token fields (User + Business).
+ * Sparse indexes on User auth-email token fields. Business holds no tokens.
  */
 import { describe, it, expect, beforeAll } from "vitest";
 import User from "../../src/models/user.ts";
@@ -40,22 +40,17 @@ describe("Auth email security indexes", () => {
     expect(resetIx?.sparse).toBe(true);
   });
 
-  it("Business defines sparse indexes on verificationToken and resetPasswordToken", async () => {
+  it("Business defines no auth-email token indexes", async () => {
     const indexes = await listIndexSpecs(Business.collection);
-    const confirmIx = findSparseSingleFieldIndex(indexes, "verificationToken");
-    const resetIx = findSparseSingleFieldIndex(indexes, "resetPasswordToken");
 
-    expect(confirmIx).toBeDefined();
-    expect(confirmIx?.sparse).toBe(true);
-    expect(resetIx).toBeDefined();
-    expect(resetIx?.sparse).toBe(true);
-  });
-
-  it("Business defines a sparse index on pendingEmailToken", async () => {
-    const indexes = await listIndexSpecs(Business.collection);
-    const pendingIx = findSparseSingleFieldIndex(indexes, "pendingEmailToken");
-
-    expect(pendingIx).toBeDefined();
-    expect(pendingIx?.sparse).toBe(true);
+    expect(
+      findSparseSingleFieldIndex(indexes, "verificationToken"),
+    ).toBeUndefined();
+    expect(
+      findSparseSingleFieldIndex(indexes, "resetPasswordToken"),
+    ).toBeUndefined();
+    expect(
+      findSparseSingleFieldIndex(indexes, "pendingEmailToken"),
+    ).toBeUndefined();
   });
 });

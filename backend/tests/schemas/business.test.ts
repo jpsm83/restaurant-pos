@@ -6,7 +6,6 @@ import {
   businessIdParamsSchema,
   businessMetricsSchema,
   businessReportingConfigSchema,
-  createBusinessBodySchema,
   discoverBusinessesQuerySchema,
   updateBusinessBodySchema,
 } from "restaurant-pos-packages/schemas/business";
@@ -20,18 +19,6 @@ const validAddress = {
   street: "Main St",
   buildingNumber: "123",
   postCode: "90001",
-};
-
-const validCreate = {
-  tradeName: "Cafe Demo",
-  legalName: "Cafe Demo LLC",
-  email: "owner@example.com",
-  password: "Password1!",
-  phoneNumber: "1234567890",
-  taxNumber: "TAX-001",
-  subscription: "Free",
-  currencyTrade: "USD",
-  address: JSON.stringify(validAddress),
 };
 
 describe("businessAddressSchema", () => {
@@ -61,140 +48,6 @@ describe("businessAddressSchema", () => {
   it("rejects unknown keys", () => {
     expect(
       businessAddressSchema.safeParse({ ...validAddress, extra: "x" }).success,
-    ).toBe(false);
-  });
-});
-
-describe("createBusinessBodySchema", () => {
-  it("accepts the minimum required fields", () => {
-    expect(createBusinessBodySchema.safeParse(validCreate).success).toBe(true);
-  });
-
-  it("sanitizes structured text and lowercases the email", () => {
-    const parsed = createBusinessBodySchema.parse({
-      ...validCreate,
-      tradeName: "  <b>Cafe</b>   Demo ",
-      email: "  Owner@EXAMPLE.COM ",
-    });
-    expect(parsed.tradeName).toBe("Cafe Demo");
-    expect(parsed.email).toBe("owner@example.com");
-  });
-
-  it.each([
-    ["a weak password", { password: "weak" }],
-    ["an invalid email", { email: "not-an-email" }],
-    ["an invalid subscription", { subscription: "Gold" }],
-    ["an invalid currency", { currencyTrade: "XYZ" }],
-  ])("rejects %s", (_label, override) => {
-    expect(
-      createBusinessBodySchema.safeParse({ ...validCreate, ...override }).success,
-    ).toBe(false);
-  });
-
-  it("parses and validates the JSON-encoded address", () => {
-    const parsed = createBusinessBodySchema.parse(validCreate);
-    expect(parsed.address).toMatchObject(validAddress);
-
-    const invalid = createBusinessBodySchema.safeParse({
-      ...validCreate,
-      address: JSON.stringify({ ...validAddress, city: "" }),
-    });
-    expect(invalid.success).toBe(false);
-
-    const malformed = createBusinessBodySchema.safeParse({
-      ...validCreate,
-      address: "{not json",
-    });
-    expect(malformed.success).toBe(false);
-    if (!malformed.success) {
-      expect(malformed.error.issues[0].message).toBe("Invalid JSON");
-    }
-  });
-
-  it("normalizes a JSON cuisine list and a legacy single cuisine", () => {
-    const arrayForm = createBusinessBodySchema.parse({
-      ...validCreate,
-      cuisineType: JSON.stringify(["Italian", "Mexican"]),
-    });
-    expect(arrayForm.cuisineType).toEqual(["Italian", "Mexican"]);
-
-    const singleForm = createBusinessBodySchema.parse({
-      ...validCreate,
-      cuisineType: "Italian",
-    });
-    expect(singleForm.cuisineType).toEqual(["Italian"]);
-  });
-
-  it("rejects an unknown cuisine value", () => {
-    expect(
-      createBusinessBodySchema.safeParse({
-        ...validCreate,
-        cuisineType: JSON.stringify(["Martian"]),
-      }).success,
-    ).toBe(false);
-  });
-
-  it("coerces boolean and numeric fields from form strings", () => {
-    const parsed = createBusinessBodySchema.parse({
-      ...validCreate,
-      acceptsDelivery: "true",
-      deliveryRadius: "5.5",
-      minOrder: "10",
-    });
-    expect(parsed.acceptsDelivery).toBe(true);
-    expect(parsed.deliveryRadius).toBe(5.5);
-    expect(parsed.minOrder).toBe(10);
-  });
-
-  it("rejects a negative delivery radius", () => {
-    expect(
-      createBusinessBodySchema.safeParse({
-        ...validCreate,
-        deliveryRadius: "-1",
-      }).success,
-    ).toBe(false);
-  });
-
-  it("validates the JSON-encoded opening hours", () => {
-    const parsed = createBusinessBodySchema.parse({
-      ...validCreate,
-      businessOpeningHours: JSON.stringify([
-        { dayOfWeek: 1, openTime: "09:00", closeTime: "18:00" },
-      ]),
-    });
-    expect(parsed.businessOpeningHours).toHaveLength(1);
-
-    expect(
-      createBusinessBodySchema.safeParse({
-        ...validCreate,
-        businessOpeningHours: JSON.stringify([
-          { dayOfWeek: 9, openTime: "09:00", closeTime: "18:00" },
-        ]),
-      }).success,
-    ).toBe(false);
-  });
-
-  it("rejects server-owned fields", () => {
-    for (const field of [
-      "averageRating",
-      "ratingCount",
-      "timezone",
-      "emailVerified",
-    ]) {
-      expect(
-        createBusinessBodySchema.safeParse({
-          ...validCreate,
-          [field]: 1,
-        }).success,
-        field,
-      ).toBe(false);
-    }
-  });
-
-  it("rejects unknown keys", () => {
-    expect(
-      createBusinessBodySchema.safeParse({ ...validCreate, isAdmin: true })
-        .success,
     ).toBe(false);
   });
 });
@@ -378,8 +231,7 @@ describe("discoverBusinessesQuerySchema", () => {
 
 describe("server-owned fields are excluded from every business DTO", () => {
   const dtoSchemas: Record<string, z.ZodObject> = {
-    createBusinessBodySchema,
-    updateBusinessBodySchema,
+      updateBusinessBodySchema,
     businessIdParamsSchema,
     discoverBusinessesQuerySchema,
   };
