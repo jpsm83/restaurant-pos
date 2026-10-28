@@ -135,7 +135,7 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
       const { includeDeleted = false } = req.query;
       const users = await User.find(
         withSoftDeleteFilter({}, includeDeleted),
-      { "personalDetails.password": 0 },
+        { "personalDetails.password": 0, emailVerified: 0 },
       ).lean();
 
       if (!users?.length) {
@@ -203,7 +203,7 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
 
       const user = await User.findOne(
         withSoftDeleteFilter({ _id: userId }, includeDeleted),
-        { "personalDetails.password": 0 },
+        { "personalDetails.password": 0, emailVerified: 0 },
       ).lean();
 
       if (!user) {

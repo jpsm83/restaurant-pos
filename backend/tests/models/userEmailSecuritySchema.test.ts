@@ -27,7 +27,10 @@ const minimalPersonalDetails = {
 };
 
 describe("User email security schema", () => {
-  it("defaults emailVerified to false and stores verification + reset tokens", async () => {
+  it("keeps the verified flag only on personalDetails and stores verification + reset tokens", async () => {
+    expect(User.schema.path("emailVerified")).toBeUndefined();
+    expect(User.schema.path("personalDetails.emailVerified")).toBeDefined();
+
     const expiresReset = new Date(Date.now() + 3_600_000);
 
     const created = await User.create({
@@ -38,15 +41,14 @@ describe("User email security schema", () => {
     });
 
     expect(created.refreshSessionVersion ?? 0).toBe(0);
-    expect(created.emailVerified).toBe(false);
     expect(created.personalDetails.emailVerified).toBe(false);
     expect(created.verificationToken).toBe("confirm-token-test");
     expect(created.resetPasswordToken).toBe("reset-token-test");
     expect(created.resetPasswordExpires?.getTime()).toBe(expiresReset.getTime());
 
     const fromDb = await User.findById(created._id).lean();
-    expect(fromDb?.emailVerified).toBe(false);
     expect(fromDb?.personalDetails?.emailVerified).toBe(false);
+    expect(fromDb).not.toHaveProperty("emailVerified");
     expect(fromDb?.verificationToken).toBe("confirm-token-test");
     expect(fromDb?.resetPasswordToken).toBe("reset-token-test");
   });

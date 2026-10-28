@@ -2,7 +2,7 @@
  * User DTOs — the request bodies and path params the users routes accept.
  *
  * Strict (unknown keys rejected) and client-settable only: the server-owned
- * `imageUrl`, `notifications`, `selfOrders`, `emailVerified`,
+ * email-verified flag, `imageUrl`, `notifications`, `selfOrders`,
  * `verificationToken`, `resetPasswordToken`, `resetPasswordExpires` and
  * `refreshSessionVersion` never appear in a DTO, so a client that sends them
  * gets a `400`. The create and update bodies are consumed through the shared

@@ -44,7 +44,6 @@ async function createTestUser(email: string) {
       idType: "Passport",
       username: "testuser",
     },
-    emailVerified: false,
   });
 }
 
@@ -120,9 +119,8 @@ describe("POST /api/v1/auth/confirm-email", () => {
     expect(body.message).toBe(CONFIRM_EMAIL_SUCCESS_MESSAGE);
 
     const updated = await User.findById(user._id)
-      .select("emailVerified personalDetails.emailVerified verificationToken")
+      .select("personalDetails.emailVerified verificationToken")
       .lean();
-    expect(updated?.emailVerified).toBe(true);
     expect(updated?.personalDetails?.emailVerified).toBe(true);
     expect(updated?.verificationToken).toBeFalsy();
   });
@@ -238,9 +236,9 @@ describe("POST /api/v1/auth/confirm-email", () => {
     expect(bizAfter?.verificationToken).toBeFalsy();
 
     const usrAfter = await User.findById(usr._id)
-      .select("emailVerified verificationToken")
+      .select("personalDetails.emailVerified verificationToken")
       .lean();
-    expect(usrAfter?.emailVerified).toBe(false);
+    expect(usrAfter?.personalDetails?.emailVerified).toBe(false);
     expect(usrAfter?.verificationToken).toBe(sharedRaw);
   });
 
@@ -269,11 +267,10 @@ describe("POST /api/v1/auth/confirm-email", () => {
     expect(response.statusCode).toBe(200);
 
     const updated = await User.findById(user._id)
-      .select("deleted deletedAt emailVerified personalDetails.emailVerified verificationToken")
+      .select("deleted deletedAt personalDetails.emailVerified verificationToken")
       .lean();
     expect(updated?.deleted).toBe(false);
     expect(updated?.deletedAt).toBeFalsy();
-    expect(updated?.emailVerified).toBe(true);
     expect(updated?.personalDetails?.emailVerified).toBe(true);
     expect(updated?.verificationToken).toBeFalsy();
   });

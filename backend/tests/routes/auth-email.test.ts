@@ -77,8 +77,8 @@ async function createUnverifiedUser(email: string) {
       idNumber: `ID-${email}`,
       idType: "Passport",
       username: "testuser",
+      emailVerified: false,
     },
-    emailVerified: false,
   });
 }
 
@@ -105,8 +105,8 @@ async function createVerifiedUserForReset(email: string) {
       idNumber: `ID-${email}`,
       idType: "Passport",
       username: "testuser",
+      emailVerified: true,
     },
-    emailVerified: true,
   });
 }
 
@@ -184,9 +184,9 @@ describe("auth-email routes (checklist)", () => {
       expect(JSON.parse(res.body).message).toBe(CONFIRM_EMAIL_SUCCESS_MESSAGE);
 
       const updated = await User.findById(user._id)
-        .select("emailVerified verificationToken")
+        .select("personalDetails.emailVerified verificationToken")
         .lean();
-      expect(updated?.emailVerified).toBe(true);
+      expect(updated?.personalDetails?.emailVerified).toBe(true);
       expect(updated?.verificationToken).toBeFalsy();
     });
 

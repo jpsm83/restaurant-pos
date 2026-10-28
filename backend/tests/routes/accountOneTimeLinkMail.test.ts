@@ -57,8 +57,8 @@ async function createUnverifiedUser(email: string) {
       idNumber: `ID-${email}`,
       idType: "Passport",
       username: `user-${email}`,
+      emailVerified: false,
     },
-    emailVerified: false,
   });
 }
 

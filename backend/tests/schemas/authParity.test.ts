@@ -78,6 +78,11 @@ describe("auth DTO ↔ model parity", () => {
     },
   );
 
+  it("the User verified flag lives only on personalDetails", () => {
+    expect(User.schema.path("emailVerified")).toBeUndefined();
+    expect(User.schema.path("personalDetails.emailVerified")).toBeTruthy();
+  });
+
   it("email DTOs are backed by the model email fields", () => {
     expect(User.schema.path("personalDetails.email")).toBeTruthy();
     expect(Business.schema.path("email")).toBeTruthy();

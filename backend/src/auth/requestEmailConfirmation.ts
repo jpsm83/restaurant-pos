@@ -89,7 +89,7 @@ export async function handleRequestEmailConfirmation(
           ),
         )
           .select(
-            "_id personalDetails.username personalDetails.firstName personalDetails.emailVerified emailVerified deleted",
+            "_id personalDetails.username personalDetails.firstName personalDetails.emailVerified deleted",
           )
           .lean()
       : null;
@@ -98,8 +98,7 @@ export async function handleRequestEmailConfirmation(
     return { kind: "success_200", message: GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE };
   }
 
-  const userEmailVerified =
-    user?.personalDetails?.emailVerified === true || user?.emailVerified === true;
+  const userEmailVerified = user?.personalDetails?.emailVerified === true;
   if (userEmailVerified && user?.deleted !== true) {
     return { kind: "already_verified_400", message: "Email is already verified." };
   }

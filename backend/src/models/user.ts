@@ -37,13 +37,9 @@ const userSchema = new Schema(
 
     /**
      * Sign-in email lifecycle (`personalDetails.email`): opaque tokens (hex) for confirm + reset flows.
-     * `personalDetails.emailVerified` is canonical; root `emailVerified` is kept as a legacy mirror.
+     * `personalDetails.emailVerified` is the only verified flag.
      * Raw token values are emailed; stored until consumed or replaced.
      */
-    emailVerified: {
-      type: Boolean,
-      default: false,
-    },
     verificationToken: { type: String, default: undefined },
     resetPasswordToken: { type: String, default: undefined },
     resetPasswordExpires: { type: Date, default: undefined },

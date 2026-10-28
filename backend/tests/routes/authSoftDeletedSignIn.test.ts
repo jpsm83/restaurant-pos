@@ -126,6 +126,7 @@ describe("soft-deleted sign-in reactivation", () => {
     const createdBody = created.json();
     expect(createdBody.user.email).toBe(email);
     expect(createdBody.user.type).toBe("user");
+    expect(createdBody.user.emailVerified).toBe(false);
 
     const rows = await User.find({ "personalDetails.email": email })
       .setOptions({ includeDeleted: true })
@@ -225,13 +226,13 @@ describe("soft-deleted sign-in reactivation", () => {
 
     const restored = await User.findById(user._id)
       .setOptions({ includeDeleted: true })
-      .select("deleted deletedAt deletedBy personalDetails.emailVerified emailVerified")
+      .select("deleted deletedAt deletedBy personalDetails.emailVerified")
       .lean();
     expect(restored?.deleted).toBe(false);
     expect(restored?.deletedAt).toBeUndefined();
     expect(restored?.deletedBy).toBeUndefined();
-    expect(restored?.emailVerified).toBe(true);
     expect(restored?.personalDetails?.emailVerified).toBe(true);
+    expect(restored).not.toHaveProperty("emailVerified");
 
     const after = await app.inject({
       method: "POST",
@@ -242,6 +243,7 @@ describe("soft-deleted sign-in reactivation", () => {
     expect(after.headers["content-type"]).toContain("application/json");
     expect(after.json().user.id).toBe(String(user._id));
     expect(after.json().user.email).toBe(email);
+    expect(after.json().user.emailVerified).toBe(true);
   });
 
   it("does not restore a soft-deleted user when a password reset is requested", async () => {

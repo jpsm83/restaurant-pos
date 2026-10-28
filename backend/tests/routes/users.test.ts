@@ -412,6 +412,26 @@ describe("Users Routes", () => {
       expect(body._id).toBe(user._id.toString());
     });
 
+    it("reports only the canonical personalDetails.emailVerified flag", async () => {
+      const app = await getTestApp();
+
+      const user = await createValidUser("verifiedbyflag");
+      await User.collection.updateOne(
+        { _id: user._id },
+        { $set: { emailVerified: true, "personalDetails.emailVerified": true } },
+      );
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/users/${user._id}`,
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body).not.toHaveProperty("emailVerified");
+      expect(body.personalDetails.emailVerified).toBe(true);
+    });
+
     it("returns a validation problem for an invalid ID format", async () => {
       const app = await getTestApp();
 

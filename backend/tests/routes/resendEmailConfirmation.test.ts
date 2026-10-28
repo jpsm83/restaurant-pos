@@ -64,10 +64,10 @@ async function createTestUser(
       idNumber: `ID-${email}`,
       idType: "Passport",
       username: "testuser",
+      ...(overrides?.emailVerified !== undefined
+        ? { emailVerified: overrides.emailVerified }
+        : {}),
     },
-    ...(overrides?.emailVerified !== undefined
-      ? { emailVerified: overrides.emailVerified }
-      : {}),
   });
 }
 

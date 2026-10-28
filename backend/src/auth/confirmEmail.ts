@@ -39,10 +39,8 @@ export async function handleConfirmEmail(
     const userResult = await User.updateOne(
       withSoftDeleteFilter({ verificationToken }, true),
       {
-        // Keep root mirror for backward compatibility while `personalDetails.emailVerified` is canonical.
         $set: {
           "personalDetails.emailVerified": true,
-          emailVerified: true,
           deleted: false,
         },
         $unset: { verificationToken: "", deletedAt: "", deletedBy: "" },

@@ -94,8 +94,8 @@ async function createUser(email: string) {
       idNumber: `ID-${email}`,
       idType: "Passport",
       username: "testuser",
+      emailVerified: true,
     },
-    emailVerified: true,
   });
 }
 

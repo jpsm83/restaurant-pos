@@ -12,8 +12,6 @@ export interface IUser {
   personalDetails: IPersonalDetails;
   selfOrders?: Types.ObjectId[]; // References to Order model
   notifications?: INotification[];
-  /** Legacy root mirror; prefer `personalDetails.emailVerified` as source of truth. */
-  emailVerified?: boolean;
   verificationToken?: string;
   resetPasswordToken?: string;
   resetPasswordExpires?: Date;

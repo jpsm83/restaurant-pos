@@ -146,9 +146,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         id: String(createdUser._id),
         email,
         type: "user",
-        emailVerified:
-          createdUser.personalDetails?.emailVerified === true ||
-          createdUser.emailVerified === true,
+        emailVerified: createdUser.personalDetails?.emailVerified === true,
         role: "Customer",
       };
 
@@ -432,16 +430,14 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         ...withSoftDeleteFilter({ "personalDetails.email": email }),
       })
         .select(
-          "_id personalDetails.email personalDetails.password personalDetails.emailVerified emailVerified refreshSessionVersion",
+          "_id personalDetails.email personalDetails.password refreshSessionVersion",
         )
         .lean()) as {
         _id: unknown;
         personalDetails: {
           email?: string;
           password?: string;
-          emailVerified?: boolean;
         };
-        emailVerified?: boolean;
         refreshSessionVersion?: number;
       } | null;
 

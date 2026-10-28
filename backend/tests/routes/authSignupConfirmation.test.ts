@@ -178,8 +178,8 @@ describe("POST /api/v1/auth/signup (confirmation email)", () => {
           buildingNumber: "123",
           postCode: "90001",
         },
+        emailVerified: false,
       },
-      emailVerified: false,
     });
 
     const res = await app.inject({
@@ -242,8 +242,8 @@ describe("POST /api/v1/auth/signup (confirmation email)", () => {
           buildingNumber: "123",
           postCode: "90001",
         },
+        emailVerified: false,
       },
-      emailVerified: false,
     });
     const business = await Business.create({
       tradeName: "Shared Venue",

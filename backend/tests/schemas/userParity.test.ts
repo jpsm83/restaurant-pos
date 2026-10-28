@@ -64,6 +64,11 @@ describe("user DTO ↔ model parity", () => {
     }
   });
 
+  it("the verified flag lives only on personalDetails", () => {
+    expect(User.schema.path("emailVerified")).toBeUndefined();
+    expect(User.schema.path("personalDetails.emailVerified")).toBeTruthy();
+  });
+
   it("path param DTOs carry only their route ids", () => {
     expect(Object.keys(userIdParamsSchema.shape)).toEqual(["userId"]);
     expect(Object.keys(userNotificationParamsSchema.shape)).toEqual([
