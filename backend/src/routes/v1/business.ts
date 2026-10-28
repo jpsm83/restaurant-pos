@@ -19,6 +19,7 @@ import {
   createOptionalAuthHook,
   requireBusinessAccessHook,
 } from "../../auth/middleware.ts";
+import { resolveBusinessAccess } from "../../auth/businessAccess.ts";
 import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
 import deleteFilesCloudinary from "../../cloudinary/deleteFilesCloudinary.ts";
 import { badRequest, conflict, notFound } from "../../errors/appError.ts";
@@ -468,10 +469,12 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
         throw notFound("Business to update not found!");
       }
 
-
       const changedFields = flattenChangedFieldPaths(updateBusinessObj);
       if (changedFields.length > 0) {
         const authSession = req.authSession;
+        const access = authSession
+          ? await resolveBusinessAccess(authSession.id, businessId)
+          : null;
         const correlationIdHeader = req.headers["x-correlation-id"];
         const operationIdHeader = req.headers["x-idempotency-key"];
         const correlationId =
@@ -488,7 +491,12 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
           {
             businessId: new Types.ObjectId(businessId),
             actor: {
-              source: authSession ? "businessOwner" : "system",
+              source:
+                access === "owner"
+                  ? "businessOwner"
+                  : access === "employee"
+                    ? "manager"
+                    : "system",
               email: authSession?.email,
             },
             changedFields,

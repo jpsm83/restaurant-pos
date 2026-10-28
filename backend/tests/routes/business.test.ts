@@ -7,6 +7,8 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { Types } from "mongoose";
 import { getTestApp, generateTestToken } from "../setup.ts";
 import Business from "../../src/models/business.ts";
+import Company from "../../src/models/company.ts";
+import Owner from "../../src/models/owner.ts";
 import User from "../../src/models/user.ts";
 import Employee from "../../src/models/employee.ts";
 import Notification from "../../src/models/notification.ts";
@@ -26,6 +28,14 @@ async function businessAccessToken(
   businessId: string,
 ): Promise<string> {
   const userId = new Types.ObjectId();
+  await User.create({
+    _id: userId,
+    personalDetails: {
+      email: `staff-${userId}@test.com`,
+      firstName: "Venue",
+      lastName: "Staff",
+    },
+  });
   const employee = await Employee.create({
     businessId,
     userId,
@@ -44,6 +54,37 @@ async function businessAccessToken(
     businessId,
     employeeId: employee._id.toString(),
     canLogAsEmployee: true,
+  });
+}
+
+/**
+ * Mint a User session that reaches the venue through User → Owner → Company →
+ * Business, with no Employee membership.
+ */
+async function businessOwnerToken(
+  app: Awaited<ReturnType<typeof getTestApp>>,
+  businessId: string,
+): Promise<string> {
+  const userId = new Types.ObjectId();
+  await User.create({
+    _id: userId,
+    personalDetails: {
+      email: `owner-${userId}@test.com`,
+      firstName: "Venue",
+      lastName: "Owner",
+    },
+  });
+  const owner = await Owner.create({ userId, country: "USA" });
+  const company = await Company.create({ ownerId: owner._id, country: "USA" });
+  await Business.updateOne(
+    { _id: businessId },
+    { $set: { companyId: company._id } },
+  );
+  return generateTestToken({
+    id: userId.toString(),
+    email: `owner-${userId}@test.com`,
+    type: "user",
+    role: "Customer",
   });
 }
 
@@ -192,7 +233,7 @@ describe("Business Routes", () => {
   });
 
   describe("GET /api/v1/business/:businessId", () => {
-    it("gets business by ID for the matching owner", async () => {
+    it("gets business by ID for an owning User", async () => {
       const app = await getTestApp();
 
       const business = await Business.create({
@@ -204,7 +245,7 @@ describe("Business Routes", () => {
         currencyTrade: "USD",
         address: validAddress,
       });
-      const auth = await businessAccessToken(app, business._id.toString());
+      const auth = await businessOwnerToken(app, business._id.toString());
 
       const response = await app.inject({
         method: "GET",
@@ -1070,6 +1111,203 @@ describe("Business Routes", () => {
       expect(messages.some((m: string) => m.includes("currentPassword"))).toBe(
         true,
       );
+    });
+  });
+
+  describe("PATCH venue profile fields", () => {
+    const fullAddress = { ...validAddress, complement: "Suite 5" };
+    const fullMetrics = {
+      foodCostPercentage: 31,
+      beverageCostPercentage: 17,
+      laborCostPercentage: 29,
+      fixedCostPercentage: 23,
+      supplierGoodWastePercentage: {
+        veryLowBudgetImpact: 8,
+        lowBudgetImpact: 6,
+        mediumBudgetImpact: 4,
+        hightBudgetImpact: 2,
+        veryHightBudgetImpact: 1,
+      },
+    };
+
+    async function createVenue(
+      app: Awaited<ReturnType<typeof getTestApp>>,
+      overrides: Record<string, unknown> = {},
+    ) {
+      const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const business = await Business.create({
+        tradeName: "Profile Fields Biz",
+        legalName: "Profile Fields Biz LLC",
+        email: `profile-fields-${suffix}@business.com`,
+        phoneNumber: "1234567890",
+        taxNumber: `TAX-PF-${suffix}`,
+        currencyTrade: "USD",
+        subscription: "Free",
+        address: fullAddress,
+        ...overrides,
+      });
+      const auth = await businessAccessToken(app, business._id.toString());
+      return { business, auth };
+    }
+
+    function patchPayload(
+      boundary: string,
+      business: { tradeName: string; legalName: string; taxNumber: string },
+      options: {
+        address?: unknown;
+        metrics?: unknown;
+        reportingConfig?: unknown;
+      } = {},
+    ): string {
+      const parts = [
+        `--${boundary}`,
+        `Content-Disposition: form-data; name="tradeName"\r\n\r\n${business.tradeName}`,
+        `--${boundary}`,
+        `Content-Disposition: form-data; name="legalName"\r\n\r\n${business.legalName}`,
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="phoneNumber"\r\n\r\n1234567890',
+        `--${boundary}`,
+        `Content-Disposition: form-data; name="taxNumber"\r\n\r\n${business.taxNumber}`,
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="subscription"\r\n\r\nFree',
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="currencyTrade"\r\n\r\nUSD',
+        `--${boundary}`,
+        `Content-Disposition: form-data; name="address"\r\n\r\n${JSON.stringify(options.address ?? fullAddress)}`,
+      ];
+      if (options.metrics !== undefined) {
+        parts.push(
+          `--${boundary}`,
+          `Content-Disposition: form-data; name="metrics"\r\n\r\n${JSON.stringify(options.metrics)}`,
+        );
+      }
+      if (options.reportingConfig !== undefined) {
+        parts.push(
+          `--${boundary}`,
+          `Content-Disposition: form-data; name="reportingConfig"\r\n\r\n${JSON.stringify(options.reportingConfig)}`,
+        );
+      }
+      parts.push(`--${boundary}--`);
+      return parts.join("\r\n");
+    }
+
+    it("recomputes the timezone when the address changes", async () => {
+      const app = await getTestApp();
+      const boundary = "----formdata";
+      const { business, auth } = await createVenue(app, {
+        timezone: "America/Bogota",
+        address: { ...fullAddress, country: "Colombia", state: "Antioquia" },
+      });
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/business/${business._id}`,
+        headers: {
+          "content-type": `multipart/form-data; boundary=${boundary}`,
+          authorization: auth,
+        },
+        payload: patchPayload(boundary, business, {
+          address: { ...fullAddress, country: "USA", state: "New York" },
+        }),
+      });
+
+      expect(response.statusCode).toBe(200);
+      const stored = await Business.findById(business._id).lean();
+      expect(stored?.timezone).toBe("America/New_York");
+    });
+
+    it("clears the timezone when the address becomes unmappable", async () => {
+      const app = await getTestApp();
+      const boundary = "----formdata";
+      const { business, auth } = await createVenue(app, {
+        timezone: "America/Bogota",
+        address: { ...fullAddress, country: "Colombia", state: "Antioquia" },
+      });
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/business/${business._id}`,
+        headers: {
+          "content-type": `multipart/form-data; boundary=${boundary}`,
+          authorization: auth,
+        },
+        payload: patchPayload(boundary, business, {
+          address: { ...fullAddress, country: "Atlantis", state: "Nowhere" },
+        }),
+      });
+
+      expect(response.statusCode).toBe(200);
+      const stored = await Business.findById(business._id).lean();
+      expect(stored?.timezone).toBeUndefined();
+    });
+
+    it("preserves unchanged address fields when part of the address changes", async () => {
+      const app = await getTestApp();
+      const boundary = "----formdata";
+      const { business, auth } = await createVenue(app);
+      const nextAddress = { ...fullAddress, country: "Canada", state: "Ontario" };
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/business/${business._id}`,
+        headers: {
+          "content-type": `multipart/form-data; boundary=${boundary}`,
+          authorization: auth,
+        },
+        payload: patchPayload(boundary, business, { address: nextAddress }),
+      });
+
+      expect(response.statusCode).toBe(200);
+      const stored = await Business.findById(business._id).lean();
+      expect(stored?.address).toMatchObject(nextAddress);
+      expect(stored?.address.complement).toBe("Suite 5");
+    });
+
+    it("preserves unchanged metrics when one metric changes", async () => {
+      const app = await getTestApp();
+      const boundary = "----formdata";
+      const { business, auth } = await createVenue(app, { metrics: fullMetrics });
+      const nextMetrics = { ...fullMetrics, foodCostPercentage: 42 };
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/business/${business._id}`,
+        headers: {
+          "content-type": `multipart/form-data; boundary=${boundary}`,
+          authorization: auth,
+        },
+        payload: patchPayload(boundary, business, { metrics: nextMetrics }),
+      });
+
+      expect(response.statusCode).toBe(200);
+      const stored = await Business.findById(business._id).lean();
+      expect(stored?.metrics?.foodCostPercentage).toBe(42);
+      expect(stored?.metrics?.beverageCostPercentage).toBe(17);
+      expect(
+        stored?.metrics?.supplierGoodWastePercentage?.lowBudgetImpact,
+      ).toBe(6);
+    });
+
+    it("persists the weekly report start day", async () => {
+      const app = await getTestApp();
+      const boundary = "----formdata";
+      const { business, auth } = await createVenue(app);
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/business/${business._id}`,
+        headers: {
+          "content-type": `multipart/form-data; boundary=${boundary}`,
+          authorization: auth,
+        },
+        payload: patchPayload(boundary, business, {
+          reportingConfig: { weeklyReportStartDay: 3 },
+        }),
+      });
+
+      expect(response.statusCode).toBe(200);
+      const stored = await Business.findById(business._id).lean();
+      expect(stored?.reportingConfig?.weeklyReportStartDay).toBe(3);
     });
   });
 

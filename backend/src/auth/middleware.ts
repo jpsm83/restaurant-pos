@@ -252,34 +252,6 @@ export function requireEmployeeHook(): preValidationHookHandler {
 }
 
 /**
- * Helper to check if the current User has access to a specific business
- * through an active employee membership.
- */
-export function hasBusinessAccess(
-  session: AuthSession | undefined,
-  businessId: string,
-): boolean {
-  if (!session) return false;
-
-  const userSession = session as AuthUser;
-  return (
-    userSession.businessId === businessId && !!userSession.canLogAsEmployee
-  );
-}
-
-/**
- * Helper to get the linked business ID from the current User session.
- */
-export function getSessionBusinessId(
-  session: AuthSession | undefined,
-): string | null {
-  if (!session) return null;
-
-  const userSession = session as AuthUser;
-  return userSession.businessId || null;
-}
-
-/**
  * The signed-in User must own the `:businessId` venue or hold an active
  * Employee membership there. Must be used after createAuthHook.
  */

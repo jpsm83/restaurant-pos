@@ -208,6 +208,17 @@ describe("POST /api/v1/auth/reset-password", () => {
     });
     expect(refreshOk.statusCode).toBe(200);
 
+    const peerLogin = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/login",
+      payload: { email: "refresh-invalidate@example.com", password: oldPassword },
+    });
+    expect(peerLogin.statusCode).toBe(200);
+    const peerRefreshVal = refreshCookieValueFromLoginResponse({
+      headers: peerLogin.headers as Record<string, unknown>,
+    });
+    expect(peerRefreshVal).toBeDefined();
+
     const raw = await setUserResetToken(user._id);
     const resetRes = await app.inject({
       method: "POST",
@@ -225,6 +236,14 @@ describe("POST /api/v1/auth/reset-password", () => {
     expect(JSON.parse(refreshAfter.body).detail).toBe(
       "Invalid or expired refresh token",
     );
+
+    const peerAfter = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/refresh",
+      headers: { cookie: `refresh_token=${peerRefreshVal}` },
+    });
+    expect(peerAfter.statusCode).toBe(401);
+
     const meAfter = await app.inject({
       method: "GET",
       url: "/api/v1/auth/me",

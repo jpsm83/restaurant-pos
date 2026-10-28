@@ -8,10 +8,7 @@ import { Types } from "mongoose";
 import { getTestApp, signAccessTokenForLiveSession } from "../setup.ts";
 import canLogAsEmployee from "../../src/auth/canLogAsEmployee.ts";
 import getEffectiveUserRoleAtTime from "../../src/auth/getEffectiveUserRoleAtTime.ts";
-import {
-  createAuthHook,
-  hasBusinessAccess,
-} from "../../src/auth/middleware.ts";
+import { createAuthHook } from "../../src/auth/middleware.ts";
 import type { AuthSession, AuthUser } from "../../src/auth/types.ts";
 import Employee from "../../src/models/employee.ts";
 import Schedule from "../../src/models/schedule.ts";
@@ -367,39 +364,4 @@ describe("Auth Helpers", () => {
     });
   });
 
-  describe("hasBusinessAccess", () => {
-    const testBusinessId = new Types.ObjectId().toString();
-
-    it("returns true for employee with matching businessId and canLogAsEmployee", () => {
-      const session: AuthUser = {
-        id: userId.toString(),
-        email: "employee@example.com",
-        type: "user",
-        employeeId: new Types.ObjectId().toString(),
-        businessId: testBusinessId,
-        canLogAsEmployee: true,
-        role: "Waiter",
-      };
-
-      expect(hasBusinessAccess(session, testBusinessId)).toBe(true);
-    });
-
-    it("returns false for employee without canLogAsEmployee", () => {
-      const session: AuthUser = {
-        id: userId.toString(),
-        email: "employee@example.com",
-        type: "user",
-        employeeId: new Types.ObjectId().toString(),
-        businessId: testBusinessId,
-        canLogAsEmployee: false,
-        role: "Waiter",
-      };
-
-      expect(hasBusinessAccess(session, testBusinessId)).toBe(false);
-    });
-
-    it("returns false for undefined session", () => {
-      expect(hasBusinessAccess(undefined, testBusinessId)).toBe(false);
-    });
-  });
 });

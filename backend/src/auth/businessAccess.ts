@@ -11,34 +11,41 @@ import { Types } from "mongoose";
 import Business from "../models/business.ts";
 import Company from "../models/company.ts";
 import Owner from "../models/owner.ts";
+import { withSoftDeleteFilter } from "../models/softDelete.ts";
 import findActiveEmployeeMembership from "./employeeMembership.ts";
 
-export async function canAccessBusiness(
+export type BusinessAccessKind = "owner" | "employee";
+
+export async function resolveBusinessAccess(
   userId: string,
   businessId: string,
-): Promise<boolean> {
+): Promise<BusinessAccessKind | null> {
   if (
     !Types.ObjectId.isValid(userId) ||
     !Types.ObjectId.isValid(businessId)
   ) {
-    return false;
+    return null;
   }
 
   const business = (await Business.findById(businessId)
     .select("companyId")
     .lean()) as { companyId?: Types.ObjectId } | null;
-  if (!business) return false;
+  if (!business) return null;
 
   if (business.companyId) {
     const owner = (await Owner.findOne({ userId })
       .select("_id")
       .lean()) as { _id: unknown } | null;
     if (owner) {
-      const company = await Company.exists({
-        _id: business.companyId,
-        ownerId: owner._id,
-      });
-      if (company) return true;
+      const company = await Company.findOne(
+        withSoftDeleteFilter({
+          _id: business.companyId,
+          ownerId: owner._id,
+        }),
+      )
+        .select("_id")
+        .lean();
+      if (company) return "owner";
     }
   }
 
@@ -46,5 +53,12 @@ export async function canAccessBusiness(
     userId,
     businessId,
   });
-  return employee !== null;
+  return employee ? "employee" : null;
+}
+
+export async function canAccessBusiness(
+  userId: string,
+  businessId: string,
+): Promise<boolean> {
+  return (await resolveBusinessAccess(userId, businessId)) !== null;
 }
