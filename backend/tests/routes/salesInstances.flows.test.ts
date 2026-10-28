@@ -1245,7 +1245,19 @@ describe("SalesInstances flows (Task 12)", () => {
       }
     };
 
-    it("stores the same Void Other note on every affected order", async () => {
+    const latestAuditEntry = async () =>
+      (await AuditEntry.findOne({}).sort({ _id: -1 }).lean()) as {
+        actorKind?: string;
+        actorId?: Types.ObjectId;
+        actKind?: string;
+        target?: { kind?: string; id?: Types.ObjectId };
+        relatedTargets?: Array<{ kind?: string; id?: Types.ObjectId }>;
+        businessId?: Types.ObjectId;
+        payload?: Record<string, unknown>;
+        retentionClass?: string;
+      } | null;
+
+    it("stores the same Void Other note on every affected order and audits the act once", async () => {
       const { manager, si, orders } = await createFixture("Void", 2);
       const beforeAudit = await AuditEntry.countDocuments({});
 
@@ -1268,11 +1280,30 @@ describe("SalesInstances flows (Task 12)", () => {
         expect(stored?.billingReasonCode).toBe("other");
         expect(stored?.billingReasonNote).toBe("Guest left early");
       }
-      expect(await AuditEntry.countDocuments({})).toBe(beforeAudit);
+
+      expect(await AuditEntry.countDocuments({})).toBe(beforeAudit + 1);
+      const entry = await latestAuditEntry();
+      expect(entry?.actorKind).toBe("user");
+      expect(String(entry?.actorId)).toBe(manager.user._id.toString());
+      expect(entry?.actKind).toBe("order.voided");
+      expect(entry?.target?.kind).toBe("SalesInstance");
+      expect(String(entry?.target?.id)).toBe(si._id.toString());
+      expect(String(entry?.businessId)).toBe(businessId.toString());
+      expect(entry?.retentionClass).toBe("legalAndFinancial");
+      expect(entry?.relatedTargets).toHaveLength(2);
+      expect(entry?.relatedTargets?.map((target) => String(target.id)).sort()).toEqual(
+        orders.map((order) => order._id.toString()).sort(),
+      );
+      expect(entry?.payload).toMatchObject({
+        billingStatus: "Void",
+        reasonCode: "other",
+        reasonNote: "Guest left early",
+      });
     });
 
-    it("stores the same Invitation code on every affected order", async () => {
+    it("stores the same Invitation code on every affected order and audits the act once", async () => {
       const { manager, si, orders } = await createFixture("Invitation", 2);
+      const beforeAudit = await AuditEntry.countDocuments({});
 
       const res = await app.inject({
         method: "PATCH",
@@ -1292,6 +1323,15 @@ describe("SalesInstances flows (Task 12)", () => {
         expect(stored?.billingReasonCode).toBe("staffEmployeeMeal");
         expect(stored?.billingReasonNote).toBeUndefined();
       }
+
+      expect(await AuditEntry.countDocuments({})).toBe(beforeAudit + 1);
+      const entry = await latestAuditEntry();
+      expect(entry?.actKind).toBe("order.invited");
+      expect(entry?.payload).toMatchObject({
+        billingStatus: "Invitation",
+        reasonCode: "staffEmployeeMeal",
+      });
+      expect(entry?.payload).not.toHaveProperty("reasonNote");
     });
 
     it("stores an Invitation Other note", async () => {

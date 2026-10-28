@@ -32,6 +32,13 @@ const refreshSessionSchema = new Schema({
   },
 });
 
+/**
+ * Session rows are transient state, not domain documents (ADR-0003 amendment).
+ * MongoDB removes each row once its expiry passes, so expired and revoked
+ * sessions do not accumulate.
+ */
+refreshSessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+
 const RefreshSession =
   mongoose.models.RefreshSession || model("RefreshSession", refreshSessionSchema);
 

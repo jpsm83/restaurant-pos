@@ -24,10 +24,17 @@ import {
   badRequest,
   conflict,
   forbidden,
+  internal,
   notFound,
   unauthorized,
   type AppError,
 } from "../../errors/appError.ts";
+import { appendAuditEntry } from "../../audit/appendAuditEntry.ts";
+import {
+  AUDIT_ACT_KINDS,
+  AUDIT_ACTOR_KINDS,
+  AUDIT_TARGET_KINDS,
+} from "../../audit/auditCatalogue.ts";
 import {
   createDeliveryOrderBodySchema,
   createSalesInstanceBodySchema,
@@ -670,6 +677,42 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
 
           if (finalizeResult !== true) {
             throw badRequest(finalizeResult);
+          }
+
+          const appended = await appendAuditEntry({
+            actor: {
+              kind: AUDIT_ACTOR_KINDS.USER,
+              id: sessionUserId,
+            },
+            actKind:
+              status === "Void"
+                ? AUDIT_ACT_KINDS.ORDER_VOIDED
+                : AUDIT_ACT_KINDS.ORDER_INVITED,
+            target: {
+              kind: AUDIT_TARGET_KINDS.SALES_INSTANCE,
+              id: salesInstanceId,
+            },
+            relatedTargets: ordersIdsArr.map((id) => ({
+              kind: AUDIT_TARGET_KINDS.ORDER,
+              id,
+            })),
+            businessId: salesInstance.businessId,
+            occurredAt: new Date(),
+            payload: {
+              billingStatus: status,
+              orderIds: ordersIdsArr,
+              reasonCode: resolvedReason.code,
+              ...(resolvedReason.note === undefined
+                ? {}
+                : { reasonNote: resolvedReason.note }),
+            },
+            session,
+          });
+
+          if (!appended.success) {
+            throw internal(
+              "Failed to append the Void/Invitation audit entry!",
+            );
           }
         }
 

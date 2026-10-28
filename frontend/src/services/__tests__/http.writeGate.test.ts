@@ -27,6 +27,7 @@ describe("http write gate", () => {
     HarnessSocket.reset();
     resetLiveConnectionForTests({
       WebSocket: HarnessSocket,
+      requestTicket: (token) => `ticket-${token}`,
       scheduleReconnect: () => undefined,
     });
     http.defaults.adapter = async (config) => {

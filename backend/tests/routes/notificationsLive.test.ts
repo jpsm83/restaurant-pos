@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import WebSocket from "ws";
 import type { AddressInfo } from "node:net";
 import { Types } from "mongoose";
@@ -8,6 +8,7 @@ import Business from "../../src/models/business.ts";
 import RefreshSession from "../../src/models/refreshSession.ts";
 import User from "../../src/models/user.ts";
 import { getCommunicationsMetricsSnapshot } from "../../src/communications/observability/metrics.ts";
+import { resetLiveTicketStoreForTests } from "../../src/auth/liveTicketStore.ts";
 import { signAccessTokenForLiveSession } from "../setup.ts";
 
 function liveUserToken(
@@ -22,6 +23,26 @@ function liveUserToken(
     role: "Customer",
   });
 }
+
+async function issueLiveTicket(
+  app: FastifyInstance,
+  accessToken: string,
+): Promise<string> {
+  const response = await app.inject({
+    method: "POST",
+    url: "/api/v1/auth/live-ticket",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  if (response.statusCode !== 201) {
+    throw new Error(`Ticket endpoint returned ${response.statusCode}: ${response.body}`);
+  }
+
+  return (JSON.parse(response.body) as { ticket: string }).ticket;
+}
+
+const socketUrl = (baseUrl: string, ticket: string): string =>
+  `${baseUrl}?ticket=${encodeURIComponent(ticket)}`;
 
 const withLiveServer = async <T>(
   callback: (input: { baseUrl: string; app: Awaited<ReturnType<typeof buildApp>> }) => Promise<T>
@@ -39,6 +60,10 @@ const withLiveServer = async <T>(
 };
 
 describe("Notifications Live Route", () => {
+  beforeEach(() => {
+    resetLiveTicketStoreForTests();
+  });
+
   const validAddress = {
     country: "USA",
     state: "CA",
@@ -81,7 +106,7 @@ describe("Notifications Live Route", () => {
     });
   };
 
-  it("rejects websocket connection without bearer token", async () => {
+  it("rejects websocket connection without a ticket", async () => {
     await withLiveServer(async ({ baseUrl }) => {
       const beforeMetrics = getCommunicationsMetricsSnapshot();
       const closed = await new Promise<{ code: number; reason: string }>((resolve) => {
@@ -95,58 +120,37 @@ describe("Notifications Live Route", () => {
       expect(closed.reason).toBe("Unauthorized");
       const afterMetrics = getCommunicationsMetricsSnapshot();
       expect(
-        (afterMetrics.live.authFailuresByReason.missing_bearer_token ?? 0) -
-          (beforeMetrics.live.authFailuresByReason.missing_bearer_token ?? 0)
+        (afterMetrics.live.authFailuresByReason.missing_ticket ?? 0) -
+          (beforeMetrics.live.authFailuresByReason.missing_ticket ?? 0)
       ).toBeGreaterThanOrEqual(1);
     });
   });
 
-  it("closes a revoked access token the same way as an invalid token", async () => {
-    await withLiveServer(async ({ baseUrl, app }) => {
+  it("refuses to issue a ticket for a revoked access session", async () => {
+    await withLiveServer(async ({ app }) => {
       const user = await createTestUser("live-revoked");
-      const userToken = await signAccessTokenForLiveSession(app, {
-        id: user._id.toString(),
-        email: user.personalDetails.email,
-        type: "user",
-        role: "Customer",
-      });
+      const userToken = await liveUserToken(
+        app,
+        user._id.toString(),
+        String(user.personalDetails.email),
+      );
       await RefreshSession.updateMany(
         { accountId: user._id },
         { $set: { revoked: true } },
       );
 
-      const closed = await new Promise<{ code: number; reason: string }>(
-        (resolve, reject) => {
-          const timer = setTimeout(
-            () => reject(new Error("socket stayed open")),
-            3_000,
-          );
-          const socket = new WebSocket(baseUrl, {
-            headers: { Authorization: `Bearer ${userToken}` },
-          });
-          socket.on("close", (code, reason) => {
-            clearTimeout(timer);
-            resolve({ code, reason: reason.toString() });
-          });
-          socket.on("message", () => {
-            clearTimeout(timer);
-            socket.close();
-            reject(new Error("revoked token was accepted"));
-          });
-          socket.on("error", (error) => {
-            clearTimeout(timer);
-            reject(error);
-          });
-        },
-      );
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/live-ticket",
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
 
-      expect(closed.code).toBe(1008);
-      expect(closed.reason).toBe("Unauthorized");
+      expect(response.statusCode).toBe(401);
     });
   });
 
-  it("closes a session-less access token the same way as an invalid token", async () => {
-    await withLiveServer(async ({ baseUrl, app }) => {
+  it("refuses to issue a ticket for a session-less access token", async () => {
+    await withLiveServer(async ({ app }) => {
       const userToken = app.jwt.sign({
         id: new Types.ObjectId().toString(),
         email: "session-less@test.com",
@@ -154,42 +158,21 @@ describe("Notifications Live Route", () => {
         role: "Customer",
       });
 
-      const closed = await new Promise<{ code: number; reason: string }>(
-        (resolve, reject) => {
-          const timer = setTimeout(
-            () => reject(new Error("socket stayed open")),
-            3_000,
-          );
-          const socket = new WebSocket(baseUrl, {
-            headers: { Authorization: `Bearer ${userToken}` },
-          });
-          socket.on("close", (code, reason) => {
-            clearTimeout(timer);
-            resolve({ code, reason: reason.toString() });
-          });
-          socket.on("message", () => {
-            clearTimeout(timer);
-            socket.close();
-            reject(new Error("session-less token was accepted"));
-          });
-          socket.on("error", (error) => {
-            clearTimeout(timer);
-            reject(error);
-          });
-        },
-      );
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/live-ticket",
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
 
-      expect(closed.code).toBe(1008);
-      expect(closed.reason).toBe("Unauthorized");
+      expect(response.statusCode).toBe(401);
     });
   });
 
-  it("rejects websocket connection with invalid bearer token", async () => {
+  it("closes a websocket connection with an invalid ticket", async () => {
     await withLiveServer(async ({ baseUrl }) => {
+      const beforeMetrics = getCommunicationsMetricsSnapshot();
       const closed = await new Promise<{ code: number; reason: string }>((resolve) => {
-        const socket = new WebSocket(baseUrl, {
-          headers: { Authorization: "Bearer invalid-token" },
-        });
+        const socket = new WebSocket(socketUrl(baseUrl, "not-a-real-ticket"));
         socket.on("close", (code, reason) =>
           resolve({ code, reason: reason.toString() })
         );
@@ -197,27 +180,31 @@ describe("Notifications Live Route", () => {
 
       expect(closed.code).toBe(1008);
       expect(closed.reason).toBe("Unauthorized");
+      const afterMetrics = getCommunicationsMetricsSnapshot();
+      expect(
+        (afterMetrics.live.authFailuresByReason.invalid_ticket ?? 0) -
+          (beforeMetrics.live.authFailuresByReason.invalid_ticket ?? 0)
+      ).toBeGreaterThanOrEqual(1);
     });
   });
 
   it("accepts a tenant (business) session and acknowledges a live connection", async () => {
     await withLiveServer(async ({ baseUrl, app }) => {
-      const accountId = new Types.ObjectId().toString();
+      const business = await createTestBusiness();
       const businessToken = await signAccessTokenForLiveSession(app, {
-        id: accountId,
-        email: "owner@test.com",
+        id: business._id.toString(),
+        email: business.email,
         type: "business",
         role: "Tenant",
       });
+      const ticket = await issueLiveTicket(app, businessToken);
 
       const message = await new Promise<string>((resolve, reject) => {
         const timer = setTimeout(
           () => reject(new Error("tenant session was not acknowledged")),
           3_000,
         );
-        const socket = new WebSocket(baseUrl, {
-          headers: { Authorization: `Bearer ${businessToken}` },
-        });
+        const socket = new WebSocket(socketUrl(baseUrl, ticket));
         socket.on("message", (data) => {
           clearTimeout(timer);
           socket.close();
@@ -235,19 +222,22 @@ describe("Notifications Live Route", () => {
 
       const parsed = JSON.parse(message);
       expect(parsed.type).toBe("live.connected");
-      expect(parsed.data).toEqual({ accountId });
+      expect(parsed.data).toEqual({ accountId: business._id.toString() });
     });
   });
 
-  it("accepts user token and returns connection ack payload contract", async () => {
+  it("accepts a user ticket and returns the connection ack payload contract", async () => {
     await withLiveServer(async ({ baseUrl, app }) => {
-      const userId = "65f0c2b6a2e42e8d4f8d1111";
-      const userToken = await liveUserToken(app, userId, "customer@test.com");
+      const user = await createTestUser("live-ack");
+      const userToken = await liveUserToken(
+        app,
+        user._id.toString(),
+        String(user.personalDetails.email),
+      );
+      const ticket = await issueLiveTicket(app, userToken);
 
       const message = await new Promise<string>((resolve, reject) => {
-        const socket = new WebSocket(baseUrl, {
-          headers: { Authorization: `Bearer ${userToken}` },
-        });
+        const socket = new WebSocket(socketUrl(baseUrl, ticket));
 
         socket.on("message", (data) => {
           const payload = data.toString();
@@ -256,94 +246,6 @@ describe("Notifications Live Route", () => {
         });
 
         socket.on("error", reject);
-      });
-
-      const parsed = JSON.parse(message);
-      expect(parsed.type).toBe("live.connected");
-      expect(parsed.data).toEqual({ accountId: userId });
-    });
-  });
-
-  it("closes a generation-mismatched token for a soft-deleted user the same way as an invalid token", async () => {
-    await withLiveServer(async ({ baseUrl, app }) => {
-      const user = await createTestUser("live-deleted-generation");
-      const userToken = await liveUserToken(
-        app,
-        user._id.toString(),
-        String(user.personalDetails.email),
-      );
-      await User.updateOne(
-        { _id: user._id },
-        {
-          $inc: { refreshSessionVersion: 1 },
-          $set: { deleted: true, deletedAt: new Date(), deletedBy: user._id },
-        },
-      );
-
-      const closed = await new Promise<{ code: number; reason: string }>(
-        (resolve, reject) => {
-          const timer = setTimeout(
-            () => reject(new Error("socket stayed open")),
-            3_000,
-          );
-          const socket = new WebSocket(baseUrl, {
-            headers: { Authorization: `Bearer ${userToken}` },
-          });
-          socket.on("close", (code, reason) => {
-            clearTimeout(timer);
-            resolve({ code, reason: reason.toString() });
-          });
-          socket.on("message", () => {
-            clearTimeout(timer);
-            socket.close();
-            reject(new Error("generation-mismatched token was accepted"));
-          });
-          socket.on("error", (error) => {
-            clearTimeout(timer);
-            reject(error);
-          });
-        },
-      );
-
-      expect(closed.code).toBe(1008);
-      expect(closed.reason).toBe("Unauthorized");
-    });
-  });
-
-  it("keeps a soft-deleted user's live access token connected", async () => {
-    await withLiveServer(async ({ baseUrl, app }) => {
-      const user = await createTestUser("live-deleted");
-      const userToken = await liveUserToken(
-        app,
-        user._id.toString(),
-        String(user.personalDetails.email),
-      );
-      await User.updateOne(
-        { _id: user._id },
-        { $set: { deleted: true, deletedAt: new Date(), deletedBy: user._id } },
-      );
-
-      const message = await new Promise<string>((resolve, reject) => {
-        const timer = setTimeout(
-          () => reject(new Error("socket did not connect")),
-          3_000,
-        );
-        const socket = new WebSocket(baseUrl, {
-          headers: { Authorization: `Bearer ${userToken}` },
-        });
-        socket.on("message", (data) => {
-          clearTimeout(timer);
-          socket.close();
-          resolve(data.toString());
-        });
-        socket.on("close", (code, reason) => {
-          clearTimeout(timer);
-          reject(new Error(`closed ${code} ${reason.toString()}`));
-        });
-        socket.on("error", (error) => {
-          clearTimeout(timer);
-          reject(error);
-        });
       });
 
       const parsed = JSON.parse(message);
@@ -352,28 +254,120 @@ describe("Notifications Live Route", () => {
     });
   });
 
-  it("accepts token via access_token query parameter", async () => {
+  it("rejects a ticket after the account generation changes", async () => {
     await withLiveServer(async ({ baseUrl, app }) => {
-      const userId = "65f0c2b6a2e42e8d4f8d2222";
+      const user = await createTestUser("live-generation");
       const userToken = await liveUserToken(
         app,
-        userId,
-        "customer-query@test.com",
+        user._id.toString(),
+        String(user.personalDetails.email),
+      );
+      const ticket = await issueLiveTicket(app, userToken);
+
+      await User.updateOne(
+        { _id: user._id },
+        { $inc: { refreshSessionVersion: 1 } },
       );
 
-      const message = await new Promise<string>((resolve, reject) => {
-        const socket = new WebSocket(`${baseUrl}?access_token=${encodeURIComponent(userToken)}`);
-        socket.on("message", (data) => {
-          const payload = data.toString();
+      const closed = await new Promise<{ code: number; reason: string }>(
+        (resolve, reject) => {
+          const timer = setTimeout(
+            () => reject(new Error("socket stayed open")),
+            3_000,
+          );
+          const socket = new WebSocket(socketUrl(baseUrl, ticket));
+          socket.on("close", (code, reason) => {
+            clearTimeout(timer);
+            resolve({ code, reason: reason.toString() });
+          });
+          socket.on("message", () => {
+            clearTimeout(timer);
+            socket.close();
+            reject(new Error("generation-mismatched ticket was accepted"));
+          });
+          socket.on("error", (error) => {
+            clearTimeout(timer);
+            reject(error);
+          });
+        },
+      );
+
+      expect(closed.code).toBe(1008);
+      expect(closed.reason).toBe("Unauthorized");
+    });
+  });
+
+  it("rejects a ticket issued before the account was soft-deleted", async () => {
+    await withLiveServer(async ({ baseUrl, app }) => {
+      const user = await createTestUser("live-deleted");
+      const userToken = await liveUserToken(
+        app,
+        user._id.toString(),
+        String(user.personalDetails.email),
+      );
+      const ticket = await issueLiveTicket(app, userToken);
+
+      await User.updateOne(
+        { _id: user._id },
+        { $set: { deleted: true, deletedAt: new Date(), deletedBy: user._id } },
+      );
+
+      const closed = await new Promise<{ code: number; reason: string }>(
+        (resolve, reject) => {
+          const timer = setTimeout(
+            () => reject(new Error("socket stayed open")),
+            3_000,
+          );
+          const socket = new WebSocket(socketUrl(baseUrl, ticket));
+          socket.on("close", (code, reason) => {
+            clearTimeout(timer);
+            resolve({ code, reason: reason.toString() });
+          });
+          socket.on("message", () => {
+            clearTimeout(timer);
+            socket.close();
+            reject(new Error("soft-deleted account ticket was accepted"));
+          });
+          socket.on("error", (error) => {
+            clearTimeout(timer);
+            reject(error);
+          });
+        },
+      );
+
+      expect(closed.code).toBe(1008);
+      expect(closed.reason).toBe("Unauthorized");
+    });
+  });
+
+  it("accepts a one-time ticket and rejects a reused ticket", async () => {
+    await withLiveServer(async ({ baseUrl, app }) => {
+      const user = await createTestUser("live-ticket-reuse");
+      const userToken = await liveUserToken(
+        app,
+        user._id.toString(),
+        String(user.personalDetails.email),
+      );
+      const ticket = await issueLiveTicket(app, userToken);
+
+      await new Promise<void>((resolve, reject) => {
+        const socket = new WebSocket(socketUrl(baseUrl, ticket));
+        socket.on("message", () => {
           socket.close();
-          resolve(payload);
+          resolve();
         });
         socket.on("error", reject);
       });
 
-      const parsed = JSON.parse(message);
-      expect(parsed.type).toBe("live.connected");
-      expect(parsed.data).toEqual({ accountId: userId });
+      const closed = await new Promise<{ code: number; reason: string }>((resolve) => {
+        const socket = new WebSocket(socketUrl(baseUrl, ticket));
+        socket.on("close", (code, reason) =>
+          resolve({ code, reason: reason.toString() })
+        );
+      });
+
+      expect(closed.code).toBe(1008);
+      expect(closed.reason).toBe("Unauthorized");
     });
   });
 
@@ -386,11 +380,10 @@ describe("Notifications Live Route", () => {
         user._id.toString(),
         String(user.personalDetails.email),
       );
+      const ticket = await issueLiveTicket(app, userToken);
 
       const pushedPayload = await new Promise<string>((resolve, reject) => {
-        const socket = new WebSocket(baseUrl, {
-          headers: { Authorization: `Bearer ${userToken}` },
-        });
+        const socket = new WebSocket(socketUrl(baseUrl, ticket));
 
         socket.on("message", async (raw) => {
           const message = raw.toString();
@@ -453,12 +446,12 @@ describe("Notifications Live Route", () => {
         String(nonTargetUser.personalDetails.email),
       );
 
-      const targetSocket = new WebSocket(baseUrl, {
-        headers: { Authorization: `Bearer ${targetToken}` },
-      });
-      const nonTargetSocket = new WebSocket(baseUrl, {
-        headers: { Authorization: `Bearer ${nonTargetToken}` },
-      });
+      const targetSocket = new WebSocket(
+        socketUrl(baseUrl, await issueLiveTicket(app, targetToken)),
+      );
+      const nonTargetSocket = new WebSocket(
+        socketUrl(baseUrl, await issueLiveTicket(app, nonTargetToken)),
+      );
 
       const targetMessages: Array<{ type?: string; data?: { message?: string } }> = [];
       const nonTargetMessages: Array<{ type?: string; data?: { message?: string } }> = [];
@@ -583,12 +576,12 @@ describe("Notifications Live Route", () => {
           });
         });
 
-      const first = new WebSocket(baseUrl, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const second = new WebSocket(baseUrl, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const first = new WebSocket(
+        socketUrl(baseUrl, await issueLiveTicket(app, token)),
+      );
+      const second = new WebSocket(
+        socketUrl(baseUrl, await issueLiveTicket(app, token)),
+      );
 
       const firstCreated: string[] = [];
       const secondCreated: string[] = [];
@@ -631,4 +624,3 @@ describe("Notifications Live Route", () => {
     });
   });
 });
-

@@ -1,6 +1,6 @@
 # ADR-0003: Soft delete across all domain models
 
-- **Status:** Accepted (amended 2026-10-26)
+- **Status:** Accepted (amended 2026-10-28)
 - **Date:** 2026-10-13
 
 ## Context
@@ -132,6 +132,26 @@ audit entries are outside it by design. A soft-delete or ordinary delete path
 must never be pointed at the audit collection, and a later physical-retention
 row must treat trails together with their parent rather than as ordinary
 soft-deletable documents.
+
+## Amendment (2026-10-28) — refresh sessions are session state, not domain documents
+
+**Context.** A refresh-session row records one issuance of an access/refresh pair for
+a signed-in User or Business. It exists only for the life of that session, is marked
+revoked on sign-out, and expires. It has no user-authored content and nothing else
+in the domain references it.
+
+**Decision addendum.** Refresh-session rows are **outside the soft-delete model**.
+They carry no `deleted` marker or `deletedAt`, are not registered in the soft-delete
+backfill set, and do not need a delete route. Revoking and expiring a session is
+session lifecycle, not deleting a domain document. The model carries a TTL index on
+`expiresAt`, so MongoDB removes expired rows, and sign-out marks the presented row
+revoked. This exception does not authorize hard-deleting any domain document; it only
+names session state that was never a domain document.
+
+**Consequences.** The ADR's "all domain models" rule now has a second named exception
+beside audit entries. A future retention-purge or DSAR path must not treat refresh
+sessions as ordinary soft-deletable domain rows. Expired session rows no longer
+accumulate.
 
 ## Alternatives considered
 

@@ -1,6 +1,6 @@
 # ADR-0001: zod request validation and the RFC 9457 problem-details envelope
 
-- **Status:** Accepted
+- **Status:** Accepted (amended 2026-10-28)
 - **Date:** 2026-10-10
 
 ## Context
@@ -75,6 +75,29 @@ Concretely:
   migration lands in its own ticket.
 - The problem-details `type` base URI is a namespace identifier and does not
   need to resolve.
+
+## Amendment (2026-10-28) — WebSocket upgrade authentication
+
+**Context.** A browser cannot set an `Authorization` header on a WebSocket. The live
+notifications socket therefore cannot use the ordinary Bearer path, and putting the
+access JWT in the URL would expose it to request logs, proxies, and browser tooling.
+
+**Decision addendum.** The client exchanges its access session over authenticated
+HTTP (`POST /api/v1/auth/live-ticket`) for a random, one-minute, single-use ticket.
+The socket upgrade carries only that ticket (`?ticket=`); the server consumes it and
+re-checks the live refresh session, account generation, and account state before
+registering the connection. The access JWT never appears in a URL, and request
+logging drops query strings so even the short-lived ticket is not written to logs.
+
+This is an explicit exception to the body/query/params rule for the socket upgrade
+only. The ticket endpoint itself is an ordinary authenticated route; any future HTTP
+route that accepts an access token or ticket in a query or body still uses the shared
+zod rail. A WebSocket authentication failure closes the socket with a close code and
+sends no RFC 9457 body.
+
+**Consequences.** The socket authenticates without a URL-borne JWT and the credential
+lifetime is bounded to the upgrade. The ticket store is process-local session state;
+a future multi-instance deployment must share it or issue signed tickets.
 
 ## Alternatives considered
 

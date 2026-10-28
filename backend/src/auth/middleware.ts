@@ -157,13 +157,25 @@ async function accountGenerationIfRowExists(
 
 /**
  * Verify an access token, require its refresh session to be live, and refuse
- * a soft-deleted User or deleted Business. The session id stays off the
- * returned session. Database failures propagate.
+ * a soft-deleted User or deleted Business. Database failures propagate.
  */
-export async function requireLiveAccessSession(
+export interface LiveAccessSession {
+  session: AuthSession;
+  /** The stored refresh session the access token was issued against. */
+  sessionId: string;
+}
+
+/**
+ * Verify an access token and return the live refresh session id with it.
+ *
+ * Most routes only need the stripped session and use `requireLiveAccessSession`.
+ * The live-ticket endpoint needs the id so the socket can re-check the session
+ * at consume time without carrying a long-lived token in the URL.
+ */
+export async function requireLiveAccessSessionWithRefreshId(
   app: FastifyInstance,
   token: string,
-): Promise<AuthSession> {
+): Promise<LiveAccessSession> {
   let decoded: AuthSession & { sessionId?: string };
   try {
     decoded = app.jwt.verify<AuthSession & { sessionId?: string }>(token);
@@ -175,7 +187,19 @@ export async function requireLiveAccessSession(
   }
   await assertAccessTokenRefreshSessionLive(decoded);
   await assertAccountCanUseSession(decoded);
-  const { sessionId: _sessionId, ...session } = decoded;
+
+  const { sessionId, ...session } = decoded;
+  if (!sessionId) {
+    throw unauthorized("Invalid or expired access token");
+  }
+  return { session, sessionId };
+}
+
+export async function requireLiveAccessSession(
+  app: FastifyInstance,
+  token: string,
+): Promise<AuthSession> {
+  const { session } = await requireLiveAccessSessionWithRefreshId(app, token);
   return session;
 }
 

@@ -20,6 +20,7 @@ import {
 import connectDb from "./db/connectDb.ts";
 import { registerV1Routes } from "./routes/v1/index.ts";
 import { registerProblemDetailsHandler } from "./errors/problemDetails.ts";
+import { requestLogSerializer } from "./observability/requestLogSerializer.ts";
 import { AUTH_CONFIG } from "./auth/config.ts";
 import { buildCorsOptions } from "./config/cors.ts";
 import liveConnectionRegistry from "./communications/live/connectionRegistry.ts";
@@ -54,7 +55,17 @@ export async function buildApp(
 
   validateEnv();
 
-  const server = Fastify({ logger });
+  const server = Fastify({
+    logger: logger
+      ? {
+          // Never let a credential carried on a URL reach the request log.
+          // Request bodies and headers stay out of the default serializer too.
+          serializers: {
+            req: requestLogSerializer,
+          },
+        }
+      : false,
+  });
 
   /**
    * zod is the single boundary validator: route schemas compile to the
@@ -145,7 +156,7 @@ async function main() {
   const server = await buildApp();
 
   const port = Number(process.env.PORT) || 4000;
-  const host = process.env.HOST || "0.0.0.0";
+  const host = process.env.HOST || "127.0.0.1";
 
   try {
     await server.ready();

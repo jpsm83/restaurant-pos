@@ -19,6 +19,8 @@ export const AUDIT_TARGET_KINDS = {
   INVENTORY: "Inventory",
   INVENTORY_COUNT: "InventoryCount",
   SUPPLIER_GOOD: "SupplierGood",
+  SALES_INSTANCE: "SalesInstance",
+  ORDER: "Order",
 } as const;
 
 export type AuditTargetKind =
@@ -29,6 +31,8 @@ export const AUDIT_ACT_KINDS = {
   EMAIL_CHANGE_CONFIRMED: "emailChange.confirmed",
   PURCHASE_LINE_EDITED: "purchase.lineEdited",
   INVENTORY_COUNT_REEDITED: "inventory.countReedited",
+  ORDER_VOIDED: "order.voided",
+  ORDER_INVITED: "order.invited",
 } as const;
 
 export type AuditActKind =
@@ -59,6 +63,9 @@ export const AUDIT_TARGET_RETENTION_CLASSES: Record<
   [AUDIT_TARGET_KINDS.INVENTORY_COUNT]:
     AUDIT_RETENTION_CLASSES.LEGAL_AND_FINANCIAL,
   [AUDIT_TARGET_KINDS.SUPPLIER_GOOD]: AUDIT_RETENTION_CLASSES.OPERATIONAL,
+  [AUDIT_TARGET_KINDS.SALES_INSTANCE]:
+    AUDIT_RETENTION_CLASSES.LEGAL_AND_FINANCIAL,
+  [AUDIT_TARGET_KINDS.ORDER]: AUDIT_RETENTION_CLASSES.LEGAL_AND_FINANCIAL,
 };
 
 export function retentionClassForTargetKind(

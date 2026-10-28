@@ -40,7 +40,10 @@ class RecordingSocket {
 describe("access session opens and closes the live connection", () => {
   beforeEach(() => {
     RecordingSocket.reset();
-    resetLiveConnectionForTests({ WebSocket: RecordingSocket });
+    resetLiveConnectionForTests({
+      WebSocket: RecordingSocket,
+      requestTicket: (token) => `ticket-${token}`,
+    });
     setAccessToken(null);
     RecordingSocket.reset();
   });
@@ -54,7 +57,7 @@ describe("access session opens and closes the live connection", () => {
     setAccessToken("fresh-access");
 
     expect(RecordingSocket.instances).toHaveLength(1);
-    expect(RecordingSocket.urls[0]).toContain("access_token=fresh-access");
+    expect(RecordingSocket.urls[0]).toContain("ticket=ticket-fresh-access");
   });
 
   it("clearing the access session closes the live connection", () => {
@@ -75,7 +78,7 @@ describe("access session opens and closes the live connection", () => {
     setAccessToken("refreshed-access");
 
     expect(RecordingSocket.instances).toHaveLength(2);
-    expect(RecordingSocket.urls[1]).toContain("access_token=refreshed-access");
+    expect(RecordingSocket.urls[1]).toContain("ticket=ticket-refreshed-access");
   });
 
   it("keeps sign-in, refresh, sign-out, and password reset working without the write gate", async () => {

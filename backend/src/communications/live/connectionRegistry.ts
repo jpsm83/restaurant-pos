@@ -161,7 +161,7 @@ const getLiveMetrics = () => ({
 });
 
 const markAuthFailure = (
-  reason: "missing_bearer_token" | "invalid_token"
+  reason: "missing_ticket" | "invalid_ticket"
 ): void => {
   recordLiveAuthFailure(reason);
 };

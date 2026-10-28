@@ -13,6 +13,7 @@ import {
   resendEmailConfirmation,
   setAccessToken,
 } from "../api";
+import { resetLiveConnectionForTests } from "@/live/connection";
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -42,6 +43,11 @@ describe("auth api — email / password-reset endpoints", () => {
   beforeEach(() => {
     fetchMock.mockReset();
     vi.stubGlobal("fetch", fetchMock);
+    // Keep the live-ticket exchange out of these HTTP-contract assertions.
+    resetLiveConnectionForTests({
+      requestTicket: () => null,
+      scheduleReconnect: () => undefined,
+    });
   });
 
   afterEach(() => {

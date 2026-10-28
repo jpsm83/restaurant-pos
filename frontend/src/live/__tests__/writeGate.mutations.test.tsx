@@ -35,6 +35,7 @@ describe("signed-in mutations obey the write gate", () => {
     HarnessSocket.reset();
     resetLiveConnectionForTests({
       WebSocket: HarnessSocket,
+      requestTicket: (token) => `ticket-${token}`,
       scheduleReconnect: () => undefined,
     });
     syncLiveConnection("session-token");

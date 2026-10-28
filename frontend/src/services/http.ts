@@ -35,6 +35,7 @@ const SESSION_AUTH_PATHS = [
   "/api/v1/auth/resend-email-confirmation",
   "/api/v1/auth/request-email-change",
   "/api/v1/auth/confirm-email-change",
+  "/api/v1/auth/live-ticket",
 ] as const;
 
 function requestPath(url?: string): string {

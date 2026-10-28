@@ -20,9 +20,12 @@ import canLogAsEmployee from "../../auth/canLogAsEmployee.ts";
 import { AUTH_CONFIG } from "../../auth/config.ts";
 import {
   createAuthHook,
+  isRejectedCredential,
   requireBusinessHook,
   requireLiveAccessSession,
+  requireLiveAccessSessionWithRefreshId,
 } from "../../auth/middleware.ts";
+import { issueLiveTicket } from "../../auth/liveTicketStore.ts";
 import type { AuthBusiness, AuthUser } from "../../auth/types.ts";
 import {
   exchangeRefreshSession,
@@ -581,6 +584,37 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     const token = authHeader.slice(7);
     const user = await requireLiveAccessSession(app, token);
     return reply.code(200).send({ user });
+  });
+
+  /**
+   * POST /auth/live-ticket
+   * Exchange a live access session for a one-minute, single-use ticket the
+   * browser can carry on the WebSocket upgrade URL. The access JWT itself never
+   * goes in a URL.
+   */
+  app.post("/live-ticket", async (req, reply) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      throw unauthorized("No access token provided");
+    }
+
+    try {
+      const { session, sessionId } = await requireLiveAccessSessionWithRefreshId(
+        app,
+        authHeader.slice(7),
+      );
+      const issued = issueLiveTicket({
+        sessionId,
+        accountId: session.id,
+        accountType: session.type,
+      });
+      return reply.code(201).send(issued);
+    } catch (error) {
+      if (isRejectedCredential(error)) {
+        throw unauthorized("Invalid or expired access token");
+      }
+      throw error;
+    }
   });
 
   /**

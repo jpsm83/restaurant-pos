@@ -30,50 +30,9 @@ import {
   type ServiceRequestError,
 } from "@/services/serviceErrors";
 import { syncLiveConnection } from "@/live/connection";
+import { resolveApiBaseUrl } from "@/services/apiBaseUrl";
 
 const ACCESS_TOKEN_STORAGE_KEY = "restaurant_pos_auth_access";
-
-/**
- * Resolves the origin/base for auth `fetch` calls.
- *
- * In **Vite dev**, if `VITE_API_BASE_URL` targets another origin (e.g. `http://localhost:4000` while
- * the SPA is on `http://localhost:5173`), we use **relative** `/api/...` so the dev server **proxy**
- * forwards to Fastify. That avoids **CORS** failures and keeps the refresh cookie **first-party**
- * (see `frontend/.env.example`).
- *
- * In **production**, when the API host matches the page host, use the configured base; when they
- * differ, the configured full URL is used and the API must allow the app origin via **`CORS_ORIGINS`**.
- */
-function resolveAuthFetchBaseUrl(): string {
-  const raw = import.meta.env.VITE_API_BASE_URL;
-  const configured =
-    typeof raw === "string" ? raw.trim().replace(/\/$/, "") : "";
-
-  if (typeof window === "undefined") {
-    return configured;
-  }
-
-  if (!configured) {
-    return "";
-  }
-
-  let apiOrigin: string;
-  try {
-    apiOrigin = new URL(configured).origin;
-  } catch {
-    return configured;
-  }
-
-  if (window.location.origin === apiOrigin) {
-    return configured;
-  }
-
-  if (import.meta.env.DEV) {
-    return "";
-  }
-
-  return configured;
-}
 
 let accessToken: string | null = null;
 
@@ -144,7 +103,7 @@ async function authRequest<T>(
 > {
   try {
     const hasBody = options?.body !== undefined && options?.body !== null;
-    const response = await fetch(`${resolveAuthFetchBaseUrl()}${path}`, {
+    const response = await fetch(`${resolveApiBaseUrl()}${path}`, {
       credentials: "include",
       headers: getAuthHeaders(options?.headers, hasBody),
       ...options,

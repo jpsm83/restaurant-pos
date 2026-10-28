@@ -49,7 +49,7 @@ frontend (:5173) --/api proxy--> backend (:4000) --> MongoDB Atlas
 | Value | Default | Source |
 |-------|---------|--------|
 | Backend HTTP | `4000` | `PORT` |
-| Bind host | `0.0.0.0` | `HOST` |
+| Bind host | `127.0.0.1` (Docker: `0.0.0.0`) | `HOST` |
 | Health check | `GET /health` → `{ "ok": true }` | — |
 | API prefix | `/api/v1` | `src/routes/v1/index.ts` |
 

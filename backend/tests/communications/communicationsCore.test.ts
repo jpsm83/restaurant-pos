@@ -1031,13 +1031,36 @@ describe("Communications Core - Feature Flags", () => {
     await app.listen({ port: 0, host: "127.0.0.1" });
     const address = app.server.address() as AddressInfo;
     const wsUrl = `ws://127.0.0.1:${address.port}/api/v1/notifications/live`;
-    const accountId = new Types.ObjectId().toString();
+    const user = await User.create({
+      personalDetails: {
+        username: "live-off-user",
+        email: `live-off-${Date.now()}@test.com`,
+        password: "hashedpassword",
+        firstName: "Live",
+        lastName: "Off",
+        phoneNumber: "1234567890",
+        birthDate: new Date("1990-01-01"),
+        gender: "Man",
+        nationality: "USA",
+        idType: "National ID",
+        idNumber: `ID-live-off-${Date.now()}`,
+        address: validAddress,
+      },
+    });
+    const accountId = user._id.toString();
     const token = await signAccessTokenForLiveSession(app, {
       id: accountId,
-      email: "live-off@test.com",
+      email: String(user.personalDetails.email),
       type: "user",
       role: "Customer",
     });
+    const ticketResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/live-ticket",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(ticketResponse.statusCode).toBe(201);
+    const { ticket } = JSON.parse(ticketResponse.body) as { ticket: string };
 
     try {
       const message = await new Promise<string>((resolve, reject) => {
@@ -1045,9 +1068,9 @@ describe("Communications Core - Feature Flags", () => {
           () => reject(new Error("upgrade was not accepted")),
           3_000,
         );
-        const socket = new WebSocket(wsUrl, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const socket = new WebSocket(
+          `${wsUrl}?ticket=${encodeURIComponent(ticket)}`,
+        );
         socket.on("message", (data) => {
           clearTimeout(timer);
           socket.close();

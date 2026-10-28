@@ -31,6 +31,7 @@ describe("live connection write gate", () => {
     sessionStorage.clear();
     resetLiveConnectionForTests({
       WebSocket: HarnessSocket,
+      requestTicket: (token) => `ticket-${token}`,
       scheduleReconnect: (attempt) => attempt(),
     });
   });
@@ -82,6 +83,7 @@ describe("live connection write gate", () => {
   it("shows disconnected while the socket is down and not yet reconnecting", () => {
     resetLiveConnectionForTests({
       WebSocket: HarnessSocket,
+      requestTicket: (token) => `ticket-${token}`,
       scheduleReconnect: () => {
         /* stay down so chrome can show disconnected */
       },
@@ -100,6 +102,7 @@ describe("live connection write gate", () => {
     let resyncCalls = 0;
     resetLiveConnectionForTests({
       WebSocket: HarnessSocket,
+      requestTicket: (token) => `ticket-${token}`,
       scheduleReconnect: (attempt) => attempt(),
       resync: () => {
         resyncCalls += 1;
@@ -134,6 +137,7 @@ describe("live connection write gate", () => {
     const resync = deferred();
     resetLiveConnectionForTests({
       WebSocket: HarnessSocket,
+      requestTicket: (token) => `ticket-${token}`,
       scheduleReconnect: (attempt) => attempt(),
       resync: () => resync.promise,
     });
@@ -157,6 +161,7 @@ describe("live connection write gate", () => {
     const resync = deferred();
     resetLiveConnectionForTests({
       WebSocket: HarnessSocket,
+      requestTicket: (token) => `ticket-${token}`,
       scheduleReconnect: (attempt) => attempt(),
       resync: () => resync.promise,
     });
@@ -183,6 +188,7 @@ describe("live connection write gate", () => {
     const resync = deferred();
     resetLiveConnectionForTests({
       WebSocket: HarnessSocket,
+      requestTicket: (token) => `ticket-${token}`,
       scheduleReconnect: (attempt) => attempt(),
       resync: () => resync.promise,
     });
@@ -202,10 +208,12 @@ describe("live connection write gate", () => {
   it("lets one live tab keep writing while another tab is disconnected", () => {
     const first = createLiveConnection({
       WebSocket: HarnessSocket,
+      requestTicket: (token) => `ticket-${token}`,
       scheduleReconnect: (attempt) => attempt(),
     });
     const second = createLiveConnection({
       WebSocket: HarnessSocket,
+      requestTicket: (token) => `ticket-${token}`,
       scheduleReconnect: (attempt) => attempt(),
     });
 
@@ -232,6 +240,7 @@ describe("live connection write gate", () => {
       .mockResolvedValue([] as never);
     resetLiveConnectionForTests({
       WebSocket: HarnessSocket,
+      requestTicket: (token) => `ticket-${token}`,
       scheduleReconnect: (attempt) => attempt(),
     });
 

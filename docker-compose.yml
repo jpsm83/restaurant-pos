@@ -4,6 +4,10 @@ services:
   backend:
     build: .
     command: npm run dev --workspace backend
+    environment:
+      # The app defaults to 127.0.0.1 for local dev; inside the container it
+      # must bind all interfaces so the published port reaches it.
+      HOST: 0.0.0.0
     ports:
       - "4000:4000"
     volumes:
