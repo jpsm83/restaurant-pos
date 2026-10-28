@@ -1,19 +1,14 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { AxiosHeaders, type AxiosRequestConfig } from "axios";
-import { setAccessToken } from "@/auth/api";
-import type { AuthBusiness } from "@/auth/types";
 import { http } from "../http";
 import { queryKeys } from "../queryKeys";
 import {
-  makeServiceErrorCode,
   ServiceRequestError,
   toServiceRequestError,
   type ServiceFailure,
 } from "../serviceErrors";
 import type {
   BusinessProfileDto,
-  CreateBusinessResponseBody,
-  CreateBusinessSuccess,
   ManagementContactOption,
   UpdateBusinessProfileResponseBody,
   UpdateBusinessProfileSuccess,
@@ -51,7 +46,7 @@ const multipartFormDataConfig: AxiosRequestConfig = {
 
 function toBusinessServiceError(
   error: unknown,
-  operation: "businessCreate" | "businessFetch" | "businessUpdate",
+  operation: "businessFetch" | "businessUpdate",
 ): BusinessServiceError {
   const mapped = toServiceRequestError(error, operation);
   return new BusinessServiceError(mapped, { cause: error });
@@ -92,47 +87,6 @@ function logProfileDiagnostics(event: {
     return;
   }
   console.info(payload);
-}
-
-/**
- * Multipart **`POST /api/v1/business`** (`withCredentials` via shared **`http`**).
- * On success: **`setAccessToken`**, return **`user`** for **`AUTH_SUCCESS`**.
- */
-export async function createBusiness(
-  formData: FormData,
-): Promise<CreateBusinessSuccess> {
-  try {
-    const { data } = await http.post<CreateBusinessResponseBody>(
-      "/api/v1/business",
-      formData,
-      multipartFormDataConfig,
-    );
-
-    if (!data?.user || data.user.type !== "business") {
-      throw new BusinessServiceError({
-        code: makeServiceErrorCode("businessCreate", "internal"),
-        serverMessage: data?.message,
-      });
-    }
-
-    if (data.accessToken) {
-      setAccessToken(data.accessToken);
-    }
-
-    return {
-      message: data.message,
-      accessToken: data.accessToken,
-      user: data.user as AuthBusiness,
-    };
-  } catch (e) {
-    throw toBusinessServiceError(e, "businessCreate");
-  }
-}
-
-export function useCreateBusinessMutation() {
-  return useMutation({
-    mutationFn: createBusiness,
-  });
 }
 
 export async function fetchManagementContactOptions(
@@ -183,7 +137,7 @@ export async function getBusinessById(
 
 /**
  * Multipart `PATCH /api/v1/business/:businessId`.
- * Keeps auth token in sync when backend returns a fresh session payload.
+ * The business is venue data, not a session actor; the response carries no new session.
  */
 export function updateBusinessProfile(
   businessId: string,
@@ -218,20 +172,8 @@ export function updateBusinessProfile(
         },
       );
 
-      if (data.accessToken) {
-        setAccessToken(data.accessToken);
-      }
-
-      if (data.user && data.user.type !== "business") {
-        throw new BusinessServiceError({
-          code: makeServiceErrorCode("businessUpdate", "internal"),
-        });
-      }
-
-      const result = {
+      const result: UpdateBusinessProfileSuccess = {
         message: data.message,
-        accessToken: data.accessToken,
-        user: data.user?.type === "business" ? data.user : undefined,
       };
       logProfileDiagnostics({
         action: "save",

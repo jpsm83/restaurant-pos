@@ -30,7 +30,7 @@ export default function BusinessMarketingPage() {
             <a href="/login?audience=business">{t("auth.signIn")}</a>
           </Button>
           <Button variant="outline" asChild>
-            <a href="/business/register">{t("auth.signUp")}</a>
+            <a href="/signup?audience=business">{t("auth.signUp")}</a>
           </Button>
         </CardContent>
       </Card>

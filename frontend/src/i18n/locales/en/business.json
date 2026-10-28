@@ -1,13 +1,12 @@
 {
   "dashboard": {
     "title": "Business dashboard",
-    "tenantCardTitle": "Tenant workspace",
+    "tenantCardTitle": "Venue workspace",
     "signedInPrefix": "Signed in as",
     "sessionUnavailable": "Session details unavailable.",
     "accountMenuHint": "Use the account menu (top right) for profile, favorites, dashboard, or to sign out."
   },
   "errors": {
-    "createConflict": "A business with the same legal name or tax number already exists.",
     "notFound": "Business profile was not found.",
     "updateConflict": "These changes conflict with the saved business profile. Refresh and try again."
   },
@@ -62,12 +61,6 @@
     "core": {
       "sectionTitle": "Core business info",
       "sectionDescription": "Legal and contact details used for billing, support, and account records.",
-      "emailVerification": {
-        "confirmed": "Email confirmed",
-        "confirmCta": "Click to confirm email"
-      },
-      "changeEmailCta": "Change email",
-      "pendingEmail": "Confirmation pending for {{email}}. Check your new inbox to complete the change.",
       "fields": {
         "tradeName": "Trade name",
         "legalName": "Legal name",
@@ -79,26 +72,6 @@
         "timezone": "Time zone"
       },
       "timezoneDefaultHint": "We couldn't determine your time zone from the business address. Update the address country and region to set it."
-    },
-    "changeEmail": {
-      "dialogTitle": "Change sign-in email",
-      "dialogDescription": "Enter the new sign-in address and your current password. We'll email a confirmation link to the new address; your current email stays active until it's confirmed.",
-      "fields": {
-        "newEmail": "New sign-in email",
-        "currentPassword": "Current password"
-      },
-      "errors": {
-        "required": "This field is required.",
-        "invalidEmail": "Please enter a valid email address.",
-        "currentPasswordRequired": "Enter your current password.",
-        "sameEmail": "Enter an address different from your current one."
-      },
-      "submit": "Send confirmation link",
-      "submitting": "Sending…",
-      "cancel": "Cancel",
-      "close": "Close",
-      "successTitle": "Check your new inbox",
-      "successBody": "We sent a confirmation link to {{email}}. Open it to complete the change; your current email stays active until then."
     },
     "discovery": {
       "sectionTitle": "Discovery",
@@ -253,31 +226,6 @@
       "doorNumber": "Door number",
       "complement": "Complement",
       "complementPlaceholder": "Floor, wing, unit details…"
-    }
-  },
-  "credentialsSettings": {
-    "cardDescription": "Change your sign-in password using a secure link we send to your business email. To change the email itself, use the \"Change email\" action on the profile page (you will sign in again after confirming the new address).",
-    "sectionTitle": "Sign-in credentials",
-    "sectionDescription": "Confirm your business email if prompted, then use the action column to receive a time-limited link. Change the sign-in email from the profile settings page.",
-    "actionsColumnTitle": "Password reset",
-    "emailVerify": {
-      "bannerTitle": "Confirm your business email",
-      "bannerDescription": "We sent a link to your sign-in email. Resend if you did not receive it (rate limits may apply).",
-      "resendButton": "Resend confirmation email",
-      "resendSending": "Sending…",
-      "resendSuccess": "Confirmation email sent. Check your inbox."
-    },
-    "passwordChangeEmail": {
-      "introBody": "For security, we do not collect a new password on this screen. Use the button in the right column to send one email to your current business sign-in address with a time-limited link.",
-      "stepCheckInbox": "Open your inbox (and spam folder) for that address.",
-      "stepOpenLink": "Use the link in the email — it opens a dedicated page in this app.",
-      "stepChoosePassword": "On that page, choose a strong new password and submit. The link works once and expires after a short time.",
-      "signInEmailLabel": "We will send the link to: {{email}}",
-      "button": "Email me a link to change password",
-      "sending": "Sending…",
-      "successFallback": "If an account exists for that address, we sent reset instructions.",
-      "errorFallback": "Could not send the email. Try again later.",
-      "missingEmail": "No sign-in email is available for this session."
     }
   },
   "subscriptionSettings": {

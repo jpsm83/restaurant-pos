@@ -32,8 +32,9 @@ vi.mock("@/live/useLiveConnectionStatus", () => ({
 const signedInUser: AuthSession = {
   id: "64b000000000000000000001",
   email: "owner@example.com",
-  type: "business",
-  role: "Tenant",
+  type: "user",
+  mode: "business",
+  role: "Manager",
 };
 
 describe("LiveConnectionBanner", () => {

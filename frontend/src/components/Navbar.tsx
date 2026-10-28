@@ -22,19 +22,11 @@ export default function Navbar() {
   const isLoading = state.status === "loading" || state.status === "idle";
 
   // Marketing audience (only impacts login/signup links). We intentionally treat
-  // `/business/:businessId/*` as an authenticated tenant shell, not marketing.
-  const audience =
-    pathname === "/business" ||
-    pathname === "/business/register" ||
-    pathname === "/business/signup"
-      ? "business"
-      : "customer";
+  // `/business/:businessId/*` as an authenticated venue shell, not marketing.
+  const audience = pathname === "/business" ? "business" : "customer";
 
   const loginHref = `/login?audience=${audience}`;
-  const signUpHref =
-    audience === "business"
-      ? "/business/register"
-      : "/signup?audience=customer";
+  const signUpHref = `/signup?audience=${audience}`;
 
   return (
     <nav

@@ -4,7 +4,7 @@
  * | Path | Layout / notes |
  * |------|----------------|
  * | `/` | `PublicLayout` — marketing index, login, signup, business |
- * | `/business/:businessId` | `BusinessSessionRouteShell` + `BusinessLayout` |
+ * | `/business/:businessId` | `BusinessRouteShell` + `BusinessLayout` |
  * | `/:userId/mode` | `UserSessionRouteShell` — staff customer vs employee |
  * | `/:userId/customer` | `UserSessionRouteShell` + `CustomerLayout` |
  * | `/:userId/employee` | `UserSessionRouteShell` + `RequireEmployeeAuthMode` + `EmployeeLayout` |

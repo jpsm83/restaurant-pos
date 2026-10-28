@@ -7,13 +7,10 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithI18n } from "@/test/i18nTestUtils";
 import {
-  ACCESS_DENIED_PATH,
-  BusinessIdRouteGuard,
+  BusinessRouteShell,
   ProtectedRoute,
   PublicOnlyRoute,
-  RequireBusinessSession,
   RequireEmployeeAuthMode,
-  RequireUserSession,
   UserIdRouteGuard,
 } from "../AuthRouteGuards";
 
@@ -81,42 +78,31 @@ describe("Auth route guards", () => {
     expect(screen.getByText("User customer shell")).toBeInTheDocument();
   });
 
-  it("sends business session to access-denied from RequireUserSession", async () => {
+  it("BusinessRouteShell redirects anonymous visitors to /login", async () => {
     mockUseAuth.mockReturnValue({
-      state: {
-        status: "authenticated",
-        user: {
-          id: "b1",
-          email: "biz@test.local",
-          type: "business",
-        },
-        error: null,
-      },
+      state: { status: "unauthenticated", user: null, error: null },
     });
 
     await renderWithI18n(
-      <MemoryRouter initialEntries={["/only-user"]}>
+      <MemoryRouter initialEntries={["/business/507f1f77bcf86cd799439011"]}>
         <Routes>
+          <Route path="/login" element={<div>Login page</div>} />
           <Route
-            path={ACCESS_DENIED_PATH}
-            element={<div>Access denied page</div>}
-          />
-          <Route
-            path="/only-user"
+            path="/business/:businessId"
             element={
-              <RequireUserSession>
-                <div>User area</div>
-              </RequireUserSession>
+              <BusinessRouteShell>
+                <div>Venue page</div>
+              </BusinessRouteShell>
             }
           />
         </Routes>
       </MemoryRouter>,
     );
 
-    expect(screen.getByText("Access denied page")).toBeInTheDocument();
+    expect(screen.getByText("Login page")).toBeInTheDocument();
   });
 
-  it("sends user session to access-denied from RequireBusinessSession", async () => {
+  it("BusinessRouteShell renders venue pages for an authenticated User", async () => {
     mockUseAuth.mockReturnValue({
       state: {
         status: "authenticated",
@@ -130,25 +116,21 @@ describe("Auth route guards", () => {
     });
 
     await renderWithI18n(
-      <MemoryRouter initialEntries={["/only-business"]}>
+      <MemoryRouter initialEntries={["/business/507f1f77bcf86cd799439011"]}>
         <Routes>
           <Route
-            path={ACCESS_DENIED_PATH}
-            element={<div>Access denied page</div>}
-          />
-          <Route
-            path="/only-business"
+            path="/business/:businessId"
             element={
-              <RequireBusinessSession>
-                <div>Business area</div>
-              </RequireBusinessSession>
+              <BusinessRouteShell>
+                <div>Venue page</div>
+              </BusinessRouteShell>
             }
           />
         </Routes>
       </MemoryRouter>,
     );
 
-    expect(screen.getByText("Access denied page")).toBeInTheDocument();
+    expect(screen.getByText("Venue page")).toBeInTheDocument();
   });
 
   it("UserIdRouteGuard redirects when :userId does not match session id", async () => {
@@ -185,42 +167,6 @@ describe("Auth route guards", () => {
 
     expect(screen.getByText("Canonical user shell")).toBeInTheDocument();
     expect(screen.queryByText("Protected customer")).not.toBeInTheDocument();
-  });
-
-  it("BusinessIdRouteGuard redirects when :businessId does not match session id", async () => {
-    mockUseAuth.mockReturnValue({
-      state: {
-        status: "authenticated",
-        user: {
-          id: "b1",
-          email: "biz@test.local",
-          type: "business",
-        },
-        error: null,
-      },
-    });
-
-    await renderWithI18n(
-      <MemoryRouter initialEntries={["/business/wrong-tenant"]}>
-        <Routes>
-          <Route
-            path="/business/b1/dashboard"
-            element={<div>Canonical business shell</div>}
-          />
-          <Route
-            path="/business/:businessId"
-            element={
-              <BusinessIdRouteGuard>
-                <div>Protected tenant</div>
-              </BusinessIdRouteGuard>
-            }
-          />
-        </Routes>
-      </MemoryRouter>,
-    );
-
-    expect(screen.getByText("Canonical business shell")).toBeInTheDocument();
-    expect(screen.queryByText("Protected tenant")).not.toBeInTheDocument();
   });
 
   describe("RequireEmployeeAuthMode (Phase 3.5)", () => {

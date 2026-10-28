@@ -4,10 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { setAuthMode } from "@/services/authMode";
-import {
-  createBusiness,
-  updateBusinessProfile,
-} from "@/services/business/businessProfileApi";
+import { updateBusinessProfile } from "@/services/business/businessProfileApi";
 import { http } from "@/services/http";
 import { useTableConfigData } from "@/features/advancedTable/hooks/useTableConfigData";
 import {
@@ -98,11 +95,6 @@ describe("signed-in mutations obey the write gate", () => {
     ).resolves.toBe(false);
 
     expect(requests.filter((request) => request.method === "post")).toEqual([]);
-  });
-
-  it("does not send a signed-in business create while disconnected", async () => {
-    await expect(createBusiness(new FormData())).rejects.toBeInstanceOf(Error);
-    expect(requests).toEqual([]);
   });
 
   it("does not store a blocked write in a domain-write queue", async () => {

@@ -71,7 +71,7 @@ describe("businessProfilePayload", () => {
     expect(JSON.parse(String(payload.get("categories")))).toEqual(["Pizza"]);
   });
 
-  it("never sends the sign-in email or credentials (they are server-owned flows)", () => {
+  it("never sends the business contact email or credentials (they are server-owned)", () => {
     const payload = formValuesToUpdatePayload(values());
     expect(payload.get("email")).toBeNull();
     expect(payload.get("confirmEmail")).toBeNull();

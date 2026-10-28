@@ -20,7 +20,7 @@ describe("BusinessMarketingPage", () => {
     );
     expect(screen.getByRole("link", { name: "Sign up" })).toHaveAttribute(
       "href",
-      "/business/register",
+      "/signup?audience=business",
     );
   });
 });

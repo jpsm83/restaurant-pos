@@ -14,7 +14,7 @@ vi.mock("@/auth/store/AuthContext", () => ({
       user: {
         id: "507f1f77bcf86cd799439011",
         email: "owner@restaurant.com",
-        type: "business" as const,
+        type: "user" as const,
       },
       status: "authenticated" as const,
       error: null,
@@ -69,7 +69,7 @@ describe("BusinessDashboardPage advanced table integration", () => {
   beforeEach(() => {
     mockUseBusinessProfileQuery.mockReset();
     mockUseBusinessProfileQuery.mockReturnValue({
-      data: { currencyTrade: "USD" },
+      data: { currencyTrade: "USD", email: "owner@restaurant.com" },
     });
   });
 
@@ -99,7 +99,7 @@ describe("BusinessDashboardPage advanced table integration", () => {
 
   it("renders the dashboard table statuses, dates, and currency in Spanish", async () => {
     mockUseBusinessProfileQuery.mockReturnValue({
-      data: { currencyTrade: "EUR" },
+      data: { currencyTrade: "EUR", email: "owner@restaurant.com" },
     });
 
     await renderBusinessDashboard("es");

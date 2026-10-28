@@ -18,7 +18,8 @@ vi.mock("@/auth/store/AuthContext", () => ({
       user: {
         id: "64b000000000000000000001",
         email: "owner@demo.test",
-        type: "business",
+        type: "user",
+        mode: "business",
       },
       status: "authenticated",
       error: null,

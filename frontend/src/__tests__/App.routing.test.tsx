@@ -15,13 +15,6 @@ vi.mock("@/auth/store/AuthContext", () => ({
   }),
 }));
 
-vi.mock("@/services/business/businessService", () => ({
-  useCreateBusinessMutation: () => ({
-    mutateAsync: vi.fn(),
-    isPending: false,
-  }),
-}));
-
 describe("App public routing (Phase 1.5.1)", () => {
   it("renders `/` customer marketing when anonymous", async () => {
     await renderWithI18n(
@@ -56,18 +49,6 @@ describe("App public routing (Phase 1.5.1)", () => {
 
     expect(
       await screen.findByRole("heading", { name: /page not found/i }),
-    ).toBeInTheDocument();
-  });
-
-  it("renders BusinessRegisterPage for `/business/signup`", async () => {
-    await renderWithI18n(
-      <MemoryRouter initialEntries={["/business/signup"]}>
-        <AppRoutes />
-      </MemoryRouter>,
-    );
-
-    expect(
-      await screen.findByRole("heading", { name: /register your business/i }),
     ).toBeInTheDocument();
   });
 
@@ -107,7 +88,22 @@ describe("App public routing (Phase 1.5.1)", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders ConfirmEmailChangePage and its missing-token error for `/confirm-email-change`", async () => {
+  it("does not register the retired business registration route", async () => {
+    await renderWithI18n(
+      <MemoryRouter initialEntries={["/business/register"]}>
+        <AppRoutes />
+      </MemoryRouter>,
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: /create account/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: /register your business/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not register the retired confirm-email-change route", async () => {
     await renderWithI18n(
       <MemoryRouter initialEntries={["/confirm-email-change"]}>
         <AppRoutes />
@@ -115,12 +111,7 @@ describe("App public routing (Phase 1.5.1)", () => {
     );
 
     expect(
-      await screen.findByRole("heading", { name: /confirm your new email/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "This link is missing a confirmation token. Open the link from your email or request a new change.",
-      ),
+      await screen.findByRole("heading", { name: /page not found/i }),
     ).toBeInTheDocument();
   });
 

@@ -125,15 +125,13 @@ export function useBusinessProfileSettingsGate(): BusinessProfileSettingsGateRes
   const { state } = useAuth();
   const session = state.user;
 
-  const canLoadProfile = Boolean(
-    businessId && session && session.type === "business",
-  );
+  const canLoadProfile = Boolean(businessId && session);
   const profileQuery = useBusinessProfileQuery(
     canLoadProfile ? businessId : undefined,
     canLoadProfile,
   );
 
-  if (!session || session.type !== "business") {
+  if (!session) {
     return { kind: "wrong-session" };
   }
 
@@ -222,7 +220,6 @@ export type BusinessProfileSettingsController =
  */
 export function useBusinessProfileSettingsController(): BusinessProfileSettingsController {
   const gate = useBusinessProfileSettingsGate();
-  const { dispatch } = useAuth();
   const { t } = useTranslation("business");
   const resolveError = useErrorMessage();
   const [submitError, setSubmitError] = useState<ErrorFailure | null>(null);
@@ -328,14 +325,10 @@ export function useBusinessProfileSettingsController(): BusinessProfileSettingsC
     const payload = formValuesToUpdatePayload(values);
 
     try {
-      const updateResult = await updateMutation.mutateAsync({
+      await updateMutation.mutateAsync({
         businessId,
         formData: payload,
       });
-
-      if (updateResult.user) {
-        dispatch({ type: "AUTH_SUCCESS", payload: updateResult.user });
-      }
 
       const refreshed = await profileQuery.refetch();
       if (refreshed.data) {

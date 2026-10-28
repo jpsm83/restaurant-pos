@@ -11,22 +11,8 @@ import type { IPersonalDetails } from "restaurant-pos-packages/interfaces/IPerso
 export type AuthStatus = "idle" | "loading" | "authenticated" | "unauthenticated";
 
 /**
- * JWT session payload for tenant (business) login.
- * Mirrors `backend/src/auth/types.ts` — `AuthBusiness`.
- */
-export interface AuthBusiness {
-  id: string;
-  email: string;
-  type: "business";
-  /** From login / refresh / registration; drives verification UI. */
-  emailVerified?: boolean;
-  /** Tenant sign-in; mirrors backend `AuthBusiness.role`. */
-  role: "Tenant";
-}
-
-/**
- * JWT session payload for a person (User) login.
- * Mirrors `backend/src/auth/types.ts` — `AuthUser`.
+ * JWT session payload for the signed-in User.
+ * Mirrors `backend/src/auth/types.ts` — `AuthUser`. The User is the only auth actor.
  */
 export interface AuthUser {
   id: string;
@@ -49,10 +35,10 @@ export interface AuthUser {
 }
 
 /**
- * JWT payload union returned in `user` from login, signup, refresh, and `GET /api/v1/auth/me`.
+ * JWT payload returned in `user` from login, signup, refresh, and `GET /api/v1/auth/me`.
  * Mirrors `backend/src/auth/types.ts` — `AuthSession`.
  */
-export type AuthSession = AuthBusiness | AuthUser;
+export type AuthSession = AuthUser;
 
 /**
  * Successful login / signup / refresh response: optional access token + session payload.
@@ -93,7 +79,7 @@ export interface UserProfile {
 }
 
 export interface AuthState {
-  /** Current JWT session (business or user); `state.user` naming kept for existing code. */
+  /** Current JWT session for the signed-in User. */
   user: AuthSession | null;
   status: AuthStatus;
   /** Machine code only; UI surfaces resolve it to localized copy at render time. */

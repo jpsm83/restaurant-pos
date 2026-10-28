@@ -11,7 +11,6 @@ const MINIMAL_CHROME_PATHS = new Set([
   "/forgot-password",
   "/reset-password",
   "/confirm-email",
-  "/confirm-email-change",
 ]);
 
 export default function AppRootShell() {

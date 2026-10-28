@@ -1,5 +1,5 @@
 /**
- * Tests for `postLoginRedirect.ts` — `getPostLoginDestination` vs session shape.
+ * Tests for `postLoginRedirect.ts` — the signed-in User always lands on Customer.
  */
 import { describe, expect, it } from "vitest";
 import type { AuthSession } from "../types";
@@ -7,16 +7,6 @@ import { getPostLoginDestination } from "../postLoginRedirect";
 
 describe("getPostLoginDestination", () => {
   const table: { name: string; session: AuthSession; expected: string }[] = [
-    {
-      name: "business tenant",
-      session: {
-        id: "b1",
-        email: "b@test.local",
-        type: "business",
-        role: "Tenant",
-      },
-      expected: "/business/b1/dashboard",
-    },
     {
       name: "user without employee link",
       session: {
@@ -28,7 +18,7 @@ describe("getPostLoginDestination", () => {
       expected: "/u1/customer/dashboard",
     },
     {
-      name: "user with employee link (mode selection)",
+      name: "employee-linked user also stays on Customer",
       session: {
         id: "u1",
         email: "u@test.local",
@@ -37,8 +27,20 @@ describe("getPostLoginDestination", () => {
         businessId: "biz1",
         canLogAsEmployee: true,
         role: "Manager",
+        mode: "customer",
       },
-      expected: "/u1/mode",
+      expected: "/u1/customer/dashboard",
+    },
+    {
+      name: "owner with business mode also stays on Customer",
+      session: {
+        id: "u1",
+        email: "owner@test.local",
+        type: "user",
+        mode: "business",
+        role: "Customer",
+      },
+      expected: "/u1/customer/dashboard",
     },
   ];
 

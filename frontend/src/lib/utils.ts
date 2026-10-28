@@ -7,7 +7,7 @@
  *
  * ## Wiring
  * Imported by shadcn-style components under `components/ui/*` (`button`, `card`, `input`, …) and
- * a few pages/components that need the same pattern (`AccountMenuPopover`, `BusinessRegisterPage`).
+ * a few pages/components that need the same pattern (`AccountMenuPopover`, `Navbar`).
  * This is the standard helper for `className` composition in the app.
  */
 import { clsx, type ClassValue } from "clsx"

@@ -1,6 +1,5 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 import type {
-  AuthBusiness,
   AuthLoginSnapshot,
   AuthSession,
   AuthState,
@@ -17,35 +16,20 @@ describe("auth types", () => {
     >();
   });
 
-  it("AuthSession narrows on type for business vs user payloads", () => {
-    const business: AuthBusiness = {
-      id: "b1",
-      email: "t@example.com",
-      type: "business",
-      role: "Tenant",
-    };
+  it("AuthSession is the User-only session payload", () => {
     const user: AuthUser = {
       id: "u1",
       email: "c@example.com",
       type: "user",
+      mode: "customer",
+      languagePreference: "es",
       role: "Customer",
     };
 
-    expectTypeOf(business).toMatchTypeOf<AuthSession>();
     expectTypeOf(user).toMatchTypeOf<AuthSession>();
-
-    function assertNarrowing(s: AuthSession) {
-      if (s.type === "business") {
-        expectTypeOf(s).toEqualTypeOf<AuthBusiness>();
-        expect(s.role).toBe("Tenant");
-      } else {
-        expectTypeOf(s).toEqualTypeOf<AuthUser>();
-        expect(s.type).toBe("user");
-      }
-    }
-
-    assertNarrowing(business);
-    assertNarrowing(user);
+    expectTypeOf<AuthSession>().toEqualTypeOf<AuthUser>();
+    expect(user.mode).toBe("customer");
+    expect(user.languagePreference).toBe("es");
   });
 
   it("AuthState ties user, status, and optional error", () => {
@@ -58,15 +42,16 @@ describe("auth types", () => {
 
     const authed: AuthState = {
       user: {
-        id: "b1",
+        id: "u1",
         email: "o@example.com",
-        type: "business",
-        role: "Tenant",
+        type: "user",
+        mode: "business",
+        role: "Manager",
       },
       status: "authenticated",
       error: null,
     };
-    expect(authed.user?.type).toBe("business");
+    expect(authed.user?.mode).toBe("business");
   });
 
   it("AuthLoginSnapshot allows token + nullable user", () => {

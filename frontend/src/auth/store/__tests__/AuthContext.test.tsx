@@ -27,8 +27,10 @@ vi.mock("@/i18n/i18n", () => ({
 const sampleUser: AuthSession = {
   id: "64b000000000000000000001",
   email: "owner@example.com",
-  type: "business",
-  role: "Tenant",
+  type: "user",
+  mode: "business",
+  languagePreference: "en",
+  role: "Manager",
 };
 
 const sampleCustomer: AuthSession = {

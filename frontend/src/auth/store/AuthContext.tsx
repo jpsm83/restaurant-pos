@@ -86,8 +86,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
   const hydratedLanguage =
-    state.status === "authenticated" && state.user?.type === "user"
-      ? state.user.languagePreference
+    state.status === "authenticated"
+      ? state.user?.languagePreference
       : undefined;
 
   useEffect(() => {

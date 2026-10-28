@@ -18,7 +18,6 @@
   "account": {
     "menuAriaLabel": "Account menu",
     "actorType": {
-      "business": "Business",
       "customer": "Customer",
       "employee": "Employee"
     },
@@ -40,10 +39,7 @@
   "settings": {
     "title": "Settings",
     "profile": "Profile",
-    "subscriptions": "Subscriptions",
-    "address": "Address",
     "openHours": "Open hours",
-    "credentials": "Credentials",
     "delivery": "Delivery",
     "metrics": "Metrics",
     "settings": "Settings"

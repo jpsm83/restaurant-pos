@@ -33,11 +33,11 @@ vi.mock("@/components/ui/sidebar", () => ({
 }));
 
 describe("BusinessLayout", () => {
-  it("renders null when session is not an authenticated business", async () => {
+  it("renders null when there is no authenticated User", async () => {
     mockUseAuth.mockReturnValue({
       state: {
-        status: "authenticated",
-        user: { id: "u1", email: "u@test.local", type: "user", role: "Customer" },
+        status: "unauthenticated",
+        user: null,
         error: null,
       },
     });
@@ -55,11 +55,17 @@ describe("BusinessLayout", () => {
     expect(screen.queryByText("Business Outlet")).not.toBeInTheDocument();
   });
 
-  it("renders sidebar and outlet for authenticated business session", async () => {
+  it("renders sidebar and outlet for an authenticated User", async () => {
     mockUseAuth.mockReturnValue({
       state: {
         status: "authenticated",
-        user: { id: "b1", email: "b@test.local", type: "business", role: "Tenant" },
+        user: {
+          id: "u1",
+          email: "u@test.local",
+          type: "user",
+          mode: "business",
+          role: "Manager",
+        },
         error: null,
       },
     });

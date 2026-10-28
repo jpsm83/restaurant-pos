@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { CreditCard, KeyRound, MapPin, User } from "lucide-react";
+import { User } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import type { AuthSession } from "@/auth/types";
 import { logout, setAccessToken } from "@/auth/api";
@@ -17,18 +17,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  canonicalBusinessProfilePath,
-  canonicalBusinessSettingsAddressPath,
-  canonicalBusinessSettingsCredentialsPath,
-  canonicalBusinessSettingsSubscriptionsPath,
   canonicalUserCustomerProfilePath,
+  canonicalUserEmployeeProfilePath,
 } from "@/routes/canonicalPaths";
-
-function profilePathForSession(session: AuthSession): string {
-  return session.type === "business"
-    ? canonicalBusinessProfilePath(session)
-    : canonicalUserCustomerProfilePath(session);
-}
 
 function initialsFromEmail(email: string): string {
   const local = email.split("@")[0]?.trim() ?? "";
@@ -52,21 +43,14 @@ export function AccountMenuPopover({ session }: AccountMenuPopoverProps) {
   const { pathname } = useLocation();
   const { dispatch } = useAuth();
   const { mode, setMode } = useTheme();
-  const profileTo = profilePathForSession(session);
 
-  const userShell =
-    session.type === "user"
-      ? {
-          onEmployee: pathname.includes(`/${session.id}/employee`),
-        }
-      : null;
-
-  const actorTypeLabel =
-    session.type === "business"
-      ? t("account.actorType.business")
-      : userShell?.onEmployee
-        ? t("account.actorType.employee")
-        : t("account.actorType.customer");
+  const onEmployee = pathname.includes(`/${session.id}/employee`);
+  const profileTo = onEmployee
+    ? canonicalUserEmployeeProfilePath(session)
+    : canonicalUserCustomerProfilePath(session);
+  const actorTypeLabel = onEmployee
+    ? t("account.actorType.employee")
+    : t("account.actorType.customer");
 
   const handleModeChange = (value: string) => {
     if (isThemeMode(value)) setMode(value);
@@ -130,43 +114,6 @@ export function AccountMenuPopover({ session }: AccountMenuPopoverProps) {
           />
           {t("settings.profile")}
         </DropdownMenuItem>
-        {session.type === "business" ? (
-          <>
-            <DropdownMenuItem
-              onSelect={() =>
-                navigate(canonicalBusinessSettingsAddressPath(session))
-              }
-            >
-              <MapPin
-                className="text-muted-foreground group-focus/dropdown-menu-item:text-accent-foreground"
-                aria-hidden
-              />
-              {t("settings.address")}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onSelect={() =>
-                navigate(canonicalBusinessSettingsSubscriptionsPath(session))
-              }
-            >
-              <CreditCard
-                className="text-muted-foreground group-focus/dropdown-menu-item:text-accent-foreground"
-                aria-hidden
-              />
-              {t("settings.subscriptions")}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onSelect={() =>
-                navigate(canonicalBusinessSettingsCredentialsPath(session))
-              }
-            >
-              <KeyRound
-                className="text-muted-foreground group-focus/dropdown-menu-item:text-accent-foreground"
-                aria-hidden
-              />
-              {t("settings.credentials")}
-            </DropdownMenuItem>
-          </>
-        ) : null}
         <DropdownMenuSeparator />
         <DropdownMenuLabel>{t("account.theme.label")}</DropdownMenuLabel>
         <DropdownMenuRadioGroup

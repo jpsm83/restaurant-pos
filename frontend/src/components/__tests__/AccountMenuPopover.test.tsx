@@ -45,17 +45,17 @@ describe("AccountMenuPopover (actor summary)", () => {
     resetThemeStore();
   });
 
-  it("shows actor summary, profile, business settings links, and log out", async () => {
+  it("shows the User summary, profile, language, and log out", async () => {
     const user = userEvent.setup();
 
     await renderWithI18n(
-      <MemoryRouter initialEntries={["/business/64b000000000000000000001/dashboard"]}>
+      <MemoryRouter initialEntries={["/64b000000000000000000001/customer/dashboard"]}>
         <AccountMenuPopover
           session={{
             id: "64b000000000000000000001",
             email: "owner@restaurant.com",
-            type: "business",
-            role: "Tenant",
+            type: "user",
+            role: "Customer",
           }}
         />
       </MemoryRouter>,
@@ -63,16 +63,16 @@ describe("AccountMenuPopover (actor summary)", () => {
 
     await user.click(screen.getByRole("button", { name: /account menu/i }));
 
-    expect(screen.getByText(/business/i)).toBeInTheDocument();
+    expect(screen.getByText(/customer/i)).toBeInTheDocument();
     expect(screen.getByText("owner@restaurant.com")).toBeInTheDocument();
 
     // Language flag button (aria-label is in `common` namespace).
     expect(screen.getByRole("button", { name: /language/i })).toBeInTheDocument();
 
     expect(screen.getByRole("menuitem", { name: /profile/i })).toBeInTheDocument();
-    expect(screen.getByRole("menuitem", { name: /subscriptions/i })).toBeInTheDocument();
-    expect(screen.getByRole("menuitem", { name: /^address$/i })).toBeInTheDocument();
-    expect(screen.getByRole("menuitem", { name: /credentials/i })).toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: /subscriptions/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: /^address$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: /credentials/i })).not.toBeInTheDocument();
     expect(screen.getByRole("menuitem", { name: /log out/i })).toBeInTheDocument();
   });
 
@@ -80,13 +80,13 @@ describe("AccountMenuPopover (actor summary)", () => {
     const user = userEvent.setup();
 
     await renderWithI18n(
-      <MemoryRouter initialEntries={["/business/64b000000000000000000001/dashboard"]}>
+      <MemoryRouter initialEntries={["/64b000000000000000000001/customer/dashboard"]}>
         <AccountMenuPopover
           session={{
             id: "64b000000000000000000001",
             email: "owner@restaurant.com",
-            type: "business",
-            role: "Tenant",
+            type: "user",
+            role: "Customer",
           }}
         />
       </MemoryRouter>,

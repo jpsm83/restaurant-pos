@@ -168,7 +168,7 @@ describe("LoginPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("navigates to /business/:id/dashboard after business login", async () => {
+  it("keeps an owner on the Customer dashboard after login", async () => {
     const user = userEvent.setup();
     mockLogin.mockResolvedValue({
       ok: true,
@@ -176,7 +176,9 @@ describe("LoginPage", () => {
         user: {
           id: "507f1f77bcf86cd799439011",
           email: "owner@restaurant.com",
-          type: "business",
+          type: "user",
+          mode: "customer",
+          role: "Customer",
         },
       },
     });
@@ -186,8 +188,8 @@ describe("LoginPage", () => {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route
-            path="/business/:businessId/dashboard"
-            element={<div>Business tenant dashboard</div>}
+            path="/:userId/customer/dashboard"
+            element={<div>Customer dashboard</div>}
           />
         </Routes>
       </MemoryRouter>,
@@ -198,7 +200,7 @@ describe("LoginPage", () => {
     await user.click(screen.getByRole("button", { name: /sign in/i }));
 
     await waitFor(() => {
-      expect(screen.getByText("Business tenant dashboard")).toBeInTheDocument();
+      expect(screen.getByText("Customer dashboard")).toBeInTheDocument();
     });
   });
 

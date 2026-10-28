@@ -52,9 +52,9 @@ describe("useBusinessProfileSettingsGate", () => {
     mockUseBusinessProfileQuery.mockReset();
   });
 
-  it("returns wrong-session when user is not a business session", () => {
+  it("returns wrong-session when there is no signed-in User", () => {
     mockUseAuth.mockReturnValue({
-      state: { user: { id: "u1", email: "u@test.local", type: "user", role: "Customer" } },
+      state: { user: null },
     });
     mockUseParams.mockReturnValue({ businessId: "biz1" });
     mockUseBusinessProfileQuery.mockReturnValue({
@@ -72,7 +72,15 @@ describe("useBusinessProfileSettingsGate", () => {
 
   it("returns no-business-id when route param is missing", () => {
     mockUseAuth.mockReturnValue({
-      state: { user: { id: "b1", email: "b@test.local", type: "business", role: "Tenant" } },
+      state: {
+        user: {
+          id: "u1",
+          email: "u@test.local",
+          type: "user",
+          mode: "business",
+          role: "Manager",
+        },
+      },
     });
     mockUseParams.mockReturnValue({ businessId: undefined });
     mockUseBusinessProfileQuery.mockReturnValue({

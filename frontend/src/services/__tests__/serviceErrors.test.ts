@@ -58,7 +58,7 @@ describe("toServiceRequestError", () => {
 
   it("uses problem type over status when both are present", () => {
     const mapped = toServiceRequestErrorFromResponse(
-      "businessCreate",
+      "businessUpdate",
       400,
       {
         type: "https://restaurant-pos.app/errors/conflict",
@@ -66,7 +66,7 @@ describe("toServiceRequestError", () => {
       },
     );
 
-    expect(mapped.code).toBe("businessCreate.conflict");
+    expect(mapped.code).toBe("businessUpdate.conflict");
     expect(mapped.serverMessage).toBe("Duplicate tax number");
   });
 

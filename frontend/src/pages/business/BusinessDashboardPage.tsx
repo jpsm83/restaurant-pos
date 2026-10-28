@@ -8,18 +8,20 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useBusinessProfileQuery } from "@/services/business/businessService";
 import BusinessAdvancedTableSection from "../../components/business/BusinessAdvancedTableSection";
 
 /**
- * Tenant dashboard stub (`/business/:businessId/dashboard`).
+ * Venue dashboard data page (`/business/:businessId/dashboard`).
  */
 export default function BusinessDashboardPage() {
   const { t } = useTranslation("business");
   const { businessId } = useParams<{ businessId: string }>();
   const { state } = useAuth();
 
-  const session = state.user;
-  const email = session?.type === "business" ? session.email : undefined;
+  const signedInEmail = state.user?.email;
+  const profileQuery = useBusinessProfileQuery(businessId);
+  const businessEmail = profileQuery.data?.email;
 
   return (
     <main className="min-h-0 flex-1 p-6">
@@ -28,10 +30,10 @@ export default function BusinessDashboardPage() {
         <CardHeader>
           <CardTitle>{t("dashboard.tenantCardTitle")}</CardTitle>
           <CardDescription>
-            {email ? (
+            {signedInEmail ? (
               <>
                 {t("dashboard.signedInPrefix")}{" "}
-                <span className="font-medium text-foreground">{email}</span>
+                <span className="font-medium text-foreground">{signedInEmail}</span>
               </>
             ) : (
               t("dashboard.sessionUnavailable")
@@ -43,7 +45,10 @@ export default function BusinessDashboardPage() {
         </CardContent>
       </Card>
       <div className="mx-auto mt-6 w-full max-w-4xl">
-        <BusinessAdvancedTableSection businessId={businessId} businessEmail={email} />
+        <BusinessAdvancedTableSection
+          businessId={businessId}
+          businessEmail={businessEmail}
+        />
       </div>
     </main>
   );

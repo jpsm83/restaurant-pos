@@ -20,7 +20,7 @@ import SelectUserModePage from "@/pages/SelectUserModePage";
 import CustomerMarketingPage from "@/pages/marketing/CustomerMarketingPage";
 import BusinessMarketingPage from "@/pages/marketing/BusinessMarketingPage";
 import {
-  BusinessSessionRouteShell,
+  BusinessRouteShell,
   ProtectedRoute,
   PublicOnlyRoute,
   RequireEmployeeAuthMode,
@@ -30,7 +30,6 @@ import {
 import {
   canonicalDefaultDashboardPath,
 } from "./routes/canonicalPaths";
-import BusinessRegisterPage from "./pages/business/BusinessRegisterPage";
 
 const LoginPage = lazy(() => import("@/pages/LoginPage"));
 const SignUpPage = lazy(() => import("@/pages/SignUpPage"));
@@ -39,9 +38,6 @@ const ResetPasswordPage = lazy(() => import("@/pages/ResetPasswordPage"));
 const ConfirmEmailPage = lazy(() => import("@/pages/ConfirmEmailPage"));
 const RequestEmailConfirmationPage = lazy(
   () => import("@/pages/RequestEmailConfirmationPage"),
-);
-const ConfirmEmailChangePage = lazy(
-  () => import("@/pages/ConfirmEmailChangePage"),
 );
 const BusinessDashboardPage = lazy(() => import("@/pages/business/BusinessDashboardPage"));
 const BusinessDeliverySettingsPage = lazy(
@@ -58,9 +54,6 @@ const BusinessAddressSettingsPage = lazy(
 );
 const BusinessOpenHoursSettingsPage = lazy(
   () => import("@/pages/business/BusinessOpenHoursSettingsPage"),
-);
-const BusinessCredentialsSettingsPage = lazy(
-  () => import("@/pages/business/BusinessCredentialsSettingsPage"),
 );
 const BusinessProfileSettingsPage = lazy(
   () => import("@/pages/business/BusinessProfileSettingsPage"),
@@ -160,22 +153,6 @@ export function AppRoutes() {
               }
             />
             <Route path="business" element={<PublicBusinessRoute />} />
-            <Route
-              path="business/register"
-              element={
-                <PublicOnlyRoute>
-                  <BusinessRegisterPage />
-                </PublicOnlyRoute>
-              }
-            />
-            <Route
-              path="business/signup"
-              element={
-                <PublicOnlyRoute>
-                  <BusinessRegisterPage />
-                </PublicOnlyRoute>
-              }
-            />
           </Route>
 
           {/**
@@ -201,10 +178,6 @@ export function AppRoutes() {
                 </PublicOnlyRoute>
               }
             />
-            <Route
-              path="confirm-email-change"
-              element={<ConfirmEmailChangePage />}
-            />
           </Route>
 
           <Route path="/access-denied" element={<AccessDenied />} />
@@ -216,9 +189,9 @@ export function AppRoutes() {
           <Route
             path="/business/:businessId"
             element={
-              <BusinessSessionRouteShell>
+              <BusinessRouteShell>
                 <BusinessLayout />
-              </BusinessSessionRouteShell>
+              </BusinessRouteShell>
             }
           >
             <Route index element={<Navigate to="dashboard" replace />} />
@@ -243,10 +216,6 @@ export function AppRoutes() {
             <Route
               path="settings/open-hours"
               element={<BusinessOpenHoursSettingsPage />}
-            />
-            <Route
-              path="settings/credentials"
-              element={<BusinessCredentialsSettingsPage />}
             />
           </Route>
 

@@ -3,25 +3,11 @@
  * - shared types used across pages/hooks/tests
  * - focused implementations split into `businessProfileApi`, `businessProfileMapper`, and `businessProfilePayload`
  */
-import type { AuthBusiness, AuthSession } from "@/auth/types";
 import type {
   IBusinessMetrics,
   IBusinessProfileAddress,
   IBusinessProfileDto,
 } from "restaurant-pos-packages/interfaces/IBusiness";
-
-export type CreateBusinessResponseBody = {
-  message?: string;
-  accessToken?: string;
-  user?: AuthSession;
-};
-
-/** Result after applying session from a successful registration. */
-export type CreateBusinessSuccess = {
-  message?: string;
-  accessToken?: string;
-  user: AuthBusiness;
-};
 
 export type BusinessProfileAddress = IBusinessProfileAddress;
 export type BusinessProfileDto = IBusinessProfileDto;
@@ -92,14 +78,10 @@ export type BusinessProfileFormValues = {
 
 export type UpdateBusinessProfileResponseBody = {
   message?: string;
-  accessToken?: string;
-  user?: AuthSession;
 };
 
 export type UpdateBusinessProfileSuccess = {
   message?: string;
-  accessToken?: string;
-  user?: AuthBusiness;
 };
 
 export type ManagementContactOption = {
@@ -111,12 +93,10 @@ export type { IBusinessMetrics };
 
 export {
   BusinessServiceError,
-  createBusiness,
   fetchManagementContactOptions,
   getBusinessById,
   updateBusinessProfile,
   useBusinessProfileQuery,
-  useCreateBusinessMutation,
   useUpdateBusinessProfileMutation,
 } from "./businessProfileApi";
 

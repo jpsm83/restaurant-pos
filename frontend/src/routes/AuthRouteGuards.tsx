@@ -7,16 +7,18 @@
  * session-correct destinations — those come from `canonicalPaths.ts` and `getPostLoginDestination`.
  *
  * ## Composition (outer → inner)
- * - `UserSessionRouteShell` = `ProtectedRoute` → `RequireUserSession` → `UserIdRouteGuard` → layout/page.
- * - `BusinessSessionRouteShell` = `ProtectedRoute` → `RequireBusinessSession` → `BusinessIdRouteGuard` → layout/page.
+ * - `UserSessionRouteShell` = `ProtectedRoute` → `UserIdRouteGuard` → layout/page.
+ * - `BusinessRouteShell` = `ProtectedRoute` → venue layout/page. Venue data pages only need the
+ *   signed-in User; the shared business-mode eligibility seam is `AuthModeContext` /
+ *   `RequireEmployeeAuthMode`, while the full toggle and navigation chrome remain 1.7.
  * - Employee area adds `RequireEmployeeAuthMode` **inside** `UserSessionRouteShell` (must be under
  *   `/:userId/employee` so params and session-mode check apply).
  *
  * ## Wiring (`appRoutes.tsx`)
- * - Public routes: `PublicOnlyRoute` on `/login`, `/signup`, `/forgot-password`, `/business/register`
+ * - Public routes: `PublicOnlyRoute` on `/login`, `/signup`, `/forgot-password`
  *   — if already authenticated, redirect via `getPostLoginDestination` (auth/postLoginRedirect.ts).
  *   `/reset-password` and `/confirm-email` stay reachable with an existing session (email links).
- * - `/business/:businessId/*` → `BusinessSessionRouteShell` + `BusinessLayout`.
+ * - `/business/:businessId/*` → `BusinessRouteShell` + `BusinessLayout`.
  * - `/:userId/mode` → `UserSessionRouteShell` + mode page.
  * - `/:userId/customer/*` → `UserSessionRouteShell` + `CustomerLayout`.
  * - `/:userId/employee/*` → `UserSessionRouteShell` → `RequireEmployeeAuthMode` + `EmployeeLayout`.
@@ -33,14 +35,9 @@ import { useAuth } from "@/auth/store/AuthContext";
 import { useAuthMode } from "@/context/AuthModeContext";
 import { AppPendingShell } from "@/components/AppPendingShell";
 import {
-  canonicalBusinessDashboardRoutePath,
   canonicalUserCustomerDashboardPath,
-  matchesSessionBusinessId,
   matchesSessionUserId,
 } from "./canonicalPaths";
-
-/** Static path for session-type partition violations (`RequireUserSession` / `RequireBusinessSession`). */
-export const ACCESS_DENIED_PATH = "/access-denied";
 
 /** Auth / guard pending state — same skeleton shell as route loading; status text is sr-only (see `AppPendingShell`). */
 export function SessionLoading(props?: { message?: string }) {
@@ -77,72 +74,33 @@ export function PublicOnlyRoute({ children }: { children: ReactElement }) {
   return children;
 }
 
-/** Requires authenticated **user** (`type === "user"`). Wrong session type → `ACCESS_DENIED_PATH`. */
-export function RequireUserSession({ children }: { children: ReactElement }) {
-  const { state } = useAuth();
-
-  if (state.status === "loading" || state.status === "idle") {
-    return <SessionLoading />;
-  }
-
-  if (state.status !== "authenticated" || !state.user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (state.user.type !== "user") {
-    return <Navigate to={ACCESS_DENIED_PATH} replace />;
-  }
-
-  return children;
-}
-
-/** Requires authenticated **business** (`type === "business"`). Wrong session type → `ACCESS_DENIED_PATH`. */
-export function RequireBusinessSession({ children }: { children: ReactElement }) {
-  const { state } = useAuth();
-
-  if (state.status === "loading" || state.status === "idle") {
-    return <SessionLoading />;
-  }
-
-  if (state.status !== "authenticated" || !state.user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (state.user.type !== "business") {
-    return <Navigate to={ACCESS_DENIED_PATH} replace />;
-  }
-
-  return children;
-}
-
 /**
- * Authenticated **person** routes: session loaded, `type === "user"`, and URL `:userId` matches `state.user.id`.
+ * Authenticated User routes under `/:userId`: session loaded and URL `:userId` matches `state.user.id`.
  * Use for `/:userId/mode`, `/:userId/customer`, `/:userId/employee` shells.
  */
 export function UserSessionRouteShell({ children }: { children: ReactElement }) {
   return (
     <ProtectedRoute>
-      <RequireUserSession>
-        <UserIdRouteGuard>{children}</UserIdRouteGuard>
-      </RequireUserSession>
+      <UserIdRouteGuard>{children}</UserIdRouteGuard>
     </ProtectedRoute>
   );
 }
 
-/**
- * Authenticated **business** tenant routes: session loaded, `type === "business"`, and `:businessId` matches.
- */
-export function BusinessSessionRouteShell({ children }: { children: ReactElement }) {
-  return (
-    <ProtectedRoute>
-      <RequireBusinessSession>
-        <BusinessIdRouteGuard>{children}</BusinessIdRouteGuard>
-      </RequireBusinessSession>
-    </ProtectedRoute>
-  );
+/** Retired business-auth URLs that must not be mistaken for a venue id. */
+const RETIRED_BUSINESS_AUTH_SEGMENTS = new Set(["register", "signup"]);
+
+/** Authenticated User routes for a venue's data pages under `/business/:businessId`. */
+export function BusinessRouteShell({ children }: { children: ReactElement }) {
+  const { businessId } = useParams<{ businessId: string }>();
+
+  if (businessId && RETIRED_BUSINESS_AUTH_SEGMENTS.has(businessId)) {
+    return <Navigate to="/signup?audience=business" replace />;
+  }
+
+  return <ProtectedRoute>{children}</ProtectedRoute>;
 }
 
-/** Ensures `:userId` matches session (`state.user.id`). Optional ObjectId validation: `isLikelyMongoObjectIdString` in `canonicalPaths.ts`. */
+/** Ensures `:userId` matches session (`state.user.id`). */
 export function UserIdRouteGuard({ children }: { children: ReactElement }) {
   const { userId } = useParams();
   const { state } = useAuth();
@@ -152,7 +110,7 @@ export function UserIdRouteGuard({ children }: { children: ReactElement }) {
     return <SessionLoading />;
   }
 
-  if (!user || user.type !== "user") {
+  if (!user) {
     return <Navigate to="/login" replace />;
   }
 
@@ -183,27 +141,6 @@ export function RequireEmployeeAuthMode({ children }: { children: ReactElement }
 
   if (isError || mode !== "business") {
     return <Navigate to={`/${userId}/mode`} replace />;
-  }
-
-  return children;
-}
-
-/** Ensures `:businessId` matches session (`state.user.id` for `type === "business"`). */
-export function BusinessIdRouteGuard({ children }: { children: ReactElement }) {
-  const { businessId } = useParams();
-  const { state } = useAuth();
-  const user = state.user;
-
-  if (state.status === "loading" || state.status === "idle") {
-    return <SessionLoading />;
-  }
-
-  if (!user || user.type !== "business") {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (!matchesSessionBusinessId(businessId, user)) {
-    return <Navigate to={canonicalBusinessDashboardRoutePath(user)} replace />;
   }
 
   return children;

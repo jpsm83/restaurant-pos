@@ -15,7 +15,7 @@
  *   above would mis-classify paths like `/business/64a…` as `business` marketing.
  *
  * ## Rules (pathname → audience)
- * - `/business` or `/business/*` → `business` (includes `/business/register`).
+ * - `/business` or `/business/*` → `business`.
  * - Otherwise → `customer`.
  */
 /* eslint-disable react-refresh/only-export-components */

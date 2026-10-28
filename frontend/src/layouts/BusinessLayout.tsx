@@ -1,21 +1,20 @@
 /**
  * ## `BusinessLayout` (`src/layouts`)
  * **Parent route:** `path="/business/:businessId"` in `appRoutes.tsx`, wrapped by
- * **`BusinessSessionRouteShell`** (session type + `:businessId` match) before this layout renders.
+ * **`BusinessRouteShell`** (authenticated User session) before this layout renders.
  *
  * ## Flow
  * **`SidebarProvider`** wraps routed content in **`main.tsx`**. This layout adds **Sidebar** +
  * **main column** (same flex role as shadcn `SidebarInset`, but a **`div`** so child pages may use `<main>`); **`<Outlet />`** (in **`Suspense`**) renders tenant pages in the main
  * column (`dashboard`,
  * `settings/profile`, `settings/subscriptions`, `settings/address`, `settings/open-hours`,
- * `settings/delivery`, `settings/metrics`, `settings/credentials`). Deeper links also appear in
- * `AccountMenuPopover`.
+ * `settings/delivery`, `settings/metrics`).
  * No footer — see `PublicLayout`.
  *
  * Folder overview: `PublicLayout`, `CustomerLayout`, `EmployeeLayout` — all wired from `appRoutes.tsx`.
  */
 import { Suspense } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useParams } from "react-router-dom";
 import { AppPendingShell } from "@/components/AppPendingShell";
 import ActorSidebar from "@/components/ActorSidebar";
 import { Sidebar, SidebarRail } from "@/components/ui/sidebar";
@@ -40,14 +39,15 @@ export default function BusinessLayout() {
   const { state } = useAuth();
   const { t } = useTranslation("nav");
   const { pathname } = useLocation();
+  const { businessId } = useParams<{ businessId: string }>();
 
   const session = state.status === "authenticated" ? state.user : null;
-  if (!session || session.type !== "business") return null;
+  if (!session || !businessId) return null;
 
-  const dashboardTo = canonicalBusinessDashboardRoutePath(session);
-  const openHoursTo = canonicalBusinessSettingsOpenHoursPath(session);
-  const deliveryTo = canonicalBusinessSettingsDeliveryPath(session);
-  const metricsTo = canonicalBusinessSettingsMetricsPath(session);
+  const dashboardTo = canonicalBusinessDashboardRoutePath(businessId);
+  const openHoursTo = canonicalBusinessSettingsOpenHoursPath(businessId);
+  const deliveryTo = canonicalBusinessSettingsDeliveryPath(businessId);
+  const metricsTo = canonicalBusinessSettingsMetricsPath(businessId);
 
   const pages = [
     {

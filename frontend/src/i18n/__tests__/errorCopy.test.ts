@@ -110,10 +110,6 @@ describe("ERROR_COPY", () => {
       namespace: "auth",
       key: "api.emailInUse",
     });
-    expect(getErrorCopy(failure("emailChange.unauthorized"))).toMatchObject({
-      namespace: "auth",
-      key: "api.incorrectCurrentPassword",
-    });
     expect(getErrorCopy(failure("confirmEmail.badRequest"))).toMatchObject({
       namespace: "auth",
       key: "api.invalidConfirmationLink",
@@ -122,25 +118,11 @@ describe("ERROR_COPY", () => {
       namespace: "auth",
       key: "api.invalidResetLink",
     });
-    expect(getErrorCopy(failure("emailChange.badRequest"))).toMatchObject({
-      namespace: "auth",
-      key: "api.sameEmail",
-    });
-    expect(
-      getErrorCopy(failure("confirmEmailChange.badRequest")),
-    ).toMatchObject({
-      namespace: "auth",
-      key: "api.invalidEmailChangeLink",
-    });
     expect(
       getErrorCopy(failure("resendConfirmation.badRequest")),
     ).toMatchObject({
       namespace: "auth",
       key: "api.emailAlreadyVerified",
-    });
-    expect(getErrorCopy(failure("businessCreate.conflict"))).toMatchObject({
-      namespace: "business",
-      key: "errors.createConflict",
     });
     expect(getErrorCopy(failure("businessFetch.notFound"))).toMatchObject({
       namespace: "business",

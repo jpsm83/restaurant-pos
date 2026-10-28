@@ -5,13 +5,7 @@ import {
   Building2,
   Camera,
   ChevronDown,
-  CircleCheck,
-  Mail,
 } from "lucide-react";
-import { refreshSession } from "@/auth/api";
-import { useAuth } from "@/auth/store/AuthContext";
-import { useResendEmailConfirmation } from "@/hooks/useResendEmailConfirmation";
-import { ChangeEmailDialog } from "@/components/ChangeEmailDialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -38,7 +32,6 @@ import {
   BusinessProfileSettingsFormShell,
   BusinessProfileSettingsLoadingCard,
 } from "../../components/BusinessProfileSettingsFormShell";
-import { useChangeBusinessEmailController } from "../../hooks/useChangeBusinessEmailController";
 import type { BusinessProfileSettingsReady } from "../../hooks/useBusinessProfileSettingsController";
 
 const CONTACT_SELECT_NONE = "__none__";
@@ -213,7 +206,6 @@ function BusinessProfileSections({
   ctx: BusinessProfileSettingsReady;
 }) {
   const { t } = useTranslation("business");
-  const { dispatch } = useAuth();
   const {
     register,
     control,
@@ -225,28 +217,9 @@ function BusinessProfileSections({
   } = ctx;
 
   const hasImage = Boolean(imagePreviewUrl || imageUrl);
-  // Profile GET is authoritative for `emailVerified`; JWT can lag until refresh/login.
-  const emailVerified = profileQuery.data?.emailVerified === true;
   // Timezone is derived server-side from the business address (read-only here).
   const timezone = profileQuery.data?.timezone?.trim() || "UTC";
   const timezoneIsDefault = profileQuery.data?.timezoneIsDefault === true;
-  const changeEmail = useChangeBusinessEmailController(
-    profileQuery.data?.email ?? "",
-  );
-
-  async function syncSessionAndProfileAfterEmailFlow() {
-    const refreshed = await refreshSession();
-    if (refreshed.ok && refreshed.data?.user) {
-      dispatch({ type: "AUTH_SUCCESS", payload: refreshed.data.user });
-    }
-    await profileQuery.refetch();
-  }
-
-  const { resend: resendConfirmation, pending: resendPending } =
-    useResendEmailConfirmation({
-      successMessage: t("credentialsSettings.emailVerify.resendSuccess"),
-      onSuccess: syncSessionAndProfileAfterEmailFlow,
-    });
 
   return (
     <>
@@ -316,72 +289,21 @@ function BusinessProfileSections({
               <Input id="bp-legal-name" {...register("legalName")} />
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-4">
-              <div className="min-w-0 flex-1 space-y-2">
-                <Label htmlFor="bp-email">
-                  {t("profileSettings.core.fields.email")}
-                </Label>
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                  <Input
-                    id="bp-email"
-                    type="email"
-                    autoComplete="email"
-                    readOnly
-                    aria-readonly="true"
-                    className="sm:flex-1"
-                    value={profileQuery.data?.email ?? ""}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="shrink-0"
-                    onClick={changeEmail.openDialog}
-                  >
-                    {t("profileSettings.core.changeEmailCta")}
-                  </Button>
-                </div>
-                {changeEmail.pendingEmail ? (
-                  <p
-                    role="status"
-                    className="rounded-md bg-warning/20 px-2 py-1 text-xs leading-snug text-foreground"
-                  >
-                    {t("profileSettings.core.pendingEmail", {
-                      email: changeEmail.pendingEmail,
-                    })}
-                  </p>
-                ) : null}
-              </div>
-              <div className="flex shrink-0 flex-col items-stretch justify-end sm:items-end sm:pb-0.5">
-                {emailVerified ? (
-                  <div className="flex items-center gap-2 text-sm font-medium text-success">
-                    <CircleCheck
-                      className="size-4 shrink-0 text-success"
-                      aria-hidden
-                    />
-                    <span>
-                      {t("profileSettings.core.emailVerification.confirmed")}
-                    </span>
-                  </div>
-                ) : (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="h-auto min-h-0 justify-start gap-2 px-2 py-2 bg-destructive/10 text-sm font-medium text-destructive no-underline hover:no-underline hover:cursor-pointer hover:text-destructive disabled:opacity-60 hover:bg-destructive/20 sm:justify-end"
-                    disabled={resendPending}
-                    onClick={() => void resendConfirmation()}
-                  >
-                    <Mail
-                      className="size-4 shrink-0 text-destructive"
-                      aria-hidden
-                    />
-                    {t("profileSettings.core.emailVerification.confirmCta")}
-                  </Button>
-                )}
-              </div>
+            <div className="min-w-0 space-y-2">
+              <Label htmlFor="bp-email">
+                {t("profileSettings.core.fields.email")}
+              </Label>
+              <Input
+                id="bp-email"
+                type="email"
+                autoComplete="email"
+                readOnly
+                aria-readonly="true"
+                value={profileQuery.data?.email ?? ""}
+              />
             </div>
           </div>
         </div>
-        <ChangeEmailDialog controller={changeEmail} />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <div className="min-w-0 space-y-2">
             <Label htmlFor="bp-phone">

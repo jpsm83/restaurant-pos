@@ -36,11 +36,8 @@ async function renderWithQueryClient(
   });
 }
 
-const mockDispatch = vi.fn();
 const mockUseBusinessProfileQuery = vi.fn();
 const mockUseUpdateBusinessProfileMutation = vi.fn();
-const mockLogout = vi.fn();
-const mockSetAccessToken = vi.fn();
 const mockToastSuccess = vi.fn();
 const mockToastError = vi.fn();
 
@@ -50,29 +47,15 @@ vi.mock("@/auth/store/AuthContext", () => ({
       user: {
         id: "64b000000000000000000001",
         email: "owner@demo.test",
-        type: "business",
-        emailVerified: true,
-        role: "Tenant",
+        type: "user",
+        mode: "business",
+        role: "Manager",
       },
       status: "authenticated",
       error: null,
     },
-    dispatch: mockDispatch,
+    dispatch: vi.fn(),
   }),
-}));
-
-const mockResendEmailConfirmation = vi.fn();
-const mockRefreshSession = vi.fn();
-const mockRequestEmailChange = vi.fn();
-
-vi.mock("@/auth/api", () => ({
-  logout: (...args: unknown[]) => mockLogout(...args),
-  setAccessToken: (...args: unknown[]) => mockSetAccessToken(...args),
-  getAccessToken: () => "test-access-token",
-  resendEmailConfirmation: (...args: unknown[]) =>
-    mockResendEmailConfirmation(...args),
-  refreshSession: (...args: unknown[]) => mockRefreshSession(...args),
-  requestEmailChange: (...args: unknown[]) => mockRequestEmailChange(...args),
 }));
 
 vi.mock("sonner", () => ({
@@ -146,30 +129,11 @@ function makeBusinessProfileDto(): BusinessProfileDto {
 
 describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
   beforeEach(() => {
-    mockDispatch.mockReset();
     mockUseBusinessProfileQuery.mockReset();
     mockUseUpdateBusinessProfileMutation.mockReset();
-    mockLogout.mockReset();
-    mockSetAccessToken.mockReset();
     mockToastSuccess.mockReset();
     mockToastError.mockReset();
     mockFetchManagementContactOptions.mockReset();
-    mockResendEmailConfirmation.mockReset();
-    mockRefreshSession.mockReset();
-    mockRequestEmailChange.mockReset();
-    mockRefreshSession.mockResolvedValue({
-      ok: true,
-      data: {
-        accessToken: "refreshed",
-        user: {
-          id: "64b000000000000000000001",
-          email: "owner@demo.test",
-          type: "business",
-          emailVerified: true,
-          role: "Tenant",
-        },
-      },
-    });
     mockFetchManagementContactOptions.mockResolvedValue([]);
     mockUseUpdateBusinessProfileMutation.mockReturnValue({
       mutateAsync: vi.fn().mockResolvedValue({ message: "Business updated" }),
@@ -230,73 +194,6 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
     expect(retry).toHaveBeenCalledTimes(1);
   });
 
-  it("shows email confirmed when profile emailVerified is true", async () => {
-    mockUseBusinessProfileQuery.mockReturnValue({
-      data: { ...makeBusinessProfileDto(), emailVerified: true },
-      isLoading: false,
-      isError: false,
-      error: null,
-      refetch: vi.fn(),
-    });
-
-    await renderWithQueryClient(
-      <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
-        <Routes>
-          <Route
-            path="/business/:businessId/settings/profile"
-            element={<BusinessProfileSettingsPage />}
-          />
-        </Routes>
-      </MemoryRouter>,
-    );
-
-    expect(screen.getByText("Email confirmed")).toBeInTheDocument();
-  });
-
-  it("offers resend confirmation when profile emailVerified is false", async () => {
-    const refetch = vi.fn().mockResolvedValue({ data: makeBusinessProfileDto() });
-    mockResendEmailConfirmation.mockResolvedValue({ ok: true, data: { message: "Sent." } });
-    mockUseBusinessProfileQuery.mockReturnValue({
-      data: { ...makeBusinessProfileDto(), emailVerified: false },
-      isLoading: false,
-      isError: false,
-      error: null,
-      refetch,
-    });
-    const user = userEvent.setup();
-
-    await renderWithQueryClient(
-      <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
-        <Routes>
-          <Route
-            path="/business/:businessId/settings/profile"
-            element={<BusinessProfileSettingsPage />}
-          />
-        </Routes>
-      </MemoryRouter>,
-    );
-
-    await user.click(
-      screen.getByRole("button", { name: "Click to confirm email" }),
-    );
-    expect(mockResendEmailConfirmation).toHaveBeenCalledTimes(1);
-    expect(mockToastSuccess).toHaveBeenCalledWith(
-      "Confirmation email sent. Check your inbox.",
-    );
-    expect(mockRefreshSession).toHaveBeenCalledTimes(1);
-    expect(mockDispatch).toHaveBeenCalledWith({
-      type: "AUTH_SUCCESS",
-      payload: {
-        id: "64b000000000000000000001",
-        email: "owner@demo.test",
-        type: "business",
-        emailVerified: true,
-        role: "Tenant",
-      },
-    });
-    expect(refetch).toHaveBeenCalledTimes(1);
-  });
-
   it("hydrates form defaults from the fetched business profile", async () => {
     mockUseBusinessProfileQuery.mockReturnValue({
       data: makeBusinessProfileDto(),
@@ -325,7 +222,7 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
     expect(screen.getByLabelText("Phone number")).toHaveValue("+10000000000");
   });
 
-  it("exposes the sign-in email as read-only with a Change email action", async () => {
+  it("exposes the business contact email as read-only", async () => {
     mockUseBusinessProfileQuery.mockReturnValue({
       data: makeBusinessProfileDto(),
       isLoading: false,
@@ -345,11 +242,9 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
       </MemoryRouter>,
     );
 
-    expect(
-      screen.getByRole("button", { name: "Change email" }),
-    ).toBeInTheDocument();
     const emailInput = screen.getByLabelText("Business email") as HTMLInputElement;
     expect(emailInput.readOnly).toBe(true);
+    expect(screen.queryByRole("button", { name: "Change email" })).not.toBeInTheDocument();
   });
 
   it("shows the server-derived timezone as a read-only field", async () => {
@@ -588,203 +483,6 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
     await waitFor(() => {
       expect(screen.getByLabelText("Trade name")).toHaveValue("Demo Bistro");
     });
-  });
-
-  it("submits the change-email request and shows the pending confirmation state", async () => {
-    mockUseBusinessProfileQuery.mockReturnValue({
-      data: makeBusinessProfileDto(),
-      isLoading: false,
-      isError: false,
-      error: null,
-      refetch: vi.fn().mockResolvedValue({ data: makeBusinessProfileDto() }),
-    });
-    mockRequestEmailChange.mockResolvedValue({
-      ok: true,
-      data: { message: "Confirmation email sent." },
-    });
-    const user = userEvent.setup();
-
-    await renderWithQueryClient(
-      <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
-        <Routes>
-          <Route
-            path="/business/:businessId/settings/profile"
-            element={<BusinessProfileSettingsPage />}
-          />
-        </Routes>
-      </MemoryRouter>,
-    );
-
-    await user.click(screen.getByRole("button", { name: "Change email" }));
-    expect(
-      screen.getByRole("heading", { name: "Change sign-in email" }),
-    ).toBeInTheDocument();
-
-    await user.type(
-      screen.getByLabelText("New sign-in email"),
-      "newowner@demo.test",
-    );
-    await user.type(
-      screen.getByLabelText("Current password"),
-      "CurrentPass1!",
-    );
-    await user.click(
-      screen.getByRole("button", { name: "Send confirmation link" }),
-    );
-
-    await waitFor(() => {
-      expect(mockRequestEmailChange).toHaveBeenCalledWith(
-        "newowner@demo.test",
-        "CurrentPass1!",
-      );
-    });
-    expect(
-      screen.getByText("Check your new inbox"),
-    ).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Close" }));
-    expect(
-      screen.getByText(/Confirmation pending for newowner@demo\.test/),
-    ).toBeInTheDocument();
-  });
-
-  it("surfaces a wrong-password error inside the change-email dialog", async () => {
-    mockUseBusinessProfileQuery.mockReturnValue({
-      data: makeBusinessProfileDto(),
-      isLoading: false,
-      isError: false,
-      error: null,
-      refetch: vi.fn().mockResolvedValue({ data: makeBusinessProfileDto() }),
-    });
-    mockRequestEmailChange.mockResolvedValue({
-      ok: false,
-      error: {
-        code: "emailChange.unauthorized",
-        status: 401,
-        message: "Current password is incorrect.",
-        serverMessage: "Current password is incorrect.",
-        fieldErrors: [],
-      },
-    });
-    const user = userEvent.setup();
-
-    await renderWithQueryClient(
-      <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
-        <Routes>
-          <Route
-            path="/business/:businessId/settings/profile"
-            element={<BusinessProfileSettingsPage />}
-          />
-        </Routes>
-      </MemoryRouter>,
-    );
-
-    await user.click(screen.getByRole("button", { name: "Change email" }));
-    await user.type(
-      screen.getByLabelText("New sign-in email"),
-      "newowner@demo.test",
-    );
-    await user.type(screen.getByLabelText("Current password"), "wrong-pass");
-    await user.click(
-      screen.getByRole("button", { name: "Send confirmation link" }),
-    );
-
-    await waitFor(() => {
-      expect(
-        screen.getByText("The current password is incorrect."),
-      ).toBeInTheDocument();
-    });
-    expect(
-      screen.queryByText("Check your new inbox"),
-    ).not.toBeInTheDocument();
-  });
-
-  it("explains a same-email failure from the server in the active language", async () => {
-    mockUseBusinessProfileQuery.mockReturnValue({
-      data: makeBusinessProfileDto(),
-      isLoading: false,
-      isError: false,
-      error: null,
-      refetch: vi.fn().mockResolvedValue({ data: makeBusinessProfileDto() }),
-    });
-    mockRequestEmailChange.mockResolvedValue({
-      ok: false,
-      error: {
-        code: "emailChange.badRequest",
-        status: 400,
-        message: "The new email must be different from the current sign-in email.",
-        serverMessage:
-          "The new email must be different from the current sign-in email.",
-        fieldErrors: [
-          {
-            field: "newEmail",
-            message: "Enter an address different from your current one.",
-          },
-        ],
-      },
-    });
-    const user = userEvent.setup();
-
-    await renderWithQueryClient(
-      <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
-        <Routes>
-          <Route
-            path="/business/:businessId/settings/profile"
-            element={<BusinessProfileSettingsPage />}
-          />
-        </Routes>
-      </MemoryRouter>,
-    );
-
-    await user.click(screen.getByRole("button", { name: "Change email" }));
-    await user.type(
-      screen.getByLabelText("New sign-in email"),
-      "newowner@demo.test",
-    );
-    await user.type(screen.getByLabelText("Current password"), "CurrentPass1!");
-    await user.click(
-      screen.getByRole("button", { name: "Send confirmation link" }),
-    );
-
-    expect(
-      await screen.findByText(
-        "Choose a different email from your current sign-in address.",
-      ),
-    ).toBeInTheDocument();
-  });
-
-  it("validates the new email format before calling the request endpoint", async () => {
-    mockUseBusinessProfileQuery.mockReturnValue({
-      data: makeBusinessProfileDto(),
-      isLoading: false,
-      isError: false,
-      error: null,
-      refetch: vi.fn().mockResolvedValue({ data: makeBusinessProfileDto() }),
-    });
-    const user = userEvent.setup();
-
-    await renderWithQueryClient(
-      <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
-        <Routes>
-          <Route
-            path="/business/:businessId/settings/profile"
-            element={<BusinessProfileSettingsPage />}
-          />
-        </Routes>
-      </MemoryRouter>,
-    );
-
-    await user.click(screen.getByRole("button", { name: "Change email" }));
-    await user.type(screen.getByLabelText("New sign-in email"), "not-an-email");
-    await user.type(screen.getByLabelText("Current password"), "CurrentPass1!");
-    await user.click(
-      screen.getByRole("button", { name: "Send confirmation link" }),
-    );
-
-    expect(
-      await screen.findByText("Please enter a valid email address."),
-    ).toBeInTheDocument();
-    expect(mockRequestEmailChange).not.toHaveBeenCalled();
   });
 
   it("shows unsaved-changes dialog on dirty navigation and respects stay/leave actions", async () => {

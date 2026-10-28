@@ -95,7 +95,7 @@ describe("Navbar", () => {
     expect(signIn).toHaveAttribute("href", "/login?audience=business");
   });
 
-  it("links Sign up to business register when on business audience", async () => {
+  it("links Sign up to the shared sign-up form on the business audience", async () => {
     await renderWithI18n(
       <MemoryRouter initialEntries={["/business"]}>
         <Routes>
@@ -114,7 +114,7 @@ describe("Navbar", () => {
 
     expect(screen.getByRole("link", { name: /sign up/i })).toHaveAttribute(
       "href",
-      "/business/register",
+      "/signup?audience=business",
     );
   });
 

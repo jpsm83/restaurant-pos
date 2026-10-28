@@ -18,7 +18,6 @@
   "account": {
     "menuAriaLabel": "Menú de cuenta",
     "actorType": {
-      "business": "Empresa",
       "customer": "Cliente",
       "employee": "Empleado"
     },
@@ -40,10 +39,7 @@
   "settings": {
     "title": "Ajustes",
     "profile": "Perfil",
-    "subscriptions": "Suscripciones",
-    "address": "Dirección",
     "openHours": "Horario",
-    "credentials": "Credenciales",
     "delivery": "Entrega",
     "metrics": "Métricas",
     "settings": "Ajustes"

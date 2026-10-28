@@ -9,7 +9,6 @@
  * ## Wiring
  * - **`AuthProvider`** (`store/AuthContext.tsx`) calls `loadPersistedAccessToken`, `getCurrentUser`, `refreshSession`, `setAccessToken` on bootstrap.
  * - **Pages** use `login`, `signup`, `logout`, `getCurrentUser`, and public email/password flows from **`@/auth/api`**.
- * - **`businessService.createBusiness`** calls **`setAccessToken`** when registration returns a token.
  * - **`logout`** clears token and **`queryClient.removeQueries`** for `auth.mode` (TanStack cache); broader invalidation can be added here if needed.
  * - **`setAccessToken`** opens the live connection with the access session just received, and closes it when the token is cleared.
  *
@@ -297,43 +296,6 @@ export async function resendEmailConfirmation() {
       method: "POST",
       body: JSON.stringify({}),
     },
-  );
-}
-
-/**
- * Authenticated business: start a verified sign-in email change to `newEmail`.
- * Re-authenticates with `currentPassword`. Uses the default refresh-and-retry so
- * an expired access token is recovered rather than misreported as a bad password;
- * a genuinely wrong password still returns 401 and surfaces as an error.
- */
-export async function requestEmailChange(
-  newEmail: string,
-  currentPassword: string,
-) {
-  return authRequest<AuthMessageResponseBody>(
-    "emailChange",
-    "/api/v1/auth/request-email-change",
-    {
-      method: "POST",
-      body: JSON.stringify({ newEmail, currentPassword }),
-    },
-  );
-}
-
-/**
- * Unauthenticated: consume a pending sign-in email-change **token** from the
- * emailed link (one-time). On success the server revokes existing sessions, so
- * callers must clear the local session and send the user back to sign in.
- */
-export async function confirmEmailChange(token: string) {
-  return authRequest<AuthMessageResponseBody>(
-    "confirmEmailChange",
-    "/api/v1/auth/confirm-email-change",
-    {
-      method: "POST",
-      body: JSON.stringify({ token }),
-    },
-    false,
   );
 }
 

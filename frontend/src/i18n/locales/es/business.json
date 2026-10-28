@@ -1,13 +1,12 @@
 {
   "dashboard": {
     "title": "Panel de empresa",
-    "tenantCardTitle": "Espacio del inquilino",
+    "tenantCardTitle": "Espacio del local",
     "signedInPrefix": "Sesión iniciada como",
     "sessionUnavailable": "No hay datos de sesión disponibles.",
     "accountMenuHint": "Usa el menú de cuenta (arriba a la derecha) para el perfil, favoritos, el panel o para cerrar sesión."
   },
   "errors": {
-    "createConflict": "Ya existe un negocio con la misma razón social o identificación fiscal.",
     "notFound": "No se encontró el perfil del negocio.",
     "updateConflict": "Estos cambios entran en conflicto con el perfil guardado del negocio. Actualiza e inténtalo de nuevo."
   },
@@ -62,12 +61,6 @@
     "core": {
       "sectionTitle": "Datos principales del negocio",
       "sectionDescription": "Datos legales y de contacto usados para facturación, soporte y registros de la cuenta.",
-      "emailVerification": {
-        "confirmed": "Correo confirmado",
-        "confirmCta": "Haz clic para confirmar el correo"
-      },
-      "changeEmailCta": "Cambiar correo",
-      "pendingEmail": "Confirmación pendiente para {{email}}. Revisa la nueva bandeja de entrada para completar el cambio.",
       "fields": {
         "tradeName": "Nombre comercial",
         "legalName": "Razón social",
@@ -79,26 +72,6 @@
         "timezone": "Zona horaria"
       },
       "timezoneDefaultHint": "No pudimos determinar tu zona horaria a partir de la dirección del negocio. Actualiza el país y la región de la dirección para establecerla."
-    },
-    "changeEmail": {
-      "dialogTitle": "Cambiar correo de acceso",
-      "dialogDescription": "Introduce la nueva dirección de acceso y tu contraseña actual. Enviaremos un enlace de confirmación a la nueva dirección; tu correo actual seguirá activo hasta que se confirme.",
-      "fields": {
-        "newEmail": "Nuevo correo de acceso",
-        "currentPassword": "Contraseña actual"
-      },
-      "errors": {
-        "required": "Este campo es obligatorio.",
-        "invalidEmail": "Introduce una dirección de correo válida.",
-        "currentPasswordRequired": "Introduce tu contraseña actual.",
-        "sameEmail": "Introduce una dirección distinta a la actual."
-      },
-      "submit": "Enviar enlace de confirmación",
-      "submitting": "Enviando…",
-      "cancel": "Cancelar",
-      "close": "Cerrar",
-      "successTitle": "Revisa tu nueva bandeja de entrada",
-      "successBody": "Enviamos un enlace de confirmación a {{email}}. Ábrelo para completar el cambio; tu correo actual seguirá activo hasta entonces."
     },
     "discovery": {
       "sectionTitle": "Descubrimiento",
@@ -253,31 +226,6 @@
       "doorNumber": "Puerta / interior",
       "complement": "Complemento",
       "complementPlaceholder": "Piso, ala, unidad…"
-    }
-  },
-  "credentialsSettings": {
-    "cardDescription": "Cambia la contraseña de acceso con un enlace seguro que enviamos al correo del negocio. Para cambiar el correo, usa la acción \"Cambiar correo\" en la página de perfil (tendrás que iniciar sesión de nuevo al confirmar la nueva dirección).",
-    "sectionTitle": "Credenciales de acceso",
-    "sectionDescription": "Confirma el correo del negocio si se indica; luego usa la columna de acción para recibir un enlace temporal. El correo de acceso se cambia desde la página de perfil.",
-    "actionsColumnTitle": "Restablecer contraseña",
-    "emailVerify": {
-      "bannerTitle": "Confirma el correo del negocio",
-      "bannerDescription": "Enviamos un enlace a tu correo de acceso. Vuelve a enviar si no lo recibiste (pueden aplicarse límites).",
-      "resendButton": "Reenviar correo de confirmación",
-      "resendSending": "Enviando…",
-      "resendSuccess": "Correo de confirmación enviado. Revisa tu bandeja de entrada."
-    },
-    "passwordChangeEmail": {
-      "introBody": "Por seguridad no pedimos la nueva contraseña en esta pantalla. Usa el botón de la columna derecha para enviar un correo a tu dirección de acceso actual con un enlace de un solo uso.",
-      "stepCheckInbox": "Revisa la bandeja de entrada (y spam) de esa dirección.",
-      "stepOpenLink": "Abre el enlace del correo: te lleva a una página dedicada de la app.",
-      "stepChoosePassword": "En esa página elige una contraseña nueva segura y confírmala. El enlace solo sirve una vez y caduca en poco tiempo.",
-      "signInEmailLabel": "Enviaremos el enlace a: {{email}}",
-      "button": "Enviarme un enlace para cambiar la contraseña",
-      "sending": "Enviando…",
-      "successFallback": "Si existe una cuenta con esa dirección, enviamos instrucciones para restablecer la contraseña.",
-      "errorFallback": "No se pudo enviar el correo. Inténtalo más tarde.",
-      "missingEmail": "No hay correo de acceso disponible para esta sesión."
     }
   },
   "subscriptionSettings": {

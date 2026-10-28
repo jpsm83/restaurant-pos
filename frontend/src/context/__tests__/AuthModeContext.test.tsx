@@ -106,8 +106,8 @@ describe("AuthModeProvider", () => {
   it("disables auth mode query when session is not an authenticated user", () => {
     mockUseAuth.mockReturnValue({
       state: {
-        status: "authenticated",
-        user: { id: "b1", type: "business", email: "b@test", role: "Tenant" },
+        status: "unauthenticated",
+        user: null,
         error: null,
       },
     });

@@ -92,31 +92,6 @@ const OVERRIDES: Partial<Record<ServiceErrorCode, ErrorCopyTemplate>> = {
     namespace: "auth",
     key: "api.invalidResetLink",
   },
-  "emailChange.badRequest": {
-    namespace: "auth",
-    key: "api.sameEmail",
-  },
-  "emailChange.unauthorized": {
-    namespace: "auth",
-    key: "api.incorrectCurrentPassword",
-  },
-  "emailChange.conflict": { namespace: "auth", key: "api.emailInUse" },
-  "confirmEmailChange.validation": {
-    namespace: "auth",
-    key: "api.invalidEmailChangeLink",
-  },
-  "confirmEmailChange.badRequest": {
-    namespace: "auth",
-    key: "api.invalidEmailChangeLink",
-  },
-  "confirmEmailChange.notFound": {
-    namespace: "auth",
-    key: "api.invalidEmailChangeLink",
-  },
-  "businessCreate.conflict": {
-    namespace: "business",
-    key: "errors.createConflict",
-  },
   "businessFetch.notFound": {
     namespace: "business",
     key: "errors.notFound",

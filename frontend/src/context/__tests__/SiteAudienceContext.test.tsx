@@ -32,9 +32,9 @@ describe("SiteAudienceProvider (Phase 1.1)", () => {
     expect(screen.getByTestId("audience")).toHaveTextContent("business");
   });
 
-  it("returns business on /business/register", () => {
+  it("returns business on a business sub-path", () => {
     render(
-      <MemoryRouter initialEntries={["/business/register"]}>
+      <MemoryRouter initialEntries={["/business/acme"]}>
         <SiteAudienceProvider>
           <AudienceLabel />
         </SiteAudienceProvider>
