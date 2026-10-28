@@ -16,7 +16,7 @@ describe("RequestEmailConfirmationPage", () => {
     mockRequestEmailConfirmation.mockReset();
   });
 
-  function renderPage() {
+  function renderPage(language?: "en" | "es") {
     return renderWithI18n(
       <MemoryRouter initialEntries={["/request-email-confirmation"]}>
         <Routes>
@@ -27,8 +27,20 @@ describe("RequestEmailConfirmationPage", () => {
           <Route path="/" element={<div>Home Screen</div>} />
         </Routes>
       </MemoryRouter>,
+      language ? { language } : undefined,
     );
   }
+
+  it("renders the Spanish copy", async () => {
+    await renderPage("es");
+
+    expect(
+      screen.getByRole("heading", { name: "Reenviar correo de confirmación" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Enviar correo de confirmación" }),
+    ).toBeInTheDocument();
+  });
 
   it("shows required validation when email is empty", async () => {
     const user = userEvent.setup();

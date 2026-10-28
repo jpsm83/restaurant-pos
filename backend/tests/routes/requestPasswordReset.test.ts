@@ -33,6 +33,7 @@ import {
 import { getTestApp, resetTestApp } from "../setup.ts";
 import User from "../../src/models/user.ts";
 import { GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE } from "../../src/auth/requestEmailConfirmation.ts";
+import { PASSWORD_RESET_TOKEN_TTL_MS } from "../../src/auth/authEmailTokenFlow.ts";
 
 const testPassword = "TestPassword123!";
 
@@ -139,6 +140,9 @@ describe("POST /api/v1/auth/request-password-reset", () => {
       .lean();
     expect(updated?.resetPasswordToken).toBeTruthy();
     expect(updated?.resetPasswordExpires).toBeTruthy();
+    const ttl = updated!.resetPasswordExpires!.getTime() - Date.now();
+    expect(ttl).toBeGreaterThan(PASSWORD_RESET_TOKEN_TTL_MS - 60_000);
+    expect(ttl).toBeLessThanOrEqual(PASSWORD_RESET_TOKEN_TTL_MS);
     expectOneAccountSend(sendEmailMock, {
       to: "verified-reset@example.com",
       subject: "Password Reset Request - POS",
@@ -165,6 +169,44 @@ describe("POST /api/v1/auth/request-password-reset", () => {
       .lean();
     expect(updated?.resetPasswordToken).toBeTruthy();
     expect(updated?.resetPasswordExpires).toBeTruthy();
+  });
+
+  it("supersedes the previous reset link on a new request", async () => {
+    const app = await getTestApp();
+    await createTestUser("reset-supersede@example.com");
+
+    const first = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/request-password-reset",
+      payload: { email: "reset-supersede@example.com" },
+    });
+    expect(first.statusCode).toBe(200);
+    const firstStored = await User.findOne({
+      "personalDetails.email": "reset-supersede@example.com",
+    })
+      .select("resetPasswordToken resetPasswordExpires")
+      .lean();
+
+    const second = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/request-password-reset",
+      payload: { email: "reset-supersede@example.com" },
+    });
+    expect(second.statusCode).toBe(200);
+    const secondStored = await User.findOne({
+      "personalDetails.email": "reset-supersede@example.com",
+    })
+      .select("resetPasswordToken resetPasswordExpires")
+      .lean();
+
+    expect(secondStored?.resetPasswordToken).toBeTruthy();
+    expect(secondStored?.resetPasswordToken).not.toBe(
+      firstStored?.resetPasswordToken,
+    );
+    expect(secondStored?.resetPasswordExpires?.getTime()).toBeGreaterThanOrEqual(
+      firstStored!.resetPasswordExpires!.getTime(),
+    );
+    expect(sendEmailMock).toHaveBeenCalledTimes(2);
   });
 
   it("clears reset token and returns 500 when send fails", async () => {

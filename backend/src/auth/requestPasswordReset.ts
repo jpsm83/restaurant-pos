@@ -1,11 +1,12 @@
 import User from "../models/user.ts";
 import { withSoftDeleteFilter } from "../models/softDelete.ts";
-import { sendAuthTokenEmailOrRollback } from "./authEmailTokenFlow.ts";
+import {
+  PASSWORD_RESET_TOKEN_TTL_MS,
+  sendAuthTokenEmailOrRollback,
+} from "./authEmailTokenFlow.ts";
 import { buildResetPasswordLink } from "./emailLinks.ts";
 import { buildPasswordResetEmailContent } from "./emailTemplates.ts";
 import { GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE } from "./requestEmailConfirmation.ts";
-
-const RESET_TOKEN_TTL_MS = 3_600_000;
 
 export type RequestPasswordResetHandlerResult =
   | { kind: "success_200"; message: string }
@@ -41,7 +42,9 @@ export async function handleRequestPasswordReset(
         {
           $set: {
             resetPasswordToken: token,
-            resetPasswordExpires: new Date(Date.now() + RESET_TOKEN_TTL_MS),
+            resetPasswordExpires: new Date(
+              Date.now() + PASSWORD_RESET_TOKEN_TTL_MS,
+            ),
           },
         },
       ),

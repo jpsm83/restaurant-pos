@@ -12,11 +12,16 @@ import {
   CONFIRM_EMAIL_MISSING_TOKEN_MESSAGE,
   CONFIRM_EMAIL_SUCCESS_MESSAGE,
 } from "../../src/auth/confirmEmail.ts";
+import { VERIFICATION_TOKEN_TTL_MS } from "../../src/auth/authEmailTokenFlow.ts";
 
 const testPassword = "TestPassword123!";
 
 function randomToken(): string {
   return crypto.randomBytes(32).toString("hex");
+}
+
+function futureVerificationExpiry(): Date {
+  return new Date(Date.now() + VERIFICATION_TOKEN_TTL_MS);
 }
 
 async function createTestUser(email: string) {
@@ -83,7 +88,7 @@ describe("POST /api/v1/auth/confirm-email", () => {
     const app = await getTestApp();
     const user = await createTestUser("confirm-user@example.com");
     const raw = randomToken();
-    await User.updateOne({ _id: user._id }, { $set: { verificationToken: raw } });
+    await User.updateOne({ _id: user._id }, { $set: { verificationToken: raw, verificationTokenExpires: futureVerificationExpiry() } });
 
     const response = await app.inject({
       method: "POST",
@@ -106,7 +111,7 @@ describe("POST /api/v1/auth/confirm-email", () => {
     const app = await getTestApp();
     const user = await createTestUser("confirm-upper@example.com");
     const raw = randomToken();
-    await User.updateOne({ _id: user._id }, { $set: { verificationToken: raw } });
+    await User.updateOne({ _id: user._id }, { $set: { verificationToken: raw, verificationTokenExpires: futureVerificationExpiry() } });
 
     const response = await app.inject({
       method: "POST",
@@ -120,6 +125,38 @@ describe("POST /api/v1/auth/confirm-email", () => {
       .lean();
     expect(updated?.personalDetails?.emailVerified).toBe(true);
     expect(updated?.verificationToken).toBeFalsy();
+  });
+
+  it("returns 400 for an expired verification link without changing the account", async () => {
+    const app = await getTestApp();
+    const user = await createTestUser("expired-confirm@example.com");
+    const raw = randomToken();
+    await User.updateOne(
+      { _id: user._id },
+      {
+        $set: {
+          verificationToken: raw,
+          verificationTokenExpires: new Date(Date.now() - 60_000),
+        },
+      },
+    );
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/confirm-email",
+      payload: { token: raw },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(JSON.parse(response.body).detail).toBe(
+      CONFIRM_EMAIL_CONSUMPTION_ERROR_MESSAGE,
+    );
+
+    const unchanged = await User.findById(user._id)
+      .select("personalDetails.emailVerified verificationToken")
+      .lean();
+    expect(unchanged?.personalDetails?.emailVerified).toBe(false);
+    expect(unchanged?.verificationToken).toBe(raw);
   });
 
   it("returns 400 for wrong token", async () => {
@@ -142,7 +179,7 @@ describe("POST /api/v1/auth/confirm-email", () => {
     const app = await getTestApp();
     const user = await createTestUser("replay@example.com");
     const raw = randomToken();
-    await User.updateOne({ _id: user._id }, { $set: { verificationToken: raw } });
+    await User.updateOne({ _id: user._id }, { $set: { verificationToken: raw, verificationTokenExpires: futureVerificationExpiry() } });
 
     const first = await app.inject({
       method: "POST",
@@ -172,6 +209,7 @@ describe("POST /api/v1/auth/confirm-email", () => {
       {
         $set: {
           verificationToken: raw,
+          verificationTokenExpires: futureVerificationExpiry(),
           deleted: true,
           deletedAt: new Date(),
         },

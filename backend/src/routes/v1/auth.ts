@@ -39,7 +39,7 @@ import {
   GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE,
   handleRequestEmailConfirmation,
   REACTIVATION_REQUIRED_MESSAGE,
-  sendSoftDeletedUserConfirmation,
+  sendUserVerificationEmail,
 } from "../../auth/requestEmailConfirmation.ts";
 import { sendAccountExistsEmail } from "../../auth/accountExistsEmail.ts";
 import { handleRequestPasswordReset } from "../../auth/requestPasswordReset.ts";
@@ -123,7 +123,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         });
       }
       if (deletedUser) {
-        const sent = await sendSoftDeletedUserConfirmation(deletedUser, email);
+        const sent = await sendUserVerificationEmail(deletedUser, email);
         if (sent.kind === "server_error_500") {
           throw internal(sent.message);
         }
@@ -164,10 +164,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       // Phase 4.1: issue confirmation email without blocking signup (session unchanged).
       handleRequestEmailConfirmation(email)
         .then((result) => {
-          if (
-            result.kind === "server_error_500" ||
-            result.kind === "already_verified_400"
-          ) {
+          if (result.kind === "server_error_500") {
             req.log.error(
               { errHint: "signup_confirmation_send" },
               result.message,
@@ -196,9 +193,6 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       const { email } = req.body;
       const result = await handleRequestEmailConfirmation(email);
 
-      if (result.kind === "already_verified_400") {
-        throw badRequest(result.message);
-      }
       if (result.kind === "server_error_500") {
         throw internal(result.message);
       }

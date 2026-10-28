@@ -32,10 +32,8 @@ import {
 } from "../helpers/accountEmailRail.ts";
 import { getTestApp, resetTestApp } from "../setup.ts";
 import User from "../../src/models/user.ts";
-import {
-  EMAIL_CONFIRMATION_SENT_MESSAGE,
-  GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE,
-} from "../../src/auth/requestEmailConfirmation.ts";
+import { GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE } from "../../src/auth/requestEmailConfirmation.ts";
+import { VERIFICATION_TOKEN_TTL_MS } from "../../src/auth/authEmailTokenFlow.ts";
 
 const testPassword = "TestPassword123!";
 
@@ -123,7 +121,7 @@ describe("POST /api/v1/auth/request-email-confirmation", () => {
     expect(sendEmailMock).not.toHaveBeenCalled();
   });
 
-  it("returns 400 when email is already verified (no send)", async () => {
+  it("returns the generic message when email is already verified (no send)", async () => {
     const app = await getTestApp();
     await createTestUser("verified@example.com", { emailVerified: true });
 
@@ -133,12 +131,14 @@ describe("POST /api/v1/auth/request-email-confirmation", () => {
       payload: { email: "verified@example.com" },
     });
 
-    expect(response.statusCode).toBe(400);
-    expect(JSON.parse(response.body).detail).toBe("Email is already verified.");
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.body).message).toBe(
+      GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE,
+    );
     expect(sendEmailMock).not.toHaveBeenCalled();
   });
 
-  it("issues verificationToken and sends email for unverified user", async () => {
+  it("issues one verification token with a 24-hour expiry and sends email for an unverified user", async () => {
     const app = await getTestApp();
     await createTestUser("pending@example.com", { emailVerified: false });
 
@@ -149,19 +149,62 @@ describe("POST /api/v1/auth/request-email-confirmation", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(JSON.parse(response.body).message).toBe(EMAIL_CONFIRMATION_SENT_MESSAGE);
+    expect(JSON.parse(response.body).message).toBe(
+      GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE,
+    );
 
     const updated = await User.findOne({
       "personalDetails.email": "pending@example.com",
     })
-      .select("verificationToken")
+      .select("verificationToken verificationTokenExpires")
       .lean();
     expect(updated?.verificationToken).toBeTruthy();
+    const ttl = updated!.verificationTokenExpires!.getTime() - Date.now();
+    expect(ttl).toBeGreaterThan(VERIFICATION_TOKEN_TTL_MS - 60_000);
+    expect(ttl).toBeLessThanOrEqual(VERIFICATION_TOKEN_TTL_MS);
     expectOneAccountSend(sendEmailMock, {
       to: "pending@example.com",
       subject: "Confirm Your Email - POS",
       link: `/confirm-email?token=${updated?.verificationToken}`,
     });
+  });
+
+  it("supersedes the previous verification link on a new request", async () => {
+    const app = await getTestApp();
+    await createTestUser("supersede@example.com", { emailVerified: false });
+
+    const first = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/request-email-confirmation",
+      payload: { email: "supersede@example.com" },
+    });
+    expect(first.statusCode).toBe(200);
+    const firstStored = await User.findOne({
+      "personalDetails.email": "supersede@example.com",
+    })
+      .select("verificationToken verificationTokenExpires")
+      .lean();
+
+    const second = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/request-email-confirmation",
+      payload: { email: "supersede@example.com" },
+    });
+    expect(second.statusCode).toBe(200);
+    const secondStored = await User.findOne({
+      "personalDetails.email": "supersede@example.com",
+    })
+      .select("verificationToken verificationTokenExpires")
+      .lean();
+
+    expect(secondStored?.verificationToken).toBeTruthy();
+    expect(secondStored?.verificationToken).not.toBe(
+      firstStored?.verificationToken,
+    );
+    expect(secondStored?.verificationTokenExpires?.getTime()).toBeGreaterThanOrEqual(
+      firstStored!.verificationTokenExpires!.getTime(),
+    );
+    expect(sendEmailMock).toHaveBeenCalledTimes(2);
   });
 
   it("clears token and returns 500 when send fails", async () => {
@@ -183,9 +226,10 @@ describe("POST /api/v1/auth/request-email-confirmation", () => {
     const updated = await User.findOne({
       "personalDetails.email": "failsend@example.com",
     })
-      .select("verificationToken")
+      .select("verificationToken verificationTokenExpires")
       .lean();
     expect(updated?.verificationToken).toBeFalsy();
+    expect(updated?.verificationTokenExpires).toBeFalsy();
   });
 
 });

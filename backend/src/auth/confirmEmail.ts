@@ -23,14 +23,26 @@ export async function handleConfirmEmail(
   const verificationToken = token.trim().toLowerCase();
 
   try {
+    const now = new Date();
     const userResult = await User.updateOne(
-      withSoftDeleteFilter({ verificationToken }, true),
+      withSoftDeleteFilter(
+        {
+          verificationToken,
+          verificationTokenExpires: { $gt: now },
+        },
+        true,
+      ),
       {
         $set: {
           "personalDetails.emailVerified": true,
           deleted: false,
         },
-        $unset: { verificationToken: "", deletedAt: "", deletedBy: "" },
+        $unset: {
+          verificationToken: "",
+          verificationTokenExpires: "",
+          deletedAt: "",
+          deletedBy: "",
+        },
       },
     );
 

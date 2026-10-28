@@ -2,6 +2,12 @@ import crypto from "crypto";
 import emailChannel from "../communications/channels/emailChannel.ts";
 import type { AuthEmailTemplateContent } from "./emailTemplates.ts";
 
+/** How long a sign-in email confirmation link stays valid. */
+export const VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
+
+/** How long a password reset link stays valid. */
+export const PASSWORD_RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
+
 /**
  * One-time-link mail on the delivery rail. Persists the token, sends that one
  * address the template's plain and rich parts, and clears the pending link when

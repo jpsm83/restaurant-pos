@@ -75,6 +75,7 @@ const CLIENT_PROFILE_PROJECTION = {
   "personalDetails.password": 0,
   "personalDetails.emailVerified": 0,
   verificationToken: 0,
+  verificationTokenExpires: 0,
   resetPasswordToken: 0,
   resetPasswordExpires: 0,
   refreshSessionVersion: 0,

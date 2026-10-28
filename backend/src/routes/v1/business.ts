@@ -56,7 +56,7 @@ import {
  * Never expose those columns from this public venue surface.
  */
 const BUSINESS_PUBLIC_LEAN_SELECT =
-  "-password -verificationToken -resetPasswordToken -resetPasswordExpires -pendingEmail -pendingEmailToken -pendingEmailExpires -pendingEmailRequestedAt -refreshSessionVersion";
+  "-password -verificationToken -verificationTokenExpires -resetPasswordToken -resetPasswordExpires -pendingEmail -pendingEmailToken -pendingEmailExpires -pendingEmailRequestedAt -refreshSessionVersion";
 
 const DEFAULT_DISCOVERY_LIMIT = 50;
 

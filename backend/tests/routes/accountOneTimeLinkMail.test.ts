@@ -18,7 +18,7 @@ import {
 import bcrypt from "bcrypt";
 import { getTestApp, resetTestApp } from "../setup.ts";
 import User from "../../src/models/user.ts";
-import { EMAIL_CONFIRMATION_SENT_MESSAGE } from "../../src/auth/requestEmailConfirmation.ts";
+import { GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE } from "../../src/auth/requestEmailConfirmation.ts";
 
 const sendMail = vi.hoisted(() =>
   vi.fn().mockRejectedValue(new Error("550 mailbox unavailable")),
@@ -107,13 +107,16 @@ describe("account one-time-link mail on the delivery rail", () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.headers["content-type"]).toContain("application/json");
-    expect(response.json().message).toBe(EMAIL_CONFIRMATION_SENT_MESSAGE);
+    expect(response.json().message).toBe(
+      GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE,
+    );
     expect(sendMail).not.toHaveBeenCalled();
 
     const stored = await User.findOne({ "personalDetails.email": email })
-      .select("verificationToken")
+      .select("verificationToken verificationTokenExpires")
       .lean();
     expect(stored?.verificationToken).toBeTruthy();
+    expect(stored?.verificationTokenExpires).toBeTruthy();
   });
 
   it("clears the confirmation link and returns the server error when delivery fails", async () => {
@@ -136,8 +139,9 @@ describe("account one-time-link mail on the delivery rail", () => {
     expect(sendMail).toHaveBeenCalledTimes(1);
 
     const stored = await User.findOne({ "personalDetails.email": email })
-      .select("verificationToken")
+      .select("verificationToken verificationTokenExpires")
       .lean();
     expect(stored?.verificationToken).toBeFalsy();
+    expect(stored?.verificationTokenExpires).toBeFalsy();
   });
 });

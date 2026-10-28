@@ -58,6 +58,7 @@ describe("user DTO ↔ model parity", () => {
       "imageUrl",
       "emailVerified",
       "verificationToken",
+      "verificationTokenExpires",
       "resetPasswordToken",
       "resetPasswordExpires",
       "refreshSessionVersion",

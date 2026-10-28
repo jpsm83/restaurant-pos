@@ -1,4 +1,5 @@
 import User from "../models/user.ts";
+import { withSoftDeleteFilter } from "../models/softDelete.ts";
 import type { AuthSession } from "./types.ts";
 import {
   GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE,
@@ -21,17 +22,19 @@ export type ResendEmailConfirmationResult =
 export async function handleResendEmailConfirmationForAuthenticatedAccount(
   session: AuthSession,
 ): Promise<ResendEmailConfirmationResult> {
-  const u = await User.findById(session.id)
+  const account = await User.findOne(
+    withSoftDeleteFilter({ _id: session.id }),
+  )
     .select("personalDetails.email personalDetails.emailVerified")
     .lean();
-  if (!u) {
+  if (!account) {
     return { kind: "account_not_found" };
   }
-  const rawEmail = u.personalDetails?.email;
+  const rawEmail = account.personalDetails?.email;
   if (typeof rawEmail !== "string" || !rawEmail.trim()) {
     return { kind: "account_not_found" };
   }
-  if (u.personalDetails?.emailVerified === true) {
+  if (account.personalDetails?.emailVerified === true) {
     return {
       kind: "already_verified",
       message: RESEND_EMAIL_ALREADY_VERIFIED_MESSAGE,

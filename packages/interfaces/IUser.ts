@@ -15,6 +15,7 @@ export interface IUser {
   selfOrders?: Types.ObjectId[]; // References to Order model
   notifications?: INotification[];
   verificationToken?: string;
+  verificationTokenExpires?: Date;
   resetPasswordToken?: string;
   resetPasswordExpires?: Date;
   refreshSessionVersion?: number;

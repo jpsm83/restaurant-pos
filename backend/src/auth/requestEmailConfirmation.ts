@@ -1,14 +1,14 @@
 import User from "../models/user.ts";
 import { withSoftDeleteFilter } from "../models/softDelete.ts";
-import { sendAuthTokenEmailOrRollback } from "./authEmailTokenFlow.ts";
+import {
+  sendAuthTokenEmailOrRollback,
+  VERIFICATION_TOKEN_TTL_MS,
+} from "./authEmailTokenFlow.ts";
 import { buildConfirmEmailLink } from "./emailLinks.ts";
 import { buildEmailConfirmationContent } from "./emailTemplates.ts";
 
 export const GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE =
   "If an account exists for this email, you will receive instructions shortly.";
-
-export const EMAIL_CONFIRMATION_SENT_MESSAGE =
-  "Email confirmation sent successfully. Please check your email.";
 
 export const REACTIVATION_REQUIRED_MESSAGE =
   "Account reactivation required. Please confirm the email link we sent to reactivate this account.";
@@ -19,7 +19,6 @@ export function normalizeRequestEmail(email: string): string {
 
 export type RequestEmailConfirmationHandlerResult =
   | { kind: "success_200"; message: string }
-  | { kind: "already_verified_400"; message: string }
   | {
       kind: "server_error_500";
       message: string;
@@ -30,8 +29,11 @@ type ConfirmationUser = {
   personalDetails?: { username?: string; firstName?: string } | null;
 };
 
-/** Writes the confirmation token on this User. */
-export async function sendSoftDeletedUserConfirmation(
+/**
+ * Writes one active confirmation link (token + 24-hour expiry) on this User.
+ * A new request replaces the previous link for the same purpose.
+ */
+export async function sendUserVerificationEmail(
   user: ConfirmationUser,
   normalizedEmail: string,
 ): Promise<RequestEmailConfirmationHandlerResult> {
@@ -44,7 +46,14 @@ export async function sendSoftDeletedUserConfirmation(
     persist: (token) =>
       User.updateOne(
         withSoftDeleteFilter({ _id: user._id }, true),
-        { $set: { verificationToken: token } },
+        {
+          $set: {
+            verificationToken: token,
+            verificationTokenExpires: new Date(
+              Date.now() + VERIFICATION_TOKEN_TTL_MS,
+            ),
+          },
+        },
       ),
     buildLink: buildConfirmEmailLink,
     buildContent: (link) =>
@@ -52,7 +61,12 @@ export async function sendSoftDeletedUserConfirmation(
     rollback: () =>
       User.updateOne(
         withSoftDeleteFilter({ _id: user._id }, true),
-        { $unset: { verificationToken: "" } },
+        {
+          $unset: {
+            verificationToken: "",
+            verificationTokenExpires: "",
+          },
+        },
       ),
   });
 
@@ -65,10 +79,15 @@ export async function sendSoftDeletedUserConfirmation(
 
   return {
     kind: "success_200",
-    message: EMAIL_CONFIRMATION_SENT_MESSAGE,
+    message: GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE,
   };
 }
 
+/**
+ * Anti-enumeration verification request. Known and unknown addresses get the
+ * same outcome; an already-verified account is also silent. Only a User who
+ * needs a link is written to and mailed.
+ */
 export async function handleRequestEmailConfirmation(
   normalizedEmail: string,
 ): Promise<RequestEmailConfirmationHandlerResult> {
@@ -83,14 +102,14 @@ export async function handleRequestEmailConfirmation(
     )
     .lean();
 
-  if (!user) {
-    return { kind: "success_200", message: GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE };
+  const alreadyVerifiedActive =
+    user?.personalDetails?.emailVerified === true && user.deleted !== true;
+  if (!user || alreadyVerifiedActive) {
+    return {
+      kind: "success_200",
+      message: GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE,
+    };
   }
 
-  const userEmailVerified = user.personalDetails?.emailVerified === true;
-  if (userEmailVerified && user.deleted !== true) {
-    return { kind: "already_verified_400", message: "Email is already verified." };
-  }
-
-  return sendSoftDeletedUserConfirmation(user, normalizedEmail);
+  return sendUserVerificationEmail(user, normalizedEmail);
 }

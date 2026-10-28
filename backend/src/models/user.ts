@@ -50,6 +50,7 @@ const userSchema = new Schema(
      * Raw token values are emailed; stored until consumed or replaced.
      */
     verificationToken: { type: String, default: undefined },
+    verificationTokenExpires: { type: Date, default: undefined },
     resetPasswordToken: { type: String, default: undefined },
     resetPasswordExpires: { type: Date, default: undefined },
     /** Increment on password reset / password change to refuse refresh sessions from the previous generation. */

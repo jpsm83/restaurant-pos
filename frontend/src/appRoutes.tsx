@@ -37,6 +37,9 @@ const SignUpPage = lazy(() => import("@/pages/SignUpPage"));
 const ForgotPasswordPage = lazy(() => import("@/pages/ForgotPasswordPage"));
 const ResetPasswordPage = lazy(() => import("@/pages/ResetPasswordPage"));
 const ConfirmEmailPage = lazy(() => import("@/pages/ConfirmEmailPage"));
+const RequestEmailConfirmationPage = lazy(
+  () => import("@/pages/RequestEmailConfirmationPage"),
+);
 const ConfirmEmailChangePage = lazy(
   () => import("@/pages/ConfirmEmailChangePage"),
 );
@@ -190,6 +193,14 @@ export function AppRoutes() {
             />
             <Route path="reset-password" element={<ResetPasswordPage />} />
             <Route path="confirm-email" element={<ConfirmEmailPage />} />
+            <Route
+              path="request-email-confirmation"
+              element={
+                <PublicOnlyRoute>
+                  <RequestEmailConfirmationPage />
+                </PublicOnlyRoute>
+              }
+            />
             <Route
               path="confirm-email-change"
               element={<ConfirmEmailChangePage />}

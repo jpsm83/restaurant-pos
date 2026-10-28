@@ -18,7 +18,7 @@ vi.mock("@/auth/store/AuthContext", () => ({
   useAuth: () => mockUseAuth(),
 }));
 
-function renderAt(path: string) {
+function renderAt(path: string, language?: "en" | "es") {
   return renderWithI18n(
     <MemoryRouter initialEntries={[path]}>
       <Routes>
@@ -30,6 +30,7 @@ function renderAt(path: string) {
         />
       </Routes>
     </MemoryRouter>,
+    language ? { language } : undefined,
   );
 }
 
@@ -42,6 +43,17 @@ describe("ConfirmEmailPage", () => {
       state: { user: null, status: "unauthenticated", error: null },
       dispatch: mockDispatch,
     });
+  });
+
+  it("renders the Spanish copy", async () => {
+    await renderAt("/confirm-email?token=abc", "es");
+
+    expect(
+      screen.getByRole("heading", { name: "Confirma tu correo" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Confirmar correo" }),
+    ).toBeInTheDocument();
   });
 
   it("shows missing-token message when query has no token", async () => {

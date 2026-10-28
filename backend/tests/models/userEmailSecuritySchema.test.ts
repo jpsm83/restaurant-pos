@@ -32,10 +32,12 @@ describe("User email security schema", () => {
     expect(User.schema.path("personalDetails.emailVerified")).toBeDefined();
 
     const expiresReset = new Date(Date.now() + 3_600_000);
+    const expiresVerification = new Date(Date.now() + 86_400_000);
 
     const created = await User.create({
       personalDetails: minimalPersonalDetails,
       verificationToken: "confirm-token-test",
+      verificationTokenExpires: expiresVerification,
       resetPasswordToken: "reset-token-test",
       resetPasswordExpires: expiresReset,
     });
@@ -43,6 +45,9 @@ describe("User email security schema", () => {
     expect(created.refreshSessionVersion ?? 0).toBe(0);
     expect(created.personalDetails.emailVerified).toBe(false);
     expect(created.verificationToken).toBe("confirm-token-test");
+    expect(created.verificationTokenExpires?.getTime()).toBe(
+      expiresVerification.getTime(),
+    );
     expect(created.resetPasswordToken).toBe("reset-token-test");
     expect(created.resetPasswordExpires?.getTime()).toBe(expiresReset.getTime());
 
@@ -50,6 +55,9 @@ describe("User email security schema", () => {
     expect(fromDb?.personalDetails?.emailVerified).toBe(false);
     expect(fromDb).not.toHaveProperty("emailVerified");
     expect(fromDb?.verificationToken).toBe("confirm-token-test");
+    expect(fromDb?.verificationTokenExpires?.getTime()).toBe(
+      expiresVerification.getTime(),
+    );
     expect(fromDb?.resetPasswordToken).toBe("reset-token-test");
   });
 

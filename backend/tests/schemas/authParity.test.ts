@@ -22,6 +22,7 @@ import {
 const SERVER_OWNED_FIELDS = [
   "emailVerified",
   "verificationToken",
+  "verificationTokenExpires",
   "resetPasswordToken",
   "resetPasswordExpires",
   "refreshSessionVersion",

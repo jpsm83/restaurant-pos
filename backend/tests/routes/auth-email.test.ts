@@ -32,22 +32,24 @@ import {
 } from "../helpers/accountEmailRail.ts";
 import { getTestApp, resetTestApp } from "../setup.ts";
 import User from "../../src/models/user.ts";
-import {
-  EMAIL_CONFIRMATION_SENT_MESSAGE,
-  GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE,
-} from "../../src/auth/requestEmailConfirmation.ts";
+import { GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE } from "../../src/auth/requestEmailConfirmation.ts";
 import {
   CONFIRM_EMAIL_CONSUMPTION_ERROR_MESSAGE,
   CONFIRM_EMAIL_SUCCESS_MESSAGE,
 } from "../../src/auth/confirmEmail.ts";
 import { RESET_PASSWORD_SUCCESS_MESSAGE } from "../../src/auth/resetPassword.ts";
 import { PASSWORD_POLICY_MESSAGE } from "restaurant-pos-packages/utils/passwordPolicy";
+import { VERIFICATION_TOKEN_TTL_MS } from "../../src/auth/authEmailTokenFlow.ts";
 
 const testPassword = "TestPassword123!";
 const newPassword = "NewPassword456!";
 
 function randomToken(): string {
   return crypto.randomBytes(32).toString("hex");
+}
+
+function futureVerificationExpiry(): Date {
+  return new Date(Date.now() + VERIFICATION_TOKEN_TTL_MS);
 }
 
 function futureResetExpiry(): Date {
@@ -151,7 +153,9 @@ describe("auth-email routes (checklist)", () => {
         payload: { email: "phase71-known-confirm@example.com" },
       });
       expect(res.statusCode).toBe(200);
-      expect(JSON.parse(res.body).message).toBe(EMAIL_CONFIRMATION_SENT_MESSAGE);
+      expect(JSON.parse(res.body).message).toBe(
+        GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE,
+      );
       const stored = await User.findOne({
         "personalDetails.email": "phase71-known-confirm@example.com",
       })
@@ -172,7 +176,7 @@ describe("auth-email routes (checklist)", () => {
       const raw = randomToken();
       await User.updateOne(
         { _id: user._id },
-        { $set: { verificationToken: raw } },
+        { $set: { verificationToken: raw, verificationTokenExpires: futureVerificationExpiry() } },
       );
 
       const res = await app.inject({
@@ -210,7 +214,7 @@ describe("auth-email routes (checklist)", () => {
       const raw = randomToken();
       await User.updateOne(
         { _id: user._id },
-        { $set: { verificationToken: raw } },
+        { $set: { verificationToken: raw, verificationTokenExpires: futureVerificationExpiry() } },
       );
 
       expect(
