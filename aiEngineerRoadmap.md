@@ -30,15 +30,15 @@ This document maps that path, prioritized by relevance to building AI products, 
 *A small, deliberate dose of ML — concepts only. This replaces the old 95-hour ML specialization.*
 
 - [x] What AI can and can't do; the AI Engineer vs. ML Engineer vs. Data Scientist distinction
-- [ ] Probabilistic vs. deterministic systems: why the same input can produce different output
-- [ ] Supervised vs. unsupervised learning in one page (what "training" means, at a high level)
-- [ ] Overfitting / train-val-test split — the intuition, not the math
-- [ ] Evaluation metrics **in the retrieval context**: precision, recall, precision@k, recall@k, MRR, nDCG
-- [ ] Embeddings intuition: what a vector represents, why similar meaning → nearby points
-- [ ] Distance metrics: cosine similarity, dot product, Euclidean (when each is used)
-- [ ] Sampling parameters: temperature, top-p, top-k; determinism vs. creativity
-- [ ] What fine-tuning is (conceptually) and **why you usually shouldn't start there** — compare prompting vs. RAG vs. fine-tuning
-- [ ] Token economics: tokens, context limits, input/output pricing, rough cost math
+- [x] Probabilistic vs. deterministic systems: why the same input can produce different output
+- [x] Supervised vs. unsupervised learning in one page (what "training" means, at a high level)
+- [x] Overfitting / train-val-test split — the intuition, not the math
+- [x] Evaluation metrics **in the retrieval context**: precision, recall, precision@k, recall@k, MRR, nDCG
+- [x] Embeddings intuition: what a vector represents, why similar meaning → nearby points
+- [x] Distance metrics: cosine similarity, dot product, Euclidean (when each is used)
+- [x] Sampling parameters: temperature, top-p, top-k; determinism vs. creativity
+- [x] What fine-tuning is (conceptually) and **why you usually shouldn't start there** — compare prompting vs. RAG vs. fine-tuning
+- [x] Token economics: tokens, context limits, input/output pricing, rough cost math
 
 **Deliberately excluded from this phase:** backpropagation, gradient descent, XGBoost, random forests, CNNs, RNNs, reinforcement learning. You will never need these to build RAG or agent products.
 
@@ -330,7 +330,7 @@ Build these in order. Each one is a production-shaped artifact, not a tutorial.
 - 🎯 Every stage ends in a **milestone output** — a project or artifact, never just "completed a course."
 - 🧩 The roadmap's own **Portfolio Projects** are slotted at the end of the relevant stages.
 
-**The only 💳 anchors on the core path:** `Retrieval Augmented Generation (RAG)` and `Agentic AI`. Everything else on the critical path is free. The old `Machine Learning Specialization` anchor is **dropped** — it served the model-training path, not yours.
+**The only 💳 anchors on the core path:** `Retrieval Augmented Generation (RAG)` and `Agentic AI`. Everything else on the critical path is free.
 
 ---
 
@@ -340,11 +340,9 @@ The mental model before any code. Do this instead of a full ML course.
 
 - [x] 💳 `AI for Everyone` — 6h54m — what AI can/can't do, societal impact. *(already done)*
 - [x] ✅ `Generative AI for Everyone` — 5h1m — GenAI capabilities, limits, business framing. *(often free to audit; skim)*
-- [ ] Read/watch: evaluation metrics in retrieval (precision/recall@k, MRR), embeddings intuition, sampling parameters. Use the OpenAI Cookbook + provider docs.
+- [x] Read/watch: evaluation metrics in retrieval (precision/recall@k, MRR), embeddings intuition, sampling parameters. Use the OpenAI Cookbook + provider docs.
 
 🎯 **Milestone:** The "prompt vs. RAG vs. fine-tune vs. train" decision guide from Phase 0.
-
-> **Skip:** `Machine Learning Specialization` (95 h), `Mathematics for ML` (94 h). Not on this path.
 
 ---
 
@@ -352,7 +350,7 @@ The mental model before any code. Do this instead of a full ML course.
 
 You already program. Treat this as an AI-idiom speedrun, not a from-zero course.
 
-- [ ] 💳 `AI Python for Beginners` — 11h30m — *only if* your Python is weak. Otherwise skip and pick up idioms on the fly.
+- [ ] 💳 `Python` — FreeCodeCamp.
 
 🎯 **Milestone:** Rebuild one small existing script as a typed, tested Python service.
 
@@ -472,8 +470,6 @@ Concepts, not training. Prefer docs and short videos over long courses.
 - [ ] ✅ `Voice for AI Agents and Applications` (Vocal Bridge) — 1h26m — only if voice is in scope.
 - [ ] ✅ `Document AI: From OCR to Agentic Doc Extraction` (LandingAI) — 3h11m — useful for ingestion-heavy products.
 
-**Removed entirely from the old plan:** `Machine Learning Specialization`, `Mathematics for ML`, `Deep Learning Specialization`, `Fine-tuning & RL for LLMs`, `Reinforcement Fine-Tuning with GRPO`, `Transformers in Practice`, `Build and Train an LLM with JAX`.
-
 🎯 **Milestone:** Extend Portfolio Project 4 with whichever optional capability is relevant to your product.
 
 ---
@@ -495,7 +491,6 @@ Concepts, not training. Prefer docs and short videos over long courses.
 | **Phase 7** Full-stack AI features | *(no single course — build + AI SDK docs)* | ⚠️ Build-driven |
 | **Phase 8** Evaluation & observability | Evaluating AI Agents + LangFuse docs | ✅ Strong (hands-on required) |
 | **Phase 9** Deployment & LLMOps | Airflow, deploy hands-on | ✅ Sufficient |
-| **Deferred ML track** | Machine Learning Specialization, DLS, RL, fine-tuning | ⏸️ Intentionally skipped |
 
 ## ⚠️ Gaps Courses Don't Fill (and where to get them)
 
