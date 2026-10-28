@@ -7,6 +7,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { Types } from "mongoose";
 import { getTestApp, signAccessTokenForLiveSession } from "../setup.ts";
 import canLogAsEmployee from "../../src/auth/canLogAsEmployee.ts";
+import getEffectiveUserRoleAtTime from "../../src/auth/getEffectiveUserRoleAtTime.ts";
 import {
   createAuthHook,
   hasBusinessAccess,
@@ -237,6 +238,132 @@ describe("Auth Helpers", () => {
         statusCode: 401,
         message: "Invalid or expired access token",
       });
+    });
+  });
+
+  describe("getEffectiveUserRoleAtTime", () => {
+    const membership = async (overrides: {
+      businessId?: Types.ObjectId;
+      userId?: Types.ObjectId;
+      role?: string;
+      onDuty?: boolean;
+      active?: boolean;
+      terminatedDate?: Date;
+      deleted?: boolean;
+    } = {}) =>
+      Employee.create({
+        businessId: overrides.businessId ?? businessId,
+        userId: overrides.userId ?? userId,
+        allEmployeeRoles: [overrides.role ?? "Manager"],
+        taxNumber: `ROLE-${new Types.ObjectId()}`,
+        joinDate: new Date("2024-01-01"),
+        vacationDaysPerYear: 20,
+        onDuty: overrides.onDuty ?? true,
+        active: overrides.active ?? true,
+        terminatedDate: overrides.terminatedDate,
+        deleted: overrides.deleted ?? false,
+      });
+
+    it("returns employee for an active on-duty member of that business", async () => {
+      await membership();
+
+      await expect(
+        getEffectiveUserRoleAtTime({ userId, businessId }),
+      ).resolves.toBe("employee");
+    });
+
+    it("returns customer when the membership belongs to another business", async () => {
+      await membership();
+
+      await expect(
+        getEffectiveUserRoleAtTime({
+          userId,
+          businessId: new Types.ObjectId(),
+        }),
+      ).resolves.toBe("customer");
+    });
+
+    it("returns customer when the member is off duty", async () => {
+      await membership({ onDuty: false });
+
+      await expect(
+        getEffectiveUserRoleAtTime({ userId, businessId }),
+      ).resolves.toBe("customer");
+    });
+
+    it("returns customer for an inactive membership", async () => {
+      await membership({ active: false });
+
+      await expect(
+        getEffectiveUserRoleAtTime({ userId, businessId }),
+      ).resolves.toBe("customer");
+    });
+
+    it("returns customer for a terminated membership", async () => {
+      await membership({ terminatedDate: new Date() });
+
+      await expect(
+        getEffectiveUserRoleAtTime({ userId, businessId }),
+      ).resolves.toBe("customer");
+    });
+
+    it("returns customer for a soft-deleted membership", async () => {
+      await membership({ deleted: true });
+
+      await expect(
+        getEffectiveUserRoleAtTime({ userId, businessId }),
+      ).resolves.toBe("customer");
+    });
+
+    it("uses the schedule gate for non-management roles", async () => {
+      const employee = await membership({ role: "Waiter" });
+      const now = new Date();
+
+      await Schedule.create({
+        businessId,
+        date: now,
+        weekNumber: 1,
+        employeesSchedules: [
+          {
+            employeeId: employee._id,
+            role: "Waiter",
+            timeRange: {
+              startTime: new Date(now.getTime() - 60 * 60 * 1000),
+              endTime: new Date(now.getTime() + 60 * 60 * 1000),
+            },
+            vacation: false,
+            shiftHours: 2,
+            employeeCost: 20,
+          },
+        ],
+      });
+
+      await expect(
+        getEffectiveUserRoleAtTime({ userId, businessId, now }),
+      ).resolves.toBe("employee");
+      await expect(
+        getEffectiveUserRoleAtTime({
+          userId,
+          businessId,
+          now: new Date(now.getTime() + 4 * 60 * 60 * 1000),
+        }),
+      ).resolves.toBe("customer");
+    });
+
+    it("resolves each business independently for a multi-venue member", async () => {
+      const secondBusinessId = new Types.ObjectId();
+      await membership();
+      await membership({ businessId: secondBusinessId });
+
+      await expect(
+        getEffectiveUserRoleAtTime({ userId, businessId }),
+      ).resolves.toBe("employee");
+      await expect(
+        getEffectiveUserRoleAtTime({
+          userId,
+          businessId: secondBusinessId,
+        }),
+      ).resolves.toBe("employee");
     });
   });
 

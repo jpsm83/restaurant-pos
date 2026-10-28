@@ -230,16 +230,6 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
 
       await Employee.create([newEmployee], { session });
 
-      const updateUser = await User.findOneAndUpdate(
-        { _id: user._id },
-        { $set: { employeeDetails: employeeId } },
-        { returnDocument: "after", lean: true, session },
-      );
-
-      if (!updateUser) {
-        throw badRequest("Error updating user!");
-      }
-
       await session.commitTransaction();
 
       return reply.code(201).send({
@@ -396,25 +386,6 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
             throw conflict("User is already an employee!");
           }
 
-          const updatedOldUser = await User.findOneAndUpdate(
-            { _id: (employee.userId as IUser)._id },
-            { $unset: { employeeDetails: null } },
-            { returnDocument: "after", lean: true, session },
-          );
-          const updateNewUser = await User.findOneAndUpdate(
-            { _id: user._id },
-            { $set: { employeeDetails: employeeId } },
-            { returnDocument: "after", lean: true, session },
-          );
-
-          if (!updatedOldUser || !updateNewUser) {
-            throw badRequest(
-              !updatedOldUser
-                ? "Old user not found or not updated"
-                : "New user not found or not updated",
-            );
-          }
-
           updateEmployeeObj.userId = user._id;
         }
 
@@ -530,12 +501,6 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
             },
           },
           { session },
-        );
-
-        await User.findOneAndUpdate(
-          { employeeDetails: employeeId },
-          { $unset: { employeeDetails: null } },
-          { returnDocument: "after", lean: true, session },
         );
 
         await session.commitTransaction();

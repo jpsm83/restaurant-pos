@@ -96,7 +96,6 @@ describe("Schedules Routes", () => {
     });
     employeeId = employee._id;
 
-    await User.findByIdAndUpdate(userId, { employeeDetails: employeeId });
   });
 
   describe("GET /api/v1/schedules", () => {
@@ -660,7 +659,7 @@ describe("Schedules Routes", () => {
       expect(fieldPaths(body)).toContain("userId");
     });
 
-    it("returns 404 when user has no employee details", async () => {
+    it("returns 404 when user has no active employee membership", async () => {
       const app = await getTestApp();
 
       const newUser = await User.create({
@@ -690,7 +689,9 @@ describe("Schedules Routes", () => {
       });
 
       const body = expectProblem(response, 404, "not-found");
-      expect(body.detail).toBe("User not found or not linked to an employee!");
+      expect(body.detail).toBe(
+        "User not found or has no active employee membership!",
+      );
     });
 
     it("returns 404 when no schedules for user", async () => {

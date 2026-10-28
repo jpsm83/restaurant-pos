@@ -8,11 +8,11 @@ import type { FastifyInstance, FastifyReply } from "fastify";
 import { Types } from "mongoose";
 
 import Business from "../models/business.ts";
-import Employee from "../models/employee.ts";
 import RefreshSession from "../models/refreshSession.ts";
 import User from "../models/user.ts";
 import { withSoftDeleteFilter } from "../models/softDelete.ts";
 import canLogAsEmployee from "./canLogAsEmployee.ts";
+import findActiveEmployeeMembership from "./employeeMembership.ts";
 import { AUTH_CONFIG } from "./config.ts";
 import type {
   AuthBusiness,
@@ -194,13 +194,10 @@ export async function buildAuthUserSessionFromUserId(
   const user = (await User.findOne(
     withSoftDeleteFilter({ _id: userId }),
   )
-    .select(
-      "_id personalDetails.email personalDetails.emailVerified employeeDetails emailVerified",
-    )
+    .select("_id personalDetails.email personalDetails.emailVerified emailVerified")
     .lean()) as {
     _id: unknown;
     personalDetails: { email?: string; emailVerified?: boolean };
-    employeeDetails?: unknown;
     emailVerified?: boolean;
   } | null;
 
@@ -220,29 +217,17 @@ export async function buildAuthUserSessionFromUserId(
     role: "Customer",
   };
 
-  if (user.employeeDetails) {
-    const employee = (await Employee.findById(user.employeeDetails)
-      .select("businessId active terminatedDate allEmployeeRoles")
-      .lean()) as {
-      businessId: unknown;
-      active?: boolean;
-      terminatedDate?: unknown;
-      allEmployeeRoles?: string[];
-    } | null;
-
-    if (employee && employee.active && !employee.terminatedDate) {
-      const { canLogAsEmployee: canLog } = await canLogAsEmployee(
-        user.employeeDetails as Types.ObjectId,
-      );
-      userSession.employeeId = String(user.employeeDetails);
-      userSession.businessId = String(employee.businessId);
-      userSession.canLogAsEmployee = canLog;
-      const primaryRole = employee.allEmployeeRoles?.[0];
-      userSession.role =
-        typeof primaryRole === "string" && primaryRole.trim()
-          ? primaryRole
-          : "Employee";
-    }
+  const employee = await findActiveEmployeeMembership({ userId });
+  if (employee) {
+    const { canLogAsEmployee: canLog } = await canLogAsEmployee(employee._id);
+    userSession.employeeId = String(employee._id);
+    userSession.businessId = String(employee.businessId);
+    userSession.canLogAsEmployee = canLog;
+    const primaryRole = employee.allEmployeeRoles?.[0];
+    userSession.role =
+      typeof primaryRole === "string" && primaryRole.trim()
+        ? primaryRole
+        : "Employee";
   }
 
   return userSession;

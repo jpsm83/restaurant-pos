@@ -763,11 +763,6 @@ describe("Reservations Routes", () => {
         vacationDaysLeft: 20,
       });
 
-      await User.updateOne(
-        { _id: user._id },
-        { $set: { employeeDetails: employee._id } },
-      );
-
       const token = await generateTestToken({
         id: user._id.toString(),
         email: "resemployee@test.com",
@@ -837,11 +832,6 @@ describe("Reservations Routes", () => {
         vacationDaysPerYear: 20,
         vacationDaysLeft: 20,
       });
-
-      await User.updateOne(
-        { _id: user._id },
-        { $set: { employeeDetails: employee._id } },
-      );
 
       const token = await generateTestToken({
         id: user._id.toString(),

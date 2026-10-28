@@ -23,13 +23,6 @@ const userSchema = new Schema(
     }, // personal details of the user
 
     // optional fields
-    // Set only when this user is linked as an employee; kept in sync by employee create/update/delete.
-    employeeDetails: {
-      type: Schema.Types.ObjectId,
-      ref: "Employee",
-      default: undefined,
-      index: true, // indexing references is a performance optimization, speed queries that frequently filter by this field
-    }, // employee details of the user if he has an employee role
     selfOrders: {
       type: [
         {

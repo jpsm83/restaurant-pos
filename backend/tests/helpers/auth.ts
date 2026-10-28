@@ -95,11 +95,6 @@ export async function createTestEmployee(
     netMonthlySalary: 2000,
   });
 
-  // Update user with employee details
-  await User.findByIdAndUpdate(userId, {
-    employeeDetails: employee._id,
-  });
-
   return employee._id.toString();
 }
 

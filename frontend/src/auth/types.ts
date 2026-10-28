@@ -32,7 +32,7 @@ export interface AuthUser {
   type: "user";
   /** From login / refresh / signup; drives verification UI. */
   emailVerified?: boolean;
-  /** Present when linked to an active Employee (`User.employeeDetails`). */
+  /** Present when the User has an active Employee membership. */
   employeeId?: string;
   /** Employing tenant when `employeeId` is set. */
   businessId?: string;

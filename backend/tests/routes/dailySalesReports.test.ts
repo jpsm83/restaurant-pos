@@ -98,8 +98,6 @@ describe("DailySalesReports routes - Task T2 integration", () => {
       onDuty: false,
       vacationDaysPerYear: 20,
     });
-    user.employeeDetails = employee._id;
-    await user.save();
     return generateTestToken({
       id: user._id.toString(),
       email: user.personalDetails.email,

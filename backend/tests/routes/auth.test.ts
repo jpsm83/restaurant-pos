@@ -319,11 +319,6 @@ describe("Auth Routes", () => {
         onDuty: false,
         active: true,
       });
-      await User.updateOne(
-        { _id: user._id },
-        { $set: { employeeDetails: employee._id } },
-      );
-
       const before = await app.inject({
         method: "POST",
         url: "/api/v1/auth/login",

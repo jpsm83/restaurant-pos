@@ -122,7 +122,6 @@ describe("createUserBodySchema", () => {
       "resetPasswordToken",
       "refreshSessionVersion",
       "notifications",
-      "employeeDetails",
     ]) {
       expect(
         createUserBodySchema.safeParse({ ...validCreate, [field]: "x" }).success,

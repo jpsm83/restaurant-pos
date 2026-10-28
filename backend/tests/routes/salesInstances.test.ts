@@ -277,10 +277,6 @@ describe("SalesInstances Routes", () => {
         onDuty: true,
         vacationDaysPerYear: 20,
       });
-      await User.updateOne(
-        { _id: manager._id },
-        { $set: { employeeDetails: employee._id } },
-      );
       const auth = await generateTestToken({
         id: String(manager._id),
         email: "opener@test.com",

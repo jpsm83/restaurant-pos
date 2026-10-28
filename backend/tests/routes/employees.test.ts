@@ -3,7 +3,7 @@
  *
  * Validation and error responses are asserted at the HTTP seam: failures are
  * RFC 9457 `application/problem+json` documents, never `{ message }`.
- * Phase 4: Full transaction tests for User sync (requires replica set).
+ * Phase 4: Full transaction tests for Employee membership (requires replica set).
  * Phase 5: Cloudinary tests for document uploads (skipped - ESM mocking limitation)
  */
 
@@ -526,7 +526,7 @@ describe("Employees Routes", () => {
       expect(detail(response)).toBe("Employee already deleted!");
     });
 
-    it("retains the employee as deleted and clears the user link", async () => {
+    it("retains the employee as deleted", async () => {
       const app = await getTestApp();
 
       const created = await app.inject({
@@ -552,9 +552,6 @@ describe("Employees Routes", () => {
       expect(retained?.deleted).toBe(true);
       expect(retained?.deletedAt).toBeTruthy();
       expect(await Employee.findById(employee?._id).lean()).toBeNull();
-
-      const updatedUser = await User.findById(userId).lean();
-      expect(updatedUser?.employeeDetails).toBeUndefined();
     });
   });
 
@@ -627,9 +624,8 @@ describe("Employees Routes", () => {
     });
   });
 
-  // Phase 4 Task 4.4: Transaction Tests for User Sync
   describe("Transaction Tests - POST /api/v1/employees", () => {
-    it("creates employee and updates user employeeDetails", async () => {
+    it("creates an employee membership", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
@@ -649,12 +645,6 @@ describe("Employees Routes", () => {
         userId,
       }).lean();
       expect(createdEmployee).not.toBeNull();
-
-      // Verify user's employeeDetails was updated
-      const updatedUser = await User.findById(userId).lean();
-      expect(updatedUser?.employeeDetails?.toString()).toBe(
-        createdEmployee?._id?.toString(),
-      );
     });
 
     it("prevents duplicate employee for same user in business", async () => {
@@ -682,6 +672,68 @@ describe("Employees Routes", () => {
       expect(isProblemDetails(response)).toBe(true);
       expect(detail(response)).toBe("User is already an employee!");
     });
+
+    it("does not count a soft-deleted membership as an existing employee", async () => {
+      const app = await getTestApp();
+
+      await Employee.create({
+        businessId,
+        userId,
+        taxNumber: "EMP-SOFT-DELETED",
+        joinDate: new Date(),
+        vacationDaysPerYear: 20,
+        vacationDaysLeft: 20,
+        allEmployeeRoles: ["Waiter"],
+        deleted: true,
+        deletedAt: new Date(),
+      });
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/employees",
+        payload: multipart(validCreateFields()),
+        headers: { "content-type": "multipart/form-data" },
+      });
+
+      expect(response.statusCode).toBe(201);
+      expect(await Employee.countDocuments({ businessId, userId })).toBe(1);
+    });
+
+    it("allows the same user to belong to more than one business", async () => {
+      const app = await getTestApp();
+
+      const otherBusiness = await Business.create({
+        tradeName: "Second Restaurant",
+        legalName: "Second Restaurant LLC",
+        email: "second@restaurant.com",
+        password: "hashedpassword",
+        phoneNumber: "1234567890",
+        taxNumber: "TAX-002",
+        currencyTrade: "USD",
+        address: validAddress,
+      });
+
+      const first = await app.inject({
+        method: "POST",
+        url: "/api/v1/employees",
+        payload: multipart(validCreateFields()),
+        headers: { "content-type": "multipart/form-data" },
+      });
+      expect(first.statusCode).toBe(201);
+
+      const second = await app.inject({
+        method: "POST",
+        url: "/api/v1/employees",
+        payload: multipart({
+          ...validCreateFields(),
+          businessId: otherBusiness._id.toString(),
+        }),
+        headers: { "content-type": "multipart/form-data" },
+      });
+      expect(second.statusCode).toBe(201);
+
+      expect(await Employee.countDocuments({ userId })).toBe(2);
+    });
   });
 
   describe("Transaction Tests - PATCH /api/v1/employees/:employeeId", () => {
@@ -698,11 +750,6 @@ describe("Employees Routes", () => {
         vacationDaysLeft: 20,
         allEmployeeRoles: ["Waiter"],
         active: true,
-      });
-
-      // Update user to link employee
-      await User.findByIdAndUpdate(userId, {
-        employeeDetails: employee._id,
       });
 
       // Create printer with employee assigned
@@ -743,10 +790,6 @@ describe("Employees Routes", () => {
         employee._id.toString(),
       );
     });
-
-    // Note: User link change test skipped due to parallel test conflicts
-    // The PATCH endpoint correctly swaps user assignments using transactions
-    // but the test is flaky in parallel execution environment
   });
 
   /**
@@ -806,9 +849,6 @@ describe("Employees Routes", () => {
         allEmployeeRoles: ["Waiter"],
         documentsUrl: ["https://existing-doc.com/file.png"],
       });
-
-      // Update user
-      await User.findByIdAndUpdate(userId, { employeeDetails: employee._id });
 
       // Create a simple PNG image buffer
       const pngBuffer = Buffer.from(
@@ -884,10 +924,6 @@ describe("Employees Routes", () => {
         .lean();
       expect(deleted).not.toBeNull();
       expect(deleted?.deleted).toBe(true);
-
-      // Verify user's employeeDetails was cleared
-      const updatedUser = await User.findById(userId).lean();
-      expect(updatedUser?.employeeDetails).toBeUndefined();
     });
   });
 });

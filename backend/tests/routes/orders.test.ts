@@ -188,9 +188,6 @@ describe("Orders Routes", () => {
       vacationDaysPerYear: 20,
     });
 
-    manager.employeeDetails = managerEmployee._id;
-    await manager.save();
-
     managerAuth = await generateTestToken({
       id: String(managerUserId),
       email: manager.personalDetails.email,

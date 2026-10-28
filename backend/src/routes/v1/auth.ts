@@ -14,9 +14,7 @@ import type { FastifyPluginAsync } from "fastify";
 import bcrypt from "bcrypt";
 import Business from "../../models/business.ts";
 import User from "../../models/user.ts";
-import Employee from "../../models/employee.ts";
 import { withSoftDeleteFilter } from "../../models/softDelete.ts";
-import canLogAsEmployee from "../../auth/canLogAsEmployee.ts";
 import { AUTH_CONFIG } from "../../auth/config.ts";
 import {
   createAuthHook,
@@ -28,6 +26,7 @@ import {
 import { issueLiveTicket } from "../../auth/liveTicketStore.ts";
 import type { AuthBusiness, AuthUser } from "../../auth/types.ts";
 import {
+  buildAuthUserSessionFromUserId,
   exchangeRefreshSession,
   issueSessionWithRefreshCookie,
   revokePresentedRefreshSession,
@@ -379,7 +378,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
    * Flow:
    * 1. Check Business collection by email
    * 2. If not found, check User collection by personalDetails.email
-   * 3. If user has employeeDetails, check canLogAsEmployee
+   * 3. Resolve any active Employee membership and its canLogAsEmployee gate
    * 4. Return access token + user session data
    */
   app.post<{ Body: LoginBody }>(
@@ -433,7 +432,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         ...withSoftDeleteFilter({ "personalDetails.email": email }),
       })
         .select(
-          "_id personalDetails.email personalDetails.password personalDetails.emailVerified employeeDetails emailVerified refreshSessionVersion",
+          "_id personalDetails.email personalDetails.password personalDetails.emailVerified emailVerified refreshSessionVersion",
         )
         .lean()) as {
         _id: unknown;
@@ -442,7 +441,6 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
           password?: string;
           emailVerified?: boolean;
         };
-        employeeDetails?: unknown;
         emailVerified?: boolean;
         refreshSessionVersion?: number;
       } | null;
@@ -459,46 +457,10 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         throw unauthorized("Invalid credentials");
       }
 
-      const userEmail =
-        typeof user.personalDetails.email === "string"
-          ? user.personalDetails.email
-          : String(user.personalDetails.email);
-
-      const session: AuthUser = {
-        id: String(user._id),
-        email: userEmail,
-        type: "user",
-        emailVerified:
-          user.personalDetails?.emailVerified === true ||
-          user.emailVerified === true,
-        role: "Customer",
-      };
-
-      // 3. Check employee link if present
-      if (user.employeeDetails) {
-        const employee = (await Employee.findById(user.employeeDetails)
-          .select("businessId active terminatedDate allEmployeeRoles")
-          .lean()) as {
-          businessId: unknown;
-          active?: boolean;
-          terminatedDate?: unknown;
-          allEmployeeRoles?: string[];
-        } | null;
-
-        if (employee && employee.active && !employee.terminatedDate) {
-          const { canLogAsEmployee: canLog } = await canLogAsEmployee(
-            user.employeeDetails as import("mongoose").Types.ObjectId,
-          );
-
-          session.employeeId = String(user.employeeDetails);
-          session.businessId = String(employee.businessId);
-          session.canLogAsEmployee = canLog;
-          const primaryRole = employee.allEmployeeRoles?.[0];
-          session.role =
-            typeof primaryRole === "string" && primaryRole.trim()
-              ? primaryRole
-              : "Employee";
-        }
+      // 3. Resolve the active Employee membership, if any
+      const session = await buildAuthUserSessionFromUserId(String(user._id));
+      if (!session) {
+        throw unauthorized("Invalid credentials");
       }
 
       const { accessToken, user: userOut } = await issueSessionWithRefreshCookie(

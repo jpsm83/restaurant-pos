@@ -116,8 +116,6 @@ async function createEmployeeActor(
     onDuty: true,
     vacationDaysPerYear: 20,
   });
-  user.employeeDetails = employee._id;
-  await user.save();
   const token = await generateTestToken({
     id: user._id.toString(),
     email: user.personalDetails.email,

@@ -19,6 +19,7 @@ import type {
   ISalary,
 } from "restaurant-pos-packages/interfaces/IEmployee";
 
+import findActiveEmployeeMembership from "../../auth/employeeMembership.ts";
 import getWeekNumber from "../../schedules/getWeekNumber.ts";
 import employeesValidation from "../../schedules/employeesValidation.ts";
 import isScheduleOverlapping from "../../schedules/isScheduleOverlapping.ts";
@@ -26,7 +27,6 @@ import getWeekdaysInMonth from "../../schedules/getWeekdaysInMonth.ts";
 import calculateEmployeeCost from "../../schedules/calculateEmployeeCost.ts";
 import Schedule from "../../models/schedule.ts";
 import Employee from "../../models/employee.ts";
-import User from "../../models/user.ts";
 import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
 import { createAuthHook, createOptionalAuthHook } from "../../auth/middleware.ts";
 import type { AuthUser } from "../../auth/types.ts";
@@ -784,16 +784,12 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
       const { userId } = req.params;
       const { includeDeleted = false } = req.query;
 
-      const user = (await User.findById(userId)
-        .select("employeeDetails")
-        .lean()) as {
-        employeeDetails?: unknown;
-      } | null;
-      if (!user?.employeeDetails) {
-        throw notFound("User not found or not linked to an employee!");
+      const employee = await findActiveEmployeeMembership({ userId });
+      if (!employee) {
+        throw notFound("User not found or has no active employee membership!");
       }
 
-      const employeeId = user.employeeDetails as Types.ObjectId;
+      const employeeId = employee._id;
 
       const schedules = await Schedule.find(
         withSoftDeleteFilter(
