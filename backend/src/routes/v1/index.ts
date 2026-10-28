@@ -21,10 +21,21 @@ import { notificationsLiveRoutes } from "./notificationsLive.ts";
 import { printersRoutes } from "./printers.ts";
 import { weeklyBusinessReportRoutes } from "./weeklyBusinessReport.ts";
 import { monthlyBusinessReportRoutes } from "./monthlyBusinessReport.ts";
+import type { GoogleVerifier } from "../../auth/google.ts";
 
-export const registerV1Routes: FastifyPluginAsync = async (app) => {
+export interface V1RoutesOptions {
+  googleVerifier?: GoogleVerifier | null;
+}
+
+export const registerV1Routes: FastifyPluginAsync<V1RoutesOptions> = async (
+  app,
+  options,
+) => {
   // Auth routes (no authentication required for login/refresh/logout)
-  await app.register(authRoutes, { prefix: "/auth" });
+  await app.register(authRoutes, {
+    prefix: "/auth",
+    googleVerifier: options.googleVerifier ?? null,
+  });
 
   await app.register(businessRoutes, { prefix: "/business" });
   await app.register(businessGoodsRoutes, { prefix: "/businessGoods" });

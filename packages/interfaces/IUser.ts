@@ -12,6 +12,8 @@ export interface IUser {
   personalDetails: IPersonalDetails;
   /** `en` or `es`; unset until the person chooses a language. */
   languagePreference?: "en" | "es";
+  /** Google subject; server-owned and unique among active users. */
+  googleId?: string;
   selfOrders?: Types.ObjectId[]; // References to Order model
   notifications?: INotification[];
   verificationToken?: string;

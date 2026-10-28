@@ -110,6 +110,10 @@ describe("ERROR_COPY", () => {
       namespace: "auth",
       key: "api.emailInUse",
     });
+    expect(getErrorCopy(failure("googleAuth.unauthorized"))).toMatchObject({
+      namespace: "auth",
+      key: "api.googleAuthFailed",
+    });
     expect(getErrorCopy(failure("confirmEmail.badRequest"))).toMatchObject({
       namespace: "auth",
       key: "api.invalidConfirmationLink",

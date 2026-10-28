@@ -5,6 +5,7 @@ import User from "../../src/models/user.ts";
 import Business from "../../src/models/business.ts";
 import {
   confirmEmailBodySchema,
+  googleAuthBodySchema,
   loginBodySchema,
   requestEmailConfirmationBodySchema,
   requestPasswordResetBodySchema,
@@ -26,11 +27,13 @@ const SERVER_OWNED_FIELDS = [
   "resetPasswordToken",
   "resetPasswordExpires",
   "refreshSessionVersion",
+  "googleId",
 ] as const;
 
 const allDtos: Record<string, z.ZodObject> = {
   signupBodySchema,
   loginBodySchema,
+  googleAuthBodySchema,
   requestEmailConfirmationBodySchema,
   requestPasswordResetBodySchema,
   confirmEmailBodySchema,

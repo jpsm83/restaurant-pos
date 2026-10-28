@@ -32,6 +32,8 @@ const userSchema = new Schema(
       enum: languagePreferenceEnums,
       default: undefined,
     },
+    /** Google subject; server-owned and unique among active users. */
+    googleId: { type: String, default: undefined },
     selfOrders: {
       type: [
         {
@@ -68,6 +70,17 @@ userSchema.index({ "notifications.notificationId": 1 });
 
 userSchema.index({ verificationToken: 1 }, { sparse: true });
 userSchema.index({ resetPasswordToken: 1 }, { sparse: true });
+// A Google subject belongs to one active User; a soft-deleted row may release it.
+userSchema.index(
+  { googleId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      googleId: { $type: "string" },
+      deleted: false,
+    },
+  },
+);
 // Sign-in email is unique among active users. A soft-deleted row must not hold the address.
 userSchema.index(
   { "personalDetails.email": 1 },

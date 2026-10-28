@@ -46,11 +46,20 @@ export type AuthSession = AuthUser;
 export interface AuthLoginSnapshot {
   accessToken?: string;
   user: AuthSession | null;
+  /** A soft-deleted account must confirm the email reactivation link first. */
+  reactivationRequired?: boolean;
 }
 
 export interface LoginCredentials {
   email: string;
   password: string;
+}
+
+export interface GoogleAuthCredentials {
+  /** Google ID token returned by the Google provider. */
+  credential: string;
+  /** Supplied/browser language for a new Google User. */
+  languagePreference?: "en" | "es";
 }
 
 export interface SignupCredentials {

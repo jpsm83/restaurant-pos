@@ -41,18 +41,23 @@ import {
   REACTIVATION_REQUIRED_MESSAGE,
   sendUserVerificationEmail,
 } from "../../auth/requestEmailConfirmation.ts";
+import type { GoogleVerifier } from "../../auth/google.ts";
+import { handleGoogleAuth } from "../../auth/googleSignIn.ts";
 import { sendAccountExistsEmail } from "../../auth/accountExistsEmail.ts";
 import { handleRequestPasswordReset } from "../../auth/requestPasswordReset.ts";
 import { handleResendEmailConfirmationForAuthenticatedAccount } from "../../auth/resendEmailConfirmation.ts";
 import { handleResetPassword } from "../../auth/resetPassword.ts";
 import {
   badRequest,
+  conflict,
   forbidden,
   internal,
+  notFound,
   unauthorized,
 } from "../../errors/appError.ts";
 import {
   confirmEmailBodySchema,
+  googleAuthBodySchema,
   loginBodySchema,
   requestEmailConfirmationBodySchema,
   requestPasswordResetBodySchema,
@@ -60,6 +65,7 @@ import {
   setModeBodySchema,
   signupBodySchema,
   type ConfirmEmailBody,
+  type GoogleAuthBody,
   type LoginBody,
   type RequestEmailConfirmationBody,
   type RequestPasswordResetBody,
@@ -68,7 +74,16 @@ import {
   type SignupBody,
 } from "restaurant-pos-packages/schemas/auth";
 
-export const authRoutes: FastifyPluginAsync = async (app) => {
+export interface AuthRoutesOptions {
+  googleVerifier?: GoogleVerifier | null;
+}
+
+export const authRoutes: FastifyPluginAsync<AuthRoutesOptions> = async (
+  app,
+  options,
+) => {
+  const googleVerifier = options.googleVerifier ?? null;
+
   /**
    * POST /auth/signup
    * Create a customer user account and return authenticated session.
@@ -356,6 +371,57 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       return reply.code(200).send({
         accessToken,
         user: userOut,
+      });
+    },
+  );
+
+  /**
+   * POST /auth/google
+   * One Google entry path for sign-in and sign-up.
+   *
+   * The server verifies the ID token before trusting any claim. Resolution is
+   * existing active User by Google subject, then by verified email (linked to
+   * the token's subject), then a new verified User with no password. A
+   * soft-deleted email keeps the email-confirmed reactivation path.
+   */
+  app.post<{ Body: GoogleAuthBody }>(
+    "/google",
+    { schema: { body: googleAuthBodySchema } },
+    async (req, reply) => {
+      if (!googleVerifier) {
+        throw notFound("Google sign-in is not available");
+      }
+
+      const result = await handleGoogleAuth(googleVerifier, req.body);
+
+      if (result.kind === "invalid_credential") {
+        throw unauthorized("Invalid Google credential");
+      }
+      if (result.kind === "server_error_500") {
+        throw internal(result.message);
+      }
+      if (result.kind === "reactivation") {
+        return reply.code(202).send({ message: result.message });
+      }
+      if (result.kind === "google_email_conflict") {
+        throw conflict("This email is linked to a different Google account.");
+      }
+
+      const session = await buildAuthUserSessionFromUserId(result.userId);
+      if (!session) {
+        throw unauthorized("Invalid Google credential");
+      }
+
+      const { accessToken, user } = await issueSessionWithRefreshCookie(
+        app,
+        reply,
+        session,
+        { refreshSessionVersion: result.refreshSessionVersion },
+      );
+
+      return reply.code(result.created ? 201 : 200).send({
+        accessToken,
+        user,
       });
     },
   );

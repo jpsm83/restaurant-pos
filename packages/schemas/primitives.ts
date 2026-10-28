@@ -57,7 +57,7 @@ export const emailSchema = z
 
 /** The UI languages a User may store as a preference. */
 export const languagePreferenceSchema = z.enum(
-  languagePreferenceEnums as EnumValues,
+  languagePreferenceEnums as ["en", "es"],
   "Invalid language preference",
 );
 

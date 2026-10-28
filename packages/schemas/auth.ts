@@ -56,6 +56,15 @@ export const loginBodySchema = z.strictObject({
   password: loginPasswordSchema,
 });
 
+/** One Google ID token entry path shared by sign-in and sign-up. */
+export const googleAuthBodySchema = z.strictObject({
+  credential: z
+    .string({ error: "Google credential is required." })
+    .trim()
+    .min(1, "Google credential is required."),
+  languagePreference: optionalLanguagePreferenceSchema,
+});
+
 export const requestEmailConfirmationBodySchema = z.strictObject({
   email: emailSchema,
 });
@@ -88,6 +97,7 @@ export const setModeBodySchema = z.strictObject({
 
 export type SignupBody = z.infer<typeof signupBodySchema>;
 export type LoginBody = z.infer<typeof loginBodySchema>;
+export type GoogleAuthBody = z.infer<typeof googleAuthBodySchema>;
 export type RequestEmailConfirmationBody = z.infer<
   typeof requestEmailConfirmationBodySchema
 >;

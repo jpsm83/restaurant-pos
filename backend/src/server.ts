@@ -22,6 +22,10 @@ import { registerV1Routes } from "./routes/v1/index.ts";
 import { registerProblemDetailsHandler } from "./errors/problemDetails.ts";
 import { requestLogSerializer } from "./observability/requestLogSerializer.ts";
 import { AUTH_CONFIG } from "./auth/config.ts";
+import {
+  createGoogleVerifier,
+  type GoogleVerifier,
+} from "./auth/google.ts";
 import { buildCorsOptions } from "./config/cors.ts";
 import liveConnectionRegistry from "./communications/live/connectionRegistry.ts";
 import { registerLiveInAppBridge } from "./communications/live/liveBridge.ts";
@@ -29,6 +33,8 @@ import { registerLiveInAppBridge } from "./communications/live/liveBridge.ts";
 export interface BuildAppOptions {
   logger?: boolean;
   skipDb?: boolean;
+  /** Test seam; `undefined` builds the verifier from `GOOGLE_CLIENT_ID`. */
+  googleVerifier?: GoogleVerifier | null;
 }
 
 /**
@@ -54,6 +60,11 @@ export async function buildApp(
   const { logger = true, skipDb = false } = options;
 
   validateEnv();
+
+  const googleVerifier =
+    options.googleVerifier !== undefined
+      ? options.googleVerifier
+      : createGoogleVerifier(process.env.GOOGLE_CLIENT_ID);
 
   const server = Fastify({
     logger: logger
@@ -137,7 +148,10 @@ export async function buildApp(
   /**
    * Routes
    */
-  await server.register(registerV1Routes, { prefix: "/api/v1" });
+  await server.register(registerV1Routes, {
+    prefix: "/api/v1",
+    googleVerifier,
+  });
 
   registerLiveInAppBridge(server);
 

@@ -78,6 +78,21 @@ describe("User email security schema", () => {
     expect(found?.personalDetails?.email).toBe("find-by-confirm@example.com");
   });
 
+  it("stores an optional Google subject for active users", async () => {
+    const created = await User.create({
+      googleId: "google-subject-schema",
+      personalDetails: {
+        ...minimalPersonalDetails,
+        email: "google-schema@example.com",
+        username: "googleschema",
+        idNumber: "ID-SCHEMA-GOOGLE",
+      },
+    });
+
+    const fromDb = await User.findById(created._id).lean();
+    expect(fromDb?.googleId).toBe("google-subject-schema");
+  });
+
   it("clears token fields when unset", async () => {
     const doc = await User.create({
       personalDetails: {

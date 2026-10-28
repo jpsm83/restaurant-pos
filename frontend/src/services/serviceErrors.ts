@@ -10,6 +10,7 @@ import axios from "axios";
 export const SERVICE_OPERATIONS = [
   "signIn",
   "signUp",
+  "googleAuth",
   "confirmEmail",
   "resendConfirmation",
   "passwordReset",

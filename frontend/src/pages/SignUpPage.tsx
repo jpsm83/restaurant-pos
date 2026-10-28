@@ -6,6 +6,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { z } from "zod";
 import { signup } from "@/auth/api";
+import { GoogleAuthButton } from "@/auth/GoogleAuthButton";
 import { useErrorMessage, type ErrorFailure } from "@/i18n/errorCopy";
 import { getPostLoginDestination } from "@/auth/postLoginRedirect";
 import { useAuth } from "@/auth/store/AuthContext";
@@ -176,6 +177,8 @@ export default function SignUpPage() {
             <Button type="submit" className="w-full" disabled={isSubmitting}>
               {isSubmitting ? t("signup.submitting") : t("signup.submit")}
             </Button>
+
+            <GoogleAuthButton onFailure={setSubmitFailure} />
 
             <Button asChild variant="outline" className="w-full">
               <Link to="/login">{t("signup.backToSignIn")}</Link>

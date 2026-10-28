@@ -11,15 +11,24 @@
  *
  * Route elements: **`appRoutes.tsx`** (`AppRoutes`). Guards: **`routes/AuthRouteGuards.tsx`**.
  */
+import { GoogleOAuthProvider } from "@react-oauth/google";
 import { AuthModeProvider } from "@/context/AuthModeContext";
 import { AppRoutes } from "@/appRoutes";
+import { getGoogleClientId } from "@/auth/google";
 
 export { AppRoutes };
 
 export default function App() {
-  return (
+  const clientId = getGoogleClientId();
+  const app = (
     <AuthModeProvider>
       <AppRoutes />
     </AuthModeProvider>
+  );
+
+  return clientId ? (
+    <GoogleOAuthProvider clientId={clientId}>{app}</GoogleOAuthProvider>
+  ) : (
+    app
   );
 }

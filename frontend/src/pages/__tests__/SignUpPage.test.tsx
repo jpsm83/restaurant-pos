@@ -6,6 +6,29 @@ import SignUpPage from "../SignUpPage";
 
 const mockDispatch = vi.fn();
 const mockSignup = vi.fn();
+const mockGoogleAuth = vi.fn();
+
+vi.mock("@react-oauth/google", () => ({
+  GoogleLogin: ({
+    onSuccess,
+    onError,
+  }: {
+    onSuccess: (response: { credential?: string }) => void;
+    onError: () => void;
+  }) => (
+    <div>
+      <button
+        type="button"
+        onClick={() => onSuccess({ credential: "google-id-token" })}
+      >
+        Continue with Google
+      </button>
+      <button type="button" onClick={onError}>
+        Fail Google
+      </button>
+    </div>
+  ),
+}));
 
 vi.mock("@/auth/store/AuthContext", () => ({
   useAuth: () => ({
@@ -24,13 +47,20 @@ vi.mock("sonner", () => ({
 
 vi.mock("@/auth/api", () => ({
   signup: (...args: unknown[]) => mockSignup(...args),
+  googleAuth: (...args: unknown[]) => mockGoogleAuth(...args),
 }));
 
 describe("SignUpPage", () => {
   beforeEach(() => {
     mockDispatch.mockReset();
     mockSignup.mockReset();
+    mockGoogleAuth.mockReset();
+    vi.stubEnv("VITE_GOOGLE_CLIENT_ID", "test-client-id");
     localStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it("shows validation when fields are empty", async () => {
@@ -98,6 +128,87 @@ describe("SignUpPage", () => {
       ),
     ).toBeInTheDocument();
     });
+  });
+
+  it("signs up through the shared Google entry path", async () => {
+    const user = userEvent.setup();
+    mockGoogleAuth.mockResolvedValue({
+      ok: true,
+      data: {
+        user: {
+          id: "64a1b2c3d4e5f67890123456",
+          email: "google-new@example.com",
+          type: "user",
+          emailVerified: true,
+        },
+      },
+    });
+
+    await renderWithI18n(
+      <MemoryRouter initialEntries={["/signup"]}>
+        <Routes>
+          <Route path="/signup" element={<SignUpPage />} />
+          <Route
+            path="/:userId/customer/dashboard"
+            element={<div>Google customer dashboard</div>}
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: /continue with google/i }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Google customer dashboard")).toBeInTheDocument();
+    });
+    expect(mockGoogleAuth).toHaveBeenCalledWith({
+      credential: "google-id-token",
+      languagePreference: "en",
+    });
+  });
+
+  it("maps a Google sign-up failure to localized auth copy", async () => {
+    const user = userEvent.setup();
+    mockGoogleAuth.mockResolvedValue({
+      ok: false,
+      error: {
+        code: "googleAuth.conflict",
+        status: 409,
+        fieldErrors: [],
+      },
+    });
+
+    await renderWithI18n(
+      <MemoryRouter>
+        <SignUpPage />
+      </MemoryRouter>,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: /continue with google/i }),
+    );
+
+    expect(
+      await screen.findByText(
+        "We couldn't sign you in with Google. Try again or use email and password.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("hides the Google button when no client id is configured", async () => {
+    vi.stubEnv("VITE_GOOGLE_CLIENT_ID", "");
+
+    await renderWithI18n(
+      <MemoryRouter>
+        <SignUpPage />
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: /continue with google/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("navigates to customer dashboard after successful user signup", async () => {

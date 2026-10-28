@@ -56,6 +56,14 @@ const GENERIC_OUTCOME_COPY: Record<ServiceErrorOutcome, ErrorCopyTemplate> = {
 const OVERRIDES: Partial<Record<ServiceErrorCode, ErrorCopyTemplate>> = {
   "signIn.unauthorized": { namespace: "auth", key: "api.invalidCredentials" },
   "signUp.conflict": { namespace: "auth", key: "api.emailInUse" },
+  "googleAuth.unauthorized": { namespace: "auth", key: "api.googleAuthFailed" },
+  "googleAuth.badRequest": { namespace: "auth", key: "api.googleAuthFailed" },
+  "googleAuth.forbidden": { namespace: "auth", key: "api.googleAuthFailed" },
+  "googleAuth.conflict": { namespace: "auth", key: "api.googleAuthFailed" },
+  "googleAuth.notFound": { namespace: "auth", key: "api.googleAuthFailed" },
+  "googleAuth.validation": { namespace: "auth", key: "api.googleAuthFailed" },
+  "googleAuth.internal": { namespace: "auth", key: "api.googleAuthFailed" },
+  "googleAuth.transport": { namespace: "auth", key: "api.googleAuthFailed" },
   "confirmEmail.validation": {
     namespace: "auth",
     key: "api.invalidConfirmationLink",

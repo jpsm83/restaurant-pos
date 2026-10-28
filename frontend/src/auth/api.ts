@@ -17,6 +17,7 @@
 import type {
   AuthLoginSnapshot,
   AuthSession,
+  GoogleAuthCredentials,
   LoginCredentials,
   SignupCredentials,
   UserProfile,
@@ -162,6 +163,35 @@ export async function login(credentials: LoginCredentials) {
       data: {
         accessToken: result.data?.accessToken,
         user: result.data?.user ?? null,
+      } satisfies AuthLoginSnapshot,
+    };
+  }
+
+  return result;
+}
+
+/** One Google entry path shared by the sign-in and sign-up forms. */
+export async function googleAuth(credentials: GoogleAuthCredentials) {
+  const result = await authRequest<AuthTokenResponseBody>(
+    "googleAuth",
+    "/api/v1/auth/google",
+    {
+      method: "POST",
+      body: JSON.stringify(credentials),
+    },
+    false
+  );
+
+  if (result.ok) {
+    setAccessToken(result.data?.accessToken ?? null);
+    return {
+      ok: true as const,
+      data: {
+        accessToken: result.data?.accessToken,
+        user: result.data?.user ?? null,
+        reactivationRequired: Boolean(
+          !result.data?.user && result.data?.message,
+        ),
       } satisfies AuthLoginSnapshot,
     };
   }

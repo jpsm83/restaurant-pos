@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import {
   confirmEmailBodySchema,
+  googleAuthBodySchema,
   loginBodySchema,
   requestEmailConfirmationBodySchema,
   requestPasswordResetBodySchema,
@@ -21,6 +22,7 @@ const SERVER_OWNED_FIELDS = [
   "pendingEmailExpires",
   "refreshSessionVersion",
   "emailVerified",
+  "googleId",
 ] as const;
 
 describe("signupBodySchema", () => {
@@ -108,6 +110,33 @@ describe("loginBodySchema", () => {
   it("rejects a blank password", () => {
     expect(
       loginBodySchema.safeParse({ email: "a@b.com", password: "" }).success,
+    ).toBe(false);
+  });
+});
+
+describe("googleAuthBodySchema", () => {
+  it("requires a non-blank Google credential", () => {
+    expect(
+      googleAuthBodySchema.safeParse({ credential: "id-token" }).success,
+    ).toBe(true);
+    expect(googleAuthBodySchema.safeParse({ credential: "  " }).success).toBe(
+      false,
+    );
+    expect(googleAuthBodySchema.safeParse({}).success).toBe(false);
+  });
+
+  it("accepts an optional supported language and rejects other languages", () => {
+    expect(
+      googleAuthBodySchema.safeParse({
+        credential: "id-token",
+        languagePreference: "es",
+      }).success,
+    ).toBe(true);
+    expect(
+      googleAuthBodySchema.safeParse({
+        credential: "id-token",
+        languagePreference: "fr",
+      }).success,
     ).toBe(false);
   });
 });
@@ -237,6 +266,7 @@ describe("server-owned fields are excluded from every auth DTO", () => {
   const dtoSchemas: Record<string, z.ZodObject> = {
     signupBodySchema,
     loginBodySchema,
+    googleAuthBodySchema,
     requestEmailConfirmationBodySchema,
     requestPasswordResetBodySchema,
       confirmEmailBodySchema,

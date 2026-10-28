@@ -4,6 +4,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   confirmEmail,
+  googleAuth,
   login,
   requestEmailConfirmation,
   requestPasswordReset,
@@ -67,6 +68,83 @@ describe("auth api — email / password-reset endpoints", () => {
       code: "signIn.unauthorized",
       status: 401,
       serverMessage: "Invalid email or password",
+    });
+  });
+
+  it("googleAuth POSTs the Google credential and language", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        accessToken: "google-access",
+        user: { id: "u1", email: "google@example.com", type: "user" },
+      }),
+    );
+
+    const result = await googleAuth({
+      credential: "google-id-token",
+      languagePreference: "es",
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toMatch(/\/api\/v1\/auth\/google$/);
+    expect(init.method).toBe("POST");
+    expect(init.credentials).toBe("include");
+    expect(init.body).toBe(
+      JSON.stringify({
+        credential: "google-id-token",
+        languagePreference: "es",
+      }),
+    );
+    expect(result).toEqual({
+      ok: true,
+      data: {
+        accessToken: "google-access",
+        user: { id: "u1", email: "google@example.com", type: "user" },
+        reactivationRequired: false,
+      },
+    });
+  });
+
+  it("googleAuth marks a reactivation message as a machine outcome", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        message:
+          "Account reactivation required. Please confirm the email link we sent to reactivate this account.",
+      }),
+    );
+
+    const result = await googleAuth({ credential: "google-id-token" });
+
+    expect(result).toEqual({
+      ok: true,
+      data: {
+        accessToken: undefined,
+        user: null,
+        reactivationRequired: true,
+      },
+    });
+  });
+
+  it("googleAuth maps an invalid credential to the Google failure code", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(
+        {
+          type: "https://restaurant-pos.app/errors/unauthorized",
+          title: "Unauthorized",
+          status: 401,
+          detail: "Invalid Google credential",
+          instance: "/api/v1/auth/google",
+        },
+        401,
+      ),
+    );
+
+    const result = await googleAuth({ credential: "bad" });
+
+    expectFailure(result, {
+      code: "googleAuth.unauthorized",
+      status: 401,
+      serverMessage: "Invalid Google credential",
     });
   });
 
