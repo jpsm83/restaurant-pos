@@ -4,12 +4,13 @@
  * ## Flow
  * 1. **`getAuthMode` / `useAuthModeQuery`** — `GET /api/v1/auth/mode` through shared `http`.
  * 2. **`setAuthMode` / `useSetAuthModeMutation`** — `POST /api/v1/auth/set-mode`; on success
- *    invalidates `queryKeys.auth.mode()`.
- * 3. **`AuthModeContext`** (`context/AuthModeContext.tsx`) composes these hooks for the app shell;
+ *    invalidates `queryKeys.auth.mode()` and signals other tabs through `authModeSync`.
+ * 3. **`AuthModeContext`** (`context/AuthModeContext.tsx`) composes these hooks for the app shell,
+ *    invalidating its mode query when another tab changes the stored mode;
  *    **`RequireEmployeeAuthMode`** (`routes/AuthRouteGuards.tsx`) gates `/:userId/employee/*` on
  *    the resolved mode.
  *
- * Depends on: `./http`, `./queryKeys`.
+ * Depends on: `./authModeSync`, `./http`, `./queryKeys`.
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
@@ -17,6 +18,7 @@ import type {
   IAuthModeResponse,
   ISetAuthModeBody,
 } from "restaurant-pos-packages/interfaces/IAuth";
+import { publishAuthModeChange } from "./authModeSync";
 import { http } from "./http";
 import { queryKeys } from "./queryKeys";
 import { toServiceRequestError } from "./serviceErrors";
@@ -62,6 +64,7 @@ export function useSetAuthModeMutation() {
     mutationFn: setAuthMode,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.auth.mode() });
+      publishAuthModeChange();
     },
   });
 }

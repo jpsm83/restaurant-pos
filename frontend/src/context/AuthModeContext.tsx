@@ -12,8 +12,9 @@
  *    - session is authenticated **`type === "user"`**, and
  *    - pathname matches **`/:userId/(customer|mode|employee)`** (`isUserShellPath`).
  *    Else the query is off and `mode` is `undefined` (no spurious `/auth/mode` calls on marketing/tenant).
- * 3. **`useSetAuthModeMutation`** runs **`POST /auth/set-mode`**; invalidation is handled in **`authMode.ts`**.
- * 4. **Consumers:** **`RequireEmployeeAuthMode`** (`routes/AuthRouteGuards.tsx`) gates employee routes;
+ * 3. **`useSetAuthModeMutation`** runs **`POST /auth/set-mode`**; invalidation and the cross-tab signal are handled in **`authMode.ts`**.
+ * 4. A same-origin tab that receives the signal invalidates its **`auth.mode`** query, so both tabs refetch the server-stored mode.
+ * 5. **Consumers:** **`RequireEmployeeAuthMode`** (`routes/AuthRouteGuards.tsx`) gates employee routes;
  *    **`SelectUserModePage`** calls **`setModeAndRefresh`** then navigates. Import directly from
  *    **`@/context/AuthModeContext`** (barrel files are deprecated).
  *
@@ -24,9 +25,11 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   type ReactNode,
 } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/auth/store/AuthContext";
 import {
@@ -34,6 +37,8 @@ import {
   useAuthModeQuery,
   useSetAuthModeMutation,
 } from "@/services/authMode";
+import { subscribeToAuthModeChanges } from "@/services/authModeSync";
+import { queryKeys } from "@/services/queryKeys";
 
 export type { AuthMode };
 
@@ -63,6 +68,7 @@ function isUserShellPath(pathname: string): boolean {
 export function AuthModeProvider({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
   const { state } = useAuth();
+  const queryClient = useQueryClient();
 
   const isUserSession =
     state.status === "authenticated" && state.user?.type === "user";
@@ -74,6 +80,14 @@ export function AuthModeProvider({ children }: { children: ReactNode }) {
   });
 
   const setModeMutation = useSetAuthModeMutation();
+
+  useEffect(
+    () =>
+      subscribeToAuthModeChanges(() => {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.auth.mode() });
+      }),
+    [queryClient],
+  );
 
   const refreshMode = useCallback(async () => {
     if (!queryEnabled) return;

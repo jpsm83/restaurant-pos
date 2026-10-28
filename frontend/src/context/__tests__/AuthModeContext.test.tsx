@@ -1,7 +1,8 @@
 /**
  * Tests for `AuthModeContext.tsx` — query enable rules, context value wiring, guards.
  */
-import { render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -10,6 +11,9 @@ import { AuthModeProvider, useAuthMode } from "../AuthModeContext";
 const mockUseAuth = vi.fn();
 const mockUseAuthModeQuery = vi.fn();
 const mockUseSetAuthModeMutation = vi.fn();
+const { mockSubscribeToAuthModeChanges } = vi.hoisted(() => ({
+  mockSubscribeToAuthModeChanges: vi.fn(),
+}));
 
 vi.mock("@/auth/store/AuthContext", () => ({
   useAuth: () => mockUseAuth(),
@@ -18,6 +22,11 @@ vi.mock("@/auth/store/AuthContext", () => ({
 vi.mock("@/services/authMode", () => ({
   useAuthModeQuery: (...args: unknown[]) => mockUseAuthModeQuery(...args),
   useSetAuthModeMutation: () => mockUseSetAuthModeMutation(),
+}));
+
+vi.mock("@/services/authModeSync", () => ({
+  subscribeToAuthModeChanges: (...args: unknown[]) =>
+    mockSubscribeToAuthModeChanges(...args),
 }));
 
 function AuthModeProbe() {
@@ -38,20 +47,22 @@ function AuthModeProbe() {
   );
 }
 
-function renderUserShell(path: string) {
+function renderUserShell(path: string, client = new QueryClient()) {
   return render(
-    <MemoryRouter initialEntries={[path]}>
-      <Routes>
-        <Route
-          path="/:userId/customer"
-          element={
-            <AuthModeProvider>
-              <AuthModeProbe />
-            </AuthModeProvider>
-          }
-        />
-      </Routes>
-    </MemoryRouter>,
+    <QueryClientProvider client={client}>
+      <MemoryRouter initialEntries={[path]}>
+        <Routes>
+          <Route
+            path="/:userId/customer"
+            element={
+              <AuthModeProvider>
+                <AuthModeProbe />
+              </AuthModeProvider>
+            }
+          />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 
@@ -60,6 +71,8 @@ describe("AuthModeProvider", () => {
 
   beforeEach(() => {
     refetch.mockClear();
+    mockSubscribeToAuthModeChanges.mockClear();
+    mockSubscribeToAuthModeChanges.mockReturnValue(vi.fn());
     mockUseAuthModeQuery.mockReturnValue({
       data: undefined,
       isLoading: false,
@@ -112,18 +125,20 @@ describe("AuthModeProvider", () => {
       },
     });
     render(
-      <MemoryRouter initialEntries={["/login"]}>
-        <Routes>
-          <Route
-            path="/login"
-            element={
-              <AuthModeProvider>
-                <AuthModeProbe />
-              </AuthModeProvider>
-            }
-          />
-        </Routes>
-      </MemoryRouter>,
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter initialEntries={["/login"]}>
+          <Routes>
+            <Route
+              path="/login"
+              element={
+                <AuthModeProvider>
+                  <AuthModeProbe />
+                </AuthModeProvider>
+              }
+            />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
     );
     expect(mockUseAuthModeQuery).toHaveBeenCalledWith({ enabled: false });
     expect(screen.getByTestId("mode")).toHaveTextContent("none");
@@ -147,6 +162,20 @@ describe("AuthModeProvider", () => {
     renderUserShell("/u1/customer");
     expect(mockUseAuthModeQuery).toHaveBeenCalledWith({ enabled: true });
     expect(screen.getByTestId("mode")).toHaveTextContent("business");
+  });
+
+  it("invalidates the mode query when another tab publishes a change", () => {
+    const client = new QueryClient();
+    const invalidate = vi
+      .spyOn(client, "invalidateQueries")
+      .mockResolvedValue(undefined);
+    renderUserShell("/u1/customer", client);
+
+    const onChange = mockSubscribeToAuthModeChanges.mock
+      .calls[0][0] as unknown as () => void;
+    act(() => onChange());
+
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["auth", "mode"] });
   });
 
   it("refreshMode does not refetch when query is disabled", async () => {

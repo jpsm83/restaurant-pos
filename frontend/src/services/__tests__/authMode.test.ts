@@ -7,6 +7,7 @@ const {
   mockUseQuery,
   mockUseMutation,
   mockInvalidateQueries,
+  mockPublishAuthModeChange,
 } = vi.hoisted(() => ({
   mockHttpGet: vi.fn(),
   mockHttpPost: vi.fn(),
@@ -14,6 +15,7 @@ const {
   mockUseQuery: vi.fn(),
   mockUseMutation: vi.fn(),
   mockInvalidateQueries: vi.fn(),
+  mockPublishAuthModeChange: vi.fn(),
 }));
 
 vi.mock("../http", () => ({
@@ -25,6 +27,10 @@ vi.mock("../http", () => ({
 
 vi.mock("../serviceErrors", () => ({
   toServiceRequestError: (...args: unknown[]) => mockToServiceRequestError(...args),
+}));
+
+vi.mock("../authModeSync", () => ({
+  publishAuthModeChange: () => mockPublishAuthModeChange(),
 }));
 
 vi.mock("@tanstack/react-query", () => ({
@@ -50,6 +56,7 @@ describe("authMode service", () => {
     mockUseQuery.mockReset();
     mockUseMutation.mockReset();
     mockInvalidateQueries.mockReset();
+    mockPublishAuthModeChange.mockReset();
   });
 
   it("fetches mode and normalizes unknown mode to customer", async () => {
@@ -103,5 +110,6 @@ describe("authMode service", () => {
     expect(mockInvalidateQueries).toHaveBeenCalledWith({
       queryKey: ["auth", "mode"],
     });
+    expect(mockPublishAuthModeChange).toHaveBeenCalledTimes(1);
   });
 });
