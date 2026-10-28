@@ -142,9 +142,19 @@ describe("soft-deleted sign-in reactivation", () => {
       payload: { email, password: signupPassword },
     });
 
-    expect(duplicate.statusCode).toBe(409);
-    expect(duplicate.headers["content-type"]).toContain("application/problem+json");
-    expect(duplicate.json().detail).toBe("Account with this email already exists");
+    expect(duplicate.statusCode).toBe(202);
+    expect(duplicate.headers["content-type"]).toContain("application/json");
+    expect(duplicate.json().message).not.toContain("already exists");
+    expect(duplicate.json().accessToken).toBeUndefined();
+    const accountExistsCall = sendEmailMock.mock.calls.find(
+      ([payload]) =>
+        (payload as { subject?: string }).subject ===
+        "You Already Have a POS Account",
+    );
+    expect(accountExistsCall?.[0]).toMatchObject({
+      to: email,
+      subject: "You Already Have a POS Account",
+    });
 
     const afterDuplicate = await User.find({ "personalDetails.email": email })
       .setOptions({ includeDeleted: true })
@@ -378,9 +388,10 @@ describe("soft-deleted sign-in reactivation", () => {
       payload: { email, password: signupPassword },
     });
 
-    expect(signup.statusCode).toBe(409);
-    expect(signup.headers["content-type"]).toContain("application/problem+json");
-    expect(signup.json().detail).toBe("Account with this email already exists");
+    expect(signup.statusCode).toBe(202);
+    expect(signup.headers["content-type"]).toContain("application/json");
+    expect(signup.json().message).not.toContain("already exists");
+    expect(signup.json().accessToken).toBeUndefined();
 
     const closed = await Business.findById(second._id)
       .setOptions({ includeDeleted: true })

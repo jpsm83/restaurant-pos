@@ -13,7 +13,11 @@ import {
   PASSWORD_POLICY_MESSAGE,
   isValidPassword,
 } from "../utils/passwordPolicy.ts";
-import { emailSchema, sanitizedString } from "./primitives.ts";
+import {
+  emailSchema,
+  languagePreferenceSchema,
+  sanitizedString,
+} from "./primitives.ts";
 
 /** A new password that satisfies the shared password policy. */
 export const passwordSchema = z
@@ -28,8 +32,15 @@ export const loginPasswordSchema = z
   .string({ error: "Password is required" })
   .min(1, "Password is required");
 
-/** An optional profile name: sanitized, and defaulted by the route if absent. */
+/** An optional profile name: sanitized; absent names stay unset. */
 const optionalNameSchema = sanitizedString().optional();
+
+/** An optional UI language chosen at sign-up; a blank field is ignored. */
+const optionalLanguagePreferenceSchema = z.preprocess(
+  (value) =>
+    typeof value === "string" && value.trim() === "" ? undefined : value,
+  languagePreferenceSchema.optional(),
+);
 
 export const signupBodySchema = z.strictObject({
   email: emailSchema,
@@ -37,6 +48,7 @@ export const signupBodySchema = z.strictObject({
   username: optionalNameSchema,
   firstName: optionalNameSchema,
   lastName: optionalNameSchema,
+  languagePreference: optionalLanguagePreferenceSchema,
 });
 
 export const loginBodySchema = z.strictObject({

@@ -1,30 +1,21 @@
 /**
- * Users Routes — user CRUD and notification read/deleted flags.
+ * Users Routes — self-service profile read/update, account deletion, and
+ * notification read/deleted flags.
  *
- * Multipart bodies (create and self update) are buffered and validated by the
- * shared multipart helper against strict zod DTOs from
+ * The profile update body is buffered and validated by the shared multipart
+ * helper against the strict `updateUserBodySchema` from
  * `packages/schemas/user.ts`; the JSON-encoded `address` is parsed and validated
- * there, the shared password policy is applied, and emails are normalized. The
- * GET/PATCH/DELETE path params and the notification bodies are validated by
- * their DTOs. The database-backed duplicate and employee guards stay in the
- * route as named post-parse checks. Every error is raised as an `AppError` so
- * the global handler emits RFC 9457 `application/problem+json`.
+ * there. GET and PATCH are self-only: a person may read and edit only their own
+ * client profile. The anonymous listing and creation routes are gone; self
+ * sign-up is the only account-creation path. Every error is raised as an
+ * `AppError` so the global handler emits RFC 9457 `application/problem+json`.
  */
 import type { FastifyPluginAsync } from "fastify";
 import mongoose from "mongoose";
-import { hash } from "bcrypt";
 import type { IUser } from "restaurant-pos-packages/interfaces/IUser";
 import type { IEmployee } from "restaurant-pos-packages/interfaces/IEmployee";
 
 import { createOptionalAuthHook } from "../../auth/middleware.ts";
-import {
-  REACTIVATION_REQUIRED_MESSAGE,
-  sendSoftDeletedUserConfirmation,
-} from "../../auth/requestEmailConfirmation.ts";
-import {
-  buildAuthUserSessionFromUserId,
-  issueSessionWithRefreshCookie,
-} from "../../auth/issueSession.ts";
 import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
 import deleteFilesCloudinary from "../../cloudinary/deleteFilesCloudinary.ts";
 import User from "../../models/user.ts";
@@ -35,23 +26,19 @@ import {
   badRequest,
   conflict,
   forbidden,
-  internal,
   notFound,
   unauthorized,
 } from "../../errors/appError.ts";
 import { parseMultipart, type MultipartFile } from "../../schemas/multipart.ts";
 import {
-  createUserBodySchema,
   markNotificationDeletedBodySchema,
   updateUserBodySchema,
   userIdParamsSchema,
   userNotificationParamsSchema,
-  usersIncludeDeletedQuerySchema,
-  type CreateUserBody,
   type MarkNotificationDeletedBody,
+  type UpdateUserBody,
   type UserIdParams,
   type UserNotificationParams,
-  type UsersIncludeDeletedQuery,
 } from "restaurant-pos-packages/schemas/user";
 
 /** Upload the single profile image, raising a `400` on any failure. */
@@ -79,131 +66,71 @@ async function uploadImage(
 /** The multipart field name the profile image is sent under. */
 const IMAGE_FIELD = "imageUrl";
 
-/** Whether the duplicate username/email/idNumber belongs to another user. */
-async function assertNoDuplicateUser(
-  fields: Pick<CreateUserBody, "username" | "email" | "idNumber">,
-  excludeUserId?: string,
-): Promise<void> {
-  const query: Record<string, unknown> = {
-    ...withSoftDeleteFilter({
-      $or: [
-        { "personalDetails.username": fields.username },
-        { "personalDetails.email": fields.email },
-        { "personalDetails.idNumber": fields.idNumber },
-      ],
-    }),
-  };
-  if (excludeUserId) query._id = { $ne: excludeUserId };
+/**
+ * Fields the client profile read/write returns. The password, one-time tokens,
+ * session generation, notification/order pointers, and soft-delete metadata
+ * stay server-owned and never leave this module.
+ */
+const CLIENT_PROFILE_PROJECTION = {
+  "personalDetails.password": 0,
+  "personalDetails.emailVerified": 0,
+  verificationToken: 0,
+  resetPasswordToken: 0,
+  resetPasswordExpires: 0,
+  refreshSessionVersion: 0,
+  notifications: 0,
+  selfOrders: 0,
+  deleted: 0,
+  deletedAt: 0,
+  deletedBy: 0,
+} as const;
 
-  const duplicate = await User.exists(query);
-  if (duplicate) {
-    throw conflict("User with username, email or idNumber already exists!");
+/** Whether the authenticated session belongs to this User. */
+function assertSelf(
+  req: { authSession?: { type: string; id: string } },
+  userId: string,
+): void {
+  if (!req.authSession) {
+    throw unauthorized("Authentication required");
+  }
+  if (req.authSession.type !== "user") {
+    throw forbidden("User account required");
+  }
+  if (req.authSession.id !== userId) {
+    throw forbidden("Forbidden");
   }
 }
 
-/** The fields a create request contributes to the stored user. */
-function toNewUser(
-  userId: mongoose.Types.ObjectId,
-  fields: CreateUserBody,
-  hashedPassword: string,
-): IUser {
-  return {
-    _id: userId,
-    personalDetails: {
-      username: fields.username,
-      email: fields.email,
-      password: hashedPassword,
-      idType: fields.idType,
-      idNumber: fields.idNumber,
-      address: fields.address,
-      firstName: fields.firstName,
-      lastName: fields.lastName,
-      nationality: fields.nationality,
-      gender: fields.gender,
-      birthDate: fields.birthDate,
-      phoneNumber: fields.phoneNumber,
-    },
-  };
+/** Set a field, clear it with `$unset`, or leave it alone when not sent. */
+function applyProfileField(
+  update: { set: Record<string, unknown>; unset: Record<string, ""> },
+  path: string,
+  value: unknown,
+  stored?: unknown,
+): void {
+  if (value === undefined) return;
+  if (value === null) {
+    update.unset[path] = "";
+    return;
+  }
+  if (value !== stored) update.set[path] = value;
 }
 
 export const usersRoutes: FastifyPluginAsync = async (app) => {
-  // GET /users - list all
-  app.get<{ Querystring: UsersIncludeDeletedQuery }>(
-    "/",
-    { schema: { querystring: usersIncludeDeletedQuerySchema } },
-    async (req, reply) => {
-      const { includeDeleted = false } = req.query;
-      const users = await User.find(
-        withSoftDeleteFilter({}, includeDeleted),
-        { "personalDetails.password": 0, emailVerified: 0 },
-      ).lean();
-
-      if (!users?.length) {
-        throw notFound("No users found!");
-      }
-      return reply.code(200).send(users);
-    },
-  );
-
-  // POST /users - create (formData with image)
-  app.post("/", async (req, reply) => {
-    const { fields, files } = await parseMultipart(req, createUserBodySchema);
-
-    const deletedByEmail = await User.findOne({
-      "personalDetails.email": fields.email,
-      deleted: true,
-    })
-      .select("_id personalDetails.username personalDetails.firstName")
-      .lean();
-    if (deletedByEmail) {
-      const sent = await sendSoftDeletedUserConfirmation(
-        deletedByEmail,
-        fields.email,
-      );
-      if (sent.kind === "server_error_500") {
-        throw internal(sent.message);
-      }
-      return reply.code(202).send({ message: REACTIVATION_REQUIRED_MESSAGE });
-    }
-
-    await assertNoDuplicateUser(fields);
-
-    const userId = new mongoose.Types.ObjectId();
-    const newUser = toNewUser(
-      userId,
-      fields,
-      await hash(fields.password, 10),
-    );
-
-    const imageFile = files.find((file) => file.fieldname === IMAGE_FIELD);
-    if (imageFile && imageFile.buffer.length > 0) {
-      newUser.personalDetails.imageUrl = await uploadImage(
-        `/users/${userId}`,
-        imageFile,
-      );
-    }
-
-    await User.create(newUser);
-
-    return reply.code(201).send({ message: "New user created successfully" });
-  });
-
-  // GET /users/:userId - get by ID
-  app.get<{ Params: UserIdParams; Querystring: UsersIncludeDeletedQuery }>(
+  // GET /users/:userId - the signed-in person's own profile
+  app.get<{ Params: UserIdParams }>(
     "/:userId",
     {
-      schema: {
-        params: userIdParamsSchema,
-        querystring: usersIncludeDeletedQuerySchema,
-      },
+      preValidation: [createOptionalAuthHook(app)],
+      schema: { params: userIdParamsSchema },
     },
     async (req, reply) => {
       const { userId } = req.params;
-      const { includeDeleted = false } = req.query;
+      assertSelf(req, userId);
 
       const user = await User.findOne(
-        withSoftDeleteFilter({ _id: userId }, includeDeleted),
-        { "personalDetails.password": 0, emailVerified: 0 },
+        withSoftDeleteFilter({ _id: userId }),
+        CLIENT_PROFILE_PROJECTION,
       ).lean();
 
       if (!user) {
@@ -213,7 +140,7 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
     },
   );
 
-  // PATCH /users/:userId - update (formData with image); authenticated self only
+  // PATCH /users/:userId - update own client profile (formData with optional image)
   app.patch<{ Params: UserIdParams }>(
     "/:userId",
     {
@@ -221,17 +148,8 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
       schema: { params: userIdParamsSchema },
     },
     async (req, reply) => {
-      if (!req.authSession) {
-        throw unauthorized("Authentication required");
-      }
-      if (req.authSession.type !== "user") {
-        throw forbidden("User account required");
-      }
-
       const { userId } = req.params;
-      if (req.authSession.id !== userId) {
-        throw forbidden("Forbidden");
-      }
+      assertSelf(req, userId);
 
       const { fields, files } = await parseMultipart(req, updateUserBodySchema);
 
@@ -242,75 +160,100 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
         throw notFound("User not found!");
       }
 
-      await assertNoDuplicateUser(fields, userId);
-
-      const updateUserObj: Record<string, unknown> = {};
+      const update: {
+        set: Record<string, unknown>;
+        unset: Record<string, "">;
+      } = { set: {}, unset: {} };
       const personalDetails = userDoc.personalDetails;
 
-      if (fields.username !== personalDetails.username)
-        updateUserObj["personalDetails.username"] = fields.username;
-      if (fields.email !== personalDetails.email)
-        updateUserObj["personalDetails.email"] = fields.email;
-      if (fields.idType !== personalDetails.idType)
-        updateUserObj["personalDetails.idType"] = fields.idType;
-      if (fields.idNumber !== personalDetails.idNumber)
-        updateUserObj["personalDetails.idNumber"] = fields.idNumber;
-      if (fields.firstName !== personalDetails.firstName)
-        updateUserObj["personalDetails.firstName"] = fields.firstName;
-      if (fields.lastName !== personalDetails.lastName)
-        updateUserObj["personalDetails.lastName"] = fields.lastName;
-      if (fields.nationality !== personalDetails.nationality)
-        updateUserObj["personalDetails.nationality"] = fields.nationality;
-      if (fields.gender !== personalDetails.gender)
-        updateUserObj["personalDetails.gender"] = fields.gender;
-      if (fields.birthDate.getTime() !== personalDetails.birthDate?.getTime())
-        updateUserObj["personalDetails.birthDate"] = fields.birthDate;
-      if (fields.phoneNumber !== personalDetails.phoneNumber)
-        updateUserObj["personalDetails.phoneNumber"] = fields.phoneNumber;
+      applyProfileField(
+        update,
+        "personalDetails.username",
+        fields.username,
+        personalDetails.username,
+      );
+      applyProfileField(
+        update,
+        "personalDetails.firstName",
+        fields.firstName,
+        personalDetails.firstName,
+      );
+      applyProfileField(
+        update,
+        "personalDetails.lastName",
+        fields.lastName,
+        personalDetails.lastName,
+      );
+      applyProfileField(
+        update,
+        "personalDetails.phoneNumber",
+        fields.phoneNumber,
+        personalDetails.phoneNumber,
+      );
+      applyProfileField(
+        update,
+        "personalDetails.nationality",
+        fields.nationality,
+        personalDetails.nationality,
+      );
+      applyProfileField(
+        update,
+        "personalDetails.gender",
+        fields.gender,
+        personalDetails.gender,
+      );
 
-      const storedAddress = personalDetails.address as
-        | Record<string, unknown>
-        | undefined;
-      for (const [key, value] of Object.entries(fields.address)) {
-        if (value !== storedAddress?.[key]) {
-          updateUserObj[`personalDetails.address.${key}`] = value;
+      if (fields.birthDate !== undefined) {
+        if (fields.birthDate === null) {
+          update.unset["personalDetails.birthDate"] = "";
+        } else if (
+          fields.birthDate.getTime() !== personalDetails.birthDate?.getTime()
+        ) {
+          update.set["personalDetails.birthDate"] = fields.birthDate;
         }
       }
 
-      if (fields.password) {
-        updateUserObj["personalDetails.password"] = await hash(
-          fields.password,
-          10,
-        );
+      if (fields.address !== undefined) {
+        if (fields.address === null) {
+          update.unset["personalDetails.address"] = "";
+        } else {
+          update.set["personalDetails.address"] = fields.address;
+        }
       }
+
+      applyProfileField(
+        update,
+        "languagePreference",
+        fields.languagePreference,
+        userDoc.languagePreference,
+      );
 
       const imageFile = files.find((file) => file.fieldname === IMAGE_FIELD);
       if (imageFile && imageFile.buffer.length > 0) {
         const imageUrl = await uploadImage(`/users/${userId}`, imageFile);
 
-        const deleteFilesCloudinaryResult: string | boolean =
-          await deleteFilesCloudinary(personalDetails.imageUrl || "");
+        const deleteFilesCloudinaryResult = await deleteFilesCloudinary(
+          personalDetails.imageUrl || "",
+        );
 
         if (deleteFilesCloudinaryResult !== true) {
           throw badRequest(String(deleteFilesCloudinaryResult));
         }
 
-        updateUserObj["personalDetails.imageUrl"] = imageUrl;
+        update.set["personalDetails.imageUrl"] = imageUrl;
       }
 
-      const userUpdate: mongoose.UpdateQuery<Record<string, unknown>> = {
-        $set: updateUserObj,
-      };
-      if (fields.password) {
-        userUpdate.$inc = { refreshSessionVersion: 1 };
-      }
+      const updateQuery: mongoose.UpdateQuery<Record<string, unknown>> = {};
+      if (Object.keys(update.set).length > 0) updateQuery.$set = update.set;
+      if (Object.keys(update.unset).length > 0) updateQuery.$unset = update.unset;
 
       const updatedUser = await User.findOneAndUpdate(
         withSoftDeleteFilter({ _id: userId }),
-        userUpdate,
+        updateQuery,
         {
-        returnDocument: "after",
-        lean: true,
+          returnDocument: "after",
+          lean: true,
+          projection: CLIENT_PROFILE_PROJECTION,
         },
       );
 
@@ -318,25 +261,9 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
         throw notFound("User not found!");
       }
 
-      const session = await buildAuthUserSessionFromUserId(userId);
-      if (!session) {
-        throw notFound("User not found!");
-      }
-      const { accessToken, user: userOut } = await issueSessionWithRefreshCookie(
-        app,
-        reply,
-        session,
-        {
-          refreshSessionVersion:
-            (updatedUser as { refreshSessionVersion?: number })
-              .refreshSessionVersion ?? 0,
-        },
-      );
-
       return reply.code(200).send({
         message: "User updated successfully!",
-        accessToken,
-        user: userOut,
+        user: updatedUser,
       });
     },
   );

@@ -57,6 +57,21 @@ describe("signupBodySchema", () => {
     expect(signupBodySchema.safeParse(valid).success).toBe(true);
   });
 
+  it("accepts an optional language preference and rejects other languages", () => {
+    expect(
+      signupBodySchema.safeParse({
+        ...valid,
+        languagePreference: "es",
+      }).success,
+    ).toBe(true);
+    expect(
+      signupBodySchema.safeParse({
+        ...valid,
+        languagePreference: "fr",
+      }).success,
+    ).toBe(false);
+  });
+
   it("sanitizes profile names", () => {
     const parsed = signupBodySchema.parse({
       ...valid,

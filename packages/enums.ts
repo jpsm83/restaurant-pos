@@ -133,9 +133,10 @@ export const reservationStatusEnums = [
 
 export const subscriptionEnums = ["Free", "Basic", "Premium", "Enterprise"] as string[];
 
-export const idEnums = ["National ID", "Passport", "Driving License"] as string[];
-
 export const genderEnums = ["Man", "Woman", "Other"] as string[];
+
+/** UI languages a User may store as a language preference. */
+export const languagePreferenceEnums = ["en", "es"] as string[];
 
 export const userRolesEnums = [
   "Owner",

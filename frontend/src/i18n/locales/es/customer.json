@@ -12,6 +12,52 @@
       "resendButton": "Reenviar correo de confirmación",
       "resendSending": "Enviando…",
       "resendSuccess": "Correo de confirmación enviado. Revisa tu bandeja de entrada."
+    },
+    "photo": {
+      "label": "Foto de perfil",
+      "alt": "Tu foto de perfil",
+      "hint": "Elige una imagen nueva para sustituir la foto actual."
+    },
+    "sections": {
+      "personal": "Datos personales",
+      "address": "Dirección"
+    },
+    "fields": {
+      "email": "Correo de acceso",
+      "emailReadOnlyHint": "Tu correo de acceso se muestra aquí como referencia y no se puede editar en esta página.",
+      "username": "Nombre de usuario",
+      "firstName": "Nombre",
+      "lastName": "Apellidos",
+      "phoneNumber": "Teléfono",
+      "birthDate": "Fecha de nacimiento",
+      "gender": "Género",
+      "nationality": "Nacionalidad",
+      "language": "Idioma",
+      "notSet": "Sin definir"
+    },
+    "genderOptions": {
+      "man": "Hombre",
+      "woman": "Mujer",
+      "other": "Otro"
+    },
+    "address": {
+      "country": "País",
+      "state": "Provincia",
+      "city": "Ciudad",
+      "street": "Calle",
+      "buildingNumber": "Número del edificio",
+      "doorNumber": "Número de puerta / unidad",
+      "complement": "Complemento",
+      "postCode": "Código postal",
+      "region": "Región"
+    },
+    "actions": {
+      "save": "Guardar perfil",
+      "saving": "Guardando…"
+    },
+    "saveSuccess": "Tu perfil se ha guardado.",
+    "errors": {
+      "addressIncomplete": "Completa el país, la provincia, la ciudad, la calle, el número del edificio y el código postal, o borra todos los campos de la dirección."
     }
   },
   "favorites": {

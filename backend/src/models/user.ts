@@ -1,6 +1,9 @@
 import mongoose, { Schema, model } from "mongoose";
 import { personalDetailsSchema } from "./personalDetails.ts";
 import { applyActiveOnlySoftDelete, softDeleteSchemaFields } from "./softDelete.ts";
+import * as enums from "restaurant-pos-packages/enums";
+
+const { languagePreferenceEnums } = enums;
 
 const notificationEntrySchema = new Schema(
   {
@@ -23,6 +26,12 @@ const userSchema = new Schema(
     }, // personal details of the user
 
     // optional fields
+    /** UI language chosen by the person; unset until they choose one. */
+    languagePreference: {
+      type: String,
+      enum: languagePreferenceEnums,
+      default: undefined,
+    },
     selfOrders: {
       type: [
         {

@@ -194,10 +194,13 @@ export async function buildAuthUserSessionFromUserId(
   const user = (await User.findOne(
     withSoftDeleteFilter({ _id: userId }),
   )
-    .select("_id personalDetails.email personalDetails.emailVerified")
+    .select(
+      "_id personalDetails.email personalDetails.emailVerified languagePreference",
+    )
     .lean()) as {
     _id: unknown;
     personalDetails: { email?: string; emailVerified?: boolean };
+    languagePreference?: "en" | "es";
   } | null;
 
   if (!user) return null;
@@ -212,6 +215,7 @@ export async function buildAuthUserSessionFromUserId(
     email: userEmail,
     type: "user",
     emailVerified: user.personalDetails?.emailVerified === true,
+    languagePreference: user.languagePreference,
     role: "Customer",
   };
 

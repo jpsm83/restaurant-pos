@@ -1,30 +1,30 @@
 /**
- * Users Routes Tests - Phase 1 Module 13 + Phase 4 Task 4.6
+ * Users Routes Tests
  *
- * Validation and error responses are asserted at the HTTP seam: failures are
- * RFC 9457 `application/problem+json` documents, never `{ message }`.
- * Phase 4: Full transaction tests for markNotificationAsDeleted (requires
- * replica set). Image upload tests require Cloudinary mocking.
+ * The profile is self-only: a signed-in person may read and update only their
+ * own client profile. Validation and error responses are asserted at the HTTP
+ * seam as RFC 9457 `application/problem+json` documents. The anonymous listing
+ * and creation routes are gone.
  */
 
 import { describe, it, expect, vi, beforeAll } from "vitest";
 
-const sendEmailMock = vi.hoisted(() =>
-  vi.fn().mockResolvedValue({
-    channel: "email",
-    success: true,
-    sentCount: 1,
-  }),
+const uploadFilesCloudinaryMock = vi.hoisted(() =>
+  vi.fn().mockResolvedValue(["https://res.cloudinary.com/demo/image/upload/new.jpg"]),
 );
-
-vi.mock("../../src/communications/channels/emailChannel.ts", () => ({
-  default: { send: sendEmailMock },
-}));
-
+const deleteFilesCloudinaryMock = vi.hoisted(() =>
+  vi.fn().mockResolvedValue(true),
+);
 const deleteFolderCloudinaryMock = vi.hoisted(() =>
   vi.fn().mockResolvedValue(true),
 );
 
+vi.mock("../../src/cloudinary/uploadFilesCloudinary.ts", () => ({
+  default: uploadFilesCloudinaryMock,
+}));
+vi.mock("../../src/cloudinary/deleteFilesCloudinary.ts", () => ({
+  default: deleteFilesCloudinaryMock,
+}));
 vi.mock("../../src/cloudinary/deleteFolderCloudinary.ts", () => ({
   default: deleteFolderCloudinaryMock,
 }));
@@ -33,10 +33,8 @@ import { Types } from "mongoose";
 import bcrypt from "bcrypt";
 import { getTestApp, generateTestToken } from "../setup.ts";
 import User from "../../src/models/user.ts";
-import RefreshSession from "../../src/models/refreshSession.ts";
 import Notification from "../../src/models/notification.ts";
 import Business from "../../src/models/business.ts";
-import { expectOneAccountSend } from "../helpers/accountEmailRail.ts";
 import { multipart } from "../helpers/multipart.ts";
 import {
   detail,
@@ -60,45 +58,35 @@ describe("Users Routes", () => {
     postCode: "90001",
   };
 
-  const createValidUser = async (emailPrefix: string) => {
+  const createValidUser = async (
+    emailPrefix: string,
+    overrides: Record<string, unknown> = {},
+  ) => {
     return await User.create({
       personalDetails: {
-        username: `${emailPrefix}user`,
         email: `${emailPrefix}@test.com`,
         password: "hashedpassword",
         firstName: "Test",
         lastName: "User",
-        phoneNumber: "1234567890",
-        birthDate: new Date("1990-01-01"),
-        gender: "Man",
-        nationality: "USA",
-        idType: "National ID",
-        idNumber: `ID-${emailPrefix}`,
-        address: validAddress,
+        ...overrides,
       },
     });
   };
 
-  const validCreateFields = (overrides: Record<string, string> = {}) => ({
-    username: "newuser",
-    email: "newuser@test.com",
-    password: "Password123!",
-    idType: "National ID",
-    idNumber: "ID-NEW-123",
-    address: JSON.stringify(validAddress),
-    firstName: "New",
-    lastName: "User",
-    nationality: "USA",
-    gender: "Man",
-    birthDate: "1990-01-01",
-    phoneNumber: "9876543210",
-    ...overrides,
-  });
+  const tokenFor = async (user: {
+    _id: Types.ObjectId;
+    personalDetails: { email: string };
+  }) =>
+    generateTestToken({
+      id: user._id.toString(),
+      email: user.personalDetails.email,
+      type: "user",
+      role: "Customer",
+    });
 
-  describe("GET /api/v1/users", () => {
-    it("lists all users", async () => {
+  describe("removed anonymous user routes", () => {
+    it("no longer lists users", async () => {
       const app = await getTestApp();
-
       await createValidUser("listuser");
 
       const response = await app.inject({
@@ -106,330 +94,97 @@ describe("Users Routes", () => {
         url: "/api/v1/users",
       });
 
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(Array.isArray(body)).toBe(true);
-      expect(body.length).toBeGreaterThanOrEqual(1);
+      expect(response.statusCode).toBe(404);
     });
 
-    it("returns a problem-details 404 when no users exist", async () => {
+    it("no longer creates users anonymously", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
-        method: "GET",
+        method: "POST",
         url: "/api/v1/users",
+        payload: multipart({ email: "someone@test.com" }),
+        headers: { "content-type": "multipart/form-data" },
       });
 
       expect(response.statusCode).toBe(404);
-      expect(isProblemDetails(response)).toBe(true);
-      expect(detail(response)).toBe("No users found!");
-    });
-
-    it("excludes soft-deleted users by default and includes them when includeDeleted=true", async () => {
-      const app = await getTestApp();
-
-      await createValidUser("active-list-user");
-      const deletedUser = await createValidUser("deleted-list-user");
-      await User.updateOne(
-        { _id: deletedUser._id },
-        { $set: { deleted: true, deletedAt: new Date() } },
-      );
-
-      const defaultList = await app.inject({
-        method: "GET",
-        url: "/api/v1/users",
-      });
-      expect(defaultList.statusCode).toBe(200);
-      expect(defaultList.json().length).toBe(1);
-
-      const includeDeleted = await app.inject({
-        method: "GET",
-        url: "/api/v1/users?includeDeleted=true",
-      });
-      expect(includeDeleted.statusCode).toBe(200);
-      expect(includeDeleted.json().length).toBe(2);
-    });
-
-    it("returns a validation problem for an invalid includeDeleted query value", async () => {
-      const app = await getTestApp();
-
-      const response = await app.inject({
-        method: "GET",
-        url: "/api/v1/users?includeDeleted=maybe",
-      });
-
-      expect(response.statusCode).toBe(400);
-      expect(isProblemDetails(response)).toBe(true);
-      expect(errorPaths(response)).toContain("includeDeleted");
-    });
-  });
-
-  describe("POST /api/v1/users", () => {
-    it("starts confirmation-gated reactivation for a soft-deleted sign-in email", async () => {
-      const app = await getTestApp();
-      sendEmailMock.mockClear();
-      const existing = await createValidUser("reactivate-create");
-      await User.updateOne(
-        { _id: existing._id },
-        { $set: { deleted: true, deletedAt: new Date() } },
-      );
-
-      const response = await app.inject({
-        method: "POST",
-        url: "/api/v1/users",
-        payload: multipart(
-          validCreateFields({
-            email: "reactivate-create@test.com",
-            username: "someone-else",
-            idNumber: "ID-OTHER-REACT",
-          }),
-        ),
-        headers: { "content-type": "multipart/form-data" },
-      });
-
-      expect(response.statusCode).toBe(202);
-      expect(response.json().message).toContain("reactivation");
-
-      const rows = await User.find({
-        "personalDetails.email": "reactivate-create@test.com",
-      })
-        .setOptions({ includeDeleted: true })
-        .lean();
-      expect(rows).toHaveLength(1);
-      expect(rows[0].deleted).toBe(true);
-      expect(rows[0].verificationToken).toBeTruthy();
-      expectOneAccountSend(sendEmailMock, {
-        to: "reactivate-create@test.com",
-        subject: "Confirm Your Email - POS",
-        link: `/confirm-email?token=${rows[0].verificationToken}`,
-      });
-    });
-
-    it("reactivates the soft-deleted user when a business shares the email and the username is taken", async () => {
-      const app = await getTestApp();
-      sendEmailMock.mockClear();
-      const existing = await createValidUser("reactivate-shared");
-      await User.updateOne(
-        { _id: existing._id },
-        { $set: { deleted: true, deletedAt: new Date() } },
-      );
-      await createValidUser("taken-name");
-      const business = await Business.create({
-        tradeName: "Shared Email Venue",
-        legalName: "Shared Email Venue LLC",
-        email: "reactivate-shared@test.com",
-        password: "hashedpassword",
-        phoneNumber: "1234567890",
-        taxNumber: `TAX-SHARED-${Date.now()}`,
-        currencyTrade: "USD",
-        address: validAddress,
-      });
-
-      const response = await app.inject({
-        method: "POST",
-        url: "/api/v1/users",
-        payload: multipart(
-          validCreateFields({
-            email: "reactivate-shared@test.com",
-            username: "taken-nameuser",
-            idNumber: "ID-SHARED-REACT",
-          }),
-        ),
-        headers: { "content-type": "multipart/form-data" },
-      });
-
-      expect(response.statusCode).toBe(202);
-      expect(response.json().message).toContain("reactivation");
-
-      const rows = await User.find({
-        "personalDetails.email": "reactivate-shared@test.com",
-      })
-        .setOptions({ includeDeleted: true })
-        .lean();
-      expect(rows).toHaveLength(1);
-      expect(rows[0].verificationToken).toBeTruthy();
-
-      const venue = await Business.findById(business._id).lean();
-      expect(venue?.verificationToken).toBeUndefined();
-    });
-
-    it("lets a new email reuse a username freed by a soft-deleted user", async () => {
-      const app = await getTestApp();
-      const existing = await createValidUser("freed-username");
-      await User.updateOne(
-        { _id: existing._id },
-        { $set: { deleted: true, deletedAt: new Date() } },
-      );
-
-      const response = await app.inject({
-        method: "POST",
-        url: "/api/v1/users",
-        payload: multipart(
-          validCreateFields({
-            email: "fresh-person@test.com",
-            username: "freed-usernameuser",
-            idNumber: "ID-FRESH-PERSON",
-          }),
-        ),
-        headers: { "content-type": "multipart/form-data" },
-      });
-
-      expect(response.statusCode).toBe(201);
-
-      const rows = await User.find({})
-        .setOptions({ includeDeleted: true })
-        .select("personalDetails.email personalDetails.username deleted")
-        .lean();
-      const emails = rows.map((row) => row.personalDetails.email);
-      expect(emails).toContain("freed-username@test.com");
-      expect(emails).toContain("fresh-person@test.com");
-    });
-
-    it("creates a user and normalizes the email", async () => {
-      const app = await getTestApp();
-
-      const response = await app.inject({
-        method: "POST",
-        url: "/api/v1/users",
-        payload: multipart(
-          validCreateFields({ email: "New.User@Example.com" }),
-        ),
-        headers: { "content-type": "multipart/form-data" },
-      });
-
-      expect(response.statusCode, response.body).toBe(201);
-
-      const list = await app.inject({ method: "GET", url: "/api/v1/users" });
-      const created = JSON.parse(list.body).find(
-        (u: { personalDetails: { username: string } }) =>
-          u.personalDetails.username === "newuser",
-      );
-      expect(created.personalDetails.email).toBe("new.user@example.com");
-    });
-
-    it("returns a validation problem for missing required fields", async () => {
-      const app = await getTestApp();
-
-      const response = await app.inject({
-        method: "POST",
-        url: "/api/v1/users",
-        payload: multipart({ username: "testuser" }),
-        headers: { "content-type": "multipart/form-data" },
-      });
-
-      expect(response.statusCode, response.body).toBe(400);
-      expect(isProblemDetails(response)).toBe(true);
-      expect(errorPaths(response)).toEqual(
-        expect.arrayContaining(["email", "password"]),
-      );
-    });
-
-    it("returns a validation problem for an invalid address", async () => {
-      const app = await getTestApp();
-
-      const response = await app.inject({
-        method: "POST",
-        url: "/api/v1/users",
-        payload: multipart(
-          validCreateFields({ address: JSON.stringify({ country: "USA" }) }),
-        ),
-        headers: { "content-type": "multipart/form-data" },
-      });
-
-      expect(response.statusCode, response.body).toBe(400);
-      expect(isProblemDetails(response)).toBe(true);
-      expect(errorPaths(response)).toContain("address.state");
-    });
-
-    it("returns a validation problem when the password fails the policy", async () => {
-      const app = await getTestApp();
-
-      const response = await app.inject({
-        method: "POST",
-        url: "/api/v1/users",
-        payload: multipart(validCreateFields({ password: "weak" })),
-        headers: { "content-type": "multipart/form-data" },
-      });
-
-      expect(response.statusCode, response.body).toBe(400);
-      expect(isProblemDetails(response)).toBe(true);
-      expect(errorPaths(response)).toContain("password");
-    });
-
-    it("rejects unknown and server-owned fields", async () => {
-      const app = await getTestApp();
-
-      for (const field of ["isAdmin", "refreshSessionVersion", "sessionId"]) {
-        const response = await app.inject({
-          method: "POST",
-          url: "/api/v1/users",
-          payload: multipart(validCreateFields({ [field]: "1" })),
-          headers: { "content-type": "multipart/form-data" },
-        });
-
-        expect(response.statusCode, `${field}: ${response.body}`).toBe(400);
-        expect(isProblemDetails(response)).toBe(true);
-      }
-    });
-
-    it("returns a problem-details 409 for duplicate user", async () => {
-      const app = await getTestApp();
-
-      await createValidUser("duplicate");
-
-      const response = await app.inject({
-        method: "POST",
-        url: "/api/v1/users",
-        payload: multipart(
-          validCreateFields({
-            username: "duplicateuser",
-            email: "duplicate@test.com",
-            idNumber: "ID-duplicate",
-          }),
-        ),
-        headers: { "content-type": "multipart/form-data" },
-      });
-
-      expect(response.statusCode, response.body).toBe(409);
-      expect(isProblemDetails(response)).toBe(true);
-      expect(detail(response)).toContain("already exists");
     });
   });
 
   describe("GET /api/v1/users/:userId", () => {
-    it("gets user by ID", async () => {
+    it("returns the signed-in person's full client profile", async () => {
       const app = await getTestApp();
-
-      const user = await createValidUser("getbyid");
-
-      const response = await app.inject({
-        method: "GET",
-        url: `/api/v1/users/${user._id}`,
+      const user = await createValidUser("getbyid", {
+        username: "getbyiduser",
+        phoneNumber: "9876543210",
+        birthDate: new Date("1990-01-01"),
+        gender: "Man",
+        nationality: "USA",
+        address: validAddress,
+        imageUrl: "https://res.cloudinary.com/demo/image/upload/old.jpg",
       });
-
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(body._id).toBe(user._id.toString());
-    });
-
-    it("reports only the canonical personalDetails.emailVerified flag", async () => {
-      const app = await getTestApp();
-
-      const user = await createValidUser("verifiedbyflag");
-      await User.collection.updateOne(
+      await User.updateOne(
         { _id: user._id },
-        { $set: { emailVerified: true, "personalDetails.emailVerified": true } },
+        {
+          $set: {
+            languagePreference: "es",
+            verificationToken: "token",
+            resetPasswordToken: "reset",
+            refreshSessionVersion: 2,
+          },
+        },
       );
 
       const response = await app.inject({
         method: "GET",
         url: `/api/v1/users/${user._id}`,
+        headers: { authorization: await tokenFor(user) },
       });
 
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
+      expect(response.statusCode, response.body).toBe(200);
+      const body = response.json();
+      expect(body._id).toBe(user._id.toString());
+      expect(body.languagePreference).toBe("es");
+      expect(body.personalDetails.email).toBe("getbyid@test.com");
+      expect(body.personalDetails).not.toHaveProperty("emailVerified");
+      expect(body.personalDetails.address).toEqual(
+        expect.objectContaining({ country: "USA", postCode: "90001" }),
+      );
+      expect(body.personalDetails).not.toHaveProperty("password");
+      expect(body).not.toHaveProperty("password");
+      expect(body).not.toHaveProperty("verificationToken");
+      expect(body).not.toHaveProperty("resetPasswordToken");
+      expect(body).not.toHaveProperty("refreshSessionVersion");
       expect(body).not.toHaveProperty("emailVerified");
-      expect(body.personalDetails.emailVerified).toBe(true);
+    });
+
+    it("returns 401 without authentication", async () => {
+      const app = await getTestApp();
+      const user = await createValidUser("noauthget");
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/users/${user._id}`,
+      });
+
+      expect(response.statusCode).toBe(401);
+      expect(isProblemDetails(response)).toBe(true);
+      expect(detail(response)).toBe("Authentication required");
+    });
+
+    it("returns 403 when reading another user's profile", async () => {
+      const app = await getTestApp();
+      const user = await createValidUser("otherget");
+      const actor = await createValidUser("actorget");
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/users/${user._id}`,
+        headers: { authorization: await tokenFor(actor) },
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(isProblemDetails(response)).toBe(true);
     });
 
     it("returns a validation problem for an invalid ID format", async () => {
@@ -445,16 +200,23 @@ describe("Users Routes", () => {
       expect(errorPaths(response)).toContain("userId");
     });
 
-    it("returns 404 for non-existent user", async () => {
+    it("returns 404 for a missing user when the token matches the URL", async () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
+      const auth = await generateTestToken({
+        id: fakeId.toString(),
+        email: "ghost@test.com",
+        type: "user",
+        role: "Customer",
+      });
 
       const response = await app.inject({
         method: "GET",
         url: `/api/v1/users/${fakeId}`,
+        headers: { authorization: auth },
       });
 
-      expect(response.statusCode, response.body).toBe(404);
+      expect(response.statusCode).toBe(404);
       expect(isProblemDetails(response)).toBe(true);
       expect(detail(response)).toBe("User not found!");
     });
@@ -473,7 +235,7 @@ describe("Users Routes", () => {
       const response = await app.inject({
         method: "PATCH",
         url: "/api/v1/users/invalid-id",
-        payload: multipart(validCreateFields()),
+        payload: multipart({ firstName: "Pat" }),
         headers: {
           "content-type": "multipart/form-data",
           authorization: auth,
@@ -485,33 +247,42 @@ describe("Users Routes", () => {
       expect(errorPaths(response)).toContain("userId");
     });
 
-    it("returns a validation problem for missing required fields", async () => {
+    it("returns 401 when PATCH user without auth", async () => {
       const app = await getTestApp();
-
-      const user = await createValidUser("patchuser");
-      const auth = await generateTestToken({
-        id: user._id.toString(),
-        email: "patchuser@test.com",
-        type: "user",
-        role: "Customer",
-      });
+      const user = await createValidUser("noauthpatch");
 
       const response = await app.inject({
         method: "PATCH",
         url: `/api/v1/users/${user._id}`,
-        payload: multipart({ username: "updated" }),
+        payload: multipart({ firstName: "Pat" }),
+        headers: { "content-type": "multipart/form-data" },
+      });
+
+      expect(response.statusCode).toBe(401);
+      expect(isProblemDetails(response)).toBe(true);
+      expect(detail(response)).toBe("Authentication required");
+    });
+
+    it("returns 403 when the JWT does not match the URL id", async () => {
+      const app = await getTestApp();
+      const user = await createValidUser("forbiddenpatch");
+      const otherUser = await createValidUser("forbiddenpatchother");
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/users/${user._id}`,
+        payload: multipart({ firstName: "Pat" }),
         headers: {
           "content-type": "multipart/form-data",
-          authorization: auth,
+          authorization: await tokenFor(otherUser),
         },
       });
 
-      expect(response.statusCode, response.body).toBe(400);
+      expect(response.statusCode).toBe(403);
       expect(isProblemDetails(response)).toBe(true);
-      expect(errorPaths(response)).toContain("email");
     });
 
-    it("returns 404 for non-existent user when JWT matches URL id", async () => {
+    it("returns 404 for a non-existent user when the JWT matches the URL id", async () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
       const auth = await generateTestToken({
@@ -524,7 +295,7 @@ describe("Users Routes", () => {
       const response = await app.inject({
         method: "PATCH",
         url: `/api/v1/users/${fakeId}`,
-        payload: multipart(validCreateFields()),
+        payload: multipart({ firstName: "Pat" }),
         headers: {
           "content-type": "multipart/form-data",
           authorization: auth,
@@ -536,312 +307,44 @@ describe("Users Routes", () => {
       expect(detail(response)).toBe("User not found!");
     });
 
-    it("returns 401 when PATCH user without auth", async () => {
+    it("updates optional profile fields and language without replacing the session", async () => {
       const app = await getTestApp();
-      const user = await createValidUser("noauthpatch");
-
-      const response = await app.inject({
-        method: "PATCH",
-        url: `/api/v1/users/${user._id}`,
-        payload: multipart(validCreateFields()),
-        headers: { "content-type": "multipart/form-data" },
-      });
-
-      expect(response.statusCode).toBe(401);
-      expect(isProblemDetails(response)).toBe(true);
-      expect(detail(response)).toBe("Authentication required");
-    });
-
-    it("returns 403 when JWT does not match the URL id", async () => {
-      const app = await getTestApp();
-      const user = await createValidUser("forbiddenpatch");
-      const otherUser = await createValidUser("forbiddenpatchother");
-      const auth = await generateTestToken({
-        id: otherUser._id.toString(),
-        email: "forbiddenpatchother@test.com",
-        type: "user",
-        role: "Customer",
-      });
-
-      const response = await app.inject({
-        method: "PATCH",
-        url: `/api/v1/users/${user._id}`,
-        payload: multipart(validCreateFields()),
-        headers: {
-          "content-type": "multipart/form-data",
-          authorization: auth,
-        },
-      });
-
-      expect(response.statusCode).toBe(403);
-      expect(isProblemDetails(response)).toBe(true);
-    });
-
-    it("returns 401 when token user is soft-deleted", async () => {
-      const app = await getTestApp();
-      const user = await createValidUser("deletedtokenpatch");
-      const auth = await generateTestToken({
-        id: user._id.toString(),
-        email: "deletedtokenpatch@test.com",
-        type: "user",
-        role: "Customer",
-      });
-      await User.updateOne(
-        { _id: user._id },
-        { $set: { deleted: true, deletedAt: new Date() } },
-      );
-
-      const response = await app.inject({
-        method: "PATCH",
-        url: `/api/v1/users/${user._id}`,
-        payload: multipart(validCreateFields()),
-        headers: {
-          "content-type": "multipart/form-data",
-          authorization: auth,
-        },
-      });
-
-      expect(response.statusCode, response.body).toBe(401);
-      expect(isProblemDetails(response)).toBe(true);
-      expect(detail(response)).toBe("Authentication required");
-    });
-
-    it("treats a revoked or session-less access token as signed out", async () => {
-      const app = await getTestApp();
-      const user = await createValidUser("optionaldeadtoken");
-      const auth = await generateTestToken({
-        id: user._id.toString(),
-        email: "optionaldeadtoken@test.com",
-        type: "user",
-        role: "Customer",
-      });
-      await RefreshSession.updateMany(
-        { accountId: user._id },
-        { $set: { revoked: true } },
-      );
-
-      const revoked = await app.inject({
-        method: "PATCH",
-        url: `/api/v1/users/${user._id}`,
-        headers: { authorization: auth },
-      });
-      expect(revoked.statusCode).toBe(401);
-      expect(isProblemDetails(revoked)).toBe(true);
-      expect(detail(revoked)).toBe("Authentication required");
-
-      const sessionLess = app.jwt.sign({
-        id: user._id.toString(),
-        email: "optionaldeadtoken@test.com",
-        type: "user",
-        role: "Customer",
-      });
-      const unsigned = await app.inject({
-        method: "PATCH",
-        url: `/api/v1/users/${user._id}`,
-        headers: { authorization: `Bearer ${sessionLess}` },
-      });
-      expect(unsigned.statusCode).toBe(401);
-      expect(isProblemDetails(unsigned)).toBe(true);
-      expect(detail(unsigned)).toBe("Authentication required");
-    });
-
-    it("updates the user and returns a session", async () => {
-      const app = await getTestApp();
-
-      const user = await createValidUser("updateself");
-      const auth = await generateTestToken({
-        id: user._id.toString(),
-        email: "updateself@test.com",
-        type: "user",
-        role: "Customer",
-      });
-
-      const response = await app.inject({
-        method: "PATCH",
-        url: `/api/v1/users/${user._id}`,
-        payload: multipart(
-          validCreateFields({
-            username: "updateselfuser",
-            email: "updateself@test.com",
-            idNumber: "ID-updateself",
-            firstName: "Updated",
-          }),
-        ),
-        headers: {
-          "content-type": "multipart/form-data",
-          authorization: auth,
-        },
-      });
-
-      expect(response.statusCode, response.body).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(body.accessToken).toBeTruthy();
-      expect(body.user.sessionId).toBeUndefined();
-
-      const refreshCookie = response.cookies.find(
-        (cookie) => cookie.name === "refresh_token",
-      );
-      expect(refreshCookie?.value).toBeTruthy();
-      expect(response.body).not.toContain(refreshCookie!.value);
-      const refreshRes = await app.inject({
-        method: "POST",
-        url: "/api/v1/auth/refresh",
-        headers: { cookie: `refresh_token=${refreshCookie!.value}` },
-      });
-      expect(refreshRes.statusCode).toBe(200);
-      expect(refreshRes.json().user.type).toBe("user");
-      expect(refreshRes.json().user.sessionId).toBeUndefined();
-
-      const fetched = await app.inject({
-        method: "GET",
-        url: `/api/v1/users/${user._id}`,
-      });
-      expect(JSON.parse(fetched.body).personalDetails.firstName).toBe(
-        "Updated",
-      );
-    });
-
-    it("issues a refresh session at the current generation when the password stays", async () => {
-      const app = await getTestApp();
-      const email = "keep-password@test.com";
+      const email = "updateself@test.com";
       const password = "TestPassword123!";
       const user = await User.create({
         personalDetails: {
-          username: "keeppassworduser",
           email,
           password: await bcrypt.hash(password, 10),
-          firstName: "Pat",
-          lastName: "Lee",
-          phoneNumber: "1234567890",
-          birthDate: new Date("1990-01-01"),
-          gender: "Man",
-          nationality: "USA",
-          idType: "National ID",
-          idNumber: "ID-keep-password",
-          address: validAddress,
+          firstName: "Old",
+          username: "oldname",
         },
       });
 
-      const signIn = async () => {
-        const loginRes = await app.inject({
-          method: "POST",
-          url: "/api/v1/auth/login",
-          payload: { email, password },
-        });
-        expect(loginRes.statusCode).toBe(200);
-        return {
-          accessToken: loginRes.json().accessToken as string,
-          refreshCookie: loginRes.cookies.find(
-            (cookie) => cookie.name === "refresh_token",
-          )!.value,
-        };
-      };
-
-      const first = await signIn();
-      const second = await signIn();
-      const profile = validCreateFields({
-        username: "keeppassworduser",
-        email,
-        idNumber: "ID-keep-password",
-        firstName: "Pat",
-        phoneNumber: "1234567890",
-        password: "",
-      });
-
-      const response = await app.inject({
-        method: "PATCH",
-        url: `/api/v1/users/${user._id}`,
-        payload: multipart(profile),
-        headers: {
-          "content-type": "multipart/form-data",
-          authorization: `Bearer ${first.accessToken}`,
-        },
-      });
-
-      expect(response.statusCode, response.body).toBe(200);
-      expect(response.json().user.sessionId).toBeUndefined();
-      const issued = response.cookies.find(
-        (cookie) => cookie.name === "refresh_token",
-      );
-      expect(issued?.value).toBeTruthy();
-      const stored = await User.findById(user._id)
-        .select("refreshSessionVersion")
-        .lean();
-      expect(stored?.refreshSessionVersion ?? 0).toBe(0);
-
-      for (const cookie of [first.refreshCookie, second.refreshCookie, issued!.value]) {
-        const refreshRes = await app.inject({
-          method: "POST",
-          url: "/api/v1/auth/refresh",
-          headers: { cookie: `refresh_token=${cookie}` },
-        });
-        expect(refreshRes.statusCode).toBe(200);
-      }
-
-      const stillCurrent = await app.inject({
-        method: "GET",
-        url: "/api/v1/auth/me",
-        headers: { authorization: `Bearer ${first.accessToken}` },
-      });
-      expect(stillCurrent.statusCode).toBe(200);
-      expect(stillCurrent.json().user.sessionId).toBeUndefined();
-    });
-
-    it("moves the generation on a password change and issues a session at the new generation", async () => {
-      const app = await getTestApp();
-      const email = "change-password@test.com";
-      const password = "TestPassword123!";
-      const user = await User.create({
-        personalDetails: {
-          username: "changepassworduser",
-          email,
-          password: await bcrypt.hash(password, 10),
-          firstName: "Pat",
-          lastName: "Lee",
-          phoneNumber: "1234567890",
-          birthDate: new Date("1990-01-01"),
-          gender: "Man",
-          nationality: "USA",
-          idType: "National ID",
-          idNumber: "ID-change-password",
-          address: validAddress,
-        },
-      });
-
-      const signIn = async () => {
-        const loginRes = await app.inject({
-          method: "POST",
-          url: "/api/v1/auth/login",
-          payload: { email, password },
-        });
-        expect(loginRes.statusCode).toBe(200);
-        return loginRes.cookies.find(
-          (cookie) => cookie.name === "refresh_token",
-        )!.value;
-      };
-
-      const firstCookie = await signIn();
-      const secondCookie = await signIn();
-      const loginRes = await app.inject({
+      const login = await app.inject({
         method: "POST",
         url: "/api/v1/auth/login",
         payload: { email, password },
       });
-      const accessToken = loginRes.json().accessToken as string;
+      expect(login.statusCode).toBe(200);
+      const accessToken = login.json().accessToken as string;
+      const originalRefreshCookie = login.cookies.find(
+        (cookie) => cookie.name === "refresh_token",
+      )!.value;
 
       const response = await app.inject({
         method: "PATCH",
         url: `/api/v1/users/${user._id}`,
-        payload: multipart(
-          validCreateFields({
-            username: "changepassworduser",
-            email,
-            idNumber: "ID-change-password",
-            firstName: "Pat",
-            phoneNumber: "1234567890",
-            password: "NewPassword456!",
-          }),
-        ),
+        payload: multipart({
+          username: "newname",
+          firstName: "New",
+          lastName: "Person",
+          phoneNumber: "9876543210",
+          nationality: "USA",
+          gender: "Woman",
+          birthDate: "1990-01-01",
+          address: JSON.stringify(validAddress),
+          languagePreference: "es",
+        }),
         headers: {
           "content-type": "multipart/form-data",
           authorization: `Bearer ${accessToken}`,
@@ -849,56 +352,186 @@ describe("Users Routes", () => {
       });
 
       expect(response.statusCode, response.body).toBe(200);
-      expect(response.json().user.sessionId).toBeUndefined();
-      const issued = response.cookies.find(
-        (cookie) => cookie.name === "refresh_token",
+      const body = response.json();
+      expect(body.message).toBe("User updated successfully!");
+      expect(body.accessToken).toBeUndefined();
+      expect(body.user.personalDetails.username).toBe("newname");
+      expect(body.user.personalDetails.firstName).toBe("New");
+      expect(body.user.personalDetails.lastName).toBe("Person");
+      expect(body.user.personalDetails.gender).toBe("Woman");
+      expect(body.user.personalDetails.address).toEqual(
+        expect.objectContaining(validAddress),
       );
-      expect(issued?.value).toBeTruthy();
-      const stored = await User.findById(user._id)
-        .select("refreshSessionVersion")
-        .lean();
-      expect(stored?.refreshSessionVersion).toBe(1);
+      expect(body.user.languagePreference).toBe("es");
+      expect(body.user.personalDetails).not.toHaveProperty("password");
+      expect(
+        response.cookies.find((cookie) => cookie.name === "refresh_token"),
+      ).toBeUndefined();
 
-      for (const cookie of [firstCookie, secondCookie]) {
-        const refused = await app.inject({
-          method: "POST",
-          url: "/api/v1/auth/refresh",
-          headers: { cookie: `refresh_token=${cookie}` },
-        });
-        expect(refused.statusCode).toBe(401);
-        expect(refused.headers["content-type"]).toContain(
-          "application/problem+json",
-        );
-        expect(refused.json().detail).toBe("Invalid or expired refresh token");
-      }
+      const stored = await User.findById(user._id).lean();
+      expect(stored?.personalDetails.username).toBe("newname");
+      expect(stored?.languagePreference).toBe("es");
 
-      const refreshRes = await app.inject({
+      const refresh = await app.inject({
         method: "POST",
         url: "/api/v1/auth/refresh",
-        headers: { cookie: `refresh_token=${issued!.value}` },
+        headers: { cookie: `refresh_token=${originalRefreshCookie}` },
       });
-      expect(refreshRes.statusCode).toBe(200);
-      expect(refreshRes.json().user.sessionId).toBeUndefined();
+      expect(refresh.statusCode).toBe(200);
+      expect(refresh.json().user.languagePreference).toBe("es");
 
-      const previousAccess = await app.inject({
+      const me = await app.inject({
         method: "GET",
         url: "/api/v1/auth/me",
         headers: { authorization: `Bearer ${accessToken}` },
       });
-      expect(previousAccess.statusCode).toBe(401);
-      expect(previousAccess.headers["content-type"]).toContain(
-        "application/problem+json",
-      );
-      expect(previousAccess.json().detail).toBe(
-        "Invalid or expired access token",
-      );
-      const nextAccess = await app.inject({
-        method: "GET",
-        url: "/api/v1/auth/me",
-        headers: { authorization: `Bearer ${response.json().accessToken}` },
+      expect(me.statusCode).toBe(200);
+      expect(me.json().user.languagePreference).toBe("es");
+    });
+
+    it("clears optional fields and the address when they are sent blank", async () => {
+      const app = await getTestApp();
+      const user = await createValidUser("clearprofile", {
+        username: "clearuser",
+        firstName: "Clear",
+        phoneNumber: "1234567890",
+        address: validAddress,
       });
-      expect(nextAccess.statusCode).toBe(200);
-      expect(nextAccess.json().user.sessionId).toBeUndefined();
+      await User.updateOne(
+        { _id: user._id },
+        { $set: { languagePreference: "en" } },
+      );
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/users/${user._id}`,
+        payload: multipart({
+          username: "",
+          firstName: "",
+          phoneNumber: "",
+          birthDate: "",
+          gender: "",
+          nationality: "",
+          address: "",
+          languagePreference: "",
+        }),
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: await tokenFor(user),
+        },
+      });
+
+      expect(response.statusCode, response.body).toBe(200);
+      const body = response.json();
+      expect(body.user.personalDetails.username).toBeUndefined();
+      expect(body.user.personalDetails.firstName).toBeUndefined();
+      expect(body.user.personalDetails.phoneNumber).toBeUndefined();
+      expect(body.user.personalDetails.address).toBeUndefined();
+      expect(body.user.languagePreference).toBeUndefined();
+
+      const stored = await User.findById(user._id).lean();
+      expect(stored?.personalDetails.username).toBeUndefined();
+      expect(stored?.personalDetails.address).toBeUndefined();
+      expect(stored?.languagePreference).toBeUndefined();
+    });
+
+    it("rejects password, email, employment identifiers, server-owned fields and unknown keys", async () => {
+      const app = await getTestApp();
+      const user = await createValidUser("rejectfields");
+      const auth = await tokenFor(user);
+
+      for (const field of [
+        "password",
+        "email",
+        "idType",
+        "idNumber",
+        "imageUrl",
+        "emailVerified",
+        "verificationToken",
+        "refreshSessionVersion",
+        "isAdmin",
+      ]) {
+        const response = await app.inject({
+          method: "PATCH",
+          url: `/api/v1/users/${user._id}`,
+          payload: multipart({ [field]: "x" }),
+          headers: {
+            "content-type": "multipart/form-data",
+            authorization: auth,
+          },
+        });
+
+        expect(response.statusCode, `${field}: ${response.body}`).toBe(400);
+        expect(isProblemDetails(response)).toBe(true);
+      }
+    });
+
+    it("rejects an incomplete address", async () => {
+      const app = await getTestApp();
+      const user = await createValidUser("badaddress");
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/users/${user._id}`,
+        payload: multipart({
+          address: JSON.stringify({ country: "USA" }),
+        }),
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: await tokenFor(user),
+        },
+      });
+
+      expect(response.statusCode, response.body).toBe(400);
+      expect(isProblemDetails(response)).toBe(true);
+      expect(errorPaths(response)).toContain("address.state");
+    });
+
+    it("uploads a replacement photo and deletes the previous asset", async () => {
+      const app = await getTestApp();
+      uploadFilesCloudinaryMock.mockClear();
+      deleteFilesCloudinaryMock.mockClear();
+      const previousImageUrl =
+        "https://res.cloudinary.com/demo/image/upload/previous.jpg";
+      const user = await createValidUser("replacephoto", {
+        imageUrl: previousImageUrl,
+      });
+
+      const form = new FormData();
+      form.append("firstName", "Photo");
+      form.append(
+        "imageUrl",
+        new Blob(["image-bytes"], { type: "image/png" }),
+        "avatar.png",
+      );
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/users/${user._id}`,
+        payload: form,
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: await tokenFor(user),
+        },
+      });
+
+      expect(response.statusCode, response.body).toBe(200);
+      expect(uploadFilesCloudinaryMock).toHaveBeenCalledTimes(1);
+      expect(uploadFilesCloudinaryMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          folder: `/users/${user._id}`,
+          onlyImages: true,
+        }),
+      );
+      expect(deleteFilesCloudinaryMock).toHaveBeenCalledWith(previousImageUrl);
+      expect(response.json().user.personalDetails.imageUrl).toBe(
+        "https://res.cloudinary.com/demo/image/upload/new.jpg",
+      );
+
+      const stored = await User.findById(user._id).lean();
+      expect(stored?.personalDetails.imageUrl).toBe(
+        "https://res.cloudinary.com/demo/image/upload/new.jpg",
+      );
     });
   });
 
@@ -952,15 +585,9 @@ describe("Users Routes", () => {
       const hiddenByDefault = await app.inject({
         method: "GET",
         url: `/api/v1/users/${user._id}`,
+        headers: { authorization: await tokenFor(user) },
       });
-      expect(hiddenByDefault.statusCode).toBe(404);
-
-      const visibleWhenIncluded = await app.inject({
-        method: "GET",
-        url: `/api/v1/users/${user._id}?includeDeleted=true`,
-      });
-      expect(visibleWhenIncluded.statusCode).toBe(200);
-      expect(visibleWhenIncluded.json().deleted).toBe(true);
+      expect(hiddenByDefault.statusCode).toBe(401);
       expect(deleteFolderCloudinaryMock).not.toHaveBeenCalled();
     });
 
@@ -968,17 +595,11 @@ describe("Users Routes", () => {
       const app = await getTestApp();
       const actor = await createValidUser("delete-actor");
       const target = await createValidUser("delete-target");
-      const auth = await generateTestToken({
-        id: String(actor._id),
-        email: actor.personalDetails.email,
-        type: "user",
-        role: "Customer",
-      });
 
       const response = await app.inject({
         method: "DELETE",
         url: `/api/v1/users/${target._id}`,
-        headers: { authorization: auth },
+        headers: { authorization: await tokenFor(actor) },
       });
       expect(response.statusCode, response.body).toBe(200);
 
@@ -1099,18 +720,8 @@ describe("Users Routes", () => {
           },
         ],
         personalDetails: {
-          username: "readflagmarkuser",
-          email: "readflagmarkuser@test.com",
+          email: `readflagmarkuser-${Date.now()}@test.com`,
           password: "hashedpassword",
-          firstName: "Read",
-          lastName: "Flag",
-          phoneNumber: "1234567890",
-          birthDate: new Date("1990-01-01"),
-          gender: "Man",
-          nationality: "USA",
-          idType: "National ID",
-          idNumber: `ID-readflag-${Date.now()}`,
-          address: validAddress,
         },
       });
 
@@ -1120,8 +731,7 @@ describe("Users Routes", () => {
       });
 
       expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(body.message).toContain("updated");
+      expect(response.json().message).toContain("updated");
 
       const updatedUser = await User.findById(user._id).lean();
       const updatedUserNotification = updatedUser?.notifications?.find(
@@ -1133,8 +743,7 @@ describe("Users Routes", () => {
     });
   });
 
-  // Phase 4 Task 4.6: Transaction Tests for markNotificationAsDeleted
-  describe("Transaction Tests - PATCH /api/v1/users/:userId/markNotificationAsDeleted", () => {
+  describe("markNotificationAsDeleted transaction", () => {
     it("marks notification as deleted and sets readFlag", async () => {
       const app = await getTestApp();
 
@@ -1164,18 +773,8 @@ describe("Users Routes", () => {
           },
         ],
         personalDetails: {
-          username: "markdeleteuser",
           email: "markdelete@test.com",
           password: "hashedpassword",
-          firstName: "Mark",
-          lastName: "Delete",
-          phoneNumber: "1234567890",
-          birthDate: new Date("1990-01-01"),
-          gender: "Man",
-          nationality: "USA",
-          idType: "National ID",
-          idNumber: "ID-markdelete",
-          address: validAddress,
         },
       });
 
@@ -1186,8 +785,7 @@ describe("Users Routes", () => {
       });
 
       expect(response.statusCode, response.body).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(body.message).toContain("deleted");
+      expect(response.json().message).toContain("deleted");
 
       const updatedUser = await User.findById(user._id).lean();
       const userNotification = updatedUser?.notifications?.find(

@@ -1,6 +1,10 @@
 import { US, ES } from "country-flag-icons/react/1x1";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
+import { updateUserProfile } from "@/auth/api";
+import { useAuth } from "@/auth/store/AuthContext";
 import { changeAppLanguage } from "@/i18n/i18n";
+import { isSupportedLanguage } from "@/i18n/config";
 import { useLanguageOptions } from "@/hooks/useLanguageOptions";
 import {
   DropdownMenu,
@@ -77,8 +81,33 @@ function CircularFlag({
 
 export function LanguageSwitcher() {
   const { t, i18n } = useTranslation("common");
+  const { state, dispatch } = useAuth();
   const options = useLanguageOptions();
   const active = activeCode(i18n.language);
+
+  async function changeLanguage(code: string) {
+    await changeAppLanguage(code);
+
+    const user =
+      state.status === "authenticated" && state.user?.type === "user"
+        ? state.user
+        : null;
+    if (!user || !isSupportedLanguage(code) || user.languagePreference === code) {
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("languagePreference", code);
+    const result = await updateUserProfile(user.id, formData);
+    if (!result.ok) {
+      toast.error(t("languageSwitcher.saveError"));
+      return;
+    }
+    dispatch({
+      type: "AUTH_SUCCESS",
+      payload: { ...user, languagePreference: code },
+    });
+  }
 
   return (
     <DropdownMenu modal={false}>
@@ -99,7 +128,7 @@ export function LanguageSwitcher() {
       >
         <DropdownMenuRadioGroup
           value={active}
-          onValueChange={(code) => void changeAppLanguage(code)}
+          onValueChange={(code) => void changeLanguage(code)}
         >
           {options.map((opt) => (
             <DropdownMenuRadioItem key={opt.value} value={opt.value}>

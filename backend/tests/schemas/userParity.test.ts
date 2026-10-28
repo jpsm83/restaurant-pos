@@ -3,7 +3,6 @@ import type { z } from "zod";
 
 import User from "../../src/models/user.ts";
 import {
-  createUserBodySchema,
   markNotificationDeletedBodySchema,
   updateUserBodySchema,
   userIdParamsSchema,
@@ -17,7 +16,6 @@ import {
  */
 
 const allDtos: Record<string, z.ZodObject> = {
-  createUserBodySchema,
   updateUserBodySchema,
   userIdParamsSchema,
   markNotificationDeletedBodySchema,
@@ -29,20 +27,30 @@ const userOwns = (field: string): boolean =>
   Boolean(User.schema.path(`personalDetails.${field}`));
 
 describe("user DTO ↔ model parity", () => {
-  it("every personal-detail body field maps to a User model field", () => {
-    for (const schema of [createUserBodySchema, updateUserBodySchema]) {
-      for (const key of Object.keys(schema.shape)) {
-        expect(userOwns(key), `${key} should map to a User model field`).toBe(
-          true,
-        );
-      }
+  it("every profile update field maps to a User model field", () => {
+    for (const key of Object.keys(updateUserBodySchema.shape)) {
+      expect(userOwns(key), `${key} should map to a User model field`).toBe(
+        true,
+      );
     }
   });
 
-  it("password is client-settable on create and update", () => {
-    expect(userOwns("password")).toBe(true);
-    expect(Object.keys(createUserBodySchema.shape)).toContain("password");
-    expect(Object.keys(updateUserBodySchema.shape)).toContain("password");
+  it("languagePreference is client-settable and stored on the User", () => {
+    expect(userOwns("languagePreference")).toBe(true);
+    expect(Object.keys(updateUserBodySchema.shape)).toContain(
+      "languagePreference",
+    );
+  });
+
+  it("password, email and employment identifiers are not profile DTO fields", () => {
+    for (const field of ["password", "email", "idType", "idNumber"]) {
+      expect(Object.keys(updateUserBodySchema.shape)).not.toContain(field);
+    }
+  });
+
+  it("the User no longer owns employment identifiers", () => {
+    expect(User.schema.path("personalDetails.idType")).toBeUndefined();
+    expect(User.schema.path("personalDetails.idNumber")).toBeUndefined();
   });
 
   it("server-owned fields are on the model but in no DTO", () => {

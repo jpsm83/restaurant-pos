@@ -10,7 +10,8 @@
     "writeBlocked": "Esta acción está bloqueada hasta que la conexión vuelva a estar en vivo."
   },
   "languageSwitcher": {
-    "ariaLabel": "Cambiar idioma"
+    "ariaLabel": "Cambiar idioma",
+    "saveError": "Tu idioma se aplicó, pero no pudimos guardarlo en tu cuenta. Inténtalo de nuevo."
   },
   "languages": {
     "en": "English",

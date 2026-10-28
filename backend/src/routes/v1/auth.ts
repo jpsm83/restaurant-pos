@@ -41,6 +41,7 @@ import {
   REACTIVATION_REQUIRED_MESSAGE,
   sendSoftDeletedUserConfirmation,
 } from "../../auth/requestEmailConfirmation.ts";
+import { sendAccountExistsEmail } from "../../auth/accountExistsEmail.ts";
 import { handleRequestPasswordReset } from "../../auth/requestPasswordReset.ts";
 import { handleRequestEmailChange } from "../../auth/requestEmailChange.ts";
 import { handleConfirmEmailChange } from "../../auth/confirmEmailChange.ts";
@@ -78,17 +79,30 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
   /**
    * POST /auth/signup
    * Create a customer user account and return authenticated session.
+   *
+   * Only the credential and whatever names/language the person supplied are
+   * stored. An active duplicate gets the account-exists email and the generic
+   * outcome with no session, so sign-up cannot be used to enumerate accounts.
    */
   app.post<{ Body: SignupBody }>(
     "/signup",
     { schema: { body: signupBodySchema } },
     async (req, reply) => {
-      const { email, password, username, firstName, lastName } = req.body;
+      const {
+        email,
+        password,
+        username,
+        firstName,
+        lastName,
+        languagePreference,
+      } = req.body;
 
       const [existingBusiness, existingUser, deletedUser] = await Promise.all([
-        Business.findOne({ email }).select("_id").lean(),
+        Business.findOne({ email }).select("_id tradeName").lean(),
         User.findOne(withSoftDeleteFilter({ "personalDetails.email": email }))
-          .select("_id")
+          .select(
+            "_id personalDetails.username personalDetails.firstName personalDetails.lastName",
+          )
           .lean(),
         User.findOne({
           "personalDetails.email": email,
@@ -99,7 +113,22 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       ]);
 
       if (existingUser) {
-        throw conflict("Account with this email already exists");
+        const greetingName =
+          existingUser.personalDetails.username?.trim() ||
+          existingUser.personalDetails.firstName?.trim();
+        const sent = await sendAccountExistsEmail({
+          to: email,
+          greetingName,
+        });
+        if (!sent) {
+          req.log.error(
+            { errHint: "signup_account_exists_send" },
+            "Account-exists email failed",
+          );
+        }
+        return reply.code(202).send({
+          message: GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE,
+        });
       }
       if (deletedUser) {
         const sent = await sendSoftDeletedUserConfirmation(deletedUser, email);
@@ -109,36 +138,31 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         return reply.code(202).send({ message: REACTIVATION_REQUIRED_MESSAGE });
       }
       if (existingBusiness) {
-        throw conflict("Account with this email already exists");
+        const sent = await sendAccountExistsEmail({
+          to: email,
+          greetingName: existingBusiness.tradeName?.trim(),
+        });
+        if (!sent) {
+          req.log.error(
+            { errHint: "signup_account_exists_send" },
+            "Account-exists email failed",
+          );
+        }
+        return reply.code(202).send({
+          message: GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE,
+        });
       }
 
       const hashedPassword = await bcrypt.hash(password, 10);
-      const emailPrefix = email.split("@")[0] || "user";
-      const safeUsername = (username?.trim() || emailPrefix).slice(0, 50);
-      const safeFirstName = (firstName?.trim() || "New").slice(0, 50);
-      const safeLastName = (lastName?.trim() || "User").slice(0, 50);
 
       const createdUser = await User.create({
+        languagePreference,
         personalDetails: {
-          username: safeUsername,
           email,
           password: hashedPassword,
-          idType: "Passport",
-          idNumber: `AUTO-${Date.now()}`,
-          address: {
-            country: "Unknown",
-            state: "Unknown",
-            city: "Unknown",
-            street: "Unknown",
-            buildingNumber: "0",
-            postCode: "0000",
-          },
-          firstName: safeFirstName,
-          lastName: safeLastName,
-          nationality: "Unknown",
-          gender: "Other",
-          birthDate: new Date("2000-01-01T00:00:00.000Z"),
-          phoneNumber: "0000000000",
+          ...(username ? { username } : {}),
+          ...(firstName ? { firstName } : {}),
+          ...(lastName ? { lastName } : {}),
         },
       });
 
@@ -147,8 +171,10 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         email,
         type: "user",
         emailVerified: createdUser.personalDetails?.emailVerified === true,
+        languagePreference: createdUser.languagePreference,
         role: "Customer",
       };
+
 
       const { accessToken, user } = await issueSessionWithRefreshCookie(
         app,
@@ -540,8 +566,20 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     }
 
     const token = authHeader.slice(7);
-    const user = await requireLiveAccessSession(app, token);
-    return reply.code(200).send({ user });
+    const live = await requireLiveAccessSession(app, token);
+
+    // The User's profile is DB-authoritative: a profile save does not mint a
+    // new access token, so the JWT claim may lag the stored language/verified
+    // flag. Rebuild the User session on read.
+    if (live.type === "user") {
+      const freshUser = await buildAuthUserSessionFromUserId(live.id);
+      if (!freshUser) {
+        throw unauthorized("Invalid or expired access token");
+      }
+      return reply.code(200).send({ user: freshUser });
+    }
+
+    return reply.code(200).send({ user: live });
   });
 
   /**

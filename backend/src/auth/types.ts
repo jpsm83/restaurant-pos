@@ -20,6 +20,8 @@ export interface AuthUser {
   type: "user";
   /** Present when issued by login / refresh / signup; drives verification UI. */
   emailVerified?: boolean;
+  /** Stored UI language preference; unset until the person chooses one. */
+  languagePreference?: "en" | "es";
   employeeId?: string;
   businessId?: string;
   canLogAsEmployee?: boolean;

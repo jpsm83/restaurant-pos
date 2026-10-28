@@ -30,6 +30,8 @@ import {
 } from "../api";
 import type { AuthSession, AuthState } from "../types";
 import type { ServiceErrorCode } from "@/services/serviceErrors";
+import { isSupportedLanguage } from "@/i18n/config";
+import { changeAppLanguage } from "@/i18n/i18n";
 
 type AuthAction =
   | { type: "AUTH_LOADING" }
@@ -82,6 +84,17 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(authReducer, initialState);
+
+  const hydratedLanguage =
+    state.status === "authenticated" && state.user?.type === "user"
+      ? state.user.languagePreference
+      : undefined;
+
+  useEffect(() => {
+    if (hydratedLanguage && isSupportedLanguage(hydratedLanguage)) {
+      void changeAppLanguage(hydratedLanguage);
+    }
+  }, [hydratedLanguage]);
 
   useEffect(() => {
     const bootstrapAuth = async () => {

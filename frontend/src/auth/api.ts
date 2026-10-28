@@ -20,6 +20,7 @@ import type {
   AuthSession,
   LoginCredentials,
   SignupCredentials,
+  UserProfile,
 } from "./types";
 import { queryClient } from "@/services/queryClient";
 import { queryKeys } from "@/services/queryKeys";
@@ -93,6 +94,15 @@ function getAuthHeaders(headers?: HeadersInit, hasBody = false): HeadersInit {
   return nextHeaders;
 }
 
+/** Let the runtime set the multipart boundary instead of forcing JSON. */
+function hasJsonBody(body: BodyInit | null | undefined): boolean {
+  return (
+    body !== undefined &&
+    body !== null &&
+    !(typeof FormData !== "undefined" && body instanceof FormData)
+  );
+}
+
 async function authRequest<T>(
   operation: ServiceOperation,
   path: string,
@@ -102,10 +112,9 @@ async function authRequest<T>(
   { ok: true; data: T | null } | { ok: false; error: ServiceRequestError }
 > {
   try {
-    const hasBody = options?.body !== undefined && options?.body !== null;
     const response = await fetch(`${resolveApiBaseUrl()}${path}`, {
       credentials: "include",
-      headers: getAuthHeaders(options?.headers, hasBody),
+      headers: getAuthHeaders(options?.headers, hasJsonBody(options?.body)),
       ...options,
     });
 
@@ -341,6 +350,27 @@ export async function logout() {
   setAccessToken(null);
   queryClient.removeQueries({ queryKey: queryKeys.auth.mode() });
   return result;
+}
+
+/** Authenticated self read of the client profile. */
+export async function getUserProfile(userId: string) {
+  return authRequest<UserProfile>(
+    "profileFetch",
+    `/api/v1/users/${encodeURIComponent(userId)}`,
+    { method: "GET" },
+  );
+}
+
+/**
+ * Authenticated self update of the client profile. The caller supplies the
+ * multipart body; the response carries the updated profile, not a new session.
+ */
+export async function updateUserProfile(userId: string, formData: FormData) {
+  return authRequest<{ message?: string; user?: UserProfile }>(
+    "profileUpdate",
+    `/api/v1/users/${encodeURIComponent(userId)}`,
+    { method: "PATCH", body: formData },
+  );
 }
 
 export function getAccessToken() {

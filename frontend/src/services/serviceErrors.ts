@@ -17,6 +17,8 @@ export const SERVICE_OPERATIONS = [
   "confirmEmailChange",
   "session",
   "logout",
+  "profileFetch",
+  "profileUpdate",
   "businessCreate",
   "businessFetch",
   "businessUpdate",

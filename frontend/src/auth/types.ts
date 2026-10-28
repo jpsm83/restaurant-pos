@@ -5,6 +5,8 @@
  * Shapes mirror **`backend/src/auth/types.ts`** where noted — keep in sync when the API changes.
  */
 import type { ServiceErrorCode } from "@/services/serviceErrors";
+import type { IAddress } from "restaurant-pos-packages/interfaces/IAddress";
+import type { IPersonalDetails } from "restaurant-pos-packages/interfaces/IPersonalDetails";
 
 export type AuthStatus = "idle" | "loading" | "authenticated" | "unauthenticated";
 
@@ -32,6 +34,8 @@ export interface AuthUser {
   type: "user";
   /** From login / refresh / signup; drives verification UI. */
   emailVerified?: boolean;
+  /** Stored UI language preference; drives language hydration when set. */
+  languagePreference?: "en" | "es";
   /** Present when the User has an active Employee membership. */
   employeeId?: string;
   /** Employing tenant when `employeeId` is set. */
@@ -67,6 +71,23 @@ export interface SignupCredentials {
   username?: string;
   firstName?: string;
   lastName?: string;
+  languagePreference?: "en" | "es";
+}
+
+/** The client-settable profile fields returned by the users API. */
+export type UserProfileAddress = IAddress;
+
+export type UserProfilePersonalDetails = Omit<
+  IPersonalDetails,
+  "password" | "emailVerified"
+>;
+
+export interface UserProfile {
+  _id: string;
+  personalDetails: UserProfilePersonalDetails;
+  languagePreference?: "en" | "es";
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface AuthState {

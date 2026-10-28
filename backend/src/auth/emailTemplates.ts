@@ -330,3 +330,88 @@ export function buildEmailChangeConfirmationContent(options: {
     `,
   };
 }
+
+const accountExistsTranslations = {
+  en: {
+    subject: "You Already Have a POS Account",
+    greeting: "Hello",
+    message:
+      "Someone tried to create a new POS account with this email address. You already have an account, so nothing has changed.",
+    signInButton: "Sign in",
+    resetButton: "Reset password",
+    ignoreMessage:
+      "If this wasn't you, you can ignore this email. Your account is unchanged.",
+    copyright: "© 2026 POS. All rights reserved.",
+  },
+};
+
+/**
+ * Anti-enumeration sign-up notice: sent to an address that already has an
+ * account instead of revealing the duplicate inline. It carries no one-time
+ * token, only the ordinary sign-in and reset pages.
+ */
+export function buildAccountExistsEmailContent(options: {
+  signInUrl: string;
+  resetUrl: string;
+  greetingName?: string;
+}): AuthEmailTemplateContent {
+  const t = accountExistsTranslations.en;
+  const username = fallbackName(options.greetingName);
+
+  const buttonStyle =
+    "color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600;";
+  const signInStyle = `${buttonStyle} background: linear-gradient(to right, #0ea5e9, #3b82f6);`;
+  const resetStyle = `${buttonStyle} background: #374151;`;
+
+  return {
+    subject: t.subject,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(to right, #0ea5e9, #3b82f6); color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+          <h1 style="margin: 0; font-size: 24px; color: white;">
+            POS
+          </h1>
+        </div>
+        <div style="background-color: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; border: 1px solid #e5e7eb;">
+          <h2 style="color: #374151; margin-bottom: 20px;">${t.greeting} ${username}!</h2>
+          <p style="color: #6b7280; line-height: 1.6; margin-bottom: 20px;">
+            ${t.message}
+          </p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${options.signInUrl}" style="${signInStyle}">
+              ${t.signInButton}
+            </a>
+            <a href="${options.resetUrl}" style="${resetStyle} margin-left: 8px;">
+              ${t.resetButton}
+            </a>
+          </div>
+          <p style="color: #6b7280; line-height: 1.6; margin-bottom: 20px;">
+            ${t.ignoreMessage}
+          </p>
+          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+          <p style="color: #9ca3af; font-size: 14px; text-align: center;">
+            <a href="${options.signInUrl}" style="color: #3b82f6;">${options.signInUrl}</a><br>
+            <a href="${options.resetUrl}" style="color: #3b82f6;">${options.resetUrl}</a>
+          </p>
+        </div>
+        <div style="text-align: center; margin-top: 20px; color: #9ca3af; font-size: 12px;">
+          <p>${t.copyright}</p>
+        </div>
+      </div>
+    `,
+    text: `
+      ${t.subject}
+
+      ${t.greeting} ${username}!
+
+      ${t.message}
+
+      ${t.signInButton}: ${options.signInUrl}
+      ${t.resetButton}: ${options.resetUrl}
+
+      ${t.ignoreMessage}
+
+      ${t.copyright}
+    `,
+  };
+}

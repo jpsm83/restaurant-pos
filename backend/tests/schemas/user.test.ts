@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 
 import {
-  createUserBodySchema,
   markNotificationDeletedBodySchema,
   updateUserBodySchema,
   userIdParamsSchema,
@@ -20,83 +19,96 @@ const validAddress = {
   postCode: "90001",
 };
 
-const validCreate = {
+const validUpdate = {
   username: "newuser",
-  email: "New.User@Example.com",
-  password: "Password123!",
-  idType: "National ID",
-  idNumber: "ID-123",
-  address: JSON.stringify(validAddress),
   firstName: "New",
   lastName: "User",
   nationality: "USA",
   gender: "Man",
   birthDate: "1990-01-01",
   phoneNumber: "9876543210",
+  address: JSON.stringify(validAddress),
+  languagePreference: "es",
 };
 
-describe("createUserBodySchema", () => {
-  it("accepts the required fields and normalizes the values", () => {
-    const parsed = createUserBodySchema.parse(validCreate);
+describe("updateUserBodySchema", () => {
+  it("accepts an empty body because every profile field is optional", () => {
+    expect(updateUserBodySchema.parse({})).toEqual({});
+  });
+
+  it("accepts and normalizes the client profile fields", () => {
+    const parsed = updateUserBodySchema.parse(validUpdate);
     expect(parsed.username).toBe("newuser");
-    expect(parsed.email).toBe("new.user@example.com");
-    expect(parsed.idType).toBe("National ID");
     expect(parsed.address).toEqual(validAddress);
     expect(parsed.gender).toBe("Man");
     expect(parsed.birthDate).toEqual(new Date("1990-01-01"));
+    expect(parsed.languagePreference).toBe("es");
   });
 
-  it("parses the JSON-encoded address and rejects a missing required address field", () => {
+  it("treats blank fields as explicit clears", () => {
+    const parsed = updateUserBodySchema.parse({
+      username: "  ",
+      firstName: "",
+      phoneNumber: "",
+      nationality: "",
+      gender: "",
+      birthDate: "",
+      address: "",
+      languagePreference: "",
+    });
+    expect(parsed).toEqual({
+      username: null,
+      firstName: null,
+      phoneNumber: null,
+      nationality: null,
+      gender: null,
+      birthDate: null,
+      address: null,
+      languagePreference: null,
+    });
+  });
+
+  it("omits fields that were not sent", () => {
+    const parsed = updateUserBodySchema.parse({
+      languagePreference: "en",
+    });
+    expect(parsed).toEqual({ languagePreference: "en" });
+  });
+
+  it("parses the JSON-encoded address and rejects incomplete or malformed values", () => {
     expect(
-      createUserBodySchema.safeParse({
-        ...validCreate,
+      updateUserBodySchema.safeParse({
+        ...validUpdate,
         address: JSON.stringify({ country: "USA" }),
       }).success,
     ).toBe(false);
 
     expect(
-      createUserBodySchema.safeParse({ ...validCreate, address: "{not json" })
+      updateUserBodySchema.safeParse({ ...validUpdate, address: "{not json" })
         .success,
     ).toBe(false);
   });
 
-  it("applies the shared password policy", () => {
-    for (const password of ["short", "nouppercase1!", "NOLOWERCASE1!", "NoNumber!", "NoSymbol1"]) {
-      expect(
-        createUserBodySchema.safeParse({ ...validCreate, password }).success,
-        password,
-      ).toBe(false);
-    }
+  it("rejects an invalid gender, birth date and language", () => {
     expect(
-      createUserBodySchema.safeParse({
-        ...validCreate,
-        password: "Password123!",
+      updateUserBodySchema.safeParse({ ...validUpdate, gender: "Unknown" })
+        .success,
+    ).toBe(false);
+    expect(
+      updateUserBodySchema.safeParse({ ...validUpdate, birthDate: "not-a-date" })
+        .success,
+    ).toBe(false);
+    expect(
+      updateUserBodySchema.safeParse({
+        ...validUpdate,
+        languagePreference: "fr",
       }).success,
-    ).toBe(true);
-  });
-
-  it("rejects an invalid id type, gender, email and birth date", () => {
-    expect(
-      createUserBodySchema.safeParse({ ...validCreate, idType: "Passport Card" })
-        .success,
-    ).toBe(false);
-    expect(
-      createUserBodySchema.safeParse({ ...validCreate, gender: "Unknown" })
-        .success,
-    ).toBe(false);
-    expect(
-      createUserBodySchema.safeParse({ ...validCreate, email: "not-an-email" })
-        .success,
-    ).toBe(false);
-    expect(
-      createUserBodySchema.safeParse({ ...validCreate, birthDate: "not-a-date" })
-        .success,
     ).toBe(false);
   });
 
   it("sanitizes structured fields and strips markup from names", () => {
-    const parsed = createUserBodySchema.parse({
-      ...validCreate,
+    const parsed = updateUserBodySchema.parse({
+      ...validUpdate,
       username: "  <b>new</b>   user ",
       firstName: "  New  ",
       nationality: "<i>USA</i>",
@@ -106,16 +118,12 @@ describe("createUserBodySchema", () => {
     expect(parsed.nationality).toBe("USA");
   });
 
-  it("rejects missing required fields and unknown keys", () => {
-    const { username: _drop, ...withoutUsername } = validCreate;
-    expect(createUserBodySchema.safeParse(withoutUsername).success).toBe(false);
-    expect(
-      createUserBodySchema.safeParse({ ...validCreate, isAdmin: true }).success,
-    ).toBe(false);
-  });
-
-  it("rejects server-owned fields", () => {
+  it("rejects server-owned, credential and employment fields", () => {
     for (const field of [
+      "email",
+      "password",
+      "idType",
+      "idNumber",
       "imageUrl",
       "emailVerified",
       "verificationToken",
@@ -124,34 +132,17 @@ describe("createUserBodySchema", () => {
       "notifications",
     ]) {
       expect(
-        createUserBodySchema.safeParse({ ...validCreate, [field]: "x" }).success,
+        updateUserBodySchema.safeParse({ ...validUpdate, [field]: "x" })
+          .success,
         field,
       ).toBe(false);
     }
   });
-});
 
-describe("updateUserBodySchema", () => {
-  it("treats a missing or blank password as not provided", () => {
-    const { password: _drop, ...withoutPassword } = validCreate;
-    expect(updateUserBodySchema.parse(withoutPassword).password).toBeUndefined();
+  it("rejects unknown keys", () => {
     expect(
-      updateUserBodySchema.parse({ ...validCreate, password: "  " }).password,
-    ).toBeUndefined();
-  });
-
-  it("rejects a provided password that fails the policy", () => {
-    expect(
-      updateUserBodySchema.safeParse({ ...validCreate, password: "weak" })
+      updateUserBodySchema.safeParse({ ...validUpdate, ratingCount: 5 })
         .success,
-    ).toBe(false);
-  });
-
-  it("requires the identity fields and rejects unknown keys", () => {
-    const { email: _drop, ...withoutEmail } = validCreate;
-    expect(updateUserBodySchema.safeParse(withoutEmail).success).toBe(false);
-    expect(
-      updateUserBodySchema.safeParse({ ...validCreate, ratingCount: 5 }).success,
     ).toBe(false);
   });
 });

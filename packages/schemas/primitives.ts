@@ -9,6 +9,8 @@
  */
 import { z } from "zod";
 
+import { languagePreferenceEnums } from "../enums.ts";
+
 /**
  * The literal tuple `z.enum` needs to carry a `readonly string[]` constant into
  * `z.infer` as a value union.
@@ -52,6 +54,12 @@ export const emailSchema = z
   .trim()
   .toLowerCase()
   .pipe(z.email("Invalid email address"));
+
+/** The UI languages a User may store as a preference. */
+export const languagePreferenceSchema = z.enum(
+  languagePreferenceEnums as EnumValues,
+  "Invalid language preference",
+);
 
 /**
  * An empty or whitespace-only string is treated as "not provided" — the value a

@@ -2,12 +2,11 @@ import { Schema } from "mongoose";
 import { addressSchema } from "./address.ts";
 import * as enums from "restaurant-pos-packages/enums";
 
-const { genderEnums, idEnums } = enums;
+const { genderEnums } = enums;
 
 export const personalDetailsSchema = new Schema(
   {
     // required fields
-    username: { type: String, required: [true, "Username is required!"] }, // username for the customer
     email: {
       type: String,
       required: [true, "Email is required!"],
@@ -16,30 +15,22 @@ export const personalDetailsSchema = new Schema(
         "Please enter a valid email address!",
       ],
       lowercase: true,
-    }, // email
+    }, // sign-in email
     /** True once `personalDetails.email` is confirmed through auth email flow. */
     emailVerified: {
       type: Boolean,
       default: false,
     },
-    password: {
-      type: String,
-      required: [true, "Password is required!"],
-    },
-    idType: {
-      type: String,
-      enum: idEnums,
-      required: [true, "Id type is required!"],
-    }, // type of ID used by the customer
-    idNumber: { type: String, required: [true, "Id number is required!"] }, // ID number of the customer
-    address: { type: addressSchema, required: [true, "Address is required!"] }, // address of the customer
-    firstName: { type: String, required: [true, "First name is required!"] }, // first name
-    lastName: { type: String, required: [true, "Last name is required!"] }, // last name
     // optional fields
-    nationality: { type: String, required: true }, // country of birth
-    gender: { type: String, enum: genderEnums, required: true }, // gender
-    birthDate: { type: Date, required: true }, // date of birth
-    phoneNumber: { type: String, required: true }, // phone number
+    username: { type: String }, // username for the customer
+    password: { type: String }, // absent until a password is set
+    address: { type: addressSchema }, // address of the customer
+    firstName: { type: String }, // first name
+    lastName: { type: String }, // last name
+    nationality: { type: String }, // country of birth
+    gender: { type: String, enum: genderEnums }, // gender
+    birthDate: { type: Date }, // date of birth
+    phoneNumber: { type: String }, // phone number
     imageUrl: { type: String }, // photo of the customer
   },
   {

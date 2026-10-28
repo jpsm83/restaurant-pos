@@ -10,6 +10,8 @@ interface INotification {
 export interface IUser {
   _id?: Types.ObjectId;
   personalDetails: IPersonalDetails;
+  /** `en` or `es`; unset until the person chooses a language. */
+  languagePreference?: "en" | "es";
   selfOrders?: Types.ObjectId[]; // References to Order model
   notifications?: INotification[];
   verificationToken?: string;

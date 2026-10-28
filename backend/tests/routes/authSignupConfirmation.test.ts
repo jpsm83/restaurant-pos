@@ -129,6 +129,103 @@ describe("POST /api/v1/auth/signup (confirmation email)", () => {
     });
   });
 
+
+  it("creates only email, password, supplied names and language — no invented personal data", async () => {
+    const app = await getTestApp();
+    const email = `clean-signup-${Date.now()}@example.com`;
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/signup",
+      payload: {
+        email,
+        password: "TestPassword123!",
+        firstName: "Pat",
+        languagePreference: "es",
+      },
+    });
+
+    expect(res.statusCode).toBe(201);
+    expect(res.json().user.languagePreference).toBe("es");
+    expect(res.json().user.emailVerified).toBe(false);
+
+    const stored = await User.findOne({ "personalDetails.email": email }).lean();
+    expect(stored?.personalDetails.firstName).toBe("Pat");
+    expect(stored?.personalDetails.lastName).toBeUndefined();
+    expect(stored?.personalDetails.username).toBeUndefined();
+    expect(stored?.personalDetails.phoneNumber).toBeUndefined();
+    expect(stored?.personalDetails.address).toBeUndefined();
+    expect(stored?.personalDetails.birthDate).toBeUndefined();
+    expect(stored?.personalDetails.gender).toBeUndefined();
+    expect(stored?.personalDetails.nationality).toBeUndefined();
+    expect(stored?.personalDetails.idType).toBeUndefined();
+    expect(stored?.personalDetails.idNumber).toBeUndefined();
+    expect(stored?.languagePreference).toBe("es");
+  });
+
+  it("creates an account with email and password only", async () => {
+    const app = await getTestApp();
+    const email = `minimal-signup-${Date.now()}@example.com`;
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/signup",
+      payload: { email, password: "TestPassword123!" },
+    });
+
+    expect(res.statusCode).toBe(201);
+    expect(res.json().accessToken).toBeTruthy();
+    const stored = await User.findOne({ "personalDetails.email": email }).lean();
+    expect(stored?.personalDetails.email).toBe(email);
+    expect(stored?.personalDetails.username).toBeUndefined();
+    expect(stored?.personalDetails.firstName).toBeUndefined();
+    expect(stored?.languagePreference).toBeUndefined();
+  });
+
+  it("returns a generic outcome and emails the owner for an active duplicate sign-up", async () => {
+    const app = await getTestApp();
+    const email = `active-duplicate-${Date.now()}@example.com`;
+    sendEmailMock.mockClear();
+
+    await User.create({
+      personalDetails: {
+        email,
+        password: "hashedpassword",
+        username: "existing-person",
+      },
+    });
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/signup",
+      payload: {
+        email,
+        password: "TestPassword123!",
+        firstName: "Someone",
+      },
+    });
+
+    expect(res.statusCode).toBe(202);
+    expect(res.json().message).not.toContain("already exists");
+    expect(res.json().accessToken).toBeUndefined();
+    expect(
+      res.cookies.find((cookie) => cookie.name === "refresh_token"),
+    ).toBeUndefined();
+    expect(await RefreshSession.countDocuments()).toBe(0);
+    expect(await User.countDocuments({ "personalDetails.email": email })).toBe(1);
+
+    await waitForSendMockCalls(1);
+    const payload = sendEmailMock.mock.calls[0]?.[0] as {
+      to?: unknown;
+      subject?: unknown;
+      text?: unknown;
+    };
+    expect(payload.to).toBe(email);
+    expect(payload.subject).toBe("You Already Have a POS Account");
+    expect(String(payload.text)).toContain("/login");
+    expect(String(payload.text)).toContain("/forgot-password");
+  });
+
   it("still returns 201 when confirmation send fails (token cleared)", async () => {
     const app = await getTestApp();
     const email = `rollback-${Date.now()}@example.com`;

@@ -12,6 +12,52 @@
       "resendButton": "Resend confirmation email",
       "resendSending": "Sending…",
       "resendSuccess": "Confirmation email sent. Check your inbox."
+    },
+    "photo": {
+      "label": "Profile photo",
+      "alt": "Your profile photo",
+      "hint": "Choose a new image to replace the current photo."
+    },
+    "sections": {
+      "personal": "Personal details",
+      "address": "Address"
+    },
+    "fields": {
+      "email": "Sign-in email",
+      "emailReadOnlyHint": "Your sign-in email is shown here for reference and cannot be edited on this page.",
+      "username": "Username",
+      "firstName": "First name",
+      "lastName": "Last name",
+      "phoneNumber": "Phone number",
+      "birthDate": "Birth date",
+      "gender": "Gender",
+      "nationality": "Nationality",
+      "language": "Language",
+      "notSet": "Not set"
+    },
+    "genderOptions": {
+      "man": "Man",
+      "woman": "Woman",
+      "other": "Other"
+    },
+    "address": {
+      "country": "Country",
+      "state": "State",
+      "city": "City",
+      "street": "Street",
+      "buildingNumber": "Building number",
+      "doorNumber": "Door / unit number",
+      "complement": "Complement",
+      "postCode": "Post code",
+      "region": "Region"
+    },
+    "actions": {
+      "save": "Save profile",
+      "saving": "Saving…"
+    },
+    "saveSuccess": "Your profile has been saved.",
+    "errors": {
+      "addressIncomplete": "Complete the country, state, city, street, building number, and post code, or clear every address field."
     }
   },
   "favorites": {

@@ -5,72 +5,96 @@
  * email-verified flag, `imageUrl`, `notifications`, `selfOrders`,
  * `verificationToken`, `resetPasswordToken`, `resetPasswordExpires` and
  * `refreshSessionVersion` never appear in a DTO, so a client that sends them
- * gets a `400`. The create and update bodies are consumed through the shared
- * multipart helper, so the JSON-encoded `address` is parsed and validated
- * against the shared `addressSchema`; the uploaded image is collected by the
- * helper as a file, not a field. Enum values (`idEnums`, `genderEnums`) come
- * from `packages/enums.ts`.
+ * gets a `400`. The update body is consumed through the shared multipart
+ * helper, so the JSON-encoded `address` is parsed and validated against the
+ * shared `addressSchema`; the uploaded image is collected by the helper as a
+ * file, not a field. Enum values (`genderEnums`) come from `packages/enums.ts`.
  */
 import { z } from "zod";
 
-import { genderEnums, idEnums } from "../enums.ts";
-import { passwordSchema } from "./auth.ts";
+import { genderEnums } from "../enums.ts";
 import { addressSchema } from "./address.ts";
 import {
-  coercedBooleanSchema,
-  emailSchema,
-  emptyToUndefined,
-  type EnumValues,
-  jsonField,
+  languagePreferenceSchema,
   objectIdSchema,
   sanitizedString,
+  type EnumValues,
 } from "./primitives.ts";
 
-const idTypeSchema = z.enum(idEnums as EnumValues, "Invalid id type!");
 const genderSchema = z.enum(genderEnums as EnumValues, "Invalid gender!");
 
-/** An optional password; a blank string is treated as "not provided". */
-const optionalPasswordSchema = z.preprocess(
-  emptyToUndefined,
-  passwordSchema.optional(),
+/** A blank multipart field clears the stored value. */
+const blankToNull = (value: unknown): unknown =>
+  typeof value === "string" && value.trim() === "" ? null : value;
+
+/** An optional profile string; a blank field is sent as `null` to clear it. */
+const optionalProfileString = z.preprocess(
+  blankToNull,
+  sanitizedString().nullable().optional(),
+);
+
+/** An optional date; a blank field is sent as `null` to clear it. */
+const optionalBirthDate = z.preprocess(
+  (value, ctx) => {
+    if (typeof value !== "string") return blankToNull(value);
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const date = new Date(trimmed);
+    if (Number.isNaN(date.getTime())) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Invalid birth date",
+      });
+      return z.NEVER;
+    }
+    return date;
+  },
+  z.date().nullable().optional(),
+);
+
+/** An optional gender; a blank field is sent as `null` to clear it. */
+const optionalGender = z.preprocess(
+  blankToNull,
+  genderSchema.nullable().optional(),
+);
+
+/** An optional address object; a blank field is sent as `null` to clear it. */
+const optionalAddress = z.preprocess(
+  blankToNull,
+  z.preprocess((value, ctx) => {
+    if (typeof value !== "string") return value;
+    try {
+      return JSON.parse(value.trim());
+    } catch {
+      ctx.addIssue({ code: "custom", message: "Invalid JSON" });
+      return z.NEVER;
+    }
+  }, addressSchema.nullable()).optional(),
+);
+
+/** An optional language preference; a blank field is sent as `null` to clear it. */
+const optionalLanguagePreference = z.preprocess(
+  blankToNull,
+  languagePreferenceSchema.nullable().optional(),
 );
 
 /**
- * The personal-detail fields a create and update request share. `address` is
- * JSON-encoded over multipart. `birthDate` is coerced to a `Date`.
- */
-const personalDetailFields = {
-  username: sanitizedString("Username is required!"),
-  email: emailSchema,
-  idType: idTypeSchema,
-  idNumber: sanitizedString("Id number is required!"),
-  address: jsonField(addressSchema),
-  firstName: sanitizedString("First name is required!"),
-  lastName: sanitizedString("Last name is required!"),
-  nationality: sanitizedString("Nationality is required!"),
-  gender: genderSchema,
-  birthDate: z.coerce.date("Birth date is required!"),
-  phoneNumber: sanitizedString("Phone number is required!"),
-};
-
-/**
- * Body for `POST /users` (multipart). The password must satisfy the shared
- * policy; the uploaded image is collected by the multipart helper as a file.
- */
-export const createUserBodySchema = z.strictObject({
-  ...personalDetailFields,
-  password: passwordSchema,
-});
-
-/**
- * Body for `PATCH /users/:userId` (multipart, authenticated self only). The
- * identity fields are required (the profile form always submits them);
- * `password` is optional so a profile update that does not change it leaves the
- * stored hash untouched.
+ * Body for `PATCH /users/:userId` (multipart, authenticated self only). Every
+ * personal-detail field is optional so a profile save can send only what
+ * changed. The sign-in email, password and employment identifiers are not
+ * accepted here: email changes belong to the email-change flow, and employment
+ * data belongs to the Employee membership.
  */
 export const updateUserBodySchema = z.strictObject({
-  ...personalDetailFields,
-  password: optionalPasswordSchema,
+  username: optionalProfileString,
+  firstName: optionalProfileString,
+  lastName: optionalProfileString,
+  phoneNumber: optionalProfileString,
+  nationality: optionalProfileString,
+  gender: optionalGender,
+  birthDate: optionalBirthDate,
+  address: optionalAddress,
+  languagePreference: optionalLanguagePreference,
 });
 
 /** Path params for `GET`/`PATCH`/`DELETE /users/:userId`. */
@@ -89,12 +113,6 @@ export const userNotificationParamsSchema = z.strictObject({
   notificationId: objectIdSchema,
 });
 
-/** Optional query for user reads: include soft-deleted records explicitly. */
-export const usersIncludeDeletedQuerySchema = z.strictObject({
-  includeDeleted: z.preprocess(emptyToUndefined, coercedBooleanSchema.optional()),
-});
-
-export type CreateUserBody = z.infer<typeof createUserBodySchema>;
 export type UpdateUserBody = z.infer<typeof updateUserBodySchema>;
 export type UserIdParams = z.infer<typeof userIdParamsSchema>;
 export type MarkNotificationDeletedBody = z.infer<
@@ -102,7 +120,4 @@ export type MarkNotificationDeletedBody = z.infer<
 >;
 export type UserNotificationParams = z.infer<
   typeof userNotificationParamsSchema
->;
-export type UsersIncludeDeletedQuery = z.infer<
-  typeof usersIncludeDeletedQuerySchema
 >;

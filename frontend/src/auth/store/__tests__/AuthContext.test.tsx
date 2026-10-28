@@ -11,6 +11,7 @@ const loadPersistedAccessToken = vi.fn<() => string | null>();
 const getCurrentUser = vi.fn();
 const refreshSession = vi.fn();
 const setAccessToken = vi.fn();
+const changeAppLanguage = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 
 vi.mock("../../api", () => ({
   loadPersistedAccessToken: () => loadPersistedAccessToken(),
@@ -19,11 +20,23 @@ vi.mock("../../api", () => ({
   setAccessToken: (...args: unknown[]) => setAccessToken(...args),
 }));
 
+vi.mock("@/i18n/i18n", () => ({
+  changeAppLanguage,
+}));
+
 const sampleUser: AuthSession = {
   id: "64b000000000000000000001",
   email: "owner@example.com",
   type: "business",
   role: "Tenant",
+};
+
+const sampleCustomer: AuthSession = {
+  id: "64b000000000000000000002",
+  email: "customer@example.com",
+  type: "user",
+  role: "Customer",
+  languagePreference: "es",
 };
 
 function StatusProbe() {
@@ -51,6 +64,7 @@ describe("AuthContext", () => {
     getCurrentUser.mockReset();
     refreshSession.mockReset();
     setAccessToken.mockReset();
+    changeAppLanguage.mockClear();
   });
 
   afterEach(() => {
@@ -121,6 +135,24 @@ describe("AuthContext", () => {
       expect(screen.getByTestId("status")).toHaveTextContent("unauthenticated"),
     );
     expect(screen.getByTestId("user-email")).toHaveTextContent("");
+  });
+
+  it("hydrates the signed-in user's language preference", async () => {
+    loadPersistedAccessToken.mockReturnValue("stored-jwt");
+    getCurrentUser.mockResolvedValue({ ok: true, data: sampleCustomer });
+
+    render(
+      <AuthProvider>
+        <StatusProbe />
+      </AuthProvider>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId("status")).toHaveTextContent("authenticated"),
+    );
+    await waitFor(() => {
+      expect(changeAppLanguage).toHaveBeenCalledWith("es");
+    });
   });
 
   it("bootstrap: refresh had session flag sets expired notice when refresh fails", async () => {
