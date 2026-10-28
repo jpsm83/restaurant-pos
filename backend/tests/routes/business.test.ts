@@ -125,6 +125,50 @@ describe("Business Routes", () => {
       expect(body[0].password).toBeUndefined();
     });
 
+    it("never exposes legacy credential columns stored on an existing row", async () => {
+      const app = await getTestApp();
+
+      await Business.collection.insertOne({
+        tradeName: "Legacy Venue",
+        legalName: "Legacy Venue LLC",
+        email: "legacy@venue.com",
+        password: "legacy-hash",
+        verificationToken: "legacy-confirm",
+        resetPasswordToken: "legacy-reset",
+        resetPasswordExpires: new Date(),
+        pendingEmail: "legacy-new@venue.com",
+        pendingEmailToken: "legacy-pending",
+        pendingEmailExpires: new Date(),
+        refreshSessionVersion: 4,
+        phoneNumber: "1234567890",
+        taxNumber: "TAX-LEGACY-001",
+        currencyTrade: "USD",
+        address: validAddress,
+        deleted: false,
+      });
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/business",
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body[0].tradeName).toBe("Legacy Venue");
+      for (const field of [
+        "password",
+        "verificationToken",
+        "resetPasswordToken",
+        "resetPasswordExpires",
+        "pendingEmail",
+        "pendingEmailToken",
+        "pendingEmailExpires",
+        "refreshSessionVersion",
+      ]) {
+        expect(body[0][field], field).toBeUndefined();
+      }
+    });
+
     it("returns 400 when no businesses exist", async () => {
       const app = await getTestApp();
 
@@ -260,6 +304,32 @@ describe("Business Routes", () => {
       expect(body.verificationToken).toBeUndefined();
       expect(body.resetPasswordToken).toBeUndefined();
       expect(body.resetPasswordExpires).toBeUndefined();
+    });
+
+    it("falls back to UTC and flags the default when no timezone is stored", async () => {
+      const app = await getTestApp();
+
+      const business = await Business.create({
+        tradeName: "No Zone Business",
+        legalName: "No Zone Business LLC",
+        email: "no-zone@business.com",
+        phoneNumber: "1234567890",
+        taxNumber: "TAX-NO-ZONE-001",
+        currencyTrade: "USD",
+        address: validAddress,
+      });
+      const auth = await businessAccessToken(app, business._id.toString());
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/business/${business._id}`,
+        headers: { authorization: auth },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.timezone).toBe("UTC");
+      expect(body.timezoneIsDefault).toBe(true);
     });
 
     it("returns 401 when GET business without auth", async () => {
@@ -1309,6 +1379,32 @@ describe("Business Routes", () => {
       const stored = await Business.findById(business._id).lean();
       expect(stored?.reportingConfig?.weeklyReportStartDay).toBe(3);
     });
+    it("rejects an out-of-range weekly report start day", async () => {
+      const app = await getTestApp();
+      const boundary = "----formdata";
+      const { business, auth } = await createVenue(app);
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/business/${business._id}`,
+        headers: {
+          "content-type": `multipart/form-data; boundary=${boundary}`,
+          authorization: auth,
+        },
+        payload: patchPayload(boundary, business, {
+          reportingConfig: { weeklyReportStartDay: 9 },
+        }),
+      });
+
+      expect(response.statusCode).toBe(400);
+      const body = JSON.parse(response.body);
+      expect(
+        body.errors?.some((e: { path: string }) =>
+          e.path.startsWith("reportingConfig"),
+        ),
+      ).toBe(true);
+    });
+
   });
 
   describe("DELETE /api/v1/business/:businessId", () => {

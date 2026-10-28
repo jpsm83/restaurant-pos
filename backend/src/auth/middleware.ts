@@ -111,7 +111,11 @@ export async function assertAccessTokenRefreshSessionLive(
   session: AuthSession & { sessionId?: string },
 ): Promise<AuthMode> {
   const sessionId = session.sessionId;
-  if (!sessionId || !Types.ObjectId.isValid(sessionId)) {
+  if (
+    session.type !== "user" ||
+    !sessionId ||
+    !Types.ObjectId.isValid(sessionId)
+  ) {
     throw unauthorized("Invalid or expired access token");
   }
 

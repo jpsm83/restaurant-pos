@@ -1,7 +1,5 @@
 import { describe, it, expect } from "vitest";
 import {
-  buildEmailChangeConfirmationContent,
-  buildEmailChangeNoticeContent,
   buildEmailConfirmationContent,
   buildPasswordResetEmailContent,
   formatAuthEmailTtlPhrase,
@@ -67,34 +65,4 @@ describe("emailTemplates", () => {
     expect(text).toContain("1 hour");
   });
 
-  it("buildEmailChangeConfirmationContent includes link, greeting, and 24h expiry copy", () => {
-    const url = "https://app.test/confirm-email-change?token=abc";
-    const { subject, html, text } = buildEmailChangeConfirmationContent({
-      confirmUrl: url,
-      greetingName: "Pat",
-    });
-
-    expect(subject).toBe("Confirm Your New Sign-in Email - POS");
-    expect(html).toContain(`href="${url}"`);
-    expect(html).toContain("24 hours");
-    expect(html).toContain("Hello Pat!");
-    expect(text).toContain(url);
-    expect(text).toContain("24 hours");
-    expect(text).toContain("Hello Pat!");
-  });
-
-  it("buildEmailChangeNoticeContent names the new address and carries no link", () => {
-    const { subject, html, text } = buildEmailChangeNoticeContent({
-      newEmail: "new-address@example.com",
-      greetingName: "Pat",
-    });
-
-    expect(subject).toBe("Your POS Sign-In Email Was Changed");
-    expect(html).toContain("Hello Pat!");
-    expect(html).toContain("new-address@example.com");
-    expect(html).not.toContain("<script>");
-    expect(text).toContain("Hello Pat!");
-    expect(text).toContain("new-address@example.com");
-    expect(html).not.toContain("href=");
-  });
 });

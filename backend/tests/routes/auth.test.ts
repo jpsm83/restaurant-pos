@@ -1609,6 +1609,39 @@ describe("Auth Routes", () => {
       expect(body.detail).toBe("No access token provided");
     });
 
+    it("refuses a business-typed access token even with a live refresh session", async () => {
+      const app = await getTestApp();
+      const user = await User.create({
+        personalDetails: {
+          email: "legacy-business-token@test.com",
+          password: hashedPassword,
+        },
+      });
+      const stored = await RefreshSession.create({
+        accountId: user._id,
+        accountType: "user",
+        refreshSessionVersion: 0,
+        mode: "customer",
+        expiresAt: new Date(Date.now() + 60_000),
+      });
+      const token = app.jwt.sign({
+        id: String(user._id),
+        email: "legacy-business-token@test.com",
+        type: "business",
+        role: "Tenant",
+        sessionId: String(stored._id),
+      });
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/auth/me",
+        headers: { authorization: `Bearer ${token}` },
+      });
+
+      expect(response.statusCode).toBe(401);
+      expect(response.json().detail).toBe("Invalid or expired access token");
+    });
+
     it("returns 401 for invalid token", async () => {
       const app = await getTestApp();
 

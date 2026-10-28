@@ -41,11 +41,22 @@ import type {
   IBusiness,
   IReportingConfig,
 } from "restaurant-pos-packages/interfaces/IBusiness";
-import { foodSubCategoryEnums } from "restaurant-pos-packages/enums";
+import {
+  foodSubCategoryEnums,
+  managementRolesEnums,
+} from "restaurant-pos-packages/enums";
 import {
   resolveTimezoneFromAddress,
   type AddressLike,
 } from "restaurant-pos-packages/utils/timezoneFromAddress";
+
+/**
+ * Legacy rows may still carry credential columns removed from the schema, and
+ * `.lean()` returns stored fields even when the model no longer declares them.
+ * Never expose those columns from this public venue surface.
+ */
+const BUSINESS_PUBLIC_LEAN_SELECT =
+  "-password -verificationToken -resetPasswordToken -resetPasswordExpires -pendingEmail -pendingEmailToken -pendingEmailExpires -pendingEmailRequestedAt -refreshSessionVersion";
 
 const DEFAULT_DISCOVERY_LIMIT = 50;
 
@@ -146,6 +157,7 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
         businesses = await Business.find(
           withSoftDeleteFilter({}, query.includeDeleted ?? false),
         )
+          .select(BUSINESS_PUBLIC_LEAN_SELECT)
           .lean();
       } else {
         const filter: Record<string, unknown> = {};
@@ -177,6 +189,7 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
         businesses = await Business.find(
           withSoftDeleteFilter(filter as Record<string, unknown>, query.includeDeleted ?? false),
         )
+          .select(BUSINESS_PUBLIC_LEAN_SELECT)
           .limit(limit)
           .lean();
       }
@@ -240,6 +253,7 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
       const business = await Business.findOne(
         withSoftDeleteFilter({ _id: businessId }, includeDeleted),
       )
+        .select(BUSINESS_PUBLIC_LEAN_SELECT)
         .lean();
 
       if (!business) {
@@ -475,6 +489,9 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
         const access = authSession
           ? await resolveBusinessAccess(authSession.id, businessId)
           : null;
+        const isManager =
+          access === "employee" &&
+          managementRolesEnums.some((role) => role === authSession?.role);
         const correlationIdHeader = req.headers["x-correlation-id"];
         const operationIdHeader = req.headers["x-idempotency-key"];
         const correlationId =
@@ -494,7 +511,7 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
               source:
                 access === "owner"
                   ? "businessOwner"
-                  : access === "employee"
+                  : isManager
                     ? "manager"
                     : "system",
               email: authSession?.email,
