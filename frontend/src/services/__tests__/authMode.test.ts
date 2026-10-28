@@ -53,8 +53,8 @@ describe("authMode service", () => {
   });
 
   it("fetches mode and normalizes unknown mode to customer", async () => {
-    mockHttpGet.mockResolvedValueOnce({ data: { mode: "employee" } });
-    await expect(getAuthMode()).resolves.toBe("employee");
+    mockHttpGet.mockResolvedValueOnce({ data: { mode: "business" } });
+    await expect(getAuthMode()).resolves.toBe("business");
 
     mockHttpGet.mockResolvedValueOnce({ data: { mode: "unexpected" } });
     await expect(getAuthMode()).resolves.toBe("customer");
@@ -79,7 +79,7 @@ describe("authMode service", () => {
     mockHttpPost.mockRejectedValueOnce(new Error("403"));
     const mapped = new Error("mapped");
     mockToServiceRequestError.mockReturnValueOnce(mapped);
-    await expect(setAuthMode("employee")).rejects.toBe(mapped);
+    await expect(setAuthMode("business")).rejects.toBe(mapped);
     expect(mockToServiceRequestError).toHaveBeenLastCalledWith(
       expect.any(Error),
       "modeSave",

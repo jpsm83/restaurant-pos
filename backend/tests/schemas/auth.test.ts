@@ -279,7 +279,7 @@ describe("resetPasswordBodySchema", () => {
 });
 
 describe("setModeBodySchema", () => {
-  it.each(["customer", "employee"])("accepts %s", (mode) => {
+  it.each(["customer", "business"])("accepts %s", (mode) => {
     expect(setModeBodySchema.safeParse({ mode }).success).toBe(true);
   });
 
@@ -288,7 +288,7 @@ describe("setModeBodySchema", () => {
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error.issues[0].message).toBe(
-        "Mode must be 'customer' or 'employee'",
+        "Mode must be 'customer' or 'business'",
       );
     }
   });

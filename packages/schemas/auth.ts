@@ -102,7 +102,7 @@ export const resetPasswordBodySchema = z.strictObject({
 });
 
 export const setModeBodySchema = z.strictObject({
-  mode: z.enum(["customer", "employee"], "Mode must be 'customer' or 'employee'"),
+  mode: z.enum(["customer", "business"], "Mode must be 'customer' or 'business'"),
 });
 
 export type SignupBody = z.infer<typeof signupBodySchema>;

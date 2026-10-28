@@ -14,7 +14,7 @@ import { AppError, forbidden, unauthorized } from "../errors/appError.ts";
 import Business from "../models/business.ts";
 import RefreshSession from "../models/refreshSession.ts";
 import User from "../models/user.ts";
-import type { AuthSession, AuthUser } from "./types.ts";
+import type { AuthMode, AuthSession, AuthUser } from "./types.ts";
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -109,7 +109,7 @@ export function createOptionalAuthHook(
  */
 export async function assertAccessTokenRefreshSessionLive(
   session: AuthSession & { sessionId?: string },
-): Promise<void> {
+): Promise<AuthMode> {
   const sessionId = session.sessionId;
   if (!sessionId || !Types.ObjectId.isValid(sessionId)) {
     throw unauthorized("Invalid or expired access token");
@@ -119,6 +119,7 @@ export async function assertAccessTokenRefreshSessionLive(
     accountId: Types.ObjectId;
     accountType: "user" | "business";
     refreshSessionVersion: number;
+    mode?: AuthMode;
     expiresAt: Date;
     revoked?: boolean;
   } | null;
@@ -139,6 +140,8 @@ export async function assertAccessTokenRefreshSessionLive(
   if (dbVersion !== null && stored.refreshSessionVersion !== dbVersion) {
     throw unauthorized("Invalid or expired access token");
   }
+
+  return stored.mode === "business" ? "business" : "customer";
 }
 
 /** `null` when no account document exists, including a hard-deleted row. Soft-deleted rows still count. */
@@ -185,12 +188,15 @@ export async function requireLiveAccessSessionWithRefreshId(
     }
     throw error;
   }
-  await assertAccessTokenRefreshSessionLive(decoded);
+  const mode = await assertAccessTokenRefreshSessionLive(decoded);
   await assertAccountCanUseSession(decoded);
 
   const { sessionId, ...session } = decoded;
   if (!sessionId) {
     throw unauthorized("Invalid or expired access token");
+  }
+  if (session.type === "user") {
+    session.mode = mode;
   }
   return { session, sessionId };
 }

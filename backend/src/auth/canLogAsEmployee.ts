@@ -8,9 +8,13 @@
  */
 
 import Employee from "../models/employee.ts";
+import Business from "../models/business.ts";
+import Company from "../models/company.ts";
+import Owner from "../models/owner.ts";
 import Schedule from "../models/schedule.ts";
 import type { ClientSession, Types } from "mongoose";
 import * as enums from "restaurant-pos-packages/enums";
+import findActiveEmployeeMembership from "./employeeMembership.ts";
 
 const { managementRolesEnums } = enums;
 
@@ -101,4 +105,43 @@ export default async function canLogAsEmployee(
   }
 
   return { canLogAsEmployee: false };
+}
+
+/**
+ * The single eligibility seam behind the Customer | Business mode switch.
+ *
+ * A User may enter Business mode when they own a venue through
+ * User → Owner → Company → Business, or when they hold an active Employee
+ * membership whose existing schedule/role gate allows entry. Later access work
+ * refines this seam; callers do not add their own role rules.
+ */
+export async function canUseBusinessMode(
+  userId: Types.ObjectId | string,
+  now?: Date,
+): Promise<boolean> {
+  const owner = (await Owner.findOne({ userId })
+    .select("_id")
+    .lean()) as { _id: unknown } | null;
+  if (owner) {
+    const companies = (await Company.find({ ownerId: owner._id })
+      .select("_id")
+      .lean()) as Array<{ _id: unknown }>;
+    if (companies.length) {
+      const business = (await Business.findOne({
+        companyId: { $in: companies.map((company) => company._id) },
+      })
+        .select("_id")
+        .lean()) as { _id: unknown } | null;
+      if (business) return true;
+    }
+  }
+
+  const employee = await findActiveEmployeeMembership({ userId });
+  if (!employee) return false;
+
+  const { canLogAsEmployee: canLog } = await canLogAsEmployee(
+    employee._id,
+    now,
+  );
+  return canLog;
 }

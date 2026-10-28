@@ -16,6 +16,7 @@ import findActiveEmployeeMembership from "./employeeMembership.ts";
 import { AUTH_CONFIG } from "./config.ts";
 import type {
   AuthBusiness,
+  AuthMode,
   AuthSession,
   AuthUser,
   RefreshTokenPayload,
@@ -24,6 +25,8 @@ import type {
 export type IssueSessionOptions = {
   /** Must match `User.refreshSessionVersion` / `Business.refreshSessionVersion` in DB. */
   refreshSessionVersion?: number;
+  /** Active Customer | Business mode to store on this refresh session. */
+  mode?: AuthMode;
 };
 
 export type RefreshExchange =
@@ -35,9 +38,14 @@ type StoredRefreshSession = {
   accountId: Types.ObjectId;
   accountType: "user" | "business";
   refreshSessionVersion: number;
+  mode?: AuthMode;
   expiresAt: Date;
   revoked?: boolean;
 };
+
+function normalizeMode(mode: unknown): AuthMode {
+  return mode === "business" ? "business" : "customer";
+}
 
 export function signAccessToken(
   app: FastifyInstance,
@@ -57,6 +65,9 @@ export async function issueSessionWithRefreshCookie(
   options?: IssueSessionOptions,
 ): Promise<{ accessToken: string; user: AuthSession }> {
   const refreshSessionVersion = options?.refreshSessionVersion ?? 0;
+  const mode = normalizeMode(
+    options?.mode ?? (session.type === "user" ? session.mode : undefined),
+  );
   const expiresAt = new Date(
     Date.now() + AUTH_CONFIG.COOKIE_MAX_AGE_SECONDS * 1000,
   );
@@ -64,11 +75,14 @@ export async function issueSessionWithRefreshCookie(
     accountId: session.id,
     accountType: session.type,
     refreshSessionVersion,
+    mode,
     expiresAt,
     revoked: false,
   });
   const sessionId = String(stored._id);
-  const accessToken = signAccessToken(app, session, sessionId);
+  const issuedSession: AuthSession =
+    session.type === "user" ? { ...session, mode } : session;
+  const accessToken = signAccessToken(app, issuedSession, sessionId);
   const refreshPayload: RefreshTokenPayload = { sid: sessionId };
   const refreshToken = app.jwt.sign(refreshPayload, {
     expiresIn: AUTH_CONFIG.REFRESH_TOKEN_EXPIRES_IN,
@@ -81,7 +95,7 @@ export async function issueSessionWithRefreshCookie(
     path: "/",
     maxAge: AUTH_CONFIG.COOKIE_MAX_AGE_SECONDS,
   });
-  return { accessToken, user: session };
+  return { accessToken, user: issuedSession };
 }
 
 /**
@@ -132,12 +146,39 @@ export async function exchangeRefreshSession(
   const session =
     stored.accountType === "business"
       ? await buildAuthBusinessSessionFromId(accountId)
-      : await buildAuthUserSessionFromUserId(accountId);
+      : await buildAuthUserSessionFromUserId(
+          accountId,
+          normalizeMode(stored.mode),
+        );
   if (!session) {
     return { kind: "account_missing", accountType: stored.accountType };
   }
 
   return { kind: "issued", session, sessionId: payload.sid };
+}
+
+/** Update the stored mode on one live refresh session; false when the row is gone. */
+export async function setRefreshSessionMode(
+  sessionId: string,
+  mode: AuthMode,
+): Promise<boolean> {
+  if (!Types.ObjectId.isValid(sessionId)) return false;
+  const result = await RefreshSession.updateOne(
+    { _id: sessionId, revoked: { $ne: true } },
+    { $set: { mode } },
+  );
+  return result.matchedCount === 1;
+}
+
+/** Read the stored mode of one refresh session; missing rows read as Customer. */
+export async function readRefreshSessionMode(
+  sessionId: string,
+): Promise<AuthMode> {
+  if (!Types.ObjectId.isValid(sessionId)) return "customer";
+  const stored = (await RefreshSession.findById(sessionId)
+    .select("mode")
+    .lean()) as { mode?: unknown } | null;
+  return normalizeMode(stored?.mode);
 }
 
 /**
@@ -190,6 +231,7 @@ export async function readRefreshSessionVersionForAccount(
 
 export async function buildAuthUserSessionFromUserId(
   userId: string,
+  mode: AuthMode = "customer",
 ): Promise<AuthUser | null> {
   const user = (await User.findOne(
     withSoftDeleteFilter({ _id: userId }),
@@ -216,6 +258,7 @@ export async function buildAuthUserSessionFromUserId(
     type: "user",
     emailVerified: user.personalDetails?.emailVerified === true,
     languagePreference: user.languagePreference,
+    mode,
     role: "Customer",
   };
 

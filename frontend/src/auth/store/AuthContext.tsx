@@ -10,7 +10,7 @@
  * ## Actions
  * `AUTH_LOADING` | `AUTH_SUCCESS` | `AUTH_CLEAR` | `AUTH_ERROR` — pages call **`login`/`signup`** from **`api.ts`**, then dispatch success with the returned `user` payload.
  *
- * This is **JWT identity**, not **`auth_mode`** cookie — see **`AuthModeProvider`** (`@/auth` re-export from `context`).
+ * This is **JWT identity**; the workspace mode lives on the refresh session — see **`AuthModeProvider`** (`@/auth` re-export from `context`).
  */
 /* eslint-disable react-refresh/only-export-components */
 import {

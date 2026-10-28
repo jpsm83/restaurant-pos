@@ -4,6 +4,10 @@
  * Matches legacy NextAuth session structure for full parity.
  */
 
+import type { IAuthMode } from "restaurant-pos-packages/interfaces/IAuth";
+
+export type AuthMode = IAuthMode;
+
 export interface AuthBusiness {
   id: string;
   email: string;
@@ -22,6 +26,8 @@ export interface AuthUser {
   emailVerified?: boolean;
   /** Stored UI language preference; unset until the person chooses one. */
   languagePreference?: "en" | "es";
+  /** Active Customer | Business mode stored on the refresh session. */
+  mode?: AuthMode;
   employeeId?: string;
   businessId?: string;
   canLogAsEmployee?: boolean;
@@ -38,6 +44,8 @@ export interface JwtPayload {
   email: string;
   type: "business" | "user";
   emailVerified?: boolean;
+  languagePreference?: "en" | "es";
+  mode?: AuthMode;
   employeeId?: string;
   businessId?: string;
   canLogAsEmployee?: boolean;

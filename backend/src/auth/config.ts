@@ -8,6 +8,5 @@ export const AUTH_CONFIG = {
   ACCESS_TOKEN_EXPIRES_IN: "15m",
   REFRESH_TOKEN_EXPIRES_IN: "7d",
   REFRESH_COOKIE_NAME: "refresh_token",
-  AUTH_MODE_COOKIE_NAME: "auth_mode",
   COOKIE_MAX_AGE_SECONDS: 60 * 60 * 24 * 7, // 7 days
 } as const;

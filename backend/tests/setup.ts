@@ -85,14 +85,20 @@ export async function signAccessTokenForLiveSession(
   const expiresAt = new Date(
     Date.now() + AUTH_CONFIG.COOKIE_MAX_AGE_SECONDS * 1000,
   );
+  const mode = session.type === "user" ? (session.mode ?? "customer") : "customer";
   const stored = await RefreshSession.create({
     accountId: session.id,
     accountType: session.type,
     refreshSessionVersion,
+    mode,
     expiresAt,
     revoked: false,
   });
-  return signAccessToken(app, session, String(stored._id));
+  return signAccessToken(
+    app,
+    session.type === "user" ? { ...session, mode } : session,
+    String(stored._id),
+  );
 }
 
 /**

@@ -6,6 +6,9 @@
  */
 
 import mongoose, { Schema, model } from "mongoose";
+import * as enums from "restaurant-pos-packages/enums";
+
+const { authModeEnums } = enums;
 
 const refreshSessionSchema = new Schema({
   accountId: {
@@ -21,6 +24,12 @@ const refreshSessionSchema = new Schema({
   refreshSessionVersion: {
     type: Number,
     required: true,
+  },
+  /** Active Customer | Business mode for this session; Customer by default. */
+  mode: {
+    type: String,
+    enum: authModeEnums,
+    default: "customer",
   },
   expiresAt: {
     type: Date,

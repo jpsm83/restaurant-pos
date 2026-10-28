@@ -2,7 +2,7 @@
  * ## `EmployeeLayout` (`src/layouts`)
  * **Parent route:** `path="/:userId/employee"` in `appRoutes.tsx`. The route **element** is
  * **`UserSessionRouteShell` → `RequireEmployeeAuthMode` → `EmployeeLayout`**: the mode guard runs
- * **outside** this file (`auth_mode` cookie via `AuthModeContext` / `services/authMode.ts`).
+ * **outside** this file (server-stored session mode via `AuthModeContext` / `services/authMode.ts`).
  *
  * ## Flow
  * Same chrome pattern as **`CustomerLayout`** (**`SidebarProvider`** in **`main.tsx`**) +

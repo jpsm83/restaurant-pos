@@ -11,6 +11,8 @@ import User from "../../src/models/user.ts";
 import Business from "../../src/models/business.ts";
 import Employee from "../../src/models/employee.ts";
 import RefreshSession from "../../src/models/refreshSession.ts";
+import ownerCompanyCreation from "../../src/owners/ownerCompanyCreation.ts";
+import { fakeBusinessRecord } from "../helpers/fixtures.ts";
 
 function accessTokenLifetimeSeconds(token: string): number {
   const payload = accessTokenClaims(token);
@@ -38,6 +40,28 @@ describe("Auth Routes", () => {
   beforeEach(async () => {
     hashedPassword = await bcrypt.hash(testPassword, 10);
   });
+
+  async function createOwnerVenue(email: string, username: string) {
+    const user = await User.create({
+      personalDetails: {
+        email,
+        password: hashedPassword,
+        firstName: "Owner",
+        lastName: "Venue",
+        username,
+      },
+    });
+    const venue = await ownerCompanyCreation({
+      userId: user._id,
+      business: {
+        ...fakeBusinessRecord({ country: "USA" }),
+        _id: new Types.ObjectId(),
+        email: `${username}-venue@test.com`,
+        password: hashedPassword,
+      },
+    });
+    return { user, venue };
+  }
 
   describe("POST /api/v1/auth/login", () => {
     it("logs in business with valid credentials", async () => {
@@ -359,9 +383,6 @@ describe("Auth Routes", () => {
         response.cookies.find((cookie) => cookie.name === "refresh_token")
           ?.value,
       ).toBe("");
-      expect(
-        response.cookies.find((cookie) => cookie.name === "auth_mode")?.value,
-      ).toBe("");
     });
 
     it("ignores a body and stays without a request DTO", async () => {
@@ -377,7 +398,7 @@ describe("Auth Routes", () => {
       expect(response.json().message).toBe("Logged out successfully");
     });
 
-    it("revokes the presented refresh session, clears both cookies, and returns the success message", async () => {
+    it("revokes the presented refresh session, clears the refresh cookie, and returns the success message", async () => {
       const app = await getTestApp();
       const email = "logout-one-session@test.com";
       await User.create({
@@ -427,9 +448,6 @@ describe("Auth Routes", () => {
       expect(
         logoutRes.cookies.find((cookie) => cookie.name === "refresh_token")
           ?.value,
-      ).toBe("");
-      expect(
-        logoutRes.cookies.find((cookie) => cookie.name === "auth_mode")?.value,
       ).toBe("");
 
       const refreshRes = await app.inject({
@@ -818,9 +836,6 @@ describe("Auth Routes", () => {
       expect(
         logoutRes.cookies.find((cookie) => cookie.name === "refresh_token")
           ?.value,
-      ).toBe("");
-      expect(
-        logoutRes.cookies.find((cookie) => cookie.name === "auth_mode")?.value,
       ).toBe("");
 
       const signedOut = await app.inject({
@@ -2011,11 +2026,273 @@ describe("Auth Routes", () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.mode).toBe("customer");
+      expect(
+        response.cookies.find((cookie) => cookie.name === "auth_mode"),
+      ).toBeUndefined();
+    });
+
+    it("allows an owner to enter business mode and stores it on that refresh session", async () => {
+      const app = await getTestApp();
+      const email = "owner-business-mode@test.com";
+      await createOwnerVenue(email, "ownerbusinessmode");
+
+      const loginRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: { email, password: testPassword },
+      });
+      expect(loginRes.statusCode).toBe(200);
+      expect(loginRes.json().user.mode).toBe("customer");
+      const accessToken = loginRes.json().accessToken as string;
+      const refreshCookie = loginRes.cookies.find(
+        (cookie) => cookie.name === "refresh_token",
+      );
+      expect(refreshCookie?.value).toBeTruthy();
+
+      const setMode = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/set-mode",
+        headers: { authorization: `Bearer ${accessToken}` },
+        payload: { mode: "business" },
+      });
+      expect(setMode.statusCode).toBe(200);
+      expect(setMode.json().mode).toBe("business");
+      expect(
+        setMode.cookies.find((cookie) => cookie.name === "auth_mode"),
+      ).toBeUndefined();
+
+      const mode = await app.inject({
+        method: "GET",
+        url: "/api/v1/auth/mode",
+        headers: { authorization: `Bearer ${accessToken}` },
+      });
+      expect(mode.statusCode).toBe(200);
+      expect(mode.json().mode).toBe("business");
+
+      const refreshed = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/refresh",
+        headers: { cookie: `refresh_token=${refreshCookie!.value}` },
+      });
+      expect(refreshed.statusCode).toBe(200);
+      expect(refreshed.json().user.mode).toBe("business");
+
+      const me = await app.inject({
+        method: "GET",
+        url: "/api/v1/auth/me",
+        headers: {
+          authorization: `Bearer ${refreshed.json().accessToken as string}`,
+        },
+      });
+      expect(me.statusCode).toBe(200);
+      expect(me.json().user.mode).toBe("business");
+    });
+
+    it("keeps each refresh session on its own stored mode", async () => {
+      const app = await getTestApp();
+      const email = "peer-mode-sessions@test.com";
+      await createOwnerVenue(email, "peermodesessions");
+      const credentials = { email, password: testPassword };
+
+      const first = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: credentials,
+      });
+      const second = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: credentials,
+      });
+      const setMode = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/set-mode",
+        headers: {
+          authorization: `Bearer ${first.json().accessToken as string}`,
+        },
+        payload: { mode: "business" },
+      });
+      expect(setMode.statusCode).toBe(200);
+
+      const firstMode = await app.inject({
+        method: "GET",
+        url: "/api/v1/auth/mode",
+        headers: {
+          authorization: `Bearer ${first.json().accessToken as string}`,
+        },
+      });
+      const secondMode = await app.inject({
+        method: "GET",
+        url: "/api/v1/auth/mode",
+        headers: {
+          authorization: `Bearer ${second.json().accessToken as string}`,
+        },
+      });
+      expect(firstMode.json().mode).toBe("business");
+      expect(secondMode.json().mode).toBe("customer");
+    });
+
+    it("refuses business mode for a user with no owner venue and no active employee link", async () => {
+      const app = await getTestApp();
+      await User.create({
+        personalDetails: {
+          email: "not-eligible-business-mode@test.com",
+          password: hashedPassword,
+          firstName: "Not",
+          lastName: "Eligible",
+          username: "noteligiblebusinessmode",
+        },
+      });
+
+      const loginRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: {
+          email: "not-eligible-business-mode@test.com",
+          password: testPassword,
+        },
+      });
+      expect(loginRes.statusCode).toBe(200);
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/set-mode",
+        headers: {
+          authorization: `Bearer ${loginRes.json().accessToken as string}`,
+        },
+        payload: { mode: "business" },
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(response.json().detail).toBe(
+        "Not authorized to enter business mode",
+      );
+    });
+
+    it("uses the employee schedule gate for business mode eligibility", async () => {
+      const app = await getTestApp();
+      const business = await Business.create({
+        tradeName: "Mode Eligibility Venue",
+        legalName: "Mode Eligibility Venue Legal",
+        email: "mode-eligibility-venue@test.com",
+        password: hashedPassword,
+        taxNumber: "TAX-MODE-ELIGIBILITY",
+        phoneNumber: "1234567890",
+        currencyTrade: "USD",
+        address: {
+          country: "USA",
+          state: "CA",
+          city: "LA",
+          street: "Main St",
+          buildingNumber: "123",
+          postCode: "90001",
+        },
+      });
+
+      const ineligible = await User.create({
+        personalDetails: {
+          email: "employee-outside-shift-mode@test.com",
+          password: hashedPassword,
+          firstName: "Outside",
+          lastName: "Shift",
+          username: "employeeoutsideshiftmode",
+        },
+      });
+      await Employee.create({
+        businessId: business._id,
+        userId: ineligible._id,
+        taxNumber: "EMP-OUTSIDE-SHIFT-MODE",
+        joinDate: new Date(),
+        vacationDaysPerYear: 20,
+        allEmployeeRoles: ["Waiter"],
+        currentShiftRole: "Waiter",
+        active: true,
+      });
+
+      const manager = await User.create({
+        personalDetails: {
+          email: "manager-business-mode@test.com",
+          password: hashedPassword,
+          firstName: "Manager",
+          lastName: "Mode",
+          username: "managerbusinessmode",
+        },
+      });
+      await Employee.create({
+        businessId: business._id,
+        userId: manager._id,
+        taxNumber: "EMP-MANAGER-BUSINESS-MODE",
+        joinDate: new Date(),
+        vacationDaysPerYear: 20,
+        allEmployeeRoles: ["Manager"],
+        currentShiftRole: "Manager",
+        active: true,
+      });
+
+      async function loginToken(email: string) {
+        const login = await app.inject({
+          method: "POST",
+          url: "/api/v1/auth/login",
+          payload: { email, password: testPassword },
+        });
+        expect(login.statusCode).toBe(200);
+        return login.json().accessToken as string;
+      }
+
+      const blocked = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/set-mode",
+        headers: {
+          authorization: `Bearer ${await loginToken(
+            "employee-outside-shift-mode@test.com",
+          )}`,
+        },
+        payload: { mode: "business" },
+      });
+      expect(blocked.statusCode).toBe(403);
+
+      const allowed = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/set-mode",
+        headers: {
+          authorization: `Bearer ${await loginToken(
+            "manager-business-mode@test.com",
+          )}`,
+        },
+        payload: { mode: "business" },
+      });
+      expect(allowed.statusCode).toBe(200);
+      expect(allowed.json().mode).toBe("business");
     });
   });
 
   describe("GET /api/v1/auth/mode", () => {
-    it("returns default mode as customer", async () => {
+    it("returns the stored mode of the authenticated refresh session", async () => {
+      const app = await getTestApp();
+      const email = "get-mode-session@test.com";
+      await createOwnerVenue(email, "getmodesession");
+      const loginRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: { email, password: testPassword },
+      });
+      expect(loginRes.statusCode).toBe(200);
+      const accessToken = loginRes.json().accessToken as string;
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/auth/mode",
+        headers: { authorization: `Bearer ${accessToken}` },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({ mode: "customer" });
+      expect(
+        response.cookies.find((cookie) => cookie.name === "auth_mode"),
+      ).toBeUndefined();
+    });
+
+    it("returns 401 without an access session", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
@@ -2023,17 +2300,28 @@ describe("Auth Routes", () => {
         url: "/api/v1/auth/mode",
       });
 
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(body.mode).toBe("customer");
+      expect(response.statusCode).toBe(401);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
     });
 
     it("ignores a stray query and stays without a request DTO", async () => {
       const app = await getTestApp();
+      const email = "get-mode-query@test.com";
+      await createOwnerVenue(email, "getmodequery");
+      const loginRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: { email, password: testPassword },
+      });
 
       const response = await app.inject({
         method: "GET",
         url: "/api/v1/auth/mode?paymentId=pay-1",
+        headers: {
+          authorization: `Bearer ${loginRes.json().accessToken as string}`,
+        },
       });
 
       expect(response.statusCode).toBe(200);

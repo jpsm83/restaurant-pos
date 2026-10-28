@@ -25,11 +25,14 @@ import {
 } from "../../auth/middleware.ts";
 import { issueLiveTicket } from "../../auth/liveTicketStore.ts";
 import type { AuthBusiness, AuthUser } from "../../auth/types.ts";
+import { canUseBusinessMode } from "../../auth/canLogAsEmployee.ts";
 import {
   buildAuthUserSessionFromUserId,
   exchangeRefreshSession,
   issueSessionWithRefreshCookie,
+  readRefreshSessionMode,
   revokePresentedRefreshSession,
+  setRefreshSessionMode,
   signAccessToken,
 } from "../../auth/issueSession.ts";
 import {
@@ -172,6 +175,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         type: "user",
         emailVerified: createdUser.personalDetails?.emailVerified === true,
         languagePreference: createdUser.languagePreference,
+        mode: "customer",
         role: "Customer",
       };
 
@@ -549,7 +553,6 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       req.cookies[AUTH_CONFIG.REFRESH_COOKIE_NAME],
     );
     reply.clearCookie(AUTH_CONFIG.REFRESH_COOKIE_NAME, { path: "/" });
-    reply.clearCookie(AUTH_CONFIG.AUTH_MODE_COOKIE_NAME, { path: "/" });
     return reply.code(200).send({ message: "Logged out successfully" });
   });
 
@@ -566,20 +569,24 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     }
 
     const token = authHeader.slice(7);
-    const live = await requireLiveAccessSession(app, token);
+    const live = await requireLiveAccessSessionWithRefreshId(app, token);
 
     // The User's profile is DB-authoritative: a profile save does not mint a
     // new access token, so the JWT claim may lag the stored language/verified
-    // flag. Rebuild the User session on read.
-    if (live.type === "user") {
-      const freshUser = await buildAuthUserSessionFromUserId(live.id);
+    // flag. Rebuild the User session on read, including the issued mode.
+    if (live.session.type === "user") {
+      const mode = await readRefreshSessionMode(live.sessionId);
+      const freshUser = await buildAuthUserSessionFromUserId(
+        live.session.id,
+        mode,
+      );
       if (!freshUser) {
         throw unauthorized("Invalid or expired access token");
       }
       return reply.code(200).send({ user: freshUser });
     }
 
-    return reply.code(200).send({ user: live });
+    return reply.code(200).send({ user: live.session });
   });
 
   /**
@@ -615,8 +622,8 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
 
   /**
    * POST /auth/set-mode
-   * Set auth mode cookie (customer/employee) for users with employee access.
-   * Requires valid access token.
+   * Update the stored Customer | Business mode on the presented refresh session.
+   * Requires a valid access token; Business mode passes the one eligibility seam.
    */
   app.post<{ Body: SetModeBody }>(
     "/set-mode",
@@ -629,25 +636,22 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       }
 
       const token = authHeader.slice(7);
-      const session = await requireLiveAccessSession(app, token);
+      const live = await requireLiveAccessSessionWithRefreshId(app, token);
 
-      if (session.type !== "user") {
+      if (live.session.type !== "user") {
         throw badRequest("Only users can set auth mode");
       }
 
       const { mode } = req.body;
 
-      if (mode === "employee" && !session.canLogAsEmployee) {
-        throw forbidden("Not authorized to log in as employee");
+      if (mode === "business" && !(await canUseBusinessMode(live.session.id))) {
+        throw forbidden("Not authorized to enter business mode");
       }
 
-      reply.setCookie(AUTH_CONFIG.AUTH_MODE_COOKIE_NAME, mode, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        path: "/",
-        maxAge: AUTH_CONFIG.COOKIE_MAX_AGE_SECONDS,
-      });
+      const stored = await setRefreshSessionMode(live.sessionId, mode);
+      if (!stored) {
+        throw unauthorized("Invalid or expired access token");
+      }
 
       return reply.code(200).send({
         message: "Auth mode set successfully",
@@ -658,10 +662,20 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
 
   /**
    * GET /auth/mode
-   * Get current auth mode from cookie.
+   * Read the stored mode of the presented refresh session.
    */
   app.get("/mode", async (req, reply) => {
-    const mode = req.cookies[AUTH_CONFIG.AUTH_MODE_COOKIE_NAME] || "customer";
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader?.startsWith("Bearer ")) {
+      throw unauthorized("No access token provided");
+    }
+
+    const { sessionId } = await requireLiveAccessSessionWithRefreshId(
+      app,
+      authHeader.slice(7),
+    );
+    const mode = await readRefreshSessionMode(sessionId);
     return reply.code(200).send({ mode });
   });
 };

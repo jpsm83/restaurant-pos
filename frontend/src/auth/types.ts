@@ -36,6 +36,8 @@ export interface AuthUser {
   emailVerified?: boolean;
   /** Stored UI language preference; drives language hydration when set. */
   languagePreference?: "en" | "es";
+  /** Active Customer | Business mode stored on the refresh session. */
+  mode?: "customer" | "business";
   /** Present when the User has an active Employee membership. */
   employeeId?: string;
   /** Employing tenant when `employeeId` is set. */

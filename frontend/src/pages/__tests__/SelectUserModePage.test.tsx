@@ -129,14 +129,14 @@ describe("SelectUserModePage (Phase 3.7)", () => {
     });
   });
 
-  it("calls setModeAndRefresh with employee when canLogAsEmployee then navigates", async () => {
+  it("calls setModeAndRefresh with business when canLogAsEmployee then navigates", async () => {
     const user = userEvent.setup();
     await renderAtMode();
 
-    await user.click(screen.getByRole("button", { name: /continue as employee/i }));
+    await user.click(screen.getByRole("button", { name: /continue as business/i }));
 
     await waitFor(() => {
-      expect(mockSetModeAndRefresh).toHaveBeenCalledWith("employee");
+      expect(mockSetModeAndRefresh).toHaveBeenCalledWith("business");
     });
     await waitFor(() => {
       expect(screen.getByTestId("employee-shell")).toBeInTheDocument();
@@ -207,7 +207,7 @@ describe("SelectUserModePage (Phase 3.7)", () => {
     ).toBeInTheDocument();
   });
 
-  it("disables Continue as employee when canLogAsEmployee is false", async () => {
+  it("disables Continue as business when canLogAsEmployee is false", async () => {
     mockUseAuth.mockReturnValue({
       state: {
         status: "authenticated",
@@ -219,7 +219,7 @@ describe("SelectUserModePage (Phase 3.7)", () => {
 
     await renderAtMode();
 
-    expect(screen.getByRole("button", { name: /continue as employee/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /continue as business/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /continue as customer/i })).not.toBeDisabled();
   });
 });

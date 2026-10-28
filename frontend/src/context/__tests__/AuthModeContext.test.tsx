@@ -31,8 +31,8 @@ function AuthModeProbe() {
       <button type="button" onClick={() => void ctx.refreshMode()}>
         refresh
       </button>
-      <button type="button" onClick={() => void ctx.setModeAndRefresh("employee")}>
-        set employee
+      <button type="button" onClick={() => void ctx.setModeAndRefresh("business")}>
+        set business
       </button>
     </div>
   );
@@ -138,7 +138,7 @@ describe("AuthModeProvider", () => {
       },
     });
     mockUseAuthModeQuery.mockReturnValue({
-      data: "employee",
+      data: "business",
       isLoading: false,
       isError: false,
       error: null,
@@ -146,7 +146,7 @@ describe("AuthModeProvider", () => {
     });
     renderUserShell("/u1/customer");
     expect(mockUseAuthModeQuery).toHaveBeenCalledWith({ enabled: true });
-    expect(screen.getByTestId("mode")).toHaveTextContent("employee");
+    expect(screen.getByTestId("mode")).toHaveTextContent("business");
   });
 
   it("refreshMode does not refetch when query is disabled", async () => {
@@ -170,7 +170,7 @@ describe("AuthModeProvider", () => {
       state: { status: "unauthenticated", user: null, error: null },
     });
     renderUserShell("/u1/customer");
-    await user.click(screen.getByRole("button", { name: "set employee" }));
+    await user.click(screen.getByRole("button", { name: "set business" }));
     expect(mutateAsync).not.toHaveBeenCalled();
   });
 
@@ -189,7 +189,7 @@ describe("AuthModeProvider", () => {
       },
     });
     renderUserShell("/u1/customer");
-    await user.click(screen.getByRole("button", { name: "set employee" }));
-    expect(mutateAsync).toHaveBeenCalledWith("employee");
+    await user.click(screen.getByRole("button", { name: "set business" }));
+    expect(mutateAsync).toHaveBeenCalledWith("business");
   });
 });

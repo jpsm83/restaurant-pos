@@ -4,7 +4,7 @@
  *
  * ## Wiring
  * - **Token:** interceptor uses `getAccessToken()` from `auth/api.ts` (module singleton, not Context).
- * - **Cookies:** `withCredentials: true` for HttpOnly cookies (e.g. `auth_mode`).
+ * - **Cookies:** `withCredentials: true` for the HttpOnly refresh cookie.
  * - **Write gate:** signed-in domain writes leave only while this tab is live-and-resynced.
  *   Session auth and table-load POSTs (`skipWriteGate`) are not writes.
  * - **Consumers:** `authMode.ts`, `businessService.ts`, `schedulesService.ts`.

@@ -235,7 +235,7 @@ describe("Auth route guards", () => {
       mockUseAuthMode.mockReset();
     });
 
-    it("redirects to /:userId/mode when auth_mode is customer", async () => {
+    it("redirects to /:userId/mode when session mode is customer", async () => {
       mockUseAuthMode.mockReturnValue({
         mode: "customer",
         isLoading: false,
@@ -288,9 +288,9 @@ describe("Auth route guards", () => {
       expect(screen.getByText("Mode picker")).toBeInTheDocument();
     });
 
-    it("renders children when auth_mode is employee", async () => {
+    it("renders children when session mode is business", async () => {
       mockUseAuthMode.mockReturnValue({
-        mode: "employee",
+        mode: "business",
         isLoading: false,
         isError: false,
       });

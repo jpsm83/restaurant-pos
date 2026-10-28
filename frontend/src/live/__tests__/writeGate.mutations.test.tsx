@@ -106,7 +106,7 @@ describe("signed-in mutations obey the write gate", () => {
   });
 
   it("does not store a blocked write in a domain-write queue", async () => {
-    await expect(setAuthMode("employee")).rejects.toBeInstanceOf(Error);
+    await expect(setAuthMode("business")).rejects.toBeInstanceOf(Error);
     const storedKeys = [
       ...Object.keys(localStorage),
       ...Object.keys(sessionStorage),

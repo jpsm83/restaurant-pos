@@ -1,5 +1,5 @@
 /**
- * Auth **workspace mode** API (`customer` vs `employee`) — HttpOnly cookie via backend.
+ * Auth **workspace mode** API (`customer` vs `business`) — stored on the refresh session by the backend.
  *
  * ## Flow
  * 1. **`getAuthMode` / `useAuthModeQuery`** — `GET /api/v1/auth/mode` through shared `http`.
@@ -23,20 +23,20 @@ import { toServiceRequestError } from "./serviceErrors";
 
 export type AuthMode = IAuthMode;
 
-/** `GET /api/v1/auth/mode` — reads `auth_mode` cookie (defaults to `customer`). */
+/** `GET /api/v1/auth/mode` — reads the access session's stored mode (defaults to `customer`). */
 export async function getAuthMode(signal?: AbortSignal): Promise<AuthMode> {
   try {
     const { data } = await http.get<IAuthModeResponse>("/api/v1/auth/mode", {
       signal,
     });
-    return data.mode === "employee" ? "employee" : "customer";
+    return data.mode === "business" ? "business" : "customer";
   } catch (e) {
     throw toServiceRequestError(e, "modeLoad");
   }
 }
 
 /**
- * `POST /api/v1/auth/set-mode` — sets HttpOnly `auth_mode` cookie (Bearer required).
+ * `POST /api/v1/auth/set-mode` — updates the refresh session mode (Bearer required).
  * @throws ServiceRequestError with a `modeSave.*` code.
  */
 export async function setAuthMode(mode: AuthMode): Promise<void> {

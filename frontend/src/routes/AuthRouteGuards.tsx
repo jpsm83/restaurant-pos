@@ -10,7 +10,7 @@
  * - `UserSessionRouteShell` = `ProtectedRoute` → `RequireUserSession` → `UserIdRouteGuard` → layout/page.
  * - `BusinessSessionRouteShell` = `ProtectedRoute` → `RequireBusinessSession` → `BusinessIdRouteGuard` → layout/page.
  * - Employee area adds `RequireEmployeeAuthMode` **inside** `UserSessionRouteShell` (must be under
- *   `/:userId/employee` so params and cookie mode check apply).
+ *   `/:userId/employee` so params and session-mode check apply).
  *
  * ## Wiring (`appRoutes.tsx`)
  * - Public routes: `PublicOnlyRoute` on `/login`, `/signup`, `/forgot-password`, `/business/register`
@@ -164,9 +164,9 @@ export function UserIdRouteGuard({ children }: { children: ReactElement }) {
 }
 
 /**
- * Employee shell only when the HttpOnly **`auth_mode`** cookie is **employee** (`GET /api/v1/auth/mode`).
+ * Employee shell only when the session-stored mode is **business** (`GET /api/v1/auth/mode`).
  * Deep link to **`/:userId/employee`** with **`customer`** mode → **`Navigate`** to **`/:userId/mode`** (Phase 3.5.1).
- * On mode fetch error, same redirect so the user can retry **Continue as employee** or use customer.
+ * On mode fetch error, same redirect so the user can retry **Continue as business** or use customer.
  */
 export function RequireEmployeeAuthMode({ children }: { children: ReactElement }) {
   const { t } = useTranslation("common");
@@ -181,7 +181,7 @@ export function RequireEmployeeAuthMode({ children }: { children: ReactElement }
     return <SessionLoading message={t("loading.checkingWorkspaceMode")} />;
   }
 
-  if (isError || mode !== "employee") {
+  if (isError || mode !== "business") {
     return <Navigate to={`/${userId}/mode`} replace />;
   }
 

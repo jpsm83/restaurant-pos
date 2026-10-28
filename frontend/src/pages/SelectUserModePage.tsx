@@ -202,10 +202,10 @@ export default function SelectUserModePage() {
     !canEmployee && derived.countdownTargetMs !== null;
 
   const employeeDescription = canEmployee
-    ? t("employeeHelp.canEmployee")
+    ? t("businessHelp.canBusiness")
     : showCountdown
-      ? t("employeeHelp.countdownSoon")
-      : t("employeeHelp.blocked");
+      ? t("businessHelp.countdownSoon")
+      : t("businessHelp.blocked");
 
   const goCustomer = async () => {
     setSubmitFailure(null);
@@ -221,7 +221,7 @@ export default function SelectUserModePage() {
     if (!canEmployee) return;
     setSubmitFailure(null);
     try {
-      await setModeAndRefresh("employee");
+      await setModeAndRefresh("business");
       navigate(canonicalUserEmployeeDashboardPath(sessionUser), { replace: true });
     } catch (e) {
       setSubmitFailure(toServiceRequestError(e, "modeSave"));
@@ -263,7 +263,7 @@ export default function SelectUserModePage() {
                 aria-busy={isSettingMode || undefined}
                 onClick={() => void goEmployee()}
               >
-                {t("continueEmployee")}
+                {t("continueBusiness")}
               </Button>
             </div>
           </CardContent>

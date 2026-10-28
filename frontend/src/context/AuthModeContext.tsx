@@ -3,7 +3,7 @@
  *
  * ## `AuthModeContext` (this file)
  * Bridges **`services/authMode.ts`** (TanStack Query + `http`) into a single **`useAuthMode()`** hook
- * for the rest of the app. Exposes cookie-backed **`customer` | `employee`** mode, loading/error,
+ * for the rest of the app. Exposes session-backed **`customer` | `business`** mode, loading/error,
  * **`setModeAndRefresh`**, and **`refreshMode`**.
  *
  * ## Wiring
@@ -38,7 +38,7 @@ import {
 export type { AuthMode };
 
 type AuthModeContextValue = {
-  /** Cookie-backed mode from `GET /auth/mode` while on a user shell route; `undefined` if not applicable or still loading. */
+  /** Server-stored mode from `GET /auth/mode` while on a user shell route; `undefined` if not applicable or still loading. */
   mode: AuthMode | undefined;
   isLoading: boolean;
   isError: boolean;

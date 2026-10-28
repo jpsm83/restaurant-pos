@@ -1,10 +1,10 @@
 /**
  * Shared auth-mode contracts for frontend/backend integration.
  */
-export type IAuthMode = "customer" | "employee";
+export type IAuthMode = "customer" | "business";
 
 export interface IAuthModeResponse {
-  mode?: string;
+  mode?: IAuthMode;
 }
 
 export interface ISetAuthModeBody {
