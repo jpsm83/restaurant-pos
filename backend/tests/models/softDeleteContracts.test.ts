@@ -1,9 +1,11 @@
 import { beforeAll, describe, expect, it } from "vitest";
 
 import Business from "../../src/models/business.ts";
+import Company from "../../src/models/company.ts";
 import DailySalesReport from "../../src/models/dailySalesReport.ts";
 import Employee from "../../src/models/employee.ts";
 import MonthlyBusinessReport from "../../src/models/monthlyBusinessReport.ts";
+import Owner from "../../src/models/owner.ts";
 import Printer from "../../src/models/printer.ts";
 import Promotion from "../../src/models/promotion.ts";
 import Supplier from "../../src/models/supplier.ts";
@@ -50,6 +52,9 @@ describe("Soft-delete contracts", () => {
     partial: Record<string, unknown>;
   }> = [
     { label: "User email", model: User, key: { "personalDetails.email": 1 }, partial: activeOnly },
+    { label: "Owner user", model: Owner, key: { userId: 1 }, partial: activeOnly },
+    { label: "Company legalName", model: Company, key: { country: 1, legalName: 1 }, partial: { deleted: false, legalName: { $type: "string" } } },
+    { label: "Company taxNumber", model: Company, key: { country: 1, taxNumber: 1 }, partial: { deleted: false, taxNumber: { $type: "string" } } },
     { label: "Business taxNumber", model: Business, key: { taxNumber: 1 }, partial: activeOnly },
     { label: "Employee taxNumber", model: Employee, key: { taxNumber: 1 }, partial: activeOnly },
     { label: "Supplier legalName", model: Supplier, key: { businessId: 1, legalName: 1 }, partial: activeOnly },
@@ -96,12 +101,14 @@ describe("Soft-delete contracts", () => {
     expect(labels).toEqual([
       "Business",
       "BusinessGood",
+      "Company",
       "DailySalesReport",
       "Employee",
       "Inventory",
       "MonthlyBusinessReport",
       "Notification",
       "Order",
+      "Owner",
       "Printer",
       "Promotion",
       "Purchase",

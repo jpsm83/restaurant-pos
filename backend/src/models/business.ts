@@ -98,6 +98,11 @@ const businessSchema = new Schema(
       type: String,
       required: [true, "Currency trade is required!"],
     }, // currency of the price
+    companyId: {
+      type: Schema.Types.ObjectId,
+      ref: "Company",
+      index: true,
+    }, // owning tax entity; the path from this Business to its Owner
     subscription: {
       type: String,
       enum: subscriptionEnums,

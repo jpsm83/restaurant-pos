@@ -55,6 +55,8 @@ export interface IBusiness {
   phoneNumber: string;
   taxNumber: string;
   currencyTrade: string;
+  /** Owning Company; the path from this Business to its Owner. */
+  companyId?: Types.ObjectId;
   subscription: string;
   /**
    * Authoritative IANA timezone for the business (e.g. `America/Bogota`).

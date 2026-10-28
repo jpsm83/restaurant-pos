@@ -2,12 +2,14 @@ import mongoose from "mongoose";
 
 import Business from "./business.ts";
 import BusinessGood from "./businessGood.ts";
+import Company from "./company.ts";
 import DailySalesReport from "./dailySalesReport.ts";
 import Employee from "./employee.ts";
 import Inventory from "./inventory.ts";
 import MonthlyBusinessReport from "./monthlyBusinessReport.ts";
 import Notification from "./notification.ts";
 import Order from "./order.ts";
+import Owner from "./owner.ts";
 import Printer from "./printer.ts";
 import Promotion from "./promotion.ts";
 import Purchase from "./purchase.ts";
@@ -29,12 +31,14 @@ export const softDeleteBackfillModels: Array<{
 }> = [
   { label: "Business", model: Business as SoftDeleteModel },
   { label: "BusinessGood", model: BusinessGood as SoftDeleteModel },
+  { label: "Company", model: Company as SoftDeleteModel },
   { label: "DailySalesReport", model: DailySalesReport as SoftDeleteModel },
   { label: "Employee", model: Employee as SoftDeleteModel },
   { label: "Inventory", model: Inventory as SoftDeleteModel },
   { label: "MonthlyBusinessReport", model: MonthlyBusinessReport as SoftDeleteModel },
   { label: "Notification", model: Notification as SoftDeleteModel },
   { label: "Order", model: Order as SoftDeleteModel },
+  { label: "Owner", model: Owner as SoftDeleteModel },
   { label: "Printer", model: Printer as SoftDeleteModel },
   { label: "Promotion", model: Promotion as SoftDeleteModel },
   { label: "Purchase", model: Purchase as SoftDeleteModel },

@@ -61,6 +61,62 @@ export function fakeBusiness(overrides: Partial<{
 }
 
 /**
+ * Generate fake Owner data for a User's portfolio.
+ */
+export function fakeOwner(
+  userId: string,
+  overrides: Partial<{ country: string; subscription: string }> = {},
+) {
+  return {
+    userId,
+    country: overrides.country ?? faker.location.country(),
+    subscription: overrides.subscription ?? "Free",
+  };
+}
+
+/**
+ * Generate fake Company data owned by an Owner.
+ */
+export function fakeCompany(
+  ownerId: string,
+  overrides: Partial<{
+    country: string;
+    legalName: string;
+    taxNumber: string;
+  }> = {},
+) {
+  return {
+    ownerId,
+    country: overrides.country ?? faker.location.country(),
+    legalName: overrides.legalName ?? faker.company.name(),
+    taxNumber: overrides.taxNumber ?? `TAX-${faker.string.alphanumeric(10)}`,
+  };
+}
+
+/**
+ * Generate a complete Business record, optionally linked to a Company.
+ */
+export function fakeBusinessRecord(
+  overrides: Partial<{ country: string; companyId: string }> = {},
+) {
+  return {
+    tradeName: faker.company.name(),
+    legalName: faker.company.name(),
+    email: faker.internet.email(),
+    password: "TestPassword123!",
+    phoneNumber: faker.phone.number(),
+    taxNumber: `TAX-${faker.string.alphanumeric(10)}`,
+    currencyTrade: "EUR",
+    subscription: "Free",
+    address: {
+      ...fakeAddress(),
+      country: overrides.country ?? faker.location.country(),
+    },
+    companyId: overrides.companyId,
+  };
+}
+
+/**
  * Generate fake supplier data
  */
 export function fakeSupplier(businessId: string) {
