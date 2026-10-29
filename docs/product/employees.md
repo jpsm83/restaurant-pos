@@ -23,7 +23,7 @@ It deliberately does **not** cover:
 - the global **User**, **Owner**, **Company**, credentials, sessions, customer identity, or account deletion — the users subject owns those. This subject consumes the User the membership points at.
 - the **base access layers**, **effective layer**, **per-user capabilities**, and **assignment UI** — the access-and-permissions subject owns those. **Mode eligibility** (Customer | Business) belongs to the users subject. This subject supplies the membership and job roles those rules read.
 - the **schedule** (daily schedule, vacation and other leave on the schedule, time-off requests, planned labour roll-ups) — the schedules subject owns it. This subject supplies the people and vacation balance the schedule consumes and updates.
-- **attendance** — daily attendance QR scan-in, manager sign-out, breaks, overtime alerts, and actual labour-cost calculation — the time-control subject owns those.
+- **attendance** — daily attendance QR scan-in, staff sign-out, breaks, overtime alerts, and actual labour-cost calculation — the time-control subject owns those.
 - **labour and vacation KPI formulas** — the business-metrics subject owns them; reports consume the figures.
 - **operational attribution** of service work (responsible employee on a tab, tips, print permissions) — each operational subject names the employee as an actor; this subject owns the membership record itself.
 - **payroll preparation and export** — pay runs, tip pooling into a pay package, and accountant release — the payroll subject owns those. This subject supplies pay terms and identifiers that subject reads.

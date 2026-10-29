@@ -221,7 +221,7 @@ A common pattern: the employee has transferred all expected business cash to a p
 - If the employee has **no uncashed activity**, they have **no financial obligation** from this subject. They do **not** need a cash-out.
 - Personal float never creates an obligation by itself.
 - Receiving peer cash-in or house paid-out **does** create uncashed activity until that window is cashed out — even with no sales — and therefore blocks sign-out until cash-out.
-- Duty **sign-out** still requires **no open sales instances** (time-control). With no open instances and no uncashed activity, a manager-layer user may sign them out without any cash-out step.
+- Duty **sign-out** still requires **no open sales instances** (time-control). With no open instances and no uncashed activity, the person may sign out (or a manager may end duty as an exception) without any cash-out step.
 
 ### 3.14 Sign-out interaction
 

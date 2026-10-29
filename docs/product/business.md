@@ -87,7 +87,7 @@ Registering a business is an **authenticated action by an existing user** — th
 A newly added business begins as a **draft**.
 
 - A draft can be **saved incomplete** and returned to later; the platform never forces a complete profile in one sitting.
-- Only a **trade name** is needed to create the record. Every other field is optional at save time and may be filled in **any order, across visits**.
+- Creating the record needs the minimum onboarding set: a **trade name**, the venue's **country**, and the **currency**. The country establishes the portfolio country shared by every Company and Business under the Owner; the currency follows §3.4. Every other field is optional at save time and may be filled in **any order, across visits**.
 - The fields the go-live checklist names are **required for go-live, not for saving a draft**.
 - An admin/owner at the venue may edit a draft freely.
 

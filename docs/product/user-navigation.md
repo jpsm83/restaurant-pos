@@ -24,7 +24,7 @@ It owns:
 It deliberately does **not** cover:
 
 - **who may enter business mode** — membership, entry window, and suspended/terminated rules belong to the users subject; **layer defaults and effective layer** belong to the access-and-permissions subject. This subject enforces those rules in chrome and guards.
-- **attendance and on-duty** — daily attendance QR, late sign-in approval, and shift sessions belong to the time-control subject. This subject only places Attendance under Service when the person may open it.
+- **attendance and on-duty** — daily attendance QR, late sign-in and early sign-out approval, and shift sessions belong to the time-control subject. This subject only places Attendance under Service when the person may open it.
 - **feature behaviour inside each destination** — orders, schedules, inventory, reports, and the rest belong to their own subjects. This subject only places those destinations in the chrome.
 - **the Superadmin console's** own navigation and authentication realm — the superadmin subject owns that surface entirely.
 - **a distinct mobile shell** — this subject's chrome commitments are for the **desktop web app**. Phone and tablet layouts are out of scope here. Staff still sign in with full email and password or Google on a personal or venue-provided device; one User per browser session; no shared-login chrome, PIN, or quick-switch (staff-sessions subject).
@@ -111,7 +111,7 @@ Terms reused rather than redefined here: **User**, **Business**, **Owner**, **Em
 
 #### Service
 
-- **Ordinary employees:** **POS** and **Attendance** for **own** scan-in under Service by default (access-and-permissions). Other Service destinations need a capability or job-role entitlement (Host, prep screens, and so on).
+- **Ordinary employees:** **POS** and **Attendance** for **own** scan-in and sign-out under Service by default (access-and-permissions). Other Service destinations need a capability or job-role entitlement (Host, prep screens, and so on).
 - **Supervisors:** full Service set by default — **POS**, **Host**, **Prep screens**, **Delivery screen**, **Customer pickup board**, **Attendance** for **own** scan-in, **Counts**, and **Cash-out** (access-and-permissions layer defaults). Presenting the venue daily attendance QR stays manager+ (time-control subject).
 - **Managers and above:** the same full Service set (including Counts and Cash-out), and managers present the attendance QR through a **Show attendance QR** action under **Service → Attendance** (available any time after sign-in, not only at login). Full inventory admin stays under Manage → Supply.
 - **Owner access** (owning user, with or without membership): admin-equivalent Service and Manage for whatever the **plan entitles** (Free has no hired-staff Attendance/Counts/Cash-out surfaces).
@@ -168,7 +168,7 @@ This subject names destinations the chrome must be able to reach. Behaviour insi
 | POS (floor map or list/grid) | Service → POS |
 | Host (floor map or list/grid) | Service → Host (Host job role; supervisor; managers+) |
 | Prep / Delivery / Pickup screens | Service (supervisor/manager+ by default; employees when entitled) |
-| Attendance | Service (own scan-in for employee layer+ by default; **Show attendance QR** for manager+ only) |
+| Attendance | Service (own scan-in and sign-out for employee layer+ by default; **Show attendance QR** for manager+ only) |
 | Counts | Service (supervisor layer+; physical count and count re-edit) |
 | Cash-out | Service (supervisor layer+; approve another wallet / house movements) |
 | Floor plans (layout editor) | Manage → Floor plans |
@@ -210,7 +210,7 @@ Ordinary employees may gain individual **Service** destinations (control screens
 | Use Service → Host | Host job role; supervisor layer; managers and above |
 | Use Manage → Floor plans | Effective manager or admin layer at that venue |
 | Use Service control screens | Effective manager, admin, or supervisor (full Service defaults); or employees with the granting entitlement |
-| Use Service → Attendance (own scan-in) | Employee layer and above by default. Show attendance QR: manager+ only |
+| Use Service → Attendance (own scan-in and sign-out) | Employee layer and above by default. Show attendance QR: manager+ only |
 | Use Service → Counts / Cash-out | Supervisor layer and above |
 | Use Me destinations | Everyone in Business |
 | Enter Service fullscreen | Anyone on a Service destination that offers it |

@@ -19,7 +19,7 @@ It deliberately does **not** cover:
 
 - **credentials**, access and refresh session mechanics, revoke-on-credential or email change, mode eligibility, or account lifecycle — the users subject owns those. This subject only states multi-session allowance, attribution, personal-vs-venue device allowance, and the one-User-per-session rule;
 - **base access layers**, effective layer, schedule gating for Business entry, and per-user capabilities — the access-and-permissions and users subjects own those. Opening Business and acting under a layer still require the signed-in User to be eligible as those subjects already define;
-- **on duty**, daily attendance QR, late sign-in approval, breaks, and manager sign-out — the time-control subject. Duty is independent of which device the person uses; leaving an app or device does not end duty;
+- **on duty**, daily attendance QR, late sign-in approval, breaks, and staff sign-out — the time-control subject. Duty is independent of which device the person uses; leaving an app or device does not end duty;
 - **navigation chrome** and phone/tablet layout — the user-navigation subject;
 - **venue printers, print connectors, prep and customer screens, and customer kiosk / QR self-ordering hardware** — printers-and-screens, sales-points-and-instances, and order-flow. Those are output, bridge, or guest surfaces; they are not a substitute for each staff actor’s own signed-in session when that person acts in Business;
 - **Superadmin** authentication — the superadmin subject’s separate realm;

@@ -12,10 +12,10 @@ This subject covers **attendance** — the **actual** side of the plan-versus-ac
 - the **time-clock ledger** and the **shift session** projected from it;
 - **late sign-in approval** — a late scan waits for a manager decision;
 - **breaks** (pause and resume), attendance reasons, and the venue setting for whether paused time counts toward worked hours;
-- **manager sign-out**, early-leave reasons, and the blockers for open sales instances and **uncashed activity**;
+- **staff sign-out**, early sign-out approval, manager exception sign-out, and the blockers for open sales instances and **uncashed activity**;
 - **worked hours**, **actual labour cost**, and **overtime** detection;
 - **absence (no-show)** when the business-mode entry window closes without a sign-in;
-- the attendance events that notify managers (late sign-in request, sign-out request, overtime), including **overtime mute** for a session.
+- the attendance events that notify managers (late sign-in request, early sign-out request, end-of-shift reminder, overtime), including **overtime mute** for a session.
 
 It deliberately does **not** cover:
 
@@ -35,7 +35,7 @@ It deliberately does **not** cover:
 
 ### Entities
 
-- **Time-clock ledger** — the append-only record of attendance events for a business (sign-in, break start, break end, late sign-in request, late sign-in decision, sign-out, correction). Wrong data is fixed by appending further events, never by silent rewrite.
+- **Time-clock ledger** — the append-only record of attendance events for a business (sign-in, break start, break end, late sign-in request, late sign-in decision, early sign-out request, early sign-out decision, sign-out, correction). Wrong data is fixed by appending further events, never by silent rewrite.
 - **Shift session** — the projection of ledger events for one employee engagement: planned window (when bound to a working shift), actual sign-in and sign-out, breaks, worked hours, labour cost, and status. At most **one open session** (including on break) per employee at a time.
 - **Daily attendance QR** — the venue's one attendance QR for a calendar day in the business timezone, created lazily the first time a manager-layer user presents it that day. Scanning it is how a person becomes on duty.
 
@@ -48,16 +48,17 @@ Business ──< Time-clock ledger event >── Employee
 ### Terms this subject introduces
 
 - **On duty** — the actual attendance fact that the person has signed in and has not yet been signed out. Distinct from being in **business mode** and from being scheduled.
-- **Late approval** — after an employee- or supervisor-layer person's planned start, their scan inside the entry window creates a **pending late sign-in request** instead of opening a session. A manager-layer user accepts or declines it; acceptance opens the session and duty starts at the **acceptance moment**. There is no separate request timeout: the request lives only while the entry window remains.
+- **Late approval** — after an employee- or supervisor-layer person's planned start, their scan inside the entry window creates a **pending late sign-in request** instead of opening a session. A manager-layer user accepts or declines it; acceptance opens the session and duty starts at the **scan moment**. The acceptance moment is ledgered for audit. There is no separate request timeout: the request lives only while the entry window remains.
+- **Early sign-out request** — before a session's planned end, an employee- or supervisor-layer person's sign-out creates a pending request instead of ending duty. A manager-layer user accepts or declines it; acceptance ends duty at the **request moment**. The request expires at planned end, when normal sign-out becomes available.
 - **Entry window** — for a planned working shift, the interval from **10 minutes before** planned start until **2 hours after** planned start, during which an employee- or supervisor-layer person may enter **business mode** to attempt duty. Outside that window with no open session, they cannot enter business mode and need a manager to reschedule.
-- **Attendance reason** — a value from the fixed platform list: **lunch**, **rest**, **personal**, or **other** (optional short free-text note when other). Required when starting a break and when signing out more than 10 minutes before planned end.
+- **Attendance reason** — a value from the fixed platform list: **lunch**, **rest**, **personal**, or **other** (optional short free-text note when other). Required when starting a break.
 - **Break hours setting** — venue setting: whether paused time **counts toward worked hours** (default **include**) or is **excluded**. Managers and above edit it; changes apply to new pauses; already-closed sessions keep the math they closed with.
 - **Worked hours** — duration from sign-in to sign-out after applying the break hours setting to pause intervals.
 - **Actual labour cost** — money cost of a session from the employee's **gross pay** and **pay frequency** over worked hours, using the same frequency rules as planned labour on the schedules subject. Incomplete gross omits that session's cost (treated as zero in totals) until pay is complete.
 - **Overtime** — time an employee other than an admin or owner remains on duty past the session's **planned end**. Unscheduled management sessions have no planned end and never raise overtime.
 - **Overtime mute** — a manager-layer action that stops further overtime alert repeats for one employee's **current open session** only. It does not sign them off and does not hide the session.
 - **Absent (no-show)** — status of a planned working shift when the entry window ends with no accepted sign-in.
-- **Correction** — a manager-layer ledger event that adjusts sign-in, sign-out, or break bounds after the fact, with a **required** reason. Reports read the corrected projection.
+- **Correction (real-time edit)** — a manager-layer ledger event that adjusts actual sign-in, sign-out, or break bounds after the fact, with a **required** reason. The original times are retained; reports read the corrected projection.
 
 Terms reused rather than redefined here: **Employee**, **Business**, **Working shift**, **Vacation entry**, **Other leave**, **gross pay**, **pay frequency**, **business currency**, **business timezone**, **base access layer**, **sales instance**, and **managers on duty**.
 
@@ -79,7 +80,9 @@ A shift session (or the plan-vs-actual row for a working shift with no session) 
 ### 3.1 Plan versus actual
 
 - The **schedule** is the plan; **on duty** is the actual. Being scheduled is never on duty.
-- Time control records real entry and exit times. A late scan records a late time; Project Imperium never backdates a punch to the planned start.
+- Time control records real entry and exit times. A late scan records the late time; Project Imperium never backdates a punch to the planned start.
+- Actual sign-in and sign-out moments are what count for **worked hours** and **actual labour cost**; the schedule is the comparison, not the source of pay time.
+- When a manager edits a working shift that an **open** session is bound to, the session's planned window follows the edit live and lateness, early-sign-out eligibility, and overtime recalculate. Closed sessions keep the projection they closed with.
 - All times are stored in UTC and interpreted in the **business timezone**.
 - Actual worked hours and labour cost feed reporting (business-reports and business-metrics subjects).
 
@@ -107,7 +110,7 @@ There is **no** late-approval step on the schedule itself. Lateness honesty is t
 ### 3.4 Sign-in and shift binding
 
 - Scanning the valid daily attendance QR while eligible and **not late** opens a **shift session** and appends a sign-in event at the **exact scan moment**.
-- Scanning while **late** does not open a session; it creates a **pending late sign-in request** (§3.5). Acceptance opens the session and appends the sign-in event at the **acceptance moment**; the request keeps the scan moment for audit.
+- Scanning while **late** does not open a session; it creates a **pending late sign-in request** (§3.5). Acceptance opens the session and appends the sign-in event at the **scan moment**, so the wait for approval counts as worked time; the acceptance moment is ledgered for audit.
 - For **employee- or supervisor-layer** people, the session binds to the **planned working shift** that makes them eligible; for a late request, that is the shift current at the **scan moment**, not at acceptance. If more than one planned interval could apply, bind to the **earliest-starting** working shift that still has no completed session.
 - **One open session** per employee at a time, and at most **one pending late sign-in request** per employee at a time. A later working shift the same day requires the first session closed first.
 - Managers, admins, and owners may sign in **without** a matching working shift; that session may carry an empty planned window for plan-vs-actual and never raises overtime. Supervisors may not — they need a planned working shift like employees.
@@ -118,7 +121,7 @@ There is **no** late-approval step on the schedule itself. Lateness honesty is t
 - From **planned start** onward, their scan inside the entry window is **not rejected**. It creates a **pending late sign-in request**, appends a request event, and notifies managers (§3.15). No session exists until a manager accepts the request.
 - Managers on duty receive the request; if none are on duty, it falls back to all manager-layer users at the venue.
 - Any manager-layer user in business mode may **accept** or **decline** the request. The decision is ledgered (who, when). A decline requires a short reason.
-- **Accept** opens the shift session and starts duty at the **acceptance moment**. **Decline** leaves the person not on duty; they may scan again while the entry window remains.
+- **Accept** opens the shift session and starts duty at the **scan moment**; the decision is ledgered separately. **Decline** leaves the person not on duty and no session is created; they may scan again while the entry window remains.
 - There is **no** separate timeout. The pending request expires when the entry window ends; an acceptance after that is rejected and the working shift is **absent**.
 - Managers, admins, and owners are never late-approval gated.
 
@@ -136,13 +139,16 @@ There is **no** late-approval step on the schedule itself. Lateness honesty is t
 
 ### 3.8 Sign-out
 
-- Only a **manager-layer** user in business mode may sign someone out. They need not be on duty.
-- The employee may optionally **request sign-out** in the app; that notifies **managers on duty**. A manager may sign them out with or without a prior request.
-- Sign-out appends a ledger event at the real action time and sets the session to **closed**.
+- Every **on-duty person** signs **themselves** out in the app.
+- At or after the session's **planned end** (or for a session with no planned end), sign-out is immediate: Project Imperium appends a sign-out event at the real action moment, sets the session to **closed**, and ends duty.
+- For a session whose effective layer is **employee** or **supervisor**, sign-out **before planned end** creates a **pending early sign-out request** and does **not** end duty. Managers on duty (fallback: all manager-layer users at the venue) are notified; any manager-layer user in business mode may accept or decline. A decline requires a short reason.
+- **Accept** ends duty at the **request moment** and appends the sign-out event there; the decision is ledgered (who, when). **Decline** leaves duty running, and the person may request again.
+- If no decision is made by **planned end**, the request expires and normal sign-out becomes available.
+- **Managers, admins, and owners** are never early-sign-out gated, and sessions with no planned end have no early-sign-out rule.
+- **Manager exception.** A manager-layer user in business mode may end another person's duty directly as an exception. A **required reason** is recorded and the event is ledgered.
 - For **employee- or supervisor-layer** staff, duty sign-out also **ends business mode** for that visit (they return to customer mode). Managers, admins, and owners may be signed out of duty without being kicked out of business mode.
-- **Early leave.** If sign-out is **more than 10 minutes before** the session's planned end, an **attendance reason** is required. Within 10 minutes of planned end, or after planned end, no reason is required. Unscheduled management sessions have no early-leave reason rule.
-- **Open sales instances.** Sign-out is **rejected** while the employee is the responsible staff on any **open sales instance** (any point type, not only tables). The warning lists those open points. Sign-out becomes possible only after those instances are **closed** or **transferred**.
-- **Uncashed activity.** Sign-out is **rejected** while the employee still has **uncashed activity** in their employee cash session (employee cash-out subject) — including receive-only obligation from peer cash-in or house paid-out with no sales. They must complete an approved **cash-out** (or have no uncashed activity) before sign-out. Personal float alone does not block sign-out.
+- **Open sales instances.** Sign-out — self or manager exception — is **rejected** while the person is the responsible staff on any **open sales instance** (any point type, not only tables). The warning lists those open points. Sign-out becomes possible only after those instances are **closed** or **transferred**.
+- **Uncashed activity.** Sign-out — self or manager exception — is **rejected** while the person still has **uncashed activity** in their employee cash session (employee cash-out subject) — including receive-only obligation from peer cash-in or house paid-out with no sales. They must complete an approved **cash-out** (or have no uncashed activity) before sign-out. Personal float alone does not block sign-out.
 - There is **no** force-sign-out override for either blocker.
 
 ### 3.9 Absence (no-show)
@@ -154,8 +160,8 @@ There is **no** late-approval step on the schedule itself. Lateness honesty is t
 
 ### 3.10 Corrections
 
-- Managers and above may append **correction** events (adjust sign-in, sign-out, or break bounds) with a **required** reason.
-- Ordinary employees cannot edit the ledger.
+- After a shift is done, and when correcting an open session, managers and above may **manually edit the actual times** — sign-in, sign-out, or break bounds — by appending a **correction** event with a **required** reason. The original times are retained and the correction is ledgered (who, when, what changed).
+- Ordinary employees cannot edit the ledger or their own actual times.
 - Sessions and ledger events are **retained** for reporting. There is no delete of a session; corrections are the only fix path.
 
 ### 3.11 Worked hours and actual labour cost
@@ -167,8 +173,9 @@ There is **no** late-approval step on the schedule itself. Lateness honesty is t
 ### 3.12 Overtime
 
 - Overtime starts when a person who is **not** an admin or owner is still **on duty** (including on break) past that session's **planned end**.
-- Detection belongs to this subject. Delivery belongs to the notifications subject: **managers on duty** are notified **every 5 minutes** until sign-off; if none are on duty, the alert **falls back** to all manager-layer users at that venue. The schedules subject requires a manager-layer working shift on every day that plans work, so someone is always in charge on the plan; the fallback covers the gap before that person has signed in.
-- A manager-layer user may **mute** further repeats for that employee's **current open session**. A new session can alert again. Mute is not the engagement mute; it is specific to this overtime thread.
+- Detection belongs to this subject. Delivery belongs to the notifications subject: **managers on duty** receive one **end-of-shift reminder** at **planned end + 10 minutes** while the person is still on duty, then an **overtime alert** repeats **every 5 minutes** until sign-off. If none are on duty, both fall back to all manager-layer users at that venue. The schedules subject requires a manager-layer working shift on every day that plans work, so someone is always in charge on the plan; the fallback covers the gap before that person has signed in.
+- A manager-layer user may **mute** further overtime repeats for that employee's **current open session**. The one-time end-of-shift reminder still fires. A new session can alert again. Mute is not the engagement mute; it is specific to this overtime thread.
+- If the session's planned end is edited while the person is on duty, the reminder and overtime timing recalculate from the edited end.
 
 ### 3.13 Overnight working shifts
 
@@ -186,8 +193,9 @@ Attendance events are **in-app only**. Delivery mechanics belong to the notifica
 | Event | Who is notified | When |
 | --- | --- | --- |
 | Late sign-in request | Managers on duty; if none, all manager-layer users at the venue | When a late scan creates a pending request; cleared when accepted, declined, or the entry window ends |
-| Sign-out request | Managers on duty | When an employee requests sign-out |
-| Overtime alert | Managers on duty; if none, all manager-layer users at the venue | Every 5 minutes while a non-admin/owner remains on duty past planned end, until sign-off or overtime mute for that session |
+| Early sign-out request | Managers on duty; if none, all manager-layer users at the venue | When an employee or supervisor requests sign-out before planned end; cleared when accepted, declined, or planned end |
+| End-of-shift reminder | Managers on duty; if none, all manager-layer users at the venue | Once, 10 minutes after planned end while a non-admin/owner remains on duty |
+| Overtime alert | Managers on duty; if none, all manager-layer users at the venue | Every 5 minutes after the end-of-shift reminder while a non-admin/owner remains on duty, until sign-off or overtime mute for that session |
 
 ---
 
@@ -198,9 +206,9 @@ Attendance events are **in-app only**. Delivery mechanics belong to the notifica
 | Layer | Powers on this subject |
 | --- | --- |
 | **Customer** | No attendance access. |
-| **Employee** | Enter business mode inside their entry window; open Attendance to scan in; when late, the scan creates a pending request until a manager decides; pause and resume own breaks with reason; request sign-out; re-enter business mode during an open session; read own sessions and ledger. Does **not** present the daily attendance QR. |
-| **Supervisor** | Same attendance powers as employee (schedule-gated; own scan-in via Attendance; sign-out ends Business). Full Service may include Attendance for self scan-in. Does **not** present the QR, decide late sign-in requests, sign others out, or see venue-wide attendance. |
-| **Manager** | Everything an employee can do, plus present the daily attendance QR, accept or decline late sign-in requests, sign anyone out, correct the ledger, mute overtime for a session, edit the break hours setting, and see venue-wide attendance. Always Business-eligible when membership allows. |
+| **Employee** | Enter business mode inside their entry window; open Attendance to scan in; when late, the scan creates a pending request until a manager decides; pause and resume own breaks with reason; sign self out (immediate at or after planned end; early sign-out needs manager acceptance); re-enter business mode during an open session; read own sessions and ledger. Does **not** present the daily attendance QR. |
+| **Supervisor** | Same attendance powers as employee (schedule-gated; own scan-in and sign-out via Attendance; sign-out ends Business). Full Service may include Attendance for self scan-in and sign-out. Does **not** present the QR, decide late sign-in or early sign-out requests, sign others out, or see venue-wide attendance. |
+| **Manager** | Everything an employee can do, plus present the daily attendance QR, accept or decline late sign-in and early sign-out requests, end another person's duty as an exception with a reason, manually edit actual times with a reason, mute overtime for a session, edit the break hours setting, and see venue-wide attendance. Always Business-eligible when membership allows. |
 | **Admin** | Everything a manager can do. |
 
 ### Job roles
@@ -219,9 +227,10 @@ No per-user capability gates attendance actions on this subject. Those actions f
 | Scan in (become on duty) | Eligible employee- or supervisor-layer person in business mode (planned working shift); on time, the scan opens the session; when late, it waits for manager acceptance. Managers and admins may scan without a matching shift |
 | Accept or decline a late sign-in request | Manager-layer users in business mode |
 | Pause / resume own break | The on-duty person; also any manager-layer user for that person |
-| Request sign-out | The on-duty person |
-| Sign out (end duty) | Manager-layer users in business mode, and only when the person holds no open sales instances and has no uncashed activity |
-| Append corrections | Managers and above |
+| Sign self out | The on-duty person; immediate at or after planned end (or when the session has no planned end), otherwise an early sign-out request |
+| Accept or decline an early sign-out request | Manager-layer users in business mode |
+| End another person's duty as an exception (required reason) | Manager-layer users in business mode |
+| Manually edit actual sign-in, sign-out, or break times (required reason) | Managers and above |
 | Edit break hours setting | Managers and above |
 | Mute overtime for an open session | Manager-layer users in business mode |
 | View own attendance | The person themself |

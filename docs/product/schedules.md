@@ -20,7 +20,7 @@ It deliberately does **not** cover:
 
 - the **Employee** membership, job-role list on the membership, pay, or vacation **allowance** storage — the employees subject owns those. This subject consumes memberships and updates **vacation remaining** when vacation is marked or removed on the schedule.
 - **base access layers**, **per-user capabilities**, and assignment — the access-and-permissions subject owns those. **Mode eligibility** (Customer | Business) belongs to the users subject. This subject supplies the planned working shifts and shift job roles those rules read.
-- **attendance** — on-duty state, the daily attendance QR, scan-in, manager sign-out, breaks, worked hours, actual labour cost, absence classification, and overtime alerts — the time-control subject owns those. The schedule never writes punches; being scheduled is not being on duty.
+- **attendance** — on-duty state, the daily attendance QR, scan-in, staff sign-out, breaks, worked hours, actual labour cost, absence classification, and overtime alerts — the time-control subject owns those. The schedule never writes punches; being scheduled is not being on duty.
 - **labour and vacation KPI formulas** and report roll-ups — the business-metrics and business-reports subjects own those. This subject supplies planned figures; actuals come from time-control.
 - **notification delivery** — inbox, live push, and reliability — the notifications subject owns how events are delivered. This subject defines which schedule events exist and when they fire.
 
@@ -68,6 +68,7 @@ Terms reused rather than redefined here: **Employee**, **Business**, **job role*
 - Role is **always required** on a working shift. There is no blank-role fallback on the schedule; the scheduled role is what the access-and-permissions subject uses for effective layer during that shift (subject to any membership layer override).
 - One employee may hold **several** working shifts on the same day when their intervals do **not** overlap.
 - A working shift may **cross midnight**. It belongs entirely to the **calendar day on which it starts** for placement, aggregates, and eligibility. The following day's schedule does not also own that interval.
+- Editing a working shift that an **open** shift session is bound to updates that session's planned window live. Time control recalculates lateness, early-sign-out eligibility, and overtime from the edited times; closed sessions keep the projection they closed with.
 
 ### 3.3 Overlap rules
 

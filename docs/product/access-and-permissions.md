@@ -23,7 +23,7 @@ It deliberately does **not** cover:
 - the **Employee** membership record itself — hire, HR, pay, vacation, termination, rehire, and storing job roles on the membership — the employees subject owns that. This subject reads those roles and owns how they map to layers and capabilities.
 - **navigation chrome** — Customer | Business toggle, Service / Manage / Me, guards, and destinations — the user-navigation subject owns those surfaces; this subject states which effective layer and capabilities make them available.
 - the **daily schedule** and which job role a working shift carries — the schedules subject owns that; this subject consumes the shift role for effective layer and active capabilities.
-- **attendance** (on duty, late sign-in approval, QR) — the time-control subject owns those.
+- **attendance** (on duty, late sign-in and early sign-out approval, QR) — the time-control subject owns those.
 - **feature behaviour** inside each gated power (voiding an order, closing a report, editing stock) — each feature subject owns behaviour and restates who may act; this subject owns the shared layer/capability vocabulary and the authoritative capability catalogue index.
 - **plan catalogue prices and which ops features a plan unlocks** — the monetization subject owns entitlements; this subject only states that plan gates run after feature flags and before layer and capability.
 - the **feature-flag catalogue, kill-switch outcomes, and effective-flag resolution** — the feature-flags subject owns those; this subject only places the feature-flag gate first in the composition order.
@@ -72,8 +72,8 @@ Ordered for business memberships **admin > manager > supervisor > employee**. **
 | Layer | Meaning |
 | --- | --- |
 | **Customer** | Every User. Public Customer surface; never a membership layer. |
-| **Employee** | Floor and self-service staff. **Schedule-gated** Business entry. Default Service is **POS**, **Attendance** for **own** scan-in (plus **Me**); other Service destinations and elevated ops need catalogue grants (or a job-role entitlement such as Host). A late scan-in still waits for manager acceptance (time-control). **No Manage.** |
-| **Supervisor** | Floor lead. **Schedule-gated** Business entry (same entry window as employee). **No Manage.** **Full Service** by default (POS, Host, prep screens, delivery screen, customer pickup board, Attendance for **own** scan-in, **Counts** for physical count / count re-edit, **Cash-out** for approving another wallet and house paid-in/out) and **print permission**. Does **not** present the venue daily attendance QR (manager+ only — time-control subject). Further powers only via catalogue grant/revoke. |
+| **Employee** | Floor and self-service staff. **Schedule-gated** Business entry. Default Service is **POS**, **Attendance** for **own** scan-in and sign-out (plus **Me**); other Service destinations and elevated ops need catalogue grants (or a job-role entitlement such as Host). A late scan-in still waits for manager acceptance (time-control). **No Manage.** |
+| **Supervisor** | Floor lead. **Schedule-gated** Business entry (same entry window as employee). **No Manage.** **Full Service** by default (POS, Host, prep screens, delivery screen, customer pickup board, Attendance for **own** scan-in and sign-out, **Counts** for physical count / count re-edit, **Cash-out** for approving another wallet and house paid-in/out) and **print permission**. Does **not** present the venue daily attendance QR (manager+ only — time-control subject). Further powers only via catalogue grant/revoke. |
 | **Manager** | Day-to-day administration and operations. **Always** may enter Business (not schedule-gated) when effective manager. **Manage** header and full Service by default. Assigns access for layers below manager. |
 | **Admin** | Full venue control, including ownership-adjacent acts the feature subjects reserve for admin/owner. **Always** may enter Business when effective admin. **Manage** and full Service. The owning user has **Owner access** (admin-equivalent within plan entitlements) at every venue they own **with or without** an Employee membership (users subject). |
 
@@ -153,7 +153,7 @@ This subject owns the authoritative list. Feature subjects own behaviour for eac
 
 **Job-role and layer defaults (not separate catalogue flags):**
 
-- **Attendance** under Service (own scan-in) — **employee** layer and above by default (supervisor, manager, admin included). Presenting the venue daily attendance QR remains manager-layer only (time-control). Not a catalogue grant.
+- **Attendance** under Service (own scan-in and sign-out) — **employee** layer and above by default (supervisor, manager, admin included). Presenting the venue daily attendance QR remains manager-layer only (time-control). Not a catalogue grant.
 - **Host** under Service — **Host** job role, and anyone whose effective layer already includes full Service (supervisor, manager, admin).
 - **Counts** under Service — physical count and **inventory count re-edit** (with reason and audit) — **supervisor** layer and above; full inventory admin remains Manage → Supply for managers (inventories; user-navigation).
 - **Cash-out** under Service — **approve employee cash-out** (another person's wallet only) and **house paid-in / paid-out and cash-movement reverses** (another person's wallet only) — **supervisor** layer and above; peer cash-in when the Business setting is on is any on-duty employee as receiver — employee cash-out subject.
@@ -204,7 +204,7 @@ An ordinary employee or supervisor may see their own job roles and that they hol
 | Layer | Powers on this subject |
 | --- | --- |
 | **Customer** | No venue access configuration. |
-| **Employee** | Uses Business under schedule gate; POS, Attendance (own scan-in), and Me by default; catalogue grants only when bound and active. |
+| **Employee** | Uses Business under schedule gate; POS, Attendance (own scan-in and sign-out), and Me by default; catalogue grants only when bound and active. |
 | **Supervisor** | Schedule-gated; full Service defaults; no Manage; selected elevated defaults; catalogue grant/revoke on top; does not assign access. |
 | **Manager** | Always Business; Manage + full Service; assigns job roles, overrides, and capabilities for layers below manager. |
 | **Admin** | Everything a manager can do on access, plus configure managers; full venue control. Only the **owning user** creates or demotes admin. |
