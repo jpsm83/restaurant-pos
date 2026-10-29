@@ -45,8 +45,8 @@ Phase 0 rows carry a **Done when** line because a rail is easy to sample on one 
 
 | Topic | Why it is not its own row |
 | --- | --- |
-| Allergens | No standalone product file. Stage 1 rules live inside [business-goods](product/business-goods.md), [orders](product/orders.md), and [order-flow](product/order-flow.md) (Phases 2–5). |
-| Cash drawers | **Optional hardware on top of the wallet model** — no drawer money subject and no separate row. The **drawer kick**, **manual open**, and per-staff **closing receipt printer override** live in [printers-and-screens](product/printers-and-screens.md); they attach to row 3.2 (connector, override, bill payment/refund) and row 6.5 (manual open, cash movements, cash-out approval). |
+| Allergens | No standalone product file. Stage 1 rules live inside [business-goods](product/business-goods.md), [orders](product/orders.md), and [order-flow](product/order-flow.md) (Phases 3–6). |
+| Cash drawers | **Optional hardware on top of the wallet model** — no drawer money subject and no separate row. The **drawer kick**, **manual open**, and per-staff **closing receipt printer override** live in [printers-and-screens](product/printers-and-screens.md); they attach to row 4.2 (connector, override, bill payment/refund) and row 7.5 (manual open, cash movements, cash-out approval). |
 | Payment facilitator | **No product doc yet** — future / not stage 1. Stripe Connect is already covered via [payments-and-tax](product/payments-and-tax.md) + ADR-0005. |
 | Alcohol / age-assurance packs | **Deferred** by the product docs (ID-at-table, etc.). Stage 1 only has age floors in [privacy](product/privacy.md) / [order-flow](product/order-flow.md). |
 | Menu localisation | **Deferred**. Stage 1 is single authored language per field; UI languages are English/Spanish only. |
@@ -63,14 +63,14 @@ Engineering and cross-cutting rails every later subject assumes. Prefer ADRs and
 | [x] | 0.2 | Soft-delete conventions | Soft-delete behaviour and reactivation rules | Every current domain model and every ordinary read and write follows ADR-0003; the only physical deletes are the two ADR exceptions; reusing a soft-deleted sign-in identity reactivates that same record after confirmation. Pending-deletion UX and retention purge stay on their later rows. | [ADR-0003](adr/0003-soft-delete.md), [overview](product/overview.md) (soft-delete vocabulary only) |
 | [x] | 0.3 | Auth session plumbing stub | Issue/revoke access + refresh sessions | Existing sign-in paths can issue and revoke an access session and a refresh session. Profile, verification, and reset stay in phase 1. | [users](product/users.md), [staff-sessions](product/staff-sessions.md) |
 | [x] | 0.4 | Transactional email delivery rail | Send + retry plumbing (no full catalogue UI) | A message can be sent and a failed send retried, and every existing outbound mail uses that rail. Catalogue UI and messages owned by later rows stay on those rows. | [emails](product/emails.md) |
-| [x] | 0.5 | Notification persistence + push rail | Inbox store + live push when online | A notification is stored and pushed to an online client, and every existing notification write uses that rail. Inbox UI stays in 1.9. | [notifications](product/notifications.md), [ADR-0006](adr/0006-realtime-transport-and-concurrency.md) |
+| [x] | 0.5 | Notification persistence + push rail | Inbox store + live push when online | A notification is stored and pushed to an online client, and every existing notification write uses that rail. Inbox UI stays in 1.8. | [notifications](product/notifications.md), [ADR-0006](adr/0006-realtime-transport-and-concurrency.md) |
 | [x] | 0.6 | Live transport + blocked writes offline | WebSocket; no offline write queue | Live updates use this WebSocket rail, a disconnected client cannot commit a write, and the client keeps no offline write queue. Surfaces that do not exist yet are added by their own rows. | [realtime-and-concurrency](product/realtime-and-concurrency.md), [ADR-0006](adr/0006-realtime-transport-and-concurrency.md) |
 | [x] | 0.7 | Append-only audit entry rail | Who/what/when write API | One append-only API records who, what, and when, and every audited act already in the code writes through it. Acts a later row introduces are audited on that row. | [audit-trail](product/audit-trail.md) |
 | [x] | 0.8 | Operational-reason catalogues as data | Closed lists for void, discount, refund, … | The closed catalogues exist as data, and every current void, discount, refund, or reopen path reads them. Flows that do not exist yet are built on their own rows. | [operational-reasons](product/operational-reasons.md) |
-| [x] | 0.9 | Feature-flag resolution stub | Default-on kill-switch resolution (no production feature-check consumer yet) | Resolution returns default-on, and every existing feature check calls it. The console and flag-then-plan composition stay in phase 9. | [feature-flags](product/feature-flags.md) |
+| [x] | 0.9 | Feature-flag resolution stub | Default-on kill-switch resolution (no production feature-check consumer yet) | Resolution returns default-on, and every existing feature check calls it. The console and flag-then-plan composition stay in phase 10. | [feature-flags](product/feature-flags.md) |
 | [x] | 0.10 | Error monitoring | Unexpected-error reporting | Unexpected server and client errors are reported. Problem-details responses stay ordinary results. | [ADR-0007](adr/0007-sentry-error-monitoring.md) |
 | [x] | 0.11 | Frontend styling substrate and migration | Tailwind v4 tokens, two-axis themes, shadcn customisation ladder, style CI guard; migrate the existing UI | No raw palette or arbitrary values outside `src/styles/**` (and arbitrary sizes in `components/ui/**`); allowlist empty; token completeness, contrast, and registry tests pass; `useTheme` + System preference + account-menu toggle work; `/dev/themes` renders default light and dark. | [styling](conventions/styling.md), [ADR-0010](adr/0010-tailwind-theme-architecture.md) |
-| [x] | 0.12 | Internationalization rail and migration | English/Spanish UI, locale files, formatting, server-copy mapping | Every first-party user-facing frontend string resolves through i18next in both `en` and `es` (third-party/vendor copy excepted); `en`/`es` key sets and interpolation placeholders match under test; no hardcoded first-party copy; dates, numbers, and currency follow the active UI language and Business currency; the SPA maps server failures to localized copy instead of rendering raw English problem details. Recipient-language email is wired on 1.8. | [i18n](conventions/i18n.md), [overview](product/overview.md) (language and currency), [emails](product/emails.md) (language) |
+| [x] | 0.12 | Internationalization rail and migration | English/Spanish UI, locale files, formatting, server-copy mapping | Every first-party user-facing frontend string resolves through i18next in both `en` and `es` (third-party/vendor copy excepted); `en`/`es` key sets and interpolation placeholders match under test; no hardcoded first-party copy; dates, numbers, and currency follow the active UI language and Business currency; the SPA maps server failures to localized copy instead of rendering raw English problem details. Recipient-language email is wired on 1.7. | [i18n](conventions/i18n.md), [overview](product/overview.md) (language and currency), [emails](product/emails.md) (language) |
 
 **Exit criteria:** a signed-in request can hit an authenticated API, soft-delete a record, send a test email, write a notification, push a live event, and record an audit entry, and the frontend styling and internationalization rails are in place — without any venue POS yet. A row is done when its **Done when** cell and the Spec gate are both true.
 
@@ -78,169 +78,187 @@ Engineering and cross-cutting rails every later subject assumes. Prefer ADRs and
 
 ---
 
-## Phase 1 — Identity, tenancy, and chrome
+## Phase 1 — Identity, access, and customer chrome
 
-Stand up who people are, what a venue is, and how they move between Customer and Business.
+Stand up who people are, what access they hold, and the shared customer surface. Business creation and the Business surface are Phase 2.
 
 | done | Order | Slice | Docs to open |
 | --- | --- | --- | --- |
 | [x] | 1.1 | Sign-up / sign-in with email and password or Google, email verify, password reset, User profile (including language preference), Owner + Company creation hooks, sessions | [users](product/users.md) |
 | [ ] | 1.2 | Privacy notice acceptance at account create; birth date; marketing consent off-by-default | [privacy](product/privacy.md), [users](product/users.md) (accept-to-create / birth-date hooks only) |
 | [ ] | 1.3 | One User per browser session; peer multi-session; no shared login / PIN / quick-switch | [staff-sessions](product/staff-sessions.md) |
-| [ ] | 1.4 | Register venue, draft profile, currency, address → timezone, Company tax number / legal name, go-live checklist fields (go-live can stay blocked until Phase 2) | [business](product/business.md), [users](product/users.md) (Owner / Company only) |
-| [ ] | 1.5 | Five layers, job-role → layer map, Owner access = admin-equivalent; thin capability catalogue | [access-and-permissions](product/access-and-permissions.md) |
-| [ ] | 1.6 | Membership record; Free = Owner-only Business is enough; hire flow can stay minimal | [employees](product/employees.md), [access-and-permissions](product/access-and-permissions.md) (layers on membership) |
-| [ ] | 1.7 | Customer chrome, Customer \| Business toggle, Service / Manage / Me shells, Owner venue tabs | [user-navigation](product/user-navigation.md) |
-| [ ] | 1.8 | Wire verify / reset / business-contact verify to the Phase 0 email rail, in the recipient's language preference with English fallback | [emails](product/emails.md) (which messages and language), [users](product/users.md) (language preference), [business](product/business.md) (contact email verify) |
-| [ ] | 1.9 | Inbox UI against the Phase 0 notification rail | [notifications](product/notifications.md) |
+| [ ] | 1.4 | Five layers, job-role → layer map, Owner access = admin-equivalent; thin capability catalogue | [access-and-permissions](product/access-and-permissions.md) |
+| [ ] | 1.5 | Membership record; Free = Owner-only Business is enough; hire flow can stay minimal | [employees](product/employees.md), [access-and-permissions](product/access-and-permissions.md) (layers on membership) |
+| [ ] | 1.6 | Customer chrome and account area; Customer \| Business toggle shell and venue-tab shell (Business chrome becomes usable in Phase 2) | [user-navigation](product/user-navigation.md) |
+| [ ] | 1.7 | Wire verify / reset / business-contact verify to the Phase 0 email rail, in the recipient's language preference with English fallback | [emails](product/emails.md) (which messages and language), [users](product/users.md) (language preference), [business](product/business.md) (contact email verify) |
+| [ ] | 1.8 | Inbox UI against the Phase 0 notification rail | [notifications](product/notifications.md) |
+| [ ] | 1.9 | Shared auth entry and post-auth landing: plain `/login` and `/signup` (no audience-scoped auth URLs), safe internal `returnTo`, and verified Google origin + COOP hosting setup; no business-specific sign-up | [users](product/users.md), [user-navigation](product/user-navigation.md) |
 
-**Exit criteria:** a user can register, create a draft Business under a Company, sign in, toggle into Business mode as Owner, and see empty Manage / Service / Me shells.
+**Exit criteria:** a user can register, sign in with email/password or Google, hold identity and access layers, and use the customer chrome; no venue exists yet. The public Business marketing page advertises the product but routes to the same shared auth entry.
 
 ---
 
-## Phase 2 — First closed money loop (dine-in)
+## Phase 2 — Business creation and Owner portfolio
+
+Business creation is a core capability, not a footnote of identity. The User creates one or more Businesses (venues); each Business belongs to a Company under that User's Owner. Nothing later can trade until this phase is real.
+
+| done | Order | Slice | Docs to open |
+| --- | --- | --- | --- |
+| [ ] | 2.1 | Draft-capable Business contract + registration API: first venue creates the Owner, first Company, and a draft Business from trade name, country, and currency. Legal/tax identity belongs to the Company; venue profile, contact, and address may stay incomplete. | [business](product/business.md), [users](product/users.md) (Owner / Company only) |
+| [ ] | 2.2 | Add venue for subsequent Businesses: reuse the Owner and choose join an existing Company or form a new one; a User may own multiple Businesses across multiple Companies in the same country. | [business](product/business.md), [users](product/users.md) (Owner / Company) |
+| [ ] | 2.3 | Owner portfolio API + customer dashboard: "Add your venue" when the User owns none; venue list and "Open business" when they own one or more. | [business](product/business.md), [user-navigation](product/user-navigation.md) |
+| [ ] | 2.4 | Company page: edit the Company's legal name and tax number, list its venues, and add a venue to that Company | [business](product/business.md), [users](product/users.md) (Company fields) |
+| [ ] | 2.5 | Minimal Customer \| Business switch: enter Business mode and open an owned venue's Business shell; full Owner chrome and venue tabs stay on their later row | [user-navigation](product/user-navigation.md), [users](product/users.md) (mode eligibility) |
+| [ ] | 2.6 | Incomplete-profile warning: show that the draft must be completed before go-live, with a link to the completion surface; go-live itself remains Phase 3 | [business](product/business.md) |
+
+**Exit criteria:** a signed-in user with no Business can add a draft venue from the customer dashboard; the venue appears in their portfolio and the Customer | Business switch opens it. A user with an existing venue can add another to an existing Company or a new one. Every draft shows the complete-profile-before-go-live warning. Plan venue caps are intentionally still deferred to Phase 10.
+
+---
+
+## Phase 3 — First closed money loop (dine-in)
 
 One venue can sell a served night: menu → open table → send orders → take payment → receipt → close the day. **This is the first “app that earns.”**
 
 | done | Order | Slice | Docs to open |
 | --- | --- | --- | --- |
-| [ ] | 2.1 | Simple on-menu items: selling price, tax category, categories, add-ons; day-of 86 / sold out. **Defer** full recipe costing and supplier-derived allergens until Phase 5 | [business-goods](product/business-goods.md) |
-| [ ] | 2.2 | Served points (table/bar/…); open staff tab; one-open rule; receiver-initiated tab handover with accept/decline notifications; QR can exist unused | [sales-points-and-instances](product/sales-points-and-instances.md), [notifications](product/notifications.md), [staff-sessions](product/staff-sessions.md) |
-| [ ] | 2.3 | Void, invitation, manual discount catalogues live | [operational-reasons](product/operational-reasons.md) |
-| [ ] | 2.4 | Draft → send batch, identification code, pricing, void / invitation / cancel, fulfilment slice statuses | [orders](product/orders.md), [operational-reasons](product/operational-reasons.md) |
-| [ ] | 2.5 | Business tax rates; **record** cash and card on staff tabs; tips on digital recorded methods; **no** Stripe Connect yet | [payments-and-tax](product/payments-and-tax.md) |
-| [ ] | 2.6 | **Dine-in staff POS path only** (open → order → bill → pay → close) | [order-flow](product/order-flow.md), [orders](product/orders.md), [sales-points-and-instances](product/sales-points-and-instances.md), [payments-and-tax](product/payments-and-tax.md) |
-| [ ] | 2.7 | Bill and receipt content + numbering; Review QR (review flow arrives in 7.4); reprint / replacement rules | [receipts-and-bills](product/receipts-and-bills.md) |
-| [ ] | 2.8 | Auto-open daily on first send; close day; export can wait | [sales-reports](product/sales-reports.md) |
-| [ ] | 2.9 | Audit the controlled acts this phase introduces (the existing Void/Invitation path already writes through the Phase 0 rail) | [audit-trail](product/audit-trail.md), [operational-reasons](product/operational-reasons.md) |
-| [ ] | 2.10 | Live POS / fulfilment / stale-action rejects for this loop | [realtime-and-concurrency](product/realtime-and-concurrency.md), [ADR-0006](adr/0006-realtime-transport-and-concurrency.md) |
-| [ ] | 2.11 | Complete go-live for dine-in (on-menu good + served sales point); public discovery can wait | [business](product/business.md) |
+| [ ] | 3.1 | Simple on-menu items: selling price, tax category, categories, add-ons; day-of 86 / sold out. **Defer** full recipe costing and supplier-derived allergens until Phase 6 | [business-goods](product/business-goods.md) |
+| [ ] | 3.2 | Served points (table/bar/…); open staff tab; one-open rule; receiver-initiated tab handover with accept/decline notifications; QR can exist unused | [sales-points-and-instances](product/sales-points-and-instances.md), [notifications](product/notifications.md), [staff-sessions](product/staff-sessions.md) |
+| [ ] | 3.3 | Void, invitation, manual discount catalogues live | [operational-reasons](product/operational-reasons.md) |
+| [ ] | 3.4 | Draft → send batch, identification code, pricing, void / invitation / cancel, fulfilment slice statuses | [orders](product/orders.md), [operational-reasons](product/operational-reasons.md) |
+| [ ] | 3.5 | Business tax rates; **record** cash and card on staff tabs; tips on digital recorded methods; **no** Stripe Connect yet | [payments-and-tax](product/payments-and-tax.md) |
+| [ ] | 3.6 | **Dine-in staff POS path only** (open → order → bill → pay → close) | [order-flow](product/order-flow.md), [orders](product/orders.md), [sales-points-and-instances](product/sales-points-and-instances.md), [payments-and-tax](product/payments-and-tax.md) |
+| [ ] | 3.7 | Bill and receipt content + numbering; Review QR (review flow arrives in 8.4); reprint / replacement rules | [receipts-and-bills](product/receipts-and-bills.md) |
+| [ ] | 3.8 | Auto-open daily on first send; close day; export can wait | [sales-reports](product/sales-reports.md) |
+| [ ] | 3.9 | Audit the controlled acts this phase introduces (the existing Void/Invitation path already writes through the Phase 0 rail) | [audit-trail](product/audit-trail.md), [operational-reasons](product/operational-reasons.md) |
+| [ ] | 3.10 | Live POS / fulfilment / stale-action rejects for this loop | [realtime-and-concurrency](product/realtime-and-concurrency.md), [ADR-0006](adr/0006-realtime-transport-and-concurrency.md) |
+| [ ] | 3.11 | Complete go-live for dine-in (on-menu good + served sales point); public discovery can wait | [business](product/business.md) |
 
 **Exit criteria:** Owner/admin can go live for dine-in, run a full table sitting with cash (and recorded card), issue a receipt, and close the daily sales report.
 
 ---
 
-## Phase 3 — Floor map and kitchen output
+## Phase 4 — Floor map and kitchen output
 
 Make the same loop operable for floor staff and prep.
 
 | done | Order | Slice | Docs to open |
 | --- | --- | --- | --- |
-| [ ] | 3.1 | Manage editor + Service POS map (list/grid fallback) | [floor-plans](product/floor-plans.md), [user-navigation](product/user-navigation.md) (Floor plans / POS destinations) |
-| [ ] | 3.2 | Logical printers; prep-area screens; delivery screen shell; fulfilment gestures; print connector when paper is needed; optional **drawer kick** on bill payment/refund; per-staff **closing receipt printer override**. Courier status/retry and handover scan stay on 4.9/4.10 | [printers-and-screens](product/printers-and-screens.md), [ADR-0008](adr/0008-print-connector-path.md) |
-| [ ] | 3.3 | Held batches, don’t-make, allergen flags on prep — only what prep surfaces need | [orders](product/orders.md), [order-flow](product/order-flow.md), [printers-and-screens](product/printers-and-screens.md) |
+| [ ] | 4.1 | Manage editor + Service POS map (list/grid fallback) | [floor-plans](product/floor-plans.md), [user-navigation](product/user-navigation.md) (Floor plans / POS destinations) |
+| [ ] | 4.2 | Logical printers; prep-area screens; delivery screen shell; fulfilment gestures; print connector when paper is needed; optional **drawer kick** on bill payment/refund; per-staff **closing receipt printer override**. Courier status/retry and handover scan stay on 5.9/5.10 | [printers-and-screens](product/printers-and-screens.md), [ADR-0008](adr/0008-print-connector-path.md) |
+| [ ] | 4.3 | Held batches, don’t-make, allergen flags on prep — only what prep surfaces need | [orders](product/orders.md), [order-flow](product/order-flow.md), [printers-and-screens](product/printers-and-screens.md) |
 
 **Exit criteria:** staff can run service from a floor map; kitchen/bar can advance fulfilment without standing at the POS; when a receipt printer with a drawer is bound, a bill payment or refund kicks it, and a missing drawer never blocks the payment.
 
 ---
 
-## Phase 4 — Self-service channels
+## Phase 5 — Self-service channels
 
 Same platform, guest-initiated paths and Imperium-processed pay.
 
 | done | Order | Slice | Docs to open |
 | --- | --- | --- | --- |
-| [ ] | 4.1 | Stripe Connect (venue merchant of record); self-channel capture | [payments-and-tax](product/payments-and-tax.md), [ADR-0005](adr/0005-stripe-connect-direction.md) |
-| [ ] | 4.2 | Self-ordering enable; delivery enable + delivery method / partner shell (Owner/Admin) + radius / minimum / windows; all kiosks full digital. Third-party activation waits on an enabled catalogue provider; the catalogue console arrives in 9.5 | [business](product/business.md), [delivery-integrations](product/delivery-integrations.md), [payments-and-tax](product/payments-and-tax.md) |
-| [ ] | 4.3 | Channel acceptance; reserved hold; virtual Delivery point; self-service instances; one batch and handover-pass creation | [sales-points-and-instances](product/sales-points-and-instances.md), [orders](product/orders.md) |
-| [ ] | 4.4 | QR self-ordering, kiosk, delivery; guest basket; still-there / idle expiry; allergen pre-pay; to-go packaging; pay-to-commit creates one instance, batch, and pass | [order-flow](product/order-flow.md), [orders](product/orders.md), [payments-and-tax](product/payments-and-tax.md) |
-| [ ] | 4.5 | Self-channel age floors on the journey | [privacy](product/privacy.md), [order-flow](product/order-flow.md) |
-| [ ] | 4.6 | Guest allergen display + menu filter (if not done in Phase 2) | [business-goods](product/business-goods.md), [order-flow](product/order-flow.md) |
-| [ ] | 4.7 | Channel buckets (self-ordering, kiosk, delivery) | [sales-reports](product/sales-reports.md) |
-| [ ] | 4.8 | Ordering-session isolation for baskets | [realtime-and-concurrency](product/realtime-and-concurrency.md), [order-flow](product/order-flow.md) |
-| [ ] | 4.9 | Handover pass verification and handover QR on receipts; scan / code fallback; partial QR handover; whole-batch kiosk and delivery; audited manager override; receipt, email, and notification copy; reprint keeps the same pass | [receipts-and-bills](product/receipts-and-bills.md), [printers-and-screens](product/printers-and-screens.md), [order-flow](product/order-flow.md), [orders](product/orders.md), [sales-points-and-instances](product/sales-points-and-instances.md), [emails](product/emails.md), [notifications](product/notifications.md), [realtime-and-concurrency](product/realtime-and-concurrency.md), [audit-trail](product/audit-trail.md) |
-| [ ] | 4.10 | Delivery provider gate: Own delivery; provider catalogue model and availability (console UI in 9.5); per-business connection; courier request at send; optional handover call; cancellation; retries; failure alerts; delivery-screen status/retry; no-handover close reconciliation; daily report status | [delivery-integrations](product/delivery-integrations.md), [ADR-0009](adr/0009-courier-provider-adapter.md), [order-flow](product/order-flow.md), [printers-and-screens](product/printers-and-screens.md), [realtime-and-concurrency](product/realtime-and-concurrency.md), [sales-reports](product/sales-reports.md), [notifications](product/notifications.md) |
+| [ ] | 5.1 | Stripe Connect (venue merchant of record); self-channel capture | [payments-and-tax](product/payments-and-tax.md), [ADR-0005](adr/0005-stripe-connect-direction.md) |
+| [ ] | 5.2 | Self-ordering enable; delivery enable + delivery method / partner shell (Owner/Admin) + radius / minimum / windows; all kiosks full digital. Third-party activation waits on an enabled catalogue provider; the catalogue console arrives in 10.5 | [business](product/business.md), [delivery-integrations](product/delivery-integrations.md), [payments-and-tax](product/payments-and-tax.md) |
+| [ ] | 5.3 | Channel acceptance; reserved hold; virtual Delivery point; self-service instances; one batch and handover-pass creation | [sales-points-and-instances](product/sales-points-and-instances.md), [orders](product/orders.md) |
+| [ ] | 5.4 | QR self-ordering, kiosk, delivery; guest basket; still-there / idle expiry; allergen pre-pay; to-go packaging; pay-to-commit creates one instance, batch, and pass | [order-flow](product/order-flow.md), [orders](product/orders.md), [payments-and-tax](product/payments-and-tax.md) |
+| [ ] | 5.5 | Self-channel age floors on the journey | [privacy](product/privacy.md), [order-flow](product/order-flow.md) |
+| [ ] | 5.6 | Guest allergen display + menu filter (if not done in Phase 3) | [business-goods](product/business-goods.md), [order-flow](product/order-flow.md) |
+| [ ] | 5.7 | Channel buckets (self-ordering, kiosk, delivery) | [sales-reports](product/sales-reports.md) |
+| [ ] | 5.8 | Ordering-session isolation for baskets | [realtime-and-concurrency](product/realtime-and-concurrency.md), [order-flow](product/order-flow.md) |
+| [ ] | 5.9 | Handover pass verification and handover QR on receipts; scan / code fallback; partial QR handover; whole-batch kiosk and delivery; audited manager override; receipt, email, and notification copy; reprint keeps the same pass | [receipts-and-bills](product/receipts-and-bills.md), [printers-and-screens](product/printers-and-screens.md), [order-flow](product/order-flow.md), [orders](product/orders.md), [sales-points-and-instances](product/sales-points-and-instances.md), [emails](product/emails.md), [notifications](product/notifications.md), [realtime-and-concurrency](product/realtime-and-concurrency.md), [audit-trail](product/audit-trail.md) |
+| [ ] | 5.10 | Delivery provider gate: Own delivery; provider catalogue model and availability (console UI in 10.5); per-business connection; courier request at send; optional handover call; cancellation; retries; failure alerts; delivery-screen status/retry; no-handover close reconciliation; daily report status | [delivery-integrations](product/delivery-integrations.md), [ADR-0009](adr/0009-courier-provider-adapter.md), [order-flow](product/order-flow.md), [printers-and-screens](product/printers-and-screens.md), [realtime-and-concurrency](product/realtime-and-concurrency.md), [sales-reports](product/sales-reports.md), [notifications](product/notifications.md) |
 
-**Exit criteria:** a guest can complete at least one of QR / kiosk / delivery pay-to-commit; the receipt carries the correct handover pass (QR for QR/kiosk, order reference for delivery); daily report shows channel buckets and delivery-integration status; staff can fulfil and hand over; a venue with no provider or no screen still completes delivery. The third-party provider path is verified with an internal test double; the catalogue console arrives in 9.5.
+**Exit criteria:** a guest can complete at least one of QR / kiosk / delivery pay-to-commit; the receipt carries the correct handover pass (QR for QR/kiosk, order reference for delivery); daily report shows channel buckets and delivery-integration status; staff can fulfil and hand over; a venue with no provider or no screen still completes delivery. The third-party provider path is verified with an internal test double; the catalogue console arrives in 10.5.
 
 ---
 
-## Phase 5 — Supply, stock, and true menu cost
+## Phase 6 — Supply, stock, and true menu cost
 
 Close the loop from purchase → stock → recipe cost → variance.
 
 | done | Order | Slice | Docs to open |
 | --- | --- | --- | --- |
-| [ ] | 5.1 | Vendor profile, in-use, contacts | [suppliers](product/suppliers.md) |
-| [ ] | 5.2 | Units, price math, budget impact, allergens, par / minimum | [supplier-goods](product/supplier-goods.md) |
-| [ ] | 5.3 | Request → receive; inventory increment; one-time purchases; edit-with-reason | [purchases](product/purchases.md), [inventories](product/inventories.md) (increment on receipt only) |
-| [ ] | 5.4 | System count, physical counts, monthly resume/close, low/negative stock, variance/waste, Company transfers | [inventories](product/inventories.md), [operational-reasons](product/operational-reasons.md) (count re-edit) |
-| [ ] | 5.5 | Recipe / combo components; **derived cost and allergens**; replace any Phase 2 stubs | [business-goods](product/business-goods.md), [supplier-goods](product/supplier-goods.md) |
-| [ ] | 5.6 | Low-stock / negative-stock alerts to managers on duty | [notifications](product/notifications.md), [inventories](product/inventories.md) |
+| [ ] | 6.1 | Vendor profile, in-use, contacts | [suppliers](product/suppliers.md) |
+| [ ] | 6.2 | Units, price math, budget impact, allergens, par / minimum | [supplier-goods](product/supplier-goods.md) |
+| [ ] | 6.3 | Request → receive; inventory increment; one-time purchases; edit-with-reason | [purchases](product/purchases.md), [inventories](product/inventories.md) (increment on receipt only) |
+| [ ] | 6.4 | System count, physical counts, monthly resume/close, low/negative stock, variance/waste, Company transfers | [inventories](product/inventories.md), [operational-reasons](product/operational-reasons.md) (count re-edit) |
+| [ ] | 6.5 | Recipe / combo components; **derived cost and allergens**; replace any Phase 3 stubs | [business-goods](product/business-goods.md), [supplier-goods](product/supplier-goods.md) |
+| [ ] | 6.6 | Low-stock / negative-stock alerts to managers on duty | [notifications](product/notifications.md), [inventories](product/inventories.md) |
 
 **Exit criteria:** receiving a purchase moves stock; selling deducts stock; a physical count closes a period; menu cost/allergens derive from supplier goods.
 
 ---
 
-## Phase 6 — People, attendance, and cash responsibility
+## Phase 7 — People, attendance, and cash responsibility
 
 Workforce planning and the cash the person holds while on duty.
 
 | done | Order | Slice | Docs to open |
 | --- | --- | --- | --- |
-| [ ] | 6.1 | Full membership: roles, status, contract, pay, vacation, HR docs, terminate / rehire | [employees](product/employees.md) |
-| [ ] | 6.2 | Full capability catalogue + assignment UI; supervisor layer day-to-day | [access-and-permissions](product/access-and-permissions.md), [employees](product/employees.md) |
-| [ ] | 6.3 | Daily schedule, overlap rules, copy/bulk, time-off, planned labour aggregates | [schedules](product/schedules.md) |
-| [ ] | 6.4 | Attendance QR, late lock, breaks, sign-out rules, worked hours, overtime alerts | [time-control](product/time-control.md), [schedules](product/schedules.md), [staff-sessions](product/staff-sessions.md) |
-| [ ] | 6.5 | Wallet, peer cash-in, house paid-in/out, cash-out approval, uncashed vs sign-out; manual drawer open; drawer kick on cash movements and cash-out approval | [employee-cash-out](product/employee-cash-out.md), [time-control](product/time-control.md) (sign-out blocker), [printers-and-screens](product/printers-and-screens.md) (drawer kick) |
-| [ ] | 6.6 | Pay periods, earnings from closed attendance, tip pool, CSV release email | [payroll](product/payroll.md), [emails](product/emails.md), [time-control](product/time-control.md) |
-| [ ] | 6.7 | Schedule-gated Business entry for employee and supervisor layers | [user-navigation](product/user-navigation.md), [access-and-permissions](product/access-and-permissions.md), [schedules](product/schedules.md), [time-control](product/time-control.md) |
-| [ ] | 6.8 | Staff cash collected / cash-out status hooks on the daily | [sales-reports](product/sales-reports.md), [employee-cash-out](product/employee-cash-out.md) |
+| [ ] | 7.1 | Full membership: roles, status, contract, pay, vacation, HR docs, terminate / rehire | [employees](product/employees.md) |
+| [ ] | 7.2 | Full capability catalogue + assignment UI; supervisor layer day-to-day | [access-and-permissions](product/access-and-permissions.md), [employees](product/employees.md) |
+| [ ] | 7.3 | Daily schedule, overlap rules, copy/bulk, time-off, planned labour aggregates | [schedules](product/schedules.md) |
+| [ ] | 7.4 | Attendance QR, late sign-in approval, breaks, sign-out rules, worked hours, overtime alerts | [time-control](product/time-control.md), [schedules](product/schedules.md), [staff-sessions](product/staff-sessions.md) |
+| [ ] | 7.5 | Wallet, peer cash-in, house paid-in/out, cash-out approval, uncashed vs sign-out; manual drawer open; drawer kick on cash movements and cash-out approval | [employee-cash-out](product/employee-cash-out.md), [time-control](product/time-control.md) (sign-out blocker), [printers-and-screens](product/printers-and-screens.md) (drawer kick) |
+| [ ] | 7.6 | Pay periods, earnings from closed attendance, tip pool, CSV release email | [payroll](product/payroll.md), [emails](product/emails.md), [time-control](product/time-control.md) |
+| [ ] | 7.7 | Schedule-gated Business entry for employee and supervisor layers | [user-navigation](product/user-navigation.md), [access-and-permissions](product/access-and-permissions.md), [schedules](product/schedules.md), [time-control](product/time-control.md) |
+| [ ] | 7.8 | Staff cash collected / cash-out status hooks on the daily | [sales-reports](product/sales-reports.md), [employee-cash-out](product/employee-cash-out.md) |
 
 **Exit criteria:** scheduled staff can enter Business only in the entry window; scan in/out; cash-out before sign-out when required; manual drawer open is audited; when a receipt printer with a drawer is bound, cash movements and cash-out approval kick it; accountant CSV can be released.
 
 ---
 
-## Phase 7 — Revenue extras
+## Phase 8 — Revenue extras
 
 | done | Order | Slice | Docs to open |
 | --- | --- | --- | --- |
-| [ ] | 7.1 | Six types, subcategory scope, overlap rule, real-time apply on tab and basket | [promotions](product/promotions.md), [orders](product/orders.md), [order-flow](product/order-flow.md) |
-| [ ] | 7.2 | Issue, redeem, ledger, expiry/forfeit, reporting buckets | [gift-cards](product/gift-cards.md), [ADR-0004](adr/0004-gift-card-liability-and-tax-at-redemption.md), [payments-and-tax](product/payments-and-tax.md), [receipts-and-bills](product/receipts-and-bills.md) |
-| [ ] | 7.3 | Booking lifecycle, deposit, multi-table assign, seat → sales instance | [reservations](product/reservations.md), [sales-points-and-instances](product/sales-points-and-instances.md) |
-| [ ] | 7.4 | Post-close reviews; Review QR and delivery invites (delivery invite only after a recorded handover); public aggregates; abuse queue hook | [ratings-and-comments](product/ratings-and-comments.md), [receipts-and-bills](product/receipts-and-bills.md), [emails](product/emails.md), [notifications](product/notifications.md) |
-| [ ] | 7.5 | Gift-card and forfeiture buckets; reservation forfeit if applicable | [sales-reports](product/sales-reports.md), [gift-cards](product/gift-cards.md), [reservations](product/reservations.md) |
+| [ ] | 8.1 | Six types, subcategory scope, overlap rule, real-time apply on tab and basket | [promotions](product/promotions.md), [orders](product/orders.md), [order-flow](product/order-flow.md) |
+| [ ] | 8.2 | Issue, redeem, ledger, expiry/forfeit, reporting buckets | [gift-cards](product/gift-cards.md), [ADR-0004](adr/0004-gift-card-liability-and-tax-at-redemption.md), [payments-and-tax](product/payments-and-tax.md), [receipts-and-bills](product/receipts-and-bills.md) |
+| [ ] | 8.3 | Booking lifecycle, deposit, multi-table assign, seat → sales instance | [reservations](product/reservations.md), [sales-points-and-instances](product/sales-points-and-instances.md) |
+| [ ] | 8.4 | Post-close reviews; Review QR and delivery invites (delivery invite only after a recorded handover); public aggregates; abuse queue hook | [ratings-and-comments](product/ratings-and-comments.md), [receipts-and-bills](product/receipts-and-bills.md), [emails](product/emails.md), [notifications](product/notifications.md) |
+| [ ] | 8.5 | Gift-card and forfeiture buckets; reservation forfeit if applicable | [sales-reports](product/sales-reports.md), [gift-cards](product/gift-cards.md), [reservations](product/reservations.md) |
 
 **Exit criteria:** each of promotions, gift cards, and reservations can complete one happy path in a live venue; reviews can be left after a closed sitting.
 
 ---
 
-## Phase 8 — Management reporting
+## Phase 9 — Management reporting
 
 | done | Order | Slice | Docs to open |
 | --- | --- | --- | --- |
-| [ ] | 8.1 | Cost targets, waste thresholds, reporting-week start, KPI catalogue | [business-metrics](product/business-metrics.md) |
-| [ ] | 8.2 | Weekly and monthly roll-ups, close rules, commission finalisation signal, export | [business-reports](product/business-reports.md), [business-metrics](product/business-metrics.md), [sales-reports](product/sales-reports.md) |
-| [ ] | 8.3 | Report-ready events | [notifications](product/notifications.md), [business-reports](product/business-reports.md) |
+| [ ] | 9.1 | Cost targets, waste thresholds, reporting-week start, KPI catalogue | [business-metrics](product/business-metrics.md) |
+| [ ] | 9.2 | Weekly and monthly roll-ups, close rules, commission finalisation signal, export | [business-reports](product/business-reports.md), [business-metrics](product/business-metrics.md), [sales-reports](product/sales-reports.md) |
+| [ ] | 9.3 | Report-ready events | [notifications](product/notifications.md), [business-reports](product/business-reports.md) |
 
 **Exit criteria:** managers can close a week and a month with figures that match the formulas in business-metrics; weekly close raises commission owed.
 
 ---
 
-## Phase 9 — Platform commercial and console
+## Phase 10 — Platform commercial and console
 
 | done | Order | Slice | Docs to open |
 | --- | --- | --- | --- |
-| [ ] | 9.1 | Plans, entitlements, Free rules, commission definition, freeze rules | [monetization](product/monetization.md) |
-| [ ] | 9.2 | Subscription collection, weekly commission collection, dunning, invoices | [platform-billing](product/platform-billing.md), [monetization](product/monetization.md), [business-reports](product/business-reports.md) |
-| [ ] | 9.3 | Plan quotas, retention classes, purge vs integrity | [data-retention](product/data-retention.md), [monetization](product/monetization.md) |
-| [ ] | 9.4 | Full catalogue + Superadmin toggle semantics | [feature-flags](product/feature-flags.md), [superadmin](product/superadmin.md) |
-| [ ] | 9.5 | Separate app/realm: Owners, plans, flags, delivery provider catalogue, impersonation, abuse queue, portfolio analytics | [superadmin](product/superadmin.md), [monetization](product/monetization.md), [feature-flags](product/feature-flags.md), [delivery-integrations](product/delivery-integrations.md), [ratings-and-comments](product/ratings-and-comments.md) (abuse queue), [audit-trail](product/audit-trail.md) |
-| [ ] | 9.6 | Compose flag → plan → layer → capability everywhere entitlements matter | [access-and-permissions](product/access-and-permissions.md), [feature-flags](product/feature-flags.md), [monetization](product/monetization.md) |
+| [ ] | 10.1 | Plans, entitlements, Free rules, commission definition, freeze rules | [monetization](product/monetization.md) |
+| [ ] | 10.2 | Subscription collection, weekly commission collection, dunning, invoices | [platform-billing](product/platform-billing.md), [monetization](product/monetization.md), [business-reports](product/business-reports.md) |
+| [ ] | 10.3 | Plan quotas, retention classes, purge vs integrity | [data-retention](product/data-retention.md), [monetization](product/monetization.md) |
+| [ ] | 10.4 | Full catalogue + Superadmin toggle semantics | [feature-flags](product/feature-flags.md), [superadmin](product/superadmin.md) |
+| [ ] | 10.5 | Separate app/realm: Owners, plans, flags, delivery provider catalogue, impersonation, abuse queue, portfolio analytics | [superadmin](product/superadmin.md), [monetization](product/monetization.md), [feature-flags](product/feature-flags.md), [delivery-integrations](product/delivery-integrations.md), [ratings-and-comments](product/ratings-and-comments.md) (abuse queue), [audit-trail](product/audit-trail.md) |
+| [ ] | 10.6 | Compose flag → plan → layer → capability everywhere entitlements matter | [access-and-permissions](product/access-and-permissions.md), [feature-flags](product/feature-flags.md), [monetization](product/monetization.md) |
+| [ ] | 10.7 | Enforce plan venue caps on venue creation and downgrade (Free 1, Basic 2, Premium 5, Enterprise unlimited); business creation stays uncapped until this row lands | [monetization](product/monetization.md), [data-retention](product/data-retention.md), [business](product/business.md) |
 
-**Exit criteria:** an Owner is on a plan; weekly commission can be collected or dunned; Superadmin can manage Owners and maintain the delivery provider catalogue without using venue Business mode.
+**Exit criteria:** an Owner is on a plan; weekly commission can be collected or dunned; Superadmin can manage Owners and maintain the delivery provider catalogue without using venue Business mode; venue creation and downgrade refuse a portfolio that exceeds the plan's venue cap.
 
 ---
 
-## Phase 10 — Staff collaboration and engagement polish
+## Phase 11 — Staff collaboration and engagement polish
 
 | done | Order | Slice | Docs to open |
 | --- | --- | --- | --- |
-| [ ] | 10.1 | Staff 1:1 and group threads; inbox surfacing | [conversations](product/conversations.md), [notifications](product/notifications.md) |
-| [ ] | 10.2 | Engagement broadcasts (Promotion / Birthday / Event) gated by marketing consent + mute | [notifications](product/notifications.md), [privacy](product/privacy.md) |
-| [ ] | 10.3 | Engagement and manager-to-customer one-shot; catalogue completeness | [emails](product/emails.md), [conversations](product/conversations.md), [privacy](product/privacy.md) |
-| [ ] | 10.4 | Favorites and remaining customer-account edges | [users](product/users.md), [user-navigation](product/user-navigation.md) |
-| [ ] | 10.5 | DSAR export / erasure flows to the committed floor | [privacy](product/privacy.md), [data-retention](product/data-retention.md), [ADR-0003](adr/0003-soft-delete.md) |
+| [ ] | 11.1 | Staff 1:1 and group threads; inbox surfacing | [conversations](product/conversations.md), [notifications](product/notifications.md) |
+| [ ] | 11.2 | Engagement broadcasts (Promotion / Birthday / Event) gated by marketing consent + mute | [notifications](product/notifications.md), [privacy](product/privacy.md) |
+| [ ] | 11.3 | Engagement and manager-to-customer one-shot; catalogue completeness | [emails](product/emails.md), [conversations](product/conversations.md), [privacy](product/privacy.md) |
+| [ ] | 11.4 | Favorites and remaining customer-account edges | [users](product/users.md), [user-navigation](product/user-navigation.md) |
+| [ ] | 11.5 | DSAR export / erasure flows to the committed floor | [privacy](product/privacy.md), [data-retention](product/data-retention.md), [ADR-0003](adr/0003-soft-delete.md) |
 
 **Exit criteria:** staff can message in-venue; venues can broadcast only with consent; a customer can download or erase per privacy rules.
 
@@ -250,19 +268,20 @@ Workforce planning and the cash the person holds while on duty.
 
 ```text
 Phase 0 rails
-    → users / privacy / staff-sessions / business / access / employees / navigation
-        → business-goods → sales points → orders → payments (record) → order-flow (dine-in)
-            → receipts → daily sales report
-                → floor plans / printers (incl. drawer kick)
-                    → Stripe + self channels + handover + delivery provider gate
-                        → suppliers → supplier-goods → purchases → inventories → recipe goods
-                            → schedules → time-control → cash-out (incl. drawer-kick events) → payroll
-                                → promotions / gift-cards / reservations / ratings
-                                    → metrics → weekly/monthly reports
-                                        → monetization → platform-billing → superadmin (incl. delivery catalogue)
-                                            → conversations / engagement / DSAR polish
+    → users / privacy / staff-sessions / access / employees / navigation
+        → business creation + Owner portfolio + Customer | Business switch
+            → business-goods → sales points → orders → payments (record) → order-flow (dine-in)
+                → receipts → daily sales report
+                    → floor plans / printers (incl. drawer kick)
+                        → Stripe + self channels + handover + delivery provider gate
+                            → suppliers → supplier-goods → purchases → inventories → recipe goods
+                                → schedules → time-control → cash-out (incl. drawer-kick events) → payroll
+                                    → promotions / gift-cards / reservations / ratings
+                                        → metrics → weekly/monthly reports
+                                            → monetization → platform-billing → superadmin (incl. delivery catalogue)
+                                                → conversations / engagement / DSAR polish
 ```
 
-Hard rule: **do not** implement monetization freezes, inventory variance, or Superadmin before the Phase 2 money loop works. Those subjects assume sales and tenancy already exist.
+Hard rule: **do not** implement monetization freezes, inventory variance, or Superadmin before the Phase 3 money loop works. Those subjects assume sales and tenancy already exist.
 
 ---

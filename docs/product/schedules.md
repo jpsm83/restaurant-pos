@@ -134,7 +134,7 @@ Suspended and Terminated memberships must not receive **new** entries (also stat
 
 - An **employee- or supervisor-layer** person's **business mode** eligibility follows a **planned working shift**: Business on the mode toggle is available from **10 minutes before** that shift's planned start until **2 hours after** planned start. Outside that window with no open attendance session, they cannot enter business mode and must be rescheduled. Vacation and other leave do not grant business-mode eligibility.
 - Opening business mode is **not** on duty. On duty begins only through time-control (daily attendance QR scan-in).
-- There is **no** late-unlock step on the schedule. Lateness, late lock before scan-in, and attendance honesty belong to time-control.
+- There is **no** late-approval step on the schedule. Lateness, late sign-in approval, and attendance honesty belong to time-control.
 - Managers, admins, and owners are never blocked from business mode by the schedule or entry window, though they still appear on the schedule for planning (and so time-control can see who was planned as management that day). **Supervisors and employees are schedule-gated** (users and access-and-permissions subjects). Suspended or Terminated membership still blocks Business (users and employees subjects).
 
 ### 3.11 Notifications this subject owns as events

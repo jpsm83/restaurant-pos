@@ -92,6 +92,7 @@ Terms reused from the product overview's core vocabulary rather than defined her
 | Monthly report ready | The venue's managers and above | In-app | Info | Once |
 | Business profile updated | The venue's managers and above | In-app + email | Info | Once |
 | Overtime alert | The venue's managers on duty; if none are on duty, all manager-layer users for the business | In-app | Warning | Every 5 minutes until the employee signs off or a manager mutes that session's overtime alert |
+| Late sign-in request | The venue's managers on duty; if none are on duty, all manager-layer users for the business | In-app | Warning | Once per request; cleared when accepted, declined, or the entry window ends |
 | Sign-out request | The venue's managers on duty | In-app | Info | Once per request |
 | Tab handover requested | The tab's current responsible employee | In-app | Info | Once per request |
 | Tab handover decided | The requesting employee | In-app | Info | Once per decision |
@@ -116,6 +117,7 @@ Terms reused from the product overview's core vocabulary rather than defined her
 - The **low-stock alert** lists the affected goods and fires when stock falls below a good's **minimum required**; detecting that condition belongs to the inventories and supplier-goods subjects.
 - The **negative-stock alert** fires when a good's stock on hand falls **below zero**, as a management-error signal that purchases or counts are missing; detecting that condition belongs to the inventories subject.
 - The **overtime alert** concerns any employee other than an admin or owner who is still on duty past their scheduled end, and repeats until they sign off or a manager mutes that open session's overtime alert; detecting that condition and the mute belong to the time-control subject. Recipients are the venue's **managers on duty**; if none are on duty, the alert **falls back** to all manager-layer users at that venue (same pattern as print-failure). The schedules subject keeps a manager-layer shift on every day that plans work so someone is always in charge on the plan.
+- The **late sign-in request** fires when an employee or supervisor scans the attendance QR after their planned start. Managers on duty, or all manager-layer users when none are on duty, can accept or decline; acceptance starts duty at the acceptance moment. Detecting the request and recording the decision belong to the time-control subject.
 - The **sign-out request** notifies managers on duty when an employee asks to end duty; completing sign-out belongs to the time-control subject.
 - The **tab handover requested** notification fires when an on-duty employee asks for another employee's open staff tab; the current responsible employee accepts or declines. The **tab handover decided** notification tells the requester the outcome. Both are instant; raising them belongs to the sales-points-and-instances subject. A declined request changes nothing.
 - A **report-ready** notification fires when the weekly or monthly report for the period is ready for review; detecting readiness belongs to the business-reports subject.
@@ -178,7 +180,7 @@ Terms reused from the product overview's core vocabulary rather than defined her
 | **Customer** | Holds the inbox; receives notifications (not staff conversations); may mute engagement; receives business replies to their reviews and delivery review invites. |
 | **Employee** | Everything a customer can do; as Active staff, also receives staff conversation inbox entries for threads they participate in (conversations subject owns who may converse). |
 | **Supervisor** | Same inbox powers as employee. Does not publish venue events; does not receive manager-targeted operational alerts unless also on duty as a manager-layer person. |
-| **Manager** | Everything an employee can do, plus publishing venue events. Receives the manager-targeted operational alerts, including overtime and sign-out requests when on duty, print and delivery-integration failures, new reviews, and review-removal decisions. |
+| **Manager** | Everything an employee can do, plus publishing venue events. Receives the manager-targeted operational alerts, including late sign-in, overtime, and sign-out requests when on duty, print and delivery-integration failures, new reviews, and review-removal decisions. |
 | **Admin** | Everything a manager can do. |
 
 The owning user is an admin at every venue they own. Job roles and per-user capabilities follow the global model; this subject names only the entitlements that bear on notifications.
@@ -192,7 +194,8 @@ The owning user is an admin at every venue they own. Job roles and per-user capa
 | Grant or withdraw marketing consent | The person (their own; privacy, consent, and DSAR subject; age-gated) |
 | Receive staff conversation inbox entries | Active Employees who are current participants (conversations subject) |
 | Publish a venue event | Managers and above |
-| Receive low-stock, negative-stock, overtime, sign-out-request, print-failure, and delivery-integration failure alerts | The venue's managers on duty; overtime, print-failure, and delivery-integration failure fall back to all manager-layer users when none are on duty |
+| Receive low-stock, negative-stock, late-sign-in, overtime, sign-out-request, print-failure, and delivery-integration failure alerts | The venue's managers on duty; late-sign-in, overtime, print-failure, and delivery-integration failure fall back to all manager-layer users when none are on duty |
+| Accept or decline a late sign-in request | Managers on duty; all manager-layer users when none are on duty (time-control) |
 | Receive report-ready and profile-updated alerts | The venue's managers and above |
 | Receive platform-billing arrears, freeze, and post-freeze alerts | Owner always; Manager and above at every venue (subscription / portfolio) or at that venue only (commission), per platform-billing |
 | Operate the application business | The superadmin, in a separate realm; never a recipient of a venue's notifications |
