@@ -67,7 +67,7 @@ User ──1 Owner ──< Company ──< Business  (ownership: exactly one own
 
 ### 3.1 One identity, one login
 
-Project Imperium stores **one user per person**, and that user is the single holder of the person's sign-in credentials. A person never ends up with two accounts for the same identity. Sign-in and sign-up are **one shared form** offering **email and password** and **Google sign-in**; both methods resolve to the same User. The Customer app is usable **without** signing in for public browse and for assembling an order; after authenticating, the person remains on the Customer surface and §3.7 governs when they may enter business mode.
+Project Imperium stores **one user per person**, and that user is the single holder of the person's sign-in credentials. A person never ends up with two accounts for the same identity. Sign-in and sign-up each offer the same two methods — **email and password** and **Google sign-in** — and both methods resolve to the same User. The Customer app is usable **without** signing in for public browse and for assembling an order; after authenticating, the person remains on the Customer surface and §3.7 governs when they may enter business mode.
 
 ### 3.2 Every user is a customer
 
@@ -122,7 +122,7 @@ This subject owns the eligibility **rule**; the access-and-permissions subject o
 
 ### 3.7 Sign-in methods, verification, and email change
 
-A person signs in to the one shared form with **email and password**, with **Google sign-in**, or with both when both are linked to the same User. A Google sign-in is an alternate credential, never a second account.
+A person signs in or signs up with **email and password**, with **Google sign-in**, or with both when both are linked to the same User. A Google sign-in is an alternate credential, never a second account.
 
 The **User** owns the sign-in email, an optional password, an optional **Google identity**, and a **single canonical email-verified flag**.
 
