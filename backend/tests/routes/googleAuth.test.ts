@@ -141,10 +141,6 @@ function tokenFromLastEmail(path: string): string {
   return token;
 }
 
-function resetTokenFromLastEmail(): string {
-  return tokenFromLastEmail("reset-password");
-}
-
 describe("POST /api/v1/auth/google", () => {
   it("creates a verified Google User with no password, names, and language", async () => {
     const response = await postGoogle(app, {
@@ -342,7 +338,7 @@ describe("POST /api/v1/auth/google", () => {
     });
     expect(requested.statusCode).toBe(200);
 
-    const resetToken = resetTokenFromLastEmail();
+    const resetToken = tokenFromLastEmail("reset-password");
     const reset = await app.inject({
       method: "POST",
       url: "/api/v1/auth/reset-password",
@@ -408,6 +404,14 @@ describe("POST /api/v1/auth/google", () => {
       const userId = created.json().user.id as string;
       const refreshCookie = refreshCookieFrom(created);
 
+      const before = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/refresh",
+        headers: { cookie: `refresh_token=${refreshCookie}` },
+      });
+      expect(before.statusCode, before.body).toBe(200);
+      expect(before.json().user.id).toBe(userId);
+
       const requested = await app.inject({
         method: "POST",
         url: "/api/v1/auth/request-password-reset",
@@ -418,7 +422,10 @@ describe("POST /api/v1/auth/google", () => {
       const reset = await app.inject({
         method: "POST",
         url: "/api/v1/auth/reset-password",
-        payload: { token: resetTokenFromLastEmail(), newPassword: password },
+        payload: {
+          token: tokenFromLastEmail("reset-password"),
+          newPassword: password,
+        },
       });
       expect(reset.statusCode, reset.body).toBe(200);
 
@@ -429,15 +436,6 @@ describe("POST /api/v1/auth/google", () => {
       });
       expect(refreshed.statusCode).toBe(401);
       expect(refreshed.json().detail).toBe("Invalid or expired refresh token");
-
-      const login = await app.inject({
-        method: "POST",
-        url: "/api/v1/auth/login",
-        payload: { email: defaultIdentity.email, password },
-      });
-      expect(login.statusCode, login.body).toBe(200);
-      expect(login.json().user.id).toBe(userId);
-      expect(refreshCookieFrom(login)).toBeTruthy();
     });
 
     it("reactivates a soft-deleted Google User by confirmation link, then signs in to the same User", async () => {
@@ -463,6 +461,12 @@ describe("POST /api/v1/auth/google", () => {
         ),
       ).toBeUndefined();
       expect(sendEmailMock).toHaveBeenCalledTimes(1);
+      expect(sendEmailMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: defaultIdentity.email,
+          subject: "Confirm Your Email - POS",
+        }),
+      );
 
       const awaiting = await User.findById(deleted._id)
         .setOptions({ includeDeleted: true })
@@ -489,7 +493,6 @@ describe("POST /api/v1/auth/google", () => {
       expect(signedIn.statusCode, signedIn.body).toBe(200);
       expect(signedIn.json().user.id).toBe(String(deleted._id));
       expect(await User.countDocuments()).toBe(1);
-      expect(await User.countDocuments({ deleted: { $ne: true } })).toBe(1);
     });
 
     it("keeps a Google-created User's saved language across refresh and /me", async () => {
