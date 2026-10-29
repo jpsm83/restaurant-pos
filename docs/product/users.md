@@ -11,7 +11,7 @@ This subject covers **who a person is as a global identity and customer**, and t
 - the global **User** — one per person, the holder of every sign-in credential and of **client** personal detail;
 - **business ownership** — the **Owner** account that holds one or more **Companies**, each owning its **Business** identities, and the transfer of a business between users;
 - the **mode eligibility rule** — when a signed-in user may work in **customer** or **business** mode (exactly two modes), consuming effective layer from the access-and-permissions subject;
-- **credentials and email** — sign-up, verification, email change, and the business contact email;
+- **credentials and email** — sign-up and sign-in with email and password or Google, verification, email change, and the business contact email;
 - **sessions** (access token, refresh session, revoke on credential change), and the **account lifecycle** — pending deletion, soft delete, and reactivation;
 - **favorites** — the venues a customer saves for quick access;
 - that creating a User requires accepting the **privacy notice** and account terms, and that **birth date** gates marketing consent and self-channel alcohol under the privacy, consent, and DSAR subject.
@@ -35,7 +35,7 @@ It deliberately does **not** cover:
 
 ### Entities
 
-- **User** — a person's global identity. One per person, platform-wide and tenant-free. The sole holder of sign-in credentials, **client** personal details, preferences (including **favorites**), the notification inbox, and order history. **Every user is a customer.** The User does **not** carry employment fields.
+- **User** — a person's global identity. One per person, platform-wide and tenant-free. The sole holder of sign-in credentials (a password and, optionally, a linked **Google identity**), **client** personal details, preferences (including **favorites**), the notification inbox, and order history. **Every user is a customer.** The User does **not** carry employment fields.
 - **Favorite** — a customer's saved bookmark of exactly one **live Business**, held on that customer's **User**. At most one favorite exists per user per business.
 - **Owner** — the portfolio account for a user who owns businesses. One per user, created or updated when that user registers a business. Holds the **Companies** it controls, the **subscription**, and the **commission terms**. Every Owner holds **at least one Company**.
 - **Company** — the **tax entity** owned by exactly one **Owner**: a group of one or more **Businesses** run as one legal unit. It holds the **tax number** and the **legal name** of that taxpayer. Stock moves only within a Company. Every Company holds **at least one Business**.
@@ -53,6 +53,8 @@ User ──1 Owner ──< Company ──< Business  (ownership: exactly one own
 
 - **Mode** — whether a signed-in user is in the **customer** or **business** app. Exactly two modes; there is no separate employee mode. The person may switch during the session via the mode toggle when eligible. Floor work and administration are **left-menu headers inside business mode** (Service, Manage, and Me), owned by the user-navigation subject — not additional modes.
 - **Sign-in email** — the email credential on the **User**. Distinct from a business's contact email.
+- **Google sign-in** — signing in or signing up with a Google account. Project Imperium verifies the Google account before trusting it.
+- **Google identity** — the verified Google account linked to exactly one active **User**, used as an alternate sign-in credential. It never represents a second User.
 - **Business contact email** — a business's own verified email, used for venue messages and receipts. Never a credential.
 - **Pending deletion** — the account state during the cancellation window between a user's deletion request and the soft delete that follows it.
 - **Reactivation** — restoring a soft-deleted account, which always requires confirmation through the sign-in email.
@@ -65,7 +67,7 @@ User ──1 Owner ──< Company ──< Business  (ownership: exactly one own
 
 ### 3.1 One identity, one login
 
-Project Imperium stores **one user per person**, and that user is the single holder of the person's sign-in credentials. A person never ends up with two accounts for the same identity. Sign-in is one shared form. The Customer app is usable **without** signing in for public browse and for assembling an order; after authenticating, the person remains on the Customer surface and §3.7 governs when they may enter business mode.
+Project Imperium stores **one user per person**, and that user is the single holder of the person's sign-in credentials. A person never ends up with two accounts for the same identity. Sign-in and sign-up are **one shared form** offering **email and password** and **Google sign-in**; both methods resolve to the same User. The Customer app is usable **without** signing in for public browse and for assembling an order; after authenticating, the person remains on the Customer surface and §3.7 governs when they may enter business mode.
 
 ### 3.2 Every user is a customer
 
@@ -118,12 +120,19 @@ There is **one login** and **exactly two modes**: **customer** and **business**.
 
 This subject owns the eligibility **rule**; the access-and-permissions subject owns layer meaning; the user-navigation subject owns the chrome toggle, left menu, guards, and destinations.
 
-### 3.7 Credentials, verification, and email change
+### 3.7 Sign-in methods, verification, and email change
 
-The **User** owns the sign-in email, the password, and a **single canonical email-verified flag**.
+A person signs in to the one shared form with **email and password**, with **Google sign-in**, or with both when both are linked to the same User. A Google sign-in is an alternate credential, never a second account.
 
-- Sign-up sends a **verification email**. The account is usable before verification, but the flag drives in-app prompts.
-- **Changing the sign-in email** requires the **current password**, is **token-verified** by a link sent to the **new address**, is **cooldown-limited**, **notifies the old address**, enforces **uniqueness among active accounts**, and **revokes other sessions**.
+The **User** owns the sign-in email, an optional password, an optional **Google identity**, and a **single canonical email-verified flag**.
+
+- **Sign-up with email and password** sends a **verification email**. The account is usable before verification, but the flag drives in-app prompts.
+- **Sign-up with Google** creates the user already **email-verified**, because the Google account's address is verified; no verification email is sent. The person accepts the **privacy notice** and account terms before the User is created, exactly as on the email-and-password form.
+- A **Google identity** belongs to at most one active User, and a User links at most one Google identity. When the verified Google email matches an existing active User that holds no Google identity, Project Imperium links that Google identity to the same User and marks the sign-in email verified; it never creates a duplicate. If that User already holds a different Google identity, the link is refused, the account is left unchanged, and the person signs in with the existing method.
+- A User may hold a password, a Google identity, or both, and always keeps **at least one working sign-in method**. An account created through Google has no password; an account created with a password gains a Google identity when the person first signs in with Google using the same verified email.
+- **Google sign-in to a soft-deleted account** does not restore access. The person must complete the normal email-confirmed **reactivation**, exactly as with any other sign-in method.
+- **Changing the sign-in email** requires re-authentication with a current sign-in method (password or Google), is **token-verified** by a link sent to the **new address**, is **cooldown-limited**, **notifies the old address**, enforces **uniqueness among active accounts**, and **revokes other sessions**.
+- **Password reset** is available to every User. A Google-only User may use it to set a password and then sign in with either method; a password login on an account with no password fails with the same generic invalid-credentials outcome.
 - The same verification and change flow applies to **every user** — a business registrant is not a special case.
 
 ### 3.8 Business contact email and go-live
@@ -138,11 +147,11 @@ Each **Business** carries its **own contact email**, verified by the same token 
 
 A user comes into existence through one of three paths, and Project Imperium **never duplicates a person**:
 
-1. **Self sign-up** — a person signs up and becomes a customer user.
+1. **Self sign-up** — a person signs up and becomes a customer user, with **email and password** or with **Google**.
 2. **Managed employee** — a manager or above hires through the employees subject by linking an **existing user by email**. If no user exists for that email, Project Imperium creates the user (a customer) first, then the membership.
 3. **Business registration** — a **signed-in user** registers a business; the registrant already exists as a user, and registration creates (or updates) their **Owner**, the **Company** (existing or new), and the **Business**. It does **not** create an Employee membership; the Owner may join the workforce later on a paid plan (employees subject).
 
-Creating a User through self sign-up (and through managed-employee creation when Project Imperium creates the User) requires acknowledging the **privacy notice** and account terms before the account is created. Full privacy rules belong to the privacy, consent, and DSAR subject.
+Creating a User through self sign-up — including **Google sign-up** — and through managed-employee creation when Project Imperium creates the User requires acknowledging the **privacy notice** and account terms before the account is created. Full privacy rules belong to the privacy, consent, and DSAR subject.
 
 ### 3.10 Sessions
 
@@ -178,7 +187,7 @@ Deletion is **blocked until the user resolves every business they own** — each
 
 ### 3.15 Reactivation
 
-A soft-deleted account can be **reactivated**, but reactivation is **never completed inside the app alone** — it always requires **confirming a link sent to the account's sign-in email**, so knowing an email is never enough to reach a deleted account's data. Reactivation **restores the user, the customer identity, their history, and their favorites** (subject to the live/offline rules in §3.12); memberships return **only if still valid** at their venues, and otherwise stay terminated (employees subject).
+A soft-deleted account can be **reactivated**, but reactivation is **never completed inside the app alone** — it always requires **confirming a link sent to the account's sign-in email**, so knowing an email — or presenting the linked Google account — is never enough to reach a deleted account's data. Reactivation **restores the user, the customer identity, their history, and their favorites** (subject to the live/offline rules in §3.12); memberships return **only if still valid** at their venues, and otherwise stay terminated (employees subject).
 
 ### 3.16 Soft delete, platform-wide
 
@@ -212,7 +221,8 @@ Owned by the access-and-permissions subject (catalogue, role-bound grants, assig
 
 | Activity | Who |
 | --- | --- |
-| Sign up / sign in / switch mode | Anyone may sign up or sign in; Business on the mode toggle needs eligible business access |
+| Sign up / sign in with email and password or Google / switch mode | Anyone may sign up or sign in by either method; Business on the mode toggle needs eligible business access |
+| Link a Google identity to an existing User | The person who proves the same verified Google email; the account is the same User, never a duplicate |
 | Register a business | Any user (becomes the **Owner** with Owner access at that venue; no Employee membership unless they later join the workforce) |
 | Edit Company legal name and tax number | The owning user (Owner chrome **Company**) |
 | Own / transfer / close a business | The owning user |

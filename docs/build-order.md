@@ -84,7 +84,7 @@ Stand up who people are, what a venue is, and how they move between Customer and
 
 | done | Order | Slice | Docs to open |
 | --- | --- | --- | --- |
-| [ ] | 1.1 | Sign-up / sign-in, email verify, password reset, User profile (including language preference), Owner + Company creation hooks, sessions | [users](product/users.md) |
+| [ ] | 1.1 | Sign-up / sign-in with email and password or Google, email verify, password reset, User profile (including language preference), Owner + Company creation hooks, sessions | [users](product/users.md) |
 | [ ] | 1.2 | Privacy notice acceptance at account create; birth date; marketing consent off-by-default | [privacy](product/privacy.md), [users](product/users.md) (accept-to-create / birth-date hooks only) |
 | [ ] | 1.3 | One User per browser session; peer multi-session; no shared login / PIN / quick-switch | [staff-sessions](product/staff-sessions.md) |
 | [ ] | 1.4 | Register venue, draft profile, currency, address → timezone, Company tax number / legal name, go-live checklist fields (go-live can stay blocked until Phase 2) | [business](product/business.md), [users](product/users.md) (Owner / Company only) |

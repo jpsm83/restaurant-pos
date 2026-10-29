@@ -8,7 +8,7 @@
 
 This subject covers **how a person uses Project Imperium for Business work on devices**:
 
-- that every staff actor signs in with **their own** User email and password — never a shared staff login;
+- that every staff actor signs in with **their own** User credentials — email and password or Google sign-in — never a shared staff login;
 - that the device may be the employee’s **own** or a **venue-provided** browser device — both are allowed;
 - that at any moment a browser session belongs to **exactly one** signed-in User (**one employee session per device browser**);
 - that one User may hold **many concurrent sessions** across devices, and those sessions are **peer-equal**;
@@ -17,7 +17,7 @@ This subject covers **how a person uses Project Imperium for Business work on de
 
 It deliberately does **not** cover:
 
-- **credentials**, access and refresh session mechanics, revoke-on-password or email change, mode eligibility, or account lifecycle — the users subject owns those. This subject only states multi-session allowance, attribution, personal-vs-venue device allowance, and the one-User-per-session rule;
+- **credentials**, access and refresh session mechanics, revoke-on-credential or email change, mode eligibility, or account lifecycle — the users subject owns those. This subject only states multi-session allowance, attribution, personal-vs-venue device allowance, and the one-User-per-session rule;
 - **base access layers**, effective layer, schedule gating for Business entry, and per-user capabilities — the access-and-permissions and users subjects own those. Opening Business and acting under a layer still require the signed-in User to be eligible as those subjects already define;
 - **on duty**, daily attendance QR, late lock, breaks, and manager sign-out — the time-control subject. Duty is independent of which device the person uses; leaving an app or device does not end duty;
 - **navigation chrome** and phone/tablet layout — the user-navigation subject;
@@ -38,7 +38,7 @@ This subject introduces **no new persistent business entity**. It constrains how
 - **Staff device** — any browser device used for Business work: the employee’s **personal** phone, laptop, or desktop, or a **venue-provided** phone, tablet, or computer. Ownership of the hardware does not change the sign-in rule.
 - **Peer session** — one of several concurrent signed-in sessions for the same User; each has the same eligibility and powers the User is entitled to at that moment. There is no primary device.
 
-Terms reused rather than redefined here: **User**, **sign-in email**, **password**, **access token**, **refresh session**, **mode** (Customer | Business), **on duty**, **base access layer**, **effective layer**, **per-user capability**, and **Business**.
+Terms reused rather than redefined here: **User**, **sign-in email**, **password**, **Google sign-in**, **Google identity**, **access token**, **refresh session**, **mode** (Customer | Business), **on duty**, **base access layer**, **effective layer**, **per-user capability**, and **Business**.
 
 ---
 
@@ -46,7 +46,7 @@ Terms reused rather than redefined here: **User**, **sign-in email**, **password
 
 ### 3.1 Personal sign-in only
 
-- Every person who acts in Business mode signs in with **their own** User **sign-in email** and **password**. There is no venue-wide staff password, no shared tablet account, and no anonymous floor login.
+- Every person who acts in Business mode signs in with **their own** User identity — by **email and password** or by **Google sign-in**. There is no venue-wide staff password, no shared tablet account, and no anonymous floor login.
 - Project Imperium does **not** provide a staff **PIN**, **passcode**, **quick-switch** between people on one browser, or an **in-app lock screen** that lets another person unlock as themselves without a full sign-in.
 - Handing a device to a colleague does **not** change who the product treats as the actor. The signed-in User remains that User until they sign out or their sessions are revoked (users subject).
 
@@ -54,7 +54,7 @@ Terms reused rather than redefined here: **User**, **sign-in email**, **password
 
 - An employee may work from **their own** device. A venue may also **provide** phones, tablets, or computers and require staff to use them. Both are fine.
 - Whatever the hardware, **each browser session is unique to one employee**: only that signed-in User is the actor on that session. Two people never share one active Business session.
-- When a venue device passes from one employee to another, the previous User **signs out** (or their session ends) and the next employee signs in with **their own** email and password. There is no PIN handoff.
+- When a venue device passes from one employee to another, the previous User **signs out** (or their session ends) and the next employee signs in with **their own** credentials — email and password or Google sign-in. There is no PIN handoff.
 - Project Imperium sells no staff hardware and does not enroll, name, or manage staff devices.
 - Venue-owned **printers**, **print connectors**, **prep and customer screens**, and **customer kiosk** terminals remain as their own subjects describe. Any Business action on a browser still belongs to whoever signed in on that session with their own credentials.
 - A **print connector** runs as a system service on the venue PC under its own connector credential. It is not a staff session and never signs in as a person.
@@ -64,7 +64,7 @@ Terms reused rather than redefined here: **User**, **sign-in email**, **password
 
 - One User may be signed in on **several devices at once** (for example their phone and a venue tablet). Each session is a **peer session**: same mode eligibility, same effective layer and capabilities, same on-duty facts.
 - Actions on any peer session attribute to that **User**. There is no “primary device” and no session that outranks another for the same person.
-- **Revoking refresh sessions** (password reset or change, sign-in email change, and any other wholesale revoke the users subject defines) ends sessions across devices. This subject does not add a separate revoke model.
+- **Revoking refresh sessions** (a password reset or change, a sign-in email change, and any other wholesale revoke the users subject defines) ends sessions across devices. This subject does not add a separate revoke model.
 - Concurrent work on the same sales instance, batch, or payment still follows the realtime-and-concurrency subject; multi-session does not create a second conflict model.
 
 ### 3.4 Composition with duty, schedule, and access
@@ -110,9 +110,9 @@ No new capabilities. Catalogue powers apply to the signed-in User on the session
 
 | Activity | Who |
 | --- | --- |
-| Sign in with email and password on a personal or venue staff device | The User who owns those credentials |
+| Sign in with email and password or Google on a personal or venue staff device | The User who owns those credentials |
 | Hold concurrent sessions on several devices | That same User |
 | Act in Business on a session | The signed-in User, when mode-eligible and otherwise permitted |
 | Request, accept, or decline a tab handover | Each person in their own signed-in session (the receiver requests; the current owner accepts or declines) |
-| Take over a venue device after a colleague | Previous User signs out (or session ends); next User signs in with full email and password — no PIN switch |
+| Take over a venue device after a colleague | Previous User signs out (or session ends); next User signs in with full email and password or Google — no PIN switch |
 | Configure shared staff login, PIN, or quick-switch | Nobody — not in the product |

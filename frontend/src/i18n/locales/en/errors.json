@@ -1,7 +1,7 @@
 {
   "accessDenied": {
     "title": "Access denied",
-    "description": "You do not have permission to view this page. If you are signed in with a business account, use the business workspace; person accounts use the customer or staff areas.",
+    "description": "You do not have permission to view this page. Use the options below to continue.",
     "openWorkspace": "Open your workspace"
   },
   "notFound": {

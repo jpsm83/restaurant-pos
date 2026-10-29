@@ -21,7 +21,7 @@ It deliberately does **not** cover:
 
 - **which events notify, and the in-app side of each** — the notifications subject owns the notification catalogue, the inbox, the severities and engagement kinds, and the engagement mute itself. This subject owns how an email is written and delivered, not whether an event notifies.
 - **marketing consent**, customer data export, and privacy-notice acceptance — the privacy, consent, and DSAR subject. Engagement broadcast email still requires marketing consent on and engagement mute off.
-- **the mechanics of the actions behind the emails** — orders and payments, reservations, reviews, the sign-in email and password, the business contact email, venue events, staff conversations, and platform charges are owned by the orders, reservations, ratings-and-comments, users, business, notifications, conversations, and platform-billing subjects. This subject owns the email side: when each message is sent and what it carries.
+- **the mechanics of the actions behind the emails** — orders and payments, reservations, reviews, the sign-in email, password, and Google sign-in, the business contact email, venue events, staff conversations, and platform charges are owned by the orders, reservations, ratings-and-comments, users, business, notifications, conversations, and platform-billing subjects. This subject owns the email side: when each message is sent and what it carries.
 - **who may send staff chat or authorise a manager-to-customer one-shot email** — the conversations subject. This subject delivers that one-shot email; staff conversation messages are never emailed.
 - **customer bill and receipt required content and numbering** — the **receipts-and-bills** subject owns document kinds, required fields, and bill/receipt numbers. An emailed receipt must carry that subject's receipt content; this subject does not invent a thinner email-only set.
 - **the pages a one-time link opens** — the user-navigation subject owns the destination surfaces. This subject owns only that a link leads a person to complete an action, never what they see.
@@ -71,9 +71,9 @@ Terms reused from the product overview's core vocabulary rather than defined her
 
 Project Imperium sends account email for:
 
-- **sign-in verification** — confirming a new user's sign-in email;
+- **sign-in verification** — confirming a new user's sign-in email after email-and-password sign-up; a Google-created user arrives verified and no verification email is sent;
 - **resend verification** — the same message, re-requested;
-- **password reset** — a link to set a new password;
+- **password reset** — a link to set a new password, including for a Google-only account that has no password yet;
 - **sign-in email change confirmation** — a link sent to the **new** address to confirm the change;
 - **sign-in email change notice** — a security warning sent to the **old** address once a change completes; it carries **no link**;
 - **reactivation** — a link that confirms restoring a soft-deleted account;
@@ -89,8 +89,8 @@ A completed password reset or sign-in email change has session effects owned by 
 
 ### 3.3 Anti-enumeration
 
-- The unauthenticated request flows — **resend verification** (for a new user or for a business contact email) and **password reset** — return a **single generic response** whether or not the address belongs to an account, and send a message **only when one exists**. A **sign-in email change** is an authenticated flow and is not part of this rule.
-- **Sign-up is also generic**: it never says an address is already taken. When someone signs up with an address that already has an account, Project Imperium does not reveal it inline; it sends that address a **"you already have an account"** message pointing the owner to sign in or reset, and still returns the generic sign-up response.
+- The unauthenticated request flows — **resend verification** (for a new email-and-password user or for a business contact email) and **password reset** — return a **single generic response** whether or not the address belongs to an account, and send a message **only when one exists**. A **sign-in email change** is an authenticated flow and is not part of this rule.
+- **Email-and-password sign-up is also generic**: it never says an address is already taken. When someone signs up with an address that already has an account, Project Imperium does not reveal it inline; it sends that address a **"you already have an account"** message pointing the owner to sign in or reset, and still returns the generic sign-up response. **Google sign-up** resolves to the same User when the verified Google email already has an account, so it creates no duplicate and sends no already-have-an-account message.
 - Every request flow is **cooldown-limited**: a **one-minute minimum gap per account** between repeats, so the flows cannot be used to flood an address.
 
 ### 3.4 Operational email

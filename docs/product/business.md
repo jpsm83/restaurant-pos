@@ -27,7 +27,7 @@ It deliberately does **not** cover:
 - **payroll configuration** — pay-period cadence, accountant contact, and tip-pool policy — the payroll subject owns those settings and the pay runs they drive.
 - **employee cash-out behaviour** (wallets, peer cash-in, house paid-in/out, cash-out approval) — the employee cash-out subject. This subject only stores the **peer cash transfer** switch.
 - the **meaning, defaults, validation, and comparison of the cost targets, waste thresholds, and reporting configuration** — the business-metrics subject owns those, and the business-reports subject owns the reports that consume them. This subject stores the values as business fields but does not define them.
-- **sign-in credentials and verification mechanics** — sign-in email verification, email change, and password reset belong to the users and emails subjects. This subject owns the *business contact email* field; the emails subject owns how its verification link is delivered.
+- **sign-in credentials and verification mechanics** — email-and-password and Google sign-in, sign-in email verification, email change, and password reset belong to the users and emails subjects. This subject owns the *business contact email* field; the emails subject owns how its verification link is delivered.
 - the **owner shell, mode toggle, Service / Manage / Me left menu, guards, and canonical destinations** — the user-navigation subject owns those surfaces. This subject owns the *business-registration action* and the business form; the navigation that reaches them is the user-navigation subject's.
 - the **sales points, sales instances, and ordering/delivery mechanics** — the order-flow and sales-points-and-instances subjects own how customers order, which points accept which channels, and how delivery is dispatched. This subject owns delivery and self-ordering *configuration* at the venue, not order placement.
 - **delivery provider catalogue, per-business connection, courier request, courier handover, cancellation, external delivery references, retries, and no-handover reconciliation** — the **delivery-integrations** subject. This subject owns the venue's delivery on/off, radius, minimum, windows, and the **Delivery partner** settings surface that selects the method and connects a provider.
@@ -102,7 +102,7 @@ A business carries its **venue shopfront** identity; the **taxpayer** identity l
 - **Business contact email** — the venue's own verified email for venue messages and receipts. Required for go-live and **must be verified**. It is **never a credential**.
 - **Company tax identity (read for go-live)** — the venue's **Company** holds the **legal name** (registered legal entity of the taxpayer) and the **tax number**. Both are required for go-live. Uniqueness of tax number and of legal name is enforced **among active Companies in the same country**; venues that share one Company share that tax identity. Editing legal name and tax number is an Owner action on the Company (user-navigation Owner chrome), not a per-venue profile field.
 - **Seat count** and **floor area** — optional venue attributes that feed the revenue-per-seat-hour and sales-per-floor-area metrics; neither gates go-live.
-- The **sign-in email and password are not part of the business profile** — they belong to the **User**.
+- The **sign-in email, password, and Google sign-in identity are not part of the business profile** — they belong to the **User**.
 
 ### 3.4 Currency
 

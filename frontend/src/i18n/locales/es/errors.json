@@ -1,7 +1,7 @@
 {
   "accessDenied": {
     "title": "Acceso denegado",
-    "description": "No tienes permiso para ver esta página. Si iniciaste sesión con una cuenta de empresa, usa el espacio de negocio; las cuentas personales usan el área de cliente o de personal.",
+    "description": "No tienes permiso para ver esta página. Usa las opciones de abajo para continuar.",
     "openWorkspace": "Abrir tu espacio de trabajo"
   },
   "notFound": {

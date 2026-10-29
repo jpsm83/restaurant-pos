@@ -463,8 +463,8 @@ export const authRoutes: FastifyPluginAsync<AuthRoutesOptions> = async (
 
   /**
    * POST /auth/logout
-   * Revoke the presented refresh session, then clear the refresh and auth-mode cookies.
-   * A missing cookie still succeeds and still clears both cookies.
+   * Revoke the presented refresh session, then clear the refresh cookie.
+   * A missing cookie still succeeds and still clears the refresh cookie.
    */
   app.post("/logout", async (req, reply) => {
     await revokePresentedRefreshSession(

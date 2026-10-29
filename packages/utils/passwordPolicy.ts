@@ -1,5 +1,5 @@
 /**
- * Password rules for creating Business accounts, User accounts (admin API), and auth signup.
+ * Password rules for User signup and password reset.
  * Login accepts any stored hash; this applies only to setting a new password.
  */
 

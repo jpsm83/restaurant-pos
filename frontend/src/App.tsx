@@ -1,11 +1,11 @@
 /**
- * App shell: router + auth mode (HttpOnly cookie) for employee routes.
+ * App shell: router + session-backed Customer | Business mode on user routes.
  *
  * | Path | Layout / notes |
  * |------|----------------|
  * | `/` | `PublicLayout` — marketing index, login, signup, business |
  * | `/business/:businessId` | `BusinessRouteShell` + `BusinessLayout` |
- * | `/:userId/mode` | `UserSessionRouteShell` — staff customer vs employee |
+ * | `/:userId/mode` | `UserSessionRouteShell` — Customer | Business mode selection |
  * | `/:userId/customer` | `UserSessionRouteShell` + `CustomerLayout` |
  * | `/:userId/employee` | `UserSessionRouteShell` + `RequireEmployeeAuthMode` + `EmployeeLayout` |
  *

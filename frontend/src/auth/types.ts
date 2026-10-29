@@ -28,7 +28,7 @@ export interface AuthUser {
   employeeId?: string;
   /** Employing tenant when `employeeId` is set. */
   businessId?: string;
-  /** From backend `canLogAsEmployee` (schedule + role); drives employee mode eligibility. */
+  /** From backend `canLogAsEmployee` (schedule + role); drives Business mode eligibility. */
   canLogAsEmployee?: boolean;
   /** `Customer` or primary `Employee.allEmployeeRoles` entry from backend. */
   role: string;
