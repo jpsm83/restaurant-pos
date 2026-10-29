@@ -1,7 +1,9 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
 import {
   AUTH_EMAIL_PATH_CONFIRM_EMAIL,
+  AUTH_EMAIL_PATH_CONFIRM_EMAIL_CHANGE,
   AUTH_EMAIL_PATH_RESET_PASSWORD,
+  buildConfirmEmailChangeLink,
   buildConfirmEmailLink,
   buildResetPasswordLink,
   normalizeAppBaseUrl,
@@ -56,12 +58,15 @@ describe("emailLinks", () => {
     });
   });
 
-  describe("buildConfirmEmailLink / buildResetPasswordLink", () => {
+  describe("buildConfirmEmailLink / buildConfirmEmailChangeLink / buildResetPasswordLink", () => {
     it("builds encoded query URLs under the resolved base", () => {
       vi.stubEnv("APP_BASE_URL", "https://app.example.com");
       const tok = "a".repeat(64);
       expect(buildConfirmEmailLink(tok)).toBe(
         `https://app.example.com/${AUTH_EMAIL_PATH_CONFIRM_EMAIL}?token=${encodeURIComponent(tok)}`,
+      );
+      expect(buildConfirmEmailChangeLink(tok)).toBe(
+        `https://app.example.com/${AUTH_EMAIL_PATH_CONFIRM_EMAIL_CHANGE}?token=${encodeURIComponent(tok)}`,
       );
       expect(buildResetPasswordLink(tok)).toBe(
         `https://app.example.com/${AUTH_EMAIL_PATH_RESET_PASSWORD}?token=${encodeURIComponent(tok)}`,

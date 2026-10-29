@@ -1,6 +1,7 @@
 const BASE_ENV_KEYS = ["APP_BASE_URL", "PUBLIC_APP_URL", "FRONTEND_URL"] as const;
 
 export const AUTH_EMAIL_PATH_CONFIRM_EMAIL = "confirm-email";
+export const AUTH_EMAIL_PATH_CONFIRM_EMAIL_CHANGE = "confirm-email-change";
 export const AUTH_EMAIL_PATH_RESET_PASSWORD = "reset-password";
 export const AUTH_EMAIL_PATH_SIGN_IN = "login";
 export const AUTH_EMAIL_PATH_FORGOT_PASSWORD = "forgot-password";
@@ -67,6 +68,10 @@ function buildAuthPageLink(pathSegment: string, rawToken: string): string {
 
 export function buildConfirmEmailLink(rawToken: string): string {
   return buildAuthPageLink(AUTH_EMAIL_PATH_CONFIRM_EMAIL, rawToken);
+}
+
+export function buildConfirmEmailChangeLink(rawToken: string): string {
+  return buildAuthPageLink(AUTH_EMAIL_PATH_CONFIRM_EMAIL_CHANGE, rawToken);
 }
 
 export function buildResetPasswordLink(rawToken: string): string {

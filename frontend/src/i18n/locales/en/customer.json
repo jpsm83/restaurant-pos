@@ -13,6 +13,22 @@
       "resendSending": "Sending…",
       "resendSuccess": "Confirmation email sent. Check your inbox."
     },
+    "changeEmail": {
+      "action": "Change sign-in email",
+      "title": "Change sign-in email",
+      "description": "Confirm your current password, then enter the new address. We will send a confirmation link there; your current sign-in email stays active until you open it.",
+      "newEmailLabel": "New email",
+      "currentPasswordLabel": "Current password",
+      "submit": "Send confirmation link",
+      "submitting": "Sending…",
+      "cancel": "Cancel",
+      "success": "Confirmation link sent. Check your new inbox to complete the change.",
+      "errors": {
+        "invalidEmail": "Enter a valid email address.",
+        "passwordRequired": "Enter your current password.",
+        "sameEmail": "Choose an address different from your current sign-in email."
+      }
+    },
     "photo": {
       "label": "Profile photo",
       "alt": "Your profile photo",
@@ -24,7 +40,7 @@
     },
     "fields": {
       "email": "Sign-in email",
-      "emailReadOnlyHint": "Your sign-in email is shown here for reference and cannot be edited on this page.",
+      "emailHint": "Use Change sign-in email to move your account to a new address. Your current address keeps working until you confirm the link sent to the new one.",
       "username": "Username",
       "firstName": "First name",
       "lastName": "Last name",

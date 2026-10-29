@@ -73,6 +73,18 @@ export const requestPasswordResetBodySchema = z.strictObject({
   email: emailSchema,
 });
 
+/**
+ * Authenticated sign-in email change request. The current password is the
+ * re-authentication proof; the new address is normalized at the boundary and
+ * the server-owned pending token fields never appear here.
+ */
+export const requestEmailChangeBodySchema = z.strictObject({
+  newEmail: emailSchema,
+  currentPassword: z
+    .string({ error: "Current password is required." })
+    .min(1, "Current password is required."),
+});
+
 export const confirmEmailBodySchema = z.strictObject({
   token: z
     .string({ error: "Please provide a confirmation token." })
@@ -103,6 +115,9 @@ export type RequestEmailConfirmationBody = z.infer<
 >;
 export type RequestPasswordResetBody = z.infer<
   typeof requestPasswordResetBodySchema
+>;
+export type RequestEmailChangeBody = z.infer<
+  typeof requestEmailChangeBodySchema
 >;
 export type ConfirmEmailBody = z.infer<typeof confirmEmailBodySchema>;
 export type ResetPasswordBody = z.infer<typeof resetPasswordBodySchema>;

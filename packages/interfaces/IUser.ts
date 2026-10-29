@@ -20,6 +20,12 @@ export interface IUser {
   verificationTokenExpires?: Date;
   resetPasswordToken?: string;
   resetPasswordExpires?: Date;
+  /** Pending sign-in email change; the current email stays active until confirmed. */
+  pendingEmail?: string;
+  pendingEmailToken?: string;
+  pendingEmailExpires?: Date;
+  /** When the last email-change link was sent; drives the request cooldown. */
+  pendingEmailRequestedAt?: Date;
   refreshSessionVersion?: number;
   deleted?: boolean;
   deletedAt?: Date;

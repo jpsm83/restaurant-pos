@@ -14,6 +14,7 @@ export const SERVICE_OPERATIONS = [
   "authConfig",
   "confirmEmail",
   "resendConfirmation",
+  "emailChange",
   "passwordReset",
   "session",
   "logout",

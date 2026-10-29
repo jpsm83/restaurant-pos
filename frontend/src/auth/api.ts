@@ -363,6 +363,25 @@ export async function resetPassword(token: string, newPassword: string) {
   );
 }
 
+/**
+ * Authenticated: start a verified sign-in email change. The current password
+ * re-authenticates the User; the current email stays authoritative until the
+ * emailed link at the new address is confirmed.
+ */
+export async function requestEmailChange(
+  newEmail: string,
+  currentPassword: string,
+) {
+  return authRequest<AuthMessageResponseBody>(
+    "emailChange",
+    "/api/v1/auth/request-email-change",
+    {
+      method: "POST",
+      body: JSON.stringify({ newEmail, currentPassword }),
+    },
+  );
+}
+
 /** Authenticated: resend sign-in email confirmation for the current account (server uses DB email). */
 export async function resendEmailConfirmation() {
   return authRequest<AuthMessageResponseBody>(

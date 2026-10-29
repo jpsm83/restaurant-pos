@@ -55,6 +55,16 @@ const userSchema = new Schema(
     verificationTokenExpires: { type: Date, default: undefined },
     resetPasswordToken: { type: String, default: undefined },
     resetPasswordExpires: { type: Date, default: undefined },
+    /**
+     * Pending sign-in email change (`personalDetails.email` stays active until
+     * the new address confirms the emailed link). Server-owned and never read by
+     * a client route or DTO.
+     */
+    pendingEmail: { type: String, default: undefined },
+    pendingEmailToken: { type: String, default: undefined },
+    pendingEmailExpires: { type: Date, default: undefined },
+    /** When the last change link was sent; drives the per-account cooldown. */
+    pendingEmailRequestedAt: { type: Date, default: undefined },
     /** Increment on password reset / password change to refuse refresh sessions from the previous generation. */
     refreshSessionVersion: { type: Number, default: 0 },
     ...softDeleteSchemaFields,
@@ -70,6 +80,7 @@ userSchema.index({ "notifications.notificationId": 1 });
 
 userSchema.index({ verificationToken: 1 }, { sparse: true });
 userSchema.index({ resetPasswordToken: 1 }, { sparse: true });
+userSchema.index({ pendingEmailToken: 1 }, { sparse: true });
 // A Google subject belongs to one active User; a soft-deleted row may release it.
 userSchema.index(
   { googleId: 1 },

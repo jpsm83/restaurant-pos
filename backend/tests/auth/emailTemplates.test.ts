@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  buildEmailChangeConfirmationContent,
   buildEmailConfirmationContent,
   buildPasswordResetEmailContent,
   formatAuthEmailTtlPhrase,
@@ -50,6 +51,21 @@ describe("emailTemplates", () => {
     });
     expect(html).toContain("Hello there!");
     expect(text).toContain("Hello there!");
+  });
+
+  it("buildEmailChangeConfirmationContent includes the new-address link and expiry", () => {
+    const url = "https://app.test/confirm-email-change?token=abc";
+    const { subject, html, text } = buildEmailChangeConfirmationContent({
+      confirmUrl: url,
+      greetingName: "Pat",
+    });
+
+    expect(subject).toBe("Confirm Your New Sign-in Email - POS");
+    expect(html).toContain(`href="${url}"`);
+    expect(html).toContain("24 hours");
+    expect(html).toContain("Hello Pat!");
+    expect(text).toContain(url);
+    expect(text).toContain("24 hours");
   });
 
   it("buildPasswordResetEmailContent includes link and fixed expiry copy", () => {

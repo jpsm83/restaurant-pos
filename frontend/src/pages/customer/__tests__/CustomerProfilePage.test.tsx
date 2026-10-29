@@ -7,6 +7,7 @@ import CustomerProfilePage from "../CustomerProfilePage";
 
 const mockGetUserProfile = vi.fn();
 const mockUpdateUserProfile = vi.fn();
+const mockRequestEmailChange = vi.fn();
 const mockDispatch = vi.fn();
 const mockResend = vi.fn();
 const toastSuccess = vi.fn();
@@ -22,6 +23,7 @@ vi.mock("@/auth/store/AuthContext", () => ({
 vi.mock("@/auth/api", () => ({
   getUserProfile: (...args: unknown[]) => mockGetUserProfile(...args),
   updateUserProfile: (...args: unknown[]) => mockUpdateUserProfile(...args),
+  requestEmailChange: (...args: unknown[]) => mockRequestEmailChange(...args),
 }));
 
 vi.mock("@/hooks/useResendEmailConfirmation", () => ({
@@ -86,6 +88,7 @@ describe("CustomerProfilePage", () => {
     unverified = false;
     mockGetUserProfile.mockReset();
     mockUpdateUserProfile.mockReset();
+    mockRequestEmailChange.mockReset();
     mockDispatch.mockReset();
     mockResend.mockReset();
     toastSuccess.mockReset();
@@ -165,6 +168,68 @@ describe("CustomerProfilePage", () => {
       type: "AUTH_SUCCESS",
       payload: expect.objectContaining({ languagePreference: "es" }),
     });
+  });
+
+  it("requests a sign-in email change after password re-authentication", async () => {
+    const user = userEvent.setup();
+    mockRequestEmailChange.mockResolvedValue({
+      ok: true,
+      data: { message: "Sent" },
+    });
+
+    await renderPage();
+
+    await user.click(
+      await screen.findByRole("button", { name: "Change sign-in email" }),
+    );
+
+    expect(
+      await screen.findByRole("dialog", { name: "Change sign-in email" }),
+    ).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText("New email"), "New@Example.com");
+    await user.type(screen.getByLabelText("Current password"), "Secret123!");
+    await user.click(
+      screen.getByRole("button", { name: "Send confirmation link" }),
+    );
+
+    await waitFor(() => {
+      expect(mockRequestEmailChange).toHaveBeenCalledWith(
+        "new@example.com",
+        "Secret123!",
+      );
+    });
+    expect(
+      await screen.findByText(
+        "Confirmation link sent. Check your new inbox to complete the change.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("dialog", { name: "Change sign-in email" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows localized copy when the current password is refused", async () => {
+    const user = userEvent.setup();
+    mockRequestEmailChange.mockResolvedValue({
+      ok: false,
+      error: { code: "emailChange.unauthorized", status: 401 },
+    });
+
+    await renderPage();
+
+    await user.click(
+      await screen.findByRole("button", { name: "Change sign-in email" }),
+    );
+    await user.type(screen.getByLabelText("New email"), "new@example.com");
+    await user.type(screen.getByLabelText("Current password"), "wrong");
+    await user.click(
+      screen.getByRole("button", { name: "Send confirmation link" }),
+    );
+
+    expect(
+      await screen.findByRole("alert"),
+    ).toHaveTextContent("Your current password is incorrect.");
   });
 
   it("resends email confirmation for an unverified signed-in user", async () => {

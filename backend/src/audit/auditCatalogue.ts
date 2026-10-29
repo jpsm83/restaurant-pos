@@ -27,6 +27,7 @@ export type AuditTargetKind =
   (typeof AUDIT_TARGET_KINDS)[keyof typeof AUDIT_TARGET_KINDS];
 
 export const AUDIT_ACT_KINDS = {
+  EMAIL_CHANGE_REQUESTED: "emailChange.requested",
   PURCHASE_LINE_EDITED: "purchase.lineEdited",
   INVENTORY_COUNT_REEDITED: "inventory.countReedited",
   ORDER_VOIDED: "order.voided",

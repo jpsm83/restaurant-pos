@@ -8,6 +8,7 @@ import {
   getCurrentUser,
   googleAuth,
   login,
+  requestEmailChange,
   requestEmailConfirmation,
   requestPasswordReset,
   resetPassword,
@@ -352,6 +353,49 @@ describe("auth api — email / password-reset endpoints", () => {
     expect(urlPath(fetchMock.mock.calls[0][0] as string)).toMatch(
       /\/api\/v1\/auth\/resend-email-confirmation$/,
     );
+  });
+
+  it("requestEmailChange POSTs the new address and current password with Bearer", async () => {
+    setAccessToken("jwt-here");
+    fetchMock.mockResolvedValueOnce(jsonResponse({ message: "Sent" }));
+
+    const result = await requestEmailChange("new@example.com", "Secret123!");
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const headers = new Headers(init.headers as HeadersInit);
+    expect(urlPath(url)).toMatch(/\/api\/v1\/auth\/request-email-change$/);
+    expect(init.method).toBe("POST");
+    expect(headers.get("Authorization")).toBe("Bearer jwt-here");
+    expect(headers.get("Content-Type")).toBe("application/json");
+    expect(init.body).toBe(
+      JSON.stringify({
+        newEmail: "new@example.com",
+        currentPassword: "Secret123!",
+      }),
+    );
+    expect(result).toEqual({ ok: true, data: { message: "Sent" } });
+  });
+
+  it("requestEmailChange maps a wrong password to the machine outcome", async () => {
+    setAccessToken("jwt-here");
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(
+        {
+          type: "https://restaurant-pos.app/errors/unauthorized",
+          title: "Unauthorized",
+          status: 401,
+          detail: "Current password is incorrect.",
+        },
+        401,
+      ),
+    );
+
+    const result = await requestEmailChange("new@example.com", "wrong");
+
+    expectFailure(result, {
+      code: "emailChange.unauthorized",
+      status: 401,
+    });
   });
 });
 

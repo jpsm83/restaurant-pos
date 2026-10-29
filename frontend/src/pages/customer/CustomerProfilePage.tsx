@@ -7,6 +7,7 @@ import type { ServiceRequestError } from "@/services/serviceErrors";
 import type { UserProfile, UserProfileAddress } from "@/auth/types";
 import { useErrorMessage } from "@/i18n/errorCopy";
 import { genderEnums } from "restaurant-pos-packages/enums";
+import { ChangeEmailDialog } from "@/components/ChangeEmailDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -168,6 +169,10 @@ export default function CustomerProfilePage() {
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [changeEmailOpen, setChangeEmailOpen] = useState(false);
+  const [changeEmailMessage, setChangeEmailMessage] = useState<string | null>(
+    null,
+  );
   const languageOptions = useLanguageOptions();
 
   useEffect(() => {
@@ -383,19 +388,37 @@ export default function CustomerProfilePage() {
               <Label htmlFor="profile-email">
                 {t("profile.fields.email")}
               </Label>
-              <Input
-                id="profile-email"
-                type="email"
-                value={email}
-                readOnly
-                aria-describedby="profile-email-hint"
-              />
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Input
+                  id="profile-email"
+                  type="email"
+                  value={email}
+                  readOnly
+                  aria-describedby="profile-email-hint"
+                  className="sm:flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setChangeEmailMessage(null);
+                    setChangeEmailOpen(true);
+                  }}
+                >
+                  {t("profile.changeEmail.action")}
+                </Button>
+              </div>
               <p
                 id="profile-email-hint"
                 className="text-xs text-muted-foreground"
               >
-                {t("profile.fields.emailReadOnlyHint")}
+                {t("profile.fields.emailHint")}
               </p>
+              {changeEmailMessage ? (
+                <p className="text-sm text-muted-foreground" role="status">
+                  {changeEmailMessage}
+                </p>
+              ) : null}
             </div>
           </section>
 
@@ -634,6 +657,17 @@ export default function CustomerProfilePage() {
           </Button>
         </form>
       )}
+
+      <ChangeEmailDialog
+        open={changeEmailOpen}
+        currentEmail={email}
+        onOpenChange={setChangeEmailOpen}
+        onRequested={() => {
+          const message = t("profile.changeEmail.success");
+          setChangeEmailMessage(message);
+          toast.success(message);
+        }}
+      />
     </main>
   );
 }

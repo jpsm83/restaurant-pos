@@ -29,15 +29,18 @@ describe("Auth email security indexes", () => {
     await Business.syncIndexes();
   });
 
-  it("User defines sparse indexes on verificationToken and resetPasswordToken", async () => {
+  it("User defines sparse indexes on auth email token fields", async () => {
     const indexes = await listIndexSpecs(User.collection);
     const confirmIx = findSparseSingleFieldIndex(indexes, "verificationToken");
     const resetIx = findSparseSingleFieldIndex(indexes, "resetPasswordToken");
+    const changeIx = findSparseSingleFieldIndex(indexes, "pendingEmailToken");
 
     expect(confirmIx).toBeDefined();
     expect(confirmIx?.sparse).toBe(true);
     expect(resetIx).toBeDefined();
     expect(resetIx?.sparse).toBe(true);
+    expect(changeIx).toBeDefined();
+    expect(changeIx?.sparse).toBe(true);
   });
 
   it("Business defines no auth-email token indexes", async () => {

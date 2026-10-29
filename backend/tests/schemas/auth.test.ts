@@ -5,6 +5,7 @@ import {
   confirmEmailBodySchema,
   googleAuthBodySchema,
   loginBodySchema,
+  requestEmailChangeBodySchema,
   requestEmailConfirmationBodySchema,
   requestPasswordResetBodySchema,
   resetPasswordBodySchema,
@@ -20,6 +21,7 @@ const SERVER_OWNED_FIELDS = [
   "pendingEmail",
   "pendingEmailToken",
   "pendingEmailExpires",
+  "pendingEmailRequestedAt",
   "refreshSessionVersion",
   "emailVerified",
   "googleId",
@@ -153,6 +155,49 @@ describe("requestEmailConfirmationBodySchema", () => {
   });
 });
 
+describe("requestEmailChangeBodySchema", () => {
+  it("normalizes the new email and requires the current password", () => {
+    const parsed = requestEmailChangeBodySchema.parse({
+      newEmail: "  New.Address@Example.COM ",
+      currentPassword: "Secret123!",
+    });
+    expect(parsed.newEmail).toBe("new.address@example.com");
+    expect(parsed.currentPassword).toBe("Secret123!");
+  });
+
+  it("rejects a malformed new email", () => {
+    expect(
+      requestEmailChangeBodySchema.safeParse({
+        newEmail: "nope",
+        currentPassword: "Secret123!",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects a blank current password", () => {
+    const result = requestEmailChangeBodySchema.safeParse({
+      newEmail: "a@b.com",
+      currentPassword: "",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe(
+        "Current password is required.",
+      );
+    }
+  });
+
+  it("rejects unknown keys", () => {
+    expect(
+      requestEmailChangeBodySchema.safeParse({
+        newEmail: "a@b.com",
+        currentPassword: "Secret123!",
+        pendingEmail: "x@y.com",
+      }).success,
+    ).toBe(false);
+  });
+});
+
 describe("requestPasswordResetBodySchema", () => {
   it("requires a valid email", () => {
     expect(
@@ -267,9 +312,10 @@ describe("server-owned fields are excluded from every auth DTO", () => {
     signupBodySchema,
     loginBodySchema,
     googleAuthBodySchema,
+    requestEmailChangeBodySchema,
     requestEmailConfirmationBodySchema,
     requestPasswordResetBodySchema,
-      confirmEmailBodySchema,
+    confirmEmailBodySchema,
       resetPasswordBodySchema,
     setModeBodySchema,
   };

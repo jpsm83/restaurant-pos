@@ -16,6 +16,7 @@ import User from "../../models/user.ts";
 import { withSoftDeleteFilter } from "../../models/softDelete.ts";
 import { AUTH_CONFIG } from "../../auth/config.ts";
 import {
+  createAuthHook,
   isRejectedCredential,
   requireLiveAccessSession,
   requireLiveAccessSessionWithRefreshId,
@@ -44,6 +45,7 @@ import {
 import type { GoogleVerifier } from "../../auth/google.ts";
 import { handleGoogleAuth } from "../../auth/googleSignIn.ts";
 import { sendAccountExistsEmail } from "../../auth/accountExistsEmail.ts";
+import { handleRequestEmailChange } from "../../auth/requestEmailChange.ts";
 import { handleRequestPasswordReset } from "../../auth/requestPasswordReset.ts";
 import { handleResendEmailConfirmationForAuthenticatedAccount } from "../../auth/resendEmailConfirmation.ts";
 import { handleResetPassword } from "../../auth/resetPassword.ts";
@@ -60,6 +62,7 @@ import {
   confirmEmailBodySchema,
   googleAuthBodySchema,
   loginBodySchema,
+  requestEmailChangeBodySchema,
   requestEmailConfirmationBodySchema,
   requestPasswordResetBodySchema,
   resetPasswordBodySchema,
@@ -68,6 +71,7 @@ import {
   type ConfirmEmailBody,
   type GoogleAuthBody,
   type LoginBody,
+  type RequestEmailChangeBody,
   type RequestEmailConfirmationBody,
   type RequestPasswordResetBody,
   type ResetPasswordBody,
@@ -327,6 +331,59 @@ export const authRoutes: FastifyPluginAsync<AuthRoutesOptions> = async (
 
     return reply.code(200).send({ message: result.message });
   });
+
+  /**
+   * POST /auth/request-email-change
+   * Authenticated User: re-authenticate with the current password and start a
+   * verified sign-in email change. The current email stays active until the new
+   * address confirms the emailed link.
+   */
+  app.post<{ Body: RequestEmailChangeBody }>(
+    "/request-email-change",
+    {
+      preValidation: [createAuthHook(app)],
+      schema: { body: requestEmailChangeBodySchema },
+    },
+    async (req, reply) => {
+      const session = req.authSession as AuthUser;
+      const { newEmail, currentPassword } = req.body;
+      const result = await handleRequestEmailChange(
+        session,
+        newEmail,
+        currentPassword,
+        req.log,
+      );
+
+      if (result.kind === "account_not_found") {
+        throw unauthorized("Account not found.");
+      }
+      if (result.kind === "invalid_password") {
+        throw unauthorized("Current password is incorrect.");
+      }
+      if (result.kind === "same_email") {
+        throw badRequest(
+          "The new email must be different from the current sign-in email.",
+          [
+            {
+              path: "newEmail",
+              message: "Enter an address different from your current one.",
+            },
+          ],
+        );
+      }
+      if (result.kind === "email_taken") {
+        throw conflict("That email is already used by another account.");
+      }
+      if (result.kind === "throttled") {
+        return reply.code(200).send({ message: result.message });
+      }
+      if (result.kind === "server_error_500") {
+        throw internal(result.message);
+      }
+
+      return reply.code(200).send({ message: result.message });
+    },
+  );
 
   /**
    * POST /auth/login

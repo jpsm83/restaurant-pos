@@ -185,6 +185,23 @@ export function buildPasswordResetEmailContent(options: {
   };
 }
 
+const emailChangeTranslations = {
+  en: {
+    subject: "Confirm Your New Sign-in Email - POS",
+    greeting: "Hello",
+    message:
+      "You asked to change the sign-in email for your POS account. Click the button below to confirm this new address and finish the change.",
+    confirmButton: "Confirm New Email",
+    ignoreMessage:
+      "If you didn't request this change, ignore this email — your sign-in email stays the same.",
+    expiryMessage:
+      "This confirmation link will expire in 24 hours for security reasons.",
+    fallbackMessage:
+      "If the button above doesn't work, copy and paste this link into your browser:",
+    copyright: "© 2026 POS. All rights reserved.",
+  },
+};
+
 const accountExistsTranslations = {
   en: {
     subject: "You Already Have a POS Account",
@@ -264,6 +281,73 @@ export function buildAccountExistsEmailContent(options: {
       ${t.resetButton}: ${options.resetUrl}
 
       ${t.ignoreMessage}
+
+      ${t.copyright}
+    `,
+  };
+}
+
+/**
+ * Confirmation sent to the *pending* new sign-in address. The change completes
+ * only when this link is consumed; the current address keeps signing in until
+ * then.
+ */
+export function buildEmailChangeConfirmationContent(options: {
+  confirmUrl: string;
+  greetingName?: string;
+}): AuthEmailTemplateContent {
+  const t = emailChangeTranslations.en;
+  const username = fallbackName(options.greetingName);
+
+  return {
+    subject: t.subject,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(to right, #0ea5e9, #3b82f6); color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+          <h1 style="margin: 0; font-size: 24px; color: white;">
+            POS
+          </h1>
+        </div>
+        <div style="background-color: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; border: 1px solid #e5e7eb;">
+          <h2 style="color: #374151; margin-bottom: 20px;">${t.greeting} ${username}!</h2>
+          <p style="color: #6b7280; line-height: 1.6; margin-bottom: 20px;">
+            ${t.message}
+          </p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${options.confirmUrl}"
+               style="background: linear-gradient(to right, #0ea5e9, #3b82f6); color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600;">
+              ${t.confirmButton}
+            </a>
+          </div>
+          <p style="color: #6b7280; line-height: 1.6; margin-bottom: 20px;">
+            ${t.ignoreMessage}
+          </p>
+          <p style="color: #6b7280; line-height: 1.6; margin-bottom: 20px;">
+            ${t.expiryMessage}
+          </p>
+          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+          <p style="color: #9ca3af; font-size: 14px; text-align: center;">
+            ${t.fallbackMessage}<br>
+            <a href="${options.confirmUrl}" style="color: #3b82f6;">${options.confirmUrl}</a>
+          </p>
+        </div>
+        <div style="text-align: center; margin-top: 20px; color: #9ca3af; font-size: 12px;">
+          <p>${t.copyright}</p>
+        </div>
+      </div>
+    `,
+    text: `
+      ${t.subject}
+
+      ${t.greeting} ${username}!
+
+      ${t.message}
+
+      ${options.confirmUrl}
+
+      ${t.ignoreMessage}
+
+      ${t.expiryMessage}
 
       ${t.copyright}
     `,

@@ -13,6 +13,22 @@
       "resendSending": "Enviando…",
       "resendSuccess": "Correo de confirmación enviado. Revisa tu bandeja de entrada."
     },
+    "changeEmail": {
+      "action": "Cambiar correo de acceso",
+      "title": "Cambiar correo de acceso",
+      "description": "Confirma tu contraseña actual e introduce la dirección nueva. Enviaremos un enlace de confirmación a esa dirección; tu correo de acceso actual seguirá activo hasta que lo abras.",
+      "newEmailLabel": "Correo nuevo",
+      "currentPasswordLabel": "Contraseña actual",
+      "submit": "Enviar enlace de confirmación",
+      "submitting": "Enviando…",
+      "cancel": "Cancelar",
+      "success": "Enlace de confirmación enviado. Revisa tu nueva bandeja de entrada para completar el cambio.",
+      "errors": {
+        "invalidEmail": "Introduce una dirección de correo válida.",
+        "passwordRequired": "Introduce tu contraseña actual.",
+        "sameEmail": "Elige una dirección distinta de tu correo de acceso actual."
+      }
+    },
     "photo": {
       "label": "Foto de perfil",
       "alt": "Tu foto de perfil",
@@ -24,7 +40,7 @@
     },
     "fields": {
       "email": "Correo de acceso",
-      "emailReadOnlyHint": "Tu correo de acceso se muestra aquí como referencia y no se puede editar en esta página.",
+      "emailHint": "Usa Cambiar correo de acceso para trasladar tu cuenta a una dirección nueva. La dirección actual sigue funcionando hasta que confirmes el enlace enviado a la nueva.",
       "username": "Nombre de usuario",
       "firstName": "Nombre",
       "lastName": "Apellidos",
