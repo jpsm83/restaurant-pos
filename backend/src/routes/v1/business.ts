@@ -10,6 +10,7 @@
  * an `AppError` so the global handler emits RFC 9457 `application/problem+json`.
  */
 import type { FastifyPluginAsync } from "fastify";
+import { createHash } from "node:crypto";
 import mongoose, { Types } from "mongoose";
 import dispatchEvent from "../../communications/dispatchEvent.ts";
 import Business from "../../models/business.ts";
@@ -137,6 +138,24 @@ function haversineKm(
   return R * c;
 }
 
+/**
+ * A retried registration is identified by its `X-Idempotency-Key` (or standard
+ * `Idempotency-Key`) header. The Business id is still server-generated: it is
+ * derived per User and key, so the seam's same-id idempotency returns the
+ * existing Owner/Company/Business instead of creating another one.
+ */
+function registrationBusinessId(
+  userId: string,
+  idempotencyKey?: string,
+): Types.ObjectId {
+  const key = idempotencyKey?.trim();
+  if (!key) return new Types.ObjectId();
+  const digest = createHash("sha256")
+    .update(`${userId}:${key}`)
+    .digest("hex");
+  return new Types.ObjectId(digest.slice(0, 24));
+}
+
 /** Safe, portfolio-facing Business shape: no credentials or server-owned fields. */
 function toSafeRegisteredBusiness(business: IBusiness) {
   return {
@@ -196,7 +215,15 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
     },
     async (req, reply) => {
       const body = req.body;
-      const businessId = new Types.ObjectId();
+      const rawIdempotencyKey =
+        req.headers["x-idempotency-key"] ?? req.headers["idempotency-key"];
+      const idempotencyKey = Array.isArray(rawIdempotencyKey)
+        ? rawIdempotencyKey[0]
+        : rawIdempotencyKey;
+      const businessId = registrationBusinessId(
+        req.authSession!.id,
+        idempotencyKey,
+      );
       let result: Awaited<ReturnType<typeof ownerCompanyCreation>>;
 
       try {
@@ -396,6 +423,14 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
         | "phoneNumber"
         | "currencyTrade"
         | "subscription";
+
+      if (
+        fields.email !== undefined &&
+        fields.email !== businessRecord.email
+      ) {
+        updateBusinessObj.email = fields.email;
+        updateBusinessObj.emailVerified = false;
+      }
 
       const setIfChanged = <K extends UpdatableBusinessField>(
         key: K,

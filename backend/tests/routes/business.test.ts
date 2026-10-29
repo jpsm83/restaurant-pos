@@ -228,6 +228,38 @@ describe("Business Routes", () => {
       await expect(Business.countDocuments()).resolves.toBe(2);
     });
 
+    it("returns the same Owner, Company and Business for a retried idempotent request", async () => {
+      const app = await getTestApp();
+      const { auth, userId } = await customerAuthToken();
+      const headers = {
+        authorization: auth,
+        "x-idempotency-key": "add-venue-once",
+      };
+
+      const first = await app.inject({
+        method: "POST",
+        url: "/api/v1/business",
+        headers,
+        payload: draft,
+      });
+      const retry = await app.inject({
+        method: "POST",
+        url: "/api/v1/business",
+        headers,
+        payload: draft,
+      });
+
+      expect(first.statusCode).toBe(201);
+      expect(retry.statusCode).toBe(201);
+      const firstBody = JSON.parse(first.body);
+      const retryBody = JSON.parse(retry.body);
+      expect(retryBody.business._id).toBe(firstBody.business._id);
+      expect(retryBody.company._id).toBe(firstBody.company._id);
+      await expect(Owner.countDocuments({ userId })).resolves.toBe(1);
+      await expect(Company.countDocuments()).resolves.toBe(1);
+      await expect(Business.countDocuments()).resolves.toBe(1);
+    });
+
     it("joins an existing Company owned by the caller's Owner", async () => {
       const app = await getTestApp();
       const { auth, userId } = await customerAuthToken();
@@ -1013,7 +1045,7 @@ describe("Business Routes", () => {
       expect(updated?.tradeName).toBe("Updated Business");
     });
 
-    it("rejects a submitted sign-in email as an unknown key", async () => {
+    it("saves the venue contact email and clears its verification", async () => {
       const app = await getTestApp();
       const business = await Business.create({
         tradeName: "Reject Email Co",
@@ -1055,18 +1087,11 @@ describe("Business Routes", () => {
         payload,
       });
 
-      expect(response.statusCode).toBe(400);
-      expect(response.headers["content-type"]).toContain(
-        "application/problem+json",
-      );
-      const messages = (JSON.parse(response.body).errors ?? []).map(
-        (e: { message: string }) => e.message,
-      );
-      expect(messages.some((m: string) => m.includes("email"))).toBe(true);
+      expect(response.statusCode).toBe(200);
 
       const stored = await Business.findById(business._id).lean();
-      expect(stored?.email).toBe("reject-email-patch@business.com");
-      expect(stored?.emailVerified).toBe(true);
+      expect(stored?.email).toBe("new-reject-email@business.com");
+      expect(stored?.emailVerified).toBe(false);
     });
 
     it("dispatches BUSINESS_PROFILE_UPDATED to manager recipients after successful patch", async () => {

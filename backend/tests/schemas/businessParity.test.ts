@@ -77,9 +77,9 @@ describe("business DTO ↔ model parity", () => {
     }
   });
 
-  it("the update DTO carries no credential fields", () => {
+  it("the update DTO carries no sign-in credential fields", () => {
     const updateKeys = Object.keys(updateBusinessBodySchema.shape);
-    for (const field of ["email", "password", "currentPassword"]) {
+    for (const field of ["password", "currentPassword"]) {
       expect(updateKeys).not.toContain(field);
     }
   });

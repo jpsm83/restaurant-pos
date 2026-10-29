@@ -23,6 +23,7 @@ import {
   coercedBooleanSchema,
   coercedIntSchema,
   coercedNumberSchema,
+  emailSchema,
   emptyToUndefined,
   type EnumValues,
   jsonField,
@@ -162,10 +163,12 @@ export const createBusinessBodySchema = z
  * Body for `PATCH /business/:businessId` (multipart). Every field is optional:
  * an omitted field stays unchanged and a present field is validated. Legal
  * name and tax number belong to the owning Company, so they are not accepted
- * here. The contact `email` is not part of this contract either.
+ * here. `email` is the venue contact email, never a sign-in credential; saving
+ * a new value clears its verification flag in the route.
  */
 export const updateBusinessBodySchema = z.strictObject({
   tradeName: sanitizedString("Trade name is required!").optional(),
+  email: emailSchema.optional(),
   phoneNumber: sanitizedString("Phone number is required!").optional(),
   subscription: z
     .enum(subscriptionEnums as EnumValues, "Invalid subscription!")

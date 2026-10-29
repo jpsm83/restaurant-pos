@@ -165,8 +165,19 @@ describe("updateBusinessBodySchema", () => {
     ).toBe(false);
   });
 
+  it("accepts and normalizes the venue contact email", () => {
+    const parsed = updateBusinessBodySchema.parse({
+      ...validUpdate,
+      email: "  Venue@Example.COM ",
+    });
+    expect(parsed.email).toBe("venue@example.com");
+    expect(
+      updateBusinessBodySchema.safeParse({ ...validUpdate, email: "not-email" })
+        .success,
+    ).toBe(false);
+  });
+
   it.each([
-    ["the sign-in email", { email: "owner@example.com" }],
     ["the email confirmation", { confirmEmail: "owner@example.com" }],
     ["a new password", { password: "Password1!" }],
     ["the current password", { currentPassword: "Password1!" }],
