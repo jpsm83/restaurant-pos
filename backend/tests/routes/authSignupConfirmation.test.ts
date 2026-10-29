@@ -292,6 +292,7 @@ describe("POST /api/v1/auth/signup (confirmation email)", () => {
 
     expect(res.statusCode).toBe(202);
     const body = JSON.parse(res.body);
+    expect(body.reactivationRequired).toBe(true);
     expect(body.message).toContain("reactivation");
     expect(body.accessToken).toBeUndefined();
     expect(

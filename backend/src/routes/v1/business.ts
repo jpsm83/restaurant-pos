@@ -13,6 +13,7 @@ import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
 import dispatchEvent from "../../communications/dispatchEvent.ts";
 import Business from "../../models/business.ts";
+import ownerCompanyCreation from "../../owners/ownerCompanyCreation.ts";
 import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
 import {
   createAuthHook,
@@ -22,7 +23,7 @@ import {
 import { resolveBusinessAccess } from "../../auth/businessAccess.ts";
 import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
 import deleteFilesCloudinary from "../../cloudinary/deleteFilesCloudinary.ts";
-import { badRequest, conflict, notFound } from "../../errors/appError.ts";
+import { badRequest, conflict, forbidden, notFound } from "../../errors/appError.ts";
 import { parseMultipart } from "../../schemas/multipart.ts";
 import {
   isSupportedTimezone,
@@ -30,11 +31,13 @@ import {
 } from "restaurant-pos-packages/schemas";
 import {
   businessIdParamsSchema,
+  createBusinessBodySchema,
   discoverBusinessesQuerySchema,
   businessIncludeDeletedQuerySchema,
   updateBusinessBodySchema,
   type BusinessIncludeDeletedQuery,
   type BusinessIdParams,
+  type CreateBusinessBody,
   type DiscoverBusinessesQuery,
 } from "restaurant-pos-packages/schemas/business";
 import type {
@@ -131,7 +134,110 @@ function haversineKm(
   return R * c;
 }
 
+/** Safe, portfolio-facing Business shape: no credentials or server-owned fields. */
+function toSafeRegisteredBusiness(business: {
+  _id: unknown;
+  tradeName: string;
+  currencyTrade: string;
+  imageUrl?: string;
+  address?: unknown;
+  companyId?: unknown;
+  createdAt?: Date;
+  updatedAt?: Date;
+}) {
+  return {
+    _id: String(business._id),
+    tradeName: business.tradeName,
+    currencyTrade: business.currencyTrade,
+    ...(business.imageUrl ? { imageUrl: business.imageUrl } : {}),
+    ...(business.address ? { address: business.address } : {}),
+    ...(business.companyId ? { companyId: String(business.companyId) } : {}),
+    ...(business.createdAt ? { createdAt: business.createdAt } : {}),
+    ...(business.updatedAt ? { updatedAt: business.updatedAt } : {}),
+  };
+}
+
+/** Safe, portfolio-facing Company shape owned by the caller's Owner. */
+function toSafeRegisteredCompany(company: {
+  _id: unknown;
+  country: string;
+  legalName?: string;
+  taxNumber?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}) {
+  return {
+    _id: String(company._id),
+    country: company.country,
+    ...(company.legalName ? { legalName: company.legalName } : {}),
+    ...(company.taxNumber ? { taxNumber: company.taxNumber } : {}),
+    ...(company.createdAt ? { createdAt: company.createdAt } : {}),
+    ...(company.updatedAt ? { updatedAt: company.updatedAt } : {}),
+  };
+}
+
+/**
+ * Translate the Owner/Company creation seam's business refusals into problem
+ * details. Unknown failures stay unexpected so the global handler reports them.
+ */
+function throwRegistrationProblem(error: unknown): never {
+  const code = (error as { code?: unknown } | null)?.code;
+  if (code === 11000) {
+    throw conflict("Company legal name or tax number already exists!");
+  }
+
+  const message = error instanceof Error ? error.message : "";
+  if (/without an owning Company|already belongs to another Company/i.test(message)) {
+    throw conflict(message);
+  }
+  if (/Company not found/i.test(message)) {
+    throw notFound("Company not found!");
+  }
+  if (/does not belong/i.test(message)) {
+    throw forbidden("Company does not belong to this Owner!");
+  }
+  if (/portfolio country|Company country/i.test(message)) {
+    throw badRequest(message);
+  }
+
+  throw error;
+}
+
 export const businessRoutes: FastifyPluginAsync = async (app) => {
+  app.post<{ Body: CreateBusinessBody }>(
+    "/",
+    {
+      preValidation: [createAuthHook(app)],
+      schema: { body: createBusinessBodySchema },
+    },
+    async (req, reply) => {
+      const body = req.body;
+      const businessId = new Types.ObjectId();
+      let result: Awaited<ReturnType<typeof ownerCompanyCreation>>;
+
+      try {
+        result = await ownerCompanyCreation({
+          userId: req.authSession!.id,
+          business: {
+            _id: businessId,
+            tradeName: body.tradeName,
+            currencyTrade: body.currencyTrade,
+            address: { country: body.country },
+          },
+          companyId: body.companyId,
+          company: body.company,
+        });
+      } catch (error) {
+        throwRegistrationProblem(error);
+      }
+
+      return reply.code(201).send({
+        business: toSafeRegisteredBusiness(result.business),
+        company: toSafeRegisteredCompany(result.company),
+      });
+    },
+  );
+
   app.get<{ Querystring: DiscoverBusinessesQuery }>(
     "/",
     { schema: { querystring: discoverBusinessesQuerySchema } },
@@ -290,19 +396,6 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
         updateBusinessBodySchema,
       );
 
-      const duplicateBusiness = await Business.exists({
-        ...withSoftDeleteFilter({
-          _id: { $ne: businessId },
-          $or: [
-            { legalName: fields.legalName },
-            { taxNumber: fields.taxNumber },
-          ],
-        }),
-      });
-      if (duplicateBusiness) {
-        throw conflict("Business legal name or tax number already exists!");
-      }
-
       const business = await Business.findOne(
         withSoftDeleteFilter({ _id: businessId }),
       ).lean();
@@ -314,17 +407,25 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
 
       const updateBusinessObj: Record<string, unknown> = {};
 
-      if (fields.tradeName !== businessRecord.tradeName)
+      if (
+        fields.tradeName !== undefined &&
+        fields.tradeName !== businessRecord.tradeName
+      )
         updateBusinessObj.tradeName = fields.tradeName;
-      if (fields.legalName !== businessRecord.legalName)
-        updateBusinessObj.legalName = fields.legalName;
-      if (fields.phoneNumber !== businessRecord.phoneNumber)
+      if (
+        fields.phoneNumber !== undefined &&
+        fields.phoneNumber !== businessRecord.phoneNumber
+      )
         updateBusinessObj.phoneNumber = fields.phoneNumber;
-      if (fields.taxNumber !== businessRecord.taxNumber)
-        updateBusinessObj.taxNumber = fields.taxNumber;
-      if (fields.currencyTrade !== businessRecord.currencyTrade)
+      if (
+        fields.currencyTrade !== undefined &&
+        fields.currencyTrade !== businessRecord.currencyTrade
+      )
         updateBusinessObj.currencyTrade = fields.currencyTrade;
-      if (fields.subscription !== businessRecord.subscription)
+      if (
+        fields.subscription !== undefined &&
+        fields.subscription !== businessRecord.subscription
+      )
         updateBusinessObj.subscription = fields.subscription;
 
       if (fields.contactPerson !== undefined) {
@@ -370,7 +471,7 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
       const address = fields.address;
       // Dotted `$set` paths preserve address fields not sent in this request.
       let addressChanged = false;
-      for (const [key, value] of Object.entries(address)) {
+      for (const [key, value] of Object.entries(address ?? {})) {
         if (value !== businessAddress?.[key]) {
           updateBusinessObj[`address.${key}`] = value;
           addressChanged = true;
@@ -378,19 +479,21 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
       }
 
       // Keep the derived timezone in sync with the (possibly changed) address.
-      const resolvedTimezone = deriveStoredTimezone({
-        ...(businessAddress ?? {}),
-        ...address,
-      });
-      const storedTimezone = businessRecord.timezone;
       let clearTimezone = false;
-      if (resolvedTimezone !== undefined) {
-        if (resolvedTimezone !== storedTimezone)
-          updateBusinessObj.timezone = resolvedTimezone;
-      } else if (addressChanged && storedTimezone !== undefined) {
-        // The address moved somewhere we cannot map: drop the stale zone so the
-        // profile read falls back to UTC with `timezoneIsDefault`.
-        clearTimezone = true;
+      if (addressChanged) {
+        const resolvedTimezone = deriveStoredTimezone({
+          ...(businessAddress ?? {}),
+          ...address,
+        });
+        const storedTimezone = businessRecord.timezone;
+        if (resolvedTimezone !== undefined) {
+          if (resolvedTimezone !== storedTimezone)
+            updateBusinessObj.timezone = resolvedTimezone;
+        } else if (storedTimezone !== undefined) {
+          // The address moved somewhere we cannot map: drop the stale zone so the
+          // profile read falls back to UTC with `timezoneIsDefault`.
+          clearTimezone = true;
+        }
       }
 
       if (fields.metrics) {

@@ -1,5 +1,4 @@
 import mongoose, { Schema, model } from "mongoose";
-import { addressSchema } from "./address.ts";
 import * as enums from "restaurant-pos-packages/enums";
 import { applyActiveOnlySoftDelete, softDeleteSchemaFields } from "./softDelete.ts";
 
@@ -18,6 +17,25 @@ const metricsSchema = new Schema({
     hightBudgetImpact: { type: Number, default: 3 }, // Food waste percentage acceptable - 2-5% of sales average
     veryHightBudgetImpact: { type: Number, default: 1 }, // Food waste percentage acceptable - 0-2% of sales average
   }, // Food waste percentage acceptable - 3-7% of sales average
+});
+
+/**
+ * A draft venue stores only its onboarding country; the rest of the postal
+ * address is optional until the Owner completes the profile. Legacy rows keep
+ * their full address and remain readable.
+ */
+const businessAddressSchema = new Schema({
+  country: { type: String, required: [true, "Country is required!"] },
+  state: { type: String },
+  city: { type: String },
+  street: { type: String },
+  buildingNumber: { type: String },
+  doorNumber: { type: String },
+  complement: { type: String },
+  postCode: { type: String },
+  region: { type: String },
+  additionalDetails: { type: String },
+  coordinates: { type: [Number], default: undefined },
 });
 
 const businessOpeningHourSchema = new Schema(
@@ -56,24 +74,19 @@ const reportingConfigSchema = new Schema(
 
 const businessSchema = new Schema(
   {
-    // required fields
+    // Minimum onboarding set: a draft venue needs only these two fields.
     tradeName: { type: String, required: [true, "Trade name is required!"] }, // Company Name for the public
-    legalName: { type: String, required: [true, "Legal name is required!"] }, // Legal Name of the company, not unique because could happens of same name bussines in different countries
     imageUrl: { type: String }, // Logo of the company as url link to cloudinary
-    email: { type: String, required: [true, "Email is required!"] }, // Venue contact email, not unique because one office may manage multiple companies
+    // Optional venue profile fields; tax identity lives on the owning Company.
+    legalName: { type: String }, // Legacy venue legal name, retained for existing rows
+    email: { type: String }, // Venue contact email, not unique because one office may manage multiple companies
     /** Whether the venue contact email has been verified. Not a sign-in credential. */
     emailVerified: {
       type: Boolean,
       default: false,
     },
-    phoneNumber: {
-      type: String,
-      required: [true, "Phone number is required!"],
-    }, // Phone number of the company
-    taxNumber: {
-      type: String,
-      required: [true, "Tax number is required!"],
-    }, // Tax number of the company
+    phoneNumber: { type: String }, // Phone number of the company
+    taxNumber: { type: String }, // Legacy venue tax number, retained for existing rows
     currencyTrade: {
       type: String,
       required: [true, "Currency trade is required!"],
@@ -89,7 +102,7 @@ const businessSchema = new Schema(
       default: "Free",
     }, // Subscription plan for the company
     timezone: { type: String }, // Authoritative IANA zone (e.g. America/Bogota); legacy businesses may have none
-    address: { type: addressSchema, required: [true, "Address is required!"] }, // Address of the company
+    address: { type: businessAddressSchema }, // Address of the company; incomplete while a draft
     metrics: { type: metricsSchema }, // Metrics of the company
 
     // optional fields
@@ -124,7 +137,10 @@ const businessSchema = new Schema(
 
 businessSchema.index(
   { taxNumber: 1 },
-  { unique: true, partialFilterExpression: { deleted: false } },
+  {
+    unique: true,
+    partialFilterExpression: { deleted: false, taxNumber: { $type: "string" } },
+  },
 );
 
 applyActiveOnlySoftDelete(businessSchema);

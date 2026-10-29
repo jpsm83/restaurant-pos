@@ -88,6 +88,28 @@ async function businessOwnerToken(
   });
 }
 
+async function customerAuthToken(): Promise<{
+  auth: string;
+  userId: string;
+}> {
+  const userId = new Types.ObjectId();
+  await User.create({
+    _id: userId,
+    personalDetails: {
+      email: `customer-${userId}@test.com`,
+      firstName: "Draft",
+      lastName: "Owner",
+    },
+  });
+  const auth = await generateTestToken({
+    id: userId.toString(),
+    email: `customer-${userId}@test.com`,
+    type: "user",
+    role: "Customer",
+  });
+  return { auth, userId: userId.toString() };
+}
+
 describe("Business Routes", () => {
   const validAddress = {
     country: "USA",
@@ -97,6 +119,259 @@ describe("Business Routes", () => {
     buildingNumber: "123",
     postCode: "90001",
   };
+
+  describe("POST /api/v1/business", () => {
+    const draft = {
+      tradeName: "Draft Venue",
+      currencyTrade: "USD",
+      country: "USA",
+    };
+
+    it("requires authentication", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/business",
+        payload: draft,
+      });
+
+      expect(response.statusCode).toBe(401);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      await expect(Business.countDocuments()).resolves.toBe(0);
+    });
+
+    it("creates a draft Business and the first venue's Owner and Company", async () => {
+      const app = await getTestApp();
+      const { auth, userId } = await customerAuthToken();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/business",
+        headers: { authorization: auth },
+        payload: draft,
+      });
+
+      expect(response.statusCode).toBe(201);
+      const body = JSON.parse(response.body);
+      expect(body.business).toMatchObject({
+        tradeName: "Draft Venue",
+        currencyTrade: "USD",
+        address: { country: "USA" },
+      });
+      expect(body.business._id).toEqual(expect.any(String));
+      expect(body.business.companyId).toBe(body.company._id);
+      expect(body.company).toMatchObject({ country: "USA" });
+      expect(body.company.legalName).toBeUndefined();
+      expect(body.company.taxNumber).toBeUndefined();
+      for (const field of [
+        "password",
+        "verificationToken",
+        "resetPasswordToken",
+        "refreshSessionVersion",
+        "subscription",
+        "emailVerified",
+        "averageRating",
+        "ratingCount",
+        "timezone",
+      ]) {
+        expect(body.business[field], field).toBeUndefined();
+        expect(body.company[field], field).toBeUndefined();
+      }
+
+      const owner = await Owner.findOne({ userId });
+      expect(owner).not.toBeNull();
+      expect(owner?.country).toBe("USA");
+      const company = await Company.findById(body.company._id);
+      expect(company?.ownerId.toString()).toBe(owner?._id.toString());
+      expect(company?.legalName).toBeUndefined();
+      expect(company?.taxNumber).toBeUndefined();
+
+      const business = await Business.findById(body.business._id);
+      expect(business?.tradeName).toBe("Draft Venue");
+      expect(business?.legalName).toBeUndefined();
+      expect(business?.taxNumber).toBeUndefined();
+      expect(business?.email).toBeUndefined();
+      expect(business?.phoneNumber).toBeUndefined();
+      expect(business?.address?.country).toBe("USA");
+      expect(business?.address?.state).toBeUndefined();
+    });
+
+    it("reuses the Owner and forms a new Company for a later venue", async () => {
+      const app = await getTestApp();
+      const { auth, userId } = await customerAuthToken();
+
+      const first = await app.inject({
+        method: "POST",
+        url: "/api/v1/business",
+        headers: { authorization: auth },
+        payload: draft,
+      });
+      const second = await app.inject({
+        method: "POST",
+        url: "/api/v1/business",
+        headers: { authorization: auth },
+        payload: { ...draft, tradeName: "Second Venue" },
+      });
+
+      expect(first.statusCode).toBe(201);
+      expect(second.statusCode).toBe(201);
+      const firstBody = JSON.parse(first.body);
+      const secondBody = JSON.parse(second.body);
+      expect(secondBody.business._id).not.toBe(firstBody.business._id);
+      expect(secondBody.company._id).not.toBe(firstBody.company._id);
+      await expect(Owner.countDocuments({ userId })).resolves.toBe(1);
+      await expect(Company.countDocuments()).resolves.toBe(2);
+      await expect(Business.countDocuments()).resolves.toBe(2);
+    });
+
+    it("joins an existing Company owned by the caller's Owner", async () => {
+      const app = await getTestApp();
+      const { auth, userId } = await customerAuthToken();
+
+      const first = await app.inject({
+        method: "POST",
+        url: "/api/v1/business",
+        headers: { authorization: auth },
+        payload: { ...draft, company: { legalName: "Taxpayer SL", taxNumber: "TAX-1" } },
+      });
+      const firstBody = JSON.parse(first.body);
+      const second = await app.inject({
+        method: "POST",
+        url: "/api/v1/business",
+        headers: { authorization: auth },
+        payload: {
+          ...draft,
+          tradeName: "Joined Venue",
+          companyId: firstBody.company._id,
+        },
+      });
+
+      expect(second.statusCode).toBe(201);
+      const secondBody = JSON.parse(second.body);
+      expect(secondBody.company._id).toBe(firstBody.company._id);
+      expect(secondBody.company.legalName).toBe("Taxpayer SL");
+      expect(secondBody.business.companyId).toBe(firstBody.company._id);
+      await expect(Owner.countDocuments({ userId })).resolves.toBe(1);
+      await expect(Company.countDocuments()).resolves.toBe(1);
+    });
+
+    it("rejects both Company choices in one request", async () => {
+      const app = await getTestApp();
+      const { auth } = await customerAuthToken();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/business",
+        headers: { authorization: auth },
+        payload: {
+          ...draft,
+          companyId: new Types.ObjectId().toString(),
+          company: { legalName: "Taxpayer SL" },
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      await expect(Business.countDocuments()).resolves.toBe(0);
+    });
+
+    it("rejects a Company that does not belong to the caller's Owner", async () => {
+      const app = await getTestApp();
+      const { auth } = await customerAuthToken();
+      const other = await customerAuthToken();
+      const otherOwner = await Owner.create({
+        userId: other.userId,
+        country: "USA",
+      });
+      const foreignCompany = await Company.create({
+        ownerId: otherOwner._id,
+        country: "USA",
+      });
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/business",
+        headers: { authorization: auth },
+        payload: { ...draft, companyId: foreignCompany._id.toString() },
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      await expect(Business.countDocuments()).resolves.toBe(0);
+    });
+
+    it("rejects a Company in another country", async () => {
+      const app = await getTestApp();
+      const { auth, userId } = await customerAuthToken();
+      const owner = await Owner.create({ userId, country: "USA" });
+      const foreignCompany = await Company.create({
+        ownerId: owner._id,
+        country: "Canada",
+      });
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/business",
+        headers: { authorization: auth },
+        payload: { ...draft, companyId: foreignCompany._id.toString() },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      await expect(Business.countDocuments()).resolves.toBe(0);
+    });
+
+    it("rejects a later venue in a country other than the Owner's", async () => {
+      const app = await getTestApp();
+      const { auth } = await customerAuthToken();
+
+      const first = await app.inject({
+        method: "POST",
+        url: "/api/v1/business",
+        headers: { authorization: auth },
+        payload: draft,
+      });
+      expect(first.statusCode).toBe(201);
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/business",
+        headers: { authorization: auth },
+        payload: { ...draft, country: "Canada" },
+      });
+
+      expect(response.statusCode).toBe(400);
+      await expect(Business.countDocuments()).resolves.toBe(1);
+    });
+
+    it("validates the request body with problem details", async () => {
+      const app = await getTestApp();
+      const { auth } = await customerAuthToken();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/business",
+        headers: { authorization: auth },
+        payload: { tradeName: "No Currency", country: "USA" },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      const body = JSON.parse(response.body);
+      expect(body.errors?.some((e: { path: string }) => e.path === "currencyTrade")).toBe(true);
+    });
+  });
 
   describe("GET /api/v1/business", () => {
     it("lists all businesses", async () => {
@@ -513,11 +788,7 @@ describe("Business Routes", () => {
         `--${boundary}`,
         'Content-Disposition: form-data; name="tradeName"\r\n\r\nUpdated Business',
         `--${boundary}`,
-        'Content-Disposition: form-data; name="legalName"\r\n\r\nUpdated Business LLC',
-        `--${boundary}`,
         'Content-Disposition: form-data; name="phoneNumber"\r\n\r\n1234567890',
-        `--${boundary}`,
-        'Content-Disposition: form-data; name="taxNumber"\r\n\r\nTAX-UPD-001',
         `--${boundary}`,
         'Content-Disposition: form-data; name="subscription"\r\n\r\nFree',
         `--${boundary}`,
@@ -557,11 +828,7 @@ describe("Business Routes", () => {
         `--${boundary}`,
         'Content-Disposition: form-data; name="tradeName"\r\n\r\nX',
         `--${boundary}`,
-        'Content-Disposition: form-data; name="legalName"\r\n\r\nNo Auth Patch LLC',
-        `--${boundary}`,
         'Content-Disposition: form-data; name="phoneNumber"\r\n\r\n1234567890',
-        `--${boundary}`,
-        'Content-Disposition: form-data; name="taxNumber"\r\n\r\nTAX-NOAUTH-001',
         `--${boundary}`,
         'Content-Disposition: form-data; name="subscription"\r\n\r\nFree',
         `--${boundary}`,
@@ -604,11 +871,7 @@ describe("Business Routes", () => {
         `--${boundary}`,
         'Content-Disposition: form-data; name="tradeName"\r\n\r\nX',
         `--${boundary}`,
-        'Content-Disposition: form-data; name="legalName"\r\n\r\nEmployee Patch LLC',
-        `--${boundary}`,
         'Content-Disposition: form-data; name="phoneNumber"\r\n\r\n1234567890',
-        `--${boundary}`,
-        'Content-Disposition: form-data; name="taxNumber"\r\n\r\nTAX-EMP-PATCH-001',
         `--${boundary}`,
         'Content-Disposition: form-data; name="subscription"\r\n\r\nFree',
         `--${boundary}`,
@@ -654,11 +917,7 @@ describe("Business Routes", () => {
         `--${boundary}`,
         'Content-Disposition: form-data; name="tradeName"\r\n\r\nX',
         `--${boundary}`,
-        'Content-Disposition: form-data; name="legalName"\r\n\r\nMismatch Patch LLC',
-        `--${boundary}`,
         'Content-Disposition: form-data; name="phoneNumber"\r\n\r\n1234567890',
-        `--${boundary}`,
-        'Content-Disposition: form-data; name="taxNumber"\r\n\r\nTAX-MISMATCH-001',
         `--${boundary}`,
         'Content-Disposition: form-data; name="subscription"\r\n\r\nFree',
         `--${boundary}`,
@@ -701,11 +960,7 @@ describe("Business Routes", () => {
         `--${boundary}`,
         'Content-Disposition: form-data; name="tradeName"\r\n\r\nUpdated Business',
         `--${boundary}`,
-        'Content-Disposition: form-data; name="legalName"\r\n\r\nOriginal Business LLC',
-        `--${boundary}`,
         'Content-Disposition: form-data; name="phoneNumber"\r\n\r\n1234567890',
-        `--${boundary}`,
-        'Content-Disposition: form-data; name="taxNumber"\r\n\r\nTAX-ORIG-001',
         `--${boundary}`,
         'Content-Disposition: form-data; name="subscription"\r\n\r\nFree',
         `--${boundary}`,
@@ -755,13 +1010,9 @@ describe("Business Routes", () => {
         `--${boundary}`,
         'Content-Disposition: form-data; name="tradeName"\r\n\r\nReject Email Co',
         `--${boundary}`,
-        'Content-Disposition: form-data; name="legalName"\r\n\r\nReject Email Co LLC',
-        `--${boundary}`,
         'Content-Disposition: form-data; name="email"\r\n\r\nnew-reject-email@business.com',
         `--${boundary}`,
         'Content-Disposition: form-data; name="phoneNumber"\r\n\r\n1234567890',
-        `--${boundary}`,
-        'Content-Disposition: form-data; name="taxNumber"\r\n\r\nTAX-REJECT-EMAIL-001',
         `--${boundary}`,
         'Content-Disposition: form-data; name="subscription"\r\n\r\nFree',
         `--${boundary}`,
@@ -848,11 +1099,7 @@ describe("Business Routes", () => {
         `--${boundary}`,
         'Content-Disposition: form-data; name="tradeName"\r\n\r\nNotify Business Updated',
         `--${boundary}`,
-        'Content-Disposition: form-data; name="legalName"\r\n\r\nNotify Business LLC',
-        `--${boundary}`,
         'Content-Disposition: form-data; name="phoneNumber"\r\n\r\n1234567890',
-        `--${boundary}`,
-        'Content-Disposition: form-data; name="taxNumber"\r\n\r\nTAX-NOTIFY-001',
         `--${boundary}`,
         'Content-Disposition: form-data; name="subscription"\r\n\r\nFree',
         `--${boundary}`,
@@ -964,11 +1211,7 @@ describe("Business Routes", () => {
         `--${boundary}`,
         'Content-Disposition: form-data; name="tradeName"\r\n\r\nEmail Dispatch Business Updated',
         `--${boundary}`,
-        'Content-Disposition: form-data; name="legalName"\r\n\r\nEmail Dispatch LLC',
-        `--${boundary}`,
         'Content-Disposition: form-data; name="phoneNumber"\r\n\r\n1234567890',
-        `--${boundary}`,
-        'Content-Disposition: form-data; name="taxNumber"\r\n\r\nTAX-EMAIL-001',
         `--${boundary}`,
         'Content-Disposition: form-data; name="subscription"\r\n\r\nFree',
         `--${boundary}`,
@@ -1070,11 +1313,7 @@ describe("Business Routes", () => {
         `--${boundary}`,
         'Content-Disposition: form-data; name="tradeName"\r\n\r\nNo Change Business',
         `--${boundary}`,
-        'Content-Disposition: form-data; name="legalName"\r\n\r\nNo Change Business LLC',
-        `--${boundary}`,
         'Content-Disposition: form-data; name="phoneNumber"\r\n\r\n1234567890',
-        `--${boundary}`,
-        'Content-Disposition: form-data; name="taxNumber"\r\n\r\nTAX-NOCHANGE-001',
         `--${boundary}`,
         'Content-Disposition: form-data; name="subscription"\r\n\r\nFree',
         `--${boundary}`,
@@ -1141,11 +1380,7 @@ describe("Business Routes", () => {
         `--${boundary}`,
         'Content-Disposition: form-data; name="tradeName"\r\n\r\nCredential Reject Business',
         `--${boundary}`,
-        'Content-Disposition: form-data; name="legalName"\r\n\r\nCredential Reject Business LLC',
-        `--${boundary}`,
         'Content-Disposition: form-data; name="phoneNumber"\r\n\r\n1234567890',
-        `--${boundary}`,
-        'Content-Disposition: form-data; name="taxNumber"\r\n\r\n' +
           String(business.taxNumber),
         `--${boundary}`,
         'Content-Disposition: form-data; name="subscription"\r\n\r\nFree',
@@ -1233,11 +1468,7 @@ describe("Business Routes", () => {
         `--${boundary}`,
         `Content-Disposition: form-data; name="tradeName"\r\n\r\n${business.tradeName}`,
         `--${boundary}`,
-        `Content-Disposition: form-data; name="legalName"\r\n\r\n${business.legalName}`,
-        `--${boundary}`,
         'Content-Disposition: form-data; name="phoneNumber"\r\n\r\n1234567890',
-        `--${boundary}`,
-        `Content-Disposition: form-data; name="taxNumber"\r\n\r\n${business.taxNumber}`,
         `--${boundary}`,
         'Content-Disposition: form-data; name="subscription"\r\n\r\nFree',
         `--${boundary}`,
@@ -1260,6 +1491,104 @@ describe("Business Routes", () => {
       parts.push(`--${boundary}--`);
       return parts.join("\r\n");
     }
+
+    it("leaves omitted profile fields unchanged", async () => {
+      const app = await getTestApp();
+      const boundary = "----formdata";
+      const { business, auth } = await createVenue(app, { metrics: fullMetrics });
+
+      const payload = [
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="tradeName"\r\n\r\nRenamed Venue',
+        `--${boundary}--`,
+      ].join("\r\n");
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/business/${business._id}`,
+        headers: {
+          "content-type": `multipart/form-data; boundary=${boundary}`,
+          authorization: auth,
+        },
+        payload,
+      });
+
+      expect(response.statusCode).toBe(200);
+      const stored = await Business.findById(business._id).lean();
+      expect(stored?.tradeName).toBe("Renamed Venue");
+      expect(stored?.legalName).toBe("Profile Fields Biz LLC");
+      expect(stored?.taxNumber).toBe(business.taxNumber);
+      expect(stored?.phoneNumber).toBe("1234567890");
+      expect(stored?.currencyTrade).toBe("USD");
+      expect(stored?.address).toMatchObject(fullAddress);
+      expect(stored?.metrics?.foodCostPercentage).toBe(31);
+    });
+
+    it("saves a draft profile without an address or phone", async () => {
+      const app = await getTestApp();
+      const boundary = "----formdata";
+      const business = await Business.create({
+        tradeName: "Draft Profile Biz",
+        currencyTrade: "USD",
+        address: { country: "USA" },
+      });
+      const auth = await businessAccessToken(app, business._id.toString());
+
+      const payload = [
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="tradeName"\r\n\r\nDraft Profile Renamed',
+        `--${boundary}--`,
+      ].join("\r\n");
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/business/${business._id}`,
+        headers: {
+          "content-type": `multipart/form-data; boundary=${boundary}`,
+          authorization: auth,
+        },
+        payload,
+      });
+
+      expect(response.statusCode).toBe(200);
+      const stored = await Business.findById(business._id).lean();
+      expect(stored?.tradeName).toBe("Draft Profile Renamed");
+      expect(stored?.phoneNumber).toBeUndefined();
+      expect(stored?.address?.country).toBe("USA");
+    });
+
+    it("rejects legal name and tax number as Company-only fields", async () => {
+      const app = await getTestApp();
+      const boundary = "----formdata";
+      const { business, auth } = await createVenue(app);
+
+      for (const field of ["legalName", "taxNumber"]) {
+        const payload = [
+          `--${boundary}`,
+          `Content-Disposition: form-data; name="${field}"\r\n\r\nCompany Owned`,
+          `--${boundary}--`,
+        ].join("\r\n");
+
+        const response = await app.inject({
+          method: "PATCH",
+          url: `/api/v1/business/${business._id}`,
+          headers: {
+            "content-type": `multipart/form-data; boundary=${boundary}`,
+            authorization: auth,
+          },
+          payload,
+        });
+
+        expect(response.statusCode, field).toBe(400);
+        const body = JSON.parse(response.body);
+        expect(
+          body.errors?.some((e: { message: string }) =>
+            e.message.includes(field),
+          ),
+          field,
+        ).toBe(true);
+      }
+    });
 
     it("recomputes the timezone when the address changes", async () => {
       const app = await getTestApp();

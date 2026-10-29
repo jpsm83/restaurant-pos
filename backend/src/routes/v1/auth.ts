@@ -154,7 +154,10 @@ export const authRoutes: FastifyPluginAsync<AuthRoutesOptions> = async (
         if (sent.kind === "server_error_500") {
           throw internal(sent.message);
         }
-        return reply.code(202).send({ message: REACTIVATION_REQUIRED_MESSAGE });
+        return reply.code(202).send({
+          reactivationRequired: true,
+          message: REACTIVATION_REQUIRED_MESSAGE,
+        });
       }
 
       const hashedPassword = await bcrypt.hash(password, 10);

@@ -82,8 +82,8 @@ const optionalLanguagePreference = z.preprocess(
  * Body for `PATCH /users/:userId` (multipart, authenticated self only). Every
  * personal-detail field is optional so a profile save can send only what
  * changed. The sign-in email, password and employment identifiers are not
- * accepted here: sign-in email change is deferred to the later email-change
- * row (10.4), and employment data belongs to the Employee membership.
+ * accepted here: sign-in email change is deferred to row 1.10, and employment
+ * data belongs to the Employee membership.
  */
 export const updateUserBodySchema = z.strictObject({
   username: optionalProfileString,

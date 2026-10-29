@@ -68,6 +68,33 @@ describe("ownerCompanyCreation", () => {
     await expect(Business.countDocuments({ _id: result.business._id })).resolves.toBe(1);
   });
 
+  it("creates a draft Business with only the minimum onboarding set", async () => {
+    const user = await createUser("draft-venue");
+    const businessId = new Types.ObjectId();
+
+    const result = await ownerCompanyCreation({
+      userId: user._id,
+      business: {
+        _id: businessId,
+        tradeName: "Draft Venue",
+        currencyTrade: "USD",
+        address: { country: "USA" },
+      } as BusinessCreationInput,
+    });
+
+    expect(result.business.tradeName).toBe("Draft Venue");
+    expect(result.business.currencyTrade).toBe("USD");
+    expect(result.business.address?.country).toBe("USA");
+    expect(result.business.legalName).toBeUndefined();
+    expect(result.business.taxNumber).toBeUndefined();
+    expect(result.business.email).toBeUndefined();
+    expect(result.business.phoneNumber).toBeUndefined();
+    expect(result.company.legalName).toBeUndefined();
+    expect(result.company.taxNumber).toBeUndefined();
+    await expect(Owner.countDocuments({ userId: user._id })).resolves.toBe(1);
+    await expect(Company.countDocuments({ ownerId: result.owner._id })).resolves.toBe(1);
+  });
+
   it("is idempotent for the first venue when called again with the same Business id", async () => {
     const user = await createUser("idempotent");
     const businessId = new Types.ObjectId();

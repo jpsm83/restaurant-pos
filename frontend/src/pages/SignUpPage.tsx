@@ -9,6 +9,7 @@ import { signup } from "@/auth/api";
 import { markPriorSession } from "@/auth/sessionHint";
 import { GoogleAuthButton } from "@/auth/GoogleAuthButton";
 import { useErrorMessage, type ErrorFailure } from "@/i18n/errorCopy";
+import { isSupportedLanguage } from "@/i18n/config";
 import {
   getPostLoginDestination,
   getReturnToParam,
@@ -63,11 +64,17 @@ function buildSignUpSchema(messages: {
 type SignUpFormValues = z.infer<ReturnType<typeof buildSignUpSchema>>;
 
 export default function SignUpPage() {
-  const { t } = useTranslation("auth");
+  const { t, i18n } = useTranslation("auth");
   const navigate = useNavigate();
   const location = useLocation();
   const { state, dispatch } = useAuth();
   const returnTo = getReturnToParam(location.search);
+  const language = (i18n.resolvedLanguage ?? i18n.language ?? "")
+    .split("-")[0]
+    .toLowerCase();
+  const languagePreference = isSupportedLanguage(language)
+    ? language
+    : undefined;
   const [submitFailure, setSubmitFailure] = useState<ErrorFailure | null>(null);
   const resolveError = useErrorMessage();
   const isSubmitting = state.status === "loading";
@@ -103,14 +110,22 @@ export default function SignUpPage() {
     const result = await signup({
       email: data.email.trim(),
       password: data.password,
+      ...(languagePreference ? { languagePreference } : {}),
     });
 
-    if (!result.ok || !result.data?.user) {
-      const failure: ErrorFailure = result.ok
-        ? { code: "signUp.internal" }
-        : result.error;
-      dispatch({ type: "AUTH_ERROR", payload: failure.code });
-      setSubmitFailure(failure);
+    if (!result.ok) {
+      dispatch({ type: "AUTH_ERROR", payload: result.error.code });
+      setSubmitFailure(result.error);
+      return;
+    }
+
+    if (!result.data?.user) {
+      dispatch({ type: "AUTH_CLEAR" });
+      toast.info(
+        result.data?.reactivationRequired
+          ? t("login.reactivationRequired")
+          : t("requestEmailConfirmation.successMessage"),
+      );
       return;
     }
 

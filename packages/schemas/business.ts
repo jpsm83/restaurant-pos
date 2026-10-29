@@ -133,19 +133,47 @@ const optionalDeliveryWindowsSchema = optionalJsonField(
 );
 
 /**
- * Body for `PATCH /business/:businessId` (multipart). The identity fields are
- * required (the profile form always submits them); everything else is optional.
- * The contact `email` is not part of this contract, so a client that sends it
- * gets a `400` as an unknown key.
+ * Body for `POST /business` (JSON). A draft needs only the minimum onboarding
+ * set plus at most one Company choice: join an existing Company id or form a
+ * new Company. Legal name and tax number belong to the Company.
+ */
+export const createBusinessBodySchema = z
+  .strictObject({
+    tradeName: sanitizedString("Trade name is required!"),
+    currencyTrade: z.enum(
+      currenctyEnums as EnumValues,
+      "Invalid currencyTrade!",
+    ),
+    country: sanitizedString("Country is required!"),
+    companyId: objectIdSchema.optional(),
+    company: z
+      .strictObject({
+        legalName: sanitizedString().optional(),
+        taxNumber: sanitizedString().optional(),
+      })
+      .optional(),
+  })
+  .refine((body) => !(body.companyId && body.company), {
+    path: ["companyId"],
+    message: "Provide either companyId or company, not both",
+  });
+
+/**
+ * Body for `PATCH /business/:businessId` (multipart). Every field is optional:
+ * an omitted field stays unchanged and a present field is validated. Legal
+ * name and tax number belong to the owning Company, so they are not accepted
+ * here. The contact `email` is not part of this contract either.
  */
 export const updateBusinessBodySchema = z.strictObject({
-  tradeName: sanitizedString("Trade name is required!"),
-  legalName: sanitizedString("Legal name is required!"),
-  phoneNumber: sanitizedString("Phone number is required!"),
-  taxNumber: sanitizedString("Tax number is required!"),
-  subscription: z.enum(subscriptionEnums as EnumValues, "Invalid subscription!"),
-  currencyTrade: z.enum(currenctyEnums as EnumValues, "Invalid currencyTrade!"),
-  address: jsonField(businessAddressSchema),
+  tradeName: sanitizedString("Trade name is required!").optional(),
+  phoneNumber: sanitizedString("Phone number is required!").optional(),
+  subscription: z
+    .enum(subscriptionEnums as EnumValues, "Invalid subscription!")
+    .optional(),
+  currencyTrade: z
+    .enum(currenctyEnums as EnumValues, "Invalid currencyTrade!")
+    .optional(),
+  address: optionalJsonField(businessAddressSchema),
   contactPerson: sanitizedString().optional(),
   cuisineType: optionalCuisineTypeSchema,
   categories: optionalCategoriesSchema,
@@ -207,6 +235,7 @@ export type BusinessMetrics = z.infer<typeof businessMetricsSchema>;
 export type BusinessReportingConfig = z.infer<
   typeof businessReportingConfigSchema
 >;
+export type CreateBusinessBody = z.infer<typeof createBusinessBodySchema>;
 export type UpdateBusinessBody = z.infer<typeof updateBusinessBodySchema>;
 export type BusinessIdParams = z.infer<typeof businessIdParamsSchema>;
 export type DiscoverBusinessesQuery = z.infer<

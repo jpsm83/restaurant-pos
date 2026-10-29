@@ -43,14 +43,16 @@ export interface IReportingConfig {
 export interface IBusiness {
   _id?: Types.ObjectId;
   tradeName: string;
-  legalName: string;
+  /** Legacy venue legal name; tax identity now lives on the owning Company. */
+  legalName?: string;
   imageUrl?: string;
   /** Venue contact email; never a sign-in credential. */
-  email: string;
+  email?: string;
   /** Whether the venue contact email has been verified. */
   emailVerified?: boolean;
-  phoneNumber: string;
-  taxNumber: string;
+  phoneNumber?: string;
+  /** Legacy venue tax number; tax identity now lives on the owning Company. */
+  taxNumber?: string;
   currencyTrade: string;
   /** Owning Company; the path from this Business to its Owner. */
   companyId?: Types.ObjectId;
@@ -60,7 +62,8 @@ export interface IBusiness {
    * `undefined` on legacy businesses; reads resolve a missing value to UTC.
    */
   timezone?: string;
-  address: IAddress;
+  /** Full postal address; a draft may store only its onboarding country. */
+  address?: Partial<IAddress> & { country?: string };
   metrics?: IMetrics;
   /** Optional primary contact: employee id (hex) chosen from management staff, or legacy free text. */
   contactPerson?: string;

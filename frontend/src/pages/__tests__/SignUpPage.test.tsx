@@ -2,6 +2,7 @@ import type { ComponentPropsWithoutRef } from "react";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { toast } from "sonner";
 import { renderWithI18n } from "@/test/i18nTestUtils";
 import SignUpPage from "../SignUpPage";
 
@@ -68,6 +69,7 @@ describe("SignUpPage", () => {
     mockSignup.mockReset();
     mockGoogleAuth.mockReset();
     mockUseAuthConfigQuery.mockReset();
+    vi.mocked(toast.info).mockClear();
     mockUseAuthConfigQuery.mockReturnValue({
       data: { googleSignInEnabled: true },
     });
@@ -143,6 +145,110 @@ describe("SignUpPage", () => {
         "That email address is already used by another account.",
       ),
     ).toBeInTheDocument();
+    });
+  });
+
+  it("shows reactivation guidance when signup targets a soft-deleted account", async () => {
+    const user = userEvent.setup();
+    mockSignup.mockResolvedValue({
+      ok: true,
+      data: { user: null, reactivationRequired: true },
+    });
+
+    await renderWithI18n(
+      <MemoryRouter>
+        <SignUpPage />
+      </MemoryRouter>,
+    );
+
+    await user.type(screen.getByLabelText(/^email$/i), "deleted@example.com");
+    await user.type(screen.getByLabelText(/^password$/i), "ValidPass1!");
+    await user.type(screen.getByLabelText(/confirm password/i), "ValidPass1!");
+    await user.click(screen.getByRole("button", { name: /create account$/i }));
+
+    await waitFor(() => {
+      expect(toast.info).toHaveBeenCalledWith(
+        "Account reactivation required. Please confirm the email link we sent to reactivate this account.",
+      );
+    });
+    expect(mockDispatch).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: "AUTH_ERROR" }),
+    );
+  });
+
+  it("shows generic guidance when signup matches an existing account", async () => {
+    const user = userEvent.setup();
+    mockSignup.mockResolvedValue({
+      ok: true,
+      data: { user: null, reactivationRequired: false },
+    });
+
+    await renderWithI18n(
+      <MemoryRouter>
+        <SignUpPage />
+      </MemoryRouter>,
+    );
+
+    await user.type(screen.getByLabelText(/^email$/i), "exists@example.com");
+    await user.type(screen.getByLabelText(/^password$/i), "ValidPass1!");
+    await user.type(screen.getByLabelText(/confirm password/i), "ValidPass1!");
+    await user.click(screen.getByRole("button", { name: /create account$/i }));
+
+    await waitFor(() => {
+      expect(toast.info).toHaveBeenCalledWith(
+        "If this account needs email verification, you will receive a message shortly.",
+      );
+    });
+  });
+
+  it("passes the active language to email signup", async () => {
+    const user = userEvent.setup();
+    mockSignup.mockResolvedValue({
+      ok: true,
+      data: {
+        user: {
+          id: "64a1b2c3d4e5f67890123456",
+          email: "nuevo@example.com",
+          type: "user",
+        },
+      },
+    });
+
+    await renderWithI18n(
+      <MemoryRouter initialEntries={["/signup"]}>
+        <Routes>
+          <Route path="/signup" element={<SignUpPage />} />
+          <Route
+            path="/:userId/customer/dashboard"
+            element={<div>Customer dashboard</div>}
+          />
+        </Routes>
+      </MemoryRouter>,
+      { language: "es" },
+    );
+
+    await user.type(
+      screen.getByLabelText(/^correo electrónico$/i),
+      "nuevo@example.com",
+    );
+    await user.type(
+      screen.getByLabelText(/^contraseña$/i),
+      "ValidPass1!",
+    );
+    await user.type(
+      screen.getByLabelText(/confirmar contraseña/i),
+      "ValidPass1!",
+    );
+    await user.click(
+      screen.getByRole("button", { name: /crear cuenta$/i }),
+    );
+
+    await waitFor(() => {
+      expect(mockSignup).toHaveBeenCalledWith({
+        email: "nuevo@example.com",
+        password: "ValidPass1!",
+        languagePreference: "es",
+      });
     });
   });
 

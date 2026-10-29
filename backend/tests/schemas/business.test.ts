@@ -6,6 +6,7 @@ import {
   businessIdParamsSchema,
   businessMetricsSchema,
   businessReportingConfigSchema,
+  createBusinessBodySchema,
   discoverBusinessesQuerySchema,
   updateBusinessBodySchema,
 } from "restaurant-pos-packages/schemas/business";
@@ -52,30 +53,116 @@ describe("businessAddressSchema", () => {
   });
 });
 
+describe("createBusinessBodySchema", () => {
+  const validCreate = {
+    tradeName: "Cafe Demo",
+    currencyTrade: "USD",
+    country: "USA",
+  };
+
+  it("accepts the minimum onboarding set with no Company choice", () => {
+    expect(createBusinessBodySchema.safeParse(validCreate).success).toBe(true);
+  });
+
+  it("accepts exactly one Company choice", () => {
+    expect(
+      createBusinessBodySchema.safeParse({
+        ...validCreate,
+        companyId: VALID_ID,
+      }).success,
+    ).toBe(true);
+    expect(
+      createBusinessBodySchema.safeParse({
+        ...validCreate,
+        company: { legalName: "Cafe Demo LLC", taxNumber: "TAX-001" },
+      }).success,
+    ).toBe(true);
+    expect(
+      createBusinessBodySchema.safeParse({
+        ...validCreate,
+        company: {},
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects both Company choices together", () => {
+    const result = createBusinessBodySchema.safeParse({
+      ...validCreate,
+      companyId: VALID_ID,
+      company: { legalName: "Cafe Demo LLC" },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("requires trade name, currency and country", () => {
+    for (const key of Object.keys(validCreate)) {
+      const copy: Record<string, unknown> = { ...validCreate };
+      delete copy[key];
+      expect(createBusinessBodySchema.safeParse(copy).success, key).toBe(false);
+    }
+    expect(
+      createBusinessBodySchema.safeParse({
+        ...validCreate,
+        currencyTrade: "BTC",
+      }).success,
+    ).toBe(false);
+    expect(
+      createBusinessBodySchema.safeParse({ ...validCreate, country: "  " })
+        .success,
+    ).toBe(false);
+  });
+
+  it("rejects server-owned fields and credentials", () => {
+    for (const override of [
+      { legalName: "Venue LLC" },
+      { taxNumber: "TAX-001" },
+      { email: "venue@example.com" },
+      { subscription: "Pro" },
+      { averageRating: 5 },
+      { timezone: "UTC" },
+    ]) {
+      expect(
+        createBusinessBodySchema.safeParse({ ...validCreate, ...override })
+          .success,
+      ).toBe(false);
+    }
+  });
+});
+
 describe("updateBusinessBodySchema", () => {
   const validUpdate = {
     tradeName: "Cafe Demo",
-    legalName: "Cafe Demo LLC",
     phoneNumber: "1234567890",
-    taxNumber: "TAX-001",
     subscription: "Free",
     currencyTrade: "USD",
     address: JSON.stringify(validAddress),
   };
 
-  it("requires the identity fields", () => {
-    expect(updateBusinessBodySchema.safeParse(validUpdate).success).toBe(true);
-
-    const { legalName: _drop, ...withoutLegalName } = validUpdate;
-    expect(updateBusinessBodySchema.safeParse(withoutLegalName).success).toBe(
-      false,
+  it("treats every field as optional", () => {
+    const parsed = updateBusinessBodySchema.parse({});
+    expect(parsed).toEqual({});
+    expect(updateBusinessBodySchema.parse({ tradeName: "Cafe" }).tradeName).toBe(
+      "Cafe",
     );
+
+    const parsedFull = updateBusinessBodySchema.parse(validUpdate);
+    expect(parsedFull.metrics).toBeUndefined();
+    expect(parsedFull.reportingConfig).toBeUndefined();
   });
 
-  it("treats every other field as optional", () => {
-    const parsed = updateBusinessBodySchema.parse(validUpdate);
-    expect(parsed.metrics).toBeUndefined();
-    expect(parsed.reportingConfig).toBeUndefined();
+  it("no longer accepts legal name or tax number", () => {
+    expect(
+      updateBusinessBodySchema.safeParse({
+        ...validUpdate,
+        legalName: "Cafe Demo LLC",
+      }).success,
+    ).toBe(false);
+    expect(
+      updateBusinessBodySchema.safeParse({
+        ...validUpdate,
+        taxNumber: "TAX-001",
+      }).success,
+    ).toBe(false);
   });
 
   it.each([

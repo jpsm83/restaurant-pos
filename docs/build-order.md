@@ -93,6 +93,7 @@ Stand up who people are, what access they hold, and the shared customer surface.
 | [ ] | 1.7 | Wire verify / reset / business-contact verify to the Phase 0 email rail, in the recipient's language preference with English fallback | [emails](product/emails.md) (which messages and language), [users](product/users.md) (language preference), [business](product/business.md) (contact email verify) |
 | [ ] | 1.8 | Inbox UI against the Phase 0 notification rail | [notifications](product/notifications.md) |
 | [ ] | 1.9 | Shared auth entry and post-auth landing: plain `/login` and `/signup` (no audience-scoped auth URLs), safe internal `returnTo`, and verified Google origin + COOP hosting setup; no business-specific sign-up | [users](product/users.md), [user-navigation](product/user-navigation.md) |
+| [ ] | 1.10 | Sign-in email change: re-authenticate with password or Google, confirm the new address, cooldown, notify the old address, enforce active-account uniqueness, revoke other sessions | [users](product/users.md) (§3.7), [emails](product/emails.md) |
 
 **Exit criteria:** a user can register, sign in with email/password or Google, hold identity and access layers, and use the customer chrome; no venue exists yet. The public Business marketing page advertises the product but routes to the same shared auth entry.
 

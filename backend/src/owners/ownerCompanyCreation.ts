@@ -23,7 +23,7 @@ import { runTxnWithTransientRetry } from "../mongo/runTxnWithTransientRetry.ts";
  */
 export type BusinessCreationInput = Omit<
   IBusiness,
-  "_id" | "companyId" | "deleted" | "deletedAt" | "deletedBy"
+  "_id" | "companyId" | "subscription" | "deleted" | "deletedAt" | "deletedBy"
 > & {
   _id: Types.ObjectId | string;
 };
@@ -47,8 +47,8 @@ export type OwnerCompanyCreationResult = {
   business: HydratedDocument<IBusiness>;
 };
 
-function requiredCountry(country: string): string {
-  const trimmed = country.trim();
+function requiredCountry(country?: string): string {
+  const trimmed = country?.trim() ?? "";
   if (!trimmed) {
     throw new Error("Business address country is required!");
   }
@@ -111,7 +111,7 @@ const ownerCompanyCreation = async (
       };
     }
 
-    const country = requiredCountry(input.business.address.country);
+    const country = requiredCountry(input.business.address?.country);
 
     let owner = await Owner.findOne({ userId: input.userId }).session(session);
     if (!owner) {

@@ -55,7 +55,7 @@ describe("Soft-delete contracts", () => {
     { label: "Owner user", model: Owner, key: { userId: 1 }, partial: activeOnly },
     { label: "Company legalName", model: Company, key: { country: 1, legalName: 1 }, partial: { deleted: false, legalName: { $type: "string" } } },
     { label: "Company taxNumber", model: Company, key: { country: 1, taxNumber: 1 }, partial: { deleted: false, taxNumber: { $type: "string" } } },
-    { label: "Business taxNumber", model: Business, key: { taxNumber: 1 }, partial: activeOnly },
+    { label: "Business taxNumber", model: Business, key: { taxNumber: 1 }, partial: { deleted: false, taxNumber: { $type: "string" } } },
     { label: "Employee taxNumber", model: Employee, key: { taxNumber: 1 }, partial: activeOnly },
     { label: "Supplier legalName", model: Supplier, key: { businessId: 1, legalName: 1 }, partial: activeOnly },
     { label: "Supplier email", model: Supplier, key: { businessId: 1, email: 1 }, partial: activeOnly },

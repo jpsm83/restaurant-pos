@@ -71,6 +71,7 @@ interface AuthTokenResponseBody {
   accessToken?: string;
   user?: AuthSession;
   message?: string;
+  reactivationRequired?: boolean;
 }
 
 /** Many unauthenticated auth routes return `{ message }` (success, generic, or error copy). */
@@ -261,6 +262,7 @@ export async function signup(credentials: SignupCredentials) {
       data: {
         accessToken: result.data?.accessToken,
         user: result.data?.user ?? null,
+        reactivationRequired: result.data?.reactivationRequired === true,
       } satisfies AuthLoginSnapshot,
     };
   }

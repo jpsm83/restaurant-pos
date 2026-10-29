@@ -194,7 +194,10 @@ describe("soft-deleted sign-in reactivation", () => {
 
     expect(signup.statusCode).toBe(202);
     expect(signup.headers["content-type"]).toContain("application/json");
-    expect(signup.json()).toEqual({ message: REACTIVATION_REQUIRED_MESSAGE });
+    expect(signup.json()).toEqual({
+      reactivationRequired: true,
+      message: REACTIVATION_REQUIRED_MESSAGE,
+    });
 
     const pending = await User.find({ "personalDetails.email": email })
       .setOptions({ includeDeleted: true })
