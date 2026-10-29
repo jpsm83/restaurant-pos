@@ -3,7 +3,7 @@
  *
  * ## Wiring
  * - Mounted in **`main.tsx`** inside **`QueryClientProvider`** and **`ErrorBoundary`** (order documented there).
- * - **Bootstrap (once on mount):** load persisted access token → `GET /me`; else `POST /refresh` then `GET /me`; set `auth_had_session` / expired notice flags as in code.
+ * - **Bootstrap (once on mount):** load persisted access token → `GET /me`; otherwise `POST /refresh` only when a prior session exists, then `GET /me`; set `auth_had_session` / expired notice flags as in code.
  * - **Live connection:** follows the access session via `setAccessToken` in `api.ts` (open on sign-in, close on sign-out).
  * - **Consumers:** route guards, `Navbar`, login/signup pages, `AccountMenuPopover`, `SelectUserModePage`, `AuthModeContext` (reads session to enable mode query), etc.
  *
@@ -112,9 +112,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setAccessToken(null);
       }
 
+      const hadSession = localStorage.getItem("auth_had_session") === "1";
+      if (!persisted && !hadSession) {
+        // No token and no prior session: do not ask the API for a refresh.
+        // An anonymous visitor has no cookie, so the call could only 401.
+        dispatch({ type: "AUTH_CLEAR" });
+        return;
+      }
+
       const refreshResult = await refreshSession();
       if (!refreshResult.ok || !refreshResult.data?.accessToken) {
-        const hadSession = localStorage.getItem("auth_had_session") === "1";
         setAccessToken(null);
         if (hadSession) {
           sessionStorage.setItem("auth_session_expired_notice", "1");

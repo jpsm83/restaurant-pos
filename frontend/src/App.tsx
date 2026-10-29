@@ -14,7 +14,10 @@
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { AuthModeProvider } from "@/context/AuthModeContext";
 import { AppRoutes } from "@/appRoutes";
-import { getGoogleClientId } from "@/auth/google";
+import {
+  getGoogleClientId,
+  installGoogleInitializeGuard,
+} from "@/auth/google";
 
 export { AppRoutes };
 
@@ -27,7 +30,12 @@ export default function App() {
   );
 
   return clientId ? (
-    <GoogleOAuthProvider clientId={clientId}>{app}</GoogleOAuthProvider>
+    <GoogleOAuthProvider
+      clientId={clientId}
+      onScriptLoadSuccess={installGoogleInitializeGuard}
+    >
+      {app}
+    </GoogleOAuthProvider>
   ) : (
     app
   );

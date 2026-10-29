@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
@@ -36,6 +36,7 @@ vi.mock("@/appRoutes", () => ({
 
 describe("App.tsx", () => {
   beforeEach(() => {
+    localStorage.clear();
     loadPersistedAccessToken.mockReturnValue(null);
     refreshSession.mockResolvedValue({ ok: false, error: "no session" });
     vi.stubEnv("VITE_GOOGLE_CLIENT_ID", "");
@@ -43,6 +44,7 @@ describe("App.tsx", () => {
   });
 
   afterEach(() => {
+    localStorage.clear();
     vi.unstubAllEnvs();
   });
 
@@ -63,6 +65,46 @@ describe("App.tsx", () => {
 
     expect(await screen.findByTestId("routes-stub")).toBeInTheDocument();
     expect(screen.queryByTestId("google-provider")).not.toBeInTheDocument();
+  });
+
+  it("does not request a refresh for an anonymous visitor", async () => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: 0 } },
+    });
+
+    await renderWithI18n(
+      <MemoryRouter initialEntries={["/"]}>
+        <QueryClientProvider client={client}>
+          <AuthProvider>
+            <App />
+          </AuthProvider>
+        </QueryClientProvider>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId("routes-stub")).toBeInTheDocument(),
+    );
+    expect(refreshSession).not.toHaveBeenCalled();
+  });
+
+  it("requests a refresh when a prior session exists", async () => {
+    localStorage.setItem("auth_had_session", "1");
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: 0 } },
+    });
+
+    await renderWithI18n(
+      <MemoryRouter initialEntries={["/"]}>
+        <QueryClientProvider client={client}>
+          <AuthProvider>
+            <App />
+          </AuthProvider>
+        </QueryClientProvider>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(refreshSession).toHaveBeenCalledTimes(1));
   });
 
   it("mounts the Google provider when a client id is configured", async () => {

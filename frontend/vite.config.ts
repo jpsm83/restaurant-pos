@@ -17,6 +17,13 @@ export default defineConfig(({ mode }) => {
     env.SENTRY_RELEASE?.trim() ||
     "restaurant-pos-frontend@0.0.0";
 
+  // Google Identity Services keeps the popup tied to its opener through
+  // postMessage. The default COOP of `unsafe-none` works, but GSI only accepts
+  // the explicit `same-origin-allow-popups` value without warning.
+  const googleAuthHeaders = {
+    "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
+  };
+
   return {
     envDir: repoRoot,
     build: {
@@ -44,6 +51,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     server: {
+      headers: googleAuthHeaders,
       fs: {
         allow: [repoRoot],
       },
@@ -54,6 +62,9 @@ export default defineConfig(({ mode }) => {
           ws: true,
         },
       },
+    },
+    preview: {
+      headers: googleAuthHeaders,
     },
     test: {
       environment: "jsdom",

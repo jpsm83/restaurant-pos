@@ -102,7 +102,8 @@ describe("AuthContext", () => {
     expect(setAccessToken).toHaveBeenCalledWith("stored-jwt");
   });
 
-  it("bootstrap: no persisted token, refresh + /me success dispatches AUTH_SUCCESS", async () => {
+  it("bootstrap: prior session, refresh + /me success dispatches AUTH_SUCCESS", async () => {
+    localStorage.setItem("auth_had_session", "1");
     loadPersistedAccessToken.mockReturnValue(null);
     refreshSession.mockResolvedValue({
       ok: true,
@@ -123,7 +124,23 @@ describe("AuthContext", () => {
     expect(setAccessToken).toHaveBeenCalledWith("new-jwt");
   });
 
-  it("bootstrap: no token and refresh fails ends unauthenticated", async () => {
+  it("bootstrap: anonymous visitor does not call refresh", async () => {
+    loadPersistedAccessToken.mockReturnValue(null);
+
+    render(
+      <AuthProvider>
+        <StatusProbe />
+      </AuthProvider>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId("status")).toHaveTextContent("unauthenticated"),
+    );
+    expect(refreshSession).not.toHaveBeenCalled();
+  });
+
+  it("bootstrap: prior session refresh fails ends unauthenticated", async () => {
+    localStorage.setItem("auth_had_session", "1");
     loadPersistedAccessToken.mockReturnValue(null);
     refreshSession.mockResolvedValue({ ok: false, error: "nope" });
 
@@ -176,6 +193,7 @@ describe("AuthContext", () => {
   });
 
   it("stores the machine error code when restoring the session fails", async () => {
+    localStorage.setItem("auth_had_session", "1");
     loadPersistedAccessToken.mockReturnValue(null);
     refreshSession.mockResolvedValue({
       ok: true,
@@ -202,6 +220,7 @@ describe("AuthContext", () => {
 
   it("dispatch AUTH_CLEAR from a child updates state", async () => {
     const user = userEvent.setup();
+    localStorage.setItem("auth_had_session", "1");
     loadPersistedAccessToken.mockReturnValue(null);
     refreshSession.mockResolvedValue({
       ok: true,
