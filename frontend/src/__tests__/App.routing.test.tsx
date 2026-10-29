@@ -1,6 +1,6 @@
 import { screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppRoutes } from "@/App";
 import { renderWithI18n } from "@/test/i18nTestUtils";
 
@@ -16,6 +16,16 @@ vi.mock("@/auth/store/AuthContext", () => ({
 }));
 
 describe("App public routing (Phase 1.5.1)", () => {
+  beforeEach(() => {
+    // Routing is the subject here; keep the real env client id from mounting
+    // the Google widget without its provider.
+    vi.stubEnv("VITE_GOOGLE_CLIENT_ID", "");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it("renders `/` customer marketing when anonymous", async () => {
     await renderWithI18n(
       <MemoryRouter initialEntries={["/"]}>
