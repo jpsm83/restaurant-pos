@@ -38,6 +38,7 @@ import Business from "../../src/models/business.ts";
 import { multipart } from "../helpers/multipart.ts";
 import {
   detail,
+  errorMessages,
   errorPaths,
   isProblemDetails,
 } from "../helpers/problemDetails.ts";
@@ -84,6 +85,66 @@ describe("Users Routes", () => {
       role: "Customer",
     });
 
+  const SERVER_OWNED_FIELDS = [
+    "googleId",
+    "verificationToken",
+    "verificationTokenExpires",
+    "resetPasswordToken",
+    "resetPasswordExpires",
+    "refreshSessionVersion",
+    "notifications",
+    "selfOrders",
+    "deleted",
+    "deletedAt",
+    "deletedBy",
+  ] as const;
+
+  /** Assert a profile response carries no server-owned field. */
+  const expectNoServerOwnedFields = (profile: Record<string, unknown>) => {
+    for (const field of SERVER_OWNED_FIELDS) {
+      expect(profile, field).not.toHaveProperty(field);
+    }
+    const personalDetails = profile.personalDetails as Record<string, unknown>;
+    expect(personalDetails).not.toHaveProperty("password");
+    expect(personalDetails).not.toHaveProperty("emailVerified");
+  };
+
+  /**
+   * Seed every server-owned field, including a Google link, and prove the link
+   * persisted so the omission assertions cannot pass on an empty fixture.
+   */
+  const seedServerOwnedFields = async (
+    userId: Types.ObjectId,
+    googleId: string,
+  ) => {
+    await User.updateOne(
+      { _id: userId },
+      {
+        $set: {
+          googleId,
+          verificationToken: "verification",
+          verificationTokenExpires: new Date("2030-01-01"),
+          resetPasswordToken: "reset",
+          resetPasswordExpires: new Date("2030-01-01"),
+          refreshSessionVersion: 3,
+          notifications: [
+            {
+              notificationId: new Types.ObjectId(),
+              readFlag: false,
+              deletedFlag: false,
+            },
+          ],
+          selfOrders: [new Types.ObjectId()],
+          deletedAt: new Date("2025-01-01"),
+          deletedBy: new Types.ObjectId(),
+        },
+      },
+    );
+
+    const stored = await User.findById(userId).lean();
+    expect(stored?.googleId).toBe(googleId);
+  };
+
   describe("removed anonymous user routes", () => {
     it("no longer lists users", async () => {
       const app = await getTestApp();
@@ -125,14 +186,7 @@ describe("Users Routes", () => {
       });
       await User.updateOne(
         { _id: user._id },
-        {
-          $set: {
-            languagePreference: "es",
-            verificationToken: "token",
-            resetPasswordToken: "reset",
-            refreshSessionVersion: 2,
-          },
-        },
+        { $set: { languagePreference: "es" } },
       );
 
       const response = await app.inject({
@@ -146,16 +200,25 @@ describe("Users Routes", () => {
       expect(body._id).toBe(user._id.toString());
       expect(body.languagePreference).toBe("es");
       expect(body.personalDetails.email).toBe("getbyid@test.com");
-      expect(body.personalDetails).not.toHaveProperty("emailVerified");
       expect(body.personalDetails.address).toEqual(
         expect.objectContaining({ country: "USA", postCode: "90001" }),
       );
-      expect(body.personalDetails).not.toHaveProperty("password");
-      expect(body).not.toHaveProperty("password");
-      expect(body).not.toHaveProperty("verificationToken");
-      expect(body).not.toHaveProperty("resetPasswordToken");
-      expect(body).not.toHaveProperty("refreshSessionVersion");
-      expect(body).not.toHaveProperty("emailVerified");
+      expectNoServerOwnedFields(body);
+    });
+
+    it("omits the Google identity from the read response", async () => {
+      const app = await getTestApp();
+      const user = await createValidUser("googleget");
+      await seedServerOwnedFields(user._id, "google-subject-read");
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/users/${user._id}`,
+        headers: { authorization: await tokenFor(user) },
+      });
+
+      expect(response.statusCode, response.body).toBe(200);
+      expectNoServerOwnedFields(response.json());
     });
 
     it("returns 401 without authentication", async () => {
@@ -363,7 +426,7 @@ describe("Users Routes", () => {
         expect.objectContaining(validAddress),
       );
       expect(body.user.languagePreference).toBe("es");
-      expect(body.user.personalDetails).not.toHaveProperty("password");
+      expectNoServerOwnedFields(body.user);
       expect(
         response.cookies.find((cookie) => cookie.name === "refresh_token"),
       ).toBeUndefined();
@@ -387,6 +450,57 @@ describe("Users Routes", () => {
       });
       expect(me.statusCode).toBe(200);
       expect(me.json().user.languagePreference).toBe("es");
+    });
+
+    it("omits the Google identity from the update response", async () => {
+      const app = await getTestApp();
+      const user = await createValidUser("googlepatch");
+      await seedServerOwnedFields(user._id, "google-subject-update");
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/users/${user._id}`,
+        payload: multipart({ firstName: "Linked" }),
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: await tokenFor(user),
+        },
+      });
+
+      expect(response.statusCode, response.body).toBe(200);
+      const body = response.json();
+      expectNoServerOwnedFields(body.user);
+      expect(body.user.personalDetails.firstName).toBe("Linked");
+    });
+
+    it("rejects a googleId in the update body and leaves the link unchanged", async () => {
+      const app = await getTestApp();
+      const user = await createValidUser("googlereject");
+      await User.updateOne(
+        { _id: user._id },
+        { $set: { googleId: "google-subject-keep" } },
+      );
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/users/${user._id}`,
+        payload: multipart({
+          firstName: "Changed",
+          googleId: "attacker-subject",
+        }),
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: await tokenFor(user),
+        },
+      });
+
+      expect(response.statusCode, response.body).toBe(400);
+      expect(isProblemDetails(response)).toBe(true);
+      expect(errorMessages(response).join(" ")).toContain("googleId");
+
+      const stored = await User.findById(user._id).lean();
+      expect(stored?.googleId).toBe("google-subject-keep");
+      expect(stored?.personalDetails.firstName).toBe("Test");
     });
 
     it("clears optional fields and the address when they are sent blank", async () => {

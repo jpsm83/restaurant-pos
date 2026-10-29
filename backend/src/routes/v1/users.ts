@@ -67,11 +67,12 @@ async function uploadImage(
 const IMAGE_FIELD = "imageUrl";
 
 /**
- * Fields the client profile read/write returns. The password, one-time tokens,
- * session generation, notification/order pointers, and soft-delete metadata
- * stay server-owned and never leave this module.
+ * Fields the client profile read/write returns. The Google identity, password,
+ * one-time tokens, session generation, notification/order pointers, and
+ * soft-delete metadata stay server-owned and never leave this module.
  */
 const CLIENT_PROFILE_PROJECTION = {
+  googleId: 0,
   "personalDetails.password": 0,
   "personalDetails.emailVerified": 0,
   verificationToken: 0,

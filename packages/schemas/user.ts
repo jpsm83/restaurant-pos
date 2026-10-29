@@ -2,10 +2,10 @@
  * User DTOs — the request bodies and path params the users routes accept.
  *
  * Strict (unknown keys rejected) and client-settable only: the server-owned
- * email-verified flag, `imageUrl`, `notifications`, `selfOrders`,
- * `verificationToken`, `resetPasswordToken`, `resetPasswordExpires` and
- * `refreshSessionVersion` never appear in a DTO, so a client that sends them
- * gets a `400`. The update body is consumed through the shared multipart
+ * Google identity (`googleId`), email-verified flag, `imageUrl`,
+ * `notifications`, `selfOrders`, `verificationToken`, `resetPasswordToken`,
+ * `resetPasswordExpires` and `refreshSessionVersion` never appear in a DTO, so
+ * a client that sends them gets a `400`. The update body is consumed through the shared multipart
  * helper, so the JSON-encoded `address` is parsed and validated against the
  * shared `addressSchema`; the uploaded image is collected by the helper as a
  * file, not a field. Enum values (`genderEnums`) come from `packages/enums.ts`.
