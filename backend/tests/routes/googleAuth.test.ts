@@ -12,6 +12,7 @@ import {
   beforeAll,
   afterAll,
 } from "vitest";
+import { Types } from "mongoose";
 import bcrypt from "bcrypt";
 
 const sendEmailMock = vi.hoisted(() =>
@@ -27,6 +28,9 @@ vi.mock("../../src/communications/channels/emailChannel.ts", () => ({
 }));
 
 import { buildApp } from "../../src/server.ts";
+import Business from "../../src/models/business.ts";
+import Employee from "../../src/models/employee.ts";
+import Schedule from "../../src/models/schedule.ts";
 import User from "../../src/models/user.ts";
 import {
   GoogleCredentialError,
@@ -34,6 +38,9 @@ import {
   type GoogleVerifier,
 } from "../../src/auth/google.ts";
 import { REACTIVATION_REQUIRED_MESSAGE } from "../../src/auth/requestEmailConfirmation.ts";
+import ownerCompanyCreation from "../../src/owners/ownerCompanyCreation.ts";
+import { fakeBusinessRecord } from "../helpers/fixtures.ts";
+import { multipart } from "../helpers/multipart.ts";
 
 const password = "TestPassword123!";
 
@@ -82,6 +89,42 @@ async function postGoogle(
     method: "POST",
     url: "/api/v1/auth/google",
     payload,
+  });
+}
+
+function refreshCookieFrom(
+  response: Awaited<ReturnType<typeof postGoogle>>,
+): string {
+  const cookie = response.cookies.find(
+    (candidate) => candidate.name === "refresh_token",
+  );
+  if (!cookie?.value) throw new Error("response did not set a refresh cookie");
+  return cookie.value;
+}
+
+async function createBusiness(label: string) {
+  return Business.create({
+    ...fakeBusinessRecord({ country: "USA" }),
+    tradeName: `${label} Venue`,
+    legalName: `${label} Venue Legal`,
+    email: `${label}-venue@test.com`,
+  });
+}
+
+async function createEmployee(
+  businessId: Types.ObjectId,
+  userId: Types.ObjectId,
+  role: string,
+) {
+  return Employee.create({
+    businessId,
+    userId,
+    taxNumber: `EMP-${role}-${userId}`,
+    joinDate: new Date(),
+    vacationDaysPerYear: 20,
+    allEmployeeRoles: [role],
+    currentShiftRole: role,
+    active: true,
   });
 }
 
@@ -352,5 +395,245 @@ describe("POST /api/v1/auth/google", () => {
     } finally {
       await unconfiguredApp.close();
     }
+  });
+
+  describe("cross-slice identity regression", () => {
+    it("keeps a Google-created User's saved language across refresh and /me", async () => {
+      const created = await postGoogle(app, {
+        credential: "google-id-token",
+        languagePreference: "en",
+      });
+      expect(created.statusCode).toBe(201);
+      expect(created.json().user.languagePreference).toBe("en");
+      const userId = created.json().user.id as string;
+      const accessToken = created.json().accessToken as string;
+      const refreshCookie = refreshCookieFrom(created);
+
+      const saved = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/users/${userId}`,
+        payload: multipart({ languagePreference: "es" }),
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: `Bearer ${accessToken}`,
+        },
+      });
+      expect(saved.statusCode, saved.body).toBe(200);
+
+      const refreshed = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/refresh",
+        headers: { cookie: `refresh_token=${refreshCookie}` },
+      });
+      expect(refreshed.statusCode).toBe(200);
+      expect(refreshed.json().user.languagePreference).toBe("es");
+
+      const me = await app.inject({
+        method: "GET",
+        url: "/api/v1/auth/me",
+        headers: { authorization: `Bearer ${accessToken}` },
+      });
+      expect(me.statusCode).toBe(200);
+      expect(me.json().user.languagePreference).toBe("es");
+    });
+
+    it("keeps the existing language and profile when Google links to a password account", async () => {
+      const existing = await User.create({
+        languagePreference: "en",
+        personalDetails: {
+          email: defaultIdentity.email,
+          password: await bcrypt.hash(password, 10),
+          firstName: "Ada",
+          lastName: "Lovelace",
+          username: "adalovelace",
+          phoneNumber: "9876543210",
+          birthDate: new Date("1990-01-01"),
+          gender: "Woman",
+          nationality: "USA",
+          address: {
+            country: "USA",
+            state: "CA",
+            city: "LA",
+            street: "Main St",
+            buildingNumber: "123",
+            postCode: "90001",
+          },
+        },
+      });
+
+      const linked = await postGoogle(app);
+      expect(linked.statusCode).toBe(200);
+      expect(linked.json().user.id).toBe(String(existing._id));
+      expect(await User.countDocuments()).toBe(1);
+      const accessToken = linked.json().accessToken as string;
+
+      const stored = await User.findById(existing._id).lean();
+      expect(stored?.googleId).toBe(defaultIdentity.subject);
+      expect(stored?.personalDetails?.emailVerified).toBe(true);
+      expect(stored?.languagePreference).toBe("en");
+      expect(stored?.personalDetails?.firstName).toBe("Ada");
+      expect(stored?.personalDetails?.lastName).toBe("Lovelace");
+      expect(stored?.personalDetails?.username).toBe("adalovelace");
+      expect(stored?.personalDetails?.phoneNumber).toBe("9876543210");
+
+      const profile = await app.inject({
+        method: "GET",
+        url: `/api/v1/users/${existing._id}`,
+        headers: { authorization: `Bearer ${accessToken}` },
+      });
+      expect(profile.statusCode, profile.body).toBe(200);
+      expect(profile.json().languagePreference).toBe("en");
+      expect(profile.json().personalDetails).toMatchObject({
+        email: defaultIdentity.email,
+        firstName: "Ada",
+        lastName: "Lovelace",
+        username: "adalovelace",
+        phoneNumber: "9876543210",
+      });
+    });
+
+    it("lets a Google-created Owner enter Business mode through Owner → Company → Business", async () => {
+      const created = await postGoogle(app);
+      expect(created.statusCode).toBe(201);
+      const userId = created.json().user.id as string;
+      const accessToken = created.json().accessToken as string;
+
+      const venue = await ownerCompanyCreation({
+        userId,
+        business: {
+          ...fakeBusinessRecord({ country: "USA" }),
+          _id: new Types.ObjectId(),
+        },
+      });
+      expect(venue.owner.userId.toString()).toBe(userId);
+      expect(venue.company.ownerId.toString()).toBe(
+        venue.owner._id.toString(),
+      );
+      expect(venue.business.companyId?.toString()).toBe(
+        venue.company._id.toString(),
+      );
+
+      const setMode = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/set-mode",
+        headers: { authorization: `Bearer ${accessToken}` },
+        payload: { mode: "business" },
+      });
+      expect(setMode.statusCode, setMode.body).toBe(200);
+      expect(setMode.json().mode).toBe("business");
+    });
+
+    it("resolves a Google-created Employee membership and its management role gate", async () => {
+      const created = await postGoogle(app);
+      expect(created.statusCode).toBe(201);
+      const userId = created.json().user.id as string;
+      const accessToken = created.json().accessToken as string;
+
+      const business = await createBusiness("google-created-employee");
+      const employee = await createEmployee(
+        business._id,
+        new Types.ObjectId(userId),
+        "Manager",
+      );
+
+      const me = await app.inject({
+        method: "GET",
+        url: "/api/v1/auth/me",
+        headers: { authorization: `Bearer ${accessToken}` },
+      });
+      expect(me.statusCode).toBe(200);
+      expect(me.json().user).toMatchObject({
+        id: userId,
+        employeeId: String(employee._id),
+        businessId: String(business._id),
+        canLogAsEmployee: true,
+        role: "Manager",
+      });
+
+      const setMode = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/set-mode",
+        headers: { authorization: `Bearer ${accessToken}` },
+        payload: { mode: "business" },
+      });
+      expect(setMode.statusCode, setMode.body).toBe(200);
+      expect(setMode.json().mode).toBe("business");
+    });
+
+    it("applies the existing role and schedule gate to a Google-linked Employee", async () => {
+      const existing = await User.create({
+        languagePreference: "en",
+        personalDetails: {
+          email: defaultIdentity.email,
+          password: await bcrypt.hash(password, 10),
+          firstName: "Linked",
+          lastName: "Waiter",
+        },
+      });
+      const business = await createBusiness("google-linked-employee");
+      const employee = await createEmployee(business._id, existing._id, "Waiter");
+
+      const linked = await postGoogle(app);
+      expect(linked.statusCode).toBe(200);
+      expect(linked.json().user.id).toBe(String(existing._id));
+      const accessToken = linked.json().accessToken as string;
+
+      const before = await app.inject({
+        method: "GET",
+        url: "/api/v1/auth/me",
+        headers: { authorization: `Bearer ${accessToken}` },
+      });
+      expect(before.statusCode).toBe(200);
+      expect(before.json().user).toMatchObject({
+        employeeId: String(employee._id),
+        businessId: String(business._id),
+        canLogAsEmployee: false,
+        role: "Waiter",
+      });
+
+      const blocked = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/set-mode",
+        headers: { authorization: `Bearer ${accessToken}` },
+        payload: { mode: "business" },
+      });
+      expect(blocked.statusCode).toBe(403);
+
+      const now = new Date();
+      await Schedule.create({
+        businessId: business._id,
+        date: now,
+        weekNumber: 1,
+        employeesSchedules: [
+          {
+            employeeId: employee._id,
+            role: "Waiter",
+            timeRange: {
+              startTime: new Date(now.getTime() - 60 * 60 * 1000),
+              endTime: new Date(now.getTime() + 60 * 60 * 1000),
+            },
+            shiftHours: 2,
+            employeeCost: 30,
+          },
+        ],
+      });
+
+      const after = await app.inject({
+        method: "GET",
+        url: "/api/v1/auth/me",
+        headers: { authorization: `Bearer ${accessToken}` },
+      });
+      expect(after.statusCode).toBe(200);
+      expect(after.json().user.canLogAsEmployee).toBe(true);
+
+      const allowed = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/set-mode",
+        headers: { authorization: `Bearer ${accessToken}` },
+        payload: { mode: "business" },
+      });
+      expect(allowed.statusCode, allowed.body).toBe(200);
+      expect(allowed.json().mode).toBe("business");
+    });
   });
 });
