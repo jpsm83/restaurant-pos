@@ -5,9 +5,6 @@
 
 interface GoogleCredentialResponse {
   credential?: string;
-  select_by?: string;
-  clientId?: string;
-  client_id?: string;
 }
 
 interface GoogleIdConfiguration {
@@ -41,28 +38,30 @@ export function getGoogleClientId(): string | null {
 let patchedIdApi: GoogleIdApi | null = null;
 
 /**
- * Make `google.accounts.id.initialize` idempotent for one client id.
+ * Make `google.accounts.id.initialize` idempotent for identical configuration.
  *
  * `@react-oauth/google` calls initialize on every mount (including React
  * StrictMode's deliberate double mount), while Google Identity Services only
  * supports one initialization and logs a warning for each repeat. Keep the
  * first initialization and forward the latest callback so remounts keep the
- * current handler without re-initializing the provider.
+ * current handler; a genuinely different configuration still initializes.
  */
 export function installGoogleInitializeGuard(): void {
   const idApi = window.google?.accounts?.id;
   if (!idApi || idApi === patchedIdApi) return;
 
   const originalInitialize = idApi.initialize.bind(idApi);
-  let activeClientId: string | null = null;
+  let activeConfigKey: string | null = null;
   let activeCallback: GoogleIdConfiguration["callback"];
 
   idApi.initialize = (config) => {
     activeCallback = config.callback ?? activeCallback;
 
-    const clientId = config.client_id ?? null;
-    if (clientId === activeClientId) return;
-    activeClientId = clientId;
+    const rest = { ...config };
+    delete rest.callback;
+    const configKey = JSON.stringify(rest);
+    if (configKey === activeConfigKey) return;
+    activeConfigKey = configKey;
 
     originalInitialize({
       ...config,

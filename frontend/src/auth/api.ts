@@ -12,7 +12,7 @@
  * - **`logout`** clears token and **`queryClient.removeQueries`** for `auth.mode` (TanStack cache); broader invalidation can be added here if needed.
  * - **`setAccessToken`** opens the live connection with the access session just received, and closes it when the token is cleared.
  *
- * **401 handling:** `authRequest` retries once after **`refreshSession`** (except when `retryOnUnauthorized` is false for login/signup/refresh/logout).
+ * **401 handling:** `authRequest` retries once after **`refreshSession`** when the client still holds a token or a prior-session hint (except when `retryOnUnauthorized` is false for login/signup/refresh/logout).
  */
 import { useQuery } from "@tanstack/react-query";
 import type { IAuthConfigResponse } from "restaurant-pos-packages/interfaces/IAuth";
@@ -34,6 +34,7 @@ import {
 } from "@/services/serviceErrors";
 import { syncLiveConnection } from "@/live/connection";
 import { resolveApiBaseUrl } from "@/services/apiBaseUrl";
+import { hasPriorSession } from "./sessionHint";
 
 const ACCESS_TOKEN_STORAGE_KEY = "restaurant_pos_auth_access";
 
@@ -122,7 +123,11 @@ async function authRequest<T>(
 
     const payload = await parseJson<{ message?: string } & T>(response);
 
-    if (response.status === 401 && retryOnUnauthorized) {
+    if (
+      response.status === 401 &&
+      retryOnUnauthorized &&
+      (accessToken !== null || hasPriorSession())
+    ) {
       const refreshed = await refreshSession();
 
       if (refreshed.ok) {

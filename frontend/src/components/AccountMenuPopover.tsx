@@ -3,6 +3,7 @@ import { User } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import type { AuthSession } from "@/auth/types";
 import { logout, setAccessToken } from "@/auth/api";
+import { clearPriorSession } from "@/auth/sessionHint";
 import { useAuth } from "@/auth/store/AuthContext";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { isThemeMode, useTheme } from "@/hooks/useTheme";
@@ -59,7 +60,7 @@ export function AccountMenuPopover({ session }: AccountMenuPopoverProps) {
   const handleLogout = async () => {
     await logout();
     setAccessToken(null);
-    localStorage.removeItem("auth_had_session");
+    clearPriorSession();
     dispatch({ type: "AUTH_CLEAR" });
     navigate("/", { replace: true });
   };

@@ -142,7 +142,10 @@ describe("AuthContext", () => {
   it("bootstrap: prior session refresh fails ends unauthenticated", async () => {
     localStorage.setItem("auth_had_session", "1");
     loadPersistedAccessToken.mockReturnValue(null);
-    refreshSession.mockResolvedValue({ ok: false, error: "nope" });
+    refreshSession.mockResolvedValue({
+      ok: false,
+      error: { code: "session.transport" },
+    });
 
     render(
       <AuthProvider>
@@ -174,10 +177,13 @@ describe("AuthContext", () => {
     });
   });
 
-  it("bootstrap: refresh had session flag sets expired notice when refresh fails", async () => {
+  it("bootstrap: unauthorized refresh clears the hint and shows the expired notice", async () => {
     localStorage.setItem("auth_had_session", "1");
     loadPersistedAccessToken.mockReturnValue(null);
-    refreshSession.mockResolvedValue({ ok: false, error: "expired" });
+    refreshSession.mockResolvedValue({
+      ok: false,
+      error: { code: "session.unauthorized", status: 401 },
+    });
 
     render(
       <AuthProvider>
@@ -190,6 +196,27 @@ describe("AuthContext", () => {
     );
     expect(sessionStorage.getItem("auth_session_expired_notice")).toBe("1");
     expect(localStorage.getItem("auth_had_session")).toBeNull();
+  });
+
+  it("bootstrap: transient refresh failure keeps the hint for the next load", async () => {
+    localStorage.setItem("auth_had_session", "1");
+    loadPersistedAccessToken.mockReturnValue(null);
+    refreshSession.mockResolvedValue({
+      ok: false,
+      error: { code: "session.transport" },
+    });
+
+    render(
+      <AuthProvider>
+        <StatusProbe />
+      </AuthProvider>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId("status")).toHaveTextContent("unauthenticated"),
+    );
+    expect(sessionStorage.getItem("auth_session_expired_notice")).toBeNull();
+    expect(localStorage.getItem("auth_had_session")).toBe("1");
   });
 
   it("stores the machine error code when restoring the session fails", async () => {

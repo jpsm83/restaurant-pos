@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   confirmEmail,
   getAuthConfig,
+  getCurrentUser,
   googleAuth,
   login,
   requestEmailConfirmation,
@@ -41,6 +42,8 @@ describe("auth api — email / password-reset endpoints", () => {
   const fetchMock = vi.fn<typeof fetch>();
 
   beforeEach(() => {
+    localStorage.clear();
+    setAccessToken(null);
     fetchMock.mockReset();
     vi.stubGlobal("fetch", fetchMock);
     // Keep the live-ticket exchange out of these HTTP-contract assertions.
@@ -69,6 +72,37 @@ describe("auth api — email / password-reset endpoints", () => {
       code: "signIn.unauthorized",
       status: 401,
       serverMessage: "Invalid email or password",
+    });
+  });
+
+  it("does not try to refresh an anonymous 401", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ message: "Unauthorized" }, 401),
+    );
+
+    const result = await getCurrentUser();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expectFailure(result, { code: "session.unauthorized", status: 401 });
+  });
+
+  it("refreshes once and retries when a prior session exists", async () => {
+    localStorage.setItem("auth_had_session", "1");
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({ message: "Unauthorized" }, 401))
+      .mockResolvedValueOnce(jsonResponse({ accessToken: "new-jwt" }))
+      .mockResolvedValueOnce(
+        jsonResponse({
+          user: { id: "u1", email: "user@example.com", type: "user" },
+        }),
+      );
+
+    const result = await getCurrentUser();
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(result).toEqual({
+      ok: true,
+      data: { id: "u1", email: "user@example.com", type: "user" },
     });
   });
 

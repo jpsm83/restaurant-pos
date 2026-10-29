@@ -102,6 +102,18 @@ are reported; handled API `4xx` failures are not.
 
 Only `VITE_`-prefixed variables are exposed to client code.
 
+### Google sign-in
+
+- `VITE_GOOGLE_CLIENT_ID` must be the same OAuth Web client ID as the backend
+  `GOOGLE_CLIENT_ID`; a mismatch makes the backend reject every token.
+- Add every frontend origin that renders the Google button to the client's
+  **Authorized JavaScript origins** (scheme + host + port, no path), e.g.
+  `http://localhost:5173`. A missing origin returns `403 origin is not allowed`.
+- Google Identity Services needs `Cross-Origin-Opener-Policy:
+  same-origin-allow-popups` so its popup can keep the opener for `postMessage`.
+  Vite sets it for `dev` and `preview`; a production static host must set the
+  same header on the HTML response.
+
 ## Scripts
 
 | Command | What it does |

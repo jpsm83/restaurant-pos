@@ -7,6 +7,7 @@ import {
 type Initialize = (config: {
   client_id?: string;
   callback?: (response: { credential?: string }) => void;
+  [key: string]: unknown;
 }) => void;
 
 function buildFakeGoogle() {
@@ -60,6 +61,24 @@ describe("installGoogleInitializeGuard", () => {
 
     expect(initialize).toHaveBeenCalledTimes(2);
     expect(initialize.mock.calls[1]?.[0].client_id).toBe("client-b");
+  });
+
+  it("initializes again when a non-callback option changes", () => {
+    const { initialize } = buildFakeGoogle();
+
+    installGoogleInitializeGuard();
+
+    window.google?.accounts?.id?.initialize({
+      client_id: "client-a",
+      login_hint: "first@example.com",
+    });
+    window.google?.accounts?.id?.initialize({
+      client_id: "client-a",
+      login_hint: "second@example.com",
+    });
+
+    expect(initialize).toHaveBeenCalledTimes(2);
+    expect(initialize.mock.calls[1]?.[0].login_hint).toBe("second@example.com");
   });
 
   it("is a no-op when the Google script has not loaded", () => {

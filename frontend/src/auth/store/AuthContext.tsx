@@ -29,6 +29,11 @@ import {
   setAccessToken,
 } from "../api";
 import type { AuthSession, AuthState } from "../types";
+import {
+  clearPriorSession,
+  hasPriorSession,
+  markPriorSession,
+} from "../sessionHint";
 import type { ServiceErrorCode } from "@/services/serviceErrors";
 import { isSupportedLanguage } from "@/i18n/config";
 import { changeAppLanguage } from "@/i18n/i18n";
@@ -105,14 +110,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setAccessToken(persisted);
         const meFromStorage = await getCurrentUser();
         if (meFromStorage.ok && meFromStorage.data) {
-          localStorage.setItem("auth_had_session", "1");
+          markPriorSession();
           dispatch({ type: "AUTH_SUCCESS", payload: meFromStorage.data });
           return;
         }
         setAccessToken(null);
       }
 
-      const hadSession = localStorage.getItem("auth_had_session") === "1";
+      const hadSession = hasPriorSession();
       if (!persisted && !hadSession) {
         // No token and no prior session: do not ask the API for a refresh.
         // An anonymous visitor has no cookie, so the call could only 401.
@@ -123,9 +128,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const refreshResult = await refreshSession();
       if (!refreshResult.ok || !refreshResult.data?.accessToken) {
         setAccessToken(null);
-        if (hadSession) {
+        // Only an authentication failure ends the prior session. A transport
+        // or server failure keeps the hint so the next load can retry.
+        if (
+          hadSession &&
+          !refreshResult.ok &&
+          refreshResult.error.code.endsWith(".unauthorized")
+        ) {
           sessionStorage.setItem("auth_session_expired_notice", "1");
-          localStorage.removeItem("auth_had_session");
+          clearPriorSession();
         }
         dispatch({ type: "AUTH_CLEAR" });
         return;
@@ -136,7 +147,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const meResult = await getCurrentUser();
       if (!meResult.ok || !meResult.data) {
         setAccessToken(null);
-        localStorage.removeItem("auth_had_session");
+        if (meResult.ok || meResult.error.code.endsWith(".unauthorized")) {
+          clearPriorSession();
+        }
         dispatch({
           type: "AUTH_ERROR",
           payload: meResult.ok
@@ -146,7 +159,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      localStorage.setItem("auth_had_session", "1");
+      markPriorSession();
       dispatch({ type: "AUTH_SUCCESS", payload: meResult.data });
     };
 

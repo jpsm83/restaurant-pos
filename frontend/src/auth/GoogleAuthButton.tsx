@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { googleAuth, useAuthConfigQuery } from "@/auth/api";
 import { getGoogleClientId } from "@/auth/google";
 import { getPostLoginDestination } from "@/auth/postLoginRedirect";
+import { markPriorSession } from "@/auth/sessionHint";
 import { useAuth } from "@/auth/store/AuthContext";
 import { isSupportedLanguage } from "@/i18n/config";
 import type { ErrorFailure } from "@/i18n/errorCopy";
@@ -77,7 +78,7 @@ function EnabledGoogleAuthButton({ onFailure }: GoogleAuthButtonProps) {
       return;
     }
 
-    localStorage.setItem("auth_had_session", "1");
+    markPriorSession();
     const sessionUser = result.data.user;
     dispatch({ type: "AUTH_SUCCESS", payload: sessionUser });
     if (sessionUser.emailVerified === false) {

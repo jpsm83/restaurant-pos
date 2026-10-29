@@ -38,7 +38,10 @@ describe("App.tsx", () => {
   beforeEach(() => {
     localStorage.clear();
     loadPersistedAccessToken.mockReturnValue(null);
-    refreshSession.mockResolvedValue({ ok: false, error: "no session" });
+    refreshSession.mockResolvedValue({
+      ok: false,
+      error: { code: "session.unauthorized", status: 401 },
+    });
     vi.stubEnv("VITE_GOOGLE_CLIENT_ID", "");
     vi.clearAllMocks();
   });

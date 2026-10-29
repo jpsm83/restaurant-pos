@@ -6,6 +6,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { z } from "zod";
 import { signup } from "@/auth/api";
+import { markPriorSession } from "@/auth/sessionHint";
 import { GoogleAuthButton } from "@/auth/GoogleAuthButton";
 import { useErrorMessage, type ErrorFailure } from "@/i18n/errorCopy";
 import { getPostLoginDestination } from "@/auth/postLoginRedirect";
@@ -108,7 +109,7 @@ export default function SignUpPage() {
       return;
     }
 
-    localStorage.setItem("auth_had_session", "1");
+    markPriorSession();
     const sessionUser = result.data.user;
     dispatch({ type: "AUTH_SUCCESS", payload: sessionUser });
     if (sessionUser.emailVerified === false) {
