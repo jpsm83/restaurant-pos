@@ -11,6 +11,7 @@ export const CONFIRM_EMAIL_CHANGE_SUCCESS_MESSAGE =
 export type ConfirmEmailChangeResult =
   | { kind: "success_200"; message: string }
   | { kind: "client_error"; message: string }
+  | { kind: "email_taken" }
   | { kind: "server_error_500"; message: string };
 
 /**
@@ -59,26 +60,38 @@ export async function handleConfirmEmailChange(
       pending.personalDetails?.firstName?.trim() ||
       undefined;
 
-    const promoted = await User.updateOne(
-      withSoftDeleteFilter({
-        _id: pending._id,
-        pendingEmailToken,
-        pendingEmailExpires: { $gt: now },
-      }),
-      {
-        $set: {
-          "personalDetails.email": newEmail,
-          "personalDetails.emailVerified": true,
+    let promoted: { matchedCount: number };
+    try {
+      promoted = await User.updateOne(
+        withSoftDeleteFilter({
+          _id: pending._id,
+          pendingEmailToken,
+          pendingEmailExpires: { $gt: now },
+        }),
+        {
+          $set: {
+            "personalDetails.email": newEmail,
+            "personalDetails.emailVerified": true,
+          },
+          $unset: {
+            pendingEmail: "",
+            pendingEmailToken: "",
+            pendingEmailExpires: "",
+            pendingEmailRequestedAt: "",
+          },
+          $inc: { refreshSessionVersion: 1 },
         },
-        $unset: {
-          pendingEmail: "",
-          pendingEmailToken: "",
-          pendingEmailExpires: "",
-          pendingEmailRequestedAt: "",
-        },
-        $inc: { refreshSessionVersion: 1 },
-      },
-    );
+      );
+    } catch (error) {
+      // The new address became active for another account between request and
+      // confirmation. Drop the dead pending link so the owner can request again
+      // from the still-valid old address.
+      if (isDuplicateKeyError(error)) {
+        await clearPendingChange(pending._id, pendingEmailToken);
+        return { kind: "email_taken" };
+      }
+      throw error;
+    }
 
     if (promoted.matchedCount === 0) {
       return {
@@ -118,5 +131,36 @@ export async function handleConfirmEmailChange(
       kind: "server_error_500",
       message: "Unable to complete this request. Please try again later.",
     };
+  }
+}
+
+function isDuplicateKeyError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: unknown }).code === 11000
+  );
+}
+
+/** Best-effort removal of a pending link that can no longer be promoted. */
+async function clearPendingChange(
+  userId: unknown,
+  pendingEmailToken: string,
+): Promise<void> {
+  try {
+    await User.updateOne(
+      withSoftDeleteFilter({ _id: userId, pendingEmailToken }),
+      {
+        $unset: {
+          pendingEmail: "",
+          pendingEmailToken: "",
+          pendingEmailExpires: "",
+          pendingEmailRequestedAt: "",
+        },
+      },
+    );
+  } catch {
+    // The request path can replace the pending link on the next attempt anyway.
   }
 }

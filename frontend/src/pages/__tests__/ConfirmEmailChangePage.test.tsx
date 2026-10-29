@@ -1,3 +1,4 @@
+import { StrictMode } from "react";
 import { screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { renderWithI18n } from "@/test/i18nTestUtils";
@@ -92,6 +93,36 @@ describe("ConfirmEmailChangePage", () => {
     expect(mockSetAccessToken).toHaveBeenCalledWith(null);
     expect(localStorage.getItem("auth_had_session")).toBeNull();
     expect(mockDispatch).toHaveBeenCalledWith({ type: "AUTH_CLEAR" });
+  });
+
+  it("completes once under StrictMode double-invocation", async () => {
+    mockConfirmEmailChange.mockResolvedValue({
+      ok: true,
+      data: { message: "Your sign-in email has been updated." },
+    });
+
+    await renderWithI18n(
+      <StrictMode>
+        <MemoryRouter initialEntries={["/confirm-email-change?token=secret-token"]}>
+          <Routes>
+            <Route
+              path="/confirm-email-change"
+              element={<ConfirmEmailChangePage />}
+            />
+            <Route path="/login" element={<LoginStub />} />
+          </Routes>
+        </MemoryRouter>
+      </StrictMode>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "Your sign-in email has been updated. Please sign in again.",
+        ),
+      ).toBeInTheDocument();
+    });
+    expect(mockConfirmEmailChange).toHaveBeenCalledTimes(1);
   });
 
   it("shows the same non-revealing outcome for an invalid or expired token", async () => {

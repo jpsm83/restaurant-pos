@@ -350,6 +350,9 @@ export const authRoutes: FastifyPluginAsync<AuthRoutesOptions> = async (
       if (result.kind === "client_error") {
         throw badRequest(result.message);
       }
+      if (result.kind === "email_taken") {
+        throw conflict("That email is already used by another account.");
+      }
       if (result.kind === "server_error_500") {
         throw internal(result.message);
       }

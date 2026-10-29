@@ -36,16 +36,25 @@ export default function ConfirmEmailChangePage() {
   );
   const [failure, setFailure] = useState<ErrorFailure | null>(null);
   const resolveError = useErrorMessage();
-  const hasConfirmed = useRef(false);
+  // StrictMode runs the effect twice; reuse the one request so the second run
+  // can still observe its outcome after the first run's cleanup.
+  const confirmation = useRef<{
+    token: string;
+    promise: ReturnType<typeof confirmEmailChange>;
+  } | null>(null);
 
   useEffect(() => {
-    if (!token || hasConfirmed.current) return;
-    hasConfirmed.current = true;
-
+    if (!token) return;
     let cancelled = false;
 
-    const confirm = async () => {
-      const result = await confirmEmailChange(token);
+    if (confirmation.current?.token !== token) {
+      confirmation.current = {
+        token,
+        promise: confirmEmailChange(token),
+      };
+    }
+
+    void confirmation.current.promise.then((result) => {
       if (cancelled) return;
 
       if (result.ok) {
@@ -61,9 +70,8 @@ export default function ConfirmEmailChangePage() {
 
       setFailure(result.error);
       setStatus("failure");
-    };
+    });
 
-    void confirm();
     return () => {
       cancelled = true;
     };

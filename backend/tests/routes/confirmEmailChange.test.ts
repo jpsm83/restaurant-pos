@@ -249,6 +249,33 @@ describe("POST /api/v1/auth/confirm-email-change", () => {
     expect(sendEmailMock).toHaveBeenCalledTimes(1);
   });
 
+  it("returns a conflict and clears the pending link when the new address became active elsewhere", async () => {
+    const app = await getTestApp();
+    const user = await createUser(oldEmail, {
+      pendingEmail: newEmail,
+      pendingEmailToken: token,
+      pendingEmailExpires: futureExpiry(),
+    });
+    await createUser(newEmail);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/confirm-email-change",
+      payload: { token },
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(JSON.parse(response.body).detail).toBe(
+      "That email is already used by another account.",
+    );
+    expect(sendEmailMock).not.toHaveBeenCalled();
+
+    const stored = await User.findById(user._id).lean();
+    expect(stored?.personalDetails.email).toBe(oldEmail);
+    expect(stored?.pendingEmail).toBeUndefined();
+    expect(stored?.pendingEmailToken).toBeUndefined();
+  });
+
   it("returns a validation error when the token is missing or blank", async () => {
     const app = await getTestApp();
 
@@ -336,7 +363,12 @@ describe("POST /api/v1/auth/confirm-email-change", () => {
 
   it("keeps the change when the notice cannot be sent", async () => {
     const app = await getTestApp();
-    sendEmailMock.mockRejectedValue(new Error("SMTP unavailable"));
+    sendEmailMock.mockResolvedValue({
+      channel: "email",
+      success: false,
+      sentCount: 0,
+      error: "SMTP unavailable",
+    });
     const user = await createUser(oldEmail, {
       pendingEmail: newEmail,
       pendingEmailToken: token,
