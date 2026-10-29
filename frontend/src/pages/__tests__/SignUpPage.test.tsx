@@ -185,7 +185,7 @@ describe("SignUpPage", () => {
     });
   });
 
-  it("maps a Google sign-up failure to localized auth copy", async () => {
+  it("maps a Google email conflict to its dedicated copy", async () => {
     const user = userEvent.setup();
     mockGoogleAuth.mockResolvedValue({
       ok: false,
@@ -208,7 +208,7 @@ describe("SignUpPage", () => {
 
     expect(
       await screen.findByText(
-        "We couldn't sign you in with Google. Try again or use email and password.",
+        "This email address is linked to a different Google account. Use email and password, or sign in with the correct Google account.",
       ),
     ).toBeInTheDocument();
   });

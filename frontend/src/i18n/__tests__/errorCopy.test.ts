@@ -114,6 +114,10 @@ describe("ERROR_COPY", () => {
       namespace: "auth",
       key: "api.googleAuthFailed",
     });
+    expect(getErrorCopy(failure("googleAuth.conflict"))).toMatchObject({
+      namespace: "auth",
+      key: "api.googleEmailConflict",
+    });
     expect(getErrorCopy(failure("confirmEmail.badRequest"))).toMatchObject({
       namespace: "auth",
       key: "api.invalidConfirmationLink",
@@ -136,6 +140,20 @@ describe("ERROR_COPY", () => {
       namespace: "mode",
       key: "errors.notAllowed",
     });
+  });
+
+  it("keeps generic Google failure copy for non-conflict outcomes", () => {
+    const nonConflictCodes = allCodes().filter(
+      (code) => code.startsWith("googleAuth.") && code !== "googleAuth.conflict",
+    );
+
+    expect(nonConflictCodes.length).toBeGreaterThan(0);
+    for (const code of nonConflictCodes) {
+      expect(getErrorCopy(failure(code)), code).toMatchObject({
+        namespace: "auth",
+        key: "api.googleAuthFailed",
+      });
+    }
   });
 
   it("detects the already-verified outcome by machine code", () => {

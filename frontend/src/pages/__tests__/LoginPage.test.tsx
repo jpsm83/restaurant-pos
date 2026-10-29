@@ -292,6 +292,64 @@ describe("LoginPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("maps a Google email conflict to its dedicated copy", async () => {
+    const user = userEvent.setup();
+    mockGoogleAuth.mockResolvedValue({
+      ok: false,
+      error: {
+        code: "googleAuth.conflict",
+        status: 409,
+        serverMessage: "This email is linked to a different Google account.",
+        fieldErrors: [],
+      },
+    });
+
+    await renderWithI18n(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: /continue with google/i }),
+    );
+
+    expect(
+      await screen.findByText(
+        "This email address is linked to a different Google account. Use email and password, or sign in with the correct Google account.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("maps a Google email conflict to Spanish copy", async () => {
+    const user = userEvent.setup();
+    mockGoogleAuth.mockResolvedValue({
+      ok: false,
+      error: {
+        code: "googleAuth.conflict",
+        status: 409,
+        fieldErrors: [],
+      },
+    });
+
+    await renderWithI18n(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+      { language: "es" },
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: /continue with google/i }),
+    );
+
+    expect(
+      await screen.findByText(
+        "Esta dirección de correo está vinculada a una cuenta de Google diferente. Usa el correo y la contraseña, o inicia sesión con la cuenta de Google correcta.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("maps a Google failure to Spanish copy", async () => {
     const user = userEvent.setup();
     mockGoogleAuth.mockResolvedValue({
