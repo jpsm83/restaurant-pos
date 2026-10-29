@@ -8,11 +8,14 @@
 import { GoogleLogin } from "@react-oauth/google";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { googleAuth, useAuthConfigQuery } from "@/auth/api";
 import { getGoogleClientId } from "@/auth/google";
-import { getPostLoginDestination } from "@/auth/postLoginRedirect";
+import {
+  getPostLoginDestination,
+  getReturnToParam,
+} from "@/auth/postLoginRedirect";
 import { markPriorSession } from "@/auth/sessionHint";
 import { useAuth } from "@/auth/store/AuthContext";
 import { isSupportedLanguage } from "@/i18n/config";
@@ -30,6 +33,8 @@ export function GoogleAuthButton({ onFailure }: GoogleAuthButtonProps) {
 function EnabledGoogleAuthButton({ onFailure }: GoogleAuthButtonProps) {
   const { t, i18n } = useTranslation("auth");
   const navigate = useNavigate();
+  const location = useLocation();
+  const returnTo = getReturnToParam(location.search);
   const { dispatch } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const { data: authConfig } = useAuthConfigQuery();
@@ -84,7 +89,7 @@ function EnabledGoogleAuthButton({ onFailure }: GoogleAuthButtonProps) {
     if (sessionUser.emailVerified === false) {
       toast.info(t("login.verifyEmailToast"));
     }
-    navigate(getPostLoginDestination(sessionUser), { replace: true });
+    navigate(getPostLoginDestination(sessionUser, returnTo), { replace: true });
   };
 
   const handleError = () => {

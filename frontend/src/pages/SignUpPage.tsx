@@ -2,14 +2,17 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { z } from "zod";
 import { signup } from "@/auth/api";
 import { markPriorSession } from "@/auth/sessionHint";
 import { GoogleAuthButton } from "@/auth/GoogleAuthButton";
 import { useErrorMessage, type ErrorFailure } from "@/i18n/errorCopy";
-import { getPostLoginDestination } from "@/auth/postLoginRedirect";
+import {
+  getPostLoginDestination,
+  getReturnToParam,
+} from "@/auth/postLoginRedirect";
 import { useAuth } from "@/auth/store/AuthContext";
 import { FieldError } from "@/components/FieldError";
 import { Alert } from "@/components/ui/alert";
@@ -62,7 +65,9 @@ type SignUpFormValues = z.infer<ReturnType<typeof buildSignUpSchema>>;
 export default function SignUpPage() {
   const { t } = useTranslation("auth");
   const navigate = useNavigate();
+  const location = useLocation();
   const { state, dispatch } = useAuth();
+  const returnTo = getReturnToParam(location.search);
   const [submitFailure, setSubmitFailure] = useState<ErrorFailure | null>(null);
   const resolveError = useErrorMessage();
   const isSubmitting = state.status === "loading";
@@ -115,7 +120,7 @@ export default function SignUpPage() {
     if (sessionUser.emailVerified === false) {
       toast.info(t("signup.verifyEmailToast"));
     }
-    navigate(getPostLoginDestination(sessionUser), { replace: true });
+    navigate(getPostLoginDestination(sessionUser, returnTo), { replace: true });
   };
 
   return (

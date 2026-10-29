@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
 /**
- * App-wide top bar. Public routes: audience switch + auth CTAs (`SiteAudienceProvider`).
+ * App-wide top bar. Public routes: marketing audience switch + shared auth CTAs.
  * Authenticated shells: account popover with actor-specific links.
  * Sidebar chrome lives in tenant layouts only — no `SidebarProvider` / trigger here.
  */
@@ -21,12 +21,9 @@ export default function Navbar() {
     state.status === "authenticated" && Boolean(state.user);
   const isLoading = state.status === "loading" || state.status === "idle";
 
-  // Marketing audience (only impacts login/signup links). We intentionally treat
-  // `/business/:businessId/*` as an authenticated venue shell, not marketing.
+  // Marketing audience only affects the switch label; auth is always the same entry.
+  // `/business/:businessId/*` is an authenticated venue shell, not marketing.
   const audience = pathname === "/business" ? "business" : "customer";
-
-  const loginHref = `/login?audience=${audience}`;
-  const signUpHref = `/signup?audience=${audience}`;
 
   return (
     <nav
@@ -80,10 +77,10 @@ export default function Navbar() {
             ) : (
               <>
                 <Button variant="ghost" asChild>
-                  <Link to={signUpHref}>{t("auth.signUp")}</Link>
+                  <Link to="/signup">{t("auth.signUp")}</Link>
                 </Button>
                 <Button variant="ghost" asChild>
-                  <Link to={loginHref}>{t("auth.signIn")}</Link>
+                  <Link to="/login">{t("auth.signIn")}</Link>
                 </Button>
               </>
             )}

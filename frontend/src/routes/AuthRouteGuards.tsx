@@ -16,8 +16,11 @@
  *
  * ## Wiring (`appRoutes.tsx`)
  * - Public routes: `PublicOnlyRoute` on `/login`, `/signup`, `/forgot-password`
- *   — if already authenticated, redirect via `getPostLoginDestination` (auth/postLoginRedirect.ts).
- *   `/reset-password` and `/confirm-email` stay reachable with an existing session (email links).
+ *   — if already authenticated, redirect via `getPostLoginDestination` and any safe `returnTo`
+ *   query parameter (auth/postLoginRedirect.ts). `/reset-password` and `/confirm-email` stay
+ *   reachable with an existing session (email links).
+ * - `ProtectedRoute` sends anonymous visitors to `/login?returnTo=…` so the shared auth entry
+ *   can restore the page that required identity.
  * - `/business/:businessId/*` → `BusinessRouteShell` + `BusinessLayout`.
  * - `/:userId/mode` → `UserSessionRouteShell` + mode page.
  * - `/:userId/customer/*` → `UserSessionRouteShell` + `CustomerLayout`.
@@ -29,8 +32,12 @@
  */
 import type { ReactElement } from "react";
 import { useTranslation } from "react-i18next";
-import { Navigate, useParams } from "react-router-dom";
-import { getPostLoginDestination } from "@/auth/postLoginRedirect";
+import { Navigate, useLocation, useParams } from "react-router-dom";
+import {
+  authPathWithReturnTo,
+  getPostLoginDestination,
+  getReturnToParam,
+} from "@/auth/postLoginRedirect";
 import { useAuth } from "@/auth/store/AuthContext";
 import { useAuthMode } from "@/context/AuthModeContext";
 import { AppPendingShell } from "@/components/AppPendingShell";
@@ -48,13 +55,15 @@ export function SessionLoading(props?: { message?: string }) {
 
 export function ProtectedRoute({ children }: { children: ReactElement }) {
   const { state } = useAuth();
+  const location = useLocation();
 
   if (state.status === "loading" || state.status === "idle") {
     return <SessionLoading />;
   }
 
   if (state.status !== "authenticated" || !state.user) {
-    return <Navigate to="/login" replace />;
+    const returnTo = `${location.pathname}${location.search}${location.hash}`;
+    return <Navigate to={authPathWithReturnTo("/login", returnTo)} replace />;
   }
 
   return children;
@@ -62,13 +71,17 @@ export function ProtectedRoute({ children }: { children: ReactElement }) {
 
 export function PublicOnlyRoute({ children }: { children: ReactElement }) {
   const { state } = useAuth();
+  const location = useLocation();
 
   if (state.status === "loading" || state.status === "idle") {
     return <SessionLoading />;
   }
 
   if (state.status === "authenticated" && state.user) {
-    return <Navigate to={getPostLoginDestination(state.user)} replace />;
+    const returnTo = getReturnToParam(location.search);
+    return (
+      <Navigate to={getPostLoginDestination(state.user, returnTo)} replace />
+    );
   }
 
   return children;
@@ -94,7 +107,7 @@ export function BusinessRouteShell({ children }: { children: ReactElement }) {
   const { businessId } = useParams<{ businessId: string }>();
 
   if (businessId && RETIRED_BUSINESS_AUTH_SEGMENTS.has(businessId)) {
-    return <Navigate to="/signup?audience=business" replace />;
+    return <Navigate to="/signup" replace />;
   }
 
   return <ProtectedRoute>{children}</ProtectedRoute>;

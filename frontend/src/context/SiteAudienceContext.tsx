@@ -2,15 +2,15 @@
  * **`src/context`** — shared UI/session context layer.
  *
  * ## `SiteAudienceContext` (this file)
- * **Marketing URL audience** (“customer” vs “business”) for **public** routes only. URL is the
- * source of truth (no `localStorage`).
+ * **Marketing URL audience** (“customer” vs “business”) for **public** chrome and copy only.
+ * URL is the source of truth (no `localStorage`). It is not auth state: `/login` and `/signup`
+ * stay shared for both audiences.
  *
  * ## Wiring
  * - **`SiteAudienceProvider`** wraps **`PublicLayout`** (`layouts/PublicLayout.tsx`) so children
  *   under `path="/"` (index, `/login`, `/business`, …) can call **`useSiteAudience()`**.
- * - **`Navbar`** is shared on authenticated shells **without** this provider; it uses
- *   **`useOptionalSiteAudience()`** and defaults to **`customer`** when the context is missing
- *   (`Navbar.tsx`).
+ * - **`Navbar`** uses the pathname directly for its marketing switch; the audience never
+ *   changes the shared `/login` and `/signup` destinations.
  * - Do **not** wrap tenant (`/business/:id`) or user (`/:userId/...`) shells — the pathname rules
  *   above would mis-classify paths like `/business/64a…` as `business` marketing.
  *

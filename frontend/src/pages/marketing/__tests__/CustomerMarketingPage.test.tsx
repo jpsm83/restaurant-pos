@@ -16,11 +16,11 @@ describe("CustomerMarketingPage", () => {
     expect(screen.getByRole("main")).toHaveClass("marketing");
     expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
       "href",
-      "/login?audience=customer",
+      "/login",
     );
     expect(screen.getByRole("link", { name: "Sign up" })).toHaveAttribute(
       "href",
-      "/signup?audience=customer",
+      "/signup",
     );
   });
 });

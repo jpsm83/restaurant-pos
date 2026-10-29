@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -27,10 +28,10 @@ export default function CustomerMarketingPage() {
             {t("marketing.customer.footer")}
           </p>
           <Button asChild>
-            <a href="/login?audience=customer">{t("auth.signIn")}</a>
+            <Link to="/login">{t("auth.signIn")}</Link>
           </Button>
           <Button variant="outline" asChild>
-            <a href="/signup?audience=customer">{t("auth.signUp")}</a>
+            <Link to="/signup">{t("auth.signUp")}</Link>
           </Button>
         </CardContent>
       </Card>

@@ -9,7 +9,10 @@ import { login } from "@/auth/api";
 import { markPriorSession } from "@/auth/sessionHint";
 import { GoogleAuthButton } from "@/auth/GoogleAuthButton";
 import { useErrorMessage, type ErrorFailure } from "@/i18n/errorCopy";
-import { getPostLoginDestination } from "@/auth/postLoginRedirect";
+import {
+  getPostLoginDestination,
+  getReturnToParam,
+} from "@/auth/postLoginRedirect";
 import { useAuth } from "@/auth/store/AuthContext";
 import { FieldError } from "@/components/FieldError";
 import { Alert } from "@/components/ui/alert";
@@ -46,6 +49,7 @@ export default function LoginPage() {
 
   const flashMessage =
     (location.state as { flashMessage?: string } | null)?.flashMessage ?? null;
+  const returnTo = getReturnToParam(location.search);
 
   const schema = useMemo(
     () => buildLoginSchema(t("login.errors.required")),
@@ -99,7 +103,7 @@ export default function LoginPage() {
     if (sessionUser.emailVerified === false) {
       toast.info(t("login.verifyEmailToast"));
     }
-    navigate(getPostLoginDestination(sessionUser), { replace: true });
+    navigate(getPostLoginDestination(sessionUser, returnTo), { replace: true });
   };
 
   const stateFailure: ErrorFailure | null = state.error

@@ -335,6 +335,45 @@ describe("SignUpPage", () => {
     });
   });
 
+  it("honours a safe returnTo after email signup", async () => {
+    const user = userEvent.setup();
+    mockSignup.mockResolvedValue({
+      ok: true,
+      data: {
+        user: {
+          id: "64a1b2c3d4e5f67890123456",
+          email: "new@example.com",
+          type: "user",
+        },
+      },
+    });
+
+    await renderWithI18n(
+      <MemoryRouter
+        initialEntries={[
+          "/signup?returnTo=%2F64a1b2c3d4e5f67890123456%2Fcustomer%2Ffavorites",
+        ]}
+      >
+        <Routes>
+          <Route path="/signup" element={<SignUpPage />} />
+          <Route
+            path="/:userId/customer/favorites"
+            element={<div>Signup favorites</div>}
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await user.type(screen.getByLabelText(/^email$/i), "new@example.com");
+    await user.type(screen.getByLabelText(/^password$/i), "ValidPass1!");
+    await user.type(screen.getByLabelText(/confirm password/i), "ValidPass1!");
+    await user.click(screen.getByRole("button", { name: /create account$/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Signup favorites")).toBeInTheDocument();
+    });
+  });
+
   it("navigates to customer dashboard after successful user signup", async () => {
     const user = userEvent.setup();
     mockSignup.mockResolvedValue({

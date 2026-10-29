@@ -106,13 +106,20 @@ Only `VITE_`-prefixed variables are exposed to client code.
 
 - `VITE_GOOGLE_CLIENT_ID` must be the same OAuth Web client ID as the backend
   `GOOGLE_CLIENT_ID`; a mismatch makes the backend reject every token.
-- Add every frontend origin that renders the Google button to the client's
-  **Authorized JavaScript origins** (scheme + host + port, no path), e.g.
-  `http://localhost:5173`. A missing origin returns `403 origin is not allowed`.
+- Add **every** frontend origin that renders the Google button to the client's
+  **Authorized JavaScript origins** (scheme + host + port, no path). For local
+  development that means both `http://localhost:5173` and, when used,
+  `http://127.0.0.1:5173`; add each deployed origin the same way. A missing
+  origin returns `403 origin is not allowed`. This is an OAuth-console action,
+  not an application setting.
 - Google Identity Services needs `Cross-Origin-Opener-Policy:
   same-origin-allow-popups` so its popup can keep the opener for `postMessage`.
-  Vite sets it for `dev` and `preview`; a production static host must set the
+  Vite sets it for `dev` and `preview`; any production static host must send the
   same header on the HTML response.
+- The Google button is driven by `GET /api/v1/auth/config`. When the backend has
+  no Google verifier (no client id configured) the endpoint reports
+  `googleSignInEnabled: false` and the button stays hidden, so both auth methods
+  always match the server's capabilities.
 
 ## Scripts
 

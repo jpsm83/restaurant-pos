@@ -73,8 +73,7 @@ describe("Navbar", () => {
     expect(await screen.findByText("Customer page")).toBeInTheDocument();
   });
 
-  // Phase 1.5.2 — Sign in preserves audience=business when path is /business.
-  it("links Sign in with audience query on business path", async () => {
+  it("links Sign in to the shared auth entry on the business audience", async () => {
     await renderWithI18n(
       <MemoryRouter initialEntries={["/business"]}>
         <Routes>
@@ -92,7 +91,7 @@ describe("Navbar", () => {
     );
 
     const signIn = screen.getByRole("link", { name: /sign in/i });
-    expect(signIn).toHaveAttribute("href", "/login?audience=business");
+    expect(signIn).toHaveAttribute("href", "/login");
   });
 
   it("links Sign up to the shared sign-up form on the business audience", async () => {
@@ -114,7 +113,7 @@ describe("Navbar", () => {
 
     expect(screen.getByRole("link", { name: /sign up/i })).toHaveAttribute(
       "href",
-      "/signup?audience=business",
+      "/signup",
     );
   });
 

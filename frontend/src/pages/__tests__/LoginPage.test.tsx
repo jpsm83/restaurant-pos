@@ -239,12 +239,16 @@ describe("LoginPage", () => {
     });
 
     await renderWithI18n(
-      <MemoryRouter initialEntries={["/login"]}>
+      <MemoryRouter
+        initialEntries={[
+          "/login?returnTo=%2F64a1b2c3d4e5f67890123456%2Fcustomer%2Ffavorites",
+        ]}
+      >
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route
-            path="/:userId/customer/dashboard"
-            element={<div>Google dashboard</div>}
+            path="/:userId/customer/favorites"
+            element={<div>Google favorites</div>}
           />
         </Routes>
       </MemoryRouter>,
@@ -255,7 +259,7 @@ describe("LoginPage", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Google dashboard")).toBeInTheDocument();
+      expect(screen.getByText("Google favorites")).toBeInTheDocument();
     });
     expect(mockGoogleAuth).toHaveBeenCalledWith({
       credential: "google-id-token",
@@ -614,6 +618,80 @@ describe("LoginPage", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Customer dashboard")).toBeInTheDocument();
+    });
+  });
+
+  it("honours a safe returnTo after email login", async () => {
+    const user = userEvent.setup();
+    mockLogin.mockResolvedValue({
+      ok: true,
+      data: {
+        user: {
+          id: "64a1b2c3d4e5f67890123456",
+          email: "patron@example.com",
+          type: "user",
+        },
+      },
+    });
+
+    await renderWithI18n(
+      <MemoryRouter
+        initialEntries={[
+          "/login?returnTo=%2F64a1b2c3d4e5f67890123456%2Fcustomer%2Ffavorites%3Ftab%3Dall",
+        ]}
+      >
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route
+            path="/:userId/customer/favorites"
+            element={<div>Returned favorites</div>}
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await user.type(screen.getByLabelText(/email/i), "patron@example.com");
+    await user.type(screen.getByLabelText(/password/i), "ValidPass1!");
+    await user.click(screen.getByRole("button", { name: /sign in/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Returned favorites")).toBeInTheDocument();
+    });
+  });
+
+  it("falls back to the Customer dashboard for an unsafe returnTo", async () => {
+    const user = userEvent.setup();
+    mockLogin.mockResolvedValue({
+      ok: true,
+      data: {
+        user: {
+          id: "64a1b2c3d4e5f67890123456",
+          email: "patron@example.com",
+          type: "user",
+        },
+      },
+    });
+
+    await renderWithI18n(
+      <MemoryRouter
+        initialEntries={["/login?returnTo=https%3A%2F%2Fevil.example"]}
+      >
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route
+            path="/:userId/customer/dashboard"
+            element={<div>Safe customer dashboard</div>}
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await user.type(screen.getByLabelText(/email/i), "patron@example.com");
+    await user.type(screen.getByLabelText(/password/i), "ValidPass1!");
+    await user.click(screen.getByRole("button", { name: /sign in/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Safe customer dashboard")).toBeInTheDocument();
     });
   });
 

@@ -1,8 +1,18 @@
 import { screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppRoutes } from "@/App";
 import { renderWithI18n } from "@/test/i18nTestUtils";
+
+function LocationProbe() {
+  const location = useLocation();
+  return (
+    <output data-testid="location">
+      {location.pathname}
+      {location.search}
+    </output>
+  );
+}
 
 vi.mock("@/auth/store/AuthContext", () => ({
   useAuth: () => ({
@@ -98,9 +108,10 @@ describe("App public routing (Phase 1.5.1)", () => {
     ).toBeInTheDocument();
   });
 
-  it("does not register the retired business registration route", async () => {
+  it("sends the retired business registration route to plain signup", async () => {
     await renderWithI18n(
       <MemoryRouter initialEntries={["/business/register"]}>
+        <LocationProbe />
         <AppRoutes />
       </MemoryRouter>,
     );
@@ -108,6 +119,7 @@ describe("App public routing (Phase 1.5.1)", () => {
     expect(
       await screen.findByRole("heading", { name: /create account/i }),
     ).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent(/^\/signup$/);
     expect(
       screen.queryByRole("heading", { name: /register your business/i }),
     ).not.toBeInTheDocument();
