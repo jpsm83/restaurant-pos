@@ -128,17 +128,21 @@ async function createEmployee(
   });
 }
 
-function resetTokenFromLastEmail(): string {
+function tokenFromLastEmail(path: string): string {
   const payload = sendEmailMock.mock.calls.at(-1)?.[0] as {
     text?: string;
   };
   const link = String(payload?.text ?? "")
     .match(/https?:\/\/\S+/g)
-    ?.find((candidate) => candidate.includes("/reset-password"));
-  if (!link) throw new Error("reset email did not carry a reset link");
+    ?.find((candidate) => candidate.includes(`/${path}`));
+  if (!link) throw new Error(`${path} email did not carry a link`);
   const token = new URL(link).searchParams.get("token");
-  if (!token) throw new Error("reset link did not carry a token");
+  if (!token) throw new Error(`${path} link did not carry a token`);
   return token;
+}
+
+function resetTokenFromLastEmail(): string {
+  return tokenFromLastEmail("reset-password");
 }
 
 describe("POST /api/v1/auth/google", () => {
@@ -398,6 +402,96 @@ describe("POST /api/v1/auth/google", () => {
   });
 
   describe("cross-slice identity regression", () => {
+    it("refuses a Google-only User's earlier refresh session after a password reset", async () => {
+      const created = await postGoogle(app);
+      expect(created.statusCode).toBe(201);
+      const userId = created.json().user.id as string;
+      const refreshCookie = refreshCookieFrom(created);
+
+      const requested = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/request-password-reset",
+        payload: { email: defaultIdentity.email },
+      });
+      expect(requested.statusCode).toBe(200);
+
+      const reset = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/reset-password",
+        payload: { token: resetTokenFromLastEmail(), newPassword: password },
+      });
+      expect(reset.statusCode, reset.body).toBe(200);
+
+      const refreshed = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/refresh",
+        headers: { cookie: `refresh_token=${refreshCookie}` },
+      });
+      expect(refreshed.statusCode).toBe(401);
+      expect(refreshed.json().detail).toBe("Invalid or expired refresh token");
+
+      const login = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: { email: defaultIdentity.email, password },
+      });
+      expect(login.statusCode, login.body).toBe(200);
+      expect(login.json().user.id).toBe(userId);
+      expect(refreshCookieFrom(login)).toBeTruthy();
+    });
+
+    it("reactivates a soft-deleted Google User by confirmation link, then signs in to the same User", async () => {
+      const deleted = await User.create({
+        googleId: defaultIdentity.subject,
+        personalDetails: {
+          email: defaultIdentity.email,
+          emailVerified: true,
+        },
+        deleted: true,
+        deletedAt: new Date(),
+      });
+
+      const reactivation = await postGoogle(app);
+      expect(reactivation.statusCode).toBe(202);
+      expect(reactivation.json()).toEqual({
+        message: REACTIVATION_REQUIRED_MESSAGE,
+      });
+      expect(reactivation.json().accessToken).toBeUndefined();
+      expect(
+        reactivation.cookies.find(
+          (cookie) => cookie.name === "refresh_token",
+        ),
+      ).toBeUndefined();
+      expect(sendEmailMock).toHaveBeenCalledTimes(1);
+
+      const awaiting = await User.findById(deleted._id)
+        .setOptions({ includeDeleted: true })
+        .lean();
+      expect(awaiting?.deleted).toBe(true);
+      expect(awaiting?.verificationToken).toEqual(expect.any(String));
+
+      const confirmed = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/confirm-email",
+        payload: { token: tokenFromLastEmail("confirm-email") },
+      });
+      expect(confirmed.statusCode, confirmed.body).toBe(200);
+
+      const restored = await User.findById(deleted._id)
+        .setOptions({ includeDeleted: true })
+        .lean();
+      expect(restored?.deleted).toBe(false);
+      expect(restored?.deletedAt).toBeFalsy();
+      expect(restored?.personalDetails?.emailVerified).toBe(true);
+      expect(restored?.verificationToken).toBeFalsy();
+
+      const signedIn = await postGoogle(app);
+      expect(signedIn.statusCode, signedIn.body).toBe(200);
+      expect(signedIn.json().user.id).toBe(String(deleted._id));
+      expect(await User.countDocuments()).toBe(1);
+      expect(await User.countDocuments({ deleted: { $ne: true } })).toBe(1);
+    });
+
     it("keeps a Google-created User's saved language across refresh and /me", async () => {
       const created = await postGoogle(app, {
         credential: "google-id-token",
