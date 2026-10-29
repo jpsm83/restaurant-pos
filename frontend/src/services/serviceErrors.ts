@@ -11,6 +11,7 @@ export const SERVICE_OPERATIONS = [
   "signIn",
   "signUp",
   "googleAuth",
+  "authConfig",
   "confirmEmail",
   "resendConfirmation",
   "passwordReset",

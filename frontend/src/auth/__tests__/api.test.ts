@@ -4,6 +4,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   confirmEmail,
+  getAuthConfig,
   googleAuth,
   login,
   requestEmailConfirmation,
@@ -145,6 +146,40 @@ describe("auth api — email / password-reset endpoints", () => {
       code: "googleAuth.unauthorized",
       status: 401,
       serverMessage: "Invalid Google credential",
+    });
+  });
+
+  it("getAuthConfig GETs the unauthenticated config endpoint", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ googleSignInEnabled: true }),
+    );
+
+    await expect(getAuthConfig()).resolves.toEqual({
+      googleSignInEnabled: true,
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(urlPath(url)).toMatch(/\/api\/v1\/auth\/config$/);
+    expect(init.method).toBe("GET");
+    expect(init.credentials).toBe("include");
+  });
+
+  it("getAuthConfig throws a machine failure when the config request fails", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(
+        {
+          type: "https://restaurant-pos.app/errors/internal",
+          title: "Internal Server Error",
+          status: 500,
+        },
+        500,
+      ),
+    );
+
+    await expect(getAuthConfig()).rejects.toMatchObject({
+      code: "authConfig.internal",
+      status: 500,
     });
   });
 

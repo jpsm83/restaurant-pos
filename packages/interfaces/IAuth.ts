@@ -10,3 +10,8 @@ export interface IAuthModeResponse {
 export interface ISetAuthModeBody {
   mode: IAuthMode;
 }
+
+/** Unauthenticated auth-surface availability. */
+export interface IAuthConfigResponse {
+  googleSignInEnabled: boolean;
+}

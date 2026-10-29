@@ -4,6 +4,7 @@
  * ## Wiring
  * - **`auth.me` / `auth.mode`:** `auth/api.ts` invalidates `me`; `authMode.ts` uses `auth.mode` for
  *   `useAuthModeQuery` / `useSetAuthModeMutation` cache updates.
+ * - **`auth.config`:** `auth/api.ts` `useAuthConfigQuery` caches public auth-surface availability.
  * - **`schedules.employeeDay`:** `schedulesService.useNextShiftForEmployee`; invalidated from
  *   `SelectUserModePage` when countdown completes (refetch eligibility).
  * - **`schedules.byBusiness`:** reserved for broader schedule UIs; keep keys stable when adding hooks.
@@ -13,6 +14,7 @@ export const queryKeys = {
   auth: {
     me: () => ["auth", "me"] as const,
     mode: () => ["auth", "mode"] as const,
+    config: () => ["auth", "config"] as const,
   },
   business: {
     detail: (businessId: string) => ["business", "detail", businessId] as const,

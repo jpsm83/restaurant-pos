@@ -1,3 +1,4 @@
+import type { ComponentPropsWithoutRef } from "react";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -7,16 +8,25 @@ import SignUpPage from "../SignUpPage";
 const mockDispatch = vi.fn();
 const mockSignup = vi.fn();
 const mockGoogleAuth = vi.fn();
+const mockUseAuthConfigQuery = vi.fn();
 
 vi.mock("@react-oauth/google", () => ({
   GoogleLogin: ({
     onSuccess,
     onError,
+    locale,
+    containerProps,
   }: {
     onSuccess: (response: { credential?: string }) => void;
     onError: () => void;
+    locale?: string;
+    containerProps?: ComponentPropsWithoutRef<"div">;
   }) => (
-    <div>
+    <div
+      data-testid="google-widget"
+      data-locale={locale}
+      {...containerProps}
+    >
       <button
         type="button"
         onClick={() => onSuccess({ credential: "google-id-token" })}
@@ -48,6 +58,8 @@ vi.mock("sonner", () => ({
 vi.mock("@/auth/api", () => ({
   signup: (...args: unknown[]) => mockSignup(...args),
   googleAuth: (...args: unknown[]) => mockGoogleAuth(...args),
+  useAuthConfigQuery: (...args: unknown[]) =>
+    mockUseAuthConfigQuery(...args),
 }));
 
 describe("SignUpPage", () => {
@@ -55,6 +67,10 @@ describe("SignUpPage", () => {
     mockDispatch.mockReset();
     mockSignup.mockReset();
     mockGoogleAuth.mockReset();
+    mockUseAuthConfigQuery.mockReset();
+    mockUseAuthConfigQuery.mockReturnValue({
+      data: { googleSignInEnabled: true },
+    });
     vi.stubEnv("VITE_GOOGLE_CLIENT_ID", "test-client-id");
     localStorage.clear();
   });
@@ -209,6 +225,114 @@ describe("SignUpPage", () => {
     expect(
       screen.queryByRole("button", { name: /continue with google/i }),
     ).not.toBeInTheDocument();
+  });
+
+  it("hides the Google button while the auth config loads", async () => {
+    mockUseAuthConfigQuery.mockReturnValue({ data: undefined });
+
+    await renderWithI18n(
+      <MemoryRouter>
+        <SignUpPage />
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: /continue with google/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("treats a failed auth config request as Google disabled", async () => {
+    mockUseAuthConfigQuery.mockReturnValue({
+      data: undefined,
+      isError: true,
+      error: new Error("config unavailable"),
+    });
+
+    await renderWithI18n(
+      <MemoryRouter>
+        <SignUpPage />
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: /continue with google/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /create account$/i })).toBeEnabled();
+  });
+
+  it("hides the Google button when the server reports it disabled", async () => {
+    mockUseAuthConfigQuery.mockReturnValue({
+      data: { googleSignInEnabled: false },
+    });
+
+    await renderWithI18n(
+      <MemoryRouter>
+        <SignUpPage />
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: /continue with google/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("passes the active language to the Google widget", async () => {
+    await renderWithI18n(
+      <MemoryRouter>
+        <SignUpPage />
+      </MemoryRouter>,
+      { language: "es" },
+    );
+
+    expect(screen.getByTestId("google-widget")).toHaveAttribute(
+      "data-locale",
+      "es",
+    );
+  });
+
+  it("disables the Google control and ignores a second attempt while busy", async () => {
+    const user = userEvent.setup();
+    let resolveGoogleAuth: (value: unknown) => void = () => {};
+    mockGoogleAuth.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveGoogleAuth = resolve;
+        }),
+    );
+
+    await renderWithI18n(
+      <MemoryRouter>
+        <SignUpPage />
+      </MemoryRouter>,
+    );
+
+    const widget = screen.getByTestId("google-widget");
+    const googleButton = screen.getByRole("button", {
+      name: /continue with google/i,
+    });
+
+    await user.click(googleButton);
+
+    await waitFor(() => {
+      expect(widget).toHaveAttribute("aria-disabled", "true");
+      expect(widget).toHaveAttribute("inert");
+    });
+
+    await user.click(googleButton);
+    expect(mockGoogleAuth).toHaveBeenCalledTimes(1);
+
+    resolveGoogleAuth({
+      ok: false,
+      error: {
+        code: "googleAuth.unauthorized",
+        status: 401,
+        fieldErrors: [],
+      },
+    });
+
+    await waitFor(() => {
+      expect(widget).toHaveAttribute("aria-disabled", "false");
+    });
   });
 
   it("navigates to customer dashboard after successful user signup", async () => {

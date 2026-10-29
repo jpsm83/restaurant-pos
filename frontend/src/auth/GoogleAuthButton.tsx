@@ -10,7 +10,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { googleAuth } from "@/auth/api";
+import { googleAuth, useAuthConfigQuery } from "@/auth/api";
 import { getGoogleClientId } from "@/auth/google";
 import { getPostLoginDestination } from "@/auth/postLoginRedirect";
 import { useAuth } from "@/auth/store/AuthContext";
@@ -22,13 +22,16 @@ interface GoogleAuthButtonProps {
 }
 
 export function GoogleAuthButton({ onFailure }: GoogleAuthButtonProps) {
+  if (!getGoogleClientId()) return null;
+  return <EnabledGoogleAuthButton onFailure={onFailure} />;
+}
+
+function EnabledGoogleAuthButton({ onFailure }: GoogleAuthButtonProps) {
   const { t, i18n } = useTranslation("auth");
   const navigate = useNavigate();
   const { dispatch } = useAuth();
   const [submitting, setSubmitting] = useState(false);
-  const clientId = getGoogleClientId();
-
-  if (!clientId) return null;
+  const { data: authConfig } = useAuthConfigQuery();
 
   const language = (i18n.resolvedLanguage ?? i18n.language ?? "")
     .split("-")[0]
@@ -37,8 +40,11 @@ export function GoogleAuthButton({ onFailure }: GoogleAuthButtonProps) {
     ? language
     : undefined;
 
+  if (authConfig?.googleSignInEnabled !== true) return null;
+
   const handleCredential = async (credential: string | undefined) => {
-    if (!credential || submitting) {
+    if (submitting) return;
+    if (!credential) {
       onFailure({ code: "googleAuth.unauthorized" });
       return;
     }
@@ -81,6 +87,7 @@ export function GoogleAuthButton({ onFailure }: GoogleAuthButtonProps) {
   };
 
   const handleError = () => {
+    if (submitting) return;
     const failure: ErrorFailure = { code: "googleAuth.unauthorized" };
     dispatch({ type: "AUTH_ERROR", payload: failure.code });
     onFailure(failure);
@@ -96,6 +103,12 @@ export function GoogleAuthButton({ onFailure }: GoogleAuthButtonProps) {
         shape="rectangular"
         theme="outline"
         size="large"
+        {...(languagePreference ? { locale: languagePreference } : {})}
+        containerProps={{
+          "aria-busy": submitting,
+          "aria-disabled": submitting,
+          inert: submitting,
+        }}
       />
     </div>
   );

@@ -55,6 +55,7 @@ import {
   notFound,
   unauthorized,
 } from "../../errors/appError.ts";
+import type { IAuthConfigResponse } from "restaurant-pos-packages/interfaces/IAuth";
 import {
   confirmEmailBodySchema,
   googleAuthBodySchema,
@@ -83,6 +84,17 @@ export const authRoutes: FastifyPluginAsync<AuthRoutesOptions> = async (
   options,
 ) => {
   const googleVerifier = options.googleVerifier ?? null;
+
+  /**
+   * GET /auth/config
+   * Unauthenticated availability for auth surfaces. Reads the same verifier
+   * the Google endpoint uses so the client never guesses from its own config.
+   */
+  app.get("/config", async (_req, reply) => {
+    return reply.code(200).send({
+      googleSignInEnabled: Boolean(googleVerifier),
+    } satisfies IAuthConfigResponse);
+  });
 
   /**
    * POST /auth/signup

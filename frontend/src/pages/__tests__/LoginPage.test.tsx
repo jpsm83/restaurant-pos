@@ -1,23 +1,42 @@
+import type { ComponentPropsWithoutRef } from "react";
 import { screen, waitFor } from "@testing-library/react";
+import i18next from "i18next";
+import { initReactI18next } from "react-i18next";
 import userEvent from "@testing-library/user-event";
 import { toast } from "sonner";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { NAMESPACES } from "@/i18n/config";
+import { buildLocaleResources } from "@/i18n/localeResources";
 import { renderWithI18n } from "@/test/i18nTestUtils";
 import LoginPage from "../LoginPage";
+
+const localeModules = import.meta.glob<{ default: Record<string, unknown> }>(
+  "../../i18n/locales/*/*.json",
+  { eager: true },
+);
 
 const mockDispatch = vi.fn();
 const mockLogin = vi.fn();
 const mockGoogleAuth = vi.fn();
+const mockUseAuthConfigQuery = vi.fn();
 
 vi.mock("@react-oauth/google", () => ({
   GoogleLogin: ({
     onSuccess,
     onError,
+    locale,
+    containerProps,
   }: {
     onSuccess: (response: { credential?: string }) => void;
     onError: () => void;
+    locale?: string;
+    containerProps?: ComponentPropsWithoutRef<"div">;
   }) => (
-    <div>
+    <div
+      data-testid="google-widget"
+      data-locale={locale}
+      {...containerProps}
+    >
       <button
         type="button"
         onClick={() => onSuccess({ credential: "google-id-token" })}
@@ -49,6 +68,8 @@ vi.mock("sonner", () => ({
 vi.mock("@/auth/api", () => ({
   login: (...args: unknown[]) => mockLogin(...args),
   googleAuth: (...args: unknown[]) => mockGoogleAuth(...args),
+  useAuthConfigQuery: (...args: unknown[]) =>
+    mockUseAuthConfigQuery(...args),
 }));
 
 describe("LoginPage", () => {
@@ -56,6 +77,10 @@ describe("LoginPage", () => {
     mockDispatch.mockReset();
     mockLogin.mockReset();
     mockGoogleAuth.mockReset();
+    mockUseAuthConfigQuery.mockReset();
+    mockUseAuthConfigQuery.mockReturnValue({
+      data: { googleSignInEnabled: true },
+    });
     vi.stubEnv("VITE_GOOGLE_CLIENT_ID", "test-client-id");
     sessionStorage.clear();
     localStorage.clear();
@@ -360,6 +385,142 @@ describe("LoginPage", () => {
     expect(
       screen.queryByRole("button", { name: /continue with google/i }),
     ).not.toBeInTheDocument();
+  });
+
+  it("hides the Google button while the auth config loads", async () => {
+    mockUseAuthConfigQuery.mockReturnValue({ data: undefined });
+
+    await renderWithI18n(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: /continue with google/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("treats a failed auth config request as Google disabled", async () => {
+    mockUseAuthConfigQuery.mockReturnValue({
+      data: undefined,
+      isError: true,
+      error: new Error("config unavailable"),
+    });
+
+    await renderWithI18n(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: /continue with google/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /sign in/i })).toBeEnabled();
+  });
+
+  it("hides the Google button when the server reports it disabled", async () => {
+    mockUseAuthConfigQuery.mockReturnValue({
+      data: { googleSignInEnabled: false },
+    });
+
+    await renderWithI18n(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: /continue with google/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("passes the active language to the Google widget", async () => {
+    await renderWithI18n(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+      { language: "es" },
+    );
+
+    expect(screen.getByTestId("google-widget")).toHaveAttribute(
+      "data-locale",
+      "es",
+    );
+  });
+
+  it("omits the Google widget locale when the language is unsupported", async () => {
+    const resources = buildLocaleResources(localeModules, NAMESPACES);
+    resources.fr = resources.en;
+    const instance = i18next.createInstance();
+    instance.use(initReactI18next);
+    await instance.init({
+      lng: "fr",
+      fallbackLng: "en",
+      supportedLngs: ["en", "es", "fr"],
+      resources,
+      ns: [...NAMESPACES],
+      defaultNS: "common",
+      interpolation: { escapeValue: false },
+      react: { useSuspense: false },
+    });
+
+    await renderWithI18n(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+      { i18n: instance },
+    );
+
+    expect(screen.getByTestId("google-widget")).not.toHaveAttribute(
+      "data-locale",
+    );
+  });
+
+  it("disables the Google control and ignores a second attempt while busy", async () => {
+    const user = userEvent.setup();
+    let resolveGoogleAuth: (value: unknown) => void = () => {};
+    mockGoogleAuth.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveGoogleAuth = resolve;
+        }),
+    );
+
+    await renderWithI18n(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+    );
+
+    const widget = screen.getByTestId("google-widget");
+    const googleButton = screen.getByRole("button", {
+      name: /continue with google/i,
+    });
+
+    await user.click(googleButton);
+
+    await waitFor(() => {
+      expect(widget).toHaveAttribute("aria-disabled", "true");
+      expect(widget).toHaveAttribute("inert");
+    });
+
+    await user.click(googleButton);
+    expect(mockGoogleAuth).toHaveBeenCalledTimes(1);
+
+    resolveGoogleAuth({
+      ok: false,
+      error: {
+        code: "googleAuth.unauthorized",
+        status: 401,
+        fieldErrors: [],
+      },
+    });
+
+    await waitFor(() => {
+      expect(widget).toHaveAttribute("aria-disabled", "false");
+    });
   });
 
   it("keeps an owner on the Customer dashboard after login", async () => {

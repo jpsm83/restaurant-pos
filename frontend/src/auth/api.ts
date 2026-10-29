@@ -14,6 +14,8 @@
  *
  * **401 handling:** `authRequest` retries once after **`refreshSession`** (except when `retryOnUnauthorized` is false for login/signup/refresh/logout).
  */
+import { useQuery } from "@tanstack/react-query";
+import type { IAuthConfigResponse } from "restaurant-pos-packages/interfaces/IAuth";
 import type {
   AuthLoginSnapshot,
   AuthSession,
@@ -168,6 +170,43 @@ export async function login(credentials: LoginCredentials) {
   }
 
   return result;
+}
+
+/**
+ * `GET /api/v1/auth/config` — server-side auth availability for public
+ * surfaces. A failure is thrown as a machine failure; callers treat it as
+ * "feature unavailable" rather than blocking email/password.
+ */
+export async function getAuthConfig(
+  signal?: AbortSignal,
+): Promise<IAuthConfigResponse> {
+  const result = await authRequest<IAuthConfigResponse>(
+    "authConfig",
+    "/api/v1/auth/config",
+    {
+      method: "GET",
+      ...(signal ? { signal } : {}),
+    },
+    false,
+  );
+
+  if (!result.ok) throw result.error;
+
+  return {
+    googleSignInEnabled: result.data?.googleSignInEnabled === true,
+  };
+}
+
+/**
+ * Cached auth-surface availability. No retries: a failed config request keeps
+ * the Google entry hidden and email/password usable.
+ */
+export function useAuthConfigQuery() {
+  return useQuery({
+    queryKey: queryKeys.auth.config(),
+    queryFn: ({ signal }) => getAuthConfig(signal),
+    retry: false,
+  });
 }
 
 /** One Google entry path shared by the sign-in and sign-up forms. */
