@@ -46,6 +46,7 @@ import type {
   IBusiness,
   IReportingConfig,
 } from "restaurant-pos-packages/interfaces/IBusiness";
+import type { ICompany } from "restaurant-pos-packages/interfaces/ICompany";
 import {
   foodSubCategoryEnums,
   managementRolesEnums,
@@ -136,56 +137,20 @@ function haversineKm(
   return R * c;
 }
 
-/** Whitelist the postal address so server-generated subdocument keys never leak. */
-function toSafeRegisteredAddress(address: unknown) {
-  if (!address || typeof address !== "object") return undefined;
-  const source = address as Record<string, unknown>;
-  const safe: Record<string, unknown> = {};
-  for (const key of [
-    "country",
-    "state",
-    "city",
-    "street",
-    "buildingNumber",
-    "doorNumber",
-    "complement",
-    "postCode",
-    "region",
-    "additionalDetails",
-    "coordinates",
-  ]) {
-    if (source[key] !== undefined) safe[key] = source[key];
-  }
-  return Object.keys(safe).length > 0 ? safe : undefined;
-}
-
 /** Safe, portfolio-facing Business shape: no credentials or server-owned fields. */
-function toSafeRegisteredBusiness(business: {
-  _id: unknown;
-  tradeName: string;
-  currencyTrade: string;
-  imageUrl?: string;
-  address?: unknown;
-  companyId?: unknown;
-}) {
-  const address = toSafeRegisteredAddress(business.address);
+function toSafeRegisteredBusiness(business: IBusiness) {
   return {
     _id: String(business._id),
     tradeName: business.tradeName,
     currencyTrade: business.currencyTrade,
     ...(business.imageUrl ? { imageUrl: business.imageUrl } : {}),
-    ...(address ? { address } : {}),
+    ...(business.address ? { address: business.address } : {}),
     ...(business.companyId ? { companyId: String(business.companyId) } : {}),
   };
 }
 
 /** Safe, portfolio-facing Company shape owned by the caller's Owner. */
-function toSafeRegisteredCompany(company: {
-  _id: unknown;
-  country: string;
-  legalName?: string;
-  taxNumber?: string;
-}) {
+function toSafeRegisteredCompany(company: ICompany) {
   return {
     _id: String(company._id),
     country: company.country,
@@ -205,17 +170,18 @@ function throwRegistrationProblem(error: unknown): never {
         throw notFound("Company not found!");
       case "company-not-owned":
         throw forbidden("Company does not belong to this Owner!");
+      case "country-required":
       case "owner-country-mismatch":
       case "company-country-mismatch":
         throw badRequest(error.message);
+      case "company-duplicate":
+        throw conflict(error.message);
       case "business-without-company":
       case "business-other-company":
         throw conflict(error.message);
+      default:
+        throw error;
     }
-  }
-
-  if ((error as { code?: unknown } | null)?.code === 11000) {
-    throw conflict("Company legal name or tax number already exists!");
   }
 
   throw error;
@@ -425,7 +391,16 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
 
       const updateBusinessObj: Record<string, unknown> = {};
 
-      const setIfChanged = (key: string, next: unknown) => {
+      type UpdatableBusinessField =
+        | "tradeName"
+        | "phoneNumber"
+        | "currencyTrade"
+        | "subscription";
+
+      const setIfChanged = <K extends UpdatableBusinessField>(
+        key: K,
+        next: (typeof fields)[K],
+      ) => {
         if (next !== undefined && next !== businessRecord[key]) {
           updateBusinessObj[key] = next;
         }

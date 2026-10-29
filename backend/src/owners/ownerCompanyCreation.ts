@@ -22,6 +22,8 @@ export type OwnerCompanyCreationErrorCode =
   | "business-other-company"
   | "company-not-found"
   | "company-not-owned"
+  | "company-duplicate"
+  | "country-required"
   | "owner-country-mismatch"
   | "company-country-mismatch";
 
@@ -69,7 +71,10 @@ export type OwnerCompanyCreationResult = {
 function requiredCountry(country?: string): string {
   const trimmed = country?.trim() ?? "";
   if (!trimmed) {
-    throw new Error("Business address country is required!");
+    throw new OwnerCompanyCreationError(
+      "country-required",
+      "Business address country is required!",
+    );
   }
   return trimmed;
 }
@@ -182,18 +187,28 @@ const ownerCompanyCreation = async (
       }
       company = joinedCompany;
     } else {
-      const [createdCompany] = await Company.create(
-        [
-          {
-            ownerId: owner._id,
-            country,
-            legalName: optionalField(input.company?.legalName),
-            taxNumber: optionalField(input.company?.taxNumber),
-          },
-        ],
-        { session },
-      );
-      company = createdCompany;
+      try {
+        const [createdCompany] = await Company.create(
+          [
+            {
+              ownerId: owner._id,
+              country,
+              legalName: optionalField(input.company?.legalName),
+              taxNumber: optionalField(input.company?.taxNumber),
+            },
+          ],
+          { session },
+        );
+        company = createdCompany;
+      } catch (error) {
+        if ((error as { code?: unknown } | null)?.code === 11000) {
+          throw new OwnerCompanyCreationError(
+            "company-duplicate",
+            "Company legal name or tax number already exists!",
+          );
+        }
+        throw error;
+      }
     }
 
     const [business] = await Business.create(

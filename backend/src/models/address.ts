@@ -5,9 +5,12 @@ import { Schema } from "mongoose";
  * requires every location field; a draft venue address requires only the
  * country and can be completed later.
  */
-function buildAddressSchema(requireFull: boolean, id = true) {
+function buildAddressSchema(options: {
+  requireFull: boolean;
+  assignId?: boolean;
+}) {
   const requiredString = (message: string) =>
-    requireFull
+    options.requireFull
       ? { type: String, required: [true, message] }
       : { type: String };
 
@@ -28,12 +31,15 @@ function buildAddressSchema(requireFull: boolean, id = true) {
       additionalDetails: { type: String }, // additional details about the location
       coordinates: { type: [Number], default: undefined }, // [longitude, latitude] ex: [40.712776, -74.005974] New York City - it will auto complete after required fields are filled
     },
-    { _id: id },
+    { _id: options.assignId ?? true },
   );
 }
 
 /** Full postal address used by entities that require a complete address. */
-export const addressSchema = buildAddressSchema(true);
+export const addressSchema = buildAddressSchema({ requireFull: true });
 
 /** Draft venue address: country only; the remaining fields may stay empty. */
-export const draftAddressSchema = buildAddressSchema(false, false);
+export const draftAddressSchema = buildAddressSchema({
+  requireFull: false,
+  assignId: false,
+});

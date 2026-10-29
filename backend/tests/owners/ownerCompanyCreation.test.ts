@@ -79,7 +79,7 @@ describe("ownerCompanyCreation", () => {
         tradeName: "Draft Venue",
         currencyTrade: "USD",
         address: { country: "USA" },
-      } as BusinessCreationInput,
+      },
     });
 
     expect(result.business.tradeName).toBe("Draft Venue");
