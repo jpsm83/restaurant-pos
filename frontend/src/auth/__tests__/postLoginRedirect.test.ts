@@ -44,6 +44,7 @@ describe("safeReturnTo", () => {
     ["forgot password", "/forgot-password"],
     ["reset password", "/reset-password?token=abc"],
     ["confirm email", "/confirm-email"],
+    ["confirm email change", "/confirm-email-change?token=abc"],
     ["request email confirmation", "/request-email-confirmation"],
     ["retired business register", "/business/register"],
     ["retired business signup", "/business/signup"],

@@ -4,6 +4,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   confirmEmail,
+  confirmEmailChange,
   getAuthConfig,
   getCurrentUser,
   googleAuth,
@@ -374,6 +375,43 @@ describe("auth api — email / password-reset endpoints", () => {
       }),
     );
     expect(result).toEqual({ ok: true, data: { message: "Sent" } });
+  });
+
+  it("confirmEmailChange POSTs the token without an Authorization header", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ message: "Updated" }));
+
+    const result = await confirmEmailChange("abc123");
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(urlPath(url)).toMatch(/\/api\/v1\/auth\/confirm-email-change$/);
+    expect(init.method).toBe("POST");
+    expect(init.credentials).toBe("include");
+    expect(init.body).toBe(JSON.stringify({ token: "abc123" }));
+    const headers = new Headers(init.headers as HeadersInit);
+    expect(headers.get("Authorization")).toBeNull();
+    expect(result).toEqual({ ok: true, data: { message: "Updated" } });
+  });
+
+  it("confirmEmailChange maps an invalid link to the machine outcome", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(
+        {
+          title: "Bad Request",
+          status: 400,
+          detail:
+            "This link is invalid or has expired. Please request a new one.",
+        },
+        400,
+      ),
+    );
+
+    const result = await confirmEmailChange("stale");
+
+    expectFailure(result, {
+      code: "confirmEmailChange.badRequest",
+      status: 400,
+    });
   });
 
   it("requestEmailChange maps a wrong password to the machine outcome", async () => {

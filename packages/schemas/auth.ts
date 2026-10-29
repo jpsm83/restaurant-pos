@@ -92,6 +92,14 @@ export const confirmEmailBodySchema = z.strictObject({
     .min(1, "Please provide a confirmation token."),
 });
 
+/** Consumes the pending sign-in email change token emailed to the new address. */
+export const confirmEmailChangeBodySchema = z.strictObject({
+  token: z
+    .string({ error: "Please provide a confirmation token." })
+    .trim()
+    .min(1, "Please provide a confirmation token."),
+});
+
 export const resetPasswordBodySchema = z.strictObject({
   token: z
     .string({ error: "Please provide a reset token." })
@@ -120,5 +128,8 @@ export type RequestEmailChangeBody = z.infer<
   typeof requestEmailChangeBodySchema
 >;
 export type ConfirmEmailBody = z.infer<typeof confirmEmailBodySchema>;
+export type ConfirmEmailChangeBody = z.infer<
+  typeof confirmEmailChangeBodySchema
+>;
 export type ResetPasswordBody = z.infer<typeof resetPasswordBodySchema>;
 export type SetModeBody = z.infer<typeof setModeBodySchema>;

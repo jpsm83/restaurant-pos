@@ -36,6 +36,7 @@ import {
 import {
   handleConfirmEmail,
 } from "../../auth/confirmEmail.ts";
+import { handleConfirmEmailChange } from "../../auth/confirmEmailChange.ts";
 import {
   GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE,
   handleRequestEmailConfirmation,
@@ -60,6 +61,7 @@ import {
 import type { IAuthConfigResponse } from "restaurant-pos-packages/interfaces/IAuth";
 import {
   confirmEmailBodySchema,
+  confirmEmailChangeBodySchema,
   googleAuthBodySchema,
   loginBodySchema,
   requestEmailChangeBodySchema,
@@ -69,6 +71,7 @@ import {
   setModeBodySchema,
   signupBodySchema,
   type ConfirmEmailBody,
+  type ConfirmEmailChangeBody,
   type GoogleAuthBody,
   type LoginBody,
   type RequestEmailChangeBody,
@@ -331,6 +334,29 @@ export const authRoutes: FastifyPluginAsync<AuthRoutesOptions> = async (
 
     return reply.code(200).send({ message: result.message });
   });
+
+  /**
+   * POST /auth/confirm-email-change
+   * Public: consume the pending sign-in email change token (one-time). On
+   * success the pending address becomes the sign-in email, every refresh
+   * session is revoked, and the old address is notified.
+   */
+  app.post<{ Body: ConfirmEmailChangeBody }>(
+    "/confirm-email-change",
+    { schema: { body: confirmEmailChangeBodySchema } },
+    async (req, reply) => {
+      const result = await handleConfirmEmailChange(req.body.token);
+
+      if (result.kind === "client_error") {
+        throw badRequest(result.message);
+      }
+      if (result.kind === "server_error_500") {
+        throw internal(result.message);
+      }
+
+      return reply.code(200).send({ message: result.message });
+    },
+  );
 
   /**
    * POST /auth/request-email-change

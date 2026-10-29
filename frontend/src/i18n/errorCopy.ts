@@ -119,6 +119,18 @@ const OVERRIDES: Partial<Record<ServiceErrorCode, ErrorCopyTemplate>> = {
     namespace: "auth",
     key: "api.emailChangeFailed",
   },
+  "confirmEmailChange.validation": {
+    namespace: "auth",
+    key: "api.invalidEmailChangeLink",
+  },
+  "confirmEmailChange.badRequest": {
+    namespace: "auth",
+    key: "api.invalidEmailChangeLink",
+  },
+  "confirmEmailChange.notFound": {
+    namespace: "auth",
+    key: "api.invalidEmailChangeLink",
+  },
   "passwordReset.validation": {
     namespace: "auth",
     key: "api.invalidResetLink",

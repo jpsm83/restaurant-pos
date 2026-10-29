@@ -122,6 +122,12 @@ describe("ERROR_COPY", () => {
       namespace: "auth",
       key: "api.invalidConfirmationLink",
     });
+    expect(
+      getErrorCopy(failure("confirmEmailChange.badRequest")),
+    ).toMatchObject({
+      namespace: "auth",
+      key: "api.invalidEmailChangeLink",
+    });
     expect(getErrorCopy(failure("passwordReset.validation"))).toMatchObject({
       namespace: "auth",
       key: "api.invalidResetLink",

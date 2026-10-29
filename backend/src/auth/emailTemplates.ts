@@ -202,6 +202,19 @@ const emailChangeTranslations = {
   },
 };
 
+const emailChangeNoticeTranslations = {
+  en: {
+    subject: "Your POS Sign-In Email Was Changed",
+    greeting: "Hello",
+    message:
+      "The sign-in email for your POS account was changed. You will now sign in with the new address shown below.",
+    newAddressLabel: "New sign-in email",
+    warningMessage:
+      "If you didn't make this change, contact support immediately — someone may have taken over your account.",
+    copyright: "© 2026 POS. All rights reserved.",
+  },
+};
+
 const accountExistsTranslations = {
   en: {
     subject: "You Already Have a POS Account",
@@ -281,6 +294,60 @@ export function buildAccountExistsEmailContent(options: {
       ${t.resetButton}: ${options.resetUrl}
 
       ${t.ignoreMessage}
+
+      ${t.copyright}
+    `,
+  };
+}
+
+/**
+ * Security notice sent to the *previous* sign-in address after a confirmed
+ * email change. It carries no link: it only warns the former owner.
+ */
+export function buildEmailChangeNoticeContent(options: {
+  newEmail: string;
+  greetingName?: string;
+}): AuthEmailTemplateContent {
+  const t = emailChangeNoticeTranslations.en;
+  const username = fallbackName(options.greetingName);
+
+  return {
+    subject: t.subject,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(to right, #0ea5e9, #3b82f6); color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+          <h1 style="margin: 0; font-size: 24px; color: white;">
+            POS
+          </h1>
+        </div>
+        <div style="background-color: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; border: 1px solid #e5e7eb;">
+          <h2 style="color: #374151; margin-bottom: 20px;">${t.greeting} ${username}!</h2>
+          <p style="color: #6b7280; line-height: 1.6; margin-bottom: 20px;">
+            ${t.message}
+          </p>
+          <p style="color: #374151; line-height: 1.6; margin-bottom: 20px;">
+            <strong>${t.newAddressLabel}:</strong> ${options.newEmail}
+          </p>
+          <p style="color: #6b7280; line-height: 1.6; margin-bottom: 20px;">
+            ${t.warningMessage}
+          </p>
+          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+        </div>
+        <div style="text-align: center; margin-top: 20px; color: #9ca3af; font-size: 12px;">
+          <p>${t.copyright}</p>
+        </div>
+      </div>
+    `,
+    text: `
+      ${t.subject}
+
+      ${t.greeting} ${username}!
+
+      ${t.message}
+
+      ${t.newAddressLabel}: ${options.newEmail}
+
+      ${t.warningMessage}
 
       ${t.copyright}
     `,

@@ -125,7 +125,7 @@ describe("App public routing (Phase 1.5.1)", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("does not register the retired confirm-email-change route", async () => {
+  it("renders ConfirmEmailChangePage for `/confirm-email-change`", async () => {
     await renderWithI18n(
       <MemoryRouter initialEntries={["/confirm-email-change"]}>
         <AppRoutes />
@@ -133,7 +133,7 @@ describe("App public routing (Phase 1.5.1)", () => {
     );
 
     expect(
-      await screen.findByRole("heading", { name: /page not found/i }),
+      await screen.findByRole("heading", { name: /confirm your new email/i }),
     ).toBeInTheDocument();
   });
 

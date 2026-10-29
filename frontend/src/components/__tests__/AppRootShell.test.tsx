@@ -52,6 +52,18 @@ describe("AppRootShell", () => {
     expect(screen.getByTestId("test-app")).toBeInTheDocument();
   });
 
+  it("omits Navbar on the email-change confirmation landing", async () => {
+    await renderWithI18n(
+      <MemoryRouter initialEntries={["/confirm-email-change"]}>
+        <Routes>
+          <Route path="/confirm-email-change" element={<ShellRoute />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(screen.queryByTestId("test-navbar")).not.toBeInTheDocument();
+    expect(screen.getByTestId("test-app")).toBeInTheDocument();
+  });
+
   it("omits live chrome on guest recovery pages", async () => {
     await renderWithI18n(
       <MemoryRouter initialEntries={["/reset-password"]}>

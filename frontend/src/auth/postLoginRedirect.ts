@@ -20,6 +20,7 @@ const AUTH_RECOVERY_PATHS = new Set([
   "/forgot-password",
   "/reset-password",
   "/confirm-email",
+  "/confirm-email-change",
   "/request-email-confirmation",
   "/business/register",
   "/business/signup",
