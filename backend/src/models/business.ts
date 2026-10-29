@@ -1,4 +1,5 @@
 import mongoose, { Schema, model } from "mongoose";
+import { draftAddressSchema } from "./address.ts";
 import * as enums from "restaurant-pos-packages/enums";
 import { applyActiveOnlySoftDelete, softDeleteSchemaFields } from "./softDelete.ts";
 
@@ -17,25 +18,6 @@ const metricsSchema = new Schema({
     hightBudgetImpact: { type: Number, default: 3 }, // Food waste percentage acceptable - 2-5% of sales average
     veryHightBudgetImpact: { type: Number, default: 1 }, // Food waste percentage acceptable - 0-2% of sales average
   }, // Food waste percentage acceptable - 3-7% of sales average
-});
-
-/**
- * A draft venue stores only its onboarding country; the rest of the postal
- * address is optional until the Owner completes the profile. Legacy rows keep
- * their full address and remain readable.
- */
-const businessAddressSchema = new Schema({
-  country: { type: String, required: [true, "Country is required!"] },
-  state: { type: String },
-  city: { type: String },
-  street: { type: String },
-  buildingNumber: { type: String },
-  doorNumber: { type: String },
-  complement: { type: String },
-  postCode: { type: String },
-  region: { type: String },
-  additionalDetails: { type: String },
-  coordinates: { type: [Number], default: undefined },
 });
 
 const businessOpeningHourSchema = new Schema(
@@ -102,7 +84,7 @@ const businessSchema = new Schema(
       default: "Free",
     }, // Subscription plan for the company
     timezone: { type: String }, // Authoritative IANA zone (e.g. America/Bogota); legacy businesses may have none
-    address: { type: businessAddressSchema }, // Address of the company; incomplete while a draft
+    address: { type: draftAddressSchema }, // Address of the company; country only while a draft
     metrics: { type: metricsSchema }, // Metrics of the company
 
     // optional fields

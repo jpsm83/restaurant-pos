@@ -1,9 +1,9 @@
 /**
  * Business Routes — business discovery, registration, profile update and delete.
  *
- * Multipart bodies (registration and profile update) are buffered and validated
- * by the shared multipart helper against strict zod DTOs from
- * `packages/schemas/business.ts`; JSON-encoded fields (`address`,
+ * Registration takes a strict JSON body. The profile update takes a multipart
+ * body buffered and validated by the shared multipart helper against strict zod
+ * DTOs from `packages/schemas/business.ts`; JSON-encoded fields (`address`,
  * `businessOpeningHours`, `deliveryOpeningWindows`, `metrics`,
  * `reportingConfig`) are parsed and validated there. The GET/DELETE path params
  * and the discovery query are validated by their DTOs. Every error is raised as
@@ -13,7 +13,9 @@ import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
 import dispatchEvent from "../../communications/dispatchEvent.ts";
 import Business from "../../models/business.ts";
-import ownerCompanyCreation from "../../owners/ownerCompanyCreation.ts";
+import ownerCompanyCreation, {
+  OwnerCompanyCreationError,
+} from "../../owners/ownerCompanyCreation.ts";
 import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
 import {
   createAuthHook,
@@ -134,6 +136,29 @@ function haversineKm(
   return R * c;
 }
 
+/** Whitelist the postal address so server-generated subdocument keys never leak. */
+function toSafeRegisteredAddress(address: unknown) {
+  if (!address || typeof address !== "object") return undefined;
+  const source = address as Record<string, unknown>;
+  const safe: Record<string, unknown> = {};
+  for (const key of [
+    "country",
+    "state",
+    "city",
+    "street",
+    "buildingNumber",
+    "doorNumber",
+    "complement",
+    "postCode",
+    "region",
+    "additionalDetails",
+    "coordinates",
+  ]) {
+    if (source[key] !== undefined) safe[key] = source[key];
+  }
+  return Object.keys(safe).length > 0 ? safe : undefined;
+}
+
 /** Safe, portfolio-facing Business shape: no credentials or server-owned fields. */
 function toSafeRegisteredBusiness(business: {
   _id: unknown;
@@ -142,18 +167,15 @@ function toSafeRegisteredBusiness(business: {
   imageUrl?: string;
   address?: unknown;
   companyId?: unknown;
-  createdAt?: Date;
-  updatedAt?: Date;
 }) {
+  const address = toSafeRegisteredAddress(business.address);
   return {
     _id: String(business._id),
     tradeName: business.tradeName,
     currencyTrade: business.currencyTrade,
     ...(business.imageUrl ? { imageUrl: business.imageUrl } : {}),
-    ...(business.address ? { address: business.address } : {}),
+    ...(address ? { address } : {}),
     ...(business.companyId ? { companyId: String(business.companyId) } : {}),
-    ...(business.createdAt ? { createdAt: business.createdAt } : {}),
-    ...(business.updatedAt ? { updatedAt: business.updatedAt } : {}),
   };
 }
 
@@ -163,16 +185,12 @@ function toSafeRegisteredCompany(company: {
   country: string;
   legalName?: string;
   taxNumber?: string;
-  createdAt?: Date;
-  updatedAt?: Date;
 }) {
   return {
     _id: String(company._id),
     country: company.country,
     ...(company.legalName ? { legalName: company.legalName } : {}),
     ...(company.taxNumber ? { taxNumber: company.taxNumber } : {}),
-    ...(company.createdAt ? { createdAt: company.createdAt } : {}),
-    ...(company.updatedAt ? { updatedAt: company.updatedAt } : {}),
   };
 }
 
@@ -181,23 +199,23 @@ function toSafeRegisteredCompany(company: {
  * details. Unknown failures stay unexpected so the global handler reports them.
  */
 function throwRegistrationProblem(error: unknown): never {
-  const code = (error as { code?: unknown } | null)?.code;
-  if (code === 11000) {
-    throw conflict("Company legal name or tax number already exists!");
+  if (error instanceof OwnerCompanyCreationError) {
+    switch (error.code) {
+      case "company-not-found":
+        throw notFound("Company not found!");
+      case "company-not-owned":
+        throw forbidden("Company does not belong to this Owner!");
+      case "owner-country-mismatch":
+      case "company-country-mismatch":
+        throw badRequest(error.message);
+      case "business-without-company":
+      case "business-other-company":
+        throw conflict(error.message);
+    }
   }
 
-  const message = error instanceof Error ? error.message : "";
-  if (/without an owning Company|already belongs to another Company/i.test(message)) {
-    throw conflict(message);
-  }
-  if (/Company not found/i.test(message)) {
-    throw notFound("Company not found!");
-  }
-  if (/does not belong/i.test(message)) {
-    throw forbidden("Company does not belong to this Owner!");
-  }
-  if (/portfolio country|Company country/i.test(message)) {
-    throw badRequest(message);
+  if ((error as { code?: unknown } | null)?.code === 11000) {
+    throw conflict("Company legal name or tax number already exists!");
   }
 
   throw error;
@@ -407,26 +425,16 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
 
       const updateBusinessObj: Record<string, unknown> = {};
 
-      if (
-        fields.tradeName !== undefined &&
-        fields.tradeName !== businessRecord.tradeName
-      )
-        updateBusinessObj.tradeName = fields.tradeName;
-      if (
-        fields.phoneNumber !== undefined &&
-        fields.phoneNumber !== businessRecord.phoneNumber
-      )
-        updateBusinessObj.phoneNumber = fields.phoneNumber;
-      if (
-        fields.currencyTrade !== undefined &&
-        fields.currencyTrade !== businessRecord.currencyTrade
-      )
-        updateBusinessObj.currencyTrade = fields.currencyTrade;
-      if (
-        fields.subscription !== undefined &&
-        fields.subscription !== businessRecord.subscription
-      )
-        updateBusinessObj.subscription = fields.subscription;
+      const setIfChanged = (key: string, next: unknown) => {
+        if (next !== undefined && next !== businessRecord[key]) {
+          updateBusinessObj[key] = next;
+        }
+      };
+
+      setIfChanged("tradeName", fields.tradeName);
+      setIfChanged("phoneNumber", fields.phoneNumber);
+      setIfChanged("currencyTrade", fields.currencyTrade);
+      setIfChanged("subscription", fields.subscription);
 
       if (fields.contactPerson !== undefined) {
         const next = fields.contactPerson.length > 0 ? fields.contactPerson : null;

@@ -63,7 +63,7 @@ export interface IBusiness {
    */
   timezone?: string;
   /** Full postal address; a draft may store only its onboarding country. */
-  address?: Partial<IAddress> & { country?: string };
+  address?: Partial<IAddress>;
   metrics?: IMetrics;
   /** Optional primary contact: employee id (hex) chosen from management staff, or legacy free text. */
   contactPerson?: string;

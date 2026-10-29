@@ -163,6 +163,7 @@ describe("Business Routes", () => {
       });
       expect(body.business._id).toEqual(expect.any(String));
       expect(body.business.companyId).toBe(body.company._id);
+      expect(body.business.address._id).toBeUndefined();
       expect(body.company).toMatchObject({ country: "USA" });
       expect(body.company.legalName).toBeUndefined();
       expect(body.company.taxNumber).toBeUndefined();
@@ -277,6 +278,28 @@ describe("Business Routes", () => {
       expect(response.headers["content-type"]).toContain(
         "application/problem+json",
       );
+      await expect(Business.countDocuments()).resolves.toBe(0);
+    });
+
+    it("refuses a soft-deleted Company", async () => {
+      const app = await getTestApp();
+      const { auth, userId } = await customerAuthToken();
+      const owner = await Owner.create({ userId, country: "USA" });
+      const company = await Company.create({
+        ownerId: owner._id,
+        country: "USA",
+        deleted: true,
+        deletedAt: new Date(),
+      });
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/business",
+        headers: { authorization: auth },
+        payload: { ...draft, companyId: company._id.toString() },
+      });
+
+      expect(response.statusCode).toBe(403);
       await expect(Business.countDocuments()).resolves.toBe(0);
     });
 
@@ -1381,7 +1404,6 @@ describe("Business Routes", () => {
         'Content-Disposition: form-data; name="tradeName"\r\n\r\nCredential Reject Business',
         `--${boundary}`,
         'Content-Disposition: form-data; name="phoneNumber"\r\n\r\n1234567890',
-          String(business.taxNumber),
         `--${boundary}`,
         'Content-Disposition: form-data; name="subscription"\r\n\r\nFree',
         `--${boundary}`,
