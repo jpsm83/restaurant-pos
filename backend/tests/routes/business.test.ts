@@ -200,7 +200,61 @@ describe("Business Routes", () => {
       expect(business?.address?.state).toBeUndefined();
     });
 
-    it("reuses the Owner and forms a new Company for a later venue", async () => {
+    it("creates a first venue with an explicit new-Company payload", async () => {
+      const app = await getTestApp();
+      const { auth } = await customerAuthToken();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/business",
+        headers: { authorization: auth },
+        payload: {
+          ...draft,
+          company: { legalName: "Taxpayer SL", taxNumber: "TAX-1" },
+        },
+      });
+
+      expect(response.statusCode).toBe(201);
+      const body = JSON.parse(response.body);
+      expect(body.company.legalName).toBe("Taxpayer SL");
+      expect(body.company.taxNumber).toBe("TAX-1");
+      expect(body.business.companyId).toBe(body.company._id);
+      await expect(Owner.countDocuments()).resolves.toBe(1);
+      await expect(Company.countDocuments()).resolves.toBe(1);
+      await expect(Business.countDocuments()).resolves.toBe(1);
+    });
+
+    it("rejects a later venue with no Company choice and creates nothing", async () => {
+      const app = await getTestApp();
+      const { auth, userId } = await customerAuthToken();
+
+      const first = await app.inject({
+        method: "POST",
+        url: "/api/v1/business",
+        headers: { authorization: auth },
+        payload: draft,
+      });
+      expect(first.statusCode).toBe(201);
+      const firstBody = JSON.parse(first.body);
+
+      const second = await app.inject({
+        method: "POST",
+        url: "/api/v1/business",
+        headers: { authorization: auth },
+        payload: { ...draft, tradeName: "Second Venue" },
+      });
+
+      expect(second.statusCode).toBe(400);
+      expect(second.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      await expect(Owner.countDocuments({ userId })).resolves.toBe(1);
+      await expect(Company.countDocuments()).resolves.toBe(1);
+      await expect(Business.countDocuments()).resolves.toBe(1);
+      expect(await Business.findById(firstBody.business._id)).not.toBeNull();
+    });
+
+    it("forms a new Company for a later venue with an empty Company payload", async () => {
       const app = await getTestApp();
       const { auth, userId } = await customerAuthToken();
 
@@ -214,7 +268,7 @@ describe("Business Routes", () => {
         method: "POST",
         url: "/api/v1/business",
         headers: { authorization: auth },
-        payload: { ...draft, tradeName: "Second Venue" },
+        payload: { ...draft, tradeName: "Second Venue", company: {} },
       });
 
       expect(first.statusCode).toBe(201);
@@ -223,9 +277,42 @@ describe("Business Routes", () => {
       const secondBody = JSON.parse(second.body);
       expect(secondBody.business._id).not.toBe(firstBody.business._id);
       expect(secondBody.company._id).not.toBe(firstBody.company._id);
+      expect(secondBody.company.legalName).toBeUndefined();
+      expect(secondBody.company.taxNumber).toBeUndefined();
       await expect(Owner.countDocuments({ userId })).resolves.toBe(1);
       await expect(Company.countDocuments()).resolves.toBe(2);
       await expect(Business.countDocuments()).resolves.toBe(2);
+    });
+
+    it("forms a new Company for a later venue with a legal name and tax number", async () => {
+      const app = await getTestApp();
+      const { auth } = await customerAuthToken();
+
+      const first = await app.inject({
+        method: "POST",
+        url: "/api/v1/business",
+        headers: { authorization: auth },
+        payload: draft,
+      });
+      const second = await app.inject({
+        method: "POST",
+        url: "/api/v1/business",
+        headers: { authorization: auth },
+        payload: {
+          ...draft,
+          tradeName: "Second Venue",
+          company: { legalName: "Other SL", taxNumber: "TAX-2" },
+        },
+      });
+
+      expect(first.statusCode).toBe(201);
+      expect(second.statusCode).toBe(201);
+      const firstBody = JSON.parse(first.body);
+      const secondBody = JSON.parse(second.body);
+      expect(secondBody.company._id).not.toBe(firstBody.company._id);
+      expect(secondBody.company.legalName).toBe("Other SL");
+      expect(secondBody.company.taxNumber).toBe("TAX-2");
+      await expect(Company.countDocuments()).resolves.toBe(2);
     });
 
     it("returns the same Owner, Company and Business for a retried idempotent request", async () => {

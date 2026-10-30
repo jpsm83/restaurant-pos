@@ -23,6 +23,7 @@ export type OwnerCompanyCreationErrorCode =
   | "company-not-found"
   | "company-not-owned"
   | "company-duplicate"
+  | "company-choice-required"
   | "country-required"
   | "owner-country-mismatch"
   | "company-country-mismatch";
@@ -91,7 +92,8 @@ function optionalField(value?: string): string | undefined {
  *
  * Rejects a venue whose country differs from the Owner's portfolio country, a
  * Company that is not owned by this User's Owner or sits in another country,
- * and a Business id that already exists without an Owner Company.
+ * a Business id that already exists without an Owner Company, and a later
+ * venue (an Owner that already has a Company) that supplies no Company choice.
  */
 const ownerCompanyCreation = async (
   input: OwnerCompanyCreationInput,
@@ -165,6 +167,16 @@ const ownerCompanyCreation = async (
         "owner-country-mismatch",
         "Venue country must match the Owner's portfolio country!",
       );
+    } else if (!input.companyId && input.company === undefined) {
+      const companyCount = await Company.countDocuments({
+        ownerId: owner._id,
+      }).session(session);
+      if (companyCount > 0) {
+        throw new OwnerCompanyCreationError(
+          "company-choice-required",
+          "A Company choice is required for an additional venue!",
+        );
+      }
     }
 
     let company: HydratedDocument<ICompany>;

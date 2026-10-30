@@ -192,6 +192,7 @@ function throwRegistrationProblem(error: unknown): never {
       case "country-required":
       case "owner-country-mismatch":
       case "company-country-mismatch":
+      case "company-choice-required":
         throw badRequest(error.message);
       case "company-duplicate":
         throw conflict(error.message);

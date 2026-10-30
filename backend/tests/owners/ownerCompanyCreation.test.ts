@@ -115,8 +115,30 @@ describe("ownerCompanyCreation", () => {
     await expect(Business.countDocuments({ _id: businessId })).resolves.toBe(1);
   });
 
-  it("reuses the Owner but forms a new Company for a later venue without a Company id", async () => {
-    const user = await createUser("new-company");
+  it("rejects a later venue with no Company choice and persists nothing", async () => {
+    const user = await createUser("no-company-choice");
+
+    const first = await ownerCompanyCreation({
+      userId: user._id,
+      business: venue("Spain"),
+    });
+
+    await expect(
+      ownerCompanyCreation({
+        userId: user._id,
+        business: venue("Spain"),
+      }),
+    ).rejects.toMatchObject({ code: "company-choice-required" });
+
+    await expect(Owner.countDocuments({ userId: user._id })).resolves.toBe(1);
+    await expect(
+      Company.countDocuments({ ownerId: first.owner._id }),
+    ).resolves.toBe(1);
+    await expect(Business.countDocuments({})).resolves.toBe(1);
+  });
+
+  it("forms a new Company for a later venue when an empty Company payload is supplied", async () => {
+    const user = await createUser("explicit-empty-company");
 
     const first = await ownerCompanyCreation({
       userId: user._id,
@@ -125,12 +147,80 @@ describe("ownerCompanyCreation", () => {
     const second = await ownerCompanyCreation({
       userId: user._id,
       business: venue("Spain"),
+      company: {},
     });
 
     expect(second.owner._id.toString()).toBe(first.owner._id.toString());
     expect(second.company._id.toString()).not.toBe(first.company._id.toString());
+    expect(second.company.legalName).toBeUndefined();
+    expect(second.company.taxNumber).toBeUndefined();
+    expect(second.business.companyId?.toString()).toBe(
+      second.company._id.toString(),
+    );
     await expect(Owner.countDocuments({ userId: user._id })).resolves.toBe(1);
-    await expect(Company.countDocuments({ ownerId: first.owner._id })).resolves.toBe(2);
+    await expect(
+      Company.countDocuments({ ownerId: first.owner._id }),
+    ).resolves.toBe(2);
+  });
+
+  it("forms a new Company for a later venue with a legal name and tax number", async () => {
+    const user = await createUser("later-new-company");
+
+    const first = await ownerCompanyCreation({
+      userId: user._id,
+      business: venue("Spain"),
+    });
+    const second = await ownerCompanyCreation({
+      userId: user._id,
+      business: venue("Spain"),
+      company: { legalName: "Other SL", taxNumber: "ES-456" },
+    });
+
+    expect(second.company._id.toString()).not.toBe(first.company._id.toString());
+    expect(second.company.legalName).toBe("Other SL");
+    expect(second.company.taxNumber).toBe("ES-456");
+    await expect(Owner.countDocuments({ userId: user._id })).resolves.toBe(1);
+    await expect(
+      Company.countDocuments({ ownerId: first.owner._id }),
+    ).resolves.toBe(2);
+  });
+
+  it("forms a new Company for a later venue with blank legal name and tax number", async () => {
+    const user = await createUser("blank-company-identity");
+
+    const first = await ownerCompanyCreation({
+      userId: user._id,
+      business: venue("Spain"),
+    });
+    const second = await ownerCompanyCreation({
+      userId: user._id,
+      business: venue("Spain"),
+      company: { legalName: "   ", taxNumber: "" },
+    });
+
+    expect(second.company._id.toString()).not.toBe(first.company._id.toString());
+    expect(second.company.legalName).toBeUndefined();
+    expect(second.company.taxNumber).toBeUndefined();
+    await expect(Owner.countDocuments({ userId: user._id })).resolves.toBe(1);
+    await expect(
+      Company.countDocuments({ ownerId: first.owner._id }),
+    ).resolves.toBe(2);
+  });
+
+  it("allows omitting the Company choice for an Owner that has no Company", async () => {
+    const user = await createUser("empty-owner");
+    await Owner.create({ userId: user._id, country: "Spain" });
+
+    const result = await ownerCompanyCreation({
+      userId: user._id,
+      business: venue("Spain"),
+    });
+
+    expect(result.company.country).toBe("Spain");
+    await expect(
+      Company.countDocuments({ ownerId: result.owner._id }),
+    ).resolves.toBe(1);
+    await expect(Business.countDocuments({})).resolves.toBe(1);
   });
 
   it("accepts an existing Company owned by the same Owner", async () => {
