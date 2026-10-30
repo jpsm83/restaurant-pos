@@ -34,7 +34,7 @@ import bcrypt from "bcrypt";
 import { getTestApp, generateTestToken } from "../setup.ts";
 import User from "../../src/models/user.ts";
 import Notification from "../../src/models/notification.ts";
-import Business from "../../src/models/business.ts";
+import { createTestBusiness } from "../helpers/fixtures.ts";
 import { multipart } from "../helpers/multipart.ts";
 import {
   detail,
@@ -808,7 +808,7 @@ describe("Users Routes", () => {
     it("marks user notification as read", async () => {
       const app = await getTestApp();
 
-      const business = await Business.create({
+      const business = await createTestBusiness({
         tradeName: "Read Flag Business",
         legalName: "Read Flag Business LLC",
         email: "read-flag-business@test.com",
@@ -860,7 +860,7 @@ describe("Users Routes", () => {
     it("marks notification as deleted and sets readFlag", async () => {
       const app = await getTestApp();
 
-      const business = await Business.create({
+      const business = await createTestBusiness({
         tradeName: "Test Business",
         legalName: "Test Business LLC",
         email: "business@test.com",

@@ -4,7 +4,7 @@ import type { AddressInfo } from "node:net";
 import { Types } from "mongoose";
 import type { FastifyInstance } from "fastify";
 import { buildApp } from "../../src/server.ts";
-import Business from "../../src/models/business.ts";
+import { createTestBusiness as createCompanyAwareBusiness } from "../helpers/fixtures.ts";
 import RefreshSession from "../../src/models/refreshSession.ts";
 import User from "../../src/models/user.ts";
 import { getCommunicationsMetricsSnapshot } from "../../src/communications/observability/metrics.ts";
@@ -74,7 +74,7 @@ describe("Notifications Live Route", () => {
   };
 
   const createTestBusiness = async () => {
-    return await Business.create({
+    return await createCompanyAwareBusiness({
       tradeName: "WS Test Restaurant",
       legalName: "WS Test Restaurant LLC",
       email: `ws-test-${Date.now()}@restaurant.com`,

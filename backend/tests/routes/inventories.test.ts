@@ -14,7 +14,7 @@ import { getTestApp, generateTestToken } from "../setup.ts";
 import Inventory from "../../src/models/inventory.ts";
 import SupplierGood from "../../src/models/supplierGood.ts";
 import Supplier from "../../src/models/supplier.ts";
-import Business from "../../src/models/business.ts";
+import { createTestBusiness } from "../helpers/fixtures.ts";
 import User from "../../src/models/user.ts";
 import Employee from "../../src/models/employee.ts";
 import AuditEntry from "../../src/models/auditEntry.ts";
@@ -99,7 +99,7 @@ describe("Inventories Routes", () => {
   beforeEach(async () => {
     appendAuditEntryMock.mockClear();
 
-    const business = await Business.create({
+    const business = await createTestBusiness({
       tradeName: "Test Restaurant",
       legalName: "Test Restaurant LLC",
       email: "test@restaurant.com",

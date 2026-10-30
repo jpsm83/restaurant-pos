@@ -3,6 +3,7 @@
  */
 import { describe, it, expect } from "vitest";
 import Business from "../../src/models/business.ts";
+import { createTestBusiness } from "../helpers/fixtures.ts";
 
 const minimalBusiness = {
   tradeName: "Schema Test Bistro",
@@ -23,7 +24,7 @@ const minimalBusiness = {
 
 describe("Business contact email schema", () => {
   it("defaults emailVerified to false and stores the venue contact email", async () => {
-    const created = await Business.create({
+    const created = await createTestBusiness({
       ...minimalBusiness,
       taxNumber: "TAX-SCHEMA-BIZ-002",
       email: "biz-schema-a@example.com",
@@ -38,7 +39,7 @@ describe("Business contact email schema", () => {
   });
 
   it("stores a verified contact email", async () => {
-    const created = await Business.create({
+    const created = await createTestBusiness({
       ...minimalBusiness,
       taxNumber: "TAX-SCHEMA-BIZ-003",
       email: "biz-verified@example.com",

@@ -11,7 +11,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { Types } from "mongoose";
 import { getTestApp } from "../setup.ts";
 import BusinessGood from "../../src/models/businessGood.ts";
-import Business from "../../src/models/business.ts";
+import { createTestBusiness } from "../helpers/fixtures.ts";
 import Supplier from "../../src/models/supplier.ts";
 import SupplierGood from "../../src/models/supplierGood.ts";
 import { isProblemDetails } from "../helpers/problemDetails.ts";
@@ -37,7 +37,7 @@ describe("BusinessGoods Routes", () => {
   let businessId: Types.ObjectId;
 
   beforeEach(async () => {
-    const business = await Business.create({
+    const business = await createTestBusiness({
       tradeName: "Test Restaurant",
       legalName: "Test Restaurant LLC",
       email: "test@restaurant.com",

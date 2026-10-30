@@ -12,7 +12,7 @@ import { Types } from "mongoose";
 import { getTestApp } from "../setup.ts";
 import SupplierGood from "../../src/models/supplierGood.ts";
 import Supplier from "../../src/models/supplier.ts";
-import Business from "../../src/models/business.ts";
+import { createTestBusiness } from "../helpers/fixtures.ts";
 import BusinessGood from "../../src/models/businessGood.ts";
 import Inventory from "../../src/models/inventory.ts";
 import { multipart } from "../helpers/multipart.ts";
@@ -52,7 +52,7 @@ describe("SupplierGoods Routes", () => {
   });
 
   beforeEach(async () => {
-    const business = await Business.create({
+    const business = await createTestBusiness({
       tradeName: "Test Restaurant",
       legalName: "Test Restaurant LLC",
       email: "test@restaurant.com",

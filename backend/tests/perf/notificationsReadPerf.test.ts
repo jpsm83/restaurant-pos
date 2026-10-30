@@ -4,7 +4,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { getTestApp } from "../setup.ts";
 import Notification from "../../src/models/notification.ts";
-import Business from "../../src/models/business.ts";
+import { createTestBusiness } from "../helpers/fixtures.ts";
 import User from "../../src/models/user.ts";
 
 const percentile = (values: number[], p: number): number => {
@@ -34,7 +34,7 @@ describe("Performance baseline - notification read endpoints", () => {
   it("captures local p50/p95 latency and explain execution stats", async () => {
     const app = await getTestApp();
 
-    const businessA = await Business.create({
+    const businessA = await createTestBusiness({
       tradeName: "Perf A",
       legalName: "Perf A LLC",
       email: `perf-a-${Date.now()}@restaurant.com`,
@@ -52,7 +52,7 @@ describe("Performance baseline - notification read endpoints", () => {
       },
     });
 
-    const businessB = await Business.create({
+    const businessB = await createTestBusiness({
       tradeName: "Perf B",
       legalName: "Perf B LLC",
       email: `perf-b-${Date.now()}@restaurant.com`,

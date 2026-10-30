@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import mongoose, { Types } from "mongoose";
-import Business from "../../src/models/business.ts";
+import { createTestBusiness } from "./fixtures.ts";
 import SalesPoint from "../../src/models/salesPoint.ts";
 import SalesInstance from "../../src/models/salesInstance.ts";
 import BusinessGood from "../../src/models/businessGood.ts";
@@ -25,7 +25,7 @@ describe("createOrders validation", () => {
   let userId: Types.ObjectId;
 
   beforeEach(async () => {
-    const business = await Business.create({
+    const business = await createTestBusiness({
       tradeName: "Ord Val Biz",
       legalName: "Ord Val LLC",
       email: `ordval-${Date.now()}@test.com`,
@@ -43,7 +43,7 @@ describe("createOrders validation", () => {
     });
     businessId = business._id;
 
-    const other = await Business.create({
+    const other = await createTestBusiness({
       tradeName: "Other Biz",
       legalName: "Other LLC",
       email: `other-${Date.now()}@test.com`,

@@ -9,13 +9,14 @@ import { Types } from "mongoose";
 import { getTestApp } from "../setup.ts";
 import Notification from "../../src/models/notification.ts";
 import Business from "../../src/models/business.ts";
+import { createTestBusiness as createCompanyAwareBusiness } from "../helpers/fixtures.ts";
 import Employee from "../../src/models/employee.ts";
 import User from "../../src/models/user.ts";
 import notificationService from "../../src/communications/services/notificationService.ts";
 
 describe("Notifications Routes", () => {
   const createTestBusiness = async () => {
-    return await Business.create({
+    return await createCompanyAwareBusiness({
       tradeName: "Test Restaurant",
       legalName: "Test Restaurant LLC",
       email: `test${Date.now()}@restaurant.com`,

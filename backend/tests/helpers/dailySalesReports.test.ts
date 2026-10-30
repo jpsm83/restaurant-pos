@@ -15,7 +15,7 @@ import {
   updateTopLevelFromActorRows,
 } from "../../src/dailySalesReports/reconciliationCore.ts";
 import DailySalesReport from "../../src/models/dailySalesReport.ts";
-import Business from "../../src/models/business.ts";
+import { createTestBusiness } from "./fixtures.ts";
 import User from "../../src/models/user.ts";
 import SalesPoint from "../../src/models/salesPoint.ts";
 import SalesInstance from "../../src/models/salesInstance.ts";
@@ -291,7 +291,7 @@ describe("Daily Sales Report Helpers", () => {
       const managerUserId = new Types.ObjectId();
       const businessGoodId = new Types.ObjectId();
 
-      const createdBusiness = await Business.create({
+      const createdBusiness = await createTestBusiness({
         tradeName: "B",
         legalName: "B LLC",
         email: `b${unique}@x.com`,
@@ -447,7 +447,7 @@ describe("Daily Sales Report Helpers", () => {
     it("Open -> Void and Open -> Invitation update correct buckets once and are idempotent", async () => {
       const mongoose = (await import("mongoose")).default;
       const unique = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-      const createdBusiness = await Business.create({
+      const createdBusiness = await createTestBusiness({
         tradeName: `R1-${unique}`,
         legalName: `R1 LLC ${unique}`,
         email: `r1-${unique}@x.com`,

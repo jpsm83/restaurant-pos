@@ -7,7 +7,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { Types } from "mongoose";
 import { getTestApp, generateTestToken } from "../setup.ts";
-import Business from "../../src/models/business.ts";
+import { createTestBusiness } from "../helpers/fixtures.ts";
 import BusinessGood from "../../src/models/businessGood.ts";
 import Employee from "../../src/models/employee.ts";
 import Inventory from "../../src/models/inventory.ts";
@@ -67,7 +67,7 @@ describe("Stock movement and soft-deleted recipe goods", () => {
   };
 
   beforeEach(async () => {
-    const business = await Business.create({
+    const business = await createTestBusiness({
       tradeName: "Stock Restaurant",
       legalName: "Stock Restaurant LLC",
       email: "stock@restaurant.com",

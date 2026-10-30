@@ -4,7 +4,7 @@
 
 import { describe, it, expect, beforeEach } from "vitest";
 import { Types } from "mongoose";
-import Business from "../../src/models/business.ts";
+import { createTestBusiness } from "./fixtures.ts";
 import BusinessGood from "../../src/models/businessGood.ts";
 import Promotion from "../../src/models/promotion.ts";
 import applyPromotionsToOrders from "../../src/promotions/applyPromotions.ts";
@@ -24,7 +24,7 @@ describe("applyPromotionsToOrders delivery scope", () => {
   let goodId: Types.ObjectId;
 
   beforeEach(async () => {
-    const business = await Business.create({
+    const business = await createTestBusiness({
       tradeName: "Promo Biz",
       legalName: "Promo LLC",
       email: `promo-${Date.now()}@t.com`,

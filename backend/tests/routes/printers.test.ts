@@ -12,7 +12,7 @@ import { describe, it, expect } from "vitest";
 import { Types } from "mongoose";
 import { getTestApp } from "../setup.ts";
 import Printer from "../../src/models/printer.ts";
-import Business from "../../src/models/business.ts";
+import { createTestBusiness as createCompanyAwareBusiness } from "../helpers/fixtures.ts";
 
 const expectProblem = (
   response: {
@@ -33,7 +33,7 @@ const expectProblem = (
 
 describe("Printers Routes", () => {
   const createTestBusiness = async () => {
-    return await Business.create({
+    return await createCompanyAwareBusiness({
       tradeName: "Test Restaurant",
       legalName: "Test Restaurant LLC",
       email: `test${Date.now()}@restaurant.com`,

@@ -12,7 +12,7 @@ import { describe, it, expect } from "vitest";
 import { Types } from "mongoose";
 import { getTestApp, generateTestToken } from "../setup.ts";
 import Reservation from "../../src/models/reservation.ts";
-import Business from "../../src/models/business.ts";
+import { createTestBusiness as createCompanyAwareBusiness } from "../helpers/fixtures.ts";
 import SalesPoint from "../../src/models/salesPoint.ts";
 import User from "../../src/models/user.ts";
 import Employee from "../../src/models/employee.ts";
@@ -36,7 +36,7 @@ const expectProblem = (
 
 describe("Reservations Routes", () => {
   const createTestBusiness = async () => {
-    return await Business.create({
+    return await createCompanyAwareBusiness({
       tradeName: "Test Restaurant",
       legalName: "Test Restaurant LLC",
       email: `test${Date.now()}@restaurant.com`,

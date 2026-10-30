@@ -11,7 +11,7 @@ import { getTestApp, resetTestApp } from "../setup.ts";
 import Supplier from "../../src/models/supplier.ts";
 import SupplierGood from "../../src/models/supplierGood.ts";
 import BusinessGood from "../../src/models/businessGood.ts";
-import Business from "../../src/models/business.ts";
+import { createTestBusiness } from "../helpers/fixtures.ts";
 import { multipart } from "../helpers/multipart.ts";
 import {
   errorMessages,
@@ -59,7 +59,7 @@ describe("Suppliers Routes", () => {
   });
 
   beforeEach(async () => {
-    const business = await Business.create({
+    const business = await createTestBusiness({
       tradeName: "Test Restaurant",
       legalName: "Test Restaurant LLC",
       email: "test@restaurant.com",

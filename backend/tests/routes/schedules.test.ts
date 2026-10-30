@@ -13,7 +13,7 @@ import { Types } from "mongoose";
 import { generateTestToken, getTestApp } from "../setup.ts";
 import Schedule from "../../src/models/schedule.ts";
 import Employee from "../../src/models/employee.ts";
-import Business from "../../src/models/business.ts";
+import { createTestBusiness } from "../helpers/fixtures.ts";
 import User from "../../src/models/user.ts";
 
 const expectProblem = (
@@ -51,7 +51,7 @@ describe("Schedules Routes", () => {
   };
 
   beforeEach(async () => {
-    const business = await Business.create({
+    const business = await createTestBusiness({
       tradeName: "Test Restaurant",
       legalName: "Test Restaurant LLC",
       email: "test@restaurant.com",

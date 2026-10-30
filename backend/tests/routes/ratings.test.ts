@@ -10,11 +10,12 @@ import { getTestApp, generateTestToken } from "../setup.ts";
 import { detail, isProblemDetails } from "../helpers/problemDetails.ts";
 import Rating from "../../src/models/rating.ts";
 import Business from "../../src/models/business.ts";
+import { createTestBusiness as createCompanyAwareBusiness } from "../helpers/fixtures.ts";
 import User from "../../src/models/user.ts";
 
 describe("Ratings Routes", () => {
   const createTestBusiness = async () => {
-    return await Business.create({
+    return await createCompanyAwareBusiness({
       tradeName: "Test Restaurant",
       legalName: "Test Restaurant LLC",
       email: `test${Date.now()}@restaurant.com`,

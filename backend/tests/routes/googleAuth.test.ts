@@ -28,7 +28,6 @@ vi.mock("../../src/communications/channels/emailChannel.ts", () => ({
 }));
 
 import { buildApp } from "../../src/server.ts";
-import Business from "../../src/models/business.ts";
 import Employee from "../../src/models/employee.ts";
 import Schedule from "../../src/models/schedule.ts";
 import User from "../../src/models/user.ts";
@@ -39,7 +38,10 @@ import {
 } from "../../src/auth/google.ts";
 import { REACTIVATION_REQUIRED_MESSAGE } from "../../src/auth/requestEmailConfirmation.ts";
 import ownerCompanyCreation from "../../src/owners/ownerCompanyCreation.ts";
-import { fakeBusinessRecord } from "../helpers/fixtures.ts";
+import {
+  createTestBusiness,
+  fakeBusinessRecord,
+} from "../helpers/fixtures.ts";
 import { multipart } from "../helpers/multipart.ts";
 
 const password = "TestPassword123!";
@@ -103,7 +105,7 @@ function refreshCookieFrom(
 }
 
 async function createBusiness(label: string) {
-  return Business.create({
+  return createTestBusiness({
     ...fakeBusinessRecord({ country: "USA" }),
     tradeName: `${label} Venue`,
     legalName: `${label} Venue Legal`,

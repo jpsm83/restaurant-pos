@@ -31,6 +31,7 @@ import {
 } from "../helpers/accountEmailRail.ts";
 import { getTestApp, resetTestApp } from "../setup.ts";
 import Business from "../../src/models/business.ts";
+import { createTestBusiness } from "../helpers/fixtures.ts";
 import RefreshSession from "../../src/models/refreshSession.ts";
 import User from "../../src/models/user.ts";
 
@@ -343,7 +344,7 @@ describe("POST /api/v1/auth/signup (confirmation email)", () => {
         emailVerified: false,
       },
     });
-    const business = await Business.create({
+    const business = await createTestBusiness({
       tradeName: "Shared Venue",
       legalName: "Shared Venue LLC",
       email,

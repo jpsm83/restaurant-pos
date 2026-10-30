@@ -14,13 +14,13 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { Types } from "mongoose";
 import { getTestApp } from "../setup.ts";
 import SalesPoint from "../../src/models/salesPoint.ts";
-import Business from "../../src/models/business.ts";
+import { createTestBusiness } from "../helpers/fixtures.ts";
 
 describe("SalesPoints Routes", () => {
   let businessId: Types.ObjectId;
 
   beforeEach(async () => {
-    const business = await Business.create({
+    const business = await createTestBusiness({
       tradeName: "Test Restaurant",
       legalName: "Test Restaurant LLC",
       email: `test${Date.now()}@restaurant.com`,

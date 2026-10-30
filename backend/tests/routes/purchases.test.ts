@@ -13,7 +13,7 @@ import { getTestApp, generateTestToken } from "../setup.ts";
 import Purchase from "../../src/models/purchase.ts";
 import Supplier from "../../src/models/supplier.ts";
 import SupplierGood from "../../src/models/supplierGood.ts";
-import Business from "../../src/models/business.ts";
+import { createTestBusiness } from "../helpers/fixtures.ts";
 import Employee from "../../src/models/employee.ts";
 import User from "../../src/models/user.ts";
 import Inventory from "../../src/models/inventory.ts";
@@ -60,7 +60,7 @@ describe("Purchases Routes", () => {
   beforeEach(async () => {
     appendAuditEntryMock.mockClear();
 
-    const business = await Business.create({
+    const business = await createTestBusiness({
       tradeName: "Test Restaurant",
       legalName: "Test Restaurant LLC",
       email: "test@restaurant.com",

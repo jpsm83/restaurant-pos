@@ -248,16 +248,27 @@ describe("ownerCompanyCreation", () => {
 
   it("refuses to adopt an existing Business that has no owning Company", async () => {
     const user = await createUser("orphan-business");
-    const business = await Business.create(venue("Spain"));
+    const businessId = new Types.ObjectId();
+    await Business.collection.insertOne({
+      _id: businessId,
+      tradeName: "Legacy Orphan",
+      legalName: "Legacy Orphan LLC",
+      email: "legacy-orphan@example.com",
+      phoneNumber: "600000000",
+      taxNumber: `TAX-ORPHAN-${businessId}`,
+      currencyTrade: "EUR",
+      address: fakeAddress(),
+      deleted: false,
+    });
 
     await expect(
       ownerCompanyCreation({
         userId: user._id,
-        business: venue("Spain", business._id),
+        business: venue("Spain", businessId),
       }),
     ).rejects.toThrow(/without an owning Company/i);
 
-    const stored = await Business.findById(business._id).lean();
+    const stored = await Business.findById(businessId).lean();
     expect(stored?.companyId).toBeUndefined();
   });
 

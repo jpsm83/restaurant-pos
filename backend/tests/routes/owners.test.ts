@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vitest";
 import { Types } from "mongoose";
 import { getTestApp, generateTestToken } from "../setup.ts";
-import Business from "../../src/models/business.ts";
+import { createTestBusiness } from "../helpers/fixtures.ts";
 import Company from "../../src/models/company.ts";
 import Owner from "../../src/models/owner.ts";
 import User from "../../src/models/user.ts";
@@ -139,7 +139,7 @@ describe("GET /api/v1/owners/portfolio", () => {
       legalName: "Caller Taxpayer",
       taxNumber: "CALLER-TAX",
     });
-    await Business.create({
+    await createTestBusiness({
       tradeName: "Caller Venue",
       currencyTrade: "USD",
       address: { country: "USA" },
@@ -156,7 +156,7 @@ describe("GET /api/v1/owners/portfolio", () => {
       legalName: "Other Taxpayer",
       taxNumber: "OTHER-TAX",
     });
-    await Business.create({
+    await createTestBusiness({
       tradeName: "Other Venue",
       currencyTrade: "CAD",
       address: { country: "Canada" },
@@ -191,7 +191,7 @@ describe("GET /api/v1/owners/portfolio", () => {
       legalName: "Complete Venue LLC",
       taxNumber: "TAX-COMPLETE",
     });
-    await Business.create({
+    await createTestBusiness({
       tradeName: "Complete Venue",
       currencyTrade: "USD",
       phoneNumber: "+10000000000",
@@ -221,7 +221,7 @@ describe("GET /api/v1/owners/portfolio", () => {
       country: "USA",
       legalName: "Incomplete Venue LLC",
     });
-    await Business.create({
+    await createTestBusiness({
       tradeName: "Incomplete Venue",
       currencyTrade: "USD",
       phoneNumber: "+10000000000",

@@ -15,6 +15,7 @@ import resolveEmployeeUserRecipients from "../../src/communications/recipientRes
 import notificationRepository from "../../src/communications/repositories/notificationRepository.ts";
 import notificationService from "../../src/communications/services/notificationService.ts";
 import { buildApp } from "../../src/server.ts";
+import { createTestBusiness } from "../helpers/fixtures.ts";
 import { signAccessTokenForLiveSession } from "../setup.ts";
 import * as liveInAppEvents from "../../src/communications/channels/liveInAppEvents.ts";
 import buildOrderReceiptTemplate from "../../src/communications/templates/orderReceiptTemplate.ts";
@@ -62,7 +63,7 @@ const createTestUser = async (prefix: string) => {
 
 const createVenue = async (tradeName: string) => {
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  return Business.create({
+  return createTestBusiness({
     tradeName,
     legalName: `${tradeName || "Venue"} LLC`,
     email: `venue-${suffix}@test.com`,

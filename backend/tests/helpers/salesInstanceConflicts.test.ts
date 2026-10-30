@@ -4,7 +4,7 @@
 
 import { describe, it, expect, beforeEach } from "vitest";
 import { Types } from "mongoose";
-import Business from "../../src/models/business.ts";
+import { createTestBusiness } from "./fixtures.ts";
 import SalesPoint from "../../src/models/salesPoint.ts";
 import SalesInstance from "../../src/models/salesInstance.ts";
 import User from "../../src/models/user.ts";
@@ -19,7 +19,7 @@ describe("salesInstanceConflicts helpers", () => {
   let userId: Types.ObjectId;
 
   beforeEach(async () => {
-    const business = await Business.create({
+    const business = await createTestBusiness({
       tradeName: "Conflict Test Biz",
       legalName: "Conflict Test LLC",
       email: "conflict@test.com",

@@ -8,7 +8,7 @@ import mongoose, { Types } from "mongoose";
 import { getTestApp, generateTestToken } from "../setup.ts";
 import Order from "../../src/models/order.ts";
 import DailySalesReport from "../../src/models/dailySalesReport.ts";
-import Business from "../../src/models/business.ts";
+import { createTestBusiness } from "../helpers/fixtures.ts";
 import BusinessGood from "../../src/models/businessGood.ts";
 import Notification from "../../src/models/notification.ts";
 import SalesInstance from "../../src/models/salesInstance.ts";
@@ -78,7 +78,7 @@ describe("Orders Routes", () => {
   });
 
   beforeEach(async () => {
-    const business = await Business.create({
+    const business = await createTestBusiness({
       tradeName: "Test Restaurant",
       legalName: "Test Restaurant LLC",
       email: "test@restaurant.com",

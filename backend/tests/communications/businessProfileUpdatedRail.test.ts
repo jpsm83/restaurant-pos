@@ -24,6 +24,7 @@ import {
   buildBusinessProfileUpdatedEmailBody,
   buildBusinessProfileUpdatedInAppMessage,
 } from "../../src/communications/templates/businessProfileUpdatedTemplate.ts";
+import { createTestBusiness } from "../helpers/fixtures.ts";
 import { generateTestToken, getTestApp } from "../setup.ts";
 
 const validAddress = {
@@ -81,7 +82,7 @@ const createManager = async (
 
 const createVenue = async (tradeName: string) => {
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  return Business.create({
+  return createTestBusiness({
     tradeName,
     legalName: `${tradeName} LLC`,
     email: `venue-${suffix}@test.com`,
