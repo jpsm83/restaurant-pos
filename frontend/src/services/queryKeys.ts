@@ -9,6 +9,7 @@
  *   `SelectUserModePage` when countdown completes (refetch eligibility).
  * - **`schedules.byBusiness`:** reserved for broader schedule UIs; keep keys stable when adding hooks.
  * - **`business.detail`:** profile fetch/edit flows for business settings pages.
+ * - **`portfolio.byUser` / `portfolio.all`:** the customer dashboard’s User-scoped Owner portfolio read.
  */
 export const queryKeys = {
   auth: {
@@ -19,6 +20,10 @@ export const queryKeys = {
   business: {
     detail: (businessId: string) => ["business", "detail", businessId] as const,
     detailPending: () => ["business", "detail", "pending"] as const,
+  },
+  portfolio: {
+    all: () => ["portfolio"] as const,
+    byUser: (userId: string) => ["portfolio", userId] as const,
   },
   employees: {
     managementContacts: (businessId: string) =>

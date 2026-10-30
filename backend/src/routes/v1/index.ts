@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
 import { authRoutes } from "./auth.ts";
 import { businessRoutes } from "./business.ts";
+import { ownersRoutes } from "./owners.ts";
 import { businessGoodsRoutes } from "./businessGoods.ts";
 import { ordersRoutes } from "./orders.ts";
 import { salesInstancesRoutes } from "./salesInstances.ts";
@@ -38,6 +39,7 @@ export const registerV1Routes: FastifyPluginAsync<V1RoutesOptions> = async (
   });
 
   await app.register(businessRoutes, { prefix: "/business" });
+  await app.register(ownersRoutes, { prefix: "/owners" });
   await app.register(businessGoodsRoutes, { prefix: "/businessGoods" });
   await app.register(ordersRoutes, { prefix: "/orders" });
   await app.register(salesInstancesRoutes, { prefix: "/salesInstances" });

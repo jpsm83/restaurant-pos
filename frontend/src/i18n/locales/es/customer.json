@@ -84,5 +84,37 @@
   "dashboard": {
     "title": "Panel"
   },
-  "notBuiltYet": "Esta página aún no está disponible."
+  "notBuiltYet": "Esta página aún no está disponible.",
+  "venues": {
+    "empty": {
+      "title": "Aún no tienes locales",
+      "description": "Añade tu primer local para empezar a gestionar un negocio con Project Imperium.",
+      "addAction": "Añade tu local"
+    },
+    "form": {
+      "fields": {
+        "tradeName": "Nombre comercial",
+        "country": "País",
+        "currency": "Moneda",
+        "legalName": "Razón social de la empresa",
+        "legalNameHint": "Opcional ahora; obligatorio antes de publicar.",
+        "taxNumber": "Número de identificación fiscal de la empresa",
+        "taxNumberHint": "Opcional ahora; obligatorio antes de publicar."
+      },
+      "validation": {
+        "tradeNameRequired": "Introduce el nombre comercial del local.",
+        "countryRequired": "Introduce el país del local.",
+        "invalidCurrency": "Elige una moneda."
+      },
+      "submit": "Crear local",
+      "submitting": "Creando local…",
+      "cancel": "Cancelar"
+    },
+    "list": {
+      "title": "Tus locales",
+      "companyFallback": "Empresa",
+      "retry": "Intentar de nuevo",
+      "venueMeta": "{{country}} · {{currency}}"
+    }
+  }
 }

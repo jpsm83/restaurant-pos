@@ -159,31 +159,52 @@ const optionalDeliveryWindowsSchema = optionalJsonField(
   z.array(deliveryOpeningWindowSchema),
 );
 
+export type CreateBusinessBodyMessages = {
+  tradeNameRequired: string;
+  invalidCurrency: string;
+  countryRequired: string;
+  companyChoiceConflict: string;
+};
+
+const DEFAULT_CREATE_BUSINESS_BODY_MESSAGES: CreateBusinessBodyMessages = {
+  tradeNameRequired: "Trade name is required!",
+  invalidCurrency: "Invalid currencyTrade!",
+  countryRequired: "Country is required!",
+  companyChoiceConflict: "Provide either companyId or company, not both",
+};
+
 /**
- * Body for `POST /business` (JSON). A draft needs only the minimum onboarding
- * set plus at most one Company choice: join an existing Company id or form a
- * new Company. Legal name and tax number belong to the Company.
+ * Builds the `POST /business` body schema so the backend keeps its English
+ * diagnostics while the SPA validates the same shape with localized copy.
+ * A draft needs only the minimum onboarding set plus at most one Company
+ * choice: join an existing Company id or form a new Company. Legal name and
+ * tax number belong to the Company.
  */
-export const createBusinessBodySchema = z
-  .strictObject({
-    tradeName: sanitizedString("Trade name is required!"),
-    currencyTrade: z.enum(
-      currenctyEnums as EnumValues,
-      "Invalid currencyTrade!",
-    ),
-    country: sanitizedString("Country is required!"),
-    companyId: objectIdSchema.optional(),
-    company: z
-      .strictObject({
-        legalName: sanitizedString().optional(),
-        taxNumber: sanitizedString().optional(),
-      })
-      .optional(),
-  })
-  .refine((body) => !(body.companyId && body.company), {
-    path: ["companyId"],
-    message: "Provide either companyId or company, not both",
-  });
+export function buildCreateBusinessBodySchema(
+  messages: Partial<CreateBusinessBodyMessages> = {},
+) {
+  const copy = { ...DEFAULT_CREATE_BUSINESS_BODY_MESSAGES, ...messages };
+  return z
+    .strictObject({
+      tradeName: sanitizedString(copy.tradeNameRequired),
+      currencyTrade: z.enum(currenctyEnums as EnumValues, copy.invalidCurrency),
+      country: sanitizedString(copy.countryRequired),
+      companyId: objectIdSchema.optional(),
+      company: z
+        .strictObject({
+          legalName: sanitizedString().optional(),
+          taxNumber: sanitizedString().optional(),
+        })
+        .optional(),
+    })
+    .refine((body) => !(body.companyId && body.company), {
+      path: ["companyId"],
+      message: copy.companyChoiceConflict,
+    });
+}
+
+/** Body for `POST /business` (JSON) with the backend's default diagnostics. */
+export const createBusinessBodySchema = buildCreateBusinessBodySchema();
 
 /**
  * Body for `PATCH /business/:businessId` (multipart). Every field is optional:

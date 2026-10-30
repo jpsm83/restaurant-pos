@@ -23,6 +23,8 @@ export const SERVICE_OPERATIONS = [
   "profileUpdate",
   "businessFetch",
   "businessUpdate",
+  "businessCreate",
+  "portfolioFetch",
   "modeLoad",
   "modeSave",
   "scheduleLoad",

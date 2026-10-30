@@ -84,5 +84,37 @@
   "dashboard": {
     "title": "Dashboard"
   },
-  "notBuiltYet": "This page is not built yet."
+  "notBuiltYet": "This page is not built yet.",
+  "venues": {
+    "empty": {
+      "title": "No venues yet",
+      "description": "Add your first venue to start managing a business from Project Imperium.",
+      "addAction": "Add your venue"
+    },
+    "form": {
+      "fields": {
+        "tradeName": "Trade name",
+        "country": "Country",
+        "currency": "Currency",
+        "legalName": "Company legal name",
+        "legalNameHint": "Optional now; required before go-live.",
+        "taxNumber": "Company tax number",
+        "taxNumberHint": "Optional now; required before go-live."
+      },
+      "validation": {
+        "tradeNameRequired": "Enter the venue trade name.",
+        "countryRequired": "Enter the venue country.",
+        "invalidCurrency": "Choose a currency."
+      },
+      "submit": "Create venue",
+      "submitting": "Creating venue…",
+      "cancel": "Cancel"
+    },
+    "list": {
+      "title": "Your venues",
+      "companyFallback": "Company",
+      "retry": "Try again",
+      "venueMeta": "{{country}} · {{currency}}"
+    }
+  }
 }
