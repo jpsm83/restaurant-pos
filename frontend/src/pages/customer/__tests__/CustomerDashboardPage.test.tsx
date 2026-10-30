@@ -155,6 +155,10 @@ function renderPage() {
             path="/:userId/customer/dashboard"
             element={<CustomerDashboardPage />}
           />
+          <Route
+            path="/business/:businessId/dashboard"
+            element={<div>Business dashboard</div>}
+          />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -220,6 +224,27 @@ describe("CustomerDashboardPage", () => {
     expect(
       screen.queryByRole("button", { name: "Add your venue" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("opens an owned venue in business mode and navigates to its Business dashboard", async () => {
+    mockGet.mockResolvedValue({ data: populatedPortfolio });
+    mockPost.mockResolvedValue({
+      data: { message: "Auth mode set successfully", mode: "business" },
+    });
+    const user = userEvent.setup();
+
+    await renderPage();
+
+    await user.click(
+      await screen.findByRole("button", { name: "Open business" }),
+    );
+
+    await waitFor(() => {
+      expect(mockPost).toHaveBeenCalledWith("/api/v1/auth/set-mode", {
+        mode: "business",
+      });
+    });
+    expect(await screen.findByText("Business dashboard")).toBeInTheDocument();
   });
 
   it("lists the venues in a populated portfolio", async () => {

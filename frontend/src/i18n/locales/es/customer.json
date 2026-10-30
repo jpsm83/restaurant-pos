@@ -124,7 +124,8 @@
       "addAction": "Añadir local",
       "companyTax": "NIF {{taxNumber}}",
       "retry": "Intentar de nuevo",
-      "venueMeta": "{{country}} · {{currency}}"
+      "venueMeta": "{{country}} · {{currency}}",
+      "openBusiness": "Abrir negocio"
     }
   }
 }

@@ -15,8 +15,13 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useErrorMessage } from "@/i18n/errorCopy";
-import { useOwnerPortfolioQuery } from "@/services/portfolio/portfolioService";
+import { useAuthModeNavigation } from "@/hooks/useAuthModeNavigation";
+import {
+  hasOwnedBusiness,
+  useOwnerPortfolioQuery,
+} from "@/services/portfolio/portfolioService";
 import { ServiceRequestError } from "@/services/serviceErrors";
+import { canonicalBusinessDashboardRoutePath } from "@/routes/canonicalPaths";
 
 function hasVenues(portfolio: IOwnerPortfolio | undefined): boolean {
   return Boolean(
@@ -32,6 +37,8 @@ export default function CustomerDashboardPage() {
   const portfolioQuery = useOwnerPortfolioQuery(userId);
   const resolveError = useErrorMessage();
   const [isAdding, setIsAdding] = useState(false);
+  const { switchModeAndNavigate, failure: switchFailure, isSwitchingMode } =
+    useAuthModeNavigation();
 
   const portfolio = portfolioQuery.data;
   const showEmptyState = !hasVenues(portfolio);
@@ -40,11 +47,25 @@ export default function CustomerDashboardPage() {
       ? portfolioQuery.error
       : null;
 
+  const openBusiness = (businessId: string) => {
+    if (!hasOwnedBusiness(portfolio, businessId)) return;
+    void switchModeAndNavigate(
+      "business",
+      canonicalBusinessDashboardRoutePath(businessId),
+    );
+  };
+
   return (
     <main className="flex min-h-0 flex-1 flex-col p-6">
       <h1 className="text-xl font-semibold text-foreground">
         {t("dashboard.title")}
       </h1>
+
+      {switchFailure ? (
+        <div className="mt-6 max-w-2xl">
+          <Alert>{resolveError(switchFailure)}</Alert>
+        </div>
+      ) : null}
 
       {portfolioQuery.isLoading ? (
         <div className="mt-6 space-y-3">
@@ -102,7 +123,11 @@ export default function CustomerDashboardPage() {
               </Button>
             </div>
           )}
-          <PortfolioVenues portfolio={portfolio} />
+          <PortfolioVenues
+            portfolio={portfolio}
+            onOpenBusiness={openBusiness}
+            isOpeningBusiness={isSwitchingMode}
+          />
         </div>
       ) : null}
     </main>

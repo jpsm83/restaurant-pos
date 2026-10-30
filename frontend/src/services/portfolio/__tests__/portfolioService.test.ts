@@ -3,7 +3,11 @@
  */
 import { AxiosError, type AxiosResponse } from "axios";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createVenue, fetchOwnerPortfolio } from "../portfolioService";
+import {
+  createVenue,
+  fetchOwnerPortfolio,
+  hasOwnedBusiness,
+} from "../portfolioService";
 
 const { mockGet, mockPost } = vi.hoisted(() => ({
   mockGet: vi.fn(),
@@ -24,6 +28,40 @@ const emptyPortfolio = {
   companies: [],
 };
 
+const ownedPortfolio = {
+  owner: { _id: "o1", country: "Spain", subscription: "Free" },
+  country: "Spain",
+  subscription: "Free",
+  companies: [
+    {
+      _id: "c1",
+      country: "Spain",
+      businesses: [
+        {
+          _id: "b1",
+          tradeName: "Demo Bistro",
+          currencyTrade: "EUR",
+          companyId: "c1",
+          profileComplete: false,
+        },
+      ],
+    },
+    {
+      _id: "c2",
+      country: "Spain",
+      businesses: [
+        {
+          _id: "b2",
+          tradeName: "Draft Cafe",
+          currencyTrade: "EUR",
+          companyId: "c2",
+          profileComplete: false,
+        },
+      ],
+    },
+  ],
+};
+
 describe("portfolioService", () => {
   beforeEach(() => {
     mockGet.mockReset();
@@ -40,6 +78,13 @@ describe("portfolioService", () => {
       signal: controller.signal,
     });
     expect(result).toEqual(emptyPortfolio);
+  });
+
+  it("recognizes only venues present in the caller's portfolio", () => {
+    expect(hasOwnedBusiness(ownedPortfolio, "b1")).toBe(true);
+    expect(hasOwnedBusiness(ownedPortfolio, "b2")).toBe(true);
+    expect(hasOwnedBusiness(ownedPortfolio, "not-owned")).toBe(false);
+    expect(hasOwnedBusiness(undefined, "b1")).toBe(false);
   });
 
   it("registers a first venue with an optional new Company", async () => {

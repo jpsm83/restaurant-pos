@@ -34,7 +34,8 @@
       "light": "Light",
       "dark": "Dark",
       "system": "System"
-    }
+    },
+    "customerMode": "Customer mode"
   },
   "settings": {
     "title": "Settings",

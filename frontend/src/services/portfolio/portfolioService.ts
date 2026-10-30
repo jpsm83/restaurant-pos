@@ -40,6 +40,21 @@ export type CreateVenueResult = {
   };
 };
 
+/**
+ * True when the venue appears in the caller's portfolio. The minimal switch
+ * uses it to refuse a venue the caller does not own; draft venues count.
+ */
+export function hasOwnedBusiness(
+  portfolio: Pick<IOwnerPortfolio, "companies"> | undefined,
+  businessId: string,
+): boolean {
+  return Boolean(
+    portfolio?.companies.some((company) =>
+      company.businesses.some((business) => business._id === businessId),
+    ),
+  );
+}
+
 /** Reads only the signed-in User's Owner portfolio. */
 export async function fetchOwnerPortfolio(
   signal?: AbortSignal,

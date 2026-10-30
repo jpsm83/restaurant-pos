@@ -124,7 +124,8 @@
       "addAction": "Add venue",
       "companyTax": "Tax number {{taxNumber}}",
       "retry": "Try again",
-      "venueMeta": "{{country}} · {{currency}}"
+      "venueMeta": "{{country}} · {{currency}}",
+      "openBusiness": "Open business"
     }
   }
 }

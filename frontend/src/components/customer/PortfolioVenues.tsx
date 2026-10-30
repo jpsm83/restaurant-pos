@@ -2,13 +2,25 @@ import { useTranslation } from "react-i18next";
 import type { IOwnerPortfolio } from "restaurant-pos-packages/interfaces/IOwner";
 import {
   Card,
+  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { companyDisplayName } from "./companyDisplayName";
 
-export function PortfolioVenues(props: { portfolio: IOwnerPortfolio }) {
+type PortfolioVenuesProps = {
+  portfolio: IOwnerPortfolio;
+  onOpenBusiness: (businessId: string) => void;
+  isOpeningBusiness: boolean;
+};
+
+export function PortfolioVenues({
+  portfolio,
+  onOpenBusiness,
+  isOpeningBusiness,
+}: PortfolioVenuesProps) {
   const { t } = useTranslation("customer");
 
   return (
@@ -16,7 +28,7 @@ export function PortfolioVenues(props: { portfolio: IOwnerPortfolio }) {
       <h2 className="text-base font-semibold text-foreground">
         {t("venues.list.title")}
       </h2>
-      {props.portfolio.companies.map((company, index) => (
+      {portfolio.companies.map((company, index) => (
         <section key={company._id} className="space-y-3">
           <div>
             <h3 className="text-sm font-medium text-muted-foreground">
@@ -49,6 +61,17 @@ export function PortfolioVenues(props: { portfolio: IOwnerPortfolio }) {
                       })}
                     </CardDescription>
                   </CardHeader>
+                  <CardContent className="pt-0">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={isOpeningBusiness}
+                      aria-busy={isOpeningBusiness || undefined}
+                      onClick={() => onOpenBusiness(business._id)}
+                    >
+                      {t("venues.list.openBusiness")}
+                    </Button>
+                  </CardContent>
                 </Card>
               </li>
             ))}

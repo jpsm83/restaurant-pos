@@ -34,7 +34,8 @@
       "light": "Claro",
       "dark": "Oscuro",
       "system": "Sistema"
-    }
+    },
+    "customerMode": "Modo cliente"
   },
   "settings": {
     "title": "Ajustes",

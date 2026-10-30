@@ -1907,6 +1907,48 @@ describe("Auth Routes", () => {
       expect(me.json().user.mode).toBe("business");
     });
 
+    it("allows an owner to open a draft venue in business mode", async () => {
+      const app = await getTestApp();
+      const email = "owner-draft-mode@test.com";
+      const user = await User.create({
+        personalDetails: {
+          email,
+          password: hashedPassword,
+          firstName: "Draft",
+          lastName: "Owner",
+          username: "ownerdraftmode",
+        },
+      });
+      await ownerCompanyCreation({
+        userId: user._id,
+        business: {
+          _id: new Types.ObjectId(),
+          tradeName: "Draft Venue",
+          currencyTrade: "EUR",
+          address: { country: "USA" },
+        },
+      });
+
+      const loginRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: { email, password: testPassword },
+      });
+      expect(loginRes.statusCode).toBe(200);
+
+      const setMode = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/set-mode",
+        headers: {
+          authorization: `Bearer ${loginRes.json().accessToken as string}`,
+        },
+        payload: { mode: "business" },
+      });
+
+      expect(setMode.statusCode).toBe(200);
+      expect(setMode.json().mode).toBe("business");
+    });
+
     it("keeps each refresh session on its own stored mode", async () => {
       const app = await getTestApp();
       const email = "peer-mode-sessions@test.com";

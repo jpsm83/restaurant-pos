@@ -9,7 +9,8 @@
  * column (`dashboard`,
  * `settings/profile`, `settings/subscriptions`, `settings/address`, `settings/open-hours`,
  * `settings/delivery`, `settings/metrics`).
- * No footer — see `PublicLayout`.
+ * The sidebar footer carries the minimal return-to-customer action; full
+ * Customer | Business chrome remains on its later navigation row.
  *
  * Folder overview: `PublicLayout`, `CustomerLayout`, `EmployeeLayout` — all wired from `appRoutes.tsx`.
  */
@@ -17,22 +18,32 @@ import { Suspense } from "react";
 import { Outlet, useParams } from "react-router-dom";
 import { AppPendingShell } from "@/components/AppPendingShell";
 import ActorSidebar from "@/components/ActorSidebar";
-import { Sidebar, SidebarRail } from "@/components/ui/sidebar";
+import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import {
+  Sidebar,
+  SidebarFooter,
+  SidebarRail,
+} from "@/components/ui/sidebar";
 import { useAuth } from "@/auth/store/AuthContext";
 import { useTranslation } from "react-i18next";
 import { useLocation } from "react-router-dom";
 import {
+  ArrowLeft,
   BarChart3,
   Clock,
   LayoutDashboard,
   Settings,
   Truck,
 } from "lucide-react";
+import { useAuthModeNavigation } from "@/hooks/useAuthModeNavigation";
+import { useErrorMessage } from "@/i18n/errorCopy";
 import {
   canonicalBusinessDashboardRoutePath,
   canonicalBusinessSettingsDeliveryPath,
   canonicalBusinessSettingsMetricsPath,
   canonicalBusinessSettingsOpenHoursPath,
+  canonicalUserCustomerDashboardPath,
 } from "@/routes/canonicalPaths";
 
 export default function BusinessLayout() {
@@ -40,6 +51,12 @@ export default function BusinessLayout() {
   const { t } = useTranslation("nav");
   const { pathname } = useLocation();
   const { businessId } = useParams<{ businessId: string }>();
+  const resolveError = useErrorMessage();
+  const {
+    switchModeAndNavigate,
+    failure: switchFailure,
+    isSwitchingMode,
+  } = useAuthModeNavigation();
 
   const session = state.status === "authenticated" ? state.user : null;
   if (!session || !businessId) return null;
@@ -93,6 +110,24 @@ export default function BusinessLayout() {
     <div className="flex min-h-0 min-w-0 w-full flex-1 flex-row">
       <Sidebar collapsible="icon" variant="sidebar">
         <ActorSidebar pages={pages} subPages={subPages} />
+        <SidebarFooter>
+          <Button
+            type="button"
+            variant="ghost"
+            className="w-full justify-start gap-2"
+            disabled={isSwitchingMode}
+            aria-busy={isSwitchingMode || undefined}
+            onClick={() => {
+              void switchModeAndNavigate(
+                "customer",
+                canonicalUserCustomerDashboardPath(session),
+              );
+            }}
+          >
+            <ArrowLeft className="size-4" aria-hidden />
+            {t("account.customerMode")}
+          </Button>
+        </SidebarFooter>
         <SidebarRail />
       </Sidebar>
       {/* Inset scrolls independently; `peer` + gap from Sidebar reserve horizontal space beside fixed rail. */}
@@ -100,6 +135,11 @@ export default function BusinessLayout() {
         data-slot="sidebar-inset"
         className="relative flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-y-auto bg-background"
       >
+        {switchFailure ? (
+          <div className="px-6 pt-4">
+            <Alert>{resolveError(switchFailure)}</Alert>
+          </div>
+        ) : null}
         <Suspense key={pathname} fallback={<AppPendingShell variant="route" />}>
           <Outlet />
         </Suspense>
