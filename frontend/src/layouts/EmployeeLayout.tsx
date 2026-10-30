@@ -1,13 +1,13 @@
 /**
  * ## `EmployeeLayout` (`src/layouts`)
- * **Parent route:** `path="/:userId/employee"` in `appRoutes.tsx`. The route **element** is
- * **`UserSessionRouteShell` → `RequireEmployeeAuthMode` → `EmployeeLayout`**: the mode guard runs
+ * **Parent route:** `path="/employee"` in `appRoutes.tsx`. The route **element** is
+ * **`ProtectedRoute` → `RequireEmployeeAuthMode` → `EmployeeLayout`**: the mode guard runs
  * **outside** this file (server-stored session mode via `AuthModeContext` / `services/authMode.ts`).
  *
  * ## Flow
  * Same chrome pattern as **`CustomerLayout`** (**`SidebarProvider`** in **`main.tsx`**) +
- * **`<Outlet />`** for `home`, `profile`, `dashboard`, etc. Wrong or missing employee mode redirects to
- * **`/:userId/mode`** before this layout mounts children.
+ * **`<Outlet />`** for `profile`, `dashboard`, etc. Wrong or missing employee mode redirects to
+ * **`/mode`** before this layout mounts children.
  *
  * Folder overview: see `PublicLayout.tsx` module doc for how layouts relate.
  */
@@ -19,8 +19,8 @@ import { useTranslation } from "react-i18next";
 import { useLocation } from "react-router-dom";
 import { LayoutDashboard, User } from "lucide-react";
 import {
-  canonicalUserEmployeeDashboardPath,
-  canonicalUserEmployeeProfilePath,
+  canonicalEmployeeDashboardPath,
+  canonicalEmployeeProfilePath,
 } from "@/routes/canonicalPaths";
 
 export default function EmployeeLayout() {
@@ -31,8 +31,8 @@ export default function EmployeeLayout() {
   const session = state.status === "authenticated" ? state.user : null;
   if (!session || session.type !== "user") return null;
 
-  const dashboardTo = canonicalUserEmployeeDashboardPath(session);
-  const profileTo = canonicalUserEmployeeProfilePath(session);
+  const dashboardTo = canonicalEmployeeDashboardPath();
+  const profileTo = canonicalEmployeeProfilePath();
 
   const pages = [
     {

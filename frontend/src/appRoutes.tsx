@@ -5,7 +5,7 @@
  * legacy `/app` and catch-all use `routes/canonicalPaths.ts` so URLs stay dashboard-first.
  */
 import { lazy, Suspense } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation, useParams } from "react-router-dom";
 import { useAuth } from "@/auth/store/AuthContext";
 import { AppPendingShell } from "@/components/AppPendingShell";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -25,10 +25,17 @@ import {
   PublicOnlyRoute,
   RequireEmployeeAuthMode,
   SessionLoading,
-  UserSessionRouteShell,
 } from "@/routes/AuthRouteGuards";
 import {
+  canonicalCustomerDashboardPath,
+  canonicalCustomerFavoritesPath,
+  canonicalCustomerProfilePath,
   canonicalDefaultDashboardPath,
+  canonicalEmployeeDashboardPath,
+  canonicalEmployeePath,
+  canonicalEmployeeProfilePath,
+  canonicalModePath,
+  isLikelyMongoObjectIdString,
 } from "./routes/canonicalPaths";
 
 const LoginPage = lazy(() => import("@/pages/LoginPage"));
@@ -90,7 +97,62 @@ function LegacyAppRedirect() {
   if (!state.user) {
     return <Navigate to="/login" replace />;
   }
-  return <Navigate to={canonicalDefaultDashboardPath(state.user)} replace />;
+  return <Navigate to={canonicalDefaultDashboardPath()} replace />;
+}
+
+type LegacyUserShell = "customer" | "employee" | "mode";
+
+const LEGACY_USER_PATHS: Record<
+  LegacyUserShell,
+  Readonly<Record<string, string>>
+> = {
+  mode: { "": canonicalModePath() },
+  customer: {
+    "": canonicalCustomerDashboardPath(),
+    dashboard: canonicalCustomerDashboardPath(),
+    profile: canonicalCustomerProfilePath(),
+    favorites: canonicalCustomerFavoritesPath(),
+  },
+  employee: {
+    "": canonicalEmployeePath(),
+    dashboard: canonicalEmployeeDashboardPath(),
+    profile: canonicalEmployeeProfilePath(),
+  },
+};
+
+/**
+ * Map a legacy `/:userId/<shell>/*` URL to its session-derived path, or `null` when the
+ * remainder is unknown. Legacy URLs exist only so old bookmarks keep working (ADR-0013).
+ */
+function legacyUserPath(
+  shell: LegacyUserShell,
+  splat: string | undefined,
+): string | null {
+  const segment = (splat ?? "").replace(/\/+$/, "");
+  const paths = LEGACY_USER_PATHS[shell];
+  return Object.prototype.hasOwnProperty.call(paths, segment)
+    ? paths[segment]
+    : null;
+}
+
+/**
+ * Redirects retired `/:userId/...` URLs when the id looks like a Mongo ObjectId. Unknown
+ * shapes render the 404 page rather than guessing a destination.
+ */
+function LegacyUserRouteRedirect({ shell }: { shell: LegacyUserShell }) {
+  const { userId, "*": splat } = useParams();
+  const { search, hash } = useLocation();
+
+  if (!isLikelyMongoObjectIdString(userId)) {
+    return <NotFoundPage />;
+  }
+
+  const target = legacyUserPath(shell, splat);
+  if (!target) {
+    return <NotFoundPage />;
+  }
+
+  return <Navigate to={`${target}${search}${hash}`} replace />;
 }
 
 function CatchAllRedirect() {
@@ -114,7 +176,7 @@ function PublicIndexRoute() {
   // Once authenticated, `/` is not a stable landing page for the app shell.
   // Send the user to their actor dashboard instead.
   if (state.status === "authenticated" && state.user) {
-    return <Navigate to={canonicalDefaultDashboardPath(state.user)} replace />;
+    return <Navigate to={canonicalDefaultDashboardPath()} replace />;
   }
 
   return <CustomerMarketingPage />;
@@ -128,7 +190,7 @@ function PublicBusinessRoute() {
   }
 
   if (state.status === "authenticated" && state.user) {
-    return <Navigate to={canonicalDefaultDashboardPath(state.user)} replace />;
+    return <Navigate to={canonicalDefaultDashboardPath()} replace />;
   }
 
   return <BusinessMarketingPage />;
@@ -231,42 +293,54 @@ export function AppRoutes() {
           </Route>
 
           <Route
-            path="/:userId/mode"
+            path="/mode"
             element={
-              <UserSessionRouteShell>
+              <ProtectedRoute>
                 <SelectUserModePage />
-              </UserSessionRouteShell>
+              </ProtectedRoute>
             }
           />
 
           <Route
-            path="/:userId/customer"
             element={
-              <UserSessionRouteShell>
+              <ProtectedRoute>
                 <CustomerLayout />
-              </UserSessionRouteShell>
+              </ProtectedRoute>
             }
           >
-            <Route index element={<Navigate to="dashboard" replace />} />
+            <Route path="dashboard" element={<CustomerDashboardPage />} />
             <Route path="profile" element={<CustomerProfilePage />} />
             <Route path="favorites" element={<CustomerFavoritesPage />} />
-            <Route path="dashboard" element={<CustomerDashboardPage />} />
           </Route>
 
           <Route
-            path="/:userId/employee"
+            path="/employee"
             element={
-              <UserSessionRouteShell>
+              <ProtectedRoute>
                 <RequireEmployeeAuthMode>
                   <EmployeeLayout />
                 </RequireEmployeeAuthMode>
-              </UserSessionRouteShell>
+              </ProtectedRoute>
             }
           >
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="profile" element={<EmployeeProfilePage />} />
             <Route path="dashboard" element={<EmployeeDashboardPage />} />
           </Route>
+
+          {/* Retired id-based URLs (ADR-0013) — keep old bookmarks working. */}
+          <Route
+            path="/:userId/mode"
+            element={<LegacyUserRouteRedirect shell="mode" />}
+          />
+          <Route
+            path="/:userId/customer/*"
+            element={<LegacyUserRouteRedirect shell="customer" />}
+          />
+          <Route
+            path="/:userId/employee/*"
+            element={<LegacyUserRouteRedirect shell="employee" />}
+          />
 
           <Route
             path="/app"

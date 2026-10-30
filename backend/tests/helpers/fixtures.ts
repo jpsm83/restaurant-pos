@@ -5,6 +5,10 @@
 
 import { faker } from "@faker-js/faker";
 import { Types } from "mongoose";
+import Business from "../../src/models/business.ts";
+import Company from "../../src/models/company.ts";
+import Owner from "../../src/models/owner.ts";
+import User from "../../src/models/user.ts";
 
 /**
  * Generate a valid MongoDB ObjectId
@@ -112,6 +116,72 @@ export function fakeBusinessRecord(
     },
     companyId: overrides.companyId,
   };
+}
+
+type TestBusinessOverrides = Record<string, unknown> & {
+  companyId?: string | Types.ObjectId;
+  country?: string;
+};
+
+function businessCountry(overrides: TestBusinessOverrides): string {
+  if (typeof overrides.country === "string") {
+    return overrides.country;
+  }
+  const address = overrides.address;
+  if (
+    address !== null &&
+    typeof address === "object" &&
+    "country" in address &&
+    typeof address.country === "string"
+  ) {
+    return address.country;
+  }
+  return "USA";
+}
+
+/**
+ * Persist a User, Owner, and Company for tests that exercise ownership.
+ */
+export async function createTestOwnerCompany(
+  overrides: Partial<{ country: string }> = {},
+) {
+  const country = overrides.country ?? "USA";
+  const unique = new Types.ObjectId().toString();
+  const user = await User.create({
+    personalDetails: {
+      email: `owner-${unique}@test.com`,
+      username: `owner-${unique}`,
+      firstName: "Test",
+      lastName: "Owner",
+    },
+  });
+  const owner = await Owner.create({ userId: user._id, country });
+  const company = await Company.create({ ownerId: owner._id, country });
+  return { user, owner, company };
+}
+
+/**
+ * Persist a Business with an owning Company reference. Pass `companyId` to
+ * link an existing Company; otherwise a Company (with its Owner and User) is
+ * created for the venue. The caller supplies the Business fields.
+ */
+export async function createTestBusiness(
+  overrides: TestBusinessOverrides = {},
+) {
+  const country = businessCountry(overrides);
+  const {
+    country: _country,
+    companyId: requestedCompanyId,
+    ...rest
+  } = overrides;
+  const companyId =
+    requestedCompanyId ??
+    (await createTestOwnerCompany({ country })).company._id;
+
+  return Business.create({
+    ...rest,
+    companyId,
+  });
 }
 
 /**

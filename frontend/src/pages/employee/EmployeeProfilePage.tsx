@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 
-/** `/:userId/employee/profile` — placeholder until profile UI ships. */
+/** `/employee/profile` — placeholder until profile UI ships. */
 export default function EmployeeProfilePage() {
   const { t } = useTranslation("employee");
 

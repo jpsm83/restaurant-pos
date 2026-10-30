@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Navigate, useNavigate, useParams } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { getCurrentUser } from "@/auth/api";
 import { useAuth } from "@/auth/store/AuthContext";
 import type { AuthUser } from "@/auth/types";
@@ -23,8 +23,8 @@ import {
   formatDayKeyLocal,
 } from "@/lib/employeeModeSchedule";
 import {
-  canonicalUserCustomerDashboardPath,
-  canonicalUserEmployeeDashboardPath,
+  canonicalCustomerDashboardPath,
+  canonicalEmployeeDashboardPath,
 } from "@/routes/canonicalPaths";
 
 function formatRemaining(totalSeconds: number): string {
@@ -106,11 +106,10 @@ function hasEmployeeLink(
 }
 
 /**
- * `/:userId/mode` — users linked as staff pick customer vs employee; same shell rhythm as `LoginPage`.
+ * `/mode` — users linked as staff pick customer vs employee; same shell rhythm as `LoginPage`.
  */
 export default function SelectUserModePage() {
   const { t } = useTranslation("mode");
-  const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { state, dispatch } = useAuth();
@@ -190,12 +189,8 @@ export default function SelectUserModePage() {
     }
   }, [dispatch, queryClient]);
 
-  if (!userId) {
-    return <Navigate to="/" replace />;
-  }
-
   if (!linked || !sessionUser) {
-    return <Navigate to={`/${userId}/customer/dashboard`} replace />;
+    return <Navigate to={canonicalCustomerDashboardPath()} replace />;
   }
 
   const showCountdown =
@@ -211,7 +206,7 @@ export default function SelectUserModePage() {
     setSubmitFailure(null);
     try {
       await setModeAndRefresh("customer");
-      navigate(canonicalUserCustomerDashboardPath(sessionUser), { replace: true });
+      navigate(canonicalCustomerDashboardPath(), { replace: true });
     } catch (e) {
       setSubmitFailure(toServiceRequestError(e, "modeSave"));
     }
@@ -222,7 +217,7 @@ export default function SelectUserModePage() {
     setSubmitFailure(null);
     try {
       await setModeAndRefresh("business");
-      navigate(canonicalUserEmployeeDashboardPath(sessionUser), { replace: true });
+      navigate(canonicalEmployeeDashboardPath(), { replace: true });
     } catch (e) {
       setSubmitFailure(toServiceRequestError(e, "modeSave"));
     }

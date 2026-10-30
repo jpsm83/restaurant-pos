@@ -241,13 +241,13 @@ describe("LoginPage", () => {
     await renderWithI18n(
       <MemoryRouter
         initialEntries={[
-          "/login?returnTo=%2F64a1b2c3d4e5f67890123456%2Fcustomer%2Ffavorites",
+          "/login?returnTo=%2Ffavorites",
         ]}
       >
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route
-            path="/:userId/customer/favorites"
+            path="/favorites"
             element={<div>Google favorites</div>}
           />
         </Routes>
@@ -605,7 +605,7 @@ describe("LoginPage", () => {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route
-            path="/:userId/customer/dashboard"
+            path="/dashboard"
             element={<div>Customer dashboard</div>}
           />
         </Routes>
@@ -637,13 +637,13 @@ describe("LoginPage", () => {
     await renderWithI18n(
       <MemoryRouter
         initialEntries={[
-          "/login?returnTo=%2F64a1b2c3d4e5f67890123456%2Fcustomer%2Ffavorites%3Ftab%3Dall",
+          "/login?returnTo=%2Ffavorites%3Ftab%3Dall",
         ]}
       >
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route
-            path="/:userId/customer/favorites"
+            path="/favorites"
             element={<div>Returned favorites</div>}
           />
         </Routes>
@@ -679,7 +679,7 @@ describe("LoginPage", () => {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route
-            path="/:userId/customer/dashboard"
+            path="/dashboard"
             element={<div>Safe customer dashboard</div>}
           />
         </Routes>
@@ -695,7 +695,7 @@ describe("LoginPage", () => {
     });
   });
 
-  it("navigates to /:userId/customer/dashboard after user login without employee", async () => {
+  it("navigates to /dashboard after user login without employee", async () => {
     const user = userEvent.setup();
     mockLogin.mockResolvedValue({
       ok: true,
@@ -713,7 +713,7 @@ describe("LoginPage", () => {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route
-            path="/:userId/customer/dashboard"
+            path="/dashboard"
             element={<div>User customer dashboard</div>}
           />
         </Routes>

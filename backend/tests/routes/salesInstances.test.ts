@@ -12,9 +12,9 @@ import { Types } from "mongoose";
 import { getTestApp, generateTestToken } from "../setup.ts";
 import SalesInstance from "../../src/models/salesInstance.ts";
 import SalesPoint from "../../src/models/salesPoint.ts";
-import Business from "../../src/models/business.ts";
 import User from "../../src/models/user.ts";
 import Employee from "../../src/models/employee.ts";
+import { createTestBusiness } from "../helpers/fixtures.ts";
 
 /**
  * Arranges the discard race: orders land after the route has read an empty
@@ -67,7 +67,7 @@ describe("SalesInstances Routes", () => {
   let userId: Types.ObjectId;
 
   beforeEach(async () => {
-    const business = await Business.create({
+    const business = await createTestBusiness({
       tradeName: "Test Restaurant",
       legalName: "Test Restaurant LLC",
       email: "test@restaurant.com",

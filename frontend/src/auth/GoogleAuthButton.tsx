@@ -89,7 +89,7 @@ function EnabledGoogleAuthButton({ onFailure }: GoogleAuthButtonProps) {
     if (sessionUser.emailVerified === false) {
       toast.info(t("login.verifyEmailToast"));
     }
-    navigate(getPostLoginDestination(sessionUser, returnTo), { replace: true });
+    navigate(getPostLoginDestination(returnTo), { replace: true });
   };
 
   const handleError = () => {

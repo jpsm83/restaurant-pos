@@ -103,7 +103,7 @@ export default function LoginPage() {
     if (sessionUser.emailVerified === false) {
       toast.info(t("login.verifyEmailToast"));
     }
-    navigate(getPostLoginDestination(sessionUser, returnTo), { replace: true });
+    navigate(getPostLoginDestination(returnTo), { replace: true });
   };
 
   const stateFailure: ErrorFailure | null = state.error

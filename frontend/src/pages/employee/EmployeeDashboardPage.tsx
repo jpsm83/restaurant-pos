@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 
-/** `/:userId/employee/dashboard` — placeholder employee dashboard shell. */
+/** `/employee/dashboard` — placeholder employee dashboard shell. */
 export default function EmployeeDashboardPage() {
   const { t } = useTranslation("employee");
 

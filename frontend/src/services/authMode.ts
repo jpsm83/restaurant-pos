@@ -7,7 +7,7 @@
  *    invalidates `queryKeys.auth.mode()` and signals other tabs through `authModeSync`.
  * 3. **`AuthModeContext`** (`context/AuthModeContext.tsx`) composes these hooks for the app shell,
  *    invalidating its mode query when another tab changes the stored mode;
- *    **`RequireEmployeeAuthMode`** (`routes/AuthRouteGuards.tsx`) gates `/:userId/employee/*` on
+ *    **`RequireEmployeeAuthMode`** (`routes/AuthRouteGuards.tsx`) gates `/employee/*` on
  *    the resolved mode.
  *
  * Depends on: `./authModeSync`, `./http`, `./queryKeys`.

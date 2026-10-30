@@ -49,7 +49,7 @@ import {
   canonicalBusinessSettingsDeliveryPath,
   canonicalBusinessSettingsMetricsPath,
   canonicalBusinessSettingsOpenHoursPath,
-  canonicalUserCustomerDashboardPath,
+  canonicalCustomerDashboardPath,
 } from "@/routes/canonicalPaths";
 
 export default function BusinessLayout() {
@@ -139,7 +139,7 @@ export default function BusinessLayout() {
             onClick={() => {
               void switchModeAndNavigate(
                 "customer",
-                canonicalUserCustomerDashboardPath(session),
+                canonicalCustomerDashboardPath(),
               );
             }}
           >

@@ -141,7 +141,7 @@ function addressHasAnyValue(address: AddressForm): boolean {
   return Object.values(address).some((value) => value.trim() !== "");
 }
 
-/** `/:userId/customer/profile` — self-service customer profile and language. */
+/** `/profile` — self-service customer profile and language. */
 export default function CustomerProfilePage() {
   const { t } = useTranslation("customer");
   const resolveError = useErrorMessage();

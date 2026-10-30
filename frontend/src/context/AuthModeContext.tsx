@@ -10,7 +10,7 @@
  * 1. **`AuthModeProvider`** is mounted in **`App.tsx`** inside **`BrowserRouter`** (needs **`useLocation`**).
  * 2. **`useAuthModeQuery`** is **enabled** only when:
  *    - session is authenticated **`type === "user"`**, and
- *    - pathname matches **`/:userId/(customer|mode|employee)`** (`isUserShellPath`).
+ *    - pathname is a session-derived shell (`isUserShellPath` in `routes/canonicalPaths.ts`).
  *    Else the query is off and `mode` is `undefined` (no spurious `/auth/mode` calls on marketing/tenant).
  * 3. **`useSetAuthModeMutation`** runs **`POST /auth/set-mode`**; invalidation and the cross-tab signal are handled in **`authMode.ts`**.
  * 4. A same-origin tab that receives the signal invalidates its **`auth.mode`** query, so both tabs refetch the server-stored mode.
@@ -39,6 +39,7 @@ import {
 } from "@/services/authMode";
 import { subscribeToAuthModeChanges } from "@/services/authModeSync";
 import { queryKeys } from "@/services/queryKeys";
+import { isUserShellPath } from "@/routes/canonicalPaths";
 
 export type { AuthMode };
 
@@ -59,11 +60,6 @@ type AuthModeContextValue = {
 const AuthModeContext = createContext<AuthModeContextValue | undefined>(
   undefined,
 );
-
-/** `/:userId/customer|mode|employee` — not marketing, not tenant shell. */
-function isUserShellPath(pathname: string): boolean {
-  return /^\/[^/]+\/(customer|mode|employee)(\/|$)/.test(pathname);
-}
 
 export function AuthModeProvider({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();

@@ -7,9 +7,9 @@ import CustomerFavoritesPage from "../CustomerFavoritesPage";
 describe("CustomerFavoritesPage", () => {
   it("renders favorites heading", async () => {
     await renderWithI18n(
-      <MemoryRouter initialEntries={["/u1/customer/favorites"]}>
+      <MemoryRouter initialEntries={["/favorites"]}>
         <Routes>
-          <Route path="/:userId/customer/favorites" element={<CustomerFavoritesPage />} />
+          <Route path="/favorites" element={<CustomerFavoritesPage />} />
         </Routes>
       </MemoryRouter>,
     );

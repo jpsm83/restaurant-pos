@@ -29,9 +29,9 @@ describe("EmployeeLayout", () => {
     });
 
     await renderWithI18n(
-      <MemoryRouter initialEntries={["/u1/employee/dashboard"]}>
+      <MemoryRouter initialEntries={["/employee/dashboard"]}>
         <Routes>
-          <Route path="/:userId/employee" element={<EmployeeLayout />}>
+          <Route path="/employee" element={<EmployeeLayout />}>
             <Route path="dashboard" element={<div>Employee Outlet</div>} />
           </Route>
         </Routes>
@@ -51,9 +51,9 @@ describe("EmployeeLayout", () => {
     });
 
     await renderWithI18n(
-      <MemoryRouter initialEntries={["/u1/employee/dashboard"]}>
+      <MemoryRouter initialEntries={["/employee/dashboard"]}>
         <Routes>
-          <Route path="/:userId/employee" element={<EmployeeLayout />}>
+          <Route path="/employee" element={<EmployeeLayout />}>
             <Route path="dashboard" element={<div>Employee Outlet</div>} />
           </Route>
         </Routes>

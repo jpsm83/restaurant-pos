@@ -219,7 +219,7 @@ describe("SignUpPage", () => {
         <Routes>
           <Route path="/signup" element={<SignUpPage />} />
           <Route
-            path="/:userId/customer/dashboard"
+            path="/dashboard"
             element={<div>Customer dashboard</div>}
           />
         </Routes>
@@ -271,7 +271,7 @@ describe("SignUpPage", () => {
         <Routes>
           <Route path="/signup" element={<SignUpPage />} />
           <Route
-            path="/:userId/customer/dashboard"
+            path="/dashboard"
             element={<div>Google customer dashboard</div>}
           />
         </Routes>
@@ -457,13 +457,13 @@ describe("SignUpPage", () => {
     await renderWithI18n(
       <MemoryRouter
         initialEntries={[
-          "/signup?returnTo=%2F64a1b2c3d4e5f67890123456%2Fcustomer%2Ffavorites",
+          "/signup?returnTo=%2Ffavorites",
         ]}
       >
         <Routes>
           <Route path="/signup" element={<SignUpPage />} />
           <Route
-            path="/:userId/customer/favorites"
+            path="/favorites"
             element={<div>Signup favorites</div>}
           />
         </Routes>
@@ -498,7 +498,7 @@ describe("SignUpPage", () => {
         <Routes>
           <Route path="/signup" element={<SignUpPage />} />
           <Route
-            path="/:userId/customer/dashboard"
+            path="/dashboard"
             element={<div>Customer dashboard</div>}
           />
         </Routes>

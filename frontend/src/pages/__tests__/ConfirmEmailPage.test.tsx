@@ -25,7 +25,7 @@ function renderAt(path: string, language?: "en" | "es") {
         <Route path="/confirm-email" element={<ConfirmEmailPage />} />
         <Route path="/login" element={<div>Login Screen</div>} />
         <Route
-          path="/:userId/customer/dashboard"
+          path="/dashboard"
           element={<div>Customer Dashboard</div>}
         />
       </Routes>

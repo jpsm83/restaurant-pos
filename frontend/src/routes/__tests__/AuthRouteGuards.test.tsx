@@ -11,7 +11,6 @@ import {
   ProtectedRoute,
   PublicOnlyRoute,
   RequireEmployeeAuthMode,
-  UserIdRouteGuard,
 } from "../AuthRouteGuards";
 
 function LocationProbe() {
@@ -67,12 +66,12 @@ describe("Auth route guards", () => {
 
     await renderWithI18n(
       <MemoryRouter
-        initialEntries={["/u1/customer/favorites?tab=all"]}
+        initialEntries={["/favorites?tab=all"]}
       >
         <Routes>
           <Route path="/login" element={<LocationProbe />} />
           <Route
-            path="/u1/customer/favorites"
+            path="/favorites"
             element={
               <ProtectedRoute>
                 <div>Private content</div>
@@ -84,7 +83,7 @@ describe("Auth route guards", () => {
     );
 
     expect(screen.getByTestId("location")).toHaveTextContent(
-      "/login|/u1/customer/favorites?tab=all",
+      "/login|/favorites?tab=all",
     );
   });
 
@@ -100,7 +99,7 @@ describe("Auth route guards", () => {
     await renderWithI18n(
       <MemoryRouter initialEntries={["/login"]}>
         <Routes>
-          <Route path="/u1/customer/dashboard" element={<div>User customer shell</div>} />
+          <Route path="/dashboard" element={<div>User customer shell</div>} />
           <Route
             path="/login"
             element={
@@ -128,11 +127,11 @@ describe("Auth route guards", () => {
     await renderWithI18n(
       <MemoryRouter
         initialEntries={[
-          "/login?returnTo=%2Fu1%2Fcustomer%2Ffavorites%3Ftab%3Dall",
+          "/login?returnTo=%2Ffavorites%3Ftab%3Dall",
         ]}
       >
         <Routes>
-          <Route path="/u1/customer/favorites" element={<div>Favorites</div>} />
+          <Route path="/favorites" element={<div>Favorites</div>} />
           <Route
             path="/login"
             element={
@@ -164,7 +163,7 @@ describe("Auth route guards", () => {
       >
         <Routes>
           <Route
-            path="/u1/customer/dashboard"
+            path="/dashboard"
             element={<div>Customer dashboard</div>}
           />
           <Route
@@ -238,42 +237,6 @@ describe("Auth route guards", () => {
     expect(screen.getByText("Venue page")).toBeInTheDocument();
   });
 
-  it("UserIdRouteGuard redirects when :userId does not match session id", async () => {
-    mockUseAuth.mockReturnValue({
-      state: {
-        status: "authenticated",
-        user: {
-          id: "u1",
-          email: "john@doe.com",
-          type: "user",
-        },
-        error: null,
-      },
-    });
-
-    await renderWithI18n(
-      <MemoryRouter initialEntries={["/wrong-user/customer"]}>
-        <Routes>
-          <Route
-            path="/u1/customer/dashboard"
-            element={<div>Canonical user shell</div>}
-          />
-          <Route
-            path="/:userId/customer"
-            element={
-              <UserIdRouteGuard>
-                <div>Protected customer</div>
-              </UserIdRouteGuard>
-            }
-          />
-        </Routes>
-      </MemoryRouter>,
-    );
-
-    expect(screen.getByText("Canonical user shell")).toBeInTheDocument();
-    expect(screen.queryByText("Protected customer")).not.toBeInTheDocument();
-  });
-
   describe("RequireEmployeeAuthMode (Phase 3.5)", () => {
     beforeEach(() => {
       mockUseAuth.mockReturnValue({
@@ -286,7 +249,7 @@ describe("Auth route guards", () => {
       mockUseAuthMode.mockReset();
     });
 
-    it("redirects to /:userId/mode when session mode is customer", async () => {
+    it("redirects to /mode when session mode is customer", async () => {
       mockUseAuthMode.mockReturnValue({
         mode: "customer",
         isLoading: false,
@@ -294,11 +257,11 @@ describe("Auth route guards", () => {
       });
 
       await renderWithI18n(
-        <MemoryRouter initialEntries={["/u1/employee"]}>
+        <MemoryRouter initialEntries={["/employee"]}>
           <Routes>
-            <Route path="/u1/mode" element={<div>Mode picker</div>} />
+            <Route path="/mode" element={<div>Mode picker</div>} />
             <Route
-              path="/:userId/employee"
+              path="/employee"
               element={
                 <RequireEmployeeAuthMode>
                   <div>Employee shell</div>
@@ -313,7 +276,7 @@ describe("Auth route guards", () => {
       expect(screen.queryByText("Employee shell")).not.toBeInTheDocument();
     });
 
-    it("redirects to /:userId/mode when mode fetch errors", async () => {
+    it("redirects to /mode when mode fetch errors", async () => {
       mockUseAuthMode.mockReturnValue({
         mode: undefined,
         isLoading: false,
@@ -321,11 +284,11 @@ describe("Auth route guards", () => {
       });
 
       await renderWithI18n(
-        <MemoryRouter initialEntries={["/u1/employee"]}>
+        <MemoryRouter initialEntries={["/employee"]}>
           <Routes>
-            <Route path="/u1/mode" element={<div>Mode picker</div>} />
+            <Route path="/mode" element={<div>Mode picker</div>} />
             <Route
-              path="/:userId/employee"
+              path="/employee"
               element={
                 <RequireEmployeeAuthMode>
                   <div>Employee shell</div>
@@ -347,11 +310,11 @@ describe("Auth route guards", () => {
       });
 
       await renderWithI18n(
-        <MemoryRouter initialEntries={["/u1/employee"]}>
+        <MemoryRouter initialEntries={["/employee"]}>
           <Routes>
-            <Route path="/u1/mode" element={<div>Mode picker</div>} />
+            <Route path="/mode" element={<div>Mode picker</div>} />
             <Route
-              path="/:userId/employee"
+              path="/employee"
               element={
                 <RequireEmployeeAuthMode>
                   <div>Employee shell</div>
@@ -374,11 +337,11 @@ describe("Auth route guards", () => {
       });
 
       await renderWithI18n(
-        <MemoryRouter initialEntries={["/u1/employee"]}>
+        <MemoryRouter initialEntries={["/employee"]}>
           <Routes>
-            <Route path="/u1/mode" element={<div>Mode picker</div>} />
+            <Route path="/mode" element={<div>Mode picker</div>} />
             <Route
-              path="/:userId/employee"
+              path="/employee"
               element={
                 <RequireEmployeeAuthMode>
                   <div>Employee shell</div>

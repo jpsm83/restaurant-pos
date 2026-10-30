@@ -1,6 +1,6 @@
 /**
  * **`src/layouts`** — route **outlet shells** (chrome + `<Outlet />` for nested pages). Wired only from
- * `appRoutes.tsx`. Auth gates live on the **parent `<Route>`** (`PublicOnlyRoute`, `UserSessionRouteShell`,
+ * `appRoutes.tsx`. Auth gates live on the **parent `<Route>`** (`PublicOnlyRoute`, `ProtectedRoute`,
  * … in `routes/AuthRouteGuards.tsx`), not inside these layout components.
  *
  * ---

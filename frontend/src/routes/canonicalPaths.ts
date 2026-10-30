@@ -5,44 +5,37 @@
  * Pure functions only (no React). Every programmatic navigation or link that must stay in sync
  * with the route tree should derive paths from here so strings are not duplicated in pages.
  *
+ * ## Self-service routes are session-derived
+ * The signed-in User is request context, so `/dashboard`, `/profile`, `/favorites`, `/mode`, and
+ * `/employee/*` carry no user id. An id appears in a URL only when the URL addresses that
+ * resource: `/business/:businessId` is a venue the person may switch between. See ADR-0013.
+ *
  * ## Who imports this
- * - `AuthRouteGuards.tsx` — redirects when `:userId` does not match the session.
  * - `auth/postLoginRedirect.ts` — first URL after login / signup (`getPostLoginDestination`).
- * - `components/AccountMenuPopover.tsx` — User profile entry point.
- * - `layouts/BusinessLayout.tsx` and business venue pages — `:businessId` destination links.
+ * - `routes/AuthRouteGuards.tsx` — mode redirect and guard docs.
+ * - `appRoutes.tsx` — legacy `/:userId/...` redirect targets.
+ * - `context/AuthModeContext.tsx` — `isUserShellPath` enables the stored-mode query.
+ * - `components/AccountMenuPopover.tsx` — profile entry point and employee-shell detection.
+ * - `layouts/CustomerLayout.tsx`, `layouts/EmployeeLayout.tsx`, `layouts/BusinessLayout.tsx`.
  * - `pages/SelectUserModePage.tsx` — navigate to customer or employee **dashboard** after mode selection.
  *
  * ## How it wires to the router
- * `appRoutes.tsx` declares concrete `<Route path="…">` segments (`dashboard`,
- * `settings/profile`, `settings/subscriptions`, `settings/address`, …). Those
- * paths must match what the `canonical*` helpers build. If you add a new shell segment, add a
- * helper here and use it in guards + post-login + any feature navigation.
+ * `appRoutes.tsx` declares concrete `<Route path="…">` segments (`dashboard`, `profile`,
+ * `favorites`, `settings/profile`, …). Those paths must match what the `canonical*` helpers
+ * build. If you add a new shell segment, add a helper here and use it in guards + post-login +
+ * any feature navigation. Legacy `/:userId/...` URLs redirect in `appRoutes.tsx`.
  *
  * ## Flow (typical)
  * 1. User signs in → `getPostLoginDestination` returns the Customer dashboard.
- * 2. Guards on `/:userId/*` use `matchesSessionUserId`; on mismatch they `Navigate` to the
- *    canonical Customer dashboard.
+ * 2. Self-service routes render for the session without a path id.
  * 3. Venue data pages build `/business/:businessId/*` links from the route param, not the session.
  */
-import type { AuthSession } from "@/auth/types";
 
 /** MongoDB ObjectId as 24 hex chars (case-insensitive). */
 const MONGO_OBJECT_ID_HEX = /^[a-fA-F0-9]{24}$/;
 
 export function isLikelyMongoObjectIdString(value: string | undefined): boolean {
   return Boolean(value && MONGO_OBJECT_ID_HEX.test(value));
-}
-
-/**
- * True when the URL `:userId` matches the logged-in person account.
- * Use on `/:userId/*` routes; never trust the path alone for authorization (backend is source of truth).
- */
-export function matchesSessionUserId(
-  paramUserId: string | undefined,
-  user: AuthSession | null | undefined,
-): boolean {
-  if (!paramUserId || !user) return false;
-  return paramUserId === user.id;
 }
 
 /** Venue base: `/business/:businessId` (child routes: `dashboard`, `settings/profile`, …). */
@@ -83,39 +76,57 @@ export function canonicalBusinessSettingsOpenHoursPath(businessId: string): stri
   return `${canonicalBusinessDashboardPath(businessId)}/settings/open-hours`;
 }
 
-export function canonicalUserCustomerPath(user: AuthSession): string {
-  return `/${user.id}/customer`;
+/** Customer dashboard — the signed-in User's landing page. */
+export function canonicalCustomerDashboardPath(): string {
+  return "/dashboard";
 }
 
-export function canonicalUserCustomerDashboardPath(user: AuthSession): string {
-  return `${canonicalUserCustomerPath(user)}/dashboard`;
+export function canonicalCustomerProfilePath(): string {
+  return "/profile";
 }
 
-export function canonicalUserCustomerProfilePath(user: AuthSession): string {
-  return `${canonicalUserCustomerPath(user)}/profile`;
+export function canonicalCustomerFavoritesPath(): string {
+  return "/favorites";
 }
 
-export function canonicalUserCustomerFavoritesPath(user: AuthSession): string {
-  return `${canonicalUserCustomerPath(user)}/favorites`;
+/** Customer | Business mode selection. */
+export function canonicalModePath(): string {
+  return "/mode";
 }
 
-export function canonicalUserModePath(user: AuthSession): string {
-  return `/${user.id}/mode`;
+export function canonicalEmployeePath(): string {
+  return "/employee";
 }
 
-export function canonicalUserEmployeePath(user: AuthSession): string {
-  return `/${user.id}/employee`;
+export function canonicalEmployeeDashboardPath(): string {
+  return `${canonicalEmployeePath()}/dashboard`;
 }
 
-export function canonicalUserEmployeeDashboardPath(user: AuthSession): string {
-  return `${canonicalUserEmployeePath(user)}/dashboard`;
-}
-
-export function canonicalUserEmployeeProfilePath(user: AuthSession): string {
-  return `${canonicalUserEmployeePath(user)}/profile`;
+export function canonicalEmployeeProfilePath(): string {
+  return `${canonicalEmployeePath()}/profile`;
 }
 
 /** Default dashboard for a signed-in User; Business is entered through the mode flow. */
-export function canonicalDefaultDashboardPath(user: AuthSession): string {
-  return canonicalUserCustomerDashboardPath(user);
+export function canonicalDefaultDashboardPath(): string {
+  return canonicalCustomerDashboardPath();
+}
+
+/** True when `pathname` is `path` or a descendant of it. */
+function matchesPath(pathname: string, path: string): boolean {
+  return pathname === path || pathname.startsWith(`${path}/`);
+}
+
+export function isEmployeeShellPath(pathname: string): boolean {
+  return matchesPath(pathname, canonicalEmployeePath());
+}
+
+/** True on the session-derived routes where the stored Customer | Business mode applies. */
+export function isUserShellPath(pathname: string): boolean {
+  return (
+    matchesPath(pathname, canonicalCustomerDashboardPath()) ||
+    matchesPath(pathname, canonicalCustomerProfilePath()) ||
+    matchesPath(pathname, canonicalCustomerFavoritesPath()) ||
+    matchesPath(pathname, canonicalModePath()) ||
+    isEmployeeShellPath(pathname)
+  );
 }

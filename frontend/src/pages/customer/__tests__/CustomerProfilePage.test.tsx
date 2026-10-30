@@ -103,9 +103,9 @@ const profile = {
 
 function renderPage() {
   return renderWithI18n(
-    <MemoryRouter initialEntries={["/u1/customer/profile"]}>
+    <MemoryRouter initialEntries={["/profile"]}>
       <Routes>
-        <Route path="/:userId/customer/profile" element={<CustomerProfilePage />} />
+        <Route path="/profile" element={<CustomerProfilePage />} />
       </Routes>
     </MemoryRouter>,
   );

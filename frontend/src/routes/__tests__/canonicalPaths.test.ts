@@ -9,37 +9,22 @@ import {
   canonicalBusinessSettingsMetricsPath,
   canonicalBusinessSettingsOpenHoursPath,
   canonicalBusinessSettingsSubscriptionsPath,
+  canonicalCustomerDashboardPath,
+  canonicalCustomerFavoritesPath,
+  canonicalCustomerProfilePath,
   canonicalDefaultDashboardPath,
-  canonicalUserCustomerDashboardPath,
-  canonicalUserCustomerFavoritesPath,
-  canonicalUserCustomerPath,
-  canonicalUserCustomerProfilePath,
-  canonicalUserEmployeeDashboardPath,
-  canonicalUserEmployeePath,
-  canonicalUserEmployeeProfilePath,
-  canonicalUserModePath,
+  canonicalEmployeeDashboardPath,
+  canonicalEmployeePath,
+  canonicalEmployeeProfilePath,
+  canonicalModePath,
   isLikelyMongoObjectIdString,
-  matchesSessionUserId,
 } from "../canonicalPaths";
-
-const userSession = {
-  id: "u1",
-  email: "u@test.local",
-  type: "user" as const,
-  role: "Customer" as const,
-};
 
 describe("canonicalPaths", () => {
   it("validates likely mongo object ids", () => {
     expect(isLikelyMongoObjectIdString("507f1f77bcf86cd799439011")).toBe(true);
     expect(isLikelyMongoObjectIdString("507f1f77bcf86cd79943901")).toBe(false);
     expect(isLikelyMongoObjectIdString(undefined)).toBe(false);
-  });
-
-  it("matches the session user id", () => {
-    expect(matchesSessionUserId("u1", userSession)).toBe(true);
-    expect(matchesSessionUserId("u2", userSession)).toBe(false);
-    expect(matchesSessionUserId(undefined, userSession)).toBe(false);
   });
 
   it("builds all venue canonical paths from the business id", () => {
@@ -68,31 +53,17 @@ describe("canonicalPaths", () => {
     );
   });
 
-  it("builds all user canonical paths", () => {
-    expect(canonicalUserCustomerPath(userSession)).toBe("/u1/customer");
-    expect(canonicalUserCustomerDashboardPath(userSession)).toBe(
-      "/u1/customer/dashboard",
-    );
-    expect(canonicalUserCustomerProfilePath(userSession)).toBe("/u1/customer/profile");
-    expect(canonicalUserCustomerFavoritesPath(userSession)).toBe(
-      "/u1/customer/favorites",
-    );
-    expect(canonicalUserModePath(userSession)).toBe("/u1/mode");
-    expect(canonicalUserEmployeePath(userSession)).toBe("/u1/employee");
-    expect(canonicalUserEmployeeDashboardPath(userSession)).toBe(
-      "/u1/employee/dashboard",
-    );
-    expect(canonicalUserEmployeeProfilePath(userSession)).toBe("/u1/employee/profile");
+  it("builds the session-derived self-service paths without a user id", () => {
+    expect(canonicalCustomerDashboardPath()).toBe("/dashboard");
+    expect(canonicalCustomerProfilePath()).toBe("/profile");
+    expect(canonicalCustomerFavoritesPath()).toBe("/favorites");
+    expect(canonicalModePath()).toBe("/mode");
+    expect(canonicalEmployeePath()).toBe("/employee");
+    expect(canonicalEmployeeDashboardPath()).toBe("/employee/dashboard");
+    expect(canonicalEmployeeProfilePath()).toBe("/employee/profile");
   });
 
-  it("returns the Customer default dashboard for every signed-in User", () => {
-    expect(canonicalDefaultDashboardPath(userSession)).toBe("/u1/customer/dashboard");
-    expect(
-      canonicalDefaultDashboardPath({
-        ...userSession,
-        mode: "business",
-        role: "Manager",
-      }),
-    ).toBe("/u1/customer/dashboard");
+  it("returns the Customer default dashboard", () => {
+    expect(canonicalDefaultDashboardPath()).toBe("/dashboard");
   });
 });

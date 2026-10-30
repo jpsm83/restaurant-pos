@@ -50,12 +50,8 @@ export default function ConfirmEmailPage() {
         const refreshed = await refreshSession();
         if (refreshed.ok && refreshed.data?.user) {
           dispatch({ type: "AUTH_SUCCESS", payload: refreshed.data.user });
-          navigate(canonicalDefaultDashboardPath(refreshed.data.user), {
-            replace: true,
-          });
-          return;
         }
-        navigate(canonicalDefaultDashboardPath(state.user), { replace: true });
+        navigate(canonicalDefaultDashboardPath(), { replace: true });
         return;
       }
       navigate("/login", { replace: true });

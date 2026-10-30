@@ -48,7 +48,7 @@ function makeEmployeeUser(canLogAsEmployee: boolean) {
   };
 }
 
-async function renderAtMode(path = "/u1/mode", client?: QueryClient) {
+async function renderAtMode(path = "/mode", client?: QueryClient) {
   const qc =
     client ??
     new QueryClient({
@@ -60,13 +60,13 @@ async function renderAtMode(path = "/u1/mode", client?: QueryClient) {
   return renderWithI18n(
     <MemoryRouter initialEntries={[path]}>
       <Routes>
-        <Route path="/:userId/mode" element={<SelectUserModePage />} />
+        <Route path="/mode" element={<SelectUserModePage />} />
         <Route
-          path="/:userId/customer/dashboard"
+          path="/dashboard"
           element={<div data-testid="customer-shell">Customer shell</div>}
         />
         <Route
-          path="/:userId/employee/dashboard"
+          path="/employee/dashboard"
           element={<div data-testid="employee-shell">Employee shell</div>}
         />
       </Routes>

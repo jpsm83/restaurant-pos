@@ -23,7 +23,7 @@ export default function AccessDenied() {
 
   const handleOpenWorkspace = () => {
     if (state.user) {
-      navigate(getPostLoginDestination(state.user), { replace: true });
+      navigate(getPostLoginDestination(), { replace: true });
     }
   };
 

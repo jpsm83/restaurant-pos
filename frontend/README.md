@@ -166,10 +166,12 @@ Conventions:
 - **Auth:** the access token lives in the `auth/api.ts` module singleton (not
   Context); `http` reads it per request. The refresh token is an HttpOnly cookie
   sent with `withCredentials: true`. `AuthProvider` exposes session state.
-- **Routing:** three authenticated actor shells under `/:userId/customer`,
-  `/:userId/employee`, `/business/:businessId`. Guards live in
-  `routes/AuthRouteGuards.tsx`. Pages are `React.lazy`-loaded behind a Suspense
-  shell; unknown URLs render `NotFoundPage`.
+- **Routing:** self-service shells (`/dashboard`, `/profile`, `/favorites`,
+  `/mode`, `/employee`) carry no user id; the signed-in User comes from the
+  session. Venues use `/business/:businessId`. Legacy `/:userId/...` URLs with
+  a valid ObjectId redirect; unknown shapes 404 (ADR-0013). Guards live in
+  `routes/AuthRouteGuards.tsx`. Pages are
+  `React.lazy`-loaded behind a Suspense shell; unknown URLs render `NotFoundPage`.
 - **Internationalization:** user-facing copy goes through `react-i18next`, never
   hardcoded. The singleton in `src/i18n/i18n.ts` is imported once from
   `main.tsx`; locale JSON lives under `src/i18n/locales/<en|es>/<namespace>.json`

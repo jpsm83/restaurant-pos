@@ -83,10 +83,10 @@ function renderSwitchFlow() {
   });
   return renderWithI18n(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={["/u1/customer/dashboard"]}>
+      <MemoryRouter initialEntries={["/dashboard"]}>
         <Routes>
           <Route
-            path="/:userId/customer/dashboard"
+            path="/dashboard"
             element={<CustomerDashboardPage />}
           />
           <Route path="/business/:businessId" element={<BusinessLayout />}>

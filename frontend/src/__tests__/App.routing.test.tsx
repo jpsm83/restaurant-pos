@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppRoutes } from "@/App";
@@ -67,6 +67,96 @@ describe("App public routing (Phase 1.5.1)", () => {
       </MemoryRouter>,
     );
 
+    expect(
+      await screen.findByRole("heading", { name: /page not found/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("redirects legacy /:userId/customer/* URLs to session-derived paths", async () => {
+    await renderWithI18n(
+      <MemoryRouter
+        initialEntries={[
+          "/507f1f77bcf86cd799439011/customer/favorites?tab=all",
+        ]}
+      >
+        <LocationProbe />
+        <AppRoutes />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("location")).toHaveTextContent(
+        /^\/login\?returnTo=%2Ffavorites%3Ftab%3Dall$/,
+      );
+    });
+  });
+
+  it("redirects legacy /:userId/employee/* URLs to session-derived paths", async () => {
+    await renderWithI18n(
+      <MemoryRouter
+        initialEntries={["/507f1f77bcf86cd799439011/employee/profile"]}
+      >
+        <LocationProbe />
+        <AppRoutes />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("location")).toHaveTextContent(
+        /^\/login\?returnTo=%2Femployee%2Fprofile$/,
+      );
+    });
+  });
+
+  it("redirects legacy /:userId/mode URLs", async () => {
+    await renderWithI18n(
+      <MemoryRouter
+        initialEntries={["/507f1f77bcf86cd799439011/mode"]}
+      >
+        <LocationProbe />
+        <AppRoutes />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("location")).toHaveTextContent(
+        /^\/login\?returnTo=%2Fmode$/,
+      );
+    });
+  });
+
+  it("renders NotFoundPage for an unknown legacy remainder", async () => {
+    await renderWithI18n(
+      <MemoryRouter
+        initialEntries={["/507f1f77bcf86cd799439011/customer/unknown"]}
+      >
+        <AppRoutes />
+      </MemoryRouter>,
+    );
+    expect(
+      await screen.findByRole("heading", { name: /page not found/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders NotFoundPage for a legacy-looking prefix that is not an ObjectId", async () => {
+    await renderWithI18n(
+      <MemoryRouter initialEntries={["/not-an-object-id/customer/dashboard"]}>
+        <AppRoutes />
+      </MemoryRouter>,
+    );
+    expect(
+      await screen.findByRole("heading", { name: /page not found/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders NotFoundPage for an inherited object key in the legacy remainder", async () => {
+    await renderWithI18n(
+      <MemoryRouter
+        initialEntries={["/507f1f77bcf86cd799439011/customer/constructor"]}
+      >
+        <AppRoutes />
+      </MemoryRouter>,
+    );
     expect(
       await screen.findByRole("heading", { name: /page not found/i }),
     ).toBeInTheDocument();

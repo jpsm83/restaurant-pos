@@ -2,7 +2,6 @@
  * Tests for `postLoginRedirect.ts` — shared auth landing and safe return paths.
  */
 import { describe, expect, it } from "vitest";
-import type { AuthSession } from "../types";
 import {
   authPathWithReturnTo,
   getPostLoginDestination,
@@ -10,19 +9,12 @@ import {
   safeReturnTo,
 } from "../postLoginRedirect";
 
-const session: AuthSession = {
-  id: "u1",
-  email: "u@test.local",
-  type: "user",
-  role: "Customer",
-};
-
-const dashboard = "/u1/customer/dashboard";
+const dashboard = "/dashboard";
 
 describe("safeReturnTo", () => {
   it.each([
     "/business/64a1b2c3d4e5f67890123456/dashboard",
-    "/u1/customer/favorites?tab=all#top",
+    "/favorites?tab=all#top",
     "/",
   ])("accepts same-origin path %s", (path) => {
     expect(safeReturnTo(path)).toBe(path);
@@ -39,7 +31,7 @@ describe("safeReturnTo", () => {
     ["backslash host", "/\\evil.example"],
     ["control character", "/dashboard\nSet-Cookie: x"],
     ["login", "/login"],
-    ["login with query", "/login?returnTo=/u1/customer/dashboard"],
+    ["login with query", "/login?returnTo=/dashboard"],
     ["signup", "/signup"],
     ["forgot password", "/forgot-password"],
     ["reset password", "/reset-password?token=abc"],
@@ -62,8 +54,8 @@ describe("safeReturnTo", () => {
 describe("getReturnToParam", () => {
   it("reads and decodes the returnTo parameter", () => {
     expect(
-      getReturnToParam("?returnTo=%2Fu1%2Fcustomer%2Ffavorites%3Ftab%3Dall"),
-    ).toBe("/u1/customer/favorites?tab=all");
+      getReturnToParam("?returnTo=%2Ffavorites%3Ftab%3Dall"),
+    ).toBe("/favorites?tab=all");
   });
 
   it("returns null when absent", () => {
@@ -74,8 +66,8 @@ describe("getReturnToParam", () => {
 describe("authPathWithReturnTo", () => {
   it("attaches only safe return paths", () => {
     expect(
-      authPathWithReturnTo("/login", "/u1/customer/favorites?tab=all"),
-    ).toBe("/login?returnTo=%2Fu1%2Fcustomer%2Ffavorites%3Ftab%3Dall");
+      authPathWithReturnTo("/login", "/favorites?tab=all"),
+    ).toBe("/login?returnTo=%2Ffavorites%3Ftab%3Dall");
   });
 
   it("leaves auth links plain for unsafe paths", () => {
@@ -88,53 +80,31 @@ describe("authPathWithReturnTo", () => {
 describe("getPostLoginDestination", () => {
   const table: {
     name: string;
-    session: AuthSession;
     returnTo?: string | null;
     expected: string;
   }[] = [
     {
-      name: "user without employee link",
-      session,
-      expected: dashboard,
-    },
-    {
-      name: "employee-linked user also stays on Customer",
-      session: {
-        ...session,
-        employeeId: "e1",
-        businessId: "biz1",
-        canLogAsEmployee: true,
-        role: "Manager",
-        mode: "customer",
-      },
-      expected: dashboard,
-    },
-    {
-      name: "owner with business mode also stays on Customer",
-      session: { ...session, mode: "business" },
+      name: "default landing",
       expected: dashboard,
     },
     {
       name: "safe return path is honoured",
-      session,
-      returnTo: "/u1/customer/favorites?tab=all",
-      expected: "/u1/customer/favorites?tab=all",
+      returnTo: "/favorites?tab=all",
+      expected: "/favorites?tab=all",
     },
     {
       name: "external return path falls back to Customer dashboard",
-      session,
       returnTo: "https://evil.example",
       expected: dashboard,
     },
     {
       name: "auth destination return path falls back to Customer dashboard",
-      session,
       returnTo: "/login",
       expected: dashboard,
     },
   ];
 
-  it.each(table)("$name → $expected", ({ session: user, returnTo, expected }) => {
-    expect(getPostLoginDestination(user, returnTo)).toBe(expected);
+  it.each(table)("$name → $expected", ({ returnTo, expected }) => {
+    expect(getPostLoginDestination(returnTo)).toBe(expected);
   });
 });

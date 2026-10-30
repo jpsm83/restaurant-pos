@@ -8,11 +8,13 @@ import { Types } from "mongoose";
 import bcrypt from "bcrypt";
 import { getTestApp } from "../setup.ts";
 import User from "../../src/models/user.ts";
-import Business from "../../src/models/business.ts";
 import Employee from "../../src/models/employee.ts";
 import RefreshSession from "../../src/models/refreshSession.ts";
 import ownerCompanyCreation from "../../src/owners/ownerCompanyCreation.ts";
-import { fakeBusinessRecord } from "../helpers/fixtures.ts";
+import {
+  createTestBusiness,
+  fakeBusinessRecord,
+} from "../helpers/fixtures.ts";
 
 function accessTokenLifetimeSeconds(token: string): number {
   const payload = accessTokenClaims(token);
@@ -270,7 +272,7 @@ describe("Auth Routes", () => {
           username: "staffremoved",
         },
       });
-      const business = await Business.create({
+      const business = await createTestBusiness({
         tradeName: "Staff Venue",
         legalName: "Staff Venue Legal",
         email: "staff-venue@test.com",
@@ -2032,7 +2034,7 @@ describe("Auth Routes", () => {
 
     it("uses the employee schedule gate for business mode eligibility", async () => {
       const app = await getTestApp();
-      const business = await Business.create({
+      const business = await createTestBusiness({
         tradeName: "Mode Eligibility Venue",
         legalName: "Mode Eligibility Venue Legal",
         email: "mode-eligibility-venue@test.com",

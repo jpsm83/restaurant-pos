@@ -262,7 +262,7 @@ describe("BusinessLayout", () => {
             <Route path="dashboard" element={<div>Business Outlet</div>} />
           </Route>
           <Route
-            path="/:userId/customer/dashboard"
+            path="/dashboard"
             element={<div>Customer dashboard</div>}
           />
         </Routes>

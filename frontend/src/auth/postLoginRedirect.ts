@@ -8,7 +8,6 @@
  * person stays on the Customer dashboard. Built from **`routes/canonicalPaths.ts`**.
  */
 import { canonicalDefaultDashboardPath } from "@/routes/canonicalPaths";
-import type { AuthSession } from "./types";
 
 /** Synthetic origin used only to resolve and compare candidate paths without the browser. */
 const SYNTHETIC_ORIGIN = "https://imperium.invalid";
@@ -90,9 +89,6 @@ export function authPathWithReturnTo(
 }
 
 /** First URL after authentication: a safe `returnTo`, otherwise the Customer dashboard. */
-export function getPostLoginDestination(
-  user: AuthSession,
-  returnTo?: string | null,
-): string {
-  return safeReturnTo(returnTo) ?? canonicalDefaultDashboardPath(user);
+export function getPostLoginDestination(returnTo?: string | null): string {
+  return safeReturnTo(returnTo) ?? canonicalDefaultDashboardPath();
 }

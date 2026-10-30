@@ -15,10 +15,10 @@ vi.mock("../../src/cloudinary/deleteFolderCloudinary.ts", () => ({
 import { Types } from "mongoose";
 import { getTestApp } from "../setup.ts";
 import Employee from "../../src/models/employee.ts";
-import Business from "../../src/models/business.ts";
 import User from "../../src/models/user.ts";
 import Printer from "../../src/models/printer.ts";
 import { multipart } from "../helpers/multipart.ts";
+import { createTestBusiness } from "../helpers/fixtures.ts";
 import {
   detail,
   errorMessages,
@@ -40,7 +40,7 @@ describe("Employees Routes", () => {
   };
 
   beforeEach(async () => {
-    const business = await Business.create({
+    const business = await createTestBusiness({
       tradeName: "Test Restaurant",
       legalName: "Test Restaurant LLC",
       email: "test@restaurant.com",
@@ -701,7 +701,7 @@ describe("Employees Routes", () => {
     it("allows the same user to belong to more than one business", async () => {
       const app = await getTestApp();
 
-      const otherBusiness = await Business.create({
+      const otherBusiness = await createTestBusiness({
         tradeName: "Second Restaurant",
         legalName: "Second Restaurant LLC",
         email: "second@restaurant.com",

@@ -13,6 +13,10 @@ import User from "../../src/models/user.ts";
 import Employee from "../../src/models/employee.ts";
 import Notification from "../../src/models/notification.ts";
 import emailChannel from "../../src/communications/channels/emailChannel.ts";
+import {
+  createTestBusiness,
+  createTestOwnerCompany,
+} from "../helpers/fixtures.ts";
 
 vi.mock("../../src/cloudinary/deleteFolderCloudinary.ts", () => ({
   default: vi.fn().mockResolvedValue(true),
@@ -62,27 +66,12 @@ async function businessAccessToken(
  * Business, with no Employee membership.
  */
 async function businessOwnerToken(
-  app: Awaited<ReturnType<typeof getTestApp>>,
-  businessId: string,
+  userId: string,
+  email: string,
 ): Promise<string> {
-  const userId = new Types.ObjectId();
-  await User.create({
-    _id: userId,
-    personalDetails: {
-      email: `owner-${userId}@test.com`,
-      firstName: "Venue",
-      lastName: "Owner",
-    },
-  });
-  const owner = await Owner.create({ userId, country: "USA" });
-  const company = await Company.create({ ownerId: owner._id, country: "USA" });
-  await Business.updateOne(
-    { _id: businessId },
-    { $set: { companyId: company._id } },
-  );
   return generateTestToken({
-    id: userId.toString(),
-    email: `owner-${userId}@test.com`,
+    id: userId,
+    email,
     type: "user",
     role: "Customer",
   });
@@ -519,7 +508,7 @@ describe("Business Routes", () => {
     it("lists all businesses", async () => {
       const app = await getTestApp();
 
-      await Business.create({
+      await createTestBusiness({
         tradeName: "Test Restaurant",
         legalName: "Test Restaurant LLC",
         email: "test@restaurant.com",
@@ -544,6 +533,7 @@ describe("Business Routes", () => {
 
     it("never exposes legacy credential columns stored on an existing row", async () => {
       const app = await getTestApp();
+      const { company } = await createTestOwnerCompany({ country: "USA" });
 
       await Business.collection.insertOne({
         tradeName: "Legacy Venue",
@@ -561,6 +551,7 @@ describe("Business Routes", () => {
         taxNumber: "TAX-LEGACY-001",
         currencyTrade: "USD",
         address: validAddress,
+        companyId: company._id,
         deleted: false,
       });
 
@@ -605,28 +596,26 @@ describe("Business Routes", () => {
     it("filters by cuisineType", async () => {
       const app = await getTestApp();
 
-      await Business.create([
-        {
-          tradeName: "Italian Place",
-          legalName: "Italian Place LLC",
-          email: "italian@test.com",
-          phoneNumber: "1234567890",
-          taxNumber: "TAX-IT-001",
-          currencyTrade: "USD",
-          address: validAddress,
-          cuisineType: ["Italian"],
-        },
-        {
-          tradeName: "Mexican Place",
-          legalName: "Mexican Place LLC",
-          email: "mexican@test.com",
-          phoneNumber: "1234567891",
-          taxNumber: "TAX-MX-001",
-          currencyTrade: "USD",
-          address: validAddress,
-          cuisineType: ["Mexican"],
-        },
-      ]);
+      await createTestBusiness({
+        tradeName: "Italian Place",
+        legalName: "Italian Place LLC",
+        email: "italian@test.com",
+        phoneNumber: "1234567890",
+        taxNumber: "TAX-IT-001",
+        currencyTrade: "USD",
+        address: validAddress,
+        cuisineType: ["Italian"],
+      });
+      await createTestBusiness({
+        tradeName: "Mexican Place",
+        legalName: "Mexican Place LLC",
+        email: "mexican@test.com",
+        phoneNumber: "1234567891",
+        taxNumber: "TAX-MX-001",
+        currencyTrade: "USD",
+        address: validAddress,
+        cuisineType: ["Mexican"],
+      });
 
       const response = await app.inject({
         method: "GET",
@@ -642,26 +631,24 @@ describe("Business Routes", () => {
     it("filters by name (tradeName)", async () => {
       const app = await getTestApp();
 
-      await Business.create([
-        {
-          tradeName: "Pizza Paradise",
-          legalName: "Pizza Paradise LLC",
-          email: "pizza@test.com",
-          phoneNumber: "1234567890",
-          taxNumber: "TAX-PIZ-001",
-          currencyTrade: "USD",
-          address: validAddress,
-        },
-        {
-          tradeName: "Burger Barn",
-          legalName: "Burger Barn LLC",
-          email: "burger@test.com",
-          phoneNumber: "1234567891",
-          taxNumber: "TAX-BUR-001",
-          currencyTrade: "USD",
-          address: validAddress,
-        },
-      ]);
+      await createTestBusiness({
+        tradeName: "Pizza Paradise",
+        legalName: "Pizza Paradise LLC",
+        email: "pizza@test.com",
+        phoneNumber: "1234567890",
+        taxNumber: "TAX-PIZ-001",
+        currencyTrade: "USD",
+        address: validAddress,
+      });
+      await createTestBusiness({
+        tradeName: "Burger Barn",
+        legalName: "Burger Barn LLC",
+        email: "burger@test.com",
+        phoneNumber: "1234567891",
+        taxNumber: "TAX-BUR-001",
+        currencyTrade: "USD",
+        address: validAddress,
+      });
 
       const response = await app.inject({
         method: "GET",
@@ -697,7 +684,10 @@ describe("Business Routes", () => {
     it("gets business by ID for an owning User", async () => {
       const app = await getTestApp();
 
-      const business = await Business.create({
+      const { user: owner, company } = await createTestOwnerCompany({
+        country: "USA",
+      });
+      const business = await createTestBusiness({
         tradeName: "Get Test Business",
         legalName: "Get Test Business LLC",
         email: "gettest@business.com",
@@ -705,8 +695,12 @@ describe("Business Routes", () => {
         taxNumber: "TAX-GET-001",
         currencyTrade: "USD",
         address: validAddress,
+        companyId: company._id,
       });
-      const auth = await businessOwnerToken(app, business._id.toString());
+      const auth = await businessOwnerToken(
+        owner._id.toString(),
+        owner.personalDetails.email,
+      );
 
       const response = await app.inject({
         method: "GET",
@@ -729,7 +723,7 @@ describe("Business Routes", () => {
     it("falls back to UTC and flags the default when no timezone is stored", async () => {
       const app = await getTestApp();
 
-      const business = await Business.create({
+      const business = await createTestBusiness({
         tradeName: "No Zone Business",
         legalName: "No Zone Business LLC",
         email: "no-zone@business.com",
@@ -755,7 +749,7 @@ describe("Business Routes", () => {
     it("returns 401 when GET business without auth", async () => {
       const app = await getTestApp();
 
-      const business = await Business.create({
+      const business = await createTestBusiness({
         tradeName: "No Auth Get",
         legalName: "No Auth Get LLC",
         email: "noauthget@business.com",
@@ -779,7 +773,7 @@ describe("Business Routes", () => {
     it("returns 403 when GET business with a User without venue access", async () => {
       const app = await getTestApp();
 
-      const business = await Business.create({
+      const business = await createTestBusiness({
         tradeName: "Employee Get",
         legalName: "Employee Get LLC",
         email: "employee-get@business.com",
@@ -810,7 +804,7 @@ describe("Business Routes", () => {
     it("returns 403 when the User has no access to the route business", async () => {
       const app = await getTestApp();
 
-      const business = await Business.create({
+      const business = await createTestBusiness({
         tradeName: "Mismatch Get",
         legalName: "Mismatch Get LLC",
         email: "mismatch-get@business.com",
@@ -958,7 +952,7 @@ describe("Business Routes", () => {
 
     it("returns 401 when PATCH business without auth", async () => {
       const app = await getTestApp();
-      const business = await Business.create({
+      const business = await createTestBusiness({
         tradeName: "No Auth Patch",
         legalName: "No Auth Patch LLC",
         email: "noauthpatch@business.com",
@@ -995,7 +989,7 @@ describe("Business Routes", () => {
 
     it("returns 403 when PATCH business with a User without venue access", async () => {
       const app = await getTestApp();
-      const business = await Business.create({
+      const business = await createTestBusiness({
         tradeName: "Employee Patch",
         legalName: "Employee Patch LLC",
         email: "employee-patch@business.com",
@@ -1041,7 +1035,7 @@ describe("Business Routes", () => {
 
     it("returns 403 when the User has no access to the route business", async () => {
       const app = await getTestApp();
-      const business = await Business.create({
+      const business = await createTestBusiness({
         tradeName: "Mismatch Patch",
         legalName: "Mismatch Patch LLC",
         email: "mismatch-patch@business.com",
@@ -1088,7 +1082,7 @@ describe("Business Routes", () => {
     it("updates business successfully", async () => {
       const app = await getTestApp();
 
-      const business = await Business.create({
+      const business = await createTestBusiness({
         tradeName: "Original Business",
         legalName: "Original Business LLC",
         email: "original@business.com",
@@ -1137,7 +1131,7 @@ describe("Business Routes", () => {
 
     it("saves the venue contact email and clears its verification", async () => {
       const app = await getTestApp();
-      const business = await Business.create({
+      const business = await createTestBusiness({
         tradeName: "Reject Email Co",
         legalName: "Reject Email Co LLC",
         email: "reject-email-patch@business.com",
@@ -1189,7 +1183,7 @@ describe("Business Routes", () => {
       const previousEmailToggle = process.env.COMMUNICATIONS_EMAIL_ENABLED;
       process.env.COMMUNICATIONS_EMAIL_ENABLED = "false";
 
-      const business = await Business.create({
+      const business = await createTestBusiness({
         tradeName: "Notify Business",
         legalName: "Notify Business LLC",
         email: "notify@business.com",
@@ -1294,7 +1288,7 @@ describe("Business Routes", () => {
       process.env.COMMUNICATIONS_EMAIL_ENABLED = "true";
       process.env.COMMUNICATIONS_INAPP_ENABLED = "true";
 
-      const business = await Business.create({
+      const business = await createTestBusiness({
         tradeName: "Email Dispatch Business",
         legalName: "Email Dispatch LLC",
         email: "emaildispatch@business.com",
@@ -1401,7 +1395,7 @@ describe("Business Routes", () => {
       const previousEmailToggle = process.env.COMMUNICATIONS_EMAIL_ENABLED;
       process.env.COMMUNICATIONS_EMAIL_ENABLED = "false";
 
-      const business = await Business.create({
+      const business = await createTestBusiness({
         tradeName: "No Change Business",
         legalName: "No Change Business LLC",
         email: "nochange@business.com",
@@ -1500,7 +1494,7 @@ describe("Business Routes", () => {
 
     it("rejects password and currentPassword as unknown keys", async () => {
       const app = await getTestApp();
-      const business = await Business.create({
+      const business = await createTestBusiness({
         tradeName: "Credential Reject Business",
         legalName: "Credential Reject Business LLC",
         email: "cred-reject@business.com",
@@ -1577,7 +1571,7 @@ describe("Business Routes", () => {
       overrides: Record<string, unknown> = {},
     ) {
       const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      const business = await Business.create({
+      const business = await createTestBusiness({
         tradeName: "Profile Fields Biz",
         legalName: "Profile Fields Biz LLC",
         email: `profile-fields-${suffix}@business.com`,
@@ -1664,7 +1658,7 @@ describe("Business Routes", () => {
     it("saves a draft profile without an address or phone", async () => {
       const app = await getTestApp();
       const boundary = "----formdata";
-      const business = await Business.create({
+      const business = await createTestBusiness({
         tradeName: "Draft Profile Biz",
         currencyTrade: "USD",
         address: { country: "USA" },
@@ -1697,7 +1691,7 @@ describe("Business Routes", () => {
     it("merges a partial address without changing the omitted fields", async () => {
       const app = await getTestApp();
       const boundary = "----formdata";
-      const business = await Business.create({
+      const business = await createTestBusiness({
         tradeName: "Partial Address Biz",
         currencyTrade: "USD",
         address: { country: "USA" },
@@ -1927,7 +1921,7 @@ describe("Business Routes", () => {
       const app = await getTestApp();
       const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-      const business = await Business.create({
+      const business = await createTestBusiness({
         tradeName: "Delete Test Business",
         legalName: "Delete Test Business LLC",
         email: `delete-business-${suffix}@business.com`,
@@ -2007,7 +2001,7 @@ describe("Business Routes", () => {
       const app = await getTestApp();
       const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-      const business = await Business.create({
+      const business = await createTestBusiness({
         tradeName: "Closed Discovery Business",
         legalName: "Closed Discovery Business LLC",
         email: `closed-discovery-${suffix}@business.com`,

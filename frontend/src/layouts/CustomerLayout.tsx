@@ -1,12 +1,12 @@
 /**
  * ## `CustomerLayout` (`src/layouts`)
- * **Parent route:** `path="/:userId/customer"` in `appRoutes.tsx`, wrapped by
- * **`UserSessionRouteShell`** (authenticated person + URL `:userId` matches session) before this layout.
+ * **Parent route:** pathless in `appRoutes.tsx`, wrapped by **`ProtectedRoute`** before this layout.
+ * The routes are `/dashboard`, `/profile`, and `/favorites`; the person comes from the session.
  *
  * ## Flow
  * **Sidebar** + **`SidebarInset`** ( **`SidebarProvider`** is in **`main.tsx`**). **`<Outlet />`** for
  * customer shell children
- * (`home`, `profile`, `favorites`, `dashboard`). Employee mode is chosen elsewhere (`/:userId/mode`);
+ * (`profile`, `favorites`, `dashboard`). Employee mode is chosen elsewhere (`/mode`);
  * account menu can link to employee **home** when allowed.
  *
  * Folder overview: see `PublicLayout.tsx` module doc for how layouts relate.
@@ -19,9 +19,9 @@ import { useTranslation } from "react-i18next";
 import { useLocation } from "react-router-dom";
 import { LayoutDashboard, Star, User } from "lucide-react";
 import {
-  canonicalUserCustomerDashboardPath,
-  canonicalUserCustomerFavoritesPath,
-  canonicalUserCustomerProfilePath,
+  canonicalCustomerDashboardPath,
+  canonicalCustomerFavoritesPath,
+  canonicalCustomerProfilePath,
 } from "@/routes/canonicalPaths";
 
 export default function CustomerLayout() {
@@ -32,9 +32,9 @@ export default function CustomerLayout() {
   const session = state.status === "authenticated" ? state.user : null;
   if (!session || session.type !== "user") return null;
 
-  const favoritesTo = canonicalUserCustomerFavoritesPath(session);
-  const dashboardTo = canonicalUserCustomerDashboardPath(session);
-  const profileTo = canonicalUserCustomerProfilePath(session);
+  const favoritesTo = canonicalCustomerFavoritesPath();
+  const dashboardTo = canonicalCustomerDashboardPath();
+  const profileTo = canonicalCustomerProfilePath();
 
   const pages = [
     {

@@ -37,6 +37,7 @@ import {
 import { getTestApp, resetTestApp } from "../setup.ts";
 import User from "../../src/models/user.ts";
 import Business from "../../src/models/business.ts";
+import { createTestBusiness } from "../helpers/fixtures.ts";
 import { CONFIRM_EMAIL_SUCCESS_MESSAGE } from "../../src/auth/confirmEmail.ts";
 import {
   GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE,
@@ -76,7 +77,7 @@ async function createUser(email: string) {
 }
 
 async function createBusiness(email: string, taxNumber: string) {
-  return Business.create({
+  return createTestBusiness({
     tradeName: "Shared Office",
     legalName: "Shared Office LLC",
     email,

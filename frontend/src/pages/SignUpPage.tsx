@@ -135,7 +135,7 @@ export default function SignUpPage() {
     if (sessionUser.emailVerified === false) {
       toast.info(t("signup.verifyEmailToast"));
     }
-    navigate(getPostLoginDestination(sessionUser, returnTo), { replace: true });
+    navigate(getPostLoginDestination(returnTo), { replace: true });
   };
 
   return (

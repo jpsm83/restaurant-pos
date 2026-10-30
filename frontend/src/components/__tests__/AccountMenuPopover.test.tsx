@@ -49,7 +49,7 @@ describe("AccountMenuPopover (actor summary)", () => {
     const user = userEvent.setup();
 
     await renderWithI18n(
-      <MemoryRouter initialEntries={["/64b000000000000000000001/customer/dashboard"]}>
+      <MemoryRouter initialEntries={["/dashboard"]}>
         <AccountMenuPopover
           session={{
             id: "64b000000000000000000001",
@@ -80,7 +80,7 @@ describe("AccountMenuPopover (actor summary)", () => {
     const user = userEvent.setup();
 
     await renderWithI18n(
-      <MemoryRouter initialEntries={["/64b000000000000000000001/customer/dashboard"]}>
+      <MemoryRouter initialEntries={["/dashboard"]}>
         <AccountMenuPopover
           session={{
             id: "64b000000000000000000001",

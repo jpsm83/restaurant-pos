@@ -11,8 +11,8 @@
  *   under `path="/"` (index, `/login`, `/business`, …) can call **`useSiteAudience()`**.
  * - **`Navbar`** uses the pathname directly for its marketing switch; the audience never
  *   changes the shared `/login` and `/signup` destinations.
- * - Do **not** wrap tenant (`/business/:id`) or user (`/:userId/...`) shells — the pathname rules
- *   above would mis-classify paths like `/business/64a…` as `business` marketing.
+ * - Do **not** wrap tenant (`/business/:id`) or self-service (`/dashboard`, `/employee`, …) shells —
+ *   the pathname rules above would mis-classify paths like `/business/64a…` as `business` marketing.
  *
  * ## Rules (pathname → audience)
  * - `/business` or `/business/*` → `business`.

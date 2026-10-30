@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 
-/** `/:userId/customer/favorites` — placeholder until favorites UI ships. */
+/** `/favorites` — placeholder until favorites UI ships. */
 export default function CustomerFavoritesPage() {
   const { t } = useTranslation("customer");
 

@@ -11,10 +11,10 @@ import { describe, it, expect, vi } from "vitest";
 import { Types } from "mongoose";
 import { getTestApp } from "../setup.ts";
 import MonthlyBusinessReport from "../../src/models/monthlyBusinessReport.ts";
-import Business from "../../src/models/business.ts";
 import DailySalesReport from "../../src/models/dailySalesReport.ts";
 import Schedule from "../../src/models/schedule.ts";
 import aggregateDailyReportsIntoMonthly from "../../src/monthlyBusinessReport/aggregateDailyReportsIntoMonthly.ts";
+import { createTestBusiness as createCompanyAwareBusiness } from "../helpers/fixtures.ts";
 
 vi.mock("../../src/monthlyBusinessReport/sendMonthlyReportReadyNotification.ts", () => ({
   default: vi.fn(async () => true),
@@ -41,8 +41,8 @@ const fieldPaths = (body: { errors?: Array<{ path: string }> }): string[] =>
   (body.errors ?? []).map((e) => e.path);
 
 describe("MonthlyBusinessReport Routes", () => {
-  const createTestBusiness = async () => {
-    return await Business.create({
+  const createTestBusiness = async () =>
+    createCompanyAwareBusiness({
       tradeName: "Test Restaurant",
       legalName: "Test Restaurant LLC",
       email: `test${Date.now()}@restaurant.com`,
@@ -59,7 +59,6 @@ describe("MonthlyBusinessReport Routes", () => {
         postCode: "90001",
       },
     });
-  };
 
   const createTestMonthlyReport = async (businessId: Types.ObjectId, isOpen = true) => {
     return await MonthlyBusinessReport.create({

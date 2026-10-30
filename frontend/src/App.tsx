@@ -5,9 +5,10 @@
  * |------|----------------|
  * | `/` | `PublicLayout` — marketing index, login, signup, business |
  * | `/business/:businessId` | `BusinessRouteShell` + `BusinessLayout` |
- * | `/:userId/mode` | `UserSessionRouteShell` — Customer | Business mode selection |
- * | `/:userId/customer` | `UserSessionRouteShell` + `CustomerLayout` |
- * | `/:userId/employee` | `UserSessionRouteShell` + `RequireEmployeeAuthMode` + `EmployeeLayout` |
+ * | `/mode` | `ProtectedRoute` — Customer | Business mode selection |
+ * | `/dashboard`, `/profile`, `/favorites` | `ProtectedRoute` + `CustomerLayout` |
+ * | `/employee` | `ProtectedRoute` + `RequireEmployeeAuthMode` + `EmployeeLayout` |
+ * | `/:userId/...` | valid ObjectId ids redirect; unknown shapes render 404 (ADR-0013) |
  *
  * Route elements: **`appRoutes.tsx`** (`AppRoutes`). Guards: **`routes/AuthRouteGuards.tsx`**.
  */

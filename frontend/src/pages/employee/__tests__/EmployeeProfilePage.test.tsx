@@ -7,9 +7,9 @@ import EmployeeProfilePage from "../EmployeeProfilePage";
 describe("EmployeeProfilePage", () => {
   it("renders profile heading", async () => {
     await renderWithI18n(
-      <MemoryRouter initialEntries={["/u1/employee/profile"]}>
+      <MemoryRouter initialEntries={["/employee/profile"]}>
         <Routes>
-          <Route path="/:userId/employee/profile" element={<EmployeeProfilePage />} />
+          <Route path="/employee/profile" element={<EmployeeProfilePage />} />
         </Routes>
       </MemoryRouter>,
     );

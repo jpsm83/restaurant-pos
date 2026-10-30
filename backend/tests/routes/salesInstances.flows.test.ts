@@ -5,7 +5,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { Types } from "mongoose";
 import { getTestApp, generateTestToken, resetTestApp } from "../setup.ts";
-import Business from "../../src/models/business.ts";
 import SalesPoint from "../../src/models/salesPoint.ts";
 import SalesInstance from "../../src/models/salesInstance.ts";
 import User from "../../src/models/user.ts";
@@ -15,6 +14,7 @@ import BusinessGood from "../../src/models/businessGood.ts";
 import DailySalesReport from "../../src/models/dailySalesReport.ts";
 import Promotion from "../../src/models/promotion.ts";
 import AuditEntry from "../../src/models/auditEntry.ts";
+import { createTestBusiness } from "../helpers/fixtures.ts";
 
 vi.mock("../../src/inventories/updateDynamicCountSupplierGood.ts", () => ({
   default: vi.fn(async () => true as const),
@@ -168,7 +168,7 @@ describe("SalesInstances flows (Task 12)", () => {
       openTime: "00:00",
       closeTime: "23:59",
     }));
-    const business = await Business.create({
+    const business = await createTestBusiness({
       tradeName: "Flow Biz",
       legalName: "Flow LLC",
       email: `flow-${Date.now()}@t.com`,
@@ -189,7 +189,7 @@ describe("SalesInstances flows (Task 12)", () => {
     });
     salesPointId = sp._id;
 
-    const otherBiz = await Business.create({
+    const otherBiz = await createTestBusiness({
       tradeName: "Foreign Biz",
       legalName: "Foreign LLC",
       email: `foreign-${Date.now()}@t.com`,

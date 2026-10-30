@@ -45,12 +45,12 @@ describe("AccessDenied", () => {
         error: null,
       },
     });
-    mockGetPostLoginDestination.mockReturnValue("/u1/customer/dashboard");
+    mockGetPostLoginDestination.mockReturnValue("/dashboard");
     await renderWithI18n(
       <MemoryRouter initialEntries={["/denied"]}>
         <Routes>
           <Route path="/denied" element={<AccessDenied />} />
-          <Route path="/u1/customer/dashboard" element={<div>Dashboard</div>} />
+          <Route path="/dashboard" element={<div>Dashboard</div>} />
         </Routes>
       </MemoryRouter>,
     );

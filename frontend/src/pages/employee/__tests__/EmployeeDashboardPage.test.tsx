@@ -7,9 +7,9 @@ import EmployeeDashboardPage from "../EmployeeDashboardPage";
 describe("EmployeeDashboardPage", () => {
   it("renders dashboard heading", async () => {
     await renderWithI18n(
-      <MemoryRouter initialEntries={["/u1/employee/dashboard"]}>
+      <MemoryRouter initialEntries={["/employee/dashboard"]}>
         <Routes>
-          <Route path="/:userId/employee/dashboard" element={<EmployeeDashboardPage />} />
+          <Route path="/employee/dashboard" element={<EmployeeDashboardPage />} />
         </Routes>
       </MemoryRouter>,
     );

@@ -29,9 +29,9 @@ describe("CustomerLayout", () => {
     });
 
     await renderWithI18n(
-      <MemoryRouter initialEntries={["/u1/customer/dashboard"]}>
+      <MemoryRouter initialEntries={["/dashboard"]}>
         <Routes>
-          <Route path="/:userId/customer" element={<CustomerLayout />}>
+          <Route element={<CustomerLayout />}>
             <Route path="dashboard" element={<div>Customer Outlet</div>} />
           </Route>
         </Routes>
@@ -51,9 +51,9 @@ describe("CustomerLayout", () => {
     });
 
     await renderWithI18n(
-      <MemoryRouter initialEntries={["/u1/customer/dashboard"]}>
+      <MemoryRouter initialEntries={["/dashboard"]}>
         <Routes>
-          <Route path="/:userId/customer" element={<CustomerLayout />}>
+          <Route element={<CustomerLayout />}>
             <Route path="dashboard" element={<div>Customer Outlet</div>} />
           </Route>
         </Routes>

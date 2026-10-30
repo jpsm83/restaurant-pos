@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import { Types } from "mongoose";
 import { getTestApp, generateTestToken } from "../setup.ts";
 import DailySalesReport from "../../src/models/dailySalesReport.ts";
-import Business from "../../src/models/business.ts";
 import User from "../../src/models/user.ts";
 import Employee from "../../src/models/employee.ts";
 import Order from "../../src/models/order.ts";
@@ -18,6 +17,7 @@ import {
   resolveWeekBounds,
   resolveMonthBounds,
 } from "../../src/utils/timezoneResolver.ts";
+import { createTestBusiness as createCompanyAwareBusiness } from "../helpers/fixtures.ts";
 
 /**
  * Every error response is an RFC 9457 `application/problem+json` document
@@ -57,7 +57,7 @@ describe("DailySalesReports routes - Task T2 integration", () => {
   const createTestBusiness = async (
     overrides: Record<string, unknown> = {},
   ) =>
-    Business.create({
+    createCompanyAwareBusiness({
       tradeName: "Test Restaurant",
       legalName: "Test Restaurant LLC",
       email: `test${Date.now()}@restaurant.com`,

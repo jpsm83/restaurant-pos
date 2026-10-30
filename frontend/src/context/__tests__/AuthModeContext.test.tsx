@@ -53,7 +53,7 @@ function renderUserShell(path: string, client = new QueryClient()) {
       <MemoryRouter initialEntries={[path]}>
         <Routes>
           <Route
-            path="/:userId/customer"
+            path="/dashboard"
             element={
               <AuthModeProvider>
                 <AuthModeProbe />
@@ -111,7 +111,7 @@ describe("AuthModeProvider", () => {
         error: null,
       },
     });
-    renderUserShell("/u1/customer");
+    renderUserShell("/dashboard");
     expect(mockUseAuthModeQuery).toHaveBeenCalledWith({ enabled: false });
     expect(screen.getByTestId("mode")).toHaveTextContent("none");
   });
@@ -159,7 +159,7 @@ describe("AuthModeProvider", () => {
       error: null,
       refetch,
     });
-    renderUserShell("/u1/customer");
+    renderUserShell("/dashboard");
     expect(mockUseAuthModeQuery).toHaveBeenCalledWith({ enabled: true });
     expect(screen.getByTestId("mode")).toHaveTextContent("business");
   });
@@ -169,7 +169,7 @@ describe("AuthModeProvider", () => {
     const invalidate = vi
       .spyOn(client, "invalidateQueries")
       .mockResolvedValue(undefined);
-    renderUserShell("/u1/customer", client);
+    renderUserShell("/dashboard", client);
 
     const onChange = mockSubscribeToAuthModeChanges.mock
       .calls[0][0] as unknown as () => void;
@@ -183,7 +183,7 @@ describe("AuthModeProvider", () => {
     mockUseAuth.mockReturnValue({
       state: { status: "unauthenticated", user: null, error: null },
     });
-    renderUserShell("/u1/customer");
+    renderUserShell("/dashboard");
     await user.click(screen.getByRole("button", { name: "refresh" }));
     expect(refetch).not.toHaveBeenCalled();
   });
@@ -198,7 +198,7 @@ describe("AuthModeProvider", () => {
     mockUseAuth.mockReturnValue({
       state: { status: "unauthenticated", user: null, error: null },
     });
-    renderUserShell("/u1/customer");
+    renderUserShell("/dashboard");
     await user.click(screen.getByRole("button", { name: "set business" }));
     expect(mutateAsync).not.toHaveBeenCalled();
   });
@@ -217,7 +217,7 @@ describe("AuthModeProvider", () => {
         error: null,
       },
     });
-    renderUserShell("/u1/customer");
+    renderUserShell("/dashboard");
     await user.click(screen.getByRole("button", { name: "set business" }));
     expect(mutateAsync).toHaveBeenCalledWith("business");
   });
