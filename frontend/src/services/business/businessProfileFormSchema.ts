@@ -38,34 +38,39 @@ function isStrictlyIncreasingTimeRange(start: string, end: string): boolean {
 export function buildBusinessProfileSchema(
   messages: BusinessProfileSchemaMessages,
 ) {
-  const requiredString = z.string().trim().min(1, messages.required);
-  const timeString = z
-    .string()
-    .trim()
-    .regex(HHMM_REGEX, messages.invalidTime);
+  const optionalString = z.string().trim();
+  const optionalEnum = (values: readonly string[], message: string) => {
+    const allowed = new Set(values);
+    return z
+      .string()
+      .trim()
+      .refine((value) => value === "" || allowed.has(value), message);
+  };
+  const timeString = optionalString.regex(HHMM_REGEX, messages.invalidTime);
 
   return z
     .object({
-      subscription: z.enum(subscriptionTuple, messages.invalidSubscription),
+      subscription: optionalEnum(
+        subscriptionTuple,
+        messages.invalidSubscription,
+      ),
       imageUrl: z.string(),
       imageFile: z.custom<File | null>(
         (value) => value === null || value instanceof File,
         { message: messages.invalidImage },
       ),
-      tradeName: requiredString,
-      legalName: requiredString,
-      phoneNumber: requiredString,
-      taxNumber: requiredString,
-      currencyTrade: z.enum(currencyTuple, messages.invalidCurrency),
+      tradeName: optionalString,
+      phoneNumber: optionalString,
+      currencyTrade: optionalEnum(currencyTuple, messages.invalidCurrency),
       address: z.object({
-        country: requiredString,
-        state: requiredString,
-        city: requiredString,
-        street: requiredString,
-        buildingNumber: requiredString,
+        country: optionalString,
+        state: optionalString,
+        city: optionalString,
+        street: optionalString,
+        buildingNumber: optionalString,
         doorNumber: z.string(),
         complement: z.string(),
-        postCode: requiredString,
+        postCode: optionalString,
         region: z.string(),
       }),
       contactPerson: z.string(),

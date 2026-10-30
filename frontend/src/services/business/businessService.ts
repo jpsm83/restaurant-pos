@@ -47,9 +47,7 @@ export type BusinessProfileFormValues = {
   imageUrl: string;
   imageFile: File | null;
   tradeName: string;
-  legalName: string;
   phoneNumber: string;
-  taxNumber: string;
   currencyTrade: string;
   address: {
     country: string;

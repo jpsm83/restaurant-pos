@@ -630,6 +630,9 @@ describe("Business Routes", () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.tradeName).toBe("Get Test Business");
+      // Legacy venue tax identity stays readable even though it is not editable here.
+      expect(body.legalName).toBe("Get Test Business LLC");
+      expect(body.taxNumber).toBe("TAX-GET-001");
       expect(body.password).toBeUndefined();
       expect(body.verificationToken).toBeUndefined();
       expect(body.resetPasswordToken).toBeUndefined();
@@ -1602,6 +1605,37 @@ describe("Business Routes", () => {
       expect(stored?.tradeName).toBe("Draft Profile Renamed");
       expect(stored?.phoneNumber).toBeUndefined();
       expect(stored?.address?.country).toBe("USA");
+    });
+
+    it("merges a partial address without changing the omitted fields", async () => {
+      const app = await getTestApp();
+      const boundary = "----formdata";
+      const business = await Business.create({
+        tradeName: "Partial Address Biz",
+        currencyTrade: "USD",
+        address: { country: "USA" },
+      });
+      const auth = await businessAccessToken(app, business._id.toString());
+
+      const payload = [
+        `--${boundary}`,
+        `Content-Disposition: form-data; name="address"\r\n\r\n${JSON.stringify({ city: "Austin" })}`,
+        `--${boundary}--`,
+      ].join("\r\n");
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/business/${business._id}`,
+        headers: {
+          "content-type": `multipart/form-data; boundary=${boundary}`,
+          authorization: auth,
+        },
+        payload,
+      });
+
+      expect(response.statusCode).toBe(200);
+      const stored = await Business.findById(business._id).lean();
+      expect(stored?.address).toMatchObject({ country: "USA", city: "Austin" });
     });
 
     it("rejects legal name and tax number as Company-only fields", async () => {

@@ -39,9 +39,7 @@ const EMPTY_PROFILE_FORM_VALUES: BusinessProfileFormValues = {
   imageUrl: "",
   imageFile: null,
   tradeName: "",
-  legalName: "",
   phoneNumber: "",
-  taxNumber: "",
   currencyTrade: "",
   address: {
     country: "",

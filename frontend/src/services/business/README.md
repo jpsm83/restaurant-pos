@@ -137,9 +137,9 @@ These normalizers are **exported** so `businessProfilePayload` can reuse them wh
 
 Builds the **multipart PATCH** body expected by the backend:
 
-- **Scalar fields**: `tradeName`, `legalName`, `phoneNumber`, `taxNumber`, `currencyTrade`, `subscription`, `contactPerson`, `acceptsDelivery` (boolean as string).
+- **Scalar fields**: `tradeName`, `phoneNumber`, `currencyTrade`, `subscription`, `contactPerson`, `acceptsDelivery` (boolean as string). Blank text and enum fields are omitted so a draft save leaves them unchanged.
 - **Nested JSON as strings**: `address`, `metrics`, `cuisineType`, `categories`, `businessOpeningHours`, `deliveryOpeningWindows`, `reportingConfig` (only if `weeklyReportStartDay` is a finite number).
-- **Optional address keys**: `region`, `doorNumber`, `complement` omitted when empty after trim.
+- **Partial address**: only non-empty address keys are sent, so a draft can be completed across visits; an entirely blank address is omitted.
 - **No credentials or contact email**: this payload never carries `email` / `confirmEmail` / `password` / `currentPassword` — the backend rejects them as unknown keys on the profile PATCH.
 - **Delivery**: `deliveryRadius` / `minOrder` only if finite numbers (nullable skipped when null).
 - **Enums on write**: `filterToAllowedEnums` restricts `cuisineType` and `categories` to known enum values before `JSON.stringify`.
@@ -153,8 +153,9 @@ Builds the **multipart PATCH** body expected by the backend:
 
 ### `buildBusinessProfileSchema(messages)`
 
-Returns a Zod object schema whose shape mirrors **`BusinessProfileFormValues`**. Every validation message (required, enum, time, day, non-negative, weekly start day, image, opening range, and delivery range) is caller-supplied, so the schema has no English defaults and the active locale owns the copy:
+Returns a Zod object schema whose shape mirrors **`BusinessProfileFormValues`**. Every validation message (enum, time, day, non-negative, weekly start day, image, opening range, and delivery range) is caller-supplied, so the schema has no English defaults and the active locale owns the copy:
 
+- Profile fields are optional so a draft can be saved with any subset; blank text and enum values are treated as omitted, while any present value is validated.
 - Subscription and currency enums from `restaurant-pos-packages/enums`.
 - The business contact `email` and credentials are **not** part of the form shape or this schema.
 - Opening hours and delivery windows: `HH:MM` regex, `closeTime` after `openTime`, day 0–6.
@@ -184,7 +185,7 @@ Exported types: `BusinessProfileSchema`, `BusinessProfileSchemaValues`.
 
 **`BusinessProfileSettingsFormShell`** / **`BusinessProfileSettingsStaticShell`** pass a **`loadingSlot`** while the profile query is pending. These pages use the shared **`BusinessProfileSettingsLoadingCard`** and compose **`Skeleton`** so the placeholder **matches the loaded DOM**, avoiding layout shift:
 
-- **`BusinessProfileSettingsPage`**: one **`section`** with header, logo column + two name fields, the read-only business contact email, then the seven-cell grid (phone, tax, currency, cuisine, categories, contact, timezone).
+- **`BusinessProfileSettingsPage`**: one **`section`** with header, logo column + trade name, the read-only business contact email, then the grid (phone, currency, cuisine, categories, contact, timezone).
 - **`BusinessAddressSettingsPage`**: **`section`** + **`header`**, address grid with full-width rows for street and complement, map column with title + map-sized skeleton.
 
 The general skeleton policy lives in **`docs/conventions/building.md`**; the pages above are reference implementations for profile and address.

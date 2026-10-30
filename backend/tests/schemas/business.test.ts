@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import {
   businessAddressSchema,
+  businessAddressUpdateSchema,
   businessIdParamsSchema,
   businessMetricsSchema,
   businessReportingConfigSchema,
@@ -49,6 +50,29 @@ describe("businessAddressSchema", () => {
   it("rejects unknown keys", () => {
     expect(
       businessAddressSchema.safeParse({ ...validAddress, extra: "x" }).success,
+    ).toBe(false);
+  });
+});
+
+describe("businessAddressUpdateSchema", () => {
+  it("accepts any subset of the address fields", () => {
+    expect(businessAddressUpdateSchema.parse({})).toEqual({});
+    expect(businessAddressUpdateSchema.parse({ country: " USA " })).toEqual({
+      country: "USA",
+    });
+    expect(
+      businessAddressUpdateSchema.parse({ city: "Austin", postCode: "78701" }),
+    ).toEqual({ city: "Austin", postCode: "78701" });
+  });
+
+  it("treats blank address fields as omitted", () => {
+    expect(businessAddressUpdateSchema.parse({ country: "  " })).toEqual({});
+  });
+
+  it("rejects unknown keys", () => {
+    expect(
+      businessAddressUpdateSchema.safeParse({ country: "USA", extra: "x" })
+        .success,
     ).toBe(false);
   });
 });
@@ -148,6 +172,15 @@ describe("updateBusinessBodySchema", () => {
     const parsedFull = updateBusinessBodySchema.parse(validUpdate);
     expect(parsedFull.metrics).toBeUndefined();
     expect(parsedFull.reportingConfig).toBeUndefined();
+  });
+
+  it("accepts a partial address so a draft can be completed across visits", () => {
+    const parsed = updateBusinessBodySchema.parse({
+      ...validUpdate,
+      address: JSON.stringify({ country: "USA", city: "Austin" }),
+    });
+
+    expect(parsed.address).toEqual({ country: "USA", city: "Austin" });
   });
 
   it("no longer accepts legal name or tax number", () => {

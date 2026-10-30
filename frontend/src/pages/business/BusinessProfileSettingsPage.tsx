@@ -283,13 +283,6 @@ function BusinessProfileSections({
               />
             </div>
             <div className="min-w-0 space-y-2">
-              <Label htmlFor="bp-legal-name">
-                {t("profileSettings.core.fields.legalName")}
-              </Label>
-              <Input id="bp-legal-name" {...register("legalName")} />
-            </div>
-
-            <div className="min-w-0 space-y-2">
               <Label htmlFor="bp-email">
                 {t("profileSettings.core.fields.email")}
               </Label>
@@ -314,12 +307,6 @@ function BusinessProfileSections({
               autoComplete="tel"
               {...register("phoneNumber")}
             />
-          </div>
-          <div className="min-w-0 space-y-2">
-            <Label htmlFor="bp-tax-number">
-              {t("profileSettings.core.fields.taxNumber")}
-            </Label>
-            <Input id="bp-tax-number" {...register("taxNumber")} />
           </div>
           <div className="min-w-0 space-y-2">
             <Label htmlFor="bp-currency">

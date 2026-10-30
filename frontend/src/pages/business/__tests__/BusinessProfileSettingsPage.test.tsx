@@ -215,11 +215,55 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
     );
 
     expect(screen.getByLabelText("Trade name")).toHaveValue("Demo Bistro");
-    expect(screen.getByLabelText("Legal name")).toHaveValue("Demo Bistro LLC");
+    expect(screen.queryByLabelText("Legal name")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Tax number")).not.toBeInTheDocument();
     const emailInput = screen.getByLabelText("Business email");
     expect(emailInput).toHaveValue("owner@demo.test");
     expect(emailInput).toHaveAttribute("readonly");
     expect(screen.getByLabelText("Phone number")).toHaveValue("+10000000000");
+  });
+
+  it("saves an incomplete draft without blank fields or legacy tax identity", async () => {
+    const mutateAsync = vi.fn().mockResolvedValue({ message: "Business updated" });
+    mockUseUpdateBusinessProfileMutation.mockReturnValue({
+      mutateAsync,
+      isPending: false,
+    });
+    mockUseBusinessProfileQuery.mockReturnValue({
+      data: {
+        ...makeBusinessProfileDto(),
+        phoneNumber: undefined,
+        address: undefined,
+      },
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn().mockResolvedValue({ data: makeBusinessProfileDto() }),
+    });
+    const user = userEvent.setup();
+
+    await renderWithQueryClient(
+      <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
+        <Routes>
+          <Route
+            path="/business/:businessId/settings/profile"
+            element={<BusinessProfileSettingsPage />}
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await user.clear(screen.getByLabelText("Trade name"));
+    await user.type(screen.getByLabelText("Trade name"), "Draft Bistro");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+    expect(mutateAsync).toHaveBeenCalledTimes(1);
+    const request = mutateAsync.mock.calls[0][0] as { formData: FormData };
+    expect(request.formData.get("tradeName")).toBe("Draft Bistro");
+    expect(request.formData.get("phoneNumber")).toBeNull();
+    expect(request.formData.get("address")).toBeNull();
+    expect(request.formData.get("legalName")).toBeNull();
+    expect(request.formData.get("taxNumber")).toBeNull();
   });
 
   it("exposes the business contact email as read-only", async () => {
@@ -652,8 +696,8 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
         </MemoryRouter>,
       );
 
-      await user.clear(screen.getByLabelText("Legal name"));
-      await user.type(screen.getByLabelText("Legal name"), "Needs Reauth LLC");
+      await user.clear(screen.getByLabelText("Trade name"));
+      await user.type(screen.getByLabelText("Trade name"), "Needs Reauth Bistro");
       await user.click(screen.getByRole("button", { name: "Save changes" }));
 
       await waitFor(() => {
@@ -662,7 +706,7 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
       expect(
         screen.getByText("Please sign in to continue."),
       ).toBeInTheDocument();
-      expect(screen.getByLabelText("Legal name")).toHaveValue("Needs Reauth LLC");
+      expect(screen.getByLabelText("Trade name")).toHaveValue("Needs Reauth Bistro");
     });
 
     it("surfaces a localized 403 permission failure and preserves edits after failed save", async () => {

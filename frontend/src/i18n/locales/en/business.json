@@ -60,13 +60,11 @@
     },
     "core": {
       "sectionTitle": "Core business info",
-      "sectionDescription": "Legal and contact details used for billing, support, and account records.",
+      "sectionDescription": "Contact details used for support and account records.",
       "fields": {
         "tradeName": "Trade name",
-        "legalName": "Legal name",
         "email": "Business email",
         "phoneNumber": "Phone number",
-        "taxNumber": "Tax number",
         "currencyTrade": "Currency",
         "contactPerson": "Contact person",
         "timezone": "Time zone"

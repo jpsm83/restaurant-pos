@@ -31,28 +31,39 @@ export function formValuesToUpdatePayload(
 ): FormData {
   const formData = new FormData();
 
-  formData.append("tradeName", asTrimmedString(values.tradeName));
-  formData.append("legalName", asTrimmedString(values.legalName));
-  formData.append("phoneNumber", asTrimmedString(values.phoneNumber));
-  formData.append("taxNumber", asTrimmedString(values.taxNumber));
-  formData.append("currencyTrade", asTrimmedString(values.currencyTrade));
-  formData.append("subscription", asTrimmedString(values.subscription));
-
-  const addressPayload: Record<string, unknown> = {
-    country: asTrimmedString(values.address.country),
-    state: asTrimmedString(values.address.state),
-    city: asTrimmedString(values.address.city),
-    street: asTrimmedString(values.address.street),
-    buildingNumber: asTrimmedString(values.address.buildingNumber),
-    postCode: asTrimmedString(values.address.postCode),
+  const appendIfPresent = (name: string, value: unknown) => {
+    const trimmed = asOptionalTrimmedString(value);
+    if (trimmed) formData.append(name, trimmed);
   };
-  const region = asOptionalTrimmedString(values.address.region);
-  if (region) addressPayload.region = region;
-  const doorNumber = asOptionalTrimmedString(values.address.doorNumber);
-  if (doorNumber) addressPayload.doorNumber = doorNumber;
-  const complement = asOptionalTrimmedString(values.address.complement);
-  if (complement) addressPayload.complement = complement;
-  formData.append("address", JSON.stringify(addressPayload));
+
+  appendIfPresent("tradeName", values.tradeName);
+  appendIfPresent("phoneNumber", values.phoneNumber);
+  appendIfPresent("currencyTrade", values.currencyTrade);
+  appendIfPresent("subscription", values.subscription);
+
+  // Address is mergeable: send only the fields the venue has filled so far.
+  const addressEntry = (value: unknown) => asOptionalTrimmedString(value);
+  const addressPayload = Object.fromEntries(
+    (
+      [
+        ["country", values.address.country],
+        ["state", values.address.state],
+        ["city", values.address.city],
+        ["street", values.address.street],
+        ["buildingNumber", values.address.buildingNumber],
+        ["doorNumber", values.address.doorNumber],
+        ["complement", values.address.complement],
+        ["postCode", values.address.postCode],
+        ["region", values.address.region],
+      ] as const
+    ).flatMap(([key, value]) => {
+      const parsed = addressEntry(value);
+      return parsed ? [[key, parsed]] : [];
+    }),
+  );
+  if (Object.keys(addressPayload).length > 0) {
+    formData.append("address", JSON.stringify(addressPayload));
+  }
 
   formData.append(
     "metrics",

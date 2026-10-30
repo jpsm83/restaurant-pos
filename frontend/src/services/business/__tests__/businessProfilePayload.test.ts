@@ -8,9 +8,7 @@ function values(overrides?: Partial<BusinessProfileFormValues>): BusinessProfile
     imageUrl: "",
     imageFile: null,
     tradeName: " Demo ",
-    legalName: " Demo LLC ",
     phoneNumber: " +1 ",
-    taxNumber: " TAX-1 ",
     currencyTrade: " USD ",
     address: {
       country: " US ",
@@ -55,7 +53,8 @@ describe("businessProfilePayload", () => {
   it("builds expected FormData fields", () => {
     const payload = formValuesToUpdatePayload(values());
     expect(payload.get("tradeName")).toBe("Demo");
-    expect(payload.get("legalName")).toBe("Demo LLC");
+    expect(payload.get("legalName")).toBeNull();
+    expect(payload.get("taxNumber")).toBeNull();
     expect(payload.get("currencyTrade")).toBe("USD");
     expect(payload.get("acceptsDelivery")).toBe("true");
     expect(payload.get("deliveryRadius")).toBe("5");
@@ -69,6 +68,37 @@ describe("businessProfilePayload", () => {
 
     expect(JSON.parse(String(payload.get("cuisineType")))).toEqual(["Italian"]);
     expect(JSON.parse(String(payload.get("categories")))).toEqual(["Pizza"]);
+  });
+
+  it("omits blank profile fields and partial address fields for a draft save", () => {
+    const payload = formValuesToUpdatePayload(
+      values({
+        tradeName: " ",
+        phoneNumber: "",
+        currencyTrade: "",
+        subscription: "",
+        address: {
+          country: "US",
+          state: "",
+          city: "Austin",
+          street: "",
+          buildingNumber: "",
+          doorNumber: "",
+          complement: "",
+          postCode: "",
+          region: "",
+        },
+      }),
+    );
+
+    expect(payload.get("tradeName")).toBeNull();
+    expect(payload.get("phoneNumber")).toBeNull();
+    expect(payload.get("currencyTrade")).toBeNull();
+    expect(payload.get("subscription")).toBeNull();
+    expect(JSON.parse(String(payload.get("address")))).toEqual({
+      country: "US",
+      city: "Austin",
+    });
   });
 
   it("never sends the business contact email or credentials (they are server-owned)", () => {

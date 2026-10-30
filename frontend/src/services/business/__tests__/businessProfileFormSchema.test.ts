@@ -73,11 +73,12 @@ function makeBusinessDto(overrides?: Partial<BusinessProfileDto>): BusinessProfi
 }
 
 describe("Business profile schema + mappers", () => {
-  it("maps DTO to normalized form values", () => {
+  it("maps DTO to normalized form values without legacy tax identity", () => {
     const formValues = businessDtoToFormValues(makeBusinessDto());
 
     expect(formValues.tradeName).toBe("Imperium Kitchen");
-    expect(formValues.legalName).toBe("Imperium Kitchen LLC");
+    expect(formValues).not.toHaveProperty("legalName");
+    expect(formValues).not.toHaveProperty("taxNumber");
     expect(formValues.categories).toEqual(["Pizza", "Pasta"]);
     expect(formValues.cuisineType).toEqual(["Italian"]);
     expect(formValues.address.doorNumber).toBe("2");
@@ -90,7 +91,8 @@ describe("Business profile schema + mappers", () => {
     const payload = formValuesToUpdatePayload(values);
 
     expect(payload.get("tradeName")).toBe("Imperium Kitchen");
-    expect(payload.get("legalName")).toBe("Imperium Kitchen LLC");
+    expect(payload.get("legalName")).toBeNull();
+    expect(payload.get("taxNumber")).toBeNull();
     expect(payload.get("subscription")).toBe("Free");
 
     const address = JSON.parse(String(payload.get("address"))) as Record<string, string>;
@@ -126,6 +128,53 @@ describe("Business profile schema + mappers", () => {
     const values = businessDtoToFormValues(makeBusinessDto());
     const parsed = schema.safeParse(values);
     expect(parsed.success).toBe(true);
+  });
+
+  it("accepts an incomplete draft with only the minimum onboarding fields", () => {
+    const schema = buildBusinessProfileSchema(schemaMessages);
+    const values = businessDtoToFormValues({
+      _id: "64b000000000000000000001",
+      tradeName: "Draft Venue",
+      currencyTrade: "USD",
+      subscription: "Free",
+      address: { country: "US" },
+    });
+
+    expect(schema.safeParse(values).success).toBe(true);
+  });
+
+  it("still validates fields that are present", () => {
+    const schema = buildBusinessProfileSchema(schemaMessages);
+    const values = businessDtoToFormValues(makeBusinessDto());
+    values.currencyTrade = "BTC";
+    values.subscription = "Platinum";
+
+    const parsed = schema.safeParse(values);
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      const messages = parsed.error.issues.map((issue) => issue.message);
+      expect(messages).toContain(schemaMessages.invalidCurrency);
+      expect(messages).toContain(schemaMessages.invalidSubscription);
+    }
+  });
+
+  it("omits blank fields from the payload so a draft save leaves them unchanged", () => {
+    const values = businessDtoToFormValues({
+      _id: "64b000000000000000000001",
+      tradeName: "Draft Venue",
+      currencyTrade: "",
+      subscription: "",
+      address: { country: "US" },
+    });
+    const payload = formValuesToUpdatePayload(values);
+
+    expect(payload.get("tradeName")).toBe("Draft Venue");
+    expect(payload.get("phoneNumber")).toBeNull();
+    expect(payload.get("currencyTrade")).toBeNull();
+    expect(payload.get("subscription")).toBeNull();
+    expect(JSON.parse(String(payload.get("address")))).toEqual({
+      country: "US",
+    });
   });
 
   it("rejects invalid day/time windows", () => {

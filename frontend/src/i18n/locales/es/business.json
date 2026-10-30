@@ -60,13 +60,11 @@
     },
     "core": {
       "sectionTitle": "Datos principales del negocio",
-      "sectionDescription": "Datos legales y de contacto usados para facturación, soporte y registros de la cuenta.",
+      "sectionDescription": "Datos de contacto usados para soporte y registros de la cuenta.",
       "fields": {
         "tradeName": "Nombre comercial",
-        "legalName": "Razón social",
         "email": "Correo del negocio",
         "phoneNumber": "Teléfono",
-        "taxNumber": "NIF / RFC / identificación fiscal",
         "currencyTrade": "Moneda",
         "contactPerson": "Persona de contacto",
         "timezone": "Zona horaria"

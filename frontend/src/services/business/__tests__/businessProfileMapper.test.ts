@@ -82,4 +82,10 @@ describe("businessProfileMapper", () => {
     expect(values.metrics.foodCostPercentage).toBe(30);
     expect(values.metrics.beverageCostPercentage).toBe(20);
   });
+
+  it("does not map legacy venue legal name or tax number into the form", () => {
+    const values = businessDtoToFormValues(dto());
+    expect(values).not.toHaveProperty("legalName");
+    expect(values).not.toHaveProperty("taxNumber");
+  });
 });

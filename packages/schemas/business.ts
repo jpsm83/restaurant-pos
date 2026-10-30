@@ -63,6 +63,32 @@ const dayOfWeekSchema = coercedIntSchema.min(0).max(6);
  */
 export const businessAddressSchema = addressSchema;
 
+/** An optional address field; a blank string is "not provided". */
+const optionalAddressField = z.preprocess(
+  emptyToUndefined,
+  sanitizedString().optional(),
+);
+
+/**
+ * The address on a profile update. A draft may be completed across visits, so
+ * every field is optional and only the fields that are sent are merged.
+ */
+export const businessAddressUpdateSchema = z.strictObject({
+  country: optionalAddressField,
+  state: optionalAddressField,
+  city: optionalAddressField,
+  street: optionalAddressField,
+  buildingNumber: optionalAddressField,
+  postCode: optionalAddressField,
+  doorNumber: optionalAddressField,
+  complement: optionalAddressField,
+  region: optionalAddressField,
+  additionalDetails: optionalAddressField,
+  coordinates: z
+    .tuple([coercedNumberSchema, coercedNumberSchema])
+    .optional(),
+});
+
 /** One weekly opening-hours entry. */
 const businessOpeningHourSchema = z.strictObject({
   dayOfWeek: dayOfWeekSchema,
@@ -176,7 +202,7 @@ export const updateBusinessBodySchema = z.strictObject({
   currencyTrade: z
     .enum(currenctyEnums as EnumValues, "Invalid currencyTrade!")
     .optional(),
-  address: optionalJsonField(businessAddressSchema),
+  address: optionalJsonField(businessAddressUpdateSchema),
   contactPerson: sanitizedString().optional(),
   cuisineType: optionalCuisineTypeSchema,
   categories: optionalCategoriesSchema,
@@ -234,6 +260,7 @@ export const businessIncludeDeletedQuerySchema = z.strictObject({
 });
 
 export type BusinessAddress = z.infer<typeof businessAddressSchema>;
+export type BusinessAddressUpdate = z.infer<typeof businessAddressUpdateSchema>;
 export type BusinessMetrics = z.infer<typeof businessMetricsSchema>;
 export type BusinessReportingConfig = z.infer<
   typeof businessReportingConfigSchema
