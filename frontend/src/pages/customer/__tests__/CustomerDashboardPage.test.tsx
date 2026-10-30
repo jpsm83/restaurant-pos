@@ -65,6 +65,67 @@ const populatedPortfolio = {
   ],
 };
 
+const multiCompanyPortfolio = {
+  owner: { _id: "o1", country: "Spain", subscription: "Free" },
+  country: "Spain",
+  subscription: "Free",
+  companies: [
+    {
+      _id: "c1",
+      country: "Spain",
+      legalName: "Demo Bistro SL",
+      taxNumber: "B12345678",
+      businesses: [
+        {
+          _id: "b1",
+          tradeName: "Demo Bistro",
+          currencyTrade: "EUR",
+          companyId: "c1",
+          profileComplete: false,
+          address: { country: "Spain" },
+        },
+      ],
+    },
+    {
+      _id: "c2",
+      country: "Spain",
+      legalName: "Second Taxpayer SL",
+      taxNumber: "B87654321",
+      businesses: [
+        {
+          _id: "b2",
+          tradeName: "Corner Cafe",
+          currencyTrade: "EUR",
+          companyId: "c2",
+          profileComplete: false,
+          address: { country: "Spain" },
+        },
+      ],
+    },
+  ],
+};
+
+const joinedPortfolio = {
+  ...multiCompanyPortfolio,
+  companies: [
+    multiCompanyPortfolio.companies[0],
+    {
+      ...multiCompanyPortfolio.companies[1],
+      businesses: [
+        ...multiCompanyPortfolio.companies[1].businesses,
+        {
+          _id: "b3",
+          tradeName: "New Cafe",
+          currencyTrade: "USD",
+          companyId: "c2",
+          profileComplete: false,
+          address: { country: "Spain" },
+        },
+      ],
+    },
+  ],
+};
+
 function renderPage() {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -159,5 +220,131 @@ describe("CustomerDashboardPage", () => {
     expect(
       screen.queryByRole("button", { name: "Add your venue" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("groups venues by Company so multiple Companies are distinguishable", async () => {
+    mockGet.mockResolvedValue({ data: multiCompanyPortfolio });
+
+    await renderPage();
+
+    expect(
+      await screen.findByRole("heading", { name: "Demo Bistro SL" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Second Taxpayer SL" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Demo Bistro")).toBeInTheDocument();
+    expect(screen.getByText("Corner Cafe")).toBeInTheDocument();
+  });
+
+  it("joins a later venue to an existing Company from the add-venue form", async () => {
+    mockGet
+      .mockResolvedValueOnce({ data: multiCompanyPortfolio })
+      .mockResolvedValue({ data: joinedPortfolio });
+    mockPost.mockResolvedValue({
+      data: {
+        business: {
+          _id: "b3",
+          tradeName: "New Cafe",
+          currencyTrade: "USD",
+          companyId: "c2",
+        },
+        company: {
+          _id: "c2",
+          country: "Spain",
+          legalName: "Second Taxpayer SL",
+        },
+      },
+    });
+    const user = userEvent.setup();
+    await renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Add venue" }));
+
+    const companySelect = screen.getByRole("combobox", { name: "Company" });
+    expect(companySelect).toHaveTextContent("Demo Bistro SL");
+    expect(
+      screen.queryByLabelText("Company legal name"),
+    ).not.toBeInTheDocument();
+
+    await user.click(companySelect);
+    expect(
+      await screen.findByRole("option", { name: "New Company" }),
+    ).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("option", { name: "Second Taxpayer SL" }),
+    );
+
+    expect(
+      screen.queryByLabelText("Company legal name"),
+    ).not.toBeInTheDocument();
+    await user.type(screen.getByLabelText("Trade name"), "New Cafe");
+    await user.click(screen.getByRole("button", { name: "Create venue" }));
+
+    await waitFor(() => {
+      expect(mockPost).toHaveBeenCalledWith("/api/v1/business", {
+        tradeName: "New Cafe",
+        country: "Spain",
+        currencyTrade: "USD",
+        companyId: "c2",
+      });
+    });
+    expect(await screen.findByText("New Cafe")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Create venue" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("reveals the optional legal name and tax number only for a New Company", async () => {
+    mockGet.mockResolvedValue({ data: populatedPortfolio });
+    mockPost.mockResolvedValue({
+      data: {
+        business: {
+          _id: "b2",
+          tradeName: "Second Bistro",
+          currencyTrade: "USD",
+          companyId: "c2",
+        },
+        company: {
+          _id: "c2",
+          country: "Spain",
+          legalName: "Second Taxpayer SL",
+          taxNumber: "B87654321",
+        },
+      },
+    });
+    const user = userEvent.setup();
+    await renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Add venue" }));
+    expect(
+      screen.queryByLabelText("Company legal name"),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("combobox", { name: "Company" }));
+    await user.click(screen.getByRole("option", { name: "New Company" }));
+
+    await user.type(screen.getByLabelText("Trade name"), "Second Bistro");
+    await user.type(
+      screen.getByLabelText("Company legal name"),
+      "Second Taxpayer SL",
+    );
+    await user.type(
+      screen.getByLabelText("Company tax number"),
+      "B87654321",
+    );
+    await user.click(screen.getByRole("button", { name: "Create venue" }));
+
+    await waitFor(() => {
+      expect(mockPost).toHaveBeenCalledWith("/api/v1/business", {
+        tradeName: "Second Bistro",
+        country: "Spain",
+        currencyTrade: "USD",
+        company: {
+          legalName: "Second Taxpayer SL",
+          taxNumber: "B87654321",
+        },
+      });
+    });
   });
 });

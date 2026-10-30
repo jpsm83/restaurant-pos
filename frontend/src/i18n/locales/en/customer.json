@@ -96,10 +96,17 @@
         "tradeName": "Trade name",
         "country": "Country",
         "currency": "Currency",
+        "company": "Company",
         "legalName": "Company legal name",
         "legalNameHint": "Optional now; required before go-live.",
         "taxNumber": "Company tax number",
         "taxNumberHint": "Optional now; required before go-live."
+      },
+      "company": {
+        "new": "New Company",
+        "newHint": "This venue forms a new Company with its own tax identity.",
+        "existingHint": "This venue joins the selected Company and shares its tax identity.",
+        "fallback": "Company {{index}}"
       },
       "validation": {
         "tradeNameRequired": "Enter the venue trade name.",
@@ -112,7 +119,9 @@
     },
     "list": {
       "title": "Your venues",
-      "companyFallback": "Company",
+      "addAction": "Add venue",
+      "companyFallback": "Company {{index}}",
+      "companyTax": "Tax number {{taxNumber}}",
       "retry": "Try again",
       "venueMeta": "{{country}} · {{currency}}"
     }

@@ -10,10 +10,10 @@ import { toServiceRequestError } from "../serviceErrors";
 import type { IOwnerPortfolio } from "restaurant-pos-packages/interfaces/IOwner";
 import type { CreateBusinessBody } from "restaurant-pos-packages/schemas/business";
 
-/** The first-venue subset of the shared registration body. */
+/** A venue registration: either joins an existing Company or forms a new one. */
 export type CreateVenueInput = Pick<
   CreateBusinessBody,
-  "tradeName" | "country" | "currencyTrade" | "company"
+  "tradeName" | "country" | "currencyTrade" | "company" | "companyId"
 >;
 
 export type CreateVenueResult = {
@@ -48,12 +48,14 @@ export async function fetchOwnerPortfolio(
 }
 
 /**
- * Registers the first venue. The response carries the new Business and its
- * Company; the portfolio query is invalidated so the dashboard re-reads it.
+ * Registers a venue. The response carries the new Business and its Company;
+ * the portfolio query is invalidated so the dashboard re-reads it. Exactly one
+ * Company choice is sent: an existing Company id, or a new Company payload.
  */
 export async function createVenue(
   input: CreateVenueInput,
 ): Promise<CreateVenueResult> {
+  const companyId = input.companyId?.trim();
   const legalName = input.company?.legalName?.trim();
   const taxNumber = input.company?.taxNumber?.trim();
   try {
@@ -61,10 +63,14 @@ export async function createVenue(
       tradeName: input.tradeName.trim(),
       country: input.country.trim(),
       currencyTrade: input.currencyTrade,
-      company: {
-        ...(legalName ? { legalName } : {}),
-        ...(taxNumber ? { taxNumber } : {}),
-      },
+      ...(companyId
+        ? { companyId }
+        : {
+            company: {
+              ...(legalName ? { legalName } : {}),
+              ...(taxNumber ? { taxNumber } : {}),
+            },
+          }),
     });
     return data;
   } catch (error) {

@@ -3,6 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { currenctyEnums } from "restaurant-pos-packages/enums";
+import type { IOwnerPortfolioCompany } from "restaurant-pos-packages/interfaces/IOwner";
 import {
   buildCreateBusinessBodySchema,
   type CreateBusinessBody,
@@ -20,14 +21,24 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useErrorMessage, type ErrorFailure } from "@/i18n/errorCopy";
-import { useCreateVenueMutation } from "@/services/portfolio/portfolioService";
+import {
+  useCreateVenueMutation,
+  type CreateVenueInput,
+} from "@/services/portfolio/portfolioService";
 import { ServiceRequestError } from "@/services/serviceErrors";
 
 const currencyTuple = currenctyEnums as [string, ...string[]];
+const NEW_COMPANY = "__new_company__";
 
 type VenueFormValues = CreateBusinessBody;
+type ExistingCompany = Pick<
+  IOwnerPortfolioCompany,
+  "_id" | "country" | "legalName" | "taxNumber"
+>;
 
 export function AddVenueForm(props: {
+  companies?: readonly ExistingCompany[];
+  defaultCountry?: string | null;
   onCancel: () => void;
   onCreated: () => void;
 }) {
@@ -35,6 +46,11 @@ export function AddVenueForm(props: {
   const createVenueMutation = useCreateVenueMutation();
   const resolveError = useErrorMessage();
   const [failure, setFailure] = useState<ErrorFailure | null>(null);
+  const companies = props.companies ?? [];
+  const [companyChoice, setCompanyChoice] = useState<string>(() =>
+    companies.length > 0 ? companies[0]._id : NEW_COMPANY,
+  );
+  const isNewCompany = companyChoice === NEW_COMPANY;
 
   const schema = useMemo(
     () =>
@@ -55,7 +71,7 @@ export function AddVenueForm(props: {
     resolver: zodResolver(schema),
     defaultValues: {
       tradeName: "",
-      country: "",
+      country: props.defaultCountry ?? "",
       currencyTrade: currencyTuple[0] ?? "USD",
       company: { legalName: "", taxNumber: "" },
     },
@@ -63,16 +79,21 @@ export function AddVenueForm(props: {
 
   const onSubmit = async (values: VenueFormValues) => {
     setFailure(null);
+    const input: CreateVenueInput = {
+      tradeName: values.tradeName,
+      country: values.country,
+      currencyTrade: values.currencyTrade,
+      ...(isNewCompany
+        ? {
+            company: {
+              legalName: values.company?.legalName,
+              taxNumber: values.company?.taxNumber,
+            },
+          }
+        : { companyId: companyChoice }),
+    };
     try {
-      await createVenueMutation.mutateAsync({
-        tradeName: values.tradeName,
-        country: values.country,
-        currencyTrade: values.currencyTrade,
-        company: {
-          legalName: values.company?.legalName,
-          taxNumber: values.company?.taxNumber,
-        },
-      });
+      await createVenueMutation.mutateAsync(input);
       props.onCreated();
     } catch (error) {
       setFailure(
@@ -139,36 +160,68 @@ export function AddVenueForm(props: {
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      {companies.length > 0 ? (
         <div className="space-y-2">
-          <Label htmlFor="venue-legal-name">
-            {t("venues.form.fields.legalName")}
+          <Label htmlFor="venue-company">
+            {t("venues.form.fields.company")}
           </Label>
-          <Input
-            id="venue-legal-name"
-            aria-invalid={errors.company?.legalName ? true : undefined}
-            {...register("company.legalName")}
-          />
+          <Select value={companyChoice} onValueChange={setCompanyChoice}>
+            <SelectTrigger id="venue-company" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {companies.map((company, index) => (
+                <SelectItem key={company._id} value={company._id}>
+                  {company.legalName ||
+                    company.taxNumber ||
+                    t("venues.form.company.fallback", { index: index + 1 })}
+                </SelectItem>
+              ))}
+              <SelectItem value={NEW_COMPANY}>
+                {t("venues.form.company.new")}
+              </SelectItem>
+            </SelectContent>
+          </Select>
           <p className="text-xs text-muted-foreground">
-            {t("venues.form.fields.legalNameHint")}
+            {isNewCompany
+              ? t("venues.form.company.newHint")
+              : t("venues.form.company.existingHint")}
           </p>
-          <FieldError message={errors.company?.legalName?.message} />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="venue-tax-number">
-            {t("venues.form.fields.taxNumber")}
-          </Label>
-          <Input
-            id="venue-tax-number"
-            aria-invalid={errors.company?.taxNumber ? true : undefined}
-            {...register("company.taxNumber")}
-          />
-          <p className="text-xs text-muted-foreground">
-            {t("venues.form.fields.taxNumberHint")}
-          </p>
-          <FieldError message={errors.company?.taxNumber?.message} />
+      ) : null}
+
+      {isNewCompany ? (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="venue-legal-name">
+              {t("venues.form.fields.legalName")}
+            </Label>
+            <Input
+              id="venue-legal-name"
+              aria-invalid={errors.company?.legalName ? true : undefined}
+              {...register("company.legalName")}
+            />
+            <p className="text-xs text-muted-foreground">
+              {t("venues.form.fields.legalNameHint")}
+            </p>
+            <FieldError message={errors.company?.legalName?.message} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="venue-tax-number">
+              {t("venues.form.fields.taxNumber")}
+            </Label>
+            <Input
+              id="venue-tax-number"
+              aria-invalid={errors.company?.taxNumber ? true : undefined}
+              {...register("company.taxNumber")}
+            />
+            <p className="text-xs text-muted-foreground">
+              {t("venues.form.fields.taxNumberHint")}
+            </p>
+            <FieldError message={errors.company?.taxNumber?.message} />
+          </div>
         </div>
-      </div>
+      ) : null}
 
       {failure ? <Alert>{resolveError(failure)}</Alert> : null}
 

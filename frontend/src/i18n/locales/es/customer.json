@@ -96,10 +96,17 @@
         "tradeName": "Nombre comercial",
         "country": "País",
         "currency": "Moneda",
+        "company": "Empresa",
         "legalName": "Razón social de la empresa",
         "legalNameHint": "Opcional ahora; obligatorio antes de publicar.",
         "taxNumber": "Número de identificación fiscal de la empresa",
         "taxNumberHint": "Opcional ahora; obligatorio antes de publicar."
+      },
+      "company": {
+        "new": "Nueva empresa",
+        "newHint": "Este local crea una nueva empresa con su propia identidad fiscal.",
+        "existingHint": "Este local se une a la empresa seleccionada y comparte su identidad fiscal.",
+        "fallback": "Empresa {{index}}"
       },
       "validation": {
         "tradeNameRequired": "Introduce el nombre comercial del local.",
@@ -112,7 +119,9 @@
     },
     "list": {
       "title": "Tus locales",
-      "companyFallback": "Empresa",
+      "addAction": "Añadir local",
+      "companyFallback": "Empresa {{index}}",
+      "companyTax": "NIF {{taxNumber}}",
       "retry": "Intentar de nuevo",
       "venueMeta": "{{country}} · {{currency}}"
     }

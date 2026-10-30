@@ -82,6 +82,30 @@ describe("portfolioService", () => {
     expect(result.company.legalName).toBe("Demo Bistro SL");
   });
 
+  it("joins an existing Company by id without sending new Company fields", async () => {
+    mockPost.mockResolvedValue({
+      data: {
+        business: { _id: "b2", tradeName: "Joined Venue", currencyTrade: "EUR" },
+        company: { _id: "c1", country: "Spain", legalName: "Demo Bistro SL" },
+      },
+    });
+
+    await createVenue({
+      tradeName: " Joined Venue ",
+      country: " Spain ",
+      currencyTrade: "EUR",
+      companyId: " c1 ",
+      company: { legalName: "Ignored", taxNumber: "IGNORED" },
+    });
+
+    expect(mockPost).toHaveBeenCalledWith("/api/v1/business", {
+      tradeName: "Joined Venue",
+      country: "Spain",
+      currencyTrade: "EUR",
+      companyId: "c1",
+    });
+  });
+
   it("omits blank Company fields from the registration payload", async () => {
     mockPost.mockResolvedValue({
       data: {

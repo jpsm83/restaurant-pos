@@ -71,6 +71,7 @@ export default function CustomerDashboardPage() {
           <CardContent>
             {isAdding ? (
               <AddVenueForm
+                defaultCountry={portfolio?.country}
                 onCancel={() => setIsAdding(false)}
                 onCreated={() => setIsAdding(false)}
               />
@@ -82,7 +83,25 @@ export default function CustomerDashboardPage() {
           </CardContent>
         </Card>
       ) : portfolio ? (
-        <div className="mt-6">
+        <div className="mt-6 space-y-4">
+          {isAdding ? (
+            <Card>
+              <CardContent className="pt-6">
+                <AddVenueForm
+                  companies={portfolio.companies}
+                  defaultCountry={portfolio.country}
+                  onCancel={() => setIsAdding(false)}
+                  onCreated={() => setIsAdding(false)}
+                />
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="flex justify-end">
+              <Button onClick={() => setIsAdding(true)}>
+                {t("venues.list.addAction")}
+              </Button>
+            </div>
+          )}
           <PortfolioVenues portfolio={portfolio} />
         </div>
       ) : null}

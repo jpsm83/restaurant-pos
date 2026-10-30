@@ -15,11 +15,22 @@ export function PortfolioVenues(props: { portfolio: IOwnerPortfolio }) {
       <h2 className="text-base font-semibold text-foreground">
         {t("venues.list.title")}
       </h2>
-      {props.portfolio.companies.map((company) => (
+      {props.portfolio.companies.map((company, index) => (
         <section key={company._id} className="space-y-3">
-          <h3 className="text-sm font-medium text-muted-foreground">
-            {company.legalName || t("venues.list.companyFallback")}
-          </h3>
+          <div>
+            <h3 className="text-sm font-medium text-muted-foreground">
+              {company.legalName ||
+                company.taxNumber ||
+                t("venues.list.companyFallback", { index: index + 1 })}
+            </h3>
+            {company.legalName && company.taxNumber ? (
+              <p className="text-xs text-muted-foreground">
+                {t("venues.list.companyTax", {
+                  taxNumber: company.taxNumber,
+                })}
+              </p>
+            ) : null}
+          </div>
           <ul className="grid gap-3 md:grid-cols-2">
             {company.businesses.map((business) => (
               <li key={business._id}>
