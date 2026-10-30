@@ -1,6 +1,6 @@
 /**
- * Owner portfolio route tests — self-scoped read, empty portfolio and draft
- * completeness signal.
+ * Owner route tests — self-scoped portfolio read, Company update, draft
+ * completeness signal, owner scoping and conflict handling.
  */
 
 import { describe, expect, it } from "vitest";
@@ -240,5 +240,224 @@ describe("GET /api/v1/owners/portfolio", () => {
     expect(response.statusCode).toBe(200);
     const body = JSON.parse(response.body);
     expect(body.companies[0].businesses[0].profileComplete).toBe(false);
+  });
+});
+
+describe("PATCH /api/v1/owners/companies/:companyId", () => {
+  async function ownerWithCompany(identity?: {
+    legalName?: string;
+    taxNumber?: string;
+  }): Promise<{
+    auth: string;
+    userId: string;
+    companyId: string;
+  }> {
+    const { auth, userId } = await customerAuthToken();
+    const owner = await Owner.create({ userId, country: "USA" });
+    const company = await Company.create({
+      ownerId: owner._id,
+      country: "USA",
+      legalName: identity?.legalName ?? "Old Legal Name",
+      taxNumber: identity?.taxNumber ?? "OLD-TAX",
+    });
+    return { auth, userId, companyId: company._id.toString() };
+  }
+
+  it("requires authentication", async () => {
+    const app = await getTestApp();
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/owners/companies/${new Types.ObjectId()}`,
+      payload: { legalName: "New Name" },
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.headers["content-type"]).toContain(
+      "application/problem+json",
+    );
+  });
+
+  it("updates the caller's Company legal name and tax number", async () => {
+    const app = await getTestApp();
+    const { auth, companyId } = await ownerWithCompany();
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/owners/companies/${companyId}`,
+      headers: { authorization: auth },
+      payload: { legalName: "Updated Name SL", taxNumber: "TAX-UPDATED" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["content-type"]).toContain("application/json");
+    expect(JSON.parse(response.body)).toEqual({
+      _id: companyId,
+      country: "USA",
+      legalName: "Updated Name SL",
+      taxNumber: "TAX-UPDATED",
+    });
+    const stored = await Company.findById(companyId);
+    expect(stored?.legalName).toBe("Updated Name SL");
+    expect(stored?.taxNumber).toBe("TAX-UPDATED");
+  });
+
+  it("clears a Company field when the client sends null", async () => {
+    const app = await getTestApp();
+    const { auth, companyId } = await ownerWithCompany();
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/owners/companies/${companyId}`,
+      headers: { authorization: auth },
+      payload: { legalName: null },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = JSON.parse(response.body);
+    expect(body.legalName).toBeUndefined();
+    expect(body.taxNumber).toBe("OLD-TAX");
+    await expect(Company.findById(companyId)).resolves.toMatchObject({
+      legalName: null,
+      taxNumber: "OLD-TAX",
+    });
+  });
+
+  it("rejects a blank legal name instead of storing an empty identity", async () => {
+    const app = await getTestApp();
+    const { auth, companyId } = await ownerWithCompany();
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/owners/companies/${companyId}`,
+      headers: { authorization: auth },
+      payload: { legalName: "   " },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.headers["content-type"]).toContain(
+      "application/problem+json",
+    );
+    await expect(Company.findById(companyId)).resolves.toMatchObject({
+      legalName: "Old Legal Name",
+    });
+  });
+
+  it("does not reveal another Owner's Company", async () => {
+    const app = await getTestApp();
+    const caller = await customerAuthToken();
+    await Owner.create({ userId: caller.userId, country: "USA" });
+    const other = await ownerWithCompany();
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/owners/companies/${other.companyId}`,
+      headers: { authorization: caller.auth },
+      payload: { legalName: "Hijacked Name" },
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.headers["content-type"]).toContain(
+      "application/problem+json",
+    );
+    await expect(Company.findById(other.companyId)).resolves.toMatchObject({
+      legalName: "Old Legal Name",
+    });
+  });
+
+  it("refuses a signed-in User without the owning Owner", async () => {
+    const app = await getTestApp();
+    const staff = await customerAuthToken();
+    const owner = await ownerWithCompany();
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/owners/companies/${owner.companyId}`,
+      headers: { authorization: staff.auth },
+      payload: { taxNumber: "STAFF-TAX" },
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.headers["content-type"]).toContain(
+      "application/problem+json",
+    );
+    await expect(Company.findById(owner.companyId)).resolves.toMatchObject({
+      taxNumber: "OLD-TAX",
+    });
+  });
+
+  it("returns 404 for an unknown Company", async () => {
+    const app = await getTestApp();
+    const { auth, userId } = await customerAuthToken();
+    await Owner.create({ userId, country: "USA" });
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/owners/companies/${new Types.ObjectId()}`,
+      headers: { authorization: auth },
+      payload: { legalName: "Missing Company" },
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.headers["content-type"]).toContain(
+      "application/problem+json",
+    );
+  });
+
+  it("returns a conflict when an active Company already uses the identity", async () => {
+    const app = await getTestApp();
+    await Company.syncIndexes();
+    const caller = await ownerWithCompany();
+    const other = await ownerWithCompany({
+      legalName: "Other Legal Name",
+      taxNumber: "OTHER-TAX",
+    });
+    await Company.findByIdAndUpdate(other.companyId, {
+      legalName: "Taken Name SL",
+      taxNumber: "TAKEN-TAX",
+    });
+
+    const duplicateName = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/owners/companies/${caller.companyId}`,
+      headers: { authorization: caller.auth },
+      payload: { legalName: "Taken Name SL" },
+    });
+
+    expect(duplicateName.statusCode).toBe(409);
+    expect(duplicateName.headers["content-type"]).toContain(
+      "application/problem+json",
+    );
+    expect(JSON.parse(duplicateName.body).title).toBe("Conflict");
+
+    const duplicateTax = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/owners/companies/${caller.companyId}`,
+      headers: { authorization: caller.auth },
+      payload: { taxNumber: "TAKEN-TAX" },
+    });
+
+    expect(duplicateTax.statusCode).toBe(409);
+    await expect(Company.findById(caller.companyId)).resolves.toMatchObject({
+      legalName: "Old Legal Name",
+      taxNumber: "OLD-TAX",
+    });
+  });
+
+  it("validates a malformed Company id with problem details", async () => {
+    const app = await getTestApp();
+    const { auth } = await customerAuthToken();
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: "/api/v1/owners/companies/not-an-id",
+      headers: { authorization: auth },
+      payload: { legalName: "New Name" },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.headers["content-type"]).toContain(
+      "application/problem+json",
+    );
   });
 });

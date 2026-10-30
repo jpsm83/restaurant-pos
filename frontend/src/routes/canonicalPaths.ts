@@ -58,6 +58,11 @@ export function canonicalBusinessProfilePath(businessId: string): string {
   return `${canonicalBusinessDashboardPath(businessId)}/settings/profile`;
 }
 
+/** The active venue's Company page (owner-only in the Business shell). */
+export function canonicalBusinessCompanyPath(businessId: string): string {
+  return `${canonicalBusinessDashboardPath(businessId)}/company`;
+}
+
 export function canonicalBusinessSettingsDeliveryPath(businessId: string): string {
   return `${canonicalBusinessDashboardPath(businessId)}/settings/delivery`;
 }

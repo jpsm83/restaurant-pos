@@ -37,6 +37,9 @@
     },
     "customerMode": "Modo cliente"
   },
+  "owner": {
+    "company": "Empresa"
+  },
   "settings": {
     "title": "Ajustes",
     "profile": "Perfil",

@@ -8,7 +8,10 @@
   },
   "errors": {
     "notFound": "No se encontró el perfil del negocio.",
-    "updateConflict": "Estos cambios entran en conflicto con el perfil guardado del negocio. Actualiza e inténtalo de nuevo."
+    "updateConflict": "Estos cambios entran en conflicto con el perfil guardado del negocio. Actualiza e inténtalo de nuevo.",
+    "companyConflict": "Estos datos entran en conflicto con otra empresa activa de este país.",
+    "companyNotFound": "No se encontró la empresa.",
+    "companyForbidden": "Solo el propietario puede editar esta empresa."
   },
   "profile": {
     "title": "Perfil del negocio",
@@ -281,5 +284,28 @@
     "reportingTitle": "Informes",
     "weeklyStartDay": "Día de inicio del informe semanal",
     "notSet": "Sin establecer"
+  },
+  "company": {
+    "title": "Empresa",
+    "description": "La entidad fiscal de este local.",
+    "identityDescription": "Razón social y NIF compartidos por todos los locales de esta empresa.",
+    "fallbackName": "Empresa {{id}}",
+    "loading": "Cargando la empresa...",
+    "retry": "Intentar de nuevo",
+    "unavailableTitle": "Empresa no disponible",
+    "unavailableDescription": "Solo el propietario puede ver y editar esta empresa.",
+    "fields": {
+      "legalName": "Razón social de la empresa",
+      "legalNameHint": "Opcional ahora; obligatorio antes de publicar.",
+      "taxNumber": "Número de identificación fiscal de la empresa",
+      "taxNumberHint": "Opcional ahora; obligatorio antes de publicar."
+    },
+    "save": "Guardar empresa",
+    "saving": "Guardando...",
+    "saved": "Empresa guardada.",
+    "venuesTitle": "Locales de esta empresa",
+    "venuesDescription": "Todos los locales que comparten esta identidad fiscal.",
+    "venueMeta": "{{country}} · {{currency}}",
+    "addVenue": "Añadir local"
   }
 }

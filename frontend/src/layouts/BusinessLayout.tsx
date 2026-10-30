@@ -31,6 +31,7 @@ import { useLocation } from "react-router-dom";
 import {
   ArrowLeft,
   BarChart3,
+  Building2,
   Clock,
   LayoutDashboard,
   Settings,
@@ -39,6 +40,11 @@ import {
 import { useAuthModeNavigation } from "@/hooks/useAuthModeNavigation";
 import { useErrorMessage } from "@/i18n/errorCopy";
 import {
+  hasOwnedBusiness,
+  useOwnerPortfolioQuery,
+} from "@/services/portfolio/portfolioService";
+import {
+  canonicalBusinessCompanyPath,
   canonicalBusinessDashboardRoutePath,
   canonicalBusinessSettingsDeliveryPath,
   canonicalBusinessSettingsMetricsPath,
@@ -57,11 +63,13 @@ export default function BusinessLayout() {
     failure: switchFailure,
     isSwitchingMode,
   } = useAuthModeNavigation();
+  const portfolioQuery = useOwnerPortfolioQuery(state.user?.id);
 
   const session = state.status === "authenticated" ? state.user : null;
   if (!session || !businessId) return null;
 
   const dashboardTo = canonicalBusinessDashboardRoutePath(businessId);
+  const companyTo = canonicalBusinessCompanyPath(businessId);
   const openHoursTo = canonicalBusinessSettingsOpenHoursPath(businessId);
   const deliveryTo = canonicalBusinessSettingsDeliveryPath(businessId);
   const metricsTo = canonicalBusinessSettingsMetricsPath(businessId);
@@ -74,6 +82,17 @@ export default function BusinessLayout() {
       icon: LayoutDashboard,
       isActive: pathname === dashboardTo,
     },
+    ...(hasOwnedBusiness(portfolioQuery.data, businessId)
+      ? [
+          {
+            key: "company",
+            label: t("owner.company"),
+            to: companyTo,
+            icon: Building2,
+            isActive: pathname === companyTo,
+          },
+        ]
+      : []),
   ];
 
   const subPages = [

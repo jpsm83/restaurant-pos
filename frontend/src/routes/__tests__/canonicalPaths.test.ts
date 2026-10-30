@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  canonicalBusinessCompanyPath,
   canonicalBusinessDashboardPath,
   canonicalBusinessDashboardRoutePath,
   canonicalBusinessProfilePath,
@@ -46,6 +47,7 @@ describe("canonicalPaths", () => {
     expect(canonicalBusinessDashboardRoutePath("b1")).toBe(
       "/business/b1/dashboard",
     );
+    expect(canonicalBusinessCompanyPath("b1")).toBe("/business/b1/company");
     expect(canonicalBusinessProfilePath("b1")).toBe(
       "/business/b1/settings/profile",
     );

@@ -155,6 +155,18 @@ const OVERRIDES: Partial<Record<ServiceErrorCode, ErrorCopyTemplate>> = {
     namespace: "business",
     key: "errors.updateConflict",
   },
+  "companyUpdate.conflict": {
+    namespace: "business",
+    key: "errors.companyConflict",
+  },
+  "companyUpdate.forbidden": {
+    namespace: "business",
+    key: "errors.companyForbidden",
+  },
+  "companyUpdate.notFound": {
+    namespace: "business",
+    key: "errors.companyNotFound",
+  },
   "modeLoad.unauthorized": { namespace: "auth", key: "api.signInRequired" },
   "modeSave.forbidden": { namespace: "mode", key: "errors.notAllowed" },
 };

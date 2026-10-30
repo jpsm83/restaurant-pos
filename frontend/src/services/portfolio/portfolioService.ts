@@ -9,6 +9,7 @@ import { queryKeys } from "../queryKeys";
 import { toServiceRequestError } from "../serviceErrors";
 import type { IOwnerPortfolio } from "restaurant-pos-packages/interfaces/IOwner";
 import type { CreateBusinessBody } from "restaurant-pos-packages/schemas/business";
+import type { UpdateCompanyBody } from "restaurant-pos-packages/schemas/company";
 
 type VenueCompanyChoice =
   | { companyId: string; company?: never }
@@ -40,6 +41,23 @@ export type CreateVenueResult = {
   };
 };
 
+export type UpdateCompanyResult = {
+  _id: string;
+  country: string;
+  legalName?: string;
+  taxNumber?: string;
+};
+
+/** The Company that owns this venue in the caller's portfolio, if any. */
+export function findOwnedCompany(
+  portfolio: Pick<IOwnerPortfolio, "companies"> | undefined,
+  businessId: string,
+): IOwnerPortfolio["companies"][number] | undefined {
+  return portfolio?.companies.find((company) =>
+    company.businesses.some((business) => business._id === businessId),
+  );
+}
+
 /**
  * True when the venue appears in the caller's portfolio. The minimal switch
  * uses it to refuse a venue the caller does not own; draft venues count.
@@ -48,11 +66,7 @@ export function hasOwnedBusiness(
   portfolio: Pick<IOwnerPortfolio, "companies"> | undefined,
   businessId: string,
 ): boolean {
-  return Boolean(
-    portfolio?.companies.some((company) =>
-      company.businesses.some((business) => business._id === businessId),
-    ),
-  );
+  return Boolean(findOwnedCompany(portfolio, businessId));
 }
 
 /** Reads only the signed-in User's Owner portfolio. */
@@ -117,6 +131,34 @@ export function useCreateVenueMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: createVenue,
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: queryKeys.portfolio.all() }),
+  });
+}
+
+/** Edits the caller's Company tax identity; the portfolio is re-read afterwards. */
+export async function updateCompany(
+  companyId: string,
+  input: UpdateCompanyBody,
+): Promise<UpdateCompanyResult> {
+  try {
+    const { data } = await http.patch<UpdateCompanyResult>(
+      `/api/v1/owners/companies/${companyId}`,
+      input,
+    );
+    return data;
+  } catch (error) {
+    throw toServiceRequestError(error, "companyUpdate");
+  }
+}
+
+export function useUpdateCompanyMutation(companyId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: UpdateCompanyBody) => {
+      if (!companyId) return Promise.reject(new Error("Company id required"));
+      return updateCompany(companyId, input);
+    },
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: queryKeys.portfolio.all() }),
   });

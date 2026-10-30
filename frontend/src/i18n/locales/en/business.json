@@ -8,7 +8,10 @@
   },
   "errors": {
     "notFound": "Business profile was not found.",
-    "updateConflict": "These changes conflict with the saved business profile. Refresh and try again."
+    "updateConflict": "These changes conflict with the saved business profile. Refresh and try again.",
+    "companyConflict": "These details conflict with another active Company in this country.",
+    "companyNotFound": "Company not found.",
+    "companyForbidden": "Only the Owner can edit this Company."
   },
   "profile": {
     "title": "Business profile",
@@ -281,5 +284,28 @@
     "reportingTitle": "Reporting",
     "weeklyStartDay": "Weekly report start day",
     "notSet": "Not set"
+  },
+  "company": {
+    "title": "Company",
+    "description": "The tax entity behind this venue.",
+    "identityDescription": "Legal name and tax number shared by every venue in this Company.",
+    "fallbackName": "Company {{id}}",
+    "loading": "Loading Company...",
+    "retry": "Try again",
+    "unavailableTitle": "Company unavailable",
+    "unavailableDescription": "Only the Owner can view and edit this Company.",
+    "fields": {
+      "legalName": "Company legal name",
+      "legalNameHint": "Optional now; required before go-live.",
+      "taxNumber": "Company tax number",
+      "taxNumberHint": "Optional now; required before go-live."
+    },
+    "save": "Save company",
+    "saving": "Saving...",
+    "saved": "Company saved.",
+    "venuesTitle": "Venues in this Company",
+    "venuesDescription": "Every venue that shares this tax identity.",
+    "venueMeta": "{{country}} · {{currency}}",
+    "addVenue": "Add venue"
   }
 }

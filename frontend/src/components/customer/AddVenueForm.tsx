@@ -40,6 +40,8 @@ type ExistingCompany = Pick<
 export function AddVenueForm(props: {
   companies?: readonly ExistingCompany[];
   defaultCountry: string | null;
+  /** Pre-select this Company when it appears in `companies` (Company page entry). */
+  defaultCompanyId?: string;
   onCancel: () => void;
   onCreated: () => void;
 }) {
@@ -49,9 +51,15 @@ export function AddVenueForm(props: {
   const [failure, setFailure] = useState<ErrorFailure | null>(null);
   const [companyError, setCompanyError] = useState<string | null>(null);
   const companies = props.companies ?? [];
-  const [companyChoice, setCompanyChoice] = useState<string | undefined>(() =>
-    companies.length > 0 ? undefined : NEW_COMPANY,
-  );
+  const [companyChoice, setCompanyChoice] = useState<string | undefined>(() => {
+    if (
+      props.defaultCompanyId &&
+      companies.some((company) => company._id === props.defaultCompanyId)
+    ) {
+      return props.defaultCompanyId;
+    }
+    return companies.length > 0 ? undefined : NEW_COMPANY;
+  });
   const isNewCompany = companyChoice === NEW_COMPANY;
 
   const schema = useMemo(
