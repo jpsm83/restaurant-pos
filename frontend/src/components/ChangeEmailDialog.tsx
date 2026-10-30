@@ -3,7 +3,9 @@ import { useTranslation } from "react-i18next";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { emailSchema } from "restaurant-pos-packages/schemas/primitives";
 
-import { requestEmailChange } from "@/auth/api";
+import { requestEmailChange, type EmailChangeReauth } from "@/auth/api";
+import { GoogleReauthButton } from "@/auth/GoogleReauthButton";
+import { useGoogleSignInEnabled } from "@/auth/useGoogleSignInEnabled";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +15,8 @@ import type { ServiceRequestError } from "@/services/serviceErrors";
 type ChangeEmailDialogProps = {
   open: boolean;
   currentEmail: string;
+  hasGoogleIdentity?: boolean;
+  hasPassword?: boolean;
   onOpenChange: (open: boolean) => void;
   onRequested: () => void;
 };
@@ -21,6 +25,7 @@ type LocalError =
   | "invalidEmail"
   | "passwordRequired"
   | "sameEmail"
+  | "googleReauthFailed"
   | null;
 
 /**
@@ -31,11 +36,14 @@ type LocalError =
 export function ChangeEmailDialog({
   open,
   currentEmail,
+  hasGoogleIdentity = false,
+  hasPassword = false,
   onOpenChange,
   onRequested,
 }: ChangeEmailDialogProps) {
   const { t } = useTranslation("customer");
   const resolveError = useErrorMessage();
+  const googleSignInEnabled = useGoogleSignInEnabled();
   const fieldId = useId();
   const newEmailId = `${fieldId}-new-email`;
   const passwordId = `${fieldId}-current-password`;
@@ -46,6 +54,9 @@ export function ChangeEmailDialog({
   const [localError, setLocalError] = useState<LocalError>(null);
   const [failure, setFailure] = useState<ServiceRequestError | null>(null);
   const [pending, setPending] = useState(false);
+  const showGoogle = hasGoogleIdentity && googleSignInEnabled;
+  const showPassword = !showGoogle || hasPassword;
+  const showPasswordDivider = showGoogle && showPassword;
 
   function handleOpenChange(nextOpen: boolean) {
     if (!nextOpen) {
@@ -57,40 +68,67 @@ export function ChangeEmailDialog({
     onOpenChange(nextOpen);
   }
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
+  function validatedNewEmail(): string | null {
     const normalized = newEmail.trim().toLowerCase();
     const parsed = emailSchema.safeParse(normalized);
     if (!parsed.success) {
       setLocalError("invalidEmail");
       setFailure(null);
-      return;
+      return null;
     }
     if (normalized === currentEmail.trim().toLowerCase()) {
       setLocalError("sameEmail");
       setFailure(null);
-      return;
+      return null;
     }
-    if (!currentPassword) {
-      setLocalError("passwordRequired");
-      setFailure(null);
-      return;
-    }
+    return normalized;
+  }
 
+  async function submitReauth(
+    normalized: string,
+    reauth: EmailChangeReauth,
+  ) {
     setLocalError(null);
     setFailure(null);
     setPending(true);
-    const result = await requestEmailChange(normalized, currentPassword);
+    const result = await requestEmailChange(normalized, reauth);
     setPending(false);
 
     if (!result.ok) {
+      if (
+        "googleCredential" in reauth &&
+        result.error.code === "emailChange.unauthorized"
+      ) {
+        setLocalError("googleReauthFailed");
+        return;
+      }
       setFailure(result.error);
       return;
     }
 
     onRequested();
     handleOpenChange(false);
+  }
+
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!showPassword) return;
+
+    const normalized = validatedNewEmail();
+    if (!normalized) return;
+    if (!currentPassword) {
+      setLocalError("passwordRequired");
+      setFailure(null);
+      return;
+    }
+
+    await submitReauth(normalized, { currentPassword });
+  }
+
+  async function onGoogleCredential(credential: string) {
+    const normalized = validatedNewEmail();
+    if (!normalized) return;
+    await submitReauth(normalized, { googleCredential: credential });
   }
 
   return (
@@ -124,18 +162,37 @@ export function ChangeEmailDialog({
                 onChange={(event) => setNewEmail(event.target.value)}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor={passwordId}>
-                {t("profile.changeEmail.currentPasswordLabel")}
-              </Label>
-              <Input
-                id={passwordId}
-                type="password"
-                autoComplete="current-password"
-                value={currentPassword}
-                onChange={(event) => setCurrentPassword(event.target.value)}
+            {showGoogle ? (
+              <GoogleReauthButton
+                onCredential={(credential) => void onGoogleCredential(credential)}
+                onFailure={() => {
+                  setLocalError("googleReauthFailed");
+                  setFailure(null);
+                }}
+                disabled={pending}
               />
-            </div>
+            ) : null}
+
+            {showPasswordDivider ? (
+              <p className="text-center text-xs text-muted-foreground">
+                {t("profile.changeEmail.passwordAlternative")}
+              </p>
+            ) : null}
+
+            {showPassword ? (
+              <div className="space-y-2">
+                <Label htmlFor={passwordId}>
+                  {t("profile.changeEmail.currentPasswordLabel")}
+                </Label>
+                <Input
+                  id={passwordId}
+                  type="password"
+                  autoComplete="current-password"
+                  value={currentPassword}
+                  onChange={(event) => setCurrentPassword(event.target.value)}
+                />
+              </div>
+            ) : null}
 
             {localError ? (
               <p className="text-sm text-destructive" role="alert">
@@ -156,11 +213,13 @@ export function ChangeEmailDialog({
               >
                 {t("profile.changeEmail.cancel")}
               </Button>
-              <Button type="submit" disabled={pending}>
-                {pending
-                  ? t("profile.changeEmail.submitting")
-                  : t("profile.changeEmail.submit")}
-              </Button>
+              {showPassword ? (
+                <Button type="submit" disabled={pending}>
+                  {pending
+                    ? t("profile.changeEmail.submitting")
+                    : t("profile.changeEmail.submit")}
+                </Button>
+              ) : null}
             </div>
           </form>
         </DialogPrimitive.Content>

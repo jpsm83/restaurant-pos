@@ -15,6 +15,7 @@ import {
   recordEmailChangeAudit,
   type EmailChangeAuditOutcome,
 } from "./emailChangeAuditLog.ts";
+import { GoogleCredentialError, type GoogleVerifier } from "./google.ts";
 import { normalizeRequestEmail } from "./requestEmailConfirmation.ts";
 import type { AuthUser } from "./types.ts";
 
@@ -27,10 +28,22 @@ export const EMAIL_CHANGE_REQUEST_COOLDOWN_MS = 60 * 1000;
 export const EMAIL_CHANGE_REQUESTED_MESSAGE =
   "Confirmation email sent. Check your new inbox to complete the change.";
 
+export type RequestEmailChangeInput = {
+  newEmail: string;
+  currentPassword?: string;
+  googleCredential?: string;
+};
+
+export type RequestEmailChangeOptions = {
+  logger?: FastifyBaseLogger;
+  googleVerifier?: GoogleVerifier | null;
+};
+
 export type RequestEmailChangeResult =
   | { kind: "success_200"; message: string }
   | { kind: "account_not_found" }
   | { kind: "invalid_password" }
+  | { kind: "invalid_google_credential" }
   | { kind: "same_email" }
   | { kind: "email_taken" }
   | { kind: "throttled"; message: string }
@@ -46,18 +59,21 @@ type PendingChange = {
 /**
  * Starts a verified sign-in email change for the signed-in User.
  *
- * Re-authenticates with the current password, refuses an address already active
- * or reserved by an in-flight change on another User, and stores the new
- * address as pending — the current sign-in email and its verified flag stay
- * untouched until the new address is confirmed through the emailed link. A new
- * request replaces the previous pending token only once the cooldown elapses.
+ * Re-authenticates with the current password or, when the User holds a linked
+ * Google identity, a verified Google credential that must resolve to that same
+ * identity. Refuses an address already active or reserved by an in-flight
+ * change on another User, and stores the new address as pending — the current
+ * sign-in email and its verified flag stay untouched until the new address is
+ * confirmed through the emailed link. A new request replaces the previous
+ * pending token only once the cooldown elapses.
  */
 export async function handleRequestEmailChange(
   session: AuthUser,
-  newEmail: string,
-  currentPassword: string,
-  logger?: FastifyBaseLogger,
+  input: RequestEmailChangeInput,
+  options: RequestEmailChangeOptions = {},
 ): Promise<RequestEmailChangeResult> {
+  const { logger, googleVerifier } = options;
+  const { newEmail, currentPassword, googleCredential } = input;
   const accountId = session.id;
   const normalizedNewEmail = normalizeRequestEmail(newEmail);
   const audit = (outcome: EmailChangeAuditOutcome) =>
@@ -73,7 +89,7 @@ export async function handleRequestEmailChange(
 
   const user = await User.findOne(withSoftDeleteFilter({ _id: session.id }))
     .select(
-      "_id personalDetails.email personalDetails.password personalDetails.emailVerified personalDetails.username personalDetails.firstName pendingEmail pendingEmailToken pendingEmailExpires pendingEmailRequestedAt",
+      "_id googleId personalDetails.email personalDetails.password personalDetails.emailVerified personalDetails.username personalDetails.firstName pendingEmail pendingEmailToken pendingEmailExpires pendingEmailRequestedAt",
     )
     .lean();
 
@@ -82,12 +98,31 @@ export async function handleRequestEmailChange(
     return { kind: "account_not_found" };
   }
 
+  let googleReauthenticated = false;
+  if (googleCredential) {
+    googleReauthenticated = await matchesLinkedGoogleIdentity(
+      user.googleId,
+      googleCredential,
+      googleVerifier,
+    );
+    if (!googleReauthenticated) {
+      fail("invalid_google_credential");
+      return { kind: "invalid_google_credential" };
+    }
+  }
+
+  let passwordReauthenticated = false;
   const storedHash = user.personalDetails?.password;
-  const passwordOk =
+  if (
+    typeof currentPassword === "string" &&
+    currentPassword.length > 0 &&
     typeof storedHash === "string" &&
-    storedHash.length > 0 &&
-    (await bcrypt.compare(currentPassword, storedHash));
-  if (!passwordOk) {
+    storedHash.length > 0
+  ) {
+    passwordReauthenticated = await bcrypt.compare(currentPassword, storedHash);
+  }
+
+  if (!passwordReauthenticated && !googleReauthenticated) {
     fail("invalid_password");
     return { kind: "invalid_password" };
   }
@@ -184,6 +219,32 @@ export async function handleRequestEmailChange(
   });
 
   return { kind: "success_200", message: EMAIL_CHANGE_REQUESTED_MESSAGE };
+}
+
+/**
+ * A verified Google credential re-authenticates only when it resolves to the
+ * exact Google subject already linked to this User.
+ */
+async function matchesLinkedGoogleIdentity(
+  linkedSubject: unknown,
+  credential: string,
+  verifier: GoogleVerifier | null | undefined,
+): Promise<boolean> {
+  if (
+    typeof linkedSubject !== "string" ||
+    !linkedSubject ||
+    !verifier
+  ) {
+    return false;
+  }
+
+  try {
+    const identity = await verifier(credential);
+    return identity.subject === linkedSubject;
+  } catch (error) {
+    if (error instanceof GoogleCredentialError) return false;
+    throw error;
+  }
 }
 
 function isWithinRequestCooldown(requestedAt: unknown): boolean {

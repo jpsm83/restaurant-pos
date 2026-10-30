@@ -363,21 +363,25 @@ export async function resetPassword(token: string, newPassword: string) {
   );
 }
 
+export type EmailChangeReauth =
+  | { currentPassword: string }
+  | { googleCredential: string };
+
 /**
  * Authenticated: start a verified sign-in email change. The current password
- * re-authenticates the User; the current email stays authoritative until the
- * emailed link at the new address is confirmed.
+ * or a verified Google credential re-authenticates the User; the current email
+ * stays authoritative until the emailed link at the new address is confirmed.
  */
 export async function requestEmailChange(
   newEmail: string,
-  currentPassword: string,
+  reauth: EmailChangeReauth,
 ) {
   return authRequest<AuthMessageResponseBody>(
     "emailChange",
     "/api/v1/auth/request-email-change",
     {
       method: "POST",
-      body: JSON.stringify({ newEmail, currentPassword }),
+      body: JSON.stringify({ newEmail, ...reauth }),
     },
   );
 }

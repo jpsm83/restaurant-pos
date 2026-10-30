@@ -363,9 +363,9 @@ export const authRoutes: FastifyPluginAsync<AuthRoutesOptions> = async (
 
   /**
    * POST /auth/request-email-change
-   * Authenticated User: re-authenticate with the current password and start a
-   * verified sign-in email change. The current email stays active until the new
-   * address confirms the emailed link.
+   * Authenticated User: re-authenticate with the current password or a linked
+   * Google identity and start a verified sign-in email change. The current
+   * email stays active until the new address confirms the emailed link.
    */
   app.post<{ Body: RequestEmailChangeBody }>(
     "/request-email-change",
@@ -375,19 +375,19 @@ export const authRoutes: FastifyPluginAsync<AuthRoutesOptions> = async (
     },
     async (req, reply) => {
       const session = req.authSession as AuthUser;
-      const { newEmail, currentPassword } = req.body;
-      const result = await handleRequestEmailChange(
-        session,
-        newEmail,
-        currentPassword,
-        req.log,
-      );
+      const result = await handleRequestEmailChange(session, req.body, {
+        logger: req.log,
+        googleVerifier,
+      });
 
       if (result.kind === "account_not_found") {
         throw unauthorized("Account not found.");
       }
       if (result.kind === "invalid_password") {
         throw unauthorized("Current password is incorrect.");
+      }
+      if (result.kind === "invalid_google_credential") {
+        throw unauthorized("Google re-authentication failed.");
       }
       if (result.kind === "same_email") {
         throw badRequest(

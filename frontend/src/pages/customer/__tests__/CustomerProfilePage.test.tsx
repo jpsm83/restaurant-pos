@@ -1,17 +1,40 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { renderWithI18n } from "@/test/i18nTestUtils";
 import CustomerProfilePage from "../CustomerProfilePage";
 
 const mockGetUserProfile = vi.fn();
 const mockUpdateUserProfile = vi.fn();
 const mockRequestEmailChange = vi.fn();
+const mockUseAuthConfigQuery = vi.fn();
 const mockDispatch = vi.fn();
 const mockResend = vi.fn();
 const toastSuccess = vi.fn();
 const toastError = vi.fn();
+
+vi.mock("@react-oauth/google", () => ({
+  GoogleLogin: ({
+    onSuccess,
+    onError,
+  }: {
+    onSuccess: (response: { credential?: string }) => void;
+    onError: () => void;
+  }) => (
+    <div>
+      <button
+        type="button"
+        onClick={() => onSuccess({ credential: "google-id-token" })}
+      >
+        Continue with Google
+      </button>
+      <button type="button" onClick={onError}>
+        Fail Google
+      </button>
+    </div>
+  ),
+}));
 
 vi.mock("@/auth/store/AuthContext", () => ({
   useAuth: () => ({
@@ -24,6 +47,7 @@ vi.mock("@/auth/api", () => ({
   getUserProfile: (...args: unknown[]) => mockGetUserProfile(...args),
   updateUserProfile: (...args: unknown[]) => mockUpdateUserProfile(...args),
   requestEmailChange: (...args: unknown[]) => mockRequestEmailChange(...args),
+  useAuthConfigQuery: (...args: unknown[]) => mockUseAuthConfigQuery(...args),
 }));
 
 vi.mock("@/hooks/useResendEmailConfirmation", () => ({
@@ -38,6 +62,8 @@ vi.mock("sonner", () => ({
 }));
 
 let unverified = false;
+let googleLinked = false;
+let passwordPresent = true;
 
 function mockUser() {
   return {
@@ -47,6 +73,8 @@ function mockUser() {
     role: "Customer",
     emailVerified: unverified ? false : true,
     languagePreference: "en" as const,
+    hasGoogleIdentity: googleLinked,
+    hasPassword: passwordPresent,
   };
 }
 
@@ -86,14 +114,25 @@ function renderPage() {
 describe("CustomerProfilePage", () => {
   beforeEach(() => {
     unverified = false;
+    googleLinked = false;
+    passwordPresent = true;
     mockGetUserProfile.mockReset();
     mockUpdateUserProfile.mockReset();
     mockRequestEmailChange.mockReset();
+    mockUseAuthConfigQuery.mockReset();
     mockDispatch.mockReset();
     mockResend.mockReset();
     toastSuccess.mockReset();
     toastError.mockReset();
     mockGetUserProfile.mockResolvedValue({ ok: true, data: profile });
+    mockUseAuthConfigQuery.mockReturnValue({
+      data: { googleSignInEnabled: true },
+    });
+    vi.stubEnv("VITE_GOOGLE_CLIENT_ID", "test-client-id");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it("loads the self profile with a read-only sign-in email and editable fields", async () => {
@@ -194,10 +233,9 @@ describe("CustomerProfilePage", () => {
     );
 
     await waitFor(() => {
-      expect(mockRequestEmailChange).toHaveBeenCalledWith(
-        "new@example.com",
-        "Secret123!",
-      );
+      expect(mockRequestEmailChange).toHaveBeenCalledWith("new@example.com", {
+        currentPassword: "Secret123!",
+      });
     });
     expect(
       await screen.findByText(
@@ -230,6 +268,143 @@ describe("CustomerProfilePage", () => {
     expect(
       await screen.findByRole("alert"),
     ).toHaveTextContent("Your current password is incorrect.");
+  });
+
+  it("lets a mixed account re-authenticate with Google and completes the request", async () => {
+    googleLinked = true;
+    const user = userEvent.setup();
+    mockRequestEmailChange.mockResolvedValue({
+      ok: true,
+      data: { message: "Sent" },
+    });
+
+    await renderPage();
+
+    await user.click(
+      await screen.findByRole("button", { name: "Change sign-in email" }),
+    );
+    expect(screen.getByLabelText("Current password")).toBeInTheDocument();
+    await user.type(screen.getByLabelText("New email"), "New@Example.com");
+    await user.click(
+      screen.getByRole("button", { name: "Continue with Google" }),
+    );
+
+    await waitFor(() => {
+      expect(mockRequestEmailChange).toHaveBeenCalledWith("new@example.com", {
+        googleCredential: "google-id-token",
+      });
+    });
+    expect(
+      await screen.findByText(
+        "Confirmation link sent. Check your new inbox to complete the change.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("lets a mixed account re-authenticate with its password", async () => {
+    googleLinked = true;
+    const user = userEvent.setup();
+    mockRequestEmailChange.mockResolvedValue({
+      ok: true,
+      data: { message: "Sent" },
+    });
+
+    await renderPage();
+
+    await user.click(
+      await screen.findByRole("button", { name: "Change sign-in email" }),
+    );
+    await user.type(screen.getByLabelText("New email"), "new@example.com");
+    await user.type(screen.getByLabelText("Current password"), "Secret123!");
+    await user.click(
+      screen.getByRole("button", { name: "Send confirmation link" }),
+    );
+
+    await waitFor(() => {
+      expect(mockRequestEmailChange).toHaveBeenCalledWith("new@example.com", {
+        currentPassword: "Secret123!",
+      });
+    });
+  });
+
+  it("shows only Google re-authentication for a Google-only account", async () => {
+    googleLinked = true;
+    passwordPresent = false;
+    const user = userEvent.setup();
+
+    await renderPage();
+
+    await user.click(
+      await screen.findByRole("button", { name: "Change sign-in email" }),
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Continue with Google" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Current password"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Send confirmation link" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("hides Google re-authentication when the account has no linked identity", async () => {
+    const user = userEvent.setup();
+
+    await renderPage();
+
+    await user.click(
+      await screen.findByRole("button", { name: "Change sign-in email" }),
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "Continue with Google" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Or confirm with your current password"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("hides Google re-authentication when the server disables Google sign-in", async () => {
+    googleLinked = true;
+    mockUseAuthConfigQuery.mockReturnValue({
+      data: { googleSignInEnabled: false },
+    });
+    const user = userEvent.setup();
+
+    await renderPage();
+
+    await user.click(
+      await screen.findByRole("button", { name: "Change sign-in email" }),
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "Continue with Google" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows localized copy when Google re-authentication is refused", async () => {
+    googleLinked = true;
+    const user = userEvent.setup();
+    mockRequestEmailChange.mockResolvedValue({
+      ok: false,
+      error: { code: "emailChange.unauthorized", status: 401 },
+    });
+
+    await renderPage();
+
+    await user.click(
+      await screen.findByRole("button", { name: "Change sign-in email" }),
+    );
+    await user.type(screen.getByLabelText("New email"), "new@example.com");
+    await user.click(
+      screen.getByRole("button", { name: "Continue with Google" }),
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "We couldn't verify that Google account. Use the Google account linked to this profile and try again.",
+    );
   });
 
   it("resends email confirmation for an unverified signed-in user", async () => {

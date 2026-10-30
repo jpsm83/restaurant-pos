@@ -661,6 +661,8 @@ export default function CustomerProfilePage() {
       <ChangeEmailDialog
         open={changeEmailOpen}
         currentEmail={email}
+        hasGoogleIdentity={sessionUser?.hasGoogleIdentity === true}
+        hasPassword={sessionUser?.hasPassword === true}
         onOpenChange={setChangeEmailOpen}
         onRequested={() => {
           const message = t("profile.changeEmail.success");

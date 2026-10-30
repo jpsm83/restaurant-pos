@@ -103,6 +103,29 @@ describe("Auth Routes", () => {
       expect(body.user.type).toBe("user");
     });
 
+    it("reports a linked Google identity in a password login session", async () => {
+      const app = await getTestApp();
+
+      await User.create({
+        googleId: "linked-google-subject",
+        personalDetails: {
+          email: "mixed@test.com",
+          password: hashedPassword,
+          emailVerified: true,
+        },
+      });
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: { email: "mixed@test.com", password: testPassword },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json().user.hasGoogleIdentity).toBe(true);
+      expect(response.json().user.hasPassword).toBe(true);
+    });
+
     it("returns 401 for invalid credentials", async () => {
       const app = await getTestApp();
 

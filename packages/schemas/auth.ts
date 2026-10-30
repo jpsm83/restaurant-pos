@@ -74,16 +74,33 @@ export const requestPasswordResetBodySchema = z.strictObject({
 });
 
 /**
- * Authenticated sign-in email change request. The current password is the
- * re-authentication proof; the new address is normalized at the boundary and
- * the server-owned pending token fields never appear here.
+ * Authenticated sign-in email change request. A current password or a verified
+ * Google ID token is the re-authentication proof; the new address is normalized
+ * at the boundary and the server-owned pending token fields never appear here.
  */
-export const requestEmailChangeBodySchema = z.strictObject({
-  newEmail: emailSchema,
-  currentPassword: z
-    .string({ error: "Current password is required." })
-    .min(1, "Current password is required."),
-});
+export const requestEmailChangeBodySchema = z
+  .strictObject({
+    newEmail: emailSchema,
+    currentPassword: z
+      .string({ error: "Current password is required." })
+      .min(1, "Current password is required.")
+      .optional(),
+    googleCredential: z
+      .string({ error: "Google credential is required." })
+      .trim()
+      .min(1, "Google credential is required.")
+      .optional(),
+  })
+  .refine(
+    (value) =>
+      Number(value.currentPassword !== undefined) +
+        Number(value.googleCredential !== undefined) ===
+      1,
+    {
+      path: ["currentPassword"],
+      message: "Provide either the current password or a Google credential.",
+    },
+  );
 
 export const confirmEmailBodySchema = z.strictObject({
   token: z

@@ -21,6 +21,7 @@ export type EmailChangeAuditOutcome =
   | "sent"
   | "throttled"
   | "invalid_password"
+  | "invalid_google_credential"
   | "same_email"
   | "email_taken"
   | "account_not_found"

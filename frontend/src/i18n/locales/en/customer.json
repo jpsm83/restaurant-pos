@@ -16,7 +16,7 @@
     "changeEmail": {
       "action": "Change sign-in email",
       "title": "Change sign-in email",
-      "description": "Confirm your current password, then enter the new address. We will send a confirmation link there; your current sign-in email stays active until you open it.",
+      "description": "Confirm it's you, then enter the new address. We will send a confirmation link there; your current sign-in email stays active until you open it.",
       "newEmailLabel": "New email",
       "currentPasswordLabel": "Current password",
       "submit": "Send confirmation link",
@@ -26,8 +26,10 @@
       "errors": {
         "invalidEmail": "Enter a valid email address.",
         "passwordRequired": "Enter your current password.",
-        "sameEmail": "Choose an address different from your current sign-in email."
-      }
+        "sameEmail": "Choose an address different from your current sign-in email.",
+        "googleReauthFailed": "We couldn't verify that Google account. Use the Google account linked to this profile and try again."
+      },
+      "passwordAlternative": "Or confirm with your current password"
     },
     "photo": {
       "label": "Profile photo",

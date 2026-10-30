@@ -157,6 +157,8 @@ describe("POST /api/v1/auth/google", () => {
       type: "user",
       emailVerified: true,
       languagePreference: "es",
+      hasGoogleIdentity: true,
+      hasPassword: false,
       mode: "customer",
       role: "Customer",
     });

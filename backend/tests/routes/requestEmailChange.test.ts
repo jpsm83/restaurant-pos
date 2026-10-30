@@ -2,8 +2,8 @@
  * POST /api/v1/auth/request-email-change
  *
  * A signed-in User starts a verified sign-in email change with their current
- * password. The current email stays active until the new address confirms the
- * emailed link.
+ * password or a linked Google identity. The current email stays active until
+ * the new address confirms the emailed link.
  */
 
 import {
@@ -29,10 +29,16 @@ vi.mock("../../src/communications/channels/emailChannel.ts", () => ({
   default: { send: sendEmailMock },
 }));
 
+import { buildApp } from "../../src/server.ts";
 import { getTestApp, generateTestToken, resetTestApp } from "../setup.ts";
 import AuditEntry from "../../src/models/auditEntry.ts";
 import User from "../../src/models/user.ts";
 import { AUDIT_ACT_KINDS } from "../../src/audit/auditCatalogue.ts";
+import {
+  GoogleCredentialError,
+  type GoogleIdentity,
+  type GoogleVerifier,
+} from "../../src/auth/google.ts";
 import {
   EMAIL_CHANGE_REQUESTED_MESSAGE,
   EMAIL_CHANGE_REQUEST_COOLDOWN_MS,
@@ -64,6 +70,21 @@ async function tokenFor(user: { _id: unknown; personalDetails: { email: string }
     type: "user",
     role: "Customer",
   });
+}
+
+function tokenFromLastEmail(): string {
+  const payload = sendEmailMock.mock.calls.at(-1)?.[0] as {
+    html?: string;
+    text?: string;
+  };
+  const body = String(payload?.text ?? payload?.html ?? "");
+  const link = body.match(/https?:\/\/[^\s"'<>]+/g)?.find((candidate) =>
+    candidate.includes("/confirm-email-change"),
+  );
+  if (!link) throw new Error("email change email did not carry a link");
+  const token = new URL(link).searchParams.get("token");
+  if (!token) throw new Error("email change link did not carry a token");
+  return token;
 }
 
 async function agePendingRequestCooldown(userId: unknown): Promise<void> {
@@ -206,12 +227,12 @@ describe("POST /api/v1/auth/request-email-change", () => {
     expect(stored?.personalDetails.email).toBe("badpass@example.com");
   });
 
-  it("refuses an account with no password", async () => {
+  it("refuses password re-authentication for an account with no password", async () => {
     const app = await getTestApp();
     const user = await createUser("google-only@example.com", {
+      googleId: "google-subject",
       personalDetails: {
         email: "google-only@example.com",
-        googleId: "google-subject",
         username: "google-only",
       },
     });
@@ -512,5 +533,178 @@ describe("POST /api/v1/auth/request-email-change", () => {
       payload: { newEmail, currentPassword: testPassword },
     });
     expect(response.statusCode).toBe(401);
+  });
+
+  describe("Google re-authentication", () => {
+    const verifyGoogle = vi.fn<GoogleVerifier>();
+    const linkedIdentity: GoogleIdentity = {
+      subject: "google-subject",
+      email: "google-only@example.com",
+    };
+    let googleApp: Awaited<ReturnType<typeof buildApp>>;
+
+    beforeAll(async () => {
+      googleApp = await buildApp({
+        logger: false,
+        skipDb: true,
+        googleVerifier: (credential) => verifyGoogle(credential),
+      });
+    });
+
+    afterAll(async () => {
+      await googleApp.close();
+    });
+
+    beforeEach(() => {
+      verifyGoogle.mockReset();
+      verifyGoogle.mockResolvedValue(linkedIdentity);
+    });
+
+    it("lets a Google-only User request and confirm an email change", async () => {
+      const user = await User.create({
+        googleId: linkedIdentity.subject,
+        personalDetails: {
+          email: "google-only@example.com",
+          emailVerified: true,
+          username: "google-only",
+        },
+      });
+      const auth = await tokenFor(user);
+
+      const response = await googleApp.inject({
+        method: "POST",
+        url: "/api/v1/auth/request-email-change",
+        headers: { authorization: auth },
+        payload: { newEmail, googleCredential: "google-id-token" },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(verifyGoogle).toHaveBeenCalledWith("google-id-token");
+      expect(sendEmailMock).toHaveBeenCalledWith(
+        expect.objectContaining({ to: newEmail }),
+      );
+      const pending = await User.findById(user._id).lean();
+      expect(pending?.pendingEmail).toBe(newEmail);
+      expect(pending?.personalDetails.password).toBeUndefined();
+
+      const token = tokenFromLastEmail();
+      const confirmed = await googleApp.inject({
+        method: "POST",
+        url: "/api/v1/auth/confirm-email-change",
+        payload: { token },
+      });
+
+      expect(confirmed.statusCode).toBe(200);
+      const stored = await User.findById(user._id).lean();
+      expect(stored?.personalDetails.email).toBe(newEmail);
+      expect(stored?.googleId).toBe(linkedIdentity.subject);
+      expect(stored?.pendingEmail).toBeUndefined();
+    });
+
+    it("lets a mixed account use either its password or linked Google identity", async () => {
+      const user = await createUser("mixed@example.com", {
+        googleId: linkedIdentity.subject,
+      });
+      const auth = await tokenFor(user);
+
+      const withPassword = await googleApp.inject({
+        method: "POST",
+        url: "/api/v1/auth/request-email-change",
+        headers: { authorization: auth },
+        payload: {
+          newEmail: "password-choice@example.com",
+          currentPassword: testPassword,
+        },
+      });
+      expect(withPassword.statusCode).toBe(200);
+
+      await agePendingRequestCooldown(user._id);
+
+      const withGoogle = await googleApp.inject({
+        method: "POST",
+        url: "/api/v1/auth/request-email-change",
+        headers: { authorization: auth },
+        payload: {
+          newEmail: "google-choice@example.com",
+          googleCredential: "google-id-token",
+        },
+      });
+      expect(withGoogle.statusCode).toBe(200);
+      expect(sendEmailMock).toHaveBeenCalledTimes(2);
+
+      const stored = await User.findById(user._id).lean();
+      expect(stored?.pendingEmail).toBe("google-choice@example.com");
+    });
+
+    it("refuses a Google credential for a different account and changes nothing", async () => {
+      const user = await createUser("mismatch@example.com", {
+        googleId: "linked-subject",
+      });
+      const auth = await tokenFor(user);
+      verifyGoogle.mockResolvedValue({
+        ...linkedIdentity,
+        subject: "different-subject",
+      });
+
+      const response = await googleApp.inject({
+        method: "POST",
+        url: "/api/v1/auth/request-email-change",
+        headers: { authorization: auth },
+        payload: { newEmail, googleCredential: "google-id-token" },
+      });
+
+      expect(response.statusCode).toBe(401);
+      expect(response.json().detail).toBe("Google re-authentication failed.");
+      expect(sendEmailMock).not.toHaveBeenCalled();
+      expect(await AuditEntry.countDocuments({})).toBe(0);
+
+      const stored = await User.findById(user._id).lean();
+      expect(stored?.pendingEmail).toBeUndefined();
+      expect(stored?.pendingEmailToken).toBeUndefined();
+      expect(stored?.personalDetails.email).toBe("mismatch@example.com");
+      expect(stored?.googleId).toBe("linked-subject");
+    });
+
+    it("refuses a Google credential when the account has no linked identity", async () => {
+      const user = await createUser("password-only@example.com");
+      const auth = await tokenFor(user);
+
+      const response = await googleApp.inject({
+        method: "POST",
+        url: "/api/v1/auth/request-email-change",
+        headers: { authorization: auth },
+        payload: { newEmail, googleCredential: "google-id-token" },
+      });
+
+      expect(response.statusCode).toBe(401);
+      expect(verifyGoogle).not.toHaveBeenCalled();
+      expect(sendEmailMock).not.toHaveBeenCalled();
+
+      const stored = await User.findById(user._id).lean();
+      expect(stored?.pendingEmail).toBeUndefined();
+      expect(stored?.personalDetails.email).toBe("password-only@example.com");
+    });
+
+    it("refuses a rejected Google credential without changing anything", async () => {
+      const user = await createUser("badgoogle@example.com", {
+        googleId: linkedIdentity.subject,
+      });
+      const auth = await tokenFor(user);
+      verifyGoogle.mockRejectedValue(new GoogleCredentialError());
+
+      const response = await googleApp.inject({
+        method: "POST",
+        url: "/api/v1/auth/request-email-change",
+        headers: { authorization: auth },
+        payload: { newEmail, googleCredential: "invalid-token" },
+      });
+
+      expect(response.statusCode).toBe(401);
+      expect(sendEmailMock).not.toHaveBeenCalled();
+
+      const stored = await User.findById(user._id).lean();
+      expect(stored?.pendingEmail).toBeUndefined();
+      expect(stored?.personalDetails.email).toBe("badgoogle@example.com");
+    });
   });
 });

@@ -16,6 +16,10 @@ export interface AuthUser {
   emailVerified?: boolean;
   /** Stored UI language preference; unset until the person chooses one. */
   languagePreference?: "en" | "es";
+  /** Whether the User holds a linked Google identity (never the subject itself). */
+  hasGoogleIdentity?: boolean;
+  /** Whether the User holds a password credential (never the hash itself). */
+  hasPassword?: boolean;
   /** Active Customer | Business mode stored on the refresh session. */
   mode?: AuthMode;
   employeeId?: string;
@@ -35,6 +39,8 @@ export interface JwtPayload {
   type: "user";
   emailVerified?: boolean;
   languagePreference?: "en" | "es";
+  hasGoogleIdentity?: boolean;
+  hasPassword?: boolean;
   mode?: AuthMode;
   employeeId?: string;
   businessId?: string;

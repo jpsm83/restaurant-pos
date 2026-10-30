@@ -360,7 +360,9 @@ describe("auth api — email / password-reset endpoints", () => {
     setAccessToken("jwt-here");
     fetchMock.mockResolvedValueOnce(jsonResponse({ message: "Sent" }));
 
-    const result = await requestEmailChange("new@example.com", "Secret123!");
+    const result = await requestEmailChange("new@example.com", {
+      currentPassword: "Secret123!",
+    });
 
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     const headers = new Headers(init.headers as HeadersInit);
@@ -375,6 +377,23 @@ describe("auth api — email / password-reset endpoints", () => {
       }),
     );
     expect(result).toEqual({ ok: true, data: { message: "Sent" } });
+  });
+
+  it("requestEmailChange POSTs a Google credential for re-authentication", async () => {
+    setAccessToken("jwt-here");
+    fetchMock.mockResolvedValueOnce(jsonResponse({ message: "Sent" }));
+
+    await requestEmailChange("new@example.com", {
+      googleCredential: "google-id-token",
+    });
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(init.body).toBe(
+      JSON.stringify({
+        newEmail: "new@example.com",
+        googleCredential: "google-id-token",
+      }),
+    );
   });
 
   it("confirmEmailChange POSTs the token without an Authorization header", async () => {
@@ -428,7 +447,9 @@ describe("auth api — email / password-reset endpoints", () => {
       ),
     );
 
-    const result = await requestEmailChange("new@example.com", "wrong");
+    const result = await requestEmailChange("new@example.com", {
+      currentPassword: "wrong",
+    });
 
     expectFailure(result, {
       code: "emailChange.unauthorized",

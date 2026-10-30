@@ -16,7 +16,7 @@
     "changeEmail": {
       "action": "Cambiar correo de acceso",
       "title": "Cambiar correo de acceso",
-      "description": "Confirma tu contraseña actual e introduce la dirección nueva. Enviaremos un enlace de confirmación a esa dirección; tu correo de acceso actual seguirá activo hasta que lo abras.",
+      "description": "Confirma que eres tú e introduce la dirección nueva. Enviaremos un enlace de confirmación a esa dirección; tu correo de acceso actual seguirá activo hasta que lo abras.",
       "newEmailLabel": "Correo nuevo",
       "currentPasswordLabel": "Contraseña actual",
       "submit": "Enviar enlace de confirmación",
@@ -26,8 +26,10 @@
       "errors": {
         "invalidEmail": "Introduce una dirección de correo válida.",
         "passwordRequired": "Introduce tu contraseña actual.",
-        "sameEmail": "Elige una dirección distinta de tu correo de acceso actual."
-      }
+        "sameEmail": "Elige una dirección distinta de tu correo de acceso actual.",
+        "googleReauthFailed": "No pudimos verificar esa cuenta de Google. Usa la cuenta de Google vinculada a este perfil e inténtalo de nuevo."
+      },
+      "passwordAlternative": "O confirma con tu contraseña actual"
     },
     "photo": {
       "label": "Foto de perfil",

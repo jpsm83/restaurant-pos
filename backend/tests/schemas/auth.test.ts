@@ -188,6 +188,35 @@ describe("requestEmailChangeBodySchema", () => {
     }
   });
 
+  it("accepts a Google credential instead of a password", () => {
+    const parsed = requestEmailChangeBodySchema.parse({
+      newEmail: "a@b.com",
+      googleCredential: "  google-id-token  ",
+    });
+    expect(parsed.googleCredential).toBe("google-id-token");
+  });
+
+  it("rejects a blank Google credential", () => {
+    const result = requestEmailChangeBodySchema.safeParse({
+      newEmail: "a@b.com",
+      googleCredential: "   ",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("requires exactly one re-authentication proof", () => {
+    expect(
+      requestEmailChangeBodySchema.safeParse({ newEmail: "a@b.com" }).success,
+    ).toBe(false);
+    expect(
+      requestEmailChangeBodySchema.safeParse({
+        newEmail: "a@b.com",
+        currentPassword: "Secret123!",
+        googleCredential: "google-id-token",
+      }).success,
+    ).toBe(false);
+  });
+
   it("rejects unknown keys", () => {
     expect(
       requestEmailChangeBodySchema.safeParse({
