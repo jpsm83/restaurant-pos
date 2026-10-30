@@ -125,7 +125,9 @@
       "companyTax": "Tax number {{taxNumber}}",
       "retry": "Try again",
       "venueMeta": "{{country}} · {{currency}}",
-      "openBusiness": "Open business"
+      "openBusiness": "Open business",
+      "incompleteWarning": "This venue must be completed before it can go live.",
+      "completeProfile": "Complete venue profile"
     }
   }
 }

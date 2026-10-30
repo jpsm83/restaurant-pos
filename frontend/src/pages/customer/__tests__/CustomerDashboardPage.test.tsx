@@ -65,6 +65,21 @@ const populatedPortfolio = {
   ],
 };
 
+const completePortfolio = {
+  ...populatedPortfolio,
+  companies: [
+    {
+      ...populatedPortfolio.companies[0],
+      businesses: [
+        {
+          ...populatedPortfolio.companies[0].businesses[0],
+          profileComplete: true,
+        },
+      ],
+    },
+  ],
+};
+
 const multiCompanyPortfolio = {
   owner: { _id: "o1", country: "Spain", subscription: "Free" },
   country: "Spain",
@@ -258,6 +273,37 @@ describe("CustomerDashboardPage", () => {
     expect(screen.getByText("Spain · EUR")).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Add your venue" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("warns about an incomplete draft venue and links to its profile", async () => {
+    mockGet.mockResolvedValue({ data: populatedPortfolio });
+
+    await renderPage();
+
+    expect(
+      await screen.findByText(
+        "This venue must be completed before it can go live.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Complete venue profile" }),
+    ).toHaveAttribute("href", "/business/b1/settings/profile");
+  });
+
+  it("shows no warning for a venue with a complete profile", async () => {
+    mockGet.mockResolvedValue({ data: completePortfolio });
+
+    await renderPage();
+
+    expect(await screen.findByText("Demo Bistro")).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "This venue must be completed before it can go live.",
+      ),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Complete venue profile" }),
     ).not.toBeInTheDocument();
   });
 

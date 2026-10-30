@@ -125,7 +125,9 @@
       "companyTax": "NIF {{taxNumber}}",
       "retry": "Intentar de nuevo",
       "venueMeta": "{{country}} · {{currency}}",
-      "openBusiness": "Abrir negocio"
+      "openBusiness": "Abrir negocio",
+      "incompleteWarning": "Este local debe completarse antes de que pueda publicarse.",
+      "completeProfile": "Completar perfil del local"
     }
   }
 }
