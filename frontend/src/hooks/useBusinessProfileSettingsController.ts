@@ -226,7 +226,6 @@ export function useBusinessProfileSettingsController(): BusinessProfileSettingsC
   const profileSchema = useMemo(
     () =>
       buildBusinessProfileSchema({
-        required: t("profileForm.validation.required"),
         invalidSubscription: t("profileForm.validation.invalidSubscription"),
         invalidCurrency: t("profileForm.validation.invalidCurrency"),
         invalidTime: t("profileForm.validation.invalidTime"),

@@ -9,7 +9,6 @@ import {
 const HHMM_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
 type BusinessProfileSchemaMessages = {
-  required: string;
   invalidSubscription: string;
   invalidCurrency: string;
   invalidTime: string;

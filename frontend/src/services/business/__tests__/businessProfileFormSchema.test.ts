@@ -7,7 +7,6 @@ import {
 import { buildBusinessProfileSchema } from "../businessProfileFormSchema";
 
 const schemaMessages = {
-  required: "Required.",
   invalidSubscription: "Invalid subscription.",
   invalidCurrency: "Invalid currency.",
   invalidTime: "Invalid time.",

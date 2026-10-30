@@ -27,7 +27,6 @@
   },
   "profileForm": {
     "validation": {
-      "required": "This field is required.",
       "invalidSubscription": "Invalid subscription.",
       "invalidCurrency": "Invalid currency.",
       "invalidTime": "Time must be in HH:MM format.",

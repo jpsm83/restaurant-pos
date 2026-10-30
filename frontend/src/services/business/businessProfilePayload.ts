@@ -42,25 +42,22 @@ export function formValuesToUpdatePayload(
   appendIfPresent("subscription", values.subscription);
 
   // Address is mergeable: send only the fields the venue has filled so far.
-  const addressEntry = (value: unknown) => asOptionalTrimmedString(value);
-  const addressPayload = Object.fromEntries(
-    (
-      [
-        ["country", values.address.country],
-        ["state", values.address.state],
-        ["city", values.address.city],
-        ["street", values.address.street],
-        ["buildingNumber", values.address.buildingNumber],
-        ["doorNumber", values.address.doorNumber],
-        ["complement", values.address.complement],
-        ["postCode", values.address.postCode],
-        ["region", values.address.region],
-      ] as const
-    ).flatMap(([key, value]) => {
-      const parsed = addressEntry(value);
-      return parsed ? [[key, parsed]] : [];
-    }),
-  );
+  const addressPayload: Record<string, string> = {};
+  const addressValues = {
+    country: values.address.country,
+    state: values.address.state,
+    city: values.address.city,
+    street: values.address.street,
+    buildingNumber: values.address.buildingNumber,
+    doorNumber: values.address.doorNumber,
+    complement: values.address.complement,
+    postCode: values.address.postCode,
+    region: values.address.region,
+  };
+  for (const [key, value] of Object.entries(addressValues)) {
+    const parsed = asOptionalTrimmedString(value);
+    if (parsed) addressPayload[key] = parsed;
+  }
   if (Object.keys(addressPayload).length > 0) {
     formData.append("address", JSON.stringify(addressPayload));
   }
