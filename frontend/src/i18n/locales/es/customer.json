@@ -86,6 +86,7 @@
   },
   "notBuiltYet": "Esta página aún no está disponible.",
   "venues": {
+    "companyFallback": "Empresa {{index}}",
     "empty": {
       "title": "Aún no tienes locales",
       "description": "Añade tu primer local para empezar a gestionar un negocio con Project Imperium.",
@@ -103,10 +104,11 @@
         "taxNumberHint": "Opcional ahora; obligatorio antes de publicar."
       },
       "company": {
+        "placeholder": "Selecciona una empresa",
+        "required": "Elige la empresa a la que pertenece este local.",
         "new": "Nueva empresa",
         "newHint": "Este local crea una nueva empresa con su propia identidad fiscal.",
-        "existingHint": "Este local se une a la empresa seleccionada y comparte su identidad fiscal.",
-        "fallback": "Empresa {{index}}"
+        "existingHint": "Este local se une a la empresa seleccionada y comparte su identidad fiscal."
       },
       "validation": {
         "tradeNameRequired": "Introduce el nombre comercial del local.",
@@ -120,7 +122,6 @@
     "list": {
       "title": "Tus locales",
       "addAction": "Añadir local",
-      "companyFallback": "Empresa {{index}}",
       "companyTax": "NIF {{taxNumber}}",
       "retry": "Intentar de nuevo",
       "venueMeta": "{{country}} · {{currency}}"

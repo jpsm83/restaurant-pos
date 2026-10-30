@@ -102,6 +102,20 @@ const multiCompanyPortfolio = {
         },
       ],
     },
+    {
+      _id: "c3",
+      country: "Spain",
+      businesses: [
+        {
+          _id: "b4",
+          tradeName: "Third Venue",
+          currencyTrade: "EUR",
+          companyId: "c3",
+          profileComplete: false,
+          address: { country: "Spain" },
+        },
+      ],
+    },
   ],
 };
 
@@ -235,6 +249,12 @@ describe("CustomerDashboardPage", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Demo Bistro")).toBeInTheDocument();
     expect(screen.getByText("Corner Cafe")).toBeInTheDocument();
+    expect(screen.getByText("Third Venue")).toBeInTheDocument();
+    expect(screen.getByText("Tax number B12345678")).toBeInTheDocument();
+    expect(screen.getByText("Tax number B87654321")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Company 3" }),
+    ).toBeInTheDocument();
   });
 
   it("joins a later venue to an existing Company from the add-venue form", async () => {
@@ -262,7 +282,7 @@ describe("CustomerDashboardPage", () => {
     await user.click(await screen.findByRole("button", { name: "Add venue" }));
 
     const companySelect = screen.getByRole("combobox", { name: "Company" });
-    expect(companySelect).toHaveTextContent("Demo Bistro SL");
+    expect(companySelect).toHaveTextContent("Select a Company");
     expect(
       screen.queryByLabelText("Company legal name"),
     ).not.toBeInTheDocument();
@@ -293,6 +313,13 @@ describe("CustomerDashboardPage", () => {
     expect(
       screen.queryByRole("button", { name: "Create venue" }),
     ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Dashboard" }),
+    ).toBeInTheDocument();
+    expect(mockPost).not.toHaveBeenCalledWith(
+      "/api/v1/auth/set-mode",
+      expect.anything(),
+    );
   });
 
   it("reveals the optional legal name and tax number only for a New Company", async () => {
@@ -346,5 +373,20 @@ describe("CustomerDashboardPage", () => {
         },
       });
     });
+  });
+
+  it("requires an explicit Company before creating a later venue", async () => {
+    mockGet.mockResolvedValue({ data: populatedPortfolio });
+    const user = userEvent.setup();
+    await renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Add venue" }));
+    await user.type(screen.getByLabelText("Trade name"), "Unassigned Venue");
+    await user.click(screen.getByRole("button", { name: "Create venue" }));
+
+    expect(
+      await screen.findByText("Choose the Company this venue belongs to."),
+    ).toBeInTheDocument();
+    expect(mockPost).not.toHaveBeenCalled();
   });
 });

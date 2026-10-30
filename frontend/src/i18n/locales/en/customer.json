@@ -86,6 +86,7 @@
   },
   "notBuiltYet": "This page is not built yet.",
   "venues": {
+    "companyFallback": "Company {{index}}",
     "empty": {
       "title": "No venues yet",
       "description": "Add your first venue to start managing a business from Project Imperium.",
@@ -103,10 +104,11 @@
         "taxNumberHint": "Optional now; required before go-live."
       },
       "company": {
+        "placeholder": "Select a Company",
+        "required": "Choose the Company this venue belongs to.",
         "new": "New Company",
         "newHint": "This venue forms a new Company with its own tax identity.",
-        "existingHint": "This venue joins the selected Company and shares its tax identity.",
-        "fallback": "Company {{index}}"
+        "existingHint": "This venue joins the selected Company and shares its tax identity."
       },
       "validation": {
         "tradeNameRequired": "Enter the venue trade name.",
@@ -120,7 +122,6 @@
     "list": {
       "title": "Your venues",
       "addAction": "Add venue",
-      "companyFallback": "Company {{index}}",
       "companyTax": "Tax number {{taxNumber}}",
       "retry": "Try again",
       "venueMeta": "{{country}} · {{currency}}"

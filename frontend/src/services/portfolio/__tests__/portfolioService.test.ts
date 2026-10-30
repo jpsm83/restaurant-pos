@@ -95,7 +95,6 @@ describe("portfolioService", () => {
       country: " Spain ",
       currencyTrade: "EUR",
       companyId: " c1 ",
-      company: { legalName: "Ignored", taxNumber: "IGNORED" },
     });
 
     expect(mockPost).toHaveBeenCalledWith("/api/v1/business", {

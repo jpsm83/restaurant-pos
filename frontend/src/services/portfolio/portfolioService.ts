@@ -1,7 +1,7 @@
 /**
- * Owner portfolio service — the customer dashboard's venue read and the first
- * venue registration. Network and React Query live here so pages stay
- * declarative; failures use the shared machine-code contract.
+ * Owner portfolio service — the customer dashboard's venue read and venue
+ * registration. Network and React Query live here so pages stay declarative;
+ * failures use the shared machine-code contract.
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { http } from "../http";
@@ -10,11 +10,19 @@ import { toServiceRequestError } from "../serviceErrors";
 import type { IOwnerPortfolio } from "restaurant-pos-packages/interfaces/IOwner";
 import type { CreateBusinessBody } from "restaurant-pos-packages/schemas/business";
 
+type VenueCompanyChoice =
+  | { companyId: string; company?: never }
+  | {
+      companyId?: never;
+      company?: { legalName?: string; taxNumber?: string };
+    };
+
 /** A venue registration: either joins an existing Company or forms a new one. */
 export type CreateVenueInput = Pick<
   CreateBusinessBody,
-  "tradeName" | "country" | "currencyTrade" | "company" | "companyId"
->;
+  "tradeName" | "country" | "currencyTrade"
+> &
+  VenueCompanyChoice;
 
 export type CreateVenueResult = {
   business: {
@@ -55,9 +63,13 @@ export async function fetchOwnerPortfolio(
 export async function createVenue(
   input: CreateVenueInput,
 ): Promise<CreateVenueResult> {
-  const companyId = input.companyId?.trim();
-  const legalName = input.company?.legalName?.trim();
-  const taxNumber = input.company?.taxNumber?.trim();
+  const companyId =
+    "companyId" in input && typeof input.companyId === "string"
+      ? input.companyId.trim()
+      : undefined;
+  const company = "companyId" in input ? undefined : input.company;
+  const legalName = company?.legalName?.trim();
+  const taxNumber = company?.taxNumber?.trim();
   try {
     const { data } = await http.post<CreateVenueResult>("/api/v1/business", {
       tradeName: input.tradeName.trim(),

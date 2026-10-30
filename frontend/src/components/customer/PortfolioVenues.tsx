@@ -6,6 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { companyDisplayName } from "./companyDisplayName";
 
 export function PortfolioVenues(props: { portfolio: IOwnerPortfolio }) {
   const { t } = useTranslation("customer");
@@ -19,9 +20,10 @@ export function PortfolioVenues(props: { portfolio: IOwnerPortfolio }) {
         <section key={company._id} className="space-y-3">
           <div>
             <h3 className="text-sm font-medium text-muted-foreground">
-              {company.legalName ||
-                company.taxNumber ||
-                t("venues.list.companyFallback", { index: index + 1 })}
+              {companyDisplayName(
+                company,
+                t("venues.companyFallback", { index: index + 1 }),
+              )}
             </h3>
             {company.legalName && company.taxNumber ? (
               <p className="text-xs text-muted-foreground">

@@ -24,7 +24,7 @@ function hasVenues(portfolio: IOwnerPortfolio | undefined): boolean {
   );
 }
 
-/** `/:userId/customer/dashboard` — the Owner's portfolio and first Add your venue. */
+/** `/:userId/customer/dashboard` — the Owner's portfolio and add-venue entry. */
 export default function CustomerDashboardPage() {
   const { t } = useTranslation("customer");
   const { state } = useAuth();
@@ -71,7 +71,7 @@ export default function CustomerDashboardPage() {
           <CardContent>
             {isAdding ? (
               <AddVenueForm
-                defaultCountry={portfolio?.country}
+                defaultCountry={portfolio?.country ?? null}
                 onCancel={() => setIsAdding(false)}
                 onCreated={() => setIsAdding(false)}
               />

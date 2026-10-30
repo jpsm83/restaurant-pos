@@ -26,6 +26,7 @@ import {
   type CreateVenueInput,
 } from "@/services/portfolio/portfolioService";
 import { ServiceRequestError } from "@/services/serviceErrors";
+import { companyDisplayName } from "./companyDisplayName";
 
 const currencyTuple = currenctyEnums as [string, ...string[]];
 const NEW_COMPANY = "__new_company__";
@@ -33,12 +34,12 @@ const NEW_COMPANY = "__new_company__";
 type VenueFormValues = CreateBusinessBody;
 type ExistingCompany = Pick<
   IOwnerPortfolioCompany,
-  "_id" | "country" | "legalName" | "taxNumber"
+  "_id" | "legalName" | "taxNumber"
 >;
 
 export function AddVenueForm(props: {
   companies?: readonly ExistingCompany[];
-  defaultCountry?: string | null;
+  defaultCountry: string | null;
   onCancel: () => void;
   onCreated: () => void;
 }) {
@@ -46,9 +47,10 @@ export function AddVenueForm(props: {
   const createVenueMutation = useCreateVenueMutation();
   const resolveError = useErrorMessage();
   const [failure, setFailure] = useState<ErrorFailure | null>(null);
+  const [companyError, setCompanyError] = useState<string | null>(null);
   const companies = props.companies ?? [];
-  const [companyChoice, setCompanyChoice] = useState<string>(() =>
-    companies.length > 0 ? companies[0]._id : NEW_COMPANY,
+  const [companyChoice, setCompanyChoice] = useState<string | undefined>(() =>
+    companies.length > 0 ? undefined : NEW_COMPANY,
   );
   const isNewCompany = companyChoice === NEW_COMPANY;
 
@@ -79,6 +81,11 @@ export function AddVenueForm(props: {
 
   const onSubmit = async (values: VenueFormValues) => {
     setFailure(null);
+    if (!companyChoice) {
+      setCompanyError(t("venues.form.company.required"));
+      return;
+    }
+    setCompanyError(null);
     const input: CreateVenueInput = {
       tradeName: values.tradeName,
       country: values.country,
@@ -130,6 +137,7 @@ export function AddVenueForm(props: {
           <Input
             id="venue-country"
             aria-invalid={errors.country ? true : undefined}
+            readOnly={props.defaultCountry !== null}
             {...register("country")}
           />
           <FieldError message={errors.country?.message} />
@@ -165,16 +173,23 @@ export function AddVenueForm(props: {
           <Label htmlFor="venue-company">
             {t("venues.form.fields.company")}
           </Label>
-          <Select value={companyChoice} onValueChange={setCompanyChoice}>
+          <Select
+            value={companyChoice}
+            onValueChange={(value) => {
+              setCompanyChoice(value);
+              setCompanyError(null);
+            }}
+          >
             <SelectTrigger id="venue-company" className="w-full">
-              <SelectValue />
+              <SelectValue placeholder={t("venues.form.company.placeholder")} />
             </SelectTrigger>
             <SelectContent>
               {companies.map((company, index) => (
                 <SelectItem key={company._id} value={company._id}>
-                  {company.legalName ||
-                    company.taxNumber ||
-                    t("venues.form.company.fallback", { index: index + 1 })}
+                  {companyDisplayName(
+                    company,
+                    t("venues.companyFallback", { index: index + 1 }),
+                  )}
                 </SelectItem>
               ))}
               <SelectItem value={NEW_COMPANY}>
@@ -187,6 +202,7 @@ export function AddVenueForm(props: {
               ? t("venues.form.company.newHint")
               : t("venues.form.company.existingHint")}
           </p>
+          <FieldError message={companyError ?? undefined} />
         </div>
       ) : null}
 
