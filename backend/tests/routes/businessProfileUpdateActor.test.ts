@@ -138,6 +138,10 @@ describe("PATCH business profile actor classification", () => {
     const response = await patchProfile(auth, businessId, "Owner Updated");
 
     expect(response.statusCode).toBe(200);
+    expect(response.headers["content-type"]).toContain("application/json");
+    expect(response.json()).toEqual({
+      message: "Business updated successfully",
+    });
     expect(dispatchEventMock).toHaveBeenCalledTimes(1);
     expect(dispatchEventMock.mock.calls[0]?.[0]).toBe(
       "BUSINESS_PROFILE_UPDATED",
@@ -145,75 +149,30 @@ describe("PATCH business profile actor classification", () => {
     expect(dispatchedActorSource()).toBe("businessOwner");
   });
 
-  it("classifies a member with effective manager layer as manager", async () => {
+  it.each([
+    ["effective manager layer", "Manager", "manager"],
+    ["effective admin layer", "Admin", "manager"],
+    ["supervisor membership", "Supervisor", "system"],
+    ["employee membership", "Waiter", "system"],
+  ])("classifies a member with %s as %s", async (_label, role, expected) => {
     const business = await createTestBusiness({
-      tradeName: "Manager Layer Venue",
+      tradeName: `${role} Layer Venue`,
       currencyTrade: "USD",
       address: validAddress,
     });
-    const auth = await membershipAuthForBusiness(business._id, ["Manager"]);
+    const auth = await membershipAuthForBusiness(business._id, [role]);
 
     const response = await patchProfile(
       auth,
       business._id.toString(),
-      "Manager Updated",
+      `${role} Updated`,
     );
 
     expect(response.statusCode).toBe(200);
-    expect(dispatchedActorSource()).toBe("manager");
-  });
-
-  it("classifies a member with effective admin layer as manager", async () => {
-    const business = await createTestBusiness({
-      tradeName: "Admin Layer Venue",
-      currencyTrade: "USD",
-      address: validAddress,
+    expect(response.headers["content-type"]).toContain("application/json");
+    expect(response.json()).toEqual({
+      message: "Business updated successfully",
     });
-    const auth = await membershipAuthForBusiness(business._id, ["Admin"]);
-
-    const response = await patchProfile(
-      auth,
-      business._id.toString(),
-      "Admin Updated",
-    );
-
-    expect(response.statusCode).toBe(200);
-    expect(dispatchedActorSource()).toBe("manager");
-  });
-
-  it("classifies a supervisor membership as system", async () => {
-    const business = await createTestBusiness({
-      tradeName: "Supervisor Layer Venue",
-      currencyTrade: "USD",
-      address: validAddress,
-    });
-    const auth = await membershipAuthForBusiness(business._id, ["Supervisor"]);
-
-    const response = await patchProfile(
-      auth,
-      business._id.toString(),
-      "Supervisor Updated",
-    );
-
-    expect(response.statusCode).toBe(200);
-    expect(dispatchedActorSource()).toBe("system");
-  });
-
-  it("classifies an employee membership as system", async () => {
-    const business = await createTestBusiness({
-      tradeName: "Employee Layer Venue",
-      currencyTrade: "USD",
-      address: validAddress,
-    });
-    const auth = await membershipAuthForBusiness(business._id, ["Waiter"]);
-
-    const response = await patchProfile(
-      auth,
-      business._id.toString(),
-      "Employee Updated",
-    );
-
-    expect(response.statusCode).toBe(200);
-    expect(dispatchedActorSource()).toBe("system");
+    expect(dispatchedActorSource()).toBe(expected);
   });
 });

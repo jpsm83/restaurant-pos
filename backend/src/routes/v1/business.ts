@@ -23,7 +23,11 @@ import {
   createOptionalAuthHook,
   requireBusinessAccessHook,
 } from "../../auth/middleware.ts";
-import { resolveEffectiveAccess } from "../../access/resolveEffectiveAccess.ts";
+import {
+  resolveEffectiveAccess,
+  type EffectiveAccess,
+} from "../../access/resolveEffectiveAccess.ts";
+import { compareAccessLayers } from "restaurant-pos-packages/access";
 import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
 import deleteFilesCloudinary from "../../cloudinary/deleteFilesCloudinary.ts";
 import { badRequest, conflict, forbidden, notFound } from "../../errors/appError.ts";
@@ -63,6 +67,17 @@ const BUSINESS_PUBLIC_LEAN_SELECT =
   "-password -verificationToken -verificationTokenExpires -resetPasswordToken -resetPasswordExpires -pendingEmail -pendingEmailToken -pendingEmailExpires -pendingEmailRequestedAt -refreshSessionVersion";
 
 const DEFAULT_DISCOVERY_LIMIT = 50;
+
+function profileUpdateActorSource(access: EffectiveAccess | null) {
+  if (access?.source === "ownership") return "businessOwner" as const;
+  if (
+    access?.source === "membership" &&
+    compareAccessLayers(access.effectiveLayer, "manager") >= 0
+  ) {
+    return "manager" as const;
+  }
+  return "system" as const;
+}
 
 function normalizeCuisineTypeForResponse(value: unknown): string[] {
   if (Array.isArray(value)) {
@@ -636,14 +651,7 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
               businessId,
             })
           : null;
-        const actorSource =
-          access?.source === "ownership"
-            ? "businessOwner"
-            : access?.source === "membership" &&
-                (access.effectiveLayer === "manager" ||
-                  access.effectiveLayer === "admin")
-              ? "manager"
-              : "system";
+        const actorSource = profileUpdateActorSource(access);
         const correlationIdHeader = req.headers["x-correlation-id"];
         const operationIdHeader = req.headers["x-idempotency-key"];
         const correlationId =
