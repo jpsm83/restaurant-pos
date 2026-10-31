@@ -5,10 +5,10 @@ import dotenv from "dotenv";
 import mongoose from "mongoose";
 import { EJSON } from "bson";
 
-import Business from "../src/models/business.ts";
-import Company from "../src/models/company.ts";
-import Owner from "../src/models/owner.ts";
 import User from "../src/models/user.ts";
+import Owner from "../src/models/owner.ts";
+import Company from "../src/models/company.ts";
+import Business from "../src/models/business.ts";
 import Employee from "../src/models/employee.ts";
 import Supplier from "../src/models/supplier.ts";
 import SupplierGood from "../src/models/supplierGood.ts";
