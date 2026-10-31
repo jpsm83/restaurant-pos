@@ -108,7 +108,7 @@ describe("auth api — email / password-reset endpoints", () => {
     });
   });
 
-  it("googleAuth POSTs the Google credential and language", async () => {
+  it("googleAuth POSTs the Google credential, language, and acceptance proof", async () => {
     fetchMock.mockResolvedValueOnce(
       jsonResponse({
         accessToken: "google-access",
@@ -119,6 +119,7 @@ describe("auth api — email / password-reset endpoints", () => {
     const result = await googleAuth({
       credential: "google-id-token",
       languagePreference: "es",
+      privacyAccepted: true,
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -130,6 +131,7 @@ describe("auth api — email / password-reset endpoints", () => {
       JSON.stringify({
         credential: "google-id-token",
         languagePreference: "es",
+        privacyAccepted: true,
       }),
     );
     expect(result).toEqual({
@@ -138,6 +140,23 @@ describe("auth api — email / password-reset endpoints", () => {
         accessToken: "google-access",
         user: { id: "u1", email: "google@example.com", type: "user" },
         reactivationRequired: false,
+        consentRequired: false,
+      },
+    });
+  });
+
+  it("googleAuth exposes the consent-required outcome without a session", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ consentRequired: true }));
+
+    const result = await googleAuth({ credential: "google-id-token" });
+
+    expect(result).toEqual({
+      ok: true,
+      data: {
+        accessToken: undefined,
+        user: null,
+        reactivationRequired: false,
+        consentRequired: true,
       },
     });
   });
@@ -158,6 +177,7 @@ describe("auth api — email / password-reset endpoints", () => {
         accessToken: undefined,
         user: null,
         reactivationRequired: true,
+        consentRequired: false,
       },
     });
   });

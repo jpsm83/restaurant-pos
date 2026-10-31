@@ -1,5 +1,5 @@
 import type { ComponentPropsWithoutRef } from "react";
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import i18next from "i18next";
 import { initReactI18next } from "react-i18next";
 import userEvent from "@testing-library/user-event";
@@ -261,10 +261,257 @@ describe("LoginPage", () => {
     await waitFor(() => {
       expect(screen.getByText("Google favorites")).toBeInTheDocument();
     });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(mockGoogleAuth).toHaveBeenCalledWith({
       credential: "google-id-token",
       languagePreference: "en",
     });
+  });
+
+  it("opens the shared consent dialog for a new Google User without creating anything", async () => {
+    const user = userEvent.setup();
+    mockGoogleAuth.mockResolvedValueOnce({
+      ok: true,
+      data: {
+        user: null,
+        reactivationRequired: false,
+        consentRequired: true,
+      },
+    });
+
+    await renderWithI18n(
+      <MemoryRouter initialEntries={["/login"]}>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/dashboard" element={<div>Customer dashboard</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: /continue with google/i }),
+    );
+
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByRole("heading", { name: "Create your account" }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByLabelText(
+        /accept the privacy notice and account terms/i,
+      ),
+    ).toBeInTheDocument();
+    expect(mockGoogleAuth).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("Customer dashboard")).not.toBeInTheDocument();
+  });
+
+  it("requires acceptance in the dialog before retrying Google", async () => {
+    const user = userEvent.setup();
+    mockGoogleAuth.mockResolvedValueOnce({
+      ok: true,
+      data: { user: null, consentRequired: true },
+    });
+
+    await renderWithI18n(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: /continue with google/i }),
+    );
+
+    const dialog = await screen.findByRole("dialog");
+    await user.click(
+      within(dialog).getByRole("button", { name: /accept and continue/i }),
+    );
+
+    expect(
+      within(dialog).getByText(
+        "Accept the privacy notice and account terms to create an account.",
+      ),
+    ).toBeInTheDocument();
+    expect(mockGoogleAuth).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries with the retained credential after acceptance and navigates", async () => {
+    const user = userEvent.setup();
+    mockGoogleAuth
+      .mockResolvedValueOnce({
+        ok: true,
+        data: { user: null, consentRequired: true },
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        data: {
+          user: {
+            id: "64a1b2c3d4e5f67890123456",
+            email: "google-new@example.com",
+            type: "user",
+            emailVerified: true,
+          },
+        },
+      });
+
+    await renderWithI18n(
+      <MemoryRouter initialEntries={["/login?returnTo=%2Ffavorites"]}>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/favorites" element={<div>Google favorites</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: /continue with google/i }),
+    );
+
+    const dialog = await screen.findByRole("dialog");
+    await user.click(
+      within(dialog).getByLabelText(
+        /accept the privacy notice and account terms/i,
+      ),
+    );
+    await user.click(
+      within(dialog).getByRole("button", { name: /accept and continue/i }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Google favorites")).toBeInTheDocument();
+    });
+    expect(mockGoogleAuth).toHaveBeenNthCalledWith(2, {
+      credential: "google-id-token",
+      privacyAccepted: true,
+      languagePreference: "en",
+    });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("cancelling the consent dialog makes no second Google call", async () => {
+    const user = userEvent.setup();
+    mockGoogleAuth.mockResolvedValueOnce({
+      ok: true,
+      data: { user: null, consentRequired: true },
+    });
+
+    await renderWithI18n(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: /continue with google/i }),
+    );
+
+    const dialog = await screen.findByRole("dialog");
+    await user.click(
+      within(dialog).getByRole("button", { name: /^cancel$/i }),
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+    expect(mockGoogleAuth).toHaveBeenCalledTimes(1);
+  });
+
+  it("surfaces the Google failure path when the retained credential is rejected", async () => {
+    const user = userEvent.setup();
+    mockGoogleAuth
+      .mockResolvedValueOnce({
+        ok: true,
+        data: { user: null, consentRequired: true },
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        error: {
+          code: "googleAuth.unauthorized",
+          status: 401,
+          fieldErrors: [],
+        },
+      });
+
+    await renderWithI18n(
+      <MemoryRouter initialEntries={["/login"]}>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/dashboard" element={<div>Customer dashboard</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: /continue with google/i }),
+    );
+
+    const dialog = await screen.findByRole("dialog");
+    await user.click(
+      within(dialog).getByLabelText(
+        /accept the privacy notice and account terms/i,
+      ),
+    );
+    await user.click(
+      within(dialog).getByRole("button", { name: /accept and continue/i }),
+    );
+
+    expect(
+      await screen.findByText(
+        "We couldn't sign you in with Google. Try again or use email and password.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Customer dashboard")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /sign in/i })).toBeInTheDocument();
+  });
+
+  it("translates the consent dialog copy into Spanish", async () => {
+    const user = userEvent.setup();
+    mockGoogleAuth.mockResolvedValueOnce({
+      ok: true,
+      data: { user: null, consentRequired: true },
+    });
+
+    await renderWithI18n(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+      { language: "es" },
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: /continue with google/i }),
+    );
+
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByRole("heading", { name: "Crea tu cuenta" }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(
+        "Antes de crear tu cuenta con Google, acepta el aviso de privacidad y los términos de la cuenta.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByLabelText(
+        /acepto el aviso de privacidad y los términos de la cuenta/i,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole("button", { name: /aceptar y continuar/i }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole("button", { name: /^cancelar$/i }),
+    ).toBeInTheDocument();
+
+    await user.click(
+      within(dialog).getByRole("button", { name: /aceptar y continuar/i }),
+    );
+
+    expect(
+      within(dialog).getByText(
+        "Debes aceptar el aviso de privacidad y los términos de la cuenta para crear una cuenta.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("maps a Google failure to localized auth copy", async () => {

@@ -52,6 +52,8 @@ export interface AuthLoginSnapshot {
   user: AuthSession | null;
   /** A soft-deleted account must confirm the email reactivation link first. */
   reactivationRequired?: boolean;
+  /** Google would create a User, so the client must collect acceptance first. */
+  consentRequired?: boolean;
 }
 
 export interface LoginCredentials {
@@ -64,6 +66,8 @@ export interface GoogleAuthCredentials {
   credential: string;
   /** Supplied/browser language for a new Google User. */
   languagePreference?: "en" | "es";
+  /** Composite privacy-notice and account-terms acceptance proof. */
+  privacyAccepted?: boolean;
 }
 
 export interface SignupCredentials {

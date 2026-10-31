@@ -5,6 +5,7 @@ import type {
   AuthState,
   AuthStatus,
   AuthUser,
+  GoogleAuthCredentials,
   LoginCredentials,
   SignupCredentials,
 } from "../types";
@@ -83,5 +84,13 @@ describe("auth types", () => {
       privacyAccepted: true,
     };
     expect(signup.firstName).toBe("A");
+  });
+
+  it("GoogleAuthCredentials carries the optional acceptance proof", () => {
+    const google: GoogleAuthCredentials = {
+      credential: "google-id-token",
+      privacyAccepted: true,
+    };
+    expect(google.privacyAccepted).toBe(true);
   });
 });
