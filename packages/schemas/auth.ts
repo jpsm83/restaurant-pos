@@ -69,6 +69,11 @@ export const googleAuthBodySchema = z.strictObject({
     .trim()
     .min(1, "Google credential is required."),
   languagePreference: optionalLanguagePreferenceSchema,
+  /**
+   * The same account-creation acceptance proof as sign-up. Optional because
+   * Google is also a sign-in path; only the would-create branch reads it.
+   */
+  privacyAccepted: z.boolean().optional(),
 });
 
 export const requestEmailConfirmationBodySchema = z.strictObject({

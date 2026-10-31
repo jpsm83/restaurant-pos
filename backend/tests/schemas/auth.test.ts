@@ -171,6 +171,30 @@ describe("googleAuthBodySchema", () => {
     ).toBe(false);
   });
 
+  it("accepts the shared acceptance proof as an optional boolean", () => {
+    expect(
+      googleAuthBodySchema.safeParse({ credential: "id-token" }).success,
+    ).toBe(true);
+    expect(
+      googleAuthBodySchema.safeParse({
+        credential: "id-token",
+        privacyAccepted: true,
+      }).success,
+    ).toBe(true);
+    expect(
+      googleAuthBodySchema.safeParse({
+        credential: "id-token",
+        privacyAccepted: false,
+      }).success,
+    ).toBe(true);
+    expect(
+      googleAuthBodySchema.safeParse({
+        credential: "id-token",
+        privacyAccepted: "true",
+      }).success,
+    ).toBe(false);
+  });
+
   it("rejects marketing-consent and consent-timestamp fields", () => {
     for (const field of [
       "privacyAcceptedAt",

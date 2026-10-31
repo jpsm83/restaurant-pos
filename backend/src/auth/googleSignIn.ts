@@ -21,6 +21,7 @@ import {
 export type GoogleAuthInput = {
   credential: string;
   languagePreference?: "en" | "es";
+  privacyAccepted?: boolean;
 };
 
 export type GoogleAuthResult =
@@ -31,6 +32,7 @@ export type GoogleAuthResult =
       created: boolean;
     }
   | { kind: "reactivation"; message: string }
+  | { kind: "consent_required" }
   | { kind: "google_email_conflict" }
   | { kind: "invalid_credential" }
   | { kind: "server_error_500"; message: string };
@@ -120,10 +122,17 @@ export async function handleGoogleAuth(
     return { kind: "reactivation", message: REACTIVATION_REQUIRED_MESSAGE };
   }
 
+  if (input.privacyAccepted !== true) {
+    return { kind: "consent_required" };
+  }
+
   const createdUser = await User.create({
     ...(input.languagePreference
       ? { languagePreference: input.languagePreference }
       : {}),
+    privacyAccepted: true,
+    privacyAcceptedAt: new Date(),
+    marketingConsent: false,
     googleId: identity.subject,
     personalDetails: {
       email,

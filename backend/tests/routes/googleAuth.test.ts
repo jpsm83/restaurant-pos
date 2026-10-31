@@ -85,7 +85,10 @@ beforeEach(() => {
 
 async function postGoogle(
   target: Awaited<ReturnType<typeof buildApp>>,
-  payload: Record<string, unknown> = { credential: "google-id-token" },
+  payload: Record<string, unknown> = {
+    credential: "google-id-token",
+    privacyAccepted: true,
+  },
 ) {
   return target.inject({
     method: "POST",
@@ -145,9 +148,11 @@ function tokenFromLastEmail(path: string): string {
 
 describe("POST /api/v1/auth/google", () => {
   it("creates a verified Google User with no password, names, and language", async () => {
+    const before = Date.now();
     const response = await postGoogle(app, {
       credential: "google-id-token",
       languagePreference: "es",
+      privacyAccepted: true,
     });
 
     expect(response.statusCode).toBe(201);
@@ -179,6 +184,14 @@ describe("POST /api/v1/auth/google", () => {
     expect(stored?.personalDetails?.emailVerified).toBe(true);
     expect(stored?.personalDetails?.password).toBeUndefined();
     expect(stored?.languagePreference).toBe("es");
+    expect(stored?.privacyAccepted).toBe(true);
+    expect(stored?.privacyAcceptedAt).toBeInstanceOf(Date);
+    expect(stored?.privacyAcceptedAt?.getTime()).toBeGreaterThanOrEqual(before);
+    expect(stored?.privacyAcceptedAt?.getTime()).toBeLessThanOrEqual(
+      Date.now(),
+    );
+    expect(stored?.marketingConsent).toBe(false);
+    expect(stored?.marketingConsentUpdatedAt).toBeUndefined();
     expect(stored?.verificationToken).toBeUndefined();
     expect(sendEmailMock).not.toHaveBeenCalled();
 
@@ -194,6 +207,24 @@ describe("POST /api/v1/auth/google", () => {
     expect(refreshed.json().user.email).toBe(defaultIdentity.email);
   });
 
+  it("returns a consent-required outcome without a session when a new User has not accepted", async () => {
+    for (const payload of [
+      { credential: "google-id-token" },
+      { credential: "google-id-token", privacyAccepted: false },
+    ]) {
+      const response = await postGoogle(app, payload);
+
+      expect(response.statusCode, response.body).toBe(200);
+      expect(response.headers["content-type"]).toContain("application/json");
+      expect(response.json()).toEqual({ consentRequired: true });
+      expect(response.json().accessToken).toBeUndefined();
+      expect(
+        response.cookies.find((cookie) => cookie.name === "refresh_token"),
+      ).toBeUndefined();
+      expect(await User.countDocuments()).toBe(0);
+    }
+  });
+
   it("signs in the existing active User by Google subject", async () => {
     const existing = await User.create({
       googleId: defaultIdentity.subject,
@@ -204,9 +235,12 @@ describe("POST /api/v1/auth/google", () => {
       },
     });
 
-    const response = await postGoogle(app);
+    const response = await postGoogle(app, {
+      credential: "google-id-token",
+    });
 
     expect(response.statusCode).toBe(200);
+    expect(response.json().consentRequired).toBeUndefined();
     expect(response.json().user.id).toBe(String(existing._id));
     expect(await User.countDocuments()).toBe(1);
     expect(
@@ -252,9 +286,12 @@ describe("POST /api/v1/auth/google", () => {
       },
     });
 
-    const response = await postGoogle(app);
+    const response = await postGoogle(app, {
+      credential: "google-id-token",
+    });
 
     expect(response.statusCode).toBe(200);
+    expect(response.json().consentRequired).toBeUndefined();
     expect(response.json().user.id).toBe(String(existing._id));
     expect(await User.countDocuments()).toBe(1);
 
@@ -262,6 +299,8 @@ describe("POST /api/v1/auth/google", () => {
     expect(stored?.googleId).toBe(defaultIdentity.subject);
     expect(stored?.personalDetails?.emailVerified).toBe(true);
     expect(stored?.personalDetails?.firstName).toBe("Existing");
+    expect(stored?.privacyAccepted).toBe(false);
+    expect(stored?.privacyAcceptedAt).toBeUndefined();
   });
 
   it("refuses a different Google subject already linked to the email", async () => {
@@ -274,7 +313,9 @@ describe("POST /api/v1/auth/google", () => {
       },
     });
 
-    const response = await postGoogle(app);
+    const response = await postGoogle(app, {
+      credential: "google-id-token",
+    });
 
     expect(response.statusCode).toBe(409);
     expect(response.headers["content-type"]).toContain(
@@ -303,7 +344,9 @@ describe("POST /api/v1/auth/google", () => {
       deletedAt: new Date(),
     });
 
-    const response = await postGoogle(app);
+    const response = await postGoogle(app, {
+      credential: "google-id-token",
+    });
 
     expect(response.statusCode).toBe(202);
     expect(response.json()).toEqual({
@@ -504,6 +547,7 @@ describe("POST /api/v1/auth/google", () => {
       const created = await postGoogle(app, {
         credential: "google-id-token",
         languagePreference: "en",
+        privacyAccepted: true,
       });
       expect(created.statusCode).toBe(201);
       expect(created.json().user.languagePreference).toBe("en");
