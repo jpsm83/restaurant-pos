@@ -5,6 +5,7 @@
   "version": "1.0.0",
   "exports": {
     "./package.json": "./package.json",
+    "./access": "./access.ts",
     "./enums": "./enums.ts",
     "./featureFlags": "./featureFlags.ts",
     "./operationalReasons": "./operationalReasons.ts",

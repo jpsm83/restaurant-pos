@@ -33,6 +33,7 @@ frontend (:5173) --/api proxy--> backend (:4000) --> MongoDB Atlas
 
 | Path | Exports | Purpose |
 |------|---------|---------|
+| `access.ts` | `ACCESS_LAYERS`, `BUSINESS_ACCESS_LAYERS`, `JOB_ROLE_DEFAULT_LAYERS`, `ACCESS_CAPABILITY_CATALOGUE`, `ACCESS_LAYER_DEFAULT_CAPABILITIES`, selectors | Closed access vocabulary: five base layers and ordering, canonical job-role defaults, thin capability catalogue, and layer-default capability sets |
 | `enums.ts` | `mainCategoriesEnums`, `paymentMethodsEnums`, `userRolesEnums`, `orderStatusEnums`, ... | Domain value lists (as `string[]`) |
 | `featureFlags.ts` | `FEATURE_FLAG_CATALOGUE`, `FEATURE_FLAG_STATES`, `resolveFeatureFlag`, `isFeatureFlagOn`, types | Closed stage-1 flag catalogue and pure effective-flag resolver |
 | `operationalReasons.ts` | `OPERATIONAL_REASON_ACTS`, `OPERATIONAL_REASON_CATALOGUES`, `resolveOperationalReason`, types | Closed platform-defined reason catalogues and their selection resolver |
@@ -49,6 +50,7 @@ frontend (:5173) --/api proxy--> backend (:4000) --> MongoDB Atlas
 
   | Import specifier | Resolves to |
   |------------------|-------------|
+  | `restaurant-pos-packages/access` | `access.ts` |
   | `restaurant-pos-packages/enums` | `enums.ts` |
   | `restaurant-pos-packages/featureFlags` | `featureFlags.ts` |
   | `restaurant-pos-packages/operationalReasons` | `operationalReasons.ts` |
@@ -89,6 +91,14 @@ frontend (:5173) --/api proxy--> backend (:4000) --> MongoDB Atlas
   database collection, seed, migration, HTTP route, client DTO, console, audit
   entry, notification, plan/layer composition, or per-venue/per-user scope; a
   product amendment changes the module.
+- **Access is one closed shared vocabulary.** `access.ts` owns the five base
+  layers and their ordering, the canonical job-role-to-default-layer map, the
+  thin platform capability catalogue, and each layer's default capability set,
+  all as pure selectors. Customer sits outside the business-membership ordering
+  employee < supervisor < manager < admin. Unknown or empty legacy role sets
+  resolve defensively to employee. There is no persistence, HTTP route, UI,
+  layer override, or per-user grant here; a product amendment changes the
+  module.
 - **Operational reasons are closed product data.** `operationalReasons.ts` owns
   the seven catalogues and the one selection resolver. There is no database
   collection, seed, migration, editor, or HTTP CRUD route; a product amendment
@@ -116,7 +126,7 @@ the backend workspace:
   Mongoose model (client-settable fields exist on the model; server-owned fields
   stay out of DTOs).
 - `backend/tests/utils/*.test.ts` — pure shared utils, including telemetry
-  scrubbing.
+  scrubbing and the access vocabulary.
 
 Run them with `npm test --workspace backend` or root `npm test` (all
 workspaces).
