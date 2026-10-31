@@ -23,7 +23,6 @@ import {
   createOptionalAuthHook,
   requireBusinessAccessHook,
 } from "../../auth/middleware.ts";
-import { resolveBusinessAccess } from "../../auth/businessAccess.ts";
 import { resolveEffectiveAccess } from "../../access/resolveEffectiveAccess.ts";
 import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
 import deleteFilesCloudinary from "../../cloudinary/deleteFilesCloudinary.ts";
@@ -49,10 +48,7 @@ import type {
   IReportingConfig,
 } from "restaurant-pos-packages/interfaces/IBusiness";
 import type { ICompany } from "restaurant-pos-packages/interfaces/ICompany";
-import {
-  foodSubCategoryEnums,
-  managementRolesEnums,
-} from "restaurant-pos-packages/enums";
+import { foodSubCategoryEnums } from "restaurant-pos-packages/enums";
 import {
   resolveTimezoneFromAddress,
   type AddressLike,
@@ -635,11 +631,19 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
       if (changedFields.length > 0) {
         const authSession = req.authSession;
         const access = authSession
-          ? await resolveBusinessAccess(authSession.id, businessId)
+          ? await resolveEffectiveAccess({
+              userId: authSession.id,
+              businessId,
+            })
           : null;
-        const isManager =
-          access === "employee" &&
-          managementRolesEnums.some((role) => role === authSession?.role);
+        const actorSource =
+          access?.source === "ownership"
+            ? "businessOwner"
+            : access?.source === "membership" &&
+                (access.effectiveLayer === "manager" ||
+                  access.effectiveLayer === "admin")
+              ? "manager"
+              : "system";
         const correlationIdHeader = req.headers["x-correlation-id"];
         const operationIdHeader = req.headers["x-idempotency-key"];
         const correlationId =
@@ -656,12 +660,7 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
           {
             businessId: new Types.ObjectId(businessId),
             actor: {
-              source:
-                access === "owner"
-                  ? "businessOwner"
-                  : isManager
-                    ? "manager"
-                    : "system",
+              source: actorSource,
               email: authSession?.email,
             },
             changedFields,
