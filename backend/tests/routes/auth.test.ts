@@ -2421,7 +2421,7 @@ describe("Auth Routes", () => {
             supervisor.employee._id,
             new Date(now.getTime() - 5 * 60 * 1000),
           ),
-          shift(early.employee._id, new Date(now.getTime() + 11 * 60 * 1000)),
+          shift(early.employee._id, new Date(now.getTime() + 30 * 60 * 1000)),
           shift(inside.employee._id, new Date(now.getTime() - 5 * 60 * 1000)),
           shift(late.employee._id, new Date(now.getTime() - 3 * 60 * 60 * 1000)),
         ],

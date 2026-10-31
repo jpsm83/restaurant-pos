@@ -29,10 +29,13 @@ describe("Auth Helpers", () => {
   });
 
   describe("canLogAsEmployee", () => {
-    const createEmployee = (roles: string[]) =>
+    const createEmployee = (
+      roles: string[],
+      membershipUserId: Types.ObjectId = userId,
+    ) =>
       Employee.create({
         businessId,
-        userId,
+        userId: membershipUserId,
         allEmployeeRoles: roles,
         taxNumber: `TAX-${new Types.ObjectId()}`,
         joinDate: new Date(),
@@ -68,13 +71,35 @@ describe("Auth Helpers", () => {
     };
 
     it("returns true for manager and admin layers without a schedule", async () => {
-      const manager = await createEmployee(["Manager"]);
-      const admin = await createEmployee(["Admin"]);
+      const manager = await createEmployee(["Manager"], new Types.ObjectId());
+      const admin = await createEmployee(["Admin"], new Types.ObjectId());
 
       await expect(canLogAsEmployee(manager._id)).resolves.toEqual({
         canLogAsEmployee: true,
       });
       await expect(canLogAsEmployee(admin._id)).resolves.toEqual({
+        canLogAsEmployee: true,
+      });
+    });
+
+    it("keeps an owning User eligible through an inactive membership", async () => {
+      const { user, company } = await createTestOwnerCompany();
+      const ownedBusiness = await createTestBusiness({
+        companyId: company._id,
+        tradeName: `Owned Inactive ${new Types.ObjectId()}`,
+        currencyTrade: "EUR",
+      });
+      const employee = await Employee.create({
+        businessId: ownedBusiness._id,
+        userId: user._id,
+        allEmployeeRoles: ["Waiter"],
+        taxNumber: `TAX-${new Types.ObjectId()}`,
+        joinDate: new Date(),
+        active: false,
+        vacationDaysPerYear: 20,
+      });
+
+      await expect(canLogAsEmployee(employee._id)).resolves.toEqual({
         canLogAsEmployee: true,
       });
     });
@@ -255,7 +280,7 @@ describe("Auth Helpers", () => {
     });
 
     it("allows a manager member with no schedule", async () => {
-      const employee = await Employee.create({
+      await Employee.create({
         businessId,
         userId,
         allEmployeeRoles: ["Manager"],
@@ -264,9 +289,76 @@ describe("Auth Helpers", () => {
         active: true,
         vacationDaysPerYear: 20,
       });
-      expect(employee.active).toBe(true);
 
       await expect(canUseBusinessMode(userId)).resolves.toBe(true);
+    });
+
+    it("gates supervisor and employee through the shared entry window", async () => {
+      const supervisorUserId = new Types.ObjectId();
+      const employeeUserId = new Types.ObjectId();
+      const supervisor = await Employee.create({
+        businessId,
+        userId: supervisorUserId,
+        allEmployeeRoles: ["Supervisor"],
+        taxNumber: `TAX-${new Types.ObjectId()}`,
+        joinDate: new Date(),
+        active: true,
+        vacationDaysPerYear: 20,
+      });
+      const employee = await Employee.create({
+        businessId,
+        userId: employeeUserId,
+        allEmployeeRoles: ["Waiter"],
+        taxNumber: `TAX-${new Types.ObjectId()}`,
+        joinDate: new Date(),
+        active: true,
+        vacationDaysPerYear: 20,
+      });
+
+      const now = new Date();
+      await expect(
+        canUseBusinessMode(supervisorUserId, now),
+      ).resolves.toBe(false);
+      await expect(canUseBusinessMode(employeeUserId, now)).resolves.toBe(
+        false,
+      );
+
+      await Schedule.create({
+        businessId,
+        date: now,
+        weekNumber: 1,
+        employeesSchedules: [
+          {
+            employeeId: supervisor._id,
+            role: "Supervisor",
+            timeRange: {
+              startTime: new Date(now.getTime() - 5 * 60 * 1000),
+              endTime: new Date(now.getTime() + 60 * 60 * 1000),
+            },
+            vacation: false,
+            shiftHours: 1,
+            employeeCost: 20,
+          },
+          {
+            employeeId: employee._id,
+            role: "Waiter",
+            timeRange: {
+              startTime: new Date(now.getTime() - 3 * 60 * 60 * 1000),
+              endTime: new Date(now.getTime() - 2 * 60 * 60 * 1000),
+            },
+            vacation: false,
+            shiftHours: 1,
+            employeeCost: 20,
+          },
+        ],
+      });
+
+      await expect(
+        canUseBusinessMode(supervisorUserId, now),
+      ).resolves.toBe(true);
+      await expect(canUseBusinessMode(employeeUserId, now)).resolves.toBe(
+        false,
+      );
     });
 
     it("refuses a User with no ownership and no active membership", async () => {

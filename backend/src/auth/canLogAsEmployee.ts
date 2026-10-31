@@ -26,9 +26,11 @@ export interface CanLogAsEmployeeResult {
 }
 
 /**
- * Returns { canLogAsEmployee: true } when the employee's active, non-terminated
- * membership resolves to a layer that may enter Business mode now. Caller must
- * ensure DB is connected before invoking.
+ * Returns { canLogAsEmployee: true } when the employee's User has an enterable
+ * effective layer at the membership's Business. An owning User stays eligible
+ * even when the linked membership is inactive; a non-owner's inactive or
+ * terminated membership resolves as customer-only. Caller must ensure DB is
+ * connected before invoking.
  */
 export default async function canLogAsEmployee(
   employeeId: Types.ObjectId | string,
@@ -36,19 +38,15 @@ export default async function canLogAsEmployee(
   session?: ClientSession,
 ): Promise<CanLogAsEmployeeResult> {
   let employeeQuery = Employee.findById(employeeId)
-    .select("businessId userId active terminatedDate")
+    .select("businessId userId")
     .lean();
   if (session) employeeQuery = employeeQuery.session(session);
   const employee = (await employeeQuery) as {
     businessId: unknown;
     userId: unknown;
-    active?: boolean;
-    terminatedDate?: unknown;
   } | null;
 
-  if (!employee || !employee.active || employee.terminatedDate) {
-    return { canLogAsEmployee: false };
-  }
+  if (!employee) return { canLogAsEmployee: false };
 
   const access = await resolveEffectiveAccess({
     userId: String(employee.userId),
