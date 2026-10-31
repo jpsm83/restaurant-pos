@@ -5,18 +5,29 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   confirmEmail,
   confirmEmailChange,
+  getAccessToken,
   getAuthConfig,
   getCurrentUser,
   googleAuth,
   login,
+  logout,
   requestEmailChange,
   requestEmailConfirmation,
   requestPasswordReset,
   resetPassword,
   resendEmailConfirmation,
   setAccessToken,
+  signup,
 } from "../api";
 import { resetLiveConnectionForTests } from "@/live/connection";
+
+const publishAuthSignIn = vi.fn();
+const publishAuthSignOut = vi.fn();
+
+vi.mock("../sessionSync", () => ({
+  publishAuthSignIn: () => publishAuthSignIn(),
+  publishAuthSignOut: () => publishAuthSignOut(),
+}));
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -46,6 +57,8 @@ describe("auth api — email / password-reset endpoints", () => {
   beforeEach(() => {
     localStorage.clear();
     setAccessToken(null);
+    publishAuthSignIn.mockReset();
+    publishAuthSignOut.mockReset();
     fetchMock.mockReset();
     vi.stubGlobal("fetch", fetchMock);
     // Keep the live-ticket exchange out of these HTTP-contract assertions.
@@ -75,6 +88,77 @@ describe("auth api — email / password-reset endpoints", () => {
       status: 401,
       serverMessage: "Invalid email or password",
     });
+    expect(publishAuthSignIn).not.toHaveBeenCalled();
+  });
+
+  it("login publishes a sign-in signal only when a session is issued", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        jsonResponse({
+          accessToken: "login-access",
+          user: { id: "u1", email: "user@example.com", type: "user" },
+        }),
+      )
+      .mockResolvedValueOnce(jsonResponse({ message: "Accepted" }));
+
+    await login({ email: "user@example.com", password: "secret" });
+    expect(publishAuthSignIn).toHaveBeenCalledTimes(1);
+
+    await login({ email: "user@example.com", password: "secret" });
+    expect(publishAuthSignIn).toHaveBeenCalledTimes(1);
+  });
+
+  it("signup publishes a sign-in signal only when a session is issued", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        jsonResponse({
+          accessToken: "signup-access",
+          user: { id: "u2", email: "new@example.com", type: "user" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({ message: "Confirm your email", reactivationRequired: true }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({ message: "Check your email to continue" }),
+      );
+
+    await signup({
+      email: "new@example.com",
+      password: "secret",
+      privacyAccepted: true,
+    });
+    expect(publishAuthSignIn).toHaveBeenCalledTimes(1);
+
+    await signup({
+      email: "new@example.com",
+      password: "secret",
+      privacyAccepted: true,
+    });
+    expect(publishAuthSignIn).toHaveBeenCalledTimes(1);
+
+    await signup({
+      email: "new@example.com",
+      password: "secret",
+      privacyAccepted: true,
+    });
+    expect(publishAuthSignIn).toHaveBeenCalledTimes(1);
+  });
+
+  it("logout publishes sign-out after clearing local access", async () => {
+    setAccessToken("old-access");
+    let tokenAtPublish: string | null | undefined;
+    publishAuthSignOut.mockImplementationOnce(() => {
+      tokenAtPublish = getAccessToken();
+    });
+    fetchMock.mockResolvedValueOnce(jsonResponse({ message: "Logged out" }));
+
+    await logout();
+
+    expect(publishAuthSignOut).toHaveBeenCalledTimes(1);
+    expect(tokenAtPublish).toBeNull();
+    expect(getAccessToken()).toBeNull();
+    expect(sessionStorage.getItem("restaurant_pos_auth_access")).toBeNull();
   });
 
   it("does not try to refresh an anonymous 401", async () => {
@@ -143,6 +227,7 @@ describe("auth api — email / password-reset endpoints", () => {
         consentRequired: false,
       },
     });
+    expect(publishAuthSignIn).toHaveBeenCalledTimes(1);
   });
 
   it("googleAuth exposes the consent-required outcome without a session", async () => {
@@ -159,6 +244,7 @@ describe("auth api — email / password-reset endpoints", () => {
         consentRequired: true,
       },
     });
+    expect(publishAuthSignIn).not.toHaveBeenCalled();
   });
 
   it("googleAuth marks a reactivation message as a machine outcome", async () => {
@@ -180,9 +266,10 @@ describe("auth api — email / password-reset endpoints", () => {
         consentRequired: false,
       },
     });
+    expect(publishAuthSignIn).not.toHaveBeenCalled();
   });
 
-  it("googleAuth maps an invalid credential to the Google failure code", async () => {
+  it("googleAuth publishes nothing when the credential is rejected", async () => {
     fetchMock.mockResolvedValueOnce(
       jsonResponse(
         {
@@ -203,6 +290,7 @@ describe("auth api — email / password-reset endpoints", () => {
       status: 401,
       serverMessage: "Invalid Google credential",
     });
+    expect(publishAuthSignIn).not.toHaveBeenCalled();
   });
 
   it("getAuthConfig GETs the unauthenticated config endpoint", async () => {

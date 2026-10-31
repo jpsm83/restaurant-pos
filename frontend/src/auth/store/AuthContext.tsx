@@ -4,6 +4,7 @@
  * ## Wiring
  * - Mounted in **`main.tsx`** inside **`QueryClientProvider`** and **`ErrorBoundary`** (order documented there).
  * - **Bootstrap (once on mount):** load persisted access token → `GET /me`; otherwise `POST /refresh` only when a prior session exists, then `GET /me`; set `auth_had_session` / expired notice flags as in code.
+ * - **Cross-tab session signals (once on mount):** sign-out clears the token, hint, auth state, and cached queries; sign-in discards the stale token, refreshes, re-reads the User, and adopts the browser's current identity.
  * - **Live connection:** follows the access session via `setAccessToken` in `api.ts` (open on sign-in, close on sign-out).
  * - **Consumers:** route guards, `Navbar`, login/signup pages, `AccountMenuPopover`, `SelectUserModePage`, `AuthModeContext` (reads session to enable mode query), etc.
  *
@@ -22,6 +23,7 @@ import {
   type Dispatch,
   type ReactNode,
 } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   getCurrentUser,
   loadPersistedAccessToken,
@@ -34,6 +36,7 @@ import {
   hasPriorSession,
   markPriorSession,
 } from "../sessionHint";
+import { subscribeToAuthSessionChanges } from "../sessionSync";
 import type { ServiceErrorCode } from "@/services/serviceErrors";
 import { isSupportedLanguage } from "@/i18n/config";
 import { changeAppLanguage } from "@/i18n/i18n";
@@ -89,6 +92,7 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(authReducer, initialState);
+  const queryClient = useQueryClient();
 
   const hydratedLanguage =
     state.status === "authenticated"
@@ -165,6 +169,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     void bootstrapAuth();
   }, []);
+
+  useEffect(() => {
+    const clearLocalSession = () => {
+      setAccessToken(null);
+      clearPriorSession();
+      queryClient.clear();
+      dispatch({ type: "AUTH_CLEAR" });
+    };
+
+    const restoreSignedInUser = async () => {
+      clearLocalSession();
+
+      const refreshResult = await refreshSession();
+      if (!refreshResult.ok || !refreshResult.data?.accessToken) {
+        clearLocalSession();
+        return;
+      }
+
+      setAccessToken(refreshResult.data.accessToken);
+
+      const meResult = await getCurrentUser();
+      if (!meResult.ok || !meResult.data) {
+        clearLocalSession();
+        return;
+      }
+
+      markPriorSession();
+      dispatch({ type: "AUTH_SUCCESS", payload: meResult.data });
+    };
+
+    return subscribeToAuthSessionChanges((signal) => {
+      if (signal === "sign-out") {
+        clearLocalSession();
+        return;
+      }
+
+      void restoreSignedInUser();
+    });
+  }, [queryClient]);
 
   const value = useMemo(() => ({ state, dispatch }), [state]);
 

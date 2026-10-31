@@ -9,7 +9,8 @@
  * ## Wiring
  * - **`AuthProvider`** (`store/AuthContext.tsx`) calls `loadPersistedAccessToken`, `getCurrentUser`, `refreshSession`, `setAccessToken` on bootstrap.
  * - **Pages** use `login`, `signup`, `logout`, `getCurrentUser`, and public email/password flows from **`@/auth/api`**.
- * - **`logout`** clears token and **`queryClient.removeQueries`** for `auth.mode` (TanStack cache); broader invalidation can be added here if needed.
+ * - **`login` / `signup` / `googleAuth`** publish a cross-tab sign-in signal only when the response issued a session.
+ * - **`logout`** clears the token, clears the TanStack query cache, then publishes a cross-tab sign-out signal.
  * - **`setAccessToken`** opens the live connection with the access session just received, and closes it when the token is cleared.
  *
  * **401 handling:** `authRequest` retries once after **`refreshSession`** when the client still holds a token or a prior-session hint (except when `retryOnUnauthorized` is false for login/signup/refresh/logout).
@@ -35,6 +36,7 @@ import {
 import { syncLiveConnection } from "@/live/connection";
 import { resolveApiBaseUrl } from "@/services/apiBaseUrl";
 import { hasPriorSession } from "./sessionHint";
+import { publishAuthSignIn, publishAuthSignOut } from "./sessionSync";
 
 const ACCESS_TOKEN_STORAGE_KEY = "restaurant_pos_auth_access";
 
@@ -77,6 +79,13 @@ interface AuthTokenResponseBody {
 
 /** Many unauthenticated auth routes return `{ message }` (success, generic, or error copy). */
 type AuthMessageResponseBody = { message?: string };
+
+/** Apply a sign-in response and tell other tabs only when it issued a session. */
+function applyIssuedSession(data: AuthTokenResponseBody | null): void {
+  const token = data?.accessToken ?? null;
+  setAccessToken(token);
+  if (token) publishAuthSignIn();
+}
 
 async function parseJson<T>(response: Response): Promise<T | null> {
   try {
@@ -166,7 +175,7 @@ export async function login(credentials: LoginCredentials) {
   );
 
   if (result.ok) {
-    setAccessToken(result.data?.accessToken ?? null);
+    applyIssuedSession(result.data ?? null);
     return {
       ok: true as const,
       data: {
@@ -229,7 +238,7 @@ export async function googleAuth(credentials: GoogleAuthCredentials) {
   );
 
   if (result.ok) {
-    setAccessToken(result.data?.accessToken ?? null);
+    applyIssuedSession(result.data ?? null);
     return {
       ok: true as const,
       data: {
@@ -258,7 +267,7 @@ export async function signup(credentials: SignupCredentials) {
   );
 
   if (result.ok) {
-    setAccessToken(result.data?.accessToken ?? null);
+    applyIssuedSession(result.data ?? null);
     return {
       ok: true as const,
       data: {
@@ -428,7 +437,8 @@ export async function logout() {
   );
 
   setAccessToken(null);
-  queryClient.removeQueries({ queryKey: queryKeys.auth.mode() });
+  queryClient.clear();
+  publishAuthSignOut();
   return result;
 }
 
