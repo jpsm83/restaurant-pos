@@ -1,33 +1,34 @@
 /**
- * canLogAsEmployee — schedule check for employee login
+ * canLogAsEmployee — effective-layer eligibility for employee login
  *
- * Given an employeeId, returns whether that employee is allowed to log in as
- * employee right now: they must be scheduled for today with a shift that
- * covers the current time, allowing login from 5 minutes before shift start.
- * Management roles bypass schedule check entirely.
+ * Given an employeeId, returns whether that membership may enter Business mode
+ * right now. Eligibility is resolved by `resolveEffectiveAccess`, the same seam
+ * behind the per-venue access read: an owning User, manager, or admin is always
+ * eligible; supervisor and employee layers are eligible only inside a planned
+ * shift's entry window (ten minutes before planned start through two hours
+ * after planned start, ignoring shift end and vacation rows).
+ *
+ * `canUseBusinessMode` applies the same rules to a User without a linked
+ * membership, or whose linked membership belongs to an owned venue.
  */
+
+import { Types, type ClientSession } from "mongoose";
 
 import Employee from "../models/employee.ts";
 import Business from "../models/business.ts";
 import Company from "../models/company.ts";
 import Owner from "../models/owner.ts";
-import Schedule from "../models/schedule.ts";
-import type { ClientSession, Types } from "mongoose";
-import * as enums from "restaurant-pos-packages/enums";
+import { resolveEffectiveAccess } from "../access/resolveEffectiveAccess.ts";
 import findActiveEmployeeMembership from "./employeeMembership.ts";
-
-const { managementRolesEnums } = enums;
-
-const FIVE_MINUTES_MS = 5 * 60 * 1000;
 
 export interface CanLogAsEmployeeResult {
   canLogAsEmployee: boolean;
 }
 
 /**
- * Returns { canLogAsEmployee: true } if the employee is scheduled for today
- * and current time is within [shiftStart - 5 min, shiftEnd]. Management roles
- * always return true. Caller must ensure DB is connected before invoking.
+ * Returns { canLogAsEmployee: true } when the employee's active, non-terminated
+ * membership resolves to a layer that may enter Business mode now. Caller must
+ * ensure DB is connected before invoking.
  */
 export default async function canLogAsEmployee(
   employeeId: Types.ObjectId | string,
@@ -35,106 +36,44 @@ export default async function canLogAsEmployee(
   session?: ClientSession,
 ): Promise<CanLogAsEmployeeResult> {
   let employeeQuery = Employee.findById(employeeId)
-    .select("businessId active terminatedDate allEmployeeRoles")
+    .select("businessId userId active terminatedDate")
     .lean();
   if (session) employeeQuery = employeeQuery.session(session);
   const employee = (await employeeQuery) as {
     businessId: unknown;
+    userId: unknown;
     active?: boolean;
     terminatedDate?: unknown;
-    allEmployeeRoles?: unknown;
   } | null;
 
   if (!employee || !employee.active || employee.terminatedDate) {
     return { canLogAsEmployee: false };
   }
 
-  const roles =
-    Array.isArray(employee.allEmployeeRoles) && employee.allEmployeeRoles.length
-      ? (employee.allEmployeeRoles as unknown[]).map((role) => String(role))
-      : [];
-  if (managementRolesEnums.some((role) => roles.includes(role))) {
-    return { canLogAsEmployee: true };
-  }
+  const access = await resolveEffectiveAccess({
+    userId: String(employee.userId),
+    businessId: String(employee.businessId),
+    now,
+    session,
+  });
 
-  const effectiveNow = now ?? new Date();
-  const startOfDay = new Date(effectiveNow);
-  startOfDay.setHours(0, 0, 0, 0);
-  const endOfDay = new Date(startOfDay);
-  endOfDay.setDate(endOfDay.getDate() + 1);
-
-  let scheduleQuery = Schedule.findOne({
-    businessId: employee.businessId,
-    date: { $gte: startOfDay, $lt: endOfDay },
-  })
-    .select("employeesSchedules")
-    .lean();
-  if (session) scheduleQuery = scheduleQuery.session(session);
-  const schedule = (await scheduleQuery) as {
-    employeesSchedules?: Array<{
-      employeeId: unknown;
-      vacation?: boolean;
-      timeRange: { startTime: Date; endTime: Date };
-    }>;
-  } | null;
-
-  if (!schedule?.employeesSchedules?.length) {
-    return { canLogAsEmployee: false };
-  }
-
-  const employeeIdStr =
-    typeof employeeId === "string" ? employeeId : employeeId.toString();
-  for (const entry of schedule.employeesSchedules) {
-    if (entry.vacation) continue;
-    const entryEmployeeId =
-      typeof entry.employeeId === "object" && entry.employeeId !== null
-        ? ((entry.employeeId as { toString?: () => string }).toString?.() ??
-          String(entry.employeeId))
-        : String(entry.employeeId);
-    if (entryEmployeeId !== employeeIdStr) continue;
-
-    const start = new Date(entry.timeRange.startTime).getTime();
-    const end = new Date(entry.timeRange.endTime).getTime();
-    const windowStart = start - FIVE_MINUTES_MS;
-    if (
-      effectiveNow.getTime() >= windowStart &&
-      effectiveNow.getTime() <= end
-    ) {
-      return { canLogAsEmployee: true };
-    }
-  }
-
-  return { canLogAsEmployee: false };
+  return { canLogAsEmployee: access?.canEnterBusiness === true };
 }
 
 /**
  * The single eligibility seam behind the Customer | Business mode switch.
  *
  * A User may enter Business mode when they own a venue through
- * User → Owner → Company → Business, or when they hold an active Employee
- * membership whose existing schedule/role gate allows entry. Later access work
- * refines this seam; callers do not add their own role rules.
+ * User → Owner → Company → Business, or when their active Employee membership
+ * resolves to an enterable effective layer. Ownership and manager/admin layers
+ * are always enterable; supervisor and employee layers follow the shared
+ * planned-shift entry window.
  */
 export async function canUseBusinessMode(
   userId: Types.ObjectId | string,
   now?: Date,
 ): Promise<boolean> {
-  const owner = (await Owner.findOne({ userId })
-    .select("_id")
-    .lean()) as { _id: unknown } | null;
-  if (owner) {
-    const companies = (await Company.find({ ownerId: owner._id })
-      .select("_id")
-      .lean()) as Array<{ _id: unknown }>;
-    if (companies.length) {
-      const business = (await Business.findOne({
-        companyId: { $in: companies.map((company) => company._id) },
-      })
-        .select("_id")
-        .lean()) as { _id: unknown } | null;
-      if (business) return true;
-    }
-  }
+  if (await ownsAnyBusiness(userId, now)) return true;
 
   const employee = await findActiveEmployeeMembership({ userId });
   if (!employee) return false;
@@ -144,4 +83,33 @@ export async function canUseBusinessMode(
     now,
   );
   return canLog;
+}
+
+async function ownsAnyBusiness(
+  userId: Types.ObjectId | string,
+  now?: Date,
+): Promise<boolean> {
+  const owner = (await Owner.findOne({ userId })
+    .select("_id")
+    .lean()) as { _id: unknown } | null;
+  if (!owner) return false;
+
+  const companies = (await Company.find({ ownerId: owner._id })
+    .select("_id")
+    .lean()) as Array<{ _id: unknown }>;
+  if (!companies.length) return false;
+
+  const business = (await Business.findOne({
+    companyId: { $in: companies.map((company) => company._id) },
+  })
+    .select("_id")
+    .lean()) as { _id: unknown } | null;
+  if (!business) return false;
+
+  const access = await resolveEffectiveAccess({
+    userId: String(userId),
+    businessId: String(business._id),
+    now,
+  });
+  return access?.canEnterBusiness === true;
 }

@@ -10,6 +10,7 @@ import { getTestApp } from "../setup.ts";
 import User from "../../src/models/user.ts";
 import Employee from "../../src/models/employee.ts";
 import RefreshSession from "../../src/models/refreshSession.ts";
+import Schedule from "../../src/models/schedule.ts";
 import { AUTH_CONFIG } from "../../src/auth/config.ts";
 import ownerCompanyCreation from "../../src/owners/ownerCompanyCreation.ts";
 import {
@@ -2244,64 +2245,49 @@ describe("Auth Routes", () => {
       );
     });
 
-    it("uses the employee schedule gate for business mode eligibility", async () => {
+    it("allows manager and admin members to enter business mode without a schedule", async () => {
       const app = await getTestApp();
       const business = await createTestBusiness({
-        tradeName: "Mode Eligibility Venue",
-        legalName: "Mode Eligibility Venue Legal",
-        email: "mode-eligibility-venue@test.com",
-        taxNumber: "TAX-MODE-ELIGIBILITY",
-        phoneNumber: "1234567890",
-        currencyTrade: "USD",
-        address: {
-          country: "USA",
-          state: "CA",
-          city: "LA",
-          street: "Main St",
-          buildingNumber: "123",
-          postCode: "90001",
-        },
+        tradeName: "Management Mode Venue",
+        currencyTrade: "EUR",
       });
 
-      const ineligible = await User.create({
-        personalDetails: {
-          email: "employee-outside-shift-mode@test.com",
-          password: hashedPassword,
-          firstName: "Outside",
-          lastName: "Shift",
-          username: "employeeoutsideshiftmode",
-        },
-      });
-      await Employee.create({
-        businessId: business._id,
-        userId: ineligible._id,
-        taxNumber: "EMP-OUTSIDE-SHIFT-MODE",
-        joinDate: new Date(),
-        vacationDaysPerYear: 20,
-        allEmployeeRoles: ["Waiter"],
-        currentShiftRole: "Waiter",
-        active: true,
-      });
+      async function createMember(
+        email: string,
+        username: string,
+        roles: string[],
+      ) {
+        const user = await User.create({
+          personalDetails: {
+            email,
+            password: hashedPassword,
+            firstName: "Mode",
+            lastName: "Member",
+            username,
+          },
+        });
+        await Employee.create({
+          businessId: business._id,
+          userId: user._id,
+          taxNumber: `EMP-${new Types.ObjectId()}`,
+          joinDate: new Date(),
+          vacationDaysPerYear: 20,
+          allEmployeeRoles: roles,
+          active: true,
+        });
+        return user;
+      }
 
-      const manager = await User.create({
-        personalDetails: {
-          email: "manager-business-mode@test.com",
-          password: hashedPassword,
-          firstName: "Manager",
-          lastName: "Mode",
-          username: "managerbusinessmode",
-        },
-      });
-      await Employee.create({
-        businessId: business._id,
-        userId: manager._id,
-        taxNumber: "EMP-MANAGER-BUSINESS-MODE",
-        joinDate: new Date(),
-        vacationDaysPerYear: 20,
-        allEmployeeRoles: ["Manager"],
-        currentShiftRole: "Manager",
-        active: true,
-      });
+      await createMember(
+        "manager-no-schedule-mode@test.com",
+        "managernoschedulemode",
+        ["Manager"],
+      );
+      await createMember(
+        "admin-no-schedule-mode@test.com",
+        "adminnoschedulemode",
+        ["Admin"],
+      );
 
       async function loginToken(email: string) {
         const login = await app.inject({
@@ -2313,30 +2299,149 @@ describe("Auth Routes", () => {
         return login.json().accessToken as string;
       }
 
-      const blocked = await app.inject({
-        method: "POST",
-        url: "/api/v1/auth/set-mode",
-        headers: {
-          authorization: `Bearer ${await loginToken(
-            "employee-outside-shift-mode@test.com",
-          )}`,
-        },
-        payload: { mode: "business" },
-      });
-      expect(blocked.statusCode).toBe(403);
+      for (const email of [
+        "manager-no-schedule-mode@test.com",
+        "admin-no-schedule-mode@test.com",
+      ]) {
+        const response = await app.inject({
+          method: "POST",
+          url: "/api/v1/auth/set-mode",
+          headers: {
+            authorization: `Bearer ${await loginToken(email)}`,
+          },
+          payload: { mode: "business" },
+        });
+        expect(response.statusCode).toBe(200);
+        expect(response.json().mode).toBe("business");
+      }
+    });
 
-      const allowed = await app.inject({
-        method: "POST",
-        url: "/api/v1/auth/set-mode",
-        headers: {
-          authorization: `Bearer ${await loginToken(
-            "manager-business-mode@test.com",
-          )}`,
-        },
-        payload: { mode: "business" },
+    it("gates supervisor and employee on the planned-shift entry window", async () => {
+      const app = await getTestApp();
+      const business = await createTestBusiness({
+        tradeName: "Mode Eligibility Venue",
+        currencyTrade: "USD",
       });
-      expect(allowed.statusCode).toBe(200);
-      expect(allowed.json().mode).toBe("business");
+
+      async function createMember(
+        email: string,
+        username: string,
+        roles: string[],
+      ) {
+        const user = await User.create({
+          personalDetails: {
+            email,
+            password: hashedPassword,
+            firstName: "Mode",
+            lastName: "Eligibility",
+            username,
+          },
+        });
+        const employee = await Employee.create({
+          businessId: business._id,
+          userId: user._id,
+          taxNumber: `EMP-${new Types.ObjectId()}`,
+          joinDate: new Date(),
+          vacationDaysPerYear: 20,
+          allEmployeeRoles: roles,
+          active: true,
+        });
+        return { user, employee };
+      }
+
+      const supervisor = await createMember(
+        "supervisor-window-mode@test.com",
+        "supervisorwindowmode",
+        ["Supervisor"],
+      );
+      const early = await createMember(
+        "employee-before-window-mode@test.com",
+        "employeebeforewindowmode",
+        ["Waiter"],
+      );
+      const inside = await createMember(
+        "employee-inside-window-mode@test.com",
+        "employeeinsidewindowmode",
+        ["Waiter"],
+      );
+      const late = await createMember(
+        "employee-after-window-mode@test.com",
+        "employeeafterwindowmode",
+        ["Waiter"],
+      );
+
+      async function loginToken(email: string) {
+        const login = await app.inject({
+          method: "POST",
+          url: "/api/v1/auth/login",
+          payload: { email, password: testPassword },
+        });
+        expect(login.statusCode).toBe(200);
+        return login.json().accessToken as string;
+      }
+
+      async function setBusinessMode(email: string) {
+        return app.inject({
+          method: "POST",
+          url: "/api/v1/auth/set-mode",
+          headers: {
+            authorization: `Bearer ${await loginToken(email)}`,
+          },
+          payload: { mode: "business" },
+        });
+      }
+
+      for (const email of [
+        "supervisor-window-mode@test.com",
+        "employee-before-window-mode@test.com",
+        "employee-inside-window-mode@test.com",
+        "employee-after-window-mode@test.com",
+      ]) {
+        expect((await setBusinessMode(email)).statusCode).toBe(403);
+      }
+
+      const now = new Date();
+      const shift = (employeeId: Types.ObjectId, start: Date) => ({
+        employeeId,
+        role: "Waiter",
+        timeRange: {
+          startTime: start,
+          endTime: new Date(start.getTime() + 60 * 60 * 1000),
+        },
+        vacation: false,
+        shiftHours: 1,
+        employeeCost: 20,
+      });
+      await Schedule.create({
+        businessId: business._id,
+        date: now,
+        weekNumber: 1,
+        employeesSchedules: [
+          shift(
+            supervisor.employee._id,
+            new Date(now.getTime() - 5 * 60 * 1000),
+          ),
+          shift(early.employee._id, new Date(now.getTime() + 11 * 60 * 1000)),
+          shift(inside.employee._id, new Date(now.getTime() - 5 * 60 * 1000)),
+          shift(late.employee._id, new Date(now.getTime() - 3 * 60 * 60 * 1000)),
+        ],
+      });
+
+      expect(
+        (await setBusinessMode("supervisor-window-mode@test.com")).statusCode,
+      ).toBe(200);
+      expect(
+        (await setBusinessMode("employee-before-window-mode@test.com"))
+          .statusCode,
+      ).toBe(403);
+      expect(
+        (await setBusinessMode("employee-inside-window-mode@test.com"))
+          .statusCode,
+      ).toBe(200);
+      expect(
+        (await setBusinessMode("employee-after-window-mode@test.com"))
+          .statusCode,
+      ).toBe(403);
     });
   });
 

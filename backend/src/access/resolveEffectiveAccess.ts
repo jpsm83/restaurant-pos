@@ -14,7 +14,7 @@
  * ten-minutes-before to two-hours-after planned-start window.
  */
 
-import { Types } from "mongoose";
+import { Types, type ClientSession } from "mongoose";
 
 import {
   getDefaultCapabilities,
@@ -57,8 +57,10 @@ export async function resolveEffectiveAccess(params: {
   userId: string;
   businessId: string;
   now?: Date;
+  /** When set, all reads participate in this MongoDB transaction session. */
+  session?: ClientSession;
 }): Promise<EffectiveAccess | null> {
-  const { userId, businessId, now } = params;
+  const { userId, businessId, now, session } = params;
   if (
     !Types.ObjectId.isValid(userId) ||
     !Types.ObjectId.isValid(businessId)
@@ -66,17 +68,25 @@ export async function resolveEffectiveAccess(params: {
     return null;
   }
 
-  const business = (await Business.findById(businessId)
+  let businessQuery = Business.findById(businessId)
     .select("companyId")
-    .lean()) as { companyId?: Types.ObjectId } | null;
+    .lean();
+  if (session) businessQuery = businessQuery.session(session);
+  const business = (await businessQuery) as {
+    companyId?: Types.ObjectId;
+  } | null;
   if (!business) return null;
 
   const membership = await findActiveEmployeeMembership({
     userId,
     businessId,
+    session,
   });
 
-  if (business.companyId && (await ownsBusiness(userId, business.companyId))) {
+  if (
+    business.companyId &&
+    (await ownsBusiness(userId, business.companyId, session))
+  ) {
     return {
       businessId,
       effectiveLayer: "admin",
@@ -107,6 +117,7 @@ export async function resolveEffectiveAccess(params: {
           employeeId: membership._id,
           businessId,
           now: now ?? new Date(),
+          session,
         });
 
   return {
@@ -122,17 +133,20 @@ export async function resolveEffectiveAccess(params: {
 async function ownsBusiness(
   userId: string,
   companyId: Types.ObjectId,
+  session?: ClientSession,
 ): Promise<boolean> {
-  const owner = (await Owner.findOne({ userId })
-    .select("_id")
-    .lean()) as { _id: Types.ObjectId } | null;
+  let ownerQuery = Owner.findOne({ userId }).select("_id").lean();
+  if (session) ownerQuery = ownerQuery.session(session);
+  const owner = (await ownerQuery) as { _id: Types.ObjectId } | null;
   if (!owner) return false;
 
-  const company = await Company.findOne(
+  let companyQuery = Company.findOne(
     withSoftDeleteFilter({ _id: companyId, ownerId: owner._id }),
   )
     .select("_id")
     .lean();
+  if (session) companyQuery = companyQuery.session(session);
+  const company = await companyQuery;
   return company !== null;
 }
 
@@ -154,19 +168,22 @@ async function isInsideEntryWindow(params: {
   employeeId: Types.ObjectId;
   businessId: string;
   now: Date;
+  session?: ClientSession;
 }): Promise<boolean> {
-  const { employeeId, businessId, now } = params;
+  const { employeeId, businessId, now, session } = params;
   const startOfDay = new Date(now);
   startOfDay.setHours(0, 0, 0, 0);
   const endOfDay = new Date(startOfDay);
   endOfDay.setDate(endOfDay.getDate() + 1);
 
-  const schedule = (await Schedule.findOne({
+  let scheduleQuery = Schedule.findOne({
     businessId,
     date: { $gte: startOfDay, $lt: endOfDay },
   })
     .select("employeesSchedules")
-    .lean()) as {
+    .lean();
+  if (session) scheduleQuery = scheduleQuery.session(session);
+  const schedule = (await scheduleQuery) as {
     employeesSchedules?: Array<{
       employeeId: unknown;
       vacation?: boolean;
