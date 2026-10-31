@@ -34,6 +34,7 @@ import Business from "../../src/models/business.ts";
 import { createTestBusiness } from "../helpers/fixtures.ts";
 import RefreshSession from "../../src/models/refreshSession.ts";
 import User from "../../src/models/user.ts";
+import { createTestUser } from "../helpers/auth.ts";
 
 async function waitForUserVerificationToken(
   email: string,
@@ -467,5 +468,166 @@ describe("POST /api/v1/auth/signup (confirmation email)", () => {
     expect(user?.verificationToken).toBeTruthy();
     const venue = await Business.findById(business._id).lean();
     expect(venue?.email).toBe(email);
+  });
+
+  describe("refresh session replacement", () => {
+    function refreshCookieFrom(response: {
+      cookies: Array<{ name: string; value: string }>;
+    }): string {
+      const cookie = response.cookies.find(
+        (candidate) => candidate.name === "refresh_token",
+      );
+      if (!cookie?.value) throw new Error("no refresh cookie on response");
+      return cookie.value;
+    }
+
+    async function signInPresenter(label: string) {
+      const app = await getTestApp();
+      const presenter = await createTestUser({
+        email: `${label}-presenter-${Date.now()}@test.com`,
+      });
+      const login = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: { email: presenter.email, password: presenter.password },
+      });
+      expect(login.statusCode).toBe(200);
+      return {
+        app,
+        presenter,
+        cookie: refreshCookieFrom(login),
+        accessToken: login.json().accessToken as string,
+      };
+    }
+
+    async function expectPresenterSessionAlive(
+      app: Awaited<ReturnType<typeof getTestApp>>,
+      cookie: string,
+    ) {
+      const refreshed = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/refresh",
+        headers: { cookie: `refresh_token=${cookie}` },
+      });
+      expect(refreshed.statusCode).toBe(200);
+    }
+
+    it("replaces the presented session when sign-up issues a session", async () => {
+      const { app, cookie, accessToken } = await signInPresenter(
+        "signup-replace",
+      );
+      const email = `signup-replacement-${Date.now()}@example.com`;
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/signup",
+        payload: {
+          email,
+          password: "TestPassword123!",
+          privacyAccepted: true,
+        },
+        headers: { cookie: `refresh_token=${cookie}` },
+      });
+
+      expect(res.statusCode, res.body).toBe(201);
+      const replacementCookie = refreshCookieFrom(res);
+      expect(replacementCookie).not.toBe(cookie);
+
+      const oldRefresh = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/refresh",
+        headers: { cookie: `refresh_token=${cookie}` },
+      });
+      expect(oldRefresh.statusCode).toBe(401);
+
+      const oldAccess = await app.inject({
+        method: "GET",
+        url: "/api/v1/auth/me",
+        headers: { authorization: `Bearer ${accessToken}` },
+      });
+      expect(oldAccess.statusCode).toBe(401);
+
+      const newRefresh = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/refresh",
+        headers: { cookie: `refresh_token=${replacementCookie}` },
+      });
+      expect(newRefresh.statusCode).toBe(200);
+      expect(newRefresh.json().user.email).toBe(email);
+
+      const newAccess = await app.inject({
+        method: "GET",
+        url: "/api/v1/auth/me",
+        headers: {
+          authorization: `Bearer ${newRefresh.json().accessToken as string}`,
+        },
+      });
+      expect(newAccess.statusCode).toBe(200);
+      expect(newAccess.json().user.email).toBe(email);
+      await waitForSendMockCalls(1);
+    });
+
+    it("leaves the presented session untouched for a duplicate-account sign-up", async () => {
+      const { app, cookie } = await signInPresenter("signup-duplicate");
+      const email = `signup-duplicate-${Date.now()}@example.com`;
+      await User.create({
+        personalDetails: { email, password: "hashedpassword" },
+      });
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/signup",
+        payload: {
+          email,
+          password: "TestPassword123!",
+          privacyAccepted: true,
+        },
+        headers: { cookie: `refresh_token=${cookie}` },
+      });
+
+      expect(res.statusCode).toBe(202);
+      expect(res.json().accessToken).toBeUndefined();
+      expect(
+        res.cookies.find((candidate) => candidate.name === "refresh_token"),
+      ).toBeUndefined();
+
+      await expectPresenterSessionAlive(app, cookie);
+      await waitForSendMockCalls(1);
+    });
+
+    it("leaves the presented session untouched for a reactivation-required sign-up", async () => {
+      const { app, cookie } = await signInPresenter("signup-reactivation");
+      const email = `signup-reactivation-${Date.now()}@example.com`;
+      await User.create({
+        deleted: true,
+        deletedAt: new Date(),
+        personalDetails: {
+          email,
+          password: "hashedpassword",
+          firstName: "Re",
+          lastName: "Activate",
+        },
+      });
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/signup",
+        payload: {
+          email,
+          password: "TestPassword123!",
+          privacyAccepted: true,
+        },
+        headers: { cookie: `refresh_token=${cookie}` },
+      });
+
+      expect(res.statusCode).toBe(202);
+      expect(res.json().reactivationRequired).toBe(true);
+      expect(
+        res.cookies.find((candidate) => candidate.name === "refresh_token"),
+      ).toBeUndefined();
+
+      await expectPresenterSessionAlive(app, cookie);
+      await waitForSendMockCalls(1);
+    });
   });
 });

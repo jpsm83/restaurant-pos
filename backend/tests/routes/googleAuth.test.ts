@@ -445,6 +445,176 @@ describe("POST /api/v1/auth/google", () => {
     }
   });
 
+  describe("refresh session replacement", () => {
+    async function signInPresenter(label: string) {
+      const presenter = await User.create({
+        personalDetails: {
+          email: `${label}-presenter@test.com`,
+          password: await bcrypt.hash(password, 10),
+          emailVerified: true,
+        },
+      });
+      const login = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: { email: presenter.personalDetails.email, password },
+      });
+      expect(login.statusCode).toBe(200);
+      return {
+        presenter,
+        cookie: refreshCookieFrom(login),
+        accessToken: login.json().accessToken as string,
+      };
+    }
+
+    async function postGooglePresenting(
+      cookie: string,
+      payload: Record<string, unknown> = {
+        credential: "google-id-token",
+        privacyAccepted: true,
+      },
+    ) {
+      return app.inject({
+        method: "POST",
+        url: "/api/v1/auth/google",
+        payload,
+        headers: { cookie: `refresh_token=${cookie}` },
+      });
+    }
+
+    async function expectPresenterSessionAlive(cookie: string) {
+      const refreshed = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/refresh",
+        headers: { cookie: `refresh_token=${cookie}` },
+      });
+      expect(refreshed.statusCode).toBe(200);
+    }
+
+    it("replaces the presented session when Google sign-in issues a session", async () => {
+      const { cookie, accessToken } = await signInPresenter(
+        "google-replace",
+      );
+
+      const response = await postGooglePresenting(cookie);
+
+      expect(response.statusCode, response.body).toBe(201);
+      const replacementCookie = refreshCookieFrom(response);
+      expect(replacementCookie).not.toBe(cookie);
+
+      const oldRefresh = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/refresh",
+        headers: { cookie: `refresh_token=${cookie}` },
+      });
+      expect(oldRefresh.statusCode).toBe(401);
+      expect(oldRefresh.json().detail).toBe(
+        "Invalid or expired refresh token",
+      );
+
+      const oldAccess = await app.inject({
+        method: "GET",
+        url: "/api/v1/auth/me",
+        headers: { authorization: `Bearer ${accessToken}` },
+      });
+      expect(oldAccess.statusCode).toBe(401);
+      expect(oldAccess.json().detail).toBe("Invalid or expired access token");
+
+      const newRefresh = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/refresh",
+        headers: { cookie: `refresh_token=${replacementCookie}` },
+      });
+      expect(newRefresh.statusCode).toBe(200);
+      expect(newRefresh.json().user.email).toBe(defaultIdentity.email);
+    });
+
+    it("leaves the presented session untouched when consent is required", async () => {
+      const { cookie } = await signInPresenter("google-consent");
+
+      const response = await postGooglePresenting(cookie, {
+        credential: "google-id-token",
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({ consentRequired: true });
+      expect(
+        response.cookies.find((candidate) => candidate.name === "refresh_token"),
+      ).toBeUndefined();
+
+      await expectPresenterSessionAlive(cookie);
+    });
+
+    it("re-signing in with Google revokes only the presented row and keeps a peer session alive", async () => {
+      const peer = await postGoogle(app);
+      expect(peer.statusCode, peer.body).toBe(201);
+      const presented = await postGoogle(app);
+      expect(presented.statusCode, presented.body).toBe(200);
+      const peerCookie = refreshCookieFrom(peer);
+      const presentedCookie = refreshCookieFrom(presented);
+      const peerAccessToken = peer.json().accessToken as string;
+      const presentedAccessToken = presented.json().accessToken as string;
+
+      const reSignIn = await postGooglePresenting(presentedCookie);
+      expect(reSignIn.statusCode, reSignIn.body).toBe(200);
+      const reSignInCookie = refreshCookieFrom(reSignIn);
+
+      const replacedRefresh = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/refresh",
+        headers: { cookie: `refresh_token=${presentedCookie}` },
+      });
+      expect(replacedRefresh.statusCode).toBe(401);
+
+      const replacedAccess = await app.inject({
+        method: "GET",
+        url: "/api/v1/auth/me",
+        headers: { authorization: `Bearer ${presentedAccessToken}` },
+      });
+      expect(replacedAccess.statusCode).toBe(401);
+
+      for (const cookie of [peerCookie, reSignInCookie]) {
+        const refreshed = await app.inject({
+          method: "POST",
+          url: "/api/v1/auth/refresh",
+          headers: { cookie: `refresh_token=${cookie}` },
+        });
+        expect(refreshed.statusCode).toBe(200);
+      }
+
+      const peerReads = await app.inject({
+        method: "GET",
+        url: "/api/v1/auth/me",
+        headers: { authorization: `Bearer ${peerAccessToken}` },
+      });
+      expect(peerReads.statusCode).toBe(200);
+    });
+
+    it("leaves the presented session untouched when reactivation is required", async () => {
+      const { cookie } = await signInPresenter("google-reactivation");
+      await User.create({
+        personalDetails: {
+          email: defaultIdentity.email,
+          password: await bcrypt.hash(password, 10),
+        },
+        deleted: true,
+        deletedAt: new Date(),
+      });
+
+      const response = await postGooglePresenting(cookie);
+
+      expect(response.statusCode).toBe(202);
+      expect(response.json()).toEqual({
+        message: REACTIVATION_REQUIRED_MESSAGE,
+      });
+      expect(
+        response.cookies.find((candidate) => candidate.name === "refresh_token"),
+      ).toBeUndefined();
+
+      await expectPresenterSessionAlive(cookie);
+    });
+  });
+
   describe("cross-slice identity regression", () => {
     it("refuses a Google-only User's earlier refresh session after a password reset", async () => {
       const created = await postGoogle(app);

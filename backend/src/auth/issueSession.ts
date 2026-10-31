@@ -1,7 +1,8 @@
 /**
  * Issue, exchange, and revoke one stored refresh session.
  * Issuance mints the access token and sets the refresh cookie — shared by
- * login, signup, and user self PATCH.
+ * password login, signup, and Google sign-in. A session replaced in the same
+ * browser is retired once the new one exists.
  */
 
 import type { FastifyInstance, FastifyReply } from "fastify";
@@ -25,6 +26,12 @@ export type IssueSessionOptions = {
   refreshSessionVersion?: number;
   /** Active Customer | Business mode to store on this refresh session. */
   mode?: AuthMode;
+  /**
+   * The refresh cookie the browser presented on the same request. It is
+   * retired only after the new session row exists, so a failed sign-in leaves
+   * the person with whatever session they already had.
+   */
+  presentedRefreshToken?: string;
 };
 
 export type RefreshExchange =
@@ -90,6 +97,7 @@ export async function issueSessionWithRefreshCookie(
     path: "/",
     maxAge: AUTH_CONFIG.COOKIE_MAX_AGE_SECONDS,
   });
+  await revokePresentedRefreshSession(app, options?.presentedRefreshToken);
   return { accessToken, user: issuedSession };
 }
 

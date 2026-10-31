@@ -10,7 +10,7 @@
  * emits RFC 9457 `application/problem+json`.
  */
 
-import type { FastifyPluginAsync } from "fastify";
+import type { FastifyPluginAsync, FastifyRequest } from "fastify";
 import bcrypt from "bcrypt";
 import User from "../../models/user.ts";
 import { withSoftDeleteFilter } from "../../models/softDelete.ts";
@@ -84,6 +84,11 @@ import {
 
 export interface AuthRoutesOptions {
   googleVerifier?: GoogleVerifier | null;
+}
+
+/** Refresh cookie the browser presented, if any; a sign-in retires it. */
+function presentedRefreshToken(req: FastifyRequest): string | undefined {
+  return req.cookies[AUTH_CONFIG.REFRESH_COOKIE_NAME];
 }
 
 export const authRoutes: FastifyPluginAsync<AuthRoutesOptions> = async (
@@ -199,7 +204,10 @@ export const authRoutes: FastifyPluginAsync<AuthRoutesOptions> = async (
         app,
         reply,
         session,
-        { refreshSessionVersion: createdUser.refreshSessionVersion ?? 0 },
+        {
+          refreshSessionVersion: createdUser.refreshSessionVersion ?? 0,
+          presentedRefreshToken: presentedRefreshToken(req),
+        },
       );
 
       // Phase 4.1: issue confirmation email without blocking signup (session unchanged).
@@ -470,7 +478,10 @@ export const authRoutes: FastifyPluginAsync<AuthRoutesOptions> = async (
         app,
         reply,
         session,
-        { refreshSessionVersion: user.refreshSessionVersion ?? 0 },
+        {
+          refreshSessionVersion: user.refreshSessionVersion ?? 0,
+          presentedRefreshToken: presentedRefreshToken(req),
+        },
       );
 
       return reply.code(200).send({
@@ -526,7 +537,10 @@ export const authRoutes: FastifyPluginAsync<AuthRoutesOptions> = async (
         app,
         reply,
         session,
-        { refreshSessionVersion: result.refreshSessionVersion },
+        {
+          refreshSessionVersion: result.refreshSessionVersion,
+          presentedRefreshToken: presentedRefreshToken(req),
+        },
       );
 
       return reply.code(result.created ? 201 : 200).send({

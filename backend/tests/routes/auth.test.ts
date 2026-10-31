@@ -10,6 +10,7 @@ import { getTestApp } from "../setup.ts";
 import User from "../../src/models/user.ts";
 import Employee from "../../src/models/employee.ts";
 import RefreshSession from "../../src/models/refreshSession.ts";
+import { AUTH_CONFIG } from "../../src/auth/config.ts";
 import ownerCompanyCreation from "../../src/owners/ownerCompanyCreation.ts";
 import {
   createTestBusiness,
@@ -1322,6 +1323,217 @@ describe("Auth Routes", () => {
         refreshRes.cookies.find((cookie) => cookie.name === "refresh_token")
           ?.value,
       ).toBe("");
+    });
+  });
+
+  describe("sign-in refresh session replacement", () => {
+    function refreshCookieFrom(response: {
+      cookies: Array<{ name: string; value: string }>;
+    }): string {
+      const cookie = response.cookies.find(
+        (candidate) => candidate.name === "refresh_token",
+      );
+      if (!cookie?.value) throw new Error("no refresh cookie on response");
+      return cookie.value;
+    }
+
+    async function createCustomer(email: string) {
+      return User.create({
+        personalDetails: {
+          email,
+          password: hashedPassword,
+          firstName: "Session",
+          lastName: "Person",
+        },
+      });
+    }
+
+    async function login(email: string, presentedCookie?: string) {
+      return getTestApp().then((app) =>
+        app.inject({
+          method: "POST",
+          url: "/api/v1/auth/login",
+          payload: { email, password: testPassword },
+          ...(presentedCookie
+            ? { headers: { cookie: `refresh_token=${presentedCookie}` } }
+            : {}),
+        }),
+      );
+    }
+
+    it("replaces the presented session when another User signs in", async () => {
+      const app = await getTestApp();
+      await createCustomer("presenter@test.com");
+      await createCustomer("replacement@test.com");
+
+      const first = await login("presenter@test.com");
+      expect(first.statusCode).toBe(200);
+      const presentedCookie = refreshCookieFrom(first);
+      const presentedAccessToken = first.json().accessToken as string;
+
+      const replacement = await login(
+        "replacement@test.com",
+        presentedCookie,
+      );
+      expect(replacement.statusCode).toBe(200);
+      expect(replacement.json().user.email).toBe("replacement@test.com");
+      const replacementCookie = refreshCookieFrom(replacement);
+      expect(replacementCookie).not.toBe(presentedCookie);
+
+      const oldRefresh = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/refresh",
+        headers: { cookie: `refresh_token=${presentedCookie}` },
+      });
+      expect(oldRefresh.statusCode).toBe(401);
+      expect(oldRefresh.json().detail).toBe(
+        "Invalid or expired refresh token",
+      );
+
+      const oldAccess = await app.inject({
+        method: "GET",
+        url: "/api/v1/auth/me",
+        headers: { authorization: `Bearer ${presentedAccessToken}` },
+      });
+      expect(oldAccess.statusCode).toBe(401);
+      expect(oldAccess.json().detail).toBe("Invalid or expired access token");
+
+      const newRefresh = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/refresh",
+        headers: { cookie: `refresh_token=${replacementCookie}` },
+      });
+      expect(newRefresh.statusCode).toBe(200);
+    });
+
+    it("revokes nothing when password verification fails", async () => {
+      const app = await getTestApp();
+      await createCustomer("failed-presenter@test.com");
+      await createCustomer("wrong-password-signin@test.com");
+
+      const first = await login("failed-presenter@test.com");
+      const presentedCookie = refreshCookieFrom(first);
+      const presentedAccessToken = first.json().accessToken as string;
+
+      const failed = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: {
+          email: "wrong-password-signin@test.com",
+          password: "not-the-password",
+        },
+        headers: { cookie: `refresh_token=${presentedCookie}` },
+      });
+      expect(failed.statusCode).toBe(401);
+
+      const stillLive = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/refresh",
+        headers: { cookie: `refresh_token=${presentedCookie}` },
+      });
+      expect(stillLive.statusCode).toBe(200);
+
+      const stillReads = await app.inject({
+        method: "GET",
+        url: "/api/v1/auth/me",
+        headers: { authorization: `Bearer ${presentedAccessToken}` },
+      });
+      expect(stillReads.statusCode).toBe(200);
+    });
+
+    it("re-signing in as the same User revokes only the presented row and keeps a peer session alive", async () => {
+      const app = await getTestApp();
+      await createCustomer("peer-preserved@test.com");
+
+      const peer = await login("peer-preserved@test.com");
+      const presented = await login("peer-preserved@test.com");
+      const peerCookie = refreshCookieFrom(peer);
+      const peerAccessToken = peer.json().accessToken as string;
+      const presentedCookie = refreshCookieFrom(presented);
+      const presentedAccessToken = presented.json().accessToken as string;
+
+      const reSignIn = await login(
+        "peer-preserved@test.com",
+        presentedCookie,
+      );
+      expect(reSignIn.statusCode).toBe(200);
+      const reSignInCookie = refreshCookieFrom(reSignIn);
+
+      const replacedRefresh = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/refresh",
+        headers: { cookie: `refresh_token=${presentedCookie}` },
+      });
+      expect(replacedRefresh.statusCode).toBe(401);
+
+      const replacedAccess = await app.inject({
+        method: "GET",
+        url: "/api/v1/auth/me",
+        headers: { authorization: `Bearer ${presentedAccessToken}` },
+      });
+      expect(replacedAccess.statusCode).toBe(401);
+
+      const peerRefresh = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/refresh",
+        headers: { cookie: `refresh_token=${peerCookie}` },
+      });
+      expect(peerRefresh.statusCode).toBe(200);
+
+      const peerReads = await app.inject({
+        method: "GET",
+        url: "/api/v1/auth/me",
+        headers: { authorization: `Bearer ${peerAccessToken}` },
+      });
+      expect(peerReads.statusCode).toBe(200);
+
+      const newRefresh = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/refresh",
+        headers: { cookie: `refresh_token=${reSignInCookie}` },
+      });
+      expect(newRefresh.statusCode).toBe(200);
+    });
+
+    it("issues a new session and revokes nothing for a missing, malformed, expired, or unknown presented cookie", async () => {
+      const app = await getTestApp();
+      const unknownSid = new Types.ObjectId().toString();
+      const expiredCookie = app.jwt.sign(
+        { sid: unknownSid },
+        { key: AUTH_CONFIG.REFRESH_SECRET, expiresIn: -10 },
+      );
+      const unknownCookie = app.jwt.sign(
+        { sid: unknownSid },
+        { key: AUTH_CONFIG.REFRESH_SECRET },
+      );
+      const cases: Array<{ label: string; cookie?: string }> = [
+        { label: "missing" },
+        { label: "malformed", cookie: "not-a-refresh-token" },
+        { label: "expired", cookie: expiredCookie },
+        { label: "unknown", cookie: unknownCookie },
+      ];
+
+      for (const { label, cookie } of cases) {
+        const presenterEmail = `bogus-presenter-${label}@test.com`;
+        const signerEmail = `bogus-signer-${label}@test.com`;
+        await createCustomer(presenterEmail);
+        await createCustomer(signerEmail);
+
+        const existing = await login(presenterEmail);
+        expect(existing.statusCode, label).toBe(200);
+        const existingCookie = refreshCookieFrom(existing);
+
+        const signedIn = await login(signerEmail, cookie);
+        expect(signedIn.statusCode, label).toBe(200);
+        expect(refreshCookieFrom(signedIn), label).not.toBe(existingCookie);
+
+        const stillLive = await app.inject({
+          method: "POST",
+          url: "/api/v1/auth/refresh",
+          headers: { cookie: `refresh_token=${existingCookie}` },
+        });
+        expect(stillLive.statusCode, label).toBe(200);
+      }
     });
   });
 
