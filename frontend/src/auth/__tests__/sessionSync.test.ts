@@ -180,6 +180,15 @@ describe("sessionSync", () => {
         }),
       }),
     );
+    window.dispatchEvent(
+      new StorageEvent("storage", {
+        key,
+        newValue: JSON.stringify({
+          type: "auth-session-changed",
+          signal: "sign-in",
+        }),
+      }),
+    );
 
     expect(onSignal).not.toHaveBeenCalled();
 

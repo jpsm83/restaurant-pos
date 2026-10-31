@@ -35,10 +35,16 @@ function isAuthSessionChangeMessage(
   value: unknown,
 ): value is AuthSessionChangeMessage {
   if (!value || typeof value !== "object") return false;
-  const candidate = value as { type?: unknown; signal?: unknown };
+  const candidate = value as {
+    type?: unknown;
+    signal?: unknown;
+    nonce?: unknown;
+  };
   return (
     candidate.type === "auth-session-changed" &&
-    isAuthSessionSignal(candidate.signal)
+    isAuthSessionSignal(candidate.signal) &&
+    typeof candidate.nonce === "string" &&
+    candidate.nonce.length > 0
   );
 }
 
