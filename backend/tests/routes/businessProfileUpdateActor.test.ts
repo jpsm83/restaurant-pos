@@ -12,6 +12,7 @@ import User from "../../src/models/user.ts";
 import Employee from "../../src/models/employee.ts";
 import {
   createTestBusiness,
+  createTestEmployeeMembership,
   createTestOwnerCompany,
 } from "../helpers/fixtures.ts";
 
@@ -47,6 +48,7 @@ function patchPayload(tradeName: string): {
 async function ownerAuthForBusiness(): Promise<{
   auth: string;
   businessId: string;
+  userId: Types.ObjectId;
 }> {
   const { user, company } = await createTestOwnerCompany();
   const business = await createTestBusiness({
@@ -61,7 +63,7 @@ async function ownerAuthForBusiness(): Promise<{
     type: "user",
     role: "Customer",
   });
-  return { auth, businessId: business._id.toString() };
+  return { auth, businessId: business._id.toString(), userId: user._id };
 }
 
 async function membershipAuthForBusiness(
@@ -146,6 +148,24 @@ describe("PATCH business profile actor classification", () => {
     expect(dispatchEventMock.mock.calls[0]?.[0]).toBe(
       "BUSINESS_PROFILE_UPDATED",
     );
+    expect(dispatchedActorSource()).toBe("businessOwner");
+  });
+
+  it("keeps ownership as business owner over a lower membership", async () => {
+    const { auth, businessId, userId } = await ownerAuthForBusiness();
+    await createTestEmployeeMembership({
+      businessId,
+      userId,
+      roles: ["Waiter"],
+    });
+
+    const response = await patchProfile(
+      auth,
+      businessId,
+      "Owner Member Updated",
+    );
+
+    expect(response.statusCode).toBe(200);
     expect(dispatchedActorSource()).toBe("businessOwner");
   });
 
