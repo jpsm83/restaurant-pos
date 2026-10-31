@@ -73,6 +73,8 @@ export interface SignupCredentials {
   firstName?: string;
   lastName?: string;
   languagePreference?: "en" | "es";
+  /** Composite privacy-notice and account-terms acceptance proof. */
+  privacyAccepted: boolean;
 }
 
 /** The client-settable profile fields returned by the users API. */

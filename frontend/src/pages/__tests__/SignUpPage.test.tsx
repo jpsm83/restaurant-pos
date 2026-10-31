@@ -115,6 +115,94 @@ describe("SignUpPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("requires privacy/terms acceptance and keeps typed credentials", async () => {
+    const user = userEvent.setup();
+    await renderWithI18n(
+      <MemoryRouter>
+        <SignUpPage />
+      </MemoryRouter>,
+    );
+
+    await user.type(screen.getByLabelText(/^email$/i), "keep@example.com");
+    await user.type(screen.getByLabelText(/^password$/i), "ValidPass1!");
+    await user.type(screen.getByLabelText(/confirm password/i), "ValidPass1!");
+    await user.click(screen.getByRole("button", { name: /create account$/i }));
+
+    expect(
+      screen.getByText(
+        "Accept the privacy notice and account terms to create an account.",
+      ),
+    ).toBeInTheDocument();
+    expect(mockSignup).not.toHaveBeenCalled();
+    expect(screen.getByLabelText(/^email$/i)).toHaveValue("keep@example.com");
+    expect(screen.getByLabelText(/^password$/i)).toHaveValue("ValidPass1!");
+  });
+
+  it("shows the acceptance validation in Spanish", async () => {
+    const user = userEvent.setup();
+    await renderWithI18n(
+      <MemoryRouter>
+        <SignUpPage />
+      </MemoryRouter>,
+      { language: "es" },
+    );
+
+    await user.type(
+      screen.getByLabelText(/^correo electrónico$/i),
+      "sinaceptar@example.com",
+    );
+    await user.type(screen.getByLabelText(/^contraseña$/i), "ValidPass1!");
+    await user.type(
+      screen.getByLabelText(/confirmar contraseña/i),
+      "ValidPass1!",
+    );
+    await user.click(screen.getByRole("button", { name: /crear cuenta$/i }));
+
+    expect(
+      screen.getByText(
+        "Debes aceptar el aviso de privacidad y los términos de la cuenta para crear una cuenta.",
+      ),
+    ).toBeInTheDocument();
+    expect(mockSignup).not.toHaveBeenCalled();
+  });
+
+  it("sends the acceptance proof with an accepted sign-up", async () => {
+    const user = userEvent.setup();
+    mockSignup.mockResolvedValue({
+      ok: true,
+      data: {
+        user: {
+          id: "64a1b2c3d4e5f67890123456",
+          email: "accepted@example.com",
+          type: "user",
+        },
+      },
+    });
+
+    await renderWithI18n(
+      <MemoryRouter>
+        <SignUpPage />
+      </MemoryRouter>,
+    );
+
+    await user.type(screen.getByLabelText(/^email$/i), "accepted@example.com");
+    await user.type(screen.getByLabelText(/^password$/i), "ValidPass1!");
+    await user.type(screen.getByLabelText(/confirm password/i), "ValidPass1!");
+    await user.click(
+      screen.getByLabelText(/privacy notice and account terms/i),
+    );
+    await user.click(screen.getByRole("button", { name: /create account$/i }));
+
+    await waitFor(() => {
+      expect(mockSignup).toHaveBeenCalledWith({
+        email: "accepted@example.com",
+        password: "ValidPass1!",
+        privacyAccepted: true,
+        languagePreference: "en",
+      });
+    });
+  });
+
   it("shows API error when signup fails", async () => {
     const user = userEvent.setup();
     mockSignup.mockResolvedValue({
@@ -137,6 +225,9 @@ describe("SignUpPage", () => {
     await user.type(screen.getByLabelText(/^email$/i), "taken@example.com");
     await user.type(screen.getByLabelText(/^password$/i), "ValidPass1!");
     await user.type(screen.getByLabelText(/confirm password/i), "ValidPass1!");
+    await user.click(
+      screen.getByLabelText(/privacy notice and account terms/i),
+    );
     await user.click(screen.getByRole("button", { name: /create account$/i }));
 
     await waitFor(() => {
@@ -164,6 +255,9 @@ describe("SignUpPage", () => {
     await user.type(screen.getByLabelText(/^email$/i), "deleted@example.com");
     await user.type(screen.getByLabelText(/^password$/i), "ValidPass1!");
     await user.type(screen.getByLabelText(/confirm password/i), "ValidPass1!");
+    await user.click(
+      screen.getByLabelText(/privacy notice and account terms/i),
+    );
     await user.click(screen.getByRole("button", { name: /create account$/i }));
 
     await waitFor(() => {
@@ -192,6 +286,9 @@ describe("SignUpPage", () => {
     await user.type(screen.getByLabelText(/^email$/i), "exists@example.com");
     await user.type(screen.getByLabelText(/^password$/i), "ValidPass1!");
     await user.type(screen.getByLabelText(/confirm password/i), "ValidPass1!");
+    await user.click(
+      screen.getByLabelText(/privacy notice and account terms/i),
+    );
     await user.click(screen.getByRole("button", { name: /create account$/i }));
 
     await waitFor(() => {
@@ -240,6 +337,9 @@ describe("SignUpPage", () => {
       "ValidPass1!",
     );
     await user.click(
+      screen.getByLabelText(/aviso de privacidad y los términos de la cuenta/i),
+    );
+    await user.click(
       screen.getByRole("button", { name: /crear cuenta$/i }),
     );
 
@@ -247,6 +347,7 @@ describe("SignUpPage", () => {
       expect(mockSignup).toHaveBeenCalledWith({
         email: "nuevo@example.com",
         password: "ValidPass1!",
+        privacyAccepted: true,
         languagePreference: "es",
       });
     });
@@ -473,6 +574,9 @@ describe("SignUpPage", () => {
     await user.type(screen.getByLabelText(/^email$/i), "new@example.com");
     await user.type(screen.getByLabelText(/^password$/i), "ValidPass1!");
     await user.type(screen.getByLabelText(/confirm password/i), "ValidPass1!");
+    await user.click(
+      screen.getByLabelText(/privacy notice and account terms/i),
+    );
     await user.click(screen.getByRole("button", { name: /create account$/i }));
 
     await waitFor(() => {
@@ -508,6 +612,9 @@ describe("SignUpPage", () => {
     await user.type(screen.getByLabelText(/^email$/i), "new@example.com");
     await user.type(screen.getByLabelText(/^password$/i), "ValidPass1!");
     await user.type(screen.getByLabelText(/confirm password/i), "ValidPass1!");
+    await user.click(
+      screen.getByLabelText(/privacy notice and account terms/i),
+    );
     await user.click(screen.getByRole("button", { name: /create account$/i }));
 
     await waitFor(() => {

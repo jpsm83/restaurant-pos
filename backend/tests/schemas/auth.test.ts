@@ -26,12 +26,16 @@ const SERVER_OWNED_FIELDS = [
   "refreshSessionVersion",
   "emailVerified",
   "googleId",
+  "privacyAcceptedAt",
+  "marketingConsent",
+  "marketingConsentUpdatedAt",
 ] as const;
 
 describe("signupBodySchema", () => {
   const valid = {
     email: "New.User@Example.COM",
     password: "TestPass1!",
+    privacyAccepted: true as const,
   };
 
   it("normalizes the email (trim + lowercase)", () => {
@@ -58,6 +62,30 @@ describe("signupBodySchema", () => {
 
   it("treats the profile names as optional", () => {
     expect(signupBodySchema.safeParse(valid).success).toBe(true);
+  });
+
+  it("requires the privacy/terms acceptance proof to be true", () => {
+    const missing = signupBodySchema.safeParse({
+      email: valid.email,
+      password: valid.password,
+    });
+    expect(missing.success).toBe(false);
+    if (!missing.success) {
+      expect(missing.error.issues[0]).toMatchObject({
+        path: ["privacyAccepted"],
+      });
+    }
+
+    const refused = signupBodySchema.safeParse({
+      ...valid,
+      privacyAccepted: false,
+    });
+    expect(refused.success).toBe(false);
+    if (!refused.success) {
+      expect(refused.error.issues[0]).toMatchObject({
+        path: ["privacyAccepted"],
+      });
+    }
   });
 
   it("accepts an optional language preference and rejects other languages", () => {
@@ -141,6 +169,22 @@ describe("googleAuthBodySchema", () => {
         languagePreference: "fr",
       }).success,
     ).toBe(false);
+  });
+
+  it("rejects marketing-consent and consent-timestamp fields", () => {
+    for (const field of [
+      "privacyAcceptedAt",
+      "marketingConsent",
+      "marketingConsentUpdatedAt",
+    ]) {
+      expect(
+        googleAuthBodySchema.safeParse({
+          credential: "id-token",
+          [field]: true,
+        }).success,
+        field,
+      ).toBe(false);
+    }
   });
 });
 

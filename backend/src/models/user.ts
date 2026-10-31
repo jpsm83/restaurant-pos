@@ -67,6 +67,17 @@ const userSchema = new Schema(
     pendingEmailRequestedAt: { type: Date, default: undefined },
     /** Increment on password reset / password change to refuse refresh sessions from the previous generation. */
     refreshSessionVersion: { type: Number, default: 0 },
+    /**
+     * Composite privacy-notice and account-terms acknowledgement. New Users
+     * accept at creation; legacy rows carry `false` and are not re-prompted.
+     */
+    privacyAccepted: { type: Boolean, default: false },
+    /** Server-set time of the acceptance; never client-supplied. */
+    privacyAcceptedAt: { type: Date, default: undefined },
+    /** Marketing consent is off by default and is not client-editable here. */
+    marketingConsent: { type: Boolean, default: false },
+    /** When marketing consent was last granted or withdrawn; unset until then. */
+    marketingConsentUpdatedAt: { type: Date, default: undefined },
     ...softDeleteSchemaFields,
   },
   {

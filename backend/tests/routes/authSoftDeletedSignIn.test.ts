@@ -115,6 +115,7 @@ describe("soft-deleted sign-in reactivation", () => {
       payload: {
         email,
         password: signupPassword,
+        privacyAccepted: true,
         firstName: "Pat",
         lastName: "Lee",
       },
@@ -138,7 +139,7 @@ describe("soft-deleted sign-in reactivation", () => {
     const duplicate = await app.inject({
       method: "POST",
       url: "/api/v1/auth/signup",
-      payload: { email, password: signupPassword },
+      payload: { email, password: signupPassword, privacyAccepted: true },
     });
 
     expect(duplicate.statusCode).toBe(202);
@@ -188,6 +189,7 @@ describe("soft-deleted sign-in reactivation", () => {
       payload: {
         email,
         password: signupPassword,
+        privacyAccepted: true,
         firstName: "Other",
         lastName: "Person",
       },
@@ -387,7 +389,7 @@ describe("soft-deleted sign-in reactivation", () => {
     const signup = await app.inject({
       method: "POST",
       url: "/api/v1/auth/signup",
-      payload: { email, password: signupPassword },
+      payload: { email, password: signupPassword, privacyAccepted: true },
     });
 
     expect(signup.statusCode).toBe(201);

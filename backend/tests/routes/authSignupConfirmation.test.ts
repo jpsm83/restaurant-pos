@@ -92,6 +92,7 @@ describe("POST /api/v1/auth/signup (confirmation email)", () => {
       payload: {
         email,
         password: "TestPassword123!",
+        privacyAccepted: true,
         firstName: "Pat",
         lastName: "Lee",
       },
@@ -141,6 +142,7 @@ describe("POST /api/v1/auth/signup (confirmation email)", () => {
       payload: {
         email,
         password: "TestPassword123!",
+        privacyAccepted: true,
         firstName: "Pat",
         languagePreference: "es",
       },
@@ -171,7 +173,11 @@ describe("POST /api/v1/auth/signup (confirmation email)", () => {
     const res = await app.inject({
       method: "POST",
       url: "/api/v1/auth/signup",
-      payload: { email, password: "TestPassword123!" },
+      payload: {
+        email,
+        password: "TestPassword123!",
+        privacyAccepted: true,
+      },
     });
 
     expect(res.statusCode).toBe(201);
@@ -181,6 +187,83 @@ describe("POST /api/v1/auth/signup (confirmation email)", () => {
     expect(stored?.personalDetails.username).toBeUndefined();
     expect(stored?.personalDetails.firstName).toBeUndefined();
     expect(stored?.languagePreference).toBeUndefined();
+  });
+
+  it("stores privacy acceptance with a server timestamp and marketing consent off", async () => {
+    const app = await getTestApp();
+    const email = `acceptance-${Date.now()}@example.com`;
+    const before = Date.now();
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/signup",
+      payload: {
+        email,
+        password: "TestPassword123!",
+        privacyAccepted: true,
+      },
+    });
+    const after = Date.now();
+
+    expect(res.statusCode).toBe(201);
+    const stored = await User.findOne({ "personalDetails.email": email }).lean();
+    expect(stored?.privacyAccepted).toBe(true);
+    expect(stored?.privacyAcceptedAt).toBeInstanceOf(Date);
+    expect(stored?.privacyAcceptedAt?.getTime()).toBeGreaterThanOrEqual(before);
+    expect(stored?.privacyAcceptedAt?.getTime()).toBeLessThanOrEqual(after);
+    expect(stored?.marketingConsent).toBe(false);
+    expect(stored?.marketingConsentUpdatedAt).toBeUndefined();
+  });
+
+  it("rejects a signup without the acceptance proof before creating a user", async () => {
+    const app = await getTestApp();
+    const email = `no-acceptance-${Date.now()}@example.com`;
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/signup",
+      payload: {
+        email,
+        password: "TestPassword123!",
+      },
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.headers["content-type"]).toContain("application/problem+json");
+    expect(res.json().errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ path: "privacyAccepted" }),
+      ]),
+    );
+    expect(await User.countDocuments({ "personalDetails.email": email })).toBe(
+      0,
+    );
+  });
+
+  it("rejects a signup that refuses the acceptance proof before creating a user", async () => {
+    const app = await getTestApp();
+    const email = `refused-acceptance-${Date.now()}@example.com`;
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/signup",
+      payload: {
+        email,
+        password: "TestPassword123!",
+        privacyAccepted: false,
+      },
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.headers["content-type"]).toContain("application/problem+json");
+    expect(res.json().errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ path: "privacyAccepted" }),
+      ]),
+    );
+    expect(await User.countDocuments({ "personalDetails.email": email })).toBe(
+      0,
+    );
   });
 
   it("returns a generic outcome and emails the owner for an active duplicate sign-up", async () => {
@@ -202,6 +285,7 @@ describe("POST /api/v1/auth/signup (confirmation email)", () => {
       payload: {
         email,
         password: "TestPassword123!",
+        privacyAccepted: true,
         firstName: "Someone",
       },
     });
@@ -239,6 +323,7 @@ describe("POST /api/v1/auth/signup (confirmation email)", () => {
       payload: {
         email,
         password: "TestPassword123!",
+        privacyAccepted: true,
       },
     });
 
@@ -286,6 +371,7 @@ describe("POST /api/v1/auth/signup (confirmation email)", () => {
       payload: {
         email,
         password: "TestPassword123!",
+        privacyAccepted: true,
         firstName: "Pat",
         lastName: "Lee",
       },
@@ -367,6 +453,7 @@ describe("POST /api/v1/auth/signup (confirmation email)", () => {
       payload: {
         email,
         password: "TestPassword123!",
+        privacyAccepted: true,
         firstName: "Pat",
         lastName: "Lee",
       },

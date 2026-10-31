@@ -122,6 +122,7 @@ export const authRoutes: FastifyPluginAsync<AuthRoutesOptions> = async (
         firstName,
         lastName,
         languagePreference,
+        privacyAccepted,
       } = req.body;
 
       const [existingUser, deletedUser] = await Promise.all([
@@ -171,6 +172,9 @@ export const authRoutes: FastifyPluginAsync<AuthRoutesOptions> = async (
 
       const createdUser = await User.create({
         languagePreference,
+        privacyAccepted,
+        privacyAcceptedAt: new Date(),
+        marketingConsent: false,
         personalDetails: {
           email,
           password: hashedPassword,

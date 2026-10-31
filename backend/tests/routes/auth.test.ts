@@ -2264,6 +2264,7 @@ describe("Auth Routes", () => {
         payload: {
           email: "server-owned@example.com",
           password: "TestPassword123!",
+          privacyAccepted: true,
           emailVerified: true,
         },
       });
@@ -2285,7 +2286,11 @@ describe("Auth Routes", () => {
       const response = await app.inject({
         method: "POST",
         url: "/api/v1/auth/signup",
-        payload: { email: "not-an-email", password: "TestPassword123!" },
+        payload: {
+          email: "not-an-email",
+          password: "TestPassword123!",
+          privacyAccepted: true,
+        },
       });
 
       expect(response.statusCode).toBe(400);

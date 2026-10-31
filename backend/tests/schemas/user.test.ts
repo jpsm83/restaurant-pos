@@ -129,6 +129,10 @@ describe("updateUserBodySchema", () => {
       "verificationToken",
       "resetPasswordToken",
       "refreshSessionVersion",
+      "privacyAccepted",
+      "privacyAcceptedAt",
+      "marketingConsent",
+      "marketingConsentUpdatedAt",
       "notifications",
     ]) {
       expect(

@@ -27,6 +27,14 @@ export interface IUser {
   /** When the last email-change link was sent; drives the request cooldown. */
   pendingEmailRequestedAt?: Date;
   refreshSessionVersion?: number;
+  /** Composite privacy-notice and account-terms acknowledgement. */
+  privacyAccepted?: boolean;
+  /** Server-set time of the acceptance; never client-supplied. */
+  privacyAcceptedAt?: Date;
+  /** Marketing consent, off by default and not client-editable in this slice. */
+  marketingConsent?: boolean;
+  /** When marketing consent was last granted or withdrawn; unset until then. */
+  marketingConsentUpdatedAt?: Date;
   deleted?: boolean;
   deletedAt?: Date;
   deletedBy?: Types.ObjectId;

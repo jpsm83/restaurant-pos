@@ -93,6 +93,39 @@ describe("User email security schema", () => {
     expect(fromDb?.googleId).toBe("google-subject-schema");
   });
 
+  it("defaults privacy acceptance and marketing consent off with no consent timestamps", async () => {
+    const created = await User.create({
+      personalDetails: {
+        ...minimalPersonalDetails,
+        email: "consent-defaults@example.com",
+        username: "consentdefaults",
+        idNumber: "ID-SCHEMA-CONSENT",
+      },
+    });
+
+    expect(created.privacyAccepted).toBe(false);
+    expect(created.marketingConsent).toBe(false);
+    expect(created.privacyAcceptedAt).toBeUndefined();
+    expect(created.marketingConsentUpdatedAt).toBeUndefined();
+  });
+
+  it("reads legacy rows without consent fields as not accepted and marketing off", async () => {
+    const inserted = await User.collection.insertOne({
+      personalDetails: {
+        ...minimalPersonalDetails,
+        email: "legacy-consent@example.com",
+        username: "legacyconsent",
+        idNumber: "ID-SCHEMA-LEGACY",
+      },
+    });
+
+    const legacy = await User.findById(inserted.insertedId);
+    expect(legacy?.privacyAccepted).toBe(false);
+    expect(legacy?.marketingConsent).toBe(false);
+    expect(legacy?.privacyAcceptedAt).toBeUndefined();
+    expect(legacy?.marketingConsentUpdatedAt).toBeUndefined();
+  });
+
   it("clears token fields when unset", async () => {
     const doc = await User.create({
       personalDetails: {

@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -25,6 +25,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { isValidPassword } from "restaurant-pos-packages/utils/passwordPolicy";
@@ -35,6 +36,7 @@ function buildSignUpSchema(messages: {
   invalidEmail: string;
   passwordMismatch: string;
   passwordPolicy: string;
+  privacyRequired: string;
 }) {
   return z
     .object({
@@ -45,6 +47,9 @@ function buildSignUpSchema(messages: {
         .regex(emailRegex, messages.invalidEmail),
       password: z.string().min(1, messages.allRequired),
       confirmPassword: z.string().min(1, messages.allRequired),
+      privacyAccepted: z
+        .boolean()
+        .refine((value) => value === true, messages.privacyRequired),
     })
     .refine((data) => data.password === data.confirmPassword, {
       message: messages.passwordMismatch,
@@ -86,12 +91,14 @@ export default function SignUpPage() {
         invalidEmail: t("signup.errors.invalidEmail"),
         passwordMismatch: t("signup.errors.passwordMismatch"),
         passwordPolicy: t("signup.errors.passwordPolicy"),
+        privacyRequired: t("signup.errors.privacyRequired"),
       }),
     [t],
   );
 
   const {
     register,
+    control,
     handleSubmit,
     formState: { errors },
   } = useForm<SignUpFormValues>({
@@ -100,6 +107,7 @@ export default function SignUpPage() {
       email: "",
       password: "",
       confirmPassword: "",
+      privacyAccepted: false,
     },
   });
 
@@ -110,6 +118,7 @@ export default function SignUpPage() {
     const result = await signup({
       email: data.email.trim(),
       password: data.password,
+      privacyAccepted: data.privacyAccepted,
       ...(languagePreference ? { languagePreference } : {}),
     });
 
@@ -190,6 +199,38 @@ export default function SignUpPage() {
               />
               <FieldError message={errors.confirmPassword?.message} />
             </div>
+
+            <Controller
+              control={control}
+              name="privacyAccepted"
+              render={({ field }) => (
+                <div className="space-y-2">
+                  <div className="flex items-start gap-2">
+                    <Checkbox
+                      id="signup-privacy-accepted"
+                      checked={field.value}
+                      onCheckedChange={(checked) =>
+                        field.onChange(checked === true)
+                      }
+                      onBlur={field.onBlur}
+                      ref={field.ref}
+                      aria-labelledby="signup-privacy-accepted-label"
+                      aria-invalid={
+                        errors.privacyAccepted ? true : undefined
+                      }
+                    />
+                    <Label
+                      id="signup-privacy-accepted-label"
+                      htmlFor="signup-privacy-accepted"
+                      className="text-sm leading-snug font-normal"
+                    >
+                      {t("signup.privacyAcceptanceLabel")}
+                    </Label>
+                  </div>
+                  <FieldError message={errors.privacyAccepted?.message} />
+                </div>
+              )}
+            />
 
             {submitFailure ? (
               <Alert>{resolveError(submitFailure)}</Alert>

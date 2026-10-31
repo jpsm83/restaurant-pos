@@ -49,6 +49,12 @@ export const signupBodySchema = z.strictObject({
   firstName: optionalNameSchema,
   lastName: optionalNameSchema,
   languagePreference: optionalLanguagePreferenceSchema,
+  /**
+   * The single account-creation acceptance proof for the privacy notice and
+   * account terms. It is required to be literally `true` here; the shared
+   * Google contract accepts the same field as an optional boolean.
+   */
+  privacyAccepted: z.literal(true),
 });
 
 export const loginBodySchema = z.strictObject({

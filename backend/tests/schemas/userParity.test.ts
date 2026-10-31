@@ -62,6 +62,9 @@ describe("user DTO ↔ model parity", () => {
       "resetPasswordToken",
       "resetPasswordExpires",
       "refreshSessionVersion",
+      "privacyAcceptedAt",
+      "marketingConsent",
+      "marketingConsentUpdatedAt",
     ]) {
       expect(userOwns(field), `${field} should be on the model`).toBe(true);
       for (const [name, schema] of Object.entries(allDtos)) {

@@ -563,6 +563,10 @@ describe("Users Routes", () => {
         "emailVerified",
         "verificationToken",
         "refreshSessionVersion",
+        "privacyAccepted",
+        "privacyAcceptedAt",
+        "marketingConsent",
+        "marketingConsentUpdatedAt",
         "isAdmin",
       ]) {
         const response = await app.inject({

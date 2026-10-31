@@ -80,6 +80,7 @@ describe("auth types", () => {
       email: "a@b.co",
       password: "secret",
       firstName: "A",
+      privacyAccepted: true,
     };
     expect(signup.firstName).toBe("A");
   });

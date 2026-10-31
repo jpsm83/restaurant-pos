@@ -34,6 +34,9 @@ const SERVER_OWNED_FIELDS = [
   "pendingEmailRequestedAt",
   "refreshSessionVersion",
   "googleId",
+  "privacyAcceptedAt",
+  "marketingConsent",
+  "marketingConsentUpdatedAt",
 ] as const;
 
 const allDtos: Record<string, z.ZodObject> = {

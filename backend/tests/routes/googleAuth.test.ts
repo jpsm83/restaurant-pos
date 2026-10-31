@@ -392,6 +392,7 @@ describe("POST /api/v1/auth/google", () => {
         payload: {
           email: `email-auth-${Date.now()}@test.com`,
           password,
+          privacyAccepted: true,
         },
       });
       expect(signup.statusCode).toBe(201);
