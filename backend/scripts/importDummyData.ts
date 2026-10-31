@@ -6,6 +6,8 @@ import mongoose from "mongoose";
 import { EJSON } from "bson";
 
 import Business from "../src/models/business.ts";
+import Company from "../src/models/company.ts";
+import Owner from "../src/models/owner.ts";
 import User from "../src/models/user.ts";
 import Employee from "../src/models/employee.ts";
 import Supplier from "../src/models/supplier.ts";
@@ -39,8 +41,10 @@ type ModelAndFile = {
 };
 
 const importPlan: ModelAndFile[] = [
-  { label: "Business", fileName: "business.json", model: Business },
   { label: "User", fileName: "users.json", model: User },
+  { label: "Owner", fileName: "owner.json", model: Owner },
+  { label: "Company", fileName: "company.json", model: Company },
+  { label: "Business", fileName: "business.json", model: Business },
   { label: "Employee", fileName: "employees.json", model: Employee },
   { label: "Supplier", fileName: "suppliers.json", model: Supplier },
   { label: "SupplierGood", fileName: "supplierGoods.json", model: SupplierGood },

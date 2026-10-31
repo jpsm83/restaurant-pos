@@ -76,6 +76,7 @@ const businessSchema = new Schema(
     companyId: {
       type: Schema.Types.ObjectId,
       ref: "Company",
+      required: [true, "Company id is required!"],
       index: true,
     }, // owning tax entity; the path from this Business to its Owner
     subscription: {

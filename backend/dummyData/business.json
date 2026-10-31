@@ -8,6 +8,7 @@
     "password": "demoBusinessPassword123",
     "phoneNumber": "+351910000001",
     "taxNumber": "PT500000001",
+    "companyId": { "$oid": "64b000000000000000000401" },
     "currencyTrade": "EUR",
     "subscription": "Free",
     "address": {

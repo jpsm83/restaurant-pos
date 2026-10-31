@@ -1313,6 +1313,7 @@ describe("Inventories Routes", () => {
 
       // Create a previous month inventory (without monthlyCounts to avoid validation complexity)
       const lastMonth = new Date();
+      lastMonth.setDate(1);
       lastMonth.setMonth(lastMonth.getMonth() - 1);
 
       await Inventory.deleteMany({ businessId });

@@ -1,0 +1,10 @@
+[
+  {
+    "_id": { "$oid": "64b000000000000000000401" },
+    "ownerId": { "$oid": "64b000000000000000000301" },
+    "country": "Portugal",
+    "legalName": "Demo Bistro LLC",
+    "taxNumber": "PT500000001",
+    "deleted": false
+  }
+]
