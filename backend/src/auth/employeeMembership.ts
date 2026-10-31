@@ -15,15 +15,17 @@ export interface EmployeeMembership {
  *
  * A membership is active when the Employee row is not soft-deleted, `active`
  * is true, and it has no `terminatedDate`. When `businessId` is given the
- * membership is scoped to that venue; otherwise the first active membership by
- * id is returned so single-membership sign-in stays deterministic.
+ * membership is scoped to that venue; when `employeeId` is given that exact
+ * membership is resolved. Otherwise the first active membership by id is
+ * returned so single-membership sign-in stays deterministic.
  */
 export default async function findActiveEmployeeMembership(params: {
   userId: Types.ObjectId | string;
   businessId?: Types.ObjectId | string;
+  employeeId?: Types.ObjectId | string;
   session?: ClientSession;
 }): Promise<EmployeeMembership | null> {
-  const { userId, businessId, session } = params;
+  const { userId, businessId, employeeId, session } = params;
 
   let query = Employee.findOne(
     withSoftDeleteFilter({
@@ -31,6 +33,7 @@ export default async function findActiveEmployeeMembership(params: {
       active: true,
       terminatedDate: null,
       ...(businessId === undefined ? {} : { businessId }),
+      ...(employeeId === undefined ? {} : { _id: employeeId }),
     }),
   )
     .select("businessId allEmployeeRoles onDuty")

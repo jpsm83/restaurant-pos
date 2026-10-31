@@ -47,48 +47,66 @@ export interface EffectiveAccess {
   canEnterBusiness: boolean;
 }
 
+/** The User, venue, instant, and optional transaction one lookup runs inside. */
+interface AccessLookup {
+  userId: string;
+  businessId: string;
+  now: Date;
+  session?: ClientSession;
+}
+
+export interface ResolveEffectiveAccessParams {
+  userId: string;
+  businessId: string;
+  now?: Date;
+  /** When set, all reads participate in this MongoDB transaction session. */
+  session?: ClientSession;
+  /** When set, eligibility uses this exact membership, not the first active one. */
+  membershipId?: Types.ObjectId | string;
+}
+
 /**
  * Resolve effective access, or `null` when the User or Business id is invalid
  * or the Business does not exist. A valid Business with no access returns the
  * customer-only projection with source `none`; callers decide whether to
  * refuse it.
  */
-export async function resolveEffectiveAccess(params: {
-  userId: string;
-  businessId: string;
-  now?: Date;
-  /** When set, all reads participate in this MongoDB transaction session. */
-  session?: ClientSession;
-}): Promise<EffectiveAccess | null> {
-  const { userId, businessId, now, session } = params;
+export async function resolveEffectiveAccess(
+  params: ResolveEffectiveAccessParams,
+): Promise<EffectiveAccess | null> {
   if (
-    !Types.ObjectId.isValid(userId) ||
-    !Types.ObjectId.isValid(businessId)
+    !Types.ObjectId.isValid(params.userId) ||
+    !Types.ObjectId.isValid(params.businessId)
   ) {
     return null;
   }
 
-  let businessQuery = Business.findById(businessId)
-    .select("companyId")
-    .lean();
-  if (session) businessQuery = businessQuery.session(session);
-  const business = (await businessQuery) as {
-    companyId?: Types.ObjectId;
-  } | null;
+  const lookup: AccessLookup = {
+    userId: params.userId,
+    businessId: params.businessId,
+    now: params.now ?? new Date(),
+    session: params.session,
+  };
+
+  const business = (await withSession(
+    Business.findById(lookup.businessId).select("companyId").lean(),
+    lookup.session,
+  )) as { companyId?: Types.ObjectId } | null;
   if (!business) return null;
 
   const membership = await findActiveEmployeeMembership({
-    userId,
-    businessId,
-    session,
+    userId: lookup.userId,
+    businessId: lookup.businessId,
+    employeeId: params.membershipId,
+    session: lookup.session,
   });
 
   if (
     business.companyId &&
-    (await ownsBusiness(userId, business.companyId, session))
+    (await ownsBusiness(lookup, business.companyId))
   ) {
     return {
-      businessId,
+      businessId: lookup.businessId,
       effectiveLayer: "admin",
       source: "ownership",
       jobRoles: normalizeJobRoles(membership),
@@ -99,7 +117,7 @@ export async function resolveEffectiveAccess(params: {
 
   if (!membership) {
     return {
-      businessId,
+      businessId: lookup.businessId,
       effectiveLayer: "customer",
       source: "none",
       jobRoles: [],
@@ -113,15 +131,10 @@ export async function resolveEffectiveAccess(params: {
   const canEnterBusiness =
     effectiveLayer === "manager" || effectiveLayer === "admin"
       ? true
-      : await isInsideEntryWindow({
-          employeeId: membership._id,
-          businessId,
-          now: now ?? new Date(),
-          session,
-        });
+      : await isInsideEntryWindow(lookup, membership._id);
 
   return {
-    businessId,
+    businessId: lookup.businessId,
     effectiveLayer,
     source: "membership",
     jobRoles,
@@ -130,24 +143,78 @@ export async function resolveEffectiveAccess(params: {
   };
 }
 
-async function ownsBusiness(
-  userId: string,
-  companyId: Types.ObjectId,
-  session?: ClientSession,
-): Promise<boolean> {
-  let ownerQuery = Owner.findOne({ userId }).select("_id").lean();
-  if (session) ownerQuery = ownerQuery.session(session);
-  const owner = (await ownerQuery) as { _id: Types.ObjectId } | null;
-  if (!owner) return false;
+/**
+ * True when the User can enter Business mode at any venue they own or belong
+ * to. Ownership and manager/admin are always enterable; supervisor/employee
+ * follow the same entry window as the per-venue access read.
+ */
+export async function canEnterBusinessAnywhere(params: {
+  userId: string;
+  now?: Date;
+  session?: ClientSession;
+}): Promise<boolean> {
+  const { userId, session } = params;
+  if (!Types.ObjectId.isValid(userId)) return false;
 
-  let companyQuery = Company.findOne(
-    withSoftDeleteFilter({ _id: companyId, ownerId: owner._id }),
-  )
-    .select("_id")
-    .lean();
-  if (session) companyQuery = companyQuery.session(session);
-  const company = await companyQuery;
-  return company !== null;
+  const now = params.now ?? new Date();
+  const companyIds = await findOwnedCompanyIds({ userId, session });
+  if (companyIds.length) {
+    const businesses = (await withSession(
+      Business.find({ companyId: { $in: companyIds } })
+        .select("_id")
+        .lean(),
+      session,
+    )) as Array<{ _id: Types.ObjectId }>;
+
+    for (const business of businesses) {
+      const access = await resolveEffectiveAccess({
+        userId,
+        businessId: String(business._id),
+        now,
+        session,
+      });
+      if (access?.canEnterBusiness) return true;
+    }
+  }
+
+  const membership = await findActiveEmployeeMembership({ userId, session });
+  if (!membership) return false;
+
+  const access = await resolveEffectiveAccess({
+    userId,
+    businessId: String(membership.businessId),
+    now,
+    session,
+  });
+  return access?.canEnterBusiness === true;
+}
+
+async function ownsBusiness(
+  lookup: AccessLookup,
+  companyId: Types.ObjectId,
+): Promise<boolean> {
+  const companyIds = await findOwnedCompanyIds(lookup);
+  return companyIds.some((ownedCompanyId) => ownedCompanyId.equals(companyId));
+}
+
+async function findOwnedCompanyIds(params: {
+  userId: string;
+  session?: ClientSession;
+}): Promise<Types.ObjectId[]> {
+  const owner = (await withSession(
+    Owner.findOne({ userId: params.userId }).select("_id").lean(),
+    params.session,
+  )) as { _id: Types.ObjectId } | null;
+  if (!owner) return [];
+
+  const companies = (await withSession(
+    Company.find(withSoftDeleteFilter({ ownerId: owner._id }))
+      .select("_id")
+      .lean(),
+    params.session,
+  )) as Array<{ _id: Types.ObjectId }>;
+
+  return companies.map((company) => company._id);
 }
 
 function normalizeJobRoles(membership: EmployeeMembership | null): string[] {
@@ -164,26 +231,24 @@ function capabilitiesForLayer(layer: AccessLayer): AccessCapabilityKey[] {
  * ten minutes before planned start and closes two hours after planned start;
  * shift end is irrelevant to entry.
  */
-async function isInsideEntryWindow(params: {
-  employeeId: Types.ObjectId;
-  businessId: string;
-  now: Date;
-  session?: ClientSession;
-}): Promise<boolean> {
-  const { employeeId, businessId, now, session } = params;
-  const startOfDay = new Date(now);
+async function isInsideEntryWindow(
+  lookup: AccessLookup,
+  employeeId: Types.ObjectId,
+): Promise<boolean> {
+  const startOfDay = new Date(lookup.now);
   startOfDay.setHours(0, 0, 0, 0);
   const endOfDay = new Date(startOfDay);
   endOfDay.setDate(endOfDay.getDate() + 1);
 
-  let scheduleQuery = Schedule.findOne({
-    businessId,
-    date: { $gte: startOfDay, $lt: endOfDay },
-  })
-    .select("employeesSchedules")
-    .lean();
-  if (session) scheduleQuery = scheduleQuery.session(session);
-  const schedule = (await scheduleQuery) as {
+  const schedule = (await withSession(
+    Schedule.findOne({
+      businessId: lookup.businessId,
+      date: { $gte: startOfDay, $lt: endOfDay },
+    })
+      .select("employeesSchedules")
+      .lean(),
+    lookup.session,
+  )) as {
     employeesSchedules?: Array<{
       employeeId: unknown;
       vacation?: boolean;
@@ -194,7 +259,7 @@ async function isInsideEntryWindow(params: {
   if (!schedule?.employeesSchedules?.length) return false;
 
   const employeeIdString = employeeId.toString();
-  const nowMs = now.getTime();
+  const nowMs = lookup.now.getTime();
   return schedule.employeesSchedules.some((entry) => {
     if (entry.vacation) return false;
     if (String(entry.employeeId) !== employeeIdString) return false;
@@ -205,4 +270,15 @@ async function isInsideEntryWindow(params: {
       nowMs <= startMs + ENTRY_WINDOW_AFTER_START_MS
     );
   });
+}
+
+/**
+ * Attach the caller's transaction session when one is present. Keeping this in
+ * one place means every read in a lookup observes the same transaction.
+ */
+function withSession<T extends { session(session: ClientSession): T }>(
+  query: T,
+  session?: ClientSession,
+): T {
+  return session ? query.session(session) : query;
 }

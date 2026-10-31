@@ -12,9 +12,13 @@ import canLogAsEmployee, {
 import getEffectiveUserRoleAtTime from "../../src/auth/getEffectiveUserRoleAtTime.ts";
 import { createAuthHook } from "../../src/auth/middleware.ts";
 import type { AuthSession, AuthUser } from "../../src/auth/types.ts";
-import Employee from "../../src/models/employee.ts";
-import Schedule from "../../src/models/schedule.ts";
-import { createTestBusiness, createTestOwnerCompany } from "../helpers/fixtures.ts";
+import {
+  createTestBusiness,
+  createTestEmployeeMembership,
+  createTestOwnerCompany,
+  createTestSchedule,
+  fakeScheduleEntry,
+} from "../helpers/fixtures.ts";
 
 describe("Auth Helpers", () => {
   let businessId: Types.ObjectId;
@@ -33,42 +37,30 @@ describe("Auth Helpers", () => {
       roles: string[],
       membershipUserId: Types.ObjectId = userId,
     ) =>
-      Employee.create({
+      createTestEmployeeMembership({
         businessId,
         userId: membershipUserId,
-        allEmployeeRoles: roles,
-        taxNumber: `TAX-${new Types.ObjectId()}`,
-        joinDate: new Date(),
-        active: true,
-        vacationDaysPerYear: 20,
+        roles,
       });
 
-    const addShift = async (params: {
+    const addShift = (params: {
       employeeId: Types.ObjectId;
       start: Date;
       end?: Date;
       vacation?: boolean;
-    }) => {
-      await Schedule.create({
+    }) =>
+      createTestSchedule({
         businessId,
         date: new Date(),
-        weekNumber: 1,
-        employeesSchedules: [
-          {
+        entries: [
+          fakeScheduleEntry({
             employeeId: params.employeeId,
-            role: "Waiter",
-            timeRange: {
-              startTime: params.start,
-              endTime:
-                params.end ?? new Date(params.start.getTime() + 8 * 60 * 60 * 1000),
-            },
-            vacation: params.vacation ?? false,
-            shiftHours: 8,
-            employeeCost: 80,
-          },
+            start: params.start,
+            end: params.end,
+            vacation: params.vacation,
+          }),
         ],
       });
-    };
 
     it("returns true for manager and admin layers without a schedule", async () => {
       const manager = await createEmployee(["Manager"], new Types.ObjectId());
@@ -82,6 +74,35 @@ describe("Auth Helpers", () => {
       });
     });
 
+    it("evaluates the exact membership when a User has two at one venue", async () => {
+      const sharedUserId = new Types.ObjectId();
+      const inWindow = await createEmployee(["Waiter"], sharedUserId);
+      const outsideWindow = await createEmployee(["Waiter"], sharedUserId);
+      const now = new Date();
+
+      await createTestSchedule({
+        businessId,
+        date: now,
+        entries: [
+          fakeScheduleEntry({
+            employeeId: inWindow._id,
+            start: new Date(now.getTime() - 5 * 60 * 1000),
+          }),
+          fakeScheduleEntry({
+            employeeId: outsideWindow._id,
+            start: new Date(now.getTime() + 30 * 60 * 1000),
+          }),
+        ],
+      });
+
+      await expect(canLogAsEmployee(inWindow._id, now)).resolves.toEqual({
+        canLogAsEmployee: true,
+      });
+      await expect(canLogAsEmployee(outsideWindow._id, now)).resolves.toEqual({
+        canLogAsEmployee: false,
+      });
+    });
+
     it("keeps an owning User eligible through an inactive membership", async () => {
       const { user, company } = await createTestOwnerCompany();
       const ownedBusiness = await createTestBusiness({
@@ -89,14 +110,10 @@ describe("Auth Helpers", () => {
         tradeName: `Owned Inactive ${new Types.ObjectId()}`,
         currencyTrade: "EUR",
       });
-      const employee = await Employee.create({
+      const employee = await createTestEmployeeMembership({
         businessId: ownedBusiness._id,
         userId: user._id,
-        allEmployeeRoles: ["Waiter"],
-        taxNumber: `TAX-${new Types.ObjectId()}`,
-        joinDate: new Date(),
         active: false,
-        vacationDaysPerYear: 20,
       });
 
       await expect(canLogAsEmployee(employee._id)).resolves.toEqual({
@@ -229,14 +246,11 @@ describe("Auth Helpers", () => {
     });
 
     it("returns false for inactive employee", async () => {
-      const employee = await Employee.create({
+      const employee = await createTestEmployeeMembership({
         businessId,
         userId,
-        allEmployeeRoles: ["Manager"],
-        taxNumber: "TAX-INACTIVE-001",
-        joinDate: new Date(),
+        roles: ["Manager"],
         active: false,
-        vacationDaysPerYear: 20,
       });
 
       const result = await canLogAsEmployee(employee._id);
@@ -244,16 +258,11 @@ describe("Auth Helpers", () => {
     });
 
     it("returns false for terminated employee", async () => {
-      const joinDate = new Date(Date.now() - 24 * 60 * 60 * 1000);
-      const employee = await Employee.create({
+      const employee = await createTestEmployeeMembership({
         businessId,
         userId,
-        allEmployeeRoles: ["Manager"],
-        taxNumber: "TAX-TERMED-001",
-        joinDate,
-        active: true,
+        roles: ["Manager"],
         terminatedDate: new Date(),
-        vacationDaysPerYear: 20,
       });
 
       const result = await canLogAsEmployee(employee._id);
@@ -280,15 +289,7 @@ describe("Auth Helpers", () => {
     });
 
     it("allows a manager member with no schedule", async () => {
-      await Employee.create({
-        businessId,
-        userId,
-        allEmployeeRoles: ["Manager"],
-        taxNumber: `TAX-${new Types.ObjectId()}`,
-        joinDate: new Date(),
-        active: true,
-        vacationDaysPerYear: 20,
-      });
+      await createTestEmployeeMembership({ businessId, userId, roles: ["Manager"] });
 
       await expect(canUseBusinessMode(userId)).resolves.toBe(true);
     });
@@ -296,23 +297,14 @@ describe("Auth Helpers", () => {
     it("gates supervisor and employee through the shared entry window", async () => {
       const supervisorUserId = new Types.ObjectId();
       const employeeUserId = new Types.ObjectId();
-      const supervisor = await Employee.create({
+      const supervisor = await createTestEmployeeMembership({
         businessId,
         userId: supervisorUserId,
-        allEmployeeRoles: ["Supervisor"],
-        taxNumber: `TAX-${new Types.ObjectId()}`,
-        joinDate: new Date(),
-        active: true,
-        vacationDaysPerYear: 20,
+        roles: ["Supervisor"],
       });
-      const employee = await Employee.create({
+      const employee = await createTestEmployeeMembership({
         businessId,
         userId: employeeUserId,
-        allEmployeeRoles: ["Waiter"],
-        taxNumber: `TAX-${new Types.ObjectId()}`,
-        joinDate: new Date(),
-        active: true,
-        vacationDaysPerYear: 20,
       });
 
       const now = new Date();
@@ -323,33 +315,20 @@ describe("Auth Helpers", () => {
         false,
       );
 
-      await Schedule.create({
+      await createTestSchedule({
         businessId,
         date: now,
-        weekNumber: 1,
-        employeesSchedules: [
-          {
+        entries: [
+          fakeScheduleEntry({
             employeeId: supervisor._id,
             role: "Supervisor",
-            timeRange: {
-              startTime: new Date(now.getTime() - 5 * 60 * 1000),
-              endTime: new Date(now.getTime() + 60 * 60 * 1000),
-            },
-            vacation: false,
-            shiftHours: 1,
-            employeeCost: 20,
-          },
-          {
+            start: new Date(now.getTime() - 5 * 60 * 1000),
+          }),
+          fakeScheduleEntry({
             employeeId: employee._id,
-            role: "Waiter",
-            timeRange: {
-              startTime: new Date(now.getTime() - 3 * 60 * 60 * 1000),
-              endTime: new Date(now.getTime() - 2 * 60 * 60 * 1000),
-            },
-            vacation: false,
-            shiftHours: 1,
-            employeeCost: 20,
-          },
+            start: new Date(now.getTime() - 3 * 60 * 60 * 1000),
+            end: new Date(now.getTime() - 2 * 60 * 60 * 1000),
+          }),
         ],
       });
 
@@ -474,13 +453,10 @@ describe("Auth Helpers", () => {
       terminatedDate?: Date;
       deleted?: boolean;
     } = {}) =>
-      Employee.create({
+      createTestEmployeeMembership({
         businessId: overrides.businessId ?? businessId,
         userId: overrides.userId ?? userId,
-        allEmployeeRoles: [overrides.role ?? "Manager"],
-        taxNumber: `ROLE-${new Types.ObjectId()}`,
-        joinDate: new Date("2024-01-01"),
-        vacationDaysPerYear: 20,
+        roles: [overrides.role ?? "Manager"],
         onDuty: overrides.onDuty ?? true,
         active: overrides.active ?? true,
         terminatedDate: overrides.terminatedDate,
@@ -542,22 +518,15 @@ describe("Auth Helpers", () => {
       const employee = await membership({ role: "Waiter" });
       const now = new Date();
 
-      await Schedule.create({
+      await createTestSchedule({
         businessId,
         date: now,
-        weekNumber: 1,
-        employeesSchedules: [
-          {
+        entries: [
+          fakeScheduleEntry({
             employeeId: employee._id,
-            role: "Waiter",
-            timeRange: {
-              startTime: new Date(now.getTime() - 60 * 60 * 1000),
-              endTime: new Date(now.getTime() + 60 * 60 * 1000),
-            },
-            vacation: false,
-            shiftHours: 2,
-            employeeCost: 20,
-          },
+            start: new Date(now.getTime() - 60 * 60 * 1000),
+            end: new Date(now.getTime() + 60 * 60 * 1000),
+          }),
         ],
       });
 

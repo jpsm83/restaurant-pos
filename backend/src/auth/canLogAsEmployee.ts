@@ -15,11 +15,10 @@
 import { Types, type ClientSession } from "mongoose";
 
 import Employee from "../models/employee.ts";
-import Business from "../models/business.ts";
-import Company from "../models/company.ts";
-import Owner from "../models/owner.ts";
-import { resolveEffectiveAccess } from "../access/resolveEffectiveAccess.ts";
-import findActiveEmployeeMembership from "./employeeMembership.ts";
+import {
+  canEnterBusinessAnywhere,
+  resolveEffectiveAccess,
+} from "../access/resolveEffectiveAccess.ts";
 
 export interface CanLogAsEmployeeResult {
   canLogAsEmployee: boolean;
@@ -51,6 +50,7 @@ export default async function canLogAsEmployee(
   const access = await resolveEffectiveAccess({
     userId: String(employee.userId),
     businessId: String(employee.businessId),
+    membershipId: employeeId,
     now,
     session,
   });
@@ -59,55 +59,14 @@ export default async function canLogAsEmployee(
 }
 
 /**
- * The single eligibility seam behind the Customer | Business mode switch.
- *
- * A User may enter Business mode when they own a venue through
- * User → Owner → Company → Business, or when their active Employee membership
- * resolves to an enterable effective layer. Ownership and manager/admin layers
- * are always enterable; supervisor and employee layers follow the shared
- * planned-shift entry window.
+ * The Customer | Business mode switch for a User. Ownership and manager/admin
+ * layers are always enterable; supervisor and employee layers follow the
+ * shared planned-shift entry window. Venue ownership and membership selection
+ * stay inside the access resolver so the mode gate and access read agree.
  */
 export async function canUseBusinessMode(
   userId: Types.ObjectId | string,
   now?: Date,
 ): Promise<boolean> {
-  if (await ownsAnyBusiness(userId, now)) return true;
-
-  const employee = await findActiveEmployeeMembership({ userId });
-  if (!employee) return false;
-
-  const { canLogAsEmployee: canLog } = await canLogAsEmployee(
-    employee._id,
-    now,
-  );
-  return canLog;
-}
-
-async function ownsAnyBusiness(
-  userId: Types.ObjectId | string,
-  now?: Date,
-): Promise<boolean> {
-  const owner = (await Owner.findOne({ userId })
-    .select("_id")
-    .lean()) as { _id: unknown } | null;
-  if (!owner) return false;
-
-  const companies = (await Company.find({ ownerId: owner._id })
-    .select("_id")
-    .lean()) as Array<{ _id: unknown }>;
-  if (!companies.length) return false;
-
-  const business = (await Business.findOne({
-    companyId: { $in: companies.map((company) => company._id) },
-  })
-    .select("_id")
-    .lean()) as { _id: unknown } | null;
-  if (!business) return false;
-
-  const access = await resolveEffectiveAccess({
-    userId: String(userId),
-    businessId: String(business._id),
-    now,
-  });
-  return access?.canEnterBusiness === true;
+  return canEnterBusinessAnywhere({ userId: String(userId), now });
 }

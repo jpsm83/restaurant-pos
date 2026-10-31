@@ -7,7 +7,9 @@ import { faker } from "@faker-js/faker";
 import { Types } from "mongoose";
 import Business from "../../src/models/business.ts";
 import Company from "../../src/models/company.ts";
+import Employee from "../../src/models/employee.ts";
 import Owner from "../../src/models/owner.ts";
+import Schedule from "../../src/models/schedule.ts";
 import User from "../../src/models/user.ts";
 
 /**
@@ -181,6 +183,69 @@ export async function createTestBusiness(
   return Business.create({
     ...rest,
     companyId,
+  });
+}
+
+/**
+ * Persist an Employee membership. Defaults to an active, non-terminated waiter
+ * so access and mode tests can override only the fact under test.
+ */
+export async function createTestEmployeeMembership(params: {
+  businessId: Types.ObjectId | string;
+  userId: Types.ObjectId | string;
+  roles?: string[];
+  active?: boolean;
+  onDuty?: boolean;
+  terminatedDate?: Date;
+  deleted?: boolean;
+}) {
+  return Employee.create({
+    businessId: params.businessId,
+    userId: params.userId,
+    allEmployeeRoles: params.roles ?? ["Waiter"],
+    taxNumber: `EMP-${new Types.ObjectId()}`,
+    joinDate: new Date(Date.now() - 24 * 60 * 60 * 1000),
+    vacationDaysPerYear: 20,
+    active: params.active ?? true,
+    onDuty: params.onDuty ?? false,
+    terminatedDate: params.terminatedDate,
+    deleted: params.deleted ?? false,
+  });
+}
+
+/** One planned-shift entry for a daily Schedule. */
+export function fakeScheduleEntry(params: {
+  employeeId: Types.ObjectId | string;
+  start: Date;
+  end?: Date;
+  role?: string;
+  vacation?: boolean;
+}) {
+  return {
+    employeeId: params.employeeId,
+    role: params.role ?? "Waiter",
+    timeRange: {
+      startTime: params.start,
+      endTime:
+        params.end ?? new Date(params.start.getTime() + 60 * 60 * 1000),
+    },
+    vacation: params.vacation ?? false,
+    shiftHours: 1,
+    employeeCost: 20,
+  };
+}
+
+/** Persist one daily Schedule from planned-shift entries. */
+export async function createTestSchedule(params: {
+  businessId: Types.ObjectId | string;
+  date?: Date;
+  entries: ReturnType<typeof fakeScheduleEntry>[];
+}) {
+  return Schedule.create({
+    businessId: params.businessId,
+    date: params.date ?? new Date(),
+    weekNumber: 1,
+    employeesSchedules: params.entries,
   });
 }
 
