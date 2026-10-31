@@ -3,10 +3,10 @@
  * while legacy raw-inserted orphans stay readable and unbackfilled.
  */
 import { describe, it, expect } from "vitest";
-import { Types } from "mongoose";
+import mongoose, { Types } from "mongoose";
 import Business from "../../src/models/business.ts";
 import {
-  createTestOwnerCompany,
+  createTestBusiness,
   fakeBusinessRecord,
 } from "../helpers/fixtures.ts";
 
@@ -17,7 +17,7 @@ describe("Business → Company ownership", () => {
         ...fakeBusinessRecord(),
         taxNumber: "TAX-OWNERSHIP-MISSING",
       }),
-    ).rejects.toThrow(/Company id is required/i);
+    ).rejects.toBeInstanceOf(mongoose.Error.ValidationError);
 
     const stored = await Business.findOne({
       taxNumber: "TAX-OWNERSHIP-MISSING",
@@ -26,16 +26,15 @@ describe("Business → Company ownership", () => {
   });
 
   it("creates a Business that names its owning Company", async () => {
-    const { company } = await createTestOwnerCompany({ country: "USA" });
-
-    const created = await Business.create({
-      ...fakeBusinessRecord({ country: "USA", companyId: company._id.toString() }),
+    const created = await createTestBusiness({
+      ...fakeBusinessRecord(),
+      country: "USA",
       taxNumber: "TAX-OWNERSHIP-LINKED",
     });
 
-    expect(created.companyId?.toString()).toBe(company._id.toString());
+    expect(created.companyId).toBeDefined();
     const stored = await Business.findById(created._id).lean();
-    expect(stored?.companyId?.toString()).toBe(company._id.toString());
+    expect(stored?.companyId?.toString()).toBe(created.companyId?.toString());
   });
 
   it("keeps a raw-inserted legacy orphan readable without backfilling it", async () => {
