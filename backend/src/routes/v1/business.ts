@@ -24,6 +24,7 @@ import {
   requireBusinessAccessHook,
 } from "../../auth/middleware.ts";
 import { resolveBusinessAccess } from "../../auth/businessAccess.ts";
+import { resolveEffectiveAccess } from "../../access/resolveEffectiveAccess.ts";
 import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
 import deleteFilesCloudinary from "../../cloudinary/deleteFilesCloudinary.ts";
 import { badRequest, conflict, forbidden, notFound } from "../../errors/appError.ts";
@@ -390,6 +391,31 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
       };
 
       return reply.code(200).send(payload);
+    },
+  );
+
+  /**
+   * Read the signed-in User's effective access at this venue. This is not
+   * mode-gated and writes nothing. Members outside the entry window still
+   * succeed with `canEnterBusiness` false; non-owners/non-members are refused.
+   */
+  app.get<{ Params: BusinessIdParams }>(
+    "/:businessId/access",
+    {
+      preValidation: [createAuthHook(app)],
+      schema: { params: businessIdParamsSchema },
+    },
+    async (req, reply) => {
+      const access = await resolveEffectiveAccess({
+        userId: req.authSession!.id,
+        businessId: req.params.businessId,
+      });
+
+      if (!access || access.source === "none") {
+        throw forbidden("Forbidden");
+      }
+
+      return reply.code(200).send(access);
     },
   );
 

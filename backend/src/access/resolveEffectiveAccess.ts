@@ -1,0 +1,191 @@
+/**
+ * Resolve one signed-in User's effective access at one Business.
+ *
+ * Ownership is User → Owner → Company → Business and always wins over a
+ * membership: an owning User is admin-equivalent with source ownership, even
+ * when they also hold an Employee membership. Otherwise an active membership
+ * resolves to the highest default layer among its job roles. No ownership and
+ * no active membership resolves to customer-only with source `none`.
+ *
+ * This stands the access facts up without reading per-shift fields
+ * (`currentShiftRole`, `onDuty`); per-shift layer flips arrive with attendance
+ * sessions. Business entry follows the layer rule: ownership, manager, and
+ * admin always; supervisor and employee only inside a planned shift's
+ * ten-minutes-before to two-hours-after planned-start window.
+ */
+
+import { Types } from "mongoose";
+
+import {
+  getDefaultCapabilities,
+  resolveDefaultAccessLayerForRoles,
+  type AccessCapabilityKey,
+  type AccessLayer,
+} from "restaurant-pos-packages/access";
+import Business from "../models/business.ts";
+import Company from "../models/company.ts";
+import Owner from "../models/owner.ts";
+import Schedule from "../models/schedule.ts";
+import { withSoftDeleteFilter } from "../models/softDelete.ts";
+import findActiveEmployeeMembership, {
+  type EmployeeMembership,
+} from "../auth/employeeMembership.ts";
+
+const ENTRY_WINDOW_BEFORE_START_MS = 10 * 60 * 1000;
+const ENTRY_WINDOW_AFTER_START_MS = 2 * 60 * 60 * 1000;
+
+export type EffectiveAccessSource = "ownership" | "membership" | "none";
+
+export interface EffectiveAccess {
+  businessId: string;
+  effectiveLayer: AccessLayer;
+  source: EffectiveAccessSource;
+  /** The membership's job roles; empty for ownership-only access. */
+  jobRoles: string[];
+  /** Active capability keys in catalogue order. */
+  capabilities: AccessCapabilityKey[];
+  canEnterBusiness: boolean;
+}
+
+/**
+ * Resolve effective access, or `null` when the User or Business id is invalid
+ * or the Business does not exist. A valid Business with no access returns the
+ * customer-only projection with source `none`; callers decide whether to
+ * refuse it.
+ */
+export async function resolveEffectiveAccess(params: {
+  userId: string;
+  businessId: string;
+  now?: Date;
+}): Promise<EffectiveAccess | null> {
+  const { userId, businessId, now } = params;
+  if (
+    !Types.ObjectId.isValid(userId) ||
+    !Types.ObjectId.isValid(businessId)
+  ) {
+    return null;
+  }
+
+  const business = (await Business.findById(businessId)
+    .select("companyId")
+    .lean()) as { companyId?: Types.ObjectId } | null;
+  if (!business) return null;
+
+  const membership = await findActiveEmployeeMembership({
+    userId,
+    businessId,
+  });
+
+  if (business.companyId && (await ownsBusiness(userId, business.companyId))) {
+    return {
+      businessId,
+      effectiveLayer: "admin",
+      source: "ownership",
+      jobRoles: normalizeJobRoles(membership),
+      capabilities: capabilitiesForLayer("admin"),
+      canEnterBusiness: true,
+    };
+  }
+
+  if (!membership) {
+    return {
+      businessId,
+      effectiveLayer: "customer",
+      source: "none",
+      jobRoles: [],
+      capabilities: [],
+      canEnterBusiness: false,
+    };
+  }
+
+  const jobRoles = normalizeJobRoles(membership);
+  const effectiveLayer = resolveDefaultAccessLayerForRoles(jobRoles);
+  const canEnterBusiness =
+    effectiveLayer === "manager" || effectiveLayer === "admin"
+      ? true
+      : await isInsideEntryWindow({
+          employeeId: membership._id,
+          businessId,
+          now: now ?? new Date(),
+        });
+
+  return {
+    businessId,
+    effectiveLayer,
+    source: "membership",
+    jobRoles,
+    capabilities: capabilitiesForLayer(effectiveLayer),
+    canEnterBusiness,
+  };
+}
+
+async function ownsBusiness(
+  userId: string,
+  companyId: Types.ObjectId,
+): Promise<boolean> {
+  const owner = (await Owner.findOne({ userId })
+    .select("_id")
+    .lean()) as { _id: Types.ObjectId } | null;
+  if (!owner) return false;
+
+  const company = await Company.findOne(
+    withSoftDeleteFilter({ _id: companyId, ownerId: owner._id }),
+  )
+    .select("_id")
+    .lean();
+  return company !== null;
+}
+
+function normalizeJobRoles(membership: EmployeeMembership | null): string[] {
+  if (!membership || !Array.isArray(membership.allEmployeeRoles)) return [];
+  return membership.allEmployeeRoles.map((role) => String(role));
+}
+
+function capabilitiesForLayer(layer: AccessLayer): AccessCapabilityKey[] {
+  return [...getDefaultCapabilities(layer)];
+}
+
+/**
+ * An entry window belongs to a non-vacation planned shift for today. It opens
+ * ten minutes before planned start and closes two hours after planned start;
+ * shift end is irrelevant to entry.
+ */
+async function isInsideEntryWindow(params: {
+  employeeId: Types.ObjectId;
+  businessId: string;
+  now: Date;
+}): Promise<boolean> {
+  const { employeeId, businessId, now } = params;
+  const startOfDay = new Date(now);
+  startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date(startOfDay);
+  endOfDay.setDate(endOfDay.getDate() + 1);
+
+  const schedule = (await Schedule.findOne({
+    businessId,
+    date: { $gte: startOfDay, $lt: endOfDay },
+  })
+    .select("employeesSchedules")
+    .lean()) as {
+    employeesSchedules?: Array<{
+      employeeId: unknown;
+      vacation?: boolean;
+      timeRange: { startTime: Date };
+    }>;
+  } | null;
+
+  if (!schedule?.employeesSchedules?.length) return false;
+
+  const employeeIdString = employeeId.toString();
+  const nowMs = now.getTime();
+  return schedule.employeesSchedules.some((entry) => {
+    if (entry.vacation) return false;
+    if (String(entry.employeeId) !== employeeIdString) return false;
+
+    const startMs = new Date(entry.timeRange.startTime).getTime();
+    return (
+      nowMs >= startMs - ENTRY_WINDOW_BEFORE_START_MS &&
+      nowMs <= startMs + ENTRY_WINDOW_AFTER_START_MS
+    );
+  });
+}
