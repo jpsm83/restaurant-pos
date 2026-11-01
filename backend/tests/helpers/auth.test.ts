@@ -139,6 +139,27 @@ describe("Auth Helpers", () => {
       });
     });
 
+    it.each(["Suspended", "Terminated"])(
+      "keeps an owning User eligible despite a %s membership",
+      async (employmentStatus) => {
+        const { user, company } = await createTestOwnerCompany();
+        const ownedBusiness = await createTestBusiness({
+          companyId: company._id,
+          tradeName: `Owned ${employmentStatus} ${new Types.ObjectId()}`,
+          currencyTrade: "EUR",
+        });
+        const employee = await createTestEmployeeMembership({
+          businessId: ownedBusiness._id,
+          userId: user._id,
+          employmentStatus,
+        });
+
+        await expect(canLogAsEmployee(employee._id)).resolves.toEqual({
+          canLogAsEmployee: true,
+        });
+      },
+    );
+
     it("returns true during shift hours (within schedule)", async () => {
       const employee = await createEmployee(["Waiter"]);
       const now = new Date();

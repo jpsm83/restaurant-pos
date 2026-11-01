@@ -3,6 +3,7 @@ import { Types } from "mongoose";
 
 import Business from "../../src/models/business.ts";
 import Company from "../../src/models/company.ts";
+import Employee from "../../src/models/employee.ts";
 import Owner from "../../src/models/owner.ts";
 import User from "../../src/models/user.ts";
 import ownerCompanyCreation, {
@@ -66,6 +67,10 @@ describe("ownerCompanyCreation", () => {
     await expect(Owner.countDocuments({ userId: user._id })).resolves.toBe(1);
     await expect(Company.countDocuments({ ownerId: result.owner._id })).resolves.toBe(1);
     await expect(Business.countDocuments({ _id: result.business._id })).resolves.toBe(1);
+    await expect(Employee.countDocuments({ userId: user._id })).resolves.toBe(0);
+    await expect(
+      Employee.countDocuments({ businessId: result.business._id }),
+    ).resolves.toBe(0);
   });
 
   it("creates a draft Business with only the minimum onboarding set", async () => {

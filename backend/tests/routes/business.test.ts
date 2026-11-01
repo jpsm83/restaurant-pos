@@ -189,6 +189,41 @@ describe("Business Routes", () => {
       expect(business?.address?.state).toBeUndefined();
     });
 
+    it("creates no Employee membership and leaves the owning User admin-equivalent", async () => {
+      const app = await getTestApp();
+      const { auth, userId } = await customerAuthToken();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/business",
+        headers: { authorization: auth },
+        payload: draft,
+      });
+
+      expect(response.statusCode).toBe(201);
+      const businessId = JSON.parse(response.body).business._id as string;
+
+      await expect(Employee.countDocuments({ userId })).resolves.toBe(0);
+      await expect(
+        Employee.countDocuments({ businessId }),
+      ).resolves.toBe(0);
+
+      const access = await app.inject({
+        method: "GET",
+        url: `/api/v1/business/${businessId}/access`,
+        headers: { authorization: auth },
+      });
+
+      expect(access.statusCode).toBe(200);
+      expect(JSON.parse(access.body)).toMatchObject({
+        businessId,
+        effectiveLayer: "admin",
+        source: "ownership",
+        jobRoles: [],
+        canEnterBusiness: true,
+      });
+    });
+
     it("creates a first venue with an explicit new-Company payload", async () => {
       const app = await getTestApp();
       const { auth } = await customerAuthToken();
