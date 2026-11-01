@@ -194,6 +194,7 @@ export async function createTestEmployeeMembership(params: {
   businessId: Types.ObjectId | string;
   userId: Types.ObjectId | string;
   roles?: string[];
+  employmentStatus?: string;
   active?: boolean;
   onDuty?: boolean;
   terminatedDate?: Date;
@@ -206,9 +207,12 @@ export async function createTestEmployeeMembership(params: {
     taxNumber: `EMP-${new Types.ObjectId()}`,
     joinDate: new Date(Date.now() - 24 * 60 * 60 * 1000),
     vacationDaysPerYear: 20,
+    employmentStatus: params.employmentStatus,
     active: params.active ?? true,
     onDuty: params.onDuty ?? false,
-    terminatedDate: params.terminatedDate,
+    terminatedDate:
+      params.terminatedDate ??
+      (params.employmentStatus === "Terminated" ? new Date() : undefined),
     deleted: params.deleted ?? false,
   });
 }

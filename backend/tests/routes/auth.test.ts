@@ -326,6 +326,81 @@ describe("Auth Routes", () => {
       expect(after.statusCode).toBe(200);
       expect(after.json().user.canLogAsEmployee).toBeUndefined();
     });
+
+    it.each(["Suspended", "Terminated"])(
+      "does not grant staff sign-in for a %s membership",
+      async (employmentStatus) => {
+        const app = await getTestApp();
+        const email = `staff-${employmentStatus.replace(/\s/g, "")}@test.com`;
+        const user = await User.create({
+          personalDetails: {
+            email,
+            password: hashedPassword,
+            firstName: "Status",
+            lastName: employmentStatus,
+            username: `staff${employmentStatus.replace(/\s/g, "")}`,
+          },
+        });
+        const business = await createTestBusiness({
+          tradeName: `Status Venue ${employmentStatus}`,
+          currencyTrade: "USD",
+        });
+        await createTestEmployeeMembership({
+          businessId: business._id,
+          userId: user._id,
+          roles: ["Manager"],
+          employmentStatus,
+        });
+
+        const response = await app.inject({
+          method: "POST",
+          url: "/api/v1/auth/login",
+          payload: { email, password: testPassword },
+        });
+
+        expect(response.statusCode).toBe(200);
+        expect(response.json().user.canLogAsEmployee).toBeUndefined();
+      },
+    );
+
+    it.each([
+      "Active",
+      "Seasonal",
+      "Medical absence",
+      "Parental leave",
+      "Unpaid leave",
+    ])("grants staff sign-in for a %s membership", async (employmentStatus) => {
+      const app = await getTestApp();
+      const email = `staff-leave-${employmentStatus.replace(/\s/g, "")}@test.com`;
+      const user = await User.create({
+        personalDetails: {
+          email,
+          password: hashedPassword,
+          firstName: "Status",
+          lastName: employmentStatus,
+          username: `staffleave${employmentStatus.replace(/\s/g, "")}`,
+        },
+      });
+      const business = await createTestBusiness({
+        tradeName: `Leave Venue ${employmentStatus}`,
+        currencyTrade: "USD",
+      });
+      await createTestEmployeeMembership({
+        businessId: business._id,
+        userId: user._id,
+        roles: ["Manager"],
+        employmentStatus,
+      });
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: { email, password: testPassword },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json().user.canLogAsEmployee).toBe(true);
+    });
   });
 
   describe("POST /api/v1/auth/logout", () => {
@@ -1905,6 +1980,7 @@ describe("Auth Routes", () => {
       email: string;
       username: string;
       roles?: string[];
+      employmentStatus?: string;
     }) {
       const user = await User.create({
         personalDetails: {
@@ -1919,6 +1995,7 @@ describe("Auth Routes", () => {
         businessId: params.businessId,
         userId: user._id,
         roles: params.roles,
+        employmentStatus: params.employmentStatus,
       });
       return { user, employee };
     }
@@ -2321,6 +2398,96 @@ describe("Auth Routes", () => {
         expect(response.json().mode).toBe("business");
       }
     });
+
+    it.each(["Suspended", "Terminated"])(
+      "refuses business mode for a %s manager membership",
+      async (employmentStatus) => {
+        const app = await getTestApp();
+        const business = await createTestBusiness({
+          tradeName: "Blocked Status Mode Venue",
+          currencyTrade: "EUR",
+        });
+        await createMember({
+          businessId: business._id,
+          email: `blocked-${employmentStatus}@test.com`,
+          username: `blocked${employmentStatus.replace(/\s/g, "")}`,
+          roles: ["Manager"],
+          employmentStatus,
+        });
+
+        const response = await setBusinessMode(
+          app,
+          `blocked-${employmentStatus}@test.com`,
+        );
+
+        expect(response.statusCode).toBe(403);
+        expect(response.json().detail).toBe(
+          "Not authorized to enter business mode",
+        );
+      },
+    );
+
+    it.each([
+      "Active",
+      "Seasonal",
+      "Medical absence",
+      "Parental leave",
+      "Unpaid leave",
+    ])("allows business mode for a %s manager membership", async (employmentStatus) => {
+      const app = await getTestApp();
+      const business = await createTestBusiness({
+        tradeName: "Leave Status Mode Venue",
+        currencyTrade: "EUR",
+      });
+      const email = `leave-${employmentStatus.replace(/\s/g, "")}@test.com`;
+      await createMember({
+        businessId: business._id,
+        email,
+        username: `leave${employmentStatus.replace(/\s/g, "")}`,
+        roles: ["Manager"],
+        employmentStatus,
+      });
+
+      const response = await setBusinessMode(app, email);
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json().mode).toBe("business");
+    });
+
+    it.each(["Suspended", "Terminated"])(
+      "allows an owning User with a %s membership into business mode",
+      async (employmentStatus) => {
+        const app = await getTestApp();
+        const email = `owner-blocked-${employmentStatus.replace(/\s/g, "")}@test.com`;
+        const user = await User.create({
+          personalDetails: {
+            email,
+            password: hashedPassword,
+            firstName: "Owner",
+            lastName: "Blocked",
+            username: `ownerblocked${employmentStatus.replace(/\s/g, "")}`,
+          },
+        });
+        const { business: venue } = await ownerCompanyCreation({
+          userId: user._id,
+          business: {
+            ...fakeBusinessRecord({ country: "USA" }),
+            _id: new Types.ObjectId(),
+            email: `venue-${employmentStatus.replace(/\s/g, "")}@test.com`,
+          },
+        });
+        await createTestEmployeeMembership({
+          businessId: venue._id,
+          userId: user._id,
+          employmentStatus,
+        });
+
+        const response = await setBusinessMode(app, email);
+
+        expect(response.statusCode).toBe(200);
+        expect(response.json().mode).toBe("business");
+      },
+    );
 
     it("gates supervisor and employee on the planned-shift entry window", async () => {
       const app = await getTestApp();

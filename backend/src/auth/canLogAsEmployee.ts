@@ -27,9 +27,9 @@ export interface CanLogAsEmployeeResult {
 /**
  * Returns { canLogAsEmployee: true } when the employee's User has an enterable
  * effective layer at the membership's Business. An owning User stays eligible
- * even when the linked membership is inactive; a non-owner's inactive or
- * terminated membership resolves as customer-only. Caller must ensure DB is
- * connected before invoking.
+ * even when the linked membership is blocked; a non-owner's Suspended,
+ * Terminated, or legacy-inactive membership resolves as customer-only. Caller
+ * must ensure DB is connected before invoking.
  */
 export default async function canLogAsEmployee(
   employeeId: Types.ObjectId | string,

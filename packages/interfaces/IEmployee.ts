@@ -20,6 +20,9 @@ export interface IEmployee {
   vacationDaysPerYear: number;
   businessId: Types.ObjectId | string;
   userId: Types.ObjectId | string;
+  /** Closed employment status; absent on legacy rows that predate it. */
+  employmentStatus?: string;
+  /** Server-derived compatibility mirror of `employmentStatus`. */
   active?: boolean;
   onDuty?: boolean;
   vacationDaysLeft?: number;

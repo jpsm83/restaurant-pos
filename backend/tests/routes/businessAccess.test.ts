@@ -50,6 +50,7 @@ async function createMembership(params: {
   businessId: string;
   userId: string;
   roles: string[];
+  employmentStatus?: string;
   active?: boolean;
   terminated?: boolean;
   deleted?: boolean;
@@ -62,8 +63,12 @@ async function createMembership(params: {
     taxNumber: `EMP-${new Types.ObjectId()}`,
     joinDate,
     vacationDaysPerYear: 20,
+    employmentStatus: params.employmentStatus,
     active: params.active ?? true,
-    terminatedDate: params.terminated ? new Date() : null,
+    terminatedDate:
+      params.terminated || params.employmentStatus === "Terminated"
+        ? new Date()
+        : null,
     deleted: params.deleted ?? false,
   });
 }
@@ -368,6 +373,107 @@ describe("GET /api/v1/business/:businessId/access", () => {
 
     expect(response.statusCode).toBe(403);
   });
+
+  it.each(["Suspended", "Terminated"])(
+    "refuses a membership with %s status",
+    async (employmentStatus) => {
+      const app = await getTestApp();
+      const business = await createTestBusiness({
+        tradeName: "Blocked Status Venue",
+        currencyTrade: "EUR",
+      });
+      const { userId, auth } = await createSignedInUser();
+      await createMembership({
+        businessId: business._id.toString(),
+        userId,
+        roles: ["Manager"],
+        employmentStatus,
+      });
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/business/${business._id}/access`,
+        headers: { authorization: auth },
+      });
+
+      expect(response.statusCode).toBe(403);
+    },
+  );
+
+  it.each([
+    "Active",
+    "Seasonal",
+    "Medical absence",
+    "Parental leave",
+    "Unpaid leave",
+  ])(
+    "keeps a manager with %s status enterable without a schedule",
+    async (employmentStatus) => {
+      const app = await getTestApp();
+      const business = await createTestBusiness({
+        tradeName: "Leave Status Venue",
+        currencyTrade: "EUR",
+      });
+      const { userId, auth } = await createSignedInUser();
+      await createMembership({
+        businessId: business._id.toString(),
+        userId,
+        roles: ["Manager"],
+        employmentStatus,
+      });
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/business/${business._id}/access`,
+        headers: { authorization: auth },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toMatchObject({
+        effectiveLayer: "manager",
+        source: "membership",
+        canEnterBusiness: true,
+      });
+    },
+  );
+
+  it.each(["Suspended", "Terminated"])(
+    "keeps ownership access when the owning User has a %s membership",
+    async (employmentStatus) => {
+      const app = await getTestApp();
+      const { user, company } = await createTestOwnerCompany();
+      const business = await createTestBusiness({
+        companyId: company._id,
+        tradeName: "Owner Blocked Status Venue",
+        currencyTrade: "EUR",
+      });
+      await createMembership({
+        businessId: business._id.toString(),
+        userId: user._id.toString(),
+        roles: ["Waiter"],
+        employmentStatus,
+      });
+      const auth = await generateTestToken({
+        id: user._id.toString(),
+        email: "owner-blocked-status@test.com",
+        type: "user",
+        role: "Customer",
+      });
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/business/${business._id}/access`,
+        headers: { authorization: auth },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toMatchObject({
+        effectiveLayer: "admin",
+        source: "ownership",
+        canEnterBusiness: true,
+      });
+    },
+  );
 
   it("requires authentication", async () => {
     const app = await getTestApp();

@@ -36,11 +36,14 @@ describe("Auth Helpers", () => {
     const createEmployee = (
       roles: string[],
       membershipUserId: Types.ObjectId = userId,
+      employmentStatus?: string,
+      membershipBusinessId: Types.ObjectId = businessId,
     ) =>
       createTestEmployeeMembership({
-        businessId,
+        businessId: membershipBusinessId,
         userId: membershipUserId,
         roles,
+        employmentStatus,
       });
 
     const addShift = (params: {
@@ -74,10 +77,19 @@ describe("Auth Helpers", () => {
       });
     });
 
-    it("evaluates the exact membership when a User has two at one venue", async () => {
+    it("evaluates the exact membership when a User has two venue links", async () => {
       const sharedUserId = new Types.ObjectId();
+      const secondBusiness = await createTestBusiness({
+        tradeName: `Auth Helpers Exact ${new Types.ObjectId()}`,
+        currencyTrade: "EUR",
+      });
       const inWindow = await createEmployee(["Waiter"], sharedUserId);
-      const outsideWindow = await createEmployee(["Waiter"], sharedUserId);
+      const outsideWindow = await createEmployee(
+        ["Waiter"],
+        sharedUserId,
+        undefined,
+        secondBusiness._id,
+      );
       const now = new Date();
 
       await createTestSchedule({
@@ -88,6 +100,12 @@ describe("Auth Helpers", () => {
             employeeId: inWindow._id,
             start: new Date(now.getTime() - 5 * 60 * 1000),
           }),
+        ],
+      });
+      await createTestSchedule({
+        businessId: secondBusiness._id,
+        date: now,
+        entries: [
           fakeScheduleEntry({
             employeeId: outsideWindow._id,
             start: new Date(now.getTime() + 30 * 60 * 1000),
@@ -269,6 +287,73 @@ describe("Auth Helpers", () => {
       expect(result.canLogAsEmployee).toBe(false);
     });
 
+    it.each(["Suspended", "Terminated"])(
+      "returns false for a %s membership",
+      async (employmentStatus) => {
+        const employee = await createEmployee(
+          ["Manager"],
+          userId,
+          employmentStatus,
+        );
+
+        const result = await canLogAsEmployee(employee._id);
+        expect(result.canLogAsEmployee).toBe(false);
+      },
+    );
+
+    it.each([
+      "Active",
+      "Seasonal",
+      "Medical absence",
+      "Parental leave",
+      "Unpaid leave",
+    ])("keeps a %s manager eligible", async (employmentStatus) => {
+      const employee = await createEmployee(
+        ["Manager"],
+        userId,
+        employmentStatus,
+      );
+
+      const result = await canLogAsEmployee(employee._id);
+      expect(result.canLogAsEmployee).toBe(true);
+    });
+
+    it("keeps a leave-status employee on the planned-shift entry window", async () => {
+      const inside = await createEmployee(
+        ["Waiter"],
+        new Types.ObjectId(),
+        "Seasonal",
+      );
+      const outside = await createEmployee(
+        ["Waiter"],
+        new Types.ObjectId(),
+        "Seasonal",
+      );
+      const now = new Date();
+
+      await createTestSchedule({
+        businessId,
+        date: now,
+        entries: [
+          fakeScheduleEntry({
+            employeeId: inside._id,
+            start: new Date(now.getTime() - 5 * 60 * 1000),
+          }),
+          fakeScheduleEntry({
+            employeeId: outside._id,
+            start: new Date(now.getTime() + 30 * 60 * 1000),
+          }),
+        ],
+      });
+
+      await expect(canLogAsEmployee(inside._id, now)).resolves.toEqual({
+        canLogAsEmployee: true,
+      });
+      await expect(canLogAsEmployee(outside._id, now)).resolves.toEqual({
+        canLogAsEmployee: false,
+      });
+    });
+
     it("returns false for non-existent employee", async () => {
       const fakeId = new Types.ObjectId();
       const result = await canLogAsEmployee(fakeId);
@@ -293,6 +378,56 @@ describe("Auth Helpers", () => {
 
       await expect(canUseBusinessMode(userId)).resolves.toBe(true);
     });
+
+    it.each(["Suspended", "Terminated"])(
+      "refuses business mode for a %s manager membership",
+      async (employmentStatus) => {
+        await createTestEmployeeMembership({
+          businessId,
+          userId,
+          roles: ["Manager"],
+          employmentStatus,
+        });
+
+        await expect(canUseBusinessMode(userId)).resolves.toBe(false);
+      },
+    );
+
+    it.each([
+      "Active",
+      "Seasonal",
+      "Medical absence",
+      "Parental leave",
+      "Unpaid leave",
+    ])("allows business mode for a %s manager membership", async (employmentStatus) => {
+      await createTestEmployeeMembership({
+        businessId,
+        userId,
+        roles: ["Manager"],
+        employmentStatus,
+      });
+
+      await expect(canUseBusinessMode(userId)).resolves.toBe(true);
+    });
+
+    it.each(["Suspended", "Terminated"])(
+      "allows an owning User with a %s membership to use business mode",
+      async (employmentStatus) => {
+        const { user, company } = await createTestOwnerCompany();
+        const ownedBusiness = await createTestBusiness({
+          companyId: company._id,
+          tradeName: `Owned ${employmentStatus} ${new Types.ObjectId()}`,
+          currencyTrade: "EUR",
+        });
+        await createTestEmployeeMembership({
+          businessId: ownedBusiness._id,
+          userId: user._id,
+          employmentStatus,
+        });
+
+        await expect(canUseBusinessMode(user._id)).resolves.toBe(true);
+      },
+    );
 
     it("gates supervisor and employee through the shared entry window", async () => {
       const supervisorUserId = new Types.ObjectId();
@@ -448,6 +583,7 @@ describe("Auth Helpers", () => {
       businessId?: Types.ObjectId;
       userId?: Types.ObjectId;
       role?: string;
+      employmentStatus?: string;
       onDuty?: boolean;
       active?: boolean;
       terminatedDate?: Date;
@@ -457,6 +593,7 @@ describe("Auth Helpers", () => {
         businessId: overrides.businessId ?? businessId,
         userId: overrides.userId ?? userId,
         roles: [overrides.role ?? "Manager"],
+        employmentStatus: overrides.employmentStatus,
         onDuty: overrides.onDuty ?? true,
         active: overrides.active ?? true,
         terminatedDate: overrides.terminatedDate,
@@ -504,6 +641,31 @@ describe("Auth Helpers", () => {
       await expect(
         getEffectiveUserRoleAtTime({ userId, businessId }),
       ).resolves.toBe("customer");
+    });
+
+    it.each(["Suspended", "Terminated"])(
+      "returns customer for a %s membership",
+      async (employmentStatus) => {
+        await membership({ employmentStatus });
+
+        await expect(
+          getEffectiveUserRoleAtTime({ userId, businessId }),
+        ).resolves.toBe("customer");
+      },
+    );
+
+    it.each([
+      "Active",
+      "Seasonal",
+      "Medical absence",
+      "Parental leave",
+      "Unpaid leave",
+    ])("returns employee for an on-duty %s manager", async (employmentStatus) => {
+      await membership({ employmentStatus });
+
+      await expect(
+        getEffectiveUserRoleAtTime({ userId, businessId }),
+      ).resolves.toBe("employee");
     });
 
     it("returns customer for a soft-deleted membership", async () => {

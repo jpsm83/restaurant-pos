@@ -2,7 +2,7 @@
  * One seam for resolving a signed-in User's access to a specific Business.
  *
  * A User may act on a venue when they own it through
- * User → Owner → Company → Business, or when they hold an active Employee
+ * User → Owner → Company → Business, or when they hold a usable Employee
  * membership for that venue. Effective layers, capabilities, and Business-mode
  * eligibility are resolved by `resolveEffectiveAccess`; this module keeps the
  * existing owner-versus-employee and boolean checks for existing callers.

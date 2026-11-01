@@ -3,9 +3,10 @@
  *
  * Ownership is User → Owner → Company → Business and always wins over a
  * membership: an owning User is admin-equivalent with source ownership, even
- * when they also hold an Employee membership. Otherwise an active membership
- * resolves to the highest default layer among its job roles. No ownership and
- * no active membership resolves to customer-only with source `none`.
+ * when they also hold an Employee membership. Otherwise a usable membership
+ * (one not Suspended or Terminated) resolves to the highest default layer among
+ * its job roles. No ownership and no usable membership resolves to customer-only
+ * with source `none`.
  *
  * This stands the access facts up without reading per-shift fields
  * (`currentShiftRole`, `onDuty`); per-shift layer flips arrive with attendance

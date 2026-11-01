@@ -25,6 +25,7 @@ import {
   compareAccessLayers,
   resolveDefaultAccessLayerForRoles,
 } from "restaurant-pos-packages/access";
+import { blockedEmploymentStatusEnums } from "restaurant-pos-packages/enums";
 
 import { createAuthHook } from "../../auth/middleware.ts";
 import {
@@ -53,7 +54,7 @@ import {
 } from "restaurant-pos-packages/schemas/employee";
 
 /** Employment statuses that remove access through the membership. */
-const BLOCKED_EMPLOYMENT_STATUSES = new Set(["Suspended", "Terminated"]);
+const BLOCKED_EMPLOYMENT_STATUSES = new Set(blockedEmploymentStatusEnums);
 
 /** An Employee row plus optional future employment-status data. */
 type MembershipRecord = IEmployee & { employmentStatus?: string };

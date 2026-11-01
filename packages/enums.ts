@@ -310,3 +310,21 @@ export const othersSubcategoryEnums = ["Cleaning", "Office", "Furniture", "Dispo
 export const weekDaysEnums = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as string[];
 
 export const employeePayFrequencyEnums = ["Hourly", "Daily", "Weekly", "Monthly"] as string[];
+
+/** Employment statuses that keep a membership employed (`active` is true). */
+export const activeEmploymentStatusEnums = [
+  "Active",
+  "Seasonal",
+  "Medical absence",
+  "Parental leave",
+  "Unpaid leave",
+] as string[];
+
+/** Employment statuses that block access through the membership. */
+export const blockedEmploymentStatusEnums = ["Suspended", "Terminated"] as string[];
+
+/** Closed employment-status list for Employee memberships. */
+export const employmentStatusEnums = [
+  ...activeEmploymentStatusEnums,
+  ...blockedEmploymentStatusEnums,
+] as string[];

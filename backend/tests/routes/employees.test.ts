@@ -1275,7 +1275,7 @@ describe("Employees Routes", () => {
       expect(errorPaths(response)).toContain("joinDate");
     });
 
-    it("returns validation Problem Details when terminatedDate is not after joinDate", async () => {
+    it("returns validation Problem Details when terminatedDate is before joinDate", async () => {
       const manager = await makeMember({ roles: ["Manager"] });
       const employee = await Employee.create({
         businessId,
@@ -1304,7 +1304,9 @@ describe("Employees Routes", () => {
 
       expect(response.statusCode).toBe(400);
       expect(isProblemDetails(response)).toBe(true);
-      expect(detail(response)).toBe("Terminate date must be after join date!");
+      expect(detail(response)).toBe(
+        "Terminate date must be on or after join date!",
+      );
     });
 
     it("returns validation Problem Details for too many documents", async () => {
