@@ -1,10 +1,12 @@
 /**
- * Employees Routes Tests - Phase 1 Module 11 + Phase 4 Task 4.4 + Phase 5 Task 5.2
+ * Employees Routes Tests — Phase 1.5 membership read rail.
  *
- * Validation and error responses are asserted at the HTTP seam: failures are
- * RFC 9457 `application/problem+json` documents, never `{ message }`.
- * Phase 4: Full transaction tests for Employee membership (requires replica set).
- * Phase 5: Cloudinary tests for document uploads (skipped - ESM mocking limitation)
+ * Access and error responses are asserted at the HTTP seam: failures are RFC
+ * 9457 `application/problem+json` documents, never `{ message }`. The suite
+ * covers the removed cross-tenant list, authentication on every membership
+ * route, the shared manager layer gate, manager list identity rows, manager
+ * full reads, the non-sensitive self-view, management contacts, and the
+ * soft-delete retention path.
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
@@ -12,13 +14,17 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 vi.mock("../../src/cloudinary/deleteFolderCloudinary.ts", () => ({
   default: vi.fn(async () => true),
 }));
+
 import { Types } from "mongoose";
-import { getTestApp } from "../setup.ts";
+import { generateTestToken, getTestApp } from "../setup.ts";
 import Employee from "../../src/models/employee.ts";
 import User from "../../src/models/user.ts";
 import Printer from "../../src/models/printer.ts";
 import { multipart } from "../helpers/multipart.ts";
-import { createTestBusiness } from "../helpers/fixtures.ts";
+import {
+  createTestBusiness,
+  createTestOwnerCompany,
+} from "../helpers/fixtures.ts";
 import {
   detail,
   errorMessages,
@@ -26,31 +32,98 @@ import {
   isProblemDetails,
 } from "../helpers/problemDetails.ts";
 
+const validAddress = {
+  country: "USA",
+  state: "CA",
+  city: "Los Angeles",
+  street: "Main St",
+  buildingNumber: "123",
+  postCode: "90001",
+};
+
+type TestActor = {
+  userId: Types.ObjectId;
+  email: string;
+  auth: string;
+};
+
+type TestMember = TestActor & {
+  employeeId: string;
+  membership: Awaited<ReturnType<typeof Employee.create>>;
+};
+
 describe("Employees Routes", () => {
   let businessId: Types.ObjectId;
-  let userId: Types.ObjectId;
+  let ownerUserId: Types.ObjectId;
+  let ownerAuth: string;
+  let targetUserId: Types.ObjectId;
 
-  const validAddress = {
-    country: "USA",
-    state: "CA",
-    city: "Los Angeles",
-    street: "Main St",
-    buildingNumber: "123",
-    postCode: "90001",
-  };
-
-  beforeEach(async () => {
-    const business = await createTestBusiness({
-      tradeName: "Test Restaurant",
-      legalName: "Test Restaurant LLC",
-      email: "test@restaurant.com",
-      phoneNumber: "1234567890",
-      taxNumber: "TAX-001",
-      currencyTrade: "USD",
-      address: validAddress,
+  async function makeUser(
+    firstName = "Test",
+    lastName = "User",
+  ): Promise<TestActor> {
+    const userId = new Types.ObjectId();
+    const email = `user-${userId}@test.com`;
+    await User.create({
+      _id: userId,
+      personalDetails: { email, firstName, lastName },
     });
-    businessId = business._id;
+    const auth = await generateTestToken({
+      id: userId.toString(),
+      email,
+      type: "user",
+      role: "Customer",
+    });
+    return { userId, email, auth };
+  }
 
+  async function makeMember(params: {
+    roles: string[];
+    business?: Types.ObjectId;
+    active?: boolean;
+    terminatedDate?: Date | null;
+    deleted?: boolean;
+    firstName?: string;
+    lastName?: string;
+    employmentStatus?: string;
+  }): Promise<TestMember> {
+    const actor = await makeUser(
+      params.firstName ?? "Member",
+      params.lastName ?? "User",
+    );
+    const membership = await Employee.create({
+      businessId: params.business ?? businessId,
+      userId: actor.userId,
+      allEmployeeRoles: params.roles,
+      taxNumber: `EMP-${new Types.ObjectId()}`,
+      joinDate: new Date("2024-01-15"),
+      vacationDaysPerYear: 20,
+      vacationDaysLeft: 12,
+      contractHoursWeek: 32,
+      salary: { payFrequency: "Hourly", grossSalary: 20, netSalary: 15 },
+      comments: "HR-only note",
+      documentsUrl: ["https://example.com/contract.pdf"],
+      active: params.active ?? true,
+      terminatedDate: params.terminatedDate,
+      deleted: params.deleted ?? false,
+      ...(params.deleted ? { deletedAt: new Date() } : {}),
+    });
+
+    if (params.employmentStatus) {
+      await Employee.collection.updateOne(
+        { _id: membership._id },
+        { $set: { employmentStatus: params.employmentStatus } },
+      );
+    }
+
+    return {
+      ...actor,
+      employeeId: membership._id.toString(),
+      membership,
+    };
+  }
+
+  const seedTargetUser = async () => {
     const user = await User.create({
       username: "employeeuser",
       email: "employeeuser@test.com",
@@ -71,12 +144,37 @@ describe("Employees Routes", () => {
         address: validAddress,
       },
     });
-    userId = user._id;
+    targetUserId = user._id;
+  };
+
+  beforeEach(async () => {
+    const owner = await createTestOwnerCompany();
+    ownerUserId = owner.user._id;
+    ownerAuth = await generateTestToken({
+      id: ownerUserId.toString(),
+      email: `owner-${ownerUserId}@test.com`,
+      type: "user",
+      role: "Customer",
+    });
+
+    const business = await createTestBusiness({
+      companyId: owner.company._id,
+      tradeName: "Test Restaurant",
+      legalName: "Test Restaurant LLC",
+      email: "test@restaurant.com",
+      phoneNumber: "1234567890",
+      taxNumber: `TAX-${new Types.ObjectId()}`,
+      currencyTrade: "USD",
+      address: validAddress,
+    });
+    businessId = business._id;
+
+    await seedTargetUser();
   });
 
   const validCreateFields = () => ({
     allEmployeeRoles: JSON.stringify(["Waiter"]),
-    taxNumber: `EMP-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    taxNumber: `EMP-${new Types.ObjectId()}`,
     joinDate: "2024-01-15",
     vacationDaysPerYear: "20",
     businessId: businessId.toString(),
@@ -88,34 +186,79 @@ describe("Employees Routes", () => {
     return { ...rest, active: "true" };
   };
 
-  describe("GET /api/v1/employees", () => {
-    it("lists all employees", async () => {
+  describe("authentication on every membership route", () => {
+    it("refuses unauthenticated reads of the venue membership list", async () => {
       const app = await getTestApp();
-
-      await Employee.create({
-        businessId,
-        userId,
-        taxNumber: "EMP-TAX-001",
-        joinDate: new Date(),
-        vacationDaysPerYear: 20,
-        vacationDaysLeft: 20,
-        allEmployeeRoles: ["Waiter"],
-      });
-
       const response = await app.inject({
         method: "GET",
-        url: "/api/v1/employees",
+        url: `/api/v1/employees/business/${businessId}`,
       });
 
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(Array.isArray(body)).toBe(true);
-      expect(body.length).toBe(1);
+      expect(response.statusCode).toBe(401);
+      expect(isProblemDetails(response)).toBe(true);
     });
 
-    it("returns a problem-details 404 when no employees exist", async () => {
+    it("refuses unauthenticated reads of management contacts", async () => {
       const app = await getTestApp();
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/employees/business/${businessId}/management-contacts`,
+      });
 
+      expect(response.statusCode).toBe(401);
+      expect(isProblemDetails(response)).toBe(true);
+    });
+
+    it("refuses unauthenticated reads of one membership", async () => {
+      const app = await getTestApp();
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/employees/${new Types.ObjectId()}`,
+      });
+
+      expect(response.statusCode).toBe(401);
+      expect(isProblemDetails(response)).toBe(true);
+    });
+
+    it("refuses unauthenticated membership creation", async () => {
+      const app = await getTestApp();
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/employees",
+        payload: multipart(validCreateFields()),
+        headers: { "content-type": "multipart/form-data" },
+      });
+
+      expect(response.statusCode).toBe(401);
+      expect(isProblemDetails(response)).toBe(true);
+    });
+
+    it("refuses unauthenticated membership edits", async () => {
+      const app = await getTestApp();
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/employees/${new Types.ObjectId()}`,
+        payload: multipart(validUpdateFields()),
+        headers: { "content-type": "multipart/form-data" },
+      });
+
+      expect(response.statusCode).toBe(401);
+      expect(isProblemDetails(response)).toBe(true);
+    });
+
+    it("refuses unauthenticated membership deletion", async () => {
+      const app = await getTestApp();
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/employees/${new Types.ObjectId()}`,
+      });
+
+      expect(response.statusCode).toBe(401);
+      expect(isProblemDetails(response)).toBe(true);
+    });
+
+    it("no longer exposes the cross-tenant all-employees list", async () => {
+      const app = await getTestApp();
       const response = await app.inject({
         method: "GET",
         url: "/api/v1/employees",
@@ -123,15 +266,165 @@ describe("Employees Routes", () => {
 
       expect(response.statusCode).toBe(404);
       expect(isProblemDetails(response)).toBe(true);
-      expect(detail(response)).toBe("No employees found!");
     });
+  });
 
-    it("returns a problem-details 400 for an invalid includeDeleted query value", async () => {
+  describe("GET /api/v1/employees/business/:businessId", () => {
+    it("lets an owner list the venue memberships", async () => {
+      await makeMember({ roles: ["Waiter"] });
       const app = await getTestApp();
 
       const response = await app.inject({
         method: "GET",
-        url: "/api/v1/employees?includeDeleted=maybe",
+        url: `/api/v1/employees/business/${businessId}`,
+        headers: { authorization: ownerAuth },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toHaveLength(1);
+    });
+
+    it("lets a manager list memberships with the linked User name and email", async () => {
+      const manager = await makeMember({ roles: ["Manager"] });
+      const employee = await makeMember({
+        roles: ["Waiter"],
+        firstName: "Alice",
+        lastName: "Smith",
+      });
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/employees/business/${businessId}`,
+        headers: { authorization: manager.auth },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const rows = response.json() as Array<Record<string, unknown>>;
+      expect(rows).toHaveLength(2);
+      const alice = rows.find((row) => row._id === employee.employeeId);
+      expect(alice).toMatchObject({
+        displayName: "Alice Smith",
+        email: employee.email,
+      });
+    });
+
+    it("keeps soft-deleted memberships out unless includeDeleted is requested", async () => {
+      const manager = await makeMember({ roles: ["Manager"] });
+      await makeMember({ roles: ["Waiter"], deleted: true });
+      const app = await getTestApp();
+
+      const ordinary = await app.inject({
+        method: "GET",
+        url: `/api/v1/employees/business/${businessId}`,
+        headers: { authorization: manager.auth },
+      });
+      expect(ordinary.statusCode).toBe(200);
+      expect(ordinary.json()).toHaveLength(1);
+
+      const withDeleted = await app.inject({
+        method: "GET",
+        url: `/api/v1/employees/business/${businessId}?includeDeleted=true`,
+        headers: { authorization: manager.auth },
+      });
+      expect(withDeleted.statusCode).toBe(200);
+      const rows = withDeleted.json() as Array<{ deleted?: boolean }>;
+      expect(rows).toHaveLength(2);
+      expect(rows.some((row) => row.deleted === true)).toBe(true);
+    });
+
+    it("does not list another venue's memberships", async () => {
+      const manager = await makeMember({ roles: ["Manager"] });
+      const otherBusiness = await createTestBusiness({
+        tradeName: "Other Venue",
+        legalName: "Other Venue LLC",
+        email: "other@restaurant.com",
+        phoneNumber: "1234567890",
+        taxNumber: `TAX-${new Types.ObjectId()}`,
+        currencyTrade: "USD",
+        address: validAddress,
+      });
+      const otherEmployee = await makeMember({
+        roles: ["Waiter"],
+        business: otherBusiness._id,
+      });
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/employees/business/${businessId}`,
+        headers: { authorization: manager.auth },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const rows = response.json() as Array<{ _id: string }>;
+      expect(rows.map((row) => row._id)).toEqual([manager.employeeId]);
+      expect(rows.map((row) => row._id)).not.toContain(otherEmployee.employeeId);
+    });
+
+    it("returns an empty list for a venue with no memberships", async () => {
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/employees/business/${businessId}`,
+        headers: { authorization: ownerAuth },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual([]);
+    });
+
+    it("refuses a supervisor", async () => {
+      const supervisor = await makeMember({ roles: ["Supervisor"] });
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/employees/business/${businessId}`,
+        headers: { authorization: supervisor.auth },
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(isProblemDetails(response)).toBe(true);
+    });
+
+    it("refuses an ordinary employee", async () => {
+      const employee = await makeMember({ roles: ["Waiter"] });
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/employees/business/${businessId}`,
+        headers: { authorization: employee.auth },
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(isProblemDetails(response)).toBe(true);
+    });
+
+    it("refuses an outsider", async () => {
+      const outsider = await makeUser();
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/employees/business/${businessId}`,
+        headers: { authorization: outsider.auth },
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(isProblemDetails(response)).toBe(true);
+    });
+
+    it("returns validation Problem Details for an invalid includeDeleted value", async () => {
+      const manager = await makeMember({ roles: ["Manager"] });
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/employees/business/${businessId}?includeDeleted=maybe`,
+        headers: { authorization: manager.auth },
       });
 
       expect(response.statusCode).toBe(400);
@@ -140,15 +433,480 @@ describe("Employees Routes", () => {
     });
   });
 
+  describe("GET /api/v1/employees/:employeeId", () => {
+    it("returns the full manager-visible record to a manager", async () => {
+      const manager = await makeMember({ roles: ["Manager"] });
+      const employee = await makeMember({ roles: ["Waiter"] });
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/employees/${employee.employeeId}`,
+        headers: { authorization: manager.auth },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toMatchObject({
+        _id: employee.employeeId,
+        taxNumber: expect.any(String),
+        salary: { payFrequency: "Hourly", grossSalary: 20, netSalary: 15 },
+        comments: "HR-only note",
+        documentsUrl: ["https://example.com/contract.pdf"],
+      });
+    });
+
+    it("returns the full record to the owning User", async () => {
+      const employee = await makeMember({ roles: ["Waiter"] });
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/employees/${employee.employeeId}`,
+        headers: { authorization: ownerAuth },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toMatchObject({
+        taxNumber: expect.any(String),
+        salary: { grossSalary: 20 },
+        comments: "HR-only note",
+      });
+    });
+
+    it("returns only the non-sensitive self-view to the membership's own User", async () => {
+      const employee = await makeMember({
+        roles: ["Waiter"],
+        employmentStatus: "Active",
+      });
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/employees/${employee.employeeId}`,
+        headers: { authorization: employee.auth },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json() as Record<string, unknown>;
+      expect(body).toMatchObject({
+        _id: employee.employeeId,
+        businessId: businessId.toString(),
+        allEmployeeRoles: ["Waiter"],
+        contractHoursWeek: 32,
+        vacationDaysPerYear: 20,
+        vacationDaysLeft: 12,
+        documentsUrl: ["https://example.com/contract.pdf"],
+        employmentStatus: "Active",
+      });
+
+      for (const key of [
+        "salary",
+        "taxNumber",
+        "comments",
+        "nationalIdNumber",
+        "idNumber",
+        "deleted",
+        "deletedAt",
+        "deletedBy",
+      ]) {
+        expect(body).not.toHaveProperty(key);
+      }
+    });
+
+    it("keeps the self-view available outside a planned shift window", async () => {
+      const employee = await makeMember({ roles: ["Waiter"] });
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/employees/${employee.employeeId}`,
+        headers: { authorization: employee.auth },
+      });
+
+      expect(response.statusCode).toBe(200);
+    });
+
+    it.each([
+      ["inactive", { active: false }],
+      ["terminated", { terminatedDate: new Date("2024-06-01") }],
+      ["soft-deleted", { deleted: true }],
+      ["suspended status", { employmentStatus: "Suspended" }],
+      ["terminated status", { employmentStatus: "Terminated" }],
+    ])("refuses a self-view for a %s membership", async (_label, overrides) => {
+      const employee = await makeMember({ roles: ["Waiter"], ...overrides });
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/employees/${employee.employeeId}`,
+        headers: { authorization: employee.auth },
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(isProblemDetails(response)).toBe(true);
+    });
+
+    it("refuses a manager from another venue", async () => {
+      const employee = await makeMember({ roles: ["Waiter"] });
+      const otherBusiness = await createTestBusiness({
+        tradeName: "Other Venue",
+        legalName: "Other Venue LLC",
+        email: "other@restaurant.com",
+        phoneNumber: "1234567890",
+        taxNumber: `TAX-${new Types.ObjectId()}`,
+        currencyTrade: "USD",
+        address: validAddress,
+      });
+      const otherManager = await makeMember({
+        roles: ["Manager"],
+        business: otherBusiness._id,
+      });
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/employees/${employee.employeeId}`,
+        headers: { authorization: otherManager.auth },
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(isProblemDetails(response)).toBe(true);
+    });
+
+    it("refuses an ordinary employee reading a peer", async () => {
+      const employee = await makeMember({ roles: ["Waiter"] });
+      const peer = await makeMember({ roles: ["Waiter"] });
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/employees/${peer.employeeId}`,
+        headers: { authorization: employee.auth },
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(isProblemDetails(response)).toBe(true);
+    });
+
+    it("refuses a supervisor reading a peer", async () => {
+      const supervisor = await makeMember({ roles: ["Supervisor"] });
+      const peer = await makeMember({ roles: ["Waiter"] });
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/employees/${peer.employeeId}`,
+        headers: { authorization: supervisor.auth },
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(isProblemDetails(response)).toBe(true);
+    });
+
+    it("refuses an outsider", async () => {
+      const outsider = await makeUser();
+      const employee = await makeMember({ roles: ["Waiter"] });
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/employees/${employee.employeeId}`,
+        headers: { authorization: outsider.auth },
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(isProblemDetails(response)).toBe(true);
+    });
+
+    it("returns validation Problem Details for an invalid id", async () => {
+      const manager = await makeMember({ roles: ["Manager"] });
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/employees/invalid-id",
+        headers: { authorization: manager.auth },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(isProblemDetails(response)).toBe(true);
+      expect(errorPaths(response)).toContain("employeeId");
+    });
+
+    it("returns a problem-details 404 for a non-existent membership", async () => {
+      const manager = await makeMember({ roles: ["Manager"] });
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/employees/${new Types.ObjectId()}`,
+        headers: { authorization: manager.auth },
+      });
+
+      expect(response.statusCode).toBe(404);
+      expect(isProblemDetails(response)).toBe(true);
+      expect(detail(response)).toBe("Employee not found!");
+    });
+
+    it("hides a soft-deleted membership from ordinary manager reads but shows it with includeDeleted", async () => {
+      const manager = await makeMember({ roles: ["Manager"] });
+      const deleted = await makeMember({ roles: ["Waiter"], deleted: true });
+      const app = await getTestApp();
+
+      const ordinary = await app.inject({
+        method: "GET",
+        url: `/api/v1/employees/${deleted.employeeId}`,
+        headers: { authorization: manager.auth },
+      });
+      expect(ordinary.statusCode).toBe(404);
+      expect(isProblemDetails(ordinary)).toBe(true);
+
+      const withDeleted = await app.inject({
+        method: "GET",
+        url: `/api/v1/employees/${deleted.employeeId}?includeDeleted=true`,
+        headers: { authorization: manager.auth },
+      });
+      expect(withDeleted.statusCode).toBe(200);
+      expect(withDeleted.json()).toMatchObject({ deleted: true });
+    });
+  });
+
+  describe("GET /api/v1/employees/business/:businessId/management-contacts", () => {
+    it("returns manager-and-above contacts and excludes Supervisor", async () => {
+      const manager = await makeMember({ roles: ["Manager"] });
+      const ownerMember = await makeMember({ roles: ["Owner"] });
+      const supervisor = await makeMember({ roles: ["Supervisor"] });
+      const waiter = await makeMember({ roles: ["Waiter"] });
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/employees/business/${businessId}/management-contacts`,
+        headers: { authorization: manager.auth },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const contacts = response.json() as Array<{ employeeId: string }>;
+      const ids = contacts.map((contact) => contact.employeeId);
+      expect(ids).toContain(manager.employeeId);
+      expect(ids).toContain(ownerMember.employeeId);
+      expect(ids).not.toContain(supervisor.employeeId);
+      expect(ids).not.toContain(waiter.employeeId);
+    });
+
+    it("returns an empty list when only supervisors and employees exist", async () => {
+      const manager = await makeMember({ roles: ["Manager"] });
+      await makeMember({ roles: ["Supervisor"] });
+      await makeMember({ roles: ["Waiter"] });
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/employees/business/${businessId}/management-contacts`,
+        headers: { authorization: manager.auth },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const contacts = response.json() as Array<{ employeeId: string }>;
+      expect(contacts.map((contact) => contact.employeeId)).toEqual([
+        manager.employeeId,
+      ]);
+    });
+
+    it.each([
+      ["supervisor", ["Supervisor"]],
+      ["employee", ["Waiter"]],
+    ])("refuses a %s", async (_label, roles) => {
+      const actor = await makeMember({ roles });
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/employees/business/${businessId}/management-contacts`,
+        headers: { authorization: actor.auth },
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(isProblemDetails(response)).toBe(true);
+    });
+
+    it("refuses an outsider", async () => {
+      const outsider = await makeUser();
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/employees/business/${businessId}/management-contacts`,
+        headers: { authorization: outsider.auth },
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(isProblemDetails(response)).toBe(true);
+    });
+
+    it("returns validation Problem Details for an invalid businessId", async () => {
+      const manager = await makeMember({ roles: ["Manager"] });
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/employees/business/invalid-id/management-contacts",
+        headers: { authorization: manager.auth },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(isProblemDetails(response)).toBe(true);
+      expect(errorPaths(response)).toContain("businessId");
+    });
+  });
+
+  describe("DELETE /api/v1/employees/:employeeId", () => {
+    it("soft-deletes a membership for a manager", async () => {
+      const manager = await makeMember({ roles: ["Manager"] });
+      const employee = await makeMember({ roles: ["Waiter"] });
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/employees/${employee.employeeId}`,
+        headers: { authorization: manager.auth },
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const retained = await Employee.findById(employee.employeeId)
+        .setOptions({ includeDeleted: true })
+        .lean();
+      expect(retained?.deleted).toBe(true);
+      expect(retained?.deletedAt).toBeTruthy();
+      expect(await Employee.findById(employee.employeeId).lean()).toBeNull();
+    });
+
+    it("soft-deletes a membership for the owning User", async () => {
+      const employee = await makeMember({ roles: ["Waiter"] });
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/employees/${employee.employeeId}`,
+        headers: { authorization: ownerAuth },
+      });
+
+      expect(response.statusCode).toBe(200);
+    });
+
+    it.each([
+      ["supervisor", ["Supervisor"]],
+      ["employee", ["Waiter"]],
+    ])("refuses a %s", async (_label, roles) => {
+      const actor = await makeMember({ roles });
+      const employee = await makeMember({ roles: ["Waiter"] });
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/employees/${employee.employeeId}`,
+        headers: { authorization: actor.auth },
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(isProblemDetails(response)).toBe(true);
+    });
+
+    it("refuses an outsider and a manager from another venue", async () => {
+      const outsider = await makeUser();
+      const employee = await makeMember({ roles: ["Waiter"] });
+      const app = await getTestApp();
+
+      const outsiderResponse = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/employees/${employee.employeeId}`,
+        headers: { authorization: outsider.auth },
+      });
+      expect(outsiderResponse.statusCode).toBe(403);
+
+      const otherBusiness = await createTestBusiness({
+        tradeName: "Other Venue",
+        legalName: "Other Venue LLC",
+        email: "other@restaurant.com",
+        phoneNumber: "1234567890",
+        taxNumber: `TAX-${new Types.ObjectId()}`,
+        currencyTrade: "USD",
+        address: validAddress,
+      });
+      const otherManager = await makeMember({
+        roles: ["Manager"],
+        business: otherBusiness._id,
+      });
+      const otherResponse = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/employees/${employee.employeeId}`,
+        headers: { authorization: otherManager.auth },
+      });
+      expect(otherResponse.statusCode).toBe(403);
+      expect(isProblemDetails(otherResponse)).toBe(true);
+    });
+
+    it("returns validation Problem Details for an invalid employeeId", async () => {
+      const manager = await makeMember({ roles: ["Manager"] });
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "DELETE",
+        url: "/api/v1/employees/invalid-id",
+        headers: { authorization: manager.auth },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(isProblemDetails(response)).toBe(true);
+      expect(errorPaths(response)).toContain("employeeId");
+    });
+
+    it("returns a problem-details 404 for a non-existent membership", async () => {
+      const manager = await makeMember({ roles: ["Manager"] });
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/employees/${new Types.ObjectId()}`,
+        headers: { authorization: manager.auth },
+      });
+
+      expect(response.statusCode).toBe(404);
+      expect(isProblemDetails(response)).toBe(true);
+      expect(detail(response)).toBe("Employee not found!");
+    });
+
+    it("returns a problem-details 409 for an already soft-deleted membership", async () => {
+      const manager = await makeMember({ roles: ["Manager"] });
+      const deleted = await makeMember({ roles: ["Waiter"], deleted: true });
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/employees/${deleted.employeeId}`,
+        headers: { authorization: manager.auth },
+      });
+
+      expect(response.statusCode).toBe(409);
+      expect(isProblemDetails(response)).toBe(true);
+      expect(detail(response)).toBe("Employee already deleted!");
+    });
+  });
+
   describe("POST /api/v1/employees", () => {
-    it("returns a problem-details 400 for missing required fields", async () => {
+    it("returns validation Problem Details for missing required fields", async () => {
+      const manager = await makeMember({ roles: ["Manager"] });
       const app = await getTestApp();
 
       const response = await app.inject({
         method: "POST",
         url: "/api/v1/employees",
         payload: multipart({ taxNumber: "EMP-001" }),
-        headers: { "content-type": "multipart/form-data" },
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: manager.auth,
+        },
       });
 
       expect(response.statusCode).toBe(400);
@@ -164,14 +922,18 @@ describe("Employees Routes", () => {
       }
     });
 
-    it("returns a problem-details 400 for an invalid businessId", async () => {
+    it("returns validation Problem Details for an invalid businessId", async () => {
+      const manager = await makeMember({ roles: ["Manager"] });
       const app = await getTestApp();
 
       const response = await app.inject({
         method: "POST",
         url: "/api/v1/employees",
         payload: multipart({ ...validCreateFields(), businessId: "invalid-id" }),
-        headers: { "content-type": "multipart/form-data" },
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: manager.auth,
+        },
       });
 
       expect(response.statusCode).toBe(400);
@@ -179,7 +941,8 @@ describe("Employees Routes", () => {
       expect(errorPaths(response)).toContain("businessId");
     });
 
-    it("returns a problem-details 400 for an invalid employee role", async () => {
+    it("returns validation Problem Details for an invalid employee role", async () => {
+      const manager = await makeMember({ roles: ["Manager"] });
       const app = await getTestApp();
 
       const response = await app.inject({
@@ -189,7 +952,10 @@ describe("Employees Routes", () => {
           ...validCreateFields(),
           allEmployeeRoles: JSON.stringify(["InvalidRole"]),
         }),
-        headers: { "content-type": "multipart/form-data" },
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: manager.auth,
+        },
       });
 
       expect(response.statusCode).toBe(400);
@@ -197,7 +963,8 @@ describe("Employees Routes", () => {
       expect(errorPaths(response)).toContain("allEmployeeRoles.0");
     });
 
-    it("returns a problem-details 400 for malformed JSON allEmployeeRoles", async () => {
+    it("returns validation Problem Details for malformed JSON allEmployeeRoles", async () => {
+      const manager = await makeMember({ roles: ["Manager"] });
       const app = await getTestApp();
 
       const response = await app.inject({
@@ -207,7 +974,10 @@ describe("Employees Routes", () => {
           ...validCreateFields(),
           allEmployeeRoles: "{not json",
         }),
-        headers: { "content-type": "multipart/form-data" },
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: manager.auth,
+        },
       });
 
       expect(response.statusCode).toBe(400);
@@ -215,7 +985,8 @@ describe("Employees Routes", () => {
       expect(errorMessages(response)).toContain("Invalid JSON");
     });
 
-    it("returns a problem-details 400 for an invalid salary", async () => {
+    it("returns validation Problem Details for an invalid salary", async () => {
+      const manager = await makeMember({ roles: ["Manager"] });
       const app = await getTestApp();
 
       const missingField = await app.inject({
@@ -225,7 +996,10 @@ describe("Employees Routes", () => {
           ...validCreateFields(),
           salary: JSON.stringify({ payFrequency: "Hourly", grossSalary: 20 }),
         }),
-        headers: { "content-type": "multipart/form-data" },
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: manager.auth,
+        },
       });
 
       expect(missingField.statusCode).toBe(400);
@@ -243,7 +1017,10 @@ describe("Employees Routes", () => {
             netSalary: 15,
           }),
         }),
-        headers: { "content-type": "multipart/form-data" },
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: manager.auth,
+        },
       });
 
       expect(badFrequency.statusCode).toBe(400);
@@ -251,25 +1028,8 @@ describe("Employees Routes", () => {
       expect(errorMessages(badFrequency)).toContain("Invalid pay frequency!");
     });
 
-    it("returns a problem-details 400 for malformed JSON salary", async () => {
-      const app = await getTestApp();
-
-      const response = await app.inject({
-        method: "POST",
-        url: "/api/v1/employees",
-        payload: multipart({
-          ...validCreateFields(),
-          salary: "{not json",
-        }),
-        headers: { "content-type": "multipart/form-data" },
-      });
-
-      expect(response.statusCode).toBe(400);
-      expect(isProblemDetails(response)).toBe(true);
-      expect(errorMessages(response)).toContain("Invalid JSON");
-    });
-
-    it("returns a problem-details 400 for a server-owned field", async () => {
+    it("returns validation Problem Details for a server-owned field", async () => {
+      const manager = await makeMember({ roles: ["Manager"] });
       const app = await getTestApp();
 
       const response = await app.inject({
@@ -279,7 +1039,10 @@ describe("Employees Routes", () => {
           ...validCreateFields(),
           documentsUrl: "https://example.com/doc.png",
         }),
-        headers: { "content-type": "multipart/form-data" },
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: manager.auth,
+        },
       });
 
       expect(response.statusCode).toBe(400);
@@ -290,6 +1053,7 @@ describe("Employees Routes", () => {
     });
 
     it("rejects a create with more files than the transport allows", async () => {
+      const manager = await makeMember({ roles: ["Manager"] });
       const app = await getTestApp();
 
       const form = multipart(validCreateFields());
@@ -305,75 +1069,177 @@ describe("Employees Routes", () => {
         method: "POST",
         url: "/api/v1/employees",
         payload: form,
-        headers: { "content-type": "multipart/form-data" },
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: manager.auth,
+        },
       });
 
       expect(response.statusCode).toBe(413);
       expect(isProblemDetails(response)).toBe(true);
     });
-  });
 
-  describe("GET /api/v1/employees/:employeeId", () => {
-    it("gets employee by ID", async () => {
+    it("refuses a supervisor and an ordinary employee", async () => {
+      const supervisor = await makeMember({ roles: ["Supervisor"] });
+      const employee = await makeMember({ roles: ["Waiter"] });
       const app = await getTestApp();
 
-      const employee = await Employee.create({
+      for (const actor of [supervisor, employee]) {
+        const response = await app.inject({
+          method: "POST",
+          url: "/api/v1/employees",
+          payload: multipart(validCreateFields()),
+          headers: {
+            "content-type": "multipart/form-data",
+            authorization: actor.auth,
+          },
+        });
+
+        expect(response.statusCode).toBe(403);
+        expect(isProblemDetails(response)).toBe(true);
+      }
+    });
+
+    it("creates an employee membership for a manager", async () => {
+      const manager = await makeMember({ roles: ["Manager"] });
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/employees",
+        payload: multipart(validCreateFields()),
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: manager.auth,
+        },
+      });
+
+      expect(response.statusCode).toBe(201);
+      expect(response.json().message).toContain("created");
+
+      const created = await Employee.findOne({
         businessId,
-        userId,
-        taxNumber: "EMP-TAX-002",
+        userId: targetUserId,
+      }).lean();
+      expect(created).not.toBeNull();
+    });
+
+    it("prevents a duplicate membership for the same User and Business", async () => {
+      const manager = await makeMember({ roles: ["Manager"] });
+      await Employee.create({
+        businessId,
+        userId: targetUserId,
+        allEmployeeRoles: ["Waiter"],
+        taxNumber: `EMP-${new Types.ObjectId()}`,
         joinDate: new Date(),
-        vacationDaysPerYear: 25,
-        vacationDaysLeft: 25,
-        allEmployeeRoles: ["Manager"],
+        vacationDaysPerYear: 20,
+        vacationDaysLeft: 20,
       });
-
-      const response = await app.inject({
-        method: "GET",
-        url: `/api/v1/employees/${employee._id}`,
-      });
-
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(body._id).toBe(employee._id.toString());
-    });
-
-    it("returns a problem-details 400 for an invalid ID format", async () => {
       const app = await getTestApp();
 
       const response = await app.inject({
-        method: "GET",
-        url: "/api/v1/employees/invalid-id",
+        method: "POST",
+        url: "/api/v1/employees",
+        payload: multipart(validCreateFields()),
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: manager.auth,
+        },
       });
 
-      expect(response.statusCode).toBe(400);
+      expect(response.statusCode).toBe(409);
       expect(isProblemDetails(response)).toBe(true);
-      expect(errorPaths(response)).toContain("employeeId");
+      expect(detail(response)).toBe("User is already an employee!");
     });
 
-    it("returns a problem-details 404 for a non-existent employee", async () => {
+    it("does not count a soft-deleted membership as an existing employee", async () => {
+      const manager = await makeMember({ roles: ["Manager"] });
+      await Employee.create({
+        businessId,
+        userId: targetUserId,
+        allEmployeeRoles: ["Waiter"],
+        taxNumber: `EMP-${new Types.ObjectId()}`,
+        joinDate: new Date(),
+        vacationDaysPerYear: 20,
+        vacationDaysLeft: 20,
+        deleted: true,
+        deletedAt: new Date(),
+      });
       const app = await getTestApp();
-      const fakeId = new Types.ObjectId();
 
       const response = await app.inject({
-        method: "GET",
-        url: `/api/v1/employees/${fakeId}`,
+        method: "POST",
+        url: "/api/v1/employees",
+        payload: multipart(validCreateFields()),
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: manager.auth,
+        },
       });
 
-      expect(response.statusCode).toBe(404);
-      expect(isProblemDetails(response)).toBe(true);
-      expect(detail(response)).toBe("Employee not found!");
+      expect(response.statusCode).toBe(201);
+      expect(await Employee.countDocuments({ businessId, userId: targetUserId })).toBe(1);
+    });
+
+    it("allows the same User to belong to more than one Business", async () => {
+      const manager = await makeMember({ roles: ["Manager"] });
+      const secondBusiness = await createTestBusiness({
+        tradeName: "Second Restaurant",
+        legalName: "Second Restaurant LLC",
+        email: "second@restaurant.com",
+        phoneNumber: "1234567890",
+        taxNumber: `TAX-${new Types.ObjectId()}`,
+        currencyTrade: "USD",
+        address: validAddress,
+      });
+      const secondManager = await makeMember({
+        roles: ["Manager"],
+        business: secondBusiness._id,
+      });
+      const app = await getTestApp();
+
+      const first = await app.inject({
+        method: "POST",
+        url: "/api/v1/employees",
+        payload: multipart(validCreateFields()),
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: manager.auth,
+        },
+      });
+      expect(first.statusCode).toBe(201);
+
+      const second = await app.inject({
+        method: "POST",
+        url: "/api/v1/employees",
+        payload: multipart({
+          ...validCreateFields(),
+          businessId: secondBusiness._id.toString(),
+        }),
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: secondManager.auth,
+        },
+      });
+      expect(second.statusCode).toBe(201);
+
+      expect(await Employee.countDocuments({ userId: targetUserId })).toBe(2);
     });
   });
 
   describe("PATCH /api/v1/employees/:employeeId", () => {
-    it("returns a problem-details 400 for an invalid employeeId", async () => {
+    it("returns validation Problem Details for an invalid employeeId", async () => {
+      const manager = await makeMember({ roles: ["Manager"] });
       const app = await getTestApp();
 
       const response = await app.inject({
         method: "PATCH",
         url: "/api/v1/employees/invalid-id",
         payload: multipart(validUpdateFields()),
-        headers: { "content-type": "multipart/form-data" },
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: manager.auth,
+        },
       });
 
       expect(response.statusCode).toBe(400);
@@ -381,24 +1247,27 @@ describe("Employees Routes", () => {
       expect(errorPaths(response)).toContain("employeeId");
     });
 
-    it("returns a problem-details 400 for missing required fields", async () => {
-      const app = await getTestApp();
-
+    it("returns validation Problem Details for missing required fields", async () => {
+      const manager = await makeMember({ roles: ["Manager"] });
       const employee = await Employee.create({
         businessId,
-        userId,
-        taxNumber: "EMP-TAX-003",
+        userId: targetUserId,
+        allEmployeeRoles: ["Waiter"],
+        taxNumber: `EMP-${new Types.ObjectId()}`,
         joinDate: new Date(),
         vacationDaysPerYear: 20,
         vacationDaysLeft: 20,
-        allEmployeeRoles: ["Waiter"],
       });
+      const app = await getTestApp();
 
       const response = await app.inject({
         method: "PATCH",
         url: `/api/v1/employees/${employee._id}`,
         payload: multipart({ taxNumber: "EMP-UPDATED" }),
-        headers: { "content-type": "multipart/form-data" },
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: manager.auth,
+        },
       });
 
       expect(response.statusCode).toBe(400);
@@ -406,18 +1275,18 @@ describe("Employees Routes", () => {
       expect(errorPaths(response)).toContain("joinDate");
     });
 
-    it("returns a problem-details 400 when terminatedDate is not after joinDate", async () => {
-      const app = await getTestApp();
-
+    it("returns validation Problem Details when terminatedDate is not after joinDate", async () => {
+      const manager = await makeMember({ roles: ["Manager"] });
       const employee = await Employee.create({
         businessId,
-        userId,
-        taxNumber: "EMP-TAX-DATES",
+        userId: targetUserId,
+        allEmployeeRoles: ["Waiter"],
+        taxNumber: `EMP-${new Types.ObjectId()}`,
         joinDate: new Date("2024-06-01"),
         vacationDaysPerYear: 20,
         vacationDaysLeft: 20,
-        allEmployeeRoles: ["Waiter"],
       });
+      const app = await getTestApp();
 
       const response = await app.inject({
         method: "PATCH",
@@ -427,7 +1296,10 @@ describe("Employees Routes", () => {
           joinDate: "2024-06-01",
           terminatedDate: "2024-01-01",
         }),
-        headers: { "content-type": "multipart/form-data" },
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: manager.auth,
+        },
       });
 
       expect(response.statusCode).toBe(400);
@@ -435,22 +1307,22 @@ describe("Employees Routes", () => {
       expect(detail(response)).toBe("Terminate date must be after join date!");
     });
 
-    it("returns a problem-details 400 for too many documents", async () => {
-      const app = await getTestApp();
-
+    it("returns validation Problem Details for too many documents", async () => {
+      const manager = await makeMember({ roles: ["Manager"] });
       const employee = await Employee.create({
         businessId,
-        userId,
-        taxNumber: "EMP-TAX-FILES",
+        userId: targetUserId,
+        allEmployeeRoles: ["Waiter"],
+        taxNumber: `EMP-${new Types.ObjectId()}`,
         joinDate: new Date(),
         vacationDaysPerYear: 20,
         vacationDaysLeft: 20,
-        allEmployeeRoles: ["Waiter"],
         documentsUrl: Array.from(
           { length: 10 },
           (_, i) => `https://example.com/doc-${i}.png`,
         ),
       });
+      const app = await getTestApp();
 
       const form = multipart(validUpdateFields());
       form.append(
@@ -463,294 +1335,59 @@ describe("Employees Routes", () => {
         method: "PATCH",
         url: `/api/v1/employees/${employee._id}`,
         payload: form,
-        headers: { "content-type": "multipart/form-data" },
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: manager.auth,
+        },
       });
 
       expect(response.statusCode).toBe(400);
       expect(isProblemDetails(response)).toBe(true);
       expect(detail(response)).toBe("Max file quantity is 10!");
     });
-  });
 
-  describe("DELETE /api/v1/employees/:employeeId", () => {
-    it("returns a problem-details 400 for an invalid employeeId", async () => {
+    it("refuses a supervisor and an ordinary employee edit", async () => {
+      const supervisor = await makeMember({ roles: ["Supervisor"] });
+      const employee = await makeMember({ roles: ["Waiter"] });
+      const target = await Employee.create({
+        businessId,
+        userId: targetUserId,
+        allEmployeeRoles: ["Waiter"],
+        taxNumber: `EMP-${new Types.ObjectId()}`,
+        joinDate: new Date(),
+        vacationDaysPerYear: 20,
+        vacationDaysLeft: 20,
+      });
       const app = await getTestApp();
 
-      const response = await app.inject({
-        method: "DELETE",
-        url: "/api/v1/employees/invalid-id",
-      });
+      for (const actor of [supervisor, employee]) {
+        const response = await app.inject({
+          method: "PATCH",
+          url: `/api/v1/employees/${target._id}`,
+          payload: multipart(validUpdateFields()),
+          headers: {
+            "content-type": "multipart/form-data",
+            authorization: actor.auth,
+          },
+        });
 
-      expect(response.statusCode).toBe(400);
-      expect(isProblemDetails(response)).toBe(true);
-      expect(errorPaths(response)).toContain("employeeId");
+        expect(response.statusCode).toBe(403);
+        expect(isProblemDetails(response)).toBe(true);
+      }
     });
 
-    it("returns a problem-details 404 for a non-existent employee", async () => {
-      const app = await getTestApp();
-      const fakeId = new Types.ObjectId();
-
-      const response = await app.inject({
-        method: "DELETE",
-        url: `/api/v1/employees/${fakeId}`,
-      });
-
-      expect(response.statusCode).toBe(404);
-      expect(isProblemDetails(response)).toBe(true);
-      expect(detail(response)).toBe("Employee not found!");
-    });
-
-    it("returns a problem-details 409 for an already soft-deleted employee", async () => {
-      const app = await getTestApp();
-
+    it("updates an employee and syncs the printer when deactivated", async () => {
+      const manager = await makeMember({ roles: ["Manager"] });
       const employee = await Employee.create({
         businessId,
-        userId,
-        taxNumber: "EMP-DELETED-001",
-        joinDate: new Date(),
-        vacationDaysPerYear: 20,
-        vacationDaysLeft: 20,
+        userId: targetUserId,
         allEmployeeRoles: ["Waiter"],
-        deleted: true,
-        deletedAt: new Date(),
-      });
-
-      const response = await app.inject({
-        method: "DELETE",
-        url: `/api/v1/employees/${employee._id}`,
-      });
-
-      expect(response.statusCode).toBe(409);
-      expect(isProblemDetails(response)).toBe(true);
-      expect(detail(response)).toBe("Employee already deleted!");
-    });
-
-    it("retains the employee as deleted", async () => {
-      const app = await getTestApp();
-
-      const created = await app.inject({
-        method: "POST",
-        url: "/api/v1/employees",
-        payload: multipart(validCreateFields()),
-        headers: { "content-type": "multipart/form-data" },
-      });
-      expect(created.statusCode).toBe(201);
-
-      const employee = await Employee.findOne({ businessId, userId }).lean();
-      expect(employee).not.toBeNull();
-
-      const response = await app.inject({
-        method: "DELETE",
-        url: `/api/v1/employees/${employee?._id}`,
-      });
-      expect(response.statusCode).toBe(200);
-
-      const retained = await Employee.findById(employee?._id)
-        .setOptions({ includeDeleted: true })
-        .lean();
-      expect(retained?.deleted).toBe(true);
-      expect(retained?.deletedAt).toBeTruthy();
-      expect(await Employee.findById(employee?._id).lean()).toBeNull();
-    });
-  });
-
-  describe("GET /api/v1/employees/business/:businessId/management-contacts", () => {
-    it("returns a problem-details 400 for an invalid businessId", async () => {
-      const app = await getTestApp();
-
-      const response = await app.inject({
-        method: "GET",
-        url: "/api/v1/employees/business/invalid-id/management-contacts",
-      });
-
-      expect(response.statusCode).toBe(400);
-      expect(isProblemDetails(response)).toBe(true);
-      expect(errorPaths(response)).toContain("businessId");
-    });
-  });
-
-  describe("GET /api/v1/employees/business/:businessId", () => {
-    it("lists employees by business", async () => {
-      const app = await getTestApp();
-
-      await Employee.create({
-        businessId,
-        userId,
-        taxNumber: "EMP-TAX-004",
+        taxNumber: `EMP-${new Types.ObjectId()}`,
         joinDate: new Date(),
         vacationDaysPerYear: 20,
         vacationDaysLeft: 20,
-        allEmployeeRoles: ["Head Chef"],
-      });
-
-      const response = await app.inject({
-        method: "GET",
-        url: `/api/v1/employees/business/${businessId}`,
-      });
-
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(Array.isArray(body)).toBe(true);
-      expect(body.length).toBe(1);
-    });
-
-    it("returns a problem-details 400 for an invalid businessId", async () => {
-      const app = await getTestApp();
-
-      const response = await app.inject({
-        method: "GET",
-        url: "/api/v1/employees/business/invalid-id",
-      });
-
-      expect(response.statusCode).toBe(400);
-      expect(isProblemDetails(response)).toBe(true);
-      expect(errorPaths(response)).toContain("businessId");
-    });
-
-    it("returns 200 with an empty list when no employees for business", async () => {
-      const app = await getTestApp();
-      const otherBusinessId = new Types.ObjectId();
-
-      const response = await app.inject({
-        method: "GET",
-        url: `/api/v1/employees/business/${otherBusinessId}`,
-      });
-
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(Array.isArray(body)).toBe(true);
-      expect(body.length).toBe(0);
-    });
-  });
-
-  describe("Transaction Tests - POST /api/v1/employees", () => {
-    it("creates an employee membership", async () => {
-      const app = await getTestApp();
-
-      const response = await app.inject({
-        method: "POST",
-        url: "/api/v1/employees",
-        payload: multipart(validCreateFields()),
-        headers: { "content-type": "multipart/form-data" },
-      });
-
-      expect(response.statusCode).toBe(201);
-      const body = JSON.parse(response.body);
-      expect(body.message).toContain("created");
-
-      // Verify employee was created
-      const createdEmployee = await Employee.findOne({
-        businessId,
-        userId,
-      }).lean();
-      expect(createdEmployee).not.toBeNull();
-    });
-
-    it("prevents duplicate employee for same user in business", async () => {
-      const app = await getTestApp();
-
-      // Create existing employee
-      await Employee.create({
-        businessId,
-        userId,
-        taxNumber: "EMP-EXISTING",
-        joinDate: new Date(),
-        vacationDaysPerYear: 20,
-        vacationDaysLeft: 20,
-        allEmployeeRoles: ["Waiter"],
-      });
-
-      const response = await app.inject({
-        method: "POST",
-        url: "/api/v1/employees",
-        payload: multipart(validCreateFields()),
-        headers: { "content-type": "multipart/form-data" },
-      });
-
-      expect(response.statusCode).toBe(409);
-      expect(isProblemDetails(response)).toBe(true);
-      expect(detail(response)).toBe("User is already an employee!");
-    });
-
-    it("does not count a soft-deleted membership as an existing employee", async () => {
-      const app = await getTestApp();
-
-      await Employee.create({
-        businessId,
-        userId,
-        taxNumber: "EMP-SOFT-DELETED",
-        joinDate: new Date(),
-        vacationDaysPerYear: 20,
-        vacationDaysLeft: 20,
-        allEmployeeRoles: ["Waiter"],
-        deleted: true,
-        deletedAt: new Date(),
-      });
-
-      const response = await app.inject({
-        method: "POST",
-        url: "/api/v1/employees",
-        payload: multipart(validCreateFields()),
-        headers: { "content-type": "multipart/form-data" },
-      });
-
-      expect(response.statusCode).toBe(201);
-      expect(await Employee.countDocuments({ businessId, userId })).toBe(1);
-    });
-
-    it("allows the same user to belong to more than one business", async () => {
-      const app = await getTestApp();
-
-      const otherBusiness = await createTestBusiness({
-        tradeName: "Second Restaurant",
-        legalName: "Second Restaurant LLC",
-        email: "second@restaurant.com",
-        phoneNumber: "1234567890",
-        taxNumber: "TAX-002",
-        currencyTrade: "USD",
-        address: validAddress,
-      });
-
-      const first = await app.inject({
-        method: "POST",
-        url: "/api/v1/employees",
-        payload: multipart(validCreateFields()),
-        headers: { "content-type": "multipart/form-data" },
-      });
-      expect(first.statusCode).toBe(201);
-
-      const second = await app.inject({
-        method: "POST",
-        url: "/api/v1/employees",
-        payload: multipart({
-          ...validCreateFields(),
-          businessId: otherBusiness._id.toString(),
-        }),
-        headers: { "content-type": "multipart/form-data" },
-      });
-      expect(second.statusCode).toBe(201);
-
-      expect(await Employee.countDocuments({ userId })).toBe(2);
-    });
-  });
-
-  describe("Transaction Tests - PATCH /api/v1/employees/:employeeId", () => {
-    it("updates employee and syncs printer when deactivated", async () => {
-      const app = await getTestApp();
-
-      // Create employee
-      const employee = await Employee.create({
-        businessId,
-        userId,
-        taxNumber: "EMP-ACTIVE",
-        joinDate: new Date(),
-        vacationDaysPerYear: 20,
-        vacationDaysLeft: 20,
-        allEmployeeRoles: ["Waiter"],
         active: true,
       });
-
-      // Create printer with employee assigned
       const printer = await Printer.create({
         businessId,
         printerAlias: "Test Printer",
@@ -758,31 +1395,31 @@ describe("Employees Routes", () => {
         port: 9100,
         employeesAllowedToPrintDataIds: [employee._id],
       });
+      const app = await getTestApp();
 
-      // Deactivate employee
       const response = await app.inject({
         method: "PATCH",
         url: `/api/v1/employees/${employee._id}`,
         payload: multipart({
           allEmployeeRoles: JSON.stringify(["Waiter"]),
-          taxNumber: "EMP-ACTIVE",
+          taxNumber: employee.taxNumber,
           joinDate: "2024-01-15",
           vacationDaysPerYear: "20",
           userEmail: "employeeuser@test.com",
           active: "false",
         }),
-        headers: { "content-type": "multipart/form-data" },
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: manager.auth,
+        },
       });
 
       expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(body.message).toContain("updated");
+      expect(response.json().message).toContain("updated");
 
-      // Verify employee was deactivated
       const updatedEmployee = await Employee.findById(employee._id).lean();
       expect(updatedEmployee?.active).toBe(false);
 
-      // Verify printer no longer has employee
       const updatedPrinter = await Printer.findById(printer._id).lean();
       expect(updatedPrinter?.employeesAllowedToPrintDataIds).not.toContain(
         employee._id.toString(),
@@ -791,137 +1428,155 @@ describe("Employees Routes", () => {
   });
 
   /**
-   * Phase 5 Task 5.2: Cloudinary Integration Tests
-   * These tests call the REAL Cloudinary API (requires valid credentials in .env)
+   * Cloudinary integration tests call the real API and require credentials.
    */
   const hasCloudinaryCredentials = Boolean(
     process.env.CLOUDINARY_CLOUD_NAME &&
-    process.env.CLOUDINARY_API_KEY &&
-    process.env.CLOUDINARY_API_SECRET
+      process.env.CLOUDINARY_API_KEY &&
+      process.env.CLOUDINARY_API_SECRET,
   );
 
-  describe.skipIf(!hasCloudinaryCredentials)("Cloudinary Integration - POST /api/v1/employees", () => {
-    it("creates employee with document uploads", async () => {
-      const app = await getTestApp();
+  describe.skipIf(!hasCloudinaryCredentials)(
+    "Cloudinary Integration - POST /api/v1/employees",
+    () => {
+      it("creates employee with document uploads", async () => {
+        const manager = await makeMember({ roles: ["Manager"] });
+        const app = await getTestApp();
+        const pngBuffer = Buffer.from(
+          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+          "base64",
+        );
 
-      // Create a simple PNG image buffer (1x1 red pixel PNG)
-      const pngBuffer = Buffer.from(
-        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
-        "base64"
-      );
+        const form = multipart(validCreateFields());
+        form.append(
+          "documents",
+          new Blob([pngBuffer], { type: "image/png" }),
+          "test-doc.png",
+        );
 
-      const form = multipart(validCreateFields());
-      form.append("documents", new Blob([pngBuffer], { type: "image/png" }), "test-doc.png");
+        const response = await app.inject({
+          method: "POST",
+          url: "/api/v1/employees",
+          payload: form,
+          headers: {
+            "content-type": "multipart/form-data",
+            authorization: manager.auth,
+          },
+        });
 
-      const response = await app.inject({
-        method: "POST",
-        url: "/api/v1/employees",
-        payload: form,
-        headers: { "content-type": "multipart/form-data" },
+        expect(response.statusCode).toBe(201);
+
+        const created = await Employee.findOne({
+          businessId,
+          userId: targetUserId,
+        }).lean();
+        expect(created?.documentsUrl?.[0]).toContain("cloudinary.com");
       });
+    },
+  );
 
-      expect(response.statusCode).toBe(201);
+  describe.skipIf(!hasCloudinaryCredentials)(
+    "Cloudinary Integration - PATCH /api/v1/employees/:employeeId",
+    () => {
+      it("updates employee with additional document uploads", async () => {
+        const manager = await makeMember({ roles: ["Manager"] });
+        const taxNumber = `EMP-PATCH-${Date.now()}`;
+        const employee = await Employee.create({
+          businessId,
+          userId: targetUserId,
+          allEmployeeRoles: ["Waiter"],
+          taxNumber,
+          joinDate: new Date(),
+          vacationDaysPerYear: 20,
+          vacationDaysLeft: 20,
+          documentsUrl: ["https://existing-doc.com/file.png"],
+        });
+        const app = await getTestApp();
+        const pngBuffer = Buffer.from(
+          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+          "base64",
+        );
 
-      // Verify employee was created with document URL
-      const createdEmployee = await Employee.findOne({ businessId, userId }).lean();
-      expect(createdEmployee).not.toBeNull();
-      expect(createdEmployee?.documentsUrl).toBeDefined();
-      expect(createdEmployee?.documentsUrl?.length).toBeGreaterThan(0);
-      expect(createdEmployee?.documentsUrl?.[0]).toContain("cloudinary.com");
-    });
-  });
+        const form = multipart({
+          ...validUpdateFields(),
+          taxNumber,
+        });
+        form.append(
+          "documents",
+          new Blob([pngBuffer], { type: "image/png" }),
+          "additional-doc.png",
+        );
 
-  describe.skipIf(!hasCloudinaryCredentials)("Cloudinary Integration - PATCH /api/v1/employees/:employeeId", () => {
-    it("updates employee with additional document uploads", async () => {
-      const app = await getTestApp();
+        const response = await app.inject({
+          method: "PATCH",
+          url: `/api/v1/employees/${employee._id}`,
+          payload: form,
+          headers: {
+            "content-type": "multipart/form-data",
+            authorization: manager.auth,
+          },
+        });
 
-      // Create employee first
-      const taxNumber = `EMP-PATCH-${Date.now()}`;
-      const employee = await Employee.create({
-        businessId,
-        userId,
-        taxNumber,
-        joinDate: new Date(),
-        vacationDaysPerYear: 20,
-        vacationDaysLeft: 20,
-        allEmployeeRoles: ["Waiter"],
-        documentsUrl: ["https://existing-doc.com/file.png"],
+        expect(response.statusCode).toBe(200);
+
+        const updated = await Employee.findById(employee._id).lean();
+        expect(updated?.documentsUrl?.length).toBe(2);
+        expect(
+          updated?.documentsUrl?.some((url: string) =>
+            url.includes("cloudinary.com"),
+          ),
+        ).toBe(true);
       });
+    },
+  );
 
-      // Create a simple PNG image buffer
-      const pngBuffer = Buffer.from(
-        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
-        "base64"
-      );
+  describe.skipIf(!hasCloudinaryCredentials)(
+    "Cloudinary Integration - DELETE /api/v1/employees/:employeeId",
+    () => {
+      it("deletes employee and keeps the soft-deleted record", async () => {
+        const manager = await makeMember({ roles: ["Manager"] });
+        const app = await getTestApp();
+        const pngBuffer = Buffer.from(
+          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+          "base64",
+        );
 
-      const form = multipart({
-        ...validUpdateFields(),
-        taxNumber,
+        const form = multipart(validCreateFields());
+        form.append(
+          "documents",
+          new Blob([pngBuffer], { type: "image/png" }),
+          "test-doc.png",
+        );
+
+        const createResponse = await app.inject({
+          method: "POST",
+          url: "/api/v1/employees",
+          payload: form,
+          headers: {
+            "content-type": "multipart/form-data",
+            authorization: manager.auth,
+          },
+        });
+        expect(createResponse.statusCode).toBe(201);
+
+        const employee = await Employee.findOne({
+          businessId,
+          userId: targetUserId,
+        }).lean();
+        expect(employee).not.toBeNull();
+
+        const response = await app.inject({
+          method: "DELETE",
+          url: `/api/v1/employees/${employee?._id}`,
+          headers: { authorization: manager.auth },
+        });
+        expect(response.statusCode).toBe(200);
+
+        const deleted = await Employee.findById(employee?._id)
+          .setOptions({ includeDeleted: true })
+          .lean();
+        expect(deleted?.deleted).toBe(true);
       });
-      form.append("documents", new Blob([pngBuffer], { type: "image/png" }), "additional-doc.png");
-
-      const response = await app.inject({
-        method: "PATCH",
-        url: `/api/v1/employees/${employee._id}`,
-        payload: form,
-        headers: { "content-type": "multipart/form-data" },
-      });
-
-      if (response.statusCode !== 200) {
-        console.log("PATCH Response:", response.body);
-      }
-      expect(response.statusCode).toBe(200);
-
-      // Verify document was added
-      const updatedEmployee = await Employee.findById(employee._id).lean();
-      expect(updatedEmployee?.documentsUrl?.length).toBe(2);
-      expect(updatedEmployee?.documentsUrl?.some((url: string) => url.includes("cloudinary.com"))).toBe(true);
-    });
-  });
-
-  describe.skipIf(!hasCloudinaryCredentials)("Cloudinary Integration - DELETE /api/v1/employees/:employeeId", () => {
-    it("deletes employee and cleans up folder", async () => {
-      const app = await getTestApp();
-
-      // First CREATE employee with real Cloudinary upload
-      const pngBuffer = Buffer.from(
-        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
-        "base64"
-      );
-
-      const createForm = multipart(validCreateFields());
-      createForm.append("documents", new Blob([pngBuffer], { type: "image/png" }), "test-doc.png");
-
-      const createResponse = await app.inject({
-        method: "POST",
-        url: "/api/v1/employees",
-        payload: createForm,
-        headers: { "content-type": "multipart/form-data" },
-      });
-
-      expect(createResponse.statusCode).toBe(201);
-
-      // Get the created employee
-      const employee = await Employee.findOne({ businessId, userId }).lean();
-      expect(employee).not.toBeNull();
-      expect(employee?.documentsUrl?.[0]).toContain("cloudinary.com");
-
-      // Now DELETE
-      const response = await app.inject({
-        method: "DELETE",
-        url: `/api/v1/employees/${employee?._id}`,
-      });
-
-      if (response.statusCode !== 200) {
-        console.log("DELETE Response:", response.body);
-      }
-      expect(response.statusCode).toBe(200);
-
-      const deleted = await Employee.findById(employee?._id)
-        .setOptions({ includeDeleted: true })
-        .lean();
-      expect(deleted).not.toBeNull();
-      expect(deleted?.deleted).toBe(true);
-    });
-  });
+    },
+  );
 });
