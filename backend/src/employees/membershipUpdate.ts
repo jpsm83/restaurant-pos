@@ -21,18 +21,19 @@ export function planMembershipUpdate(params: {
     employmentStatus: fields.employmentStatus,
     allEmployeeRoles: fields.allEmployeeRoles,
   };
+  const joinDateChanged =
+    fields.joinDate.getTime() !== employee.joinDate?.getTime();
+  const vacationChanged =
+    fields.vacationDaysPerYear !== undefined &&
+    fields.vacationDaysPerYear !== employee.vacationDaysPerYear;
 
-  if (fields.joinDate.getTime() !== employee.joinDate?.getTime())
-    changes.joinDate = fields.joinDate;
+  if (joinDateChanged) changes.joinDate = fields.joinDate;
   if (
     fields.taxNumber !== undefined &&
     fields.taxNumber !== employee.taxNumber
   )
     changes.taxNumber = fields.taxNumber;
-  if (
-    fields.vacationDaysPerYear !== undefined &&
-    fields.vacationDaysPerYear !== employee.vacationDaysPerYear
-  )
+  if (vacationChanged)
     changes.vacationDaysPerYear = fields.vacationDaysPerYear;
   if (terminatedDate) changes.terminatedDate = terminatedDate;
   if (
@@ -55,11 +56,6 @@ export function planMembershipUpdate(params: {
 
   const vacationDaysPerYear =
     fields.vacationDaysPerYear ?? employee.vacationDaysPerYear;
-  const joinDateChanged =
-    fields.joinDate.getTime() !== employee.joinDate?.getTime();
-  const vacationChanged =
-    fields.vacationDaysPerYear !== undefined &&
-    fields.vacationDaysPerYear !== employee.vacationDaysPerYear;
   if (
     vacationDaysPerYear !== undefined &&
     (joinDateChanged || vacationChanged)

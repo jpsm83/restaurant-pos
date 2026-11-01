@@ -11,7 +11,7 @@ import {
 } from "restaurant-pos-packages/enums";
 import type { CanonicalJobRole } from "restaurant-pos-packages/access";
 
-export const ROLE_LABEL_KEYS: Record<CanonicalJobRole, string> = {
+const ROLE_LABEL_KEYS: Record<CanonicalJobRole, string> = {
   Owner: "owner",
   Admin: "admin",
   "General Manager": "generalManager",
@@ -38,7 +38,7 @@ export const ROLE_LABEL_KEYS: Record<CanonicalJobRole, string> = {
   Other: "other",
 };
 
-export const STATUS_LABEL_KEYS: Record<EmploymentStatus, string> = {
+const STATUS_LABEL_KEYS: Record<EmploymentStatus, string> = {
   Active: "active",
   Seasonal: "seasonal",
   "Medical absence": "medicalAbsence",

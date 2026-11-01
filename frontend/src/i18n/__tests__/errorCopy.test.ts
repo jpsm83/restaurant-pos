@@ -150,7 +150,10 @@ describe("ERROR_COPY", () => {
 
   it("keeps generic Google failure copy for non-conflict outcomes", () => {
     const nonConflictCodes = allCodes().filter(
-      (code) => code.startsWith("googleAuth.") && code !== "googleAuth.conflict",
+      (code) =>
+        code.startsWith("googleAuth.") &&
+        code !== "googleAuth.conflict" &&
+        code !== "googleAuth.accountNotFound",
     );
 
     expect(nonConflictCodes.length).toBeGreaterThan(0);
