@@ -58,7 +58,11 @@ import {
   notFound,
   unauthorized,
 } from "../../errors/appError.ts";
-import type { IAuthConfigResponse } from "restaurant-pos-packages/interfaces/IAuth";
+import type {
+  IAuthAccessibleVenuesResponse,
+  IAuthConfigResponse,
+} from "restaurant-pos-packages/interfaces/IAuth";
+import { readAccessibleVenues } from "../../access/accessibleVenues.ts";
 import {
   confirmEmailBodySchema,
   confirmEmailChangeBodySchema,
@@ -658,6 +662,25 @@ export const authRoutes: FastifyPluginAsync<AuthRoutesOptions> = async (
       throw error;
     }
   });
+
+  /**
+   * GET /auth/venues
+   * Read the signed-in User's accessible venues. The caller is the session
+   * User only; no client-supplied User id is accepted. Ownership and usable
+   * memberships are unioned by the effective-access resolver.
+   */
+  app.get(
+    "/venues",
+    { preValidation: [createAuthHook(app)] },
+    async (req, reply) => {
+      const venues = await readAccessibleVenues({
+        userId: req.authSession!.id,
+      });
+      return reply
+        .code(200)
+        .send({ venues } satisfies IAuthAccessibleVenuesResponse);
+    },
+  );
 
   /**
    * POST /auth/set-mode

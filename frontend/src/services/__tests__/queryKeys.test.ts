@@ -5,6 +5,7 @@ describe("queryKeys", () => {
   it("returns stable auth keys", () => {
     expect(queryKeys.auth.me()).toEqual(["auth", "me"]);
     expect(queryKeys.auth.mode()).toEqual(["auth", "mode"]);
+    expect(queryKeys.auth.venues()).toEqual(["auth", "venues"]);
   });
 
   it("builds business and employee scoped keys", () => {

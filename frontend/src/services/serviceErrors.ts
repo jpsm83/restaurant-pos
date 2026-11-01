@@ -32,6 +32,7 @@ export const SERVICE_OPERATIONS = [
   "portfolioFetch",
   "modeLoad",
   "modeSave",
+  "venuesLoad",
   "scheduleLoad",
   "tableConfigLoad",
   "tableConfigSave",
