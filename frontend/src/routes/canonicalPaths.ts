@@ -15,7 +15,7 @@
  * ## Who imports this
  * - `auth/postLoginRedirect.ts` — first URL after login / signup (`getPostLoginDestination`).
  * - `appRoutes.tsx` — route declarations and legacy `/:userId/...` redirect targets.
- * - `context/AuthModeContext.tsx` — `isUserShellPath` enables the stored-mode query.
+ * - `context/AuthModeContext.tsx` — `isModeScopedPath` enables the stored-mode query.
  * - `components/AccountMenuPopover.tsx` — the Account entry point.
  * - `layouts/CustomerLayout.tsx`, `layouts/CustomerAccountLayout.tsx`,
  *   `layouts/BusinessLayout.tsx`.
@@ -141,12 +141,18 @@ function matchesPath(pathname: string, path: string): boolean {
   return pathname === path || pathname.startsWith(`${path}/`);
 }
 
-/** True on the session-derived routes where the stored Customer | Business mode applies. */
-export function isUserShellPath(pathname: string): boolean {
+/**
+ * True on routes where the stored Customer | Business mode applies. Covers the
+ * session-derived Customer and account shells plus venue routes, which address a
+ * real `businessId` but read the same server-stored mode so guards can reconcile
+ * a deep link.
+ */
+export function isModeScopedPath(pathname: string): boolean {
   return (
     matchesPath(pathname, canonicalCustomerDashboardPath()) ||
     matchesPath(pathname, canonicalAccountPath()) ||
     matchesPath(pathname, canonicalCustomerFavoritesPath()) ||
-    matchesPath(pathname, canonicalModePath())
+    matchesPath(pathname, canonicalModePath()) ||
+    businessIdFromPathname(pathname) !== undefined
   );
 }

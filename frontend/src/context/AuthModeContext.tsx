@@ -10,9 +10,12 @@
  * 1. **`AuthModeProvider`** is mounted in **`App.tsx`** inside **`BrowserRouter`** (needs **`useLocation`**).
  * 2. **`useAuthModeQuery`** is **enabled** only when:
  *    - session is authenticated **`type === "user"`**, and
- *    - pathname is a session-derived shell (`isUserShellPath` in `routes/canonicalPaths.ts`).
+ *    - pathname is mode-scoped (`isModeScopedPath` in `routes/canonicalPaths.ts`) — a Customer,
+ *      account, mode, or venue route.
  *    Else the query is off and `mode` is `undefined` (no spurious `/auth/mode` calls on marketing/tenant).
- * 3. **`useSetAuthModeMutation`** runs **`POST /auth/set-mode`**; invalidation and the cross-tab signal are handled in **`authMode.ts`**.
+ * 3. **`useSetAuthModeMutation`** runs **`POST /auth/set-mode`**; the cross-tab signal and the
+ *    awaited invalidation/refetch of **`auth.mode`** are handled in **`authMode.ts`**. Callers that
+ *    navigate afterwards can rely on the new stored mode being read before they move.
  * 4. A same-origin tab that receives the signal invalidates its **`auth.mode`** query, so both tabs refetch the server-stored mode.
  * 5. **Consumers:** **`SelectUserModePage`** calls **`setModeAndRefresh`** then navigates to Customer
  *    or the first enterable venue. Import directly from **`@/context/AuthModeContext`** (barrel
@@ -39,7 +42,7 @@ import {
 } from "@/services/authMode";
 import { subscribeToAuthModeChanges } from "@/services/authModeSync";
 import { queryKeys } from "@/services/queryKeys";
-import { isUserShellPath } from "@/routes/canonicalPaths";
+import { isModeScopedPath } from "@/routes/canonicalPaths";
 
 export type { AuthMode };
 
@@ -69,7 +72,7 @@ export function AuthModeProvider({ children }: { children: ReactNode }) {
   const isUserSession =
     state.status === "authenticated" && state.user?.type === "user";
 
-  const queryEnabled = isUserSession && isUserShellPath(pathname);
+  const queryEnabled = isUserSession && isModeScopedPath(pathname);
 
   const { data, isLoading, isError, error, refetch } = useAuthModeQuery({
     enabled: queryEnabled,
@@ -93,6 +96,8 @@ export function AuthModeProvider({ children }: { children: ReactNode }) {
   const setModeAndRefresh = useCallback(
     async (mode: AuthMode) => {
       if (!isUserSession) return;
+      // The mutation's `onSuccess` awaits the invalidated mode read, so the
+      // session reports the new mode by the time this resolves.
       await setModeMutation.mutateAsync(mode);
     },
     [isUserSession, setModeMutation],

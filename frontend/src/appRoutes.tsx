@@ -21,6 +21,7 @@ import CustomerMarketingPage from "@/pages/marketing/CustomerMarketingPage";
 import BusinessMarketingPage from "@/pages/marketing/BusinessMarketingPage";
 import {
   BusinessRouteShell,
+  CustomerRouteShell,
   ProtectedRoute,
   PublicOnlyRoute,
   SessionLoading,
@@ -305,9 +306,9 @@ export function AppRoutes() {
 
           <Route
             element={
-              <ProtectedRoute>
+              <CustomerRouteShell>
                 <CustomerLayout />
-              </ProtectedRoute>
+              </CustomerRouteShell>
             }
           >
             <Route path="dashboard" element={<CustomerDashboardPage />} />
@@ -316,9 +317,9 @@ export function AppRoutes() {
 
           <Route
             element={
-              <ProtectedRoute>
+              <CustomerRouteShell>
                 <CustomerAccountLayout />
-              </ProtectedRoute>
+              </CustomerRouteShell>
             }
           >
             <Route

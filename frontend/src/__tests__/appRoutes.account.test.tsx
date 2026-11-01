@@ -9,10 +9,22 @@ function LocationProbe() {
   return <output data-testid="location">{location.pathname}</output>;
 }
 
-const mockUseAuth = vi.fn();
+const { mockUseAuth, mockAuthMode } = vi.hoisted(() => ({
+  mockUseAuth: vi.fn(),
+  mockAuthMode: {
+    mode: "customer" as "customer" | "business" | undefined,
+    isLoading: false,
+    isError: false,
+    setModeAndRefresh: vi.fn(),
+  },
+}));
 
 vi.mock("@/auth/store/AuthContext", () => ({
   useAuth: () => mockUseAuth(),
+}));
+
+vi.mock("@/context/AuthModeContext", () => ({
+  useAuthMode: () => mockAuthMode,
 }));
 
 vi.mock("@/layouts/CustomerAccountLayout", async () => {

@@ -16,6 +16,13 @@
     "generic": "Something went wrong",
     "notAllowed": "Business mode is not allowed for this account right now."
   },
+  "guard": {
+    "businessUnavailable": "Business is not available for that venue. You are in Customer mode.",
+    "businessCheckFailed": "We could not check your Business access. You are in Customer mode.",
+    "modeLoadFailed": "We could not check your workspace mode. You can keep using your account.",
+    "modeSwitchFailed": "We could not switch your session to Business mode. Try the mode selector to set it again.",
+    "reconcileFailed": "We could not change your session to Customer mode. Try the mode selector to set it again."
+  },
   "continueBusiness": "Continue as business",
   "businessHelp": {
     "canBusiness": "Open the business workspace for your venue.",

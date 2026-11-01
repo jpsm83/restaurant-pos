@@ -1,4 +1,5 @@
 import { screen, waitFor } from "@testing-library/react";
+import type { IAuthAccessibleVenue } from "restaurant-pos-packages/interfaces/IAuth";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppRoutes } from "@/App";
@@ -14,10 +15,31 @@ function LocationProbe() {
   );
 }
 
-const mockUseAuth = vi.fn();
+const { mockUseAuth, mockAuthMode, mockVenues } = vi.hoisted(() => ({
+  mockUseAuth: vi.fn(),
+  mockAuthMode: {
+    mode: "customer" as "customer" | "business" | undefined,
+    isLoading: false,
+    isError: false,
+    setModeAndRefresh: vi.fn(),
+  },
+  mockVenues: {
+    data: [] as IAuthAccessibleVenue[],
+    isLoading: false,
+    isError: false,
+  },
+}));
 
 vi.mock("@/auth/store/AuthContext", () => ({
   useAuth: () => mockUseAuth(),
+}));
+
+vi.mock("@/context/AuthModeContext", () => ({
+  useAuthMode: () => mockAuthMode,
+}));
+
+vi.mock("@/services/authVenues", () => ({
+  useAccessibleVenuesQuery: () => mockVenues,
 }));
 
 vi.mock("@/layouts/BusinessLayout", async () => {
@@ -42,6 +64,12 @@ describe("App public routing (Phase 1.5.1)", () => {
       },
       dispatch: vi.fn(),
     });
+    mockAuthMode.mode = "customer";
+    mockAuthMode.isLoading = false;
+    mockAuthMode.isError = false;
+    mockVenues.data = [];
+    mockVenues.isLoading = false;
+    mockVenues.isError = false;
   });
 
   afterEach(() => {
@@ -183,6 +211,18 @@ describe("App public routing (Phase 1.5.1)", () => {
       },
       dispatch: vi.fn(),
     });
+    mockAuthMode.mode = "business";
+    mockVenues.data = [
+      {
+        businessId: "507f1f77bcf86cd799439011",
+        tradeName: "Alpha Bar",
+        source: "membership",
+        effectiveLayer: "manager",
+        jobRoles: [],
+        capabilities: [],
+        canEnterBusiness: true,
+      },
+    ];
 
     await renderWithI18n(
       <MemoryRouter

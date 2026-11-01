@@ -16,6 +16,13 @@
     "generic": "Algo salió mal",
     "notAllowed": "El modo empresa no está permitido para esta cuenta ahora mismo."
   },
+  "guard": {
+    "businessUnavailable": "La empresa no está disponible para ese local. Estás en modo Cliente.",
+    "businessCheckFailed": "No pudimos comprobar tu acceso a la empresa. Estás en modo Cliente.",
+    "modeLoadFailed": "No pudimos comprobar el modo de tu espacio de trabajo. Puedes seguir usando tu cuenta.",
+    "modeSwitchFailed": "No pudimos cambiar tu sesión al modo Empresa. Usa el selector de modo para volver a intentarlo.",
+    "reconcileFailed": "No pudimos cambiar tu sesión al modo Cliente. Usa el selector de modo para volver a intentarlo."
+  },
   "continueBusiness": "Continuar como empresa",
   "businessHelp": {
     "canBusiness": "Abre el espacio de trabajo de la empresa para tu local.",

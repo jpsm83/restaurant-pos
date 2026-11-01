@@ -4,7 +4,8 @@
  * ## Flow
  * 1. **`getAuthMode` / `useAuthModeQuery`** — `GET /api/v1/auth/mode` through shared `http`.
  * 2. **`setAuthMode` / `useSetAuthModeMutation`** — `POST /api/v1/auth/set-mode`; on success
- *    invalidates `queryKeys.auth.mode()` and signals other tabs through `authModeSync`.
+ *    awaits the invalidated `queryKeys.auth.mode()` read and signals other tabs through
+ *    `authModeSync`, so navigating callers land on the new stored mode.
  * 3. **`AuthModeContext`** (`context/AuthModeContext.tsx`) composes these hooks for the app shell,
  *    invalidating its mode query when another tab changes the stored mode. `/mode` uses the
  *    setter before opening the first enterable venue.
@@ -62,8 +63,10 @@ export function useSetAuthModeMutation() {
   return useMutation({
     mutationFn: setAuthMode,
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.auth.mode() });
       publishAuthModeChange();
+      // Await the refetch so callers that navigate after `mutateAsync` do not
+      // land on a guard that still reads the previous stored mode.
+      return queryClient.invalidateQueries({ queryKey: queryKeys.auth.mode() });
     },
   });
 }

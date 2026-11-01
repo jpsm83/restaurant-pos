@@ -11,21 +11,60 @@ function LocationProbe() {
   return <output data-testid="location">{location.pathname}</output>;
 }
 
-const mockUseAuth = vi.fn();
-const mockVenues = vi.hoisted(() => ({
-  data: [] as IAuthAccessibleVenue[] | undefined,
-  isLoading: false,
-  isSuccess: true,
-  isError: false,
-  error: null as Error | null,
+const { mockUseAuth, mockAuthMode, mockVenues } = vi.hoisted(() => ({
+  mockUseAuth: vi.fn(),
+  mockAuthMode: {
+    mode: "customer" as "customer" | "business" | undefined,
+    isLoading: false,
+    isError: false,
+    setModeAndRefresh: vi.fn(),
+  },
+  mockVenues: {
+    data: [] as IAuthAccessibleVenue[] | undefined,
+    isLoading: false,
+    isSuccess: true,
+    isError: false,
+    error: null as Error | null,
+  },
 }));
 
 vi.mock("@/auth/store/AuthContext", () => ({
   useAuth: () => mockUseAuth(),
 }));
 
+vi.mock("@/context/AuthModeContext", () => ({
+  useAuthMode: () => mockAuthMode,
+}));
+
 vi.mock("@/services/authVenues", () => ({
   useAccessibleVenuesQuery: () => mockVenues,
+}));
+
+vi.mock("@/layouts/BusinessLayout", async () => {
+  const { Outlet } = await import("react-router-dom");
+  return { default: () => <Outlet /> };
+});
+
+vi.mock("@/layouts/CustomerAccountLayout", async () => {
+  const { Outlet } = await import("react-router-dom");
+  return { default: () => <Outlet /> };
+});
+
+vi.mock("@/layouts/CustomerLayout", async () => {
+  const { Outlet } = await import("react-router-dom");
+  return { default: () => <Outlet /> };
+});
+
+vi.mock("@/pages/business/BusinessDashboardPage", () => ({
+  default: () => <div>Business dashboard</div>,
+}));
+
+vi.mock("@/pages/customer/CustomerDashboardPage", () => ({
+  default: () => <div>Customer dashboard</div>,
+}));
+
+vi.mock("@/pages/customer/CustomerProfilePage", () => ({
+  default: () => <div>Account profile</div>,
 }));
 
 function venue(
@@ -78,6 +117,11 @@ function renderAt(path: string) {
 describe("retired employee routes", () => {
   beforeEach(() => {
     mockUseAuth.mockReset();
+    mockAuthMode.mode = "business";
+    mockAuthMode.isLoading = false;
+    mockAuthMode.isError = false;
+    mockAuthMode.setModeAndRefresh.mockReset();
+    mockAuthMode.setModeAndRefresh.mockResolvedValue(undefined);
     mockVenues.data = [venue()];
     mockVenues.isLoading = false;
     mockVenues.isSuccess = true;
@@ -86,14 +130,19 @@ describe("retired employee routes", () => {
     signedInUser();
   });
 
+  async function expectLocation(path: string) {
+    await waitFor(
+      () => {
+        expect(screen.getByTestId("location")).toHaveTextContent(path);
+      },
+      { timeout: 4000 },
+    );
+  }
+
   it("sends /employee/dashboard to the linked venue's Business dashboard", async () => {
     await renderAt("/employee/dashboard");
 
-    await waitFor(() => {
-      expect(screen.getByTestId("location")).toHaveTextContent(
-        "/business/alpha/dashboard",
-      );
-    });
+    await expectLocation("/business/alpha/dashboard");
   });
 
   it("sends a blocked linked venue to the Customer dashboard", async () => {
@@ -105,9 +154,7 @@ describe("retired employee routes", () => {
 
     await renderAt("/employee/dashboard");
 
-    await waitFor(() => {
-      expect(screen.getByTestId("location")).toHaveTextContent("/dashboard");
-    });
+    await expectLocation("/dashboard");
   });
 
   it("sends /employee/dashboard to the Customer dashboard when no venue is usable", async () => {
@@ -115,38 +162,24 @@ describe("retired employee routes", () => {
 
     await renderAt("/employee/dashboard");
 
-    await waitFor(() => {
-      expect(screen.getByTestId("location")).toHaveTextContent("/dashboard");
-    });
+    await expectLocation("/dashboard");
   });
 
   it("sends /employee/profile to the account Profile", async () => {
     await renderAt("/employee/profile");
 
-    await waitFor(() => {
-      expect(screen.getByTestId("location")).toHaveTextContent(
-        "/account/profile",
-      );
-    });
+    await expectLocation("/account/profile");
   });
 
   it("keeps legacy /:userId/employee/dashboard URLs working", async () => {
     await renderAt("/507f1f77bcf86cd799439011/employee/dashboard");
 
-    await waitFor(() => {
-      expect(screen.getByTestId("location")).toHaveTextContent(
-        "/business/alpha/dashboard",
-      );
-    });
+    await expectLocation("/business/alpha/dashboard");
   });
 
   it("keeps legacy /:userId/employee/profile URLs working", async () => {
     await renderAt("/507f1f77bcf86cd799439011/employee/profile");
 
-    await waitFor(() => {
-      expect(screen.getByTestId("location")).toHaveTextContent(
-        "/account/profile",
-      );
-    });
+    await expectLocation("/account/profile");
   });
 });

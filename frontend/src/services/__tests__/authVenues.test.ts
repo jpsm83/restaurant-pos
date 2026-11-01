@@ -89,4 +89,24 @@ describe("authVenues service", () => {
     const config = mockUseQuery.mock.calls[0][0] as { enabled: boolean };
     expect(config.enabled).toBe(false);
   });
+
+  it("revalidates eligibility only when the Business guard asks", () => {
+    useAccessibleVenuesQuery({ revalidateEligibility: true, refetchInterval: 60_000 });
+    const guarded = mockUseQuery.mock.calls[0][0] as {
+      staleTime?: number;
+      refetchOnWindowFocus?: boolean;
+      refetchInterval?: number;
+    };
+    expect(guarded.staleTime).toBe(0);
+    expect(guarded.refetchOnWindowFocus).toBe(true);
+    expect(guarded.refetchInterval).toBe(60_000);
+
+    useAccessibleVenuesQuery();
+    const plain = mockUseQuery.mock.calls[1][0] as {
+      staleTime?: number;
+      refetchOnWindowFocus?: boolean;
+    };
+    expect(plain.staleTime).toBeUndefined();
+    expect(plain.refetchOnWindowFocus).toBeUndefined();
+  });
 });

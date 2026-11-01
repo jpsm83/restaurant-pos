@@ -66,4 +66,33 @@ describe("CustomerLayout", () => {
     expect(screen.getByTestId("actor-sidebar")).not.toHaveTextContent("Profile");
     expect(screen.getByText("Customer Outlet")).toBeInTheDocument();
   });
+
+  it("explains a mode-guard redirect in the Customer surface", async () => {
+    mockUseAuth.mockReturnValue({
+      state: {
+        status: "authenticated",
+        user: { id: "u1", email: "u@test.local", type: "user", role: "Customer" },
+        error: null,
+      },
+    });
+
+    await renderWithI18n(
+      <MemoryRouter
+        initialEntries={[
+          { pathname: "/dashboard", state: { modeNotice: "businessUnavailable" } },
+        ]}
+      >
+        <Routes>
+          <Route element={<CustomerLayout />}>
+            <Route path="dashboard" element={<div>Customer Outlet</div>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.getByText(/business is not available for that venue/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Customer Outlet")).toBeInTheDocument();
+  });
 });

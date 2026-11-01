@@ -21,6 +21,7 @@ import {
   canonicalEmployeeProfilePath,
   canonicalModePath,
   isLikelyMongoObjectIdString,
+  isModeScopedPath,
 } from "../canonicalPaths";
 
 describe("canonicalPaths", () => {
@@ -71,5 +72,17 @@ describe("canonicalPaths", () => {
 
   it("returns the Customer default dashboard", () => {
     expect(canonicalDefaultDashboardPath()).toBe("/dashboard");
+  });
+
+  it("scopes the stored mode to Customer, account, mode, and venue paths", () => {
+    expect(isModeScopedPath("/dashboard")).toBe(true);
+    expect(isModeScopedPath("/favorites")).toBe(true);
+    expect(isModeScopedPath("/account/profile")).toBe(true);
+    expect(isModeScopedPath("/mode")).toBe(true);
+    expect(isModeScopedPath("/business/b1/dashboard")).toBe(true);
+
+    expect(isModeScopedPath("/")).toBe(false);
+    expect(isModeScopedPath("/business")).toBe(false);
+    expect(isModeScopedPath("/login")).toBe(false);
   });
 });

@@ -13,6 +13,7 @@
  */
 import { Outlet } from "react-router-dom";
 import ActorSidebar from "@/components/ActorSidebar";
+import { ModeNotice } from "@/components/ModeNotice";
 import { Sidebar, SidebarRail } from "@/components/ui/sidebar";
 import { useAuth } from "@/auth/store/AuthContext";
 import { useTranslation } from "react-i18next";
@@ -61,6 +62,7 @@ export default function CustomerLayout() {
         data-slot="sidebar-inset"
         className="relative flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-y-auto bg-background"
       >
+        <ModeNotice />
         <Outlet />
       </div>
     </div>
