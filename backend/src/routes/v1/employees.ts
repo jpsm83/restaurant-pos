@@ -41,7 +41,6 @@ import {
   meetsBusinessLayer,
   requireBusinessLayer,
 } from "../../access/requireBusinessLayer.ts";
-import calculateVacationProportional from "../../employees/calculateVacationProportional.ts";
 import {
   applyHireFields,
   canAssignRoles,
@@ -59,10 +58,11 @@ import {
   toMembershipSelfView,
 } from "../../employees/membershipSelfView.ts";
 import { isTerminationStatus } from "../../employees/membershipStatus.ts";
+import { removeMembershipFromPrinters } from "../../employees/membershipPrinters.ts";
+import { planMembershipUpdate } from "../../employees/membershipUpdate.ts";
 import validateEmployeeDates from "../../employees/validateEmployeeDates.ts";
 import Employee from "../../models/employee.ts";
 import User from "../../models/user.ts";
-import Printer from "../../models/printer.ts";
 import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
 import {
   type AppError,
@@ -455,58 +455,11 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
           files.length,
         );
 
-        const updateEmployeeObj: Partial<IEmployee> = {
-          employmentStatus: fields.employmentStatus,
-          allEmployeeRoles: fields.allEmployeeRoles,
-        };
-
-        if (fields.joinDate.getTime() !== employee.joinDate?.getTime())
-          updateEmployeeObj.joinDate = fields.joinDate;
-        if (
-          fields.taxNumber !== undefined &&
-          fields.taxNumber !== employee.taxNumber
-        )
-          updateEmployeeObj.taxNumber = fields.taxNumber;
-        if (
-          fields.vacationDaysPerYear !== undefined &&
-          fields.vacationDaysPerYear !== employee.vacationDaysPerYear
-        )
-          updateEmployeeObj.vacationDaysPerYear = fields.vacationDaysPerYear;
-        if (terminatedDate) updateEmployeeObj.terminatedDate = terminatedDate;
-        if (
-          fields.contractHoursWeek !== undefined &&
-          fields.contractHoursWeek !== employee.contractHoursWeek
-        )
-          updateEmployeeObj.contractHoursWeek = fields.contractHoursWeek;
-        if (fields.comments !== undefined && fields.comments !== employee.comments)
-          updateEmployeeObj.comments = fields.comments;
-
-        const salary = fields.salary;
-        if (
-          salary &&
-          (salary.payFrequency !== employee.salary?.payFrequency ||
-            salary.grossSalary !== employee.salary?.grossSalary ||
-            salary.netSalary !== employee.salary?.netSalary)
-        ) {
-          updateEmployeeObj.salary = salary;
-        }
-
-        const vacationDaysPerYear =
-          fields.vacationDaysPerYear ?? employee.vacationDaysPerYear;
-        const joinDateChanged =
-          fields.joinDate.getTime() !== employee.joinDate?.getTime();
-        const vacationChanged =
-          fields.vacationDaysPerYear !== undefined &&
-          fields.vacationDaysPerYear !== employee.vacationDaysPerYear;
-        if (
-          vacationDaysPerYear !== undefined &&
-          (joinDateChanged || vacationChanged)
-        ) {
-          updateEmployeeObj.vacationDaysLeft = calculateVacationProportional(
-            fields.joinDate,
-            vacationDaysPerYear,
-          );
-        }
+        const updateEmployeeObj = planMembershipUpdate({
+          employee,
+          fields,
+          terminatedDate,
+        });
 
         if (files.length > 0) {
           updateEmployeeObj.documentsUrl = [
@@ -532,26 +485,11 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
         );
 
         if (isBlockedEmploymentStatus(fields.employmentStatus)) {
-          await Printer.updateMany(
-            {
-              businessId: employee.businessId,
-              $or: [
-                { employeesAllowedToPrintDataIds: employeeId },
-                {
-                  "configurationSetupToPrintOrders.excludeemployeeIds":
-                    employeeId,
-                },
-              ],
-            },
-            {
-              $pull: {
-                employeesAllowedToPrintDataIds: employeeId,
-                "configurationSetupToPrintOrders.$[].excludeemployeeIds":
-                  employeeId,
-              },
-            },
-            { session },
-          );
+          await removeMembershipFromPrinters({
+            businessId: employee.businessId,
+            employeeId,
+            session,
+          });
         }
 
         if (!updatedEmployee) {
@@ -632,26 +570,11 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
           throw conflict("Employee already deleted!");
         }
 
-        await Printer.updateMany(
-          {
-            businessId: employee.businessId,
-            $or: [
-              { employeesAllowedToPrintDataIds: employeeId },
-              {
-                "configurationSetupToPrintOrders.excludeemployeeIds":
-                  employeeId,
-              },
-            ],
-          },
-          {
-            $pull: {
-              employeesAllowedToPrintDataIds: employeeId,
-              "configurationSetupToPrintOrders.$[].excludeemployeeIds":
-                employeeId,
-            },
-          },
-          { session },
-        );
+        await removeMembershipFromPrinters({
+          businessId: employee.businessId,
+          employeeId,
+          session,
+        });
 
         await session.commitTransaction();
 

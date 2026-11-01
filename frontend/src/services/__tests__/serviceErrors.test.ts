@@ -167,6 +167,7 @@ describe("deriveServiceErrorOutcome", () => {
       ["unauthorized", "unauthorized"],
       ["forbidden", "forbidden"],
       ["not-found", "notFound"],
+      ["account-not-found", "accountNotFound"],
       ["conflict", "conflict"],
       ["internal", "internal"],
     ] as const;

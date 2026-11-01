@@ -55,8 +55,7 @@
       "noAccount": "No account uses that email. Ask the person to sign up first.",
       "alreadyMember": "That person is already a member of this venue.",
       "forbidden": "You cannot assign those roles at this venue.",
-      "validation": "Check the person's details and try again.",
-      "generic": "Could not hire this person. Try again."
+      "validation": "Check the person's details and try again."
     },
     "roles": {
       "owner": "Owner",

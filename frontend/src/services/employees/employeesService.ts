@@ -98,7 +98,7 @@ export function canManageVenue(
 export function hireFailureReason(
   failure: Pick<ServiceFailure, "code" | "status" | "serverMessage">,
 ): HireFailureReason {
-  if (failure.code === "employeesCreate.notFound") return "accountNotFound";
+  if (failure.code === "employeesCreate.accountNotFound") return "accountNotFound";
   if (failure.code === "employeesCreate.conflict") return "alreadyMember";
   if (failure.code === "employeesCreate.forbidden") return "forbidden";
   if (failure.code === "employeesCreate.validation") return "validation";

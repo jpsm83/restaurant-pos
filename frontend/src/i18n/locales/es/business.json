@@ -55,8 +55,7 @@
       "noAccount": "Ninguna cuenta usa ese correo. Pide a la persona que se registre primero.",
       "alreadyMember": "Esa persona ya es miembro de este local.",
       "forbidden": "No puedes asignar esos roles en este local.",
-      "validation": "Revisa los datos de la persona e inténtalo de nuevo.",
-      "generic": "No se pudo contratar a esta persona. Inténtalo de nuevo."
+      "validation": "Revisa los datos de la persona e inténtalo de nuevo."
     },
     "roles": {
       "owner": "Propietario",

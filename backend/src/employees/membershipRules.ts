@@ -14,6 +14,7 @@ import {
   compareAccessLayers,
   type BusinessAccessLayer,
 } from "restaurant-pos-packages/access";
+import type { EmploymentStatus } from "restaurant-pos-packages/enums";
 import type { IEmployee } from "restaurant-pos-packages/interfaces/IEmployee";
 import type { CreateEmployeeBody } from "restaurant-pos-packages/schemas/employee";
 
@@ -22,8 +23,6 @@ import {
   isTerminationStatus,
   isTerminatedMembership,
 } from "./membershipStatus.ts";
-
-export { isTerminatedMembership };
 
 /**
  * The actor may assign only roles whose default layer is strictly below their
@@ -57,7 +56,7 @@ export function canEditMembership(
 /** True when a status change restores a terminated membership (a rehire). */
 export function isRehire(
   employee: Pick<IEmployee, "employmentStatus" | "terminatedDate">,
-  nextStatus: string,
+  nextStatus: EmploymentStatus,
 ): boolean {
   return isTerminatedMembership(employee) && !isTerminationStatus(nextStatus);
 }
@@ -67,7 +66,7 @@ export function isRehire(
  * submitted date or their stored one; every other status clears it.
  */
 export function resolveTerminationDate(params: {
-  nextStatus: string;
+  nextStatus: EmploymentStatus;
   submittedTerminatedDate?: Date;
   currentTerminatedDate?: Date;
 }): Date | undefined {

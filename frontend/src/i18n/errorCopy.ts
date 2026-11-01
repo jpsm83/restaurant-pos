@@ -48,6 +48,7 @@ const GENERIC_OUTCOME_COPY: Record<ServiceErrorOutcome, ErrorCopyTemplate> = {
   unauthorized: { namespace: "errors", key: "api.unauthorized" },
   forbidden: { namespace: "errors", key: "api.forbidden" },
   notFound: { namespace: "errors", key: "api.notFound" },
+  accountNotFound: { namespace: "errors", key: "api.notFound" },
   conflict: { namespace: "errors", key: "api.conflict" },
   internal: { namespace: "errors", key: "api.internal" },
   transport: { namespace: "errors", key: "api.transport" },
@@ -64,6 +65,10 @@ const OVERRIDES: Partial<Record<ServiceErrorCode, ErrorCopyTemplate>> = {
     key: "api.googleEmailConflict",
   },
   "googleAuth.notFound": { namespace: "auth", key: "api.googleAuthFailed" },
+  "googleAuth.accountNotFound": {
+    namespace: "auth",
+    key: "api.googleAuthFailed",
+  },
   "googleAuth.validation": { namespace: "auth", key: "api.googleAuthFailed" },
   "googleAuth.internal": { namespace: "auth", key: "api.googleAuthFailed" },
   "googleAuth.transport": { namespace: "auth", key: "api.googleAuthFailed" },

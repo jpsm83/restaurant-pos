@@ -10,6 +10,7 @@ import {
   activeEmploymentStatusEnums,
   isBlockedEmploymentStatus,
   TERMINATED_EMPLOYMENT_STATUS,
+  type EmploymentStatus,
 } from "restaurant-pos-packages/enums";
 import type { IEmployee } from "restaurant-pos-packages/interfaces/IEmployee";
 
@@ -46,6 +47,6 @@ export function isTerminatedMembership(employee: MembershipStatusFacts): boolean
 }
 
 /** True when a status change ends employment at the venue. */
-export function isTerminationStatus(status: string): boolean {
+export function isTerminationStatus(status: EmploymentStatus): boolean {
   return status === TERMINATED_EMPLOYMENT_STATUS;
 }

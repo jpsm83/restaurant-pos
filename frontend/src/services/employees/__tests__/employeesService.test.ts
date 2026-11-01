@@ -157,7 +157,7 @@ describe("employeesService", () => {
   });
 
   it("classifies known hire outcomes by machine code", () => {
-    expect(hireFailureReason({ code: "employeesCreate.notFound" })).toBe(
+    expect(hireFailureReason({ code: "employeesCreate.accountNotFound" })).toBe(
       "accountNotFound",
     );
     expect(hireFailureReason({ code: "employeesCreate.conflict" })).toBe(

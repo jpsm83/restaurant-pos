@@ -45,6 +45,7 @@ export const SERVICE_ERROR_OUTCOMES = [
   "unauthorized",
   "forbidden",
   "notFound",
+  "accountNotFound",
   "conflict",
   "internal",
   "transport",
@@ -99,7 +100,7 @@ const PROBLEM_TYPE_OUTCOMES: Record<string, ServiceErrorOutcome> = {
   forbidden: "forbidden",
   "not-found": "notFound",
   conflict: "conflict",
-  "account-not-found": "notFound",
+  "account-not-found": "accountNotFound",
   internal: "internal",
 };
 
