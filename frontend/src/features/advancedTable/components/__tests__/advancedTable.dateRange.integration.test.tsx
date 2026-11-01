@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { screen } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { describe, expect, it } from "vitest";
@@ -56,36 +56,31 @@ function createTestQueryClient() {
 describe("advanced table date range integration", () => {
   async function selectQuickRange(user: ReturnType<typeof userEvent.setup>, label: RegExp) {
     await user.click(screen.getByRole("button", { name: /filter by date/i }));
-    const quickRangeCombobox = screen
-      .getAllByRole("combobox")
-      .find((el) => {
-        if (el.getAttribute("data-slot") !== "select-trigger") return false;
-        const text = (el.textContent ?? "").toLowerCase();
-        return (
-          text.includes("today") ||
-          text.includes("this week") ||
-          text.includes("this month")
-        );
-      });
-    expect(quickRangeCombobox).toBeTruthy();
-    if (!quickRangeCombobox) return;
+    const dialog = await screen.findByRole("dialog");
+    const [quickRangeCombobox] = within(dialog).getAllByRole("combobox");
     await user.click(quickRangeCombobox);
     await user.click(await screen.findByRole("option", { name: label }));
   }
 
   it("updates URL query params with date-only values when selecting quick range", async () => {
     const user = userEvent.setup();
-    await renderBusinessSection();
+    await renderBusinessSection(
+      "/business?start-date=2020-01-02&end-date=2020-01-03",
+    );
 
     await screen.findByRole("button", { name: /filter by date/i });
     const initialSearch = screen.getByTestId("location-search").textContent ?? "";
     await selectQuickRange(user, /this month/i);
 
+    await waitFor(() => {
+      expect(screen.getByTestId("location-search").textContent).not.toBe(
+        initialSearch,
+      );
+    });
     const updatedSearch = screen.getByTestId("location-search").textContent ?? "";
     expect(updatedSearch).toMatch(/start-date=\d{4}-\d{2}-\d{2}/);
     expect(updatedSearch).toMatch(/end-date=\d{4}-\d{2}-\d{2}/);
     expect(updatedSearch).not.toContain("T");
-    expect(updatedSearch).not.toBe(initialSearch);
   }, 15000);
 
   it("combines column filter with selected date range", async () => {
