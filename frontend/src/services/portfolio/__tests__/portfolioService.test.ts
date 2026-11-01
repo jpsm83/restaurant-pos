@@ -1,12 +1,16 @@
 /**
  * Owner portfolio service tests — request shape and failure mapping.
  */
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { act, renderHook } from "@testing-library/react";
 import { AxiosError, type AxiosResponse } from "axios";
+import { createElement, type ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createVenue,
   fetchOwnerPortfolio,
   hasOwnedBusiness,
+  useCreateVenueMutation,
 } from "../portfolioService";
 
 const { mockGet, mockPost } = vi.hoisted(() => ({
@@ -170,6 +174,34 @@ describe("portfolioService", () => {
       country: "USA",
       currencyTrade: "USD",
       company: {},
+    });
+  });
+
+  it("invalidates the portfolio and accessible-venue reads after creation", async () => {
+    mockPost.mockResolvedValue({
+      data: {
+        business: { _id: "b1", tradeName: "New Venue", currencyTrade: "USD" },
+        company: { _id: "c1", country: "USA" },
+      },
+    });
+    const queryClient = new QueryClient();
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+    const wrapper = ({ children }: { children: ReactNode }) =>
+      createElement(QueryClientProvider, { client: queryClient }, children);
+    const { result } = renderHook(() => useCreateVenueMutation(), { wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        tradeName: "New Venue",
+        country: "USA",
+        currencyTrade: "USD",
+        company: {},
+      });
+    });
+
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["portfolio"] });
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ["auth", "venues"],
     });
   });
 

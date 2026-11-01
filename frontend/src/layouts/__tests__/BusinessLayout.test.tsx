@@ -1,13 +1,27 @@
 import type { ReactNode } from "react";
-import { screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import type { IAuthAccessibleVenue } from "restaurant-pos-packages/interfaces/IAuth";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { renderWithI18n } from "@/test/i18nTestUtils";
+import { queryKeys } from "@/services/queryKeys";
+import {
+  renderWithI18n,
+  type RenderWithI18nOptions,
+} from "@/test/i18nTestUtils";
 import BusinessLayout from "../BusinessLayout";
 
-const mockUseAuth = vi.fn();
-const { mockSetAuthMode, mockPortfolio, mockAccess } = vi.hoisted(() => ({
+const {
+  mockUseAuth,
+  mockSetAuthMode,
+  mockPortfolio,
+  mockAccess,
+  mockVenues,
+  mockGet,
+  mockPost,
+} = vi.hoisted(() => ({
+  mockUseAuth: vi.fn(),
   mockSetAuthMode: vi.fn(),
   mockAccess: {
     value: {
@@ -26,28 +40,11 @@ const { mockSetAuthMode, mockPortfolio, mockAccess } = vi.hoisted(() => ({
       owner: { _id: "o1", country: "USA", subscription: "Free" },
       country: "USA",
       subscription: "Free",
-      companies: [
-        {
-          _id: "c1",
-          country: "USA",
-          businesses: [
-            {
-              _id: "b1",
-              tradeName: "Owned Venue",
-              currencyTrade: "USD",
-              companyId: "c1",
-              profileComplete: true,
-            },
-          ],
-        },
-      ],
-    } as {
-      owner: { _id: string; country: string; subscription: string } | null;
-      country: string | null;
-      subscription: string | null;
-      companies: Array<{
+      companies: [] as Array<{
         _id: string;
         country: string;
+        legalName?: string;
+        taxNumber?: string;
         businesses: Array<{
           _id: string;
           tradeName: string;
@@ -55,8 +52,20 @@ const { mockSetAuthMode, mockPortfolio, mockAccess } = vi.hoisted(() => ({
           companyId: string;
           profileComplete: boolean;
         }>;
-      }>;
+      }>,
     },
+  },
+  mockVenues: {
+    value: [] as IAuthAccessibleVenue[],
+  },
+  mockGet: vi.fn(),
+  mockPost: vi.fn(),
+}));
+
+vi.mock("@/services/http", () => ({
+  http: {
+    get: (...args: unknown[]) => mockGet(...args),
+    post: (...args: unknown[]) => mockPost(...args),
   },
 }));
 
@@ -80,18 +89,16 @@ vi.mock("@/services/employees/employeesService", async (importOriginal) => {
   };
 });
 
-vi.mock("@/services/portfolio/portfolioService", () => ({
-  hasOwnedBusiness: (
-    portfolio: { companies: Array<{ businesses: Array<{ _id: string }> }> } | undefined,
-    businessId: string,
-  ) =>
-    Boolean(
-      portfolio?.companies.some((company) =>
-        company.businesses.some((business) => business._id === businessId),
-      ),
-    ),
-  useOwnerPortfolioQuery: () => ({ data: mockPortfolio.value }),
-}));
+vi.mock("@/services/portfolio/portfolioService", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("@/services/portfolio/portfolioService")
+    >();
+  return {
+    ...actual,
+    useOwnerPortfolioQuery: () => ({ data: mockPortfolio.value }),
+  };
+});
 
 vi.mock("@/components/ActorSidebar", () => ({
   default: ({
@@ -117,10 +124,81 @@ vi.mock("@/components/ui/sidebar", () => ({
   SidebarRail: () => <div data-testid="sidebar-rail" />,
 }));
 
+function venue(
+  overrides: Partial<IAuthAccessibleVenue> = {},
+): IAuthAccessibleVenue {
+  return {
+    businessId: "b1",
+    tradeName: "Owned Venue",
+    source: "ownership",
+    effectiveLayer: "admin",
+    jobRoles: [],
+    capabilities: [],
+    canEnterBusiness: true,
+    ...overrides,
+  };
+}
+
+function authenticatedUser() {
+  return {
+    state: {
+      status: "authenticated",
+      user: {
+        id: "u1",
+        email: "u@test.local",
+        type: "user",
+        mode: "business",
+        role: "Manager",
+      },
+      error: null,
+    },
+  };
+}
+
+function LocationProbe() {
+  const location = useLocation();
+  return <output data-testid="location">{location.pathname}</output>;
+}
+
+function renderBusinessLayout(
+  initialEntry = "/business/b1/dashboard",
+  language?: RenderWithI18nOptions["language"],
+) {
+  const client = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, staleTime: Infinity },
+      mutations: { retry: false },
+    },
+  });
+  client.setQueryData(queryKeys.auth.venues(), mockVenues.value);
+
+  return renderWithI18n(
+    <MemoryRouter initialEntries={[initialEntry]}>
+      <LocationProbe />
+      <Routes>
+        <Route path="/business/:businessId" element={<BusinessLayout />}>
+          <Route path="dashboard" element={<div>Business Outlet</div>} />
+          <Route path="company" element={<div>Company page</div>} />
+        </Route>
+        <Route path="/dashboard" element={<div>Customer dashboard</div>} />
+      </Routes>
+    </MemoryRouter>,
+    {
+      language,
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <QueryClientProvider client={client}>{children}</QueryClientProvider>
+      ),
+    },
+  );
+}
+
 describe("BusinessLayout", () => {
   beforeEach(() => {
+    mockUseAuth.mockReset();
     mockSetAuthMode.mockReset();
     mockSetAuthMode.mockResolvedValue(undefined);
+    mockGet.mockReset();
+    mockPost.mockReset();
     mockAccess.value = {
       data: {
         businessId: "b1",
@@ -131,6 +209,123 @@ describe("BusinessLayout", () => {
         canEnterBusiness: true,
       },
     };
+    mockPortfolio.value = {
+      owner: { _id: "o1", country: "USA", subscription: "Free" },
+      country: "USA",
+      subscription: "Free",
+      companies: [],
+    };
+    mockVenues.value = [venue()];
+    mockGet.mockImplementation((url: unknown) => {
+      if (url === "/api/v1/auth/venues") {
+        return Promise.resolve({ data: { venues: mockVenues.value } });
+      }
+      return Promise.reject(new Error(`unexpected GET ${String(url)}`));
+    });
+    mockUseAuth.mockReturnValue(authenticatedUser());
+  });
+
+  it("renders null when there is no authenticated User", async () => {
+    mockUseAuth.mockReturnValue({
+      state: {
+        status: "unauthenticated",
+        user: null,
+        error: null,
+      },
+    });
+
+    await renderBusinessLayout();
+
+    expect(screen.queryByText("Business Outlet")).not.toBeInTheDocument();
+  });
+
+  it("renders sidebar and outlet for an authenticated User", async () => {
+    await renderBusinessLayout();
+
+    expect(screen.getByTestId("actor-sidebar")).toBeInTheDocument();
+    expect(screen.getByText("Business Outlet")).toBeInTheDocument();
+  });
+
+  it("renders no tab strip for a single-venue session", async () => {
+    await renderBusinessLayout();
+
+    expect(
+      screen.queryByRole("navigation", { name: "Venues" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("renders tabs and marks the active venue", async () => {
+    mockVenues.value = [
+      venue({ businessId: "b1", tradeName: "Alpha Bar" }),
+      venue({ businessId: "b2", tradeName: "Beta Bar", source: "membership" }),
+    ];
+
+    await renderBusinessLayout("/business/b1/dashboard");
+
+    const tabs = screen.getByRole("navigation", { name: "Venues" });
+    expect(within(tabs).getByRole("link", { name: "Alpha Bar" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(
+      within(tabs).getByRole("link", { name: "Beta Bar" }),
+    ).not.toHaveAttribute("aria-current");
+  });
+
+  it("switches venue from a tab without changing mode", async () => {
+    mockVenues.value = [
+      venue({ businessId: "b1", tradeName: "Alpha Bar" }),
+      venue({ businessId: "b2", tradeName: "Beta Bar", source: "membership" }),
+    ];
+    const user = userEvent.setup();
+
+    await renderBusinessLayout("/business/b1/dashboard");
+
+    const tabs = screen.getByRole("navigation", { name: "Venues" });
+    await user.click(within(tabs).getByRole("link", { name: "Beta Bar" }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("location")).toHaveTextContent(
+        "/business/b2/dashboard",
+      );
+    });
+    expect(mockSetAuthMode).not.toHaveBeenCalled();
+  });
+
+  it("omits venues that cannot enter Business from the tab strip", async () => {
+    mockVenues.value = [
+      venue({ businessId: "b1", tradeName: "Alpha Bar" }),
+      venue({
+        businessId: "b2",
+        tradeName: "Beta Bar",
+        source: "membership",
+        canEnterBusiness: false,
+      }),
+    ];
+
+    await renderBusinessLayout("/business/b1/dashboard");
+
+    expect(
+      screen.queryByRole("navigation", { name: "Venues" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows Owner chrome on an owned venue without Plan or Billing", async () => {
+    await renderBusinessLayout();
+
+    expect(screen.getByRole("button", { name: "Add venue" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Company" })).toHaveAttribute(
+      "href",
+      "/business/b1/company",
+    );
+    expect(screen.queryByRole("link", { name: "Plan" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Billing" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("falls back to the portfolio while the venue list is empty", async () => {
+    mockVenues.value = [];
     mockPortfolio.value = {
       owner: { _id: "o1", country: "USA", subscription: "Free" },
       country: "USA",
@@ -151,122 +346,60 @@ describe("BusinessLayout", () => {
         },
       ],
     };
+
+    await renderBusinessLayout();
+
+    expect(screen.getByRole("button", { name: "Add venue" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Company" })).toBeInTheDocument();
   });
 
-  it("renders null when there is no authenticated User", async () => {
-    mockUseAuth.mockReturnValue({
-      state: {
-        status: "unauthenticated",
-        user: null,
-        error: null,
-      },
-    });
+  it("hides Owner chrome on a member-only venue", async () => {
+    mockVenues.value = [
+      venue({ source: "membership", effectiveLayer: "employee" }),
+    ];
 
-    await renderWithI18n(
-      <MemoryRouter initialEntries={["/business/b1/dashboard"]}>
-        <Routes>
-          <Route path="/business/:businessId" element={<BusinessLayout />}>
-            <Route path="dashboard" element={<div>Business Outlet</div>} />
-          </Route>
-        </Routes>
-      </MemoryRouter>,
-    );
-
-    expect(screen.queryByText("Business Outlet")).not.toBeInTheDocument();
-  });
-
-  it("renders sidebar and outlet for an authenticated User", async () => {
-    mockUseAuth.mockReturnValue({
-      state: {
-        status: "authenticated",
-        user: {
-          id: "u1",
-          email: "u@test.local",
-          type: "user",
-          mode: "business",
-          role: "Manager",
-        },
-        error: null,
-      },
-    });
-
-    await renderWithI18n(
-      <MemoryRouter initialEntries={["/business/b1/dashboard"]}>
-        <Routes>
-          <Route path="/business/:businessId" element={<BusinessLayout />}>
-            <Route path="dashboard" element={<div>Business Outlet</div>} />
-          </Route>
-        </Routes>
-      </MemoryRouter>,
-    );
+    await renderBusinessLayout();
 
     expect(screen.getByTestId("actor-sidebar")).toBeInTheDocument();
-    expect(screen.getByText("Business Outlet")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Add venue" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Company" }),
+    ).not.toBeInTheDocument();
   });
 
-  it("shows the Company owner entry only for an owned venue", async () => {
-    mockUseAuth.mockReturnValue({
-      state: {
-        status: "authenticated",
-        user: {
-          id: "u1",
-          email: "u@test.local",
-          type: "user",
-          mode: "business",
-          role: "Manager",
+  it("adds a venue through the shared form and shows it as a tab", async () => {
+    mockPost.mockImplementation(() => {
+      mockVenues.value = [
+        ...mockVenues.value,
+        venue({ businessId: "b2", tradeName: "New Venue" }),
+      ];
+      return Promise.resolve({
+        data: {
+          business: {
+            _id: "b2",
+            tradeName: "New Venue",
+            currencyTrade: "USD",
+          },
+          company: { _id: "c2", country: "USA" },
         },
-        error: null,
-      },
+      });
     });
+    const user = userEvent.setup();
 
-    await renderWithI18n(
-      <MemoryRouter initialEntries={["/business/b1/dashboard"]}>
-        <Routes>
-          <Route path="/business/:businessId" element={<BusinessLayout />}>
-            <Route path="dashboard" element={<div>Business Outlet</div>} />
-          </Route>
-        </Routes>
-      </MemoryRouter>,
-    );
+    await renderBusinessLayout();
 
-    expect(screen.getByTestId("actor-sidebar")).toHaveTextContent(
-      "Dashboard|Company",
-    );
-  });
+    await user.click(screen.getByRole("button", { name: "Add venue" }));
+    await user.type(await screen.findByLabelText("Trade name"), "New Venue");
+    await user.click(screen.getByRole("button", { name: "Create venue" }));
 
-  it("hides the Company entry for a venue the User does not own", async () => {
-    mockPortfolio.value = {
-      owner: null,
-      country: null,
-      subscription: null,
-      companies: [],
-    };
-    mockUseAuth.mockReturnValue({
-      state: {
-        status: "authenticated",
-        user: {
-          id: "u1",
-          email: "u@test.local",
-          type: "user",
-          mode: "business",
-          role: "Employee",
-        },
-        error: null,
-      },
-    });
-
-    await renderWithI18n(
-      <MemoryRouter initialEntries={["/business/b1/dashboard"]}>
-        <Routes>
-          <Route path="/business/:businessId" element={<BusinessLayout />}>
-            <Route path="dashboard" element={<div>Business Outlet</div>} />
-          </Route>
-        </Routes>
-      </MemoryRouter>,
-    );
-
-    expect(screen.getByTestId("actor-sidebar")).not.toHaveTextContent(
-      "Company",
+    expect(
+      await screen.findByRole("link", { name: "New Venue" }),
+    ).toBeInTheDocument();
+    expect(mockPost).toHaveBeenCalledWith(
+      "/api/v1/business",
+      expect.objectContaining({ tradeName: "New Venue", country: "USA" }),
     );
   });
 
@@ -283,32 +416,11 @@ describe("BusinessLayout", () => {
           canEnterBusiness: true,
         },
       };
-      mockUseAuth.mockReturnValue({
-        state: {
-          status: "authenticated",
-          user: {
-            id: "u1",
-            email: "u@test.local",
-            type: "user",
-            mode: "business",
-            role: "Manager",
-          },
-          error: null,
-        },
-      });
 
-      await renderWithI18n(
-        <MemoryRouter initialEntries={["/business/b1/dashboard"]}>
-          <Routes>
-            <Route path="/business/:businessId" element={<BusinessLayout />}>
-              <Route path="dashboard" element={<div>Business Outlet</div>} />
-            </Route>
-          </Routes>
-        </MemoryRouter>,
-      );
+      await renderBusinessLayout();
 
       expect(screen.getByTestId("actor-sidebar")).toHaveTextContent(
-        "Dashboard|People|Company",
+        "Dashboard|People",
       );
     },
   );
@@ -324,66 +436,35 @@ describe("BusinessLayout", () => {
         canEnterBusiness: true,
       },
     };
-    mockUseAuth.mockReturnValue({
-      state: {
-        status: "authenticated",
-        user: {
-          id: "u1",
-          email: "u@test.local",
-          type: "user",
-          mode: "business",
-          role: "Supervisor",
-        },
-        error: null,
-      },
-    });
 
-    await renderWithI18n(
-      <MemoryRouter initialEntries={["/business/b1/dashboard"]}>
-        <Routes>
-          <Route path="/business/:businessId" element={<BusinessLayout />}>
-            <Route path="dashboard" element={<div>Business Outlet</div>} />
-          </Route>
-        </Routes>
-      </MemoryRouter>,
-    );
+    await renderBusinessLayout();
 
     expect(screen.getByTestId("actor-sidebar")).not.toHaveTextContent("People");
   });
 
+  it("renders venue tabs and Owner chrome in Spanish", async () => {
+    mockVenues.value = [
+      venue({ businessId: "b1", tradeName: "Alpha Bar" }),
+      venue({ businessId: "b2", tradeName: "Beta Bar", source: "membership" }),
+    ];
+
+    await renderBusinessLayout("/business/b1/dashboard", "es");
+
+    expect(
+      screen.getByRole("navigation", { name: "Locales" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Añadir local" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Empresa" })).toBeInTheDocument();
+  });
+
   it("returns to customer mode and navigates to the Customer dashboard", async () => {
-    mockUseAuth.mockReturnValue({
-      state: {
-        status: "authenticated",
-        user: {
-          id: "u1",
-          email: "u@test.local",
-          type: "user",
-          mode: "business",
-          role: "Manager",
-        },
-        error: null,
-      },
-    });
     const user = userEvent.setup();
 
-    await renderWithI18n(
-      <MemoryRouter initialEntries={["/business/b1/dashboard"]}>
-        <Routes>
-          <Route path="/business/:businessId" element={<BusinessLayout />}>
-            <Route path="dashboard" element={<div>Business Outlet</div>} />
-          </Route>
-          <Route
-            path="/dashboard"
-            element={<div>Customer dashboard</div>}
-          />
-        </Routes>
-      </MemoryRouter>,
-    );
+    await renderBusinessLayout();
 
-    await user.click(
-      screen.getByRole("button", { name: "Customer mode" }),
-    );
+    await user.click(screen.getByRole("button", { name: "Customer mode" }));
 
     await waitFor(() => {
       expect(mockSetAuthMode).toHaveBeenCalledWith("customer");

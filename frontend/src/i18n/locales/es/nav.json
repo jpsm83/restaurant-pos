@@ -43,8 +43,14 @@
   "business": {
     "people": "Personal"
   },
+  "venueTabs": {
+    "ariaLabel": "Locales"
+  },
   "owner": {
-    "company": "Empresa"
+    "company": "Empresa",
+    "addVenue": "Añadir local",
+    "addVenueTitle": "Añadir local",
+    "addVenueDescription": "Registra otro local bajo este propietario."
   },
   "settings": {
     "title": "Ajustes",

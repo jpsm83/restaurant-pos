@@ -32,7 +32,7 @@ const currencyTuple = currenctyEnums as [string, ...string[]];
 const NEW_COMPANY = "__new_company__";
 
 type VenueFormValues = CreateBusinessBody;
-type ExistingCompany = Pick<
+export type ExistingCompany = Pick<
   IOwnerPortfolioCompany,
   "_id" | "legalName" | "taxNumber"
 >;

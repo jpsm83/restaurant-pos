@@ -9,8 +9,10 @@
  * column (`dashboard`, `people`, `company`,
  * `settings/profile`, `settings/subscriptions`, `settings/address`, `settings/open-hours`,
  * `settings/delivery`, `settings/metrics`).
- * The sidebar footer carries the minimal return-to-customer action; full
- * Customer | Business chrome remains on its later navigation row.
+ * When the accessible-venue list has more than one enterable venue the layout renders
+ * horizontal **venue tabs** above the routed content; owned venues also carry **Owner chrome**
+ * (**Add venue** and **Company**). The sidebar footer carries the minimal
+ * return-to-customer action.
  *
  * Folder overview: `PublicLayout`, `CustomerLayout`, `EmployeeLayout` — all wired from `appRoutes.tsx`.
  */
@@ -18,6 +20,8 @@ import { Suspense } from "react";
 import { Outlet, useParams } from "react-router-dom";
 import { AppPendingShell } from "@/components/AppPendingShell";
 import ActorSidebar from "@/components/ActorSidebar";
+import { BusinessOwnerChrome } from "@/components/business/BusinessOwnerChrome";
+import { BusinessVenueTabs } from "@/components/business/BusinessVenueTabs";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,7 +35,6 @@ import { useLocation } from "react-router-dom";
 import {
   ArrowLeft,
   BarChart3,
-  Building2,
   Clock,
   LayoutDashboard,
   Settings,
@@ -40,6 +43,7 @@ import {
 } from "lucide-react";
 import { useAuthModeNavigation } from "@/hooks/useAuthModeNavigation";
 import { useErrorMessage } from "@/i18n/errorCopy";
+import { useAccessibleVenuesQuery } from "@/services/authVenues";
 import {
   hasOwnedBusiness,
   useOwnerPortfolioQuery,
@@ -49,7 +53,6 @@ import {
   useBusinessAccessSnapshotQuery,
 } from "@/services/employees/employeesService";
 import {
-  canonicalBusinessCompanyPath,
   canonicalBusinessDashboardRoutePath,
   canonicalBusinessPeoplePath,
   canonicalBusinessSettingsDeliveryPath,
@@ -74,12 +77,21 @@ export default function BusinessLayout() {
   const accessQuery = useBusinessAccessSnapshotQuery(businessId, {
     enabled: Boolean(session && businessId),
   });
+  const venuesQuery = useAccessibleVenuesQuery({
+    enabled: Boolean(session),
+  });
 
   if (!session || !businessId) return null;
 
+  const venues = venuesQuery.data ?? [];
+  const tabVenues = venues.filter((venue) => venue.canEnterBusiness);
+  const activeVenue = venues.find((venue) => venue.businessId === businessId);
+  const isOwner = activeVenue
+    ? activeVenue.source === "ownership"
+    : hasOwnedBusiness(portfolioQuery.data, businessId);
+
   const dashboardTo = canonicalBusinessDashboardRoutePath(businessId);
   const peopleTo = canonicalBusinessPeoplePath(businessId);
-  const companyTo = canonicalBusinessCompanyPath(businessId);
   const openHoursTo = canonicalBusinessSettingsOpenHoursPath(businessId);
   const deliveryTo = canonicalBusinessSettingsDeliveryPath(businessId);
   const metricsTo = canonicalBusinessSettingsMetricsPath(businessId);
@@ -100,17 +112,6 @@ export default function BusinessLayout() {
             to: peopleTo,
             icon: Users,
             isActive: pathname === peopleTo,
-          },
-        ]
-      : []),
-    ...(hasOwnedBusiness(portfolioQuery.data, businessId)
-      ? [
-          {
-            key: "company",
-            label: t("owner.company"),
-            to: companyTo,
-            icon: Building2,
-            isActive: pathname === companyTo,
           },
         ]
       : []),
@@ -175,6 +176,23 @@ export default function BusinessLayout() {
         data-slot="sidebar-inset"
         className="relative flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-y-auto bg-background"
       >
+        {tabVenues.length > 1 || isOwner ? (
+          <header className="flex flex-wrap items-center gap-3 border-b border-border px-6 py-3">
+            {tabVenues.length > 1 ? (
+              <BusinessVenueTabs
+                venues={tabVenues}
+                activeBusinessId={businessId}
+              />
+            ) : null}
+            {isOwner ? (
+              <BusinessOwnerChrome
+                businessId={businessId}
+                companies={portfolioQuery.data?.companies}
+                defaultCountry={portfolioQuery.data?.country ?? null}
+              />
+            ) : null}
+          </header>
+        ) : null}
         {switchFailure ? (
           <div className="px-6 pt-4">
             <Alert>{resolveError(switchFailure)}</Alert>

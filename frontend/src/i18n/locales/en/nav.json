@@ -43,8 +43,14 @@
   "business": {
     "people": "People"
   },
+  "venueTabs": {
+    "ariaLabel": "Venues"
+  },
   "owner": {
-    "company": "Company"
+    "company": "Company",
+    "addVenue": "Add venue",
+    "addVenueTitle": "Add venue",
+    "addVenueDescription": "Register another venue under this Owner."
   },
   "settings": {
     "title": "Settings",

@@ -127,12 +127,16 @@ export function useOwnerPortfolioQuery(userId: string | undefined) {
   });
 }
 
+/** Creates a venue, then refreshes the portfolio and the chrome's venue list. */
 export function useCreateVenueMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: createVenue,
     onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: queryKeys.portfolio.all() }),
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.portfolio.all() }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.auth.venues() }),
+      ]),
   });
 }
 
