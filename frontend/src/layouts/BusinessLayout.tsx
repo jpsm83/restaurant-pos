@@ -14,7 +14,8 @@
  * (**Add venue** and **Company**). The sidebar footer carries the minimal
  * return-to-customer action.
  *
- * Folder overview: `PublicLayout`, `CustomerLayout`, `EmployeeLayout` — all wired from `appRoutes.tsx`.
+ * Folder overview: `PublicLayout`, `CustomerLayout`, `CustomerAccountLayout`, and this layout —
+ * all wired from `appRoutes.tsx`.
  */
 import { Suspense } from "react";
 import { Outlet, useParams } from "react-router-dom";

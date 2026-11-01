@@ -12,7 +12,6 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import BusinessLayout from "@/layouts/BusinessLayout";
 import CustomerAccountLayout from "@/layouts/CustomerAccountLayout";
 import CustomerLayout from "@/layouts/CustomerLayout";
-import EmployeeLayout from "@/layouts/EmployeeLayout";
 import PublicLayout from "@/layouts/PublicLayout";
 import RecoveryLayout from "@/layouts/RecoveryLayout";
 import AccessDenied from "@/pages/AccessDenied";
@@ -24,9 +23,9 @@ import {
   BusinessRouteShell,
   ProtectedRoute,
   PublicOnlyRoute,
-  RequireEmployeeAuthMode,
   SessionLoading,
 } from "@/routes/AuthRouteGuards";
+import { EmployeeDashboardRedirect } from "@/routes/EmployeeRedirects";
 import {
   canonicalAccountProfilePath,
   canonicalCustomerDashboardPath,
@@ -79,9 +78,6 @@ const CustomerProfilePage = lazy(() => import("@/pages/customer/CustomerProfileP
 const CustomerAddressPage = lazy(() => import("@/pages/customer/CustomerAddressPage"));
 const CustomerFavoritesPage = lazy(() => import("@/pages/customer/CustomerFavoritesPage"));
 const CustomerDashboardPage = lazy(() => import("@/pages/customer/CustomerDashboardPage"));
-const EmployeeProfilePage = lazy(() => import("@/pages/employee/EmployeeProfilePage"));
-const EmployeeDashboardPage = lazy(() => import("@/pages/employee/EmployeeDashboardPage"));
-
 // Dev-only review surface: the static `DEV` check lets the production build
 // drop the dynamic imports, their chunks, and the gallery's locale copy.
 const DevThemeGalleryPage = import.meta.env.DEV
@@ -339,20 +335,31 @@ export function AppRoutes() {
             element={<Navigate to={canonicalAccountProfilePath()} replace />}
           />
 
+          {/* Retired employee shell — compatibility redirects only (no layout). */}
           <Route
             path="/employee"
             element={
               <ProtectedRoute>
-                <RequireEmployeeAuthMode>
-                  <EmployeeLayout />
-                </RequireEmployeeAuthMode>
+                <EmployeeDashboardRedirect />
               </ProtectedRoute>
             }
-          >
-            <Route index element={<Navigate to="dashboard" replace />} />
-            <Route path="profile" element={<EmployeeProfilePage />} />
-            <Route path="dashboard" element={<EmployeeDashboardPage />} />
-          </Route>
+          />
+          <Route
+            path="/employee/dashboard"
+            element={
+              <ProtectedRoute>
+                <EmployeeDashboardRedirect />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/employee/profile"
+            element={
+              <ProtectedRoute>
+                <Navigate to={canonicalAccountProfilePath()} replace />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Retired id-based URLs (ADR-0013) — keep old bookmarks working. */}
           <Route

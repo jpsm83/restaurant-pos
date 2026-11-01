@@ -44,6 +44,8 @@ export const queryKeys = {
     /** Today's rows for one employee — Phase 3.4 countdown / eligibility UI. */
     employeeDay: (businessId: string, employeeId: string, dayKey: string) =>
       ["schedules", "employeeDay", businessId, employeeId, dayKey] as const,
+    /** Prefix for invalidating every employee-day entry for the signed-in User. */
+    employeeDayAll: () => ["schedules", "employeeDay"] as const,
     employeeDayPending: () => ["schedules", "employeeDay", "pending"] as const,
   },
   advancedTable: {

@@ -9,7 +9,7 @@
  * | `/dashboard`, `/favorites` | `ProtectedRoute` + `CustomerLayout` |
  * | `/account`, `/account/profile`, `/account/address` | `ProtectedRoute` + `CustomerAccountLayout` |
  * | `/profile` | legacy redirect to `/account/profile` |
- * | `/employee` | `ProtectedRoute` + `RequireEmployeeAuthMode` + `EmployeeLayout` |
+ * | `/employee/*` | `ProtectedRoute` + compatibility redirects (no employee shell) |
  * | `/:userId/...` | valid ObjectId ids redirect; unknown shapes render 404 (ADR-0013) |
  *
  * Route elements: **`appRoutes.tsx`** (`AppRoutes`). Guards: **`routes/AuthRouteGuards.tsx`**.

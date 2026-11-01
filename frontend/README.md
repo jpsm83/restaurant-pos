@@ -1,10 +1,10 @@
 # Frontend — Restaurant POS SPA
 
 React 19 + Vite single-page app. It renders the public marketing pages and the
-three authenticated shells (business, employee, customer) and talks to the
-`backend` API. There is no server-side rendering.
+two authenticated surfaces (Customer and Business) and talks to the `backend`
+API. There is no server-side rendering.
 
-## How the three workspaces fit together
+## How the npm workspaces fit together
 
 This repo is one npm workspace rooted at `/` — `backend/`, `frontend/`, and
 `packages/` (`restaurant-pos-packages`). Install once at the root
@@ -146,9 +146,9 @@ src/
 ├── main.tsx             # Providers: QueryClient → AuthProvider → ErrorBoundary → BrowserRouter
 ├── App.tsx              # High-level app map
 ├── appRoutes.tsx        # Route tree; shells + guards; all pages lazy-loaded
-├── routes/              # AuthRouteGuards, canonicalPaths (dashboard-first URLs)
-├── layouts/             # PublicLayout, BusinessLayout, EmployeeLayout, CustomerLayout, RecoveryLayout
-├── pages/               # Route screens (business/, customer/, employee/, marketing/)
+├── routes/              # AuthRouteGuards, EmployeeRedirects, canonicalPaths (session-derived URLs)
+├── layouts/             # PublicLayout, BusinessLayout, CustomerLayout, CustomerAccountLayout, RecoveryLayout
+├── pages/               # Route screens (business/, customer/, marketing/)
 ├── components/          # Shared UI (Navbar, ActorSidebar, ErrorBoundary, components/ui shadcn)
 ├── features/            # Self-contained features (advancedTable)
 ├── services/            # http (axios), queryClient, queryKeys, per-domain services
@@ -166,11 +166,11 @@ Conventions:
 - **Auth:** the access token lives in the `auth/api.ts` module singleton (not
   Context); `http` reads it per request. The refresh token is an HttpOnly cookie
   sent with `withCredentials: true`. `AuthProvider` exposes session state.
-- **Routing:** self-service shells (`/dashboard`, `/profile`, `/favorites`,
-  `/mode`, `/employee`) carry no user id; the signed-in User comes from the
-  session. Venues use `/business/:businessId`. Legacy `/:userId/...` URLs with
-  a valid ObjectId redirect; unknown shapes 404 (ADR-0013). Guards live in
-  `routes/AuthRouteGuards.tsx`. Pages are
+- **Routing:** self-service routes (`/dashboard`, `/account/*`, `/favorites`,
+  `/mode`) carry no user id; the signed-in User comes from the session. Venues
+  use `/business/:businessId`. `/profile` and `/employee/*` are compatibility
+  redirects. Legacy `/:userId/...` URLs with a valid ObjectId redirect; unknown
+  shapes 404 (ADR-0013). Guards live in `routes/AuthRouteGuards.tsx`. Pages are
   `React.lazy`-loaded behind a Suspense shell; unknown URLs render `NotFoundPage`.
 - **Internationalization:** user-facing copy goes through `react-i18next`, never
   hardcoded. The singleton in `src/i18n/i18n.ts` is imported once from

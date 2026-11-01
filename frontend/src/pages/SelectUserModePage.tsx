@@ -16,15 +16,19 @@ import {
 } from "@/components/ui/card";
 import { useAuthMode } from "@/context/AuthModeContext";
 import { useErrorMessage, type ErrorFailure } from "@/i18n/errorCopy";
+import { findFirstEnterableVenue } from "@/lib/accessibleVenues";
+import { SessionLoading } from "@/routes/AuthRouteGuards";
 import { toServiceRequestError } from "@/services/serviceErrors";
+import { useAccessibleVenuesQuery } from "@/services/authVenues";
+import { queryKeys } from "@/services/queryKeys";
 import { useNextShiftForEmployee } from "@/services/schedulesService";
 import {
   deriveEmployeeModeFromSchedule,
   formatDayKeyLocal,
 } from "@/lib/employeeModeSchedule";
 import {
+  canonicalBusinessDashboardRoutePath,
   canonicalCustomerDashboardPath,
-  canonicalEmployeeDashboardPath,
 } from "@/routes/canonicalPaths";
 
 function formatRemaining(totalSeconds: number): string {
@@ -106,7 +110,9 @@ function hasEmployeeLink(
 }
 
 /**
- * `/mode` — users linked as staff pick customer vs employee; same shell rhythm as `LoginPage`.
+ * `/mode` — the Customer | Business fallback for direct visits. Business opens the
+ * first enterable venue; when venues exist but none are enterable yet, the page
+ * keeps the schedule countdown and explanation instead of hiding Business.
  */
 export default function SelectUserModePage() {
   const { t } = useTranslation("mode");
@@ -130,73 +136,102 @@ export default function SelectUserModePage() {
   }, []);
 
   const sessionUser = state.user?.type === "user" ? state.user : null;
+  const venuesQuery = useAccessibleVenuesQuery({ enabled: Boolean(sessionUser) });
+  const venues = venuesQuery.data ?? [];
+  const firstEnterableVenue = findFirstEnterableVenue(venues);
+  const canEnterBusiness = Boolean(firstEnterableVenue);
+
   const linked = hasEmployeeLink(sessionUser);
   const businessId = linked ? sessionUser.businessId : undefined;
   const employeeId = linked ? sessionUser.employeeId : undefined;
-  const canEmployee = linked && sessionUser.canLogAsEmployee === true;
 
   const scheduleQuery = useNextShiftForEmployee({
     businessId,
     employeeId,
     dayKey,
-    enabled: Boolean(businessId && employeeId && linked && !canEmployee),
+    enabled: Boolean(
+      businessId &&
+        employeeId &&
+        linked &&
+        venuesQuery.isSuccess &&
+        venues.length > 0 &&
+        !canEnterBusiness,
+    ),
   });
 
   const [nowMs, setNowMs] = useState(() => Date.now());
   useEffect(() => {
-    if (!linked || canEmployee) return;
+    if (!linked || canEnterBusiness) return;
     const id = window.setInterval(() => setNowMs(Date.now()), 1000);
     return () => window.clearInterval(id);
-  }, [linked, canEmployee]);
+  }, [linked, canEnterBusiness]);
 
   const scheduleFailure = scheduleQuery.isError
     ? toServiceRequestError(scheduleQuery.error, "scheduleLoad")
     : null;
+  const venuesFailure = venuesQuery.isError
+    ? toServiceRequestError(venuesQuery.error, "venuesLoad")
+    : null;
   const modeLoadFailure = modeLoadError
     ? toServiceRequestError(modeLoadError, "modeLoad")
     : null;
-  // Submit feedback is the most direct; otherwise prefer the schedule check
-  // (it drives employee eligibility) over a failed mode load.
-  const failure = submitFailure ?? scheduleFailure ?? modeLoadFailure;
+  // Submit feedback is the most direct; then the venue read that drives
+  // Business eligibility, then the schedule check and the mode read.
+  const failure =
+    submitFailure ?? venuesFailure ?? scheduleFailure ?? modeLoadFailure;
 
   const derived = useMemo(
     () => deriveEmployeeModeFromSchedule(nowMs, scheduleQuery.data?.entries ?? []),
     [nowMs, scheduleQuery.data?.entries],
   );
 
-  useEffect(() => {
-    if (!linked || canEmployee || !scheduleQuery.isSuccess || !scheduleQuery.data) return;
-    const d = deriveEmployeeModeFromSchedule(
-      Date.now(),
-      scheduleQuery.data.entries,
-    );
-    if (!d.scheduleAllowsEmployeeNow) return;
-    let cancelled = false;
-    void getCurrentUser().then((me) => {
-      if (cancelled || !me.ok || !me.data) return;
-      dispatch({ type: "AUTH_SUCCESS", payload: me.data });
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [linked, canEmployee, scheduleQuery.isSuccess, scheduleQuery.data, dispatch]);
-
-  const onCountdownComplete = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: ["schedules", "employeeDay"] });
+  const refreshVenuesAndSession = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.auth.venues() });
     const me = await getCurrentUser();
     if (me.ok && me.data) {
       dispatch({ type: "AUTH_SUCCESS", payload: me.data });
     }
   }, [dispatch, queryClient]);
 
-  if (!linked || !sessionUser) {
+  useEffect(() => {
+    if (!linked || canEnterBusiness || !scheduleQuery.isSuccess || !scheduleQuery.data) return;
+    const d = deriveEmployeeModeFromSchedule(
+      Date.now(),
+      scheduleQuery.data.entries,
+    );
+    if (!d.scheduleAllowsEmployeeNow) return;
+    void refreshVenuesAndSession();
+  }, [
+    linked,
+    canEnterBusiness,
+    scheduleQuery.isSuccess,
+    scheduleQuery.data,
+    refreshVenuesAndSession,
+  ]);
+
+  const onCountdownComplete = useCallback(async () => {
+    await queryClient.invalidateQueries({
+      queryKey: queryKeys.schedules.employeeDayAll(),
+    });
+    await refreshVenuesAndSession();
+  }, [queryClient, refreshVenuesAndSession]);
+
+  if (!sessionUser) {
+    return <Navigate to={canonicalCustomerDashboardPath()} replace />;
+  }
+
+  if (venuesQuery.isLoading) {
+    return <SessionLoading />;
+  }
+
+  if (venuesQuery.isSuccess && venues.length === 0) {
     return <Navigate to={canonicalCustomerDashboardPath()} replace />;
   }
 
   const showCountdown =
-    !canEmployee && derived.countdownTargetMs !== null;
+    !canEnterBusiness && derived.countdownTargetMs !== null;
 
-  const employeeDescription = canEmployee
+  const businessDescription = canEnterBusiness
     ? t("businessHelp.canBusiness")
     : showCountdown
       ? t("businessHelp.countdownSoon")
@@ -212,12 +247,15 @@ export default function SelectUserModePage() {
     }
   };
 
-  const goEmployee = async () => {
-    if (!canEmployee) return;
+  const goBusiness = async () => {
+    if (!firstEnterableVenue) return;
     setSubmitFailure(null);
     try {
       await setModeAndRefresh("business");
-      navigate(canonicalEmployeeDashboardPath(), { replace: true });
+      navigate(
+        canonicalBusinessDashboardRoutePath(firstEnterableVenue.businessId),
+        { replace: true },
+      );
     } catch (e) {
       setSubmitFailure(toServiceRequestError(e, "modeSave"));
     }
@@ -243,7 +281,7 @@ export default function SelectUserModePage() {
               {t("continueCustomer")}
             </Button>
             <div className="space-y-2 border-t border-border pt-4">
-              <CardDescription>{employeeDescription}</CardDescription>
+              <CardDescription>{businessDescription}</CardDescription>
               {showCountdown && derived.countdownTargetMs !== null ? (
                 <EmployeeModeCountdown
                   targetMs={derived.countdownTargetMs}
@@ -254,9 +292,9 @@ export default function SelectUserModePage() {
               <Button
                 type="button"
                 className="w-full"
-                disabled={!canEmployee || isSettingMode}
+                disabled={!canEnterBusiness || isSettingMode}
                 aria-busy={isSettingMode || undefined}
-                onClick={() => void goEmployee()}
+                onClick={() => void goBusiness()}
               >
                 {t("continueBusiness")}
               </Button>

@@ -7,19 +7,20 @@
  *
  * ## Self-service routes are session-derived
  * The signed-in User is request context, so `/dashboard`, `/account/*`, `/favorites`, `/mode`, and
- * `/employee/*` carry no user id. An id appears in a URL only when the URL addresses that
- * resource: `/business/:businessId` is a venue the person may switch between. See ADR-0013.
- * The retired `/profile` URL redirects to `/account/profile` rather than carrying identity.
+ * the retired `/employee/*` compatibility URLs carry no user id. An id appears in a URL only when
+ * the URL addresses that resource: `/business/:businessId` is a venue the person may switch
+ * between. See ADR-0013. The retired `/profile` URL redirects to `/account/profile` rather than
+ * carrying identity.
  *
  * ## Who imports this
  * - `auth/postLoginRedirect.ts` — first URL after login / signup (`getPostLoginDestination`).
- * - `routes/AuthRouteGuards.tsx` — mode redirect and guard docs.
- * - `appRoutes.tsx` — legacy `/:userId/...` redirect targets.
+ * - `appRoutes.tsx` — route declarations and legacy `/:userId/...` redirect targets.
  * - `context/AuthModeContext.tsx` — `isUserShellPath` enables the stored-mode query.
  * - `components/AccountMenuPopover.tsx` — the Account entry point.
  * - `layouts/CustomerLayout.tsx`, `layouts/CustomerAccountLayout.tsx`,
- *   `layouts/EmployeeLayout.tsx`, `layouts/BusinessLayout.tsx`.
- * - `pages/SelectUserModePage.tsx` — navigate to customer or employee **dashboard** after mode selection.
+ *   `layouts/BusinessLayout.tsx`.
+ * - `pages/SelectUserModePage.tsx` — Customer dashboard or the first enterable venue after selection.
+ * - `routes/EmployeeRedirects.tsx` — retired employee URLs.
  *
  * ## How it wires to the router
  * `appRoutes.tsx` declares concrete `<Route path="…">` segments (`dashboard`, `account/profile`,
@@ -117,6 +118,7 @@ export function canonicalModePath(): string {
   return "/mode";
 }
 
+/** Retired employee shell URLs kept as compatibility redirects (ADR-0013). */
 export function canonicalEmployeePath(): string {
   return "/employee";
 }
@@ -139,17 +141,12 @@ function matchesPath(pathname: string, path: string): boolean {
   return pathname === path || pathname.startsWith(`${path}/`);
 }
 
-export function isEmployeeShellPath(pathname: string): boolean {
-  return matchesPath(pathname, canonicalEmployeePath());
-}
-
 /** True on the session-derived routes where the stored Customer | Business mode applies. */
 export function isUserShellPath(pathname: string): boolean {
   return (
     matchesPath(pathname, canonicalCustomerDashboardPath()) ||
     matchesPath(pathname, canonicalAccountPath()) ||
     matchesPath(pathname, canonicalCustomerFavoritesPath()) ||
-    matchesPath(pathname, canonicalModePath()) ||
-    isEmployeeShellPath(pathname)
+    matchesPath(pathname, canonicalModePath())
   );
 }

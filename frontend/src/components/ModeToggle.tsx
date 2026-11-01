@@ -14,6 +14,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useAuthModeNavigation } from "@/hooks/useAuthModeNavigation";
 import { useErrorMessage } from "@/i18n/errorCopy";
+import { findFirstEnterableVenue } from "@/lib/accessibleVenues";
 import type { AuthMode } from "@/services/authMode";
 import { useAccessibleVenuesQuery } from "@/services/authVenues";
 import {
@@ -39,7 +40,7 @@ export default function ModeToggle({ mode }: { mode: AuthMode }) {
   } = useAuthModeNavigation();
 
   const venues = venuesQuery.data ?? [];
-  const firstEnterableVenue = venues.find((venue) => venue.canEnterBusiness);
+  const firstEnterableVenue = findFirstEnterableVenue(venues);
   const currentBusinessId = businessIdFromPathname(pathname);
   const targetVenue =
     venues.find(

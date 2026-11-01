@@ -6,8 +6,8 @@
  *
  * ## Flow
  * **Sidebar** + **`SidebarInset`** ( **`SidebarProvider`** is in **`main.tsx`**). **`<Outlet />`** for
- * customer shell children (`favorites`, `dashboard`). Employee mode is chosen elsewhere (`/mode`);
- * the avatar menu opens the account area.
+ * customer shell children (`favorites`, `dashboard`). Customer | Business mode is chosen in the
+ * chrome or at `/mode`; the avatar menu opens the account area.
  *
  * Folder overview: see `PublicLayout.tsx` module doc for how layouts relate.
  */

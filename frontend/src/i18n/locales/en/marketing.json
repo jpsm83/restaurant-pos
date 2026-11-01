@@ -16,7 +16,7 @@
         },
         "account": {
           "title": "Your account",
-          "body": "Sign in once for customer mode: order history, account activity, and the same identity if you also work for a venue as staff (employee mode is gated separately)."
+          "body": "Sign in once for Customer mode: order history, account activity, and the same identity when you also work at a venue."
         }
       }
     }

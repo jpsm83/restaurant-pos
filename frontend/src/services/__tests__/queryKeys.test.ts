@@ -52,6 +52,10 @@ describe("queryKeys", () => {
       "e-1",
       "2026-04-07",
     ]);
+    expect(queryKeys.schedules.employeeDayAll()).toEqual([
+      "schedules",
+      "employeeDay",
+    ]);
     expect(queryKeys.schedules.employeeDayPending()).toEqual([
       "schedules",
       "employeeDay",

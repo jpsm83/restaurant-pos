@@ -1,23 +1,23 @@
 import type { IScheduleShiftEntry } from "restaurant-pos-packages/interfaces/ISchedule";
 
 /**
- * Pure **schedule math** for employee-mode eligibility UI (`src/lib` — no React, no network).
+ * Pure **schedule math** for the Business-entry countdown (`src/lib` — no React, no network).
  *
  * ## Domain rules (must stay aligned with backend)
  * Mirrors **non-management** rules from `backend/src/access/resolveEffectiveAccess.ts` (via
- * `backend/src/auth/canLogAsEmployee.ts`): employee login is allowed when
+ * `backend/src/auth/canLogAsEmployee.ts`): schedule-gated staff may enter Business when
  * `now ∈ [shiftStart − 10 min, shiftStart + 2 h]`; shift end is irrelevant and vacation rows are
  * ignored.
  *
- * **Management bypass** exists only on the server (JWT `canLogAsEmployee === true`). The UI enables
- * the employee CTA from that flag and **skips** schedule countdown when bypass applies (Phase 3.4.5).
+ * **Management and ownership bypass** comes from the accessible-venue read
+ * (`canEnterBusiness`); the page skips the countdown when that list already allows entry.
  *
  * ## Wiring
  * 1. **`services/schedulesService.ts`** types API rows as `IScheduleShiftEntry` and fetches today’s data.
  * 2. **`pages/SelectUserModePage.tsx`** calls `deriveEmployeeModeFromSchedule` + `formatDayKeyLocal`
  *    with `Date.now()` / poll tick and schedule query results to drive countdown and copy.
  * 3. Backend remains authoritative; this module only previews windows so users see “unlocks in …”
- *    before the next `GET /auth/me` refresh grants `canLogAsEmployee`.
+ *    before the next accessible-venue read grants entry.
  */
 export const EMPLOYEE_LOGIN_EARLY_MS = 10 * 60 * 1000;
 export const EMPLOYEE_LOGIN_LATE_MS = 2 * 60 * 60 * 1000;

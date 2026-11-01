@@ -1,16 +1,15 @@
 /**
- * Tests for `AuthRouteGuards.tsx` — guards in isolation with mocked `useAuth` / `useAuthMode`.
+ * Tests for `AuthRouteGuards.tsx` — guards in isolation with mocked `useAuth`.
  * For full route integration, see `App.routing.test.tsx` and page-level tests.
  */
 import { screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { renderWithI18n } from "@/test/i18nTestUtils";
 import {
   BusinessRouteShell,
   ProtectedRoute,
   PublicOnlyRoute,
-  RequireEmployeeAuthMode,
 } from "../AuthRouteGuards";
 
 function LocationProbe() {
@@ -24,14 +23,9 @@ function LocationProbe() {
 }
 
 const mockUseAuth = vi.fn();
-const mockUseAuthMode = vi.fn();
 
 vi.mock("@/auth/store/AuthContext", () => ({
   useAuth: () => mockUseAuth(),
-}));
-
-vi.mock("@/context/AuthModeContext", () => ({
-  useAuthMode: () => mockUseAuthMode(),
 }));
 
 describe("Auth route guards", () => {
@@ -235,124 +229,5 @@ describe("Auth route guards", () => {
     );
 
     expect(screen.getByText("Venue page")).toBeInTheDocument();
-  });
-
-  describe("RequireEmployeeAuthMode (Phase 3.5)", () => {
-    beforeEach(() => {
-      mockUseAuth.mockReturnValue({
-        state: {
-          status: "authenticated",
-          user: { id: "u1", email: "john@doe.com", type: "user" },
-          error: null,
-        },
-      });
-      mockUseAuthMode.mockReset();
-    });
-
-    it("redirects to /mode when session mode is customer", async () => {
-      mockUseAuthMode.mockReturnValue({
-        mode: "customer",
-        isLoading: false,
-        isError: false,
-      });
-
-      await renderWithI18n(
-        <MemoryRouter initialEntries={["/employee"]}>
-          <Routes>
-            <Route path="/mode" element={<div>Mode picker</div>} />
-            <Route
-              path="/employee"
-              element={
-                <RequireEmployeeAuthMode>
-                  <div>Employee shell</div>
-                </RequireEmployeeAuthMode>
-              }
-            />
-          </Routes>
-        </MemoryRouter>,
-      );
-
-      expect(screen.getByText("Mode picker")).toBeInTheDocument();
-      expect(screen.queryByText("Employee shell")).not.toBeInTheDocument();
-    });
-
-    it("redirects to /mode when mode fetch errors", async () => {
-      mockUseAuthMode.mockReturnValue({
-        mode: undefined,
-        isLoading: false,
-        isError: true,
-      });
-
-      await renderWithI18n(
-        <MemoryRouter initialEntries={["/employee"]}>
-          <Routes>
-            <Route path="/mode" element={<div>Mode picker</div>} />
-            <Route
-              path="/employee"
-              element={
-                <RequireEmployeeAuthMode>
-                  <div>Employee shell</div>
-                </RequireEmployeeAuthMode>
-              }
-            />
-          </Routes>
-        </MemoryRouter>,
-      );
-
-      expect(screen.getByText("Mode picker")).toBeInTheDocument();
-    });
-
-    it("renders children when session mode is business", async () => {
-      mockUseAuthMode.mockReturnValue({
-        mode: "business",
-        isLoading: false,
-        isError: false,
-      });
-
-      await renderWithI18n(
-        <MemoryRouter initialEntries={["/employee"]}>
-          <Routes>
-            <Route path="/mode" element={<div>Mode picker</div>} />
-            <Route
-              path="/employee"
-              element={
-                <RequireEmployeeAuthMode>
-                  <div>Employee shell</div>
-                </RequireEmployeeAuthMode>
-              }
-            />
-          </Routes>
-        </MemoryRouter>,
-      );
-
-      expect(screen.getByText("Employee shell")).toBeInTheDocument();
-      expect(screen.queryByText("Mode picker")).not.toBeInTheDocument();
-    });
-
-    it("shows session loading while auth mode is loading", async () => {
-      mockUseAuthMode.mockReturnValue({
-        mode: undefined,
-        isLoading: true,
-        isError: false,
-      });
-
-      await renderWithI18n(
-        <MemoryRouter initialEntries={["/employee"]}>
-          <Routes>
-            <Route path="/mode" element={<div>Mode picker</div>} />
-            <Route
-              path="/employee"
-              element={
-                <RequireEmployeeAuthMode>
-                  <div>Employee shell</div>
-                </RequireEmployeeAuthMode>
-              }
-            />
-          </Routes>
-        </MemoryRouter>,
-      );
-
-      expect(screen.getByText(/checking workspace mode/i)).toBeInTheDocument();
-    });
   });
 });

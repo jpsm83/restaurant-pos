@@ -18,7 +18,6 @@ export const NAMESPACES = [
   "marketing",
   "business",
   "customer",
-  "employee",
   "mode",
   "errors",
 ] as const;

@@ -16,7 +16,7 @@
         },
         "account": {
           "title": "Tu cuenta",
-          "body": "Inicia sesión una vez para el modo cliente: historial de pedidos, actividad de la cuenta, y la misma identidad si además trabajas en un local (el modo empleado se controla aparte)."
+          "body": "Inicia sesión una vez para el modo Cliente: historial de pedidos, actividad de la cuenta y la misma identidad cuando también trabajas en un local."
         }
       }
     }

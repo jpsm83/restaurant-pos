@@ -8,10 +8,10 @@
  *
  * ## Composition (outer → inner)
  * - `BusinessRouteShell` = `ProtectedRoute` → venue layout/page. Venue data pages only need the
- *   signed-in User; the shared business-mode eligibility seam is `AuthModeContext` /
- *   `RequireEmployeeAuthMode`, while the full toggle and navigation chrome remain 1.7.
- * - Customer and employee areas = `ProtectedRoute` → layout/page. Employee routes add
- *   `RequireEmployeeAuthMode` inside the session guard.
+ *   signed-in User; the shared business-mode eligibility seam is `AuthModeContext` and the
+ *   accessible-venue read.
+ * - Customer and account areas = `ProtectedRoute` → layout/page.
+ * - Retired `/employee/*` URLs are compatibility redirects (`routes/EmployeeRedirects.tsx`).
  *
  * ## Wiring (`appRoutes.tsx`)
  * - Public routes: `PublicOnlyRoute` on `/login`, `/signup`, `/forgot-password`
@@ -25,7 +25,7 @@
  * - `/dashboard`, `/favorites` → `ProtectedRoute` + `CustomerLayout`.
  * - `/account/*` → `ProtectedRoute` + `CustomerAccountLayout`; `/profile` redirects to
  *   `/account/profile`.
- * - `/employee/*` → `ProtectedRoute` → `RequireEmployeeAuthMode` + `EmployeeLayout`.
+ * - `/employee/*` → `ProtectedRoute` + compatibility redirects (no employee shell).
  * - Legacy `/:userId/...` URLs redirect in `appRoutes.tsx` (ADR-0013).
  *
  * ## Circular note
@@ -41,9 +41,7 @@ import {
   getReturnToParam,
 } from "@/auth/postLoginRedirect";
 import { useAuth } from "@/auth/store/AuthContext";
-import { useAuthMode } from "@/context/AuthModeContext";
 import { AppPendingShell } from "@/components/AppPendingShell";
-import { canonicalModePath } from "./canonicalPaths";
 
 /** Auth / guard pending state — same skeleton shell as route loading; status text is sr-only (see `AppPendingShell`). */
 export function SessionLoading(props?: { message?: string }) {
@@ -98,24 +96,4 @@ export function BusinessRouteShell({ children }: { children: ReactElement }) {
   }
 
   return <ProtectedRoute>{children}</ProtectedRoute>;
-}
-
-/**
- * Employee shell only when the session-stored mode is **business** (`GET /api/v1/auth/mode`).
- * Deep link to **`/employee`** with **`customer`** mode → **`Navigate`** to **`/mode`** (Phase 3.5.1).
- * On mode fetch error, same redirect so the user can retry **Continue as business** or use customer.
- */
-export function RequireEmployeeAuthMode({ children }: { children: ReactElement }) {
-  const { t } = useTranslation("common");
-  const { mode, isLoading, isError } = useAuthMode();
-
-  if (isLoading) {
-    return <SessionLoading message={t("loading.checkingWorkspaceMode")} />;
-  }
-
-  if (isError || mode !== "business") {
-    return <Navigate to={canonicalModePath()} replace />;
-  }
-
-  return children;
 }

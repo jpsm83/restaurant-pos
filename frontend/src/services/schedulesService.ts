@@ -5,8 +5,8 @@
  * 1. **`fetchDailyEmployeeSchedule`** — `GET /api/v1/schedules/business/:businessId/daily?dayKey=…`
  *    via shared `http`.
  * 2. **`useNextShiftForEmployee`** — `useQuery` keyed by `queryKeys.schedules.employeeDay`; used by
- *    **`SelectUserModePage`** when JWT disallows employee mode until shift; page invalidates this
- *    query when countdown completes.
+ *    **`SelectUserModePage`** when no accessible venue is enterable until a shift; the page
+ *    invalidates this query when the countdown completes.
  *
  * Depends on: `./http`, `./queryKeys`, shared schedule contracts from `restaurant-pos-packages/interfaces`.
  */

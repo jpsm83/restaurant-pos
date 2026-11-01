@@ -14,9 +14,9 @@
  *    Else the query is off and `mode` is `undefined` (no spurious `/auth/mode` calls on marketing/tenant).
  * 3. **`useSetAuthModeMutation`** runs **`POST /auth/set-mode`**; invalidation and the cross-tab signal are handled in **`authMode.ts`**.
  * 4. A same-origin tab that receives the signal invalidates its **`auth.mode`** query, so both tabs refetch the server-stored mode.
- * 5. **Consumers:** **`RequireEmployeeAuthMode`** (`routes/AuthRouteGuards.tsx`) gates employee routes;
- *    **`SelectUserModePage`** calls **`setModeAndRefresh`** then navigates. Import directly from
- *    **`@/context/AuthModeContext`** (barrel files are deprecated).
+ * 5. **Consumers:** **`SelectUserModePage`** calls **`setModeAndRefresh`** then navigates to Customer
+ *    or the first enterable venue. Import directly from **`@/context/AuthModeContext`** (barrel
+ *    files are deprecated).
  *
  * Depends on: **`useAuth`** (`AuthContext`), **`useAuthModeQuery` / `useSetAuthModeMutation`** (`authMode.ts`).
  */
