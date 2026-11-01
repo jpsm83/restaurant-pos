@@ -156,19 +156,13 @@ describe("employeesService", () => {
     });
   });
 
-  it("classifies known hire conflicts without exposing server copy", () => {
-    expect(
-      hireFailureReason({
-        code: "employeesCreate.conflict",
-        serverMessage: "User does not exist!",
-      }),
-    ).toBe("accountNotFound");
-    expect(
-      hireFailureReason({
-        code: "employeesCreate.conflict",
-        serverMessage: "User is already an employee!",
-      }),
-    ).toBe("alreadyMember");
+  it("classifies known hire outcomes by machine code", () => {
+    expect(hireFailureReason({ code: "employeesCreate.notFound" })).toBe(
+      "accountNotFound",
+    );
+    expect(hireFailureReason({ code: "employeesCreate.conflict" })).toBe(
+      "alreadyMember",
+    );
     expect(
       hireFailureReason({ code: "employeesCreate.forbidden" }),
     ).toBe("forbidden");

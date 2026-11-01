@@ -298,8 +298,8 @@ describe("BusinessPeoplePage", () => {
     {
       label: "no account",
       error: axiosFailure(
-        409,
-        "https://restaurant-pos.app/errors/conflict",
+        404,
+        "https://restaurant-pos.app/errors/not-found",
         "User does not exist!",
       ),
       copy: "No account uses that email. Ask the person to sign up first.",

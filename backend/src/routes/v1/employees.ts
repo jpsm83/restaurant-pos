@@ -353,7 +353,7 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
           .lean<IUser | null>();
 
         if (!user) {
-          throw conflict("User does not exist!");
+          throw notFound("User does not exist!");
         }
 
         const employeeAlreadyExists = await Employee.exists({

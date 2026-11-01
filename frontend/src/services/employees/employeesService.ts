@@ -92,23 +92,14 @@ export function canManageVenue(
   return compareAccessLayers(layer, "manager") >= 0;
 }
 
-/**
- * Classify the known hire outcomes for localized page copy.
- *
- * The hire endpoint currently separates "no account" from "already a member"
- * only through its conflict detail. That text is used here as a diagnostic to
- * choose localized copy; it is never rendered as user-facing copy.
- */
+/** Classify the known hire outcomes for localized page copy. */
 export function hireFailureReason(
   failure: Pick<ServiceFailure, "code" | "status" | "serverMessage">,
 ): HireFailureReason {
+  if (failure.code === "employeesCreate.notFound") return "accountNotFound";
+  if (failure.code === "employeesCreate.conflict") return "alreadyMember";
   if (failure.code === "employeesCreate.forbidden") return "forbidden";
   if (failure.code === "employeesCreate.validation") return "validation";
-  if (failure.code !== "employeesCreate.conflict") return "other";
-
-  const detail = failure.serverMessage ?? "";
-  if (/does not exist/i.test(detail)) return "accountNotFound";
-  if (/already an employee/i.test(detail)) return "alreadyMember";
   return "other";
 }
 

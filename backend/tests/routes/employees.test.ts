@@ -1303,7 +1303,7 @@ describe("Employees Routes", () => {
       expect(await Employee.countDocuments({ userId: targetUserId })).toBe(2);
     });
 
-    it("returns a conflict when the hire email has no active User", async () => {
+    it("returns not found when the hire email has no active User", async () => {
       const manager = await makeMember({ roles: ["Manager"] });
       const app = await getTestApp();
 
@@ -1320,7 +1320,7 @@ describe("Employees Routes", () => {
         },
       });
 
-      expect(response.statusCode).toBe(409);
+      expect(response.statusCode).toBe(404);
       expect(isProblemDetails(response)).toBe(true);
       expect(detail(response)).toBe("User does not exist!");
     });
