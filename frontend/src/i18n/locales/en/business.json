@@ -6,6 +6,95 @@
     "sessionUnavailable": "Session details unavailable.",
     "accountMenuHint": "Use the account menu (top right) for profile, favorites, dashboard, or to sign out."
   },
+  "people": {
+    "title": "People",
+    "description": "Manage the people who work at this venue.",
+    "hireStaff": "Hire staff",
+    "notSet": "Not set",
+    "list": {
+      "title": "Team members",
+      "description": "Everyone with a membership at this venue.",
+      "name": "Name",
+      "email": "Email",
+      "roles": "Roles",
+      "status": "Status",
+      "joinDate": "Join date"
+    },
+    "form": {
+      "title": "Hire staff",
+      "description": "Add an existing account to this venue. Pay and HR details come later.",
+      "email": "Sign-in email",
+      "emailPlaceholder": "name@example.com",
+      "roles": "Job roles",
+      "rolesHint": "Only roles you are allowed to assign.",
+      "status": "Employment status",
+      "joinDate": "Join date",
+      "submit": "Hire staff",
+      "submitting": "Hiring...",
+      "cancel": "Cancel"
+    },
+    "validation": {
+      "emailRequired": "Enter the person's sign-in email.",
+      "rolesRequired": "Select at least one job role.",
+      "joinDateRequired": "Choose a valid join date."
+    },
+    "states": {
+      "loading": "Loading people...",
+      "emptyTitle": "No team members yet",
+      "emptyDescription": "Hire your first staff member to get started.",
+      "errorTitle": "Could not load people",
+      "errorDescription": "Review the error and try again.",
+      "retry": "Retry",
+      "accessDeniedTitle": "People are not available",
+      "accessDeniedDescription": "Only managers and admins can view the staff list."
+    },
+    "messages": {
+      "hired": "Staff member hired successfully."
+    },
+    "errors": {
+      "noAccount": "No account uses that email. Ask the person to sign up first.",
+      "alreadyMember": "That person is already a member of this venue.",
+      "forbidden": "You cannot assign those roles at this venue.",
+      "validation": "Check the person's details and try again.",
+      "generic": "Could not hire this person. Try again."
+    },
+    "roles": {
+      "owner": "Owner",
+      "admin": "Admin",
+      "generalManager": "General Manager",
+      "manager": "Manager",
+      "assistantManager": "Assistant Manager",
+      "mod": "MoD",
+      "supervisor": "Supervisor",
+      "operator": "Operator",
+      "employee": "Employee",
+      "cashier": "Cashier",
+      "floorStaff": "Floor Staff",
+      "bartender": "Bartender",
+      "barista": "Barista",
+      "waiter": "Waiter",
+      "headChef": "Head Chef",
+      "sousChef": "Sous Chef",
+      "lineCooks": "Line Cooks",
+      "kitchenPorter": "Kitchen Porter",
+      "cleaner": "Cleaner",
+      "security": "Security",
+      "host": "Host",
+      "runner": "Runner",
+      "entertainer": "Entertainer",
+      "other": "Other"
+    },
+    "statuses": {
+      "active": "Active",
+      "seasonal": "Seasonal",
+      "medicalAbsence": "Medical absence",
+      "parentalLeave": "Parental leave",
+      "unpaidLeave": "Unpaid leave",
+      "suspended": "Suspended",
+      "terminated": "Terminated",
+      "other": "Other"
+    }
+  },
   "errors": {
     "notFound": "Business profile was not found.",
     "updateConflict": "These changes conflict with the saved business profile. Refresh and try again.",

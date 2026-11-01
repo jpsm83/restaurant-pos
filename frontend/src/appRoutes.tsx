@@ -53,6 +53,9 @@ const BusinessDashboardPage = lazy(() => import("@/pages/business/BusinessDashbo
 const BusinessCompanyPage = lazy(
   () => import("@/pages/business/BusinessCompanyPage"),
 );
+const BusinessPeoplePage = lazy(
+  () => import("@/pages/business/BusinessPeoplePage"),
+);
 const BusinessDeliverySettingsPage = lazy(
   () => import("@/pages/business/BusinessDeliverySettingsPage"),
 );
@@ -268,6 +271,7 @@ export function AppRoutes() {
           >
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<BusinessDashboardPage />} />
+            <Route path="people" element={<BusinessPeoplePage />} />
             <Route path="company" element={<BusinessCompanyPage />} />
             <Route
               path="settings/profile"

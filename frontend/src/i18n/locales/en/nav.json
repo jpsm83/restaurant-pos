@@ -37,6 +37,9 @@
     },
     "customerMode": "Customer mode"
   },
+  "business": {
+    "people": "People"
+  },
   "owner": {
     "company": "Company"
   },

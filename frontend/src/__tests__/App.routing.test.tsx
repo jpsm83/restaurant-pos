@@ -14,15 +14,19 @@ function LocationProbe() {
   );
 }
 
+const mockUseAuth = vi.fn();
+
 vi.mock("@/auth/store/AuthContext", () => ({
-  useAuth: () => ({
-    state: {
-      user: null,
-      status: "unauthenticated",
-      error: null,
-    },
-    dispatch: vi.fn(),
-  }),
+  useAuth: () => mockUseAuth(),
+}));
+
+vi.mock("@/layouts/BusinessLayout", async () => {
+  const { Outlet } = await import("react-router-dom");
+  return { default: () => <Outlet /> };
+});
+
+vi.mock("@/pages/business/BusinessPeoplePage", () => ({
+  default: () => <div data-testid="people-page-stub">People page</div>,
 }));
 
 describe("App public routing (Phase 1.5.1)", () => {
@@ -30,6 +34,14 @@ describe("App public routing (Phase 1.5.1)", () => {
     // Routing is the subject here; keep the real env client id from mounting
     // the Google widget without its provider.
     vi.stubEnv("VITE_GOOGLE_CLIENT_ID", "");
+    mockUseAuth.mockReturnValue({
+      state: {
+        user: null,
+        status: "unauthenticated",
+        error: null,
+      },
+      dispatch: vi.fn(),
+    });
   });
 
   afterEach(() => {
@@ -159,6 +171,29 @@ describe("App public routing (Phase 1.5.1)", () => {
     );
     expect(
       await screen.findByRole("heading", { name: /page not found/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("routes `/business/:businessId/people` for an authenticated User", async () => {
+    mockUseAuth.mockReturnValue({
+      state: {
+        user: { id: "u1", email: "manager@example.com", type: "user" },
+        status: "authenticated",
+        error: null,
+      },
+      dispatch: vi.fn(),
+    });
+
+    await renderWithI18n(
+      <MemoryRouter
+        initialEntries={["/business/507f1f77bcf86cd799439011/people"]}
+      >
+        <AppRoutes />
+      </MemoryRouter>,
+    );
+
+    expect(
+      await screen.findByTestId("people-page-stub"),
     ).toBeInTheDocument();
   });
 

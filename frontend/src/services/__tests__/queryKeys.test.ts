@@ -19,6 +19,21 @@ describe("queryKeys", () => {
       "managementContacts",
       "b-1",
     ]);
+    expect(queryKeys.business.access("b-1")).toEqual([
+      "business",
+      "access",
+      "b-1",
+    ]);
+    expect(queryKeys.employees.byBusiness("b-1")).toEqual([
+      "employees",
+      "business",
+      "b-1",
+    ]);
+    expect(queryKeys.employees.detail("e-1")).toEqual([
+      "employees",
+      "detail",
+      "e-1",
+    ]);
   });
 
   it("builds schedule keys with fallbacks", () => {

@@ -56,6 +56,11 @@ export function canonicalBusinessCompanyPath(businessId: string): string {
   return `${canonicalBusinessDashboardPath(businessId)}/company`;
 }
 
+/** The active venue's People page (manager/admin-only in the Business shell). */
+export function canonicalBusinessPeoplePath(businessId: string): string {
+  return `${canonicalBusinessDashboardPath(businessId)}/people`;
+}
+
 export function canonicalBusinessSettingsDeliveryPath(businessId: string): string {
   return `${canonicalBusinessDashboardPath(businessId)}/settings/delivery`;
 }

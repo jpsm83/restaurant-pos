@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { AxiosHeaders, type AxiosRequestConfig } from "axios";
 import { http } from "../http";
+import { multipartFormDataConfig } from "../multipartRequest";
 import { queryKeys } from "../queryKeys";
 import {
   ServiceRequestError,
@@ -26,23 +26,6 @@ export class BusinessServiceError extends ServiceRequestError {
     this.name = "BusinessServiceError";
   }
 }
-
-/**
- * Axios instance defaults set **`Content-Type: application/json`**, which breaks **`FormData`**
- * (boundary must be set by the runtime). Strip it for this request only.
- */
-const multipartFormDataConfig: AxiosRequestConfig = {
-  transformRequest: [
-    (data, headers) => {
-      if (headers instanceof AxiosHeaders) {
-        headers.delete("Content-Type");
-      } else if (headers && typeof headers === "object") {
-        delete (headers as Record<string, unknown>)["Content-Type"];
-      }
-      return data;
-    },
-  ],
-};
 
 function toBusinessServiceError(
   error: unknown,

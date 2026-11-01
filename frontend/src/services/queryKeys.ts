@@ -9,6 +9,8 @@
  *   `SelectUserModePage` when countdown completes (refetch eligibility).
  * - **`schedules.byBusiness`:** reserved for broader schedule UIs; keep keys stable when adding hooks.
  * - **`business.detail`:** profile fetch/edit flows for business settings pages.
+ * - **`business.access`:** the signed-in User's effective access snapshot for one venue.
+ * - **`employees.byBusiness` / `employees.detail`:** venue membership list and one membership read.
  * - **`portfolio.byUser` / `portfolio.all`:** the customer dashboard’s User-scoped Owner portfolio read.
  */
 export const queryKeys = {
@@ -20,6 +22,8 @@ export const queryKeys = {
   business: {
     detail: (businessId: string) => ["business", "detail", businessId] as const,
     detailPending: () => ["business", "detail", "pending"] as const,
+    access: (businessId: string) => ["business", "access", businessId] as const,
+    accessPending: () => ["business", "access", "pending"] as const,
   },
   portfolio: {
     all: () => ["portfolio"] as const,
@@ -28,6 +32,12 @@ export const queryKeys = {
   employees: {
     managementContacts: (businessId: string) =>
       ["employees", "managementContacts", businessId] as const,
+    byBusiness: (businessId: string) =>
+      ["employees", "business", businessId] as const,
+    byBusinessPending: () => ["employees", "business", "pending"] as const,
+    detail: (employeeId: string) =>
+      ["employees", "detail", employeeId] as const,
+    detailPending: () => ["employees", "detail", "pending"] as const,
   },
   schedules: {
     byBusiness: (businessId: string, dayKey?: string) =>

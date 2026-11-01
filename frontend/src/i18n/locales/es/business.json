@@ -6,6 +6,95 @@
     "sessionUnavailable": "No hay datos de sesión disponibles.",
     "accountMenuHint": "Usa el menú de cuenta (arriba a la derecha) para el perfil, favoritos, el panel o para cerrar sesión."
   },
+  "people": {
+    "title": "Personal",
+    "description": "Gestiona a las personas que trabajan en este local.",
+    "hireStaff": "Contratar personal",
+    "notSet": "Sin establecer",
+    "list": {
+      "title": "Miembros del equipo",
+      "description": "Todas las personas con una membresía en este local.",
+      "name": "Nombre",
+      "email": "Correo",
+      "roles": "Roles",
+      "status": "Estado",
+      "joinDate": "Fecha de alta"
+    },
+    "form": {
+      "title": "Contratar personal",
+      "description": "Añade una cuenta existente a este local. Los datos de nómina y recursos humanos llegan más adelante.",
+      "email": "Correo de acceso",
+      "emailPlaceholder": "nombre@ejemplo.com",
+      "roles": "Roles laborales",
+      "rolesHint": "Solo puedes asignar los roles que te corresponden.",
+      "status": "Estado laboral",
+      "joinDate": "Fecha de alta",
+      "submit": "Contratar personal",
+      "submitting": "Contratando...",
+      "cancel": "Cancelar"
+    },
+    "validation": {
+      "emailRequired": "Introduce el correo de acceso de la persona.",
+      "rolesRequired": "Selecciona al menos un rol laboral.",
+      "joinDateRequired": "Elige una fecha de alta válida."
+    },
+    "states": {
+      "loading": "Cargando personal...",
+      "emptyTitle": "Aún no hay miembros del equipo",
+      "emptyDescription": "Contrata a tu primer miembro del equipo para empezar.",
+      "errorTitle": "No se pudo cargar el personal",
+      "errorDescription": "Revisa el error e inténtalo de nuevo.",
+      "retry": "Reintentar",
+      "accessDeniedTitle": "El personal no está disponible",
+      "accessDeniedDescription": "Solo los responsables y administradores pueden ver la lista del personal."
+    },
+    "messages": {
+      "hired": "Miembro del equipo contratado correctamente."
+    },
+    "errors": {
+      "noAccount": "Ninguna cuenta usa ese correo. Pide a la persona que se registre primero.",
+      "alreadyMember": "Esa persona ya es miembro de este local.",
+      "forbidden": "No puedes asignar esos roles en este local.",
+      "validation": "Revisa los datos de la persona e inténtalo de nuevo.",
+      "generic": "No se pudo contratar a esta persona. Inténtalo de nuevo."
+    },
+    "roles": {
+      "owner": "Propietario",
+      "admin": "Administrador",
+      "generalManager": "Director general",
+      "manager": "Responsable",
+      "assistantManager": "Subresponsable",
+      "mod": "Responsable de turno",
+      "supervisor": "Supervisor",
+      "operator": "Operador",
+      "employee": "Empleado",
+      "cashier": "Cajero",
+      "floorStaff": "Personal de sala",
+      "bartender": "Barman",
+      "barista": "Barista",
+      "waiter": "Camarero",
+      "headChef": "Jefe de cocina",
+      "sousChef": "Sous chef",
+      "lineCooks": "Cocineros de línea",
+      "kitchenPorter": "Ayudante de cocina",
+      "cleaner": "Limpiador",
+      "security": "Seguridad",
+      "host": "Recepcionista",
+      "runner": "Runner",
+      "entertainer": "Animador",
+      "other": "Otro"
+    },
+    "statuses": {
+      "active": "Activo",
+      "seasonal": "Temporada",
+      "medicalAbsence": "Baja médica",
+      "parentalLeave": "Permiso parental",
+      "unpaidLeave": "Excedencia",
+      "suspended": "Suspendido",
+      "terminated": "Finalizado",
+      "other": "Otro"
+    }
+  },
   "errors": {
     "notFound": "No se encontró el perfil del negocio.",
     "updateConflict": "Estos cambios entran en conflicto con el perfil guardado del negocio. Actualiza e inténtalo de nuevo.",

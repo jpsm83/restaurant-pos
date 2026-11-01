@@ -7,8 +7,20 @@ import { renderWithI18n } from "@/test/i18nTestUtils";
 import BusinessLayout from "../BusinessLayout";
 
 const mockUseAuth = vi.fn();
-const { mockSetAuthMode, mockPortfolio } = vi.hoisted(() => ({
+const { mockSetAuthMode, mockPortfolio, mockAccess } = vi.hoisted(() => ({
   mockSetAuthMode: vi.fn(),
+  mockAccess: {
+    value: {
+      data: {
+        businessId: "b1",
+        effectiveLayer: "employee",
+        source: "membership",
+        jobRoles: ["Waiter"],
+        capabilities: [],
+        canEnterBusiness: true,
+      },
+    } as { data?: unknown },
+  },
   mockPortfolio: {
     value: {
       owner: { _id: "o1", country: "USA", subscription: "Free" },
@@ -59,6 +71,15 @@ vi.mock("@/services/authMode", () => ({
   }),
 }));
 
+vi.mock("@/services/employees/employeesService", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/services/employees/employeesService")>();
+  return {
+    ...actual,
+    useBusinessAccessSnapshotQuery: () => mockAccess.value,
+  };
+});
+
 vi.mock("@/services/portfolio/portfolioService", () => ({
   hasOwnedBusiness: (
     portfolio: { companies: Array<{ businesses: Array<{ _id: string }> }> } | undefined,
@@ -100,6 +121,16 @@ describe("BusinessLayout", () => {
   beforeEach(() => {
     mockSetAuthMode.mockReset();
     mockSetAuthMode.mockResolvedValue(undefined);
+    mockAccess.value = {
+      data: {
+        businessId: "b1",
+        effectiveLayer: "employee",
+        source: "membership",
+        jobRoles: ["Waiter"],
+        capabilities: [],
+        canEnterBusiness: true,
+      },
+    };
     mockPortfolio.value = {
       owner: { _id: "o1", country: "USA", subscription: "Free" },
       country: "USA",
@@ -237,6 +268,87 @@ describe("BusinessLayout", () => {
     expect(screen.getByTestId("actor-sidebar")).not.toHaveTextContent(
       "Company",
     );
+  });
+
+  it.each(["manager", "admin"])(
+    "shows the People entry for a %s",
+    async (layer) => {
+      mockAccess.value = {
+        data: {
+          businessId: "b1",
+          effectiveLayer: layer,
+          source: "membership",
+          jobRoles: [layer],
+          capabilities: [],
+          canEnterBusiness: true,
+        },
+      };
+      mockUseAuth.mockReturnValue({
+        state: {
+          status: "authenticated",
+          user: {
+            id: "u1",
+            email: "u@test.local",
+            type: "user",
+            mode: "business",
+            role: "Manager",
+          },
+          error: null,
+        },
+      });
+
+      await renderWithI18n(
+        <MemoryRouter initialEntries={["/business/b1/dashboard"]}>
+          <Routes>
+            <Route path="/business/:businessId" element={<BusinessLayout />}>
+              <Route path="dashboard" element={<div>Business Outlet</div>} />
+            </Route>
+          </Routes>
+        </MemoryRouter>,
+      );
+
+      expect(screen.getByTestId("actor-sidebar")).toHaveTextContent(
+        "Dashboard|People|Company",
+      );
+    },
+  );
+
+  it("hides the People entry for a supervisor", async () => {
+    mockAccess.value = {
+      data: {
+        businessId: "b1",
+        effectiveLayer: "supervisor",
+        source: "membership",
+        jobRoles: ["Supervisor"],
+        capabilities: [],
+        canEnterBusiness: true,
+      },
+    };
+    mockUseAuth.mockReturnValue({
+      state: {
+        status: "authenticated",
+        user: {
+          id: "u1",
+          email: "u@test.local",
+          type: "user",
+          mode: "business",
+          role: "Supervisor",
+        },
+        error: null,
+      },
+    });
+
+    await renderWithI18n(
+      <MemoryRouter initialEntries={["/business/b1/dashboard"]}>
+        <Routes>
+          <Route path="/business/:businessId" element={<BusinessLayout />}>
+            <Route path="dashboard" element={<div>Business Outlet</div>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId("actor-sidebar")).not.toHaveTextContent("People");
   });
 
   it("returns to customer mode and navigates to the Customer dashboard", async () => {

@@ -6,7 +6,7 @@
  * ## Flow
  * **`SidebarProvider`** wraps routed content in **`main.tsx`**. This layout adds **Sidebar** +
  * **main column** (same flex role as shadcn `SidebarInset`, but a **`div`** so child pages may use `<main>`); **`<Outlet />`** (in **`Suspense`**) renders tenant pages in the main
- * column (`dashboard`,
+ * column (`dashboard`, `people`, `company`,
  * `settings/profile`, `settings/subscriptions`, `settings/address`, `settings/open-hours`,
  * `settings/delivery`, `settings/metrics`).
  * The sidebar footer carries the minimal return-to-customer action; full
@@ -36,6 +36,7 @@ import {
   LayoutDashboard,
   Settings,
   Truck,
+  Users,
 } from "lucide-react";
 import { useAuthModeNavigation } from "@/hooks/useAuthModeNavigation";
 import { useErrorMessage } from "@/i18n/errorCopy";
@@ -44,8 +45,13 @@ import {
   useOwnerPortfolioQuery,
 } from "@/services/portfolio/portfolioService";
 import {
+  canManageVenue,
+  useBusinessAccessSnapshotQuery,
+} from "@/services/employees/employeesService";
+import {
   canonicalBusinessCompanyPath,
   canonicalBusinessDashboardRoutePath,
+  canonicalBusinessPeoplePath,
   canonicalBusinessSettingsDeliveryPath,
   canonicalBusinessSettingsMetricsPath,
   canonicalBusinessSettingsOpenHoursPath,
@@ -64,11 +70,15 @@ export default function BusinessLayout() {
     isSwitchingMode,
   } = useAuthModeNavigation();
   const portfolioQuery = useOwnerPortfolioQuery(state.user?.id);
-
   const session = state.status === "authenticated" ? state.user : null;
+  const accessQuery = useBusinessAccessSnapshotQuery(businessId, {
+    enabled: Boolean(session && businessId),
+  });
+
   if (!session || !businessId) return null;
 
   const dashboardTo = canonicalBusinessDashboardRoutePath(businessId);
+  const peopleTo = canonicalBusinessPeoplePath(businessId);
   const companyTo = canonicalBusinessCompanyPath(businessId);
   const openHoursTo = canonicalBusinessSettingsOpenHoursPath(businessId);
   const deliveryTo = canonicalBusinessSettingsDeliveryPath(businessId);
@@ -82,6 +92,17 @@ export default function BusinessLayout() {
       icon: LayoutDashboard,
       isActive: pathname === dashboardTo,
     },
+    ...(canManageVenue(accessQuery.data)
+      ? [
+          {
+            key: "people",
+            label: t("business.people"),
+            to: peopleTo,
+            icon: Users,
+            isActive: pathname === peopleTo,
+          },
+        ]
+      : []),
     ...(hasOwnedBusiness(portfolioQuery.data, businessId)
       ? [
           {
