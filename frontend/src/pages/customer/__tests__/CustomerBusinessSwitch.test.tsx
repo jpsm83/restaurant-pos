@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import BusinessLayout from "@/layouts/BusinessLayout";
+import { ServiceRequestError } from "@/services/serviceErrors";
 import { renderWithI18n } from "@/test/i18nTestUtils";
 import CustomerDashboardPage from "../CustomerDashboardPage";
 
@@ -133,5 +134,25 @@ describe("Customer | Business switch", () => {
     });
     expect(await screen.findByText("Your venues")).toBeInTheDocument();
     expect(screen.getByText("Demo Bistro")).toBeInTheDocument();
+  });
+
+  it("shows localized copy when opening a business fails", async () => {
+    mockPost.mockRejectedValueOnce(
+      new ServiceRequestError({ code: "modeSave.forbidden", status: 403 }),
+    );
+    const user = userEvent.setup();
+
+    await renderSwitchFlow();
+
+    await user.click(
+      await screen.findByRole("button", { name: "Open business" }),
+    );
+
+    expect(
+      await screen.findByText(
+        "Business mode is not allowed for this account right now.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Business dashboard")).not.toBeInTheDocument();
   });
 });

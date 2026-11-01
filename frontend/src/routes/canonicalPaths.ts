@@ -16,7 +16,7 @@
  * - `routes/AuthRouteGuards.tsx` — mode redirect and guard docs.
  * - `appRoutes.tsx` — legacy `/:userId/...` redirect targets.
  * - `context/AuthModeContext.tsx` — `isUserShellPath` enables the stored-mode query.
- * - `components/AccountMenuPopover.tsx` — profile entry point and employee-shell detection.
+ * - `components/AccountMenuPopover.tsx` — the Account entry point.
  * - `layouts/CustomerLayout.tsx`, `layouts/CustomerAccountLayout.tsx`,
  *   `layouts/EmployeeLayout.tsx`, `layouts/BusinessLayout.tsx`.
  * - `pages/SelectUserModePage.tsx` — navigate to customer or employee **dashboard** after mode selection.
@@ -44,6 +44,12 @@ export function isLikelyMongoObjectIdString(value: string | undefined): boolean 
 /** Venue base: `/business/:businessId` (child routes: `dashboard`, `settings/profile`, …). */
 export function canonicalBusinessDashboardPath(businessId: string): string {
   return `/business/${businessId}`;
+}
+
+/** The venue id addressed by a `/business/:businessId/*` pathname, if any. */
+export function businessIdFromPathname(pathname: string): string | undefined {
+  const match = /^\/business\/([^/]+)/.exec(pathname);
+  return match?.[1];
 }
 
 export function canonicalBusinessDashboardRoutePath(businessId: string): string {

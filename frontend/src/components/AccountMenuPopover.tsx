@@ -1,12 +1,13 @@
 import { useTranslation } from "react-i18next";
 import { User } from "lucide-react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import type { AuthSession } from "@/auth/types";
 import { logout, setAccessToken } from "@/auth/api";
 import { clearPriorSession } from "@/auth/sessionHint";
 import { useAuth } from "@/auth/store/AuthContext";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { isThemeMode, useTheme } from "@/hooks/useTheme";
+import type { AuthMode } from "@/services/authMode";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,11 +18,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  canonicalAccountProfilePath,
-  canonicalEmployeeProfilePath,
-  isEmployeeShellPath,
-} from "@/routes/canonicalPaths";
+import { canonicalAccountPath } from "@/routes/canonicalPaths";
 
 function initialsFromEmail(email: string): string {
   const local = email.split("@")[0]?.trim() ?? "";
@@ -37,22 +34,20 @@ function initialsFromEmail(email: string): string {
 
 type AccountMenuPopoverProps = {
   session: AuthSession;
+  /** The server-backed Customer | Business mode shown in the summary. */
+  mode: AuthMode;
 };
 
-export function AccountMenuPopover({ session }: AccountMenuPopoverProps) {
+export function AccountMenuPopover({ session, mode }: AccountMenuPopoverProps) {
   const { t } = useTranslation("nav");
   const navigate = useNavigate();
-  const { pathname } = useLocation();
   const { dispatch } = useAuth();
-  const { mode, setMode } = useTheme();
+  const { mode: themeMode, setMode } = useTheme();
 
-  const onEmployee = isEmployeeShellPath(pathname);
-  const profileTo = onEmployee
-    ? canonicalEmployeeProfilePath()
-    : canonicalAccountProfilePath();
-  const actorTypeLabel = onEmployee
-    ? t("account.actorType.employee")
-    : t("account.actorType.customer");
+  const actorTypeLabel =
+    mode === "business"
+      ? t("account.actorType.business")
+      : t("account.actorType.customer");
 
   const handleModeChange = (value: string) => {
     if (isThemeMode(value)) setMode(value);
@@ -109,17 +104,20 @@ export function AccountMenuPopover({ session }: AccountMenuPopoverProps) {
           </div>
         </div>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={() => navigate(profileTo)} className="cursor-pointer">
+        <DropdownMenuItem
+          onSelect={() => navigate(canonicalAccountPath())}
+          className="cursor-pointer"
+        >
           <User
             className="text-muted-foreground group-focus/dropdown-menu-item:text-accent-foreground"
             aria-hidden
           />
-          {t("settings.profile")}
+          {t("account.account")}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuLabel>{t("account.theme.label")}</DropdownMenuLabel>
         <DropdownMenuRadioGroup
-          value={mode}
+          value={themeMode}
           onValueChange={handleModeChange}
           aria-label={t("account.theme.groupLabel")}
         >

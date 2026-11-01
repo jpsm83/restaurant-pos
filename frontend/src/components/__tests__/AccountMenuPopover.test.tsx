@@ -1,10 +1,11 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AuthSession } from "@/auth/types";
 import { AccountMenuPopover } from "@/components/AccountMenuPopover";
 import { MODE_STORAGE_KEY, resetThemeStore } from "@/hooks/useTheme";
+import type { AuthMode } from "@/services/authMode";
 import { renderWithI18n } from "@/test/i18nTestUtils";
 
 const { mockDispatch, mockLogout, mockSetAccessToken } = vi.hoisted(() => ({
@@ -32,12 +33,18 @@ const ownerSession: AuthSession = {
   role: "Customer",
 };
 
-async function openAccountMenu() {
+function LocationProbe() {
+  const location = useLocation();
+  return <output data-testid="location">{location.pathname}</output>;
+}
+
+async function openAccountMenu(mode: AuthMode = "customer") {
   const user = userEvent.setup();
 
   await renderWithI18n(
     <MemoryRouter initialEntries={["/dashboard"]}>
-      <AccountMenuPopover session={ownerSession} />
+      <LocationProbe />
+      <AccountMenuPopover session={ownerSession} mode={mode} />
     </MemoryRouter>,
   );
 
@@ -67,20 +74,38 @@ describe("AccountMenuPopover (single-User handoff surface)", () => {
     resetThemeStore();
   });
 
-  it("shows the User summary, profile, language, and log out", async () => {
+  it("shows the Customer summary, Account, language, and log out", async () => {
     await openAccountMenu();
 
-    expect(screen.getByText(/customer/i)).toBeInTheDocument();
+    expect(screen.getByText(/^customer$/i)).toBeInTheDocument();
     expect(screen.getByText("owner@restaurant.com")).toBeInTheDocument();
 
     // Language flag button (aria-label is in `common` namespace).
     expect(screen.getByRole("button", { name: /language/i })).toBeInTheDocument();
 
-    expect(screen.getByRole("menuitem", { name: /profile/i })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: /account/i })).toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: /profile/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("menuitem", { name: /subscriptions/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("menuitem", { name: /^address$/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("menuitem", { name: /credentials/i })).not.toBeInTheDocument();
     expect(screen.getByRole("menuitem", { name: /log out/i })).toBeInTheDocument();
+  });
+
+  it("shows the Business summary instead of an employee actor type", async () => {
+    await openAccountMenu("business");
+
+    expect(screen.getByText(/^business$/i)).toBeInTheDocument();
+    expect(screen.queryByText(/employee/i)).not.toBeInTheDocument();
+  });
+
+  it("opens the customer account area from the Account entry", async () => {
+    const user = await openAccountMenu("business");
+
+    await user.click(screen.getByRole("menuitem", { name: /account/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("location")).toHaveTextContent(/^\/account$/);
+    });
   });
 
   it("exposes only the current User and sign-out, with no excluded identity flow", async () => {
@@ -91,7 +116,7 @@ describe("AccountMenuPopover (single-User handoff surface)", () => {
     expect(within(menu).getByText("owner@restaurant.com")).toBeInTheDocument();
     expect(
       within(menu).getAllByRole("menuitem").map((item) => item.textContent?.trim()),
-    ).toEqual(["Profile", "Log out"]);
+    ).toEqual(["Account", "Log out"]);
     expect(
       within(menu).getAllByRole("menuitemradio").map((item) => item.textContent?.trim()),
     ).toEqual(["Light", "Dark", "System"]);

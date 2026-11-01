@@ -3,14 +3,17 @@ import { useTranslation } from "react-i18next";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/auth/store/AuthContext";
 import { AccountMenuPopover } from "@/components/AccountMenuPopover";
+import ModeToggle from "@/components/ModeToggle";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuthModeQuery } from "@/services/authMode";
 
 /**
  * App-wide top bar. Public routes: marketing audience switch + shared auth CTAs.
- * Authenticated shells: account popover with actor-specific links.
- * Sidebar chrome lives in tenant layouts only — no `SidebarProvider` / trigger here.
+ * Authenticated shells: Customer | Business mode toggle (when the User has an
+ * accessible venue) plus the account popover. Sidebar chrome lives in tenant
+ * layouts only — no `SidebarProvider` / trigger here.
  */
 export default function Navbar() {
   const { t } = useTranslation("nav");
@@ -20,6 +23,13 @@ export default function Navbar() {
   const isAuthenticated =
     state.status === "authenticated" && Boolean(state.user);
   const isLoading = state.status === "loading" || state.status === "idle";
+  const isUserSession =
+    state.status === "authenticated" && state.user?.type === "user";
+
+  const modeQuery = useAuthModeQuery({ enabled: isUserSession });
+  const activeMode =
+    modeQuery.data ??
+    (state.user?.mode === "business" ? "business" : "customer");
 
   // Marketing audience only affects the switch label; auth is always the same entry.
   // `/business/:businessId/*` is an authenticated venue shell, not marketing.
@@ -67,13 +77,14 @@ export default function Navbar() {
           ) : null}
 
           <div className="flex items-center gap-3">
+            <ModeToggle mode={activeMode} />
             {isLoading ? (
               <>
                 <span className="sr-only">{t("loading")}</span>
                 <Skeleton className="h-5 w-24" aria-hidden />
               </>
             ) : isAuthenticated && state.user ? (
-              <AccountMenuPopover session={state.user} />
+              <AccountMenuPopover session={state.user} mode={activeMode} />
             ) : (
               <>
                 <Button variant="ghost" asChild>

@@ -1,4 +1,11 @@
 {
+  "toggle": {
+    "label": "Espacio de trabajo",
+    "customer": "Cliente",
+    "business": "Empresa",
+    "businessHint": "Abrir el espacio de trabajo de tu empresa",
+    "unavailable": "La empresa no está disponible para tus locales ahora mismo. <whyLink>Ver por qué</whyLink>"
+  },
   "title": "¿Cómo quieres continuar?",
   "description": "Navegación como cliente o herramientas de empresa: se actualiza el modo de tu sesión.",
   "continueCustomer": "Continuar como cliente",

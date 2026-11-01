@@ -19,8 +19,9 @@
     "menuAriaLabel": "Account menu",
     "actorType": {
       "customer": "Customer",
-      "employee": "Employee"
+      "business": "Business"
     },
+    "account": "Account",
     "home": "Home",
     "dashboard": "Dashboard",
     "favorites": "Favorites",
