@@ -44,10 +44,7 @@ const employeeSchema = new Schema(
         required: [true, "Employee role is required!"],
       },
     ], // all roles of the employee, can be multiple
-    taxNumber: {
-      type: String,
-      required: [true, "Tax number is required!"],
-    }, // tax number of the employee
+    taxNumber: { type: String }, // tax number of the employee; optional until HR completion
     joinDate: { type: Date, required: [true, "Join date is required!"] }, // date when the employee joined the business
     employmentStatus: {
       type: String,
@@ -61,10 +58,7 @@ const employeeSchema = new Schema(
       type: Boolean,
       default: false,
     }, // if the employee is on duty, shift working right now
-    vacationDaysPerYear: {
-      type: Number,
-      required: [true, "Vacations days per year is required!"],
-    }, // days of holidays per year
+    vacationDaysPerYear: { type: Number }, // days of holidays per year; optional until HR completion
     businessId: {
       type: Schema.Types.ObjectId,
       ref: "Business",
@@ -167,7 +161,10 @@ employeeSchema.pre("updateOne", function () {
 
 employeeSchema.index(
   { businessId: 1, taxNumber: 1 },
-  { unique: true, partialFilterExpression: { deleted: false } },
+  {
+    unique: true,
+    partialFilterExpression: { deleted: false, taxNumber: { $type: "string" } },
+  },
 );
 
 employeeSchema.index(

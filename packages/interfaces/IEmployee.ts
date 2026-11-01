@@ -15,9 +15,11 @@ export interface INotificationEntry {
 export interface IEmployee {
   _id?: Types.ObjectId | string;
   allEmployeeRoles: string[];
-  taxNumber: string;
+  /** Optional until HR completion. */
+  taxNumber?: string;
   joinDate: Date;
-  vacationDaysPerYear: number;
+  /** Optional until HR completion. */
+  vacationDaysPerYear?: number;
   businessId: Types.ObjectId | string;
   userId: Types.ObjectId | string;
   /** Closed employment status; absent on legacy rows that predate it. */

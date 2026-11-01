@@ -174,16 +174,19 @@ describe("Employees Routes", () => {
 
   const validCreateFields = () => ({
     allEmployeeRoles: JSON.stringify(["Waiter"]),
-    taxNumber: `EMP-${new Types.ObjectId()}`,
+    employmentStatus: "Active",
     joinDate: "2024-01-15",
-    vacationDaysPerYear: "20",
     businessId: businessId.toString(),
     userEmail: "employeeuser@test.com",
   });
 
   const validUpdateFields = () => {
-    const { businessId: _omit, ...rest } = validCreateFields();
-    return { ...rest, active: "true" };
+    const {
+      businessId: _omitBusinessId,
+      userEmail: _omitUserEmail,
+      ...rest
+    } = validCreateFields();
+    return rest;
   };
 
   describe("authentication on every membership route", () => {
@@ -913,8 +916,8 @@ describe("Employees Routes", () => {
       expect(isProblemDetails(response)).toBe(true);
       for (const field of [
         "allEmployeeRoles",
+        "employmentStatus",
         "joinDate",
-        "vacationDaysPerYear",
         "businessId",
         "userEmail",
       ]) {
@@ -1121,7 +1124,13 @@ describe("Employees Routes", () => {
         businessId,
         userId: targetUserId,
       }).lean();
-      expect(created).not.toBeNull();
+      expect(created).toMatchObject({
+        allEmployeeRoles: ["Waiter"],
+        employmentStatus: "Active",
+        active: true,
+      });
+      expect(created?.taxNumber).toBeUndefined();
+      expect(created?.vacationDaysPerYear).toBeUndefined();
     });
 
     it("prevents a duplicate membership for the same User and Business", async () => {
@@ -1152,16 +1161,21 @@ describe("Employees Routes", () => {
       expect(detail(response)).toBe("User is already an employee!");
     });
 
-    it("does not count a soft-deleted membership as an existing employee", async () => {
+    it("reactivates a soft-deleted membership instead of duplicating it", async () => {
       const manager = await makeMember({ roles: ["Manager"] });
-      await Employee.create({
+      const taxNumber = `EMP-${new Types.ObjectId()}`;
+      const softDeleted = await Employee.create({
         businessId,
         userId: targetUserId,
-        allEmployeeRoles: ["Waiter"],
-        taxNumber: `EMP-${new Types.ObjectId()}`,
-        joinDate: new Date(),
+        allEmployeeRoles: ["Cashier"],
+        taxNumber,
+        joinDate: new Date("2020-01-01"),
         vacationDaysPerYear: 20,
         vacationDaysLeft: 20,
+        comments: "Retained HR note",
+        documentsUrl: ["https://example.com/retained.pdf"],
+        employmentStatus: "Terminated",
+        terminatedDate: new Date("2021-01-01"),
         deleted: true,
         deletedAt: new Date(),
       });
@@ -1170,7 +1184,12 @@ describe("Employees Routes", () => {
       const response = await app.inject({
         method: "POST",
         url: "/api/v1/employees",
-        payload: multipart(validCreateFields()),
+        payload: multipart({
+          ...validCreateFields(),
+          allEmployeeRoles: JSON.stringify(["Supervisor"]),
+          employmentStatus: "Suspended",
+          joinDate: "2024-03-01",
+        }),
         headers: {
           "content-type": "multipart/form-data",
           authorization: manager.auth,
@@ -1178,7 +1197,65 @@ describe("Employees Routes", () => {
       });
 
       expect(response.statusCode).toBe(201);
-      expect(await Employee.countDocuments({ businessId, userId: targetUserId })).toBe(1);
+      expect(
+        await Employee.countDocuments({ businessId, userId: targetUserId }),
+      ).toBe(1);
+
+      const reactivated = await Employee.findById(softDeleted._id).lean();
+      expect(reactivated).toMatchObject({
+        _id: softDeleted._id,
+        allEmployeeRoles: ["Supervisor"],
+        employmentStatus: "Suspended",
+        active: false,
+        deleted: false,
+      });
+      expect(reactivated?.joinDate).toEqual(new Date("2024-03-01"));
+      expect(reactivated?.terminatedDate).toBeUndefined();
+      expect(reactivated?.deletedAt).toBeUndefined();
+      expect(reactivated?.deletedBy).toBeUndefined();
+      expect(reactivated).toMatchObject({
+        taxNumber,
+        comments: "Retained HR note",
+        documentsUrl: ["https://example.com/retained.pdf"],
+        vacationDaysPerYear: 20,
+      });
+    });
+
+    it("applies the edit bound when reactivating a soft-deleted membership", async () => {
+      const manager = await makeMember({ roles: ["Manager"] });
+      const admin = await makeMember({ roles: ["Admin"] });
+      await Employee.create({
+        businessId,
+        userId: targetUserId,
+        allEmployeeRoles: ["Manager"],
+        joinDate: new Date("2024-01-15"),
+        deleted: true,
+        deletedAt: new Date(),
+      });
+      const app = await getTestApp();
+
+      const managerResponse = await app.inject({
+        method: "POST",
+        url: "/api/v1/employees",
+        payload: multipart(validCreateFields()),
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: manager.auth,
+        },
+      });
+      expect(managerResponse.statusCode).toBe(403);
+      expect(isProblemDetails(managerResponse)).toBe(true);
+
+      const adminResponse = await app.inject({
+        method: "POST",
+        url: "/api/v1/employees",
+        payload: multipart(validCreateFields()),
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: admin.auth,
+        },
+      });
+      expect(adminResponse.statusCode).toBe(201);
     });
 
     it("allows the same User to belong to more than one Business", async () => {
@@ -1224,6 +1301,187 @@ describe("Employees Routes", () => {
       expect(second.statusCode).toBe(201);
 
       expect(await Employee.countDocuments({ userId: targetUserId })).toBe(2);
+    });
+
+    it("returns a conflict when the hire email has no active User", async () => {
+      const manager = await makeMember({ roles: ["Manager"] });
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/employees",
+        payload: multipart({
+          ...validCreateFields(),
+          userEmail: "missing@test.com",
+        }),
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: manager.auth,
+        },
+      });
+
+      expect(response.statusCode).toBe(409);
+      expect(isProblemDetails(response)).toBe(true);
+      expect(detail(response)).toBe("User does not exist!");
+    });
+
+    it("refuses a new membership that starts Terminated", async () => {
+      const manager = await makeMember({ roles: ["Manager"] });
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/employees",
+        payload: multipart({
+          ...validCreateFields(),
+          employmentStatus: "Terminated",
+        }),
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: manager.auth,
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(isProblemDetails(response)).toBe(true);
+      expect(detail(response)).toBe("A new membership cannot start Terminated!");
+    });
+
+    it.each([
+      ["Suspended", false],
+      ["Seasonal", true],
+      ["Medical absence", true],
+      ["Parental leave", true],
+      ["Unpaid leave", true],
+    ])(
+      "accepts %s on create and derives active as %s",
+      async (employmentStatus, expectedActive) => {
+        const manager = await makeMember({ roles: ["Manager"] });
+        const app = await getTestApp();
+
+        const response = await app.inject({
+          method: "POST",
+          url: "/api/v1/employees",
+          payload: multipart({ ...validCreateFields(), employmentStatus }),
+          headers: {
+            "content-type": "multipart/form-data",
+            authorization: manager.auth,
+          },
+        });
+
+        expect(response.statusCode).toBe(201);
+
+        const created = await Employee.findOne({
+          businessId,
+          userId: targetUserId,
+        }).lean();
+        expect(created).toMatchObject({
+          employmentStatus,
+          active: expectedActive,
+        });
+      },
+    );
+
+    it("applies the actor's role assignment bounds when hiring", async () => {
+      const manager = await makeMember({ roles: ["Manager"] });
+      const admin = await makeMember({ roles: ["Admin"] });
+      const app = await getTestApp();
+
+      const hire = async (auth: string, roles: string[]) => {
+        const target = await makeUser();
+        return app.inject({
+          method: "POST",
+          url: "/api/v1/employees",
+          payload: multipart({
+            ...validCreateFields(),
+            userEmail: target.email,
+            allEmployeeRoles: JSON.stringify(roles),
+          }),
+          headers: {
+            "content-type": "multipart/form-data",
+            authorization: auth,
+          },
+        });
+      };
+
+      expect((await hire(manager.auth, ["Manager"])).statusCode).toBe(403);
+      expect((await hire(manager.auth, ["Admin"])).statusCode).toBe(403);
+      expect((await hire(admin.auth, ["Owner"])).statusCode).toBe(403);
+      expect((await hire(admin.auth, ["Admin"])).statusCode).toBe(403);
+      expect((await hire(admin.auth, ["Manager"])).statusCode).toBe(201);
+      expect((await hire(ownerAuth, ["Owner"])).statusCode).toBe(201);
+    });
+
+    it("persists optional legacy HR fields when a hire provides them", async () => {
+      const manager = await makeMember({ roles: ["Manager"] });
+      const app = await getTestApp();
+      const taxNumber = `EMP-${new Types.ObjectId()}`;
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/employees",
+        payload: multipart({
+          ...validCreateFields(),
+          taxNumber,
+          vacationDaysPerYear: "20",
+          contractHoursWeek: "32",
+          salary: JSON.stringify({
+            payFrequency: "Hourly",
+            grossSalary: 20,
+            netSalary: 15,
+          }),
+          comments: "HR-only note",
+        }),
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: manager.auth,
+        },
+      });
+
+      expect(response.statusCode).toBe(201);
+
+      const created = await Employee.findOne({
+        businessId,
+        userId: targetUserId,
+      }).lean();
+      expect(created).toMatchObject({
+        taxNumber,
+        vacationDaysPerYear: 20,
+        vacationDaysLeft: 20,
+        contractHoursWeek: 32,
+        salary: { payFrequency: "Hourly", grossSalary: 20, netSalary: 15 },
+        comments: "HR-only note",
+      });
+    });
+
+    it("cannot create two non-deleted memberships from concurrent duplicate hires", async () => {
+      const manager = await makeMember({ roles: ["Manager"] });
+      const app = await getTestApp();
+
+      const submit = () =>
+        app.inject({
+          method: "POST",
+          url: "/api/v1/employees",
+          payload: multipart(validCreateFields()),
+          headers: {
+            "content-type": "multipart/form-data",
+            authorization: manager.auth,
+          },
+        });
+
+      const responses = await Promise.all([submit(), submit()]);
+
+      expect(
+        await Employee.countDocuments({ businessId, userId: targetUserId }),
+      ).toBe(1);
+      expect(
+        responses.map((response) => response.statusCode).sort(),
+      ).toEqual([201, 409]);
+      const conflictResponse = responses.find(
+        (response) => response.statusCode === 409,
+      );
+      expect(conflictResponse).toBeDefined();
+      expect(isProblemDetails(conflictResponse!)).toBe(true);
     });
   });
 
@@ -1293,6 +1551,7 @@ describe("Employees Routes", () => {
         url: `/api/v1/employees/${employee._id}`,
         payload: multipart({
           ...validUpdateFields(),
+          employmentStatus: "Terminated",
           joinDate: "2024-06-01",
           terminatedDate: "2024-01-01",
         }),
@@ -1378,17 +1637,17 @@ describe("Employees Routes", () => {
       }
     });
 
-    it("updates an employee and syncs the printer when deactivated", async () => {
+    it("updates an employee and syncs the printer when the status blocks access", async () => {
       const manager = await makeMember({ roles: ["Manager"] });
       const employee = await Employee.create({
         businessId,
         userId: targetUserId,
         allEmployeeRoles: ["Waiter"],
         taxNumber: `EMP-${new Types.ObjectId()}`,
-        joinDate: new Date(),
+        joinDate: new Date("2024-01-15"),
         vacationDaysPerYear: 20,
         vacationDaysLeft: 20,
-        active: true,
+        employmentStatus: "Active",
       });
       const printer = await Printer.create({
         businessId,
@@ -1403,12 +1662,8 @@ describe("Employees Routes", () => {
         method: "PATCH",
         url: `/api/v1/employees/${employee._id}`,
         payload: multipart({
-          allEmployeeRoles: JSON.stringify(["Waiter"]),
-          taxNumber: employee.taxNumber,
-          joinDate: "2024-01-15",
-          vacationDaysPerYear: "20",
-          userEmail: "employeeuser@test.com",
-          active: "false",
+          ...validUpdateFields(),
+          employmentStatus: "Suspended",
         }),
         headers: {
           "content-type": "multipart/form-data",
@@ -1426,6 +1681,357 @@ describe("Employees Routes", () => {
       expect(updatedPrinter?.employeesAllowedToPrintDataIds).not.toContain(
         employee._id.toString(),
       );
+    });
+
+    it("requires a termination date when moving to Terminated", async () => {
+      const manager = await makeMember({ roles: ["Manager"] });
+      const employee = await makeMember({ roles: ["Waiter"] });
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/employees/${employee.employeeId}`,
+        payload: multipart({
+          ...validUpdateFields(),
+          employmentStatus: "Terminated",
+        }),
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: manager.auth,
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(isProblemDetails(response)).toBe(true);
+      expect(detail(response)).toBe(
+        "Termination date is required for a terminated employee!",
+      );
+    });
+
+    it("accepts a same-day termination and derives the inactive mirror", async () => {
+      const manager = await makeMember({ roles: ["Manager"] });
+      const employee = await makeMember({ roles: ["Waiter"] });
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/employees/${employee.employeeId}`,
+        payload: multipart({
+          ...validUpdateFields(),
+          employmentStatus: "Terminated",
+          joinDate: "2024-01-15",
+          terminatedDate: "2024-01-15",
+        }),
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: manager.auth,
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const updated = await Employee.findById(employee.employeeId).lean();
+      expect(updated).toMatchObject({
+        employmentStatus: "Terminated",
+        active: false,
+      });
+      expect(updated?.terminatedDate).toEqual(new Date("2024-01-15"));
+    });
+
+    it("clears the termination date when moving to a non-terminated status", async () => {
+      const employee = await makeMember({
+        roles: ["Waiter"],
+        employmentStatus: "Terminated",
+        terminatedDate: new Date("2024-06-01"),
+      });
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/employees/${employee.employeeId}`,
+        payload: multipart({
+          ...validUpdateFields(),
+          employmentStatus: "Active",
+        }),
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: ownerAuth,
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const updated = await Employee.findById(employee.employeeId).lean();
+      expect(updated).toMatchObject({
+        employmentStatus: "Active",
+        active: true,
+      });
+      expect(updated?.terminatedDate).toBeUndefined();
+    });
+
+    it("refuses a manager rehiring a terminated membership", async () => {
+      const manager = await makeMember({ roles: ["Manager"] });
+      const employee = await makeMember({
+        roles: ["Waiter"],
+        employmentStatus: "Terminated",
+        terminatedDate: new Date("2024-06-01"),
+      });
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/employees/${employee.employeeId}`,
+        payload: multipart({
+          ...validUpdateFields(),
+          employmentStatus: "Active",
+        }),
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: manager.auth,
+        },
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(isProblemDetails(response)).toBe(true);
+      expect(detail(response)).toBe(
+        "Only an admin or owner can rehire a terminated membership!",
+      );
+    });
+
+    it("lets an admin rehire the same membership row", async () => {
+      const admin = await makeMember({ roles: ["Admin"] });
+      const employee = await makeMember({
+        roles: ["Waiter"],
+        employmentStatus: "Terminated",
+        terminatedDate: new Date("2024-06-01"),
+      });
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/employees/${employee.employeeId}`,
+        payload: multipart({
+          ...validUpdateFields(),
+          employmentStatus: "Active",
+        }),
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: admin.auth,
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      expect(
+        await Employee.countDocuments({ businessId, userId: employee.userId }),
+      ).toBe(1);
+      const updated = await Employee.findById(employee.employeeId).lean();
+      expect(updated?._id.toString()).toBe(employee.employeeId);
+      expect(updated).toMatchObject({
+        employmentStatus: "Active",
+        active: true,
+      });
+      expect(updated?.terminatedDate).toBeUndefined();
+    });
+
+    it("refuses a manager promoting a member to a manager role", async () => {
+      const manager = await makeMember({ roles: ["Manager"] });
+      const employee = await makeMember({ roles: ["Waiter"] });
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/employees/${employee.employeeId}`,
+        payload: multipart({
+          ...validUpdateFields(),
+          allEmployeeRoles: JSON.stringify(["Manager"]),
+        }),
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: manager.auth,
+        },
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(isProblemDetails(response)).toBe(true);
+    });
+
+    it("refuses an admin assigning Owner/Admin and allows a manager role", async () => {
+      const admin = await makeMember({ roles: ["Admin"] });
+      const employee = await makeMember({ roles: ["Waiter"] });
+      const app = await getTestApp();
+
+      for (const role of ["Owner", "Admin"]) {
+        const response = await app.inject({
+          method: "PATCH",
+          url: `/api/v1/employees/${employee.employeeId}`,
+          payload: multipart({
+            ...validUpdateFields(),
+            allEmployeeRoles: JSON.stringify([role]),
+          }),
+          headers: {
+            "content-type": "multipart/form-data",
+            authorization: admin.auth,
+          },
+        });
+
+        expect(response.statusCode, role).toBe(403);
+        expect(isProblemDetails(response)).toBe(true);
+      }
+
+      const promoted = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/employees/${employee.employeeId}`,
+        payload: multipart({
+          ...validUpdateFields(),
+          allEmployeeRoles: JSON.stringify(["Manager"]),
+        }),
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: admin.auth,
+        },
+      });
+      expect(promoted.statusCode).toBe(200);
+    });
+
+    it("lets the owning User assign Owner", async () => {
+      const employee = await makeMember({ roles: ["Waiter"] });
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/employees/${employee.employeeId}`,
+        payload: multipart({
+          ...validUpdateFields(),
+          allEmployeeRoles: JSON.stringify(["Owner"]),
+        }),
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: ownerAuth,
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const updated = await Employee.findById(employee.employeeId).lean();
+      expect(updated?.allEmployeeRoles).toEqual(["Owner"]);
+    });
+
+    it("refuses editing a membership at or above the actor's layer", async () => {
+      const manager = await makeMember({ roles: ["Manager"] });
+      const peerManager = await makeMember({ roles: ["Manager"] });
+      const admin = await makeMember({ roles: ["Admin"] });
+      const peerAdmin = await makeMember({ roles: ["Admin"] });
+      const app = await getTestApp();
+
+      const managerEdit = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/employees/${peerManager.employeeId}`,
+        payload: multipart({
+          ...validUpdateFields(),
+          allEmployeeRoles: JSON.stringify(["Waiter"]),
+        }),
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: manager.auth,
+        },
+      });
+      expect(managerEdit.statusCode).toBe(403);
+      expect(isProblemDetails(managerEdit)).toBe(true);
+
+      const adminEdit = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/employees/${peerAdmin.employeeId}`,
+        payload: multipart(validUpdateFields()),
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: admin.auth,
+        },
+      });
+      expect(adminEdit.statusCode).toBe(403);
+      expect(isProblemDetails(adminEdit)).toBe(true);
+
+      const ownerEdit = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/employees/${peerAdmin.employeeId}`,
+        payload: multipart(validUpdateFields()),
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: ownerAuth,
+        },
+      });
+      expect(ownerEdit.statusCode).toBe(200);
+    });
+
+    it("cannot change the Business or rebind the User on update", async () => {
+      const manager = await makeMember({ roles: ["Manager"] });
+      const employee = await makeMember({ roles: ["Waiter"] });
+      const app = await getTestApp();
+
+      for (const field of ["businessId", "userEmail", "active"]) {
+        const response = await app.inject({
+          method: "PATCH",
+          url: `/api/v1/employees/${employee.employeeId}`,
+          payload: multipart({
+            ...validUpdateFields(),
+            [field]: field === "businessId" ? businessId.toString() : "x",
+          }),
+          headers: {
+            "content-type": "multipart/form-data",
+            authorization: manager.auth,
+          },
+        });
+
+        expect(response.statusCode, field).toBe(400);
+        expect(isProblemDetails(response)).toBe(true);
+      }
+
+      const unchanged = await Employee.findById(employee.employeeId).lean();
+      expect(unchanged?.businessId?.toString()).toBe(businessId.toString());
+      expect(unchanged?.userId?.toString()).toBe(employee.userId.toString());
+    });
+
+    it("sets optional legacy HR fields on update", async () => {
+      const manager = await makeMember({ roles: ["Manager"] });
+      const employee = await makeMember({ roles: ["Waiter"] });
+      const app = await getTestApp();
+      const taxNumber = `EMP-${new Types.ObjectId()}`;
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/employees/${employee.employeeId}`,
+        payload: multipart({
+          ...validUpdateFields(),
+          taxNumber,
+          vacationDaysPerYear: "25",
+          contractHoursWeek: "40",
+          salary: JSON.stringify({
+            payFrequency: "Monthly",
+            grossSalary: 3000,
+            netSalary: 2400,
+          }),
+          comments: "Updated HR note",
+        }),
+        headers: {
+          "content-type": "multipart/form-data",
+          authorization: manager.auth,
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+
+      const updated = await Employee.findById(employee.employeeId).lean();
+      expect(updated).toMatchObject({
+        taxNumber,
+        vacationDaysPerYear: 25,
+        contractHoursWeek: 40,
+        salary: {
+          payFrequency: "Monthly",
+          grossSalary: 3000,
+          netSalary: 2400,
+        },
+        comments: "Updated HR note",
+      });
     });
   });
 

@@ -4,17 +4,28 @@
  *
  * Strict (unknown keys rejected) and client-settable only: the server-owned
  * `_id`, `userId`, `documentsUrl`, `vacationDaysLeft`, `onDuty`,
- * `currentShiftRole` and the timestamps never appear in a DTO, so a client that
- * sends them gets a `400`. The create and update bodies are consumed through
- * the shared multipart helper, so the JSON-encoded `allEmployeeRoles` and
- * `salary` fields are parsed here. `allEmployeeRoles` is validated against the
- * `userRolesEnums` and the salary shape against `employeePayFrequencyEnums`,
- * both from `packages/enums.ts`. The `terminatedDate > joinDate` rule stays in
- * the route as a named post-parse check, because it spans two fields.
+ * `currentShiftRole`, the derived `active` mirror and the timestamps never
+ * appear in a DTO, so a client that sends them gets a `400`. The create and
+ * update bodies are consumed through the shared multipart helper, so the
+ * JSON-encoded `allEmployeeRoles` and `salary` fields are parsed here.
+ * `allEmployeeRoles` is validated against the `userRolesEnums`, the salary
+ * shape against `employeePayFrequencyEnums`, and the status against the closed
+ * `employmentStatusEnums`, all from `packages/enums.ts`.
+ *
+ * The minimal hire requires only roles, status, join date, the Business and the
+ * linked User's email; contract, pay, tax, vacation and comments stay optional.
+ * Update identifies the membership by path, so it cannot change the Business or
+ * rebind the linked User: `businessId` and `userEmail` are create-only. The
+ * `terminatedDate` / status cross-field rules stay in the route as named
+ * post-parse checks, because they span two fields.
  */
 import { z } from "zod";
 
-import { employeePayFrequencyEnums, userRolesEnums } from "../enums.ts";
+import {
+  employeePayFrequencyEnums,
+  employmentStatusEnums,
+  userRolesEnums,
+} from "../enums.ts";
 import {
   coercedBooleanSchema,
   coercedIntSchema,
@@ -59,6 +70,11 @@ const payFrequencySchema = z.enum(
   "Invalid pay frequency!",
 );
 
+const employmentStatusSchema = z.enum(
+  employmentStatusEnums as EnumValues,
+  "Invalid employment status!",
+);
+
 /**
  * A salary, JSON-encoded in the multipart body. All three fields are required,
  * so a partial object is rejected; unknown keys are rejected by `strictObject`.
@@ -69,38 +85,61 @@ const salarySchema = z.strictObject({
   netSalary: z.number("Net salary must be a number!"),
 });
 
-/** The fields a create and update request share. `salary` is JSON-parsed here. */
+/** An optional tax number; a blank string is treated as "not provided". */
+const optionalTaxNumberSchema = z.preprocess(
+  emptyToUndefined,
+  sanitizedString().optional(),
+);
+
+/** An optional vacation allowance; a blank string is "not provided". */
+const optionalVacationDaysSchema = z.preprocess(
+  emptyToUndefined,
+  coercedIntSchema.positive(
+    "Vacation days per year must be greater than 0!",
+  ).optional(),
+);
+
+/**
+ * The core fields a create and update request share. Roles, status and join
+ * date are required by the minimal hire; the legacy HR fields below stay
+ * optional in this row.
+ */
 const employeeFields = {
   allEmployeeRoles: employeeRolesSchema,
-  taxNumber: sanitizedString("Tax number is required!"),
+  employmentStatus: employmentStatusSchema,
   joinDate: z.coerce.date(),
-  vacationDaysPerYear: coercedIntSchema.positive(
-    "Vacation days per year must be greater than 0!",
-  ),
-  userEmail: emailSchema,
   contractHoursWeek: optionalNumberSchema,
   salary: optionalJsonField(salarySchema),
   comments: z.preprocess(emptyToUndefined, freeTextString().optional()),
 };
 
+/** Legacy HR fields accepted when present but not required by the hire flow. */
+const legacyHrFields = {
+  taxNumber: optionalTaxNumberSchema,
+  vacationDaysPerYear: optionalVacationDaysSchema,
+};
+
 /**
- * Body for `POST /employees` (multipart). Uploaded documents are collected by
- * the multipart helper as files, not fields.
+ * Body for `POST /employees` (multipart). The linked User is identified by
+ * sign-in email; uploaded documents are collected by the multipart helper as
+ * files, not fields.
  */
 export const createEmployeeBodySchema = z.strictObject({
   ...employeeFields,
+  ...legacyHrFields,
   businessId: objectIdSchema,
+  userEmail: emailSchema,
 });
 
 /**
  * Body for `PATCH /employees/:employeeId` (multipart). The employee is
- * identified by its path param, so `businessId` is not client-settable;
- * `active` and `terminatedDate` are settable only on update, and `active` is
- * required so the client always states whether the employee is active.
+ * identified by its path param, so `businessId` is not client-settable and
+ * `userEmail` is absent: an update cannot rebind the membership. `active` is
+ * derived from `employmentStatus`; `terminatedDate` is settable only on update.
  */
 export const patchEmployeeBodySchema = z.strictObject({
   ...employeeFields,
-  active: coercedBooleanSchema,
+  ...legacyHrFields,
   terminatedDate: optionalDateSchema,
 });
 

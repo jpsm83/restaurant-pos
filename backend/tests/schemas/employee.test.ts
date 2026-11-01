@@ -11,30 +11,31 @@ const VALID_ID = "507f1f77bcf86cd799439011";
 
 const validCreate = {
   allEmployeeRoles: JSON.stringify(["Waiter", "Cashier"]),
-  taxNumber: "EMP-001",
+  employmentStatus: "Active",
   joinDate: "2024-01-15",
-  vacationDaysPerYear: "20",
   businessId: VALID_ID,
   userEmail: "Employee@Example.com",
 };
 
-const { businessId: _omitBusinessId, ...rest } = validCreate;
-const validUpdate = { ...rest, active: "true" };
+const { businessId: _omitBusinessId, userEmail: _omitUserEmail, ...rest } =
+  validCreate;
+const validUpdate = rest;
 
 describe("createEmployeeBodySchema", () => {
-  it("accepts the required fields and treats the optional ones as absent", () => {
+  it("accepts the minimal hire fields and treats legacy HR fields as absent", () => {
     const parsed = createEmployeeBodySchema.parse(validCreate);
     expect(parsed.allEmployeeRoles).toEqual(["Waiter", "Cashier"]);
-    expect(parsed.taxNumber).toBe("EMP-001");
+    expect(parsed.employmentStatus).toBe("Active");
     expect(parsed.joinDate).toEqual(new Date("2024-01-15"));
-    expect(parsed.vacationDaysPerYear).toBe(20);
     expect(parsed.businessId).toBe(VALID_ID);
+    expect(parsed.taxNumber).toBeUndefined();
+    expect(parsed.vacationDaysPerYear).toBeUndefined();
     expect(parsed.contractHoursWeek).toBeUndefined();
     expect(parsed.salary).toBeUndefined();
     expect(parsed.comments).toBeUndefined();
   });
 
-  it("coerces the numeric form string and rejects a non-positive value", () => {
+  it("coerces the optional numeric vacation allowance and rejects a non-positive value", () => {
     expect(
       createEmployeeBodySchema.parse({ ...validCreate, vacationDaysPerYear: "15" })
         .vacationDaysPerYear,
@@ -44,6 +45,15 @@ describe("createEmployeeBodySchema", () => {
       createEmployeeBodySchema.safeParse({
         ...validCreate,
         vacationDaysPerYear: "0",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects an unknown employment status", () => {
+    expect(
+      createEmployeeBodySchema.safeParse({
+        ...validCreate,
+        employmentStatus: "Fired",
       }).success,
     ).toBe(false);
   });
@@ -124,20 +134,24 @@ describe("createEmployeeBodySchema", () => {
   it("treats blank optional fields as not provided", () => {
     const parsed = createEmployeeBodySchema.parse({
       ...validCreate,
+      taxNumber: "",
+      vacationDaysPerYear: "",
       contractHoursWeek: "",
       salary: "",
       comments: "",
     });
+    expect(parsed.taxNumber).toBeUndefined();
+    expect(parsed.vacationDaysPerYear).toBeUndefined();
     expect(parsed.contractHoursWeek).toBeUndefined();
     expect(parsed.salary).toBeUndefined();
     expect(parsed.comments).toBeUndefined();
   });
 
   it("rejects a missing required field, an invalid email and an invalid id", () => {
-    const { taxNumber: _drop, ...withoutTaxNumber } = validCreate;
-    expect(
-      createEmployeeBodySchema.safeParse(withoutTaxNumber).success,
-    ).toBe(false);
+    const { employmentStatus: _drop, ...withoutStatus } = validCreate;
+    expect(createEmployeeBodySchema.safeParse(withoutStatus).success).toBe(
+      false,
+    );
 
     expect(
       createEmployeeBodySchema.safeParse({
@@ -159,7 +173,13 @@ describe("createEmployeeBodySchema", () => {
         .success,
     ).toBe(false);
 
-    for (const field of ["documentsUrl", "vacationDaysLeft", "userId", "active"]) {
+    for (const field of [
+      "documentsUrl",
+      "vacationDaysLeft",
+      "userId",
+      "active",
+      "terminatedDate",
+    ]) {
       expect(
         createEmployeeBodySchema.safeParse({ ...validCreate, [field]: "x" })
           .success,
@@ -170,42 +190,49 @@ describe("createEmployeeBodySchema", () => {
 });
 
 describe("patchEmployeeBodySchema", () => {
-  it("accepts the core fields, coerces active and treats terminatedDate as absent", () => {
+  it("accepts the core fields and treats legacy HR fields as optional", () => {
     const parsed = patchEmployeeBodySchema.parse(validUpdate);
-    expect(parsed.taxNumber).toBe("EMP-001");
-    expect(parsed.active).toBe(true);
+    expect(parsed.employmentStatus).toBe("Active");
+    expect(parsed.taxNumber).toBeUndefined();
+    expect(parsed.vacationDaysPerYear).toBeUndefined();
     expect(parsed.terminatedDate).toBeUndefined();
   });
 
-  it("requires active", () => {
-    const { active: _drop, ...withoutActive } = validUpdate;
-    expect(patchEmployeeBodySchema.safeParse(withoutActive).success).toBe(false);
+  it("requires employmentStatus", () => {
+    const { employmentStatus: _drop, ...withoutStatus } = validUpdate;
+    expect(patchEmployeeBodySchema.safeParse(withoutStatus).success).toBe(false);
   });
 
-  it("coerces active from its form string and parses terminatedDate", () => {
-    expect(
-      patchEmployeeBodySchema.parse({ ...validUpdate, active: "false" }).active,
-    ).toBe(false);
-    expect(
-      patchEmployeeBodySchema.parse({ ...validUpdate, active: "true" }).active,
-    ).toBe(true);
+  it("parses terminatedDate and rejects an unknown status", () => {
     expect(
       patchEmployeeBodySchema.parse({
         ...validUpdate,
         terminatedDate: "2024-06-01",
       }).terminatedDate,
     ).toEqual(new Date("2024-06-01"));
+    expect(
+      patchEmployeeBodySchema.safeParse({
+        ...validUpdate,
+        employmentStatus: "Fired",
+      }).success,
+    ).toBe(false);
   });
 
-  it("does not accept businessId or unknown keys", () => {
-    expect(
-      patchEmployeeBodySchema.safeParse({ ...validUpdate, businessId: VALID_ID })
-        .success,
-    ).toBe(false);
-    expect(
-      patchEmployeeBodySchema.safeParse({ ...validUpdate, isAdmin: true })
-        .success,
-    ).toBe(false);
+  it("does not accept businessId, userEmail, active or unknown keys", () => {
+    for (const field of [
+      "businessId",
+      "userEmail",
+      "active",
+      "isAdmin",
+    ]) {
+      expect(
+        patchEmployeeBodySchema.safeParse({
+          ...validUpdate,
+          [field]: field === "businessId" ? VALID_ID : "x",
+        }).success,
+        field,
+      ).toBe(false);
+    }
   });
 });
 

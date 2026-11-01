@@ -27,8 +27,9 @@ const employeeOwns = (field: string): boolean =>
   Boolean(Employee.schema.path(field));
 
 /**
- * `userEmail` is a request-only lookup key: the client identifies the linking
- * User by email, and the route stores the resolved `userId` instead.
+ * `userEmail` is a create-only lookup key: the client identifies the linking
+ * User by email, the route stores the resolved `userId`, and update cannot
+ * rebind the membership.
  */
 const requestOnlyFields = new Set(["userEmail"]);
 
@@ -45,10 +46,12 @@ describe("employee DTO ↔ model parity", () => {
     }
   });
 
-  it("userEmail is a request-only lookup key, not an Employee field", () => {
+  it("userEmail is a create-only lookup key, not an Employee field", () => {
     expect(employeeOwns("userEmail")).toBe(false);
     expect(Object.keys(createEmployeeBodySchema.shape)).toContain("userEmail");
-    expect(Object.keys(patchEmployeeBodySchema.shape)).toContain("userEmail");
+    expect(Object.keys(patchEmployeeBodySchema.shape)).not.toContain(
+      "userEmail",
+    );
   });
 
   it("create requires businessId while update omits it", () => {
@@ -59,10 +62,42 @@ describe("employee DTO ↔ model parity", () => {
     );
   });
 
-  it("active is client-settable on update but not on create", () => {
+  it("employmentStatus is client-settable while active is server-owned", () => {
+    expect(employeeOwns("employmentStatus")).toBe(true);
     expect(employeeOwns("active")).toBe(true);
-    expect(Object.keys(patchEmployeeBodySchema.shape)).toContain("active");
-    expect(Object.keys(createEmployeeBodySchema.shape)).not.toContain("active");
+    for (const schema of [createEmployeeBodySchema, patchEmployeeBodySchema]) {
+      expect(Object.keys(schema.shape)).toContain("employmentStatus");
+      expect(Object.keys(schema.shape)).not.toContain("active");
+    }
+  });
+
+  it("legacy HR fields are optional in both DTOs", () => {
+    for (const field of ["taxNumber", "vacationDaysPerYear"]) {
+      expect(employeeOwns(field), `${field} should be on the model`).toBe(true);
+      for (const schema of [
+        createEmployeeBodySchema,
+        patchEmployeeBodySchema,
+      ]) {
+        expect(Object.keys(schema.shape)).toContain(field);
+      }
+    }
+
+    expect(
+      createEmployeeBodySchema.safeParse({
+        allEmployeeRoles: JSON.stringify(["Waiter"]),
+        employmentStatus: "Active",
+        joinDate: "2024-01-15",
+        businessId: "507f1f77bcf86cd799439011",
+        userEmail: "employee@example.com",
+      }).success,
+    ).toBe(true);
+    expect(
+      patchEmployeeBodySchema.safeParse({
+        allEmployeeRoles: JSON.stringify(["Waiter"]),
+        employmentStatus: "Active",
+        joinDate: "2024-01-15",
+      }).success,
+    ).toBe(true);
   });
 
   it("server-owned fields are on the model but in no DTO", () => {
@@ -72,6 +107,7 @@ describe("employee DTO ↔ model parity", () => {
       "vacationDaysLeft",
       "onDuty",
       "currentShiftRole",
+      "active",
     ]) {
       expect(employeeOwns(field), `${field} should be on the model`).toBe(true);
       for (const [name, schema] of Object.entries(allDtos)) {

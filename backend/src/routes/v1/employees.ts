@@ -12,10 +12,18 @@
  * multipart helper against strict zod DTOs from
  * `packages/schemas/employee.ts`; the JSON-encoded `allEmployeeRoles` and
  * `salary` fields are parsed and validated there. The GET/PATCH/DELETE path
- * params are validated by their DTOs. The `terminatedDate > joinDate` rule
- * stays here as a named post-parse check, alongside the database-backed
- * duplicate, user-link and document-count guards. Every error is raised as an
- * `AppError` so the global handler emits RFC 9457 `application/problem+json`.
+ * params are validated by their DTOs.
+ *
+ * Create is the minimal hire: it links an existing User by sign-in email,
+ * derives `active` from the submitted status, reactivates a soft-deleted
+ * membership in place, and enforces the actor's role-assignment bounds. Update
+ * keeps the Business and linked User fixed, derives the same mirror, applies
+ * the same bounds, and restricts rehire of a Terminated membership to an
+ * effective admin or the owning User. The `terminatedDate` / `joinDate` and
+ * status cross-field rules stay here as named post-parse checks, alongside the
+ * database-backed duplicate, user-link and document-count guards. Every error
+ * is raised as an `AppError` so the global handler emits RFC 9457
+ * `application/problem+json`.
  */
 import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
@@ -33,13 +41,26 @@ import {
   requireBusinessLayer,
 } from "../../access/requireBusinessLayer.ts";
 import calculateVacationProportional from "../../employees/calculateVacationProportional.ts";
+import {
+  applyHireFields,
+  canAssignRoles,
+  canEditMembership,
+  isTerminatedMembership,
+  TERMINATED_EMPLOYMENT_STATUS,
+} from "../../employees/membershipRules.ts";
 import validateEmployeeDates from "../../employees/validateEmployeeDates.ts";
 import Employee from "../../models/employee.ts";
 import User from "../../models/user.ts";
 import Printer from "../../models/printer.ts";
 import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
 import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
-import { badRequest, conflict, forbidden, notFound } from "../../errors/appError.ts";
+import {
+  type AppError,
+  badRequest,
+  conflict,
+  forbidden,
+  notFound,
+} from "../../errors/appError.ts";
 import { parseMultipart, type MultipartFile } from "../../schemas/multipart.ts";
 import {
   createEmployeeBodySchema,
@@ -56,8 +77,45 @@ import {
 /** Employment statuses that remove access through the membership. */
 const BLOCKED_EMPLOYMENT_STATUSES = new Set(blockedEmploymentStatusEnums);
 
-/** An Employee row plus optional future employment-status data. */
-type MembershipRecord = IEmployee & { employmentStatus?: string };
+/**
+ * Translate a duplicate-key write failure into the matching conflict. The
+ * partial unique indexes back the read-then-write guards against concurrent
+ * creates and reactivations.
+ */
+function duplicateKeyConflict(error: unknown): AppError | null {
+  const candidate = error as {
+    code?: number;
+    keyPattern?: Record<string, unknown>;
+  };
+  if (candidate?.code !== 11000) return null;
+
+  if (candidate.keyPattern && "taxNumber" in candidate.keyPattern) {
+    return conflict("Tax number is already in use at this business!");
+  }
+  return conflict("User is already an employee!");
+}
+
+/**
+ * Two concurrent transactions writing the same membership or unique key surface
+ * as a retryable write conflict. Treat it as an ordinary conflict so the caller
+ * gets Problem Details rather than a server error.
+ */
+function concurrentTransactionConflict(
+  error: unknown,
+  detail: string,
+): AppError | null {
+  const candidate = error as {
+    code?: number;
+    errorLabelSet?: Set<string>;
+  };
+  if (
+    candidate?.code === 112 ||
+    candidate?.errorLabelSet?.has("TransientTransactionError")
+  ) {
+    return conflict(detail);
+  }
+  return null;
+}
 
 /** The linked User fields the manager list and contacts expose. */
 type UserIdentity = {
@@ -100,23 +158,17 @@ async function uploadDocuments(
   return response;
 }
 
-/** The fields a create request contributes to the stored employee. */
+/** The fields a create request contributes to a fresh employee row. */
 function toNewEmployee(
   employeeId: Types.ObjectId,
   fields: CreateEmployeeBody,
 ): Partial<IEmployee> {
-  return {
+  const newEmployee: Partial<IEmployee> = {
     _id: employeeId,
-    allEmployeeRoles: fields.allEmployeeRoles,
-    taxNumber: fields.taxNumber,
-    joinDate: fields.joinDate,
-    vacationDaysPerYear: fields.vacationDaysPerYear,
     businessId: new Types.ObjectId(fields.businessId),
-    vacationDaysLeft: fields.vacationDaysPerYear,
-    contractHoursWeek: fields.contractHoursWeek,
-    salary: fields.salary,
-    comments: fields.comments,
   };
+  applyHireFields(newEmployee, fields);
+  return newEmployee;
 }
 
 /** Build the display name and email for one linked User. */
@@ -166,7 +218,7 @@ async function loadUserIdentities(
 }
 
 /** A membership blocks its own User's self-view when it is no longer usable. */
-function isBlockedForSelfView(employee: MembershipRecord): boolean {
+function isBlockedForSelfView(employee: IEmployee): boolean {
   if (employee.deleted) return true;
   if (
     employee.employmentStatus &&
@@ -182,7 +234,7 @@ function isBlockedForSelfView(employee: MembershipRecord): boolean {
  * hours, vacation allowance and remaining, and documents. Pay, tax number,
  * national ID, HR comments, and soft-delete metadata are never included.
  */
-function toSafeSelfView(employee: MembershipRecord): Record<string, unknown> {
+function toSafeSelfView(employee: IEmployee): Record<string, unknown> {
   const view: Record<string, unknown> = {
     _id: employee._id,
     businessId: employee.businessId,
@@ -273,11 +325,19 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
         createEmployeeBodySchema,
       );
 
-      await requireBusinessLayer({
+      const access = await requireBusinessLayer({
         userId: req.authSession!.id,
         businessId: fields.businessId,
         minimumLayer: "manager",
       });
+
+      if (fields.employmentStatus === TERMINATED_EMPLOYMENT_STATUS) {
+        throw badRequest("A new membership cannot start Terminated!");
+      }
+
+      if (!canAssignRoles(access, fields.allEmployeeRoles)) {
+        throw forbidden("You cannot assign one or more of these roles.");
+      }
 
       const session = await mongoose.startSession();
       session.startTransaction();
@@ -307,16 +367,60 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
           throw conflict("User is already an employee!");
         }
 
-        const employeeId = new mongoose.Types.ObjectId();
-        const newEmployee = toNewEmployee(employeeId, fields);
-        newEmployee.userId = user._id!;
+        const softDeletedEmployee = await Employee.findOne({
+          businessId: new Types.ObjectId(fields.businessId),
+          userId: user._id,
+          deleted: true,
+        }).session(session);
 
-        if (files.length > 0) {
-          const folder = `/business/${fields.businessId}/employees/${employeeId}`;
-          newEmployee.documentsUrl = await uploadDocuments(folder, files, false);
+        if (softDeletedEmployee) {
+          if (
+            !canEditMembership(
+              access,
+              resolveDefaultAccessLayerForRoles(
+                softDeletedEmployee.allEmployeeRoles,
+              ),
+            )
+          ) {
+            throw forbidden(
+              "You cannot edit a membership at or above your access layer.",
+            );
+          }
+
+          softDeletedEmployee.deleted = false;
+          softDeletedEmployee.deletedAt = undefined;
+          softDeletedEmployee.deletedBy = undefined;
+          softDeletedEmployee.userId = user._id!;
+          applyHireFields(softDeletedEmployee, fields, {
+            preserveOptional: true,
+          });
+
+          if (files.length > 0) {
+            const folder = `/business/${fields.businessId}/employees/${softDeletedEmployee._id}`;
+            softDeletedEmployee.documentsUrl = await uploadDocuments(
+              folder,
+              files,
+              false,
+            );
+          }
+
+          await softDeletedEmployee.save({ session });
+        } else {
+          const employeeId = new mongoose.Types.ObjectId();
+          const newEmployee = toNewEmployee(employeeId, fields);
+          newEmployee.userId = user._id!;
+
+          if (files.length > 0) {
+            const folder = `/business/${fields.businessId}/employees/${employeeId}`;
+            newEmployee.documentsUrl = await uploadDocuments(
+              folder,
+              files,
+              false,
+            );
+          }
+
+          await Employee.create([newEmployee], { session });
         }
-
-        await Employee.create([newEmployee], { session });
 
         await session.commitTransaction();
 
@@ -325,6 +429,10 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
         });
       } catch (error) {
         await session.abortTransaction().catch(() => undefined);
+        const conflictError =
+          duplicateKeyConflict(error) ??
+          concurrentTransactionConflict(error, "User is already an employee!");
+        if (conflictError) throw conflictError;
         throw error;
       } finally {
         session.endSession();
@@ -351,7 +459,7 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
 
       const employee = await Employee.findOne(
         withSoftDeleteFilter({ _id: employeeId }, true),
-      ).lean<MembershipRecord | null>();
+      ).lean<IEmployee | null>();
 
       if (!employee) {
         throw notFound("Employee not found!");
@@ -396,14 +504,6 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
         patchEmployeeBodySchema,
       );
 
-      const datesResult = validateEmployeeDates(
-        fields.joinDate,
-        fields.terminatedDate,
-      );
-      if (datesResult !== true) {
-        throw badRequest(datesResult);
-      }
-
       const session = await mongoose.startSession();
       session.startTransaction();
 
@@ -411,24 +511,62 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
         const employee = (await Employee.findOne(
           withSoftDeleteFilter({ _id: employeeId }),
         )
-          .populate({
-            path: "userId",
-            select: "personalDetails.email",
-            model: User,
-          })
           .session(session)
-          .lean()) as (IEmployee & { userId: IUser }) | null;
+          .lean()) as IEmployee | null;
 
         if (!employee) {
           throw notFound("Employee not found!");
         }
 
-        await requireBusinessLayer({
+        const access = await requireBusinessLayer({
           userId: req.authSession!.id,
           businessId: String(employee.businessId),
           minimumLayer: "manager",
           session,
         });
+
+        const currentLayer = resolveDefaultAccessLayerForRoles(
+          employee.allEmployeeRoles,
+        );
+        if (!canEditMembership(access, currentLayer)) {
+          throw forbidden(
+            "You cannot edit a membership at or above your access layer.",
+          );
+        }
+        if (!canAssignRoles(access, fields.allEmployeeRoles)) {
+          throw forbidden("You cannot assign one or more of these roles.");
+        }
+
+        const statusIsTerminated =
+          fields.employmentStatus === TERMINATED_EMPLOYMENT_STATUS;
+        const wasTerminated = isTerminatedMembership(employee);
+
+        if (
+          wasTerminated &&
+          !statusIsTerminated &&
+          access.effectiveLayer !== "admin"
+        ) {
+          throw forbidden(
+            "Only an admin or owner can rehire a terminated membership!",
+          );
+        }
+
+        const terminatedDate = statusIsTerminated
+          ? fields.terminatedDate ?? employee.terminatedDate
+          : undefined;
+        if (statusIsTerminated && !terminatedDate) {
+          throw badRequest(
+            "Termination date is required for a terminated employee!",
+          );
+        }
+
+        const datesResult = validateEmployeeDates(
+          fields.joinDate,
+          terminatedDate,
+        );
+        if (datesResult !== true) {
+          throw badRequest(datesResult);
+        }
 
         if (
           files.length + (employee.documentsUrl?.length ?? 0) >
@@ -437,29 +575,31 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
           throw badRequest(`Max file quantity is ${MAX_DOCUMENT_FILES}!`);
         }
 
-        const updateEmployeeObj: Partial<IEmployee> = {};
+        const updateEmployeeObj: Partial<IEmployee> = {
+          employmentStatus: fields.employmentStatus,
+          allEmployeeRoles: fields.allEmployeeRoles,
+        };
 
-        if (fields.allEmployeeRoles !== employee.allEmployeeRoles)
-          updateEmployeeObj.allEmployeeRoles = fields.allEmployeeRoles;
-        if (fields.taxNumber !== employee.taxNumber)
-          updateEmployeeObj.taxNumber = fields.taxNumber;
         if (fields.joinDate.getTime() !== employee.joinDate?.getTime())
           updateEmployeeObj.joinDate = fields.joinDate;
-        if (fields.vacationDaysPerYear !== employee.vacationDaysPerYear)
+        if (
+          fields.taxNumber !== undefined &&
+          fields.taxNumber !== employee.taxNumber
+        )
+          updateEmployeeObj.taxNumber = fields.taxNumber;
+        if (
+          fields.vacationDaysPerYear !== undefined &&
+          fields.vacationDaysPerYear !== employee.vacationDaysPerYear
+        )
           updateEmployeeObj.vacationDaysPerYear = fields.vacationDaysPerYear;
-        if (fields.active !== employee.active)
-          updateEmployeeObj.active = fields.active;
+        if (statusIsTerminated && terminatedDate)
+          updateEmployeeObj.terminatedDate = terminatedDate;
         if (
           fields.contractHoursWeek !== undefined &&
           fields.contractHoursWeek !== employee.contractHoursWeek
         )
           updateEmployeeObj.contractHoursWeek = fields.contractHoursWeek;
-        if (
-          fields.terminatedDate &&
-          fields.terminatedDate.getTime() !== employee.terminatedDate?.getTime()
-        )
-          updateEmployeeObj.terminatedDate = fields.terminatedDate;
-        if (fields.comments && fields.comments !== employee.comments)
+        if (fields.comments !== undefined && fields.comments !== employee.comments)
           updateEmployeeObj.comments = fields.comments;
 
         const salary = fields.salary;
@@ -472,42 +612,21 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
           updateEmployeeObj.salary = salary;
         }
 
+        const vacationDaysPerYear =
+          fields.vacationDaysPerYear ?? employee.vacationDaysPerYear;
+        const joinDateChanged =
+          fields.joinDate.getTime() !== employee.joinDate?.getTime();
+        const vacationChanged =
+          fields.vacationDaysPerYear !== undefined &&
+          fields.vacationDaysPerYear !== employee.vacationDaysPerYear;
         if (
-          fields.vacationDaysPerYear !== employee.vacationDaysPerYear ||
-          fields.joinDate.getTime() !== employee.joinDate?.getTime()
+          vacationDaysPerYear !== undefined &&
+          (joinDateChanged || vacationChanged)
         ) {
           updateEmployeeObj.vacationDaysLeft = calculateVacationProportional(
             fields.joinDate,
-            fields.vacationDaysPerYear,
+            vacationDaysPerYear,
           );
-        }
-
-        if (fields.userEmail !== employee.userId?.personalDetails?.email) {
-          const user = await User.findOne({
-            ...withSoftDeleteFilter({
-              "personalDetails.email": fields.userEmail,
-            }),
-          })
-            .select("_id")
-            .session(session)
-            .lean<IUser | null>();
-
-          if (!user) {
-            throw conflict("User does not exist!");
-          }
-
-          const employeeAlreadyExists = await Employee.exists({
-            ...withSoftDeleteFilter({
-              businessId: employee.businessId,
-              userId: user._id,
-            }),
-          }).session(session);
-
-          if (employeeAlreadyExists) {
-            throw conflict("User is already an employee!");
-          }
-
-          updateEmployeeObj.userId = user._id;
         }
 
         if (files.length > 0) {
@@ -522,10 +641,15 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
         const updatedEmployee = await Employee.findOneAndUpdate(
           withSoftDeleteFilter({ _id: employeeId }),
           { $set: updateEmployeeObj },
-          { returnDocument: "after", lean: true, session },
+          {
+            returnDocument: "after",
+            lean: true,
+            session,
+            runValidators: true,
+          },
         );
 
-        if (fields.active === false) {
+        if (BLOCKED_EMPLOYMENT_STATUSES.has(fields.employmentStatus)) {
           await Printer.updateMany(
             {
               businessId: employee.businessId,
@@ -559,6 +683,13 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
         });
       } catch (error) {
         await session.abortTransaction().catch(() => undefined);
+        const conflictError =
+          duplicateKeyConflict(error) ??
+          concurrentTransactionConflict(
+            error,
+            "The membership was changed concurrently. Please retry.",
+          );
+        if (conflictError) throw conflictError;
         throw error;
       } finally {
         session.endSession();
@@ -673,7 +804,7 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
           { businessId: new Types.ObjectId(businessId) },
           includeDeleted,
         ),
-      }).lean()) as MembershipRecord[];
+      }).lean()) as IEmployee[];
 
       const identities = await loadUserIdentities(
         employees.map((employee) => employee.userId),
