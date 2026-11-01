@@ -1,13 +1,13 @@
 /**
  * ## `CustomerLayout` (`src/layouts`)
  * **Parent route:** pathless in `appRoutes.tsx`, wrapped by **`ProtectedRoute`** before this layout.
- * The routes are `/dashboard`, `/profile`, and `/favorites`; the person comes from the session.
+ * The routes are `/dashboard` and `/favorites`; the person comes from the session. Account
+ * settings live in the separate `CustomerAccountLayout` (`/account/*`).
  *
  * ## Flow
  * **Sidebar** + **`SidebarInset`** ( **`SidebarProvider`** is in **`main.tsx`**). **`<Outlet />`** for
- * customer shell children
- * (`profile`, `favorites`, `dashboard`). Employee mode is chosen elsewhere (`/mode`);
- * account menu can link to employee **home** when allowed.
+ * customer shell children (`favorites`, `dashboard`). Employee mode is chosen elsewhere (`/mode`);
+ * the avatar menu opens the account area.
  *
  * Folder overview: see `PublicLayout.tsx` module doc for how layouts relate.
  */
@@ -17,11 +17,10 @@ import { Sidebar, SidebarRail } from "@/components/ui/sidebar";
 import { useAuth } from "@/auth/store/AuthContext";
 import { useTranslation } from "react-i18next";
 import { useLocation } from "react-router-dom";
-import { LayoutDashboard, Star, User } from "lucide-react";
+import { LayoutDashboard, Star } from "lucide-react";
 import {
   canonicalCustomerDashboardPath,
   canonicalCustomerFavoritesPath,
-  canonicalCustomerProfilePath,
 } from "@/routes/canonicalPaths";
 
 export default function CustomerLayout() {
@@ -34,7 +33,6 @@ export default function CustomerLayout() {
 
   const favoritesTo = canonicalCustomerFavoritesPath();
   const dashboardTo = canonicalCustomerDashboardPath();
-  const profileTo = canonicalCustomerProfilePath();
 
   const pages = [
     {
@@ -43,13 +41,6 @@ export default function CustomerLayout() {
       to: favoritesTo,
       icon: Star,
       isActive: pathname === favoritesTo,
-    },
-    {
-      key: "profile",
-      label: t("settings.profile"),
-      to: profileTo,
-      icon: User,
-      isActive: pathname === profileTo,
     },
     {
       key: "dashboard",

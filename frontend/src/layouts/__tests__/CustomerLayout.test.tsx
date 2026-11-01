@@ -60,7 +60,10 @@ describe("CustomerLayout", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByTestId("actor-sidebar")).toBeInTheDocument();
+    expect(screen.getByTestId("actor-sidebar")).toHaveTextContent(
+      "Favorites|Dashboard",
+    );
+    expect(screen.getByTestId("actor-sidebar")).not.toHaveTextContent("Profile");
     expect(screen.getByText("Customer Outlet")).toBeInTheDocument();
   });
 });

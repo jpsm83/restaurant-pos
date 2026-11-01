@@ -22,7 +22,9 @@
  *   can restore the page that required identity.
  * - `/business/:businessId/*` → `BusinessRouteShell` + `BusinessLayout`.
  * - `/mode` → `ProtectedRoute` + mode page.
- * - `/dashboard`, `/profile`, `/favorites` → `ProtectedRoute` + `CustomerLayout`.
+ * - `/dashboard`, `/favorites` → `ProtectedRoute` + `CustomerLayout`.
+ * - `/account/*` → `ProtectedRoute` + `CustomerAccountLayout`; `/profile` redirects to
+ *   `/account/profile`.
  * - `/employee/*` → `ProtectedRoute` → `RequireEmployeeAuthMode` + `EmployeeLayout`.
  * - Legacy `/:userId/...` URLs redirect in `appRoutes.tsx` (ADR-0013).
  *

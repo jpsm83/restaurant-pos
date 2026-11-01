@@ -6,9 +6,10 @@
  * with the route tree should derive paths from here so strings are not duplicated in pages.
  *
  * ## Self-service routes are session-derived
- * The signed-in User is request context, so `/dashboard`, `/profile`, `/favorites`, `/mode`, and
+ * The signed-in User is request context, so `/dashboard`, `/account/*`, `/favorites`, `/mode`, and
  * `/employee/*` carry no user id. An id appears in a URL only when the URL addresses that
  * resource: `/business/:businessId` is a venue the person may switch between. See ADR-0013.
+ * The retired `/profile` URL redirects to `/account/profile` rather than carrying identity.
  *
  * ## Who imports this
  * - `auth/postLoginRedirect.ts` — first URL after login / signup (`getPostLoginDestination`).
@@ -16,14 +17,16 @@
  * - `appRoutes.tsx` — legacy `/:userId/...` redirect targets.
  * - `context/AuthModeContext.tsx` — `isUserShellPath` enables the stored-mode query.
  * - `components/AccountMenuPopover.tsx` — profile entry point and employee-shell detection.
- * - `layouts/CustomerLayout.tsx`, `layouts/EmployeeLayout.tsx`, `layouts/BusinessLayout.tsx`.
+ * - `layouts/CustomerLayout.tsx`, `layouts/CustomerAccountLayout.tsx`,
+ *   `layouts/EmployeeLayout.tsx`, `layouts/BusinessLayout.tsx`.
  * - `pages/SelectUserModePage.tsx` — navigate to customer or employee **dashboard** after mode selection.
  *
  * ## How it wires to the router
- * `appRoutes.tsx` declares concrete `<Route path="…">` segments (`dashboard`, `profile`,
- * `favorites`, `settings/profile`, …). Those paths must match what the `canonical*` helpers
- * build. If you add a new shell segment, add a helper here and use it in guards + post-login +
- * any feature navigation. Legacy `/:userId/...` URLs redirect in `appRoutes.tsx`.
+ * `appRoutes.tsx` declares concrete `<Route path="…">` segments (`dashboard`, `account/profile`,
+ * `account/address`, `favorites`, `settings/profile`, …). Those paths must match what the
+ * `canonical*` helpers build. If you add a new shell segment, add a helper here and use it in
+ * guards + post-login + any feature navigation. Legacy `/:userId/...` URLs redirect in
+ * `appRoutes.tsx`.
  *
  * ## Flow (typical)
  * 1. User signs in → `getPostLoginDestination` returns the Customer dashboard.
@@ -86,8 +89,17 @@ export function canonicalCustomerDashboardPath(): string {
   return "/dashboard";
 }
 
-export function canonicalCustomerProfilePath(): string {
-  return "/profile";
+/** Customer account area; every destination is session-derived (no User id). */
+export function canonicalAccountPath(): string {
+  return "/account";
+}
+
+export function canonicalAccountProfilePath(): string {
+  return `${canonicalAccountPath()}/profile`;
+}
+
+export function canonicalAccountAddressPath(): string {
+  return `${canonicalAccountPath()}/address`;
 }
 
 export function canonicalCustomerFavoritesPath(): string {
@@ -129,7 +141,7 @@ export function isEmployeeShellPath(pathname: string): boolean {
 export function isUserShellPath(pathname: string): boolean {
   return (
     matchesPath(pathname, canonicalCustomerDashboardPath()) ||
-    matchesPath(pathname, canonicalCustomerProfilePath()) ||
+    matchesPath(pathname, canonicalAccountPath()) ||
     matchesPath(pathname, canonicalCustomerFavoritesPath()) ||
     matchesPath(pathname, canonicalModePath()) ||
     isEmployeeShellPath(pathname)

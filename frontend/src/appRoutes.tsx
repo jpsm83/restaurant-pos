@@ -10,6 +10,7 @@ import { useAuth } from "@/auth/store/AuthContext";
 import { AppPendingShell } from "@/components/AppPendingShell";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import BusinessLayout from "@/layouts/BusinessLayout";
+import CustomerAccountLayout from "@/layouts/CustomerAccountLayout";
 import CustomerLayout from "@/layouts/CustomerLayout";
 import EmployeeLayout from "@/layouts/EmployeeLayout";
 import PublicLayout from "@/layouts/PublicLayout";
@@ -27,9 +28,9 @@ import {
   SessionLoading,
 } from "@/routes/AuthRouteGuards";
 import {
+  canonicalAccountProfilePath,
   canonicalCustomerDashboardPath,
   canonicalCustomerFavoritesPath,
-  canonicalCustomerProfilePath,
   canonicalDefaultDashboardPath,
   canonicalEmployeeDashboardPath,
   canonicalEmployeePath,
@@ -75,6 +76,7 @@ const BusinessProfileSettingsPage = lazy(
   () => import("@/pages/business/BusinessProfileSettingsPage"),
 );
 const CustomerProfilePage = lazy(() => import("@/pages/customer/CustomerProfilePage"));
+const CustomerAddressPage = lazy(() => import("@/pages/customer/CustomerAddressPage"));
 const CustomerFavoritesPage = lazy(() => import("@/pages/customer/CustomerFavoritesPage"));
 const CustomerDashboardPage = lazy(() => import("@/pages/customer/CustomerDashboardPage"));
 const EmployeeProfilePage = lazy(() => import("@/pages/employee/EmployeeProfilePage"));
@@ -113,7 +115,7 @@ const LEGACY_USER_PATHS: Record<
   customer: {
     "": canonicalCustomerDashboardPath(),
     dashboard: canonicalCustomerDashboardPath(),
-    profile: canonicalCustomerProfilePath(),
+    profile: canonicalAccountProfilePath(),
     favorites: canonicalCustomerFavoritesPath(),
   },
   employee: {
@@ -313,9 +315,29 @@ export function AppRoutes() {
             }
           >
             <Route path="dashboard" element={<CustomerDashboardPage />} />
-            <Route path="profile" element={<CustomerProfilePage />} />
             <Route path="favorites" element={<CustomerFavoritesPage />} />
           </Route>
+
+          <Route
+            element={
+              <ProtectedRoute>
+                <CustomerAccountLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route
+              path="account"
+              element={<Navigate to={canonicalAccountProfilePath()} replace />}
+            />
+            <Route path="account/profile" element={<CustomerProfilePage />} />
+            <Route path="account/address" element={<CustomerAddressPage />} />
+          </Route>
+
+          {/* Retired customer profile URL — old bookmarks land in the account area. */}
+          <Route
+            path="profile"
+            element={<Navigate to={canonicalAccountProfilePath()} replace />}
+          />
 
           <Route
             path="/employee"

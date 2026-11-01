@@ -103,9 +103,9 @@ const profile = {
 
 function renderPage() {
   return renderWithI18n(
-    <MemoryRouter initialEntries={["/profile"]}>
+    <MemoryRouter initialEntries={["/account/profile"]}>
       <Routes>
-        <Route path="/profile" element={<CustomerProfilePage />} />
+        <Route path="/account/profile" element={<CustomerProfilePage />} />
       </Routes>
     </MemoryRouter>,
   );
@@ -148,7 +148,7 @@ describe("CustomerProfilePage", () => {
     expect(screen.getByLabelText("Last name")).toHaveValue("Lee");
     expect(screen.getByLabelText("Phone number")).toHaveValue("5551234");
     expect(screen.getByLabelText("Birth date")).toHaveValue("1990-01-01");
-    expect(screen.getByLabelText("Country")).toHaveValue("USA");
+    expect(screen.queryByLabelText("Country")).not.toBeInTheDocument();
     expect(mockGetUserProfile).toHaveBeenCalledWith("u1");
   });
 
@@ -196,10 +196,7 @@ describe("CustomerProfilePage", () => {
     expect(userId).toBe("u1");
     expect(formData.get("firstName")).toBe("Updated");
     expect(formData.get("languagePreference")).toBe("es");
-    expect(JSON.parse(String(formData.get("address")))).toMatchObject({
-      country: "USA",
-      postCode: "90001",
-    });
+    expect(formData.get("address")).toBeNull();
     await waitFor(() => {
       expect(toastSuccess).toHaveBeenCalledWith("Your profile has been saved.");
     });

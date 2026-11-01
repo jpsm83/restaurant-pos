@@ -6,7 +6,9 @@
  * | `/` | `PublicLayout` — marketing index, login, signup, business |
  * | `/business/:businessId` | `BusinessRouteShell` + `BusinessLayout` |
  * | `/mode` | `ProtectedRoute` — Customer | Business mode selection |
- * | `/dashboard`, `/profile`, `/favorites` | `ProtectedRoute` + `CustomerLayout` |
+ * | `/dashboard`, `/favorites` | `ProtectedRoute` + `CustomerLayout` |
+ * | `/account`, `/account/profile`, `/account/address` | `ProtectedRoute` + `CustomerAccountLayout` |
+ * | `/profile` | legacy redirect to `/account/profile` |
  * | `/employee` | `ProtectedRoute` + `RequireEmployeeAuthMode` + `EmployeeLayout` |
  * | `/:userId/...` | valid ObjectId ids redirect; unknown shapes render 404 (ADR-0013) |
  *

@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  canonicalAccountAddressPath,
+  canonicalAccountPath,
+  canonicalAccountProfilePath,
   canonicalBusinessCompanyPath,
   canonicalBusinessDashboardPath,
   canonicalBusinessDashboardRoutePath,
@@ -12,7 +15,6 @@ import {
   canonicalBusinessSettingsSubscriptionsPath,
   canonicalCustomerDashboardPath,
   canonicalCustomerFavoritesPath,
-  canonicalCustomerProfilePath,
   canonicalDefaultDashboardPath,
   canonicalEmployeeDashboardPath,
   canonicalEmployeePath,
@@ -57,7 +59,9 @@ describe("canonicalPaths", () => {
 
   it("builds the session-derived self-service paths without a user id", () => {
     expect(canonicalCustomerDashboardPath()).toBe("/dashboard");
-    expect(canonicalCustomerProfilePath()).toBe("/profile");
+    expect(canonicalAccountPath()).toBe("/account");
+    expect(canonicalAccountProfilePath()).toBe("/account/profile");
+    expect(canonicalAccountAddressPath()).toBe("/account/address");
     expect(canonicalCustomerFavoritesPath()).toBe("/favorites");
     expect(canonicalModePath()).toBe("/mode");
     expect(canonicalEmployeePath()).toBe("/employee");

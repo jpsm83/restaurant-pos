@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { getUserProfile, updateUserProfile } from "@/auth/api";
 import { useAuth } from "@/auth/store/AuthContext";
 import type { ServiceRequestError } from "@/services/serviceErrors";
-import type { UserProfile, UserProfileAddress } from "@/auth/types";
+import type { UserProfile } from "@/auth/types";
 import { useErrorMessage } from "@/i18n/errorCopy";
 import { genderEnums } from "restaurant-pos-packages/enums";
 import { ChangeEmailDialog } from "@/components/ChangeEmailDialog";
@@ -26,18 +26,6 @@ import { formatCalendarDate, isValidCalendarDate } from "@/lib/calendarDate";
 
 const NO_VALUE = "__none__";
 
-type AddressForm = {
-  country: string;
-  state: string;
-  city: string;
-  street: string;
-  buildingNumber: string;
-  doorNumber: string;
-  complement: string;
-  postCode: string;
-  region: string;
-};
-
 type ProfileForm = {
   username: string;
   firstName: string;
@@ -47,19 +35,6 @@ type ProfileForm = {
   gender: string;
   nationality: string;
   languagePreference: string;
-  address: AddressForm;
-};
-
-const EMPTY_ADDRESS: AddressForm = {
-  country: "",
-  state: "",
-  city: "",
-  street: "",
-  buildingNumber: "",
-  doorNumber: "",
-  complement: "",
-  postCode: "",
-  region: "",
 };
 
 const EMPTY_FORM: ProfileForm = {
@@ -71,17 +46,7 @@ const EMPTY_FORM: ProfileForm = {
   gender: "",
   nationality: "",
   languagePreference: "",
-  address: { ...EMPTY_ADDRESS },
 };
-
-const REQUIRED_ADDRESS_FIELDS: (keyof AddressForm)[] = [
-  "country",
-  "state",
-  "city",
-  "street",
-  "buildingNumber",
-  "postCode",
-];
 
 function dateInputValue(value: string | Date | undefined): string {
   if (!value) return "";
@@ -94,7 +59,6 @@ function dateInputValue(value: string | Date | undefined): string {
 
 function formFromProfile(profile: UserProfile): ProfileForm {
   const personal = profile.personalDetails;
-  const address = personal.address;
   return {
     username: personal.username ?? "",
     firstName: personal.firstName ?? "",
@@ -104,44 +68,10 @@ function formFromProfile(profile: UserProfile): ProfileForm {
     gender: personal.gender ?? "",
     nationality: personal.nationality ?? "",
     languagePreference: profile.languagePreference ?? "",
-    address: {
-      country: address?.country ?? "",
-      state: address?.state ?? "",
-      city: address?.city ?? "",
-      street: address?.street ?? "",
-      buildingNumber: address?.buildingNumber ?? "",
-      doorNumber: address?.doorNumber ?? "",
-      complement: address?.complement ?? "",
-      postCode: address?.postCode ?? "",
-      region: address?.region ?? "",
-    },
   };
 }
 
-function cleanAddress(address: AddressForm): UserProfileAddress {
-  const cleaned: UserProfileAddress = {
-    country: address.country.trim(),
-    state: address.state.trim(),
-    city: address.city.trim(),
-    street: address.street.trim(),
-    buildingNumber: address.buildingNumber.trim(),
-    postCode: address.postCode.trim(),
-  };
-  if (address.doorNumber.trim()) cleaned.doorNumber = address.doorNumber.trim();
-  if (address.complement.trim()) cleaned.complement = address.complement.trim();
-  if (address.region.trim()) cleaned.region = address.region.trim();
-  return cleaned;
-}
-
-function addressIsComplete(address: AddressForm): boolean {
-  return REQUIRED_ADDRESS_FIELDS.every((key) => address[key].trim() !== "");
-}
-
-function addressHasAnyValue(address: AddressForm): boolean {
-  return Object.values(address).some((value) => value.trim() !== "");
-}
-
-/** `/profile` — self-service customer profile and language. */
+/** `/account/profile` — self-service customer profile and language. */
 export default function CustomerProfilePage() {
   const { t } = useTranslation("customer");
   const resolveError = useErrorMessage();
@@ -209,13 +139,6 @@ export default function CustomerProfilePage() {
     setForm((current) => ({ ...current, [key]: value }));
   }
 
-  function setAddressField(key: keyof AddressForm, value: string) {
-    setForm((current) => ({
-      ...current,
-      address: { ...current.address, [key]: value },
-    }));
-  }
-
   function onImageChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null;
     setImageFile(file);
@@ -257,12 +180,6 @@ export default function CustomerProfilePage() {
     setSaveFailure(null);
     setSaveMessage(null);
 
-    const hasAddressValue = addressHasAnyValue(form.address);
-    if (hasAddressValue && !addressIsComplete(form.address)) {
-      setSaveMessage(t("profile.errors.addressIncomplete"));
-      return;
-    }
-
     const data = new FormData();
     data.append("username", form.username);
     data.append("firstName", form.firstName);
@@ -273,11 +190,6 @@ export default function CustomerProfilePage() {
     data.append("nationality", form.nationality);
     data.append("languagePreference", form.languagePreference);
 
-    if (hasAddressValue) {
-      data.append("address", JSON.stringify(cleanAddress(form.address)));
-    } else if (profile?.personalDetails.address) {
-      data.append("address", "");
-    }
     if (imageFile) data.append("imageUrl", imageFile);
 
     setSaving(true);
@@ -535,108 +447,6 @@ export default function CustomerProfilePage() {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-            </div>
-          </section>
-
-          <section className="space-y-4">
-            <h2 className="text-base font-semibold text-foreground">
-              {t("profile.sections.address")}
-            </h2>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="profile-address-country">
-                  {t("profile.address.country")}
-                </Label>
-                <Input
-                  id="profile-address-country"
-                  value={form.address.country}
-                  onChange={(e) => setAddressField("country", e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="profile-address-state">
-                  {t("profile.address.state")}
-                </Label>
-                <Input
-                  id="profile-address-state"
-                  value={form.address.state}
-                  onChange={(e) => setAddressField("state", e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="profile-address-city">
-                  {t("profile.address.city")}
-                </Label>
-                <Input
-                  id="profile-address-city"
-                  value={form.address.city}
-                  onChange={(e) => setAddressField("city", e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="profile-address-street">
-                  {t("profile.address.street")}
-                </Label>
-                <Input
-                  id="profile-address-street"
-                  value={form.address.street}
-                  onChange={(e) => setAddressField("street", e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="profile-address-building">
-                  {t("profile.address.buildingNumber")}
-                </Label>
-                <Input
-                  id="profile-address-building"
-                  value={form.address.buildingNumber}
-                  onChange={(e) =>
-                    setAddressField("buildingNumber", e.target.value)
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="profile-address-door">
-                  {t("profile.address.doorNumber")}
-                </Label>
-                <Input
-                  id="profile-address-door"
-                  value={form.address.doorNumber}
-                  onChange={(e) => setAddressField("doorNumber", e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="profile-address-complement">
-                  {t("profile.address.complement")}
-                </Label>
-                <Input
-                  id="profile-address-complement"
-                  value={form.address.complement}
-                  onChange={(e) =>
-                    setAddressField("complement", e.target.value)
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="profile-address-post-code">
-                  {t("profile.address.postCode")}
-                </Label>
-                <Input
-                  id="profile-address-post-code"
-                  value={form.address.postCode}
-                  onChange={(e) => setAddressField("postCode", e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="profile-address-region">
-                  {t("profile.address.region")}
-                </Label>
-                <Input
-                  id="profile-address-region"
-                  value={form.address.region}
-                  onChange={(e) => setAddressField("region", e.target.value)}
-                />
               </div>
             </div>
           </section>

@@ -37,8 +37,7 @@
       "hint": "Elige una imagen nueva para sustituir la foto actual."
     },
     "sections": {
-      "personal": "Datos personales",
-      "address": "Dirección"
+      "personal": "Datos personales"
     },
     "fields": {
       "email": "Correo de acceso",
@@ -58,7 +57,15 @@
       "woman": "Mujer",
       "other": "Otro"
     },
-    "address": {
+    "actions": {
+      "save": "Guardar perfil",
+      "saving": "Guardando…"
+    },
+    "saveSuccess": "Tu perfil se ha guardado."
+  },
+  "address": {
+    "title": "Dirección",
+    "fields": {
       "country": "País",
       "state": "Provincia",
       "city": "Ciudad",
@@ -70,12 +77,13 @@
       "region": "Región"
     },
     "actions": {
-      "save": "Guardar perfil",
+      "save": "Guardar dirección",
       "saving": "Guardando…"
     },
-    "saveSuccess": "Tu perfil se ha guardado.",
+    "saveSuccess": "Tu dirección se ha guardado.",
+    "clearSuccess": "Tu dirección se ha borrado.",
     "errors": {
-      "addressIncomplete": "Completa el país, la provincia, la ciudad, la calle, el número del edificio y el código postal, o borra todos los campos de la dirección."
+      "incomplete": "Completa el país, la provincia, la ciudad, la calle, el número del edificio y el código postal, o borra todos los campos de la dirección."
     }
   },
   "favorites": {

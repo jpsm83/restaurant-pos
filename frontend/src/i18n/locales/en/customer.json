@@ -37,8 +37,7 @@
       "hint": "Choose a new image to replace the current photo."
     },
     "sections": {
-      "personal": "Personal details",
-      "address": "Address"
+      "personal": "Personal details"
     },
     "fields": {
       "email": "Sign-in email",
@@ -58,7 +57,15 @@
       "woman": "Woman",
       "other": "Other"
     },
-    "address": {
+    "actions": {
+      "save": "Save profile",
+      "saving": "Saving…"
+    },
+    "saveSuccess": "Your profile has been saved."
+  },
+  "address": {
+    "title": "Address",
+    "fields": {
       "country": "Country",
       "state": "State",
       "city": "City",
@@ -70,12 +77,13 @@
       "region": "Region"
     },
     "actions": {
-      "save": "Save profile",
+      "save": "Save address",
       "saving": "Saving…"
     },
-    "saveSuccess": "Your profile has been saved.",
+    "saveSuccess": "Your address has been saved.",
+    "clearSuccess": "Your address has been cleared.",
     "errors": {
-      "addressIncomplete": "Complete the country, state, city, street, building number, and post code, or clear every address field."
+      "incomplete": "Complete the country, state, city, street, building number, and post code, or clear every address field."
     }
   },
   "favorites": {

@@ -18,7 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  canonicalCustomerProfilePath,
+  canonicalAccountProfilePath,
   canonicalEmployeeProfilePath,
   isEmployeeShellPath,
 } from "@/routes/canonicalPaths";
@@ -49,7 +49,7 @@ export function AccountMenuPopover({ session }: AccountMenuPopoverProps) {
   const onEmployee = isEmployeeShellPath(pathname);
   const profileTo = onEmployee
     ? canonicalEmployeeProfilePath()
-    : canonicalCustomerProfilePath();
+    : canonicalAccountProfilePath();
   const actorTypeLabel = onEmployee
     ? t("account.actorType.employee")
     : t("account.actorType.customer");
