@@ -2,15 +2,21 @@ import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import { z } from "zod";
 import { useParams } from "react-router-dom";
 import { Plus, ShieldAlert, Users } from "lucide-react";
-import { employmentStatusEnums } from "restaurant-pos-packages/enums";
 import {
-  compareAccessLayers,
-  getDefaultAccessLayerForJobRole,
+  employmentStatusEnums,
+  TERMINATED_EMPLOYMENT_STATUS,
+  type EmploymentStatus,
+} from "restaurant-pos-packages/enums";
+import {
+  canAssignJobRoles,
   JOB_ROLE_DEFAULT_LAYERS,
 } from "restaurant-pos-packages/access";
+import {
+  hireEmployeeFormSchema,
+  type HireEmployeeFormValues,
+} from "restaurant-pos-packages/schemas/employee";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,7 +39,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useFormatting } from "@/hooks/useFormatting";
 import { useErrorMessage, type ErrorFailure } from "@/i18n/errorCopy";
-import { formatCalendarDate, isValidCalendarDate } from "@/lib/calendarDate";
+import { formatCalendarDate } from "@/lib/calendarDate";
 import {
   canManageVenue,
   hireFailureReason,
@@ -46,14 +52,6 @@ import {
 } from "@/services/employees/employeesService";
 import { ServiceRequestError } from "@/services/serviceErrors";
 
-const hireFormSchema = z.object({
-  userEmail: z.string().trim().min(1),
-  allEmployeeRoles: z.array(z.string()).min(1),
-  employmentStatus: z.string().min(1),
-  joinDate: z.string().refine(isValidCalendarDate),
-});
-
-type HireFormValues = z.infer<typeof hireFormSchema>;
 type HireField = "userEmail" | "allEmployeeRoles" | "joinDate";
 
 const HIRE_FIELD_ORDER: HireField[] = [
@@ -91,7 +89,7 @@ const ROLE_LABEL_KEYS: Record<string, string> = {
 
 /** A new membership cannot start Terminated, so the hire form omits it. */
 const HIRE_STATUS_OPTIONS = employmentStatusEnums.filter(
-  (status) => status !== "Terminated",
+  (status) => status !== TERMINATED_EMPLOYMENT_STATUS,
 );
 
 const STATUS_LABEL_KEYS: Record<string, string> = {
@@ -105,15 +103,13 @@ const STATUS_LABEL_KEYS: Record<string, string> = {
 };
 
 function roleOptionsFor(access: BusinessAccessSnapshot): string[] {
-  return Object.keys(JOB_ROLE_DEFAULT_LAYERS).filter((role) => {
-    if (access.source === "ownership") return true;
-    return (
-      compareAccessLayers(
-        getDefaultAccessLayerForJobRole(role),
-        access.effectiveLayer,
-      ) < 0
-    );
-  });
+  return Object.keys(JOB_ROLE_DEFAULT_LAYERS).filter((role) =>
+    canAssignJobRoles({
+      actorLayer: access.effectiveLayer,
+      isOwner: access.source === "ownership",
+      roles: [role],
+    }),
+  );
 }
 
 function isForbiddenFailure(failure: ErrorFailure | null): boolean {
@@ -147,8 +143,8 @@ function HireStaffForm({
     setValue,
     control,
     formState: { errors },
-  } = useForm<HireFormValues>({
-    resolver: zodResolver(hireFormSchema),
+  } = useForm<HireEmployeeFormValues>({
+    resolver: zodResolver(hireEmployeeFormSchema),
     defaultValues: {
       userEmail: "",
       allEmployeeRoles: [],
@@ -207,7 +203,7 @@ function HireStaffForm({
 
   const invalidField = HIRE_FIELD_ORDER.find((field) => Boolean(errors[field]));
 
-  const onSubmit = async (values: HireFormValues) => {
+  const onSubmit = async (values: HireEmployeeFormValues) => {
     setFailure(null);
     try {
       await hireMutation.mutateAsync(values);
@@ -232,6 +228,7 @@ function HireStaffForm({
         <form
           className="space-y-4"
           aria-label={t("people.form.title")}
+          noValidate
           onSubmit={(event) => void handleSubmit(onSubmit)(event)}
         >
           <div className="grid gap-4 sm:grid-cols-2">
@@ -251,7 +248,7 @@ function HireStaffForm({
               <Select
                 value={status}
                 onValueChange={(value) =>
-                  setValue("employmentStatus", value)
+                  setValue("employmentStatus", value as EmploymentStatus)
                 }
               >
                 <SelectTrigger id="hire-status" className="w-full">

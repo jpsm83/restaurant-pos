@@ -7,12 +7,14 @@
  * - `fetchVenueMemberships` — `GET /api/v1/employees/business/:businessId`
  *   returns the manager-visible membership list with linked User identity.
  * - `fetchEmployeeMembership` — `GET /api/v1/employees/:employeeId` returns
- *   the manager record or the caller's non-sensitive self-view.
+ *   the manager record or the caller's non-sensitive self-view. The People page
+ *   does not need it because the manager list already carries the full record;
+ *   it is the read the employee surface (row 1.6/7) consumes.
  * - `hireEmployee` — `POST /api/v1/employees` links an existing User by sign-in
  *   email; the hire is deliberately limited to roles, status, and join date.
  *
- * Hooks expose stable `queryKeys` entries for the access snapshot, the venue
- * list, and one membership. A successful hire invalidates the venue list.
+ * Hooks expose stable `queryKeys` entries for the access snapshot and the venue
+ * list. A successful hire invalidates the venue list.
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -197,22 +199,6 @@ export function useVenueMembershipsQuery(
       ? queryKeys.employees.byBusiness(businessId)
       : queryKeys.employees.byBusinessPending(),
     queryFn: ({ signal }) => fetchVenueMemberships(businessId as string, signal),
-    enabled,
-  });
-}
-
-export function useEmployeeMembershipQuery(
-  employeeId: string | undefined,
-  options: { enabled?: boolean } = {},
-) {
-  const enabled = (options.enabled ?? true) && Boolean(employeeId);
-
-  return useQuery({
-    queryKey: employeeId
-      ? queryKeys.employees.detail(employeeId)
-      : queryKeys.employees.detailPending(),
-    queryFn: ({ signal }) =>
-      fetchEmployeeMembership(employeeId as string, signal),
     enabled,
   });
 }

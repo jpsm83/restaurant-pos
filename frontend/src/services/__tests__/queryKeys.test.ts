@@ -29,11 +29,6 @@ describe("queryKeys", () => {
       "business",
       "b-1",
     ]);
-    expect(queryKeys.employees.detail("e-1")).toEqual([
-      "employees",
-      "detail",
-      "e-1",
-    ]);
   });
 
   it("builds schedule keys with fallbacks", () => {

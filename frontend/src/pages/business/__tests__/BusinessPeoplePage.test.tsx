@@ -294,12 +294,31 @@ describe("BusinessPeoplePage", () => {
     expect(mockPost).not.toHaveBeenCalled();
   });
 
+  it("rejects an invalid sign-in email before submitting", async () => {
+    useEndpoints({ memberships: [] });
+    const user = userEvent.setup();
+
+    await renderPage();
+    await screen.findByText("No team members yet");
+    await user.click(screen.getByRole("button", { name: "Hire staff" }));
+
+    const form = screen.getByRole("form", { name: "Hire staff" });
+    await user.type(within(form).getByLabelText("Sign-in email"), "not-an-email");
+    await user.click(within(form).getByRole("checkbox", { name: "Waiter" }));
+    await user.click(within(form).getByRole("button", { name: "Hire staff" }));
+
+    expect(
+      await screen.findByText("Enter the person's sign-in email."),
+    ).toBeInTheDocument();
+    expect(mockPost).not.toHaveBeenCalled();
+  });
+
   it.each([
     {
       label: "no account",
       error: axiosFailure(
-        404,
-        "https://restaurant-pos.app/errors/not-found",
+        409,
+        "https://restaurant-pos.app/errors/account-not-found",
         "User does not exist!",
       ),
       copy: "No account uses that email. Ask the person to sign up first.",

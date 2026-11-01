@@ -318,13 +318,38 @@ export const activeEmploymentStatusEnums = [
   "Medical absence",
   "Parental leave",
   "Unpaid leave",
-] as string[];
+] as const;
+
+export type ActiveEmploymentStatus =
+  (typeof activeEmploymentStatusEnums)[number];
 
 /** Employment statuses that block access through the membership. */
-export const blockedEmploymentStatusEnums = ["Suspended", "Terminated"] as string[];
+export const blockedEmploymentStatusEnums = ["Suspended", "Terminated"] as const;
+
+export type BlockedEmploymentStatus =
+  (typeof blockedEmploymentStatusEnums)[number];
 
 /** Closed employment-status list for Employee memberships. */
 export const employmentStatusEnums = [
   ...activeEmploymentStatusEnums,
   ...blockedEmploymentStatusEnums,
-] as string[];
+] as const;
+
+export type EmploymentStatus = (typeof employmentStatusEnums)[number];
+
+/** The canonical status that ends employment at a venue. */
+export const TERMINATED_EMPLOYMENT_STATUS = "Terminated" as const;
+
+/** True when a stored status keeps the membership employed. */
+export function isActiveEmploymentStatus(
+  status: string,
+): status is ActiveEmploymentStatus {
+  return (activeEmploymentStatusEnums as readonly string[]).includes(status);
+}
+
+/** True when a stored status blocks access through the membership. */
+export function isBlockedEmploymentStatus(
+  status: string,
+): status is BlockedEmploymentStatus {
+  return (blockedEmploymentStatusEnums as readonly string[]).includes(status);
+}

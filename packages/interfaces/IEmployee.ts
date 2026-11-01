@@ -1,5 +1,7 @@
 import type { Types } from "mongoose";
 
+import type { EmploymentStatus } from "../enums.ts";
+
 export interface ISalary {
   payFrequency: string;
   grossSalary: number;
@@ -23,7 +25,7 @@ export interface IEmployee {
   businessId: Types.ObjectId | string;
   userId: Types.ObjectId | string;
   /** Closed employment status; absent on legacy rows that predate it. */
-  employmentStatus?: string;
+  employmentStatus?: EmploymentStatus;
   /** Server-derived compatibility mirror of `employmentStatus`. */
   active?: boolean;
   onDuty?: boolean;

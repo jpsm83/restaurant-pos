@@ -19,8 +19,10 @@
  * membership in place, and enforces the actor's role-assignment bounds. Update
  * keeps the Business and linked User fixed, derives the same mirror, applies
  * the same bounds, and restricts rehire of a Terminated membership to an
- * effective admin or the owning User. The `terminatedDate` / `joinDate` and
- * status cross-field rules stay here as named post-parse checks, alongside the
+ * effective admin or the owning User. Delete is the admin/owner soft-delete
+ * retention path and follows the same edit bound, so a manager cannot remove a
+ * peer at or above their layer. The `terminatedDate` / `joinDate` and status
+ * cross-field rules stay here as named post-parse checks, alongside the
  * database-backed duplicate, user-link and document-count guards. Every error
  * is raised as an `AppError` so the global handler emits RFC 9457
  * `application/problem+json`.
@@ -28,12 +30,11 @@
 import type { FastifyPluginAsync } from "fastify";
 import mongoose, { Types } from "mongoose";
 import type { IEmployee } from "restaurant-pos-packages/interfaces/IEmployee";
-import type { IUser } from "restaurant-pos-packages/interfaces/IUser";
 import {
   compareAccessLayers,
   resolveDefaultAccessLayerForRoles,
 } from "restaurant-pos-packages/access";
-import { blockedEmploymentStatusEnums } from "restaurant-pos-packages/enums";
+import { isBlockedEmploymentStatus } from "restaurant-pos-packages/enums";
 
 import { createAuthHook } from "../../auth/middleware.ts";
 import {
@@ -45,23 +46,33 @@ import {
   applyHireFields,
   canAssignRoles,
   canEditMembership,
-  isTerminatedMembership,
-  TERMINATED_EMPLOYMENT_STATUS,
+  isRehire,
+  resolveTerminationDate,
 } from "../../employees/membershipRules.ts";
+import {
+  assertDocumentCount,
+  uploadMembershipDocuments,
+} from "../../employees/membershipDocuments.ts";
+import { loadUserIdentities } from "../../employees/membershipIdentities.ts";
+import {
+  isBlockedForSelfView,
+  toMembershipSelfView,
+} from "../../employees/membershipSelfView.ts";
+import { isTerminationStatus } from "../../employees/membershipStatus.ts";
 import validateEmployeeDates from "../../employees/validateEmployeeDates.ts";
 import Employee from "../../models/employee.ts";
 import User from "../../models/user.ts";
 import Printer from "../../models/printer.ts";
 import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
-import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
 import {
   type AppError,
   badRequest,
   conflict,
+  conflictAs,
   forbidden,
   notFound,
 } from "../../errors/appError.ts";
-import { parseMultipart, type MultipartFile } from "../../schemas/multipart.ts";
+import { parseMultipart } from "../../schemas/multipart.ts";
 import {
   createEmployeeBodySchema,
   employeeByBusinessParamsSchema,
@@ -73,9 +84,6 @@ import {
   type EmployeesIncludeDeletedQuery,
   type EmployeeIdParams,
 } from "restaurant-pos-packages/schemas/employee";
-
-/** Employment statuses that remove access through the membership. */
-const BLOCKED_EMPLOYMENT_STATUSES = new Set(blockedEmploymentStatusEnums);
 
 /**
  * Translate a duplicate-key write failure into the matching conflict. The
@@ -117,47 +125,6 @@ function concurrentTransactionConflict(
   return null;
 }
 
-/** The linked User fields the manager list and contacts expose. */
-type UserIdentity = {
-  displayName: string;
-  email: string;
-};
-
-/**
- * Total documents an employee may hold. The multipart transport also caps a
- * request at 10 files, so a create can never exceed the cap and only the update
- * path needs to check the running total.
- */
-const MAX_DOCUMENT_FILES = 10;
-
-/** Upload collected files to Cloudinary, raising a `400` on any failure. */
-async function uploadDocuments(
-  folder: string,
-  files: MultipartFile[],
-  onlyImages: boolean,
-): Promise<string[]> {
-  const response = await uploadFilesCloudinary({
-    folder,
-    filesArr: files.map((file) => ({
-      buffer: file.buffer,
-      mimeType: file.mimetype,
-    })),
-    onlyImages,
-  });
-
-  if (
-    typeof response === "string" ||
-    response.length === 0 ||
-    !response.every((str) => str.includes("https://"))
-  ) {
-    throw badRequest(
-      `Error uploading ${onlyImages ? "image" : "files"}: ${response}`,
-    );
-  }
-
-  return response;
-}
-
 /** The fields a create request contributes to a fresh employee row. */
 function toNewEmployee(
   employeeId: Types.ObjectId,
@@ -169,88 +136,6 @@ function toNewEmployee(
   };
   applyHireFields(newEmployee, fields);
   return newEmployee;
-}
-
-/** Build the display name and email for one linked User. */
-function userIdentity(
-  user: { personalDetails?: Record<string, unknown> } | undefined,
-): UserIdentity {
-  const details = user?.personalDetails as
-    | Record<string, string | undefined>
-    | undefined;
-  const first = details?.firstName?.trim() ?? "";
-  const last = details?.lastName?.trim() ?? "";
-  const name = `${first} ${last}`.trim();
-  const email = details?.email?.trim() ?? "";
-  return {
-    displayName: name.length > 0 ? name : email || "—",
-    email,
-  };
-}
-
-/** Resolve linked User identities for a set of membership User ids. */
-async function loadUserIdentities(
-  userIds: unknown[],
-): Promise<Map<string, UserIdentity>> {
-  const identities = new Map<string, UserIdentity>();
-  if (userIds.length === 0) return identities;
-
-  const users = await User.find(
-    withSoftDeleteFilter(
-      {
-        _id: {
-          $in: userIds.map((id) => new Types.ObjectId(String(id))),
-        },
-      },
-      true,
-    ),
-  )
-    .select(
-      "personalDetails.firstName personalDetails.lastName personalDetails.email",
-    )
-    .lean();
-
-  for (const user of users) {
-    identities.set(String(user._id), userIdentity(user));
-  }
-
-  return identities;
-}
-
-/** A membership blocks its own User's self-view when it is no longer usable. */
-function isBlockedForSelfView(employee: IEmployee): boolean {
-  if (employee.deleted) return true;
-  if (
-    employee.employmentStatus &&
-    BLOCKED_EMPLOYMENT_STATUSES.has(employee.employmentStatus)
-  ) {
-    return true;
-  }
-  return employee.active === false || Boolean(employee.terminatedDate);
-}
-
-/**
- * The non-sensitive self-view: roles, status when present, join date, contract
- * hours, vacation allowance and remaining, and documents. Pay, tax number,
- * national ID, HR comments, and soft-delete metadata are never included.
- */
-function toSafeSelfView(employee: IEmployee): Record<string, unknown> {
-  const view: Record<string, unknown> = {
-    _id: employee._id,
-    businessId: employee.businessId,
-    allEmployeeRoles: employee.allEmployeeRoles,
-    joinDate: employee.joinDate,
-    contractHoursWeek: employee.contractHoursWeek,
-    vacationDaysPerYear: employee.vacationDaysPerYear,
-    vacationDaysLeft: employee.vacationDaysLeft,
-    documentsUrl: employee.documentsUrl,
-  };
-
-  if (typeof employee.employmentStatus === "string") {
-    view.employmentStatus = employee.employmentStatus;
-  }
-
-  return view;
 }
 
 export const employeesRoutes: FastifyPluginAsync = async (app) => {
@@ -331,7 +216,7 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
         minimumLayer: "manager",
       });
 
-      if (fields.employmentStatus === TERMINATED_EMPLOYMENT_STATUS) {
+      if (isTerminationStatus(fields.employmentStatus)) {
         throw badRequest("A new membership cannot start Terminated!");
       }
 
@@ -350,10 +235,10 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
         })
           .select("_id")
           .session(session)
-          .lean<IUser | null>();
+          .lean<{ _id: Types.ObjectId } | null>();
 
         if (!user) {
-          throw notFound("User does not exist!");
+          throw conflictAs("User does not exist!", "account-not-found");
         }
 
         const employeeAlreadyExists = await Employee.exists({
@@ -390,33 +275,33 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
           softDeletedEmployee.deleted = false;
           softDeletedEmployee.deletedAt = undefined;
           softDeletedEmployee.deletedBy = undefined;
-          softDeletedEmployee.userId = user._id!;
+          softDeletedEmployee.userId = user._id;
           applyHireFields(softDeletedEmployee, fields, {
             preserveOptional: true,
           });
 
           if (files.length > 0) {
-            const folder = `/business/${fields.businessId}/employees/${softDeletedEmployee._id}`;
-            softDeletedEmployee.documentsUrl = await uploadDocuments(
-              folder,
+            softDeletedEmployee.documentsUrl = await uploadMembershipDocuments({
+              businessId: fields.businessId,
+              employeeId: String(softDeletedEmployee._id),
               files,
-              false,
-            );
+              onlyImages: false,
+            });
           }
 
           await softDeletedEmployee.save({ session });
         } else {
           const employeeId = new mongoose.Types.ObjectId();
           const newEmployee = toNewEmployee(employeeId, fields);
-          newEmployee.userId = user._id!;
+          newEmployee.userId = user._id;
 
           if (files.length > 0) {
-            const folder = `/business/${fields.businessId}/employees/${employeeId}`;
-            newEmployee.documentsUrl = await uploadDocuments(
-              folder,
+            newEmployee.documentsUrl = await uploadMembershipDocuments({
+              businessId: fields.businessId,
+              employeeId: String(employeeId),
               files,
-              false,
-            );
+              onlyImages: false,
+            });
           }
 
           await Employee.create([newEmployee], { session });
@@ -485,7 +370,7 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
         throw forbidden("Forbidden");
       }
 
-      return reply.code(200).send(toSafeSelfView(employee));
+      return reply.code(200).send(toMembershipSelfView(employee));
     },
   );
 
@@ -537,13 +422,8 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
           throw forbidden("You cannot assign one or more of these roles.");
         }
 
-        const statusIsTerminated =
-          fields.employmentStatus === TERMINATED_EMPLOYMENT_STATUS;
-        const wasTerminated = isTerminatedMembership(employee);
-
         if (
-          wasTerminated &&
-          !statusIsTerminated &&
+          isRehire(employee, fields.employmentStatus) &&
           access.effectiveLayer !== "admin"
         ) {
           throw forbidden(
@@ -551,10 +431,12 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
           );
         }
 
-        const terminatedDate = statusIsTerminated
-          ? fields.terminatedDate ?? employee.terminatedDate
-          : undefined;
-        if (statusIsTerminated && !terminatedDate) {
+        const terminatedDate = resolveTerminationDate({
+          nextStatus: fields.employmentStatus,
+          submittedTerminatedDate: fields.terminatedDate,
+          currentTerminatedDate: employee.terminatedDate,
+        });
+        if (isTerminationStatus(fields.employmentStatus) && !terminatedDate) {
           throw badRequest(
             "Termination date is required for a terminated employee!",
           );
@@ -568,12 +450,10 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
           throw badRequest(datesResult);
         }
 
-        if (
-          files.length + (employee.documentsUrl?.length ?? 0) >
-          MAX_DOCUMENT_FILES
-        ) {
-          throw badRequest(`Max file quantity is ${MAX_DOCUMENT_FILES}!`);
-        }
+        assertDocumentCount(
+          employee.documentsUrl?.length ?? 0,
+          files.length,
+        );
 
         const updateEmployeeObj: Partial<IEmployee> = {
           employmentStatus: fields.employmentStatus,
@@ -592,8 +472,7 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
           fields.vacationDaysPerYear !== employee.vacationDaysPerYear
         )
           updateEmployeeObj.vacationDaysPerYear = fields.vacationDaysPerYear;
-        if (statusIsTerminated && terminatedDate)
-          updateEmployeeObj.terminatedDate = terminatedDate;
+        if (terminatedDate) updateEmployeeObj.terminatedDate = terminatedDate;
         if (
           fields.contractHoursWeek !== undefined &&
           fields.contractHoursWeek !== employee.contractHoursWeek
@@ -630,11 +509,14 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
         }
 
         if (files.length > 0) {
-          const folder = `/business/${employee.businessId}/employees/${employeeId}`;
-
           updateEmployeeObj.documentsUrl = [
             ...(employee.documentsUrl ?? []),
-            ...(await uploadDocuments(folder, files, true)),
+            ...(await uploadMembershipDocuments({
+              businessId: String(employee.businessId),
+              employeeId,
+              files,
+              onlyImages: true,
+            })),
           ];
         }
 
@@ -649,7 +531,7 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
           },
         );
 
-        if (BLOCKED_EMPLOYMENT_STATUSES.has(fields.employmentStatus)) {
+        if (isBlockedEmploymentStatus(fields.employmentStatus)) {
           await Printer.updateMany(
             {
               businessId: employee.businessId,
@@ -697,7 +579,7 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
     },
   );
 
-  // DELETE /employees/:employeeId - delete (transaction)
+  // DELETE /employees/:employeeId - admin/owner soft-delete retention path
   app.delete<{ Params: EmployeeIdParams }>(
     "/:employeeId",
     {
@@ -713,7 +595,7 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
       try {
         const employee = await Employee.findById(employeeId)
           .setOptions({ includeDeleted: true })
-          .select("businessId deleted")
+          .select("businessId deleted allEmployeeRoles")
           .session(session)
           .lean<IEmployee>();
 
@@ -721,12 +603,21 @@ export const employeesRoutes: FastifyPluginAsync = async (app) => {
           throw notFound("Employee not found!");
         }
 
-        await requireBusinessLayer({
+        const access = await requireBusinessLayer({
           userId: req.authSession!.id,
           businessId: String(employee.businessId),
-          minimumLayer: "manager",
+          minimumLayer: "admin",
           session,
         });
+
+        const currentLayer = resolveDefaultAccessLayerForRoles(
+          employee.allEmployeeRoles,
+        );
+        if (!canEditMembership(access, currentLayer)) {
+          throw forbidden(
+            "You cannot delete a membership at or above your access layer.",
+          );
+        }
 
         if (employee.deleted) {
           throw conflict("Employee already deleted!");

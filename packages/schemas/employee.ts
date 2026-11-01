@@ -27,6 +27,7 @@ import {
   userRolesEnums,
 } from "../enums.ts";
 import {
+  calendarDateSchema,
   coercedBooleanSchema,
   coercedIntSchema,
   coercedNumberSchema,
@@ -71,7 +72,7 @@ const payFrequencySchema = z.enum(
 );
 
 const employmentStatusSchema = z.enum(
-  employmentStatusEnums as EnumValues,
+  employmentStatusEnums,
   "Invalid employment status!",
 );
 
@@ -143,6 +144,20 @@ export const patchEmployeeBodySchema = z.strictObject({
   terminatedDate: optionalDateSchema,
 });
 
+/**
+ * The minimal hire form shape shared by the People page and its tests. The
+ * page keeps the join date as a machine-facing `YYYY-MM-DD` string and submits
+ * the roles as an array; the multipart create DTO JSON-encodes the same values.
+ */
+export const hireEmployeeFormSchema = z.strictObject({
+  userEmail: emailSchema,
+  allEmployeeRoles: z
+    .array(employeeRoleSchema)
+    .min(1, "At least one employee role is required!"),
+  employmentStatus: employmentStatusSchema,
+  joinDate: calendarDateSchema,
+});
+
 /** Path params for `GET`/`PATCH`/`DELETE /employees/:employeeId`. */
 export const employeeIdParamsSchema = z.strictObject({
   employeeId: objectIdSchema,
@@ -159,6 +174,7 @@ export const employeesIncludeDeletedQuerySchema = z.strictObject({
 });
 
 export type CreateEmployeeBody = z.infer<typeof createEmployeeBodySchema>;
+export type HireEmployeeFormValues = z.infer<typeof hireEmployeeFormSchema>;
 export type UpdateEmployeeRecordBody = z.infer<typeof patchEmployeeBodySchema>;
 export type EmployeeIdParams = z.infer<typeof employeeIdParamsSchema>;
 export type EmployeeByBusinessParams = z.infer<

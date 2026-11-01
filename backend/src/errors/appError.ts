@@ -17,6 +17,7 @@ export type ProblemSlug =
   | "forbidden"
   | "not-found"
   | "conflict"
+  | "account-not-found"
   | "internal";
 
 /** A single field-level error carried in the problem-details `errors[]`. */
@@ -98,6 +99,14 @@ export const notFound = (detail = "Not Found"): AppError =>
 
 export const conflict = (detail = "Conflict"): AppError =>
   new AppError(detail, { statusCode: 409 });
+
+/**
+ * A conflict whose problem type carries a more specific machine-readable slug.
+ * The status stays `409`, but the SPA can branch on the type without reading
+ * the diagnostic detail text.
+ */
+export const conflictAs = (detail: string, slug: ProblemSlug): AppError =>
+  new AppError(detail, { statusCode: 409, slug });
 
 export const internal = (detail = "Internal Server Error"): AppError =>
   new AppError(detail, { statusCode: 500 });

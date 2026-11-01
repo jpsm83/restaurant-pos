@@ -764,25 +764,25 @@ describe("Employees Routes", () => {
   });
 
   describe("DELETE /api/v1/employees/:employeeId", () => {
-    it("soft-deletes a membership for a manager", async () => {
+    it("soft-deletes a membership for an admin", async () => {
+      const admin = await makeMember({ roles: ["Admin"] });
       const manager = await makeMember({ roles: ["Manager"] });
-      const employee = await makeMember({ roles: ["Waiter"] });
       const app = await getTestApp();
 
       const response = await app.inject({
         method: "DELETE",
-        url: `/api/v1/employees/${employee.employeeId}`,
-        headers: { authorization: manager.auth },
+        url: `/api/v1/employees/${manager.employeeId}`,
+        headers: { authorization: admin.auth },
       });
 
       expect(response.statusCode).toBe(200);
 
-      const retained = await Employee.findById(employee.employeeId)
+      const retained = await Employee.findById(manager.employeeId)
         .setOptions({ includeDeleted: true })
         .lean();
       expect(retained?.deleted).toBe(true);
       expect(retained?.deletedAt).toBeTruthy();
-      expect(await Employee.findById(employee.employeeId).lean()).toBeNull();
+      expect(await Employee.findById(manager.employeeId).lean()).toBeNull();
     });
 
     it("soft-deletes a membership for the owning User", async () => {
@@ -798,7 +798,23 @@ describe("Employees Routes", () => {
       expect(response.statusCode).toBe(200);
     });
 
+    it("refuses an admin deleting a peer admin", async () => {
+      const admin = await makeMember({ roles: ["Admin"] });
+      const peerAdmin = await makeMember({ roles: ["Admin"] });
+      const app = await getTestApp();
+
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/employees/${peerAdmin.employeeId}`,
+        headers: { authorization: admin.auth },
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(isProblemDetails(response)).toBe(true);
+    });
+
     it.each([
+      ["manager", ["Manager"]],
       ["supervisor", ["Supervisor"]],
       ["employee", ["Waiter"]],
     ])("refuses a %s", async (_label, roles) => {
@@ -881,14 +897,14 @@ describe("Employees Routes", () => {
     });
 
     it("returns a problem-details 409 for an already soft-deleted membership", async () => {
-      const manager = await makeMember({ roles: ["Manager"] });
+      const admin = await makeMember({ roles: ["Admin"] });
       const deleted = await makeMember({ roles: ["Waiter"], deleted: true });
       const app = await getTestApp();
 
       const response = await app.inject({
         method: "DELETE",
         url: `/api/v1/employees/${deleted.employeeId}`,
-        headers: { authorization: manager.auth },
+        headers: { authorization: admin.auth },
       });
 
       expect(response.statusCode).toBe(409);
@@ -1303,7 +1319,7 @@ describe("Employees Routes", () => {
       expect(await Employee.countDocuments({ userId: targetUserId })).toBe(2);
     });
 
-    it("returns not found when the hire email has no active User", async () => {
+    it("returns an account-not-found conflict when the hire email has no active User", async () => {
       const manager = await makeMember({ roles: ["Manager"] });
       const app = await getTestApp();
 
@@ -1320,8 +1336,11 @@ describe("Employees Routes", () => {
         },
       });
 
-      expect(response.statusCode).toBe(404);
+      expect(response.statusCode).toBe(409);
       expect(isProblemDetails(response)).toBe(true);
+      expect(JSON.parse(response.body).type).toBe(
+        "https://restaurant-pos.app/errors/account-not-found",
+      );
       expect(detail(response)).toBe("User does not exist!");
     });
 
@@ -2176,7 +2195,7 @@ describe("Employees Routes", () => {
         const response = await app.inject({
           method: "DELETE",
           url: `/api/v1/employees/${employee?._id}`,
-          headers: { authorization: manager.auth },
+          headers: { authorization: ownerAuth },
         });
         expect(response.statusCode).toBe(200);
 

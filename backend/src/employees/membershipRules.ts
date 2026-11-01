@@ -10,16 +10,20 @@
  * non-Terminated status.
  */
 import {
+  canAssignJobRoles,
   compareAccessLayers,
-  getDefaultAccessLayerForJobRole,
   type BusinessAccessLayer,
 } from "restaurant-pos-packages/access";
 import type { IEmployee } from "restaurant-pos-packages/interfaces/IEmployee";
 import type { CreateEmployeeBody } from "restaurant-pos-packages/schemas/employee";
 
 import type { EffectiveAccess } from "../access/resolveEffectiveAccess.ts";
+import {
+  isTerminationStatus,
+  isTerminatedMembership,
+} from "./membershipStatus.ts";
 
-export const TERMINATED_EMPLOYMENT_STATUS = "Terminated";
+export { isTerminatedMembership };
 
 /**
  * The actor may assign only roles whose default layer is strictly below their
@@ -29,17 +33,13 @@ export const TERMINATED_EMPLOYMENT_STATUS = "Terminated";
  */
 export function canAssignRoles(
   access: EffectiveAccess,
-  roles: string[],
+  roles: readonly string[],
 ): boolean {
-  if (access.source === "ownership") return true;
-
-  return roles.every(
-    (role) =>
-      compareAccessLayers(
-        getDefaultAccessLayerForJobRole(role),
-        access.effectiveLayer,
-      ) < 0,
-  );
+  return canAssignJobRoles({
+    actorLayer: access.effectiveLayer,
+    isOwner: access.source === "ownership",
+    roles,
+  });
 }
 
 /**
@@ -54,14 +54,25 @@ export function canEditMembership(
   return compareAccessLayers(currentLayer, access.effectiveLayer) < 0;
 }
 
-/** A membership is terminated by its stored status, or legacy termination data. */
-export function isTerminatedMembership(
+/** True when a status change restores a terminated membership (a rehire). */
+export function isRehire(
   employee: Pick<IEmployee, "employmentStatus" | "terminatedDate">,
+  nextStatus: string,
 ): boolean {
-  if (employee.employmentStatus) {
-    return employee.employmentStatus === TERMINATED_EMPLOYMENT_STATUS;
-  }
-  return Boolean(employee.terminatedDate);
+  return isTerminatedMembership(employee) && !isTerminationStatus(nextStatus);
+}
+
+/**
+ * The termination date an update should persist. Terminated rows keep the
+ * submitted date or their stored one; every other status clears it.
+ */
+export function resolveTerminationDate(params: {
+  nextStatus: string;
+  submittedTerminatedDate?: Date;
+  currentTerminatedDate?: Date;
+}): Date | undefined {
+  if (!isTerminationStatus(params.nextStatus)) return undefined;
+  return params.submittedTerminatedDate ?? params.currentTerminatedDate;
 }
 
 /**

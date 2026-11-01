@@ -10,7 +10,7 @@
  * - **`schedules.byBusiness`:** reserved for broader schedule UIs; keep keys stable when adding hooks.
  * - **`business.detail`:** profile fetch/edit flows for business settings pages.
  * - **`business.access`:** the signed-in User's effective access snapshot for one venue.
- * - **`employees.byBusiness` / `employees.detail`:** venue membership list and one membership read.
+ * - **`employees.byBusiness`:** venue membership list for the People page.
  * - **`portfolio.byUser` / `portfolio.all`:** the customer dashboard’s User-scoped Owner portfolio read.
  */
 export const queryKeys = {
@@ -35,9 +35,6 @@ export const queryKeys = {
     byBusiness: (businessId: string) =>
       ["employees", "business", businessId] as const,
     byBusinessPending: () => ["employees", "business", "pending"] as const,
-    detail: (employeeId: string) =>
-      ["employees", "detail", employeeId] as const,
-    detailPending: () => ["employees", "detail", "pending"] as const,
   },
   schedules: {
     byBusiness: (businessId: string, dayKey?: string) =>

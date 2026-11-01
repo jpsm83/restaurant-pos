@@ -6,15 +6,9 @@ const {
   employeePayFrequencyEnums,
   userRolesEnums,
   employmentStatusEnums,
-  activeEmploymentStatusEnums,
+  isActiveEmploymentStatus,
+  TERMINATED_EMPLOYMENT_STATUS,
 } = enums;
-
-const ACTIVE_EMPLOYMENT_STATUSES = new Set(activeEmploymentStatusEnums);
-const TERMINATED_STATUS = "Terminated";
-
-function isActiveEmploymentStatus(status: string): boolean {
-  return ACTIVE_EMPLOYMENT_STATUSES.has(status);
-}
 
 const salarySchema = new Schema(
   {
@@ -48,7 +42,7 @@ const employeeSchema = new Schema(
     joinDate: { type: Date, required: [true, "Join date is required!"] }, // date when the employee joined the business
     employmentStatus: {
       type: String,
-      enum: employmentStatusEnums,
+      enum: [...employmentStatusEnums],
     }, // closed employment status; absent on legacy rows that predate it
     active: {
       type: Boolean,
@@ -115,7 +109,7 @@ employeeSchema.pre("validate", function () {
 
   employee.active = isActiveEmploymentStatus(employee.employmentStatus);
 
-  if (employee.employmentStatus === TERMINATED_STATUS) {
+  if (employee.employmentStatus === TERMINATED_EMPLOYMENT_STATUS) {
     if (!employee.terminatedDate) {
       employee.invalidate(
         "employmentStatus",
@@ -141,7 +135,7 @@ function deriveStatusOnUpdate(update: Record<string, unknown>): void {
   const target = set ?? update;
   target.active = isActiveEmploymentStatus(status);
 
-  if (status === TERMINATED_STATUS) return;
+  if (status === TERMINATED_EMPLOYMENT_STATUS) return;
 
   delete target.terminatedDate;
   const unset = (update.$unset as Record<string, unknown> | undefined) ?? {};

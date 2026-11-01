@@ -1,14 +1,15 @@
 import type { ClientSession, Types } from "mongoose";
-import { activeEmploymentStatusEnums } from "restaurant-pos-packages/enums";
+import type { EmploymentStatus } from "restaurant-pos-packages/enums";
 
 import Employee from "../models/employee.ts";
 import { withSoftDeleteFilter } from "../models/softDelete.ts";
+import { usableMembershipFilter } from "../employees/membershipStatus.ts";
 
 export interface EmployeeMembership {
   _id: Types.ObjectId;
   businessId: Types.ObjectId;
   allEmployeeRoles?: string[];
-  employmentStatus?: string;
+  employmentStatus?: EmploymentStatus;
   onDuty?: boolean;
 }
 
@@ -34,14 +35,7 @@ export default async function findActiveEmployeeMembership(params: {
   let query = Employee.findOne(
     withSoftDeleteFilter({
       userId,
-      $or: [
-        { employmentStatus: { $in: activeEmploymentStatusEnums } },
-        {
-          employmentStatus: null,
-          active: true,
-          terminatedDate: null,
-        },
-      ],
+      ...usableMembershipFilter,
       ...(businessId === undefined ? {} : { businessId }),
       ...(employeeId === undefined ? {} : { _id: employeeId }),
     }),

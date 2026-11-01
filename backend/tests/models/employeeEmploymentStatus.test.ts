@@ -2,8 +2,8 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { Types } from "mongoose";
 
 import {
-  activeEmploymentStatusEnums,
   employmentStatusEnums,
+  isActiveEmploymentStatus,
 } from "restaurant-pos-packages/enums";
 import Employee from "../../src/models/employee.ts";
 
@@ -35,12 +35,10 @@ function employeeFields(overrides: EmployeeOverrides = {}) {
 }
 
 describe("Employee employment status", () => {
-  it("stores the closed employment-status list on the model", () => {
-    const schemaType = Employee.schema.path("employmentStatus") as {
-      enumValues?: string[];
-    };
-
-    expect(schemaType.enumValues).toEqual(employmentStatusEnums);
+  it("refuses an employment status outside the closed list", async () => {
+    await expect(
+      Employee.create(employeeFields({ employmentStatus: "Furloughed" })),
+    ).rejects.toThrow(/employmentStatus/);
   });
 
   it.each(employmentStatusEnums)(
@@ -56,9 +54,7 @@ describe("Employee employment status", () => {
         }),
       );
 
-      expect(employee.active).toBe(
-        activeEmploymentStatusEnums.includes(employmentStatus),
-      );
+      expect(employee.active).toBe(isActiveEmploymentStatus(employmentStatus));
     },
   );
 

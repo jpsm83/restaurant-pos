@@ -107,6 +107,28 @@ export function resolveDefaultAccessLayerForRoles(
   return highest;
 }
 
+/**
+ * Whether an actor may assign a role set. The owning User may assign any role;
+ * every other actor may assign only roles whose default layer is strictly below
+ * their own. The server and the People page share this bound so the UI never
+ * offers an act the server refuses.
+ */
+export function canAssignJobRoles(params: {
+  actorLayer: AccessLayer;
+  isOwner: boolean;
+  roles: readonly string[];
+}): boolean {
+  if (params.isOwner) return true;
+
+  return params.roles.every(
+    (role) =>
+      compareAccessLayers(
+        getDefaultAccessLayerForJobRole(role),
+        params.actorLayer,
+      ) < 0,
+  );
+}
+
 export interface AccessCapabilityDefinition {
   /** Stable machine key. Never reworded with the label. */
   readonly key: AccessCapabilityKey;

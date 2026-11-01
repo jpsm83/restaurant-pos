@@ -99,6 +99,7 @@ const PROBLEM_TYPE_OUTCOMES: Record<string, ServiceErrorOutcome> = {
   forbidden: "forbidden",
   "not-found": "notFound",
   conflict: "conflict",
+  "account-not-found": "notFound",
   internal: "internal",
 };
 
