@@ -11,6 +11,7 @@ import { GoogleAuthButton } from "@/auth/GoogleAuthButton";
 import { useErrorMessage, type ErrorFailure } from "@/i18n/errorCopy";
 import { isSupportedLanguage } from "@/i18n/config";
 import {
+  authPathWithReturnTo,
   getPostLoginDestination,
   getReturnToParam,
 } from "@/auth/postLoginRedirect";
@@ -74,6 +75,7 @@ export default function SignUpPage() {
   const location = useLocation();
   const { state, dispatch } = useAuth();
   const returnTo = getReturnToParam(location.search);
+  const loginHref = authPathWithReturnTo("/login", returnTo);
   const language = (i18n.resolvedLanguage ?? i18n.language ?? "")
     .split("-")[0]
     .toLowerCase();
@@ -243,7 +245,7 @@ export default function SignUpPage() {
             <GoogleAuthButton onFailure={setSubmitFailure} />
 
             <Button asChild variant="outline" className="w-full">
-              <Link to="/login">{t("signup.backToSignIn")}</Link>
+              <Link to={loginHref}>{t("signup.backToSignIn")}</Link>
             </Button>
 
           </form>

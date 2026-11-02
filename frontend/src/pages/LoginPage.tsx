@@ -10,6 +10,7 @@ import { markPriorSession } from "@/auth/sessionHint";
 import { GoogleAuthButton } from "@/auth/GoogleAuthButton";
 import { useErrorMessage, type ErrorFailure } from "@/i18n/errorCopy";
 import {
+  authPathWithReturnTo,
   getPostLoginDestination,
   getReturnToParam,
 } from "@/auth/postLoginRedirect";
@@ -50,6 +51,7 @@ export default function LoginPage() {
   const flashMessage =
     (location.state as { flashMessage?: string } | null)?.flashMessage ?? null;
   const returnTo = getReturnToParam(location.search);
+  const signupHref = authPathWithReturnTo("/signup", returnTo);
 
   const schema = useMemo(
     () => buildLoginSchema(t("login.errors.required")),
@@ -173,7 +175,7 @@ export default function LoginPage() {
             <GoogleAuthButton onFailure={setSubmitFailure} />
 
             <Button asChild variant="outline" className="w-full">
-              <Link to="/signup">{t("login.createAccountLink")}</Link>
+              <Link to={signupHref}>{t("login.createAccountLink")}</Link>
             </Button>
 
           </form>

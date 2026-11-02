@@ -713,4 +713,44 @@ describe("SignUpPage", () => {
       expect(screen.getByText("Customer dashboard")).toBeInTheDocument();
     });
   });
+
+  it("preserves a safe returnTo on the back to sign in link", async () => {
+    await renderWithI18n(
+      <MemoryRouter
+        initialEntries={["/signup?returnTo=%2Faccount%2Fprofile"]}
+      >
+        <SignUpPage />
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.getByRole("link", { name: /back to sign in/i }),
+    ).toHaveAttribute("href", "/login?returnTo=%2Faccount%2Fprofile");
+  });
+
+  it("keeps a plain back to sign in link without returnTo", async () => {
+    await renderWithI18n(
+      <MemoryRouter initialEntries={["/signup"]}>
+        <SignUpPage />
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.getByRole("link", { name: /back to sign in/i }),
+    ).toHaveAttribute("href", "/login");
+  });
+
+  it("drops an unsafe returnTo from the back to sign in link", async () => {
+    await renderWithI18n(
+      <MemoryRouter
+        initialEntries={["/signup?returnTo=https%3A%2F%2Fevil.example"]}
+      >
+        <SignUpPage />
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.getByRole("link", { name: /back to sign in/i }),
+    ).toHaveAttribute("href", "/login");
+  });
 });
