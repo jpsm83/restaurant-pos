@@ -31,3 +31,20 @@ export interface INotificationInboxResponse {
   limit: number;
   hasMore: boolean;
 }
+
+/** The caller's entry was marked read. */
+export interface INotificationInboxReadResponse {
+  notificationId: string;
+  read: true;
+}
+
+/** The resulting unread count after marking every visible entry read. */
+export interface INotificationInboxUnreadCountResponse {
+  unreadCount: number;
+}
+
+/** The caller's entry was hidden from their inbox. */
+export interface INotificationInboxHideResponse {
+  notificationId: string;
+  hidden: true;
+}

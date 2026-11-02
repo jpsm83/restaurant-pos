@@ -209,6 +209,40 @@ Response:
 - `400` for malformed pagination; out-of-range values are clamped to the
   documented bounds
 
+### `PATCH /api/v1/notifications/inbox/:notificationId/read`
+
+Marks the caller's own entry read. Idempotent; an already-read entry succeeds
+without changing anything. The recipient comes from the session, never the
+request.
+
+Response:
+
+- `200` with `{ notificationId, read: true }`
+- `401` without a live User session
+- `404` when the entry is not in the caller's inbox
+
+### `PATCH /api/v1/notifications/inbox/read-all`
+
+Marks every visible entry read for the caller. Hidden entries, soft-deleted
+notification records, and other people's entries are untouched. Idempotent.
+
+Response:
+
+- `200` with `{ unreadCount: 0 }`
+- `401` without a live User session
+
+### `DELETE /api/v1/notifications/inbox/:notificationId`
+
+Hides the caller's own entry by setting both `deletedFlag` and `readFlag`. The
+`Notification` record is preserved, and other recipients keep their entry.
+Idempotent; an already-hidden entry succeeds without changing anything.
+
+Response:
+
+- `200` with `{ notificationId, hidden: true }`
+- `401` without a live User session
+- `404` when the entry is not in the caller's inbox
+
 ## WebSocket contract
 
 Endpoint:

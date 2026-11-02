@@ -123,6 +123,63 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
     },
   );
 
+  // PATCH /notifications/inbox/read-all - mark every visible entry read
+  app.patch(
+    "/inbox/read-all",
+    { preValidation: [createAuthHook(app)] },
+    async (req, reply) => {
+      if (!req.authSession || req.authSession.type !== "user") {
+        throw unauthorized("Unauthorized");
+      }
+
+      const result = await notificationInbox.markAllRead(req.authSession.id);
+
+      return reply.code(200).send(result);
+    },
+  );
+
+  // PATCH /notifications/inbox/:notificationId/read - mark one entry read
+  app.patch<{ Params: NotificationIdParams }>(
+    "/inbox/:notificationId/read",
+    {
+      preValidation: [createAuthHook(app)],
+      schema: { params: notificationIdParamsSchema },
+    },
+    async (req, reply) => {
+      if (!req.authSession || req.authSession.type !== "user") {
+        throw unauthorized("Unauthorized");
+      }
+
+      const result = await notificationInbox.markRead({
+        userId: req.authSession.id,
+        notificationId: req.params.notificationId,
+      });
+
+      return reply.code(200).send(result);
+    },
+  );
+
+  // DELETE /notifications/inbox/:notificationId - hide one entry
+  app.delete<{ Params: NotificationIdParams }>(
+    "/inbox/:notificationId",
+    {
+      preValidation: [createAuthHook(app)],
+      schema: { params: notificationIdParamsSchema },
+    },
+    async (req, reply) => {
+      if (!req.authSession || req.authSession.type !== "user") {
+        throw unauthorized("Unauthorized");
+      }
+
+      const result = await notificationInbox.hide({
+        userId: req.authSession.id,
+        notificationId: req.params.notificationId,
+      });
+
+      return reply.code(200).send(result);
+    },
+  );
+
   // GET /notifications - list all
   app.get<{ Querystring: NotificationsPaginationQuery }>(
     "/",

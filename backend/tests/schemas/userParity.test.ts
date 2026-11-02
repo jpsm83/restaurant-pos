@@ -3,10 +3,8 @@ import type { z } from "zod";
 
 import User from "../../src/models/user.ts";
 import {
-  markNotificationDeletedBodySchema,
   updateUserBodySchema,
   userIdParamsSchema,
-  userNotificationParamsSchema,
 } from "restaurant-pos-packages/schemas/user";
 
 /**
@@ -18,8 +16,6 @@ import {
 const allDtos: Record<string, z.ZodObject> = {
   updateUserBodySchema,
   userIdParamsSchema,
-  markNotificationDeletedBodySchema,
-  userNotificationParamsSchema,
 };
 
 const userOwns = (field: string): boolean =>
@@ -83,12 +79,5 @@ describe("user DTO ↔ model parity", () => {
 
   it("path param DTOs carry only their route ids", () => {
     expect(Object.keys(userIdParamsSchema.shape)).toEqual(["userId"]);
-    expect(Object.keys(userNotificationParamsSchema.shape)).toEqual([
-      "userId",
-      "notificationId",
-    ]);
-    expect(Object.keys(markNotificationDeletedBodySchema.shape)).toEqual([
-      "notificationId",
-    ]);
   });
 });

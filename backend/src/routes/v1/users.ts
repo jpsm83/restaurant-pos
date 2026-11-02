@@ -1,6 +1,5 @@
 /**
- * Users Routes — self-service profile read/update, account deletion, and
- * notification read/deleted flags.
+ * Users Routes — self-service profile read/update and account deletion.
  *
  * The profile update body is buffered and validated by the shared multipart
  * helper against the strict `updateUserBodySchema` from
@@ -20,7 +19,6 @@ import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
 import deleteFilesCloudinary from "../../cloudinary/deleteFilesCloudinary.ts";
 import User from "../../models/user.ts";
 import Employee from "../../models/employee.ts";
-import Notification from "../../models/notification.ts";
 import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
 import {
   badRequest,
@@ -31,14 +29,10 @@ import {
 } from "../../errors/appError.ts";
 import { parseMultipart, type MultipartFile } from "../../schemas/multipart.ts";
 import {
-  markNotificationDeletedBodySchema,
   updateUserBodySchema,
   userIdParamsSchema,
-  userNotificationParamsSchema,
-  type MarkNotificationDeletedBody,
   type UpdateUserBody,
   type UserIdParams,
-  type UserNotificationParams,
 } from "restaurant-pos-packages/schemas/user";
 
 /** Upload the single profile image, raising a `400` on any failure. */
@@ -315,97 +309,6 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
       }
 
       return reply.code(200).send({ message: "User deleted successfully" });
-    },
-  );
-
-  // PATCH /users/:userId/markNotificationAsDeleted - mark notification deleted (transaction)
-  app.patch<{ Params: UserIdParams; Body: MarkNotificationDeletedBody }>(
-    "/:userId/markNotificationAsDeleted",
-    {
-      schema: {
-        params: userIdParamsSchema,
-        body: markNotificationDeletedBodySchema,
-      },
-    },
-    async (req, reply) => {
-      const { userId } = req.params;
-      const { notificationId } = req.body;
-
-      const session = await mongoose.startSession();
-      session.startTransaction();
-
-      try {
-        const notificationExists = await Notification.exists({
-          _id: notificationId,
-        }).session(session);
-
-        if (!notificationExists) {
-          throw notFound("Notification not found!");
-        }
-
-        const updatedUser = await User.findOneAndUpdate(
-          withSoftDeleteFilter({
-            _id: userId,
-            "notifications.notificationId": notificationId,
-          }),
-          {
-            $set: {
-              "notifications.$.deletedFlag": true,
-              "notifications.$.readFlag": true,
-            },
-          },
-          { returnDocument: "after", lean: true, session },
-        );
-
-        if (!updatedUser) {
-          throw notFound("User not found!");
-        }
-
-        await session.commitTransaction();
-
-        return reply.code(200).send({
-          message: "User notification mark as deleted successfully!",
-        });
-      } catch (error) {
-        await session.abortTransaction().catch(() => undefined);
-        throw error;
-      } finally {
-        session.endSession();
-      }
-    },
-  );
-
-  // PATCH /users/:userId/updateReadFlag/:notificationId - update read flag
-  app.patch<{ Params: UserNotificationParams }>(
-    "/:userId/updateReadFlag/:notificationId",
-    { schema: { params: userNotificationParamsSchema } },
-    async (req, reply) => {
-      const { userId, notificationId } = req.params;
-
-      const notificationExists = await Notification.exists({
-        _id: notificationId,
-      });
-
-      if (!notificationExists) {
-        throw notFound("Notification not found!");
-      }
-
-      const updatedUser = await User.findOneAndUpdate(
-        withSoftDeleteFilter({
-          _id: userId,
-          "notifications.notificationId": notificationId,
-        }),
-        { $set: { "notifications.$.readFlag": true } },
-        { returnDocument: "after", lean: true },
-      );
-
-      if (!updatedUser) {
-        throw notFound("User notification not updated!");
-      }
-
-      return reply.code(200).send({
-        message: "User notification updated successfully!",
-      });
     },
   );
 };

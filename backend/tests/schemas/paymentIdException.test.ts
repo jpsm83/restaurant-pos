@@ -68,10 +68,7 @@ import {
   createSupplierGoodBodySchema,
   updateSupplierGoodBodySchema,
 } from "restaurant-pos-packages/schemas/supplierGood";
-import {
-  markNotificationDeletedBodySchema,
-  updateUserBodySchema,
-} from "restaurant-pos-packages/schemas/user";
+import { updateUserBodySchema } from "restaurant-pos-packages/schemas/user";
 import {
   addInventoryCountBodySchema,
   createInventoryBodySchema,
@@ -137,7 +134,6 @@ const bodiesThatRejectPaymentId: Record<string, BodySchema> = {
   createSupplierGoodBodySchema,
   updateSupplierGoodBodySchema,
   updateUserBodySchema,
-  markNotificationDeletedBodySchema,
   createInventoryBodySchema,
   addInventoryCountBodySchema,
   updateInventoryCountBodySchema,

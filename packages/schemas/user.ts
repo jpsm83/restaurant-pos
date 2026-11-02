@@ -102,22 +102,5 @@ export const userIdParamsSchema = z.strictObject({
   userId: objectIdSchema,
 });
 
-/** Body for `PATCH /users/:userId/markNotificationAsDeleted`. */
-export const markNotificationDeletedBodySchema = z.strictObject({
-  notificationId: objectIdSchema,
-});
-
-/** Path params for `PATCH /users/:userId/updateReadFlag/:notificationId`. */
-export const userNotificationParamsSchema = z.strictObject({
-  userId: objectIdSchema,
-  notificationId: objectIdSchema,
-});
-
 export type UpdateUserBody = z.infer<typeof updateUserBodySchema>;
 export type UserIdParams = z.infer<typeof userIdParamsSchema>;
-export type MarkNotificationDeletedBody = z.infer<
-  typeof markNotificationDeletedBodySchema
->;
-export type UserNotificationParams = z.infer<
-  typeof userNotificationParamsSchema
->;

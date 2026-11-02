@@ -426,14 +426,480 @@ describe("Notifications Inbox Route", () => {
     });
   });
 
-  describe("removed user-id inbox listing route", () => {
-    it("returns 404", async () => {
+  describe("self-only inbox actions", () => {
+    it("refuses unauthenticated mutation requests", async () => {
       const app = await getTestApp();
-      const caller = await createTestUser("inbox-removed-route");
+      const notificationId = new Types.ObjectId().toString();
+      const requests = [
+        {
+          method: "PATCH" as const,
+          url: `/api/v1/notifications/inbox/${notificationId}/read`,
+        },
+        {
+          method: "PATCH" as const,
+          url: "/api/v1/notifications/inbox/read-all",
+        },
+        {
+          method: "DELETE" as const,
+          url: `/api/v1/notifications/inbox/${notificationId}`,
+        },
+      ];
+
+      for (const request of requests) {
+        const response = await app.inject(request);
+        expect(response.statusCode, request.url).toBe(401);
+        expect(isProblemDetails(response)).toBe(true);
+      }
+    });
+
+    it("refuses a non-User session for a mutation", async () => {
+      const app = await getTestApp();
+      const user = await createTestUser("inbox-action-business-token");
+      const stored = await RefreshSession.create({
+        accountId: user._id,
+        accountType: "user",
+        refreshSessionVersion: 0,
+        mode: "customer",
+        expiresAt: new Date(Date.now() + 60_000),
+      });
+      const token = app.jwt.sign({
+        id: user._id.toString(),
+        email: user.personalDetails.email,
+        type: "business",
+        role: "Tenant",
+        sessionId: stored._id.toString(),
+      });
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/notifications/inbox/${new Types.ObjectId()}/read`,
+        headers: { authorization: `Bearer ${token}` },
+      });
+
+      expect(response.statusCode).toBe(401);
+      expect(isProblemDetails(response)).toBe(true);
+    });
+
+    it("marks only the caller's entry read and is idempotent", async () => {
+      const app = await getTestApp();
+      const caller = await createTestUser("inbox-mark-caller");
+      const other = await createTestUser("inbox-mark-other");
+      const [notification] = await seedNotifications([
+        {
+          _id: new Types.ObjectId("000000000000000000000031"),
+          businessId: new Types.ObjectId(),
+          message: "Mark read",
+          createdAt: new Date("2026-05-01T12:00:00.000Z"),
+        },
+      ]);
+
+      await User.updateOne(
+        { _id: caller._id },
+        {
+          $set: {
+            notifications: [
+              {
+                notificationId: notification._id,
+                readFlag: false,
+                deletedFlag: false,
+              },
+            ],
+          },
+        },
+      );
+      await User.updateOne(
+        { _id: other._id },
+        {
+          $set: {
+            notifications: [
+              {
+                notificationId: notification._id,
+                readFlag: false,
+                deletedFlag: false,
+              },
+            ],
+          },
+        },
+      );
+
+      const headers = { authorization: await tokenFor(caller) };
+      const first = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/notifications/inbox/${notification._id}/read`,
+        headers,
+      });
+      expect(first.statusCode).toBe(200);
+      expect(first.json()).toEqual({
+        notificationId: notification._id.toString(),
+        read: true,
+      });
+
+      const second = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/notifications/inbox/${notification._id}/read`,
+        headers,
+      });
+      expect(second.statusCode).toBe(200);
+
+      const callerEntry = await User.findById(caller._id).lean();
+      expect(callerEntry?.notifications?.[0]?.readFlag).toBe(true);
+      expect(callerEntry?.notifications?.[0]?.deletedFlag).toBe(false);
+
+      const otherEntry = await User.findById(other._id).lean();
+      expect(otherEntry?.notifications?.[0]?.readFlag).toBe(false);
+
+      const storedNotification = await Notification.findById(notification._id)
+        .setOptions({ includeDeleted: true })
+        .lean();
+      expect(storedNotification?.deleted).not.toBe(true);
+      expect(storedNotification?.message).toBe("Mark read");
+    });
+
+    it("returns the same not-found problem for an entry outside the caller's inbox", async () => {
+      const app = await getTestApp();
+      const caller = await createTestUser("inbox-mark-outsider");
+      const other = await createTestUser("inbox-mark-owner");
+      const [notification] = await seedNotifications([
+        {
+          _id: new Types.ObjectId("000000000000000000000032"),
+          businessId: new Types.ObjectId(),
+          message: "Not the caller's",
+          createdAt: new Date("2026-05-02T12:00:00.000Z"),
+        },
+      ]);
+
+      await User.updateOne(
+        { _id: other._id },
+        {
+          $set: {
+            notifications: [
+              {
+                notificationId: notification._id,
+                readFlag: false,
+                deletedFlag: false,
+              },
+            ],
+          },
+        },
+      );
+
+      const headers = { authorization: await tokenFor(caller) };
+      const existingElsewhere = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/notifications/inbox/${notification._id}/read`,
+        headers,
+      });
+      const missingEverywhere = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/notifications/inbox/${new Types.ObjectId()}/read`,
+        headers,
+      });
+
+      expect(existingElsewhere.statusCode).toBe(404);
+      expect(missingEverywhere.statusCode).toBe(404);
+      expect(isProblemDetails(existingElsewhere)).toBe(true);
+      expect(detail(existingElsewhere)).toBe(detail(missingEverywhere));
+
+      const otherEntry = await User.findById(other._id).lean();
+      expect(otherEntry?.notifications?.[0]?.readFlag).toBe(false);
+    });
+
+    it("marks all visible entries read without touching hidden, soft-deleted, or other people's entries", async () => {
+      const app = await getTestApp();
+      const caller = await createTestUser("inbox-markall-caller");
+      const other = await createTestUser("inbox-markall-other");
+      const businessId = new Types.ObjectId();
+      const base = new Date("2026-06-01T12:00:00.000Z");
+
+      const [unread, alreadyRead, hidden, softDeleted] =
+        await seedNotifications([
+          {
+            _id: new Types.ObjectId("000000000000000000000041"),
+            businessId,
+            message: "Visible unread",
+            createdAt: base,
+          },
+          {
+            _id: new Types.ObjectId("000000000000000000000042"),
+            businessId,
+            message: "Visible read",
+            createdAt: new Date(base.getTime() + 1_000),
+          },
+          {
+            _id: new Types.ObjectId("000000000000000000000043"),
+            businessId,
+            message: "Hidden unread",
+            createdAt: new Date(base.getTime() + 2_000),
+          },
+          {
+            _id: new Types.ObjectId("000000000000000000000044"),
+            businessId,
+            message: "Soft-deleted unread",
+            createdAt: new Date(base.getTime() + 3_000),
+            deleted: true,
+          },
+        ]);
+
+      await User.updateOne(
+        { _id: caller._id },
+        {
+          $set: {
+            notifications: [
+              {
+                notificationId: unread._id,
+                readFlag: false,
+                deletedFlag: false,
+              },
+              {
+                notificationId: alreadyRead._id,
+                readFlag: true,
+                deletedFlag: false,
+              },
+              {
+                notificationId: hidden._id,
+                readFlag: false,
+                deletedFlag: true,
+              },
+              {
+                notificationId: softDeleted._id,
+                readFlag: false,
+                deletedFlag: false,
+              },
+            ],
+          },
+        },
+      );
+      await User.updateOne(
+        { _id: other._id },
+        {
+          $set: {
+            notifications: [
+              {
+                notificationId: unread._id,
+                readFlag: false,
+                deletedFlag: false,
+              },
+            ],
+          },
+        },
+      );
+
+      const headers = { authorization: await tokenFor(caller) };
+      const first = await app.inject({
+        method: "PATCH",
+        url: "/api/v1/notifications/inbox/read-all",
+        headers,
+      });
+      expect(first.statusCode).toBe(200);
+      expect(first.json()).toEqual({ unreadCount: 0 });
+
+      const second = await app.inject({
+        method: "PATCH",
+        url: "/api/v1/notifications/inbox/read-all",
+        headers,
+      });
+      expect(second.statusCode).toBe(200);
+      expect(second.json()).toEqual({ unreadCount: 0 });
+
+      const callerEntries = (await User.findById(caller._id).lean())
+        ?.notifications as Array<{
+        notificationId: Types.ObjectId;
+        readFlag: boolean;
+        deletedFlag: boolean;
+      }>;
+      const byId = (id: Types.ObjectId) =>
+        callerEntries.find((entry) => String(entry.notificationId) === String(id));
+
+      expect(byId(unread._id)?.readFlag).toBe(true);
+      expect(byId(alreadyRead._id)?.readFlag).toBe(true);
+      expect(byId(hidden._id)?.readFlag).toBe(false);
+      expect(byId(hidden._id)?.deletedFlag).toBe(true);
+      expect(byId(softDeleted._id)?.readFlag).toBe(false);
+
+      const otherEntry = await User.findById(other._id).lean();
+      expect(otherEntry?.notifications?.[0]?.readFlag).toBe(false);
+
+      const inbox = await app.inject({
+        method: "GET",
+        url: "/api/v1/notifications/inbox",
+        headers,
+      });
+      expect(inbox.json().unreadCount).toBe(0);
+
+      for (const notification of [unread, alreadyRead, hidden]) {
+        const stored = await Notification.findById(notification._id)
+          .setOptions({ includeDeleted: true })
+          .select("deleted message")
+          .lean();
+        expect(stored?.deleted).not.toBe(true);
+        expect(stored?.message).toBe(notification.message);
+      }
+      const storedSoftDeleted = await Notification.findById(softDeleted._id)
+        .setOptions({ includeDeleted: true })
+        .select("deleted message")
+        .lean();
+      expect(storedSoftDeleted?.deleted).toBe(true);
+      expect(storedSoftDeleted?.message).toBe("Soft-deleted unread");
+    });
+
+    it("hides only the caller's entry, preserves the notification, and is idempotent", async () => {
+      const app = await getTestApp();
+      const caller = await createTestUser("inbox-hide-caller");
+      const other = await createTestUser("inbox-hide-other");
+      const [notification] = await seedNotifications([
+        {
+          _id: new Types.ObjectId("000000000000000000000051"),
+          businessId: new Types.ObjectId(),
+          message: "Hide me",
+          createdAt: new Date("2026-07-01T12:00:00.000Z"),
+        },
+      ]);
+
+      for (const user of [caller, other]) {
+        await User.updateOne(
+          { _id: user._id },
+          {
+            $set: {
+              notifications: [
+                {
+                  notificationId: notification._id,
+                  readFlag: false,
+                  deletedFlag: false,
+                },
+              ],
+            },
+          },
+        );
+      }
+
+      const headers = { authorization: await tokenFor(caller) };
+      const first = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/notifications/inbox/${notification._id}`,
+        headers,
+      });
+      expect(first.statusCode).toBe(200);
+      expect(first.json()).toEqual({
+        notificationId: notification._id.toString(),
+        hidden: true,
+      });
+
+      const second = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/notifications/inbox/${notification._id}`,
+        headers,
+      });
+      expect(second.statusCode).toBe(200);
+
+      const callerEntry = await User.findById(caller._id).lean();
+      expect(callerEntry?.notifications?.[0]?.deletedFlag).toBe(true);
+      expect(callerEntry?.notifications?.[0]?.readFlag).toBe(true);
+
+      const otherEntry = await User.findById(other._id).lean();
+      expect(otherEntry?.notifications?.[0]?.deletedFlag).toBe(false);
+      expect(otherEntry?.notifications?.[0]?.readFlag).toBe(false);
+
+      const storedNotification = await Notification.findById(notification._id)
+        .setOptions({ includeDeleted: true })
+        .lean();
+      expect(storedNotification).toBeTruthy();
+      expect(storedNotification?.deleted).not.toBe(true);
+
+      const inbox = await app.inject({
+        method: "GET",
+        url: "/api/v1/notifications/inbox",
+        headers,
+      });
+      expect(inbox.json().items).toEqual([]);
+      expect(inbox.json().unreadCount).toBe(0);
+    });
+
+    it("returns a not-found problem when hiding an entry outside the caller's inbox", async () => {
+      const app = await getTestApp();
+      const caller = await createTestUser("inbox-hide-outsider");
+      const other = await createTestUser("inbox-hide-owner");
+      const [notification] = await seedNotifications([
+        {
+          _id: new Types.ObjectId("000000000000000000000052"),
+          businessId: new Types.ObjectId(),
+          message: "Not the caller's to hide",
+          createdAt: new Date("2026-07-02T12:00:00.000Z"),
+        },
+      ]);
+
+      await User.updateOne(
+        { _id: other._id },
+        {
+          $set: {
+            notifications: [
+              {
+                notificationId: notification._id,
+                readFlag: false,
+                deletedFlag: false,
+              },
+            ],
+          },
+        },
+      );
+
+      const headers = { authorization: await tokenFor(caller) };
+      const existingElsewhere = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/notifications/inbox/${notification._id}`,
+        headers,
+      });
+      const missingEverywhere = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/notifications/inbox/${new Types.ObjectId()}`,
+        headers,
+      });
+
+      expect(existingElsewhere.statusCode).toBe(404);
+      expect(missingEverywhere.statusCode).toBe(404);
+      expect(isProblemDetails(existingElsewhere)).toBe(true);
+      expect(detail(existingElsewhere)).toBe(detail(missingEverywhere));
+
+      const otherEntry = await User.findById(other._id).lean();
+      expect(otherEntry?.notifications?.[0]?.deletedFlag).toBe(false);
+      expect(otherEntry?.notifications?.[0]?.readFlag).toBe(false);
+    });
+  });
+
+  describe("removed user-scoped notification routes", () => {
+    it("returns 404 for the user-id inbox listing route", async () => {
+      const app = await getTestApp();
+      const caller = await createTestUser("inbox-removed-list");
 
       const response = await app.inject({
         method: "GET",
         url: `/api/v1/notifications/user/${caller._id.toString()}`,
+      });
+
+      expect(response.statusCode).toBe(404);
+    });
+
+    it("returns 404 for the user-scoped read flag route", async () => {
+      const app = await getTestApp();
+      const caller = await createTestUser("inbox-removed-read");
+      const notificationId = new Types.ObjectId().toString();
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/users/${caller._id.toString()}/updateReadFlag/${notificationId}`,
+      });
+
+      expect(response.statusCode).toBe(404);
+    });
+
+    it("returns 404 for the user-scoped mark-deleted route", async () => {
+      const app = await getTestApp();
+      const caller = await createTestUser("inbox-removed-hide");
+      const notificationId = new Types.ObjectId().toString();
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/users/${caller._id.toString()}/markNotificationAsDeleted`,
+        payload: { notificationId },
       });
 
       expect(response.statusCode).toBe(404);

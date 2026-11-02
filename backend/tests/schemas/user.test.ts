@@ -1,14 +1,11 @@
 import { describe, it, expect } from "vitest";
 
 import {
-  markNotificationDeletedBodySchema,
   updateUserBodySchema,
   userIdParamsSchema,
-  userNotificationParamsSchema,
 } from "restaurant-pos-packages/schemas/user";
 
 const VALID_ID = "507f1f77bcf86cd799439011";
-const OTHER_ID = "507f191e810c19729de860ea";
 
 const validAddress = {
   country: "USA",
@@ -151,7 +148,7 @@ describe("updateUserBodySchema", () => {
   });
 });
 
-describe("user path params and notification bodies", () => {
+describe("user path params", () => {
   it("userIdParamsSchema accepts a valid ObjectId and rejects a malformed one", () => {
     expect(userIdParamsSchema.safeParse({ userId: VALID_ID }).success).toBe(
       true,
@@ -161,33 +158,6 @@ describe("user path params and notification bodies", () => {
     );
     expect(
       userIdParamsSchema.safeParse({ userId: VALID_ID, extra: "x" }).success,
-    ).toBe(false);
-  });
-
-  it("markNotificationDeletedBodySchema requires an ObjectId notificationId", () => {
-    expect(
-      markNotificationDeletedBodySchema.safeParse({ notificationId: VALID_ID })
-        .success,
-    ).toBe(true);
-    expect(
-      markNotificationDeletedBodySchema.safeParse({ notificationId: "nope" })
-        .success,
-    ).toBe(false);
-    expect(markNotificationDeletedBodySchema.safeParse({}).success).toBe(false);
-  });
-
-  it("userNotificationParamsSchema validates both ids", () => {
-    expect(
-      userNotificationParamsSchema.safeParse({
-        userId: VALID_ID,
-        notificationId: OTHER_ID,
-      }).success,
-    ).toBe(true);
-    expect(
-      userNotificationParamsSchema.safeParse({
-        userId: "nope",
-        notificationId: OTHER_ID,
-      }).success,
     ).toBe(false);
   });
 });
