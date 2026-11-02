@@ -318,22 +318,25 @@ describe("App public routing (Phase 1.5.1)", () => {
     ).toBeInTheDocument();
   });
 
-  it("sends the retired business registration route to plain signup", async () => {
-    await renderWithI18n(
-      <MemoryRouter initialEntries={["/business/register"]}>
-        <LocationProbe />
-        <AppRoutes />
-      </MemoryRouter>,
-    );
+  it.each(["/business/register", "/business/signup"])(
+    "sends the retired %s route to plain signup",
+    async (entry) => {
+      await renderWithI18n(
+        <MemoryRouter initialEntries={[entry]}>
+          <LocationProbe />
+          <AppRoutes />
+        </MemoryRouter>,
+      );
 
-    expect(
-      await screen.findByRole("heading", { name: /create account/i }),
-    ).toBeInTheDocument();
-    expect(screen.getByTestId("location")).toHaveTextContent(/^\/signup$/);
-    expect(
-      screen.queryByRole("heading", { name: /register your business/i }),
-    ).not.toBeInTheDocument();
-  });
+      expect(
+        await screen.findByRole("heading", { name: /create account/i }),
+      ).toBeInTheDocument();
+      expect(screen.getByTestId("location")).toHaveTextContent(/^\/signup$/);
+      expect(
+        screen.queryByRole("heading", { name: /register your business/i }),
+      ).not.toBeInTheDocument();
+    },
+  );
 
   it("renders ConfirmEmailChangePage for `/confirm-email-change`", async () => {
     await renderWithI18n(
