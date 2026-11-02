@@ -13,6 +13,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { Types } from "mongoose";
 import { getTestApp } from "../setup.ts";
+import { injectWithRouteAuth } from "../helpers/auth.ts";
 import SalesPoint from "../../src/models/salesPoint.ts";
 import { createTestBusiness } from "../helpers/fixtures.ts";
 
@@ -68,7 +69,7 @@ describe("SalesPoints Routes", () => {
         salesPointType: "table",
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/salesPoints",
       });
@@ -83,7 +84,7 @@ describe("SalesPoints Routes", () => {
     it("returns a not-found problem when no sales points exist", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/salesPoints",
       });
@@ -95,7 +96,7 @@ describe("SalesPoints Routes", () => {
     it("returns a validation problem for an invalid includeDeleted query value", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/salesPoints?includeDeleted=maybe",
       });
@@ -113,7 +114,7 @@ describe("SalesPoints Routes", () => {
     it("returns a validation problem for missing required fields", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/salesPoints",
         payload: {},
@@ -131,7 +132,7 @@ describe("SalesPoints Routes", () => {
     it("returns a validation problem for an invalid businessId", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/salesPoints",
         payload: {
@@ -149,7 +150,7 @@ describe("SalesPoints Routes", () => {
     it("returns a validation problem for an invalid salesPointType", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/salesPoints",
         payload: {
@@ -170,7 +171,7 @@ describe("SalesPoints Routes", () => {
     it("rejects the server-owned qrCode as an unknown key", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/salesPoints",
         payload: {
@@ -192,7 +193,7 @@ describe("SalesPoints Routes", () => {
         salesPointType: "table",
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/salesPoints",
         payload: {
@@ -214,7 +215,7 @@ describe("SalesPoints Routes", () => {
         salesPointType: "delivery",
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/salesPoints",
         payload: {
@@ -233,7 +234,7 @@ describe("SalesPoints Routes", () => {
     it("creates a delivery sales point and normalizes the type", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/salesPoints",
         payload: {
@@ -265,7 +266,7 @@ describe("SalesPoints Routes", () => {
         salesPointType: "table",
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/salesPoints/${salesPoint._id}`,
       });
@@ -278,7 +279,7 @@ describe("SalesPoints Routes", () => {
     it("returns a validation problem for an invalid ID format", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/salesPoints/invalid-id",
       });
@@ -295,7 +296,7 @@ describe("SalesPoints Routes", () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/salesPoints/${fakeId}`,
       });
@@ -309,7 +310,7 @@ describe("SalesPoints Routes", () => {
     it("returns a validation problem for an invalid salesPointId", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: "/api/v1/salesPoints/invalid-id",
         payload: { salesPointName: "Updated Name" },
@@ -327,7 +328,7 @@ describe("SalesPoints Routes", () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/salesPoints/${fakeId}`,
         payload: { salesPointName: "Updated Name" },
@@ -346,7 +347,7 @@ describe("SalesPoints Routes", () => {
         salesPointType: "table",
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/salesPoints/${salesPoint._id}`,
         payload: { salesPointName: "Updated Table" },
@@ -374,7 +375,7 @@ describe("SalesPoints Routes", () => {
         salesPointType: "table",
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/salesPoints/${salesPoint._id}`,
         payload: { selfOrdering: true },
@@ -401,7 +402,7 @@ describe("SalesPoints Routes", () => {
         salesPointType: "table",
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/salesPoints/${salesPointB._id}`,
         payload: { salesPointName: "Table A" },
@@ -416,7 +417,7 @@ describe("SalesPoints Routes", () => {
     it("returns a validation problem for an invalid salesPointId", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "DELETE",
         url: "/api/v1/salesPoints/invalid-id",
       });
@@ -433,7 +434,7 @@ describe("SalesPoints Routes", () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "DELETE",
         url: `/api/v1/salesPoints/${fakeId}`,
       });
@@ -451,7 +452,7 @@ describe("SalesPoints Routes", () => {
         salesPointType: "table",
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "DELETE",
         url: `/api/v1/salesPoints/${salesPoint._id}`,
       });
@@ -483,7 +484,7 @@ describe("SalesPoints Routes", () => {
       const app = await getTestApp();
       const salesPointName = `Table QR ${Date.now()}`;
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/salesPoints",
         payload: {
@@ -508,7 +509,7 @@ describe("SalesPoints Routes", () => {
       const app = await getTestApp();
       const salesPointName = `Delivery ${Date.now()}`;
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/salesPoints",
         payload: {
@@ -533,7 +534,7 @@ describe("SalesPoints Routes", () => {
       const salesPointName = `ToDelete ${Date.now()}`;
 
       // First create a sales point with QR code
-      const createResponse = await app.inject({
+      const createResponse = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/salesPoints",
         payload: {
@@ -551,7 +552,7 @@ describe("SalesPoints Routes", () => {
       expect(salesPoint?.qrCode).toContain("cloudinary.com");
 
       // Delete the sales point
-      const deleteResponse = await app.inject({
+      const deleteResponse = await injectWithRouteAuth(app, {
         method: "DELETE",
         url: `/api/v1/salesPoints/${salesPoint?._id}`,
       });

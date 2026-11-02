@@ -3,9 +3,12 @@
  */
 
 import type { FastifyInstance } from "fastify";
+import type { InjectOptions, Response as InjectResponse } from "light-my-request";
+import { Types } from "mongoose";
 import bcrypt from "bcrypt";
 import User from "../../src/models/user.ts";
 import Employee from "../../src/models/employee.ts";
+import { generateTestToken } from "../setup.ts";
 
 export interface TestUserCredentials {
   email: string;
@@ -89,4 +92,35 @@ export async function loginAsUser(
  */
 export function authHeader(token: string): { Authorization: string } {
   return { Authorization: `Bearer ${token}` };
+}
+
+/**
+ * A live User session for legacy route tests that exercise handler behaviour
+ * rather than authentication. The v1 route root now denies anonymous requests,
+ * so these suites supply a session unless they are asserting a refusal.
+ *
+ * The id may not belong to a User document; access-token acceptance permits a
+ * missing account so domain routes can answer their own not-found outcome.
+ */
+export async function routeTestAuthorization(): Promise<string> {
+  return generateTestToken({
+    id: new Types.ObjectId().toString(),
+    email: `route-test-${new Types.ObjectId().toString()}@test.com`,
+    type: "user",
+    role: "Customer",
+  });
+}
+
+/** `app.inject` with a live User session unless the request already carries one. */
+export async function injectWithRouteAuth(
+  app: FastifyInstance,
+  options: InjectOptions,
+): Promise<InjectResponse> {
+  const headers: Record<string, string> = {
+    ...(options.headers as Record<string, string> | undefined),
+  };
+  if (!headers.authorization) {
+    headers.authorization = await routeTestAuthorization();
+  }
+  return app.inject({ ...options, headers });
 }

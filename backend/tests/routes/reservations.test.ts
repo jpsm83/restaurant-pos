@@ -11,6 +11,7 @@
 import { describe, it, expect } from "vitest";
 import { Types } from "mongoose";
 import { getTestApp, generateTestToken } from "../setup.ts";
+import { injectWithRouteAuth } from "../helpers/auth.ts";
 import Reservation from "../../src/models/reservation.ts";
 import { createTestBusiness as createCompanyAwareBusiness } from "../helpers/fixtures.ts";
 import SalesPoint from "../../src/models/salesPoint.ts";
@@ -87,7 +88,7 @@ describe("Reservations Routes", () => {
       await createTestReservation(business._id as Types.ObjectId);
       await createTestReservation(business._id as Types.ObjectId, { deleted: true });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/reservations",
       });
@@ -104,7 +105,7 @@ describe("Reservations Routes", () => {
       await createTestReservation(business._id as Types.ObjectId);
       await createTestReservation(business._id as Types.ObjectId, { deleted: true });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/reservations?includeDeleted=true",
       });
@@ -115,7 +116,7 @@ describe("Reservations Routes", () => {
     it("returns a not-found problem when no reservations exist", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/reservations",
       });
@@ -127,7 +128,7 @@ describe("Reservations Routes", () => {
     it("returns a validation problem for an invalid businessId filter", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/reservations?businessId=invalid-id",
       });
@@ -143,7 +144,7 @@ describe("Reservations Routes", () => {
     it("returns a validation problem for an invalid status filter", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/reservations?status=Bogus",
       });
@@ -157,7 +158,7 @@ describe("Reservations Routes", () => {
     it("returns a bad-request problem for an invalid date range", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/reservations?startDate=2024-12-31&endDate=2024-01-01",
       });
@@ -171,7 +172,7 @@ describe("Reservations Routes", () => {
     it("rejects an unknown query key", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/reservations?limit=10",
       });
@@ -201,7 +202,7 @@ describe("Reservations Routes", () => {
     it("returns a validation problem for missing required fields", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/reservations",
         headers: { authorization: await userToken() },
@@ -220,7 +221,7 @@ describe("Reservations Routes", () => {
     it("returns a validation problem for an invalid businessId", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/reservations",
         headers: { authorization: await userToken() },
@@ -243,7 +244,7 @@ describe("Reservations Routes", () => {
       const app = await getTestApp();
       const business = await createTestBusiness();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/reservations",
         headers: { authorization: await userToken() },
@@ -266,7 +267,7 @@ describe("Reservations Routes", () => {
       const app = await getTestApp();
       const business = await createTestBusiness();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/reservations",
         headers: { authorization: await userToken() },
@@ -288,7 +289,7 @@ describe("Reservations Routes", () => {
       const app = await getTestApp();
       const business = await createTestBusiness();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/reservations",
         headers: { authorization: await userToken() },
@@ -308,7 +309,7 @@ describe("Reservations Routes", () => {
     it("returns a validation problem for an invalid ID", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/reservations/invalid-id",
       });
@@ -325,7 +326,7 @@ describe("Reservations Routes", () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/reservations/${fakeId}`,
       });
@@ -341,7 +342,7 @@ describe("Reservations Routes", () => {
         business._id as Types.ObjectId,
       );
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/reservations/${reservation._id}`,
       });
@@ -358,7 +359,7 @@ describe("Reservations Routes", () => {
         business._id as Types.ObjectId,
         { deleted: true },
       );
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/reservations/${reservation._id}`,
       });
@@ -373,7 +374,7 @@ describe("Reservations Routes", () => {
         business._id as Types.ObjectId,
         { deleted: true },
       );
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/reservations/${reservation._id}?includeDeleted=true`,
       });
@@ -402,7 +403,7 @@ describe("Reservations Routes", () => {
     it("returns a validation problem for an invalid reservationId", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: "/api/v1/reservations/invalid-id",
         headers: { authorization: await userToken() },
@@ -420,7 +421,7 @@ describe("Reservations Routes", () => {
     it("returns a validation problem for an invalid status value", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/reservations/${new Types.ObjectId()}`,
         headers: { authorization: await userToken() },
@@ -436,7 +437,7 @@ describe("Reservations Routes", () => {
     it("returns a not-found problem for a non-existent reservation", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/reservations/${new Types.ObjectId()}`,
         headers: { authorization: await userToken() },
@@ -450,7 +451,7 @@ describe("Reservations Routes", () => {
     it("rejects an unknown key", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/reservations/${new Types.ObjectId()}`,
         headers: { authorization: await userToken() },
@@ -463,7 +464,7 @@ describe("Reservations Routes", () => {
     it("rejects a client-supplied salesInstanceId (server-owned)", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/reservations/${new Types.ObjectId()}`,
         headers: { authorization: await userToken() },
@@ -485,7 +486,7 @@ describe("Reservations Routes", () => {
     it("returns a validation problem for an invalid ID", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "DELETE",
         url: "/api/v1/reservations/invalid-id",
       });
@@ -502,7 +503,7 @@ describe("Reservations Routes", () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "DELETE",
         url: `/api/v1/reservations/${fakeId}`,
       });
@@ -518,7 +519,7 @@ describe("Reservations Routes", () => {
         business._id as Types.ObjectId,
       );
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "DELETE",
         url: `/api/v1/reservations/${reservation._id}`,
       });
@@ -540,7 +541,7 @@ describe("Reservations Routes", () => {
         business._id as Types.ObjectId,
         { deleted: true },
       );
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "DELETE",
         url: `/api/v1/reservations/${reservation._id}`,
       });
@@ -553,7 +554,7 @@ describe("Reservations Routes", () => {
     it("returns a validation problem for an invalid businessId", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/reservations/business/invalid-id",
       });
@@ -570,7 +571,7 @@ describe("Reservations Routes", () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/reservations/business/${fakeId}`,
       });
@@ -583,7 +584,7 @@ describe("Reservations Routes", () => {
       const app = await getTestApp();
       const business = await createTestBusiness();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/reservations/business/${business._id}?startDate=2024-12-31&endDate=2024-01-01`,
       });
@@ -598,7 +599,7 @@ describe("Reservations Routes", () => {
       const app = await getTestApp();
       const business = await createTestBusiness();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/reservations/business/${business._id}?status=Bogus`,
       });
@@ -615,7 +616,7 @@ describe("Reservations Routes", () => {
       await createTestReservation(business._id as Types.ObjectId);
       await createTestReservation(business._id as Types.ObjectId, { deleted: true });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/reservations/business/${business._id}`,
       });
@@ -632,7 +633,7 @@ describe("Reservations Routes", () => {
       await createTestReservation(business._id as Types.ObjectId);
       await createTestReservation(business._id as Types.ObjectId, { deleted: true });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/reservations/business/${business._id}?includeDeleted=true`,
       });
@@ -688,7 +689,7 @@ describe("Reservations Routes", () => {
       const futureDate = new Date();
       futureDate.setDate(futureDate.getDate() + 7);
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/reservations",
         headers: { authorization: token },
@@ -774,7 +775,7 @@ describe("Reservations Routes", () => {
       const futureDate = new Date();
       futureDate.setDate(futureDate.getDate() + 7);
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/reservations",
         headers: { authorization: token },
@@ -858,7 +859,7 @@ describe("Reservations Routes", () => {
         status: "Pending",
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/reservations/${reservation._id}`,
         headers: { authorization: token },
@@ -911,7 +912,7 @@ describe("Reservations Routes", () => {
         deletedAt: new Date(),
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/reservations/${reservation._id}`,
         headers: { authorization: token },
@@ -938,7 +939,7 @@ describe("Reservations Routes", () => {
         status: "Completed",
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/reservations/${reservation._id}`,
         headers: { authorization: token },

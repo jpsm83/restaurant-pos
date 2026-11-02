@@ -10,6 +10,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { Types } from "mongoose";
 import { getTestApp, generateTestToken } from "../setup.ts";
+import { injectWithRouteAuth } from "../helpers/auth.ts";
 import Purchase from "../../src/models/purchase.ts";
 import Supplier from "../../src/models/supplier.ts";
 import SupplierGood from "../../src/models/supplierGood.ts";
@@ -162,7 +163,7 @@ describe("Purchases Routes", () => {
         ],
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/purchases",
       });
@@ -176,7 +177,7 @@ describe("Purchases Routes", () => {
     it("returns a problem-details 404 when no purchases exist", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/purchases",
       });
@@ -189,7 +190,7 @@ describe("Purchases Routes", () => {
     it("returns a problem-details 400 for an invalid date range", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/purchases?startDate=2024-12-31&endDate=2024-01-01",
       });
@@ -202,7 +203,7 @@ describe("Purchases Routes", () => {
     it("returns a validation problem for a malformed date", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/purchases?startDate=not-a-date",
       });
@@ -217,7 +218,7 @@ describe("Purchases Routes", () => {
     it("returns a validation problem for missing required fields", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/purchases",
         payload: { supplierId: supplierId.toString() },
@@ -239,7 +240,7 @@ describe("Purchases Routes", () => {
     it("returns a validation problem for an invalid businessId", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/purchases",
         payload: {
@@ -260,7 +261,7 @@ describe("Purchases Routes", () => {
     it("returns a problem-details 400 for one time purchase without comment", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/purchases",
         payload: {
@@ -288,7 +289,7 @@ describe("Purchases Routes", () => {
       const app = await getTestApp();
 
       for (const field of ["totalAmount", "oneTimePurchase", "documentsUrl"]) {
-        const response = await app.inject({
+        const response = await injectWithRouteAuth(app, {
           method: "POST",
           url: "/api/v1/purchases",
           payload: {
@@ -322,7 +323,7 @@ describe("Purchases Routes", () => {
         purchaseInventoryItems: [],
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/purchases/${purchase._id}`,
       });
@@ -335,7 +336,7 @@ describe("Purchases Routes", () => {
     it("returns a validation problem for an invalid ID format", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/purchases/invalid-id",
       });
@@ -349,7 +350,7 @@ describe("Purchases Routes", () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/purchases/${fakeId}`,
       });
@@ -365,7 +366,7 @@ describe("Purchases Routes", () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/purchases/${fakeId}`,
         payload: multipart({ title: "Updated" }),
@@ -381,7 +382,7 @@ describe("Purchases Routes", () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/purchases/${fakeId}`,
         payload: multipart({
@@ -410,7 +411,7 @@ describe("Purchases Routes", () => {
         purchaseInventoryItems: [],
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/purchases/${purchase._id}`,
         payload: multipart({
@@ -443,7 +444,7 @@ describe("Purchases Routes", () => {
         purchaseInventoryItems: [],
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/purchases/${purchase._id}`,
         payload: {
@@ -463,7 +464,7 @@ describe("Purchases Routes", () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/purchases/${fakeId}`,
         payload: {
@@ -482,7 +483,7 @@ describe("Purchases Routes", () => {
     it("returns a validation problem for an invalid purchaseId", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "DELETE",
         url: "/api/v1/purchases/invalid-id",
       });
@@ -511,26 +512,26 @@ describe("Purchases Routes", () => {
         ],
       });
 
-      const removed = await app.inject({
+      const removed = await injectWithRouteAuth(app, {
         method: "DELETE",
         url: `/api/v1/purchases/${purchase._id}`,
       });
       expect(removed.statusCode).toBe(200);
 
-      const hidden = await app.inject({
+      const hidden = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/purchases/${purchase._id}`,
       });
       expect(hidden.statusCode).toBe(404);
       expect(isProblemDetails(hidden)).toBe(true);
 
-      const listed = await app.inject({
+      const listed = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/purchases",
       });
       expect(listed.statusCode).toBe(404);
 
-      const shown = await app.inject({
+      const shown = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/purchases/${purchase._id}?includeDeleted=true`,
       });
@@ -542,7 +543,7 @@ describe("Purchases Routes", () => {
       });
       expect(shown.json().deletedAt).toBeTruthy();
 
-      const listedDeleted = await app.inject({
+      const listedDeleted = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/purchases?includeDeleted=true",
       });
@@ -553,7 +554,7 @@ describe("Purchases Routes", () => {
         ]),
       );
 
-      const again = await app.inject({
+      const again = await injectWithRouteAuth(app, {
         method: "DELETE",
         url: `/api/v1/purchases/${purchase._id}`,
       });
@@ -568,7 +569,7 @@ describe("Purchases Routes", () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/purchases/${fakeId}/addSupplierGood`,
         payload: {
@@ -588,7 +589,7 @@ describe("Purchases Routes", () => {
     it("returns a validation problem for an invalid purchaseId", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: "/api/v1/purchases/invalid-id/deleteSupplierGood",
         payload: { purchaseInventoryItemsId: new Types.ObjectId().toString() },
@@ -624,7 +625,7 @@ describe("Purchases Routes", () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/purchases/${fakeId}/editSupplierGood`,
         payload: {
@@ -653,7 +654,7 @@ describe("Purchases Routes", () => {
         purchaseInventoryItems: [],
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/purchases/supplier/${supplierId}`,
       });
@@ -667,7 +668,7 @@ describe("Purchases Routes", () => {
     it("returns a validation problem for an invalid supplierId", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/purchases/supplier/invalid-id",
       });
@@ -681,7 +682,7 @@ describe("Purchases Routes", () => {
       const app = await getTestApp();
       const otherSupplierId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/purchases/supplier/${otherSupplierId}`,
       });
@@ -706,7 +707,7 @@ describe("Purchases Routes", () => {
         purchaseInventoryItems: [],
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/purchases/user/${userId}`,
       });
@@ -720,7 +721,7 @@ describe("Purchases Routes", () => {
     it("returns a validation problem for an invalid userId", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/purchases/user/invalid-id",
       });
@@ -734,7 +735,7 @@ describe("Purchases Routes", () => {
       const app = await getTestApp();
       const otherUserId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/purchases/user/${otherUserId}`,
       });
@@ -755,7 +756,7 @@ describe("Purchases Routes", () => {
       const initialCount =
         initialInventory?.inventoryGoods?.[0]?.dynamicSystemCount ?? 0;
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/purchases",
         payload: {
@@ -813,7 +814,7 @@ describe("Purchases Routes", () => {
         ],
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/purchases",
         payload: {
@@ -875,7 +876,7 @@ describe("Purchases Routes", () => {
       const countBeforeDelete =
         beforeDelete?.inventoryGoods?.[0]?.dynamicSystemCount ?? 0;
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "DELETE",
         url: `/api/v1/purchases/${purchase._id}`,
       });
@@ -942,7 +943,7 @@ describe("Purchases Routes", () => {
         { $inc: { "inventoryGoods.$.dynamicSystemCount": 15 } },
       );
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "DELETE",
         url: `/api/v1/purchases/${purchase._id}`,
       });
@@ -978,7 +979,7 @@ describe("Purchases Routes", () => {
       const initialCount =
         initialInventory?.inventoryGoods?.[0]?.dynamicSystemCount ?? 0;
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/purchases/${purchase._id}/addSupplierGood`,
         payload: {
@@ -1080,7 +1081,7 @@ describe("Purchases Routes", () => {
       });
 
       // Edit: change quantity from 10 to 25 (difference: +15)
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/purchases/${purchase._id}/editSupplierGood`,
         headers: { authorization: token },
@@ -1166,7 +1167,7 @@ describe("Purchases Routes", () => {
         await seedEditFixture();
       const reason = "Receipt quantity was misread";
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/purchases/${purchase._id}/editSupplierGood`,
         headers: { authorization },
@@ -1246,7 +1247,7 @@ describe("Purchases Routes", () => {
         await seedEditFixture();
       const reason = "Receipt price was misread";
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/purchases/${purchase._id}/editSupplierGood`,
         headers: { authorization },
@@ -1283,7 +1284,7 @@ describe("Purchases Routes", () => {
         await seedEditFixture();
       const url = `/api/v1/purchases/${purchase._id}/editSupplierGood`;
 
-      const first = await app.inject({
+      const first = await injectWithRouteAuth(app, {
         method: "PATCH",
         url,
         headers: { authorization },
@@ -1294,7 +1295,7 @@ describe("Purchases Routes", () => {
           reason: "First correction",
         },
       });
-      const second = await app.inject({
+      const second = await injectWithRouteAuth(app, {
         method: "PATCH",
         url,
         headers: { authorization },
@@ -1351,7 +1352,7 @@ describe("Purchases Routes", () => {
         await seedEditFixture();
       const initialLine = purchase.purchaseInventoryItems?.[0];
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/purchases/${purchase._id}/editSupplierGood`,
         headers: { authorization },
@@ -1400,7 +1401,7 @@ describe("Purchases Routes", () => {
         error: "audit unavailable",
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/purchases/${purchase._id}/editSupplierGood`,
         headers: { authorization },

@@ -10,6 +10,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { Types } from "mongoose";
 import { getTestApp } from "../setup.ts";
+import { injectWithRouteAuth } from "../helpers/auth.ts";
 import WeeklyBusinessReport from "../../src/models/weeklyBusinessReport.ts";
 import DailySalesReport from "../../src/models/dailySalesReport.ts";
 import Schedule from "../../src/models/schedule.ts";
@@ -79,7 +80,7 @@ describe("WeeklyBusinessReport Routes", () => {
       const business = await createTestBusiness();
       await createTestWeeklyReport(business._id as Types.ObjectId);
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/weeklyBusinessReport",
       });
@@ -93,7 +94,7 @@ describe("WeeklyBusinessReport Routes", () => {
     it("returns 404 when no reports exist", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/weeklyBusinessReport",
       });
@@ -105,7 +106,7 @@ describe("WeeklyBusinessReport Routes", () => {
     it("returns 400 for invalid businessId filter", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/weeklyBusinessReport?businessId=invalid-id",
       });
@@ -117,7 +118,7 @@ describe("WeeklyBusinessReport Routes", () => {
     it("returns 400 for invalid week range", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/weeklyBusinessReport?startWeek=2024-12-31&endWeek=2024-01-01",
       });
@@ -129,7 +130,7 @@ describe("WeeklyBusinessReport Routes", () => {
     it("returns 400 for a malformed week date", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/weeklyBusinessReport?startWeek=not-a-date&endWeek=2024-01-07",
       });
@@ -143,7 +144,7 @@ describe("WeeklyBusinessReport Routes", () => {
       const business = await createTestBusiness();
       await createTestWeeklyReport(business._id as Types.ObjectId);
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/weeklyBusinessReport?businessId=${business._id}`,
       });
@@ -163,14 +164,14 @@ describe("WeeklyBusinessReport Routes", () => {
         deletedAt: new Date(),
       });
 
-      const activeOnly = await app.inject({
+      const activeOnly = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/weeklyBusinessReport",
       });
       const activeBody = expectProblem(activeOnly, 404, "not-found");
       expect(activeBody.detail).toContain("No weekly reports");
 
-      const includeDeleted = await app.inject({
+      const includeDeleted = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/weeklyBusinessReport?includeDeleted=true",
       });
@@ -183,7 +184,7 @@ describe("WeeklyBusinessReport Routes", () => {
     it("returns 400 for invalid ID", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/weeklyBusinessReport/invalid-id",
       });
@@ -196,7 +197,7 @@ describe("WeeklyBusinessReport Routes", () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/weeklyBusinessReport/${fakeId}`,
       });
@@ -210,7 +211,7 @@ describe("WeeklyBusinessReport Routes", () => {
       const business = await createTestBusiness();
       const report = await createTestWeeklyReport(business._id as Types.ObjectId);
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/weeklyBusinessReport/${report._id}`,
       });
@@ -230,13 +231,13 @@ describe("WeeklyBusinessReport Routes", () => {
         deletedAt: new Date(),
       });
 
-      const hidden = await app.inject({
+      const hidden = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/weeklyBusinessReport/${report._id}`,
       });
       expect(hidden.statusCode).toBe(404);
 
-      const visible = await app.inject({
+      const visible = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/weeklyBusinessReport/${report._id}?includeDeleted=true`,
       });
@@ -249,7 +250,7 @@ describe("WeeklyBusinessReport Routes", () => {
     it("returns 400 for invalid businessId", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/weeklyBusinessReport/business/invalid-id",
       });
@@ -262,7 +263,7 @@ describe("WeeklyBusinessReport Routes", () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/weeklyBusinessReport/business/${fakeId}`,
       });
@@ -275,7 +276,7 @@ describe("WeeklyBusinessReport Routes", () => {
       const app = await getTestApp();
       const business = await createTestBusiness();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/weeklyBusinessReport/business/${business._id}?startWeek=2024-12-31&endWeek=2024-01-01`,
       });
@@ -289,7 +290,7 @@ describe("WeeklyBusinessReport Routes", () => {
       const business = await createTestBusiness();
       await createTestWeeklyReport(business._id as Types.ObjectId);
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/weeklyBusinessReport/business/${business._id}`,
       });
@@ -310,13 +311,13 @@ describe("WeeklyBusinessReport Routes", () => {
         deletedAt: new Date(),
       });
 
-      const hidden = await app.inject({
+      const hidden = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/weeklyBusinessReport/business/${business._id}`,
       });
       expect(hidden.statusCode).toBe(404);
 
-      const visible = await app.inject({
+      const visible = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/weeklyBusinessReport/business/${business._id}?includeDeleted=true`,
       });
@@ -456,7 +457,7 @@ describe("WeeklyBusinessReport Routes", () => {
 
       await aggregateDailyReportsIntoWeekly(businessId, now, 1);
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/weeklyBusinessReport",
       });

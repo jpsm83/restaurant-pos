@@ -11,6 +11,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { Types } from "mongoose";
 import { generateTestToken, getTestApp } from "../setup.ts";
+import { injectWithRouteAuth } from "../helpers/auth.ts";
 import Schedule from "../../src/models/schedule.ts";
 import Employee from "../../src/models/employee.ts";
 import { createTestBusiness } from "../helpers/fixtures.ts";
@@ -114,7 +115,7 @@ describe("Schedules Routes", () => {
         deletedAt: new Date(),
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/schedules",
       });
@@ -141,7 +142,7 @@ describe("Schedules Routes", () => {
         deletedAt: new Date(),
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/schedules?includeDeleted=true",
       });
@@ -153,7 +154,7 @@ describe("Schedules Routes", () => {
     it("returns 404 when no schedules exist", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/schedules",
       });
@@ -165,7 +166,7 @@ describe("Schedules Routes", () => {
     it("returns a validation problem for an invalid includeDeleted query value", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/schedules?includeDeleted=maybe",
       });
@@ -179,7 +180,7 @@ describe("Schedules Routes", () => {
     it("returns 400 for invalid businessId", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/schedules",
         payload: {
@@ -195,7 +196,7 @@ describe("Schedules Routes", () => {
     it("returns 400 for missing date", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/schedules",
         payload: {
@@ -210,7 +211,7 @@ describe("Schedules Routes", () => {
     it("rejects server-owned fields", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/schedules",
         payload: {
@@ -228,7 +229,7 @@ describe("Schedules Routes", () => {
       const futureDate = new Date();
       futureDate.setDate(futureDate.getDate() + 30);
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/schedules",
         payload: {
@@ -253,7 +254,7 @@ describe("Schedules Routes", () => {
         weekNumber: 1,
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/schedules",
         payload: {
@@ -277,7 +278,7 @@ describe("Schedules Routes", () => {
         weekNumber: 2,
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/schedules/${schedule._id}`,
       });
@@ -290,7 +291,7 @@ describe("Schedules Routes", () => {
     it("returns 400 for invalid ID format", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/schedules/invalid-id",
       });
@@ -303,7 +304,7 @@ describe("Schedules Routes", () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/schedules/${fakeId}`,
       });
@@ -322,7 +323,7 @@ describe("Schedules Routes", () => {
         deletedAt: new Date(),
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/schedules/${schedule._id}`,
       });
@@ -341,7 +342,7 @@ describe("Schedules Routes", () => {
         deletedAt: new Date(),
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/schedules/${schedule._id}?includeDeleted=true`,
       });
@@ -355,7 +356,7 @@ describe("Schedules Routes", () => {
     it("returns 400 for invalid scheduleId", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: "/api/v1/schedules/invalid-id",
         payload: { comments: "Updated" },
@@ -374,7 +375,7 @@ describe("Schedules Routes", () => {
         weekNumber: 3,
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/schedules/${schedule._id}`,
         payload: { comments: "Updated comments" },
@@ -390,7 +391,7 @@ describe("Schedules Routes", () => {
     it("returns 400 for invalid scheduleId", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "DELETE",
         url: "/api/v1/schedules/invalid-id",
       });
@@ -403,7 +404,7 @@ describe("Schedules Routes", () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "DELETE",
         url: `/api/v1/schedules/${fakeId}`,
       });
@@ -423,7 +424,7 @@ describe("Schedules Routes", () => {
         weekNumber: 4,
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "DELETE",
         url: `/api/v1/schedules/${schedule._id}`,
       });
@@ -442,7 +443,7 @@ describe("Schedules Routes", () => {
         weekNumber: 4,
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "DELETE",
         url: `/api/v1/schedules/${schedule._id}`,
       });
@@ -467,7 +468,7 @@ describe("Schedules Routes", () => {
         deletedAt: new Date(),
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "DELETE",
         url: `/api/v1/schedules/${schedule._id}`,
       });
@@ -481,7 +482,7 @@ describe("Schedules Routes", () => {
     it("returns 400 for invalid scheduleId", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: "/api/v1/schedules/invalid-id/addEmployee",
         payload: {
@@ -505,7 +506,7 @@ describe("Schedules Routes", () => {
     it("returns 400 for invalid IDs", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/schedules/${new Types.ObjectId()}/deleteEmployee`,
         payload: {
@@ -524,7 +525,7 @@ describe("Schedules Routes", () => {
     it("returns 400 for invalid scheduleId", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: "/api/v1/schedules/invalid-id/updateEmployee",
         payload: {
@@ -555,7 +556,7 @@ describe("Schedules Routes", () => {
         role: "Waiter",
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/schedules/business/${businessId}/daily?dayKey=not-a-date`,
         headers: { authorization },
@@ -583,7 +584,7 @@ describe("Schedules Routes", () => {
         deletedAt: new Date(),
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/schedules/business/${businessId}`,
       });
@@ -610,7 +611,7 @@ describe("Schedules Routes", () => {
         deletedAt: new Date(),
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/schedules/business/${businessId}?includeDeleted=true`,
       });
@@ -622,7 +623,7 @@ describe("Schedules Routes", () => {
     it("returns 400 for invalid businessId", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/schedules/business/invalid-id",
       });
@@ -635,7 +636,7 @@ describe("Schedules Routes", () => {
       const app = await getTestApp();
       const otherBusinessId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/schedules/business/${otherBusinessId}`,
       });
@@ -649,7 +650,7 @@ describe("Schedules Routes", () => {
     it("returns 400 for invalid userId", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/schedules/user/invalid-id",
       });
@@ -682,7 +683,7 @@ describe("Schedules Routes", () => {
         },
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/schedules/user/${newUser._id}`,
       });
@@ -696,7 +697,7 @@ describe("Schedules Routes", () => {
     it("returns 404 when no schedules for user", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/schedules/user/${userId}`,
       });
@@ -728,7 +729,7 @@ describe("Schedules Routes", () => {
       const endTime = new Date(futureDate);
       endTime.setHours(17, 0, 0, 0);
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/schedules/${schedule._id}/addEmployee`,
         payload: {
@@ -777,7 +778,7 @@ describe("Schedules Routes", () => {
       const endTime = new Date(futureDate);
       endTime.setHours(17, 0, 0, 0);
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/schedules/${schedule._id}/addEmployee`,
         payload: {
@@ -820,7 +821,7 @@ describe("Schedules Routes", () => {
       const endTime = new Date(futureDate);
       endTime.setHours(17, 0, 0, 0);
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/schedules/${schedule._id}/addEmployee`,
         payload: {
@@ -877,7 +878,7 @@ describe("Schedules Routes", () => {
       });
 
       // Try to add overlapping schedule
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/schedules/${schedule._id}/addEmployee`,
         payload: {
@@ -930,7 +931,7 @@ describe("Schedules Routes", () => {
       const vacationEnd = new Date(futureDate);
       vacationEnd.setHours(23, 59, 59, 0);
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/schedules/${schedule._id}/addEmployee`,
         payload: {
@@ -957,10 +958,10 @@ describe("Schedules Routes", () => {
       url: string,
       payload: Record<string, unknown>
     ) => {
-      const first = await app.inject({ method: "PATCH", url, payload });
+      const first = await injectWithRouteAuth(app, { method: "PATCH", url, payload });
       if (first.statusCode !== 500) return first;
       // Transient in-memory Mongo transaction lock conflicts can surface as 500.
-      return app.inject({ method: "PATCH", url, payload });
+      return injectWithRouteAuth(app, { method: "PATCH", url, payload });
     };
 
     it("updates employee schedule role successfully", async () => {

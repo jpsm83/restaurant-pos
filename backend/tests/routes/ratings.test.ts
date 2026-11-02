@@ -7,6 +7,7 @@ import { describe, it, expect } from "vitest";
 import { Types } from "mongoose";
 import type { IRating } from "restaurant-pos-packages/interfaces/IRating";
 import { getTestApp, generateTestToken } from "../setup.ts";
+import { injectWithRouteAuth } from "../helpers/auth.ts";
 import { detail, isProblemDetails } from "../helpers/problemDetails.ts";
 import Rating from "../../src/models/rating.ts";
 import Business from "../../src/models/business.ts";
@@ -115,7 +116,7 @@ describe("Ratings Routes", () => {
       const user = await createTestUser();
       const auth = await authFor(user);
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/ratings",
         headers: { authorization: auth },
@@ -138,7 +139,7 @@ describe("Ratings Routes", () => {
       const user = await createTestUser();
       const auth = await authFor(user);
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/ratings",
         headers: { authorization: auth },
@@ -158,7 +159,7 @@ describe("Ratings Routes", () => {
       const user = await createTestUser();
       const auth = await authFor(user);
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/ratings",
         headers: { authorization: auth },
@@ -179,7 +180,7 @@ describe("Ratings Routes", () => {
       const user = await createTestUser();
       const auth = await authFor(user);
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/ratings",
         headers: { authorization: auth },
@@ -197,7 +198,7 @@ describe("Ratings Routes", () => {
       const user = await createTestUser();
       const auth = await authFor(user);
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/ratings",
         headers: { authorization: auth },
@@ -216,7 +217,7 @@ describe("Ratings Routes", () => {
       const user = await createTestUser();
       const auth = await authFor(user);
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/ratings",
         headers: { authorization: auth },
@@ -235,7 +236,7 @@ describe("Ratings Routes", () => {
     it("returns a validation problem for an invalid ID", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/ratings/invalid-id",
       });
@@ -250,7 +251,7 @@ describe("Ratings Routes", () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/ratings/${fakeId}`,
       });
@@ -268,7 +269,7 @@ describe("Ratings Routes", () => {
         user._id as Types.ObjectId
       );
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/ratings/${rating._id}`,
       });
@@ -284,7 +285,7 @@ describe("Ratings Routes", () => {
     it("returns a validation problem for an invalid businessId", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/ratings/business/invalid-id",
       });
@@ -299,7 +300,7 @@ describe("Ratings Routes", () => {
       const app = await getTestApp();
       const business = await createTestBusiness();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/ratings/business/${business._id}?limit=abc`,
       });
@@ -314,7 +315,7 @@ describe("Ratings Routes", () => {
       const app = await getTestApp();
       const business = await createTestBusiness();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/ratings/business/${business._id}?sort=asc`,
       });
@@ -326,7 +327,7 @@ describe("Ratings Routes", () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/ratings/business/${fakeId}`,
       });
@@ -354,20 +355,20 @@ describe("Ratings Routes", () => {
 
       await Rating.updateOne({ _id: rating._id }, { $set: stamp });
 
-      const hiddenList = await app.inject({
+      const hiddenList = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/ratings/business/${business._id}`,
       });
       expect(hiddenList.statusCode).toBe(200);
       expect(hiddenList.json()).toEqual([]);
 
-      const hiddenDetail = await app.inject({
+      const hiddenDetail = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/ratings/${rating._id}`,
       });
       expect(hiddenDetail.statusCode).toBe(404);
 
-      const visibleList = await app.inject({
+      const visibleList = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/ratings/business/${business._id}?includeDeleted=true`,
       });
@@ -377,7 +378,7 @@ describe("Ratings Routes", () => {
       expect(visibleList.json()[0].deletedAt).toBe("2026-03-01T00:00:00.000Z");
       expect(visibleList.json()[0].deletedBy).toBe(String(user._id));
 
-      const visibleDetail = await app.inject({
+      const visibleDetail = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/ratings/${rating._id}?includeDeleted=true`,
       });
@@ -393,7 +394,7 @@ describe("Ratings Routes", () => {
       const user = await createTestUser();
       await createTestRating(business._id as Types.ObjectId, user._id as Types.ObjectId);
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/ratings/business/${business._id}`,
       });
@@ -410,7 +411,7 @@ describe("Ratings Routes", () => {
       const user = await createTestUser();
       await createTestRating(business._id as Types.ObjectId, user._id as Types.ObjectId);
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/ratings/business/${business._id}?limit=5&skip=0`,
       });

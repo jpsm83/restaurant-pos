@@ -10,6 +10,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { Types } from "mongoose";
 import { getTestApp } from "../setup.ts";
+import { injectWithRouteAuth } from "../helpers/auth.ts";
 import BusinessGood from "../../src/models/businessGood.ts";
 import { createTestBusiness } from "../helpers/fixtures.ts";
 import Supplier from "../../src/models/supplier.ts";
@@ -70,7 +71,7 @@ describe("BusinessGoods Routes", () => {
         sellingPrice: 12.99,
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/businessGoods",
       });
@@ -85,7 +86,7 @@ describe("BusinessGoods Routes", () => {
     it("returns 404 when no business goods exist", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/businessGoods",
       });
@@ -98,7 +99,7 @@ describe("BusinessGoods Routes", () => {
     it("returns a problem-details 400 for an invalid includeDeleted query value", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/businessGoods?includeDeleted=maybe",
       });
@@ -123,7 +124,7 @@ describe("BusinessGoods Routes", () => {
         sellingPrice: 15.99,
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/businessGoods/${businessGood._id}`,
       });
@@ -136,7 +137,7 @@ describe("BusinessGoods Routes", () => {
     it("returns a problem-details 400 for an invalid ID format", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/businessGoods/invalid-id",
       });
@@ -152,7 +153,7 @@ describe("BusinessGoods Routes", () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/businessGoods/${fakeId}`,
       });
@@ -166,7 +167,7 @@ describe("BusinessGoods Routes", () => {
     it("creates business good with valid data", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/businessGoods",
         headers: multipartHeaders,
@@ -189,7 +190,7 @@ describe("BusinessGoods Routes", () => {
     it("returns a problem-details 400 for missing required fields", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/businessGoods",
         headers: multipartHeaders,
@@ -208,7 +209,7 @@ describe("BusinessGoods Routes", () => {
     it("returns a problem-details 400 for an invalid businessId", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/businessGoods",
         headers: multipartHeaders,
@@ -231,7 +232,7 @@ describe("BusinessGoods Routes", () => {
     it("returns a problem-details 400 for an invalid mainCategory", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/businessGoods",
         headers: multipartHeaders,
@@ -254,7 +255,7 @@ describe("BusinessGoods Routes", () => {
     it("rejects a field the DTO does not own", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/businessGoods",
         headers: multipartHeaders,
@@ -277,7 +278,7 @@ describe("BusinessGoods Routes", () => {
     it("returns a problem-details 400 for malformed JSON ingredients", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/businessGoods",
         headers: multipartHeaders,
@@ -305,7 +306,7 @@ describe("BusinessGoods Routes", () => {
     it("preserves the ingredients-XOR-setMenu rule as a post-parse 400", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/businessGoods",
         headers: multipartHeaders,
@@ -367,7 +368,7 @@ describe("BusinessGoods Routes", () => {
         allergens: ["Gluten"],
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/businessGoods",
         headers: multipartHeaders,
@@ -429,7 +430,7 @@ describe("BusinessGoods Routes", () => {
         deletedAt: new Date(),
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/businessGoods",
         headers: multipartHeaders,
@@ -481,7 +482,7 @@ describe("BusinessGoods Routes", () => {
         deletedAt: new Date(),
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/businessGoods",
         headers: multipartHeaders,
@@ -528,7 +529,7 @@ describe("BusinessGoods Routes", () => {
         )
         .join("");
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/businessGoods",
         headers: multipartHeaders,
@@ -555,7 +556,7 @@ describe("BusinessGoods Routes", () => {
         sellingPrice: 10.0,
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/businessGoods",
         headers: multipartHeaders,
@@ -580,7 +581,7 @@ describe("BusinessGoods Routes", () => {
     it("returns a problem-details 400 for an invalid businessGoodId", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: "/api/v1/businessGoods/invalid-id",
         headers: multipartHeaders,
@@ -605,7 +606,7 @@ describe("BusinessGoods Routes", () => {
         sellingPrice: 10.0,
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/businessGoods/${businessGood._id}`,
         headers: multipartHeaders,
@@ -628,7 +629,7 @@ describe("BusinessGoods Routes", () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/businessGoods/${fakeId}`,
         headers: multipartHeaders,
@@ -658,7 +659,7 @@ describe("BusinessGoods Routes", () => {
         sellingPrice: 10.0,
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/businessGoods/${businessGood._id}`,
         headers: multipartHeaders,
@@ -692,7 +693,7 @@ describe("BusinessGoods Routes", () => {
         sellingPrice: 10.0,
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/businessGoods/${businessGood._id}`,
         headers: multipartHeaders,
@@ -743,7 +744,7 @@ describe("BusinessGoods Routes", () => {
         sellingPrice: 10.0,
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/businessGoods/${businessGood._id}`,
         headers: multipartHeaders,
@@ -767,7 +768,7 @@ describe("BusinessGoods Routes", () => {
     it("returns a problem-details 400 for an invalid businessGoodId", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "DELETE",
         url: "/api/v1/businessGoods/invalid-id",
       });
@@ -797,7 +798,7 @@ describe("BusinessGoods Routes", () => {
         deletedAt: new Date(),
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "DELETE",
         url: `/api/v1/businessGoods/${component._id}`,
       });
@@ -836,7 +837,7 @@ describe("BusinessGoods Routes", () => {
         },
       ]);
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/businessGoods/business/${businessId}`,
       });
@@ -849,7 +850,7 @@ describe("BusinessGoods Routes", () => {
     it("returns a problem-details 400 for an invalid businessId", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/businessGoods/business/invalid-id",
       });
@@ -863,7 +864,7 @@ describe("BusinessGoods Routes", () => {
       const app = await getTestApp();
       const emptyBusinessId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/businessGoods/business/${emptyBusinessId}`,
       });
@@ -902,7 +903,7 @@ describe("BusinessGoods Routes", () => {
       form.append("businessId", businessId.toString());
       form.append("images", new Blob([pngBuffer], { type: "image/png" }), "product.png");
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/businessGoods",
         payload: form,
@@ -951,7 +952,7 @@ describe("BusinessGoods Routes", () => {
       form.append("sellingPrice", "12.99");
       form.append("images", new Blob([pngBuffer], { type: "image/png" }), "additional.png");
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/businessGoods/${businessGood._id}`,
         payload: form,

@@ -11,6 +11,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { Types } from "mongoose";
 import { getTestApp, generateTestToken } from "../setup.ts";
+import { injectWithRouteAuth } from "../helpers/auth.ts";
 import Inventory from "../../src/models/inventory.ts";
 import SupplierGood from "../../src/models/supplierGood.ts";
 import Supplier from "../../src/models/supplier.ts";
@@ -157,7 +158,7 @@ describe("Inventories Routes", () => {
         deletedAt: new Date(),
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/inventories",
       });
@@ -184,7 +185,7 @@ describe("Inventories Routes", () => {
         deletedAt: new Date(),
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/inventories?includeDeleted=true",
       });
@@ -196,7 +197,7 @@ describe("Inventories Routes", () => {
     it("returns a not-found problem when no inventories exist", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/inventories",
       });
@@ -208,7 +209,7 @@ describe("Inventories Routes", () => {
     it("returns a validation problem for an invalid includeDeleted query value", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/inventories?includeDeleted=maybe",
       });
@@ -238,7 +239,7 @@ describe("Inventories Routes", () => {
         ],
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/inventories/${inventory._id}`,
       });
@@ -251,7 +252,7 @@ describe("Inventories Routes", () => {
     it("returns a validation problem for an invalid ID format", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/inventories/invalid-id",
       });
@@ -268,7 +269,7 @@ describe("Inventories Routes", () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/inventories/${fakeId}`,
       });
@@ -287,7 +288,7 @@ describe("Inventories Routes", () => {
         deletedAt: new Date(),
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/inventories/${inventory._id}`,
       });
@@ -306,7 +307,7 @@ describe("Inventories Routes", () => {
         deletedAt: new Date(),
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/inventories/${inventory._id}?includeDeleted=true`,
       });
@@ -338,7 +339,7 @@ describe("Inventories Routes", () => {
         role: "Customer",
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: "/api/v1/inventories/invalid-id/close",
         headers: { authorization },
@@ -357,7 +358,7 @@ describe("Inventories Routes", () => {
     it("returns a validation problem for invalid IDs", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/inventories/invalid-id/supplierGood/invalid-id",
       });
@@ -376,7 +377,7 @@ describe("Inventories Routes", () => {
       const fakeInventoryId = new Types.ObjectId();
       const fakeSupplierGoodId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/inventories/${fakeInventoryId}/supplierGood/${fakeSupplierGoodId}`,
       });
@@ -392,7 +393,7 @@ describe("Inventories Routes", () => {
       const fakeInventoryId = new Types.ObjectId();
       const fakeSupplierGoodId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/inventories/${fakeInventoryId}/supplierGood/${fakeSupplierGoodId}/addCount`,
         payload: {},
@@ -410,7 +411,7 @@ describe("Inventories Routes", () => {
     it("returns a validation problem for invalid IDs", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: "/api/v1/inventories/invalid-id/supplierGood/invalid-id/addCount",
         payload: {
@@ -456,7 +457,7 @@ describe("Inventories Routes", () => {
         role: "Customer",
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/inventories/${new Types.ObjectId()}/supplierGood/${new Types.ObjectId()}/updateCount`,
         headers: { authorization },
@@ -561,7 +562,7 @@ describe("Inventories Routes", () => {
         await seedCountReeditFixture();
       const reasonCode = "goodsArrivedAfterCount";
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/inventories/${inventory._id}/supplierGood/${supplierGoodId}/updateCount`,
         headers: { authorization },
@@ -630,7 +631,7 @@ describe("Inventories Routes", () => {
       const { authorization, countId, inventory } =
         await seedCountReeditFixture();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/inventories/${inventory._id}/supplierGood/${supplierGoodId}/updateCount`,
         headers: { authorization },
@@ -675,7 +676,7 @@ describe("Inventories Routes", () => {
         const { authorization, countId, inventory } =
           await seedCountReeditFixture();
 
-        const response = await app.inject({
+        const response = await injectWithRouteAuth(app, {
           method: "PATCH",
           url: `/api/v1/inventories/${inventory._id}/supplierGood/${supplierGoodId}/updateCount`,
           headers: { authorization },
@@ -702,7 +703,7 @@ describe("Inventories Routes", () => {
         await seedCountReeditFixture();
       const url = `/api/v1/inventories/${inventory._id}/supplierGood/${supplierGoodId}/updateCount`;
 
-      const missingCode = await app.inject({
+      const missingCode = await injectWithRouteAuth(app, {
         method: "PATCH",
         url,
         headers: { authorization },
@@ -715,7 +716,7 @@ describe("Inventories Routes", () => {
         ]),
       );
 
-      const legacyReason = await app.inject({
+      const legacyReason = await injectWithRouteAuth(app, {
         method: "PATCH",
         url,
         headers: { authorization },
@@ -758,7 +759,7 @@ describe("Inventories Routes", () => {
         retentionClass: AUDIT_RETENTION_CLASSES.LEGAL_AND_FINANCIAL,
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/inventories/${inventory._id}/supplierGood/${supplierGoodId}/updateCount`,
         headers: { authorization },
@@ -797,7 +798,7 @@ describe("Inventories Routes", () => {
       const { authorization, countId, inventory } =
         await seedCountReeditFixture("Waiter");
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/inventories/${inventory._id}/supplierGood/${supplierGoodId}/updateCount`,
         headers: { authorization },
@@ -820,7 +821,7 @@ describe("Inventories Routes", () => {
         await seedCountReeditFixture();
       const url = `/api/v1/inventories/${inventory._id}/supplierGood/${supplierGoodId}/updateCount`;
 
-      const first = await app.inject({
+      const first = await injectWithRouteAuth(app, {
         method: "PATCH",
         url,
         headers: { authorization },
@@ -830,7 +831,7 @@ describe("Inventories Routes", () => {
           reasonCode: "miscount",
         },
       });
-      const second = await app.inject({
+      const second = await injectWithRouteAuth(app, {
         method: "PATCH",
         url,
         headers: { authorization },
@@ -877,7 +878,7 @@ describe("Inventories Routes", () => {
       const { authorization, countId, inventory } =
         await seedCountReeditFixture();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/inventories/${inventory._id}/supplierGood/${supplierGoodId}/updateCount`,
         headers: { authorization },
@@ -909,7 +910,7 @@ describe("Inventories Routes", () => {
         error: "audit unavailable",
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/inventories/${inventory._id}/supplierGood/${supplierGoodId}/updateCount`,
         headers: { authorization },
@@ -951,7 +952,7 @@ describe("Inventories Routes", () => {
         deletedAt: new Date(),
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/inventories/business/${businessId}`,
       });
@@ -978,7 +979,7 @@ describe("Inventories Routes", () => {
         deletedAt: new Date(),
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/inventories/business/${businessId}?includeDeleted=true`,
       });
@@ -990,7 +991,7 @@ describe("Inventories Routes", () => {
     it("returns a validation problem for an invalid businessId", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/inventories/business/invalid-id",
       });
@@ -1007,7 +1008,7 @@ describe("Inventories Routes", () => {
       const app = await getTestApp();
       const otherBusinessId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/inventories/business/${otherBusinessId}`,
       });
@@ -1019,7 +1020,7 @@ describe("Inventories Routes", () => {
     it("coerces a valid monthDate query and scopes the lookup", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/inventories/business/${businessId}?monthDate=2024-06-15`,
       });
@@ -1031,7 +1032,7 @@ describe("Inventories Routes", () => {
     it("returns a validation problem for an unparseable monthDate query", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/inventories/business/${businessId}?monthDate=not-a-date`,
       });
@@ -1049,7 +1050,7 @@ describe("Inventories Routes", () => {
     it("returns a validation problem for an invalid businessId", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/inventories/business/invalid-id/lowStock",
       });
@@ -1065,7 +1066,7 @@ describe("Inventories Routes", () => {
     it("returns empty lowStock when no inventory", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/inventories/business/${businessId}/lowStock`,
       });
@@ -1080,7 +1081,7 @@ describe("Inventories Routes", () => {
     it("returns a validation problem for an invalid businessId", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/inventories/business/invalid-id/varianceReport",
       });
@@ -1096,7 +1097,7 @@ describe("Inventories Routes", () => {
     it("returns a validation problem for an invalid month format", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/inventories/business/${businessId}/varianceReport?month=2024-13`,
       });
@@ -1110,7 +1111,7 @@ describe("Inventories Routes", () => {
     it("returns variance report", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/inventories/business/${businessId}/varianceReport`,
       });
@@ -1177,7 +1178,7 @@ describe("Inventories Routes", () => {
         role: "Manager",
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/inventories/${inventory._id}/close`,
         headers: { authorization: token },

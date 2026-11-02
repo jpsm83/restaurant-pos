@@ -250,10 +250,17 @@ describe("Users Routes", () => {
 
     it("returns a validation problem for an invalid ID format", async () => {
       const app = await getTestApp();
+      const auth = await generateTestToken({
+        id: new Types.ObjectId().toString(),
+        email: "invalid-id@test.com",
+        type: "user",
+        role: "Customer",
+      });
 
       const response = await app.inject({
         method: "GET",
         url: "/api/v1/users/invalid-id",
+        headers: { authorization: auth },
       });
 
       expect(response.statusCode).toBe(400);

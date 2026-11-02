@@ -6,6 +6,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import mongoose, { Types } from "mongoose";
 import { getTestApp, generateTestToken } from "../setup.ts";
+import { injectWithRouteAuth } from "../helpers/auth.ts";
 import Order from "../../src/models/order.ts";
 import DailySalesReport from "../../src/models/dailySalesReport.ts";
 import { createTestBusiness } from "../helpers/fixtures.ts";
@@ -212,7 +213,7 @@ describe("Orders Routes", () => {
         orderStatus: "Done",
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/orders",
       });
@@ -226,7 +227,7 @@ describe("Orders Routes", () => {
     it("returns a not-found problem when no orders exist", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/orders",
       });
@@ -240,7 +241,7 @@ describe("Orders Routes", () => {
       async (key) => {
         const app = await getTestApp();
 
-        const response = await app.inject({
+        const response = await injectWithRouteAuth(app, {
           method: "GET",
           url: `/api/v1/orders?${key}=true`,
         });
@@ -280,14 +281,14 @@ describe("Orders Routes", () => {
         { $set: { deleted: true, deletedAt: new Date(), deletedBy: userId } },
       );
 
-      const list = await app.inject({ method: "GET", url: "/api/v1/orders" });
+      const list = await injectWithRouteAuth(app, { method: "GET", url: "/api/v1/orders" });
       expect(list.statusCode).toBe(200);
       expect(list.headers["content-type"]).toContain("application/json");
       expect(list.json().map((order: { _id: string }) => order._id)).toEqual([
         String(active._id),
       ]);
 
-      const listWithDeleted = await app.inject({
+      const listWithDeleted = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/orders?includeDeleted=true",
       });
@@ -297,13 +298,13 @@ describe("Orders Routes", () => {
       ).toEqual(expect.arrayContaining([String(active._id), String(deleted._id)]));
       expect(listWithDeleted.json()).toHaveLength(2);
 
-      const hidden = await app.inject({
+      const hidden = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/orders/${deleted._id}`,
       });
       expectProblem(hidden, 404, "not-found");
 
-      const shown = await app.inject({
+      const shown = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/orders/${deleted._id}?includeDeleted=true`,
       });
@@ -311,7 +312,7 @@ describe("Orders Routes", () => {
       expect(shown.json()._id).toBe(String(deleted._id));
       expect(shown.json().deleted).toBe(true);
 
-      const byInstance = await app.inject({
+      const byInstance = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/orders/salesInstance/${salesInstanceId}`,
       });
@@ -319,13 +320,13 @@ describe("Orders Routes", () => {
         String(active._id),
       ]);
 
-      const byInstanceWithDeleted = await app.inject({
+      const byInstanceWithDeleted = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/orders/salesInstance/${salesInstanceId}?includeDeleted=true`,
       });
       expect(byInstanceWithDeleted.json()).toHaveLength(2);
 
-      const byUser = await app.inject({
+      const byUser = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/orders/user/${userId}`,
       });
@@ -333,7 +334,7 @@ describe("Orders Routes", () => {
         String(active._id),
       ]);
 
-      const byUserWithDeleted = await app.inject({
+      const byUserWithDeleted = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/orders/user/${userId}?includeDeleted=true`,
       });
@@ -362,7 +363,7 @@ describe("Orders Routes", () => {
         orderStatus: "Done",
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/orders/${order._id}`,
       });
@@ -398,7 +399,7 @@ describe("Orders Routes", () => {
         },
       );
 
-      const detail = await app.inject({
+      const detail = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/orders/${order._id}`,
       });
@@ -406,7 +407,7 @@ describe("Orders Routes", () => {
       expect(detail.json()).not.toHaveProperty("billingReasonCode");
       expect(detail.json()).not.toHaveProperty("billingReasonNote");
 
-      const list = await app.inject({ method: "GET", url: "/api/v1/orders" });
+      const list = await injectWithRouteAuth(app, { method: "GET", url: "/api/v1/orders" });
       const listed = list
         .json()
         .find((candidate: { _id: string }) => candidate._id === String(order._id));
@@ -418,7 +419,7 @@ describe("Orders Routes", () => {
     it("returns a validation problem for invalid ID format", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/orders/invalid-id",
       });
@@ -431,7 +432,7 @@ describe("Orders Routes", () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/orders/${fakeId}`,
       });
@@ -471,7 +472,7 @@ describe("Orders Routes", () => {
       const app = await getTestApp();
       const auth = await authFor(userId);
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/orders",
         headers: { authorization: auth },
@@ -493,7 +494,7 @@ describe("Orders Routes", () => {
       const app = await getTestApp();
       const auth = await authFor(userId);
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/orders",
         headers: { authorization: auth },
@@ -508,7 +509,7 @@ describe("Orders Routes", () => {
       const app = await getTestApp();
       const auth = await authFor(userId);
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/orders",
         headers: { authorization: auth },
@@ -526,7 +527,7 @@ describe("Orders Routes", () => {
       const app = await getTestApp();
       const auth = await authFor(userId);
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/orders",
         headers: { authorization: auth },
@@ -540,7 +541,7 @@ describe("Orders Routes", () => {
       const app = await getTestApp();
       const auth = await authFor(userId);
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/orders",
         headers: { authorization: auth },
@@ -560,7 +561,7 @@ describe("Orders Routes", () => {
         const auth = await authFor(userId);
         const marker = field === "deleted" ? true : new Types.ObjectId().toString();
 
-        const onBody = await app.inject({
+        const onBody = await injectWithRouteAuth(app, {
           method: "POST",
           url: "/api/v1/orders",
           headers: { authorization: auth },
@@ -568,7 +569,7 @@ describe("Orders Routes", () => {
         });
         expectProblem(onBody, 400, "validation");
 
-        const onLine = await app.inject({
+        const onLine = await injectWithRouteAuth(app, {
           method: "POST",
           url: "/api/v1/orders",
           headers: { authorization: auth },
@@ -586,7 +587,7 @@ describe("Orders Routes", () => {
       const app = await getTestApp();
       const auth = await authFor(userId);
 
-      const created = await app.inject({
+      const created = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/orders",
         headers: { authorization: auth },
@@ -596,7 +597,7 @@ describe("Orders Routes", () => {
       expect(created.statusCode).toBe(201);
       expect(created.headers["content-type"]).toContain("application/json");
 
-      const list = await app.inject({
+      const list = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/orders/salesInstance/${salesInstanceId}`,
       });
@@ -613,7 +614,7 @@ describe("Orders Routes", () => {
       const app = await getTestApp();
       const auth = await authFor(userId);
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/orders",
         headers: { authorization: auth },
@@ -654,7 +655,7 @@ describe("Orders Routes", () => {
       });
 
       const auth = await authFor(userId);
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/orders",
         headers: { authorization: auth },
@@ -675,7 +676,7 @@ describe("Orders Routes", () => {
       );
 
       const auth = await authFor(userId);
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/orders",
         headers: { authorization: auth },
@@ -695,7 +696,7 @@ describe("Orders Routes", () => {
       );
 
       const auth = await authFor(userId);
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/orders",
         headers: { authorization: auth },
@@ -736,7 +737,7 @@ describe("Orders Routes", () => {
       const app = await getTestApp();
       const auth = await authFor(userId);
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "DELETE",
         url: "/api/v1/orders/invalid-id",
         headers: { authorization: auth },
@@ -767,7 +768,7 @@ describe("Orders Routes", () => {
         { $set: { salesGroup: [{ orderCode: "ORD-DELETE-1", ordersIds: [order._id] }] } },
       );
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "DELETE",
         url: `/api/v1/orders/${order._id}`,
         headers: { authorization: managerAuth },
@@ -797,7 +798,7 @@ describe("Orders Routes", () => {
         orderStatus: "Done",
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "DELETE",
         url: `/api/v1/orders/${order._id}`,
         headers: { authorization: managerAuth },
@@ -830,7 +831,7 @@ describe("Orders Routes", () => {
           orderStatus: "Sent",
         });
 
-        const response = await app.inject({
+        const response = await injectWithRouteAuth(app, {
           method: "DELETE",
           url: `/api/v1/orders/${order._id}`,
           headers: { authorization: managerAuth },
@@ -867,7 +868,7 @@ describe("Orders Routes", () => {
         orderStatus: "Done",
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/orders/salesInstance/${salesInstanceId}`,
       });
@@ -880,7 +881,7 @@ describe("Orders Routes", () => {
     it("returns a validation problem for invalid salesInstanceId", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/orders/salesInstance/invalid-id",
       });
@@ -893,7 +894,7 @@ describe("Orders Routes", () => {
       const app = await getTestApp();
       const emptySalesInstanceId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/orders/salesInstance/${emptySalesInstanceId}`,
       });
@@ -920,7 +921,7 @@ describe("Orders Routes", () => {
         orderStatus: "Done",
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/orders/user/${userId}`,
       });
@@ -933,7 +934,7 @@ describe("Orders Routes", () => {
     it("returns a validation problem for invalid userId", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/orders/user/invalid-id",
       });
@@ -946,7 +947,7 @@ describe("Orders Routes", () => {
       const app = await getTestApp();
       const emptyUserId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/orders/user/${emptyUserId}`,
       });

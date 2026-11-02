@@ -10,6 +10,7 @@ import User from "../../src/models/user.ts";
 import { getCommunicationsMetricsSnapshot } from "../../src/communications/observability/metrics.ts";
 import { resetLiveTicketStoreForTests } from "../../src/auth/liveTicketStore.ts";
 import { signAccessTokenForLiveSession } from "../setup.ts";
+import notificationService from "../../src/communications/services/notificationService.ts";
 
 function liveUserToken(
   app: FastifyInstance,
@@ -350,21 +351,12 @@ describe("Notifications Live Route", () => {
           const message = raw.toString();
           const parsed = JSON.parse(message);
           if (parsed.type === "live.connected") {
-            const response = await app.inject({
-              method: "POST",
-              url: "/api/v1/notifications",
-              payload: {
-                notificationType: "Info",
-                message: "Live push from manual POST route",
-                businessId: business._id.toString(),
-                customersRecipientsIds: [user._id.toString()],
-              },
+            await notificationService.createAndDeliver({
+              notificationType: "Info",
+              message: "Live push from manual POST route",
+              businessId: business._id,
+              recipients: { customerUserIds: [user._id] },
             });
-            if (response.statusCode !== 201) {
-              reject(new Error(`Unexpected status code: ${response.statusCode}`));
-              socket.close();
-              return;
-            }
             return;
           }
 
@@ -454,17 +446,12 @@ describe("Notifications Live Route", () => {
         const targetMessageText = "Target-only live notification";
         const offlineMessageText = "Offline fallback notification";
 
-        const targetCreateResponse = await app.inject({
-          method: "POST",
-          url: "/api/v1/notifications",
-          payload: {
-            notificationType: "Info",
-            message: targetMessageText,
-            businessId: business._id.toString(),
-            customersRecipientsIds: [targetUser._id.toString()],
-          },
+        await notificationService.createAndDeliver({
+          notificationType: "Info",
+          message: targetMessageText,
+          businessId: business._id,
+          recipients: { customerUserIds: [targetUser._id] },
         });
-        expect(targetCreateResponse.statusCode).toBe(201);
 
         await new Promise((resolve) => setTimeout(resolve, 250));
 
@@ -483,17 +470,12 @@ describe("Notifications Live Route", () => {
           )
         ).toBe(false);
 
-        const offlineCreateResponse = await app.inject({
-          method: "POST",
-          url: "/api/v1/notifications",
-          payload: {
-            notificationType: "Info",
-            message: offlineMessageText,
-            businessId: business._id.toString(),
-            customersRecipientsIds: [offlineUser._id.toString()],
-          },
+        await notificationService.createAndDeliver({
+          notificationType: "Info",
+          message: offlineMessageText,
+          businessId: business._id,
+          recipients: { customerUserIds: [offlineUser._id] },
         });
-        expect(offlineCreateResponse.statusCode).toBe(201);
 
         const offlineInboxResponse = await app.inject({
           method: "GET",
@@ -570,17 +552,12 @@ describe("Notifications Live Route", () => {
       try {
         await Promise.all([waitForAck(first), waitForAck(second)]);
 
-        const response = await app.inject({
-          method: "POST",
-          url: "/api/v1/notifications",
-          payload: {
-            notificationType: "Info",
-            message: "Pushed to both tabs",
-            businessId: business._id.toString(),
-            customersRecipientsIds: [user._id.toString()],
-          },
+        await notificationService.createAndDeliver({
+          notificationType: "Info",
+          message: "Pushed to both tabs",
+          businessId: business._id,
+          recipients: { customerUserIds: [user._id] },
         });
-        expect(response.statusCode).toBe(201);
 
         await new Promise((resolve) => setTimeout(resolve, 250));
 

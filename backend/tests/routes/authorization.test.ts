@@ -227,7 +227,7 @@ describe("API authorization rails", () => {
     }
   });
 
-  it("does not register the retired legacy surfaces", async () => {
+  it("does not register or answer the retired legacy surfaces", async () => {
     const app = await getTestApp();
     const registered = new Set(
       getRouteInventory(app).map((route) => routeKey(route.method, route.url)),
@@ -248,6 +248,13 @@ describe("API authorization rails", () => {
 
     for (const key of retired) {
       expect(registered.has(key), `${key} is still registered`).toBe(false);
+
+      const [method, pattern] = key.split(" ");
+      const response = await app.inject({
+        method: method as "GET" | "POST" | "PATCH" | "DELETE",
+        url: concreteUrl(pattern),
+      });
+      expect(response.statusCode, key).toBe(404);
     }
   });
 

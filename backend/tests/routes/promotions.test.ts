@@ -10,6 +10,7 @@
 import { describe, it, expect } from "vitest";
 import { Types } from "mongoose";
 import { getTestApp } from "../setup.ts";
+import { injectWithRouteAuth } from "../helpers/auth.ts";
 import Promotion from "../../src/models/promotion.ts";
 import { createTestBusiness as createCompanyAwareBusiness } from "../helpers/fixtures.ts";
 
@@ -107,7 +108,7 @@ describe("Promotions Routes", () => {
         { deleted: true },
       );
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/promotions",
       });
@@ -128,7 +129,7 @@ describe("Promotions Routes", () => {
         { deleted: true },
       );
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/promotions?includeDeleted=true",
       });
@@ -141,7 +142,7 @@ describe("Promotions Routes", () => {
     it("returns a not-found problem when no promotions exist", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/promotions",
       });
@@ -153,7 +154,7 @@ describe("Promotions Routes", () => {
     it("returns a validation problem for an invalid includeDeleted query value", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/promotions?includeDeleted=maybe",
       });
@@ -171,7 +172,7 @@ describe("Promotions Routes", () => {
     it("returns a validation problem for missing required fields", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/promotions",
         payload: { promotionName: "Test" },
@@ -193,7 +194,7 @@ describe("Promotions Routes", () => {
       const app = await getTestApp();
       const business = await createTestBusiness();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/promotions",
         payload: {
@@ -214,7 +215,7 @@ describe("Promotions Routes", () => {
       const app = await getTestApp();
       const business = await createTestBusiness();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/promotions",
         payload: {
@@ -235,7 +236,7 @@ describe("Promotions Routes", () => {
       const app = await getTestApp();
       const business = await createTestBusiness();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/promotions",
         payload: {
@@ -254,7 +255,7 @@ describe("Promotions Routes", () => {
       const app = await getTestApp();
       const business = await createTestBusiness();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/promotions",
         payload: {
@@ -273,7 +274,7 @@ describe("Promotions Routes", () => {
       const app = await getTestApp();
       const business = await createTestBusiness();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/promotions",
         payload: {
@@ -290,7 +291,7 @@ describe("Promotions Routes", () => {
       const app = await getTestApp();
       const business = await createTestBusiness();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/promotions",
         payload: {
@@ -309,7 +310,7 @@ describe("Promotions Routes", () => {
       const app = await getTestApp();
       const business = await createTestBusiness();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/promotions",
         payload: {
@@ -325,7 +326,7 @@ describe("Promotions Routes", () => {
       const app = await getTestApp();
       const business = await createTestBusiness();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/promotions",
         payload: {
@@ -345,7 +346,7 @@ describe("Promotions Routes", () => {
         "Duplicate Promo",
       );
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/promotions",
         payload: {
@@ -362,7 +363,7 @@ describe("Promotions Routes", () => {
       const app = await getTestApp();
       const business = await createTestBusiness();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/promotions",
         payload: {
@@ -381,7 +382,7 @@ describe("Promotions Routes", () => {
     it("returns a validation problem for an invalid promotionId", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/promotions/invalid-id",
       });
@@ -398,7 +399,7 @@ describe("Promotions Routes", () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/promotions/${fakeId}`,
       });
@@ -415,7 +416,7 @@ describe("Promotions Routes", () => {
         "Get Promo",
       );
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/promotions/${promotion._id}`,
       });
@@ -434,7 +435,7 @@ describe("Promotions Routes", () => {
         { deleted: true },
       );
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/promotions/${promotion._id}`,
       });
@@ -452,7 +453,7 @@ describe("Promotions Routes", () => {
         { deleted: true },
       );
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/promotions/${promotion._id}?includeDeleted=true`,
       });
@@ -466,7 +467,7 @@ describe("Promotions Routes", () => {
     it("returns a validation problem for an invalid promotionId", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: "/api/v1/promotions/invalid-id",
         payload: { promotionName: "Updated" },
@@ -484,7 +485,7 @@ describe("Promotions Routes", () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/promotions/${fakeId}`,
         payload: { promotionName: "Updated" },
@@ -502,7 +503,7 @@ describe("Promotions Routes", () => {
         "Patch Promo",
       );
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/promotions/${promotion._id}`,
         payload: { businessGoodsToApplyIds: ["invalid-id"] },
@@ -525,7 +526,7 @@ describe("Promotions Routes", () => {
         "Rename Me",
       );
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/promotions/${promotion._id}`,
         payload: { promotionName: "Taken" },
@@ -543,7 +544,7 @@ describe("Promotions Routes", () => {
         "Update Promo",
       );
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/promotions/${promotion._id}`,
         payload: { promotionName: "Updated Promo Name" },
@@ -559,7 +560,7 @@ describe("Promotions Routes", () => {
     it("returns a validation problem for an invalid promotionId", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "DELETE",
         url: "/api/v1/promotions/invalid-id",
       });
@@ -576,7 +577,7 @@ describe("Promotions Routes", () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "DELETE",
         url: `/api/v1/promotions/${fakeId}`,
       });
@@ -593,7 +594,7 @@ describe("Promotions Routes", () => {
         "Delete Promo",
       );
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "DELETE",
         url: `/api/v1/promotions/${promotion._id}`,
       });
@@ -618,7 +619,7 @@ describe("Promotions Routes", () => {
         { deleted: true },
       );
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "DELETE",
         url: `/api/v1/promotions/${promotion._id}`,
       });
@@ -632,7 +633,7 @@ describe("Promotions Routes", () => {
     it("returns a validation problem for an invalid businessId", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/promotions/business/invalid-id",
       });
@@ -649,7 +650,7 @@ describe("Promotions Routes", () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/promotions/business/${fakeId}`,
       });
@@ -662,7 +663,7 @@ describe("Promotions Routes", () => {
       const app = await getTestApp();
       const business = await createTestBusiness();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/promotions/business/${business._id}?startDate=2024-12-31&endDate=2024-01-01`,
       });
@@ -686,7 +687,7 @@ describe("Promotions Routes", () => {
         { deleted: true },
       );
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/promotions/business/${business._id}`,
       });
@@ -710,7 +711,7 @@ describe("Promotions Routes", () => {
         { deleted: true },
       );
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/promotions/business/${business._id}?includeDeleted=true`,
       });

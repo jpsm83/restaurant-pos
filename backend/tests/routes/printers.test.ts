@@ -11,6 +11,7 @@
 import { describe, it, expect } from "vitest";
 import { Types } from "mongoose";
 import { getTestApp } from "../setup.ts";
+import { injectWithRouteAuth } from "../helpers/auth.ts";
 import Printer from "../../src/models/printer.ts";
 import { createTestBusiness as createCompanyAwareBusiness } from "../helpers/fixtures.ts";
 
@@ -79,7 +80,7 @@ describe("Printers Routes", () => {
         { deleted: true },
       );
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/printers",
       });
@@ -100,7 +101,7 @@ describe("Printers Routes", () => {
         { deleted: true },
       );
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/printers?includeDeleted=true",
       });
@@ -112,7 +113,7 @@ describe("Printers Routes", () => {
     it("returns a not-found problem when no printers exist", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/printers",
       });
@@ -124,7 +125,7 @@ describe("Printers Routes", () => {
     it("returns a validation problem for an invalid includeDeleted query value", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/printers?includeDeleted=maybe",
       });
@@ -142,7 +143,7 @@ describe("Printers Routes", () => {
     it("returns a validation problem for missing required fields", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/printers",
         payload: { printerAlias: "Test Printer" },
@@ -161,7 +162,7 @@ describe("Printers Routes", () => {
     it("returns a validation problem for an invalid businessId", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/printers",
         payload: {
@@ -182,7 +183,7 @@ describe("Printers Routes", () => {
       const app = await getTestApp();
       const business = await createTestBusiness();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/printers",
         payload: {
@@ -206,7 +207,7 @@ describe("Printers Routes", () => {
       const app = await getTestApp();
       const business = await createTestBusiness();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/printers",
         payload: {
@@ -232,7 +233,7 @@ describe("Printers Routes", () => {
       const app = await getTestApp();
       const business = await createTestBusiness();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/printers",
         payload: {
@@ -255,7 +256,7 @@ describe("Printers Routes", () => {
       const business = await createTestBusiness();
       await createTestPrinter(business._id as Types.ObjectId, "Duplicate Printer");
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/printers",
         payload: {
@@ -275,7 +276,7 @@ describe("Printers Routes", () => {
     it("returns a validation problem for an invalid ID", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/printers/invalid-id",
       });
@@ -290,7 +291,7 @@ describe("Printers Routes", () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/printers/${fakeId}`,
       });
@@ -304,7 +305,7 @@ describe("Printers Routes", () => {
       const business = await createTestBusiness();
       const printer = await createTestPrinter(business._id as Types.ObjectId);
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/printers/${printer._id}`,
       });
@@ -323,7 +324,7 @@ describe("Printers Routes", () => {
         { deleted: true },
       );
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/printers/${printer._id}`,
       });
@@ -340,7 +341,7 @@ describe("Printers Routes", () => {
         { deleted: true },
       );
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/printers/${printer._id}?includeDeleted=true`,
       });
@@ -353,7 +354,7 @@ describe("Printers Routes", () => {
     it("returns a validation problem for an invalid printerId", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: "/api/v1/printers/invalid-id",
         payload: { printerAlias: "Updated" },
@@ -369,7 +370,7 @@ describe("Printers Routes", () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/printers/${fakeId}`,
         payload: { printerAlias: "Updated" },
@@ -384,7 +385,7 @@ describe("Printers Routes", () => {
       const business = await createTestBusiness();
       const printer = await createTestPrinter(business._id as Types.ObjectId);
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/printers/${printer._id}`,
         payload: { backupPrinterId: "invalid-id" },
@@ -403,7 +404,7 @@ describe("Printers Routes", () => {
       const business = await createTestBusiness();
       const printer = await createTestPrinter(business._id as Types.ObjectId);
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/printers/${printer._id}`,
         payload: { printerAlias: "Renamed Printer" },
@@ -419,7 +420,7 @@ describe("Printers Routes", () => {
     it("returns a validation problem for an invalid printerId", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "DELETE",
         url: "/api/v1/printers/invalid-id",
       });
@@ -435,7 +436,7 @@ describe("Printers Routes", () => {
     it("returns a validation problem for an invalid printerId", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: "/api/v1/printers/invalid-id/addConfigurationSetup",
         payload: {
@@ -454,7 +455,7 @@ describe("Printers Routes", () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/printers/${fakeId}/addConfigurationSetup`,
         payload: {
@@ -472,7 +473,7 @@ describe("Printers Routes", () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/printers/${fakeId}/addConfigurationSetup`,
         payload: {
@@ -494,7 +495,7 @@ describe("Printers Routes", () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/printers/${fakeId}/addConfigurationSetup`,
         payload: {
@@ -513,7 +514,7 @@ describe("Printers Routes", () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/printers/${fakeId}/addConfigurationSetup`,
         payload: {
@@ -531,7 +532,7 @@ describe("Printers Routes", () => {
     it("returns a validation problem for invalid IDs", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: "/api/v1/printers/invalid-id/deleteConfigurationSetup/invalid-id",
       });
@@ -550,7 +551,7 @@ describe("Printers Routes", () => {
       const fakeId1 = new Types.ObjectId();
       const fakeId2 = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/printers/${fakeId1}/deleteConfigurationSetup/${fakeId2}`,
       });
@@ -563,7 +564,7 @@ describe("Printers Routes", () => {
     it("returns a validation problem for invalid IDs", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: "/api/v1/printers/invalid-id/editConfigurationSetup/invalid-id",
         payload: {
@@ -586,7 +587,7 @@ describe("Printers Routes", () => {
       const fakeId1 = new Types.ObjectId();
       const fakeId2 = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/printers/${fakeId1}/editConfigurationSetup/${fakeId2}`,
         payload: {
@@ -605,7 +606,7 @@ describe("Printers Routes", () => {
     it("returns a validation problem for an invalid businessId", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/printers/business/invalid-id",
       });
@@ -620,7 +621,7 @@ describe("Printers Routes", () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/printers/business/${fakeId}`,
       });
@@ -639,7 +640,7 @@ describe("Printers Routes", () => {
         { deleted: true },
       );
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/printers/business/${business._id}`,
       });
@@ -660,7 +661,7 @@ describe("Printers Routes", () => {
         { deleted: true },
       );
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/printers/business/${business._id}?includeDeleted=true`,
       });
@@ -677,7 +678,7 @@ describe("Printers Routes", () => {
       const business = await createTestBusiness();
       const printer = await createTestPrinter(business._id as Types.ObjectId, "ToDelete");
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "DELETE",
         url: `/api/v1/printers/${printer._id}`,
       });
@@ -721,7 +722,7 @@ describe("Printers Routes", () => {
       expect(printerBefore?.backupPrinterId?.toString()).toBe(backupPrinter._id.toString());
 
       // Delete the backup printer
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "DELETE",
         url: `/api/v1/printers/${backupPrinter._id}`,
       });
@@ -737,7 +738,7 @@ describe("Printers Routes", () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "DELETE",
         url: `/api/v1/printers/${fakeId}`,
       });
@@ -755,7 +756,7 @@ describe("Printers Routes", () => {
         { deleted: true },
       );
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "DELETE",
         url: `/api/v1/printers/${printer._id}`,
       });

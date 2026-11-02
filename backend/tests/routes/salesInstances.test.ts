@@ -10,6 +10,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { Types } from "mongoose";
 import { getTestApp, generateTestToken } from "../setup.ts";
+import { injectWithRouteAuth } from "../helpers/auth.ts";
 import SalesInstance from "../../src/models/salesInstance.ts";
 import SalesPoint from "../../src/models/salesPoint.ts";
 import User from "../../src/models/user.ts";
@@ -132,7 +133,7 @@ describe("SalesInstances Routes", () => {
         openedByUserId: userId,
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/salesInstances",
       });
@@ -146,7 +147,7 @@ describe("SalesInstances Routes", () => {
     it("returns 404 when no sales instances exist", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/salesInstances",
       });
@@ -157,7 +158,7 @@ describe("SalesInstances Routes", () => {
     it("returns a validation problem for an invalid includeDeleted query value", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/salesInstances?includeDeleted=maybe",
       });
@@ -184,7 +185,7 @@ describe("SalesInstances Routes", () => {
         openedByUserId: userId,
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/salesInstances/${salesInstance._id}`,
       });
@@ -197,7 +198,7 @@ describe("SalesInstances Routes", () => {
     it("returns 400 for invalid ID format", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/salesInstances/invalid-id",
       });
@@ -214,7 +215,7 @@ describe("SalesInstances Routes", () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/salesInstances/${fakeId}`,
       });
@@ -295,7 +296,7 @@ describe("SalesInstances Routes", () => {
         deletedAt: new Date(),
       });
 
-      const opened = await app.inject({
+      const opened = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/salesInstances",
         headers: { authorization: auth },
@@ -317,7 +318,7 @@ describe("SalesInstances Routes", () => {
         openedByUserId: manager._id,
       });
 
-      const blocked = await app.inject({
+      const blocked = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/salesInstances",
         headers: { authorization: auth },
@@ -338,7 +339,7 @@ describe("SalesInstances Routes", () => {
     it("returns a validation problem for a malformed salesInstanceId", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: "/api/v1/salesInstances/invalid-id",
         payload: {},
@@ -355,7 +356,7 @@ describe("SalesInstances Routes", () => {
     it("rejects a malformed id inside ordersIdsArr", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/salesInstances/${new Types.ObjectId()}`,
         payload: { ordersIdsArr: ["nope"] },
@@ -372,7 +373,7 @@ describe("SalesInstances Routes", () => {
     it("rejects the server-owned openedAsRole as an unknown key", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/salesInstances/${new Types.ObjectId()}`,
         payload: { openedAsRole: "employee" },
@@ -392,7 +393,7 @@ describe("SalesInstances Routes", () => {
         openedByUserId: userId,
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/salesInstances/${salesInstance._id}`,
         payload: { clientName: "Ada" },
@@ -415,7 +416,7 @@ describe("SalesInstances Routes", () => {
         openedByUserId: userId,
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/salesInstances/${salesInstance._id}`,
         payload: { salesInstanceStatus: "Closed" },
@@ -439,7 +440,7 @@ describe("SalesInstances Routes", () => {
         salesGroup: [{ orderCode: "ORD-KEEP", ordersIds: [orderId] }],
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "PATCH",
         url: `/api/v1/salesInstances/${salesInstance._id}`,
         payload: { salesInstanceStatus: "Closed" },
@@ -465,7 +466,7 @@ describe("SalesInstances Routes", () => {
       const spy = ordersArriveBeforeDiscard(racedOrderId);
 
       try {
-        const response = await app.inject({
+        const response = await injectWithRouteAuth(app, {
           method: "PATCH",
           url: `/api/v1/salesInstances/${salesInstance._id}`,
           payload: { salesInstanceStatus: "Closed" },
@@ -496,7 +497,7 @@ describe("SalesInstances Routes", () => {
     it("returns 400 for invalid salesInstanceId", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "DELETE",
         url: "/api/v1/salesInstances/invalid-id",
       });
@@ -521,7 +522,7 @@ describe("SalesInstances Routes", () => {
         openedByUserId: userId,
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "DELETE",
         url: `/api/v1/salesInstances/${salesInstance._id}`,
       });
@@ -547,7 +548,7 @@ describe("SalesInstances Routes", () => {
         salesGroup: [{ orderCode: "ORD-EMPTY-1", ordersIds: [] }],
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "DELETE",
         url: `/api/v1/salesInstances/${salesInstance._id}`,
       });
@@ -572,7 +573,7 @@ describe("SalesInstances Routes", () => {
         salesGroup: [{ orderCode: "ORD-1", ordersIds: [orderId] }],
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "DELETE",
         url: `/api/v1/salesInstances/${salesInstance._id}`,
       });
@@ -586,26 +587,26 @@ describe("SalesInstances Routes", () => {
       expect(stillStored?.deleted).toBe(true);
       expect(stillStored?.deletedAt).toBeDefined();
 
-      const activeRead = await app.inject({
+      const activeRead = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/salesInstances/${salesInstance._id}`,
       });
       expect(activeRead.statusCode).toBe(404);
 
-      const includeDeletedRead = await app.inject({
+      const includeDeletedRead = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/salesInstances/${salesInstance._id}?includeDeleted=true`,
       });
       expect(includeDeletedRead.statusCode).toBe(200);
       expect(includeDeletedRead.json().deleted).toBe(true);
 
-      const list = await app.inject({
+      const list = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/salesInstances",
       });
       expectProblem(list, 404, "not-found");
 
-      const listIncludingDeleted = await app.inject({
+      const listIncludingDeleted = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/salesInstances?includeDeleted=true",
       });
@@ -629,7 +630,7 @@ describe("SalesInstances Routes", () => {
       const spy = ordersArriveBeforeDiscard(racedOrderId);
 
       try {
-        const response = await app.inject({
+        const response = await injectWithRouteAuth(app, {
           method: "DELETE",
           url: `/api/v1/salesInstances/${salesInstance._id}`,
         });
@@ -664,13 +665,13 @@ describe("SalesInstances Routes", () => {
         salesGroup: [{ orderCode: "ORD-2", ordersIds: [new Types.ObjectId()] }],
       });
 
-      const first = await app.inject({
+      const first = await injectWithRouteAuth(app, {
         method: "DELETE",
         url: `/api/v1/salesInstances/${salesInstance._id}`,
       });
       expect(first.statusCode).toBe(200);
 
-      const second = await app.inject({
+      const second = await injectWithRouteAuth(app, {
         method: "DELETE",
         url: `/api/v1/salesInstances/${salesInstance._id}`,
       });
@@ -687,7 +688,7 @@ describe("SalesInstances Routes", () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "DELETE",
         url: `/api/v1/salesInstances/${fakeId}`,
       });
@@ -710,7 +711,7 @@ describe("SalesInstances Routes", () => {
         openedByUserId: userId,
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/salesInstances/business/${businessId}`,
       });
@@ -723,7 +724,7 @@ describe("SalesInstances Routes", () => {
     it("returns 400 for invalid businessId", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/salesInstances/business/invalid-id",
       });
@@ -738,7 +739,7 @@ describe("SalesInstances Routes", () => {
       const app = await getTestApp();
       const emptyBusinessId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/salesInstances/business/${emptyBusinessId}`,
       });
@@ -761,7 +762,7 @@ describe("SalesInstances Routes", () => {
         openedByUserId: userId,
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/salesInstances/user/${userId}`,
       });
@@ -774,7 +775,7 @@ describe("SalesInstances Routes", () => {
     it("returns 400 for invalid userId", async () => {
       const app = await getTestApp();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: "/api/v1/salesInstances/user/invalid-id",
       });
@@ -789,7 +790,7 @@ describe("SalesInstances Routes", () => {
       const app = await getTestApp();
       const emptyUserId = new Types.ObjectId();
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "GET",
         url: `/api/v1/salesInstances/user/${emptyUserId}`,
       });
@@ -854,7 +855,7 @@ describe("SalesInstances Routes", () => {
         salesGroup: [{ orderCode: "DEL-1", ordersIds: [new Types.ObjectId()] }],
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: "/api/v1/salesInstances/delivery",
         headers: { authorization: token },
@@ -895,7 +896,7 @@ describe("SalesInstances Routes", () => {
         salesGroup: [{ orderCode: "SELF-1", ordersIds: [new Types.ObjectId()] }],
       });
 
-      const response = await app.inject({
+      const response = await injectWithRouteAuth(app, {
         method: "POST",
         url: `/api/v1/salesInstances/selfOrderingLocation/${salesPointId}`,
         headers: { authorization: token },

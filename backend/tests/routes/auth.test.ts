@@ -786,7 +786,7 @@ describe("Auth Routes", () => {
       const authorization = { authorization: `Bearer ${accessToken}` };
       const protectedRead = await app.inject({
         method: "GET",
-        url: `/api/v1/business/${new Types.ObjectId().toString()}`,
+        url: "/api/v1/owners/portfolio",
         headers: authorization,
       });
       const resend = await app.inject({
@@ -1668,7 +1668,7 @@ describe("Auth Routes", () => {
       });
       const protectedRead = await app.inject({
         method: "GET",
-        url: `/api/v1/business/${new Types.ObjectId().toString()}`,
+        url: "/api/v1/owners/portfolio",
         headers: authorization,
       });
       const resend = await app.inject({
@@ -1747,10 +1747,10 @@ describe("Auth Routes", () => {
 
       const protectedRead = await app.inject({
         method: "GET",
-        url: `/api/v1/business/${user._id}`,
+        url: "/api/v1/owners/portfolio",
         headers: { authorization: `Bearer ${nextToken}` },
       });
-      expect(protectedRead.statusCode).toBe(403);
+      expect(protectedRead.statusCode).toBe(200);
 
       const setMode = await app.inject({
         method: "POST",
@@ -1850,7 +1850,7 @@ describe("Auth Routes", () => {
 
       const protectedRead = await app.inject({
         method: "GET",
-        url: `/api/v1/business/${user._id}`,
+        url: "/api/v1/owners/portfolio",
         headers: { authorization: `Bearer ${accessToken}` },
       });
       expect(protectedRead.statusCode).toBe(401);
@@ -1905,7 +1905,7 @@ describe("Auth Routes", () => {
       );
       const body = response.json();
       expect(body.type).toBe("https://restaurant-pos.app/errors/unauthorized");
-      expect(body.detail).toBe("No access token provided");
+      expect(body.detail).toBe("Authentication required");
     });
 
     it("does not treat a stray query as a validation problem", async () => {
@@ -1922,7 +1922,7 @@ describe("Auth Routes", () => {
       );
       const body = response.json();
       expect(body.type).toBe("https://restaurant-pos.app/errors/unauthorized");
-      expect(body.detail).toBe("No access token provided");
+      expect(body.detail).toBe("Authentication required");
     });
 
     it("refuses a business-typed access token even with a live refresh session", async () => {

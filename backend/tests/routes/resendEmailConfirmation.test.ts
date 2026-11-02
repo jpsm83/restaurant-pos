@@ -103,7 +103,7 @@ describe("POST /api/v1/auth/resend-email-confirmation", () => {
     const body = JSON.parse(response.body);
     expect(body.type).toBe("https://restaurant-pos.app/errors/unauthorized");
     expect(body.status).toBe(401);
-    expect(body.detail).toBe("No access token provided");
+    expect(body.detail).toBe("Authentication required");
   });
 
   it("does not treat a body as a validation problem when the token is missing", async () => {
@@ -119,7 +119,7 @@ describe("POST /api/v1/auth/resend-email-confirmation", () => {
     );
     const body = JSON.parse(response.body);
     expect(body.type).toBe("https://restaurant-pos.app/errors/unauthorized");
-    expect(body.detail).toBe("No access token provided");
+    expect(body.detail).toBe("Authentication required");
   });
 
   it("returns 401 for invalid token", async () => {
