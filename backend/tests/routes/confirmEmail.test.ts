@@ -7,6 +7,9 @@ import crypto from "crypto";
 import bcrypt from "bcrypt";
 import { getTestApp, resetTestApp } from "../setup.ts";
 import User from "../../src/models/user.ts";
+import Business from "../../src/models/business.ts";
+import RefreshSession from "../../src/models/refreshSession.ts";
+import { createTestBusiness } from "../helpers/fixtures.ts";
 import {
   CONFIRM_EMAIL_CONSUMPTION_ERROR_MESSAGE,
   CONFIRM_EMAIL_MISSING_TOKEN_MESSAGE,
@@ -197,6 +200,153 @@ describe("POST /api/v1/auth/confirm-email", () => {
     expect(JSON.parse(second.body).detail).toBe(
       CONFIRM_EMAIL_CONSUMPTION_ERROR_MESSAGE,
     );
+  });
+
+  it("verifies a Business contact email token after trying User tokens and creates no User or session", async () => {
+    const app = await getTestApp();
+    const raw = randomToken();
+    const business = await createTestBusiness({
+      tradeName: "Confirm Venue",
+      email: "confirm-venue@example.com",
+      currencyTrade: "USD",
+      address: {
+        country: "USA",
+        state: "CA",
+        city: "LA",
+        street: "Main St",
+        buildingNumber: "1",
+        postCode: "90001",
+      },
+      contactVerificationToken: raw,
+      contactVerificationTokenExpires: futureVerificationExpiry(),
+      contactVerificationRequestedAt: new Date(),
+    });
+
+    const usersBefore = await User.countDocuments();
+    const sessionsBefore = await RefreshSession.countDocuments();
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/confirm-email",
+      payload: { token: raw },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.body).message).toBe(
+      CONFIRM_EMAIL_SUCCESS_MESSAGE,
+    );
+
+    const updated = await Business.findById(business._id)
+      .select(
+        "email emailVerified contactVerificationToken contactVerificationTokenExpires contactVerificationRequestedAt",
+      )
+      .lean();
+    expect(updated?.email).toBe("confirm-venue@example.com");
+    expect(updated?.emailVerified).toBe(true);
+    expect(updated?.contactVerificationToken).toBeFalsy();
+    expect(updated?.contactVerificationTokenExpires).toBeFalsy();
+    expect(updated?.contactVerificationRequestedAt).toBeFalsy();
+
+    await expect(User.countDocuments()).resolves.toBe(usersBefore);
+    await expect(RefreshSession.countDocuments()).resolves.toBe(sessionsBefore);
+  });
+
+  it("returns the generic 400 for an expired Business contact token and changes nothing", async () => {
+    const app = await getTestApp();
+    const raw = randomToken();
+    const business = await createTestBusiness({
+      tradeName: "Expired Venue",
+      email: "expired-venue@example.com",
+      currencyTrade: "USD",
+      contactVerificationToken: raw,
+      contactVerificationTokenExpires: new Date(Date.now() - 60_000),
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/confirm-email",
+      payload: { token: raw },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(JSON.parse(response.body).detail).toBe(
+      CONFIRM_EMAIL_CONSUMPTION_ERROR_MESSAGE,
+    );
+
+    const unchanged = await Business.findById(business._id)
+      .select(
+        "emailVerified contactVerificationToken contactVerificationTokenExpires",
+      )
+      .lean();
+    expect(unchanged?.emailVerified).toBe(false);
+    expect(unchanged?.contactVerificationToken).toBe(raw);
+    expect(unchanged?.contactVerificationTokenExpires).toBeTruthy();
+  });
+
+  it("returns the generic 400 on a replayed Business contact token", async () => {
+    const app = await getTestApp();
+    const raw = randomToken();
+    await createTestBusiness({
+      tradeName: "Replay Venue",
+      email: "replay-venue@example.com",
+      currencyTrade: "USD",
+      contactVerificationToken: raw,
+      contactVerificationTokenExpires: futureVerificationExpiry(),
+    });
+
+    const first = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/confirm-email",
+      payload: { token: raw },
+    });
+    expect(first.statusCode).toBe(200);
+
+    const second = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/confirm-email",
+      payload: { token: raw },
+    });
+    expect(second.statusCode).toBe(400);
+    expect(JSON.parse(second.body).detail).toBe(
+      CONFIRM_EMAIL_CONSUMPTION_ERROR_MESSAGE,
+    );
+  });
+
+  it("never reactivates a soft-deleted Business through a contact token", async () => {
+    const app = await getTestApp();
+    const raw = randomToken();
+    const business = await createTestBusiness({
+      tradeName: "Deleted Venue",
+      email: "deleted-venue@example.com",
+      currencyTrade: "USD",
+      contactVerificationToken: raw,
+      contactVerificationTokenExpires: futureVerificationExpiry(),
+    });
+    await Business.updateOne(
+      { _id: business._id },
+      { $set: { deleted: true, deletedAt: new Date() } },
+    );
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/confirm-email",
+      payload: { token: raw },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(JSON.parse(response.body).detail).toBe(
+      CONFIRM_EMAIL_CONSUMPTION_ERROR_MESSAGE,
+    );
+
+    const unchanged = await Business.findById(business._id)
+      .setOptions({ includeDeleted: true })
+      .select(
+        "deleted emailVerified contactVerificationToken contactVerificationTokenExpires",
+      )
+      .lean();
+    expect(unchanged?.deleted).toBe(true);
+    expect(unchanged?.emailVerified).toBe(false);
+    expect(unchanged?.contactVerificationToken).toBe(raw);
   });
 
   it("reactivates a soft-deleted user when consuming a valid token", async () => {

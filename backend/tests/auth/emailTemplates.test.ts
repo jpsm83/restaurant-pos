@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   accountEmailTranslations,
+  buildBusinessContactVerificationContent,
   buildEmailChangeConfirmationContent,
   buildEmailChangeNoticeContent,
   buildEmailConfirmationContent,
@@ -98,6 +99,34 @@ describe("emailTemplates", () => {
     expect(html).not.toContain("there");
     expect(text).toContain("Hola!");
     expect(text).not.toContain("there");
+  });
+
+  it("buildBusinessContactVerificationContent names the venue with a link and expiry", () => {
+    const url = "https://app.test/confirm-email?token=biz";
+    const { subject, html, text } = buildBusinessContactVerificationContent({
+      confirmUrl: url,
+      venueName: "The Blue Door",
+    });
+
+    expect(subject).toBe("Confirm Your Business Contact Email - POS");
+    expect(html).toContain(`href="${url}"`);
+    expect(html).toContain("The Blue Door");
+    expect(html).toContain("24 hours");
+    expect(text).toContain(url);
+    expect(text).toContain("The Blue Door");
+    expect(text).toContain("24 hours");
+  });
+
+  it("escapes the venue name in the rich part only", () => {
+    const venueName = '<script>alert("x")</script>';
+    const { html, text } = buildBusinessContactVerificationContent({
+      confirmUrl: "https://app.test/confirm-email?token=biz",
+      venueName,
+    });
+
+    expect(html).not.toContain("<script>");
+    expect(html).toContain("&lt;script&gt;");
+    expect(text).toContain(venueName);
   });
 
   it("buildEmailChangeConfirmationContent includes the new-address link and expiry", () => {

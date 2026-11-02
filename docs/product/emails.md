@@ -77,21 +77,22 @@ Project Imperium sends account email for:
 - **sign-in email change confirmation** — a link sent to the **new** address to confirm the change;
 - **sign-in email change notice** — a security warning sent to the **old** address once a change completes; it carries **no link**;
 - **reactivation** — a link that confirms restoring a soft-deleted account;
-- **business contact-email verification** — confirming a business's own contact email.
+- **business contact-email verification** — an authenticated Admin/Owner requesting a link to confirm a business's own contact email.
 
-Every action link is a **one-time link**: **randomly generated**, valid **once**, and **expiring**. Exactly **one active link per purpose per account** exists — requesting a new one **supersedes** the previous link, so an older link stops working. An expired or superseded link is refused and the person requests a new one.
+Every action link is a **one-time link**: **randomly generated**, valid **once**, and **expiring**. Exactly **one active link per purpose per account** exists — or **per business** for business contact-email verification — and requesting a new one **supersedes** the previous link, so an older link stops working. An expired or superseded link is refused and the person requests a new one.
 
 **Link lifetimes:** sign-in verification, sign-in email change, reactivation, and business contact-email verification **24 hours**; password reset **1 hour**.
 
-If the link email **cannot be sent**, Project Imperium **rolls back** the pending link and tells the requester, so an account is never left holding a link nobody received. This is the email-side exception to best-effort delivery (§3.7).
+If the link email **cannot be sent**, Project Imperium **rolls back** the pending link and tells the requester, so an account or business is never left holding a link nobody received. This is the email-side exception to best-effort delivery (§3.7).
 
 A completed password reset or sign-in email change has session effects owned by the users subject; the email side ends at the confirmed link.
 
 ### 3.3 Anti-enumeration
 
-- The unauthenticated request flows — **resend verification** (for a new email-and-password user or for a business contact email) and **password reset** — return a **single generic response** whether or not the address belongs to an account, and send a message **only when one exists**. A **sign-in email change** is an authenticated flow and is not part of this rule.
+- The unauthenticated request flows — **resend verification** for a new email-and-password user and **password reset** — return a **single generic response** whether or not the address belongs to an account, and send a message **only when one exists**. A **sign-in email change** is an authenticated flow and is not part of this rule.
+- **Business contact-email verification** is an **authenticated Admin/Owner request**, not an unauthenticated resend: the requester must hold Admin at the venue, so its outcomes name the real venue state (no contact email, already verified, or cooldown) instead of using anti-enumeration generic responses. The link itself is still a one-time link with the same 24-hour lifetime, supersession, and rollback rules.
 - **Email-and-password sign-up is also generic**: it never says an address is already taken. When someone signs up with an address that already has an account, Project Imperium does not reveal it inline; it sends that address a **"you already have an account"** message pointing the owner to sign in or reset, and still returns the generic sign-up response. **Google sign-up** resolves to the same User when the verified Google email already has an account, so it creates no duplicate and sends no already-have-an-account message.
-- Every request flow is **cooldown-limited**: a **one-minute minimum gap per account** between repeats, so the flows cannot be used to flood an address.
+- Every request flow is **cooldown-limited**: a **one-minute minimum gap per account** between repeats — or **per business** for business contact-email verification — so the flows cannot be used to flood an address.
 
 ### 3.4 Operational email
 

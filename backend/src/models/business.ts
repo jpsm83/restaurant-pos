@@ -67,6 +67,12 @@ const businessSchema = new Schema(
       type: Boolean,
       default: false,
     },
+    /** Server-owned one-time token emailed to the venue contact address. */
+    contactVerificationToken: { type: String, default: undefined },
+    /** 24-hour expiry for the contact verification token. */
+    contactVerificationTokenExpires: { type: Date, default: undefined },
+    /** When the last contact verification link was requested; drives the cooldown. */
+    contactVerificationRequestedAt: { type: Date, default: undefined },
     phoneNumber: { type: String }, // Phone number of the company
     taxNumber: { type: String }, // Legacy venue tax number, retained for existing rows
     currencyTrade: {
@@ -125,6 +131,9 @@ businessSchema.index(
     partialFilterExpression: { deleted: false, taxNumber: { $type: "string" } },
   },
 );
+
+// Only rows holding a pending contact-verification link take part in the index.
+businessSchema.index({ contactVerificationToken: 1 }, { sparse: true });
 
 applyActiveOnlySoftDelete(businessSchema);
 

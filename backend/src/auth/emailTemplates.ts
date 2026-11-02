@@ -65,6 +65,24 @@ const confirmationTranslations: Record<
   },
 };
 
+const businessContactVerificationTranslations = {
+  en: {
+    subject: "Confirm Your Business Contact Email - POS",
+    greeting: "Hello",
+    message:
+      "Please confirm the contact email for the venue below by clicking the button.",
+    venueLabel: "Venue",
+    confirmButton: "Confirm Email",
+    ignoreMessage:
+      "If you didn't request this verification, you can ignore this email.",
+    expiryMessage:
+      "This confirmation link will expire in 24 hours for security reasons.",
+    fallbackMessage:
+      "If the button above doesn't work, copy and paste this link into your browser:",
+    copyright: "© 2026 POS. All rights reserved.",
+  },
+};
+
 const passwordResetTranslations: Record<
   AccountEmailLanguage,
   PasswordResetTranslation
@@ -118,6 +136,15 @@ function interpolate(
     /\{\{(\w+)\}\}/g,
     (_match, key: string) => values[key] ?? `{{${key}}}`,
   );
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
 export function formatAuthEmailTtlPhrase(ttlMs: number): string {
@@ -195,6 +222,78 @@ export function buildEmailConfirmationContent(options: {
       ${greeting}!
 
       ${t.message}
+
+      ${options.confirmUrl}
+
+      ${t.ignoreMessage}
+
+      ${t.expiryMessage}
+
+      ${t.copyright}
+    `,
+  };
+}
+
+/**
+ * Contact-email verification for a venue. The venue name is authored data:
+ * interpolated as-is in plain text and escaped in the rich part.
+ */
+export function buildBusinessContactVerificationContent(options: {
+  confirmUrl: string;
+  venueName: string;
+}): AuthEmailTemplateContent {
+  const t = businessContactVerificationTranslations.en;
+  const venueName = options.venueName.trim();
+  const htmlVenueName = escapeHtml(venueName);
+
+  return {
+    subject: t.subject,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(to right, #0ea5e9, #3b82f6); color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+          <h1 style="margin: 0; font-size: 24px; color: white;">
+            POS
+          </h1>
+        </div>
+        <div style="background-color: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; border: 1px solid #e5e7eb;">
+          <h2 style="color: #374151; margin-bottom: 20px;">${t.greeting}!</h2>
+          <p style="color: #6b7280; line-height: 1.6; margin-bottom: 20px;">
+            ${t.message}
+          </p>
+          <p style="color: #374151; line-height: 1.6; margin-bottom: 20px;">
+            <strong>${t.venueLabel}:</strong> ${htmlVenueName}
+          </p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${options.confirmUrl}"
+               style="background: linear-gradient(to right, #0ea5e9, #3b82f6); color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600;">
+              ${t.confirmButton}
+            </a>
+          </div>
+          <p style="color: #6b7280; line-height: 1.6; margin-bottom: 20px;">
+            ${t.ignoreMessage}
+          </p>
+          <p style="color: #6b7280; line-height: 1.6; margin-bottom: 20px;">
+            ${t.expiryMessage}
+          </p>
+          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+          <p style="color: #9ca3af; font-size: 14px; text-align: center;">
+            ${t.fallbackMessage}<br>
+            <a href="${options.confirmUrl}" style="color: #3b82f6;">${options.confirmUrl}</a>
+          </p>
+        </div>
+        <div style="text-align: center; margin-top: 20px; color: #9ca3af; font-size: 12px;">
+          <p>${t.copyright}</p>
+        </div>
+      </div>
+    `,
+    text: `
+      ${t.subject}
+
+      ${t.greeting}!
+
+      ${t.message}
+
+      ${t.venueLabel}: ${venueName}
 
       ${options.confirmUrl}
 

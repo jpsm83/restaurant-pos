@@ -50,6 +50,34 @@ describe("Business contact email schema", () => {
     expect(fromDb?.emailVerified).toBe(true);
   });
 
+  it("stores a contact verification token, its 24-hour expiry, and the last request time", async () => {
+    const token = "a".repeat(64);
+    const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const requestedAt = new Date();
+
+    const created = await createTestBusiness({
+      ...minimalBusiness,
+      taxNumber: "TAX-SCHEMA-BIZ-004",
+      email: "biz-token@example.com",
+      contactVerificationToken: token,
+      contactVerificationTokenExpires: expires,
+      contactVerificationRequestedAt: requestedAt,
+    });
+
+    const fromDb = await Business.findById(created._id)
+      .select(
+        "contactVerificationToken contactVerificationTokenExpires contactVerificationRequestedAt",
+      )
+      .lean();
+    expect(fromDb?.contactVerificationToken).toBe(token);
+    expect(fromDb?.contactVerificationTokenExpires?.getTime()).toBe(
+      expires.getTime(),
+    );
+    expect(fromDb?.contactVerificationRequestedAt?.getTime()).toBe(
+      requestedAt.getTime(),
+    );
+  });
+
   it("defines no credential or session-generation fields", () => {
     for (const field of [
       "password",

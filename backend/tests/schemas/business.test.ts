@@ -375,6 +375,9 @@ describe("server-owned fields are excluded from every business DTO", () => {
       expect(keys).not.toContain("ratingCount");
       expect(keys).not.toContain("timezone");
       expect(keys).not.toContain("emailVerified");
+      expect(keys).not.toContain("contactVerificationToken");
+      expect(keys).not.toContain("contactVerificationTokenExpires");
+      expect(keys).not.toContain("contactVerificationRequestedAt");
       expect(keys).not.toContain("refreshSessionVersion");
       expect(keys).not.toContain("verificationToken");
       expect(keys).not.toContain("resetPasswordToken");

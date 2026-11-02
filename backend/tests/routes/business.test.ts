@@ -576,6 +576,9 @@ describe("Business Routes", () => {
         email: "legacy@venue.com",
         password: "legacy-hash",
         verificationToken: "legacy-confirm",
+        contactVerificationToken: "contact-confirm",
+        contactVerificationTokenExpires: new Date(Date.now() + 60_000),
+        contactVerificationRequestedAt: new Date(),
         resetPasswordToken: "legacy-reset",
         resetPasswordExpires: new Date(),
         pendingEmail: "legacy-new@venue.com",
@@ -601,6 +604,9 @@ describe("Business Routes", () => {
       for (const field of [
         "password",
         "verificationToken",
+        "contactVerificationToken",
+        "contactVerificationTokenExpires",
+        "contactVerificationRequestedAt",
         "resetPasswordToken",
         "resetPasswordExpires",
         "pendingEmail",
@@ -1171,6 +1177,9 @@ describe("Business Routes", () => {
         legalName: "Reject Email Co LLC",
         email: "reject-email-patch@business.com",
         emailVerified: true,
+        contactVerificationToken: "old-contact-token",
+        contactVerificationTokenExpires: new Date(Date.now() + 60_000),
+        contactVerificationRequestedAt: new Date(),
         phoneNumber: "1234567890",
         taxNumber: "TAX-REJECT-EMAIL-001",
         currencyTrade: "USD",
@@ -1211,6 +1220,9 @@ describe("Business Routes", () => {
       const stored = await Business.findById(business._id).lean();
       expect(stored?.email).toBe("new-reject-email@business.com");
       expect(stored?.emailVerified).toBe(false);
+      expect(stored?.contactVerificationToken).toBeUndefined();
+      expect(stored?.contactVerificationTokenExpires).toBeUndefined();
+      expect(stored?.contactVerificationRequestedAt).toBeUndefined();
     });
 
     it("dispatches BUSINESS_PROFILE_UPDATED to manager recipients after successful patch", async () => {

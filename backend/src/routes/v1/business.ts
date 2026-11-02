@@ -24,10 +24,18 @@ import {
   requireBusinessAccessHook,
 } from "../../auth/middleware.ts";
 import { resolveEffectiveAccess } from "../../access/resolveEffectiveAccess.ts";
+import { requireBusinessLayer } from "../../access/requireBusinessLayer.ts";
+import { requestBusinessContactEmailVerification } from "../../business/businessContactEmail.ts";
 import { profileUpdateActorSource } from "../../communications/businessProfileUpdateActor.ts";
 import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
 import deleteFilesCloudinary from "../../cloudinary/deleteFilesCloudinary.ts";
-import { badRequest, conflict, forbidden, notFound } from "../../errors/appError.ts";
+import {
+  badRequest,
+  conflict,
+  forbidden,
+  internal,
+  notFound,
+} from "../../errors/appError.ts";
 import { parseMultipart } from "../../schemas/multipart.ts";
 import {
   isSupportedTimezone,
@@ -61,7 +69,7 @@ import {
  * Never expose those columns from this public venue surface.
  */
 const BUSINESS_PUBLIC_LEAN_SELECT =
-  "-password -verificationToken -verificationTokenExpires -resetPasswordToken -resetPasswordExpires -pendingEmail -pendingEmailToken -pendingEmailExpires -pendingEmailRequestedAt -refreshSessionVersion";
+  "-password -verificationToken -verificationTokenExpires -resetPasswordToken -resetPasswordExpires -pendingEmail -pendingEmailToken -pendingEmailExpires -pendingEmailRequestedAt -refreshSessionVersion -contactVerificationToken -contactVerificationTokenExpires -contactVerificationRequestedAt";
 
 const DEFAULT_DISCOVERY_LIMIT = 50;
 
@@ -416,6 +424,41 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
     },
   );
 
+  /**
+   * POST /business/:businessId/request-email-verification
+   * Authenticated Admin/Owner: issue one 24-hour contact-verification link.
+   */
+  app.post<{ Params: BusinessIdParams }>(
+    "/:businessId/request-email-verification",
+    {
+      preValidation: [createAuthHook(app)],
+      schema: { params: businessIdParamsSchema },
+    },
+    async (req, reply) => {
+      await requireBusinessLayer({
+        userId: req.authSession!.id,
+        businessId: req.params.businessId,
+        minimumLayer: "admin",
+      });
+
+      const result = await requestBusinessContactEmailVerification(
+        req.params.businessId,
+      );
+
+      if (result.kind === "no_contact_email") {
+        throw badRequest(result.message);
+      }
+      if (result.kind === "not_found") {
+        throw notFound(result.message);
+      }
+      if (result.kind === "server_error_500") {
+        throw internal(result.message);
+      }
+
+      return reply.code(200).send({ message: result.message });
+    },
+  );
+
   app.patch<{ Params: BusinessIdParams }>(
     "/:businessId",
     {
@@ -441,6 +484,7 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
       const businessRecord = business as Record<string, unknown>;
 
       const updateBusinessObj: Record<string, unknown> = {};
+      let clearContactVerification = false;
 
       type UpdatableBusinessField =
         | "tradeName"
@@ -454,6 +498,7 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
       ) {
         updateBusinessObj.email = fields.email;
         updateBusinessObj.emailVerified = false;
+        clearContactVerification = true;
       }
 
       const setIfChanged = <K extends UpdatableBusinessField>(
@@ -614,8 +659,17 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
       const updateOps: mongoose.UpdateQuery<Record<string, unknown>> = {
         $set: updateBusinessObj,
       };
+      const unsetFields: Record<string, 1> = {};
       if (clearTimezone) {
-        updateOps.$unset = { timezone: 1 };
+        unsetFields.timezone = 1;
+      }
+      if (clearContactVerification) {
+        unsetFields.contactVerificationToken = 1;
+        unsetFields.contactVerificationTokenExpires = 1;
+        unsetFields.contactVerificationRequestedAt = 1;
+      }
+      if (Object.keys(unsetFields).length > 0) {
+        updateOps.$unset = unsetFields;
       }
 
       const updatedBusiness = await Business.findOneAndUpdate(

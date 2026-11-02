@@ -1,5 +1,6 @@
 import User from "../models/user.ts";
 import { withSoftDeleteFilter } from "../models/softDelete.ts";
+import { confirmBusinessContactEmailToken } from "../business/businessContactEmail.ts";
 
 export const CONFIRM_EMAIL_SUCCESS_MESSAGE =
   "Your email has been verified successfully.";
@@ -47,6 +48,12 @@ export async function handleConfirmEmail(
     );
 
     if (userResult.matchedCount > 0) {
+      return { kind: "success_200", message: CONFIRM_EMAIL_SUCCESS_MESSAGE };
+    }
+
+    // A venue contact link uses the same page and the same success/failure
+    // contract as a User link; it creates no User, session, or credential.
+    if (await confirmBusinessContactEmailToken(verificationToken)) {
       return { kind: "success_200", message: CONFIRM_EMAIL_SUCCESS_MESSAGE };
     }
 

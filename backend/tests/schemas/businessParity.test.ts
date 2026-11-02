@@ -51,7 +51,13 @@ describe("business DTO ↔ model parity", () => {
   });
 
   it("server-owned venue fields are in no DTO", () => {
-    for (const field of ["timezone", "emailVerified"]) {
+    for (const field of [
+      "timezone",
+      "emailVerified",
+      "contactVerificationToken",
+      "contactVerificationTokenExpires",
+      "contactVerificationRequestedAt",
+    ]) {
       expect(businessOwns(field), `${field} should be on the model`).toBe(true);
       for (const [name, schema] of Object.entries(allDtos)) {
         expect(

@@ -1,5 +1,6 @@
 /**
- * Sparse indexes on User auth-email token fields. Business holds no tokens.
+ * Sparse indexes on User auth-email token fields and the Business contact
+ * verification token. Business holds no sign-in credentials.
  */
 import { describe, it, expect, beforeAll } from "vitest";
 import User from "../../src/models/user.ts";
@@ -43,8 +44,15 @@ describe("Auth email security indexes", () => {
     expect(changeIx?.sparse).toBe(true);
   });
 
-  it("Business defines no auth-email token indexes", async () => {
+  it("Business defines a sparse contact verification token index and no auth-email token indexes", async () => {
     const indexes = await listIndexSpecs(Business.collection);
+
+    const contactIx = findSparseSingleFieldIndex(
+      indexes,
+      "contactVerificationToken",
+    );
+    expect(contactIx).toBeDefined();
+    expect(contactIx?.sparse).toBe(true);
 
     expect(
       findSparseSingleFieldIndex(indexes, "verificationToken"),
