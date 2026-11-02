@@ -200,6 +200,54 @@ describe("emailTemplates", () => {
     expect(text).toContain("24 hours");
   });
 
+  it("builds the confirmation email in Spanish with the link, expiry, and fallback", () => {
+    const url = "https://app.test/confirm-email-change?token=abc";
+    const { subject, html, text } = buildEmailChangeConfirmationContent({
+      confirmUrl: url,
+      greetingName: "Pat",
+      language: "es",
+    });
+
+    expect(subject).toBe("Confirma tu nuevo correo de acceso - POS");
+    expect(html).toContain(`href="${url}"`);
+    expect(html).toContain("24 horas");
+    expect(html).toContain("Hola Pat!");
+    expect(html).toContain("Si no solicitaste este cambio");
+    expect(text).toContain(url);
+    expect(text).toContain("24 horas");
+  });
+
+  it("keeps the no-name email-change greeting in Spanish", () => {
+    const { html, text } = buildEmailChangeConfirmationContent({
+      confirmUrl: "https://x.test/c",
+      language: "es",
+    });
+
+    expect(html).toContain("Hola!");
+    expect(html).not.toContain("there");
+    expect(text).toContain("Hola!");
+    expect(text).not.toContain("there");
+  });
+
+  it("falls back to English for an unsupported confirmation preference", () => {
+    const { subject, html } = buildEmailChangeConfirmationContent({
+      confirmUrl: "https://x.test/c",
+      language: "fr",
+    });
+
+    expect(subject).toBe("Confirm Your New Sign-in Email - POS");
+    expect(html).toContain("Hello there!");
+  });
+
+  it("falls back to English for a null confirmation preference", () => {
+    const { subject } = buildEmailChangeConfirmationContent({
+      confirmUrl: "https://x.test/c",
+      language: null,
+    });
+
+    expect(subject).toBe("Confirm Your New Sign-in Email - POS");
+  });
+
   it("buildEmailChangeNoticeContent warns the old address without a link", () => {
     const { subject, html, text } = buildEmailChangeNoticeContent({
       newEmail: "new@example.com",
@@ -212,6 +260,45 @@ describe("emailTemplates", () => {
     expect(html).not.toContain("href=");
     expect(text).toContain("new@example.com");
     expect(text).not.toContain("http");
+  });
+
+  it("builds the notice in Spanish without a link and keeps the warning", () => {
+    const { subject, html, text } = buildEmailChangeNoticeContent({
+      newEmail: "nuevo@example.com",
+      greetingName: "Pat",
+      language: "es",
+    });
+
+    expect(subject).toBe("Se cambió tu correo de acceso de POS");
+    expect(html).toContain("Hola Pat!");
+    expect(html).toContain("nuevo@example.com");
+    expect(html).toContain("Nuevo correo de acceso");
+    expect(html).toContain("soporte");
+    expect(html).not.toContain("href=");
+    expect(text).toContain("nuevo@example.com");
+    expect(text).not.toContain("http");
+  });
+
+  it("keeps the no-name notice greeting in Spanish", () => {
+    const { html, text } = buildEmailChangeNoticeContent({
+      newEmail: "nuevo@example.com",
+      language: "es",
+    });
+
+    expect(html).toContain("Hola!");
+    expect(html).not.toContain("there");
+    expect(text).toContain("Hola!");
+    expect(text).not.toContain("there");
+  });
+
+  it("falls back to English for an unsupported notice preference", () => {
+    const { subject, html } = buildEmailChangeNoticeContent({
+      newEmail: "new@example.com",
+      language: "de",
+    });
+
+    expect(subject).toBe("Your POS Sign-In Email Was Changed");
+    expect(html).toContain("New sign-in email");
   });
 
   it("buildPasswordResetEmailContent includes link and fixed expiry copy", () => {

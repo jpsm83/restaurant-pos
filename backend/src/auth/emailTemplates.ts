@@ -154,12 +154,6 @@ const passwordResetTranslations: Record<
   },
 };
 
-export const accountEmailTranslations = {
-  confirmation: confirmationTranslations,
-  passwordReset: passwordResetTranslations,
-  businessContactVerification: businessContactVerificationTranslations,
-};
-
 function fallbackName(name?: string): string {
   return name?.trim() || "there";
 }
@@ -414,10 +408,26 @@ export function buildPasswordResetEmailContent(options: {
   };
 }
 
-const emailChangeTranslations = {
+type EmailChangeTranslation = {
+  subject: string;
+  greeting: string;
+  greetingNoName: string;
+  message: string;
+  confirmButton: string;
+  ignoreMessage: string;
+  expiryMessage: string;
+  fallbackMessage: string;
+  copyright: string;
+};
+
+const emailChangeTranslations: Record<
+  AccountEmailLanguage,
+  EmailChangeTranslation
+> = {
   en: {
     subject: "Confirm Your New Sign-in Email - POS",
-    greeting: "Hello",
+    greeting: "Hello {{name}}",
+    greetingNoName: "Hello there",
     message:
       "You asked to change the sign-in email for your POS account. Click the button below to confirm this new address and finish the change.",
     confirmButton: "Confirm New Email",
@@ -429,12 +439,41 @@ const emailChangeTranslations = {
       "If the button above doesn't work, copy and paste this link into your browser:",
     copyright: "© 2026 POS. All rights reserved.",
   },
+  es: {
+    subject: "Confirma tu nuevo correo de acceso - POS",
+    greeting: "Hola {{name}}",
+    greetingNoName: "Hola",
+    message:
+      "Solicitaste cambiar el correo de acceso de tu cuenta de POS. Haz clic en el botón de abajo para confirmar esta nueva dirección y finalizar el cambio.",
+    confirmButton: "Confirmar nuevo correo",
+    ignoreMessage:
+      "Si no solicitaste este cambio, ignora este correo; tu correo de acceso no cambiará.",
+    expiryMessage:
+      "Este enlace de confirmación caducará en 24 horas por motivos de seguridad.",
+    fallbackMessage:
+      "Si el botón de arriba no funciona, copia y pega este enlace en tu navegador:",
+    copyright: "© 2026 POS. Todos los derechos reservados.",
+  },
 };
 
-const emailChangeNoticeTranslations = {
+type EmailChangeNoticeTranslation = {
+  subject: string;
+  greeting: string;
+  greetingNoName: string;
+  message: string;
+  newAddressLabel: string;
+  warningMessage: string;
+  copyright: string;
+};
+
+const emailChangeNoticeTranslations: Record<
+  AccountEmailLanguage,
+  EmailChangeNoticeTranslation
+> = {
   en: {
     subject: "Your POS Sign-In Email Was Changed",
-    greeting: "Hello",
+    greeting: "Hello {{name}}",
+    greetingNoName: "Hello there",
     message:
       "The sign-in email for your POS account was changed. You will now sign in with the new address shown below.",
     newAddressLabel: "New sign-in email",
@@ -442,6 +481,25 @@ const emailChangeNoticeTranslations = {
       "If you didn't make this change, contact support immediately — someone may have taken over your account.",
     copyright: "© 2026 POS. All rights reserved.",
   },
+  es: {
+    subject: "Se cambió tu correo de acceso de POS",
+    greeting: "Hola {{name}}",
+    greetingNoName: "Hola",
+    message:
+      "Se cambió el correo de acceso de tu cuenta de POS. Ahora iniciarás sesión con la nueva dirección que se muestra a continuación.",
+    newAddressLabel: "Nuevo correo de acceso",
+    warningMessage:
+      "Si no realizaste este cambio, contacta con soporte de inmediato; alguien podría haber tomado el control de tu cuenta.",
+    copyright: "© 2026 POS. Todos los derechos reservados.",
+  },
+};
+
+export const accountEmailTranslations = {
+  confirmation: confirmationTranslations,
+  passwordReset: passwordResetTranslations,
+  businessContactVerification: businessContactVerificationTranslations,
+  emailChange: emailChangeTranslations,
+  emailChangeNotice: emailChangeNoticeTranslations,
 };
 
 const accountExistsTranslations = {
@@ -536,9 +594,15 @@ export function buildAccountExistsEmailContent(options: {
 export function buildEmailChangeNoticeContent(options: {
   newEmail: string;
   greetingName?: string;
+  language?: string | null;
 }): AuthEmailTemplateContent {
-  const t = emailChangeNoticeTranslations.en;
-  const username = fallbackName(options.greetingName);
+  const t = pickAccountEmailTranslation(
+    accountEmailTranslations.emailChangeNotice,
+    resolveAccountEmailLanguage(options.language),
+  );
+  const greeting = options.greetingName?.trim()
+    ? interpolate(t.greeting, { name: options.greetingName.trim() })
+    : t.greetingNoName;
 
   return {
     subject: t.subject,
@@ -550,7 +614,7 @@ export function buildEmailChangeNoticeContent(options: {
           </h1>
         </div>
         <div style="background-color: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; border: 1px solid #e5e7eb;">
-          <h2 style="color: #374151; margin-bottom: 20px;">${t.greeting} ${username}!</h2>
+          <h2 style="color: #374151; margin-bottom: 20px;">${greeting}!</h2>
           <p style="color: #6b7280; line-height: 1.6; margin-bottom: 20px;">
             ${t.message}
           </p>
@@ -570,7 +634,7 @@ export function buildEmailChangeNoticeContent(options: {
     text: `
       ${t.subject}
 
-      ${t.greeting} ${username}!
+      ${greeting}!
 
       ${t.message}
 
@@ -591,9 +655,15 @@ export function buildEmailChangeNoticeContent(options: {
 export function buildEmailChangeConfirmationContent(options: {
   confirmUrl: string;
   greetingName?: string;
+  language?: string | null;
 }): AuthEmailTemplateContent {
-  const t = emailChangeTranslations.en;
-  const username = fallbackName(options.greetingName);
+  const t = pickAccountEmailTranslation(
+    accountEmailTranslations.emailChange,
+    resolveAccountEmailLanguage(options.language),
+  );
+  const greeting = options.greetingName?.trim()
+    ? interpolate(t.greeting, { name: options.greetingName.trim() })
+    : t.greetingNoName;
 
   return {
     subject: t.subject,
@@ -605,7 +675,7 @@ export function buildEmailChangeConfirmationContent(options: {
           </h1>
         </div>
         <div style="background-color: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; border: 1px solid #e5e7eb;">
-          <h2 style="color: #374151; margin-bottom: 20px;">${t.greeting} ${username}!</h2>
+          <h2 style="color: #374151; margin-bottom: 20px;">${greeting}!</h2>
           <p style="color: #6b7280; line-height: 1.6; margin-bottom: 20px;">
             ${t.message}
           </p>
@@ -635,7 +705,7 @@ export function buildEmailChangeConfirmationContent(options: {
     text: `
       ${t.subject}
 
-      ${t.greeting} ${username}!
+      ${greeting}!
 
       ${t.message}
 
