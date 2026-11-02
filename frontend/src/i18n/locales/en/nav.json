@@ -41,7 +41,9 @@
     "customerMode": "Customer mode"
   },
   "business": {
-    "people": "People"
+    "people": "People",
+    "me": "Me",
+    "notifications": "Notifications"
   },
   "venueTabs": {
     "ariaLabel": "Venues"

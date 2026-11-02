@@ -275,6 +275,7 @@ export function AppRoutes() {
             <Route path="dashboard" element={<BusinessDashboardPage />} />
             <Route path="people" element={<BusinessPeoplePage />} />
             <Route path="company" element={<BusinessCompanyPage />} />
+            <Route path="notifications" element={<NotificationsInboxPage />} />
             <Route
               path="settings/profile"
               element={<BusinessProfileSettingsPage />}

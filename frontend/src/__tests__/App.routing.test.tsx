@@ -51,6 +51,12 @@ vi.mock("@/pages/business/BusinessPeoplePage", () => ({
   default: () => <div data-testid="people-page-stub">People page</div>,
 }));
 
+vi.mock("@/pages/notifications/NotificationsInboxPage", () => ({
+  default: () => (
+    <div data-testid="notifications-page-stub">Notifications page</div>
+  ),
+}));
+
 describe("App public routing (Phase 1.5.1)", () => {
   beforeEach(() => {
     // Routing is the subject here; keep the real env client id from mounting
@@ -235,6 +241,45 @@ describe("App public routing (Phase 1.5.1)", () => {
     expect(
       await screen.findByTestId("people-page-stub"),
     ).toBeInTheDocument();
+  });
+
+  it("routes `/business/:businessId/notifications` for an authenticated User", async () => {
+    mockUseAuth.mockReturnValue({
+      state: {
+        user: { id: "u1", email: "manager@example.com", type: "user" },
+        status: "authenticated",
+        error: null,
+      },
+      dispatch: vi.fn(),
+    });
+    mockAuthMode.mode = "business";
+    mockVenues.data = [
+      {
+        businessId: "507f1f77bcf86cd799439011",
+        tradeName: "Alpha Bar",
+        source: "membership",
+        effectiveLayer: "manager",
+        jobRoles: [],
+        capabilities: [],
+        canEnterBusiness: true,
+      },
+    ];
+
+    await renderWithI18n(
+      <MemoryRouter
+        initialEntries={["/business/507f1f77bcf86cd799439011/notifications"]}
+      >
+        <LocationProbe />
+        <AppRoutes />
+      </MemoryRouter>,
+    );
+
+    expect(
+      await screen.findByTestId("notifications-page-stub"),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent(
+      /^\/business\/507f1f77bcf86cd799439011\/notifications$/,
+    );
   });
 
   it("renders ForgotPasswordPage for `/forgot-password`", async () => {

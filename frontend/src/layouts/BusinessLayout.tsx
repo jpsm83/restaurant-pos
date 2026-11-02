@@ -6,9 +6,10 @@
  * ## Flow
  * **`SidebarProvider`** wraps routed content in **`main.tsx`**. This layout adds **Sidebar** +
  * **main column** (same flex role as shadcn `SidebarInset`, but a **`div`** so child pages may use `<main>`); **`<Outlet />`** (in **`Suspense`**) renders tenant pages in the main
- * column (`dashboard`, `people`, `company`,
+ * column (`dashboard`, `people`, `company`, `notifications`,
  * `settings/profile`, `settings/subscriptions`, `settings/address`, `settings/open-hours`,
- * `settings/delivery`, `settings/metrics`).
+ * `settings/delivery`, `settings/metrics`). The Me group holds self-only destinations and
+ * currently ships Notifications only.
  * When the accessible-venue list has more than one enterable venue the layout renders
  * horizontal **venue tabs** above the routed content; owned venues also carry **Owner chrome**
  * (**Add venue** and **Company**). The sidebar footer carries the minimal
@@ -36,10 +37,12 @@ import { useLocation } from "react-router-dom";
 import {
   ArrowLeft,
   BarChart3,
+  Bell,
   Clock,
   LayoutDashboard,
   Settings,
   Truck,
+  User as UserIcon,
   Users,
 } from "lucide-react";
 import { useAuthModeNavigation } from "@/hooks/useAuthModeNavigation";
@@ -55,6 +58,7 @@ import {
 } from "@/services/employees/employeesService";
 import {
   canonicalBusinessDashboardRoutePath,
+  canonicalBusinessNotificationsPath,
   canonicalBusinessPeoplePath,
   canonicalBusinessSettingsDeliveryPath,
   canonicalBusinessSettingsMetricsPath,
@@ -96,6 +100,7 @@ export default function BusinessLayout() {
   const openHoursTo = canonicalBusinessSettingsOpenHoursPath(businessId);
   const deliveryTo = canonicalBusinessSettingsDeliveryPath(businessId);
   const metricsTo = canonicalBusinessSettingsMetricsPath(businessId);
+  const notificationsTo = canonicalBusinessNotificationsPath(businessId);
 
   const pages = [
     {
@@ -145,6 +150,15 @@ export default function BusinessLayout() {
       isActive: pathname === metricsTo,
       groupName: t("settings.settings"),
       groupIcon: Settings,
+    },
+    {
+      key: "me-notifications",
+      label: t("business.notifications"),
+      to: notificationsTo,
+      icon: Bell,
+      isActive: pathname === notificationsTo,
+      groupName: t("business.me"),
+      groupIcon: UserIcon,
     },
   ];
 

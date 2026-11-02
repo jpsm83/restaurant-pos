@@ -106,12 +106,27 @@ vi.mock("@/components/ActorSidebar", () => ({
     subPages,
   }: {
     pages?: Array<{ label: string }>;
-    subPages?: Array<{ label: string }>;
+    subPages?: Array<{
+      key: string;
+      label: string;
+      to: string;
+      groupName: string;
+    }>;
   }) => (
     <nav data-testid="actor-sidebar">
-      {(pages ?? []).map((p) => p.label).join("|")}::{(subPages ?? [])
-        .map((p) => p.label)
-        .join("|")}
+      <span data-testid="sidebar-pages">
+        {(pages ?? []).map((p) => p.label).join("|")}
+      </span>
+      {(subPages ?? []).map((page) => (
+        <a
+          key={page.key}
+          href={page.to}
+          data-group={page.groupName}
+          data-label={page.label}
+        >
+          {page.label}
+        </a>
+      ))}
     </nav>
   ),
 }));
@@ -179,6 +194,7 @@ function renderBusinessLayout(
         <Route path="/business/:businessId" element={<BusinessLayout />}>
           <Route path="dashboard" element={<div>Business Outlet</div>} />
           <Route path="company" element={<div>Company page</div>} />
+          <Route path="notifications" element={<div>Notifications page</div>} />
         </Route>
         <Route path="/dashboard" element={<div>Customer dashboard</div>} />
       </Routes>
@@ -244,6 +260,38 @@ describe("BusinessLayout", () => {
 
     expect(screen.getByTestId("actor-sidebar")).toBeInTheDocument();
     expect(screen.getByText("Business Outlet")).toBeInTheDocument();
+  });
+
+  it("shows a Me group with only the Notifications destination", async () => {
+    await renderBusinessLayout();
+
+    const nav = screen.getByTestId("actor-sidebar");
+    const meLinks = within(nav)
+      .getAllByRole("link")
+      .filter((link) => link.getAttribute("data-group") === "Me");
+
+    expect(meLinks).toHaveLength(1);
+    expect(meLinks[0]).toHaveTextContent("Notifications");
+    expect(meLinks[0]).toHaveAttribute(
+      "href",
+      "/business/b1/notifications",
+    );
+  });
+
+  it("localizes the Me group and Notifications destination", async () => {
+    await renderBusinessLayout("/business/b1/notifications", "es");
+
+    const nav = screen.getByTestId("actor-sidebar");
+    const meLinks = within(nav)
+      .getAllByRole("link")
+      .filter((link) => link.getAttribute("data-group") === "Yo");
+
+    expect(meLinks).toHaveLength(1);
+    expect(meLinks[0]).toHaveTextContent("Notificaciones");
+    expect(meLinks[0]).toHaveAttribute(
+      "href",
+      "/business/b1/notifications",
+    );
   });
 
   it("renders no tab strip for a single-venue session", async () => {

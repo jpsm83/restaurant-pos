@@ -41,7 +41,9 @@
     "customerMode": "Modo cliente"
   },
   "business": {
-    "people": "Personal"
+    "people": "Personal",
+    "me": "Yo",
+    "notifications": "Notificaciones"
   },
   "venueTabs": {
     "ariaLabel": "Locales"

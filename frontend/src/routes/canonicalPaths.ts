@@ -91,6 +91,11 @@ export function canonicalBusinessSettingsOpenHoursPath(businessId: string): stri
   return `${canonicalBusinessDashboardPath(businessId)}/settings/open-hours`;
 }
 
+/** The shared User-scoped inbox reached from the Business Me group. */
+export function canonicalBusinessNotificationsPath(businessId: string): string {
+  return `${canonicalBusinessDashboardPath(businessId)}/notifications`;
+}
+
 /** Customer dashboard — the signed-in User's landing page. */
 export function canonicalCustomerDashboardPath(): string {
   return "/dashboard";

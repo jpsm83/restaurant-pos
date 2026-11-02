@@ -10,6 +10,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { IAuthAccessibleVenue } from "restaurant-pos-packages/interfaces/IAuth";
+import type { INotificationInboxItem } from "restaurant-pos-packages/interfaces/INotification";
 import type {
   IOwnerPortfolio,
   IOwnerPortfolioBusiness,
@@ -41,6 +42,7 @@ type ServerState = {
   venues: IAuthAccessibleVenue[];
   portfolio: IOwnerPortfolio;
   profile: UserProfile;
+  inbox: INotificationInboxItem[];
 };
 
 const {
@@ -127,6 +129,20 @@ function portfolio(
   };
 }
 
+function inboxEntry(
+  overrides: Partial<INotificationInboxItem> = {},
+): INotificationInboxItem {
+  return {
+    notificationId: "n1",
+    businessId: "b1",
+    notificationType: "Info",
+    message: "Your order is ready.",
+    createdAt: "2026-03-27T10:15:00.000Z",
+    read: false,
+    ...overrides,
+  };
+}
+
 function profile(overrides: Partial<UserProfile> = {}): UserProfile {
   return {
     _id: "u1",
@@ -166,6 +182,7 @@ function createServer(overrides: Partial<ServerState> = {}): ServerState {
     venues: [],
     portfolio: portfolio(),
     profile: profile(),
+    inbox: [],
     ...overrides,
   };
 }
@@ -193,6 +210,20 @@ function installServerMocks() {
     }
     if (url === "/api/v1/auth/venues") {
       return { data: { venues: server.venues } };
+    }
+    const inboxMatch = /^\/api\/v1\/notifications\/inbox(?:\?page=(\d+))?$/.exec(
+      url,
+    );
+    if (inboxMatch) {
+      return {
+        data: {
+          items: server.inbox,
+          unreadCount: server.inbox.filter((entry) => !entry.read).length,
+          page: Number(inboxMatch[1] ?? 1),
+          limit: 20,
+          hasMore: false,
+        },
+      };
     }
     if (url === "/api/v1/owners/portfolio") {
       return { data: server.portfolio };
@@ -563,6 +594,73 @@ describe("Customer chrome and Business shell acceptance", () => {
       "/api/v1/auth/set-mode",
       expect.anything(),
     );
+  });
+
+  it("opens the shared inbox from Business Me without venue filtering", async () => {
+    server = createServer({
+      mode: "business",
+      venues: [
+        venue({ businessId: "b1", tradeName: "Alpha Bar" }),
+        venue({ businessId: "b2", tradeName: "Beta Bar" }),
+      ],
+      portfolio: portfolio([
+        { _id: "b1", tradeName: "Alpha Bar" },
+        { _id: "b2", tradeName: "Beta Bar" },
+      ]),
+      inbox: [
+        inboxEntry({
+          notificationId: "n2",
+          businessId: "b2",
+          message: "Beta venue update.",
+          createdAt: "2026-03-27T11:45:00.000Z",
+        }),
+        inboxEntry({
+          notificationId: "n1",
+          businessId: "b1",
+          message: "Alpha venue update.",
+          createdAt: "2026-03-27T10:15:00.000Z",
+        }),
+      ],
+    });
+    const user = userEvent.setup();
+
+    await renderShell("/business/b1/dashboard");
+
+    expect(await findBusinessDashboard()).toBeInTheDocument();
+    await user.click(screen.getByRole("link", { name: "Notifications" }));
+
+    await expectLocation("/business/b1/notifications");
+    expect(
+      await screen.findByRole("heading", { name: "Notifications" }),
+    ).toBeInTheDocument();
+    expect(await screen.findByText("Alpha venue update.")).toBeInTheDocument();
+    expect(screen.getByText("Beta venue update.")).toBeInTheDocument();
+    expect(mockGet).toHaveBeenCalledWith(
+      "/api/v1/notifications/inbox?page=1",
+      expect.anything(),
+    );
+  });
+
+  it("renders the Business Me inbox and navigation in Spanish", async () => {
+    server = createServer({
+      mode: "business",
+      venues: [venue({ businessId: "b1", tradeName: "Alpha Bar" })],
+      portfolio: portfolio([{ _id: "b1", tradeName: "Alpha Bar" }]),
+      inbox: [inboxEntry({ message: "Actualización del local." })],
+    });
+
+    await renderShell("/business/b1/notifications", "es");
+
+    expect(
+      await screen.findByRole("heading", { name: "Notificaciones" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Notificaciones" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Yo")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Actualización del local."),
+    ).toBeInTheDocument();
   });
 
   it("shows Owner chrome only on a tab the User owns", async () => {
