@@ -42,7 +42,7 @@ export async function handleConfirmEmailChange(
       }),
     )
       .select(
-        "_id personalDetails.email personalDetails.username personalDetails.firstName pendingEmail",
+        "_id languagePreference personalDetails.email personalDetails.username personalDetails.firstName pendingEmail",
       )
       .lean();
 
@@ -115,6 +115,7 @@ export async function handleConfirmEmailChange(
           ...buildEmailChangeNoticeContent({
             newEmail,
             greetingName,
+            language: pending.languagePreference,
           }),
         });
       } catch {

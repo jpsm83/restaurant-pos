@@ -149,6 +149,130 @@ describe("POST /api/v1/auth/confirm-email-change", () => {
     expect(notice.text).not.toContain("http");
   });
 
+  it("sends the old-address notice in the User's stored Spanish preference", async () => {
+    const app = await getTestApp();
+    const user = await createUser(oldEmail, {
+      languagePreference: "en",
+      pendingEmail: newEmail,
+      pendingEmailToken: token,
+      pendingEmailExpires: futureExpiry(),
+      pendingEmailRequestedAt: new Date(),
+    });
+    // Set the preference after the pending change exists, so the notice can only
+    // pick it up from the User record read at confirmation time.
+    await User.updateOne(
+      { _id: user._id },
+      { $set: { languagePreference: "es" } },
+    );
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/confirm-email-change",
+      payload: { token },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(sendEmailMock).toHaveBeenCalledTimes(1);
+    const notice = sendEmailMock.mock.calls[0][0] as {
+      to: string;
+      subject: string;
+      html: string;
+      text: string;
+    };
+    expect(notice.to).toBe(oldEmail);
+    expect(notice.subject).toBe("Se cambió tu correo de acceso de POS");
+    expect(notice.html).toContain("Hola");
+    expect(notice.html).toContain(newEmail);
+    expect(notice.html).toContain("Nuevo correo de acceso");
+    expect(notice.html).toContain(
+      "alguien podría haber tomado el control de tu cuenta",
+    );
+    expect(notice.html).not.toContain("href=");
+    expect(notice.text).toContain("Se cambió el correo de acceso");
+    expect(notice.text).toContain(newEmail);
+    expect(notice.text).toContain(
+      "alguien podría haber tomado el control de tu cuenta",
+    );
+    expect(notice.text).not.toContain("http");
+  });
+
+  it.each([
+    {
+      label: "an English preference",
+      storedPreference: "en",
+      overrideTo: undefined,
+    },
+    {
+      label: "no stored preference",
+      storedPreference: undefined,
+      overrideTo: undefined,
+    },
+    {
+      label: "an unsupported stored preference",
+      storedPreference: "en",
+      overrideTo: "fr",
+    },
+    {
+      label: "an unknown stored preference",
+      storedPreference: "en",
+      overrideTo: null,
+    },
+  ])(
+    "sends the old-address notice in English for $label",
+    async ({ storedPreference, overrideTo }) => {
+      const app = await getTestApp();
+      const user = await createUser(
+        oldEmail,
+        storedPreference ? { languagePreference: storedPreference } : {},
+      );
+      if (overrideTo !== undefined) {
+        await User.updateOne(
+          { _id: user._id },
+          { $set: { languagePreference: overrideTo } },
+        );
+      }
+      await User.updateOne(
+        { _id: user._id },
+        {
+          $set: {
+            pendingEmail: newEmail,
+            pendingEmailToken: token,
+            pendingEmailExpires: futureExpiry(),
+            pendingEmailRequestedAt: new Date(),
+          },
+        },
+      );
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/confirm-email-change",
+        payload: { token },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(sendEmailMock).toHaveBeenCalledTimes(1);
+      const notice = sendEmailMock.mock.calls[0][0] as {
+        to: string;
+        subject: string;
+        html: string;
+        text: string;
+      };
+      expect(notice.to).toBe(oldEmail);
+      expect(notice.subject).toBe("Your POS Sign-In Email Was Changed");
+      expect(notice.html).toContain("New sign-in email");
+      expect(notice.html).toContain(newEmail);
+      expect(notice.html).toContain(
+        "someone may have taken over your account",
+      );
+      expect(notice.html).not.toContain("href=");
+      expect(notice.text).toContain("The sign-in email for your POS account");
+      expect(notice.text).toContain(
+        "someone may have taken over your account",
+      );
+      expect(notice.text).not.toContain("http");
+    },
+  );
+
   it("accepts an uppercase token", async () => {
     const app = await getTestApp();
     const user = await createUser(oldEmail, {
