@@ -87,38 +87,6 @@ export function createAuthHook(app: FastifyInstance): preValidationHookHandler {
 }
 
 /**
- * Creates an optional authentication hook that attempts to verify the JWT
- * but allows the request to proceed even if no token is provided.
- * Sets `request.authSession` if a valid token is present.
- *
- * Reserved for documented public reads that genuinely need optional identity.
- * It must not protect a mutating route; the v1 authorization gate secures
- * every non-public route.
- */
-export function createOptionalAuthHook(
-  app: FastifyInstance,
-): preValidationHookHandler {
-  return async (req: FastifyRequest) => {
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader?.startsWith("Bearer ")) {
-      return;
-    }
-
-    const token = authHeader.slice(7);
-
-    try {
-      req.authSession = await requireLiveAccessSession(app, token);
-    } catch (error) {
-      if (isRejectedCredential(error)) {
-        return;
-      }
-      throw error;
-    }
-  };
-}
-
-/**
  * An access token is live only when its refresh session exists, is unrevoked,
  * is unexpired, belongs to the same User, and matches the account generation.
  * A token with no session id is refused. This does not apply the

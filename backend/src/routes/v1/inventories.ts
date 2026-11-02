@@ -42,7 +42,6 @@ import {
   unauthorized,
 } from "../../errors/appError.ts";
 import {
-  addInventoryCountBodySchema,
   businessIdParamsSchema,
   inventoryIdParamsSchema,
   inventoryIncludeDeletedQuerySchema,
@@ -51,7 +50,6 @@ import {
   inventorySupplierGoodParamsSchema,
   updateInventoryCountBodySchema,
   varianceReportQuerySchema,
-  type AddInventoryCountBody,
   type BusinessIdParams,
   type InventoryIdParams,
   type InventoryIncludeDeletedQuery,
@@ -281,123 +279,6 @@ export const inventoriesRoutes: FastifyPluginAsync = async (app) => {
     },
   );
 
-  // PATCH /inventories/:inventoryId/supplierGood/:supplierGoodId/addCount - add count
-  app.patch<{ Params: InventorySupplierGoodParams; Body: AddInventoryCountBody }>(
-    "/:inventoryId/supplierGood/:supplierGoodId/addCount",
-    {
-      schema: {
-        params: inventorySupplierGoodParamsSchema,
-        body: addInventoryCountBodySchema,
-      },
-    },
-    async (req, reply) => {
-      const { inventoryId, supplierGoodId } = req.params;
-      const { currentCountQuantity, countedByEmployeeId, comments } = req.body;
-
-      const [inventory, supplierGood] = await Promise.all([
-        Inventory.findOne({
-          ...withSoftDeleteFilter({
-            _id: inventoryId,
-            "inventoryGoods.supplierGoodId": supplierGoodId,
-          }),
-        })
-          .select("setFinalCount inventoryGoods.$")
-          .lean() as Promise<IInventory | null>,
-        SupplierGood.findById(supplierGoodId)
-          .select("parLevel")
-          .lean() as Promise<ISupplierGood | null>,
-      ]);
-
-      if (!supplierGood || !inventory) {
-        throw badRequest(
-          !supplierGood ? "Supplier good not found!" : "Inventory not found!",
-        );
-      }
-
-      if (inventory.setFinalCount) {
-        throw badRequest(
-          "Inventory already set as final count! Cannot update!",
-        );
-      }
-
-      const inventoryGood = inventory.inventoryGoods[0];
-
-      if (currentCountQuantity === inventoryGood.dynamicSystemCount) {
-        return reply.code(200).send({
-          message: "Inventory count didn't change from last count!",
-        });
-      }
-
-      const newInventoryCount: IInventoryCount = {
-        currentCountQuantity,
-        quantityNeeded: (supplierGood.parLevel || 0) - currentCountQuantity,
-        countedByEmployeeId: new Types.ObjectId(countedByEmployeeId),
-        deviationPercent:
-          ((inventoryGood.dynamicSystemCount - currentCountQuantity) /
-            (inventoryGood.dynamicSystemCount || 1)) *
-          100,
-        comments,
-      };
-
-      const totalDeviationPercent = inventoryGood.monthlyCounts.reduce(
-        (acc, count) => acc + (count.deviationPercent || 0),
-        0,
-      );
-
-      const monthlyCountsWithDeviation = inventoryGood.monthlyCounts.filter(
-        (count) => count.deviationPercent !== 0,
-      ).length;
-
-      const averageDeviationPercentCalculation =
-        (totalDeviationPercent + (newInventoryCount.deviationPercent ?? 0)) /
-        (monthlyCountsWithDeviation + 1);
-
-      await Promise.all([
-        Inventory.updateOne(
-          {
-            ...withSoftDeleteFilter({ _id: inventoryId }),
-            "inventoryGoods.supplierGoodId": supplierGoodId,
-            "inventoryGoods.monthlyCounts.lastCount": true,
-          },
-          {
-            $set: {
-              "inventoryGoods.$[elem].monthlyCounts.$[count].lastCount": false,
-            },
-          },
-          {
-            arrayFilters: [
-              { "elem.supplierGoodId": new Types.ObjectId(supplierGoodId) },
-              { "count.lastCount": true },
-            ],
-          },
-        ),
-
-        Inventory.updateOne(
-          {
-            ...withSoftDeleteFilter({ _id: inventoryId }),
-            "inventoryGoods.supplierGoodId": supplierGoodId,
-          },
-          {
-            $set: {
-              "inventoryGoods.$[elem].dynamicSystemCount": currentCountQuantity,
-              "inventoryGoods.$[elem].averageDeviationPercent":
-                averageDeviationPercentCalculation,
-            },
-            $push: {
-              "inventoryGoods.$[elem].monthlyCounts": newInventoryCount,
-            },
-          },
-          {
-            arrayFilters: [
-              { "elem.supplierGoodId": new Types.ObjectId(supplierGoodId) },
-            ],
-          },
-        ),
-      ]);
-
-      return reply.code(200).send({ message: "Inventory count added!" });
-    },
-  );
 
   // PATCH /inventories/:inventoryId/supplierGood/:supplierGoodId/updateCount - update count
   app.patch<{

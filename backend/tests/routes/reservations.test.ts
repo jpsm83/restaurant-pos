@@ -482,73 +482,6 @@ describe("Reservations Routes", () => {
     });
   });
 
-  describe("DELETE /api/v1/reservations/:reservationId", () => {
-    it("returns a validation problem for an invalid ID", async () => {
-      const app = await getTestApp();
-
-      const response = await injectWithRouteAuth(app, {
-        method: "DELETE",
-        url: "/api/v1/reservations/invalid-id",
-      });
-
-      const body = expectProblem(response, 400, "validation");
-      expect(body.errors).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ path: "reservationId" }),
-        ]),
-      );
-    });
-
-    it("returns a not-found problem for a non-existent reservation", async () => {
-      const app = await getTestApp();
-      const fakeId = new Types.ObjectId();
-
-      const response = await injectWithRouteAuth(app, {
-        method: "DELETE",
-        url: `/api/v1/reservations/${fakeId}`,
-      });
-
-      const body = expectProblem(response, 404, "not-found");
-      expect(body.detail).toBe("Reservation not found!");
-    });
-
-    it("soft-deletes reservation successfully", async () => {
-      const app = await getTestApp();
-      const business = await createTestBusiness();
-      const reservation = await createTestReservation(
-        business._id as Types.ObjectId,
-      );
-
-      const response = await injectWithRouteAuth(app, {
-        method: "DELETE",
-        url: `/api/v1/reservations/${reservation._id}`,
-      });
-
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe("Reservation deleted!");
-      const persisted = await Reservation.findById(reservation._id)
-        .setOptions({ includeDeleted: true })
-        .lean();
-      expect(persisted).not.toBeNull();
-      expect(persisted?.deleted).toBe(true);
-    });
-
-    it("returns conflict when reservation already deleted", async () => {
-      const app = await getTestApp();
-      const business = await createTestBusiness();
-      const reservation = await createTestReservation(
-        business._id as Types.ObjectId,
-        { deleted: true },
-      );
-      const response = await injectWithRouteAuth(app, {
-        method: "DELETE",
-        url: `/api/v1/reservations/${reservation._id}`,
-      });
-      const body = expectProblem(response, 409, "conflict");
-      expect(body.detail).toBe("Reservation already deleted!");
-    });
-  });
 
   describe("GET /api/v1/reservations/business/:businessId", () => {
     it("returns a validation problem for an invalid businessId", async () => {
@@ -751,7 +684,7 @@ describe("Reservations Routes", () => {
         },
       });
 
-      const employee = await Employee.create({
+      await Employee.create({
         businessId: business._id,
         userId: user._id,
         currentShiftRole: "Waiter",
@@ -821,7 +754,7 @@ describe("Reservations Routes", () => {
         },
       });
 
-      const employee = await Employee.create({
+      await Employee.create({
         businessId: business._id,
         userId: user._id,
         currentShiftRole: "Host",

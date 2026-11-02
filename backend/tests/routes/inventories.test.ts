@@ -387,48 +387,6 @@ describe("Inventories Routes", () => {
     });
   });
 
-  describe("PATCH /api/v1/inventories/:inventoryId/supplierGood/:supplierGoodId/addCount", () => {
-    it("returns a validation problem for missing required fields", async () => {
-      const app = await getTestApp();
-      const fakeInventoryId = new Types.ObjectId();
-      const fakeSupplierGoodId = new Types.ObjectId();
-
-      const response = await injectWithRouteAuth(app, {
-        method: "PATCH",
-        url: `/api/v1/inventories/${fakeInventoryId}/supplierGood/${fakeSupplierGoodId}/addCount`,
-        payload: {},
-      });
-
-      const body = expectProblem(response, 400, "validation");
-      expect(body.errors).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ path: "currentCountQuantity" }),
-          expect.objectContaining({ path: "countedByEmployeeId" }),
-        ]),
-      );
-    });
-
-    it("returns a validation problem for invalid IDs", async () => {
-      const app = await getTestApp();
-
-      const response = await injectWithRouteAuth(app, {
-        method: "PATCH",
-        url: "/api/v1/inventories/invalid-id/supplierGood/invalid-id/addCount",
-        payload: {
-          currentCountQuantity: 50,
-          countedByEmployeeId: new Types.ObjectId().toString(),
-        },
-      });
-
-      const body = expectProblem(response, 400, "validation");
-      expect(body.errors).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ path: "inventoryId" }),
-          expect.objectContaining({ path: "supplierGoodId" }),
-        ]),
-      );
-    });
-  });
 
   describe("PATCH /api/v1/inventories/:inventoryId/supplierGood/:supplierGoodId/updateCount", () => {
     it("returns 401 without authentication", async () => {

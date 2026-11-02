@@ -33,7 +33,7 @@ import Employee from "../../models/employee.ts";
 import SalesPoint from "../../models/salesPoint.ts";
 import SalesInstance from "../../models/salesInstance.ts";
 import DailySalesReport from "../../models/dailySalesReport.ts";
-import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
+import { withSoftDeleteFilter } from "../../models/softDelete.ts";
 import { createAuthHook } from "../../auth/middleware.ts";
 import {
   badRequest,
@@ -527,38 +527,6 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
       } finally {
         session.endSession();
       }
-    },
-  );
-
-  // DELETE /reservations/:reservationId - delete
-  app.delete<{ Params: ReservationIdParams }>(
-    "/:reservationId",
-    {
-      preValidation: [createAuthHook(app)],
-      schema: { params: reservationIdParamsSchema },
-    },
-    async (req, reply) => {
-      const { reservationId } = req.params;
-      const reservation = await Reservation.findById(reservationId)
-        .setOptions({ includeDeleted: true })
-        .select("deleted")
-        .lean();
-      if (!reservation) {
-        throw notFound("Reservation not found!");
-      }
-      if (reservation.deleted) {
-        throw conflict("Reservation already deleted!");
-      }
-
-      const wasDeleted = await markAsDeletedById(
-        Reservation as mongoose.Model<IReservation & { deleted: boolean }>,
-        reservationId,
-        { deletedBy: req.authSession?.id },
-      );
-      if (!wasDeleted) {
-        throw conflict("Reservation already deleted!");
-      }
-      return reply.code(200).send({ message: "Reservation deleted!" });
     },
   );
 

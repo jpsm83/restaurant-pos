@@ -1,6 +1,6 @@
 /**
- * MonthlyBusinessReport Routes — report retrieval, the fixed/extra-cost PATCH
- * and the on-demand calculation.
+ * MonthlyBusinessReport Routes — report retrieval and the on-demand
+ * calculation. The unsafe legacy PATCH is retired until the reports row lands.
  *
  * Every route declares its params/query/body as a strict zod DTO from
  * `packages/schemas/businessReports.ts`; validation happens at the boundary and
@@ -28,14 +28,12 @@ import {
   monthlyBusinessReportRangeQuerySchema,
   monthlyReportIdParamsSchema,
   reportIncludeDeletedQuerySchema,
-  updateMonthlyBusinessReportBodySchema,
   type CalculateMonthlyReportQuery,
   type MonthlyBusinessParams,
   type MonthlyBusinessReportListQuery,
   type MonthlyBusinessReportRangeQuery,
   type MonthlyReportIdParams,
   type ReportIncludeDeletedQuery,
-  type UpdateMonthlyBusinessReportBody,
 } from "restaurant-pos-packages/schemas/businessReports";
 
 /** The local midnight of a `YYYY-MM` month (the schema has validated it). */
@@ -157,98 +155,6 @@ export const monthlyBusinessReportRoutes: FastifyPluginAsync = async (app) => {
       }
 
       return reply.code(200).send(report);
-    },
-  );
-
-  // PATCH /monthlyBusinessReport/:monthlyReportId - update
-  app.patch<{
-    Params: MonthlyReportIdParams;
-    Body: UpdateMonthlyBusinessReportBody;
-  }>(
-    "/:monthlyReportId",
-    {
-      schema: {
-        params: monthlyReportIdParamsSchema,
-        body: updateMonthlyBusinessReportBodySchema,
-      },
-    },
-    async (req, reply) => {
-      const { monthlyReportId } = req.params;
-      const { totalFixedOperatingCost, totalExtraCost } = req.body;
-
-      if (
-        totalFixedOperatingCost === undefined &&
-        totalExtraCost === undefined
-      ) {
-        throw badRequest(
-          "Provide at least one of totalFixedOperatingCost or totalExtraCost.",
-        );
-      }
-
-      const report = await MonthlyBusinessReport.findOne(
-        withSoftDeleteFilter({ _id: monthlyReportId }),
-      )
-        .select("isReportOpen costBreakdown")
-        .lean();
-
-      if (!report) {
-        throw notFound("Monthly report not found!");
-      }
-
-      if (!(report as { isReportOpen?: boolean }).isReportOpen) {
-        throw badRequest("Cannot update a closed monthly report.");
-      }
-
-      const cost = (report as { costBreakdown?: Record<string, unknown> })
-        .costBreakdown;
-      const totalFoodCost = (cost?.totalFoodCost as number) ?? 0;
-      const totalBeverageCost = (cost?.totalBeverageCost as number) ?? 0;
-      const totalLaborCost = (cost?.totalLaborCost as number) ?? 0;
-      const newFixed =
-        totalFixedOperatingCost !== undefined
-          ? totalFixedOperatingCost
-          : ((cost?.totalFixedOperatingCost as number) ?? 0);
-      const newExtra =
-        totalExtraCost !== undefined
-          ? totalExtraCost
-          : ((cost?.totalExtraCost as number) ?? 0);
-
-      const totalOperatingCost =
-        totalFoodCost +
-        totalBeverageCost +
-        totalLaborCost +
-        newFixed +
-        newExtra;
-
-      const foodCostRatio =
-        totalOperatingCost > 0 ? totalFoodCost / totalOperatingCost : 0;
-      const beverageCostRatio =
-        totalOperatingCost > 0 ? totalBeverageCost / totalOperatingCost : 0;
-      const laborCostRatio =
-        totalOperatingCost > 0 ? totalLaborCost / totalOperatingCost : 0;
-      const fixedCostRatio =
-        totalOperatingCost > 0 ? newFixed / totalOperatingCost : 0;
-
-      await MonthlyBusinessReport.updateOne(
-        withSoftDeleteFilter({ _id: monthlyReportId }),
-        {
-          $set: {
-            "costBreakdown.totalFixedOperatingCost": newFixed,
-            "costBreakdown.totalExtraCost": newExtra,
-            "costBreakdown.totalOperatingCost": totalOperatingCost,
-            "costBreakdown.costPercentages.foodCostRatio": foodCostRatio,
-            "costBreakdown.costPercentages.beverageCostRatio":
-              beverageCostRatio,
-            "costBreakdown.costPercentages.laborCostRatio": laborCostRatio,
-            "costBreakdown.costPercentages.fixedCostRatio": fixedCostRatio,
-          },
-        },
-      );
-
-      const updated = await MonthlyBusinessReport.findOne(
-        withSoftDeleteFilter({ _id: monthlyReportId }),
-      ).lean();
-      return reply.code(200).send(updated);
     },
   );
 

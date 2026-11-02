@@ -33,14 +33,40 @@ reviewed.
   requests carry no credentials and pass through.
 - Business-layer and capability guards remain the second check on tenant
   routes. The gate establishes identity; it does not replace those rules.
-- `createOptionalAuthHook` is reserved for documented public reads that
-  genuinely need optional identity. It must never protect a mutating route.
+- No optional-auth hook remains. A public read that genuinely needs optional
+  identity must add a reviewed helper rather than a broad hook that can be
+  attached to a mutation by mistake.
 - A route whose product authorization rule is not specified by a completed
   build-order row is retired from registration until that row lands, rather
   than given an invented rule.
 - A route-inventory test enumerates the registered Fastify route table and
   compares it with the allowlist and the default gate, so a new route cannot be
   added without a public reason or an authenticated-by-default decision.
+
+### Retired legacy mutations
+
+The following unsafe mutations were removed from registration rather than
+given an invented authorization rule. Their route handlers and tests are gone;
+the owning build-order rows reintroduce them with a documented layer rule.
+
+- Account: `DELETE /users/:userId` (owned by 11.5).
+- Notifications: the generic `GET/POST /notifications` and
+  `GET/PATCH/DELETE /notifications/:notificationId` surfaces, plus
+  `GET /notifications/business/:businessId`; the authenticated inbox and the
+  internal service are the only notification paths.
+- Business: `DELETE /business/:businessId`.
+- Inventory: `POST /inventories`, `DELETE /inventories/:inventoryId`, and
+  `PATCH /inventories/:inventoryId/supplierGood/:supplierGoodId/addCount`.
+- Supplier and stock mutations in `suppliers`, `supplierGoods`,
+  `businessGoods`, `purchases`, `printers`, `salesPoints`, `promotions`, and
+  `schedules`.
+- Report and floor mutations: `PATCH /monthlyBusinessReport/:monthlyReportId`,
+  `DELETE /reservations/:reservationId`, and the `PATCH`/`DELETE` mutations on
+  `/salesInstances/:salesInstanceId`.
+
+Reads in those modules remain registered and session-authenticated. Mutations
+that already carried a live-session hook and are not in this retirement set
+remain on their own build-order rows.
 
 ## Consequences
 
@@ -49,8 +75,8 @@ reviewed.
 - A forgotten hook is no longer an authorization hole; the route is closed by
   default.
 - The set of unauthenticated surfaces is one reviewable file with reasons.
-- Legacy optional/no-hook mutations can be secured or retired without inventing
-  product behaviour.
+- Legacy optional/no-hook mutations are retired without inventing product
+  behaviour, and the inventory test keeps them from silently returning.
 
 **Negative / costs**
 

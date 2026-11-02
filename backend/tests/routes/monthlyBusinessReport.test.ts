@@ -1,7 +1,7 @@
 /**
- * MonthlyBusinessReport Routes Tests - Phase 1 Module 17
- * Tests for monthly business report endpoints
+ * MonthlyBusinessReport Routes Tests — read endpoints.
  *
+ * The unsafe legacy PATCH is retired until the reports build-order row lands.
  * Every error response is an RFC 9457 `application/problem+json` document
  * produced by the global handler, so assertions are on the problem-details
  * shape rather than a bare `{ message }`.
@@ -241,78 +241,6 @@ describe("MonthlyBusinessReport Routes", () => {
     });
   });
 
-  describe("PATCH /api/v1/monthlyBusinessReport/:monthlyReportId", () => {
-    it("returns 400 for invalid ID", async () => {
-      const app = await getTestApp();
-
-      const response = await injectWithRouteAuth(app, {
-        method: "PATCH",
-        url: "/api/v1/monthlyBusinessReport/invalid-id",
-        payload: { totalFixedOperatingCost: 1500 },
-      });
-
-      const body = expectProblem(response, 400, "validation");
-      expect(fieldPaths(body)).toContain("monthlyReportId");
-    });
-
-    it("returns 400 when no update fields provided", async () => {
-      const app = await getTestApp();
-      const business = await createTestBusiness();
-      const report = await createTestMonthlyReport(business._id as Types.ObjectId);
-
-      const response = await injectWithRouteAuth(app, {
-        method: "PATCH",
-        url: `/api/v1/monthlyBusinessReport/${report._id}`,
-        payload: {},
-      });
-
-      const body = expectProblem(response, 400, "bad-request");
-      expect(body.detail).toContain("Provide at least one");
-    });
-
-    it("returns 404 for non-existent report", async () => {
-      const app = await getTestApp();
-      const fakeId = new Types.ObjectId();
-
-      const response = await injectWithRouteAuth(app, {
-        method: "PATCH",
-        url: `/api/v1/monthlyBusinessReport/${fakeId}`,
-        payload: { totalFixedOperatingCost: 1500 },
-      });
-
-      const body = expectProblem(response, 404, "not-found");
-      expect(body.detail).toBe("Monthly report not found!");
-    });
-
-    it("returns 400 when updating closed report", async () => {
-      const app = await getTestApp();
-      const business = await createTestBusiness();
-      const report = await createTestMonthlyReport(business._id as Types.ObjectId, false);
-
-      const response = await injectWithRouteAuth(app, {
-        method: "PATCH",
-        url: `/api/v1/monthlyBusinessReport/${report._id}`,
-        payload: { totalFixedOperatingCost: 1500 },
-      });
-
-      const body = expectProblem(response, 400, "bad-request");
-      expect(body.detail).toContain("closed");
-    });
-
-    it("updates report successfully", async () => {
-      const app = await getTestApp();
-      const business = await createTestBusiness();
-      const report = await createTestMonthlyReport(business._id as Types.ObjectId);
-
-      const response = await injectWithRouteAuth(app, {
-        method: "PATCH",
-        url: `/api/v1/monthlyBusinessReport/${report._id}`,
-        payload: { totalFixedOperatingCost: 1500 },
-      });
-
-      expect(response.statusCode).toBe(200);
-    });
-  });
 
   describe("GET /api/v1/monthlyBusinessReport/business/:businessId", () => {
     it("returns 400 for invalid businessId", async () => {
