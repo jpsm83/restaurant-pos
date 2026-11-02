@@ -36,9 +36,9 @@ reviewed.
 - No optional-auth hook remains. A public read that genuinely needs optional
   identity must add a reviewed helper rather than a broad hook that can be
   attached to a mutation by mistake.
-- A route whose product authorization rule is not specified by a completed
-  build-order row is retired from registration until that row lands, rather
-  than given an invented rule.
+- A legacy optional-auth or no-hook mutation whose product authorization rule
+  is not specified by a completed build-order row is retired from registration
+  until that row lands, rather than given an invented rule.
 - A route-inventory test enumerates the registered Fastify route table and
   compares it with the allowlist and the default gate, so a new route cannot be
   added without a public reason or an authenticated-by-default decision.
