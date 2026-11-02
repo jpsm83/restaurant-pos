@@ -1,4 +1,5 @@
 /// <reference types="node" />
+// @vitest-environment node
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -42,13 +43,14 @@ describe("vite config COOP headers", () => {
 
   it("serves the Google popup COOP header from the preview server", async () => {
     const root = mkdtempSync(join(tmpdir(), "coop-preview-"));
-    mkdirSync(join(root, "dist"));
-    writeFileSync(
-      join(root, "dist", "index.html"),
-      "<html><body>ok</body></html>",
-    );
 
     try {
+      mkdirSync(join(root, "dist"));
+      writeFileSync(
+        join(root, "dist", "index.html"),
+        "<html><body>ok</body></html>",
+      );
+
       const server = await preview({
         configFile,
         root,

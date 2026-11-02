@@ -28,7 +28,7 @@ import type { AuthUser, UserProfile } from "@/auth/types";
 import type { AuthMode } from "@/services/authMode";
 import type { SupportedLanguage } from "@/i18n/config";
 
-const FIND_TIMEOUT_MS = 20_000;
+const FIND_TIMEOUT_MS = 10_000;
 const TEST_TIMEOUT_MS = 20_000;
 
 vi.setConfig({ testTimeout: TEST_TIMEOUT_MS });
@@ -564,7 +564,7 @@ describe("Customer chrome and Business shell acceptance", () => {
       within(tabs).getByRole("link", { name: "Beta Bar" }),
     ).toBeInTheDocument();
     expect(server.mode).toBe("business");
-  }, 30_000);
+  });
 
   it("switches venues from a tab without leaving Business mode", async () => {
     server = createServer({
