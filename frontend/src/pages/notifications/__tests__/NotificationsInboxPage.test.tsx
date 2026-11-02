@@ -1,0 +1,237 @@
+import { screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import type {
+  INotificationInboxItem,
+  INotificationInboxResponse,
+} from "restaurant-pos-packages/interfaces/INotification";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { formatDateTime } from "@/i18n/format";
+import { ServiceRequestError } from "@/services/serviceErrors";
+import { renderWithI18n } from "@/test/i18nTestUtils";
+import NotificationsInboxPage from "../NotificationsInboxPage";
+
+const { mockInboxQuery } = vi.hoisted(() => ({
+  mockInboxQuery: { current: {} as Record<string, unknown> },
+}));
+
+vi.mock("@/services/notifications/notificationsService", () => ({
+  useNotificationsInboxQuery: () => mockInboxQuery.current,
+}));
+
+vi.mock("@/auth/store/AuthContext", () => ({
+  useAuth: () => ({
+    state: {
+      status: "authenticated",
+      user: {
+        id: "u1",
+        email: "u@test.local",
+        type: "user",
+        role: "Customer",
+      },
+      error: null,
+    },
+  }),
+}));
+
+function entry(
+  overrides: Partial<INotificationInboxItem> = {},
+): INotificationInboxItem {
+  return {
+    notificationId: "n1",
+    businessId: "b1",
+    notificationType: "Info",
+    message: "Your order is ready.",
+    createdAt: "2026-03-27T10:15:00.000Z",
+    read: false,
+    ...overrides,
+  };
+}
+
+function page(
+  items: INotificationInboxItem[],
+  overrides: Partial<INotificationInboxResponse> = {},
+): INotificationInboxResponse {
+  return {
+    items,
+    unreadCount: items.filter((item) => !item.read).length,
+    page: 1,
+    limit: 20,
+    hasMore: false,
+    ...overrides,
+  };
+}
+
+function setQuery(overrides: Record<string, unknown> = {}) {
+  mockInboxQuery.current = {
+    data: undefined,
+    isLoading: false,
+    isError: false,
+    error: null,
+    hasNextPage: false,
+    isFetchingNextPage: false,
+    fetchNextPage: vi.fn(),
+    refetch: vi.fn(),
+    ...overrides,
+  };
+}
+
+function renderPage(language: "en" | "es" = "en") {
+  return renderWithI18n(<NotificationsInboxPage />, { language });
+}
+
+describe("NotificationsInboxPage", () => {
+  beforeEach(() => {
+    setQuery();
+  });
+
+  it("renders entries newest first with type, timestamp, stored text, and unread marker", async () => {
+    const newest = entry({
+      notificationId: "n2",
+      notificationType: "Warning",
+      message: "Second\nline",
+      createdAt: "2026-03-27T11:45:00.000Z",
+    });
+    const older = entry({
+      notificationId: "n1",
+      notificationType: "Info",
+      message: "Older message",
+      createdAt: "2026-03-27T10:15:00.000Z",
+      read: true,
+    });
+    setQuery({ data: { pages: [page([older, newest], { unreadCount: 1 })] } });
+
+    await renderPage();
+
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Notifications" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("1 unread")).toBeInTheDocument();
+
+    const rows = screen.getAllByRole("listitem");
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toHaveTextContent("Warning");
+    expect(rows[0]).toHaveTextContent("Unread");
+    expect(rows[0].querySelector("p")?.textContent).toBe("Second\nline");
+    expect(
+      within(rows[0]).getByText(formatDateTime(newest.createdAt, "en")),
+    ).toBeInTheDocument();
+    expect(rows[1]).toHaveTextContent("Info");
+    expect(rows[1]).not.toHaveTextContent("Unread");
+  });
+
+  it("loads the next page while more entries exist", async () => {
+    const fetchNextPage = vi.fn();
+    setQuery({
+      data: { pages: [page([entry()], { hasMore: true })] },
+      hasNextPage: true,
+      fetchNextPage,
+    });
+    const user = userEvent.setup();
+
+    await renderPage();
+
+    await user.click(screen.getByRole("button", { name: "Load more" }));
+
+    expect(fetchNextPage).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders the loading state", async () => {
+    setQuery({ isLoading: true });
+
+    await renderPage();
+
+    expect(screen.getByText("Loading notifications…")).toBeInTheDocument();
+    expect(screen.queryByText("No notifications")).not.toBeInTheDocument();
+  });
+
+  it("renders the empty state with a zero unread count", async () => {
+    setQuery({ data: { pages: [page([], { unreadCount: 0 })] } });
+
+    await renderPage();
+
+    expect(screen.getByText("No notifications")).toBeInTheDocument();
+    expect(screen.getByText("You have no messages yet.")).toBeInTheDocument();
+    expect(screen.getByText("0 unread")).toBeInTheDocument();
+    expect(screen.queryByRole("listitem")).not.toBeInTheDocument();
+  });
+
+  it("renders localized copy for a failure without raw server text", async () => {
+    const refetch = vi.fn();
+    setQuery({
+      isError: true,
+      error: new ServiceRequestError({
+        code: "notificationsFetch.internal",
+        status: 500,
+        serverMessage: "raw server details",
+      }),
+      refetch,
+    });
+    const user = userEvent.setup();
+
+    await renderPage();
+
+    expect(
+      screen.getByText("Something went wrong on our side. Try again."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("raw server details")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Try again" }));
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders the page copy, type label, marker, and timestamp in Spanish", async () => {
+    const warning = entry({ notificationType: "Warning" });
+    setQuery({
+      data: { pages: [page([warning], { hasMore: true })] },
+      hasNextPage: true,
+    });
+
+    await renderPage("es");
+
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Notificaciones" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("1 sin leer")).toBeInTheDocument();
+    expect(screen.getByText("Aviso")).toBeInTheDocument();
+    expect(screen.getByText("Sin leer")).toBeInTheDocument();
+    expect(
+      screen.getByText(formatDateTime(warning.createdAt, "es")),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Cargar más" }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders the loading, empty, and error states in Spanish", async () => {
+    setQuery({ isLoading: true });
+    const loading = await renderPage("es");
+    expect(
+      screen.getByText("Cargando notificaciones…"),
+    ).toBeInTheDocument();
+    loading.unmount();
+
+    setQuery({ data: { pages: [page([], { unreadCount: 0 })] } });
+    const empty = await renderPage("es");
+    expect(screen.getByText("No hay notificaciones")).toBeInTheDocument();
+    expect(
+      screen.getByText("Todavía no tienes mensajes."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("0 sin leer")).toBeInTheDocument();
+    empty.unmount();
+
+    setQuery({
+      isError: true,
+      error: new ServiceRequestError({
+        code: "notificationsFetch.internal",
+        status: 500,
+      }),
+    });
+    await renderPage("es");
+    expect(
+      screen.getByText("Algo salió mal por nuestra parte. Inténtalo de nuevo."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Intentar de nuevo" }),
+    ).toBeInTheDocument();
+  });
+});

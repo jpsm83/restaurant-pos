@@ -109,6 +109,10 @@ export function canonicalAccountAddressPath(): string {
   return `${canonicalAccountPath()}/address`;
 }
 
+export function canonicalAccountNotificationsPath(): string {
+  return `${canonicalAccountPath()}/notifications`;
+}
+
 export function canonicalCustomerFavoritesPath(): string {
   return "/favorites";
 }

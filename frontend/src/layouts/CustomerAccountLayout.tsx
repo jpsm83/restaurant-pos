@@ -1,8 +1,8 @@
 /**
  * ## `CustomerAccountLayout` (`src/layouts`)
  * **Parent route:** pathless in `appRoutes.tsx`, wrapped by **`ProtectedRoute`** before this layout.
- * The account area is session-derived (`/account/profile`, `/account/address`); the person comes
- * from the session and no User id appears in the URL.
+ * The account area is session-derived (`/account/profile`, `/account/address`,
+ * `/account/notifications`); the person comes from the session and no User id appears in the URL.
  *
  * ## Flow
  * **Sidebar** + **`SidebarInset`** ( **`SidebarProvider`** is in **`main.tsx`**). **`<Outlet />`**
@@ -17,9 +17,10 @@ import { Sidebar, SidebarRail } from "@/components/ui/sidebar";
 import { useAuth } from "@/auth/store/AuthContext";
 import { useTranslation } from "react-i18next";
 import { useLocation } from "react-router-dom";
-import { MapPin, User } from "lucide-react";
+import { Bell, MapPin, User } from "lucide-react";
 import {
   canonicalAccountAddressPath,
+  canonicalAccountNotificationsPath,
   canonicalAccountProfilePath,
 } from "@/routes/canonicalPaths";
 
@@ -33,6 +34,7 @@ export default function CustomerAccountLayout() {
 
   const profileTo = canonicalAccountProfilePath();
   const addressTo = canonicalAccountAddressPath();
+  const notificationsTo = canonicalAccountNotificationsPath();
 
   const pages = [
     {
@@ -48,6 +50,13 @@ export default function CustomerAccountLayout() {
       to: addressTo,
       icon: MapPin,
       isActive: pathname === addressTo,
+    },
+    {
+      key: "notifications",
+      label: t("account.notifications"),
+      to: notificationsTo,
+      icon: Bell,
+      isActive: pathname === notificationsTo,
     },
   ];
 

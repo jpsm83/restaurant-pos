@@ -79,6 +79,9 @@ const CustomerProfilePage = lazy(() => import("@/pages/customer/CustomerProfileP
 const CustomerAddressPage = lazy(() => import("@/pages/customer/CustomerAddressPage"));
 const CustomerFavoritesPage = lazy(() => import("@/pages/customer/CustomerFavoritesPage"));
 const CustomerDashboardPage = lazy(() => import("@/pages/customer/CustomerDashboardPage"));
+const NotificationsInboxPage = lazy(
+  () => import("@/pages/notifications/NotificationsInboxPage"),
+);
 // Dev-only review surface: the static `DEV` check lets the production build
 // drop the dynamic imports, their chunks, and the gallery's locale copy.
 const DevThemeGalleryPage = import.meta.env.DEV
@@ -328,6 +331,10 @@ export function AppRoutes() {
             />
             <Route path="account/profile" element={<CustomerProfilePage />} />
             <Route path="account/address" element={<CustomerAddressPage />} />
+            <Route
+              path="account/notifications"
+              element={<NotificationsInboxPage />}
+            />
           </Route>
 
           {/* Retired customer profile URL — old bookmarks land in the account area. */}

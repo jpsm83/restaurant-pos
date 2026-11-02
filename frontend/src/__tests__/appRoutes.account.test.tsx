@@ -40,6 +40,12 @@ vi.mock("@/pages/customer/CustomerAddressPage", () => ({
   default: () => <div data-testid="address-page-stub">Address page</div>,
 }));
 
+vi.mock("@/pages/notifications/NotificationsInboxPage", () => ({
+  default: () => (
+    <div data-testid="notifications-page-stub">Notifications page</div>
+  ),
+}));
+
 describe("customer account routing", () => {
   beforeEach(() => {
     mockUseAuth.mockReturnValue({
@@ -89,6 +95,17 @@ describe("customer account routing", () => {
     expect(await screen.findByTestId("address-page-stub")).toBeInTheDocument();
     expect(screen.getByTestId("location")).toHaveTextContent(
       /^\/account\/address$/,
+    );
+  });
+
+  it("renders the Notifications destination under /account", async () => {
+    await renderRoutes("/account/notifications");
+
+    expect(
+      await screen.findByTestId("notifications-page-stub"),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent(
+      /^\/account\/notifications$/,
     );
   });
 });

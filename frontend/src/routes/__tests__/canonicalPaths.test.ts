@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   canonicalAccountAddressPath,
+  canonicalAccountNotificationsPath,
   canonicalAccountPath,
   canonicalAccountProfilePath,
   canonicalBusinessCompanyPath,
@@ -63,6 +64,9 @@ describe("canonicalPaths", () => {
     expect(canonicalAccountPath()).toBe("/account");
     expect(canonicalAccountProfilePath()).toBe("/account/profile");
     expect(canonicalAccountAddressPath()).toBe("/account/address");
+    expect(canonicalAccountNotificationsPath()).toBe(
+      "/account/notifications",
+    );
     expect(canonicalCustomerFavoritesPath()).toBe("/favorites");
     expect(canonicalModePath()).toBe("/mode");
     expect(canonicalEmployeePath()).toBe("/employee");

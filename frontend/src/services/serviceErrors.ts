@@ -36,6 +36,7 @@ export const SERVICE_OPERATIONS = [
   "scheduleLoad",
   "tableConfigLoad",
   "tableConfigSave",
+  "notificationsFetch",
 ] as const;
 
 export type ServiceOperation = (typeof SERVICE_OPERATIONS)[number];

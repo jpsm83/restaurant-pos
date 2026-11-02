@@ -30,5 +30,28 @@
     "stay": "Quedarme en la página",
     "leave": "Salir sin guardar",
     "leaving": "Saliendo..."
+  },
+  "notifications": {
+    "title": "Notificaciones",
+    "unreadCount_one": "{{count}} sin leer",
+    "unreadCount_other": "{{count}} sin leer",
+    "unreadMarker": "Sin leer",
+    "loading": "Cargando notificaciones…",
+    "loadMore": "Cargar más",
+    "loadingMore": "Cargando…",
+    "retry": "Intentar de nuevo",
+    "empty": {
+      "title": "No hay notificaciones",
+      "description": "Todavía no tienes mensajes."
+    },
+    "types": {
+      "warning": "Aviso",
+      "emergency": "Emergencia",
+      "info": "Información",
+      "message": "Mensaje",
+      "promotion": "Promoción",
+      "birthday": "Cumpleaños",
+      "event": "Evento"
+    }
   }
 }

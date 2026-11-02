@@ -32,6 +32,19 @@ describe("queryKeys", () => {
     ]);
   });
 
+  it("builds the User-scoped notifications inbox key", () => {
+    expect(queryKeys.notifications.inbox("u-1")).toEqual([
+      "notifications",
+      "inbox",
+      "u-1",
+    ]);
+    expect(queryKeys.notifications.inboxPending()).toEqual([
+      "notifications",
+      "inbox",
+      "pending",
+    ]);
+  });
+
   it("builds schedule keys with fallbacks", () => {
     expect(queryKeys.schedules.byBusiness("b-1")).toEqual([
       "schedules",

@@ -91,7 +91,46 @@ describe("CustomerAccountLayout", () => {
       "data-active",
       "false",
     );
+    expect(screen.getByRole("link", { name: "Notifications" })).toHaveAttribute(
+      "href",
+      "/account/notifications",
+    );
+    expect(
+      screen.getByRole("link", { name: "Notifications" }),
+    ).toHaveAttribute("data-active", "false");
     expect(screen.queryByRole("link", { name: "Dashboard" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Favorites" })).not.toBeInTheDocument();
+  });
+
+  it("marks Notifications active and localizes its label", async () => {
+    mockUseAuth.mockReturnValue({
+      state: {
+        status: "authenticated",
+        user: { id: "u1", email: "u@test.local", type: "user", role: "Customer" },
+        error: null,
+      },
+    });
+
+    await renderWithI18n(
+      <MemoryRouter initialEntries={["/account/notifications"]}>
+        <Routes>
+          <Route element={<CustomerAccountLayout />}>
+            <Route
+              path="account/notifications"
+              element={<div>Notifications Outlet</div>}
+            />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+      { language: "es" },
+    );
+
+    expect(screen.getByText("Notifications Outlet")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Notificaciones" }),
+    ).toHaveAttribute("href", "/account/notifications");
+    expect(
+      screen.getByRole("link", { name: "Notificaciones" }),
+    ).toHaveAttribute("data-active", "true");
   });
 });

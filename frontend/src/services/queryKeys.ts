@@ -13,6 +13,7 @@
  * - **`business.access`:** the signed-in User's effective access snapshot for one venue.
  * - **`employees.byBusiness`:** venue membership list for the People page.
  * - **`portfolio.byUser` / `portfolio.all`:** the customer dashboard’s User-scoped Owner portfolio read.
+ * - **`notifications.inbox`:** the session-derived notification inbox, scoped to the signed-in User.
  */
 export const queryKeys = {
   auth: {
@@ -51,5 +52,10 @@ export const queryKeys = {
   advancedTable: {
     businessDashboard: (businessId: string, params: Record<string, unknown>) =>
       ["advancedTable", "businessDashboard", businessId, params] as const,
+  },
+  notifications: {
+    inbox: (userId: string) =>
+      ["notifications", "inbox", userId] as const,
+    inboxPending: () => ["notifications", "inbox", "pending"] as const,
   },
 } as const;
