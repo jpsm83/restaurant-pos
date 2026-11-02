@@ -48,12 +48,24 @@ export type LiveTicketRequest = (
   accessToken: string,
 ) => string | null | Promise<string | null>;
 
+/** A notification pushed to this tab's signed-in recipient. */
+export interface LiveNotificationEvent {
+  notificationId: string;
+  businessId: string;
+  message: string;
+  notificationType: string;
+  correlationId: string;
+}
+
 export interface LiveConnection {
   sync: (accessToken: string | null) => void;
   close: () => void;
   canCommitWrite: () => boolean;
   getStatus: () => LiveConnectionStatus;
   subscribe: (listener: (status: LiveConnectionStatus) => void) => () => void;
+  subscribeNotifications: (
+    listener: (event: LiveNotificationEvent) => void,
+  ) => () => void;
 }
 
 export interface LiveConnectionOptions {
@@ -115,14 +127,49 @@ function resolveSocketCtor(
   return WebSocket;
 }
 
-function isLiveConnectedAck(data: unknown): boolean {
-  if (typeof data !== "string") return false;
+function parseLiveMessage(
+  data: unknown,
+):
+  | { type: "connected" }
+  | { type: "notification"; event: LiveNotificationEvent }
+  | null {
+  if (typeof data !== "string") return null;
+
+  let parsed: unknown;
   try {
-    const parsed = JSON.parse(data) as { type?: unknown };
-    return parsed.type === "live.connected";
+    parsed = JSON.parse(data);
   } catch {
-    return false;
+    return null;
   }
+
+  if (!parsed || typeof parsed !== "object") return null;
+  const message = parsed as { type?: unknown; data?: unknown };
+
+  if (message.type === "live.connected") return { type: "connected" };
+  if (message.type !== "notification.created") return null;
+
+  if (!message.data || typeof message.data !== "object") return null;
+  const payload = message.data as Record<string, unknown>;
+  if (
+    typeof payload.notificationId !== "string" ||
+    typeof payload.businessId !== "string" ||
+    typeof payload.message !== "string" ||
+    typeof payload.notificationType !== "string" ||
+    typeof payload.correlationId !== "string"
+  ) {
+    return null;
+  }
+
+  return {
+    type: "notification",
+    event: {
+      notificationId: payload.notificationId,
+      businessId: payload.businessId,
+      message: payload.message,
+      notificationType: payload.notificationType,
+      correlationId: payload.correlationId,
+    },
+  };
 }
 
 async function defaultRequestTicket(
@@ -166,6 +213,9 @@ export function createLiveConnection(
   let live = false;
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   const listeners = new Set<(status: LiveConnectionStatus) => void>();
+  const notificationListeners = new Set<
+    (event: LiveNotificationEvent) => void
+  >();
   const socketCtor = resolveSocketCtor(options.WebSocket);
   const resync = options.resync ?? defaultResync;
   const requestTicket = options.requestTicket ?? defaultRequestTicket;
@@ -307,7 +357,13 @@ export function createLiveConnection(
         event && typeof event === "object" && "data" in event
           ? (event as { data?: unknown }).data
           : undefined;
-      if (isLiveConnectedAck(data)) onAcknowledged();
+      const message = parseLiveMessage(data);
+      if (!message) return;
+      if (message.type === "connected") {
+        onAcknowledged();
+        return;
+      }
+      notificationListeners.forEach((listener) => listener(message.event));
     });
     notify();
   };
@@ -372,6 +428,12 @@ export function createLiveConnection(
         listeners.delete(listener);
       };
     },
+    subscribeNotifications(listener) {
+      notificationListeners.add(listener);
+      return () => {
+        notificationListeners.delete(listener);
+      };
+    },
   };
 }
 
@@ -394,6 +456,12 @@ export function subscribeLiveStatus(
 ): () => void {
   const unsubscribe = shared.subscribe(listener);
   return unsubscribe;
+}
+
+export function subscribeLiveNotifications(
+  listener: (event: LiveNotificationEvent) => void,
+): () => void {
+  return shared.subscribeNotifications(listener);
 }
 
 export function resetLiveConnectionForTests(

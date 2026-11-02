@@ -3,8 +3,10 @@
  *
  * Reads and mutates the session-derived self endpoints; no User id appears in
  * the URL. The page is layout-agnostic so the Customer account area and the
- * Business shell can both render it. Live refresh arrives later.
+ * Business shell can both render it. It refreshes on live notification events
+ * while mounted.
  */
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { notificationEnums } from "restaurant-pos-packages/enums";
 import type { INotificationInboxItem } from "restaurant-pos-packages/interfaces/INotification";
@@ -19,6 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useFormatting } from "@/hooks/useFormatting";
 import { useErrorMessage } from "@/i18n/errorCopy";
+import { subscribeLiveNotifications } from "@/live/connection";
 import {
   useNotificationInboxActionMutation,
   useNotificationsInboxQuery,
@@ -168,6 +171,15 @@ export default function NotificationsInboxPage() {
       ? actionMutation.error
       : { code: fallbackCode }
     : null;
+
+  const refetchInbox = inboxQuery.refetch;
+  useEffect(
+    () =>
+      subscribeLiveNotifications(() => {
+        void refetchInbox();
+      }),
+    [refetchInbox],
+  );
 
   return (
     <main className="flex min-h-0 flex-1 flex-col p-6">

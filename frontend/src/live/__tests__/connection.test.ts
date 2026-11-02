@@ -1,9 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createLiveConnection,
   resetLiveConnectionForTests,
+  subscribeLiveNotifications,
   syncLiveConnection,
 } from "../connection";
+import { HarnessSocket, liveAckAndBecomeLive } from "./socketHarness";
 
 class RecordingSocket {
   static urls: string[] = [];
@@ -120,5 +122,98 @@ describe("live connection", () => {
     first.close();
     expect(RecordingSocket.instances[0]?.closed).toBe(true);
     expect(RecordingSocket.instances[1]?.closed).toBe(false);
+  });
+});
+
+describe("live notification events", () => {
+  beforeEach(() => {
+    HarnessSocket.reset();
+    resetLiveConnectionForTests({
+      WebSocket: HarnessSocket,
+      requestTicket: (token) => `ticket-${token}`,
+    });
+  });
+
+  afterEach(() => {
+    resetLiveConnectionForTests();
+    HarnessSocket.reset();
+  });
+
+  const event = {
+    notificationId: "n1",
+    businessId: "b1",
+    message: "Your order is ready.",
+    notificationType: "Info",
+    correlationId: "corr-1",
+  };
+
+  const createHarnessConnection = () =>
+    createLiveConnection({
+      WebSocket: HarnessSocket,
+      requestTicket: (token) => `ticket-${token}`,
+    });
+
+  it("delivers a parsed notification.created event to subscribers", () => {
+    const listener = vi.fn();
+    subscribeLiveNotifications(listener);
+    syncLiveConnection("session-token");
+    liveAckAndBecomeLive(HarnessSocket.latest());
+
+    const socket = HarnessSocket.latest();
+    socket.emitMessage({
+      type: "notification.created",
+      data: event,
+    });
+
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(listener).toHaveBeenCalledWith(event);
+  });
+
+  it("does not deliver the live.connected acknowledgement as a notification event", () => {
+    const listener = vi.fn();
+    const connection = createHarnessConnection();
+    connection.subscribeNotifications(listener);
+    connection.sync("session-token");
+
+    liveAckAndBecomeLive(HarnessSocket.latest());
+
+    expect(connection.getStatus()).toBe("live");
+    expect(listener).not.toHaveBeenCalled();
+  });
+
+  it("ignores malformed and unrelated server messages", () => {
+    const listener = vi.fn();
+    const connection = createHarnessConnection();
+    connection.subscribeNotifications(listener);
+    connection.sync("session-token");
+    liveAckAndBecomeLive(HarnessSocket.latest());
+
+    const socket = HarnessSocket.latest();
+    socket.emitMessage("{not json");
+    socket.emitMessage({ type: "order.updated", data: { orderId: "o1" } });
+    socket.emitMessage({ type: "notification.created" });
+    socket.emitMessage({
+      type: "notification.created",
+      data: { notificationId: "n1" },
+    });
+
+    expect(listener).not.toHaveBeenCalled();
+    expect(connection.getStatus()).toBe("live");
+  });
+
+  it("stops delivering events after the subscriber unsubscribes", () => {
+    const listener = vi.fn();
+    const connection = createHarnessConnection();
+    const unsubscribe = connection.subscribeNotifications(listener);
+    connection.sync("session-token");
+    liveAckAndBecomeLive(HarnessSocket.latest());
+
+    unsubscribe();
+    HarnessSocket.latest().emitMessage({
+      type: "notification.created",
+      data: event,
+    });
+
+    expect(listener).not.toHaveBeenCalled();
   });
 });

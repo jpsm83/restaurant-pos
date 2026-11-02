@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { act, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type {
   INotificationInboxItem,
@@ -6,18 +6,25 @@ import type {
 } from "restaurant-pos-packages/interfaces/INotification";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { formatDateTime } from "@/i18n/format";
+import type { LiveNotificationEvent } from "@/live/connection";
 import { ServiceRequestError } from "@/services/serviceErrors";
 import { renderWithI18n } from "@/test/i18nTestUtils";
 import NotificationsInboxPage from "../NotificationsInboxPage";
 
-const { mockInboxQuery, mockActionMutation } = vi.hoisted(() => ({
-  mockInboxQuery: { current: {} as Record<string, unknown> },
-  mockActionMutation: { current: {} as Record<string, unknown> },
-}));
+const { mockInboxQuery, mockActionMutation, mockSubscribeLiveNotifications } =
+  vi.hoisted(() => ({
+    mockInboxQuery: { current: {} as Record<string, unknown> },
+    mockActionMutation: { current: {} as Record<string, unknown> },
+    mockSubscribeLiveNotifications: vi.fn(),
+  }));
 
 vi.mock("@/services/notifications/notificationsService", () => ({
   useNotificationsInboxQuery: () => mockInboxQuery.current,
   useNotificationInboxActionMutation: () => mockActionMutation.current,
+}));
+
+vi.mock("@/live/connection", () => ({
+  subscribeLiveNotifications: mockSubscribeLiveNotifications,
 }));
 
 vi.mock("@/auth/store/AuthContext", () => ({
@@ -97,6 +104,7 @@ describe("NotificationsInboxPage", () => {
   beforeEach(() => {
     setQuery();
     setMutation();
+    mockSubscribeLiveNotifications.mockReturnValue(vi.fn());
   });
 
   it("renders entries newest first with type, timestamp, stored text, and unread marker", async () => {
@@ -423,5 +431,38 @@ describe("NotificationsInboxPage", () => {
         "No se pudieron marcar las notificaciones como leídas. Inténtalo de nuevo.",
       ),
     ).toBeInTheDocument();
+  });
+
+  it("refreshes the inbox on a live notification event and unsubscribes on unmount", async () => {
+    let listener: ((event: LiveNotificationEvent) => void) | undefined;
+    const unsubscribe = vi.fn();
+    mockSubscribeLiveNotifications.mockImplementation(
+      (handler: (event: LiveNotificationEvent) => void) => {
+        listener = handler;
+        return unsubscribe;
+      },
+    );
+    const refetch = vi.fn().mockResolvedValue(undefined);
+    setQuery({ data: { pages: [page([entry()])] }, refetch });
+
+    const view = await renderPage();
+
+    expect(mockSubscribeLiveNotifications).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      listener?.({
+        notificationId: "n2",
+        businessId: "b1",
+        message: "Your order is ready.",
+        notificationType: "Info",
+        correlationId: "corr-2",
+      });
+    });
+
+    expect(refetch).toHaveBeenCalledTimes(1);
+
+    view.unmount();
+
+    expect(unsubscribe).toHaveBeenCalledTimes(1);
   });
 });

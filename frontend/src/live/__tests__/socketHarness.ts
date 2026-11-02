@@ -40,8 +40,13 @@ export class HarnessSocket {
   }
 
   ack(accountId = "acct-1") {
+    this.emitMessage({ type: "live.connected", data: { accountId } });
+  }
+
+  /** Sends any server payload, serializing objects and passing strings through. */
+  emitMessage(message: unknown) {
     const event = {
-      data: JSON.stringify({ type: "live.connected", data: { accountId } }),
+      data: typeof message === "string" ? message : JSON.stringify(message),
     };
     this.onmessage?.(event);
     this.emit("message", event);
