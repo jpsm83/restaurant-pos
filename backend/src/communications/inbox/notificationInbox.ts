@@ -8,7 +8,7 @@
  * notification-id tie-breaker. Read and hide actions touch only the caller's
  * entry flags on the User row; the Notification record is never changed.
  */
-import { Types } from "mongoose";
+import { Types, type PipelineStage } from "mongoose";
 import type {
   INotificationInboxHideResponse,
   INotificationInboxReadResponse,
@@ -18,7 +18,6 @@ import type {
 
 import Notification from "../../models/notification.ts";
 import User from "../../models/user.ts";
-import { withSoftDeleteFilter } from "../../models/softDelete.ts";
 import { notFound } from "../../errors/appError.ts";
 
 const INBOX_NOT_FOUND_DETAIL = "Notification not found in inbox";
@@ -34,29 +33,61 @@ interface EntryActionInput {
   notificationId: string;
 }
 
-interface InboxEntry {
-  notificationId?: Types.ObjectId;
-  readFlag?: boolean;
-  deletedFlag?: boolean;
-}
-
-interface NotificationRecord {
-  _id: Types.ObjectId;
+interface InboxItemRow {
+  notificationId: Types.ObjectId;
   businessId: Types.ObjectId;
   notificationType: string;
   message: string;
   createdAt: Date;
+  read: boolean;
 }
 
-const loadVisibleEntries = async (userId: string): Promise<InboxEntry[]> => {
-  const user = (await User.findById(userId)
-    .select("notifications")
-    .lean()) as { notifications?: InboxEntry[] } | null;
+interface InboxFacetRow {
+  items: InboxItemRow[];
+  meta: Array<{ total: number; unreadCount: number }>;
+}
 
-  return (user?.notifications ?? []).filter(
-    (entry) => entry.notificationId && entry.deletedFlag !== true,
-  );
-};
+/**
+ * Stages shared by the inbox read and mark-all-read: start from the caller's
+ * single User row, drop per-person hidden entries, and join only active
+ * notification records by `_id`. Joining and paging happen inside MongoDB so a
+ * large inbox never crosses the wire in full.
+ */
+const visibleEntryStages = (userId: string): PipelineStage[] => [
+  { $match: { _id: new Types.ObjectId(userId) } },
+  { $unwind: "$notifications" },
+  {
+    $match: {
+      "notifications.notificationId": { $ne: null },
+      "notifications.deletedFlag": { $ne: true },
+    },
+  },
+  {
+    $lookup: {
+      from: Notification.collection.name,
+      let: { notificationId: "$notifications.notificationId" },
+      pipeline: [
+        {
+          $match: {
+            $expr: { $eq: ["$_id", "$$notificationId"] },
+            deleted: { $ne: true },
+          },
+        },
+        {
+          $project: {
+            _id: 1,
+            businessId: 1,
+            notificationType: 1,
+            message: 1,
+            createdAt: 1,
+          },
+        },
+      ],
+      as: "notification",
+    },
+  },
+  { $unwind: "$notification" },
+];
 
 const updateCallerEntry = async (
   userId: string,
@@ -77,85 +108,92 @@ const updateCallerEntry = async (
 };
 
 /**
- * List one person's visible inbox page. The unread count covers every visible
- * entry, not only the current page.
+ * List one person's visible inbox page. Sorting, pagination, and the unread
+ * count all run in MongoDB; only the requested page's rows leave the server.
+ * The unread count covers every visible entry, not only the current page.
  */
 export const listInbox = async ({
   userId,
   page,
   limit,
 }: ListInboxInput): Promise<INotificationInboxResponse> => {
-  const visibleEntries = await loadVisibleEntries(userId);
-
-  if (visibleEntries.length === 0) {
-    return { items: [], unreadCount: 0, page, limit, hasMore: false };
-  }
-
-  const notifications = (await Notification.find(
-    withSoftDeleteFilter({
-      _id: { $in: visibleEntries.map((entry) => entry.notificationId) },
-    }),
-  )
-    .select("_id businessId notificationType message createdAt")
-    .lean()) as NotificationRecord[];
-
-  const notificationById = new Map(
-    notifications.map((notification) => [
-      String(notification._id),
-      notification,
-    ]),
-  );
-
-  const visibleItems = visibleEntries.flatMap((entry) => {
-    const notification = notificationById.get(String(entry.notificationId));
-    if (!notification) return [];
-
-    return [
-      {
-        notificationId: String(notification._id),
-        businessId: String(notification.businessId),
-        notificationType: notification.notificationType,
-        message: notification.message,
-        createdAt: notification.createdAt.toISOString(),
-        read: entry.readFlag === true,
-      },
-    ];
-  });
-
-  visibleItems.sort(
-    (a, b) =>
-      b.createdAt.localeCompare(a.createdAt) ||
-      b.notificationId.localeCompare(a.notificationId),
-  );
-
   const start = (page - 1) * limit;
-  const items = visibleItems.slice(start, start + limit);
+
+  const [result] = await User.aggregate<InboxFacetRow>(
+    [
+      ...visibleEntryStages(userId),
+      { $sort: { "notification.createdAt": -1, "notification._id": -1 } },
+      {
+        $facet: {
+          items: [
+            { $skip: start },
+            { $limit: limit },
+            {
+              $project: {
+                _id: 0,
+                notificationId: "$notification._id",
+                businessId: "$notification.businessId",
+                notificationType: "$notification.notificationType",
+                message: "$notification.message",
+                createdAt: "$notification.createdAt",
+                read: { $eq: ["$notifications.readFlag", true] },
+              },
+            },
+          ],
+          meta: [
+            {
+              $group: {
+                _id: null,
+                total: { $sum: 1 },
+                unreadCount: {
+                  $sum: {
+                    $cond: [
+                      { $eq: ["$notifications.readFlag", true] },
+                      0,
+                      1,
+                    ],
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+    ],
+    { allowDiskUse: true },
+  ).exec();
+
+  const items = (result?.items ?? []).map((item) => ({
+    notificationId: String(item.notificationId),
+    businessId: String(item.businessId),
+    notificationType: item.notificationType,
+    message: item.message,
+    createdAt: new Date(item.createdAt).toISOString(),
+    read: item.read === true,
+  }));
+  const total = result?.meta[0]?.total ?? 0;
 
   return {
     items,
-    unreadCount: visibleItems.filter((item) => !item.read).length,
+    unreadCount: result?.meta[0]?.unreadCount ?? 0,
     page,
     limit,
-    hasMore: start + limit < visibleItems.length,
+    hasMore: start + items.length < total,
   };
 };
 
 const visibleNotificationIds = async (
   userId: string,
 ): Promise<Types.ObjectId[]> => {
-  const entries = await loadVisibleEntries(userId);
+  const rows = await User.aggregate<{ notificationId: Types.ObjectId }>(
+    [
+      ...visibleEntryStages(userId),
+      { $project: { _id: 0, notificationId: "$notification._id" } },
+    ],
+    { allowDiskUse: true },
+  ).exec();
 
-  if (entries.length === 0) return [];
-
-  const notifications = (await Notification.find(
-    withSoftDeleteFilter({
-      _id: { $in: entries.map((entry) => entry.notificationId) },
-    }),
-  )
-    .select("_id")
-    .lean()) as Array<{ _id: Types.ObjectId }>;
-
-  return notifications.map((notification) => notification._id);
+  return rows.map((row) => row.notificationId);
 };
 
 export const markRead = async ({

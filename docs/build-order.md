@@ -89,9 +89,9 @@ Stand up who people are, what access they hold, and the shared customer surface.
 | [x] | 1.3 | One User per browser session; peer multi-session; no shared login / PIN / quick-switch | [staff-sessions](product/staff-sessions.md) |
 | [x] | 1.4 | Five layers, job-role → layer map, Owner access = admin-equivalent; thin capability catalogue | [access-and-permissions](product/access-and-permissions.md) |
 | [x] | 1.5 | Membership record; Free = Owner-only Business is enough; hire flow can stay minimal | [employees](product/employees.md), [access-and-permissions](product/access-and-permissions.md) (layers on membership) |
-| [ ] | 1.6 | Customer chrome and account area; Customer \| Business toggle shell and venue-tab shell (Business chrome becomes usable in Phase 2) | [user-navigation](product/user-navigation.md) |
-| [ ] | 1.7 | Wire verify / reset / business-contact verify to the Phase 0 email rail, in the recipient's language preference with English fallback | [emails](product/emails.md) (which messages and language), [users](product/users.md) (language preference), [business](product/business.md) (contact email verify) |
-| [ ] | 1.8 | Inbox UI against the Phase 0 notification rail | [notifications](product/notifications.md) |
+| [x] | 1.6 | Customer chrome and account area; Customer \| Business toggle shell and venue-tab shell (Business chrome becomes usable in Phase 2) | [user-navigation](product/user-navigation.md) |
+| [x] | 1.7 | Wire verify / reset / business-contact verify to the Phase 0 email rail, in the recipient's language preference with English fallback | [emails](product/emails.md) (which messages and language), [users](product/users.md) (language preference), [business](product/business.md) (contact email verify) |
+| [x] | 1.8 | Inbox UI against the Phase 0 notification rail | [notifications](product/notifications.md) |
 | [ ] | 1.9 | Shared auth entry and post-auth landing: plain `/login` and `/signup` (no audience-scoped auth URLs), safe internal `returnTo`, and verified Google origin + COOP hosting setup; no business-specific sign-up | [users](product/users.md), [user-navigation](product/user-navigation.md) |
 | [ ] | 1.10 | Sign-in email change: re-authenticate with password or Google, confirm the new address, cooldown, notify the old address, enforce active-account uniqueness, revoke other sessions | [users](product/users.md) (§3.7), [emails](product/emails.md) |
 
