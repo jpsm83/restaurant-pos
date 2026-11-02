@@ -89,7 +89,7 @@ export async function handleRequestEmailChange(
 
   const user = await User.findOne(withSoftDeleteFilter({ _id: session.id }))
     .select(
-      "_id googleId personalDetails.email personalDetails.password personalDetails.emailVerified personalDetails.username personalDetails.firstName pendingEmail pendingEmailToken pendingEmailExpires pendingEmailRequestedAt",
+      "_id googleId languagePreference personalDetails.email personalDetails.password personalDetails.emailVerified personalDetails.username personalDetails.firstName pendingEmail pendingEmailToken pendingEmailExpires pendingEmailRequestedAt",
     )
     .lean();
 
@@ -194,6 +194,7 @@ export async function handleRequestEmailChange(
       buildEmailChangeConfirmationContent({
         confirmUrl: link,
         greetingName,
+        language: user.languagePreference,
       }),
     rollback: () =>
       User.updateOne(

@@ -43,6 +43,7 @@ import {
   EMAIL_CHANGE_REQUESTED_MESSAGE,
   EMAIL_CHANGE_REQUEST_COOLDOWN_MS,
 } from "../../src/auth/requestEmailChange.ts";
+import { expectOneAccountSend } from "../helpers/accountEmailRail.ts";
 
 const testPassword = "TestPassword123!";
 const newEmail = "changed-to@example.com";
@@ -154,6 +155,127 @@ describe("POST /api/v1/auth/request-email-change", () => {
     expect(html).toContain(
       `/confirm-email-change?token=${stored?.pendingEmailToken}`,
     );
+  });
+
+  it("sends the confirmation email in the changing User's stored Spanish preference", async () => {
+    const app = await getTestApp();
+    const user = await createUser("spanish-change@example.com", {
+      languagePreference: "es",
+    });
+    const auth = await tokenFor(user);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/request-email-change",
+      headers: { authorization: auth },
+      payload: {
+        newEmail: "spanish-target@example.com",
+        currentPassword: testPassword,
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const stored = await User.findById(user._id).lean();
+    expectOneAccountSend(sendEmailMock, {
+      to: "spanish-target@example.com",
+      subject: "Confirma tu nuevo correo de acceso - POS",
+      link: `/confirm-email-change?token=${stored?.pendingEmailToken}`,
+    });
+    const sent = sendEmailMock.mock.calls[0][0] as { text: string };
+    expect(sent.text).toContain("Solicitaste cambiar el correo de acceso");
+  });
+
+  it.each([
+    {
+      label: "an English preference",
+      email: "english-change@example.com",
+      target: "english-target@example.com",
+      storedPreference: "en",
+      overrideTo: undefined,
+    },
+    {
+      label: "no stored preference",
+      email: "no-preference@example.com",
+      target: "no-preference-target@example.com",
+      storedPreference: undefined,
+      overrideTo: undefined,
+    },
+    {
+      label: "an unsupported stored preference",
+      email: "unsupported-preference@example.com",
+      target: "unsupported-target@example.com",
+      storedPreference: "en",
+      overrideTo: "fr",
+    },
+    {
+      label: "an unknown stored preference",
+      email: "unknown-preference@example.com",
+      target: "unknown-target@example.com",
+      storedPreference: "en",
+      overrideTo: null,
+    },
+  ])(
+    "sends the confirmation email in English for $label",
+    async ({ email, target, storedPreference, overrideTo }) => {
+      const app = await getTestApp();
+      const user = await createUser(
+        email,
+        storedPreference ? { languagePreference: storedPreference } : {},
+      );
+      if (overrideTo !== undefined) {
+        await User.updateOne(
+          { _id: user._id },
+          { $set: { languagePreference: overrideTo } },
+        );
+      }
+      const auth = await tokenFor(user);
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/request-email-change",
+        headers: { authorization: auth },
+        payload: { newEmail: target, currentPassword: testPassword },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const stored = await User.findById(user._id).lean();
+      expectOneAccountSend(sendEmailMock, {
+        to: target,
+        subject: "Confirm Your New Sign-in Email - POS",
+        link: `/confirm-email-change?token=${stored?.pendingEmailToken}`,
+      });
+      const sent = sendEmailMock.mock.calls[0][0] as { text: string };
+      expect(sent.text).toContain("You asked to change the sign-in email");
+    },
+  );
+
+  it("takes the language from the changing User, never the new address's User record", async () => {
+    const app = await getTestApp();
+    const user = await createUser("english-changer@example.com");
+    await createUser("spanish-new-address@example.com", {
+      languagePreference: "es",
+      deleted: true,
+      deletedAt: new Date(),
+    });
+    const auth = await tokenFor(user);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/request-email-change",
+      headers: { authorization: auth },
+      payload: {
+        newEmail: "spanish-new-address@example.com",
+        currentPassword: testPassword,
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const stored = await User.findById(user._id).lean();
+    expectOneAccountSend(sendEmailMock, {
+      to: "spanish-new-address@example.com",
+      subject: "Confirm Your New Sign-in Email - POS",
+      link: `/confirm-email-change?token=${stored?.pendingEmailToken}`,
+    });
   });
 
   it("normalizes the new address before storing and sending", async () => {
