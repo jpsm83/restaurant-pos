@@ -251,6 +251,37 @@ describe("Auth route guards", () => {
     expect(screen.queryByText("Login page")).not.toBeInTheDocument();
   });
 
+  it("honours a safe returnTo when an authenticated user leaves /signup", async () => {
+    mockUseAuth.mockReturnValue({
+      state: {
+        status: "authenticated",
+        user: { id: "u1", email: "john@doe.com", type: "user" },
+        error: null,
+      },
+    });
+
+    await renderWithI18n(
+      <MemoryRouter
+        initialEntries={["/signup?returnTo=%2Faccount%2Fprofile"]}
+      >
+        <Routes>
+          <Route path="/account/profile" element={<div>Account profile</div>} />
+          <Route
+            path="/signup"
+            element={
+              <PublicOnlyRoute>
+                <div>Signup page</div>
+              </PublicOnlyRoute>
+            }
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("Account profile")).toBeInTheDocument();
+    expect(screen.queryByText("Signup page")).not.toBeInTheDocument();
+  });
+
   it("falls back to the Customer dashboard for an unsafe returnTo", async () => {
     mockUseAuth.mockReturnValue({
       state: {

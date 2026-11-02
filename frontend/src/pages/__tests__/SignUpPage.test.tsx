@@ -676,6 +676,111 @@ describe("SignUpPage", () => {
     });
   });
 
+  it("honours a safe returnTo after Google signup", async () => {
+    const user = userEvent.setup();
+    mockGoogleAuth.mockResolvedValue({
+      ok: true,
+      data: {
+        user: {
+          id: "64a1b2c3d4e5f67890123456",
+          email: "google-new@example.com",
+          type: "user",
+          emailVerified: true,
+        },
+      },
+    });
+
+    await renderWithI18n(
+      <MemoryRouter
+        initialEntries={["/signup?returnTo=%2Ffavorites%3Ftab%3Dall"]}
+      >
+        <Routes>
+          <Route path="/signup" element={<SignUpPage />} />
+          <Route path="/favorites" element={<div>Google signup favorites</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: /continue with google/i }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Google signup favorites")).toBeInTheDocument();
+    });
+  });
+
+  it("falls back to the Customer dashboard for an unsafe returnTo after email signup", async () => {
+    const user = userEvent.setup();
+    mockSignup.mockResolvedValue({
+      ok: true,
+      data: {
+        user: {
+          id: "64a1b2c3d4e5f67890123456",
+          email: "new@example.com",
+          type: "user",
+        },
+      },
+    });
+
+    await renderWithI18n(
+      <MemoryRouter
+        initialEntries={["/signup?returnTo=https%3A%2F%2Fevil.example"]}
+      >
+        <Routes>
+          <Route path="/signup" element={<SignUpPage />} />
+          <Route path="/dashboard" element={<div>Safe signup dashboard</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await user.type(screen.getByLabelText(/^email$/i), "new@example.com");
+    await user.type(screen.getByLabelText(/^password$/i), "ValidPass1!");
+    await user.type(screen.getByLabelText(/confirm password/i), "ValidPass1!");
+    await user.click(
+      screen.getByLabelText(/privacy notice and account terms/i),
+    );
+    await user.click(screen.getByRole("button", { name: /create account$/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Safe signup dashboard")).toBeInTheDocument();
+    });
+  });
+
+  it("falls back to the Customer dashboard for an unsafe returnTo after Google signup", async () => {
+    const user = userEvent.setup();
+    mockGoogleAuth.mockResolvedValue({
+      ok: true,
+      data: {
+        user: {
+          id: "64a1b2c3d4e5f67890123456",
+          email: "google-new@example.com",
+          type: "user",
+          emailVerified: true,
+        },
+      },
+    });
+
+    await renderWithI18n(
+      <MemoryRouter
+        initialEntries={["/signup?returnTo=https%3A%2F%2Fevil.example"]}
+      >
+        <Routes>
+          <Route path="/signup" element={<SignUpPage />} />
+          <Route path="/dashboard" element={<div>Safe Google dashboard</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: /continue with google/i }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Safe Google dashboard")).toBeInTheDocument();
+    });
+  });
+
   it("navigates to customer dashboard after successful user signup", async () => {
     const user = userEvent.setup();
     mockSignup.mockResolvedValue({
