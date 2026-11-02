@@ -5,6 +5,10 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import {
+  authPathWithReturnTo,
+  getPostLoginDestination,
+} from "@/auth/postLoginRedirect";
+import {
   SiteAudienceProvider,
   useOptionalSiteAudience,
   useSiteAudience,
@@ -18,6 +22,20 @@ function AudienceLabel() {
 function OptionalAudienceLabel() {
   const a = useOptionalSiteAudience();
   return <span data-testid="optional-audience">{a === null ? "null" : a}</span>;
+}
+
+function AuthIndependenceProbe() {
+  const audience = useSiteAudience();
+  return (
+    <output data-testid="auth-independence">
+      {[
+        audience,
+        authPathWithReturnTo("/login", null),
+        authPathWithReturnTo("/signup", null),
+        getPostLoginDestination("/favorites"),
+      ].join("|")}
+    </output>
+  );
 }
 
 describe("SiteAudienceProvider (Phase 1.1)", () => {
@@ -74,6 +92,19 @@ describe("SiteAudienceProvider (Phase 1.1)", () => {
       </MemoryRouter>,
     );
     expect(screen.getByTestId("audience")).toHaveTextContent("customer");
+  });
+
+  it("keeps auth URLs and post-login landing independent of the marketing audience", () => {
+    render(
+      <MemoryRouter initialEntries={["/business"]}>
+        <SiteAudienceProvider>
+          <AuthIndependenceProbe />
+        </SiteAudienceProvider>
+      </MemoryRouter>,
+    );
+    expect(screen.getByTestId("auth-independence")).toHaveTextContent(
+      "business|/login|/signup|/favorites",
+    );
   });
 
   it("useOptionalSiteAudience returns null outside provider", () => {

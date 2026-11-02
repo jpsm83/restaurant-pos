@@ -171,6 +171,24 @@ describe("App public routing (Phase 1.5.1)", () => {
     });
   });
 
+  it("sends anonymous account-surface visits to the shared login entry", async () => {
+    await renderWithI18n(
+      <MemoryRouter initialEntries={["/account/profile"]}>
+        <LocationProbe />
+        <AppRoutes />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("location")).toHaveTextContent(
+        /^\/login\?returnTo=%2Faccount%2Fprofile$/,
+      );
+    });
+    expect(screen.getByTestId("location")).not.toHaveTextContent(
+      /business|audience=/,
+    );
+  });
+
   it("renders NotFoundPage for an unknown legacy remainder", async () => {
     await renderWithI18n(
       <MemoryRouter

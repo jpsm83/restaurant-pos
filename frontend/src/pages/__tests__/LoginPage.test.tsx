@@ -121,44 +121,32 @@ describe("LoginPage", () => {
     expect(forgotPasswordLink).toHaveAttribute("href", "/forgot-password");
   });
 
-  it("preserves a safe returnTo on the create account link", async () => {
+  it.each([
+    {
+      name: "preserves a safe returnTo on the create account link",
+      entry: "/login?returnTo=%2Ffavorites%3Ftab%3Dall",
+      expectedHref: "/signup?returnTo=%2Ffavorites%3Ftab%3Dall",
+    },
+    {
+      name: "keeps a plain create account link without returnTo",
+      entry: "/login",
+      expectedHref: "/signup",
+    },
+    {
+      name: "drops an unsafe returnTo from the create account link",
+      entry: "/login?returnTo=https%3A%2F%2Fevil.example",
+      expectedHref: "/signup",
+    },
+  ])("$name", async ({ entry, expectedHref }) => {
     await renderWithI18n(
-      <MemoryRouter
-        initialEntries={["/login?returnTo=%2Ffavorites%3Ftab%3Dall"]}
-      >
+      <MemoryRouter initialEntries={[entry]}>
         <LoginPage />
       </MemoryRouter>,
     );
 
     expect(
       screen.getByRole("link", { name: /create account/i }),
-    ).toHaveAttribute("href", "/signup?returnTo=%2Ffavorites%3Ftab%3Dall");
-  });
-
-  it("keeps a plain create account link without returnTo", async () => {
-    await renderWithI18n(
-      <MemoryRouter initialEntries={["/login"]}>
-        <LoginPage />
-      </MemoryRouter>,
-    );
-
-    expect(
-      screen.getByRole("link", { name: /create account/i }),
-    ).toHaveAttribute("href", "/signup");
-  });
-
-  it("drops an unsafe returnTo from the create account link", async () => {
-    await renderWithI18n(
-      <MemoryRouter
-        initialEntries={["/login?returnTo=https%3A%2F%2Fevil.example"]}
-      >
-        <LoginPage />
-      </MemoryRouter>,
-    );
-
-    expect(
-      screen.getByRole("link", { name: /create account/i }),
-    ).toHaveAttribute("href", "/signup");
+    ).toHaveAttribute("href", expectedHref);
   });
 
   it("shows a flash message passed through navigation state", async () => {

@@ -63,6 +63,35 @@ vi.mock("@/auth/api", () => ({
     mockUseAuthConfigQuery(...args),
 }));
 
+const googleSignupUser = {
+  id: "64a1b2c3d4e5f67890123456",
+  email: "google-new@example.com",
+  type: "user",
+  emailVerified: true,
+};
+
+const emailSignupUser = {
+  id: "64a1b2c3d4e5f67890123456",
+  email: "new@example.com",
+  type: "user",
+};
+
+const googleSignupSuccess = {
+  ok: true,
+  data: { user: googleSignupUser },
+} as const;
+
+function mockGoogleSignupSuccess() {
+  mockGoogleAuth.mockResolvedValue(googleSignupSuccess);
+}
+
+function mockEmailSignupSuccess(user = emailSignupUser) {
+  mockSignup.mockResolvedValue({
+    ok: true,
+    data: { user },
+  });
+}
+
 describe("SignUpPage", () => {
   beforeEach(() => {
     mockDispatch.mockReset();
@@ -168,15 +197,9 @@ describe("SignUpPage", () => {
 
   it("sends the acceptance proof with an accepted sign-up", async () => {
     const user = userEvent.setup();
-    mockSignup.mockResolvedValue({
-      ok: true,
-      data: {
-        user: {
-          id: "64a1b2c3d4e5f67890123456",
-          email: "accepted@example.com",
-          type: "user",
-        },
-      },
+    mockEmailSignupSuccess({
+      ...emailSignupUser,
+      email: "accepted@example.com",
     });
 
     await renderWithI18n(
@@ -300,15 +323,9 @@ describe("SignUpPage", () => {
 
   it("passes the active language to email signup", async () => {
     const user = userEvent.setup();
-    mockSignup.mockResolvedValue({
-      ok: true,
-      data: {
-        user: {
-          id: "64a1b2c3d4e5f67890123456",
-          email: "nuevo@example.com",
-          type: "user",
-        },
-      },
+    mockEmailSignupSuccess({
+      ...emailSignupUser,
+      email: "nuevo@example.com",
     });
 
     await renderWithI18n(
@@ -355,17 +372,7 @@ describe("SignUpPage", () => {
 
   it("signs up through the shared Google entry path", async () => {
     const user = userEvent.setup();
-    mockGoogleAuth.mockResolvedValue({
-      ok: true,
-      data: {
-        user: {
-          id: "64a1b2c3d4e5f67890123456",
-          email: "google-new@example.com",
-          type: "user",
-          emailVerified: true,
-        },
-      },
-    });
+    mockGoogleSignupSuccess();
 
     await renderWithI18n(
       <MemoryRouter initialEntries={["/signup"]}>
@@ -399,17 +406,7 @@ describe("SignUpPage", () => {
         ok: true,
         data: { user: null, consentRequired: true },
       })
-      .mockResolvedValueOnce({
-        ok: true,
-        data: {
-          user: {
-            id: "64a1b2c3d4e5f67890123456",
-            email: "google-new@example.com",
-            type: "user",
-            emailVerified: true,
-          },
-        },
-      });
+      .mockResolvedValueOnce(googleSignupSuccess);
 
     await renderWithI18n(
       <MemoryRouter initialEntries={["/signup"]}>
@@ -634,31 +631,32 @@ describe("SignUpPage", () => {
     });
   });
 
-  it("honours a safe returnTo after email signup", async () => {
+  it.each([
+    {
+      name: "honours a safe returnTo after email signup",
+      returnTo: "/favorites",
+      path: "/favorites",
+      landing: "Signup favorites",
+    },
+    {
+      name: "falls back to the Customer dashboard for an unsafe returnTo after email signup",
+      returnTo: "https://evil.example",
+      path: "/dashboard",
+      landing: "Safe signup dashboard",
+    },
+  ])("$name", async ({ returnTo, path, landing }) => {
     const user = userEvent.setup();
-    mockSignup.mockResolvedValue({
-      ok: true,
-      data: {
-        user: {
-          id: "64a1b2c3d4e5f67890123456",
-          email: "new@example.com",
-          type: "user",
-        },
-      },
-    });
+    mockEmailSignupSuccess();
 
     await renderWithI18n(
       <MemoryRouter
         initialEntries={[
-          "/signup?returnTo=%2Ffavorites",
+          `/signup?returnTo=${encodeURIComponent(returnTo)}`,
         ]}
       >
         <Routes>
           <Route path="/signup" element={<SignUpPage />} />
-          <Route
-            path="/favorites"
-            element={<div>Signup favorites</div>}
-          />
+          <Route path={path} element={<div>{landing}</div>} />
         </Routes>
       </MemoryRouter>,
     );
@@ -672,31 +670,36 @@ describe("SignUpPage", () => {
     await user.click(screen.getByRole("button", { name: /create account$/i }));
 
     await waitFor(() => {
-      expect(screen.getByText("Signup favorites")).toBeInTheDocument();
+      expect(screen.getByText(landing)).toBeInTheDocument();
     });
   });
 
-  it("honours a safe returnTo after Google signup", async () => {
+  it.each([
+    {
+      name: "honours a safe returnTo after Google signup",
+      returnTo: "/favorites?tab=all",
+      path: "/favorites",
+      landing: "Google signup favorites",
+    },
+    {
+      name: "falls back to the Customer dashboard for an unsafe returnTo after Google signup",
+      returnTo: "https://evil.example",
+      path: "/dashboard",
+      landing: "Safe Google dashboard",
+    },
+  ])("$name", async ({ returnTo, path, landing }) => {
     const user = userEvent.setup();
-    mockGoogleAuth.mockResolvedValue({
-      ok: true,
-      data: {
-        user: {
-          id: "64a1b2c3d4e5f67890123456",
-          email: "google-new@example.com",
-          type: "user",
-          emailVerified: true,
-        },
-      },
-    });
+    mockGoogleSignupSuccess();
 
     await renderWithI18n(
       <MemoryRouter
-        initialEntries={["/signup?returnTo=%2Ffavorites%3Ftab%3Dall"]}
+        initialEntries={[
+          `/signup?returnTo=${encodeURIComponent(returnTo)}`,
+        ]}
       >
         <Routes>
           <Route path="/signup" element={<SignUpPage />} />
-          <Route path="/favorites" element={<div>Google signup favorites</div>} />
+          <Route path={path} element={<div>{landing}</div>} />
         </Routes>
       </MemoryRouter>,
     );
@@ -706,93 +709,13 @@ describe("SignUpPage", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Google signup favorites")).toBeInTheDocument();
-    });
-  });
-
-  it("falls back to the Customer dashboard for an unsafe returnTo after email signup", async () => {
-    const user = userEvent.setup();
-    mockSignup.mockResolvedValue({
-      ok: true,
-      data: {
-        user: {
-          id: "64a1b2c3d4e5f67890123456",
-          email: "new@example.com",
-          type: "user",
-        },
-      },
-    });
-
-    await renderWithI18n(
-      <MemoryRouter
-        initialEntries={["/signup?returnTo=https%3A%2F%2Fevil.example"]}
-      >
-        <Routes>
-          <Route path="/signup" element={<SignUpPage />} />
-          <Route path="/dashboard" element={<div>Safe signup dashboard</div>} />
-        </Routes>
-      </MemoryRouter>,
-    );
-
-    await user.type(screen.getByLabelText(/^email$/i), "new@example.com");
-    await user.type(screen.getByLabelText(/^password$/i), "ValidPass1!");
-    await user.type(screen.getByLabelText(/confirm password/i), "ValidPass1!");
-    await user.click(
-      screen.getByLabelText(/privacy notice and account terms/i),
-    );
-    await user.click(screen.getByRole("button", { name: /create account$/i }));
-
-    await waitFor(() => {
-      expect(screen.getByText("Safe signup dashboard")).toBeInTheDocument();
-    });
-  });
-
-  it("falls back to the Customer dashboard for an unsafe returnTo after Google signup", async () => {
-    const user = userEvent.setup();
-    mockGoogleAuth.mockResolvedValue({
-      ok: true,
-      data: {
-        user: {
-          id: "64a1b2c3d4e5f67890123456",
-          email: "google-new@example.com",
-          type: "user",
-          emailVerified: true,
-        },
-      },
-    });
-
-    await renderWithI18n(
-      <MemoryRouter
-        initialEntries={["/signup?returnTo=https%3A%2F%2Fevil.example"]}
-      >
-        <Routes>
-          <Route path="/signup" element={<SignUpPage />} />
-          <Route path="/dashboard" element={<div>Safe Google dashboard</div>} />
-        </Routes>
-      </MemoryRouter>,
-    );
-
-    await user.click(
-      screen.getByRole("button", { name: /continue with google/i }),
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText("Safe Google dashboard")).toBeInTheDocument();
+      expect(screen.getByText(landing)).toBeInTheDocument();
     });
   });
 
   it("navigates to customer dashboard after successful user signup", async () => {
     const user = userEvent.setup();
-    mockSignup.mockResolvedValue({
-      ok: true,
-      data: {
-        user: {
-          id: "64a1b2c3d4e5f67890123456",
-          email: "new@example.com",
-          type: "user",
-        },
-      },
-    });
+    mockEmailSignupSuccess();
 
     await renderWithI18n(
       <MemoryRouter initialEntries={["/signup"]}>
@@ -819,43 +742,31 @@ describe("SignUpPage", () => {
     });
   });
 
-  it("preserves a safe returnTo on the back to sign in link", async () => {
+  it.each([
+    {
+      name: "preserves a safe returnTo on the back to sign in link",
+      entry: "/signup?returnTo=%2Faccount%2Fprofile",
+      expectedHref: "/login?returnTo=%2Faccount%2Fprofile",
+    },
+    {
+      name: "keeps a plain back to sign in link without returnTo",
+      entry: "/signup",
+      expectedHref: "/login",
+    },
+    {
+      name: "drops an unsafe returnTo from the back to sign in link",
+      entry: "/signup?returnTo=https%3A%2F%2Fevil.example",
+      expectedHref: "/login",
+    },
+  ])("$name", async ({ entry, expectedHref }) => {
     await renderWithI18n(
-      <MemoryRouter
-        initialEntries={["/signup?returnTo=%2Faccount%2Fprofile"]}
-      >
+      <MemoryRouter initialEntries={[entry]}>
         <SignUpPage />
       </MemoryRouter>,
     );
 
     expect(
       screen.getByRole("link", { name: /back to sign in/i }),
-    ).toHaveAttribute("href", "/login?returnTo=%2Faccount%2Fprofile");
-  });
-
-  it("keeps a plain back to sign in link without returnTo", async () => {
-    await renderWithI18n(
-      <MemoryRouter initialEntries={["/signup"]}>
-        <SignUpPage />
-      </MemoryRouter>,
-    );
-
-    expect(
-      screen.getByRole("link", { name: /back to sign in/i }),
-    ).toHaveAttribute("href", "/login");
-  });
-
-  it("drops an unsafe returnTo from the back to sign in link", async () => {
-    await renderWithI18n(
-      <MemoryRouter
-        initialEntries={["/signup?returnTo=https%3A%2F%2Fevil.example"]}
-      >
-        <SignUpPage />
-      </MemoryRouter>,
-    );
-
-    expect(
-      screen.getByRole("link", { name: /back to sign in/i }),
-    ).toHaveAttribute("href", "/login");
+    ).toHaveAttribute("href", expectedHref);
   });
 });
