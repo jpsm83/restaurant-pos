@@ -1,9 +1,9 @@
 /**
  * Shared notification inbox page.
  *
- * Reads the session-derived self endpoint; no User id appears in the URL. The
- * page is layout-agnostic so the Customer account area and the Business shell
- * can both render it. Read and hide actions and live refresh arrive later.
+ * Reads and mutates the session-derived self endpoints; no User id appears in
+ * the URL. The page is layout-agnostic so the Customer account area and the
+ * Business shell can both render it. Live refresh arrives later.
  */
 import { useTranslation } from "react-i18next";
 import { notificationEnums } from "restaurant-pos-packages/enums";
@@ -19,8 +19,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useFormatting } from "@/hooks/useFormatting";
 import { useErrorMessage } from "@/i18n/errorCopy";
-import { useNotificationsInboxQuery } from "@/services/notifications/notificationsService";
-import { ServiceRequestError } from "@/services/serviceErrors";
+import {
+  useNotificationInboxActionMutation,
+  useNotificationsInboxQuery,
+  type NotificationInboxAction,
+} from "@/services/notifications/notificationsService";
+import {
+  ServiceRequestError,
+  type ServiceFailure,
+} from "@/services/serviceErrors";
 
 const KNOWN_NOTIFICATION_TYPES = new Set(notificationEnums);
 
@@ -43,10 +50,20 @@ function typePresentation(notificationType: string): {
   };
 }
 
-function InboxEntry({ entry }: { entry: INotificationInboxItem }) {
+function InboxEntry({
+  entry,
+  pending,
+  onAction,
+}: {
+  entry: INotificationInboxItem;
+  pending: boolean;
+  onAction: (action: NotificationInboxAction) => void;
+}) {
   const { t } = useTranslation("common");
   const { formatDateTime } = useFormatting();
   const { labelKey, tone } = typePresentation(entry.notificationType);
+  const markRead = () =>
+    onAction({ type: "markRead", notificationId: entry.notificationId });
 
   return (
     <li className="rounded-xl border border-border bg-card p-4 shadow-sm">
@@ -66,9 +83,55 @@ function InboxEntry({ entry }: { entry: INotificationInboxItem }) {
           {formatDateTime(entry.createdAt)}
         </time>
       </div>
-      <p className="mt-2 whitespace-pre-wrap break-words text-sm text-foreground">
-        {entry.message}
-      </p>
+      {entry.read ? (
+        <p className="mt-2 whitespace-pre-wrap break-words text-sm text-foreground">
+          {entry.message}
+        </p>
+      ) : (
+        <button
+          type="button"
+          disabled={pending}
+          aria-label={t("notifications.actions.openNotificationLabel", {
+            message: entry.message,
+          })}
+          onClick={markRead}
+          className="mt-2 block w-full rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:cursor-not-allowed"
+        >
+          <span className="block whitespace-pre-wrap break-words text-sm text-foreground">
+            {entry.message}
+          </span>
+        </button>
+      )}
+      <div className="mt-3 flex flex-wrap gap-2">
+        {entry.read ? null : (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={pending}
+            aria-label={t("notifications.actions.markReadAriaLabel", {
+              message: entry.message,
+            })}
+            onClick={markRead}
+          >
+            {t("notifications.actions.markRead")}
+          </Button>
+        )}
+        <Button
+          type="button"
+          size="sm"
+          variant="destructive"
+          disabled={pending}
+          aria-label={t("notifications.actions.deleteAriaLabel", {
+            message: entry.message,
+          })}
+          onClick={() =>
+            onAction({ type: "hide", notificationId: entry.notificationId })
+          }
+        >
+          {t("notifications.actions.delete")}
+        </Button>
+      </div>
     </li>
   );
 }
@@ -80,6 +143,7 @@ export default function NotificationsInboxPage() {
   const { state } = useAuth();
   const userId = state.status === "authenticated" ? state.user?.id : undefined;
   const inboxQuery = useNotificationsInboxQuery(userId);
+  const actionMutation = useNotificationInboxActionMutation();
 
   const pages = inboxQuery.data?.pages ?? [];
   const entries = pages
@@ -90,21 +154,49 @@ export default function NotificationsInboxPage() {
         right.notificationId.localeCompare(left.notificationId),
     );
   const unreadCount = pages[0]?.unreadCount ?? 0;
+  const isMutating = actionMutation.isPending;
   const failure =
     inboxQuery.error instanceof ServiceRequestError ? inboxQuery.error : null;
+  const fallbackCode =
+    actionMutation.variables?.type === "markAllRead"
+      ? "notificationsReadAll.transport"
+      : actionMutation.variables?.type === "hide"
+        ? "notificationsDelete.transport"
+        : "notificationsRead.transport";
+  const actionFailure: ServiceFailure | null = actionMutation.isError
+    ? actionMutation.error instanceof ServiceRequestError
+      ? actionMutation.error
+      : { code: fallbackCode }
+    : null;
 
   return (
     <main className="flex min-h-0 flex-1 flex-col p-6">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h1 className="text-xl font-semibold text-foreground">
-          {t("notifications.title")}
-        </h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-baseline gap-2">
+          <h1 className="text-xl font-semibold text-foreground">
+            {t("notifications.title")}
+          </h1>
+          {inboxQuery.data ? (
+            <p className="text-sm text-muted-foreground" aria-live="polite">
+              {t("notifications.unreadCount", { count: unreadCount })}
+            </p>
+          ) : null}
+        </div>
         {inboxQuery.data ? (
-          <p className="text-sm text-muted-foreground" aria-live="polite">
-            {t("notifications.unreadCount", { count: unreadCount })}
-          </p>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={unreadCount === 0 || isMutating}
+            onClick={() => actionMutation.mutate({ type: "markAllRead" })}
+          >
+            {t("notifications.actions.markAllRead")}
+          </Button>
         ) : null}
       </div>
+
+      {actionFailure ? (
+        <Alert className="mt-4 max-w-3xl">{resolveError(actionFailure)}</Alert>
+      ) : null}
 
       {inboxQuery.isLoading ? (
         <div className="mt-6 max-w-3xl space-y-3" aria-busy="true">
@@ -137,7 +229,12 @@ export default function NotificationsInboxPage() {
         <>
           <ul className="mt-6 max-w-3xl space-y-3">
             {entries.map((entry) => (
-              <InboxEntry key={entry.notificationId} entry={entry} />
+              <InboxEntry
+                key={entry.notificationId}
+                entry={entry}
+                pending={isMutating}
+                onAction={actionMutation.mutate}
+              />
             ))}
           </ul>
           {inboxQuery.hasNextPage ? (

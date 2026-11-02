@@ -37,6 +37,9 @@ export const SERVICE_OPERATIONS = [
   "tableConfigLoad",
   "tableConfigSave",
   "notificationsFetch",
+  "notificationsRead",
+  "notificationsReadAll",
+  "notificationsDelete",
 ] as const;
 
 export type ServiceOperation = (typeof SERVICE_OPERATIONS)[number];

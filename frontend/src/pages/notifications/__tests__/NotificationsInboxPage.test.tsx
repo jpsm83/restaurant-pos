@@ -10,12 +10,14 @@ import { ServiceRequestError } from "@/services/serviceErrors";
 import { renderWithI18n } from "@/test/i18nTestUtils";
 import NotificationsInboxPage from "../NotificationsInboxPage";
 
-const { mockInboxQuery } = vi.hoisted(() => ({
+const { mockInboxQuery, mockActionMutation } = vi.hoisted(() => ({
   mockInboxQuery: { current: {} as Record<string, unknown> },
+  mockActionMutation: { current: {} as Record<string, unknown> },
 }));
 
 vi.mock("@/services/notifications/notificationsService", () => ({
   useNotificationsInboxQuery: () => mockInboxQuery.current,
+  useNotificationInboxActionMutation: () => mockActionMutation.current,
 }));
 
 vi.mock("@/auth/store/AuthContext", () => ({
@@ -75,6 +77,18 @@ function setQuery(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function setMutation(overrides: Record<string, unknown> = {}) {
+  const mutate = vi.fn();
+  mockActionMutation.current = {
+    mutate,
+    isPending: false,
+    isError: false,
+    error: null,
+    ...overrides,
+  };
+  return mutate;
+}
+
 function renderPage(language: "en" | "es" = "en") {
   return renderWithI18n(<NotificationsInboxPage />, { language });
 }
@@ -82,6 +96,7 @@ function renderPage(language: "en" | "es" = "en") {
 describe("NotificationsInboxPage", () => {
   beforeEach(() => {
     setQuery();
+    setMutation();
   });
 
   it("renders entries newest first with type, timestamp, stored text, and unread marker", async () => {
@@ -111,7 +126,7 @@ describe("NotificationsInboxPage", () => {
     expect(rows).toHaveLength(2);
     expect(rows[0]).toHaveTextContent("Warning");
     expect(rows[0]).toHaveTextContent("Unread");
-    expect(rows[0].querySelector("p")?.textContent).toBe("Second\nline");
+    expect(rows[0].textContent).toContain("Second\nline");
     expect(
       within(rows[0]).getByText(formatDateTime(newest.createdAt, "en")),
     ).toBeInTheDocument();
@@ -232,6 +247,181 @@ describe("NotificationsInboxPage", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Intentar de nuevo" }),
+    ).toBeInTheDocument();
+  });
+
+  it("marks an unread entry read when it is opened", async () => {
+    const mutate = setMutation();
+    setQuery({ data: { pages: [page([entry()])] } });
+    const user = userEvent.setup();
+
+    await renderPage();
+
+    const row = screen.getByRole("listitem");
+    await user.click(
+      within(row).getByRole("button", {
+        name: "Open notification: Your order is ready.",
+      }),
+    );
+
+    expect(mutate).toHaveBeenCalledWith({
+      type: "markRead",
+      notificationId: "n1",
+    });
+  });
+
+  it("marks an unread entry read with the explicit action", async () => {
+    const mutate = setMutation();
+    setQuery({ data: { pages: [page([entry()])] } });
+    const user = userEvent.setup();
+
+    await renderPage();
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Mark notification as read: Your order is ready.",
+      }),
+    );
+
+    expect(mutate).toHaveBeenCalledWith({
+      type: "markRead",
+      notificationId: "n1",
+    });
+  });
+
+  it("marks every visible entry read", async () => {
+    const mutate = setMutation();
+    setQuery({ data: { pages: [page([entry()])] } });
+    const user = userEvent.setup();
+
+    await renderPage();
+
+    await user.click(
+      screen.getByRole("button", { name: "Mark all as read" }),
+    );
+
+    expect(mutate).toHaveBeenCalledWith({ type: "markAllRead" });
+  });
+
+  it("disables mark all when the unread count is zero", async () => {
+    setQuery({
+      data: {
+        pages: [page([entry({ read: true })], { unreadCount: 0 })],
+      },
+    });
+
+    await renderPage();
+
+    expect(
+      screen.getByRole("button", { name: "Mark all as read" }),
+    ).toBeDisabled();
+  });
+
+  it("disables every action while a mutation is pending", async () => {
+    setMutation({ isPending: true });
+    setQuery({ data: { pages: [page([entry()])] } });
+
+    await renderPage();
+
+    expect(
+      screen.getByRole("button", { name: "Mark all as read" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", {
+        name: "Mark notification as read: Your order is ready.",
+      }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Delete notification: Your order is ready." }),
+    ).toBeDisabled();
+  });
+
+  it("hides the entry from the caller's list", async () => {
+    const mutate = setMutation();
+    setQuery({ data: { pages: [page([entry()])] } });
+    const user = userEvent.setup();
+
+    await renderPage();
+
+    await user.click(
+      screen.getByRole("button", { name: "Delete notification: Your order is ready." }),
+    );
+
+    expect(mutate).toHaveBeenCalledWith({
+      type: "hide",
+      notificationId: "n1",
+    });
+  });
+
+  it("renders localized mutation failure copy and keeps the entry", async () => {
+    setMutation({
+      isError: true,
+      error: new ServiceRequestError({
+        code: "notificationsDelete.internal",
+        status: 500,
+        serverMessage: "raw server details",
+      }),
+    });
+    setQuery({ data: { pages: [page([entry()])] } });
+
+    await renderPage();
+
+    expect(
+      screen.getByText("The notification could not be deleted. Try again."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("raw server details")).not.toBeInTheDocument();
+    expect(screen.getByText("Your order is ready.")).toBeInTheDocument();
+  });
+
+  it("renders localized read failure copy", async () => {
+    setMutation({
+      isError: true,
+      error: new ServiceRequestError({
+        code: "notificationsRead.internal",
+        status: 500,
+      }),
+    });
+    setQuery({ data: { pages: [page([entry()])] } });
+
+    await renderPage();
+
+    expect(
+      screen.getByText(
+        "The notification could not be marked as read. Try again.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("1 unread")).toBeInTheDocument();
+  });
+
+  it("renders Spanish action labels and mutation failure copy", async () => {
+    setMutation({
+      isError: true,
+      error: new ServiceRequestError({
+        code: "notificationsReadAll.internal",
+        status: 500,
+      }),
+    });
+    setQuery({ data: { pages: [page([entry({ notificationType: "Warning" })])] } });
+
+    await renderPage("es");
+
+    expect(
+      screen.getByRole("button", { name: "Marcar todas como leídas" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: "Marcar la notificación como leída: Your order is ready.",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: "Eliminar la notificación: Your order is ready.",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "No se pudieron marcar las notificaciones como leídas. Inténtalo de nuevo.",
+      ),
     ).toBeInTheDocument();
   });
 });

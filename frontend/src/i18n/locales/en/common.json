@@ -40,6 +40,19 @@
     "loadMore": "Load more",
     "loadingMore": "Loading…",
     "retry": "Try again",
+    "actions": {
+      "markRead": "Mark as read",
+      "markAllRead": "Mark all as read",
+      "delete": "Delete",
+      "markReadAriaLabel": "Mark notification as read: {{message}}",
+      "deleteAriaLabel": "Delete notification: {{message}}",
+      "openNotificationLabel": "Open notification: {{message}}"
+    },
+    "errors": {
+      "read": "The notification could not be marked as read. Try again.",
+      "readAll": "Notifications could not be marked as read. Try again.",
+      "delete": "The notification could not be deleted. Try again."
+    },
     "empty": {
       "title": "No notifications",
       "description": "You have no messages yet."

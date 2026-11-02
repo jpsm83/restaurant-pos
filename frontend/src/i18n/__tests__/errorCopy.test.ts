@@ -148,6 +148,40 @@ describe("ERROR_COPY", () => {
     });
   });
 
+  it("uses inbox action copy for every action outcome", () => {
+    expect(getErrorCopy(failure("notificationsRead.internal"))).toMatchObject({
+      namespace: "common",
+      key: "notifications.errors.read",
+    });
+    expect(
+      getErrorCopy(failure("notificationsReadAll.transport")),
+    ).toMatchObject({
+      namespace: "common",
+      key: "notifications.errors.readAll",
+    });
+    expect(getErrorCopy(failure("notificationsDelete.internal"))).toMatchObject(
+      {
+        namespace: "common",
+        key: "notifications.errors.delete",
+      },
+    );
+  });
+
+  it("keeps generic auth and not-found copy for inbox actions", () => {
+    expect(
+      getErrorCopy(failure("notificationsReadAll.unauthorized")),
+    ).toMatchObject({
+      namespace: "errors",
+      key: "api.unauthorized",
+    });
+    expect(
+      getErrorCopy(failure("notificationsRead.notFound")),
+    ).toMatchObject({
+      namespace: "errors",
+      key: "api.notFound",
+    });
+  });
+
   it("keeps generic Google failure copy for non-conflict outcomes", () => {
     const nonConflictCodes = allCodes().filter(
       (code) =>

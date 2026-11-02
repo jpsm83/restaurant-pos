@@ -40,6 +40,19 @@
     "loadMore": "Cargar más",
     "loadingMore": "Cargando…",
     "retry": "Intentar de nuevo",
+    "actions": {
+      "markRead": "Marcar como leída",
+      "markAllRead": "Marcar todas como leídas",
+      "delete": "Eliminar",
+      "markReadAriaLabel": "Marcar la notificación como leída: {{message}}",
+      "deleteAriaLabel": "Eliminar la notificación: {{message}}",
+      "openNotificationLabel": "Abrir notificación: {{message}}"
+    },
+    "errors": {
+      "read": "No se pudo marcar la notificación como leída. Inténtalo de nuevo.",
+      "readAll": "No se pudieron marcar las notificaciones como leídas. Inténtalo de nuevo.",
+      "delete": "No se pudo eliminar la notificación. Inténtalo de nuevo."
+    },
     "empty": {
       "title": "No hay notificaciones",
       "description": "Todavía no tienes mensajes."

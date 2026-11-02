@@ -43,6 +43,10 @@ describe("queryKeys", () => {
       "inbox",
       "pending",
     ]);
+    expect(queryKeys.notifications.inboxAll()).toEqual([
+      "notifications",
+      "inbox",
+    ]);
   });
 
   it("builds schedule keys with fallbacks", () => {

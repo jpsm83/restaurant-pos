@@ -15,6 +15,7 @@ import {
   type ServiceErrorCode,
   type ServiceErrorOutcome,
   type ServiceFailure,
+  type ServiceOperation,
 } from "@/services/serviceErrors";
 
 export type ErrorCopyNamespace = (typeof NAMESPACES)[number];
@@ -172,12 +173,31 @@ const OVERRIDES: Partial<Record<ServiceErrorCode, ErrorCopyTemplate>> = {
   "modeSave.forbidden": { namespace: "mode", key: "errors.notAllowed" },
 };
 
+/** Inbox actions explain a failed action; auth and not-found keep generic copy. */
+const INBOX_ACTION_COPY: Partial<Record<ServiceOperation, string>> = {
+  notificationsRead: "notifications.errors.read",
+  notificationsReadAll: "notifications.errors.readAll",
+  notificationsDelete: "notifications.errors.delete",
+};
+
+function inboxActionCopy(
+  operation: ServiceOperation,
+  outcome: ServiceErrorOutcome,
+): ErrorCopyTemplate | undefined {
+  if (outcome !== "internal" && outcome !== "transport") return undefined;
+  const key = INBOX_ACTION_COPY[operation];
+  return key ? { namespace: "common", key } : undefined;
+}
+
 function buildErrorCopyMap(): Record<ServiceErrorCode, ErrorCopyTemplate> {
   const map = {} as Record<ServiceErrorCode, ErrorCopyTemplate>;
   for (const operation of SERVICE_OPERATIONS) {
     for (const outcome of SERVICE_ERROR_OUTCOMES) {
       const code = makeServiceErrorCode(operation, outcome);
-      map[code] = OVERRIDES[code] ?? GENERIC_OUTCOME_COPY[outcome];
+      map[code] =
+        OVERRIDES[code] ??
+        inboxActionCopy(operation, outcome) ??
+        GENERIC_OUTCOME_COPY[outcome];
     }
   }
   return map;

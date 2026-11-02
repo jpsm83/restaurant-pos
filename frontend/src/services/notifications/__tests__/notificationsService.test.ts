@@ -6,18 +6,27 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { AxiosError, type AxiosResponse } from "axios";
 import { createElement, type ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { queryKeys } from "../../queryKeys";
 import {
   fetchNotificationsInbox,
+  hideNotificationInboxEntry,
+  markAllNotificationsRead,
+  markNotificationRead,
+  useNotificationInboxActionMutation,
   useNotificationsInboxQuery,
 } from "../notificationsService";
 
-const { mockGet } = vi.hoisted(() => ({
+const { mockGet, mockPatch, mockDelete } = vi.hoisted(() => ({
   mockGet: vi.fn(),
+  mockPatch: vi.fn(),
+  mockDelete: vi.fn(),
 }));
 
 vi.mock("../../http", () => ({
   http: {
     get: (...args: unknown[]) => mockGet(...args),
+    patch: (...args: unknown[]) => mockPatch(...args),
+    delete: (...args: unknown[]) => mockDelete(...args),
   },
 }));
 
@@ -38,9 +47,25 @@ const inboxPage = {
   hasMore: false,
 };
 
+function axiosFailure(status: number, type: string) {
+  const response = {
+    status,
+    data: { type: `https://restaurant-pos.app/errors/${type}` },
+  } as AxiosResponse;
+  return new AxiosError(
+    type,
+    "ERR_BAD_RESPONSE",
+    undefined,
+    undefined,
+    response,
+  );
+}
+
 describe("notificationsService", () => {
   beforeEach(() => {
     mockGet.mockReset();
+    mockPatch.mockReset();
+    mockDelete.mockReset();
   });
 
   it("reads the session-derived inbox page without a User id", async () => {
@@ -103,5 +128,109 @@ describe("notificationsService", () => {
       "/api/v1/notifications/inbox?page=2",
       expect.objectContaining({ signal: expect.anything() }),
     );
+  });
+
+  it("marks one entry read through its session-derived path", async () => {
+    const response = { notificationId: "n1", read: true };
+    mockPatch.mockResolvedValue({ data: response });
+
+    await expect(markNotificationRead("n1")).resolves.toEqual(response);
+
+    expect(mockPatch).toHaveBeenCalledWith(
+      "/api/v1/notifications/inbox/n1/read",
+    );
+  });
+
+  it("marks every visible entry read", async () => {
+    mockPatch.mockResolvedValue({ data: { unreadCount: 0 } });
+
+    await expect(markAllNotificationsRead()).resolves.toEqual({
+      unreadCount: 0,
+    });
+
+    expect(mockPatch).toHaveBeenCalledWith(
+      "/api/v1/notifications/inbox/read-all",
+    );
+  });
+
+  it("hides one entry from the caller's inbox", async () => {
+    const response = { notificationId: "n1", hidden: true };
+    mockDelete.mockResolvedValue({ data: response });
+
+    await expect(hideNotificationInboxEntry("n1")).resolves.toEqual(response);
+
+    expect(mockDelete).toHaveBeenCalledWith(
+      "/api/v1/notifications/inbox/n1",
+    );
+  });
+
+  it.each([
+    ["read", () => markNotificationRead("n1"), mockPatch],
+    ["read-all", () => markAllNotificationsRead(), mockPatch],
+    ["delete", () => hideNotificationInboxEntry("n1"), mockDelete],
+  ])(
+    "maps a %s failure to its inbox action contract",
+    async (_name, request, mockRequest) => {
+      mockRequest.mockRejectedValue(axiosFailure(500, "internal"));
+
+      await expect(request()).rejects.toMatchObject({
+        code: expect.stringMatching(/^notifications(Read|ReadAll|Delete)\./),
+        status: 500,
+      });
+    },
+  );
+
+  it("invalidates the inbox after every successful action", async () => {
+    mockPatch.mockResolvedValue({ data: {} });
+    mockDelete.mockResolvedValue({ data: {} });
+    const queryClient = new QueryClient({
+      defaultOptions: { mutations: { retry: false } },
+    });
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+    const wrapper = ({ children }: { children: ReactNode }) =>
+      createElement(QueryClientProvider, { client: queryClient }, children);
+    const { result } = renderHook(
+      () => useNotificationInboxActionMutation(),
+      { wrapper },
+    );
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        type: "markRead",
+        notificationId: "n1",
+      });
+      await result.current.mutateAsync({ type: "markAllRead" });
+      await result.current.mutateAsync({ type: "hide", notificationId: "n1" });
+    });
+
+    expect(invalidateSpy).toHaveBeenCalledTimes(3);
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: queryKeys.notifications.inboxAll(),
+    });
+  });
+
+  it("leaves the inbox untouched when an action fails", async () => {
+    mockPatch.mockRejectedValue(axiosFailure(500, "internal"));
+    const queryClient = new QueryClient({
+      defaultOptions: { mutations: { retry: false } },
+    });
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+    const wrapper = ({ children }: { children: ReactNode }) =>
+      createElement(QueryClientProvider, { client: queryClient }, children);
+    const { result } = renderHook(
+      () => useNotificationInboxActionMutation(),
+      { wrapper },
+    );
+
+    await act(async () => {
+      await expect(
+        result.current.mutateAsync({
+          type: "markRead",
+          notificationId: "n1",
+        }),
+      ).rejects.toMatchObject({ code: "notificationsRead.internal" });
+    });
+
+    expect(invalidateSpy).not.toHaveBeenCalled();
   });
 });

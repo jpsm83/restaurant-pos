@@ -13,7 +13,8 @@
  * - **`business.access`:** the signed-in User's effective access snapshot for one venue.
  * - **`employees.byBusiness`:** venue membership list for the People page.
  * - **`portfolio.byUser` / `portfolio.all`:** the customer dashboard’s User-scoped Owner portfolio read.
- * - **`notifications.inbox`:** the session-derived notification inbox, scoped to the signed-in User.
+ * - **`notifications.inbox`:** the session-derived notification inbox, scoped to the signed-in User;
+ *   `inboxAll` is the prefix invalidated after an inbox action.
  */
 export const queryKeys = {
   auth: {
@@ -57,5 +58,6 @@ export const queryKeys = {
     inbox: (userId: string) =>
       ["notifications", "inbox", userId] as const,
     inboxPending: () => ["notifications", "inbox", "pending"] as const,
+    inboxAll: () => ["notifications", "inbox"] as const,
   },
 } as const;
