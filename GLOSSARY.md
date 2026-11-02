@@ -97,6 +97,54 @@ intent. Complements lifecycle checks and idempotency keys (ADR-0006).
 
 _Avoid_: "last-write-wins" for checks, payments, or kitchen sends.
 
+## No removal
+
+A structured order-line selection that removes a **modifiable ingredient** from a recipe-based good. The guest pays the full selling price; the order's recorded cost and inventory use fall by that ingredient's recipe cost and quantity. It never changes the good's allergens, preparation time, or availability. "Less" is not modelled; it stays an order comment.
+
+_Avoid_: "modifier" for everything, "remove ingredient" as a free-text note.
+
+## Choice group
+
+A venue-defined, reusable, single-select group of labels assigned to a good (for example `Doneness`). A choice has no price, cost, inventory, allergen, or preparation-time effect. It is not an add-on.
+
+_Avoid_: "modifier group" when it carries a price; that is an add-on.
+
+## Choice
+
+One label inside a choice group, selected on an order line.
+
+## Modified line
+
+An order line carrying at least one `No` removal or choice selection. It is marked as modified on prep surfaces and on the bill.
+
+## Expo screen
+
+The pass-side control screen that shows a whole batch across every prep-area slice, coordinates production, and can mark items and slices done. It is distinct from the prep main/sub screens and the handoff screen, though most venues run expo and handoff on the same physical device.
+
+_Avoid_: "runner screen", "delivery screen".
+
+## Handoff screen
+
+The control screen that shows ready work, courier status, and the `Delivered` action. Expo staff operate it; runners do not operate screens. It replaces the former delivery screen.
+
+_Avoid_: "runner screen", "delivery screen".
+
+## Recall
+
+The narrow, audited fulfilment gesture that moves a `Ready` item or ticket back to `Preparing`. The fulfilling station may recall its own item or ticket within 5 minutes; supervisor and above after that and before `Delivered`; managers and above before `Delivered`. `Delivered` never moves backward, and the original sent time is kept.
+
+_Avoid_: "reverse", "undo fulfilment", "send work back".
+
+## Ticket deadline
+
+The per-slice target time equal to the longest preparation time among the slice's lines. It starts at `Sent`, or at release for a held batch. Warning is at 75%, late at 100%.
+
+## KDS coverage
+
+The share of a period's fulfilment slices whose `Preparing` and `Ready` were both set on a prep or expo screen. Coverage itself is always shown; the kitchen timing metrics publish only when coverage is at least 80%.
+
+_Avoid_: treating POS or close-sweep transitions as KDS-driven.
+
 ## Handover pass
 
 The self-service batch's handover identity: an opaque token, the batch
@@ -198,8 +246,8 @@ devices, separate from guest WiFi.
 
 ## Display lease
 
-A route- and action-scoped device grant opened by a manager so a prep, delivery,
-or pickup screen can run at a location. It survives the manager signing out, is
+A route- and action-scoped device grant opened by a manager so a prep, expo,
+handoff, or pickup screen can run at a location. It survives the manager signing out, is
 revocable in Manage, cannot reach money or configuration, and is **not** a staff
 session and authenticates no person.
 

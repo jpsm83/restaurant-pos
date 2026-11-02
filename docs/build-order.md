@@ -50,6 +50,8 @@ Phase 0 rows carry a **Done when** line because a rail is easy to sample on one 
 | Payment facilitator | **No product doc yet** — future / not stage 1. Stripe Connect is already covered via [payments-and-tax](product/payments-and-tax.md) + ADR-0005. |
 | Alcohol / age-assurance packs | **Deferred** by the product docs (ID-at-table, etc.). Stage 1 only has age floors in [privacy](product/privacy.md) / [order-flow](product/order-flow.md). |
 | Menu localisation | **Deferred**. Stage 1 is single authored language per field; UI languages are English/Spanish only. |
+| Adhesive label printing | **Deferred**. No bag/cup/packaging labels in stage 1; prep tickets, receipts, bills, and kiosk handover tickets only. |
+| All-day / production counts | **Deferred**. No aggregated all-ticket view in stage 1; the KDS shows individual tickets. |
 
 ---
 
@@ -122,12 +124,12 @@ One venue can sell a served night: menu → open table → send orders → take 
 
 | done | Order | Slice | Docs to open |
 | --- | --- | --- | --- |
-| [ ] | 3.1 | Simple on-menu items: selling price, tax category, categories, add-ons; day-of 86 / sold out. **Defer** full recipe costing and supplier-derived allergens until Phase 6 | [business-goods](product/business-goods.md) |
+| [ ] | 3.1 | Simple on-menu items: selling price, tax category, categories, add-ons, reusable **choice groups**; day-of 86 / sold out. **Defer** full recipe costing and supplier-derived allergens until Phase 6 | [business-goods](product/business-goods.md) |
 | [ ] | 3.2 | Served points (table/bar/…); open staff tab; one-open rule; receiver-initiated tab handover with accept/decline notifications; QR can exist unused | [sales-points-and-instances](product/sales-points-and-instances.md), [notifications](product/notifications.md), [staff-sessions](product/staff-sessions.md) |
 | [ ] | 3.3 | Void, invitation, manual discount catalogues live | [operational-reasons](product/operational-reasons.md) |
-| [ ] | 3.4 | Draft → send batch, identification code, pricing, void / invitation / cancel, fulfilment slice statuses | [orders](product/orders.md), [operational-reasons](product/operational-reasons.md) |
+| [ ] | 3.4 | Draft → send batch, identification code, pricing, void / invitation / cancel, fulfilment slice statuses, **choice selections**, and **order comments**. `No` ingredient removals wait for recipe components in 6.5 | [orders](product/orders.md), [operational-reasons](product/operational-reasons.md) |
 | [ ] | 3.5 | Business tax rates; **record** cash and card on staff tabs; tips on digital recorded methods; **no** Stripe Connect yet | [payments-and-tax](product/payments-and-tax.md) |
-| [ ] | 3.6 | **Dine-in staff POS path only** (open → order → bill → pay → close) | [order-flow](product/order-flow.md), [orders](product/orders.md), [sales-points-and-instances](product/sales-points-and-instances.md), [payments-and-tax](product/payments-and-tax.md) |
+| [ ] | 3.6 | **Dine-in staff POS path only** (open → order → bill → pay → close), including **choice selections** and **order comments** | [order-flow](product/order-flow.md), [orders](product/orders.md), [sales-points-and-instances](product/sales-points-and-instances.md), [payments-and-tax](product/payments-and-tax.md) |
 | [ ] | 3.7 | Bill and receipt content + numbering; Review QR (review flow arrives in 8.4); reprint / replacement rules | [receipts-and-bills](product/receipts-and-bills.md) |
 | [ ] | 3.8 | Auto-open daily on first send; close day; export can wait | [sales-reports](product/sales-reports.md) |
 | [ ] | 3.9 | Audit the controlled acts this phase introduces (the existing Void/Invitation path already writes through the Phase 0 rail) | [audit-trail](product/audit-trail.md), [operational-reasons](product/operational-reasons.md) |
@@ -145,10 +147,12 @@ Make the same loop operable for floor staff and prep.
 | done | Order | Slice | Docs to open |
 | --- | --- | --- | --- |
 | [ ] | 4.1 | Manage editor + Service POS map (list/grid fallback) | [floor-plans](product/floor-plans.md), [user-navigation](product/user-navigation.md) (Floor plans / POS destinations) |
-| [ ] | 4.2 | Logical printers; prep-area screens; delivery screen shell; fulfilment gestures; print connector when paper is needed; optional **drawer kick** on bill payment/refund; per-staff **closing receipt printer override**. Courier status/retry and handover scan stay on 5.9/5.10 | [printers-and-screens](product/printers-and-screens.md), [ADR-0008](adr/0008-print-connector-path.md) |
-| [ ] | 4.3 | Held batches, don’t-make, allergen flags on prep — only what prep surfaces need | [orders](product/orders.md), [order-flow](product/order-flow.md), [printers-and-screens](product/printers-and-screens.md) |
+| [ ] | 4.2 | Logical printers; prep-area main/sub screens; **handoff screen shell**; fulfilment gestures; print connector when paper is needed; optional **drawer kick** on bill payment/refund; per-staff **closing receipt printer override**. Courier status/retry and handover scan stay on 5.9/5.10 | [printers-and-screens](product/printers-and-screens.md), [ADR-0008](adr/0008-print-connector-path.md) |
+| [ ] | 4.3 | Held batches, don’t-make, allergen flags, **choice selections and comments on prep** — only what prep surfaces need | [orders](product/orders.md), [order-flow](product/order-flow.md), [printers-and-screens](product/printers-and-screens.md) |
+| [ ] | 4.4 | **Expo screen** and **handoff screen** as distinct kinds (same device allowed); mandatory ticket fields; per-slice **deadline and timer** (75% warning, 100% late); 5-minute audited **recall**; order source/channel on the ticket | [printers-and-screens](product/printers-and-screens.md), [orders](product/orders.md), [ADR-0015](adr/0015-expo-handoff-timers-and-recall.md), [realtime-and-concurrency](product/realtime-and-concurrency.md) |
+| [ ] | 4.5 | **Richer routing** by item, category, subcategory, channel, packaging, and sales point, including multi-station routes; **service output setup** guide with recommendations and a printable checklist | [printers-and-screens](product/printers-and-screens.md), [business-goods](product/business-goods.md), [hardware](product/hardware.md) |
 
-**Exit criteria:** staff can run service from a floor map; kitchen/bar can advance fulfilment without standing at the POS; when a receipt printer with a drawer is bound, a bill payment or refund kicks it, and a missing drawer never blocks the payment.
+**Exit criteria:** staff can run service from a floor map; kitchen/bar can advance fulfilment without standing at the POS; expo coordinates the whole order and handoff records delivery; timers and recall work; when a receipt printer with a drawer is bound, a bill payment or refund kicks it, and a missing drawer never blocks the payment.
 
 ---
 
@@ -161,7 +165,7 @@ Same platform, guest-initiated paths and Imperium-processed pay.
 | [ ] | 5.1 | Stripe Connect (venue merchant of record); self-channel capture | [payments-and-tax](product/payments-and-tax.md), [ADR-0005](adr/0005-stripe-connect-direction.md) |
 | [ ] | 5.2 | Self-ordering enable; delivery enable + delivery method / partner shell (Owner/Admin) + radius / minimum / windows; all kiosks full digital. Third-party activation waits on an enabled catalogue provider; the catalogue console arrives in 10.5 | [business](product/business.md), [delivery-integrations](product/delivery-integrations.md), [payments-and-tax](product/payments-and-tax.md) |
 | [ ] | 5.3 | Channel acceptance; reserved hold; virtual Delivery point; self-service instances; one batch and handover-pass creation | [sales-points-and-instances](product/sales-points-and-instances.md), [orders](product/orders.md) |
-| [ ] | 5.4 | QR self-ordering, kiosk, delivery; guest basket; still-there / idle expiry; allergen pre-pay; to-go packaging; pay-to-commit creates one instance, batch, and pass | [order-flow](product/order-flow.md), [orders](product/orders.md), [payments-and-tax](product/payments-and-tax.md) |
+| [ ] | 5.4 | QR self-ordering, kiosk, delivery; guest basket; still-there / idle expiry; allergen pre-pay; to-go packaging; **choice selections** where offered (the `No` removal path arrives in 6.5 and applies here too); pay-to-commit creates one instance, batch, and pass | [order-flow](product/order-flow.md), [orders](product/orders.md), [payments-and-tax](product/payments-and-tax.md) |
 | [ ] | 5.5 | Self-channel age floors on the journey | [privacy](product/privacy.md), [order-flow](product/order-flow.md) |
 | [ ] | 5.6 | Guest allergen display + menu filter (if not done in Phase 3) | [business-goods](product/business-goods.md), [order-flow](product/order-flow.md) |
 | [ ] | 5.7 | Channel buckets (self-ordering, kiosk, delivery) | [sales-reports](product/sales-reports.md) |
@@ -183,10 +187,10 @@ Close the loop from purchase → stock → recipe cost → variance.
 | [ ] | 6.2 | Units, price math, budget impact, allergens, par / minimum | [supplier-goods](product/supplier-goods.md) |
 | [ ] | 6.3 | Request → receive; inventory increment; one-time purchases; edit-with-reason | [purchases](product/purchases.md), [inventories](product/inventories.md) (increment on receipt only) |
 | [ ] | 6.4 | System count, physical counts, monthly resume/close, low/negative stock, variance/waste, Company transfers | [inventories](product/inventories.md), [operational-reasons](product/operational-reasons.md) (count re-edit) |
-| [ ] | 6.5 | Recipe / combo components; **derived cost and allergens**; replace any Phase 3 stubs | [business-goods](product/business-goods.md), [supplier-goods](product/supplier-goods.md) |
+| [ ] | 6.5 | Recipe / combo components; **modifiable ingredient flags**; **`No` removals** with reduced cost, inventory, and theoretical usage; **derived cost and allergens**; replace any Phase 3 stubs | [business-goods](product/business-goods.md), [supplier-goods](product/supplier-goods.md), [orders](product/orders.md), [order-flow](product/order-flow.md), [inventories](product/inventories.md), [ADR-0014](adr/0014-order-modifiers-and-inventory.md) |
 | [ ] | 6.6 | Low-stock / negative-stock alerts to managers on duty | [notifications](product/notifications.md), [inventories](product/inventories.md) |
 
-**Exit criteria:** receiving a purchase moves stock; selling deducts stock; a physical count closes a period; menu cost/allergens derive from supplier goods.
+**Exit criteria:** receiving a purchase moves stock; selling deducts stock net of `No` removals; a physical count closes a period; menu cost/allergens derive from supplier goods; theoretical usage reflects removed ingredients.
 
 ---
 
@@ -229,11 +233,12 @@ Workforce planning and the cash the person holds while on duty.
 
 | done | Order | Slice | Docs to open |
 | --- | --- | --- | --- |
-| [ ] | 9.1 | Cost targets, waste thresholds, reporting-week start, KPI catalogue | [business-metrics](product/business-metrics.md) |
-| [ ] | 9.2 | Weekly and monthly roll-ups, close rules, commission finalisation signal, export | [business-reports](product/business-reports.md), [business-metrics](product/business-metrics.md), [sales-reports](product/sales-reports.md) |
+| [ ] | 9.1 | Cost targets, waste thresholds, reporting-week start, KPI catalogue, **kitchen performance KPIs and the 80% KDS coverage gate** | [business-metrics](product/business-metrics.md) |
+| [ ] | 9.2 | Weekly and monthly roll-ups, close rules, commission finalisation signal, export, **kitchen performance section behind the coverage gate** | [business-reports](product/business-reports.md), [business-metrics](product/business-metrics.md), [sales-reports](product/sales-reports.md) |
 | [ ] | 9.3 | Report-ready events | [notifications](product/notifications.md), [business-reports](product/business-reports.md) |
+| [ ] | 9.4 | Kitchen performance on the daily, weekly, and monthly reports: KDS coverage, kitchen ticket time, kitchen station time, late kitchen tickets, and the **not enough KDS interaction** state | [sales-reports](product/sales-reports.md), [business-reports](product/business-reports.md), [business-metrics](product/business-metrics.md) |
 
-**Exit criteria:** managers can close a week and a month with figures that match the formulas in business-metrics; weekly close raises commission owed.
+**Exit criteria:** managers can close a week and a month with figures that match the formulas in business-metrics; weekly close raises commission owed; kitchen performance appears only when KDS coverage is at least 80% and otherwise shows the not-enough-interaction state.
 
 ---
 
@@ -275,14 +280,16 @@ Phase 0 rails
         → business creation + Owner portfolio + Customer | Business switch
             → business-goods → sales points → orders → payments (record) → order-flow (dine-in)
                 → receipts → daily sales report
-                    → floor plans / printers (incl. drawer kick)
-                        → Stripe + self channels + handover + delivery provider gate
-                            → suppliers → supplier-goods → purchases → inventories → recipe goods
-                                → schedules → time-control → cash-out (incl. drawer-kick events) → payroll
-                                    → promotions / gift-cards / reservations / ratings
-                                        → metrics → weekly/monthly reports
-                                            → monetization → platform-billing → superadmin (incl. delivery catalogue)
-                                                → conversations / engagement / DSAR polish
+                    → floor plans / printers / prep screens
+                        → expo / handoff / timers / recall
+                            → richer routing + service output setup
+                                → Stripe + self channels + handover + delivery provider gate
+                                    → suppliers → supplier-goods → purchases → inventories → recipe goods + `No` removals
+                                        → schedules → time-control → cash-out (incl. drawer-kick events) → payroll
+                                            → promotions / gift-cards / reservations / ratings
+                                                → metrics → weekly/monthly reports + kitchen performance (KDS coverage gate)
+                                                    → monetization → platform-billing → superadmin (incl. delivery catalogue)
+                                                        → conversations / engagement / DSAR polish
 ```
 
 Hard rule: **do not** implement monetization freezes, inventory variance, or Superadmin before the Phase 3 money loop works. Those subjects assume sales and tenancy already exist.

@@ -111,7 +111,7 @@ Terms reused rather than redefined here: **User**, **Business**, **Owner**, **Em
 
 #### Service
 
-- **Ordinary employees:** **POS** and **Attendance** for **own** scan-in and sign-out under Service by default (access-and-permissions). Other Service destinations need a capability or job-role entitlement (Host, prep screens, and so on).
+- **Ordinary employees:** **POS** and **Attendance** for **own** scan-in and sign-out under Service by default (access-and-permissions). Other Service destinations need a capability or job-role entitlement (Host, prep/expo/handoff screens, and so on).
 - **Supervisors:** full Service set by default — **POS**, **Host**, **Prep screens**, **Delivery screen**, **Customer pickup board**, **Attendance** for **own** scan-in, **Counts**, and **Cash-out** (access-and-permissions layer defaults). Presenting the venue daily attendance QR stays manager+ (time-control subject).
 - **Managers and above:** the same full Service set (including Counts and Cash-out), and managers present the attendance QR through a **Show attendance QR** action under **Service → Attendance** (available any time after sign-in, not only at login). Full inventory admin stays under Manage → Supply.
 - **Owner access** (owning user, with or without membership): admin-equivalent Service and Manage for whatever the **plan entitles** (Free has no hired-staff Attendance/Counts/Cash-out surfaces).

@@ -12,7 +12,8 @@ This subject covers **how a venue's numbers are gathered, grouped, closed, and p
 - the **monthly business report** — the month's full statement: a sales section plus the full P&L (fixed and extra cost, finance costs, inventory variance and waste, purchasing, actual labour, break-even, net profit, EBITDA);
 - the **report periods and their boundaries** — the reporting week and the calendar month, in the venue's timezone (the work day belongs to the sales-reports subject);
 - the **live mid-period roll-up** — managers may view the week or month so far before it closes;
-- the **dimension breakdowns** on weekly and monthly reports;
+- the **dimension breakdowns** on weekly and monthly reports, including **prep area / station** for kitchen performance;
+- the **kitchen performance** section, behind its **KDS coverage** gate;
 - the **target-vs-actual comparison** for the periods this subject presents;
 - the **weekly and monthly report lifecycle** — aggregation, close, amendment from an edited daily, and inventory-tied reopen of the monthly report;
 - **platform commission finalisation** at weekly close (and handing the owed amount to platform-billing for collection);
@@ -29,7 +30,8 @@ It deliberately does **not** cover:
 - the **plan catalogue and base commission rates** — the monetization and superadmin subjects own those; this subject applies them at weekly close;
 - **how platform charges are taken** (payment method, invoice, retries, billing documents, dunning) — the platform-billing subject owns collection; this subject finalises the owed weekly amount and signals re-finalise adjustments;
 - the **delivery of notifications** — the notifications subject owns inbox, email, and push; this subject only raises the report-ready signal;
-- **how reports are laid out on screen** (tabs, charts, table chrome) — outside this subject; export of the whole report is in scope.
+- **how reports are laid out on screen** (tabs, charts, table chrome) — outside this subject; export of the whole report is in scope;
+- the **prep, expo, and handoff gestures** that produce kitchen timings — the printers-and-screens subject owns them; this subject presents the period's kitchen performance when the KDS coverage gate passes.
 - **employee cash-out** (wallet, expected business cash, peer/house cash movements, cash-out resume, approval) — the employee cash-out subject owns those. Weekly and monthly reports may show **staff cash collected** rolled from closed dailies and may carry operational cash-movement audit rolled from dailies; they carry **no** cash over/short variance line. Day close never waits on cash-out (sales-reports).
 
 ---
@@ -45,6 +47,7 @@ It deliberately does **not** cover:
 - **Dimension breakdown** — a period's metric sliced by one of the standard dimensions (for example, sales by daypart).
 - **Target comparison** — the comparison of a configured **target** or **waste threshold** against its **actual** for the period, with the delta and whether it is over or under.
 - **Report-ready signal** — the event that a weekly or monthly report has **closed** and is ready for review.
+- **Kitchen performance section** — the period's **KDS coverage**, always shown when the period has fulfilment slices, plus **kitchen ticket time**, **kitchen station time**, **late kitchen tickets**, and **late kitchen ticket rate** when coverage is at least 80%.
 
 ### Terms this subject introduces
 
@@ -55,7 +58,7 @@ It deliberately does **not** cover:
 - **Weekly commission** — the platform fee for one reporting week: **base plan rate × commissionable sales** (tips excluded from the base). It is **finalised and owed** when the weekly report **closes**; **collection** belongs to platform-billing.
 - **Amendment from edited daily** — when a closed daily sales report is reopened, changed through its bills or payments, and closed again, any closed weekly or monthly report that included that day is recalculated automatically, stays closed, carries the daily's reopen reason, and shows it was updated from an edited daily; the week's commission is **re-finalised** if that week is already closed (platform-billing then adjusts the collected amount).
 
-Terms reused from other subjects rather than redefined here: **business**, **daily sales report**, **work day**, **edited flag**, **reopen reason**, **reporting-week start day**, **total sales**, **net revenue**, **cost of goods sold**, **prime cost**, **labour cost**, **fixed cost**, **extra cost**, **finance costs**, **target**, **waste threshold**, **benchmark**, **dimension**, **daypart**, **channel**, **sales point**, **sales instance**, **order**, **inventory month**, **monthly resume**, and the metric names defined by the business-metrics subject.
+Terms reused from other subjects rather than redefined here: **business**, **daily sales report**, **work day**, **edited flag**, **reopen reason**, **reporting-week start day**, **total sales**, **net revenue**, **cost of goods sold**, **prime cost**, **labour cost**, **fixed cost**, **extra cost**, **finance costs**, **target**, **waste threshold**, **benchmark**, **dimension**, **daypart**, **channel**, **sales point**, **sales instance**, **order**, **inventory month**, **monthly resume**, **KDS coverage**, and the metric names defined by the business-metrics subject.
 
 ---
 
@@ -74,6 +77,7 @@ Terms reused from other subjects rather than redefined here: **business**, **dai
   - **sales** and related operational figures (covers, average spend, tips, payment methods, goods sold/voided/invited, channel and other dimension breakdowns);
   - **actual labour** cost and hours from time-control;
   - comparison of **food**, **beverage**, and **labour** cost targets against actuals (§3.7);
+  - a **kitchen performance** section with **KDS coverage** always shown; timing values only when coverage is at least 80%, otherwise a **not enough KDS interaction** note;
   - **excludes fixed cost, extra cost, and finance costs**;
   - **excludes inventory variance and waste**, **waste-threshold comparison**, and **purchasing** totals (those are monthly).
 - It carries the **full dimension set** as breakdowns (§3.6), except the inventory-only slices (supplier good, supplier) which appear on the monthly report.
@@ -92,6 +96,7 @@ Terms reused from other subjects rather than redefined here: **business**, **dai
   - **purchasing** totals for the calendar month (received/completed purchase spend as the purchases subject defines them);
   - **actual labour** cost for the month from time-control;
   - **break-even**, **net profit**, **EBITDA**, and the metrics comparison.
+- It carries a **kitchen performance** section with **KDS coverage** always shown; timing values only when coverage is at least 80%, otherwise a **not enough KDS interaction** note. Kitchen performance is operational, not a monthly-only input.
 - It compares **targets vs actuals** across **food, beverage, labour, and fixed cost** and the **waste thresholds**.
 - It carries the **full dimension set** as breakdowns (§3.6), including the inventory dimensions **supplier good** and **supplier**.
 - It **sums the finalised weekly commission charges** for reporting weeks that **closed in that calendar month**; it does **not** create a separate monthly commission event.
@@ -113,8 +118,9 @@ Terms reused from other subjects rather than redefined here: **business**, **dai
 
 ### 3.6 Dimension breakdowns
 
-- Every period's metrics may be sliced by the **standard dimensions** defined by the business-metrics subject: category/subcategory, menu item, supplier good, supplier, employee, sales point/channel, daypart, table/seat, payment method, promotion, and **reason**.
+- Every period's metrics may be sliced by the **standard dimensions** defined by the business-metrics subject: category/subcategory, menu item, supplier good, supplier, employee, sales point/channel, prep area/station, daypart, table/seat, payment method, promotion, and **reason**. The **prep area / station** slice applies to kitchen performance metrics only.
 - The **reason** dimension applies only where the business-metrics subject declares it — void, invitation, manual-discount, and refund figures (operational reasons subject). It is not a slice on every KPI.
+- **Kitchen performance** is **KDS-derived** and is not compared against a target or a benchmark unless the business-metrics subject publishes one. A period below 80% KDS coverage shows **not enough KDS interaction** and no timing values. A printer-only venue has zero coverage and therefore no timing values; every other weekly and monthly figure is still present.
 - Breakdowns are **first-class report content**:
   - the **weekly** report carries the operational full set (without requiring inventory supplier slices);
   - the **monthly** report carries the **full dimension set**, including **supplier good** and **supplier**;

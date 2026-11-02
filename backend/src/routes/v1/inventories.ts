@@ -20,7 +20,7 @@ import Inventory from "../../models/inventory.ts";
 import SupplierGood from "../../models/supplierGood.ts";
 import Supplier from "../../models/supplier.ts";
 import Employee from "../../models/employee.ts";
-import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
+import { withSoftDeleteFilter } from "../../models/softDelete.ts";
 import createNextPeriodInventory from "../../inventories/createNextPeriodInventory.ts";
 import getVarianceReport from "../../inventories/getVarianceReport.ts";
 import { appendAuditEntry } from "../../audit/appendAuditEntry.ts";
@@ -33,10 +33,9 @@ import {
   OPERATIONAL_REASON_ACTS,
   resolveOperationalReason,
 } from "restaurant-pos-packages/operationalReasons";
-import { createAuthHook, createOptionalAuthHook } from "../../auth/middleware.ts";
+import { createAuthHook } from "../../auth/middleware.ts";
 import {
   badRequest,
-  conflict,
   forbidden,
   internal,
   notFound,
@@ -45,7 +44,6 @@ import {
 import {
   addInventoryCountBodySchema,
   businessIdParamsSchema,
-  createInventoryBodySchema,
   inventoryIdParamsSchema,
   inventoryIncludeDeletedQuerySchema,
   inventoriesByBusinessQuerySchema,
@@ -55,7 +53,6 @@ import {
   varianceReportQuerySchema,
   type AddInventoryCountBody,
   type BusinessIdParams,
-  type CreateInventoryBody,
   type InventoryIdParams,
   type InventoryIncludeDeletedQuery,
   type InventoriesByBusinessQuery,
@@ -120,121 +117,6 @@ export const inventoriesRoutes: FastifyPluginAsync = async (app) => {
     },
   );
 
-  // POST /inventories - create (transaction)
-  app.post<{ Body: CreateInventoryBody }>(
-    "/",
-    { schema: { body: createInventoryBodySchema } },
-    async (req, reply) => {
-      const { businessId } = req.body;
-
-      const startOfCurrentMonth = new Date();
-      startOfCurrentMonth.setDate(1);
-      startOfCurrentMonth.setHours(0, 0, 0, 0);
-
-      const endOfCurrentMonth = new Date(startOfCurrentMonth);
-      endOfCurrentMonth.setMonth(endOfCurrentMonth.getMonth() + 1);
-      endOfCurrentMonth.setMilliseconds(-1);
-
-      const session = await mongoose.startSession();
-      session.startTransaction();
-
-      try {
-        const currentMonthInventory: IInventory | null =
-          await Inventory.findOne(
-            withSoftDeleteFilter({
-              businessId,
-              createdAt: { $gte: startOfCurrentMonth, $lte: endOfCurrentMonth },
-            }),
-          )
-            .select("setFinalCount")
-            .session(session)
-            .lean();
-
-        if (currentMonthInventory) {
-          throw badRequest("Inventory for the current month already exists!");
-        }
-
-        const startOfPreviousMonth = new Date(startOfCurrentMonth);
-        startOfPreviousMonth.setMonth(startOfPreviousMonth.getMonth() - 1);
-
-        const endOfPreviousMonth = new Date(startOfCurrentMonth);
-        endOfPreviousMonth.setMilliseconds(-1);
-
-        const lastInventory: IInventory | null =
-          await Inventory.findOneAndUpdate(
-            withSoftDeleteFilter({
-              businessId,
-              createdAt: {
-                $gte: startOfPreviousMonth,
-                $lte: endOfPreviousMonth,
-              },
-            }),
-            {
-              $set: { setFinalCount: true },
-            },
-            { returnDocument: "after", session },
-          ).lean();
-
-        const supplierGoods = await SupplierGood.find({
-          businessId,
-          currentlyInUse: true,
-        })
-          .select("_id")
-          .session(session)
-          .lean();
-
-        const inventoryGoodsArr = supplierGoods.map(
-          (supplierGood: { _id: Types.ObjectId }) => {
-            const lastInventoryGood = lastInventory?.inventoryGoods.find(
-              (good) =>
-                good.supplierGoodId.toString() === supplierGood._id.toString(),
-            );
-
-            const dynamicSystemCount =
-              lastInventoryGood && lastInventoryGood.monthlyCounts.length > 0
-                ? lastInventoryGood.monthlyCounts.sort(
-                    (a, b) =>
-                      new Date(b.countedDate ?? "").getTime() -
-                      new Date(a.countedDate ?? "").getTime(),
-                  )[0]?.currentCountQuantity || 0
-                : 0;
-
-            return {
-              supplierGoodId: supplierGood._id,
-              monthlyCounts: [],
-              dynamicSystemCount,
-            };
-          },
-        );
-
-        const newInventory: IInventory = {
-          businessId: new Types.ObjectId(businessId),
-          setFinalCount: false,
-          inventoryGoods: inventoryGoodsArr,
-        };
-
-        const createdInventory = await Inventory.create([newInventory], {
-          session,
-        });
-
-        if (!createdInventory) {
-          throw internal("Failed to create inventory");
-        }
-
-        await session.commitTransaction();
-
-        return reply
-          .code(201)
-          .send({ message: "Inventory created successfully" });
-      } catch (error) {
-        await session.abortTransaction().catch(() => undefined);
-        throw error;
-      } finally {
-        session.endSession();
-      }
-    },
-  );
-
   // GET /inventories/:inventoryId - get by ID
   app.get<{
     Params: InventoryIdParams;
@@ -261,40 +143,6 @@ export const inventoriesRoutes: FastifyPluginAsync = async (app) => {
         throw notFound("No inventory found");
       }
       return reply.code(200).send(inventory);
-    },
-  );
-
-  // DELETE /inventories/:inventoryId - delete
-  app.delete<{ Params: InventoryIdParams }>(
-    "/:inventoryId",
-    {
-      preValidation: [createOptionalAuthHook(app)],
-      schema: { params: inventoryIdParamsSchema },
-    },
-    async (req, reply) => {
-      const { inventoryId } = req.params;
-      const inventory = await Inventory.findById(inventoryId)
-        .setOptions({ includeDeleted: true })
-        .select("deleted")
-        .lean();
-
-      if (!inventory) {
-        throw notFound("Inventory not found!");
-      }
-      if (inventory.deleted) {
-        throw conflict("Inventory already deleted!");
-      }
-
-      const wasDeleted = await markAsDeletedById(
-        Inventory as mongoose.Model<IInventory & { deleted: boolean }>,
-        inventoryId,
-        { deletedBy: req.authSession?.id },
-      );
-      if (!wasDeleted) {
-        throw conflict("Inventory already deleted!");
-      }
-
-      return reply.code(200).send(`Inventory ${inventoryId} deleted`);
     },
   );
 

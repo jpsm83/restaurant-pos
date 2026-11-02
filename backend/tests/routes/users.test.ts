@@ -651,63 +651,28 @@ describe("Users Routes", () => {
     });
   });
 
-  describe("DELETE /api/v1/users/:userId", () => {
-    it("returns a validation problem for an invalid userId", async () => {
+  /**
+   * Account deletion is retired until build-order row 11.5 owns the pending
+   * deletion lifecycle, owned-Business resolution, reactivation, and grace
+   * window. No caller may reach a deletion route in the meantime.
+   */
+  describe("removed account deletion route", () => {
+    it("does not register DELETE for an anonymous caller", async () => {
       const app = await getTestApp();
+      const user = await createValidUser("delete-anonymous");
 
       const response = await app.inject({
         method: "DELETE",
-        url: "/api/v1/users/invalid-id",
-      });
-
-      expect(response.statusCode).toBe(400);
-      expect(isProblemDetails(response)).toBe(true);
-      expect(errorPaths(response)).toContain("userId");
-    });
-
-    it("returns 404 for non-existent user", async () => {
-      const app = await getTestApp();
-      const fakeId = new Types.ObjectId();
-
-      const response = await app.inject({
-        method: "DELETE",
-        url: `/api/v1/users/${fakeId}`,
+        url: `/api/v1/users/${user._id}`,
       });
 
       expect(response.statusCode).toBe(404);
-      expect(isProblemDetails(response)).toBe(true);
-      expect(detail(response)).toBe("User not found!");
-    });
 
-    it("soft-deletes a user and keeps the record for includeDeleted reads", async () => {
-      const app = await getTestApp();
-      deleteFolderCloudinaryMock.mockClear();
-      const user = await createValidUser("softdelete-user");
-
-      const response = await app.inject({
-        method: "DELETE",
-        url: `/api/v1/users/${user._id}`,
-      });
-      expect(response.statusCode, response.body).toBe(200);
-
-      const persisted = await User.findById(user._id)
-        .setOptions({ includeDeleted: true })
-        .select("deleted deletedAt")
-        .lean();
+      const persisted = await User.findById(user._id).lean();
       expect(persisted).toBeTruthy();
-      expect(persisted?.deleted).toBe(true);
-      expect(persisted?.deletedAt).toBeInstanceOf(Date);
-
-      const hiddenByDefault = await app.inject({
-        method: "GET",
-        url: `/api/v1/users/${user._id}`,
-        headers: { authorization: await tokenFor(user) },
-      });
-      expect(hiddenByDefault.statusCode).toBe(401);
-      expect(deleteFolderCloudinaryMock).not.toHaveBeenCalled();
     });
 
-    it("records the signed-in account that deleted the user", async () => {
+    it("does not let a signed-in User delete another account", async () => {
       const app = await getTestApp();
       const actor = await createValidUser("delete-actor");
       const target = await createValidUser("delete-target");
@@ -717,14 +682,12 @@ describe("Users Routes", () => {
         url: `/api/v1/users/${target._id}`,
         headers: { authorization: await tokenFor(actor) },
       });
-      expect(response.statusCode, response.body).toBe(200);
 
-      const persisted = await User.findById(target._id)
-        .setOptions({ includeDeleted: true })
-        .select("deleted deletedBy")
-        .lean();
-      expect(persisted?.deleted).toBe(true);
-      expect(String(persisted?.deletedBy)).toBe(String(actor._id));
+      expect(response.statusCode).toBe(404);
+
+      const persisted = await User.findById(target._id).lean();
+      expect(persisted).toBeTruthy();
+      expect(persisted?.deleted).not.toBe(true);
     });
   });
 });

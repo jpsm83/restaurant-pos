@@ -12,6 +12,7 @@ This subject covers the **daily sales report**: how a venue's one-day activity i
 - **opening** on the first **order send** or self-service **pay-to-commit** of the work day;
 - the **per-employee** and **channel** buckets and the venue's **business totals**;
 - the **operational dimension breakdowns** for the day, including **reason code** for void, invitation, manual discount, and refund figures;
+- the **kitchen performance** summary for the day, behind its **KDS coverage** gate;
 - the **open / closed / reopened** lifecycle, including close preconditions, lock, and fulfilment sweep;
 - the **delivery-integration status** per delivery batch — courier request, courier handover, and whether completion came from a staff screen or the close sweep — with failed calls listed as exceptions;
 - a **day-level commission estimate** (finalisation and collection belong to the weekly business report);
@@ -29,6 +30,7 @@ It deliberately does **not** cover:
 - **employee cash-out** (personal wallet, expected business cash, peer/house cash movements, cash-out resume, approval) — the employee cash-out subject owns those. This subject surfaces **staff cash collected**, cash-out / uncashed visibility, and an **operational audit** of cash movements from that subject; **close does not require** a cash-out or cash attestation, and there is **no** business over/short variance line;
 - the **delivery of notifications** — the notifications subject owns inbox and channels; this subject raises **no** daily report-ready or closed signal;
 - **how reports are exported or laid out on screen** — outside this subject;
+- the **prep, expo, and handoff gestures** that produce kitchen timings — the printers-and-screens subject owns them; this subject presents the day's kitchen performance when the KDS coverage gate passes.
 - **gift-card issue, balance, redemption, void, and expiry rules** — the gift-cards subject owns those; this subject accumulates deposit intake and tender in the gift-card channel, forfeitures (expiry and void-with-balance) in the forfeiture channel, and surfaces outstanding liability;
 - **reservation deposit forfeiture** — the reservations subject owns when a deposit is forfeited; this subject accumulates that forfeiture in the forfeiture channel bucket.
 - the **operational reason catalogues** themselves — closed lists, Other-note rule, and maintenance belong to the **operational reasons** subject. This subject presents day-level breakdowns **by reason code** for void, invitation, manual discount, and refund activity those catalogues label; requires a **daily reopen** catalogue code on reopen; count re-edit and gift-card void reasons are not daily-report dimensions.
@@ -57,8 +59,9 @@ It deliberately does **not** cover:
 - **Reopen** — unlock a closed day so belonging bills and payments may change again; moves the report to **reopened**.
 - **Commission estimate** — a day-level preview of platform commission on that day's commissionable sales; **not charged**. Finalisation and owing happen when the weekly business report closes; collection belongs to platform-billing.
 - **Delivery integration status** — the operational status attached to each delivery batch: its **courier request status**, its **courier handover status**, and its **completion source**. It is not a money metric and does not change the day's sales, cost, or commission figures.
+- **Kitchen performance summary** — the day's **KDS coverage**, always shown when the day has fulfilment slices, plus **kitchen ticket time**, **kitchen station time**, **late kitchen tickets**, and **late kitchen ticket rate** when coverage is at least 80%.
 
-Terms reused from other subjects rather than redefined here: **business**, **sales instance**, **sales point**, **order**, **batch**, **bill**, **payment**, **guest count**, **covers**, **total sales**, **net revenue**, **cost of goods sold**, **tip**, **void**, **invitation**, **manual discount**, **refund**, **gift card**, **reservation deposit**, **fulfilment slice**, **courier request**, **courier handover**, **delivery method**, **Own delivery**, **managers and above**, **operational reason** / **reason code**, and the metric names defined by the business-metrics subject.
+Terms reused from other subjects rather than redefined here: **business**, **sales instance**, **sales point**, **order**, **batch**, **bill**, **payment**, **guest count**, **covers**, **total sales**, **net revenue**, **cost of goods sold**, **tip**, **void**, **invitation**, **manual discount**, **refund**, **gift card**, **reservation deposit**, **fulfilment slice**, **courier request**, **courier handover**, **delivery method**, **Own delivery**, **managers and above**, **operational reason** / **reason code**, **KDS coverage**, and the metric names defined by the business-metrics subject.
 
 ---
 
@@ -94,10 +97,12 @@ Terms reused from other subjects rather than redefined here: **business**, **sal
 
 - **Business totals** for the day include at least: total sales, net revenue, tips, cost of goods sold, profit, customers served (covers), average spend per customer, void and invited value, and a **commission estimate** for the day (never a charged amount).
 - **Customers served (covers)** is the sum of **guest counts** on sales instances that belong to that work day, including self-ordering, kiosk, and delivery instances.
-- The daily report's **dimension breakdowns** are the operational set only: **employee**, **sales point/channel**, **payment method**, and **menu item**. In addition, **void**, **invitation**, **manual discount**, and **refund** figures may be broken down by **reason** (reason code).
+- The daily report's **dimension breakdowns** are the operational set only: **employee**, **sales point/channel**, **payment method**, and **menu item**. In addition, **void**, **invitation**, **manual discount**, and **refund** figures may be broken down by **reason** (reason code), and **kitchen performance** may be sliced by **prep area / station**.
 - The **sales point/channel** breakdown includes ordinary sales points for staff-taken activity and the dedicated channels **delivery**, **self-ordering**, **kiosk**, **gift-card**, and **forfeiture**.
 - The **reason** breakdown uses the closed operational reason catalogues (operational reasons subject). Acts under **Other** bucket together; Other notes are not a dimension. Reason is **not** a general slice on net revenue, COGS, or other totals. **Count re-edit** reasons do not appear on the daily sales report.
 - The daily report does **not** carry cost-target or waste-threshold comparison, nor industry benchmarks — those belong to weekly and monthly business reports.
+- The daily report carries a **kitchen performance** summary. **KDS coverage** is always shown when the day has fulfilment slices. **Kitchen ticket time**, **kitchen station time**, **late kitchen tickets**, and **late kitchen ticket rate** are shown only when **KDS coverage is at least 80%**; below that, the report shows **not enough KDS interaction** with the coverage figure and no timing values. Printer-only venues therefore have zero coverage and no timing values but keep every money metric.
+- Kitchen performance is **KDS-derived** and never hand-edited. A slice counts as KDS-covered only when both `Preparing` and `Ready` were set on a prep or expo screen; POS transitions, handoff transitions, and the close sweep do not count.
 - A breakdown over a dimension with **no activity** produces **no value**; Project Imperium never fabricates a zero.
 - Money is shown in the venue's currency.
 
@@ -117,7 +122,7 @@ Terms reused from other subjects rather than redefined here: **business**, **sal
 
 ### 3.6 Fulfilment sweep on close
 
-- When the daily sales report **closes**, every fulfilment slice for that business work day that is not yet **Delivered** is moved to **Delivered** (advancing through Preparing and Ready as needed) so queues are clear.
+- When the daily sales report **closes**, every fulfilment slice for that business work day that is not yet **Delivered** is moved to **Delivered** (advancing through Preparing and Ready as needed) so queues are clear. Slices completed only by this sweep do **not** count as KDS-covered for kitchen performance.
 - A delivery batch completed this way is recorded with **close sweep** as its completion source. It has no recorded handover time, so the timed delivery review email is not sent; the customer can still review from order history or the receipt.
 - The printers-and-screens and orders subjects own fulfilment status mechanics; the delivery-integrations subject owns the provider calls and sync log; this subject owns that close triggers that sweep and surfaces the exception.
 
@@ -128,7 +133,7 @@ Terms reused from other subjects rather than redefined here: **business**, **sal
 - It shows the **completion source**: **staff screen** when a staff handover or Delivered action completed the batch, or **close sweep** when the daily close completed it.
 - A failed courier request, failed handover, or failed cancellation is listed as an **exception** with the provider, batch reference, last error, and attempt time. The list is operational; it does not change the day's sales, cost, profit, or commission estimate.
 - A delivery batch completed only by the close sweep has no recorded handover time. It is identified as **close sweep** so the venue can see that the provider's own app, not an Imperium screen, recorded pickup.
-- The delivery-integration status is **derived** and never hand-edited. It is captured as a **snapshot at close**; a provider action retried after the day closed updates the delivery screen and the sync log but does **not** rewrite the closed report, and it does not require a daily reopen because it changes no bill or payment.
+- The delivery-integration status is **derived** and never hand-edited. It is captured as a **snapshot at close**; a provider action retried after the day closed updates the handoff screen and the sync log but does **not** rewrite the closed report, and it does not require a daily reopen because it changes no bill or payment.
 
 ### 3.8 Commission estimate
 

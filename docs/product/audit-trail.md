@@ -49,6 +49,7 @@ Terms reused rather than redefined here: **User**, **Business**, **Customer**, *
 - Ordinary day-of service work — creating, sending, or fulfilling orders, and similar — is **not** audited merely for happening.
 - Explicit sibling exceptions stand (for example a fulfilment force-ready that the printers-and-screens subject states is not audited).
 - A normal **handover pass** scan, a fallback handover by entering the identification code, and a **delivery provider** request, handover, or cancellation attempt are **not** audit entries. The scan and the provider attempt are operational fulfilment and integration events recorded on the batch and in the delivery sync log. A **manager-and-above override** that marks Delivered without a pass **is** audited with its actor, time, batch, and override note.
+- A **fulfilment recall** that moves a `Ready` item or ticket back to `Preparing` **is** audited with its actor or display-lease opener, time, station, and prior status. The original fulfilment remains on the trail; the recall sits beside it (ADR-0015).
 - This subject states the rule; owning subjects apply it to their acts.
 
 ### 3.2 Audit entry shape

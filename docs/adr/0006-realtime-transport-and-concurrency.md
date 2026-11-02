@@ -1,6 +1,6 @@
 # ADR-0006: Realtime transport and concurrency mechanisms
 
-- **Status:** Accepted (amended 2026-10-21)
+- **Status:** Accepted (amended 2026-11-02)
 - **Date:** 2026-10-19
 - **Ticket:** GitHub issue #105
 
@@ -32,3 +32,9 @@ Those commitments force engineering choices for **how** live push and conflict d
 **Context.** Prep control-screen copy had allowed audited reverse of a station step; that conflicted with fulfilment forward-only in this ADR and the realtime subject.
 
 **Decision addendum.** Fulfilment status advances are forward-only. There is no reverse or “send work back” mutation that moves a slice to an earlier status. Station history is view and reprint only; order corrections use void, cancel, don't-make, and related order/bill acts.
+
+## Amendment 2 (2026-11-02) — narrow audited recall
+
+**Context.** Kitchen staff need to recover a mis-bumped item or ticket. A blanket reverse is still rejected, but a narrow recall before handover is operationally necessary.
+
+**Decision addendum.** ADR-0015 adds one exception: a **recall** gesture may move a slice `Ready` back to `Preparing`, and only that transition. The fulfilling station may recall its own item or ticket within **5 minutes**; supervisor-and-above may recall after that and before `Delivered`; managers and above may recall before `Delivered`. `Delivered` never moves backward. The original sent time is kept, and every recall is audited. All other forward-only rules stand.

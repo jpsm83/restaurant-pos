@@ -34,7 +34,7 @@ import SalesPoint from "../../models/salesPoint.ts";
 import SalesInstance from "../../models/salesInstance.ts";
 import DailySalesReport from "../../models/dailySalesReport.ts";
 import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
-import { createAuthHook, createOptionalAuthHook } from "../../auth/middleware.ts";
+import { createAuthHook } from "../../auth/middleware.ts";
 import {
   badRequest,
   conflict,
@@ -534,7 +534,7 @@ export const reservationsRoutes: FastifyPluginAsync = async (app) => {
   app.delete<{ Params: ReservationIdParams }>(
     "/:reservationId",
     {
-      preValidation: [createOptionalAuthHook(app)],
+      preValidation: [createAuthHook(app)],
       schema: { params: reservationIdParamsSchema },
     },
     async (req, reply) => {

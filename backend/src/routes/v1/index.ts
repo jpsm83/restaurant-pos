@@ -23,6 +23,7 @@ import { printersRoutes } from "./printers.ts";
 import { weeklyBusinessReportRoutes } from "./weeklyBusinessReport.ts";
 import { monthlyBusinessReportRoutes } from "./monthlyBusinessReport.ts";
 import type { GoogleVerifier } from "../../auth/google.ts";
+import { createAuthorizationGate } from "../../auth/authorization.ts";
 
 export interface V1RoutesOptions {
   googleVerifier?: GoogleVerifier | null;
@@ -32,7 +33,12 @@ export const registerV1Routes: FastifyPluginAsync<V1RoutesOptions> = async (
   app,
   options,
 ) => {
-  // Auth routes (no authentication required for login/refresh/logout)
+  // Deny by default: every route below requires a live User session unless it
+  // is in the one public allowlist. Business-layer guards remain the second
+  // check on tenant routes.
+  app.addHook("preValidation", createAuthorizationGate(app));
+
+  // Auth routes (public entry/recovery routes are in the allowlist)
   await app.register(authRoutes, {
     prefix: "/auth",
     googleVerifier: options.googleVerifier ?? null,

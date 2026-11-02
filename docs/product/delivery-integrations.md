@@ -24,7 +24,7 @@ It deliberately does **not** cover:
 - the **order, batch, identification code, fulfilment status, and handover pass** — the **orders**, **sales-points-and-instances**, and **order-flow** subjects own those.
 - **payment, tax, and settlement** — the **payments-and-tax** subject. Delivery is fully digital and paid before commit.
 - **customer notifications and emails** — the **notifications** and **emails** subjects deliver the receipt, handover information, and failure alerts. This subject names the events and the status they carry.
-- **printers and control screens** — the **printers-and-screens** subject owns the delivery screen, handover scanning surface, and printed kiosk ticket. This subject owns the provider calls those surfaces trigger.
+- **printers and control screens** — the **printers-and-screens** subject owns the handoff screen, handover scanning surface, and printed kiosk ticket. This subject owns the provider calls those surfaces trigger.
 - the **daily sales report** — the **sales-reports** subject owns the report and the close sweep. This subject supplies the delivery-integration status the report surfaces.
 - **Superadmin console surfaces** — the **superadmin** subject owns the console. This subject owns the meaning of the provider catalogue; the console maintains it.
 - **last-mile delivery execution** — the **courier provider** owns its own courier app, assignment, tracking, and proof of delivery. Project Imperium does not receive inbound courier state in stage 1.
@@ -67,7 +67,7 @@ Terms reused rather than redefined here: **Business**, **Delivery** (the channel
 ### 3.1 Delivery methods
 
 - A Business that enables delivery has exactly **one active delivery method**: **Own delivery** or one connected **third-party courier provider**.
-- **Own delivery** is always available. It requires no provider connection and makes no provider calls. The venue arranges its own courier; staff may record the handover on the delivery screen or POS, and the daily close reconciles any batch that was not marked Delivered.
+- **Own delivery** is always available. It requires no provider connection and makes no provider calls. The venue arranges its own courier; staff may record the handover on the handoff screen or POS, and the daily close reconciles any batch that was not marked Delivered.
 - A **third-party courier provider** is available only when the provider is enabled in the global catalogue for the Business's country and, where the provider narrows coverage, its region.
 - A Business with no available provider still sees **Own delivery** and a clear statement that no third-party courier is available in its region yet.
 - The **customer sees only “Delivery”**. The delivery method, provider name, connection state, and provider tracking are not customer-facing in stage 1.
@@ -86,17 +86,17 @@ Terms reused rather than redefined here: **Business**, **Delivery** (the channel
 ### 3.3 Courier request at batch send
 
 - When a paid delivery batch is sent to prep and the Business has a connected provider, Project Imperium raises one **courier request** for that batch.
-- The request is raised at **batch send**, not from a prep or delivery screen, so it works for venues that use no screens.
+- The request is raised at **batch send**, not from a prep, expo, or handoff screen, so it works for venues that use no screens.
 - The request carries the **ready time** — the batch deadline drawn from its lines' preparation times — so the provider can aim the courier at the moment the order should be ready.
 - A courier request is **idempotent** per batch: a retry or duplicate trigger returns the same delivery outcome and never dispatches a second courier for the same batch.
-- Staff on the delivery screen may **retry** a failed request manually. The platform also retries automatically under its retry policy.
+- Staff on the handoff screen may **retry** a failed request manually. The platform also retries automatically under its retry policy.
 - There is **no ready-time update action** in stage 1. If preparation runs late, the provider and its courier manage the wait in their own app.
 - If the provider is not connected, or the Business uses **Own delivery**, no courier request is raised.
 
 ### 3.4 Courier handover when staff record Delivered
 
-- When staff mark a delivery batch **Delivered** on the delivery screen or POS, and the Business has a connected provider, Project Imperium raises one **courier handover** for that batch.
-- The handover call tells the provider that the venue has handed the batch to the courier. It is **optional by circumstance**: a venue that records no staff handover — no delivery screen and no POS handover action — cannot perform it, because there is no Delivered action to trigger it.
+- When staff mark a delivery batch **Delivered** on the handoff screen or POS, and the Business has a connected provider, Project Imperium raises one **courier handover** for that batch.
+- The handover call tells the provider that the venue has handed the batch to the courier. It is **optional by circumstance**: a venue that records no staff handover — no handoff screen and no POS handover action — cannot perform it, because there is no Delivered action to trigger it.
 - The **courier provider's own app remains authoritative** for pickup and last-mile delivery. Project Imperium does not receive inbound courier state in stage 1.
 - A courier handover is **idempotent** per batch. A retry or duplicate Delivered action returns the same outcome and never creates a second handover.
 - A failed handover call **never blocks** the local Delivered status or the physical handover. It retries, and managers on duty are notified when the retry policy gives up.
@@ -114,13 +114,13 @@ Terms reused rather than redefined here: **Business**, **Delivery** (the channel
 - Provider calls are **best-effort integrations**: Project Imperium records the local business outcome first and treats the provider call as a synchronisation, not a gate.
 - Each call has a **timeout**, an **automatic retry policy** with backoff, and a **manual retry**. Retries never duplicate a courier request, handover, or cancellation.
 - When the retry policy gives up on a **courier request**, **courier handover**, or **courier cancellation**, Project Imperium notifies the venue's **managers on duty**; if none are on duty, it falls back to all manager-layer users for the Business, as the notifications subject defines.
-- The delivery screen shows the current sync state, the last error, and a retry action. A connection error is visible to managers and above.
+- The handoff screen shows the current sync state, the last error, and a retry action. A connection error is visible to managers and above.
 - Every attempt is recorded in the **delivery sync log** with the provider, action, external reference, attempt number, response code, error, and time. The log never stores credentials and never stores more customer data than the provider call itself needed.
 - The sync log follows the operational retention of the delivery order. It is **not** an audit-trail entry; manual delivery corrections that sibling subjects already audit remain audited.
 
 ### 3.7 No-handover venues and the daily close
 
-- A venue may run delivery with **no prep or delivery screen**. Nothing in the courier request depends on a screen: the request is raised at batch send.
+- A venue may run delivery with **no prep, expo, or handoff screen**. Nothing in the courier request depends on a screen: the request is raised at batch send.
 - When the venue records no staff handover, no **courier handover** call is raised. The courier provider's own app records the pickup, and the daily sales report close completes any fulfilment slice still not Delivered.
 - The daily close **does not block** on a failed courier request or a failed handover call. It completes the batch and records the exception for the report.
 - The daily sales report surfaces, per delivery batch, the **courier request status**, the **courier handover status** (including **not used** when no staff screen or POS action recorded it), and whether completion came from a **staff screen** or the **close sweep**. Failed calls are listed as exceptions.
@@ -185,8 +185,8 @@ A provider adapter must satisfy this semantic contract. The exact integration fi
 | Layer | Delivery-integration powers |
 | --- | --- |
 | **Customer** | Sees only “Delivery”; never sees the delivery method, provider, connection, sync state, or tracking. |
-| **Employee** | May mark a delivery batch Delivered on an entitled screen, which triggers a courier handover; may retry a failed courier request or handover from the delivery screen when entitled to that screen. Cannot connect providers or see credentials. |
-| **Supervisor** | Same as employee for handover and retry on the delivery screen. Does not see provider connection health, connect providers, or see credentials. |
+| **Employee** | May mark a delivery batch Delivered on an entitled screen, which triggers a courier handover; may retry a failed courier request or handover from the handoff screen when entitled to that screen. Cannot connect providers or see credentials. |
+| **Supervisor** | Same as employee for handover and retry on the handoff screen. Does not see provider connection health, connect providers, or see credentials. |
 | **Manager** | Everything a supervisor can do, plus seeing the delivery-integration status, sync failures, and the daily report exceptions. Cannot connect or disconnect a provider or see credentials. |
 | **Admin/owner** | Everything a manager can do, plus opening the **Delivery partner** settings, choosing the delivery method, and connecting or disconnecting a provider. |
 | **Superadmin** | Maintains the global provider catalogue and its country/region availability. Does not connect providers for a Business. |
@@ -200,9 +200,9 @@ A provider adapter must satisfy this semantic contract. The exact integration fi
 | View the active delivery method and connection health | Managers and above |
 | View or use provider credentials | No one after save; the platform uses them write-only |
 | Raise a courier request | Automatic at delivery batch send when a provider is connected |
-| Retry a failed courier request | Staff allowed on the delivery screen; managers and above |
-| Mark a delivery batch Delivered and raise a courier handover | Staff allowed on the delivery screen or POS under the fulfilment rules |
-| Retry a failed courier handover | Staff allowed on the delivery screen; managers and above |
+| Retry a failed courier request | Staff allowed on the handoff screen; managers and above |
+| Mark a delivery batch Delivered and raise a courier handover | Staff allowed on the handoff screen or POS under the fulfilment rules |
+| Retry a failed courier handover | Staff allowed on the handoff screen; managers and above |
 | Cancel a courier request | Automatic when a delivery order is cancelled before handover |
 | See delivery-integration status and exceptions | Managers and above; employees with the daily-report view capability |
 | Maintain the provider catalogue and country/region availability | Superadmin console operators |

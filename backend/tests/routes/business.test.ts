@@ -787,7 +787,7 @@ describe("Business Routes", () => {
       expect(body.timezoneIsDefault).toBe(true);
     });
 
-    it("returns 401 when GET business without auth", async () => {
+    it("returns the public profile without authentication", async () => {
       const app = await getTestApp();
 
       const business = await createTestBusiness({
@@ -805,13 +805,14 @@ describe("Business Routes", () => {
         url: `/api/v1/business/${business._id}`,
       });
 
-      expect(response.statusCode).toBe(401);
-      expect(response.headers["content-type"]).toContain(
-        "application/problem+json",
-      );
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.tradeName).toBe("No Auth Get");
+      expect(body.password).toBeUndefined();
+      expect(body.verificationToken).toBeUndefined();
     });
 
-    it("returns 403 when GET business with a User without venue access", async () => {
+    it("returns the public profile to a signed-in User without venue access", async () => {
       const app = await getTestApp();
 
       const business = await createTestBusiness({
@@ -824,7 +825,7 @@ describe("Business Routes", () => {
         address: validAddress,
       });
       const auth = await generateTestToken({
-        id: business._id.toString(),
+        id: new Types.ObjectId().toString(),
         email: "employee-get@business.com",
         type: "user",
         role: "Manager",
@@ -836,56 +837,16 @@ describe("Business Routes", () => {
         headers: { authorization: auth },
       });
 
-      expect(response.statusCode).toBe(403);
-      expect(response.headers["content-type"]).toContain(
-        "application/problem+json",
-      );
-    });
-
-    it("returns 403 when the User has no access to the route business", async () => {
-      const app = await getTestApp();
-
-      const business = await createTestBusiness({
-        tradeName: "Mismatch Get",
-        legalName: "Mismatch Get LLC",
-        email: "mismatch-get@business.com",
-        phoneNumber: "1234567890",
-        taxNumber: "TAX-MISMATCH-GET-001",
-        currencyTrade: "USD",
-        address: validAddress,
-      });
-      const auth = await generateTestToken({
-        id: new Types.ObjectId().toString(),
-        email: "no-access@test.com",
-        type: "user",
-        role: "Customer",
-      });
-
-      const response = await app.inject({
-        method: "GET",
-        url: `/api/v1/business/${business._id}`,
-        headers: { authorization: auth },
-      });
-
-      expect(response.statusCode).toBe(403);
-      expect(response.headers["content-type"]).toContain(
-        "application/problem+json",
-      );
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.body).tradeName).toBe("Employee Get");
     });
 
     it("returns 400 for invalid ID format", async () => {
       const app = await getTestApp();
-      const auth = await generateTestToken({
-        id: new Types.ObjectId().toString(),
-        email: "no-access@test.com",
-        type: "user",
-        role: "Customer",
-      });
 
       const response = await app.inject({
         method: "GET",
         url: "/api/v1/business/invalid-id",
-        headers: { authorization: auth },
       });
 
       expect(response.statusCode).toBe(400);
@@ -898,28 +859,21 @@ describe("Business Routes", () => {
       );
     });
 
-    it("returns 403 when the User has no access to a non-existent business", async () => {
+    it("returns 404 for a non-existent business", async () => {
       const app = await getTestApp();
       const fakeId = new Types.ObjectId();
-      const auth = await generateTestToken({
-        id: new Types.ObjectId().toString(),
-        email: "no-access@test.com",
-        type: "user",
-        role: "Customer",
-      });
 
       const response = await app.inject({
         method: "GET",
         url: `/api/v1/business/${fakeId}`,
-        headers: { authorization: auth },
       });
 
-      expect(response.statusCode).toBe(403);
+      expect(response.statusCode).toBe(404);
       expect(response.headers["content-type"]).toContain(
         "application/problem+json",
       );
       const body = JSON.parse(response.body);
-      expect(body.detail).toBe("Forbidden");
+      expect(body.detail).toBe("No business found!");
     });
   });
 
@@ -1945,145 +1899,4 @@ describe("Business Routes", () => {
 
   });
 
-  describe("DELETE /api/v1/business/:businessId", () => {
-    it("returns 400 for invalid businessId", async () => {
-      const app = await getTestApp();
-
-      const response = await app.inject({
-        method: "DELETE",
-        url: "/api/v1/business/invalid-id",
-      });
-
-      expect(response.statusCode).toBe(400);
-      expect(response.headers["content-type"]).toContain(
-        "application/problem+json",
-      );
-      const body = JSON.parse(response.body);
-      expect(body.errors?.map((e: { path: string }) => e.path)).toContain(
-        "businessId",
-      );
-    });
-
-    it("closes the business via soft delete and retains dependent records", async () => {
-      const app = await getTestApp();
-      const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-
-      const business = await createTestBusiness({
-        tradeName: "Delete Test Business",
-        legalName: "Delete Test Business LLC",
-        email: `delete-business-${suffix}@business.com`,
-        phoneNumber: "1234567890",
-        taxNumber: `TAX-DELETE-${suffix}`,
-        currencyTrade: "USD",
-        address: validAddress,
-      });
-
-      const user = await User.create({
-        personalDetails: {
-          username: `delete-user-${suffix}`,
-          email: `delete-user-${suffix}@test.com`,
-          password: "hashedpassword",
-          firstName: "Delete",
-          lastName: "User",
-          phoneNumber: "9999999999",
-          birthDate: new Date("1990-01-01"),
-          gender: "Man",
-          nationality: "USA",
-          idType: "National ID",
-          idNumber: `ID-DELETE-${suffix}`,
-          address: validAddress,
-        },
-        allUserRoles: ["Employee"],
-      });
-
-      const employee = await Employee.create({
-        businessId: business._id,
-        userId: user._id,
-        taxNumber: `EMP-DELETE-${suffix}`,
-        joinDate: new Date(),
-        vacationDaysPerYear: 20,
-        vacationDaysLeft: 20,
-        allEmployeeRoles: ["Manager"],
-        currentShiftRole: "Manager",
-        onDuty: false,
-        active: true,
-      });
-
-      const notification = await Notification.create({
-        notificationType: "Info",
-        message: "Delete route retention test",
-        businessId: business._id,
-        employeesRecipientsIds: [employee._id],
-      });
-
-      const response = await app.inject({
-        method: "DELETE",
-        url: `/api/v1/business/${business._id}`,
-      });
-
-      expect(response.statusCode).toBe(200);
-      expect(JSON.parse(response.body)).toEqual({
-        message: "Business deleted successfully",
-      });
-
-      const deletedBusiness = await Business.findById(business._id)
-        .setOptions({ includeDeleted: true })
-        .select("deleted deletedAt")
-        .lean();
-      expect(deletedBusiness?.deleted).toBe(true);
-      expect(deletedBusiness?.deletedAt).toBeInstanceOf(Date);
-
-      const retainedEmployee = await Employee.findById(employee._id)
-        .select("deleted")
-        .lean();
-      expect(retainedEmployee?.deleted).toBe(false);
-
-      const retainedNotification = await Notification.findById(notification._id)
-        .select("deleted")
-        .lean();
-      expect(retainedNotification?.deleted).toBe(false);
-    });
-
-    it("excludes a closed business from active-default reads", async () => {
-      const app = await getTestApp();
-      const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-
-      const business = await createTestBusiness({
-        tradeName: "Closed Discovery Business",
-        legalName: "Closed Discovery Business LLC",
-        email: `closed-discovery-${suffix}@business.com`,
-        phoneNumber: "1234567890",
-        taxNumber: `TAX-CLOSED-${suffix}`,
-        currencyTrade: "USD",
-        address: validAddress,
-      });
-
-      const closeResponse = await app.inject({
-        method: "DELETE",
-        url: `/api/v1/business/${business._id}`,
-      });
-      expect(closeResponse.statusCode).toBe(200);
-
-      const defaultRead = await app.inject({
-        method: "GET",
-        url: "/api/v1/business",
-      });
-      expect(defaultRead.statusCode).toBe(400);
-      expect(defaultRead.headers["content-type"]).toContain(
-        "application/problem+json",
-      );
-      expect(JSON.parse(defaultRead.body).detail).toBe("No business found!");
-
-      const includeDeletedRead = await app.inject({
-        method: "GET",
-        url: "/api/v1/business?includeDeleted=true",
-      });
-      expect(includeDeletedRead.statusCode).toBe(200);
-      expect(
-        JSON.parse(includeDeletedRead.body).some(
-          (entry: { _id: string }) => entry._id === business._id.toString(),
-        ),
-      ).toBe(true);
-    });
-  });
 });

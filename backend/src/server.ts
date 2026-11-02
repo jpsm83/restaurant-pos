@@ -19,6 +19,7 @@ import {
 
 import connectDb from "./db/connectDb.ts";
 import { registerV1Routes } from "./routes/v1/index.ts";
+import { registerRouteInventory } from "./routes/routeInventory.ts";
 import { registerProblemDetailsHandler } from "./errors/problemDetails.ts";
 import { requestLogSerializer } from "./observability/requestLogSerializer.ts";
 import { AUTH_CONFIG } from "./auth/config.ts";
@@ -89,6 +90,12 @@ export async function buildApp(
    * Global error handler — emits RFC 9457 application/problem+json.
    */
   registerProblemDetailsHandler(server);
+
+  /**
+   * Record the registered route table for the authorization inventory test.
+   * Must run before any route is registered.
+   */
+  registerRouteInventory(server);
 
   /**
    * Register plugins

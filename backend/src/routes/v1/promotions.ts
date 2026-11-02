@@ -19,7 +19,7 @@ import validateDaysOfTheWeek from "../../promotions/validateDaysOfTheWeek.ts";
 import validatePromotionType from "../../promotions/validatePromotionType.ts";
 import Promotion from "../../models/promotion.ts";
 import BusinessGood from "../../models/businessGood.ts";
-import { createOptionalAuthHook } from "../../auth/middleware.ts";
+import { createAuthHook } from "../../auth/middleware.ts";
 import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
 import { badRequest, conflict, notFound } from "../../errors/appError.ts";
 import {
@@ -255,7 +255,7 @@ export const promotionsRoutes: FastifyPluginAsync = async (app) => {
   app.delete<{ Params: PromotionIdParams }>(
     "/:promotionId",
     {
-      preValidation: [createOptionalAuthHook(app)],
+      preValidation: [createAuthHook(app)],
       schema: { params: promotionIdParamsSchema },
     },
     async (req, reply) => {

@@ -20,7 +20,7 @@ import SupplierGood from "../../models/supplierGood.ts";
 import Promotion from "../../models/promotion.ts";
 import Order from "../../models/order.ts";
 import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
-import { createOptionalAuthHook } from "../../auth/middleware.ts";
+import { createAuthHook } from "../../auth/middleware.ts";
 import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
 import calculateIngredientsCostPriceAndAllergies from "../../businessGoods/calculateIngredientsCostPriceAndAllergies.ts";
 import { calculateSetMenuCostPriceAndAllergies } from "../../businessGoods/calculateSetMenuCostPriceAndAllergies.ts";
@@ -471,7 +471,7 @@ export const businessGoodsRoutes: FastifyPluginAsync = async (app) => {
   app.delete<{ Params: BusinessGoodIdParams }>(
     "/:businessGoodId",
     {
-      preValidation: [createOptionalAuthHook(app)],
+      preValidation: [createAuthHook(app)],
       schema: { params: businessGoodIdParamsSchema },
     },
     async (req, reply) => {

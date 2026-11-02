@@ -1,5 +1,10 @@
 /**
- * Business Routes — business discovery, registration, profile update and delete.
+ * Business Routes — public discovery/profile reads, registration and profile
+ * update.
+ *
+ * Public reads (discovery and a single venue profile) are in the v1 public
+ * allowlist. Business deletion is not registered; closing or retaining a venue
+ * is owned by a later build-order row.
  *
  * Registration takes a strict JSON body. The profile update takes a multipart
  * body buffered and validated by the shared multipart helper against strict zod
@@ -17,10 +22,9 @@ import Business from "../../models/business.ts";
 import ownerCompanyCreation, {
   OwnerCompanyCreationError,
 } from "../../owners/ownerCompanyCreation.ts";
-import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
+import { withSoftDeleteFilter } from "../../models/softDelete.ts";
 import {
   createAuthHook,
-  createOptionalAuthHook,
   requireBusinessAccessHook,
 } from "../../auth/middleware.ts";
 import { resolveEffectiveAccess } from "../../access/resolveEffectiveAccess.ts";
@@ -357,14 +361,13 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
     },
   );
 
+  // Public venue profile read: published discovery fields only.
   app.get<{
     Params: BusinessIdParams;
     Querystring: BusinessIncludeDeletedQuery;
   }>(
     "/:businessId",
     {
-      preValidation: [createAuthHook(app)],
-      preHandler: [requireBusinessAccessHook()],
       schema: {
         params: businessIdParamsSchema,
         querystring: businessIncludeDeletedQuerySchema,
@@ -750,36 +753,4 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
     },
   );
 
-  app.delete<{ Params: BusinessIdParams }>(
-    "/:businessId",
-    {
-      preValidation: [createOptionalAuthHook(app)],
-      schema: { params: businessIdParamsSchema },
-    },
-    async (req, reply) => {
-      const { businessId } = req.params;
-
-      const business = await Business.findById(businessId)
-        .setOptions({ includeDeleted: true })
-        .select("deleted")
-        .lean();
-      if (!business) {
-        throw notFound("Business not found!");
-      }
-      if (business.deleted) {
-        throw conflict("Business already deleted!");
-      }
-
-      const wasDeleted = await markAsDeletedById(
-        Business as mongoose.Model<IBusiness & { deleted: boolean }>,
-        businessId,
-        { deletedBy: req.authSession?.id },
-      );
-      if (!wasDeleted) {
-        throw conflict("Business already deleted!");
-      }
-
-      return reply.code(200).send({ message: "Business deleted successfully" });
-    },
-  );
 };

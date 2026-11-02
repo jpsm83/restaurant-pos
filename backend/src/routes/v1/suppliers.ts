@@ -20,7 +20,7 @@ import SupplierGood from "../../models/supplierGood.ts";
 import BusinessGood from "../../models/businessGood.ts";
 import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
 import deleteFilesCloudinary from "../../cloudinary/deleteFilesCloudinary.ts";
-import { createOptionalAuthHook } from "../../auth/middleware.ts";
+import { createAuthHook } from "../../auth/middleware.ts";
 import { badRequest, conflict, notFound } from "../../errors/appError.ts";
 import { parseMultipart } from "../../schemas/multipart.ts";
 import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
@@ -298,7 +298,7 @@ export const suppliersRoutes: FastifyPluginAsync = async (app) => {
   app.delete<{ Params: SupplierIdParams }>(
     "/:supplierId",
     {
-      preValidation: [createOptionalAuthHook(app)],
+      preValidation: [createAuthHook(app)],
       schema: { params: supplierIdParamsSchema },
     },
     async (req, reply) => {

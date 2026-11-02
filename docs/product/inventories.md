@@ -23,7 +23,7 @@ It deliberately does **not** cover:
 
 - the **supplier good** — its identity, unit of stock, purchase unit and price math, budget impact, allergens, par level and minimum required, in-use state, and deletion belong to the supplier-goods subject. Inventory keeps a stock line per supplier good; it never defines the good.
 - the **purchase record** and the increment a receipt contributes — the purchases subject owns the purchase; inventory owns the ledger the increment lands in.
-- **what a sold good consumes** — the recipes, combos, and add-ons belong to the business-goods subject, and the orders that sold them belong to the orders subject. Inventory only reads them to compute theoretical usage.
+- **what a sold good consumes** — the recipes, combos, add-ons, and `No` ingredient removals belong to the business-goods and orders subjects. Inventory only reads them to compute theoretical usage.
 - **availability** — how a business good becomes available or sold out belongs to the business-goods subject; inventory only supplies the stock figure that subject reads.
 - the **waste thresholds** — the business-metrics subject owns the ceilings a budget impact selects; inventory computes the waste those ceilings are compared against.
 - **notification delivery** — the notifications subject owns how an alert reaches its recipient; inventory owns the conditions it detects.
@@ -52,7 +52,7 @@ It deliberately does **not** cover:
 - **Deviation** — the counted quantity against the expected (system) quantity, in quantity and percent; a perfect count deviates by zero.
 - **Count-period deviation** — the deviation recorded for the interval a count closes. It **resets** at each period boundary.
 - **Closing count** — the count taken on the **morning of the first day of the following month**, which closes the prior month and opens the next.
-- **Theoretical usage** — the quantity of a good the venue should have used, derived from the recipes of the business goods sold.
+- **Theoretical usage** — the quantity of a good the venue should have used, derived from the recipes of the business goods sold, **net of any `No` ingredient removals** recorded on those orders.
 - **Actual usage** — the quantity the venue did use, derived from opening stock plus stock in minus stock out and closing stock.
 - **Variance** — theoretical usage against actual usage, per good.
 - **Waste** — the excess of actual usage over theoretical usage: stock that left the venue unexplained. It is valued at cost and graded by **budget impact**. Waste is **only** this derived figure — Project Imperium has **no** separate manual spoilage or waste log.
@@ -71,7 +71,7 @@ Terms reused from other subjects rather than redefined here: **Business**, **Com
 ### 3.1 The dynamic system count
 
 - Every good the business stocks has one **stock line** whose **dynamic system count** is expressed in the good's **unit of stock**.
-- The count is **live and continuous**. It rises with a received purchase and a transfer in; it falls with a sold order and a transfer out; a cancelled order restores it; a physical count **sets** it.
+- The count is **live and continuous**. It rises with a received purchase and a transfer in; it falls with a sold order and a transfer out; a cancelled order restores it; a physical count **sets** it. A sold order deducts its recipe **net of `No` ingredient removals**; a cancelled order restores those modified quantities.
 - The count is the stock figure the venue's menu reads when it decides what can be sold; how a good becomes available or sold out belongs to the business-goods subject.
 - The count **may fall below zero**. It is never blocked, because operational reality wins; a negative count is a signal that the stock records and the shelf disagree.
 - Quantities are kept in the good's unit of stock: a recipe or a count expressed in a compatible unit is converted before it moves the count.
@@ -102,7 +102,7 @@ Terms reused from other subjects rather than redefined here: **Business**, **Com
 
 ### 3.5 Variance
 
-- **Theoretical usage** is derived from the recipes of the business goods sold in the month: each sold good is expanded into its supplier-good components — including add-ons and combo members — and summed per good.
+- **Theoretical usage** is derived from the recipes of the business goods sold in the month: each sold good is expanded into its supplier-good components — including add-ons and combo members — **minus any `No` ingredient removals** on that sold line, and summed per good.
 - **Actual usage** is opening stock, plus stock in (purchases received and transfers in), minus stock out (transfers out) and closing stock.
 - **Variance** is theoretical usage against actual usage, per good, in the good's unit of stock and in value.
 - Variance is **signed**. A good used **less** than expected (more stock than there should be) and a good used **more** than expected point at different problems, so both are shown.

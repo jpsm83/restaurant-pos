@@ -18,7 +18,7 @@ import SupplierGood from "../../models/supplierGood.ts";
 import Supplier from "../../models/supplier.ts";
 import BusinessGood from "../../models/businessGood.ts";
 import Inventory from "../../models/inventory.ts";
-import { createOptionalAuthHook } from "../../auth/middleware.ts";
+import { createAuthHook } from "../../auth/middleware.ts";
 import addSupplierGoodToInventory from "../../inventories/addSupplierGoodToInventory.ts";
 import deleteSupplierGoodFromInventory from "../../inventories/deleteSupplierGoodFromInventory.ts";
 import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
@@ -414,7 +414,7 @@ export const supplierGoodsRoutes: FastifyPluginAsync = async (app) => {
   app.delete<{ Params: SupplierGoodIdParams }>(
     "/:supplierGoodId",
     {
-      preValidation: [createOptionalAuthHook(app)],
+      preValidation: [createAuthHook(app)],
       schema: { params: supplierGoodIdParamsSchema },
     },
     async (req, reply) => {

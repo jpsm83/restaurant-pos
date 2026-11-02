@@ -1,28 +1,28 @@
 /**
- * Users Routes — self-service profile read/update and account deletion.
+ * Users Routes — self-service profile read/update.
  *
  * The profile update body is buffered and validated by the shared multipart
  * helper against the strict `updateUserBodySchema` from
  * `packages/schemas/user.ts`; the JSON-encoded `address` is parsed and validated
  * there. GET and PATCH are self-only: a person may read and edit only their own
  * client profile. The anonymous listing and creation routes are gone; self
- * sign-up is the only account-creation path. Every error is raised as an
- * `AppError` so the global handler emits RFC 9457 `application/problem+json`.
+ * sign-up is the only account-creation path.
+ *
+ * Account deletion is not registered. The two-phase pending-deletion
+ * lifecycle, owned-Business resolution, reactivation, and grace window are
+ * owned by build-order row 11.5. Every error is raised as an `AppError` so the
+ * global handler emits RFC 9457 `application/problem+json`.
  */
 import type { FastifyPluginAsync } from "fastify";
 import mongoose from "mongoose";
-import type { IUser } from "restaurant-pos-packages/interfaces/IUser";
-import type { IEmployee } from "restaurant-pos-packages/interfaces/IEmployee";
 
-import { createOptionalAuthHook } from "../../auth/middleware.ts";
+import { createAuthHook } from "../../auth/middleware.ts";
 import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
 import deleteFilesCloudinary from "../../cloudinary/deleteFilesCloudinary.ts";
 import User from "../../models/user.ts";
-import Employee from "../../models/employee.ts";
-import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
+import { withSoftDeleteFilter } from "../../models/softDelete.ts";
 import {
   badRequest,
-  conflict,
   forbidden,
   notFound,
   unauthorized,
@@ -121,7 +121,7 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
   app.get<{ Params: UserIdParams }>(
     "/:userId",
     {
-      preValidation: [createOptionalAuthHook(app)],
+      preValidation: [createAuthHook(app)],
       schema: { params: userIdParamsSchema },
     },
     async (req, reply) => {
@@ -144,7 +144,7 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
   app.patch<{ Params: UserIdParams }>(
     "/:userId",
     {
-      preValidation: [createOptionalAuthHook(app)],
+      preValidation: [createAuthHook(app)],
       schema: { params: userIdParamsSchema },
     },
     async (req, reply) => {
@@ -268,47 +268,4 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
     },
   );
 
-  // DELETE /users/:userId - delete
-  app.delete<{ Params: UserIdParams }>(
-    "/:userId",
-    {
-      preValidation: [createOptionalAuthHook(app)],
-      schema: { params: userIdParamsSchema },
-    },
-    async (req, reply) => {
-      const { userId } = req.params;
-
-      const employee = (await Employee.findOne({ userId })
-        .select("terminatedDate")
-        .lean()) as IEmployee | null;
-
-      if (employee?.terminatedDate) {
-        throw badRequest(
-          "User cannot be deleted because he/she is employeed!",
-        );
-      }
-
-      const user = await User.findById(userId)
-        .setOptions({ includeDeleted: true })
-        .select("deleted")
-        .lean();
-      if (!user) {
-        throw notFound("User not found!");
-      }
-      if (user.deleted) {
-        throw conflict("User already deleted!");
-      }
-
-      const wasDeleted = await markAsDeletedById(
-        User as mongoose.Model<IUser & { deleted: boolean }>,
-        userId,
-        { deletedBy: req.authSession?.id },
-      );
-      if (!wasDeleted) {
-        throw conflict("User already deleted!");
-      }
-
-      return reply.code(200).send({ message: "User deleted successfully" });
-    },
-  );
 };

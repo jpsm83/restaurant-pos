@@ -73,7 +73,7 @@ Ordered for business memberships **admin > manager > supervisor > employee**. **
 | --- | --- |
 | **Customer** | Every User. Public Customer surface; never a membership layer. |
 | **Employee** | Floor and self-service staff. **Schedule-gated** Business entry. Default Service is **POS**, **Attendance** for **own** scan-in and sign-out (plus **Me**); other Service destinations and elevated ops need catalogue grants (or a job-role entitlement such as Host). A late scan-in still waits for manager acceptance (time-control). **No Manage.** |
-| **Supervisor** | Floor lead. **Schedule-gated** Business entry (same entry window as employee). **No Manage.** **Full Service** by default (POS, Host, prep screens, delivery screen, customer pickup board, Attendance for **own** scan-in and sign-out, **Counts** for physical count / count re-edit, **Cash-out** for approving another wallet and house paid-in/out) and **print permission**. Does **not** present the venue daily attendance QR (manager+ only — time-control subject). Further powers only via catalogue grant/revoke. |
+| **Supervisor** | Floor lead. **Schedule-gated** Business entry (same entry window as employee). **No Manage.** **Full Service** by default (POS, Host, prep screens, expo screen, handoff screen, customer pickup board, recall before `Delivered`, Attendance for **own** scan-in and sign-out, **Counts** for physical count / count re-edit, **Cash-out** for approving another wallet and house paid-in/out) and **print permission**. Does **not** present the venue daily attendance QR (manager+ only — time-control subject). Further powers only via catalogue grant/revoke. |
 | **Manager** | Day-to-day administration and operations. **Always** may enter Business (not schedule-gated) when effective manager. **Manage** header and full Service by default. Assigns access for layers below manager. |
 | **Admin** | Full venue control, including ownership-adjacent acts the feature subjects reserve for admin/owner. **Always** may enter Business when effective admin. **Manage** and full Service. The owning user has **Owner access** (admin-equivalent within plan entitlements) at every venue they own **with or without** an Employee membership (users subject). |
 
@@ -137,8 +137,9 @@ This subject owns the authoritative list. Feature subjects own behaviour for eac
 
 | Capability | Effect |
 | --- | --- |
-| Open prep screens | May open prep-area control screens under Service |
-| Open delivery screen | May open the delivery screen under Service |
+| Open prep screens | May open prep-area main and sub-screens under Service, including the 5-minute recall of the station's own `Ready` item or ticket |
+| Open expo screen | May open the expo screen under Service, including the 5-minute recall of the station's own `Ready` item or ticket |
+| Open handoff screen | May open the handoff screen under Service |
 | Open customer pickup board | May open the customer pickup board under Service |
 | Print permission | May issue or reprint customer and prep tickets (supervisor layer and above have this by default; employees need the grant) |
 
@@ -157,7 +158,7 @@ This subject owns the authoritative list. Feature subjects own behaviour for eac
 - **Host** under Service — **Host** job role, and anyone whose effective layer already includes full Service (supervisor, manager, admin).
 - **Counts** under Service — physical count and **inventory count re-edit** (with reason and audit) — **supervisor** layer and above; full inventory admin remains Manage → Supply for managers (inventories; user-navigation).
 - **Cash-out** under Service — **approve employee cash-out** (another person's wallet only) and **house paid-in / paid-out and cash-movement reverses** (another person's wallet only) — **supervisor** layer and above; peer cash-in when the Business setting is on is any on-duty employee as receiver — employee cash-out subject.
-- **Print connectors and printers** under Service setup — pair and revoke print connectors on the venue PC, view connector version/status/WAN path, create, bind, rebind, and retire logical printers, set routing and backups, and grant or revoke **display leases** for control screens — **manager** layer and above. This is a layer power, not a catalogue grant; it is never granted to supervisor or employee.
+- **Print connectors and printers** under Service setup — pair and revoke print connectors on the venue PC, view connector version/status/WAN path, create, bind, rebind, and retire logical printers, set routing and backups, run the **service output setup** guide, and grant or revoke **display leases** for control screens — **manager** layer and above. This is a layer power, not a catalogue grant; it is never granted to supervisor or employee.
 
 ### 3.9 Assignment surface
 

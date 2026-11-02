@@ -94,10 +94,7 @@ import orderPriceMatches from "../../orders/orderPriceMatches.ts";
 import applyPromotionsToOrders from "../../promotions/applyPromotions.ts";
 import checkLowStockAndNotify from "../../inventories/checkLowStockAndNotify.ts";
 import sendOrderConfirmation from "../../orderConfirmation/sendOrderConfirmation.ts";
-import {
-  createAuthHook,
-  createOptionalAuthHook,
-} from "../../auth/middleware.ts";
+import { createAuthHook } from "../../auth/middleware.ts";
 import transferOrdersBetweenSalesInstances from "../../orders/transferOrdersBetweenSalesInstances.ts";
 import getEffectiveUserRoleAtTime from "../../auth/getEffectiveUserRoleAtTime.ts";
 import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
@@ -354,7 +351,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
   app.patch<{ Params: SalesInstanceIdParams; Body: UpdateSalesInstanceBody }>(
     "/:salesInstanceId",
     {
-      preValidation: [createOptionalAuthHook(app)],
+      preValidation: [createAuthHook(app)],
       schema: {
         params: salesInstanceIdParamsSchema,
         body: updateSalesInstanceBodySchema,
@@ -792,7 +789,7 @@ export const salesInstancesRoutes: FastifyPluginAsync = async (app) => {
   app.delete<{ Params: SalesInstanceIdParams }>(
     "/:salesInstanceId",
     {
-      preValidation: [createOptionalAuthHook(app)],
+      preValidation: [createAuthHook(app)],
       schema: { params: salesInstanceIdParamsSchema },
     },
     async (req, reply) => {

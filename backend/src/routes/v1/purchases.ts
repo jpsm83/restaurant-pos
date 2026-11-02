@@ -35,7 +35,7 @@ import Inventory from "../../models/inventory.ts";
 import Supplier from "../../models/supplier.ts";
 import SupplierGood from "../../models/supplierGood.ts";
 import Employee from "../../models/employee.ts";
-import { createOptionalAuthHook } from "../../auth/middleware.ts";
+import { createAuthHook } from "../../auth/middleware.ts";
 import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
 import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
 import deleteFilesCloudinary from "../../cloudinary/deleteFilesCloudinary.ts";
@@ -430,7 +430,7 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
   app.delete<{ Params: PurchaseIdParams }>(
     "/:purchaseId",
     {
-      preValidation: [createOptionalAuthHook(app)],
+      preValidation: [createAuthHook(app)],
       schema: { params: purchaseIdParamsSchema },
     },
     async (req, reply) => {
@@ -663,7 +663,7 @@ export const purchasesRoutes: FastifyPluginAsync = async (app) => {
   app.patch<{ Params: PurchaseIdParams; Body: EditPurchaseItemBody }>(
     "/:purchaseId/editSupplierGood",
     {
-      preValidation: [createOptionalAuthHook(app)],
+      preValidation: [createAuthHook(app)],
       schema: {
         params: purchaseIdParamsSchema,
         body: editPurchaseItemBodySchema,

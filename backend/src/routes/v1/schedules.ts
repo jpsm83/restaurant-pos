@@ -28,7 +28,7 @@ import calculateEmployeeCost from "../../schedules/calculateEmployeeCost.ts";
 import Schedule from "../../models/schedule.ts";
 import Employee from "../../models/employee.ts";
 import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
-import { createAuthHook, createOptionalAuthHook } from "../../auth/middleware.ts";
+import { createAuthHook } from "../../auth/middleware.ts";
 import type { AuthUser } from "../../auth/types.ts";
 import {
   badRequest,
@@ -321,7 +321,7 @@ export const schedulesRoutes: FastifyPluginAsync = async (app) => {
   app.delete<{ Params: ScheduleIdParams }>(
     "/:scheduleId",
     {
-      preValidation: [createOptionalAuthHook(app)],
+      preValidation: [createAuthHook(app)],
       schema: { params: scheduleIdParamsSchema },
     },
     async (req, reply) => {

@@ -14,7 +14,8 @@ This subject covers the **numbers a venue measures itself by** — the financial
 - the **reporting-week start day** — the day that begins the venue's weekly reporting window;
 - the **dimension vocabulary** — the standard breakdowns a metric may be sliced by;
 - the **benchmarks** — the reference industry ranges a metric is read against;
-- the **KPI catalogue** — the platform's named metrics, each with its unit, the direction that is "good", its meaning, its **canonical formula**, the dimensions it supports, and its benchmark.
+- the **KPI catalogue** — the platform's named metrics, each with its unit, the direction that is "good", its meaning, its **canonical formula**, the dimensions it supports, and its benchmark;
+- the **kitchen performance** metrics derived from KDS-driven fulfilment and the **KDS coverage** gate that decides when they are published.
 
 It deliberately does **not** cover:
 
@@ -22,7 +23,8 @@ It deliberately does **not** cover:
 - the **derivation of inventory variance and supplier-good waste** — the inventories subject owns how usage, deviation, variance, and waste are computed; the supplier-goods subject owns the **budget impact** a good carries. This subject owns the thresholds waste is compared against and the metrics that name it;
 - the **raw sales, order, labour, and inventory data** the inputs are drawn from — the orders, time-control, and inventories subjects own those;
 - the **business profile, currency, and go-live** — the business subject owns those; metrics belong to a business's own configuration but are documented here;
-- **notifications** for report readiness or over-target conditions — the notifications subject owns delivery, and no over-target alert is committed here.
+- **notifications** for report readiness or over-target conditions — the notifications subject owns delivery, and no over-target alert is committed here;
+- the **screen gestures and transition recording** that produce kitchen timings — the printers-and-screens subject owns prep, expo, handoff, deadlines, and recall. This subject defines the metrics and the coverage gate those timestamps feed.
 
 ---
 
@@ -35,6 +37,11 @@ It deliberately does **not** cover:
 - **Supplier-good waste threshold** — the acceptable **waste ceiling** for supplier goods of one **budget-impact level**, expressed as a **percentage of total sales**.
 - **Reporting config** — the venue's reporting-window configuration; it holds the **reporting-week start day**.
 - **KPI** — a named metric the platform publishes, carrying a unit, a good direction, a canonical formula, the dimensions it supports, and a benchmark.
+- **KDS-covered slice** — a fulfilment slice whose `Preparing` **and** `Ready` transitions were both made on a **prep main/sub screen or expo screen**. POS transitions, handoff transitions, the daily close sweep, and slices never worked do **not** count.
+- **KDS coverage** — the share of a period's fulfilment slices that are KDS-covered. It gates the kitchen performance KPIs.
+- **Kitchen ticket time** — average time from `Sent` (or release for a held batch) to `Ready` across KDS-covered slices. The start is the slice's send-or-release moment.
+- **Kitchen station time** — average time from `Preparing` to `Ready` across KDS-covered slices.
+- **Late kitchen ticket** — a KDS-covered slice whose `Ready` time is later than its deadline.
 - **Dimension** — a standard breakdown axis a KPI may be sliced by (for example, category, channel, or daypart). Each KPI declares the dimensions it supports.
 - **Benchmark** — the reference industry range a KPI is read against. It is **reference only**: it informs, and is never policed.
 - **Target comparison** — a metric's **target** against its **actual**, with the **delta** and whether it is over or under target.
@@ -131,6 +138,17 @@ Waste thresholds are **five ceilings**, one per **budget-impact level**, applied
 - A target that has not been set is not compared. Because defaults are seeded at creation (§3.8), a venue begins with every target configured and may still clear any it does not want to police.
 - Only **targets and waste thresholds** are policed. Every other KPI is **read-only** and, where a benchmark exists, is shown against that benchmark **for reference only**.
 
+### 3.4.1 Kitchen performance and KDS coverage
+
+- Kitchen performance metrics are **KDS-derived**. They describe what the kitchen actually did on the screen, not what the POS or the daily close later assumed.
+- A slice is **KDS-covered** only when **both** its `Preparing` and `Ready` transitions were made on a **prep main/sub screen or expo screen**. A POS transition, a handoff transition, a daily-close sweep, and a slice nobody worked do **not** cover it.
+- **KDS coverage** is `(KDS-covered slices / all fulfilment slices in the period) * 100`. The period may be a day, week, or month.
+- **KDS coverage** is always published for a period with fulfilment slices: it is the gate indicator. The timing KPIs — **kitchen ticket time**, **kitchen station time**, **late kitchen tickets**, and **late kitchen ticket rate** — are published only when coverage is **at least 80%** for that period.
+- Below 80%, the report shows **not enough KDS interaction** with the coverage figure, and the timing KPIs produce **no value**. It does not fabricate a timing figure from the few slices that used the screen.
+- A venue that runs printer-only has **zero** KDS coverage and therefore no kitchen performance values. It still receives sales, labour, inventory, and cost metrics.
+- Kitchen performance is **never policed**: it has no target and no waste-threshold-style comparison. It may carry a benchmark only where a credible published range exists; otherwise its benchmark is `—`.
+- The **prep area / station** dimension applies to kitchen performance metrics only.
+
 ### 3.5 Dimensions
 
 Every KPI is expressed for a **period** — a day, a week, or a month — and may be **sliced by dimensions**. The platform's standard dimensions are:
@@ -143,6 +161,7 @@ Every KPI is expressed for a **period** — a day, a week, or a month — and ma
 | **Supplier** | A vendor the venue buys from. |
 | **Employee** | A member of staff. |
 | **Sales point / channel** | The sales point, or the channel: dine-in, self-ordering, kiosk, delivery. |
+| **Prep area / station** | The prep area (kitchen, bar, other) or a named station. It applies to kitchen performance metrics only. |
 | **Daypart** | Breakfast, lunch, dinner, late-night. |
 | **Table / seat** | A sales point of table or seat type. |
 | **Payment method** | The method a bill was paid with. |
@@ -293,6 +312,18 @@ Every cost category is published as an **amount**, as a **percentage of total sa
 | Item food cost % | Percent | Lower | `(itemCost / itemSellingPrice) * 100` | An item's cost over its price. | — |
 | Item theoretical cost | Business currency | — | `recipe cost of one item` | Expected cost of one item. | — |
 | Menu engineering class | Category | — | popularity and margin against the menu average | Star, plowhorse, puzzle, or dog. | — |
+
+#### Kitchen performance
+
+**Dimensions:** period; prep area/station, menu item, channel, daypart. **Gate:** **KDS coverage** always publishes as the gate indicator; every other row in this family publishes only when **KDS coverage is at least 80%** for the period. Below that, those rows produce no value and the report shows **not enough KDS interaction**. **Kitchen ticket time** is a KDS-derived kitchen measure, distinct from the Operations family's **Ticket time** (order to service).
+
+| KPI | Unit | Good direction | Formula | Meaning | Benchmark |
+| --- | --- | --- | --- | --- | --- |
+| KDS coverage | Percent | Higher | `(kdsCoveredSlices / slices) * 100` | Share of fulfilment slices with both `Preparing` and `Ready` set on a prep or expo screen. | — |
+| Kitchen ticket time | Minutes | Lower | `average(readyAt - startAt)` over KDS-covered slices, where `startAt` is send or release | Average send-or-release to `Ready`. | — |
+| Kitchen station time | Minutes | Lower | `average(readyAt - preparingAt)` over KDS-covered slices | Average `Preparing` to `Ready`. | — |
+| Late kitchen tickets | Count | Lower | `count of KDS-covered slices with readyAt > deadline` | KDS-covered slices that missed their deadline. | — |
+| Late kitchen ticket rate | Percent | Lower | `(lateKitchenTickets / kdsCoveredSlices) * 100` | Late kitchen tickets over KDS-covered slices. | — |
 
 #### Operations
 

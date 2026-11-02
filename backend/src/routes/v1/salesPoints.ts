@@ -12,7 +12,7 @@ import mongoose, { Types } from "mongoose";
 import type { ISalesPoint } from "restaurant-pos-packages/interfaces/ISalesPoint";
 
 import SalesPoint from "../../models/salesPoint.ts";
-import { createOptionalAuthHook } from "../../auth/middleware.ts";
+import { createAuthHook } from "../../auth/middleware.ts";
 import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
 import generateQrCode from "../../salesPoints/generateQrCode.ts";
 import {
@@ -195,7 +195,7 @@ export const salesPointsRoutes: FastifyPluginAsync = async (app) => {
   app.delete<{ Params: SalesPointIdParams }>(
     "/:salesPointId",
     {
-      preValidation: [createOptionalAuthHook(app)],
+      preValidation: [createAuthHook(app)],
       schema: { params: salesPointIdParamsSchema },
     },
     async (req, reply) => {

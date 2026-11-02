@@ -17,7 +17,7 @@ import checkPrinterConnection from "../../printers/checkPrinterConnection.ts";
 import Printer from "../../models/printer.ts";
 import Employee from "../../models/employee.ts";
 import SalesPoint from "../../models/salesPoint.ts";
-import { createOptionalAuthHook } from "../../auth/middleware.ts";
+import { createAuthHook } from "../../auth/middleware.ts";
 import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
 import {
   badRequest,
@@ -275,7 +275,7 @@ export const printersRoutes: FastifyPluginAsync = async (app) => {
   app.delete<{ Params: PrinterIdParams }>(
     "/:printerId",
     {
-      preValidation: [createOptionalAuthHook(app)],
+      preValidation: [createAuthHook(app)],
       schema: { params: printerIdParamsSchema },
     },
     async (req, reply) => {

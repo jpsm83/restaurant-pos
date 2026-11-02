@@ -11,29 +11,33 @@ This subject owns **how work leaves the till and how stations see and control it
 - **printers** — logical printers a venue configures, the **print connectors** that reach physical hardware, and the **binding** between them;
 - the **print path** — staff devices talk only to Project Imperium in the cloud; Imperium hands print work to a venue **print connector**; the connector alone reaches the physical printers;
 - the **connector bridge** — its host on the venue PC, per-connector identity and revocation, signed auto-updates, health reporting, the supported printer protocols, and the local connectivity and print queue that keep work flowing;
-- **routing** — which printer and which prep area or station receive a ticket, by category, subcategory, and sales point;
+- **routing** — which printer and which prep area or station receive a ticket, by item, category, subcategory, channel, packaging, and sales point;
 - **backup printers** and what happens when a print fails;
 - **per-employee print permissions** for issuing and reprinting documents;
 - **cash drawers** — the optional physical latch wired to a **receipt printer**'s drawer-kick port, the per-staff **closing receipt printer override**, the **money events** that fire a **drawer kick**, and **manual open**;
 - **prep areas and stations** — configurable main screens and sub-screens for kitchen, bar, and any other prep the venue defines;
-- the **control screens** — kitchen, bar, delivery/runner, and the **customer pickup board** — their gestures, queues, and history; and
+- the **control screens** — prep main and sub-screens, the **expo screen**, the **handoff screen**, and the **customer pickup board** — their gestures, queues, history, timers, and recall; and
 - the **handover scan** surface that reads a self-service **handover QR** or accepts its identification code and advances the selected or whole batch to **Delivered**; and
-- how those surfaces advance **fulfilment status** on each prep-area slice of a batch (the orders subject owns the status model; this subject owns the surfaces and the print path).
+- how those surfaces advance **fulfilment status** on each prep-area slice of a batch (the orders subject owns the status model; this subject owns the surfaces and the print path); and
+- **ticket timing** — the per-slice deadline and elapsed/late display — and **recall**; and
+- the **service output setup** guide that recommends physical screens, printers, bump bars, and routing defaults for a venue.
 
 It deliberately does **not** cover:
 
 - the **order and batch** — composition, send, identification code, **guest allergen flags**, held and don't-make rules, and the fulfilment status vocabulary belong to the orders subject. This subject routes and displays what that subject sends — including a clear **allergen flag** on flagged order lines — and records the station actions that move status.
 - the **sales point** — types, channels, and instances belong to the sales-points-and-instances subject. This subject uses a point as a **routing target** and as the place that names its receipt printer.
-- **business goods and menu structure** — categories and subcategories belong to the business-goods subject. This subject routes by them.
+- **business goods and menu structure** — categories, subcategories, modifiable ingredients, and choice groups belong to the business-goods subject. This subject routes by them and displays the selections the orders subject sends.
 - **billing and payment** — settlement belongs to the payments-and-tax subject.
 - **customer bill and receipt content, numbering, and reprint/replacement identity** — the **receipts-and-bills** subject owns document kinds, required fields, bill and receipt numbers, and when a reprint or replacement applies. This subject **prints** those documents on the sales point's receipt printer, applies the **platform layout** of those required fields, and gates paper issue with **print permission**; it does not invent or omit required content. There is **no venue layout editor** and no optional marketing footer.
 - **cash-out resume and cash-movement receipt content and numbering** — the **employee cash-out** subject owns those documents and when a cash movement is complete. This subject **prints** them on the receipt path (primary then **backup printer**) and raises print-failure when neither can print; movement completion still follows employee cash-out rules when paper fails after backup.
 - the **employee cash session, expected business cash, cash-out, and cash movements** — the **employee cash-out** subject owns those. A cash drawer is hardware and never holds a balance, a wallet, or an obligation; this subject only opens it on the **money events** that subject defines as money movements.
 - the **daily sales report close** — the sales-reports subject owns closing the day; this subject states the fulfilment sweep that close triggers.
 - **notifications and emails** — their subjects own delivery; this subject names the print-failure condition that notifies managers.
-- **courier provider calls and delivery-integration status** — the **delivery-integrations** subject owns the provider catalogue, connection, courier request, handover call, cancellation, retries, and no-handover reconciliation. This subject displays the provider sync state and exposes the retry action on the delivery screen.
+- **courier provider calls and delivery-integration status** — the **delivery-integrations** subject owns the provider catalogue, connection, courier request, handover call, cancellation, retries, and no-handover reconciliation. This subject displays the provider sync state and exposes the retry action on the handoff screen.
 - **hardware sales or lock-in** — Project Imperium sells no printers, screens, PCs, or print-connector hosts and requires no brand; the venue brings what it chooses within the supported printer protocols and the venue-PC host requirement (§3.1.1). Staff browser sessions stay one User each (staff-sessions subject), not a shared printer/screen login.
 - **floor-plan placement** — where a logical printer or screen sits on a venue floor map belongs to the floor-plans subject. This subject owns creating and configuring those devices; a device may exist unplaced until a manager locates it on a floor. **Print connectors** are venue infrastructure and are **not** floor-plan objects.
+- **adhesive label printing** for bags, cups, and packaging — deferred; stage 1 prints prep tickets, receipts, bills, and kiosk handover tickets only.
+- **all-day / production counts** — an aggregated high-volume view across open tickets is deferred; stage 1 shows individual tickets.
 
 ---
 
@@ -49,7 +53,7 @@ It deliberately does **not** cover:
 - **Connector pairing** — the one-time step that attaches a running print connector to a **Business** and issues its own **connector credential**. A manager starts pairing in Project Imperium and completes it on the connector host (for example with a short code); afterwards discovery, print work, health, and success or failure reports flow through that link. Pairing is revocable and re-pairing rotates the credential.
 - **Prep area** — a configurable fulfilment zone (for example kitchen or bar) with one **main screen** and optional **stations**. A batch may produce one **fulfilment slice** per area that receives lines.
 - **Station** (sub-area) — a named prep post under a prep area (for example salad, fry, dessert, cocktail rail) with its own **sub-screen**. Routing may send lines to a station.
-- **Control screen** — an in-app surface opened under a **display lease**: a prep area's **main screen** or **sub-screen**, the **delivery screen**, or the **customer pickup board**. Screens are not registered hardware devices; any internet device may open them.
+- **Control screen** — an in-app surface opened under a **display lease**: a prep area's **main screen** or **sub-screen**, the **expo screen**, the **handoff screen**, or the **customer pickup board**. Screens are not registered hardware devices; any internet device may open them.
 
 ### Terms this subject introduces
 
@@ -66,12 +70,17 @@ It deliberately does **not** cover:
 - **Cellular fallback** — the venue's optional 5G SIM path, used automatically when the primary WAN is unavailable. The connector reports which path is active. A venue without a SIM has no fallback and no cellular-fallback alert.
 - **Print work queue** — the server-side durable queue of print jobs per logical printer, delivered to a connector idempotently after reconnect. It is print work, not an offline product mode, and a failed print never blocks payment.
 - **Backup printer** — another logical printer named as failover for a primary; used automatically when the primary cannot print.
-- **Routing rule** — a rule that matches category and/or subcategory and/or sales point and sends matching lines to a prep area, optional station, and/or prep printer. More specific matches win.
+- **Routing rule** — a rule that matches item, category, subcategory, channel, packaging, and/or sales point and sends matching lines to a prep area, optional station, and/or prep printer. More specific matches win; one line may route to more than one station.
 - **Default prep target** — the venue's required fallback when no routing rule matches a line.
 - **Main screen** — the chef or head-of-area control surface for a prep area; it gates **Preparing** and area **Ready**.
 - **Sub-screen** — a station's control surface; it receives tickets only after the main screen has marked them **Preparing**, and only for lines routed to that station.
-- **Delivery screen** — the runner surface that shows ready work to take out, in time order, with colour by fulfilment state; it also shows the **courier request status**, the **courier handover status**, any **cancellation error**, the last provider error, and a retry action for a connected provider.
-- **Handover scan** — a control-screen action on the POS or delivery screen that reads a self-service **handover QR** (or accepts the identification code as a fallback) and sets the selected Ready slices or the whole batch Delivered. It is not a shared login; it runs under the screen's display lease and attributes to the lease opener.
+- **Expo screen** — the pass control surface that shows a batch across **all** prep-area slices, in time order, with per-slice status, per-item done indicators, deadline, source, table/seat, packaging, allergens, comments, and modifiers. It can mark items and slices done on behalf of a station and set the batch ready for handoff when every slice is `Ready`. It does not touch money or configuration.
+- **Handoff screen** — the surface that shows **ready work** to take out, in time order, with colour by fulfilment state; it also shows the **courier request status**, the **courier handover status**, any **cancellation error**, the last provider error, and a retry action for a connected provider. Expo staff operate it; **runners do not operate screens**. The former delivery screen is this handoff screen.
+- **Handover scan** — a control-screen action on the POS or handoff screen that reads a self-service **handover QR** (or accepts the identification code as a fallback) and sets the selected Ready slices or the whole batch Delivered. It is not a shared login; it runs under the screen's display lease and attributes to the lease opener.
+- **Ticket deadline** — the per-slice target time, equal to the longest preparation time among the slice's lines. It starts at `Sent`, or at release for a held batch. On a control screen the ticket shows elapsed time, remaining time, and a colour bar: normal before 75%, warning at 75%, late at 100%. A printed ticket shows the sent time and the deadline only.
+- **Recall** — the narrow, audited gesture that moves a `Ready` item or ticket back to `Preparing` within the allowed window. The fulfilling station may recall its own item or ticket within 5 minutes; supervisor and above after that and before `Delivered`; managers and above before `Delivered`. `Delivered` never moves backward; the original sent time is kept.
+- **Bump bar** — optional physical keypad at the pass that triggers the same fulfil/recall gestures as the screen. It is not required; touch is recommended but not required.
+- **Service output setup** — the manager-guided flow that asks about prep areas and stations, channels, manual hold usage, daily order volume, delivery share, separate bar, and network/5G availability, then recommends physical screens, printers, bump bar, and routing defaults. The manager may override every recommendation.
 - **Customer pickup board** — a counter-facing display of order codes in pending, in progress, and ready-for-pickup columns for self-pickup, kiosk, and on-premises to-go collection. It is display-only; staff scan on the POS or handover surface.
 - **Display mode** — a locked presentation of the customer pickup board under a display lease, safe to leave facing guests (codes and status only — no prices, names, or payment detail).
 - **Force-ready** — a main-screen choice to mark every open station line on a ticket done and set the area slice **Ready** when sub-screens are still incomplete.
@@ -80,7 +89,7 @@ It deliberately does **not** cover:
 - **Money event** — a closed list of cash-affecting acts that fire a drawer kick (§3.12).
 - **Manual open** — an explicit, audited request to open a bound drawer that is not a sale or other money event.
 
-Terms reused rather than redefined here: **Business**, **Batch**, **Identification code**, **Handover pass**, **Handover QR**, **Fulfilment slice**, **Fulfilment status** (**Sent**, **Preparing**, **Ready**, **Delivered**), **Held batch**, **Don't make**, **guest allergen flags**, **Sales point**, **Menu category**, **Menu subcategory**, **Business good**, **Deadline**, **courier request**, **courier handover**, **delivery method**, **Own delivery**, **managers on duty**, **managers and above**, **soft delete**, and **daily sales report**.
+Terms reused rather than redefined here: **Business**, **Batch**, **Identification code**, **Handover pass**, **Handover QR**, **Fulfilment slice**, **Fulfilment status** (**Sent**, **Preparing**, **Ready**, **Delivered**), **Held batch**, **Don't make**, **guest allergen flags**, **Sales point**, **Channel**, **To-go packaging**, **Menu category**, **Menu subcategory**, **Business good**, **modifiable ingredient**, **choice group**, **choice**, **`No` removal**, **order comment**, **modified line**, **Deadline**, **courier request**, **courier handover**, **delivery method**, **Own delivery**, **managers on duty**, **managers and above**, **soft delete**, and **daily sales report**.
 
 ---
 
@@ -89,18 +98,19 @@ Terms reused rather than redefined here: **Business**, **Batch**, **Identificati
 ### 3.1 Hardware stance
 
 - **Required kit.** An operating venue has a **venue PC** (Windows 10/11 or macOS) running a paired **print connector**, at least one **receipt printer** for each active payment sales point (points may share one), a supported router on a dedicated **POS VLAN** with a **primary WAN**, and the core **UPS**. Project Imperium sells none of it and locks the venue to no brand within the supported printer protocols and PC platforms.
-- **Screens are optional.** Control screens always exist as app pages. A manager opens one under a display lease; using a screen is the venue's choice. The product does not check whether a prep area has a screen, a printer, or either.
+- **Screens are optional hardware, not optional software.** Every control screen always exists as an app page and always shows its work. A manager opens one under a display lease; whether the station has a physical display is the venue's choice. A “printer-only” station has no physical screen, but the software surface is still there and still works in a browser. The product does not enforce or warn about prep-output completeness; the service output setup records what is physically present for onboarding and support.
 - **Prep paper is optional.** The venue chooses whether a prep area uses a printer, a screen, both, or neither. The product offers both and does not enforce output completeness.
 - **Paper is the normal receipt path.** Every active payment sales point has a receipt printer. A print failure **never blocks payment**: the customer pays, may leave without a receipt, and may receive it by email when an address is provided (§3.4).
 - **The venue PC is a shared venue machine.** It may run the POS or back office. The connector is a system service under a dedicated non-admin OS user, starts on boot, and is not a staff session. The PC stays at the venue and is on whenever the venue can receive orders or print.
-- **Printer-only and screens-only prep** are both valid. A venue may run paper at every prep point, screens at every prep point, or any mix; nothing enforces the choice.
+- **Printer-only and screens-only prep** are both valid. A venue may run paper at every prep point, screens at every prep point, or any mix; nothing enforces the choice. The prep screen always shows the area's work; a prep printer receives a ticket only when a routing rule targets it. `Screen` / `Printer` / `Both` describes physical deployment and routing, not a behaviour switch.
+- **Bump bar is optional.** A physical keypad at the pass can trigger the same fulfil and recall gestures. Touch is recommended at the pass but not required; mouse, trackpad, and bump bar all work.
 - **Staff identity** is the **signed-in User** on that browser session — personal or venue-provided device (staff-sessions subject). Printers, screens, and print connectors are output, control, or bridge surfaces — not a shared staff login, PIN, or quick-switch.
 - **Control screens** always exist in the product. A manager opens a screen by granting it a **display lease**; connecting a dedicated display at a location is optional and does not change the service flow. The lease is a device grant, not a person's staff session.
 
 #### 3.1.1 Connector host, supported printers, and local connectivity
 
 - **Host.** A **print connector** runs on a **venue PC** — a laptop or desktop running Windows 10/11 or macOS — that the venue owns. The PC may also run the POS or back office, must stay at the venue, and must be on whenever the venue can receive orders or print. The connector is a **system service** under a dedicated non-admin OS user, starts on boot, and keeps running when staff sign out or close apps. Sleep is disabled; OS updates are scheduled outside service; the venue applies the antivirus exclusion guide. The venue supports the PC's hardware and OS; Project Imperium supports the connector only. ChromeOS and Linux are not supported hosts.
-- **Supported printers.** Project Imperium supports printers that speak standard receipt and label protocols over USB or the local network — for example ESC/POS, Star Line Mode, ZPL, ePOS, and raw network/USB. For printers in different areas, network printers are preferred; a USB printer is served by the PC it is plugged into. Printers that work only through a vendor's OS driver, and certified fiscal devices, are **out of scope**. A manufacturer cloud-print target remains an optional physical target under the same binding model. The connector may use the OS spooler in raw/passthrough mode; it does not depend on vendor rendering.
+- **Supported printers.** Project Imperium supports printers that speak standard receipt and label protocols over USB or the local network — for example ESC/POS, Star Line Mode, ZPL, ePOS, and raw network/USB. For printers in different areas, network printers are preferred; a USB printer is served by the PC it is plugged into. Printers that work only through a vendor's OS driver, and certified fiscal devices, are **out of scope**. A manufacturer cloud-print target remains an optional physical target under the same binding model. The connector may use the OS spooler in raw/passthrough mode; it does not depend on vendor rendering. Supporting a label-capable protocol does **not** add adhesive label printing; that feature is deferred (§3.5).
 - **Screens and staff devices.** Screens and staff devices reach the cloud over the venue router's **WiFi** or cable. A wired connection is allowed but never required. Bluetooth is a short-range peripheral link, **never** an internet uplink.
 - **Router and POS network.** The venue uses a **supported router** from Project Imperium's list, configured from the onboarding guide. It must support WiFi, a **dedicated POS SSID/VLAN** separate from guest WiFi, and a **primary WAN** that passes the onboarding test (10 Mbps down / 2 Mbps up / under 100 ms round-trip). The venue PC, printers, screens, and staff devices use the POS network; guest devices use the separate guest network. The venue supplies the router and pays for its internet and any SIM data; Project Imperium sells none of it.
 - **Optional cellular fallback.** A **5G-capable SIM** in the router is **recommended but optional**. When present, it is automatic failover behind the primary WAN; 5G is preferred, and 4G LTE is acceptable where 5G is unavailable. A venue without a SIM has no fallback. A 5G-only venue is not supported: the primary WAN is required. No spare router is required; the venue sizes its data plan and owns carrier cap alerts.
@@ -169,10 +179,19 @@ flowchart LR
 
 ### 3.3 Prep areas, stations, and routing
 
-- Under business configuration, the venue defines named **prep areas** and optional **stations**, each area's main and sub-screens, and **routing rules** from category, subcategory, and sales point to area, station, and prep printer. Suggested defaults (for example Kitchen and Bar) are offered; they are not mandatory.
+- Under business configuration, the venue defines named **prep areas** and optional **stations**, each area's main and sub-screens, and **routing rules** from item, category, subcategory, channel, packaging, and sales point to area, station, and prep printer. Suggested defaults (for example Kitchen and Bar) are offered; they are not mandatory.
 - On send, a batch may produce a **fulfilment slice** for each prep area that receives at least one line. Food and drinks (and any other configured areas) run on **independent timelines**: drinks may become Ready and Delivered while food is still Preparing.
 - Set-menu components follow each component's category into the right area. Lines that need no prep create no slice.
-- Routing uses **most specific rule wins**. One batch may fan out across areas and stations. Unmatched prep lines use the venue's **default prep target**.
+- Routing uses **most specific rule wins**. One batch may fan out across areas and stations, and one line may route to more than one station. Unmatched prep lines use the venue's **default prep target**.
+- **Routing and physical output are separate.** A route decides where work goes and whether a prep printer receives a ticket; it does not decide whether the screen exists. The screen always shows the area's work.
+
+#### 3.3.1 Service output setup
+
+- A manager opens a guided **Service output setup** flow once per venue, and may rerun it when the menu or station layout changes.
+- It asks: number of prep areas and stations; whether a bar is separate; channels in use (dine-in, self-ordering, kiosk, delivery); whether held batches are used; daily order volume; delivery share; and whether the venue has a 5G SIM and UPS.
+- It recommends physical screens, prep printers, a bump bar, and routing defaults, and produces a printable buying checklist. It does **not** require any recommendation: the manager may override every choice.
+- The guide records which prep areas and stations have a physical screen, whether a prep printer is bound, and whether a bump bar is present. That record is for onboarding, support, and report coverage; it is **not** a behaviour switch. The screen always works, and a printer prints only when a route targets it.
+- The guide never gates go-live and never turns a screen or printer into a service requirement. It exists to make the hybrid choice concrete instead of leaving the venue to guess.
 - **Receipt and bill printing** does not use prep routing: each sales point (including kiosk and delivery as needed) names which **receipt printer** it uses. Kiosk handover tickets print on that point's receipt printer.
 
 ### 3.4 Backup printers and print failure
@@ -190,44 +209,66 @@ flowchart LR
 - Prep paper is optional per route; the control screens always show the work. Customer documents print on the sales point's receipt printer. A failed print is retried and alerted and never blocks payment.
 - Customer bill and receipt **content and numbering** come from the receipts-and-bills subject. This subject owns **paper presentation only**: a fixed **platform layout** of the required fields on the sales point's receipt printer. Venues do **not** design templates, reorder fields, or add optional marketing content. A paper **reprint** of an unchanged bill or receipt keeps that subject's number and reprint mark; layout still follows current routing and backup rules and is audited. Screens and email show the **same required content** (receipts-and-bills); screens re-show work from **history** rather than reprinting.
 - On **prep tickets** and **prep control screens**, every order line that carries **guest allergen flags** shows a clear **allergen flag** together with the allergen names on that line. Unflagged lines on the same ticket or screen look normal — one batch, one identification code, no separate allergen-only ticket. The orders subject owns the flags; this subject owns making them unmistakable at the station.
+- Every prep ticket and control-screen ticket shows a **mandatory core** of fields: identification code, **order source/channel**, **packaging** (stay / to-go), **sent time**, **deadline and remaining time**, **guest allergen flags**, **order comments**, and **modifier selections** (`No` removals and choices). Modified lines are marked as modified.
+- Optional per-venue fields are **table/seat**, **server/creator**, **guest count**, **payment status**, and **customer name** where the channel provides it. They are configuration, not per-ticket discretion.
+- A **control-screen ticket** carries the live **ticket timer**: elapsed and remaining time against the slice deadline, with a colour bar. Warning is at **75%**; late is at **100%**. A **printed prep ticket** shows the sent time and the deadline, not a live timer. The deadline is the longest preparation time among the slice's lines; `No` removals and choices do not change it.
+- Adhesive **label printing** for bags, cups, and packaging is deferred; stage 1 prints prep tickets, receipts, bills, and kiosk handover tickets only.
 
 ### 3.6 Control screens — shared behaviour
 
 - A control screen runs under a **display lease**: a route- and action-scoped device grant that a manager opens on the device at that location. Any user allowed on that screen kind may then use it under the lease. The lease is **not a staff session** and authenticates **no person**.
-- **Scope.** A lease allows only its screen kind and that screen's **history/reprint** surfaces. It cannot reach money, refunds, configuration, connectors, printers, or any other route.
+- **Scope.** A lease allows only its screen kind, that screen's **history/reprint** surfaces, and its allowed **fulfilment and recall** gestures. It cannot reach money, refunds, configuration, connectors, printers, or any other route.
 - **Lifetime.** A lease survives the manager signing out and does not expire mid-service. It ends when a manager closes it, the manager is deactivated, the device is unpaired, or a manager revokes it from Manage.
 - **Navigation.** Leaving the allowed routes shows a **lock** that requires manager re-authentication; it does **not** kill the lease, so an accidental back-swipe cannot stop the pass. The screen keeps working once the manager unlocks or the blocked route is left.
 - **Revocation.** Managers can list and revoke active leases for the business. A deactivated manager's leases end.
-- **Attribution.** Actions taken under a lease are recorded against the **lease opener** and the fact they were made under a lease. Force-ready remains unaudited (§3.7). Whoever physically taps the device is still the opener's responsibility.
-- Gestures are **single-click** and **double-click** (or the equivalent pointer actions). Touch hardware is recommended at the pass but **not required**; mouse or trackpad works so venues that skip dedicated screens are not blocked.
-- Every control screen has a **history** view to **look up and reprint** tickets already seen. History does **not** reverse fulfilment status, send work backward, or undo a station step — fulfilment is **forward-only** (realtime-and-concurrency; ADR-0006). Wrong lines are corrected on the order/bill path (void, cancel, don't-make — orders subject), not by moving a slice backward.
+- **Attribution.** Actions taken under a lease are recorded against the **lease opener** and the fact they were made under a lease. Recall is audited; force-ready remains unaudited (§3.7). Whoever physically taps the device is still the opener's responsibility.
+- Gestures are **single-click** and **double-click** (or the equivalent pointer actions). Touch hardware is recommended at the pass but **not required**; mouse, trackpad, or an optional **bump bar** works so venues that skip dedicated screens are not blocked.
+- Every control screen has a **history** view to **look up and reprint** tickets already seen. History does **not** reverse fulfilment status by itself; the one exception is the **recall** gesture, which moves `Ready` back to `Preparing` within the allowed window and is audited (ADR-0015). `Delivered` never moves backward. Wrong lines are corrected on the order/bill path (void, cancel, don't-make — orders subject).
 - **Held** batches appear at the end of the relevant queue, visually distinct, and are **not activatable** until released from the tab (release stays on the tab, as the orders subject defines).
-- Batches whose orders are all **don't make** never appear on prep or delivery screens.
+- Batches whose orders are all **don't make** never appear on prep, expo, or handoff screens.
 
 ### 3.7 Kitchen and bar main and sub-screens
 
 - Each prep area has one **main screen**. Optional **sub-screens** follow the chef or head of bar.
-- Ready-to-make tickets appear on the **main screen** when the batch is sent. A **single-click** marks the area slice **Preparing**. A ticket appears on a **sub-screen** only after that Preparing action, and only if it has lines for that station. Flagged allergen lines remain visually distinct on main and sub-screens (§3.5).
+- Ready-to-make tickets appear on the **main screen** when the batch is sent. A **single-click** marks the area slice **Preparing**. A ticket appears on a **sub-screen** only after that Preparing action, and only if it has lines for that station. Flagged allergen lines and modified lines remain visually distinct on main and sub-screens (§3.5).
 - On a sub-screen, **double-click** marks that station's lines done. Many tickets may be Preparing at once. The main screen shows a **per-line done indicator** for station work.
 - The main screen **double-click** sets the area slice **Ready** only when every sub-line for that ticket is done — or when the ticket has no station lines. If subs are still open, the main offers a choice: **wait**, or **force-ready** (mark all remaining station lines done and set Ready). Force-ready needs **no reason and is not audited**.
+- Every **on-screen** ticket shows the **deadline and timer** (§3.5), the mandatory core fields, and the optional fields the venue configured.
+- **Recall** is available on the main and sub-screens: within **5 minutes**, the fulfilling station may move its own `Ready` item or ticket back to `Preparing`; supervisor and above may recall after that and before `Delivered`; managers and above before `Delivered`. `Delivered` never moves backward. The original sent time is kept, so a recalled ticket shows late. Recall is audited.
 - The same main/sub pattern applies to every prep area the venue configures (kitchen, bar, merchandise counter, and so on).
 
-### 3.8 Delivery screen, handover scan, and customer pickup board
+### 3.8 Expo screen, handoff screen, handover scan, and customer pickup board
 
-- The **delivery screen** lists work in time order. Colours distinguish still preparing, ready to run, and done. For **delivery**, the batch is **whole-batch**: the Delivered action is blocked until every slice is Ready, then one action marks the whole batch Delivered and removes it from the queue. For dine-in and to-go runner work, a **Ready slice** may be marked Delivered on its own so early drinks do not wait for food.
-- When the Business uses a connected **courier provider**, the delivery screen shows the **courier request status** (requested, failed, not connected, own delivery), the **courier handover status**, any **cancellation error**, the last error, and a **retry** action. A failed provider call never blocks the Delivered action.
+#### Expo screen
+
+- The **expo screen** is the pass-side coordination surface. It shows a batch across **every** prep-area slice, in time order, with per-slice status, per-item done indicators, the ticket timer, order source, table/seat, packaging, allergens, comments, and modifiers.
+- Expo can **mark items and slices done** on behalf of a station, set a slice `Preparing` or `Ready` under the same entitlements, and set the batch ready for handoff when every slice is `Ready`. It can **recall** within the same 5-minute window and role rules as a prep screen. It cannot touch money, refunds, or configuration.
+- The expo is a **separate screen kind** from the prep main/sub screens and from the handoff screen. In most venues it runs on the same physical device as handoff; a large venue may open both at once.
+- **Runners do not operate the expo.** Expo staff coordinate production and record handoff.
+
+#### Handoff screen
+
+- The **handoff screen** lists work in time order, with the same ticket timer and core fields as the prep and expo screens. Colours distinguish still preparing, ready to run, and done. For **delivery**, the batch is **whole-batch**: the Delivered action is blocked until every slice is Ready, then one action marks the whole batch Delivered and removes it from the queue. For dine-in and to-go work, a **Ready slice** may be marked Delivered on its own so early drinks do not wait for food.
+- When the Business uses a connected **courier provider**, the handoff screen shows the **courier request status** (requested, failed, not connected, own delivery), the **courier handover status**, any **cancellation error**, the last error, and a **retry** action. A failed provider call never blocks the Delivered action.
 - A venue with **Own delivery** shows no provider status and makes no provider calls; staff mark Delivered when they hand the batch to their own courier.
-- The **handover scan** reads a self-service **handover QR** on the POS or delivery screen. **QR self-ordering** allows staff to select only the items whose slices are Ready; the pass remains usable for later scans. **Kiosk** and **delivery** hand over the whole batch after every slice is Ready. If the QR cannot be read, staff enter the identification code. A manager and above may override a missing pass; the override is recorded.
+- The handoff screen may be opened on the same device as the expo screen or on a second device. It runs under a display lease and is operated by expo staff, not runners.
+
+#### Handover scan
+
+- The **handover scan** reads a self-service **handover QR** on the POS or handoff screen. **QR self-ordering** allows staff to select only the items whose slices are Ready; the pass remains usable for later scans. **Kiosk** and **delivery** hand over the whole batch after every slice is Ready. If the QR cannot be read, staff enter the identification code. A manager and above may override a missing pass; the override is recorded.
+
+#### Customer pickup board
+
 - The **customer pickup board** is opened under a display lease and left in **display mode** on a counter device. Guests do not log in. It shows order **identification codes** in columns for pending, in progress, and ready for pickup — progressive as slices become Ready, and complete when slices are Delivered. It shows no prices, guest names, or payment detail. It is display-only; scanning happens on the POS or handover surface.
 
 ### 3.9 Advancing status without screens
 
-- Control screens are the preferred surface. The **POS** may also set a slice Preparing, Ready, or Delivered under the same entitlements, so printer-only or manual-calling venues keep a normal service flow.
-- A venue may run delivery with **no screens at all**. The **courier request** is raised at batch send and does not depend on a screen. No **courier handover** call is raised without a staff handover action (delivery screen or POS); the provider's own app records pickup and the daily close completes the batch. The delivery screen status is simply absent rather than blocking service.
+- Control screens are the preferred surface. The **POS** may also set a slice Preparing, Ready, or Delivered under the same entitlements, so printer-only or manual-calling venues keep a normal service flow. POS transitions do **not** count as KDS-driven for kitchen performance coverage.
+- A venue may run delivery with **no screens at all**. The **courier request** is raised at batch send and does not depend on a screen. No **courier handover** call is raised without a staff handover action (handoff screen or POS); the provider's own app records pickup and the daily close completes the batch. The handoff status is simply absent rather than blocking service.
 
 ### 3.10 Daily close sweep
 
-- When the **daily sales report closes**, every fulfilment slice for that business day that is not yet **Delivered** is moved to **Delivered** (advancing through Preparing and Ready as needed) so queues are clear. The sales-reports subject owns the close; this subject owns that fulfilment consequence.
+- When the **daily sales report closes**, every fulfilment slice for that business day that is not yet **Delivered** is moved to **Delivered** (advancing through Preparing and Ready as needed) so queues are clear. The sales-reports subject owns the close; this subject owns that fulfilment consequence. A slice completed only by this sweep is **not** KDS-covered for kitchen performance.
 
 ### 3.11 Printer lifecycle
 
@@ -261,9 +302,9 @@ flowchart LR
 | Layer | Printer and screen powers |
 | --- | --- |
 | **Customer** | Sees own order readiness on customer surfaces and the public-facing pickup board codes; never configures devices or routing. |
-| **Employee** | Uses the control screens their job role or capability allows under a display lease; runs prep, delivery, handover-scan, and history gestures on those screens; retries a failed courier request or handover on the delivery screen; prints and reprints only with **print permission**; may open a bound cash drawer manually (audited). |
-| **Supervisor** | Uses any Service control screen by default (prep, delivery, pickup) under a display lease; scans a handover pass and retries a failed courier call; prints and reprints with print permission by layer default; may open a bound cash drawer manually (audited). Does not configure connectors, printers, routing, or grant print permissions; does not override a missing handover pass. |
-| **Manager** | Everything a supervisor can do, plus pairing and revoking connectors, granting and revoking display leases, configuring logical printers, bindings, backups, prep areas, stations, routing, print permissions, and a staff member's **closing receipt printer override**; and opening any control screen (including the pickup board in display mode). May override a missing handover pass with a recorded override. Receives print-failure, connector-offline, cellular-fallback (venues with a SIM), and delivery-integration-failure alerts when on duty. |
+| **Employee** | Uses the control screens their job role or capability allows under a display lease; runs prep, expo, handoff, handover-scan, recall, and history gestures on those screens; retries a failed courier request or handover on the handoff screen; prints and reprints only with **print permission**; may open a bound cash drawer manually (audited). |
+| **Supervisor** | Uses any Service control screen by default (prep, expo, handoff, pickup) under a display lease; scans a handover pass, retries a failed courier call, and recalls after a station's 5-minute window and before `Delivered`; prints and reprints with print permission by layer default; may open a bound cash drawer manually (audited). Does not configure connectors, printers, routing, or grant print permissions; does not override a missing handover pass. |
+| **Manager** | Everything a supervisor can do, plus pairing and revoking connectors, granting and revoking display leases, configuring logical printers, bindings, backups, prep areas, stations, routing, print permissions, the **service output setup** guide, and a staff member's **closing receipt printer override**; and opening any control screen (including the pickup board in display mode). May recall before `Delivered` and override a missing handover pass with a recorded override. Receives print-failure, connector-offline, cellular-fallback (venues with a SIM), and delivery-integration-failure alerts when on duty. |
 | **Admin/owner** | Everything a manager can do, with full venue control. |
 
 ### Who can do what
@@ -278,14 +319,18 @@ flowchart LR
 | Grant per-employee print permissions | Managers and above |
 | Issue or reprint receipts, bills, kiosk tickets, and prep tickets | Users with **print permission** (supervisor layer and above always; employees when granted) |
 | Use kitchen / bar (or other area) main and sub-screens under a manager-granted display lease | Job roles for that area; supervisors; managers and above; employees with the granting capability |
-| Use the delivery screen under a manager-granted display lease | Runner / service roles that deliver; supervisors; managers and above; employees with the granting capability |
+| Use the **expo screen** under a manager-granted display lease | Head Chef, Sous Chef, line/prep roles, supervisors, managers and above; employees with the granting capability |
+| Use the **handoff screen** under a manager-granted display lease | Expo staff, supervisors, managers and above; employees with the granting capability. Runners do not operate it. |
 | Use the customer pickup board and display mode under a manager-granted display lease | Supervisors; managers and above; employees granted the capability |
 | Single-click Preparing; double-click station done; main Ready; force-ready | Users allowed on that area's screens under a display lease (attributed to the lease opener) |
-| Double-click Deliver on a Ready slice (dine-in / to-go runner work) | Users allowed on the delivery screen |
-| Mark a delivery batch Delivered as a whole after every slice is Ready | Users allowed on the delivery screen or POS |
+| Mark items/slices done or set the batch ready from the expo screen | Users allowed on the expo screen under a display lease |
+| Recall a `Ready` item or ticket to `Preparing` | The fulfilling station within 5 minutes; supervisor and above after that and before `Delivered`; managers and above before `Delivered` |
+| Double-click Deliver on a Ready slice (dine-in / to-go work) | Users allowed on the handoff screen |
+| Mark a delivery batch Delivered as a whole after every slice is Ready | Users allowed on the handoff screen or POS |
 | Scan a handover QR or enter the identification code at handover | Users allowed on the handover surface |
 | Override a missing handover pass and mark Delivered | Managers and above (recorded) |
-| Retry a failed courier request or courier handover | Users allowed on the delivery screen; managers and above |
+| Retry a failed courier request or courier handover | Users allowed on the handoff screen; managers and above |
+| Run the service output setup guide and accept or override its recommendations | Managers and above |
 | View / reprint from station history | That station's staff for their tickets; managers and above for any |
 | Advance fulfilment status from the POS | Same entitlements as the matching screen action |
 | Receive print-failure, connector-offline, cellular-fallback (venues with a SIM), and delivery-integration-failure notifications | Managers on duty (else all manager-layer users for the business) |

@@ -95,8 +95,8 @@ Stage 1 uses **no exclusive editor lock**. Two staff may open the same staff tab
 
 ### 3.7 Fulfilment and handover
 
-- Advancing a fulfilment slice (Sent → Preparing → Ready → Delivered) is **forward-only**. Same-attempt replay and a client that applies a status the slice **already holds** succeed as success / no-op.
-- An **invalid or backward** jump is a lifecycle block. There is **no** audited reverse mutation — prep history is view/reprint only (printers-and-screens).
+- Advancing a fulfilment slice (Sent → Preparing → Ready → Delivered) is **forward-only**, with one narrow exception: the audited **recall** gesture may move `Ready` back to `Preparing` within the allowed window (ADR-0015). Same-attempt replay and a client that applies a status the slice **already holds** succeed as success / no-op.
+- Except for recall, an **invalid or backward** jump is a lifecycle block. `Delivered` never moves backward, and prep history is otherwise view/reprint only (printers-and-screens).
 - Different slices of the same batch remain independent (orders subject).
 - A **handover pass** scan is a same-attempt act. Two devices scanning the same pass at once: the first successful scan applies to the items it selected; the second sees the updated batch and applies only to items still Ready and undelivered. Already-delivered items are a **no-op**, never a second delivery.
 - **QR self-ordering** handover is cumulative: later scans may deliver remaining Ready items under the same pass. **Kiosk** and **delivery** handover is whole-batch: the first successful action marks the batch Delivered; a concurrent second action is a no-op.
@@ -108,7 +108,7 @@ Stage 1 uses **no exclusive editor lock**. Two staff may open the same staff tab
 - A **courier request**, **courier handover**, and **courier cancellation** are idempotent per delivery batch and action. A same-attempt retry returns the same outcome and the same **external delivery reference**; it never dispatches a second courier or sends a second handover.
 - A request and a cancellation racing on the same batch resolve in server commit order. Cancellation before the request means no request is sent; request before cancellation means the cancellation is sent for that external delivery. There is no silent dual success.
 - Provider retries use the same idempotency identity as the original attempt. A provider timeout does not create a second logical delivery; the platform records the attempt and retries under the same identity.
-- Provider state is **not** live inbound truth in stage 1. The delivery screen shows the platform's last known sync state; the provider's own app remains authoritative for pickup and last mile.
+- Provider state is **not** live inbound truth in stage 1. The handoff screen shows the platform's last known sync state; the provider's own app remains authoritative for pickup and last mile.
 
 ### 3.9 Stock, inbox, and other live domains
 

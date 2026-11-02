@@ -10,7 +10,8 @@ This subject covers the **sellable menu item**: what a venue offers for sale, ho
 
 - the good's **identity** — name, keyword, main category and subcategory, description, and images;
 - the **kinds of business good** — simple items, recipe-based items, and combos / set menus;
-- the **components** a good is built from — its ingredients and, for a combo, its members;
+- the **components** a good is built from — its ingredients and, for a combo, its members — including which ingredients are **modifiable**;
+- the **choice groups** a good offers (for example `Doneness`);
 - the good's **derived cost** and **derived allergens**;
 - **guest-facing allergen display** and **allergen menu filtering** (what is shown and what the filter hides);
 - the good's **selling price**;
@@ -24,7 +25,7 @@ It deliberately does **not** cover:
 - the **supplier good** — the purchasable item, its unit of stock, purchase unit, price math, budget impact, its own allergens, par level and minimum required, in-use state and deletion belong to the supplier-goods subject. A business good is built from supplier goods, but owns neither those goods nor their prices.
 - **stock on hand and counting** — the system count, physical counts, deviation, variance and monthly close belong to the inventories subject. This subject only *reads* the stock a component needs before a good can be sold; it never counts stock.
 - **buying and receiving** — the purchase record, its lines, and the inventory increment on receipt belong to the purchases subject.
-- **ordering, billing and fulfilment** — the order lifecycle, how an add-on is attached to an order at the till, **guest allergen flags** on an order, and the service surfaces belong to the orders and order-flow subjects; billing and settlement belong to the payments-and-tax subject. This subject defines the sellable item those orders point at and how the menu filter behaves; order-flow places when staff or guests use the filter on a journey.
+- **ordering, billing and fulfilment** — the order lifecycle, how an add-on, a **`No` removal**, or a **choice** is attached to an order at the till, **guest allergen flags** on an order, and the service surfaces belong to the orders and order-flow subjects; billing and settlement belong to the payments-and-tax subject. This subject defines the sellable item those orders point at and how the menu filter behaves; order-flow places when staff or guests use the filter on a journey.
 - **promotions** — the discount rules and their scoping belong to the promotions subject. This subject owns the **menu subcategories** a promotion may target and the rule that a discount lands on the **main good**, never on an add-on.
 - the **business**, its **currency**, and its **tax rates** — the business and payments-and-tax subjects own them. A good prices in the single currency of its business and carries a **tax category**; the **rates** behind that category, and how tax is computed on a sale, belong to the payments-and-tax subject.
 - **targets, margins, and reports** — the business-metrics and business-reports subjects own them. This subject carries no margin, markup, or cost target.
@@ -40,7 +41,7 @@ It deliberately does **not** cover:
 
 ### Entities
 
-- **Business good** — a **sellable menu item**. A business good belongs to **exactly one Business** and is **never shared across venues**; another venue's menu is invisible to it. Every business good is built from **components**, from which its **cost** and **allergens** are derived. It carries its own name, keyword, category and subcategory, description, images, selling price, availability, preparation time, and **tax category**.
+- **Business good** — a **sellable menu item**. A business good belongs to **exactly one Business** and is **never shared across venues**; another venue's menu is invisible to it. Every business good is built from **components**, from which its **cost** and **allergens** are derived. It carries its own name, keyword, category and subcategory, description, images, selling price, availability, preparation time, **tax category**, and the **choice groups** it offers.
 
 ### The kinds of business good
 
@@ -55,6 +56,9 @@ A good is exactly **one** of these kinds, determined by its components — never
 - **Component** — a part a business good is built from, together with the quantity needed. A component is a **supplier good** for a simple or recipe-based item, or a **member business good** for a combo.
 - **Ingredient** — a supplier good used as a component of a simple or recipe-based item, with the quantity the item needs and the measurement unit it is expressed in.
 - **Member** — a business good used as a component of a combo, with the quantity the combo includes. A combo's members are **business goods only**; a member may never itself be a combo.
+- **Modifiable ingredient** — an **ingredient line** on a recipe-based good that the venue marks as removable with a **`No`** selection at order time. The flag is stored on the component line when the good is created or edited. A simple item has none. A combo inherits the flags of its member goods.
+- **Choice group** — a venue-defined, reusable group of labels a good offers at order time (for example `Doneness`: rare, medium rare, medium, medium well, well done). A group is **single-select** and may be **required** or **optional**. A choice has **no** price, cost, inventory, allergen, or preparation-time effect. A good may offer several groups; a combo inherits its members' groups and may also define its own.
+- **Choice** — one label inside a choice group, selected on an order line.
 - **Derived cost** — the good's cost to the business, computed **live** from its components' current prices and summed up the chain. It is **read-only** and never entered by hand.
 - **Selling price** — what the venue charges for the good, set freely by the venue in the **business currency**. It is **tax-inclusive**: it already contains the good's tax, which the payments-and-tax subject draws out.
 - **Tax category** — the category a good is taxed under, chosen from the **goods tax categories** the payments-and-tax subject owns (Food, Non-alcoholic drinks, Alcoholic drinks, Merchandise, Tobacco — never **Tip**, which rates tips alone). Every good maps to exactly one. Gift-card funding is not a business good. The **Alcoholic drinks** category is also the **signal** for the self-channel alcohol age gate owned by the privacy, consent, and DSAR subject and enforced on self-service journeys by the order-flow subject.
@@ -91,6 +95,15 @@ A business keeps its own menu of business goods.
 - A supplier good sold on its own inside a group is represented by its own **simple item**; a combo never points straight at a supplier good.
 - **Variants are separate goods.** Project Imperium carries no size or portion variant: a different size is its own business good with its own components and selling price (a small fries and a large fries are two goods).
 
+#### 3.2.1 Modifiable ingredients and choice groups
+
+- A **recipe-based item** may mark any of its **ingredient lines** as **modifiable**. The flag is stored on the component line when the good is created and may be edited later by managers and above. A **simple item** has no modifiable ingredients. A **combo** inherits the flags of its member goods; the combo itself carries no separate ingredient line.
+- Only a flagged ingredient may be removed with a **`No`** selection at order time. The order subject owns the selection; this subject owns which ingredients can be selected.
+- Removing an ingredient **never changes the good's selling price, derived cost, derived allergens, or preparation time** here. The order subject records the reduced cost and inventory effect of that sold line (ADR-0014). The good's **derived cost** remains the full recipe; availability remains based on the **full recipe**, so a `No` selection never makes a Sold out good orderable.
+- **Choice groups** are configuration, not add-ons. The venue builds a reusable **choice group** with its choices, marks it **required** or **optional**, and assigns it to goods. A good may offer several groups; a combo inherits its members' groups and may define its own.
+- A **choice** is a label only. It has **no** price, cost, inventory, allergen, or preparation-time effect. It is not a supplier good, not a component, and not an add-on.
+- **Add-ons remain priced goods** on the venue-wide add-on list. “Extra cheese” is an add-on; “no cheese” is a `No` removal; “medium rare” is a choice. The three are not interchangeable.
+
 ### 3.3 Derived cost
 
 - A good's **cost** is the sum of its components' costs:
@@ -100,6 +113,7 @@ A business keeps its own menu of business goods.
 - Cost is **derived and read-only** — the venue never enters it, and a client never sets it.
 - Cost is **live**: when a supplier good's price changes, the cost of every good made from it updates; when a member's cost changes, every combo containing it updates. A good always reflects **today's** prices and never a stale snapshot.
 - The good carries **one current cost** and **no cost history**; historical prices live on the purchase records made with the supplier goods.
+- The **derived cost here is the full recipe**. When an order line removes a modifiable ingredient with **`No`**, the orders subject records that sold line's **reduced cost** and inventory use (ADR-0014); the good's own derived cost does not change.
 
 ### 3.4 Selling price
 
@@ -115,6 +129,7 @@ A business keeps its own menu of business goods.
   - a **combo** presents the union of its members' allergens, rolled up through them.
 - The venue **never enters or edits** allergens on the business good; they are **live**, following the supplier goods they originate from. Each supplier good owns its own declaration; this subject only presents the union.
 - Stage 1 models **declared contains** only. There is **no** “may contain”, precautionary labelling, cross-contamination guarantee, or allergen outside the canonical set.
+- An order-time **`No` removal** never changes a good's derived allergens or guest-facing allergen list. Removing cheese does **not** remove Milk from the display. This is a deliberate conservative rule: a removal request is not an allergy guarantee (ADR-0014).
 
 #### Guest-facing display
 
@@ -154,6 +169,7 @@ Every good carries an availability state of **Available**, **Sold out**, or **Ma
 - An add-on can be sold out or 86'd like any other good; its state follows the same rules and is **live**.
 - A **promotion applies to the main good only** and never to an add-on line.
 - Because the list is global, removing a main good from the menu never leaves a dangling add-on configuration.
+- An add-on is **not** a choice group and **not** a modifiable ingredient. It is a priced good, so it changes the amount charged and the inventory; a choice is a label only, and a `No` removal reduces cost and inventory without changing the price.
 
 ### 3.9 Categories and menu groups
 
@@ -166,6 +182,7 @@ Every good carries an availability state of **Available**, **Sold out**, or **Ma
 
 - Every good carries a **preparation time**, **required at creation**, in minutes — the time the kitchen or bar needs to prepare it.
 - It is editable later by managers and above, and feeds the venue's fulfilment and delivery timing.
+- A **choice** or a **`No` removal** does **not** change the preparation time or the ticket deadline.
 
 ### 3.11 Deletion
 
@@ -176,6 +193,7 @@ Every good carries an availability state of **Available**, **Sold out**, or **Ma
   If either holds, deletion is **blocked** and the venue is told what to clear first.
 - A **promotion never blocks deletion**: a promotion targets a subcategory, not a good, so a good may be deleted while a promotion covers it, and the promotion simply stops covering what is gone.
 - Being on the **global add-on list does not block deletion**: deleting such a good simply removes it from the list.
+- A **choice group** may be soft-deleted only when no active good assigns it; otherwise deletion is blocked and the venue is told which goods still use it. Past orders keep their chosen labels as history.
 - Deleting a good removes it from the menu and from selection; its **past orders and reports remain as history**.
 - Deleting a good the venue will never sell again is a **deliberate act**, distinct from merely taking it off the menu.
 
@@ -193,10 +211,10 @@ Business goods are menu configuration. Customers see only what is published and 
 
 | Layer | Business-good powers |
 | --- | --- |
-| **Customer** | Sees **on-menu** goods with public details (name, images, description, category, selling price, **derived allergens**, preparation time, and **availability state**). Sees sold-out and manually unavailable on-menu goods labelled and not orderable. Never sees off-menu goods, and never cost. May use the **allergen menu filter**. |
-| **Employee** | Sees the on-menu catalogue with availability states; may use the **allergen menu filter** on the POS; may mark a good **manually unavailable** and clear the mark if granted the capability, subject to the component rule. Never sees cost. |
-| **Supervisor** | Same as employee for menu view, filter, and 86 (capability required for manual unavailability unless granted). Never sees cost; does not author the menu. |
-| **Manager** | Creates, edits, prices, and deletes goods; composes recipes and combos; sets categories, images, keyword, description, and preparation time; flags add-ons; marks goods on or off menu; and manages availability. Sees cost. |
+| **Customer** | Sees **on-menu** goods with public details (name, images, description, category, selling price, **derived allergens**, preparation time, **choice groups**, and **availability state**). Sees sold-out and manually unavailable on-menu goods labelled and not orderable. Never sees off-menu goods, and never cost. May use the **allergen menu filter**. |
+| **Employee** | Sees the on-menu catalogue with availability states; may use the **allergen menu filter** on the POS; may select a **`No` removal** or a **choice** where the good offers it; may mark a good **manually unavailable** and clear the mark if granted the capability, subject to the component rule. Never sees cost. |
+| **Supervisor** | Same as employee for menu view, filter, modifiers, and 86 (capability required for manual unavailability unless granted). Never sees cost; does not author the menu. |
+| **Manager** | Creates, edits, prices, and deletes goods; composes recipes and combos; sets categories, images, keyword, description, and preparation time; flags **modifiable ingredients**; creates and assigns **choice groups**; flags add-ons; marks goods on or off menu; and manages availability. Sees cost. |
 | **Admin/owner** | Everything a manager can do, plus full venue control. |
 | **Superadmin** | None. The platform operator never manages a venue's menu. |
 
@@ -206,6 +224,9 @@ Business goods are menu configuration. Customers see only what is published and 
 | --- | --- |
 | Create, edit, and delete a business good | Managers and above |
 | Compose a recipe or a combo | Managers and above |
+| Mark a recipe ingredient **modifiable** | Managers and above |
+| Create, edit, assign, or delete a **choice group** | Managers and above |
+| Select a **`No` removal** or a **choice** while ordering | Staff on the tab; customers on self-service channels |
 | Set the selling price, category, subcategory, tax category, keyword, description, images, and preparation time | Managers and above |
 | Put a good on or off the menu | Managers and above |
 | Flag a good as an add-on | Managers and above |

@@ -20,6 +20,7 @@ This subject owns the **service journey**: the sequencing of a sitting from open
 - **journey failure paths** at pay, print, prep print, and post-pay corrections (composing payments, printers, orders, and realtime rules); and
 - enforcing the **self-channel alcohol age gate** at basket and pay (rule owned by the privacy, consent, and DSAR subject); and
 - the **allergen filter journey** on staff tabs and self-channels (when the filter is used, when orders are auto-flagged, and the self-channel pre-pay confirmation); and
+- the **preparation-selection journey** — `No` ingredient removals, choice groups, and free-text comments — on staff tabs and self-channels; and
 - blocking **send** or **pay** when a line's good is no longer orderable under day-of availability.
 
 It deliberately does **not** cover:
@@ -29,7 +30,7 @@ It deliberately does **not** cover:
 - **derived allergens, guest-facing allergen display, and allergen menu filter behaviour** — the business-goods subject. This subject places when staff and guests use the filter and when the pre-pay confirmation runs.
 - **settlement mechanics** — payment methods, providers, splits, partial payments, tips, over-tender, refunds, and tax belong to the payments-and-tax subject. This subject owns when the journey reaches settlement and that the instance closes only when the outstanding balance is covered or surpassed.
 - **customer bill and receipt documents** — content, numbering, and reprint/replacement identity belong to the **receipts-and-bills** subject. This subject places first Bill request and settlement close in the journey those documents attach to.
-- **printers and screens** — routing, prep screens, the delivery screen, and the customer pickup board belong to the printers-and-screens subject. This subject names when fulfilment and handoff happen in the journey.
+- **printers and screens** — routing, prep main/sub screens, the expo screen, the handoff screen, and the customer pickup board belong to the printers-and-screens subject. This subject names when fulfilment and handoff happen in the journey.
 - **reservations** — booking, deposit, and seating choice (reservation guests vs ordinary guests) belong to the reservations subject. This subject continues from the staff tab that seating opens.
 - **delivery and self-ordering configuration** — enabling delivery, radius, minimum order, and windows, and enabling self-ordering for the venue, belong to the business subject; which points accept which channels belong to the sales-points-and-instances subject.
 - **inventory, notifications, emails, and reports** — their subjects own those effects; this subject only places the moments that trigger them.
@@ -62,11 +63,13 @@ This subject introduces **no new persistent entity**. It sequences existing ones
 - **Courier request** — the delivery-integrations action that asks a connected provider to dispatch a courier when a paid delivery batch is sent to prep.
 - **Courier handover** — the delivery-integrations action that tells a connected provider the batch was handed to its courier. It is raised only when a staff screen records Delivered.
 - **Allergen pre-pay confirmation** — the required self-channel step immediately before payment in which the guest affirms they have reviewed allergen information for the basket and choose to proceed. It is a **double-check**, not a second allergen declaration and not a restamp of basket lines.
+- **Preparation selection** — the umbrella for the structured choices a guest or staff member makes on a line: a **`No` removal** of a modifiable ingredient, a **choice** from a choice group, or a free-text **comment**. Removals reduce cost and inventory but not price; choices and comments have no economic effect. None of them changes the good's allergens.
+- **Modified line** — a line carrying at least one `No` removal or choice; it is marked as modified on prep tickets and screens.
 - **Clear basket** — the guest action that removes every line from the current self-service basket and leaves the **ordering session** open so they can start a fresh order without waiting for idle expiry.
 - **Still-there prompt** — the confirmation shown after the basket idle window when Project Imperium asks whether the guest is still ordering before discarding the session.
 - **Basket idle expiry** — ending an unpaid ordering session after idle time and an unanswered still-there prompt; no sales instance, stock move, or payment is created.
 
-Terms reused rather than redefined here: **Business**, **Sales point**, **Sales instance**, **Staff tab**, **Channel**, **Order**, **Batch**, **Identification code**, **Fulfilment slice**, **Fulfilment status**, **Held batch**, **Bill**, **Payment**, **Outstanding balance**, **Reservation**, **on duty**, **ordering session**, **stale action**, **delivery method**, **Own delivery**, **courier provider**, **courier cancellation**, **Alcoholic drinks** tax category, **alcohol purchase age**, **allergen menu filter**, **guest allergen flags**, **availability state**, and **soft delete**.
+Terms reused rather than redefined here: **Business**, **Sales point**, **Sales instance**, **Staff tab**, **Channel**, **Order**, **Batch**, **Identification code**, **Fulfilment slice**, **Fulfilment status**, **Held batch**, **Bill**, **Payment**, **Outstanding balance**, **Reservation**, **on duty**, **ordering session**, **stale action**, **delivery method**, **Own delivery**, **courier provider**, **courier cancellation**, **Alcoholic drinks** tax category, **alcohol purchase age**, **allergen menu filter**, **guest allergen flags**, **modifiable ingredient**, **choice group**, **availability state**, and **soft delete**.
 
 ---
 
@@ -100,6 +103,14 @@ Guest allergen handling starts with the **allergen menu filter** (business-goods
 - On **self-channels**, immediately before payment, the guest must complete the **allergen pre-pay confirmation** — a double-check that they have reviewed allergen information for the basket and choose to proceed. That step does **not** declare a new allergen set, does **not** restamp basket lines, and does **not** hard-block pay when the guest ordered something unsafe without using the filter; proceeding after confirmation is the guest's responsibility.
 - Distance-selling (self-channels) keeps derived allergens visible on catalogue and basket lines **before purchase**; allergen information for sold goods is available again at **handover / delivery** on the customer documents the receipts-and-bills subject requires.
 
+### 3.3.1 Preparation selections
+
+- **`No` removals and choices are additive to the line, not replacements for the allergen filter.** On a staff tab, selecting a line exposes its **modifiable ingredients** for `No` and its **choice groups** (for example `Doneness`). A required choice group must be chosen before the line can be added. The staff member may also add a free-text **comment**; “less salt” or “less pickles” belongs there and has no inventory effect.
+- On **self-channels**, the guest sees the same `No` and choice controls on the item detail and basket line, with the good's **static allergen list** unchanged. The **allergen pre-pay confirmation** still runs.
+- A **`No` removal** reduces the order's recorded cost and inventory use but not its selling price (orders subject; ADR-0014). A **choice** is a label only. A **comment** has no economic effect.
+- **Modified lines** are marked as modified on prep tickets and screens, with the removed ingredients and choices shown on the line. The kitchen sees them without opening a separate note.
+- A `No` removal never makes a **Sold out** good orderable; availability continues to follow the full recipe.
+
 ### 3.4 Day-of availability in the journey
 
 - Catalogue surfaces show **Sold out** and **Manually unavailable** on-menu goods labelled and not orderable (business-goods).
@@ -110,7 +121,8 @@ Guest allergen handling starts with the **allergen menu filter** (business-goods
 - An **on-duty employee** opens a **staff tab** on a served point from the POS (floor map on a wide viewport, or list/grid when narrow — the floor-plans subject) or by scanning the point's QR, as the sales-points-and-instances subject defines (including reservation guests vs ordinary guests when a reserved hold is present).
 - Staff **build drafts**, **send batches** (ready-to-make or held), and may send **many batches** over the sitting. Multi-course timing uses **held / release** and further sends alone.
 - Staff use the **Allergen** control when a guest reports allergens (§3.3) before adding that guest's lines; with nothing selected, the tab flows normally.
-- Prep areas advance fulfilment; runners deliver stay items to the point and pack to-go items for handover at the table or counter as the sitting requires. Flagged order lines show clearly on prep tickets and screens (printers-and-screens).
+- Staff record **`No` removals**, **choices**, and **comments** on the line as the guest requests them (§3.3.1). They do not change the price shown to the guest.
+- Prep areas advance fulfilment; the **expo screen** coordinates the whole order and the **handoff screen** marks it Delivered when it leaves the pass. Runners deliver stay items to the point and pack to-go items for handover at the table or counter as the sitting requires. Flagged and modified order lines show clearly on prep tickets and screens (printers-and-screens).
 - Staff may move the tab to **Bill** and **settle** even while some fulfilment slices are still in progress. Closing does not require every slice to be Delivered.
 - While the tab is in **Bill**, staff may still **add and send** further orders; the bill updates.
 - The tab **closes only when the outstanding balance is covered or surpassed** (payments-and-tax). Unpaid open orders are not walked out; voids, invitations, and cancellations (orders subject) are how lines leave the charge. An instance opened and closed with **no orders** is discarded. First Bill request and the closing receipt are issued per the receipts-and-bills subject.
@@ -121,7 +133,7 @@ Guest allergen handling starts with the **allergen menu filter** (business-goods
 ### 3.6 QR self-ordering
 
 - Table self-ordering opens only when **all** of these hold: the **business** has self-ordering enabled, the **sales point** accepts the **Self-ordering** channel, **no staff tab** is open on that point, and the point has **no reserved hold** (manual or reservation-assigned).
-- The customer scans the point's QR and starts an **ordering session** with its own **basket** (no sales instance yet). Many customers may scan the same point QR at once; each session’s basket is **isolated** — baskets never merge because they share a table. The guest may **Clear basket**, and unpaid sessions follow **still-there** and **basket idle expiry** (§3.12). The guest may use the **allergen menu filter** while browsing (§3.3). When they proceed to **pay**, Project Imperium requires **sign-in or sign-up** if they are not already signed in, **preserves that session’s basket**, runs the **allergen pre-pay confirmation**, then takes payment in full. Only after successful payment does Project Imperium create **that session’s** instance and batch and release work to the kitchen (**pay-to-commit**), with its own **identification code** and **handover pass**.
+- The customer scans the point's QR and starts an **ordering session** with its own **basket** (no sales instance yet). Many customers may scan the same point QR at once; each session’s basket is **isolated** — baskets never merge because they share a table. The guest may **Clear basket**, and unpaid sessions follow **still-there** and **basket idle expiry** (§3.12). The guest may use the **allergen menu filter** while browsing (§3.3) and may select **`No` removals** and **choices** where the good offers them (§3.3.1). When they proceed to **pay**, Project Imperium requires **sign-in or sign-up** if they are not already signed in, **preserves that session’s basket**, runs the **allergen pre-pay confirmation**, then takes payment in full. Only after successful payment does Project Imperium create **that session’s** instance and batch and release work to the kitchen (**pay-to-commit**), with its own **identification code** and **handover pass**.
 - If a **staff tab opens** or a **reserved hold** is placed on the point **while** an unpaid ordering session already has a basket, Project Imperium **keeps the basket** and **blocks pay-to-commit** (and blocks **new** self-ordering opens on that point) until the block clears. The guest may **Clear basket** or wait; the session is not force-discarded solely because the floor block appeared.
 - A self-ordering basket or pay-to-commit that includes any **Alcoholic drinks** tax-category line is **blocked** unless the payer User's birth date shows age at least the **alcohol purchase age** (eighteen) — privacy, consent, and DSAR subject. Birth date must be present for that check.
 - Fulfilment **delivers stay items to that QR point**. To-go lines on the same sitting are packed to go.
@@ -131,7 +143,7 @@ Guest allergen handling starts with the **allergen menu filter** (business-goods
 
 ### 3.7 Kiosk
 
-- A **Kiosk** point is a self-service terminal on the same customer app. Each terminal use is one **ordering session** with its own basket, including **guest basket until identity at payment**, **Clear basket** and **basket idle expiry** (§3.12), the **allergen menu filter**, and the **allergen pre-pay confirmation**.
+- A **Kiosk** point is a self-service terminal on the same customer app. Each terminal use is one **ordering session** with its own basket, including **guest basket until identity at payment**, **Clear basket** and **basket idle expiry** (§3.12), the **allergen menu filter**, **`No` removals** and **choices** where offered (§3.3.1), and the **allergen pre-pay confirmation**.
 - Kiosk settlement is **always full digital**: identity at payment, then **pay-to-commit** via Stripe Connect; the instance, batch, identification code, and kitchen work exist only after successful capture. There is **no pay-on-premises kiosk mode**, no cash, and no counter payment.
 - The same **self-channel alcohol age gate** as QR self-ordering applies at basket and pay/commit (§3.6).
 - Fulfilment is **counter pickup**, not delivery to a table. Packaging defaults to **to-go**; the customer may override per order.
@@ -140,12 +152,12 @@ Guest allergen handling starts with the **allergen menu filter** (business-goods
 
 ### 3.8 Delivery
 
-- When delivery is enabled, orders attach to the venue's **virtual Delivery point**. Many customers order at once; each starts an **ordering session** with its own basket. The customer may build a basket without signing in (with the **allergen menu filter** available), may **Clear basket**, and follows the same **still-there** / **basket idle expiry** rules (§3.12). They must meet the venue's delivery rules (radius, minimum, windows), and at **payment** must **sign in or sign up** if needed (basket preserved), complete the **allergen pre-pay confirmation**, then **pays in full**; only then does that session’s instance, batch, and kitchen work exist. Baskets never merge across sessions on the Delivery point.
+- When delivery is enabled, orders attach to the venue's **virtual Delivery point**. Many customers order at once; each starts an **ordering session** with its own basket. The customer may build a basket without signing in (with the **allergen menu filter** available, and **`No` removals** and **choices** where offered — §3.3.1), may **Clear basket**, and follows the same **still-there** / **basket idle expiry** rules (§3.12). They must meet the venue's delivery rules (radius, minimum, windows), and at **payment** must **sign in or sign up** if needed (basket preserved), complete the **allergen pre-pay confirmation**, then **pays in full**; only then does that session’s instance, batch, and kitchen work exist. Baskets never merge across sessions on the Delivery point.
 - The same **self-channel alcohol age gate** as QR self-ordering applies at basket and pay (§3.6).
 - Every delivery order is **to-go**. The venue's **delivery method** is **Own delivery** or one connected **third-party courier provider**. Prep runs as usual.
 - When the paid batch is **sent to prep**, Project Imperium raises a **courier request** for a connected provider, carrying the batch's **ready time**. The request does not depend on a screen. With **Own delivery**, no provider is called. A failed request is retried and alerts managers; it never blocks preparation.
-- When slices are **Ready**, venue staff may use the **delivery screen** or the **POS** to hand the whole batch to the courier and mark it **Delivered**. On a connected provider, that action also raises a **courier handover** call. Handover is **whole-batch**: it is blocked until every slice is Ready, then one action marks the whole batch Delivered.
-- A venue that records **no staff handover** — no delivery screen and no POS action — cannot mark Delivered; no courier handover call is raised, the courier provider's own app records the pickup, and the daily close completes the batch. The courier **never** signs into Project Imperium or operates the delivery screen.
+- When slices are **Ready**, venue staff may use the **handoff screen** or the **POS** to hand the whole batch to the courier and mark it **Delivered**. On a connected provider, that action also raises a **courier handover** call. Handover is **whole-batch**: it is blocked until every slice is Ready, then one action marks the whole batch Delivered.
+- A venue that records **no staff handover** — no handoff screen and no POS action — cannot mark Delivered; no courier handover call is raised, the courier provider's own app records the pickup, and the daily close completes the batch. The courier **never** signs into Project Imperium or operates the handoff screen.
 - The customer receives an **order reference** on the receipt — the identification code — with **no handover QR**. The delivery QR would have nothing to scan in the customer's hands, so it is hidden while the pass still exists for internal consistency.
 - Billing closes on full settlement at pay-to-commit; fulfilment continues after payment until venue handoff. Allergen information for sold goods is available again on the customer receipt at that handover (receipts-and-bills).
 
@@ -187,7 +199,7 @@ This subject composes failure outcomes already owned elsewhere so the journey ha
 - **Payment decline or fail at settle / pay-to-commit.** The payment reads **failed**; no charge sticks for that attempt. On a **staff tab**, the instance stays open with the **outstanding balance** still owed; staff retry or use another method (payments-and-tax; a same-attempt retry does not double-charge — realtime-and-concurrency). On **self-service**, the basket and ordering session remain; the guest may retry pay or clear/leave; **no** sales instance is created until a successful pay-to-commit. The same fate applies when **gift-card** tender cannot cover the attempt (insufficient remaining balance, expired/voided/refunded card, or wrong issuing venue): no apply succeeds, outstanding stays owed or the self-service basket stays unpaid (gift-cards; payments-and-tax).
 - **Receipt or bill print failure at close or Bill.** Settlement and close follow payments-and-tax once outstanding is covered; paper is not a precondition for the money outcome. Print follows backup then block with manager notify (printers-and-screens). Required content remains available on screen and by email (receipts-and-bills).
 - **Prep printer failure after send.** The batch and identification code already exist; prep **screens** continue; staff retry print or a manager rebinds (printers-and-screens). The sitting does not auto-void.
-- **Courier request, handover, or cancellation call failure.** The local delivery journey continues: the batch is still sent, prepared, and handed over. The provider call retries, the delivery screen shows the failure, and managers on duty are notified when retries give up. The daily close does not block and records the exception; a venue with no recorded handover finishes by the close sweep (delivery-integrations; sales-reports).
+- **Courier request, handover, or cancellation call failure.** The local delivery journey continues: the batch is still sent, prepared, and handed over. The provider call retries, the handoff screen shows the failure, and managers on duty are notified when retries give up. The daily close does not block and records the exception; a venue with no recorded handover finishes by the close sweep (delivery-integrations; sales-reports).
 - **Good becomes unorderable after pay-to-commit or after send.** Catalogue blocks apply at **send** and **pay** (§3.4). After a successful pay or send, correcting an unmakeable line is a **manager** void, cancel, or refund path (orders; payments-and-tax) — there is **no** automatic refund or auto-cancel from this subject.
 - **Disconnect or stale action mid-journey.** Writes are blocked or rejected as the realtime-and-concurrency subject defines; the client refreshes to server truth and the guest or staff retry the act.
 
@@ -200,7 +212,7 @@ This subject composes failure outcomes already owned elsewhere so the journey ha
 | Layer | Powers here |
 | --- | --- |
 | **Customer** | Walks self-ordering, kiosk, and delivery journeys; holds the handover pass where the receipt carries one; uses the allergen menu filter; clears the basket or answers the still-there prompt; completes allergen pre-pay confirmation; sets packaging on self-service orders; pays to commit; never opens or manages a staff tab. |
-| **Employee** | Runs dine-in journeys while on duty: open, build and send, request bill, settle and close; uses the POS **Allergen** control; sets packaging on staff tabs; runs fulfilment and venue handoff under the job roles below; scans the handover pass or enters its code at handover; may retry a failed courier request or handover on the delivery screen. |
+| **Employee** | Runs dine-in journeys while on duty: open, build and send, request bill, settle and close; uses the POS **Allergen** control; sets packaging on staff tabs; runs fulfilment and venue handoff under the job roles below; scans the handover pass or enters its code at handover; may retry a failed courier request or handover on the handoff screen. |
 | **Supervisor** | Same floor journeys as employee, plus Host seating when using Host; may operate Service control screens by layer default. Does not void/invite/cancel sent or paid lines. |
 | **Manager** | Everything an employee can do, plus correcting paid self-service lines (void, invite, cancel), the sent-order powers the orders subject grants, and overriding a missing handover pass with a recorded override. |
 | **Admin/owner** | Full venue control over the journeys, including configuration owned by the business and sales-points subjects that gate the surfaces. |
@@ -209,12 +221,12 @@ This subject composes failure outcomes already owned elsewhere so the journey ha
 
 | Job role | Role in the journey |
 | --- | --- |
-| **Waiter**, **Floor Staff**, **Bartender**, **Barista**, **Cashier** | Open and run staff tabs, take and send orders, request the bill, settle, set packaging, scan the handover pass or enter its code at the table or counter. |
-| **Runner** | Run stay items to the point, pack and hand to-go items, operate the delivery screen, retry a failed courier request or handover, and mark delivery **Delivered** when handed to the courier. |
+| **Waiter**, **Floor Staff**, **Bartender**, **Barista**, **Cashier** | Open and run staff tabs, take and send orders, select **`No` removals** and **choices**, add comments, request the bill, settle, set packaging, scan the handover pass or enter its code at the table or counter. |
+| **Runner** | Run stay items to the point, pack and hand to-go items, and hand deliveries to the courier. Runners do **not** operate control screens; the expo records handoff. |
 | **Host** | Seat reservation guests into staff tabs (reserved hold / open choice); does not move tabs once service is underway. |
-| **Supervisor** (job role → supervisor layer) | Floor lead: Host seating and full Service screens by layer default; not manager corrections. |
-| **Head Chef**, **Sous Chef**, **Line Cooks**, and other prep roles | Advance prep-area fulfilment slices; they do not own billing. |
-| **Manager**, **Assistant Manager**, **MoD**, **General Manager**, **Owner**, **Admin** | Manager-and-above corrections and configuration gates as in the tables below. |
+| **Supervisor** (job role → supervisor layer) | Floor lead: Host seating and full Service screens by layer default; expo and handoff; recall after a station's 5-minute window and before `Delivered`; not manager corrections. |
+| **Head Chef**, **Sous Chef**, **Line Cooks**, and other prep roles | Advance prep-area fulfilment slices and operate the expo; they do not own billing. |
+| **Manager**, **Assistant Manager**, **MoD**, **General Manager**, **Owner**, **Admin** | Manager-and-above corrections and configuration gates as in the tables below, including recall before `Delivered`. |
 
 ### Who can do what
 
@@ -222,13 +234,15 @@ This subject composes failure outcomes already owned elsewhere so the journey ha
 | --- | --- |
 | Open and run a staff tab through bill, settle, and close | On-duty floor service roles on the tab (Waiter, Floor Staff, Bartender, Barista, Cashier, and managers and above) |
 | Use the POS Allergen control (allergen menu filter) on a staff tab | Staff on the tab |
+| Select `No` removals, choices, and comments on a staff tab | Staff on the tab |
 | Set sitting packaging default and per-order stay/to-go on a staff tab | Staff on the tab |
-| Build a self-service basket, clear the basket, answer the still-there prompt, use the allergen filter, complete allergen pre-pay confirmation, set packaging, and pay to commit | The ordering customer |
+| Build a self-service basket, clear the basket, answer the still-there prompt, use the allergen filter, select `No` removals and choices where offered, complete allergen pre-pay confirmation, set packaging, and pay to commit | The ordering customer |
 | Enable self-ordering for the business | Managers and above (business subject) |
 | Accept Self-ordering on a sales point | Managers and above (sales-points-and-instances subject) |
 | Scan the handover QR or enter the identification code at handover | Staff fulfilling the order on an entitled handover surface |
 | Override a missing handover pass and mark Delivered | Managers and above (recorded) |
-| Mark delivery Ready → Delivered (handed to courier) | Runner and other staff allowed on the delivery screen |
-| Retry a failed courier request or courier handover | Staff allowed on the delivery screen; managers and above |
+| Mark delivery Ready → Delivered (handed to courier) | Staff allowed on the handoff screen or POS |
+| Retry a failed courier request or courier handover | Staff allowed on the handoff screen; managers and above |
+| Recall a ready slice to preparing | The fulfilling station within 5 minutes; supervisor and above after that and before `Delivered`; managers and above before `Delivered` |
 | Void, invite, or cancel lines on a paid self-service sitting | Managers and above |
 | Walk a courier through Project Imperium screens | Nobody — couriers stay on their own tools |

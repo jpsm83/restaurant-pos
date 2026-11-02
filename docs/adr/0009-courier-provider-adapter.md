@@ -1,6 +1,8 @@
 # ADR-0009: Provider-agnostic courier integration boundary
 
 - **Status:** Accepted
+
+> **Naming note (2026-11-02):** the surface called the **delivery screen** here is now the **handoff screen** (ADR-0015). The provider boundary is unchanged.
 - **Date:** 2026-10-26
 
 ## Context

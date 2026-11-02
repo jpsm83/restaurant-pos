@@ -11,7 +11,7 @@ This subject covers the physical and connectivity kit a venue needs to:
 - create and run a business in Project Imperium;
 - go live and take customer orders and bookings;
 - print bills, receipts, prep tickets, and kiosk handover tickets;
-- run optional prep, delivery, pickup, and kiosk surfaces;
+- run optional prep, expo, handoff, pickup, and kiosk surfaces;
 - keep the core service path working through a short power or internet interruption.
 
 It covers each item's purpose, why it is or is not required, the go-live gates, supported and unsupported hardware, failure behaviour, what the business must provide, and a buying checklist.
@@ -42,7 +42,7 @@ It deliberately does **not** cover:
 - **UPS** — an uninterruptible power supply that carries the core path through a short power interruption.
 - **Cash drawer** — a dumb electromechanical latch wired to a receipt printer's **drawer-kick (DK) port**. It has no network or software identity the cloud can see and holds no balance.
 - **DK port** — the drawer-kick port on a receipt printer that pulses the cash drawer open.
-- **Control screen** — an in-app prep, delivery, or customer pickup surface opened under a **display lease**. It is not a registered hardware device; any internet browser device can show it.
+- **Control screen** — an in-app prep main/sub, expo, handoff, or customer pickup surface opened under a **display lease**. It is not a registered hardware device; any internet browser device can show it.
 - **Display lease** — a manager-granted device grant that lets a screen run at a location. It is not a staff session and authenticates no person.
 - **Customer pickup board** — a display-only counter screen showing order codes in pending, in progress, and ready columns. It shows no prices, guest names, or payment detail.
 - **Kiosk terminal** — an optional self-service terminal running the same web app for kiosk ordering. It is a sales point configured in the product; the physical terminal is optional hardware.
@@ -69,13 +69,15 @@ Terms reused rather than redefined here: **Business**, **Sales point**, **User**
 | **Cash drawer** | Conditional: cash venues | Opens on recorded money events through the printer's DK port. | Cash handling. |
 | **Network switch** | Conditional: wired devices | Adds wired ports. | Only needed when WiFi or router ports are not enough. |
 | **Prep printer** | Optional | Prints kitchen, bar, or other prep tickets. | Screens or the POS can carry the work. |
-| **Control screen** | Optional | Shows prep, delivery, or pickup work under a display lease. | Any browser device; no dedicated hardware required. |
+| **Control screen** | Optional | Shows prep, expo, handoff, or pickup work under a display lease. | Any browser device; no dedicated hardware required. |
 | **Customer pickup board** | Optional | Shows guest order codes in display mode. | Guest-facing convenience. |
 | **Kiosk terminal** | Optional | Self-service ordering terminal. | Adds a kiosk sales channel. |
+| **Bump bar** | Optional | Physical keypad at the pass for fulfil and recall gestures. | Touch is recommended but not required; bump bar is an alternative. |
 | **Backup printer** | Optional | Another printer used when the primary fails. | Extra print resilience. |
 | **5G SIM** | Optional, recommended | Cellular failover behind the primary WAN. | Keeps service running when broadband drops. |
 | **Touchscreen** | Optional, recommended at the pass | Touch gestures on control screens. | Mouse or trackpad also works. |
 | **Card reader** | Not required by Project Imperium | Records dine-in card payments on your existing reader. | Self-service kiosk payment is digital; no venue reader. |
+| **Adhesive label printer** | Not offered in stage 1 | Would print bag/cup/packaging labels. | Deferred; stage 1 prints prep tickets, receipts, bills, and kiosk handover tickets only. |
 | **Traditional register or POS terminal** | Not required | — | The app is the POS. |
 | **On-premises server** | Not required | — | The product is cloud-only. |
 | **Static IP or inbound ports** | Not required | — | The connector connects outbound only. |
@@ -147,9 +149,9 @@ Terms reused rather than redefined here: **Business**, **Sales point**, **User**
 
 #### 3.3.2 Control screens
 
-- **What they are.** In-app prep main and sub-screens, the delivery screen, and the customer pickup board. They run under a manager-granted **display lease**.
-- **Why optional.** Screens are not registered hardware devices and always exist as app pages. Any internet browser device can show one. A venue may run delivery with **no screens at all** and advance fulfilment from the POS.
-- **What to buy.** Any internet-connected display or tablet with a browser. **Touch is recommended at the pass but not required**; a mouse or trackpad works. No dedicated screen model is required.
+- **What they are.** In-app prep main and sub-screens, the **expo screen**, the **handoff screen**, and the customer pickup board. They run under a manager-granted **display lease**.
+- **Why optional.** Screens are not registered hardware devices and always exist as app pages. Any internet browser device can show one. A venue may run delivery with **no screens at all** and advance fulfilment from the POS. A **printer-only** station has no physical display, but the software screen still exists and works in a browser; “printer-only” is a deployment choice, not a hidden surface.
+- **What to buy.** Any internet-connected display or tablet with a browser, or a **bump bar** where the pass wants a physical keypad. **Touch is recommended at the pass but not required**; a mouse or trackpad works. No dedicated screen model is required. Expo and handoff may share one device; a large venue may use two.
 - **Lease, not login.** A display lease is a device grant, not a staff session and not a shared login. It survives the manager signing out and ends when a manager closes or revokes it, the manager is deactivated, or the device is unpaired.
 
 #### 3.3.3 Customer pickup board
@@ -228,7 +230,9 @@ Terms reused rather than redefined here: **Business**, **Sales point**, **User**
 | **Router** | Models on the supported-router list with WiFi, POS SSID/VLAN, primary WAN, optional 5G | Routers not on the list; routers without the required POS network |
 | **Internet** | Any primary WAN passing 10 Mbps down / 2 Mbps up / under 100 ms | 5G-only service |
 | **Cash drawer** | Dumb latch on a receipt printer's DK port | Smart recyclers with their own API; drawer-open sensors |
-| **Control screens** | Any internet browser device; touch optional | Screens as registered hardware; screens that reach money or configuration |
+| **Control screens** | Any internet browser device; touch or bump bar optional | Screens as registered hardware; screens that reach money or configuration |
+| **Bump bar** | Physical keypad mapped to fulfil/recall | A required device; a screen replacement for configuration or money |
+| **Adhesive label printing** | Deferred in stage 1 | Bag/cup/packaging labels are not printed |
 | **Kiosk** | Self-service terminal running the web app; digital payment | Venue card reader; cash; pay-on-premises mode |
 | **UPS** | Core path: router, PC or laptop battery, counter receipt printer, switch | A product-specified model or runtime; a whole-venue backup is optional, not required |
 | **Network switch** | Standard Ethernet switch, only when wired | A switch as a go-live gate by itself |
@@ -270,6 +274,8 @@ A venue cannot go live until the following hardware checks pass.
 
 ### 3.8 Buying checklist
 
+Run the in-product **service output setup** guide first: it asks about prep areas, stations, channels, volume, delivery share, and connectivity, then recommends screens, printers, a bump bar, and routing defaults. The manager may override every recommendation.
+
 **Required**
 
 - A **venue PC**: Windows 10/11 or macOS, laptop or desktop, able to stay on during service, with enough USB or network ports for its printers, and on a UPS or its own battery.
@@ -286,11 +292,11 @@ A venue cannot go live until the following hardware checks pass.
 
 **Optional**
 
-- Prep printers, control screens, a customer pickup board, a kiosk terminal, a backup printer, a 5G SIM, and touch hardware.
+- Prep printers, control screens (prep, expo, handoff), a customer pickup board, a kiosk terminal, a backup printer, a 5G SIM, touch hardware, and an optional bump bar.
 
 **Do not buy**
 
-- A proprietary POS terminal, an on-premises server, a certified fiscal device, a driver-only printer, a smart cash recycler, a 5G-only internet plan, or a spare router. None is required or supported.
+- A proprietary POS terminal, an on-premises server, a certified fiscal device, a driver-only printer, a smart cash recycler, a 5G-only internet plan, or a spare router. None is required or supported. Adhesive label printers are not part of stage 1.
 
 **Ask your supplier**
 

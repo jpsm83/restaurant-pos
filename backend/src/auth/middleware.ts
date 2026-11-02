@@ -49,27 +49,40 @@ export function isRejectedCredential(error: unknown): boolean {
 }
 
 /**
+ * Authenticate one request with a live User access session and attach it to
+ * `request.authSession`. Shared by the deny-by-default v1 gate and the
+ * per-route `createAuthHook`; database failures propagate instead of looking
+ * like a bad credential.
+ */
+export async function authenticateLiveRequest(
+  app: FastifyInstance,
+  req: FastifyRequest,
+): Promise<void> {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader?.startsWith("Bearer ")) {
+    throw unauthorized("Authentication required");
+  }
+
+  const token = authHeader.slice(7);
+
+  try {
+    req.authSession = await requireLiveAccessSession(app, token);
+  } catch (error) {
+    if (isRejectedCredential(error)) {
+      throw unauthorized("Invalid or expired access token");
+    }
+    throw error;
+  }
+}
+
+/**
  * Creates an authentication hook that verifies the JWT access token
  * and attaches the decoded user to request.user.
  */
 export function createAuthHook(app: FastifyInstance): preValidationHookHandler {
   return async (req: FastifyRequest) => {
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader?.startsWith("Bearer ")) {
-      throw unauthorized("Authentication required");
-    }
-
-    const token = authHeader.slice(7);
-
-    try {
-      req.authSession = await requireLiveAccessSession(app, token);
-    } catch (error) {
-      if (isRejectedCredential(error)) {
-        throw unauthorized("Invalid or expired access token");
-      }
-      throw error;
-    }
+    await authenticateLiveRequest(app, req);
   };
 }
 
@@ -77,6 +90,10 @@ export function createAuthHook(app: FastifyInstance): preValidationHookHandler {
  * Creates an optional authentication hook that attempts to verify the JWT
  * but allows the request to proceed even if no token is provided.
  * Sets request.user if a valid token is present.
+ *
+ * Reserved for documented public reads that genuinely need optional identity.
+ * It must not protect a mutating route; the v1 authorization gate secures
+ * every non-public route.
  */
 export function createOptionalAuthHook(
   app: FastifyInstance,
