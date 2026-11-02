@@ -65,13 +65,32 @@ const confirmationTranslations: Record<
   },
 };
 
-const businessContactVerificationTranslations = {
+type BusinessContactVerificationTranslation = Pick<
+  AccountEmailTranslation,
+  | "subject"
+  | "greeting"
+  | "message"
+  | "ignoreMessage"
+  | "expiryMessage"
+  | "fallbackMessage"
+  | "copyright"
+> & {
+  venueLabel: string;
+  venueFallback: string;
+  confirmButton: string;
+};
+
+const businessContactVerificationTranslations: Record<
+  AccountEmailLanguage,
+  BusinessContactVerificationTranslation
+> = {
   en: {
     subject: "Confirm Your Business Contact Email - POS",
     greeting: "Hello",
     message:
       "Please confirm the contact email for the venue below by clicking the button.",
     venueLabel: "Venue",
+    venueFallback: "your venue",
     confirmButton: "Confirm Email",
     ignoreMessage:
       "If you didn't request this verification, you can ignore this email.",
@@ -80,6 +99,22 @@ const businessContactVerificationTranslations = {
     fallbackMessage:
       "If the button above doesn't work, copy and paste this link into your browser:",
     copyright: "© 2026 POS. All rights reserved.",
+  },
+  es: {
+    subject: "Confirma el correo de contacto de tu negocio - POS",
+    greeting: "Hola",
+    message:
+      "Confirma el correo de contacto del local indicado a continuación haciendo clic en el botón.",
+    venueLabel: "Local",
+    venueFallback: "tu local",
+    confirmButton: "Confirmar correo electrónico",
+    ignoreMessage:
+      "Si no solicitaste esta verificación, puedes ignorar este correo.",
+    expiryMessage:
+      "Este enlace de confirmación caducará en 24 horas por motivos de seguridad.",
+    fallbackMessage:
+      "Si el botón de arriba no funciona, copia y pega este enlace en tu navegador:",
+    copyright: "© 2026 POS. Todos los derechos reservados.",
   },
 };
 
@@ -122,6 +157,7 @@ const passwordResetTranslations: Record<
 export const accountEmailTranslations = {
   confirmation: confirmationTranslations,
   passwordReset: passwordResetTranslations,
+  businessContactVerification: businessContactVerificationTranslations,
 };
 
 function fallbackName(name?: string): string {
@@ -241,9 +277,13 @@ export function buildEmailConfirmationContent(options: {
 export function buildBusinessContactVerificationContent(options: {
   confirmUrl: string;
   venueName: string;
+  language?: string | null;
 }): AuthEmailTemplateContent {
-  const t = businessContactVerificationTranslations.en;
-  const venueName = options.venueName.trim();
+  const t = pickAccountEmailTranslation(
+    accountEmailTranslations.businessContactVerification,
+    resolveAccountEmailLanguage(options.language),
+  );
+  const venueName = options.venueName.trim() || t.venueFallback;
   const htmlVenueName = escapeHtml(venueName);
 
   return {

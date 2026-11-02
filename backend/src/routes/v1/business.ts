@@ -435,14 +435,16 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
       schema: { params: businessIdParamsSchema },
     },
     async (req, reply) => {
+      const actorUserId = req.authSession!.id;
       await requireBusinessLayer({
-        userId: req.authSession!.id,
+        userId: actorUserId,
         businessId: req.params.businessId,
         minimumLayer: "admin",
       });
 
       const result = await requestBusinessContactEmailVerification(
         req.params.businessId,
+        actorUserId,
       );
 
       if (result.kind === "no_contact_email") {

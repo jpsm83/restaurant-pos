@@ -117,11 +117,67 @@ describe("emailTemplates", () => {
     expect(text).toContain("24 hours");
   });
 
+  it("builds the business contact verification email in Spanish", () => {
+    const url = "https://app.test/confirm-email?token=biz";
+    const { subject, html, text } = buildBusinessContactVerificationContent({
+      confirmUrl: url,
+      venueName: "The Blue Door",
+      language: "es",
+    });
+
+    expect(subject).toBe("Confirma el correo de contacto de tu negocio - POS");
+    expect(html).toContain(`href="${url}"`);
+    expect(html).toContain("The Blue Door");
+    expect(html).toContain("24 horas");
+    expect(text).toContain(url);
+    expect(text).toContain("The Blue Door");
+    expect(text).toContain("24 horas");
+  });
+
+  it("falls back to English for an unsupported business preference", () => {
+    const { subject } = buildBusinessContactVerificationContent({
+      confirmUrl: "https://app.test/confirm-email?token=biz",
+      venueName: "The Blue Door",
+      language: "fr",
+    });
+
+    expect(subject).toBe("Confirm Your Business Contact Email - POS");
+  });
+
   it("escapes the venue name in the rich part only", () => {
     const venueName = '<script>alert("x")</script>';
     const { html, text } = buildBusinessContactVerificationContent({
       confirmUrl: "https://app.test/confirm-email?token=biz",
       venueName,
+    });
+
+    expect(html).not.toContain("<script>");
+    expect(html).toContain("&lt;script&gt;");
+    expect(text).toContain(venueName);
+  });
+
+  it("localizes the venue fallback when the name is blank", () => {
+    const english = buildBusinessContactVerificationContent({
+      confirmUrl: "https://app.test/confirm-email?token=biz",
+      venueName: "  ",
+    });
+    expect(english.text).toContain("your venue");
+
+    const spanish = buildBusinessContactVerificationContent({
+      confirmUrl: "https://app.test/confirm-email?token=biz",
+      venueName: "",
+      language: "es",
+    });
+    expect(spanish.text).toContain("tu local");
+    expect(spanish.html).toContain("tu local");
+  });
+
+  it("keeps the venue name untranslated and escapes it in Spanish HTML only", () => {
+    const venueName = '<script>alert("x")</script>';
+    const { html, text } = buildBusinessContactVerificationContent({
+      confirmUrl: "https://app.test/confirm-email?token=biz",
+      venueName,
+      language: "es",
     });
 
     expect(html).not.toContain("<script>");

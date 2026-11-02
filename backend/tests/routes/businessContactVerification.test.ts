@@ -55,6 +55,8 @@ import {
 
 const BUSINESS_VERIFICATION_SUBJECT =
   "Confirm Your Business Contact Email - POS";
+const BUSINESS_VERIFICATION_SUBJECT_ES =
+  "Confirma el correo de contacto de tu negocio - POS";
 const REQUEST_PATH = (businessId: string | Types.ObjectId) =>
   `/api/v1/business/${String(businessId)}/request-email-verification`;
 
@@ -77,6 +79,7 @@ function futureExpiry(): Date {
 
 async function ownedBusiness(
   overrides: Record<string, unknown> = {},
+  jwtLanguagePreference?: "en" | "es",
 ) {
   const { user, company } = await createTestOwnerCompany();
   const business = await createTestBusiness({
@@ -92,6 +95,9 @@ async function ownedBusiness(
     email: user.personalDetails.email,
     type: "user",
     role: "Customer",
+    ...(jwtLanguagePreference
+      ? { languagePreference: jwtLanguagePreference }
+      : {}),
   });
   return { business, auth, user, company };
 }
@@ -99,12 +105,14 @@ async function ownedBusiness(
 async function memberAuth(
   businessId: string | Types.ObjectId,
   roles: string[],
+  languagePreference?: "en" | "es",
 ): Promise<string> {
   const userId = new Types.ObjectId();
   const email = `member-${userId}@test.com`;
   await User.create({
     _id: userId,
     personalDetails: { email, firstName: "Venue", lastName: "Member" },
+    ...(languagePreference ? { languagePreference } : {}),
   });
   const employee = await Employee.create({
     businessId,
@@ -272,6 +280,100 @@ describe("POST /api/v1/business/:businessId/request-email-verification", () => {
     await expect(User.countDocuments()).resolves.toBe(usersBefore);
     await expect(Employee.countDocuments()).resolves.toBe(employeesBefore);
     await expect(RefreshSession.countDocuments()).resolves.toBe(sessionsBefore);
+  });
+
+  it("uses the acting Owner's stored Spanish preference, not the JWT claim", async () => {
+    const app = await getTestApp();
+    const { business, auth, user } = await ownedBusiness({}, "en");
+    await User.updateOne(
+      { _id: user._id },
+      { $set: { languagePreference: "es" } },
+    );
+
+    const response = await app.inject({
+      method: "POST",
+      url: REQUEST_PATH(business._id),
+      headers: { authorization: auth },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const stored = await Business.findById(business._id)
+      .select("contactVerificationToken")
+      .lean();
+    expectOneAccountSend(sendEmailMock, {
+      to: "venue-contact@example.com",
+      subject: BUSINESS_VERIFICATION_SUBJECT_ES,
+      link: `/confirm-email?token=${stored?.contactVerificationToken}`,
+    });
+    const payload = sendEmailMock.mock.calls[0]?.[0] as {
+      text?: string;
+      html?: string;
+    };
+    expect(payload.text).toContain("24 horas");
+    expect(payload.text).toContain("Verification Venue");
+  });
+
+  it("uses the acting Admin membership's stored Spanish preference", async () => {
+    const app = await getTestApp();
+    const { business } = await ownedBusiness();
+    const auth = await memberAuth(business._id, ["Admin"], "es");
+
+    const response = await app.inject({
+      method: "POST",
+      url: REQUEST_PATH(business._id),
+      headers: { authorization: auth },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(sendEmailMock).toHaveBeenCalledTimes(1);
+    const payload = sendEmailMock.mock.calls[0]?.[0] as { subject?: string };
+    expect(payload.subject).toBe(BUSINESS_VERIFICATION_SUBJECT_ES);
+  });
+
+  it("sends English for an unsupported stored preference", async () => {
+    const app = await getTestApp();
+    const { business, auth, user } = await ownedBusiness();
+    await User.collection.updateOne(
+      { _id: user._id },
+      { $set: { languagePreference: "fr" } },
+    );
+
+    const response = await app.inject({
+      method: "POST",
+      url: REQUEST_PATH(business._id),
+      headers: { authorization: auth },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const payload = sendEmailMock.mock.calls[0]?.[0] as { subject?: string };
+    expect(payload.subject).toBe(BUSINESS_VERIFICATION_SUBJECT);
+  });
+
+  it("does not use the venue contact address as a User identity for language", async () => {
+    const app = await getTestApp();
+    const { business, auth, user } = await ownedBusiness();
+    await User.updateOne(
+      { _id: user._id },
+      { $set: { languagePreference: "en" } },
+    );
+    await User.create({
+      personalDetails: {
+        email: "venue-contact@example.com",
+        firstName: "Contact",
+        lastName: "Only",
+      },
+      languagePreference: "es",
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: REQUEST_PATH(business._id),
+      headers: { authorization: auth },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const payload = sendEmailMock.mock.calls[0]?.[0] as { subject?: string };
+    expect(payload.subject).toBe(BUSINESS_VERIFICATION_SUBJECT);
   });
 
   it("lets an Admin membership issue the verification email", async () => {

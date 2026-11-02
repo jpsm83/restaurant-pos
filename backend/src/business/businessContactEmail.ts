@@ -8,6 +8,7 @@
  */
 
 import Business from "../models/business.ts";
+import User from "../models/user.ts";
 import { withSoftDeleteFilter } from "../models/softDelete.ts";
 import {
   sendAuthTokenEmailOrRollback,
@@ -57,6 +58,7 @@ const CONTACT_STATE_SELECT =
  */
 export async function requestBusinessContactEmailVerification(
   businessId: string,
+  actorUserId: string,
 ): Promise<RequestBusinessContactVerificationResult> {
   const business = (await Business.findOne(
     withSoftDeleteFilter({ _id: businessId }),
@@ -96,10 +98,14 @@ export async function requestBusinessContactEmailVerification(
     };
   }
 
+  const actor = await User.findById(actorUserId)
+    .select("languagePreference")
+    .lean();
+
   const previousToken = business.contactVerificationToken;
   const previousExpiry = business.contactVerificationTokenExpires;
   const previousRequestedAt = business.contactVerificationRequestedAt;
-  const venueName = business.tradeName?.trim() || "your venue";
+  const venueName = business.tradeName?.trim() ?? "";
 
   const sent = await sendAuthTokenEmailOrRollback({
     to: email,
@@ -118,6 +124,7 @@ export async function requestBusinessContactEmailVerification(
       buildBusinessContactVerificationContent({
         confirmUrl: link,
         venueName,
+        language: actor?.languagePreference,
       }),
     rollback: () => {
       const set: Record<string, unknown> = {};
