@@ -8,6 +8,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { NAMESPACES } from "@/i18n/config";
 import { buildLocaleResources } from "@/i18n/localeResources";
 import { renderWithI18n } from "@/test/i18nTestUtils";
+import { SiteAudienceProvider } from "@/context/SiteAudienceContext";
 import LoginPage from "../LoginPage";
 
 const localeModules = import.meta.glob<{ default: Record<string, unknown> }>(
@@ -71,6 +72,22 @@ vi.mock("@/auth/api", () => ({
   useAuthConfigQuery: (...args: unknown[]) =>
     mockUseAuthConfigQuery(...args),
 }));
+
+const googleLoginUser = {
+  id: "64a1b2c3d4e5f67890123456",
+  email: "google@example.com",
+  type: "user",
+  emailVerified: true,
+};
+
+const googleLoginSuccess = {
+  ok: true,
+  data: { user: googleLoginUser },
+} as const;
+
+function mockGoogleLoginSuccess() {
+  mockGoogleAuth.mockResolvedValue(googleLoginSuccess);
+}
 
 describe("LoginPage", () => {
   beforeEach(() => {
@@ -252,32 +269,32 @@ describe("LoginPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("signs in through the shared Google entry path", async () => {
+  it.each([
+    {
+      name: "signs in through the shared Google entry path",
+      returnTo: "/favorites",
+      path: "/favorites",
+      landing: "Google favorites",
+    },
+    {
+      name: "falls back to the Customer dashboard for an unsafe Google returnTo",
+      returnTo: "https://evil.example",
+      path: "/dashboard",
+      landing: "Safe Google dashboard",
+    },
+  ])("$name", async ({ returnTo, path, landing }) => {
     const user = userEvent.setup();
-    mockGoogleAuth.mockResolvedValue({
-      ok: true,
-      data: {
-        user: {
-          id: "64a1b2c3d4e5f67890123456",
-          email: "google@example.com",
-          type: "user",
-          emailVerified: true,
-        },
-      },
-    });
+    mockGoogleLoginSuccess();
 
     await renderWithI18n(
       <MemoryRouter
         initialEntries={[
-          "/login?returnTo=%2Ffavorites",
+          `/login?returnTo=${encodeURIComponent(returnTo)}`,
         ]}
       >
         <Routes>
           <Route path="/login" element={<LoginPage />} />
-          <Route
-            path="/favorites"
-            element={<div>Google favorites</div>}
-          />
+          <Route path={path} element={<div>{landing}</div>} />
         </Routes>
       </MemoryRouter>,
     );
@@ -287,7 +304,7 @@ describe("LoginPage", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Google favorites")).toBeInTheDocument();
+      expect(screen.getByText(landing)).toBeInTheDocument();
     });
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(mockGoogleAuth).toHaveBeenCalledWith({
@@ -967,6 +984,44 @@ describe("LoginPage", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Safe customer dashboard")).toBeInTheDocument();
+    });
+  });
+
+  it("keeps the Customer landing under the business marketing audience", async () => {
+    const user = userEvent.setup();
+    mockLogin.mockResolvedValue({
+      ok: true,
+      data: {
+        user: {
+          id: "507f1f77bcf86cd799439011",
+          email: "owner@restaurant.com",
+          type: "user",
+          mode: "customer",
+          role: "Customer",
+        },
+      },
+    });
+
+    await renderWithI18n(
+      <MemoryRouter initialEntries={["/business"]}>
+        <SiteAudienceProvider>
+          <Routes>
+            <Route path="/business" element={<LoginPage />} />
+            <Route
+              path="/dashboard"
+              element={<div>Audience-safe dashboard</div>}
+            />
+          </Routes>
+        </SiteAudienceProvider>
+      </MemoryRouter>,
+    );
+
+    await user.type(screen.getByLabelText(/email/i), "owner@restaurant.com");
+    await user.type(screen.getByLabelText(/password/i), "ValidPass1!");
+    await user.click(screen.getByRole("button", { name: /sign in/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Audience-safe dashboard")).toBeInTheDocument();
     });
   });
 

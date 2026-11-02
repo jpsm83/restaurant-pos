@@ -634,62 +634,36 @@ describe("SignUpPage", () => {
   it.each([
     {
       name: "honours a safe returnTo after email signup",
+      method: "email" as const,
       returnTo: "/favorites",
       path: "/favorites",
       landing: "Signup favorites",
     },
     {
       name: "falls back to the Customer dashboard for an unsafe returnTo after email signup",
+      method: "email" as const,
       returnTo: "https://evil.example",
       path: "/dashboard",
       landing: "Safe signup dashboard",
     },
-  ])("$name", async ({ returnTo, path, landing }) => {
-    const user = userEvent.setup();
-    mockEmailSignupSuccess();
-
-    await renderWithI18n(
-      <MemoryRouter
-        initialEntries={[
-          `/signup?returnTo=${encodeURIComponent(returnTo)}`,
-        ]}
-      >
-        <Routes>
-          <Route path="/signup" element={<SignUpPage />} />
-          <Route path={path} element={<div>{landing}</div>} />
-        </Routes>
-      </MemoryRouter>,
-    );
-
-    await user.type(screen.getByLabelText(/^email$/i), "new@example.com");
-    await user.type(screen.getByLabelText(/^password$/i), "ValidPass1!");
-    await user.type(screen.getByLabelText(/confirm password/i), "ValidPass1!");
-    await user.click(
-      screen.getByLabelText(/privacy notice and account terms/i),
-    );
-    await user.click(screen.getByRole("button", { name: /create account$/i }));
-
-    await waitFor(() => {
-      expect(screen.getByText(landing)).toBeInTheDocument();
-    });
-  });
-
-  it.each([
     {
       name: "honours a safe returnTo after Google signup",
+      method: "google" as const,
       returnTo: "/favorites?tab=all",
       path: "/favorites",
       landing: "Google signup favorites",
     },
     {
       name: "falls back to the Customer dashboard for an unsafe returnTo after Google signup",
+      method: "google" as const,
       returnTo: "https://evil.example",
       path: "/dashboard",
       landing: "Safe Google dashboard",
     },
-  ])("$name", async ({ returnTo, path, landing }) => {
+  ])("$name", async ({ method, returnTo, path, landing }) => {
     const user = userEvent.setup();
-    mockGoogleSignupSuccess();
+    if (method === "email") mockEmailSignupSuccess();
+    else mockGoogleSignupSuccess();
 
     await renderWithI18n(
       <MemoryRouter
@@ -704,9 +678,24 @@ describe("SignUpPage", () => {
       </MemoryRouter>,
     );
 
-    await user.click(
-      screen.getByRole("button", { name: /continue with google/i }),
-    );
+    if (method === "email") {
+      await user.type(screen.getByLabelText(/^email$/i), "new@example.com");
+      await user.type(screen.getByLabelText(/^password$/i), "ValidPass1!");
+      await user.type(
+        screen.getByLabelText(/confirm password/i),
+        "ValidPass1!",
+      );
+      await user.click(
+        screen.getByLabelText(/privacy notice and account terms/i),
+      );
+      await user.click(
+        screen.getByRole("button", { name: /create account$/i }),
+      );
+    } else {
+      await user.click(
+        screen.getByRole("button", { name: /continue with google/i }),
+      );
+    }
 
     await waitFor(() => {
       expect(screen.getByText(landing)).toBeInTheDocument();

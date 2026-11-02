@@ -153,21 +153,21 @@ describe("Navbar", () => {
     expect(await screen.findByText("Customer page")).toBeInTheDocument();
   });
 
-  it("links Sign in to the shared auth entry on the business audience", async () => {
-    await renderNavbar("/business");
+  it.each(["/", "/business"])(
+    "links both auth CTAs to the shared entry on %s",
+    async (entry) => {
+      await renderNavbar(entry);
 
-    const signIn = screen.getByRole("link", { name: /sign in/i });
-    expect(signIn).toHaveAttribute("href", "/login");
-  });
-
-  it("links Sign up to the shared sign-up form on the business audience", async () => {
-    await renderNavbar("/business");
-
-    expect(screen.getByRole("link", { name: /sign up/i })).toHaveAttribute(
-      "href",
-      "/signup",
-    );
-  });
+      expect(screen.getByRole("link", { name: /sign in/i })).toHaveAttribute(
+        "href",
+        "/login",
+      );
+      expect(screen.getByRole("link", { name: /sign up/i })).toHaveAttribute(
+        "href",
+        "/signup",
+      );
+    },
+  );
 
   it("hides the mode toggle for a pure customer with no accessible venues", async () => {
     signedInUser();
