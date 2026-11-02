@@ -144,7 +144,9 @@ export const authRoutes: FastifyPluginAsync<AuthRoutesOptions> = async (
           "personalDetails.email": email,
           deleted: true,
         })
-          .select("_id personalDetails.username personalDetails.firstName")
+          .select(
+            "_id languagePreference personalDetails.username personalDetails.firstName",
+          )
           .lean(),
       ]);
 

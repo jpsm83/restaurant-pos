@@ -105,9 +105,12 @@ export async function handleGoogleAuth(
     "personalDetails.email": email,
     deleted: true,
   })
-    .select("_id personalDetails.username personalDetails.firstName")
+    .select(
+      "_id languagePreference personalDetails.username personalDetails.firstName",
+    )
     .lean()) as {
     _id: unknown;
+    languagePreference?: string | null;
     personalDetails?: {
       username?: string;
       firstName?: string;

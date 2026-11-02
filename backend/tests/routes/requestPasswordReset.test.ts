@@ -39,10 +39,13 @@ const testPassword = "TestPassword123!";
 
 async function createTestUser(
   email: string,
-  overrides?: { emailVerified?: boolean },
+  overrides?: { emailVerified?: boolean; languagePreference?: "en" | "es" },
 ) {
   const hashedPassword = await bcrypt.hash(testPassword, 10);
   return User.create({
+    ...(overrides?.languagePreference
+      ? { languagePreference: overrides.languagePreference }
+      : {}),
     personalDetails: {
       email,
       password: hashedPassword,
@@ -146,6 +149,32 @@ describe("POST /api/v1/auth/request-password-reset", () => {
     expectOneAccountSend(sendEmailMock, {
       to: "verified-reset@example.com",
       subject: "Password Reset Request - POS",
+      link: `/reset-password?token=${updated?.resetPasswordToken}`,
+    });
+  });
+
+  it("sends the password reset email in the User's stored Spanish preference", async () => {
+    const app = await getTestApp();
+    await createTestUser("spanish-reset@example.com", {
+      emailVerified: true,
+      languagePreference: "es",
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/request-password-reset",
+      payload: { email: "spanish-reset@example.com" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const updated = await User.findOne({
+      "personalDetails.email": "spanish-reset@example.com",
+    })
+      .select("resetPasswordToken")
+      .lean();
+    expectOneAccountSend(sendEmailMock, {
+      to: "spanish-reset@example.com",
+      subject: "Solicitud de restablecimiento de contraseña - POS",
       link: `/reset-password?token=${updated?.resetPasswordToken}`,
     });
   });

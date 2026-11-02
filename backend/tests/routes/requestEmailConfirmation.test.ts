@@ -39,10 +39,13 @@ const testPassword = "TestPassword123!";
 
 async function createTestUser(
   email: string,
-  overrides?: { emailVerified?: boolean },
+  overrides?: { emailVerified?: boolean; languagePreference?: "en" | "es" },
 ) {
   const hashedPassword = await bcrypt.hash(testPassword, 10);
   return User.create({
+    ...(overrides?.languagePreference
+      ? { languagePreference: overrides.languagePreference }
+      : {}),
     personalDetails: {
       email,
       password: hashedPassword,
@@ -165,6 +168,32 @@ describe("POST /api/v1/auth/request-email-confirmation", () => {
     expectOneAccountSend(sendEmailMock, {
       to: "pending@example.com",
       subject: "Confirm Your Email - POS",
+      link: `/confirm-email?token=${updated?.verificationToken}`,
+    });
+  });
+
+  it("sends the verification email in the User's stored Spanish preference", async () => {
+    const app = await getTestApp();
+    await createTestUser("spanish-pending@example.com", {
+      emailVerified: false,
+      languagePreference: "es",
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/request-email-confirmation",
+      payload: { email: "spanish-pending@example.com" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const updated = await User.findOne({
+      "personalDetails.email": "spanish-pending@example.com",
+    })
+      .select("verificationToken")
+      .lean();
+    expectOneAccountSend(sendEmailMock, {
+      to: "spanish-pending@example.com",
+      subject: "Confirma tu correo electrónico - POS",
       link: `/confirm-email?token=${updated?.verificationToken}`,
     });
   });

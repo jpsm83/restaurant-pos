@@ -21,7 +21,9 @@ export async function handleRequestPasswordReset(
   const user = await User.findOne(
     withSoftDeleteFilter({ "personalDetails.email": normalizedEmail }),
   )
-    .select("_id personalDetails.username personalDetails.firstName")
+    .select(
+      "_id languagePreference personalDetails.username personalDetails.firstName",
+    )
     .lean();
 
   if (!user) {
@@ -50,7 +52,11 @@ export async function handleRequestPasswordReset(
       ),
     buildLink: buildResetPasswordLink,
     buildContent: (link) =>
-      buildPasswordResetEmailContent({ resetUrl: link, greetingName }),
+      buildPasswordResetEmailContent({
+        resetUrl: link,
+        greetingName,
+        language: user.languagePreference,
+      }),
     rollback: () =>
       User.updateOne(
         { _id: user._id },

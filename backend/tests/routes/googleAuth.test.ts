@@ -659,6 +659,7 @@ describe("POST /api/v1/auth/google", () => {
     it("reactivates a soft-deleted Google User by confirmation link, then signs in to the same User", async () => {
       const deleted = await User.create({
         googleId: defaultIdentity.subject,
+        languagePreference: "es",
         personalDetails: {
           email: defaultIdentity.email,
           emailVerified: true,
@@ -682,7 +683,7 @@ describe("POST /api/v1/auth/google", () => {
       expect(sendEmailMock).toHaveBeenCalledWith(
         expect.objectContaining({
           to: defaultIdentity.email,
-          subject: "Confirm Your Email - POS",
+          subject: "Confirma tu correo electrónico - POS",
         }),
       );
 

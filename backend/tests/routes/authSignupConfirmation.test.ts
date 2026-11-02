@@ -167,6 +167,34 @@ describe("POST /api/v1/auth/signup (confirmation email)", () => {
     expect(stored?.languagePreference).toBe("es");
   });
 
+  it("sends the sign-up verification in the chosen language", async () => {
+    const app = await getTestApp();
+    const email = `spanish-signup-${Date.now()}@example.com`;
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/signup",
+      payload: {
+        email,
+        password: "TestPassword123!",
+        privacyAccepted: true,
+        firstName: "Pat",
+        languagePreference: "es",
+      },
+    });
+
+    expect(res.statusCode).toBe(201);
+    await waitForUserVerificationToken(email);
+    const stored = await User.findOne({ "personalDetails.email": email })
+      .select("verificationToken")
+      .lean();
+    expectOneAccountSend(sendEmailMock, {
+      to: email,
+      subject: "Confirma tu correo electrónico - POS",
+      link: `/confirm-email?token=${stored?.verificationToken}`,
+    });
+  });
+
   it("creates an account with email and password only", async () => {
     const app = await getTestApp();
     const email = `minimal-signup-${Date.now()}@example.com`;
@@ -342,6 +370,7 @@ describe("POST /api/v1/auth/signup (confirmation email)", () => {
     await User.create({
       deleted: true,
       deletedAt: new Date(),
+      languagePreference: "en",
       personalDetails: {
         username: "reactivate-user",
         email,
@@ -365,6 +394,10 @@ describe("POST /api/v1/auth/signup (confirmation email)", () => {
         emailVerified: false,
       },
     });
+    await User.updateOne(
+      { "personalDetails.email": email },
+      { $set: { languagePreference: "es" } },
+    ).setOptions({ includeDeleted: true });
 
     const res = await app.inject({
       method: "POST",
@@ -396,7 +429,7 @@ describe("POST /api/v1/auth/signup (confirmation email)", () => {
     expect(allRows[0].verificationToken).toBeTruthy();
     expectOneAccountSend(sendEmailMock, {
       to: email,
-      subject: "Confirm Your Email - POS",
+      subject: "Confirma tu correo electrónico - POS",
       link: `/confirm-email?token=${allRows[0].verificationToken}`,
     });
   });

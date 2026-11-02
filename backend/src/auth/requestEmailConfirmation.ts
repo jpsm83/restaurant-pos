@@ -26,6 +26,7 @@ export type RequestEmailConfirmationHandlerResult =
 
 type ConfirmationUser = {
   _id: unknown;
+  languagePreference?: string | null;
   personalDetails?: { username?: string; firstName?: string } | null;
 };
 
@@ -57,7 +58,11 @@ export async function sendUserVerificationEmail(
       ),
     buildLink: buildConfirmEmailLink,
     buildContent: (link) =>
-      buildEmailConfirmationContent({ confirmUrl: link, greetingName }),
+      buildEmailConfirmationContent({
+        confirmUrl: link,
+        greetingName,
+        language: user.languagePreference,
+      }),
     rollback: () =>
       User.updateOne(
         withSoftDeleteFilter({ _id: user._id }, true),
@@ -98,7 +103,7 @@ export async function handleRequestEmailConfirmation(
     ),
   )
     .select(
-      "_id personalDetails.username personalDetails.firstName personalDetails.emailVerified deleted",
+      "_id languagePreference personalDetails.username personalDetails.firstName personalDetails.emailVerified deleted",
     )
     .lean();
 

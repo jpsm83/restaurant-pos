@@ -1,11 +1,18 @@
 import { describe, it, expect } from "vitest";
 import {
+  accountEmailTranslations,
   buildEmailChangeConfirmationContent,
   buildEmailChangeNoticeContent,
   buildEmailConfirmationContent,
   buildPasswordResetEmailContent,
   formatAuthEmailTtlPhrase,
 } from "../../src/auth/emailTemplates.ts";
+
+function templatePlaceholders(value: string): string[] {
+  return [...value.matchAll(/\{\{(\w+)\}\}/g)]
+    .map((match) => match[1])
+    .sort();
+}
 
 describe("formatAuthEmailTtlPhrase", () => {
   it("formats minutes under one hour", () => {
@@ -54,6 +61,45 @@ describe("emailTemplates", () => {
     expect(text).toContain("Hello there!");
   });
 
+  it("builds the confirmation email in the recipient's Spanish preference", () => {
+    const url = "https://app.test/confirm-email?token=abc";
+    const { subject, html, text } = buildEmailConfirmationContent({
+      confirmUrl: url,
+      greetingName: "Pat",
+      language: "es",
+    });
+
+    expect(subject).toBe("Confirma tu correo electrónico - POS");
+    expect(html).toContain(`href="${url}"`);
+    expect(html).toContain("24 horas");
+    expect(html).toContain("Hola Pat!");
+    expect(text).toContain(url);
+    expect(text).toContain("24 horas");
+    expect(text).toContain("Hola Pat!");
+  });
+
+  it("falls back to English for an unsupported confirmation preference", () => {
+    const { subject, html } = buildEmailConfirmationContent({
+      confirmUrl: "https://x.test/c",
+      language: "fr",
+    });
+
+    expect(subject).toBe("Confirm Your Email - POS");
+    expect(html).toContain("Hello there!");
+  });
+
+  it("keeps the no-name greeting in the recipient's language", () => {
+    const { html, text } = buildEmailConfirmationContent({
+      confirmUrl: "https://x.test/c",
+      language: "es",
+    });
+
+    expect(html).toContain("Hola!");
+    expect(html).not.toContain("there");
+    expect(text).toContain("Hola!");
+    expect(text).not.toContain("there");
+  });
+
   it("buildEmailChangeConfirmationContent includes the new-address link and expiry", () => {
     const url = "https://app.test/confirm-email-change?token=abc";
     const { subject, html, text } = buildEmailChangeConfirmationContent({
@@ -96,4 +142,51 @@ describe("emailTemplates", () => {
     expect(text).toContain("1 hour");
   });
 
+  it("keeps the no-name password reset greeting in the recipient's language", () => {
+    const { html, text } = buildPasswordResetEmailContent({
+      resetUrl: "https://x.test/r",
+      language: "es",
+    });
+
+    expect(html).toContain("Hola!");
+    expect(html).not.toContain("there");
+    expect(text).toContain("Hola!");
+    expect(text).not.toContain("there");
+  });
+
+  it("builds the password reset email in the recipient's Spanish preference", () => {
+    const url = "https://app.test/reset-password?token=xyz";
+    const { subject, html, text } = buildPasswordResetEmailContent({
+      resetUrl: url,
+      greetingName: "Pat",
+      language: "es",
+    });
+
+    expect(subject).toBe("Solicitud de restablecimiento de contraseña - POS");
+    expect(html).toContain(`href="${url}"`);
+    expect(html).toContain("1 hora");
+    expect(html).toContain("Hola Pat!");
+    expect(text).toContain(url);
+    expect(text).toContain("1 hora");
+  });
+});
+
+describe("account email template dictionaries", () => {
+  it.each(Object.entries(accountEmailTranslations))(
+    "%s keeps identical keys and interpolation placeholders in English and Spanish",
+    (_name, dictionary) => {
+      const english = dictionary.en;
+      const spanish = dictionary.es;
+
+      expect(Object.keys(spanish).sort()).toEqual(
+        Object.keys(english).sort(),
+      );
+
+      for (const key of Object.keys(english) as (keyof typeof english)[]) {
+        expect(templatePlaceholders(spanish[key])).toEqual(
+          templatePlaceholders(english[key]),
+        );
+      }
+    },
+  );
 });

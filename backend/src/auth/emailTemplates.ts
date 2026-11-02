@@ -1,13 +1,42 @@
+import {
+  pickAccountEmailTranslation,
+  resolveAccountEmailLanguage,
+  type AccountEmailLanguage,
+} from "./recipientLanguage.ts";
+
 export type AuthEmailTemplateContent = {
   subject: string;
   html: string;
   text: string;
 };
 
-const confirmationTranslations = {
+type AccountEmailTranslation = {
+  subject: string;
+  greeting: string;
+  greetingNoName: string;
+  message: string;
+  ignoreMessage: string;
+  expiryMessage: string;
+  fallbackMessage: string;
+  copyright: string;
+};
+
+type ConfirmationTranslation = AccountEmailTranslation & {
+  confirmButton: string;
+};
+
+type PasswordResetTranslation = AccountEmailTranslation & {
+  resetButton: string;
+};
+
+const confirmationTranslations: Record<
+  AccountEmailLanguage,
+  ConfirmationTranslation
+> = {
   en: {
     subject: "Confirm Your Email - POS",
-    greeting: "Hello",
+    greeting: "Hello {{name}}",
+    greetingNoName: "Hello there",
     message:
       "Welcome to POS! Please confirm your email address by clicking the button below to complete your account setup.",
     confirmButton: "Confirm Email",
@@ -19,12 +48,31 @@ const confirmationTranslations = {
       "If the button above doesn't work, copy and paste this link into your browser:",
     copyright: "© 2026 POS. All rights reserved.",
   },
+  es: {
+    subject: "Confirma tu correo electrónico - POS",
+    greeting: "Hola {{name}}",
+    greetingNoName: "Hola",
+    message:
+      "¡Bienvenido a POS! Confirma tu dirección de correo electrónico haciendo clic en el botón de abajo para completar la configuración de tu cuenta.",
+    confirmButton: "Confirmar correo electrónico",
+    ignoreMessage:
+      "Si no creaste una cuenta en POS, ignora este correo.",
+    expiryMessage:
+      "Este enlace de confirmación caducará en 24 horas por motivos de seguridad.",
+    fallbackMessage:
+      "Si el botón de arriba no funciona, copia y pega este enlace en tu navegador:",
+    copyright: "© 2026 POS. Todos los derechos reservados.",
+  },
 };
 
-const passwordResetTranslations = {
+const passwordResetTranslations: Record<
+  AccountEmailLanguage,
+  PasswordResetTranslation
+> = {
   en: {
     subject: "Password Reset Request - POS",
-    greeting: "Hello",
+    greeting: "Hello {{name}}",
+    greetingNoName: "Hello there",
     message:
       "You recently requested to reset your password for your POS account. Click the button below to reset it.",
     resetButton: "Reset Password",
@@ -36,10 +84,40 @@ const passwordResetTranslations = {
       "If the button above doesn't work, copy and paste this link into your browser:",
     copyright: "© 2026 POS. All rights reserved.",
   },
+  es: {
+    subject: "Solicitud de restablecimiento de contraseña - POS",
+    greeting: "Hola {{name}}",
+    greetingNoName: "Hola",
+    message:
+      "Recientemente solicitaste restablecer la contraseña de tu cuenta de POS. Haz clic en el botón de abajo para restablecerla.",
+    resetButton: "Restablecer contraseña",
+    ignoreMessage:
+      "Si no solicitaste un restablecimiento de contraseña, ignora este correo o contacta con soporte si tienes dudas.",
+    expiryMessage:
+      "Este enlace de restablecimiento de contraseña caducará en 1 hora por motivos de seguridad.",
+    fallbackMessage:
+      "Si el botón de arriba no funciona, copia y pega este enlace en tu navegador:",
+    copyright: "© 2026 POS. Todos los derechos reservados.",
+  },
+};
+
+export const accountEmailTranslations = {
+  confirmation: confirmationTranslations,
+  passwordReset: passwordResetTranslations,
 };
 
 function fallbackName(name?: string): string {
   return name?.trim() || "there";
+}
+
+function interpolate(
+  template: string,
+  values: Record<string, string>,
+): string {
+  return template.replace(
+    /\{\{(\w+)\}\}/g,
+    (_match, key: string) => values[key] ?? `{{${key}}}`,
+  );
 }
 
 export function formatAuthEmailTtlPhrase(ttlMs: number): string {
@@ -64,9 +142,15 @@ export function formatAuthEmailTtlPhrase(ttlMs: number): string {
 export function buildEmailConfirmationContent(options: {
   confirmUrl: string;
   greetingName?: string;
+  language?: string | null;
 }): AuthEmailTemplateContent {
-  const t = confirmationTranslations.en;
-  const username = fallbackName(options.greetingName);
+  const t = pickAccountEmailTranslation(
+    accountEmailTranslations.confirmation,
+    resolveAccountEmailLanguage(options.language),
+  );
+  const greeting = options.greetingName?.trim()
+    ? interpolate(t.greeting, { name: options.greetingName.trim() })
+    : t.greetingNoName;
 
   return {
     subject: t.subject,
@@ -78,7 +162,7 @@ export function buildEmailConfirmationContent(options: {
           </h1>
         </div>
         <div style="background-color: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; border: 1px solid #e5e7eb;">
-          <h2 style="color: #374151; margin-bottom: 20px;">${t.greeting} ${username}!</h2>
+          <h2 style="color: #374151; margin-bottom: 20px;">${greeting}!</h2>
           <p style="color: #6b7280; line-height: 1.6; margin-bottom: 20px;">
             ${t.message}
           </p>
@@ -108,7 +192,7 @@ export function buildEmailConfirmationContent(options: {
     text: `
       ${t.subject}
 
-      ${t.greeting} ${username}!
+      ${greeting}!
 
       ${t.message}
 
@@ -126,9 +210,15 @@ export function buildEmailConfirmationContent(options: {
 export function buildPasswordResetEmailContent(options: {
   resetUrl: string;
   greetingName?: string;
+  language?: string | null;
 }): AuthEmailTemplateContent {
-  const t = passwordResetTranslations.en;
-  const username = fallbackName(options.greetingName);
+  const t = pickAccountEmailTranslation(
+    accountEmailTranslations.passwordReset,
+    resolveAccountEmailLanguage(options.language),
+  );
+  const greeting = options.greetingName?.trim()
+    ? interpolate(t.greeting, { name: options.greetingName.trim() })
+    : t.greetingNoName;
 
   return {
     subject: t.subject,
@@ -140,7 +230,7 @@ export function buildPasswordResetEmailContent(options: {
           </h1>
         </div>
         <div style="background-color: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; border: 1px solid #e5e7eb;">
-          <h2 style="color: #374151; margin-bottom: 20px;">${t.greeting} ${username}!</h2>
+          <h2 style="color: #374151; margin-bottom: 20px;">${greeting}!</h2>
           <p style="color: #6b7280; line-height: 1.6; margin-bottom: 20px;">
             ${t.message}
           </p>
@@ -170,7 +260,7 @@ export function buildPasswordResetEmailContent(options: {
     text: `
       ${t.subject}
 
-      ${t.greeting} ${username}!
+      ${greeting}!
 
       ${t.message}
 
