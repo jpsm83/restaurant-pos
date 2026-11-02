@@ -12,23 +12,17 @@
 import { describe, expect, it } from "vitest";
 import { Types } from "mongoose";
 
+import { injectWithRouteAuth } from "../helpers/auth.ts";
 import { createTestBusiness } from "../helpers/fixtures.ts";
 import { getRouteInventory } from "../../src/routes/routeInventory.ts";
 import { getTestApp } from "../setup.ts";
 import {
   PUBLIC_ROUTE_ALLOWLIST,
+  authorizationRouteKey,
   isPublicRoute,
 } from "../../src/auth/authorization.ts";
 
 const VALID_ID = new Types.ObjectId().toString();
-
-/** Route keys use the `METHOD /pattern` shape and fold HEAD onto GET. */
-function routeKey(method: string, url: string): string {
-  const normalizedMethod = method === "HEAD" ? "GET" : method;
-  const normalizedUrl =
-    url.length > 1 && url.endsWith("/") ? url.slice(0, -1) : url;
-  return `${normalizedMethod} ${normalizedUrl}`;
-}
 
 /**
  * Explicit authenticated-route inventory: the default decision reviewed for
@@ -192,7 +186,7 @@ describe("API authorization rails", () => {
   it("registers every public allowlist entry", async () => {
     const app = await getTestApp();
     const registered = new Set(
-      getRouteInventory(app).map((route) => routeKey(route.method, route.url)),
+      getRouteInventory(app).map((route) => authorizationRouteKey(route.method, route.url)),
     );
 
     for (const route of PUBLIC_ROUTE_ALLOWLIST) {
@@ -208,7 +202,7 @@ describe("API authorization rails", () => {
     const authenticated = new Set(AUTHENTICATED_ROUTES);
 
     for (const route of getRouteInventory(app)) {
-      const key = routeKey(route.method, route.url);
+      const key = authorizationRouteKey(route.method, route.url);
       if (isPublicRoute(route.method, route.url)) continue;
 
       expect(
@@ -218,7 +212,7 @@ describe("API authorization rails", () => {
     }
 
     const registered = new Set(
-      getRouteInventory(app).map((route) => routeKey(route.method, route.url)),
+      getRouteInventory(app).map((route) => authorizationRouteKey(route.method, route.url)),
     );
     for (const key of AUTHENTICATED_ROUTES) {
       expect(registered.has(key), `${key} is recorded but not registered`).toBe(
@@ -230,7 +224,7 @@ describe("API authorization rails", () => {
   it("does not register or answer the retired legacy surfaces", async () => {
     const app = await getTestApp();
     const registered = new Set(
-      getRouteInventory(app).map((route) => routeKey(route.method, route.url)),
+      getRouteInventory(app).map((route) => authorizationRouteKey(route.method, route.url)),
     );
 
     const retired = [
@@ -255,6 +249,13 @@ describe("API authorization rails", () => {
         url: concreteUrl(pattern),
       });
       expect(response.statusCode, key).toBe(404);
+
+      // A signed-in User cannot reach the retired mutation either.
+      const signedIn = await injectWithRouteAuth(app, {
+        method: method as "GET" | "POST" | "PATCH" | "DELETE",
+        url: concreteUrl(pattern),
+      });
+      expect(signedIn.statusCode, key).toBe(404);
     }
   });
 

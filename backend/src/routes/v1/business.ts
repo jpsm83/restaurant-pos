@@ -283,7 +283,7 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
 
       if (!hasFilters) {
         businesses = await Business.find(
-          withSoftDeleteFilter({}, query.includeDeleted ?? false),
+          withSoftDeleteFilter({}, false),
         )
           .select(BUSINESS_PUBLIC_LEAN_SELECT)
           .lean();
@@ -315,7 +315,7 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
         const limit = query.limit ?? DEFAULT_DISCOVERY_LIMIT;
 
         businesses = await Business.find(
-          withSoftDeleteFilter(filter as Record<string, unknown>, query.includeDeleted ?? false),
+          withSoftDeleteFilter(filter as Record<string, unknown>, false),
         )
           .select(BUSINESS_PUBLIC_LEAN_SELECT)
           .limit(limit)
@@ -375,10 +375,10 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
     },
     async (req, reply) => {
       const { businessId } = req.params;
-      const { includeDeleted = false } = req.query;
 
+      // Public reads never expose a soft-deleted venue.
       const business = await Business.findOne(
-        withSoftDeleteFilter({ _id: businessId }, includeDeleted),
+        withSoftDeleteFilter({ _id: businessId }, false),
       )
         .select(BUSINESS_PUBLIC_LEAN_SELECT)
         .lean();

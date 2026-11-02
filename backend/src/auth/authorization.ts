@@ -125,27 +125,26 @@ export const PUBLIC_ROUTE_ALLOWLIST: readonly PublicRoute[] = [
   },
 ] as const;
 
-const publicKeys = new Set(
-  PUBLIC_ROUTE_ALLOWLIST.map(
-    (route) => `${route.method} ${route.url}`,
-  ),
-);
-
 /**
  * Normalize auto-added `HEAD` requests onto their allowlisted `GET` route and
  * fold Fastify's trailing-slash variant onto the same pattern.
  */
-function allowlistKey(method: string, url: string): string {
+export function authorizationRouteKey(method: string, url: string): string {
   const normalizedMethod = method === "HEAD" ? "GET" : method;
   const normalizedUrl =
     url.length > 1 && url.endsWith("/") ? url.slice(0, -1) : url;
   return `${normalizedMethod} ${normalizedUrl}`;
 }
 
+const publicKeys = new Set(
+  PUBLIC_ROUTE_ALLOWLIST.map((route) =>
+    authorizationRouteKey(route.method, route.url),
+  ),
+);
+
 /** True when the route is deliberately public. */
 export function isPublicRoute(method: string, url: string): boolean {
-  if (method === "OPTIONS") return true;
-  return publicKeys.has(allowlistKey(method, url));
+  return publicKeys.has(authorizationRouteKey(method, url));
 }
 
 /**

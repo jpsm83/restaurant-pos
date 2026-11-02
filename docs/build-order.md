@@ -266,7 +266,7 @@ Workforce planning and the cash the person holds while on duty.
 | [ ] | 11.2 | Engagement broadcasts (Promotion / Birthday / Event) gated by marketing consent + mute | [notifications](product/notifications.md), [privacy](product/privacy.md) |
 | [ ] | 11.3 | Engagement and manager-to-customer one-shot; catalogue completeness | [emails](product/emails.md), [conversations](product/conversations.md), [privacy](product/privacy.md) |
 | [ ] | 11.4 | Favorites and remaining customer-account edges | [users](product/users.md), [user-navigation](product/user-navigation.md) |
-| [ ] | 11.5 | DSAR export / erasure flows to the committed floor | [privacy](product/privacy.md), [data-retention](product/data-retention.md), [ADR-0003](adr/0003-soft-delete.md) |
+| [ ] | 11.5 | DSAR export / erasure flows to the committed floor; owns the account pending-deletion lifecycle, owned-Business resolution, reactivation, and grace window (the live account-deletion route is retired until this row) | [privacy](product/privacy.md), [data-retention](product/data-retention.md), [ADR-0003](adr/0003-soft-delete.md), [ADR-0016](adr/0016-deny-by-default-api-authorization.md) |
 
 **Exit criteria:** staff can message in-venue; venues can broadcast only with consent; a customer can download or erase per privacy rules.
 

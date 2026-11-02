@@ -77,8 +77,8 @@ export async function authenticateLiveRequest(
 }
 
 /**
- * Creates an authentication hook that verifies the JWT access token
- * and attaches the decoded user to request.user.
+ * Creates an authentication hook that verifies the JWT access token and
+ * attaches the live session to `request.authSession`.
  */
 export function createAuthHook(app: FastifyInstance): preValidationHookHandler {
   return async (req: FastifyRequest) => {
@@ -89,7 +89,7 @@ export function createAuthHook(app: FastifyInstance): preValidationHookHandler {
 /**
  * Creates an optional authentication hook that attempts to verify the JWT
  * but allows the request to proceed even if no token is provided.
- * Sets request.user if a valid token is present.
+ * Sets `request.authSession` if a valid token is present.
  *
  * Reserved for documented public reads that genuinely need optional identity.
  * It must not protect a mutating route; the v1 authorization gate secures
