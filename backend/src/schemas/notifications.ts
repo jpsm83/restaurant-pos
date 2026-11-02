@@ -49,12 +49,8 @@ export const notificationTypeSchema = z.enum(
 /** An array of recipient ObjectIds; non-emptiness is a post-parse check. */
 const recipientIdsSchema = z.array(objectIdSchema);
 
-/**
- * Query for the notification list endpoints. `page` and `limit` are coerced
- * from strings and clamped (`page` >= 1, `limit` 1..100); `includeRecipients`
- * accepts the string forms of a boolean.
- */
-export const notificationsPaginationQuerySchema = z.strictObject({
+/** Shared inbox/list pagination bounds: page >= 1, limit 1..100. */
+const paginationQueryFields = {
   page: coercedIntSchema
     .optional()
     .transform((value) => (value === undefined || value < 1 ? 1 : value)),
@@ -62,9 +58,23 @@ export const notificationsPaginationQuerySchema = z.strictObject({
     if (value === undefined || value < 1) return NOTIFICATIONS_DEFAULT_LIMIT;
     return Math.min(value, NOTIFICATIONS_MAX_LIMIT);
   }),
+};
+
+/**
+ * Query for the notification list endpoints. `page` and `limit` reuse the
+ * shared bounds; `includeRecipients` and `includeDeleted` accept the string
+ * forms of a boolean.
+ */
+export const notificationsPaginationQuerySchema = z.strictObject({
+  ...paginationQueryFields,
   includeRecipients: coercedBooleanSchema.optional(),
   includeDeleted: coercedBooleanSchema.optional(),
 });
+
+/** Query for the authenticated self inbox; only pagination is accepted. */
+export const notificationInboxQuerySchema = z.strictObject(
+  paginationQueryFields,
+);
 
 /** Path params for `GET`/`PATCH`/`DELETE /notifications/:notificationId`. */
 export const notificationIdParamsSchema = z.strictObject({
@@ -79,11 +89,6 @@ export const notificationsIncludeDeletedQuerySchema = z.strictObject({
 /** Path params for `GET /notifications/business/:businessId`. */
 export const notificationsByBusinessParamsSchema = z.strictObject({
   businessId: objectIdSchema,
-});
-
-/** Path params for `GET /notifications/user/:userId`. */
-export const notificationsByUserParamsSchema = z.strictObject({
-  userId: objectIdSchema,
 });
 
 /**
@@ -115,15 +120,15 @@ export type NotificationTypeDto = z.infer<typeof notificationTypeSchema>;
 export type NotificationsPaginationQuery = z.infer<
   typeof notificationsPaginationQuerySchema
 >;
+export type NotificationInboxQuery = z.infer<
+  typeof notificationInboxQuerySchema
+>;
 export type NotificationIdParams = z.infer<typeof notificationIdParamsSchema>;
 export type NotificationsByBusinessParams = z.infer<
   typeof notificationsByBusinessParamsSchema
 >;
 export type NotificationsIncludeDeletedQuery = z.infer<
   typeof notificationsIncludeDeletedQuerySchema
->;
-export type NotificationsByUserParams = z.infer<
-  typeof notificationsByUserParamsSchema
 >;
 export type CreateNotificationBody = z.infer<
   typeof createNotificationBodySchema

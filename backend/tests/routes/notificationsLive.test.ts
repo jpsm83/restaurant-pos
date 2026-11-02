@@ -396,6 +396,11 @@ describe("Notifications Live Route", () => {
       const nonTargetUser = await createTestUser("live-non-target");
       const offlineUser = await createTestUser("live-offline");
 
+      const offlineToken = await liveUserToken(
+        app,
+        offlineUser._id.toString(),
+        String(offlineUser.personalDetails.email),
+      );
       const targetToken = await liveUserToken(
         app,
         targetUser._id.toString(),
@@ -492,14 +497,17 @@ describe("Notifications Live Route", () => {
 
         const offlineInboxResponse = await app.inject({
           method: "GET",
-          url: `/api/v1/notifications/user/${offlineUser._id.toString()}`,
+          url: "/api/v1/notifications/inbox",
+          headers: { Authorization: `Bearer ${offlineToken}` },
         });
         expect(offlineInboxResponse.statusCode).toBe(200);
-        const offlineInbox = JSON.parse(offlineInboxResponse.body) as Array<{
-          message?: string;
-        }>;
+        const offlineInbox = JSON.parse(offlineInboxResponse.body) as {
+          items: Array<{ message?: string }>;
+        };
         expect(
-          offlineInbox.some((notification) => notification.message === offlineMessageText)
+          offlineInbox.items.some(
+            (notification) => notification.message === offlineMessageText,
+          )
         ).toBe(true);
       } finally {
         targetSocket.close();

@@ -5,8 +5,8 @@ import {
   createNotificationBodySchema,
   notificationIdParamsSchema,
   notificationsByBusinessParamsSchema,
-  notificationsByUserParamsSchema,
   notificationsIncludeDeletedQuerySchema,
+  notificationInboxQuerySchema,
   notificationsPaginationQuerySchema,
   updateNotificationBodySchema,
   NOTIFICATIONS_DEFAULT_LIMIT,
@@ -157,7 +157,6 @@ describe("notification params schemas", () => {
   it.each([
     [notificationIdParamsSchema, "notificationId"],
     [notificationsByBusinessParamsSchema, "businessId"],
-    [notificationsByUserParamsSchema, "userId"],
   ] as const)("accepts a valid ObjectId and rejects junk/unknown keys", (schema, key) => {
     expect(schema.safeParse({ [key]: VALID_ID }).success).toBe(true);
     expect(schema.safeParse({ [key]: "invalid-id" }).success).toBe(false);
@@ -245,6 +244,29 @@ describe("notificationsPaginationQuerySchema", () => {
   });
 });
 
+describe("notificationInboxQuerySchema", () => {
+  it("defaults pagination and applies the shared bounds", () => {
+    expect(notificationInboxQuerySchema.parse({})).toEqual({
+      page: 1,
+      limit: NOTIFICATIONS_DEFAULT_LIMIT,
+    });
+    expect(
+      notificationInboxQuerySchema.parse({ page: "0", limit: "500" }),
+    ).toEqual({ page: 1, limit: NOTIFICATIONS_MAX_LIMIT });
+  });
+
+  it("rejects list-only query keys", () => {
+    expect(
+      notificationInboxQuerySchema.safeParse({ includeRecipients: "true" })
+        .success,
+    ).toBe(false);
+    expect(
+      notificationInboxQuerySchema.safeParse({ includeDeleted: "true" })
+        .success,
+    ).toBe(false);
+  });
+});
+
 describe("notificationsIncludeDeletedQuerySchema", () => {
   it("accepts an omitted includeDeleted", () => {
     const parsed = notificationsIncludeDeletedQuerySchema.parse({});
@@ -286,8 +308,8 @@ describe("server-owned fields are excluded from every notifications DTO", () => 
     updateNotificationBodySchema,
     notificationIdParamsSchema,
     notificationsByBusinessParamsSchema,
-    notificationsByUserParamsSchema,
     notificationsIncludeDeletedQuerySchema,
+    notificationInboxQuerySchema,
     notificationsPaginationQuerySchema,
   };
 

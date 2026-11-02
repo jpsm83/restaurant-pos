@@ -12,3 +12,22 @@ export interface INotification {
   deletedAt?: Date;
   deletedBy?: Types.ObjectId;
 }
+
+/** One visible entry in a person's inbox, with their own read state. */
+export interface INotificationInboxItem {
+  notificationId: string;
+  businessId: string;
+  notificationType: string;
+  message: string;
+  createdAt: string;
+  read: boolean;
+}
+
+/** The authenticated caller's inbox page. */
+export interface INotificationInboxResponse {
+  items: INotificationInboxItem[];
+  unreadCount: number;
+  page: number;
+  limit: number;
+  hasMore: boolean;
+}

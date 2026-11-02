@@ -20,7 +20,7 @@ import liveConnectionRegistry from "../../src/communications/live/connectionRegi
 import liveInAppChannel from "../../src/communications/channels/liveInAppChannel.ts";
 import dispatchEvent from "../../src/communications/dispatchEvent.ts";
 import { getCommunicationsMetricsSnapshot } from "../../src/communications/observability/metrics.ts";
-import { getTestApp } from "../setup.ts";
+import { generateTestToken, getTestApp } from "../setup.ts";
 
 const validAddress = {
   country: "USA",
@@ -353,16 +353,27 @@ describe("Phase 5.2 - Communications Integration Domain Flows", () => {
         (beforeMetrics.live.droppedPushesByReason.offline_recipient ?? 0)
     ).toBeGreaterThanOrEqual(1);
 
+    const customerToken = await generateTestToken({
+      id: customer._id.toString(),
+      email: String(customer.personalDetails.email),
+      type: "user",
+      role: "Customer",
+    });
     const userInboxResponse = await app.inject({
       method: "GET",
-      url: `/api/v1/notifications/user/${customer._id.toString()}`,
+      url: "/api/v1/notifications/inbox",
+      headers: { authorization: customerToken },
     });
     expect(userInboxResponse.statusCode).toBe(200);
-    const body = JSON.parse(userInboxResponse.body) as Array<{ message?: string }>;
-    expect(body.length).toBeGreaterThan(0);
-    expect(body.some((notification) => notification.message?.includes("Order confirmed."))).toBe(
-      true
-    );
+    const body = JSON.parse(userInboxResponse.body) as {
+      items: Array<{ message?: string }>;
+    };
+    expect(body.items.length).toBeGreaterThan(0);
+    expect(
+      body.items.some((notification) =>
+        notification.message?.includes("Order confirmed."),
+      ),
+    ).toBe(true);
   });
 
   it("tracks socket_send_failure drop reason when websocket send throws", async () => {

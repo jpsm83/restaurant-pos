@@ -658,44 +658,6 @@ describe("Notifications Routes", () => {
     });
   });
 
-  describe("GET /api/v1/notifications/user/:userId", () => {
-    it("returns 400 for invalid userId", async () => {
-      const app = await getTestApp();
-
-      const response = await app.inject({
-        method: "GET",
-        url: "/api/v1/notifications/user/invalid-id",
-      });
-
-      expect(response.statusCode).toBe(400);
-      expect(response.headers["content-type"]).toContain(
-        "application/problem+json",
-      );
-      const body = JSON.parse(response.body);
-      expect(body.type).toBe("https://restaurant-pos.app/errors/validation");
-      expect(body.errors).toEqual(
-        expect.arrayContaining([
-          { path: "userId", message: expect.any(String) },
-        ]),
-      );
-    });
-
-    it("returns 200 with empty array when no notifications for user", async () => {
-      const app = await getTestApp();
-      const fakeId = new Types.ObjectId();
-
-      const response = await app.inject({
-        method: "GET",
-        url: `/api/v1/notifications/user/${fakeId}`,
-      });
-
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(Array.isArray(body)).toBe(true);
-      expect(body).toHaveLength(0);
-    });
-  });
-
   // Phase 4 Task 4.8: Transaction Tests
   const validAddress = {
     country: "USA",

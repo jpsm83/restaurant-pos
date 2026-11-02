@@ -188,14 +188,26 @@ Response:
 - `200` with `Notification[]` (including empty list)
 - `400` invalid business id
 
-### `GET /api/v1/notifications/user/:userId`
+### `GET /api/v1/notifications/inbox`
 
-User inbox list with same pagination/query rules.
+The signed-in caller's own inbox. The recipient is always derived from the
+authenticated User session; the route accepts no User id. Only visible entries
+are returned: per-person hidden entries and soft-deleted notification records
+are omitted from both the list and the unread count.
+
+Query params:
+
+- `page` (optional, integer >= 1, default `1`)
+- `limit` (optional, integer `1..100`, default `20`)
 
 Response:
 
-- `200` with `Notification[]` (including empty list)
-- `400` invalid user id
+- `200` with `{ items, unreadCount, page, limit, hasMore }`; each item carries
+  `notificationId`, `businessId`, `notificationType`, `message`, `createdAt`,
+  and `read`
+- `401` without a live User session
+- `400` for malformed pagination; out-of-range values are clamped to the
+  documented bounds
 
 ## WebSocket contract
 
@@ -320,7 +332,7 @@ Push/fallback:
 2. `POST /api/v1/notifications` targeting that user.
 3. Expect `notification.created`.
 4. Disconnect user and create another notification.
-5. Confirm REST inbox fallback: `GET /api/v1/notifications/user/:userId`.
+5. Confirm REST inbox fallback: `GET /api/v1/notifications/inbox` with the user's bearer token.
 
 ### Troubleshooting quick matrix
 
@@ -374,7 +386,7 @@ Definition locations:
 - Verify query shapes:
   - `/api/v1/notifications`
   - `/api/v1/notifications/business/:businessId`
-  - `/api/v1/notifications/user/:userId`
+  - `/api/v1/notifications/inbox`
 
 ### Explain commands
 
@@ -393,7 +405,7 @@ db.notifications
   .limit(20)
   .explain("executionStats");
 
-// user inbox notification fetch step
+// self inbox notification fetch step
 db.notifications
   .find({ _id: { $in: [ObjectId("<notificationId1>"), ObjectId("<notificationId2>")] } }, { _id: 1, notificationType: 1, message: 1, businessId: 1, senderId: 1, employeesRecipientsIds: 1, customersRecipientsIds: 1, createdAt: 1, updatedAt: 1 })
   .sort({ createdAt: -1 })

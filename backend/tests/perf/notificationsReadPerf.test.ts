@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Types } from "mongoose";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
-import { getTestApp } from "../setup.ts";
+import { generateTestToken, getTestApp } from "../setup.ts";
 import Notification from "../../src/models/notification.ts";
 import { createTestBusiness } from "../helpers/fixtures.ts";
 import User from "../../src/models/user.ts";
@@ -17,12 +17,13 @@ const percentile = (values: number[], p: number): number => {
 const measureEndpoint = async (
   app: Awaited<ReturnType<typeof getTestApp>>,
   url: string,
+  headers?: Record<string, string>,
   rounds = 30
 ): Promise<{ p50Ms: number; p95Ms: number; samples: number[] }> => {
   const samples: number[] = [];
   for (let i = 0; i < rounds; i += 1) {
     const started = process.hrtime.bigint();
-    const response = await app.inject({ method: "GET", url });
+    const response = await app.inject({ method: "GET", url, headers });
     const elapsedMs = Number(process.hrtime.bigint() - started) / 1_000_000;
     expect(response.statusCode).toBe(200);
     samples.push(elapsedMs);
@@ -128,6 +129,14 @@ describe("Performance baseline - notification read endpoints", () => {
       }
     );
 
+    const targetUserToken = await generateTestToken({
+      id: targetUser._id.toString(),
+      email: String(targetUser.personalDetails.email),
+      type: "user",
+      role: "Customer",
+    });
+    const targetUserHeaders = { authorization: targetUserToken };
+
     const [globalLatency, businessLatency, userLatency] = await Promise.all([
       measureEndpoint(app, "/api/v1/notifications?page=1&limit=20"),
       measureEndpoint(
@@ -136,7 +145,8 @@ describe("Performance baseline - notification read endpoints", () => {
       ),
       measureEndpoint(
         app,
-        `/api/v1/notifications/user/${targetUser._id.toString()}?page=1&limit=20`
+        "/api/v1/notifications/inbox?page=1&limit=20",
+        targetUserHeaders
       ),
     ]);
 

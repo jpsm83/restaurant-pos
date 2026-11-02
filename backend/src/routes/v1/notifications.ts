@@ -20,24 +20,33 @@ import Employee from "../../models/employee.ts";
 import Business from "../../models/business.ts";
 import User from "../../models/user.ts";
 import notificationService from "../../communications/services/notificationService.ts";
+import notificationInbox from "../../communications/inbox/notificationInbox.ts";
 import type { NotificationType } from "../../communications/types.ts";
 import { runTxnWithTransientRetry } from "../../mongo/runTxnWithTransientRetry.ts";
-import { createOptionalAuthHook } from "../../auth/middleware.ts";
+import {
+  createAuthHook,
+  createOptionalAuthHook,
+} from "../../auth/middleware.ts";
 import { markAsDeletedById, withSoftDeleteFilter } from "../../models/softDelete.ts";
-import { badRequest, conflict, notFound } from "../../errors/appError.ts";
+import {
+  badRequest,
+  conflict,
+  notFound,
+  unauthorized,
+} from "../../errors/appError.ts";
 import {
   createNotificationBodySchema,
   notificationIdParamsSchema,
   notificationsIncludeDeletedQuerySchema,
   notificationsByBusinessParamsSchema,
-  notificationsByUserParamsSchema,
+  notificationInboxQuerySchema,
   notificationsPaginationQuerySchema,
   updateNotificationBodySchema,
   type CreateNotificationBody,
   type NotificationIdParams,
   type NotificationsByBusinessParams,
   type NotificationsIncludeDeletedQuery,
-  type NotificationsByUserParams,
+  type NotificationInboxQuery,
   type NotificationsPaginationQuery,
   type UpdateNotificationBody,
 } from "../../schemas/notifications.ts";
@@ -92,6 +101,28 @@ type NotificationUpdate = {
 };
 
 export const notificationsRoutes: FastifyPluginAsync = async (app) => {
+  // GET /notifications/inbox - the signed-in caller's own visible entries
+  app.get<{ Querystring: NotificationInboxQuery }>(
+    "/inbox",
+    {
+      preValidation: [createAuthHook(app)],
+      schema: { querystring: notificationInboxQuerySchema },
+    },
+    async (req, reply) => {
+      if (!req.authSession || req.authSession.type !== "user") {
+        throw unauthorized("Unauthorized");
+      }
+
+      const inbox = await notificationInbox.listInbox({
+        userId: req.authSession.id,
+        page: req.query.page,
+        limit: req.query.limit,
+      });
+
+      return reply.code(200).send(inbox);
+    },
+  );
+
   // GET /notifications - list all
   app.get<{ Querystring: NotificationsPaginationQuery }>(
     "/",
@@ -644,71 +675,6 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
           includeDeleted,
         ),
       })
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .select(READ_SELECT);
-
-      if (includeRecipients) {
-        notificationsQuery = notificationsQuery
-          .populate({
-            path: "employeesRecipientsIds",
-            select: "userId",
-            model: Employee,
-            populate: {
-              path: "userId",
-              select:
-                "personalDetails.firstName personalDetails.lastName personalDetails.username",
-              model: User,
-            },
-          })
-          .populate({
-            path: "customersRecipientsIds",
-            select:
-              "personalDetails.firstName personalDetails.lastName personalDetails.username",
-            model: User,
-          });
-      }
-
-      const notifications = await notificationsQuery.lean();
-
-      return reply.code(200).send(notifications);
-    },
-  );
-
-  // GET /notifications/user/:userId - get by user
-  app.get<{
-    Params: NotificationsByUserParams;
-    Querystring: NotificationsPaginationQuery;
-  }>(
-    "/user/:userId",
-    {
-      schema: {
-        params: notificationsByUserParamsSchema,
-        querystring: notificationsPaginationQuerySchema,
-      },
-    },
-    async (req, reply) => {
-      const { userId } = req.params;
-      const { page, limit, includeRecipients, includeDeleted = false } =
-        req.query;
-      const skip = (page - 1) * limit;
-
-      const user = await User.findById(userId)
-        .select("notifications.notificationId")
-        .lean();
-      const notificationIds =
-        user?.notifications
-          ?.map((n: { notificationId?: Types.ObjectId }) => n.notificationId)
-          .filter(Boolean) ?? [];
-
-      if (notificationIds.length === 0) {
-        return reply.code(200).send([]);
-      }
-
-      let notificationsQuery = Notification.find(
-        withSoftDeleteFilter({ _id: { $in: notificationIds } }, includeDeleted),
-      )
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
