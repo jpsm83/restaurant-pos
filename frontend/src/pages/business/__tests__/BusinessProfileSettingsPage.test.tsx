@@ -38,8 +38,29 @@ async function renderWithQueryClient(
 
 const mockUseBusinessProfileQuery = vi.fn();
 const mockUseUpdateBusinessProfileMutation = vi.fn();
+const mockUseBusinessAccessSnapshotQuery = vi.fn();
 const mockToastSuccess = vi.fn();
 const mockToastError = vi.fn();
+
+function accessSnapshot(
+  effectiveLayer: "employee" | "supervisor" | "manager" | "admin" = "admin",
+) {
+  return {
+    data: {
+      businessId: "64b000000000000000000001",
+      effectiveLayer,
+      source: "membership",
+      jobRoles: [effectiveLayer],
+      capabilities: [],
+      canEnterBusiness: true,
+    },
+    isLoading: false,
+    isError: false,
+    error: null,
+    isPending: false,
+    isFetching: false,
+  };
+}
 
 vi.mock("@/auth/store/AuthContext", () => ({
   useAuth: () => ({
@@ -66,6 +87,16 @@ vi.mock("sonner", () => ({
 }));
 
 const mockFetchManagementContactOptions = vi.fn();
+
+vi.mock("@/services/employees/employeesService", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/services/employees/employeesService")>();
+  return {
+    ...actual,
+    useBusinessAccessSnapshotQuery: (...args: unknown[]) =>
+      mockUseBusinessAccessSnapshotQuery(...args),
+  };
+});
 
 vi.mock("@/services/business/businessService", async (importOriginal) => {
   const actual =
@@ -130,6 +161,8 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
   beforeEach(() => {
     mockUseBusinessProfileQuery.mockReset();
     mockUseUpdateBusinessProfileMutation.mockReset();
+    mockUseBusinessAccessSnapshotQuery.mockReset();
+    mockUseBusinessAccessSnapshotQuery.mockReturnValue(accessSnapshot());
     mockToastSuccess.mockReset();
     mockToastError.mockReset();
     mockFetchManagementContactOptions.mockReset();
@@ -614,6 +647,71 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
 
     expect(screen.getByText("Business dashboard destination")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "You have unsaved changes" })).not.toBeInTheDocument();
+  });
+
+  it("shows the localized access-denied outcome to an employee deep link", async () => {
+    mockUseBusinessAccessSnapshotQuery.mockReturnValue(
+      accessSnapshot("employee"),
+    );
+    mockUseBusinessProfileQuery.mockReturnValue({
+      data: makeBusinessProfileDto(),
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    await renderWithQueryClient(
+      <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
+        <Routes>
+          <Route
+            path="/business/:businessId/settings/profile"
+            element={<BusinessProfileSettingsPage />}
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.getByText("Venue settings are not available"),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Cuisine type")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Trade name")).not.toBeInTheDocument();
+  });
+
+  it("hides admin-only fields from a manager and keeps discovery editable", async () => {
+    mockUseBusinessAccessSnapshotQuery.mockReturnValue(
+      accessSnapshot("manager"),
+    );
+    mockUseBusinessProfileQuery.mockReturnValue({
+      data: makeBusinessProfileDto(),
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    await renderWithQueryClient(
+      <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
+        <Routes>
+          <Route
+            path="/business/:businessId/settings/profile"
+            element={<BusinessProfileSettingsPage />}
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.getByText(/only owners and admins can edit the business identity/i),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Cuisine type")).toBeInTheDocument();
+    expect(screen.getByLabelText("Categories (comma separated)")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Trade name")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Business email")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Phone number")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Currency")).not.toBeInTheDocument();
+    expect(screen.queryByText("Core business info")).not.toBeInTheDocument();
   });
 
   describe("error paths (Phase 6.3)", () => {

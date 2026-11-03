@@ -445,7 +445,7 @@ describe("Customer chrome and Business shell acceptance", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("disables Business with an explanation when no venue is enterable", async () => {
+  it("keeps Customer-only chrome when no venue is enterable", async () => {
     server = createServer({
       venues: [
         venue({
@@ -460,8 +460,11 @@ describe("Customer chrome and Business shell acceptance", () => {
 
     const workspace = await screen.findByRole("group", { name: "Workspace" });
     expect(
-      within(workspace).getByRole("button", { name: "Business" }),
-    ).toBeDisabled();
+      within(workspace).getByRole("button", { name: "Customer" }),
+    ).toBeInTheDocument();
+    expect(
+      within(workspace).queryByRole("button", { name: "Business" }),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByText(
         /business is not available for your venues right now/i,
@@ -471,6 +474,9 @@ describe("Customer chrome and Business shell acceptance", () => {
       "href",
       "/mode",
     );
+    expect(
+      await screen.findByRole("heading", { name: "Dashboard" }),
+    ).toBeInTheDocument();
   });
 
   it("saves Profile and Address independently without clearing the Address", async () => {

@@ -98,6 +98,41 @@ describe("businessProfilePayload", () => {
     });
   });
 
+  it("omits identity, contact, currency, and address for a manager", () => {
+    const payload = formValuesToUpdatePayload(values(), {
+      actorLayer: "manager",
+    });
+
+    expect(payload.get("tradeName")).toBeNull();
+    expect(payload.get("phoneNumber")).toBeNull();
+    expect(payload.get("currencyTrade")).toBeNull();
+    expect(payload.get("address")).toBeNull();
+    expect(payload.get("contactPerson")).toBeNull();
+
+    expect(JSON.parse(String(payload.get("cuisineType")))).toEqual(["Italian"]);
+    expect(JSON.parse(String(payload.get("categories")))).toEqual(["Pizza"]);
+    expect(payload.get("acceptsDelivery")).toBe("true");
+    expect(payload.get("deliveryRadius")).toBe("5");
+    expect(payload.get("minOrder")).toBe("20");
+    expect(payload.get("metrics")).not.toBeNull();
+    expect(payload.get("businessOpeningHours")).not.toBeNull();
+    expect(payload.get("deliveryOpeningWindows")).not.toBeNull();
+    expect(payload.get("reportingConfig")).not.toBeNull();
+  });
+
+  it("keeps identity and address fields for an admin", () => {
+    const payload = formValuesToUpdatePayload(values(), {
+      actorLayer: "admin",
+    });
+
+    expect(payload.get("tradeName")).toBe("Demo");
+    expect(payload.get("phoneNumber")).toBe("+1");
+    expect(payload.get("currencyTrade")).toBe("USD");
+    expect(payload.get("address")).not.toBeNull();
+    expect(payload.get("contactPerson")).toBe("Jane");
+    expect(payload.get("metrics")).not.toBeNull();
+  });
+
   it("never sends the business contact email or credentials (they are server-owned)", () => {
     const payload = formValuesToUpdatePayload(values());
     expect(payload.get("email")).toBeNull();

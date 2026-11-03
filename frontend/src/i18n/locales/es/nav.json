@@ -41,6 +41,7 @@
     "customerMode": "Modo cliente"
   },
   "business": {
+    "manage": "Gestión",
     "people": "Personal",
     "me": "Yo",
     "notifications": "Notificaciones"
@@ -59,8 +60,7 @@
     "profile": "Perfil",
     "openHours": "Horario",
     "delivery": "Entrega",
-    "metrics": "Métricas",
-    "settings": "Ajustes"
+    "metrics": "Métricas"
   },
   "sidebar": {
     "openMenu": "Abrir menú",

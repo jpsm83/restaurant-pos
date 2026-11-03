@@ -24,6 +24,7 @@ function readyFormController(): BusinessProfileSettingsReady {
   return {
     kind: "ready",
     businessId: "biz-1",
+    canAdminister: true,
     profileQuery: {} as BusinessProfileSettingsReady["profileQuery"],
     register: vi.fn() as unknown as BusinessProfileSettingsReady["register"],
     control: {} as BusinessProfileSettingsReady["control"],
@@ -158,6 +159,50 @@ describe("BusinessProfileSettingsFormShell", () => {
     expect(
       screen.getByText(
         "No se devolvieron datos del perfil. Inténtalo de nuevo.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("renders the localized access-denied outcome instead of the form", async () => {
+    useBusinessProfileSettingsController.mockReturnValue({
+      kind: "forbidden",
+      requiredLayer: "manager",
+    });
+
+    await renderWithI18n(
+      <BusinessProfileSettingsFormShell>
+        {() => <p>Never</p>}
+      </BusinessProfileSettingsFormShell>,
+    );
+
+    expect(
+      screen.getByText("Venue settings are not available"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Only managers and admins can change venue settings."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Never")).not.toBeInTheDocument();
+  });
+
+  it("renders the admin-only access-denied outcome in Spanish", async () => {
+    useBusinessProfileSettingsController.mockReturnValue({
+      kind: "forbidden",
+      requiredLayer: "admin",
+    });
+
+    await renderWithI18n(
+      <BusinessProfileSettingsFormShell>
+        {() => <p>Never</p>}
+      </BusinessProfileSettingsFormShell>,
+      { language: "es" },
+    );
+
+    expect(
+      screen.getByText("Los ajustes de identidad del local no están disponibles"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Solo los propietarios y administradores pueden cambiar la identidad, el contacto, la moneda y la dirección del local.",
       ),
     ).toBeInTheDocument();
   });

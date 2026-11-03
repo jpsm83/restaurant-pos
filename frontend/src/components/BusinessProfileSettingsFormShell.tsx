@@ -1,6 +1,9 @@
 import type { ReactNode } from "react";
 import type { TFunction } from "i18next";
+import type { BusinessAccessLayer } from "restaurant-pos-packages/access";
 import { useTranslation } from "react-i18next";
+import { ShieldAlert } from "lucide-react";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -72,6 +75,8 @@ type BusinessProfileSettingsFormShellProps = {
    * children so each settings route mirrors its own form shape.
    */
   loadingSlot?: ReactNode;
+  /** Minimum effective layer for the page; manager by default, admin for identity-only pages. */
+  requiredLayer?: BusinessAccessLayer;
   children: (ctx: BusinessProfileSettingsReady) => ReactNode;
 };
 
@@ -136,6 +141,33 @@ function renderProfileSettingsBlockedMain(
     );
   }
 
+  if (blocked.kind === "forbidden") {
+    const adminOnly = blocked.requiredLayer === "admin";
+    return (
+      <main className="w-full min-w-0 p-6">
+        <Card className="w-full max-w-2xl">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <ShieldAlert className="size-4" aria-hidden />
+              {t(
+                adminOnly
+                  ? "settingsAccess.adminTitle"
+                  : "settingsAccess.managerTitle",
+              )}
+            </CardTitle>
+            <CardDescription>
+              {t(
+                adminOnly
+                  ? "settingsAccess.adminDescription"
+                  : "settingsAccess.managerDescription",
+              )}
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </main>
+    );
+  }
+
   return null;
 }
 
@@ -168,11 +200,12 @@ export function BusinessProfileSettingsStaticShell({
  */
 export function BusinessProfileSettingsFormShell({
   loadingSlot,
+  requiredLayer = "manager",
   children,
 }: BusinessProfileSettingsFormShellProps) {
   const { t } = useTranslation("business");
   const resolveError = useErrorMessage();
-  const ctrl = useBusinessProfileSettingsController();
+  const ctrl = useBusinessProfileSettingsController(requiredLayer);
 
   if (ctrl.kind !== "ready") {
     return renderProfileSettingsBlockedMain(loadingSlot, ctrl, t, resolveError);

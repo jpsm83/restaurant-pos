@@ -62,6 +62,7 @@ function AddressSettingsLoadingBody() {
 export default function BusinessAddressSettingsPage() {
   return (
     <BusinessProfileSettingsFormShell
+      requiredLayer="admin"
       loadingSlot={
         <BusinessProfileSettingsLoadingCard>
           <AddressSettingsLoadingBody />

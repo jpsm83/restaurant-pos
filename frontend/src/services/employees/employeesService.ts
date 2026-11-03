@@ -83,15 +83,37 @@ export type HireFailureReason =
   | "validation"
   | "other";
 
+function effectiveBusinessLayer(
+  access: BusinessAccessSnapshot | null | undefined,
+): AccessLayer | null {
+  const layer = access?.effectiveLayer;
+  if (!layer || !(BUSINESS_ACCESS_LAYERS as readonly string[]).includes(layer)) {
+    return null;
+  }
+  return layer;
+}
+
 /** True when the access snapshot reaches the manager layer or above. */
 export function canManageVenue(
   access: BusinessAccessSnapshot | null | undefined,
 ): boolean {
-  const layer = access?.effectiveLayer;
-  if (!layer || !(BUSINESS_ACCESS_LAYERS as readonly string[]).includes(layer)) {
-    return false;
-  }
+  const layer = effectiveBusinessLayer(access);
+  if (!layer) return false;
   return compareAccessLayers(layer, "manager") >= 0;
+}
+
+/**
+ * True when the caller may perform venue-administration acts: an effective
+ * admin layer, or ownership of the venue (owner access is admin-equivalent).
+ */
+export function canAdministerVenue(
+  access: BusinessAccessSnapshot | null | undefined,
+): boolean {
+  if (!access) return false;
+  if (access.source === "ownership") return true;
+  const layer = effectiveBusinessLayer(access);
+  if (!layer) return false;
+  return compareAccessLayers(layer, "admin") >= 0;
 }
 
 /** Classify the known hire outcomes for localized page copy. */

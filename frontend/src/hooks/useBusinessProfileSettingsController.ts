@@ -32,6 +32,12 @@ import {
 import { queryKeys } from "@/services/queryKeys";
 import { toServiceRequestError } from "@/services/serviceErrors";
 import { buildBusinessProfileSchema } from "@/services/business/businessProfileFormSchema";
+import {
+  canAdministerVenue,
+  canManageVenue,
+  useBusinessAccessSnapshotQuery,
+} from "@/services/employees/employeesService";
+import type { BusinessAccessLayer } from "restaurant-pos-packages/access";
 
 /** RHF defaults for business profile PATCH; must stay aligned with `businessDtoToFormValues` shape. */
 const EMPTY_PROFILE_FORM_VALUES: BusinessProfileFormValues = {
@@ -108,10 +114,12 @@ export type BusinessProfileSettingsGateResult =
   | BusinessProfileSettingsGateReady;
 
 /** Non-ready states returned before the full RHF + mutation controller is built. */
-export type BusinessProfileSettingsPageBlocked = Exclude<
-  BusinessProfileSettingsGateResult,
-  BusinessProfileSettingsGateReady
->;
+export type BusinessProfileSettingsPageBlocked =
+  | Exclude<
+      BusinessProfileSettingsGateResult,
+      BusinessProfileSettingsGateReady
+    >
+  | { kind: "forbidden"; requiredLayer: BusinessAccessLayer };
 
 /**
  * Session + route + **`useBusinessProfileQuery`** only (no RHF, no PATCH).
@@ -178,6 +186,7 @@ export function useBusinessProfileSettingsGate(): BusinessProfileSettingsGateRes
 export type BusinessProfileSettingsReady = {
   kind: "ready";
   businessId: string;
+  canAdminister: boolean;
   profileQuery: UseQueryResult<BusinessProfileDto, Error>;
   register: UseFormRegister<BusinessProfileFormValues>;
   control: Control<BusinessProfileFormValues>;
@@ -215,8 +224,14 @@ export type BusinessProfileSettingsController =
  * Shared business profile form controller for split settings routes.
  * Each route keeps the full `BusinessProfileFormValues` so `formValuesToUpdatePayload` stays correct on save.
  */
-export function useBusinessProfileSettingsController(): BusinessProfileSettingsController {
+export function useBusinessProfileSettingsController(
+  requiredLayer: BusinessAccessLayer = "manager",
+): BusinessProfileSettingsController {
   const gate = useBusinessProfileSettingsGate();
+  const accessQuery = useBusinessAccessSnapshotQuery(
+    gate.kind === "ready" ? gate.businessId : undefined,
+    { enabled: gate.kind === "ready" },
+  );
   const { t } = useTranslation("business");
   const resolveError = useErrorMessage();
   const [submitError, setSubmitError] = useState<ErrorFailure | null>(null);
@@ -308,6 +323,32 @@ export function useBusinessProfileSettingsController(): BusinessProfileSettingsC
     return gate;
   }
 
+  const access = accessQuery.data;
+  const canManage = canManageVenue(access);
+  const canAdminister = canAdministerVenue(access);
+
+  if (!access && (accessQuery.isLoading || accessQuery.isPending || accessQuery.isFetching)) {
+    return { kind: "loading" };
+  }
+
+  if (accessQuery.isError) {
+    return {
+      kind: "error",
+      failure: accessQuery.error
+        ? toServiceRequestError(accessQuery.error, "businessFetch")
+        : undefined,
+      refetch: () => accessQuery.refetch(),
+    };
+  }
+
+  if (
+    !access ||
+    !canManage ||
+    (requiredLayer === "admin" && !canAdminister)
+  ) {
+    return { kind: "forbidden", requiredLayer };
+  }
+
   const { businessId, profileQuery } = gate;
 
   const handleImageUpload = (event: ChangeEvent<HTMLInputElement>) => {
@@ -317,7 +358,10 @@ export function useBusinessProfileSettingsController(): BusinessProfileSettingsC
 
   const onSubmit = async (values: BusinessProfileFormValues) => {
     setSubmitError(null);
-    const payload = formValuesToUpdatePayload(values);
+    const payload = formValuesToUpdatePayload(values, {
+      // Owner access is admin-equivalent even when the snapshot omits a layer.
+      actorLayer: canAdminister ? "admin" : access.effectiveLayer,
+    });
 
     try {
       await updateMutation.mutateAsync({
@@ -366,6 +410,7 @@ export function useBusinessProfileSettingsController(): BusinessProfileSettingsC
   return {
     kind: "ready",
     businessId,
+    canAdminister,
     profileQuery,
     register,
     control,

@@ -230,7 +230,7 @@ describe("Navbar", () => {
     });
   });
 
-  it("explains when venues exist but none are enterable and keeps /mode reachable", async () => {
+  it("keeps Customer-only chrome when venues exist but none are enterable", async () => {
     signedInUser();
     mockVenues.data = [
       venue({ businessId: "b1", canEnterBusiness: false }),
@@ -238,8 +238,14 @@ describe("Navbar", () => {
 
     await renderNavbar();
 
-    expect(screen.getByRole("group", { name: /workspace/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^business$/i })).toBeDisabled();
+    const workspace = screen.getByRole("group", { name: /workspace/i });
+    expect(workspace).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /^customer$/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /^business$/i }),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByText(/business is not available for your venues/i),
     ).toBeInTheDocument();

@@ -490,6 +490,64 @@ describe("BusinessLayout", () => {
     expect(screen.getByTestId("actor-sidebar")).not.toHaveTextContent("People");
   });
 
+  it.each(["employee", "supervisor"])(
+    "shows only the Service and Me destinations for a %s",
+    async (layer) => {
+      mockAccess.value = {
+        data: {
+          businessId: "b1",
+          effectiveLayer: layer,
+          source: "membership",
+          jobRoles: [layer],
+          capabilities: [],
+          canEnterBusiness: true,
+        },
+      };
+
+      await renderBusinessLayout();
+
+      const nav = screen.getByTestId("actor-sidebar");
+      expect(nav).toHaveTextContent("Dashboard");
+      expect(nav).toHaveTextContent("Notifications");
+      const manageLinks = within(nav)
+        .getAllByRole("link")
+        .filter((link) => link.getAttribute("data-group") === "Manage");
+      expect(manageLinks).toHaveLength(0);
+      expect(nav).not.toHaveTextContent("Open hours");
+      expect(nav).not.toHaveTextContent("Delivery");
+      expect(nav).not.toHaveTextContent("Metrics");
+      expect(nav).not.toHaveTextContent("People");
+    },
+  );
+
+  it.each(["manager", "admin"])(
+    "shows the Manage settings group for a %s",
+    async (layer) => {
+      mockAccess.value = {
+        data: {
+          businessId: "b1",
+          effectiveLayer: layer,
+          source: "membership",
+          jobRoles: [layer],
+          capabilities: [],
+          canEnterBusiness: true,
+        },
+      };
+
+      await renderBusinessLayout();
+
+      const nav = screen.getByTestId("actor-sidebar");
+      const manageLinks = within(nav)
+        .getAllByRole("link")
+        .filter((link) => link.getAttribute("data-group") === "Manage");
+      expect(manageLinks.map((link) => link.textContent)).toEqual([
+        "Open hours",
+        "Delivery",
+        "Metrics",
+      ]);
+    },
+  );
+
   it("renders venue tabs and Owner chrome in Spanish", async () => {
     mockVenues.value = [
       venue({ businessId: "b1", tradeName: "Alpha Bar" }),

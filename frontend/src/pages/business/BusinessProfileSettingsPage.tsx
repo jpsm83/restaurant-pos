@@ -6,6 +6,7 @@ import {
   Camera,
   ChevronDown,
 } from "lucide-react";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -207,6 +208,7 @@ function BusinessProfileSections({
 }) {
   const { t } = useTranslation("business");
   const {
+    canAdminister,
     register,
     control,
     handleImageUpload,
@@ -223,146 +225,207 @@ function BusinessProfileSections({
 
   return (
     <>
+      {canAdminister ? (
+        <section className="space-y-4">
+          <header className="space-y-1.5">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground">
+              {t("profileSettings.core.sectionTitle")}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {t("profileSettings.core.sectionDescription")}
+            </p>
+          </header>
+
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 md:gap-8 lg:items-start">
+            {/* Logo section */}
+            <div className="flex flex-col items-center gap-2 justify-self-center h-auto w-auto">
+              <div
+                className="group relative flex items-center justify-center overflow-hidden rounded-lg border border-border bg-muted"
+              >
+                {hasImage ? (
+                  <img
+                    src={imagePreviewUrl ?? imageUrl}
+                    alt={t("profileSettings.logo.logoAlt")}
+                    className="block object-contain"
+                  />
+                ) : (
+                  <div className="flex items-center justify-center text-muted-foreground">
+                    <Building2 className="h-14 w-14 shrink-0" />
+                  </div>
+                )}
+                <Label
+                  htmlFor="bp-image-file"
+                  className="absolute inset-0 flex cursor-pointer items-center justify-center bg-primary/80 text-xs font-medium text-primary-foreground opacity-0 transition-opacity group-hover:opacity-100"
+                >
+                  <Camera className="mr-1 h-4 w-4 shrink-0" />
+                  {t("profileSettings.logo.uploadLabel")}
+                </Label>
+              </div>
+              <Input
+                id="bp-image-file"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                  handleImageUpload(event)
+                }
+              />
+            </div>
+
+            {/* Core business info section */}
+            <div className="min-w-0 space-y-4 md:col-span-1 lg:col-span-2">
+              <div className="min-w-0 space-y-2">
+                <Label htmlFor="bp-trade-name">
+                  {t("profileSettings.core.fields.tradeName")}
+                </Label>
+                <Input
+                  id="bp-trade-name"
+                  autoComplete="organization"
+                  {...register("tradeName")}
+                />
+              </div>
+              <div className="min-w-0 space-y-2">
+                <Label htmlFor="bp-email">
+                  {t("profileSettings.core.fields.email")}
+                </Label>
+                <Input
+                  id="bp-email"
+                  type="email"
+                  autoComplete="email"
+                  readOnly
+                  aria-readonly="true"
+                  value={profileQuery.data?.email ?? ""}
+                />
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="min-w-0 space-y-2">
+              <Label htmlFor="bp-phone">
+                {t("profileSettings.core.fields.phoneNumber")}
+              </Label>
+              <Input
+                id="bp-phone"
+                autoComplete="tel"
+                {...register("phoneNumber")}
+              />
+            </div>
+            <div className="min-w-0 space-y-2">
+              <Label htmlFor="bp-currency">
+                {t("profileSettings.core.fields.currencyTrade")}
+              </Label>
+              <Controller
+                name="currencyTrade"
+                control={control}
+                render={({ field }) => (
+                  <Select
+                    key={`bp-currency-${profileQuery.dataUpdatedAt}`}
+                    value={field.value}
+                    onValueChange={field.onChange}
+                  >
+                    <SelectTrigger
+                      id="bp-currency"
+                      className="h-8 w-full min-w-0"
+                    >
+                      <SelectValue
+                        placeholder={t(
+                          "profileSettings.selects.currencyPlaceholder",
+                        )}
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {currenctyEnums.map((c) => (
+                        <SelectItem key={c} value={c}>
+                          {c}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+            <div className="min-w-0 space-y-2">
+              <Label htmlFor="bp-timezone">
+                {t("profileSettings.core.fields.timezone")}
+              </Label>
+              <Input
+                id="bp-timezone"
+                value={timezone}
+                readOnly
+                aria-describedby={
+                  timezoneIsDefault ? "bp-timezone-hint" : undefined
+                }
+              />
+              {timezoneIsDefault ? (
+                <p
+                  id="bp-timezone-hint"
+                  className="rounded-md bg-warning/20 px-2 py-1 text-xs leading-snug text-foreground"
+                >
+                  {t("profileSettings.core.timezoneDefaultHint")}
+                </p>
+              ) : null}
+            </div>
+            <div className="min-w-0 space-y-2">
+              <Label htmlFor="bp-contact-person">
+                {t("profileSettings.core.fields.contactPerson")}
+              </Label>
+              <Controller
+                name="contactPerson"
+                control={control}
+                render={({ field }) => {
+                  const hasMatch = managementContactRows.some(
+                    (r) => r.employeeId === field.value,
+                  );
+                  const selectValue =
+                    field.value && hasMatch ? field.value : CONTACT_SELECT_NONE;
+                  return (
+                    <Select
+                      value={selectValue}
+                      onValueChange={(v) =>
+                        field.onChange(v === CONTACT_SELECT_NONE ? "" : v)
+                      }
+                    >
+                      <SelectTrigger
+                        id="bp-contact-person"
+                        className="h-8 w-full min-w-0"
+                      >
+                        <SelectValue
+                          placeholder={t(
+                            "profileSettings.selects.contactPlaceholder",
+                          )}
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={CONTACT_SELECT_NONE}>
+                          {t("profileSettings.selects.contactNone")}
+                        </SelectItem>
+                        {managementContactRows.map((row) => (
+                          <SelectItem key={row.employeeId} value={row.employeeId}>
+                            {row.displayName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  );
+                }}
+              />
+            </div>
+          </div>
+        </section>
+      ) : (
+        <Alert tone="info">{t("profileSettings.managerFieldNotice")}</Alert>
+      )}
+
       <section className="space-y-4">
         <header className="space-y-1.5">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground">
-            {t("profileSettings.core.sectionTitle")}
+            {t("profileSettings.discovery.sectionTitle")}
           </h2>
           <p className="text-sm text-muted-foreground">
-            {t("profileSettings.core.sectionDescription")}
+            {t("profileSettings.discovery.sectionDescription")}
           </p>
         </header>
-
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 md:gap-8 lg:items-start">
-
-          {/* Logo section */}
-          <div className="flex flex-col items-center gap-2 justify-self-center h-auto w-auto">
-            <div
-              className="group relative flex items-center justify-center overflow-hidden rounded-lg border border-border bg-muted"
-            >
-              {hasImage ? (
-                <img
-                  src={imagePreviewUrl ?? imageUrl}
-                  alt={t("profileSettings.logo.logoAlt")}
-                  className="block object-contain"
-                />
-              ) : (
-                <div className="flex items-center justify-center text-muted-foreground">
-                  <Building2 className="h-14 w-14 shrink-0" />
-                </div>
-              )}
-              <Label
-                htmlFor="bp-image-file"
-                className="absolute inset-0 flex cursor-pointer items-center justify-center bg-primary/80 text-xs font-medium text-primary-foreground opacity-0 transition-opacity group-hover:opacity-100"
-              >
-                <Camera className="mr-1 h-4 w-4 shrink-0" />
-                {t("profileSettings.logo.uploadLabel")}
-              </Label>
-            </div>
-            <Input
-              id="bp-image-file"
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                handleImageUpload(event)
-              }
-            />
-          </div>
-
-          {/* Core business info section */}
-          <div className="min-w-0 space-y-4 md:col-span-1 lg:col-span-2">
-            <div className="min-w-0 space-y-2">
-              <Label htmlFor="bp-trade-name">
-                {t("profileSettings.core.fields.tradeName")}
-              </Label>
-              <Input
-                id="bp-trade-name"
-                autoComplete="organization"
-                {...register("tradeName")}
-              />
-            </div>
-            <div className="min-w-0 space-y-2">
-              <Label htmlFor="bp-email">
-                {t("profileSettings.core.fields.email")}
-              </Label>
-              <Input
-                id="bp-email"
-                type="email"
-                autoComplete="email"
-                readOnly
-                aria-readonly="true"
-                value={profileQuery.data?.email ?? ""}
-              />
-            </div>
-          </div>
-        </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          <div className="min-w-0 space-y-2">
-            <Label htmlFor="bp-phone">
-              {t("profileSettings.core.fields.phoneNumber")}
-            </Label>
-            <Input
-              id="bp-phone"
-              autoComplete="tel"
-              {...register("phoneNumber")}
-            />
-          </div>
-          <div className="min-w-0 space-y-2">
-            <Label htmlFor="bp-currency">
-              {t("profileSettings.core.fields.currencyTrade")}
-            </Label>
-            <Controller
-              name="currencyTrade"
-              control={control}
-              render={({ field }) => (
-                <Select
-                  key={`bp-currency-${profileQuery.dataUpdatedAt}`}
-                  value={field.value}
-                  onValueChange={field.onChange}
-                >
-                  <SelectTrigger
-                    id="bp-currency"
-                    className="h-8 w-full min-w-0"
-                  >
-                    <SelectValue
-                      placeholder={t(
-                        "profileSettings.selects.currencyPlaceholder",
-                      )}
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {currenctyEnums.map((c) => (
-                      <SelectItem key={c} value={c}>
-                        {c}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            />
-          </div>
-          <div className="min-w-0 space-y-2">
-            <Label htmlFor="bp-timezone">
-              {t("profileSettings.core.fields.timezone")}
-            </Label>
-            <Input
-              id="bp-timezone"
-              value={timezone}
-              readOnly
-              aria-describedby={
-                timezoneIsDefault ? "bp-timezone-hint" : undefined
-              }
-            />
-            {timezoneIsDefault ? (
-              <p
-                id="bp-timezone-hint"
-                className="rounded-md bg-warning/20 px-2 py-1 text-xs leading-snug text-foreground"
-              >
-                {t("profileSettings.core.timezoneDefaultHint")}
-              </p>
-            ) : null}
-          </div>
           <Controller
             name="cuisineType"
             control={control}
@@ -393,51 +456,6 @@ function BusinessProfileSections({
               />
             )}
           />
-          <div className="min-w-0 space-y-2">
-            <Label htmlFor="bp-contact-person">
-              {t("profileSettings.core.fields.contactPerson")}
-            </Label>
-            <Controller
-              name="contactPerson"
-              control={control}
-              render={({ field }) => {
-                const hasMatch = managementContactRows.some(
-                  (r) => r.employeeId === field.value,
-                );
-                const selectValue =
-                  field.value && hasMatch ? field.value : CONTACT_SELECT_NONE;
-                return (
-                  <Select
-                    value={selectValue}
-                    onValueChange={(v) =>
-                      field.onChange(v === CONTACT_SELECT_NONE ? "" : v)
-                    }
-                  >
-                    <SelectTrigger
-                      id="bp-contact-person"
-                      className="h-8 w-full min-w-0"
-                    >
-                      <SelectValue
-                        placeholder={t(
-                          "profileSettings.selects.contactPlaceholder",
-                        )}
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={CONTACT_SELECT_NONE}>
-                        {t("profileSettings.selects.contactNone")}
-                      </SelectItem>
-                      {managementContactRows.map((row) => (
-                        <SelectItem key={row.employeeId} value={row.employeeId}>
-                          {row.displayName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                );
-              }}
-            />
-          </div>
         </div>
       </section>
     </>

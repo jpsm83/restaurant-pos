@@ -53,6 +53,7 @@ import {
   useOwnerPortfolioQuery,
 } from "@/services/portfolio/portfolioService";
 import {
+  canAdministerVenue,
   canManageVenue,
   useBusinessAccessSnapshotQuery,
 } from "@/services/employees/employeesService";
@@ -101,6 +102,9 @@ export default function BusinessLayout() {
   const deliveryTo = canonicalBusinessSettingsDeliveryPath(businessId);
   const metricsTo = canonicalBusinessSettingsMetricsPath(businessId);
   const notificationsTo = canonicalBusinessNotificationsPath(businessId);
+  // Owner access is admin-equivalent even when the snapshot omits a layer.
+  const canManage =
+    canManageVenue(accessQuery.data) || canAdministerVenue(accessQuery.data);
 
   const pages = [
     {
@@ -110,7 +114,7 @@ export default function BusinessLayout() {
       icon: LayoutDashboard,
       isActive: pathname === dashboardTo,
     },
-    ...(canManageVenue(accessQuery.data)
+    ...(canManage
       ? [
           {
             key: "people",
@@ -124,33 +128,37 @@ export default function BusinessLayout() {
   ];
 
   const subPages = [
-    {
-      key: "settings-open-hours",
-      label: t("settings.openHours"),
-      to: openHoursTo,
-      icon: Clock,
-      isActive: pathname === openHoursTo,
-      groupName: t("settings.settings"),
-      groupIcon: Settings,
-    },
-    {
-      key: "settings-delivery",
-      label: t("settings.delivery"),
-      to: deliveryTo,
-      icon: Truck,
-      isActive: pathname === deliveryTo,
-      groupName: t("settings.settings"),
-      groupIcon: Settings,
-    },
-    {
-      key: "settings-metrics",
-      label: t("settings.metrics"),
-      to: metricsTo,
-      icon: BarChart3,
-      isActive: pathname === metricsTo,
-      groupName: t("settings.settings"),
-      groupIcon: Settings,
-    },
+    ...(canManage
+      ? [
+          {
+            key: "settings-open-hours",
+            label: t("settings.openHours"),
+            to: openHoursTo,
+            icon: Clock,
+            isActive: pathname === openHoursTo,
+            groupName: t("business.manage"),
+            groupIcon: Settings,
+          },
+          {
+            key: "settings-delivery",
+            label: t("settings.delivery"),
+            to: deliveryTo,
+            icon: Truck,
+            isActive: pathname === deliveryTo,
+            groupName: t("business.manage"),
+            groupIcon: Settings,
+          },
+          {
+            key: "settings-metrics",
+            label: t("settings.metrics"),
+            to: metricsTo,
+            icon: BarChart3,
+            isActive: pathname === metricsTo,
+            groupName: t("business.manage"),
+            groupIcon: Settings,
+          },
+        ]
+      : []),
     {
       key: "me-notifications",
       label: t("business.notifications"),

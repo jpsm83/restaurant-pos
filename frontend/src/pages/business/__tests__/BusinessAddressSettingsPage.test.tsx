@@ -11,6 +11,27 @@ import BusinessAddressSettingsPage from "../BusinessAddressSettingsPage";
 const mockDispatch = vi.fn();
 const mockUseBusinessProfileQuery = vi.fn();
 const mockUseUpdateBusinessProfileMutation = vi.fn();
+const mockUseBusinessAccessSnapshotQuery = vi.fn();
+
+function accessSnapshot(
+  effectiveLayer: "manager" | "admin" = "admin",
+) {
+  return {
+    data: {
+      businessId: "64b000000000000000000001",
+      effectiveLayer,
+      source: "membership",
+      jobRoles: [effectiveLayer],
+      capabilities: [],
+      canEnterBusiness: true,
+    },
+    isLoading: false,
+    isError: false,
+    error: null,
+    isPending: false,
+    isFetching: false,
+  };
+}
 
 vi.mock("@/auth/store/AuthContext", () => ({
   useAuth: () => ({
@@ -27,6 +48,16 @@ vi.mock("@/auth/store/AuthContext", () => ({
     dispatch: mockDispatch,
   }),
 }));
+
+vi.mock("@/services/employees/employeesService", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/services/employees/employeesService")>();
+  return {
+    ...actual,
+    useBusinessAccessSnapshotQuery: (...args: unknown[]) =>
+      mockUseBusinessAccessSnapshotQuery(...args),
+  };
+});
 
 vi.mock("@/services/business/businessService", async (importOriginal) => {
   const actual =
@@ -114,6 +145,8 @@ describe("BusinessAddressSettingsPage", () => {
     mockDispatch.mockReset();
     mockUseBusinessProfileQuery.mockReset();
     mockUseUpdateBusinessProfileMutation.mockReset();
+    mockUseBusinessAccessSnapshotQuery.mockReset();
+    mockUseBusinessAccessSnapshotQuery.mockReturnValue(accessSnapshot());
     mockUseUpdateBusinessProfileMutation.mockReturnValue({
       mutateAsync: vi.fn().mockResolvedValue({ message: "Business updated" }),
       isPending: false,
@@ -203,6 +236,40 @@ describe("BusinessAddressSettingsPage", () => {
       "data-address-query",
       "Main St, 10, San Diego, CA, 92101, US",
     );
+  });
+
+  it("shows the localized access-denied outcome to a manager instead of the address form", async () => {
+    mockUseBusinessAccessSnapshotQuery.mockReturnValue(
+      accessSnapshot("manager"),
+    );
+    mockUseBusinessProfileQuery.mockReturnValue({
+      data: makeBusinessProfileDto(),
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    await renderWithQueryClient(
+      <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/address"]}>
+        <Routes>
+          <Route
+            path="/business/:businessId/settings/address"
+            element={<BusinessAddressSettingsPage />}
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.getByText("Venue identity settings are not available"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Only owners and admins can change the venue identity, contact, currency, and address.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Country")).not.toBeInTheDocument();
   });
 
   it("omits profile-only sections so the page stays scoped to postal address", async () => {

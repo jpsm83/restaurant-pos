@@ -130,6 +130,7 @@
   },
   "profileSettings": {
     "cardDescription": "Update your public-facing business identity, logo, and how customers discover you.",
+    "managerFieldNotice": "Only owners and admins can edit the business identity, contact details, and currency. You can still update discovery settings.",
     "logo": {
       "sectionTitle": "Logo",
       "sectionDescription": "Shown in discovery, receipts, and other customer-facing surfaces.",
@@ -314,6 +315,12 @@
       "complement": "Complement",
       "complementPlaceholder": "Floor, wing, unit details…"
     }
+  },
+  "settingsAccess": {
+    "managerTitle": "Venue settings are not available",
+    "managerDescription": "Only managers and admins can change venue settings.",
+    "adminTitle": "Venue identity settings are not available",
+    "adminDescription": "Only owners and admins can change the venue identity, contact, currency, and address."
   },
   "weekdays": {
     "sunday": "Sunday",

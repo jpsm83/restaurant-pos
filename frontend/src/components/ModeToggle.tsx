@@ -4,8 +4,9 @@
  * Hidden when the signed-in User has no accessible venue. The Business side
  * opens the active venue when the URL already addresses an enterable one, and
  * otherwise the first enterable venue in list order. When venues exist but none
- * are enterable, Business stays disabled with a localized explanation and the
- * `/mode` fallback stays reachable.
+ * are enterable, Business is not rendered at all: the chrome stays
+ * Customer-only with a localized explanation and the `/mode` fallback stays
+ * reachable.
  */
 import { Trans, useTranslation } from "react-i18next";
 import { Link, useLocation } from "react-router-dom";
@@ -94,18 +95,7 @@ export default function ModeToggle({ mode }: { mode: AuthMode }) {
           >
             {t("toggle.business")}
           </Button>
-        ) : (
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            aria-pressed={mode === "business"}
-            disabled
-            aria-describedby="mode-toggle-unavailable"
-          >
-            {t("toggle.business")}
-          </Button>
-        )}
+        ) : null}
       </div>
       {targetVenue ? null : (
         <p
@@ -114,7 +104,7 @@ export default function ModeToggle({ mode }: { mode: AuthMode }) {
         >
           <Trans
             t={t}
-            i18nKey="toggle.unavailable"
+            i18nKey="toggle.customerOnly"
             components={{
               whyLink: (
                 <Link

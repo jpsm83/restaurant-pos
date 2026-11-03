@@ -4,7 +4,7 @@
     "customer": "Customer",
     "business": "Business",
     "businessHint": "Open your business workspace",
-    "unavailable": "Business is not available for your venues right now. <whyLink>See why</whyLink>"
+    "customerOnly": "Business is not available for your venues right now. <whyLink>See why</whyLink>"
   },
   "title": "How do you want to continue?",
   "description": "Customer browsing or business tools — updates your session mode.",

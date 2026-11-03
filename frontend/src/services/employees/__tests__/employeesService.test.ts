@@ -5,11 +5,14 @@
 import { AxiosError, type AxiosResponse } from "axios";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  canAdministerVenue,
+  canManageVenue,
   fetchBusinessAccessSnapshot,
   fetchEmployeeMembership,
   fetchVenueMemberships,
   hireEmployee,
   hireFailureReason,
+  type BusinessAccessSnapshot,
 } from "../employeesService";
 
 const { mockGet, mockPost } = vi.hoisted(() => ({
@@ -24,7 +27,7 @@ vi.mock("../../http", () => ({
   },
 }));
 
-const accessSnapshot = {
+const accessSnapshot: BusinessAccessSnapshot = {
   businessId: "64b000000000000000000001",
   effectiveLayer: "manager",
   source: "membership",
@@ -154,6 +157,24 @@ describe("employeesService", () => {
       code: "employeesFetch.forbidden",
       status: 403,
     });
+  });
+
+  it("resolves the manager and admin helpers from the effective layer", () => {
+    const at = (
+      effectiveLayer: "employee" | "supervisor" | "manager" | "admin",
+      source: "membership" | "ownership" = "membership",
+    ) => ({ ...accessSnapshot, effectiveLayer, source });
+
+    expect(canManageVenue(at("employee"))).toBe(false);
+    expect(canManageVenue(at("supervisor"))).toBe(false);
+    expect(canManageVenue(at("manager"))).toBe(true);
+    expect(canManageVenue(at("admin"))).toBe(true);
+    expect(canManageVenue(null)).toBe(false);
+
+    expect(canAdministerVenue(at("manager"))).toBe(false);
+    expect(canAdministerVenue(at("admin"))).toBe(true);
+    expect(canAdministerVenue(at("manager", "ownership"))).toBe(true);
+    expect(canAdministerVenue(null)).toBe(false);
   });
 
   it("classifies known hire outcomes by machine code", () => {

@@ -129,6 +129,74 @@ export function canAssignJobRoles(params: {
   );
 }
 
+/**
+ * The minimum effective layer that may submit each editable venue-profile
+ * field. Identity, contact, currency, and address are admin (owner) acts;
+ * operational configuration is a manager act.
+ */
+export const BUSINESS_PROFILE_FIELD_MINIMUM_LAYER = {
+  tradeName: "admin",
+  imageUrl: "admin",
+  email: "admin",
+  phoneNumber: "admin",
+  currencyTrade: "admin",
+  address: "admin",
+  contactPerson: "admin",
+  cuisineType: "manager",
+  categories: "manager",
+  acceptsDelivery: "manager",
+  deliveryRadius: "manager",
+  minOrder: "manager",
+  businessOpeningHours: "manager",
+  deliveryOpeningWindows: "manager",
+  metrics: "manager",
+  reportingConfig: "manager",
+} as const satisfies Record<string, BusinessAccessLayer>;
+
+export type BusinessProfileField =
+  keyof typeof BUSINESS_PROFILE_FIELD_MINIMUM_LAYER;
+
+/** Unknown fields fall back to admin so a new field is never manager-open. */
+function businessProfileFieldMinimumLayer(
+  field: string,
+): BusinessAccessLayer {
+  return Object.hasOwn(BUSINESS_PROFILE_FIELD_MINIMUM_LAYER, field)
+    ? BUSINESS_PROFILE_FIELD_MINIMUM_LAYER[field as BusinessProfileField]
+    : "admin";
+}
+
+/** True when the effective layer may submit the field. */
+export function canEditBusinessProfileField(
+  layer: AccessLayer,
+  field: string,
+): boolean {
+  return (
+    compareAccessLayers(businessProfileFieldMinimumLayer(field), layer) <= 0
+  );
+}
+
+/**
+ * The submitted fields the actor's effective layer may not write, in request
+ * order. An empty array means the whole submission is allowed.
+ */
+export function findProfileFieldsAboveLayer(params: {
+  fields: Iterable<string>;
+  actorLayer: AccessLayer;
+}): string[] {
+  const seen = new Set<string>();
+  const refused: string[] = [];
+
+  for (const field of params.fields) {
+    if (seen.has(field)) continue;
+    seen.add(field);
+    if (!canEditBusinessProfileField(params.actorLayer, field)) {
+      refused.push(field);
+    }
+  }
+
+  return refused;
+}
+
 export interface AccessCapabilityDefinition {
   /** Stable machine key. Never reworded with the label. */
   readonly key: AccessCapabilityKey;

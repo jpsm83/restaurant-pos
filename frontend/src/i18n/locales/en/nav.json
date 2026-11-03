@@ -41,6 +41,7 @@
     "customerMode": "Customer mode"
   },
   "business": {
+    "manage": "Manage",
     "people": "People",
     "me": "Me",
     "notifications": "Notifications"
@@ -59,8 +60,7 @@
     "profile": "Profile",
     "openHours": "Open hours",
     "delivery": "Delivery",
-    "metrics": "Metrics",
-    "settings": "Settings"
+    "metrics": "Metrics"
   },
   "sidebar": {
     "openMenu": "Open menu",

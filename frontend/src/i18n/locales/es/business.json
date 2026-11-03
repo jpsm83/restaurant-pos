@@ -130,6 +130,7 @@
   },
   "profileSettings": {
     "cardDescription": "Actualiza la identidad pública del negocio, el logotipo y cómo te encuentran los clientes.",
+    "managerFieldNotice": "Solo los propietarios y administradores pueden editar la identidad, los datos de contacto y la moneda del negocio. Aún puedes actualizar los ajustes de descubrimiento.",
     "logo": {
       "sectionTitle": "Logotipo",
       "sectionDescription": "Se muestra en descubrimiento, recibos y otras superficies visibles para el cliente.",
@@ -314,6 +315,12 @@
       "complement": "Complemento",
       "complementPlaceholder": "Piso, ala, unidad…"
     }
+  },
+  "settingsAccess": {
+    "managerTitle": "Los ajustes del local no están disponibles",
+    "managerDescription": "Solo los responsables y administradores pueden cambiar los ajustes del local.",
+    "adminTitle": "Los ajustes de identidad del local no están disponibles",
+    "adminDescription": "Solo los propietarios y administradores pueden cambiar la identidad, el contacto, la moneda y la dirección del local."
   },
   "weekdays": {
     "sunday": "Domingo",
