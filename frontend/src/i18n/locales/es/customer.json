@@ -23,6 +23,7 @@
       "submitting": "Enviando…",
       "cancel": "Cancelar",
       "success": "Enlace de confirmación enviado. Revisa tu nueva bandeja de entrada para completar el cambio.",
+      "alreadySent": "Ya se envió un enlace de confirmación recientemente; revisa tu bandeja de entrada.",
       "errors": {
         "invalidEmail": "Introduce una dirección de correo válida.",
         "passwordRequired": "Introduce tu contraseña actual.",

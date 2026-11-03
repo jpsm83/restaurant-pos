@@ -132,6 +132,10 @@ describe("ERROR_COPY", () => {
       namespace: "auth",
       key: "api.invalidResetLink",
     });
+    expect(getErrorCopy(failure("emailChange.rateLimited"))).toMatchObject({
+      namespace: "auth",
+      key: "api.emailChangeCooldown",
+    });
     expect(
       getErrorCopy(failure("resendConfirmation.badRequest")),
     ).toMatchObject({
@@ -187,7 +191,8 @@ describe("ERROR_COPY", () => {
       (code) =>
         code.startsWith("googleAuth.") &&
         code !== "googleAuth.conflict" &&
-        code !== "googleAuth.accountNotFound",
+        code !== "googleAuth.accountNotFound" &&
+        code !== "googleAuth.rateLimited",
     );
 
     expect(nonConflictCodes.length).toBeGreaterThan(0);
@@ -197,6 +202,10 @@ describe("ERROR_COPY", () => {
         key: "api.googleAuthFailed",
       });
     }
+    expect(getErrorCopy(failure("googleAuth.rateLimited"))).toMatchObject({
+      namespace: "errors",
+      key: "api.rateLimited",
+    });
   });
 
   it("detects the already-verified outcome by machine code", () => {

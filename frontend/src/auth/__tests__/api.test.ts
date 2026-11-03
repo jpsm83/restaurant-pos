@@ -562,6 +562,31 @@ describe("auth api — email / password-reset endpoints", () => {
     });
   });
 
+  it("requestEmailChange maps the cooldown to the rate-limited machine outcome", async () => {
+    setAccessToken("jwt-here");
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(
+        {
+          type: "https://restaurant-pos.app/errors/rate-limited",
+          title: "Too Many Requests",
+          status: 429,
+          detail:
+            "A confirmation link was already sent recently. Check your inbox to complete the change.",
+        },
+        429,
+      ),
+    );
+
+    const result = await requestEmailChange("new@example.com", {
+      currentPassword: "Secret123!",
+    });
+
+    expectFailure(result, {
+      code: "emailChange.rateLimited",
+      status: 429,
+    });
+  });
+
   it("requestEmailChange maps a wrong password to the machine outcome", async () => {
     setAccessToken("jwt-here");
     fetchMock.mockResolvedValueOnce(

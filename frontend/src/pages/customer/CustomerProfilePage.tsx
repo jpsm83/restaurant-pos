@@ -474,10 +474,14 @@ export default function CustomerProfilePage() {
         hasGoogleIdentity={sessionUser?.hasGoogleIdentity === true}
         hasPassword={sessionUser?.hasPassword === true}
         onOpenChange={setChangeEmailOpen}
-        onRequested={() => {
-          const message = t("profile.changeEmail.success");
+        onRequested={(outcome) => {
+          const message = t(
+            outcome === "throttled"
+              ? "profile.changeEmail.alreadySent"
+              : "profile.changeEmail.success",
+          );
           setChangeEmailMessage(message);
-          toast.success(message);
+          if (outcome === "sent") toast.success(message);
         }}
       />
     </main>

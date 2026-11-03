@@ -169,6 +169,7 @@ describe("deriveServiceErrorOutcome", () => {
       ["not-found", "notFound"],
       ["account-not-found", "accountNotFound"],
       ["conflict", "conflict"],
+      ["rate-limited", "rateLimited"],
       ["internal", "internal"],
     ] as const;
 
@@ -182,9 +183,9 @@ describe("deriveServiceErrorOutcome", () => {
     }
   });
 
-  it("maps 422 to validation and unknown 4xx to bad request", () => {
+  it("maps 422 to validation, 429 to rate limited, and unknown 4xx to bad request", () => {
     expect(deriveServiceErrorOutcome({ status: 422 })).toBe("validation");
-    expect(deriveServiceErrorOutcome({ status: 429 })).toBe("badRequest");
+    expect(deriveServiceErrorOutcome({ status: 429 })).toBe("rateLimited");
     expect(deriveServiceErrorOutcome({ status: 418 })).toBe("badRequest");
   });
 

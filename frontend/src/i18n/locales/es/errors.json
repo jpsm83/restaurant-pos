@@ -25,6 +25,7 @@
     "forbidden": "No tienes permiso para hacer eso.",
     "notFound": "No se encontró el elemento solicitado.",
     "conflict": "Ese cambio entra en conflicto con los datos actuales. Actualiza e inténtalo de nuevo.",
+    "rateLimited": "Demasiadas solicitudes. Espera un momento e inténtalo de nuevo.",
     "internal": "Algo salió mal por nuestra parte. Inténtalo de nuevo.",
     "transport": "No pudimos conectar con el servidor. Comprueba tu conexión e inténtalo de nuevo."
   }

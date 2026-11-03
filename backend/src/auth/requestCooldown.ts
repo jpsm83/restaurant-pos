@@ -9,6 +9,18 @@ import type { Model, QueryFilter, UpdateQuery } from "mongoose";
 
 export const REQUEST_COOLDOWN_MS = 60 * 1000;
 
+/** Milliseconds left on a purpose's cooldown, from zero to the full window. */
+export function requestCooldownRemainingMs(
+  requestedAt: Date | null | undefined,
+  now: Date = new Date(),
+): number {
+  if (!(requestedAt instanceof Date)) return 0;
+  return Math.max(
+    0,
+    REQUEST_COOLDOWN_MS - (now.getTime() - requestedAt.getTime()),
+  );
+}
+
 /**
  * Atomically claims one send slot by writing the token state only when the
  * purpose's `requestedAt` is missing or older than the cooldown. Of concurrent

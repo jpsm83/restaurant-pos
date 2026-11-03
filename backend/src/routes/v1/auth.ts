@@ -56,6 +56,7 @@ import {
   forbidden,
   internal,
   notFound,
+  rateLimited,
   unauthorized,
 } from "../../errors/appError.ts";
 import type {
@@ -429,7 +430,7 @@ export const authRoutes: FastifyPluginAsync<AuthRoutesOptions> = async (
         throw conflict("That email is already used by another account.");
       }
       if (result.kind === "throttled") {
-        return reply.code(200).send({ message: result.message });
+        throw rateLimited(result.message, result.retryAfterSeconds);
       }
       if (result.kind === "server_error_500") {
         throw internal(result.message);

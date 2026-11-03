@@ -18,6 +18,7 @@ export type ProblemSlug =
   | "not-found"
   | "conflict"
   | "account-not-found"
+  | "rate-limited"
   | "internal";
 
 /** A single field-level error carried in the problem-details `errors[]`. */
@@ -34,6 +35,7 @@ const STATUS_TITLES: Record<number, string> = {
   404: "Not Found",
   409: "Conflict",
   422: "Unprocessable Entity",
+  429: "Too Many Requests",
   500: "Internal Server Error",
 };
 
@@ -43,6 +45,7 @@ const STATUS_SLUGS: Record<number, ProblemSlug> = {
   403: "forbidden",
   404: "not-found",
   409: "conflict",
+  429: "rate-limited",
   500: "internal",
 };
 
@@ -64,6 +67,8 @@ export interface AppErrorOptions {
   title?: string;
   /** Field-level errors carried in the problem-details `errors[]`. */
   errors?: ProblemFieldError[];
+  /** Seconds the caller should wait before retrying; sent as `Retry-After`. */
+  retryAfterSeconds?: number;
 }
 
 export class AppError extends Error {
@@ -71,6 +76,7 @@ export class AppError extends Error {
   readonly type: string;
   readonly title: string;
   readonly errors?: ProblemFieldError[];
+  readonly retryAfterSeconds?: number;
 
   constructor(detail: string, options: AppErrorOptions = {}) {
     super(detail);
@@ -80,6 +86,7 @@ export class AppError extends Error {
       PROBLEM_TYPE_BASE + (options.slug ?? slugForStatus(this.statusCode));
     this.title = options.title ?? titleForStatus(this.statusCode);
     this.errors = options.errors;
+    this.retryAfterSeconds = options.retryAfterSeconds;
   }
 }
 
@@ -107,6 +114,12 @@ export const conflict = (detail = "Conflict"): AppError =>
  */
 export const conflictAs = (detail: string, slug: ProblemSlug): AppError =>
   new AppError(detail, { statusCode: 409, slug });
+
+export const rateLimited = (
+  detail = "Too Many Requests",
+  retryAfterSeconds?: number,
+): AppError =>
+  new AppError(detail, { statusCode: 429, retryAfterSeconds });
 
 export const internal = (detail = "Internal Server Error"): AppError =>
   new AppError(detail, { statusCode: 500 });

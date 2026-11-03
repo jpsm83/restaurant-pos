@@ -40,10 +40,12 @@ import {
   type GoogleVerifier,
 } from "../../src/auth/google.ts";
 import {
+  EMAIL_CHANGE_COOLDOWN_DETAIL,
   EMAIL_CHANGE_REQUESTED_MESSAGE,
-  EMAIL_CHANGE_REQUEST_COOLDOWN_MS,
 } from "../../src/auth/requestEmailChange.ts";
+import { REQUEST_COOLDOWN_MS } from "../../src/auth/requestCooldown.ts";
 import { expectOneAccountSend } from "../helpers/accountEmailRail.ts";
+import { isProblemDetails } from "../helpers/problemDetails.ts";
 
 const testPassword = "TestPassword123!";
 const newEmail = "changed-to@example.com";
@@ -94,7 +96,7 @@ async function agePendingRequestCooldown(userId: unknown): Promise<void> {
     {
       $set: {
         pendingEmailRequestedAt: new Date(
-          Date.now() - EMAIL_CHANGE_REQUEST_COOLDOWN_MS - 1_000,
+          Date.now() - REQUEST_COOLDOWN_MS - 1_000,
         ),
       },
     },
@@ -538,7 +540,7 @@ describe("POST /api/v1/auth/request-email-change", () => {
     );
   });
 
-  it("throttles a second request inside the cooldown without sending again", async () => {
+  it("returns 429 problem details for a second request inside the cooldown and preserves the pending link", async () => {
     const app = await getTestApp();
     const user = await createUser("throttle@example.com");
     const auth = await tokenFor(user);
@@ -565,9 +567,16 @@ describe("POST /api/v1/auth/request-email-change", () => {
       },
     });
 
-    expect(second.statusCode).toBe(200);
-    expect(JSON.parse(second.body).message).toBe(
-      EMAIL_CHANGE_REQUESTED_MESSAGE,
+    expect(second.statusCode).toBe(429);
+    expect(isProblemDetails(second)).toBe(true);
+    const body = JSON.parse(second.body);
+    expect(body.type).toMatch(/\/rate-limited$/);
+    expect(body.detail).toBe(EMAIL_CHANGE_COOLDOWN_DETAIL);
+    const retryAfter = Number(second.headers["retry-after"]);
+    expect(Number.isInteger(retryAfter)).toBe(true);
+    expect(retryAfter).toBeGreaterThan(0);
+    expect(retryAfter).toBeLessThanOrEqual(
+      Math.ceil(REQUEST_COOLDOWN_MS / 1000),
     );
     expect(sendEmailMock).toHaveBeenCalledTimes(1);
 
@@ -576,6 +585,9 @@ describe("POST /api/v1/auth/request-email-change", () => {
     expect(stored?.pendingEmailToken).toBe(firstStored?.pendingEmailToken);
     expect(stored?.pendingEmailExpires?.getTime()).toBe(
       firstStored?.pendingEmailExpires?.getTime(),
+    );
+    expect(stored?.pendingEmailRequestedAt?.getTime()).toBe(
+      firstStored?.pendingEmailRequestedAt?.getTime(),
     );
   });
 

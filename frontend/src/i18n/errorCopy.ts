@@ -51,6 +51,7 @@ const GENERIC_OUTCOME_COPY: Record<ServiceErrorOutcome, ErrorCopyTemplate> = {
   notFound: { namespace: "errors", key: "api.notFound" },
   accountNotFound: { namespace: "errors", key: "api.notFound" },
   conflict: { namespace: "errors", key: "api.conflict" },
+  rateLimited: { namespace: "errors", key: "api.rateLimited" },
   internal: { namespace: "errors", key: "api.internal" },
   transport: { namespace: "errors", key: "api.transport" },
 };
@@ -120,6 +121,10 @@ const OVERRIDES: Partial<Record<ServiceErrorCode, ErrorCopyTemplate>> = {
   "emailChange.transport": {
     namespace: "auth",
     key: "api.emailChangeFailed",
+  },
+  "emailChange.rateLimited": {
+    namespace: "auth",
+    key: "api.emailChangeCooldown",
   },
   "confirmEmailChange.validation": {
     namespace: "auth",

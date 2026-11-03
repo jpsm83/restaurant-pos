@@ -137,6 +137,10 @@ export function registerProblemDetailsHandler(
     (err: unknown, req: FastifyRequest, reply: FastifyReply) => {
       const problem = toProblemDetails(err, req.url);
 
+      if (err instanceof AppError && err.retryAfterSeconds !== undefined) {
+        reply.header("Retry-After", String(err.retryAfterSeconds));
+      }
+
       if (problem.status >= 500) {
         req.log.error(err);
         try {

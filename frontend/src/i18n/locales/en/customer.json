@@ -23,6 +23,7 @@
       "submitting": "Sending…",
       "cancel": "Cancel",
       "success": "Confirmation link sent. Check your new inbox to complete the change.",
+      "alreadySent": "A confirmation link was already sent recently; check your inbox.",
       "errors": {
         "invalidEmail": "Enter a valid email address.",
         "passwordRequired": "Enter your current password.",

@@ -17,16 +17,22 @@ import {
 } from "./emailChangeAuditLog.ts";
 import { GoogleCredentialError, type GoogleVerifier } from "./google.ts";
 import { normalizeRequestEmail } from "./requestEmailConfirmation.ts";
+import {
+  claimRequestCooldown,
+  REQUEST_COOLDOWN_MS,
+  requestCooldownRemainingMs,
+} from "./requestCooldown.ts";
 import type { AuthUser } from "./types.ts";
 
 /** How long a pending sign-in email change link stays valid. */
 export const EMAIL_CHANGE_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 
-/** Minimum gap between change links for one account; blunts email-spam abuse. */
-export const EMAIL_CHANGE_REQUEST_COOLDOWN_MS = 60 * 1000;
-
 export const EMAIL_CHANGE_REQUESTED_MESSAGE =
   "Confirmation email sent. Check your new inbox to complete the change.";
+
+/** Diagnostic detail for a request refused by the shared cooldown. */
+export const EMAIL_CHANGE_COOLDOWN_DETAIL =
+  "Email change confirmation was requested recently; cooldown active.";
 
 export type RequestEmailChangeInput = {
   newEmail: string;
@@ -46,7 +52,7 @@ export type RequestEmailChangeResult =
   | { kind: "invalid_google_credential" }
   | { kind: "same_email" }
   | { kind: "email_taken" }
-  | { kind: "throttled"; message: string }
+  | { kind: "throttled"; message: string; retryAfterSeconds: number }
   | { kind: "server_error_500"; message: string };
 
 type PendingChange = {
@@ -76,6 +82,7 @@ export async function handleRequestEmailChange(
   const { newEmail, currentPassword, googleCredential } = input;
   const accountId = session.id;
   const normalizedNewEmail = normalizeRequestEmail(newEmail);
+  const now = new Date();
   const audit = (outcome: EmailChangeAuditOutcome) =>
     logEmailChange(logger, {
       event: EMAIL_CHANGE_REQUEST_EVENT,
@@ -152,13 +159,6 @@ export async function handleRequestEmailChange(
     return { kind: "email_taken" };
   }
 
-  // A recent link was already sent: answer generically, send nothing, and leave
-  // the still-valid pending link untouched.
-  if (isWithinRequestCooldown(user.pendingEmailRequestedAt)) {
-    fail("throttled");
-    return { kind: "throttled", message: EMAIL_CHANGE_REQUESTED_MESSAGE };
-  }
-
   // Snapshot any prior pending change so a failed send restores it instead of
   // silently killing a link the owner may still be using.
   const previousPending: PendingChange = {
@@ -175,22 +175,23 @@ export async function handleRequestEmailChange(
 
   const sent = await sendAuthTokenEmailOrRollback({
     to: normalizedNewEmail,
-    persist: async (token) => {
-      await User.updateOne(
+    persist: (token) =>
+      claimRequestCooldown(
+        User,
         withSoftDeleteFilter({ _id: user._id }, true),
+        "pendingEmailRequestedAt",
         {
           $set: {
             pendingEmail: normalizedNewEmail,
             pendingEmailToken: token,
             pendingEmailExpires: new Date(
-              Date.now() + EMAIL_CHANGE_TOKEN_TTL_MS,
+              now.getTime() + EMAIL_CHANGE_TOKEN_TTL_MS,
             ),
-            pendingEmailRequestedAt: new Date(),
+            pendingEmailRequestedAt: now,
           },
         },
-      );
-      return true;
-    },
+        now,
+      ),
     buildLink: buildConfirmEmailChangeLink,
     buildContent: (link) =>
       buildEmailChangeConfirmationContent({
@@ -204,6 +205,23 @@ export async function handleRequestEmailChange(
         buildPendingRollback(previousPending),
       ),
   });
+
+  if (sent === "skipped") {
+    fail("throttled");
+    const latest = await User.findById(user._id)
+      .select("pendingEmailRequestedAt")
+      .lean();
+    const requestedAt = latest?.pendingEmailRequestedAt;
+    const remainingMs =
+      requestedAt instanceof Date
+        ? requestCooldownRemainingMs(requestedAt, now)
+        : REQUEST_COOLDOWN_MS;
+    return {
+      kind: "throttled",
+      message: EMAIL_CHANGE_COOLDOWN_DETAIL,
+      retryAfterSeconds: Math.max(1, Math.ceil(remainingMs / 1000)),
+    };
+  }
 
   if (sent === "failed") {
     fail("send_failed");
@@ -248,11 +266,6 @@ async function matchesLinkedGoogleIdentity(
     if (error instanceof GoogleCredentialError) return false;
     throw error;
   }
-}
-
-function isWithinRequestCooldown(requestedAt: unknown): boolean {
-  if (!(requestedAt instanceof Date)) return false;
-  return Date.now() - requestedAt.getTime() < EMAIL_CHANGE_REQUEST_COOLDOWN_MS;
 }
 
 /** Restores the pending fields captured before a request, clearing those unset then. */

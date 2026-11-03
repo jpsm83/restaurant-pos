@@ -12,13 +12,15 @@ import { Label } from "@/components/ui/label";
 import { useErrorMessage } from "@/i18n/errorCopy";
 import type { ServiceRequestError } from "@/services/serviceErrors";
 
+export type EmailChangeRequestOutcome = "sent" | "throttled";
+
 type ChangeEmailDialogProps = {
   open: boolean;
   currentEmail: string;
   hasGoogleIdentity?: boolean;
   hasPassword?: boolean;
   onOpenChange: (open: boolean) => void;
-  onRequested: () => void;
+  onRequested: (outcome: EmailChangeRequestOutcome) => void;
 };
 
 type LocalError =
@@ -102,11 +104,16 @@ export function ChangeEmailDialog({
         setLocalError("googleReauthFailed");
         return;
       }
+      if (result.error.code === "emailChange.rateLimited") {
+        onRequested("throttled");
+        handleOpenChange(false);
+        return;
+      }
       setFailure(result.error);
       return;
     }
 
-    onRequested();
+    onRequested("sent");
     handleOpenChange(false);
   }
 

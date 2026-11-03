@@ -52,6 +52,7 @@ export const SERVICE_ERROR_OUTCOMES = [
   "notFound",
   "accountNotFound",
   "conflict",
+  "rateLimited",
   "internal",
   "transport",
 ] as const;
@@ -106,6 +107,7 @@ const PROBLEM_TYPE_OUTCOMES: Record<string, ServiceErrorOutcome> = {
   "not-found": "notFound",
   conflict: "conflict",
   "account-not-found": "accountNotFound",
+  "rate-limited": "rateLimited",
   internal: "internal",
 };
 
@@ -130,6 +132,7 @@ export function deriveServiceErrorOutcome(input: {
   if (status === 403) return "forbidden";
   if (status === 404) return "notFound";
   if (status === 409) return "conflict";
+  if (status === 429) return "rateLimited";
   if (status >= 500) return "internal";
   if (status >= 400) return "badRequest";
   return "transport";

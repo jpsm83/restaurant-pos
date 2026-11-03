@@ -244,6 +244,40 @@ describe("CustomerProfilePage", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("shows check-your-inbox copy when a change link was already sent recently", async () => {
+    const user = userEvent.setup();
+    mockRequestEmailChange.mockResolvedValue({
+      ok: false,
+      error: { code: "emailChange.rateLimited", status: 429 },
+    });
+
+    await renderPage();
+
+    await user.click(
+      await screen.findByRole("button", { name: "Change sign-in email" }),
+    );
+    await user.type(screen.getByLabelText("New email"), "new@example.com");
+    await user.type(screen.getByLabelText("Current password"), "Secret123!");
+    await user.click(
+      screen.getByRole("button", { name: "Send confirmation link" }),
+    );
+
+    expect(
+      await screen.findByText(
+        "A confirmation link was already sent recently; check your inbox.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "Confirmation link sent. Check your new inbox to complete the change.",
+      ),
+    ).not.toBeInTheDocument();
+    expect(toastSuccess).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole("dialog", { name: "Change sign-in email" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("shows localized copy when the current password is refused", async () => {
     const user = userEvent.setup();
     mockRequestEmailChange.mockResolvedValue({
