@@ -178,7 +178,7 @@ describe("Notifications Inbox Route", () => {
           notificationId: read._id.toString(),
           businessId: businessB.toString(),
           notificationType: "Info",
-          message: "Caller read",
+          content: { kind: "text", text: "Caller read" },
           createdAt: new Date(createdAt.getTime() + 1_000).toISOString(),
           read: true,
         },
@@ -186,7 +186,63 @@ describe("Notifications Inbox Route", () => {
           notificationId: unread._id.toString(),
           businessId: businessA.toString(),
           notificationType: "Info",
-          message: "Caller unread",
+          content: { kind: "text", text: "Caller unread" },
+          createdAt: createdAt.toISOString(),
+          read: false,
+        },
+      ]);
+    });
+
+    it("returns machine-readable template content instead of only a rendered English string", async () => {
+      const app = await getTestApp();
+      const caller = await createTestUser("inbox-template-content");
+      const businessId = new Types.ObjectId();
+      const createdAt = new Date("2026-01-15T12:00:00.000Z");
+
+      const notification = await Notification.create({
+        _id: new Types.ObjectId("000000000000000000000005"),
+        businessId,
+        notificationType: "Info",
+        content: {
+          kind: "template",
+          key: "notifications.templates.weeklyReportReady",
+          params: { weekLabel: "2026-W03" },
+        },
+        createdAt,
+        updatedAt: createdAt,
+      });
+      await User.updateOne(
+        { _id: caller._id },
+        {
+          $set: {
+            notifications: [
+              {
+                notificationId: notification._id,
+                readFlag: false,
+                deletedFlag: false,
+              },
+            ],
+          },
+        },
+      );
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/notifications/inbox",
+        headers: { authorization: await tokenFor(caller) },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json().items).toEqual([
+        {
+          notificationId: notification._id.toString(),
+          businessId: businessId.toString(),
+          notificationType: "Info",
+          content: {
+            kind: "template",
+            key: "notifications.templates.weeklyReportReady",
+            params: { weekLabel: "2026-W03" },
+          },
           createdAt: createdAt.toISOString(),
           read: false,
         },
@@ -314,7 +370,12 @@ describe("Notifications Inbox Route", () => {
 
       expect(response.statusCode).toBe(200);
       const body = response.json();
-      expect(body.items.map((item: { message: string }) => item.message)).toEqual([
+      expect(
+        body.items.map(
+          (item: { content: { kind: string; text?: string } }) =>
+            item.content.kind === "text" ? item.content.text : item.content.kind,
+        ),
+      ).toEqual([
         "Newest",
         "Second equal-time",
         "First equal-time",

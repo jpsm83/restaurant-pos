@@ -15,6 +15,7 @@ import type {
   INotificationInboxResponse,
   INotificationInboxUnreadCountResponse,
 } from "restaurant-pos-packages/interfaces/INotification";
+import { resolveStoredNotificationContent } from "restaurant-pos-packages/interfaces/INotification";
 
 import Notification from "../../models/notification.ts";
 import User from "../../models/user.ts";
@@ -37,7 +38,8 @@ interface InboxItemRow {
   notificationId: Types.ObjectId;
   businessId: Types.ObjectId;
   notificationType: string;
-  message: string;
+  content?: unknown;
+  message?: string;
   createdAt: Date;
   read: boolean;
 }
@@ -78,6 +80,7 @@ const visibleEntryStages = (userId: string): PipelineStage[] => [
             _id: 1,
             businessId: 1,
             notificationType: 1,
+            content: 1,
             message: 1,
             createdAt: 1,
           },
@@ -134,6 +137,7 @@ export const listInbox = async ({
                 notificationId: "$notification._id",
                 businessId: "$notification.businessId",
                 notificationType: "$notification.notificationType",
+                content: "$notification.content",
                 message: "$notification.message",
                 createdAt: "$notification.createdAt",
                 read: { $eq: ["$notifications.readFlag", true] },
@@ -167,7 +171,7 @@ export const listInbox = async ({
     notificationId: String(item.notificationId),
     businessId: String(item.businessId),
     notificationType: item.notificationType,
-    message: item.message,
+    content: resolveStoredNotificationContent(item.content, item.message),
     createdAt: new Date(item.createdAt).toISOString(),
     read: item.read === true,
   }));

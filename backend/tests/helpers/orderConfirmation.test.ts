@@ -91,7 +91,10 @@ describe("Order Confirmation Communication", () => {
 
     expect(result.success).toBe(true);
     expect(notificationDocs.length).toBe(1);
-    expect(notificationDocs[0].message).toContain("Order confirmed.");
+    expect(notificationDocs[0].content).toMatchObject({
+      kind: "template",
+      key: "notifications.templates.orderConfirmed",
+    });
     expect(updatedUser?.notifications?.length ?? 0).toBe(1);
 
     if (previousEmailToggle === undefined) {

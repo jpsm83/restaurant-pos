@@ -113,8 +113,16 @@ describe("Order confirmed on the rail (#162)", () => {
       ]);
       expect(input.recipients.employeeIds ?? []).toEqual([]);
       expect(input.recipients.employeeUserIds ?? []).toEqual([]);
-      // The stored text and Info severity are the ones the caller supplies.
-      expect(input.message).toBe(buildOrderReceiptTemplate(payload));
+      // Machine-readable content and Info severity are what the caller supplies.
+      expect(input.content).toEqual({
+        kind: "template",
+        key: "notifications.templates.orderConfirmed",
+        params: {
+          reference: "R-700",
+          orderCount: 2,
+          totalAmount: 24.5,
+        },
+      });
       expect(input.notificationType).toBe("Info");
       expect(String(input.businessId)).toBe(String(businessId));
     });

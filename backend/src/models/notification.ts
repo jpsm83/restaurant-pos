@@ -12,7 +12,20 @@ const notificationSchema = new Schema(
       required: [true, "NotificationType is required!"],
       enum: notificationEnums,
     }, // Type of notification "warning", "emergency", "info"
-    message: { type: String, required: [true, "Message is required!"] }, // notification message
+    /**
+     * Machine-readable content: either a stable template key plus parameters
+     * resolved in the recipient's UI language, or literal text that is never
+     * translated. Optional only so legacy rows that carry `message` stay
+     * readable.
+     */
+    content: {
+      kind: { type: String, enum: ["template", "text"] },
+      key: { type: String },
+      params: { type: Schema.Types.Mixed },
+      text: { type: String },
+    },
+    /** Legacy English copy, read as a `text` fallback when `content` is absent. */
+    message: { type: String },
     employeesRecipientsIds: {
       type: [
         {

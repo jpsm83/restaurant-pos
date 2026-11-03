@@ -8,7 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { formatDateTime } from "@/i18n/format";
 import type { LiveNotificationEvent } from "@/live/connection";
 import { ServiceRequestError } from "@/services/serviceErrors";
-import { renderWithI18n } from "@/test/i18nTestUtils";
+import { createTestI18n, renderWithI18n } from "@/test/i18nTestUtils";
 import NotificationsInboxPage from "../NotificationsInboxPage";
 
 const { mockInboxQuery, mockActionMutation, mockSubscribeLiveNotifications } =
@@ -49,7 +49,7 @@ function entry(
     notificationId: "n1",
     businessId: "b1",
     notificationType: "Info",
-    message: "Your order is ready.",
+    content: { kind: "text", text: "Your order is ready." },
     createdAt: "2026-03-27T10:15:00.000Z",
     read: false,
     ...overrides,
@@ -111,13 +111,13 @@ describe("NotificationsInboxPage", () => {
     const newest = entry({
       notificationId: "n2",
       notificationType: "Warning",
-      message: "Second\nline",
+      content: { kind: "text", text: "Second\nline" },
       createdAt: "2026-03-27T11:45:00.000Z",
     });
     const older = entry({
       notificationId: "n1",
       notificationType: "Info",
-      message: "Older message",
+      content: { kind: "text", text: "Older message" },
       createdAt: "2026-03-27T10:15:00.000Z",
       read: true,
     });
@@ -223,6 +223,75 @@ describe("NotificationsInboxPage", () => {
     expect(
       screen.getByRole("button", { name: "Cargar más" }),
     ).toBeInTheDocument();
+  });
+
+  it("renders template content in English and Spanish", async () => {
+    const template = entry({
+      content: {
+        kind: "template",
+        key: "notifications.templates.weeklyReportReady",
+        params: { weekLabel: "2026-W12" },
+      },
+    });
+    setQuery({ data: { pages: [page([template])] } });
+
+    const english = await renderPage("en");
+    expect(
+      screen.getByText("Weekly business report for 2026-W12 is ready."),
+    ).toBeInTheDocument();
+    english.unmount();
+
+    setQuery({ data: { pages: [page([template])] } });
+    await renderPage("es");
+    expect(
+      screen.getByText(
+        "El informe semanal del negocio para 2026-W12 está listo.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("falls back to English when the active language has no translation", async () => {
+    const i18n = await createTestI18n("es");
+    i18n.removeResourceBundle("es", "common");
+    setQuery({
+      data: {
+        pages: [
+          page([
+            entry({
+              content: {
+                kind: "template",
+                key: "notifications.templates.weeklyReportReady",
+                params: { weekLabel: "2026-W13" },
+              },
+            }),
+          ]),
+        ],
+      },
+    });
+
+    await renderWithI18n(<NotificationsInboxPage />, { i18n });
+
+    expect(
+      await screen.findByText("Weekly business report for 2026-W13 is ready."),
+    ).toBeInTheDocument();
+  });
+
+  it("renders literal text exactly as stored and never translates it", async () => {
+    setQuery({
+      data: {
+        pages: [
+          page([
+            entry({
+              content: { kind: "text", text: "Mensaje del usuario" },
+            }),
+          ]),
+        ],
+      },
+    });
+
+    await renderPage("es");
+
+    expect(screen.getByText("Mensaje del usuario")).toBeInTheDocument();
   });
 
   it("renders the loading, empty, and error states in Spanish", async () => {
@@ -453,7 +522,7 @@ describe("NotificationsInboxPage", () => {
       listener?.({
         notificationId: "n2",
         businessId: "b1",
-        message: "Your order is ready.",
+        content: { kind: "text", text: "Your order is ready." },
         notificationType: "Info",
         correlationId: "corr-2",
       });

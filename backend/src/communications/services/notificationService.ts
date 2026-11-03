@@ -10,13 +10,12 @@ import type {
   NotificationCreateAndDeliverInput,
   NotificationCreateAndDeliverResult,
 } from "../types.ts";
+import { assertNotificationContent } from "../notificationContent.ts";
 
 const createAndDeliver = async (
   input: NotificationCreateAndDeliverInput
 ): Promise<NotificationCreateAndDeliverResult> => {
-  if (!input.message?.trim()) {
-    throw new Error("Notification message is required");
-  }
+  assertNotificationContent(input.content);
 
   if (!input.businessId) {
     throw new Error("Business id is required");
@@ -41,7 +40,7 @@ const createAndDeliver = async (
   }
 
   const fanout = await notificationRepository.createAndFanoutResolved({
-    message: input.message,
+    content: input.content,
     businessId: input.businessId,
     recipients: { customerUserIds, employeeIds, recipientUserIds },
     notificationType: input.notificationType,
@@ -56,7 +55,7 @@ const createAndDeliver = async (
     emitLiveInAppNotification({
       notificationId: fanout.notificationId,
       businessId: input.businessId,
-      message: input.message,
+      content: input.content,
       notificationType: input.notificationType ?? "Info",
       recipientUserIds: fanout.recipientUserIds,
       eventName: input.eventName,
@@ -92,6 +91,14 @@ const addRecipientsAndDeliver = async (
     throw new Error("Business id is required");
   }
 
+  const pushContent = await notificationRepository.findNotificationPushContent(
+    input.notificationId,
+    input.session,
+  );
+  if (!pushContent) {
+    throw new Error("Notification not found");
+  }
+
   // Store inbox entries only for people who do not already hold one on this
   // same notification, so a repeat add is neither stored nor pushed again.
   const { newlyAddedUserIds } = await notificationRepository.addRecipientsFanout({
@@ -117,8 +124,9 @@ const addRecipientsAndDeliver = async (
     emitLiveInAppNotification({
       notificationId: input.notificationId,
       businessId: input.businessId,
-      message: input.message,
-      notificationType: input.notificationType ?? "Info",
+      content: pushContent.content,
+      notificationType:
+        input.notificationType ?? pushContent.notificationType,
       recipientUserIds: newlyAddedUserIds,
       eventName: input.eventName,
       correlationId: input.correlationId,

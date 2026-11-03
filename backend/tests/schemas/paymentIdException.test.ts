@@ -75,10 +75,6 @@ import {
   updateInventoryCountBodySchema,
 } from "../../src/schemas/inventories.ts";
 import {
-  createNotificationBodySchema,
-  updateNotificationBodySchema,
-} from "../../src/schemas/notifications.ts";
-import {
   configurationSetupBodySchema,
   createPrinterBodySchema,
   updatePrinterBodySchema,
@@ -137,8 +133,6 @@ const bodiesThatRejectPaymentId: Record<string, BodySchema> = {
   createInventoryBodySchema,
   addInventoryCountBodySchema,
   updateInventoryCountBodySchema,
-  createNotificationBodySchema,
-  updateNotificationBodySchema,
   createPrinterBodySchema,
   updatePrinterBodySchema,
   configurationSetupBodySchema,

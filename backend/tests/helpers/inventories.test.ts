@@ -145,8 +145,13 @@ describe("Inventory Helpers", () => {
       const notifications = await Notification.find({ businessId });
       expect(notifications.length).toBe(1);
       expect(notifications[0].notificationType).toBe("Warning");
-      expect(notifications[0].message).toContain("Low stock");
-      expect(notifications[0].message).toContain("Low Stock Item");
+      expect(notifications[0].content).toMatchObject({
+        kind: "template",
+        key: "notifications.templates.lowStock",
+      });
+      expect(JSON.stringify(notifications[0].content)).toContain(
+        "Low Stock Item",
+      );
     });
 
     it("does nothing when no managers are on duty", async () => {

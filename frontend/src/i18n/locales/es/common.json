@@ -65,6 +65,32 @@
       "promotion": "Promoción",
       "birthday": "Cumpleaños",
       "event": "Evento"
+    },
+    "templates": {
+      "orderConfirmed_one": "Pedido confirmado. Ref.: {{reference}} · {{count}} artículo · {{total}}",
+      "orderConfirmed_other": "Pedido confirmado. Ref.: {{reference}} · {{count}} artículos · {{total}}",
+      "orderConfirmedFlow": "Tipo: {{flowLabel}}",
+      "orderConfirmedFlowDelivery": "Entrega",
+      "orderConfirmedFlowSelfOrder": "Autopedido",
+      "orderConfirmedFlowOrder": "Pedido",
+      "orderConfirmedCustomer": "Cliente: {{clientName}}",
+      "orderConfirmedAddress": "Dirección de entrega: {{deliveryAddress}}",
+      "reservationPending": "La reserva {{reference}} para {{guestCount}} personas el {{when}} está pendiente de aprobación.",
+      "reservationPendingManager": "La reserva {{reference}} para {{guestCount}} personas el {{when}} necesita aprobación.",
+      "reservationConfirmed": "La reserva {{reference}} para {{guestCount}} personas el {{when}} está confirmada.",
+      "reservationCancelled": "La reserva {{reference}} para {{guestCount}} personas el {{when}} está cancelada.",
+      "reservationReason": "Motivo: {{description}}",
+      "lowStock": "Stock bajo: {{details}}",
+      "lowStockEmpty": "Stock bajo.",
+      "monthlyReportReady": "El informe mensual del negocio para {{monthLabel}} está listo para revisar.",
+      "weeklyReportReady": "El informe semanal del negocio para {{weekLabel}} está listo.",
+      "businessProfileUpdated": "Perfil del negocio actualizado por {{actor}}: {{fields}}",
+      "businessProfileUpdatedNoFields": "Perfil del negocio actualizado por {{actor}}.",
+      "businessProfileUpdatedMore": "Y {{count}} más.",
+      "businessProfileUpdatedSensitive_one": "También se actualizaron campos protegidos de la cuenta (detalles omitidos por seguridad).",
+      "businessProfileUpdatedSensitive_other": "También se actualizaron campos protegidos de la cuenta ({{count}} áreas; detalles omitidos por seguridad).",
+      "businessProfileUpdatedActorSystem": "Sistema",
+      "businessProfileUpdatedActorMember": "Un miembro del equipo"
     }
   }
 }

@@ -142,9 +142,9 @@ describe("live notification events", () => {
   const event = {
     notificationId: "n1",
     businessId: "b1",
-    message: "Your order is ready.",
     notificationType: "Info",
     correlationId: "corr-1",
+    content: { kind: "text", text: "Your order is ready." },
   };
 
   const createHarnessConnection = () =>

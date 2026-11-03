@@ -21,7 +21,6 @@ import Inventory from "../../src/models/inventory.ts";
 import dispatchEvent from "../../src/communications/dispatchEvent.ts";
 import notificationService from "../../src/communications/services/notificationService.ts";
 import emailChannel from "../../src/communications/channels/emailChannel.ts";
-import buildLowStockTemplate from "../../src/communications/templates/lowStockTemplate.ts";
 import checkLowStockAndNotify from "../../src/inventories/checkLowStockAndNotify.ts";
 
 const validAddress = {
@@ -156,16 +155,18 @@ describe("Low-stock alert on the rail (#164)", () => {
       // Managers only: no customer joins this delivery.
       expect(input.recipients.customerUserIds ?? []).toEqual([]);
       expect(input.recipients.employeeUserIds ?? []).toEqual([]);
-      // The stored text and Warning severity are the ones the caller supplies.
-      expect(input.message).toBe(
-        buildLowStockTemplate(
-          payload.lowStockItems.map((item) => ({
+      // Machine-readable content and Warning severity are what the caller supplies.
+      expect(input.content).toEqual({
+        kind: "template",
+        key: "notifications.templates.lowStock",
+        params: {
+          items: payload.lowStockItems.map((item) => ({
             name: item.name,
             currentCount: item.currentCount,
             threshold: item.threshold,
           })),
-        ),
-      );
+        },
+      });
       expect(input.notificationType).toBe("Warning");
       expect(String(input.businessId)).toBe(String(businessId));
     });

@@ -1248,15 +1248,17 @@ describe("Business Routes", () => {
 
       expect(response.statusCode).toBe(200);
 
-      let notifications: Array<{ message: string }> = [];
+      let notifications: Array<{ content?: { key?: string } }> = [];
       for (let attempt = 0; attempt < 5; attempt += 1) {
         notifications = (await Notification.find({
           businessId: business._id,
           employeesRecipientsIds: managerEmployee._id,
-        }).lean()) as Array<{ message: string }>;
+        }).lean()) as Array<{ content?: { key?: string } }>;
         if (
-          notifications.some((n) =>
-            n.message.includes("Business profile updated"),
+          notifications.some(
+            (n) =>
+              n.content?.key ===
+              "notifications.templates.businessProfileUpdated",
           )
         ) {
           break;
@@ -1264,7 +1266,11 @@ describe("Business Routes", () => {
         await new Promise((resolve) => setTimeout(resolve, 20));
       }
       expect(
-        notifications.some((n) => n.message.includes("Business profile updated")),
+        notifications.some(
+          (n) =>
+            n.content?.key ===
+            "notifications.templates.businessProfileUpdated",
+        ),
       ).toBe(true);
 
       if (previousEmailToggle === undefined) {
@@ -1461,17 +1467,21 @@ describe("Business Routes", () => {
       // Because route dispatch is intentionally fire-and-forget, poll briefly
       // for any unexpected profile-update notification that would indicate
       // skip logic failed on no-change payloads.
-      let notifications: Array<{ message: string }> = [];
+      let notifications: Array<{ content?: { key?: string } }> = [];
       for (let attempt = 0; attempt < 5; attempt += 1) {
         notifications = (await Notification.find({
           businessId: business._id,
           employeesRecipientsIds: managerEmployee._id,
-        }).lean()) as Array<{ message: string }>;
+        }).lean()) as Array<{ content?: { key?: string } }>;
         await new Promise((resolve) => setTimeout(resolve, 20));
       }
 
       expect(
-        notifications.some((n) => n.message.includes("Business profile updated")),
+        notifications.some(
+          (n) =>
+            n.content?.key ===
+            "notifications.templates.businessProfileUpdated",
+        ),
       ).toBe(false);
 
       if (previousEmailToggle === undefined) {

@@ -140,7 +140,7 @@ describe("Notification delivery after commit (#160)", () => {
 
     await withRetriedTransaction(async (session) => {
       await notificationService.createAndDeliver({
-        message: "Committed delivery",
+        content: { kind: "text", text: "Committed delivery" },
         businessId,
         recipients: { customerUserIds: [customer._id] },
         notificationType: "Info",
@@ -172,7 +172,7 @@ describe("Notification delivery after commit (#160)", () => {
     // only a transient failure while opening/writing the transaction retries.
     await withRetriedTransaction(async (session) => {
       await notificationService.createAndDeliver({
-        message: "Aborted delivery",
+        content: { kind: "text", text: "Aborted delivery" },
         businessId,
         recipients: { customerUserIds: [customer._id] },
         notificationType: "Info",
@@ -197,7 +197,7 @@ describe("Notification delivery after commit (#160)", () => {
     const socket = registerFakeSocket(customer._id);
 
     await notificationService.createAndDeliver({
-      message: "Online delivery",
+      content: { kind: "text", text: "Online delivery" },
       businessId,
       recipients: { customerUserIds: [customer._id] },
       notificationType: "Info",
@@ -220,7 +220,7 @@ describe("Notification delivery after commit (#160)", () => {
     const socketB = registerFakeSocket(customer._id);
 
     await notificationService.createAndDeliver({
-      message: "Two-connection delivery",
+      content: { kind: "text", text: "Two-connection delivery" },
       businessId,
       recipients: { customerUserIds: [customer._id] },
       notificationType: "Info",
@@ -237,7 +237,7 @@ describe("Notification delivery after commit (#160)", () => {
     // No socket registered: the recipient is offline.
 
     await notificationService.createAndDeliver({
-      message: "Offline delivery",
+      content: { kind: "text", text: "Offline delivery" },
       businessId,
       recipients: { customerUserIds: [customer._id] },
       notificationType: "Info",
@@ -269,7 +269,7 @@ describe("Notification delivery after commit (#160)", () => {
 
     await expect(
       notificationService.createAndDeliver({
-        message: "Partial push failure",
+        content: { kind: "text", text: "Partial push failure" },
         businessId,
         recipients: {
           customerUserIds: [failingCustomer._id, okCustomer._id],
@@ -290,7 +290,7 @@ describe("Notification delivery after commit (#160)", () => {
     expect(okAfter?.notifications?.length ?? 0).toBe(1);
   });
 
-  it("stores nothing and pushes nothing for an empty message, a missing business, or no recipient", async () => {
+  it("stores nothing and pushes nothing for invalid content, a missing business, or no recipient", async () => {
     await getTestApp();
     const businessId = new Types.ObjectId();
     const customer = await createTestUser("nothing-stored");
@@ -298,15 +298,15 @@ describe("Notification delivery after commit (#160)", () => {
 
     await expect(
       notificationService.createAndDeliver({
-        message: "   ",
+        content: { kind: "text", text: "   " },
         businessId,
         recipients: { customerUserIds: [customer._id] },
       }),
-    ).rejects.toThrow(/message is required/i);
+    ).rejects.toThrow(/content must be template or text/i);
 
     await expect(
       notificationService.createAndDeliver({
-        message: "Missing business",
+        content: { kind: "text", text: "Missing business" },
         businessId: undefined as unknown as Types.ObjectId,
         recipients: { customerUserIds: [customer._id] },
       }),
@@ -314,7 +314,7 @@ describe("Notification delivery after commit (#160)", () => {
 
     await expect(
       notificationService.createAndDeliver({
-        message: "No recipient",
+        content: { kind: "text", text: "No recipient" },
         businessId,
         recipients: {},
       }),
@@ -342,7 +342,7 @@ describe("Notification delivery after commit (#160)", () => {
     });
 
     const result = await notificationService.createAndDeliver({
-      message: "Shared delivery",
+      content: { kind: "text", text: "Shared delivery" },
       businessId,
       recipients: {
         // customerOne appears twice: duplicates collapse to one entry each.
@@ -375,24 +375,24 @@ describe("Notification delivery after commit (#160)", () => {
     const customer = await createTestUser("severity");
 
     await notificationService.createAndDeliver({
-      message: "Warning text",
+      content: { kind: "text", text: "Warning text" },
       businessId,
       recipients: { customerUserIds: [customer._id] },
       notificationType: "Warning",
     });
     await notificationService.createAndDeliver({
-      message: "Default severity text",
+      content: { kind: "text", text: "Default severity text" },
       businessId,
       recipients: { customerUserIds: [customer._id] },
     });
 
     const warning = await Notification.findOne({
       businessId,
-      message: "Warning text",
+      content: { kind: "text", text: "Warning text" },
     }).lean();
     const defaulted = await Notification.findOne({
       businessId,
-      message: "Default severity text",
+      content: { kind: "text", text: "Default severity text" },
     }).lean();
 
     expect(warning?.notificationType).toBe("Warning");
@@ -410,7 +410,7 @@ describe("Notification delivery after commit (#160)", () => {
 
     try {
       await notificationService.createAndDeliver({
-        message: "Live push off delivery",
+        content: { kind: "text", text: "Live push off delivery" },
         businessId,
         recipients: { customerUserIds: [customer._id] },
         notificationType: "Info",
@@ -438,7 +438,7 @@ describe("Notification delivery after commit (#160)", () => {
       const added = await createTestUser("add-new");
 
       const created = await notificationService.createAndDeliver({
-        message: "Shared notice",
+        content: { kind: "text", text: "Shared notice" },
         businessId,
         recipients: { customerUserIds: [original._id] },
         notificationType: "Info",
@@ -450,7 +450,6 @@ describe("Notification delivery after commit (#160)", () => {
       const result = await notificationService.addRecipientsAndDeliver({
         notificationId: created.notificationId,
         businessId,
-        message: "Shared notice",
         notificationType: "Info",
         recipientUserIds: [added._id],
       });
@@ -483,7 +482,7 @@ describe("Notification delivery after commit (#160)", () => {
       const original = await createTestUser("already-holds");
 
       const created = await notificationService.createAndDeliver({
-        message: "Shared notice",
+        content: { kind: "text", text: "Shared notice" },
         businessId,
         recipients: { customerUserIds: [original._id] },
         notificationType: "Info",
@@ -494,7 +493,6 @@ describe("Notification delivery after commit (#160)", () => {
       const result = await notificationService.addRecipientsAndDeliver({
         notificationId: created.notificationId,
         businessId,
-        message: "Shared notice",
         notificationType: "Info",
         recipientUserIds: [original._id],
       });
@@ -514,7 +512,7 @@ describe("Notification delivery after commit (#160)", () => {
       const added = await createTestUser("add-offline-new");
 
       const created = await notificationService.createAndDeliver({
-        message: "Offline add",
+        content: { kind: "text", text: "Offline add" },
         businessId,
         recipients: { customerUserIds: [original._id] },
       });
@@ -522,7 +520,6 @@ describe("Notification delivery after commit (#160)", () => {
       const result = await notificationService.addRecipientsAndDeliver({
         notificationId: created.notificationId,
         businessId,
-        message: "Offline add",
         recipientUserIds: [added._id],
       });
 
@@ -544,7 +541,7 @@ describe("Notification delivery after commit (#160)", () => {
 
       try {
         const created = await notificationService.createAndDeliver({
-          message: "Inapp off add",
+          content: { kind: "text", text: "Inapp off add" },
           businessId,
           recipients: { customerUserIds: [original._id] },
         });
@@ -554,7 +551,6 @@ describe("Notification delivery after commit (#160)", () => {
         const result = await notificationService.addRecipientsAndDeliver({
           notificationId: created.notificationId,
           businessId,
-          message: "Inapp off add",
           recipientUserIds: [added._id],
         });
 
@@ -578,7 +574,7 @@ describe("Notification delivery after commit (#160)", () => {
       const added = await createTestUser("add-pushfail-new");
 
       const created = await notificationService.createAndDeliver({
-        message: "Push fail add",
+        content: { kind: "text", text: "Push fail add" },
         businessId,
         recipients: { customerUserIds: [original._id] },
       });
@@ -596,7 +592,6 @@ describe("Notification delivery after commit (#160)", () => {
         notificationService.addRecipientsAndDeliver({
           notificationId: created.notificationId,
           businessId,
-          message: "Push fail add",
           recipientUserIds: [added._id],
         }),
       ).resolves.toBeDefined();
@@ -616,7 +611,7 @@ describe("Notification delivery after commit (#160)", () => {
       const addedAbort = await createTestUser("add-abort");
 
       const created = await notificationService.createAndDeliver({
-        message: "Txn add",
+        content: { kind: "text", text: "Txn add" },
         businessId,
         recipients: { customerUserIds: [original._id] },
       });
@@ -627,7 +622,6 @@ describe("Notification delivery after commit (#160)", () => {
         await notificationService.addRecipientsAndDeliver({
           notificationId: created.notificationId,
           businessId,
-          message: "Txn add",
           recipientUserIds: [addedAbort._id],
           session,
         });
@@ -646,7 +640,6 @@ describe("Notification delivery after commit (#160)", () => {
         await notificationService.addRecipientsAndDeliver({
           notificationId: created.notificationId,
           businessId,
-          message: "Txn add",
           recipientUserIds: [addedCommit._id],
           session,
         });
@@ -672,7 +665,7 @@ describe("Notification delivery after commit (#160)", () => {
 
     try {
       await notificationService.createAndDeliver({
-        message: "Hand-created delivery with operational in-app off",
+        content: { kind: "text", text: "Hand-created delivery with operational in-app off" },
         businessId,
         recipients: { customerUserIds: [customer._id] },
         notificationType: "Info",

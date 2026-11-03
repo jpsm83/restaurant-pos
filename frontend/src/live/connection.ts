@@ -11,6 +11,10 @@
  * on reconnect, after query resync finishes. Writes stay blocked until then.
  */
 import { resolveApiBaseUrl } from "@/services/apiBaseUrl";
+import {
+  isNotificationContent,
+  type NotificationContent,
+} from "restaurant-pos-packages/interfaces/INotification";
 
 const LIVE_PATH = "/api/v1/notifications/live";
 const LIVE_TICKET_PATH = "/api/v1/auth/live-ticket";
@@ -52,7 +56,7 @@ export type LiveTicketRequest = (
 export interface LiveNotificationEvent {
   notificationId: string;
   businessId: string;
-  message: string;
+  content: NotificationContent;
   notificationType: string;
   correlationId: string;
 }
@@ -153,7 +157,7 @@ function parseLiveMessage(
   if (
     typeof payload.notificationId !== "string" ||
     typeof payload.businessId !== "string" ||
-    typeof payload.message !== "string" ||
+    !isNotificationContent(payload.content) ||
     typeof payload.notificationType !== "string" ||
     typeof payload.correlationId !== "string"
   ) {
@@ -165,7 +169,7 @@ function parseLiveMessage(
     event: {
       notificationId: payload.notificationId,
       businessId: payload.businessId,
-      message: payload.message,
+      content: payload.content,
       notificationType: payload.notificationType,
       correlationId: payload.correlationId,
     },

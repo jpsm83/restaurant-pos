@@ -31,6 +31,7 @@ import {
   ServiceRequestError,
   type ServiceFailure,
 } from "@/services/serviceErrors";
+import { renderNotificationContent } from "./notificationContent";
 
 const KNOWN_NOTIFICATION_TYPES = new Set(notificationEnums);
 
@@ -63,8 +64,9 @@ function InboxEntry({
   onAction: (action: NotificationInboxAction) => void;
 }) {
   const { t } = useTranslation("common");
-  const { formatDateTime } = useFormatting();
+  const formatting = useFormatting();
   const { labelKey, tone } = typePresentation(entry.notificationType);
+  const renderedContent = renderNotificationContent(entry.content, t, formatting);
   const markRead = () =>
     onAction({ type: "markRead", notificationId: entry.notificationId });
 
@@ -83,25 +85,25 @@ function InboxEntry({
           className="ml-auto text-xs text-muted-foreground"
           dateTime={entry.createdAt}
         >
-          {formatDateTime(entry.createdAt)}
+          {formatting.formatDateTime(entry.createdAt)}
         </time>
       </div>
       {entry.read ? (
         <p className="mt-2 whitespace-pre-wrap break-words text-sm text-foreground">
-          {entry.message}
+          {renderedContent}
         </p>
       ) : (
         <button
           type="button"
           disabled={pending}
           aria-label={t("notifications.actions.openNotificationLabel", {
-            message: entry.message,
+            message: renderedContent,
           })}
           onClick={markRead}
           className="mt-2 block w-full rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:cursor-not-allowed"
         >
           <span className="block whitespace-pre-wrap break-words text-sm text-foreground">
-            {entry.message}
+            {renderedContent}
           </span>
         </button>
       )}
@@ -113,7 +115,7 @@ function InboxEntry({
             variant="outline"
             disabled={pending}
             aria-label={t("notifications.actions.markReadAriaLabel", {
-              message: entry.message,
+              message: renderedContent,
             })}
             onClick={markRead}
           >
@@ -126,7 +128,7 @@ function InboxEntry({
           variant="destructive"
           disabled={pending}
           aria-label={t("notifications.actions.deleteAriaLabel", {
-            message: entry.message,
+            message: renderedContent,
           })}
           onClick={() =>
             onAction({ type: "hide", notificationId: entry.notificationId })

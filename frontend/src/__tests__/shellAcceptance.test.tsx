@@ -138,7 +138,7 @@ function inboxEntry(
     notificationId: "n1",
     businessId: "b1",
     notificationType: "Info",
-    message: "Your order is ready.",
+    content: { kind: "text", text: "Your order is ready." },
     createdAt: "2026-03-27T10:15:00.000Z",
     read: false,
     ...overrides,
@@ -619,13 +619,13 @@ describe("Customer chrome and Business shell acceptance", () => {
         inboxEntry({
           notificationId: "n2",
           businessId: "b2",
-          message: "Beta venue update.",
+          content: { kind: "text", text: "Beta venue update." },
           createdAt: "2026-03-27T11:45:00.000Z",
         }),
         inboxEntry({
           notificationId: "n1",
           businessId: "b1",
-          message: "Alpha venue update.",
+          content: { kind: "text", text: "Alpha venue update." },
           createdAt: "2026-03-27T10:15:00.000Z",
         }),
       ],
@@ -654,7 +654,11 @@ describe("Customer chrome and Business shell acceptance", () => {
       mode: "business",
       venues: [venue({ businessId: "b1", tradeName: "Alpha Bar" })],
       portfolio: portfolio([{ _id: "b1", tradeName: "Alpha Bar" }]),
-      inbox: [inboxEntry({ message: "Actualización del local." })],
+      inbox: [
+        inboxEntry({
+          content: { kind: "text", text: "Actualización del local." },
+        }),
+      ],
     });
 
     await renderShell("/business/b1/notifications", "es");

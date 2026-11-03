@@ -126,14 +126,6 @@ describe("Reservation pending and decided on the rail (#163)", () => {
       // One delivery to the customer and one delivery to the managers.
       expect(deliverSpy).toHaveBeenCalledTimes(2);
 
-      const baseMessage = buildReservationTemplate({
-        reservationId: payload.reservationId,
-        status: "Pending",
-        reservationStart: payload.reservationStart,
-        guestCount: payload.guestCount,
-        description: payload.description,
-      });
-
       const customerCall = deliverSpy.mock.calls.find(
         (call) => (call[0].recipients.customerUserIds?.length ?? 0) > 0,
       );
@@ -147,9 +139,16 @@ describe("Reservation pending and decided on the rail (#163)", () => {
         String(userId),
       ]);
       expect(customerCall?.[0].recipients.employeeIds ?? []).toEqual([]);
-      expect(customerCall?.[0].message).toBe(
-        `${baseMessage}\n\nYour reservation is pending approval.`,
-      );
+      expect(customerCall?.[0].content).toEqual({
+        kind: "template",
+        key: "notifications.templates.reservationPending",
+        params: {
+          reference: payload.reservationId.toString(),
+          guestCount: 3,
+          reservationStart: payload.reservationStart.toISOString(),
+          description: "Window seat",
+        },
+      });
       expect(customerCall?.[0].notificationType).toBe("Info");
       expect(String(customerCall?.[0].businessId)).toBe(String(businessId));
 
@@ -159,9 +158,16 @@ describe("Reservation pending and decided on the rail (#163)", () => {
         String(manager._id),
       ]);
       expect(managerCall?.[0].recipients.customerUserIds ?? []).toEqual([]);
-      expect(managerCall?.[0].message).toBe(
-        `${baseMessage}\n\nAction required: approve or reject this reservation.`,
-      );
+      expect(managerCall?.[0].content).toEqual({
+        kind: "template",
+        key: "notifications.templates.reservationPendingManager",
+        params: {
+          reference: payload.reservationId.toString(),
+          guestCount: 3,
+          reservationStart: payload.reservationStart.toISOString(),
+          description: "Window seat",
+        },
+      });
       expect(managerCall?.[0].notificationType).toBe("Info");
     });
   });
@@ -197,16 +203,17 @@ describe("Reservation pending and decided on the rail (#163)", () => {
       ]);
       expect(input.recipients.employeeIds ?? []).toEqual([]);
       expect(input.recipients.employeeUserIds ?? []).toEqual([]);
-      // The stored text and Info severity are the ones the caller supplies.
-      expect(input.message).toBe(
-        buildReservationTemplate({
-          reservationId: payload.reservationId,
-          status: payload.status,
-          reservationStart: payload.reservationStart,
-          guestCount: payload.guestCount,
-          description: payload.description,
-        }),
-      );
+      // Machine-readable content and Info severity are what the caller supplies.
+      expect(input.content).toEqual({
+        kind: "template",
+        key: "notifications.templates.reservationConfirmed",
+        params: {
+          reference: payload.reservationId.toString(),
+          guestCount: 2,
+          reservationStart: payload.reservationStart.toISOString(),
+          description: "Birthday",
+        },
+      });
       expect(input.notificationType).toBe("Info");
       expect(String(input.businessId)).toBe(String(businessId));
     });

@@ -1,3 +1,4 @@
+import type { NotificationContent } from "restaurant-pos-packages/interfaces/INotification";
 import type { LiveInAppNotificationEvent } from "../types.ts";
 
 export interface LiveConnectedMessage {
@@ -10,7 +11,7 @@ export interface NotificationCreatedMessage {
   data: {
     notificationId: string;
     businessId: string;
-    message: string;
+    content: NotificationContent;
     notificationType: LiveInAppNotificationEvent["notificationType"];
     correlationId: string;
   };
@@ -30,7 +31,7 @@ export const toNotificationCreatedMessage = (
   data: {
     notificationId: event.notificationId.toString(),
     businessId: event.businessId.toString(),
-    message: event.message,
+    content: event.content,
     notificationType: event.notificationType,
     correlationId:
       event.correlationId ??

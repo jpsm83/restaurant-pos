@@ -923,7 +923,7 @@ describe("Communications Core - Repository Fanout", () => {
     });
 
     const result = await notificationRepository.createAndFanout({
-      message: "Fanout test notification",
+      content: { kind: "text", text: "Fanout test notification" },
       businessId,
       recipients: {
         customerUserIds: [customerUser._id],
@@ -948,13 +948,13 @@ describe("Communications Core - Repository Fanout", () => {
 });
 
 describe("Communications Core - Notification Service", () => {
-  it("createAndDeliver validates recipients and emits live event", async () => {
+  it("createAndDeliver validates content and recipients and emits live event", async () => {
     const businessId = new Types.ObjectId();
     const customer = await createTestUser("service-customer");
     const emitSpy = vi.spyOn(liveInAppEvents, "emitLiveInAppNotification");
 
     const result = await notificationService.createAndDeliver({
-      message: "Service delivery test",
+      content: { kind: "text", text: "Service delivery test" },
       businessId,
       recipients: {
         customerUserIds: [customer._id],
@@ -972,11 +972,69 @@ describe("Communications Core - Notification Service", () => {
     emitSpy.mockRestore();
   });
 
+  it("rejects free-form copy, unknown template keys, and blank text content", async () => {
+    const businessId = new Types.ObjectId();
+    const customer = await createTestUser("service-invalid-content");
+    const recipients = { customerUserIds: [customer._id] };
+
+    await expect(
+      notificationService.createAndDeliver({
+        // A client-style free-form message is not a content shape.
+        message: "Free-form copy",
+        businessId,
+        recipients,
+      } as never),
+    ).rejects.toThrow(/content must be template or text/i);
+
+    await expect(
+      notificationService.createAndDeliver({
+        content: {
+          kind: "template",
+          key: "notifications.templates.unknown",
+          params: {},
+        } as never,
+        businessId,
+        recipients,
+      }),
+    ).rejects.toThrow(/content must be template or text/i);
+
+    await expect(
+      notificationService.createAndDeliver({
+        content: { kind: "text", text: "   " },
+        businessId,
+        recipients,
+      }),
+    ).rejects.toThrow(/content must be template or text/i);
+
+    expect(await Notification.countDocuments({ businessId })).toBe(0);
+  });
+
+  it("stores the content shape without a pre-rendered English message for new rows", async () => {
+    const businessId = new Types.ObjectId();
+    const customer = await createTestUser("service-template-content");
+    const content = {
+      kind: "template" as const,
+      key: "notifications.templates.weeklyReportReady" as const,
+      params: { weekLabel: "2026-W12" },
+    };
+
+    const result = await notificationService.createAndDeliver({
+      content,
+      businessId,
+      recipients: { customerUserIds: [customer._id] },
+      notificationType: "Info",
+    });
+
+    const stored = await Notification.findById(result.notificationId).lean();
+    expect(stored?.content).toEqual(content);
+    expect(stored?.message).toBeUndefined();
+  });
+
   it("createAndDeliver throws when no recipients resolve", async () => {
     const businessId = new Types.ObjectId();
     await expect(
       notificationService.createAndDeliver({
-        message: "No recipients",
+        content: { kind: "text", text: "No recipients" },
         businessId,
         recipients: {},
       })

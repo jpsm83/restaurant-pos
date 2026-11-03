@@ -1,22 +1,23 @@
 import type { CommunicationsChannelResult, InAppSendInput } from "../types.ts";
 import notificationService from "../services/notificationService.ts";
+import { isNotificationContent } from "restaurant-pos-packages/interfaces/INotification";
 
 const LOG_PREFIX = "[communications][inAppChannel]";
 
 const send = async (payload: InAppSendInput): Promise<CommunicationsChannelResult> => {
   try {
-    if (!payload.message?.trim()) {
+    if (!isNotificationContent(payload.content)) {
       return {
         channel: "inApp",
         success: false,
         sentCount: 0,
         deliveryMode: "persisted",
-        error: "Notification message is required",
+        error: "Notification content must be template or text",
       };
     }
 
     const delivered = await notificationService.createAndDeliver({
-      message: payload.message,
+      content: payload.content,
       notificationType: payload.notificationType ?? "Info",
       businessId: payload.businessId,
       recipients: payload.recipients,

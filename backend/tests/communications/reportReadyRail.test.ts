@@ -19,10 +19,6 @@ import MonthlyBusinessReport from "../../src/models/monthlyBusinessReport.ts";
 import dispatchEvent from "../../src/communications/dispatchEvent.ts";
 import notificationService from "../../src/communications/services/notificationService.ts";
 import emailChannel from "../../src/communications/channels/emailChannel.ts";
-import {
-  buildMonthlyReportReadyTemplate,
-  buildWeeklyReportReadyTemplate,
-} from "../../src/communications/templates/reportReadyTemplate.ts";
 import sendWeeklyReportReadyNotification from "../../src/weeklyBusinessReport/sendWeeklyReportReadyNotification.ts";
 import sendMonthlyReportReadyNotification from "../../src/monthlyBusinessReport/sendMonthlyReportReadyNotification.ts";
 
@@ -108,8 +104,12 @@ describe("Report-ready on the rail (#165)", () => {
       // Managers only: no customer joins this delivery.
       expect(input.recipients.customerUserIds ?? []).toEqual([]);
       expect(input.recipients.employeeUserIds ?? []).toEqual([]);
-      // The stored text and Info severity are the ones the caller supplies.
-      expect(input.message).toBe(buildWeeklyReportReadyTemplate(weekLabel));
+      // Machine-readable content and Info severity are what the caller supplies.
+      expect(input.content).toEqual({
+        kind: "template",
+        key: "notifications.templates.weeklyReportReady",
+        params: { weekLabel },
+      });
       expect(input.notificationType).toBe("Info");
       expect(String(input.businessId)).toBe(String(businessId));
     });
@@ -141,8 +141,12 @@ describe("Report-ready on the rail (#165)", () => {
       // Managers only: no customer joins this delivery.
       expect(input.recipients.customerUserIds ?? []).toEqual([]);
       expect(input.recipients.employeeUserIds ?? []).toEqual([]);
-      // The stored text and Info severity are the ones the caller supplies.
-      expect(input.message).toBe(buildMonthlyReportReadyTemplate(monthLabel));
+      // Machine-readable content and Info severity are what the caller supplies.
+      expect(input.content).toEqual({
+        kind: "template",
+        key: "notifications.templates.monthlyReportReady",
+        params: { monthLabel },
+      });
       expect(input.notificationType).toBe("Info");
       expect(String(input.businessId)).toBe(String(businessId));
     });

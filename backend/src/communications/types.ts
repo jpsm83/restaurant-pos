@@ -1,5 +1,6 @@
 import { Types } from "mongoose";
 import type { ClientSession } from "mongoose";
+import type { NotificationContent } from "restaurant-pos-packages/interfaces/INotification";
 
 export type CommunicationsChannel = "email" | "inApp" | "liveInApp";
 
@@ -155,7 +156,7 @@ export interface EmailSendInput {
 }
 
 export interface InAppSendInput {
-  message: string;
+  content: NotificationContent;
   notificationType?: NotificationType;
   businessId: Types.ObjectId;
   recipients: CommunicationsRecipientTarget;
@@ -172,7 +173,7 @@ export interface NotificationFanoutResult {
 }
 
 export interface NotificationCreateAndDeliverInput {
-  message: string;
+  content: NotificationContent;
   businessId: Types.ObjectId;
   recipients: CommunicationsRecipientTarget;
   notificationType?: NotificationType;
@@ -196,7 +197,6 @@ export interface NotificationCreateAndDeliverResult extends NotificationFanoutRe
 export interface NotificationAddRecipientsInput {
   notificationId: Types.ObjectId;
   businessId: Types.ObjectId;
-  message: string;
   recipientUserIds: Types.ObjectId[];
   notificationType?: NotificationType;
   eventName?: CommunicationsEventName;
@@ -223,7 +223,7 @@ export interface NotificationAddRecipientsResult {
 export interface LiveInAppNotificationEvent {
   notificationId: Types.ObjectId;
   businessId: Types.ObjectId;
-  message: string;
+  content: NotificationContent;
   notificationType: NotificationType;
   recipientUserIds: Types.ObjectId[];
   eventName?: CommunicationsEventName;

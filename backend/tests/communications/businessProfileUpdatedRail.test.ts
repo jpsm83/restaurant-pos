@@ -20,10 +20,7 @@ import Business from "../../src/models/business.ts";
 import dispatchEvent from "../../src/communications/dispatchEvent.ts";
 import notificationService from "../../src/communications/services/notificationService.ts";
 import emailChannel from "../../src/communications/channels/emailChannel.ts";
-import {
-  buildBusinessProfileUpdatedEmailBody,
-  buildBusinessProfileUpdatedInAppMessage,
-} from "../../src/communications/templates/businessProfileUpdatedTemplate.ts";
+import { buildBusinessProfileUpdatedEmailBody } from "../../src/communications/templates/businessProfileUpdatedTemplate.ts";
 import { createTestBusiness } from "../helpers/fixtures.ts";
 import { generateTestToken, getTestApp } from "../setup.ts";
 
@@ -162,10 +159,16 @@ describe("Business profile updated on the rail (#166)", () => {
       // Managers only: no customer joins this delivery.
       expect(input.recipients.customerUserIds ?? []).toEqual([]);
       expect(input.recipients.employeeUserIds ?? []).toEqual([]);
-      // The stored text and Info severity are the ones the caller supplies.
-      expect(input.message).toBe(
-        buildBusinessProfileUpdatedInAppMessage(payload),
-      );
+      // Machine-readable content and Info severity are what the caller supplies.
+      expect(input.content).toEqual({
+        kind: "template",
+        key: "notifications.templates.businessProfileUpdated",
+        params: {
+          actor: { source: "businessOwner", email: "owner@example.com" },
+          fields: ["tradeName", "address.city"],
+          sensitiveFieldCount: 0,
+        },
+      });
       expect(input.notificationType).toBe("Info");
       expect(String(input.businessId)).toBe(String(businessId));
     });

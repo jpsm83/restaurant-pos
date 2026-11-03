@@ -65,6 +65,32 @@
       "promotion": "Promotion",
       "birthday": "Birthday",
       "event": "Event"
+    },
+    "templates": {
+      "orderConfirmed_one": "Order confirmed. Ref: {{reference}} · {{count}} item · {{total}}",
+      "orderConfirmed_other": "Order confirmed. Ref: {{reference}} · {{count}} items · {{total}}",
+      "orderConfirmedFlow": "Type: {{flowLabel}}",
+      "orderConfirmedFlowDelivery": "Delivery",
+      "orderConfirmedFlowSelfOrder": "Self-order",
+      "orderConfirmedFlowOrder": "Order",
+      "orderConfirmedCustomer": "Customer: {{clientName}}",
+      "orderConfirmedAddress": "Delivery address: {{deliveryAddress}}",
+      "reservationPending": "Reservation {{reference}} for {{guestCount}} guests on {{when}} is pending approval.",
+      "reservationPendingManager": "Reservation {{reference}} for {{guestCount}} guests on {{when}} needs approval.",
+      "reservationConfirmed": "Reservation {{reference}} for {{guestCount}} guests on {{when}} is confirmed.",
+      "reservationCancelled": "Reservation {{reference}} for {{guestCount}} guests on {{when}} is cancelled.",
+      "reservationReason": "Reason: {{description}}",
+      "lowStock": "Low stock: {{details}}",
+      "lowStockEmpty": "Low stock.",
+      "monthlyReportReady": "Monthly business report for {{monthLabel}} is ready to be reviewed.",
+      "weeklyReportReady": "Weekly business report for {{weekLabel}} is ready.",
+      "businessProfileUpdated": "Business profile updated by {{actor}}: {{fields}}",
+      "businessProfileUpdatedNoFields": "Business profile updated by {{actor}}.",
+      "businessProfileUpdatedMore": "And {{count}} more.",
+      "businessProfileUpdatedSensitive_one": "Protected account fields were also updated (details omitted for security).",
+      "businessProfileUpdatedSensitive_other": "Protected account fields were also updated ({{count}} areas; details omitted for security).",
+      "businessProfileUpdatedActorSystem": "System",
+      "businessProfileUpdatedActorMember": "A team member"
     }
   }
 }

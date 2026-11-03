@@ -1,18 +1,17 @@
 import { Types } from "mongoose";
+import type {
+  NotificationContent,
+  NotificationTemplateKey,
+} from "restaurant-pos-packages/interfaces/INotification";
 import User from "../models/user.ts";
 import Business from "../models/business.ts";
 import emailChannel from "./channels/emailChannel.ts";
 import inAppChannel from "./channels/inAppChannel.ts";
 import buildOrderReceiptTemplate from "./templates/orderReceiptTemplate.ts";
 import buildReservationTemplate from "./templates/reservationTemplate.ts";
-import buildLowStockTemplate from "./templates/lowStockTemplate.ts";
-import {
-  buildMonthlyReportReadyTemplate,
-  buildWeeklyReportReadyTemplate,
-} from "./templates/reportReadyTemplate.ts";
 import {
   buildBusinessProfileUpdatedEmailBody,
-  buildBusinessProfileUpdatedInAppMessage,
+  partitionBusinessProfileChangedFields,
 } from "./templates/businessProfileUpdatedTemplate.ts";
 import { resolveManagersByPolicy } from "./recipientResolvers/managerRecipientPolicy.ts";
 import type {
@@ -141,7 +140,7 @@ interface DispatchContext {
   fireAndForget: boolean;
   businessId?: Types.ObjectId;
   safeInAppSend: (input: {
-    message: string;
+    content: NotificationContent;
     notificationType?: NotificationType;
     businessId: Types.ObjectId;
     recipients: {
@@ -183,12 +182,27 @@ const handleOrderConfirmed: EventHandler<"ORDER_CONFIRMED"> = async (p, ctx) => 
   }
 
   await ctx.safeInAppSend({
-    message,
+    content: buildOrderConfirmedContent(p),
     notificationType: "Info",
     businessId: p.businessId,
     recipients: { customerUserIds: [p.userId] },
   });
 };
+
+const buildOrderConfirmedContent = (
+  p: CommunicationsEventPayloadMap["ORDER_CONFIRMED"],
+): NotificationContent => ({
+  kind: "template",
+  key: "notifications.templates.orderConfirmed",
+  params: {
+    reference: p.orderCode ?? String(p.dailyReferenceNumber),
+    orderCount: p.orderCount,
+    totalAmount: p.totalNetPaidAmount,
+    ...(p.flow ? { flow: p.flow } : {}),
+    ...(p.clientName ? { clientName: p.clientName } : {}),
+    ...(p.deliveryAddress ? { deliveryAddress: p.deliveryAddress } : {}),
+  },
+});
 
 const handleReservationPending: EventHandler<"RESERVATION_PENDING"> = async (
   p,
@@ -213,7 +227,10 @@ const handleReservationPending: EventHandler<"RESERVATION_PENDING"> = async (
   }
 
   await ctx.safeInAppSend({
-    message: `${baseMessage}\n\nYour reservation is pending approval.`,
+    content: buildReservationContent(
+      p,
+      "notifications.templates.reservationPending",
+    ),
     notificationType: "Info",
     businessId: p.businessId,
     recipients: { customerUserIds: [p.userId] },
@@ -226,13 +243,38 @@ const handleReservationPending: EventHandler<"RESERVATION_PENDING"> = async (
 
   if (managers.employeeIds.length > 0) {
     await ctx.safeInAppSend({
-      message: `${baseMessage}\n\nAction required: approve or reject this reservation.`,
+      content: buildReservationContent(
+        p,
+        "notifications.templates.reservationPendingManager",
+      ),
       notificationType: "Info",
       businessId: p.businessId,
       recipients: { employeeIds: managers.employeeIds },
     });
   }
 };
+
+const buildReservationContent = (
+  p: {
+    reservationId: Types.ObjectId;
+    reservationStart: Date;
+    guestCount: number;
+    description?: string;
+  },
+  key: Extract<
+    NotificationTemplateKey,
+    `notifications.templates.reservation${string}`
+  >,
+): NotificationContent => ({
+  kind: "template",
+  key,
+  params: {
+    reference: p.reservationId.toString(),
+    guestCount: p.guestCount,
+    reservationStart: p.reservationStart.toISOString(),
+    ...(p.description ? { description: p.description } : {}),
+  },
+});
 
 const handleReservationDecided: EventHandler<"RESERVATION_DECIDED"> = async (
   p,
@@ -257,7 +299,12 @@ const handleReservationDecided: EventHandler<"RESERVATION_DECIDED"> = async (
   }
 
   await ctx.safeInAppSend({
-    message,
+    content: buildReservationContent(
+      p,
+      p.status === "Confirmed"
+        ? "notifications.templates.reservationConfirmed"
+        : "notifications.templates.reservationCancelled",
+    ),
     notificationType: "Info",
     businessId: p.businessId,
     recipients: { customerUserIds: [p.userId] },
@@ -265,14 +312,6 @@ const handleReservationDecided: EventHandler<"RESERVATION_DECIDED"> = async (
 };
 
 const handleLowStockAlert: EventHandler<"LOW_STOCK_ALERT"> = async (p, ctx) => {
-  const message = buildLowStockTemplate(
-    p.lowStockItems.map((item) => ({
-      name: item.name,
-      currentCount: item.currentCount,
-      threshold: item.threshold,
-    }))
-  );
-
   const managers = await resolveManagersByPolicy({
     businessId: p.businessId,
     eventName: ctx.eventName,
@@ -280,7 +319,17 @@ const handleLowStockAlert: EventHandler<"LOW_STOCK_ALERT"> = async (p, ctx) => {
 
   if (managers.employeeIds.length > 0) {
     await ctx.safeInAppSend({
-      message,
+      content: {
+        kind: "template",
+        key: "notifications.templates.lowStock",
+        params: {
+          items: p.lowStockItems.map((item) => ({
+            name: item.name,
+            currentCount: item.currentCount,
+            threshold: item.threshold,
+          })),
+        },
+      },
       notificationType: "Warning",
       businessId: p.businessId,
       recipients: { employeeIds: managers.employeeIds },
@@ -292,7 +341,6 @@ const handleMonthlyReportReady: EventHandler<"MONTHLY_REPORT_READY"> = async (
   p,
   ctx
 ) => {
-  const message = buildMonthlyReportReadyTemplate(p.monthLabel);
   const managers = await resolveManagersByPolicy({
     businessId: p.businessId,
     eventName: ctx.eventName,
@@ -300,7 +348,11 @@ const handleMonthlyReportReady: EventHandler<"MONTHLY_REPORT_READY"> = async (
 
   if (managers.employeeIds.length > 0) {
     await ctx.safeInAppSend({
-      message,
+      content: {
+        kind: "template",
+        key: "notifications.templates.monthlyReportReady",
+        params: { monthLabel: p.monthLabel },
+      },
       notificationType: "Info",
       businessId: p.businessId,
       recipients: { employeeIds: managers.employeeIds },
@@ -312,7 +364,6 @@ const handleWeeklyReportReady: EventHandler<"WEEKLY_REPORT_READY"> = async (
   p,
   ctx
 ) => {
-  const message = buildWeeklyReportReadyTemplate(p.weekLabel);
   const managers = await resolveManagersByPolicy({
     businessId: p.businessId,
     eventName: ctx.eventName,
@@ -320,7 +371,11 @@ const handleWeeklyReportReady: EventHandler<"WEEKLY_REPORT_READY"> = async (
 
   if (managers.employeeIds.length > 0) {
     await ctx.safeInAppSend({
-      message,
+      content: {
+        kind: "template",
+        key: "notifications.templates.weeklyReportReady",
+        params: { weekLabel: p.weekLabel },
+      },
       notificationType: "Info",
       businessId: p.businessId,
       recipients: { employeeIds: managers.employeeIds },
@@ -338,9 +393,22 @@ const handleBusinessProfileUpdated: EventHandler<"BUSINESS_PROFILE_UPDATED"> = a
   });
   if (managers.employeeIds.length === 0) return;
 
-  const inAppMessage = buildBusinessProfileUpdatedInAppMessage(p);
+  const { safeLabels, sensitiveFieldCount } =
+    partitionBusinessProfileChangedFields(p.changedFields);
   await ctx.safeInAppSend({
-    message: inAppMessage,
+    content: {
+      kind: "template",
+      key: "notifications.templates.businessProfileUpdated",
+      params: {
+        actor: {
+          source: p.actor.source,
+          ...(p.actor.role ? { role: p.actor.role } : {}),
+          ...(p.actor.email ? { email: p.actor.email } : {}),
+        },
+        fields: safeLabels,
+        sensitiveFieldCount,
+      },
+    },
     notificationType: "Info",
     businessId: p.businessId,
     recipients: { employeeIds: managers.employeeIds },
@@ -425,7 +493,7 @@ export const dispatchEvent = async <E extends CommunicationsEventName>(
   }
 
   const safeInAppSend = async (input: {
-    message: string;
+    content: NotificationContent;
     notificationType?: NotificationType;
     businessId: Types.ObjectId;
     recipients: {

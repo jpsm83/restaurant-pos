@@ -251,7 +251,10 @@ describe("Phase 5.2 - Communications Integration Domain Flows", () => {
       notificationType: "Warning",
     }).lean();
     expect(notifications.length).toBe(1);
-    expect(notifications[0].message).toContain("Low stock");
+    expect(notifications[0].content).toMatchObject({
+      kind: "template",
+      key: "notifications.templates.lowStock",
+    });
   });
 
   it("monthly and weekly report-ready flows emit notifications", async () => {
@@ -270,11 +273,11 @@ describe("Phase 5.2 - Communications Integration Domain Flows", () => {
     const [monthly, weekly] = await Promise.all([
       Notification.findOne({
         businessId,
-        message: /Monthly business report/,
+        "content.key": "notifications.templates.monthlyReportReady",
       }).lean(),
       Notification.findOne({
         businessId,
-        message: /Weekly business report/,
+        "content.key": "notifications.templates.weeklyReportReady",
       }).lean(),
     ]);
 
@@ -291,7 +294,7 @@ describe("Phase 5.2 - Communications Integration Domain Flows", () => {
     const result = await liveInAppChannel.send({
       notificationId: new Types.ObjectId(),
       businessId: new Types.ObjectId(),
-      message: "Live push test",
+      content: { kind: "text", text: "Live push test" },
       notificationType: "Info",
       recipientUserIds: [userId],
       eventName: "ORDER_CONFIRMED",
@@ -306,7 +309,10 @@ describe("Phase 5.2 - Communications Integration Domain Flows", () => {
     expect(livePayload.type).toBe("notification.created");
     expect(typeof livePayload.data.notificationId).toBe("string");
     expect(typeof livePayload.data.businessId).toBe("string");
-    expect(livePayload.data.message).toBe("Live push test");
+    expect(livePayload.data.content).toEqual({
+      kind: "text",
+      text: "Live push test",
+    });
     expect(livePayload.data.notificationType).toBe("Info");
     expect(livePayload.data.correlationId).toBe("corr-live-connected");
     expect(livePayload.data.eventName).toBeUndefined();
@@ -337,7 +343,7 @@ describe("Phase 5.2 - Communications Integration Domain Flows", () => {
     const result = await liveInAppChannel.send({
       notificationId: new Types.ObjectId(),
       businessId: new Types.ObjectId(),
-      message: "Live fallback test",
+      content: { kind: "text", text: "Live fallback test" },
       notificationType: "Info",
       recipientUserIds: [new Types.ObjectId()],
       eventName: "LOW_STOCK_ALERT",
@@ -366,12 +372,17 @@ describe("Phase 5.2 - Communications Integration Domain Flows", () => {
     });
     expect(userInboxResponse.statusCode).toBe(200);
     const body = JSON.parse(userInboxResponse.body) as {
-      items: Array<{ message?: string }>;
+      items: Array<{
+        content?: { kind?: string; key?: string; text?: string };
+      }>;
     };
     expect(body.items.length).toBeGreaterThan(0);
     expect(
-      body.items.some((notification) =>
-        notification.message?.includes("Order confirmed."),
+      body.items.some(
+        (notification) =>
+          notification.content?.kind === "template" &&
+          notification.content.key ===
+            "notifications.templates.orderConfirmed",
       ),
     ).toBe(true);
   });
@@ -388,7 +399,7 @@ describe("Phase 5.2 - Communications Integration Domain Flows", () => {
     const result = await liveInAppChannel.send({
       notificationId: new Types.ObjectId(),
       businessId: new Types.ObjectId(),
-      message: "Live send failure test",
+      content: { kind: "text", text: "Live send failure test" },
       notificationType: "Info",
       recipientUserIds: [userId],
       correlationId: "corr-send-failure",

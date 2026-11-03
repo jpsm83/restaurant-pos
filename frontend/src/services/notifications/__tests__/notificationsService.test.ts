@@ -36,7 +36,7 @@ const inboxPage = {
       notificationId: "n1",
       businessId: "b1",
       notificationType: "Info",
-      message: "Your order is ready.",
+      content: { kind: "text", text: "Your order is ready." },
       createdAt: "2026-03-27T10:15:00.000Z",
       read: false,
     },

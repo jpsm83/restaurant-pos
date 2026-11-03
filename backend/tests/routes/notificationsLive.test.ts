@@ -332,7 +332,7 @@ describe("Notifications Live Route", () => {
     });
   });
 
-  it("POST /notifications emits notification.created for connected recipient", async () => {
+  it("the notification service emits notification.created for a connected recipient", async () => {
     await withLiveServer(async ({ baseUrl, app }) => {
       const business = await createTestBusiness();
       const user = await createTestUser("live-post");
@@ -352,7 +352,7 @@ describe("Notifications Live Route", () => {
           if (parsed.type === "live.connected") {
             await notificationService.createAndDeliver({
               notificationType: "Info",
-              message: "Live push from manual POST route",
+              content: { kind: "text", text: "Live push from manual POST route" },
               businessId: business._id,
               recipients: { customerUserIds: [user._id] },
             });
@@ -370,7 +370,10 @@ describe("Notifications Live Route", () => {
 
       const parsed = JSON.parse(pushedPayload);
       expect(parsed.type).toBe("notification.created");
-      expect(parsed.data.message).toBe("Live push from manual POST route");
+      expect(parsed.data.content).toEqual({
+        kind: "text",
+        text: "Live push from manual POST route",
+      });
       expect(parsed.data.businessId).toBe(business._id.toString());
       expect(typeof parsed.data.notificationId).toBe("string");
       expect(parsed.data.notificationType).toBe("Info");
@@ -410,8 +413,14 @@ describe("Notifications Live Route", () => {
         socketUrl(baseUrl, await issueLiveTicket(app, nonTargetToken)),
       );
 
-      const targetMessages: Array<{ type?: string; data?: { message?: string } }> = [];
-      const nonTargetMessages: Array<{ type?: string; data?: { message?: string } }> = [];
+      const targetMessages: Array<{
+        type?: string;
+        data?: { content?: { kind?: string; text?: string } };
+      }> = [];
+      const nonTargetMessages: Array<{
+        type?: string;
+        data?: { content?: { kind?: string; text?: string } };
+      }> = [];
 
       const waitForAck = (socket: WebSocket): Promise<void> =>
         new Promise((resolve, reject) => {
@@ -447,7 +456,7 @@ describe("Notifications Live Route", () => {
 
         await notificationService.createAndDeliver({
           notificationType: "Info",
-          message: targetMessageText,
+          content: { kind: "text", text: targetMessageText },
           businessId: business._id,
           recipients: { customerUserIds: [targetUser._id] },
         });
@@ -458,20 +467,20 @@ describe("Notifications Live Route", () => {
           targetMessages.some(
             (message) =>
               message.type === "notification.created" &&
-              message.data?.message === targetMessageText
+              message.data?.content?.text === targetMessageText
           )
         ).toBe(true);
         expect(
           nonTargetMessages.some(
             (message) =>
               message.type === "notification.created" &&
-              message.data?.message === targetMessageText
+              message.data?.content?.text === targetMessageText
           )
         ).toBe(false);
 
         await notificationService.createAndDeliver({
           notificationType: "Info",
-          message: offlineMessageText,
+          content: { kind: "text", text: offlineMessageText },
           businessId: business._id,
           recipients: { customerUserIds: [offlineUser._id] },
         });
@@ -483,11 +492,13 @@ describe("Notifications Live Route", () => {
         });
         expect(offlineInboxResponse.statusCode).toBe(200);
         const offlineInbox = JSON.parse(offlineInboxResponse.body) as {
-          items: Array<{ message?: string }>;
+          items: Array<{ content?: { kind?: string; text?: string } }>;
         };
         expect(
           offlineInbox.items.some(
-            (notification) => notification.message === offlineMessageText,
+            (notification) =>
+              notification.content?.kind === "text" &&
+              notification.content.text === offlineMessageText,
           )
         ).toBe(true);
       } finally {
@@ -538,13 +549,13 @@ describe("Notifications Live Route", () => {
       first.on("message", (raw) => {
         const parsed = JSON.parse(raw.toString());
         if (parsed.type === "notification.created") {
-          firstCreated.push(parsed.data?.message ?? "");
+          firstCreated.push(parsed.data?.content?.text ?? "");
         }
       });
       second.on("message", (raw) => {
         const parsed = JSON.parse(raw.toString());
         if (parsed.type === "notification.created") {
-          secondCreated.push(parsed.data?.message ?? "");
+          secondCreated.push(parsed.data?.content?.text ?? "");
         }
       });
 
@@ -553,7 +564,7 @@ describe("Notifications Live Route", () => {
 
         await notificationService.createAndDeliver({
           notificationType: "Info",
-          message: "Pushed to both tabs",
+          content: { kind: "text", text: "Pushed to both tabs" },
           businessId: business._id,
           recipients: { customerUserIds: [user._id] },
         });

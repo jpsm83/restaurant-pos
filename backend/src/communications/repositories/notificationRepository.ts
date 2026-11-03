@@ -1,5 +1,6 @@
 import { Types } from "mongoose";
 import type { ClientSession } from "mongoose";
+import type { NotificationContent } from "restaurant-pos-packages/interfaces/INotification";
 import Notification from "../../models/notification.ts";
 import User from "../../models/user.ts";
 import type {
@@ -7,12 +8,14 @@ import type {
   NotificationFanoutResult,
   NotificationType,
 } from "../types.ts";
+import { resolveStoredNotificationContent } from "restaurant-pos-packages/interfaces/INotification";
+import { assertNotificationContent } from "../notificationContent.ts";
 import resolveCustomerUserRecipient from "../recipientResolvers/resolveCustomerUserRecipient.ts";
 import resolveEmployeeUserRecipients from "../recipientResolvers/resolveEmployeeUserRecipients.ts";
 import { toUniqueObjectIds } from "../recipientResolvers/utils.ts";
 
 interface CreateAndFanoutResolvedInput {
-  message: string;
+  content: NotificationContent;
   businessId: Types.ObjectId;
   recipients: {
     customerUserIds: Types.ObjectId[];
@@ -25,7 +28,7 @@ interface CreateAndFanoutResolvedInput {
 }
 
 interface CreateAndFanoutInput {
-  message: string;
+  content: NotificationContent;
   businessId: Types.ObjectId;
   recipients: CommunicationsRecipientTarget;
   notificationType?: NotificationType;
@@ -52,11 +55,13 @@ export const createAndFanoutResolved = async (
     throw new Error("No recipients resolved for notification fanout");
   }
 
+  assertNotificationContent(input.content);
+
   const [createdNotification] = await Notification.create(
     [
       {
         notificationType: input.notificationType ?? "Info",
-        message: input.message,
+        content: input.content,
         businessId: input.businessId,
         senderId: input.senderId ?? undefined,
         employeesRecipientsIds: employeeIds.length > 0 ? employeeIds : undefined,
@@ -111,7 +116,7 @@ export const createAndFanout = async (
   ]);
 
   return createAndFanoutResolved({
-    message: input.message,
+    content: input.content,
     businessId: input.businessId,
     recipients: { customerUserIds, employeeIds, recipientUserIds },
     notificationType: input.notificationType,
@@ -173,10 +178,44 @@ export const addRecipientsFanout = async (
   return { newlyAddedUserIds };
 };
 
+/**
+ * Reads the stored content and severity for a notification so an added
+ * recipient is pushed the same machine-readable content that was persisted.
+ * Legacy rows fall back to their `message` as literal text.
+ */
+export const findNotificationPushContent = async (
+  notificationId: Types.ObjectId,
+  session?: ClientSession,
+): Promise<{
+  content: NotificationContent;
+  notificationType: NotificationType;
+} | null> => {
+  const notification = await Notification.findById(notificationId)
+    .session(session ?? null)
+    .select("content message notificationType")
+    .lean<{
+      content?: unknown;
+      message?: string;
+      notificationType?: string;
+    }>();
+
+  if (!notification) return null;
+
+  return {
+    content: resolveStoredNotificationContent(
+      notification.content,
+      notification.message,
+    ),
+    notificationType:
+      (notification.notificationType as NotificationType | undefined) ?? "Info",
+  };
+};
+
 const notificationRepository = {
   createAndFanout,
   createAndFanoutResolved,
   addRecipientsFanout,
+  findNotificationPushContent,
 };
 
 export default notificationRepository;
