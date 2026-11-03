@@ -53,8 +53,12 @@ const userSchema = new Schema(
      */
     verificationToken: { type: String, default: undefined },
     verificationTokenExpires: { type: Date, default: undefined },
+    /** When the last verification link was sent; drives the per-account cooldown. */
+    verificationRequestedAt: { type: Date, default: undefined },
     resetPasswordToken: { type: String, default: undefined },
     resetPasswordExpires: { type: Date, default: undefined },
+    /** When the last password-reset link was sent; drives the per-account cooldown. */
+    resetPasswordRequestedAt: { type: Date, default: undefined },
     /**
      * Pending sign-in email change (`personalDetails.email` stays active until
      * the new address confirms the emailed link). Server-owned and never read by

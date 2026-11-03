@@ -366,6 +366,35 @@ describe("POST /api/v1/auth/google", () => {
     expect(sendEmailMock).toHaveBeenCalledTimes(1);
   });
 
+  it("does not resend reactivation inside the verification cooldown", async () => {
+    const deleted = await User.create({
+      personalDetails: {
+        email: defaultIdentity.email,
+        password: await bcrypt.hash(password, 10),
+      },
+      deleted: true,
+      deletedAt: new Date(),
+      verificationToken: "existing-token",
+      verificationRequestedAt: new Date(),
+    });
+
+    const response = await postGoogle(app, {
+      credential: "google-id-token",
+    });
+
+    expect(response.statusCode).toBe(202);
+    expect(response.json()).toEqual({
+      message: REACTIVATION_REQUIRED_MESSAGE,
+    });
+    expect(sendEmailMock).not.toHaveBeenCalled();
+
+    const stored = await User.findOne({
+      _id: deleted._id,
+      deleted: true,
+    }).lean();
+    expect(stored?.verificationToken).toBe("existing-token");
+  });
+
   it("lets a Google-only User set a password through reset and sign in with it", async () => {
     const created = await postGoogle(app);
     expect(created.statusCode).toBe(201);

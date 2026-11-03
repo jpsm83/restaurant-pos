@@ -6,6 +6,7 @@ import {
 } from "./authEmailTokenFlow.ts";
 import { buildConfirmEmailLink } from "./emailLinks.ts";
 import { buildEmailConfirmationContent } from "./emailTemplates.ts";
+import { isRequestWithinCooldown } from "./requestCooldown.ts";
 
 export const GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE =
   "If an account exists for this email, you will receive instructions shortly.";
@@ -28,19 +29,29 @@ type ConfirmationUser = {
   _id: unknown;
   languagePreference?: string | null;
   personalDetails?: { username?: string; firstName?: string } | null;
+  verificationRequestedAt?: Date | null;
 };
 
 /**
  * Writes one active confirmation link (token + 24-hour expiry) on this User.
- * A new request replaces the previous link for the same purpose.
+ * A new request replaces the previous link for the same purpose; a repeat
+ * request inside the cooldown sends nothing and leaves the live link in place.
  */
 export async function sendUserVerificationEmail(
   user: ConfirmationUser,
   normalizedEmail: string,
 ): Promise<RequestEmailConfirmationHandlerResult> {
+  if (isRequestWithinCooldown(user.verificationRequestedAt)) {
+    return {
+      kind: "success_200",
+      message: GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE,
+    };
+  }
+
   const pd = user.personalDetails ?? undefined;
   const greetingName =
     pd?.username?.trim() || pd?.firstName?.trim() || undefined;
+  const now = new Date();
 
   const sent = await sendAuthTokenEmailOrRollback({
     to: normalizedEmail,
@@ -51,8 +62,9 @@ export async function sendUserVerificationEmail(
           $set: {
             verificationToken: token,
             verificationTokenExpires: new Date(
-              Date.now() + VERIFICATION_TOKEN_TTL_MS,
+              now.getTime() + VERIFICATION_TOKEN_TTL_MS,
             ),
+            verificationRequestedAt: now,
           },
         },
       ),
@@ -70,6 +82,7 @@ export async function sendUserVerificationEmail(
           $unset: {
             verificationToken: "",
             verificationTokenExpires: "",
+            verificationRequestedAt: "",
           },
         },
       ),
@@ -103,7 +116,7 @@ export async function handleRequestEmailConfirmation(
     ),
   )
     .select(
-      "_id languagePreference personalDetails.username personalDetails.firstName personalDetails.emailVerified deleted",
+      "_id languagePreference personalDetails.username personalDetails.firstName personalDetails.emailVerified deleted verificationRequestedAt",
     )
     .lean();
 

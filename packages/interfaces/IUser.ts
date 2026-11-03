@@ -18,8 +18,12 @@ export interface IUser {
   notifications?: INotification[];
   verificationToken?: string;
   verificationTokenExpires?: Date;
+  /** When the last verification link was sent; drives the request cooldown. */
+  verificationRequestedAt?: Date;
   resetPasswordToken?: string;
   resetPasswordExpires?: Date;
+  /** When the last password-reset link was sent; drives the request cooldown. */
+  resetPasswordRequestedAt?: Date;
   /** Pending sign-in email change; the current email stays active until confirmed. */
   pendingEmail?: string;
   pendingEmailToken?: string;

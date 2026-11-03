@@ -7,6 +7,7 @@ import {
 import { buildResetPasswordLink } from "./emailLinks.ts";
 import { buildPasswordResetEmailContent } from "./emailTemplates.ts";
 import { GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE } from "./requestEmailConfirmation.ts";
+import { isRequestWithinCooldown } from "./requestCooldown.ts";
 
 export type RequestPasswordResetHandlerResult =
   | { kind: "success_200"; message: string }
@@ -22,7 +23,7 @@ export async function handleRequestPasswordReset(
     withSoftDeleteFilter({ "personalDetails.email": normalizedEmail }),
   )
     .select(
-      "_id languagePreference personalDetails.username personalDetails.firstName",
+      "_id languagePreference personalDetails.username personalDetails.firstName resetPasswordRequestedAt",
     )
     .lean();
 
@@ -30,11 +31,21 @@ export async function handleRequestPasswordReset(
     return { kind: "success_200", message: GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE };
   }
 
+  // A recent link was already sent: answer generically, send nothing, and leave
+  // the still-valid link untouched.
+  if (isRequestWithinCooldown(user.resetPasswordRequestedAt)) {
+    return {
+      kind: "success_200",
+      message: GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE,
+    };
+  }
+
   const pd = user.personalDetails as
     | { username?: string; firstName?: string }
     | undefined;
   const greetingName =
     pd?.username?.trim() || pd?.firstName?.trim() || undefined;
+  const now = new Date();
 
   const sent = await sendAuthTokenEmailOrRollback({
     to: normalizedEmail,
@@ -45,8 +56,9 @@ export async function handleRequestPasswordReset(
           $set: {
             resetPasswordToken: token,
             resetPasswordExpires: new Date(
-              Date.now() + PASSWORD_RESET_TOKEN_TTL_MS,
+              now.getTime() + PASSWORD_RESET_TOKEN_TTL_MS,
             ),
+            resetPasswordRequestedAt: now,
           },
         },
       ),
@@ -60,7 +72,13 @@ export async function handleRequestPasswordReset(
     rollback: () =>
       User.updateOne(
         { _id: user._id },
-        { $unset: { resetPasswordToken: "", resetPasswordExpires: "" } },
+        {
+          $unset: {
+            resetPasswordToken: "",
+            resetPasswordExpires: "",
+            resetPasswordRequestedAt: "",
+          },
+        },
       ),
   });
 

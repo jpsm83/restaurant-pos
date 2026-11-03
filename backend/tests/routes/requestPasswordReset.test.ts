@@ -34,6 +34,8 @@ import { getTestApp, resetTestApp } from "../setup.ts";
 import User from "../../src/models/user.ts";
 import { GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE } from "../../src/auth/requestEmailConfirmation.ts";
 import { PASSWORD_RESET_TOKEN_TTL_MS } from "../../src/auth/authEmailTokenFlow.ts";
+import { CONFIRM_EMAIL_CONSUMPTION_ERROR_MESSAGE } from "../../src/auth/confirmEmail.ts";
+import { RESET_PASSWORD_SUCCESS_MESSAGE } from "../../src/auth/resetPassword.ts";
 
 const testPassword = "TestPassword123!";
 
@@ -200,7 +202,46 @@ describe("POST /api/v1/auth/request-password-reset", () => {
     expect(updated?.resetPasswordExpires).toBeTruthy();
   });
 
-  it("supersedes the previous reset link on a new request", async () => {
+  it("is a 200 no-op inside the one-minute cooldown and changes nothing", async () => {
+    const app = await getTestApp();
+    await createTestUser("reset-cooldown@example.com");
+
+    const first = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/request-password-reset",
+      payload: { email: "reset-cooldown@example.com" },
+    });
+    expect(first.statusCode).toBe(200);
+    const firstStored = await User.findOne({
+      "personalDetails.email": "reset-cooldown@example.com",
+    })
+      .select("resetPasswordToken")
+      .lean();
+
+    const second = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/request-password-reset",
+      payload: { email: "reset-cooldown@example.com" },
+    });
+    expect(second.statusCode).toBe(200);
+    expect(JSON.parse(second.body).message).toBe(
+      GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE,
+    );
+    expect(sendEmailMock).toHaveBeenCalledTimes(1);
+
+    const liveLink = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/reset-password",
+      payload: {
+        token: firstStored!.resetPasswordToken,
+        newPassword: "NewPassword456!",
+      },
+    });
+    expect(liveLink.statusCode).toBe(200);
+    expect(liveLink.json().message).toBe(RESET_PASSWORD_SUCCESS_MESSAGE);
+  });
+
+  it("supersedes the previous link after the cooldown so only the newest works", async () => {
     const app = await getTestApp();
     await createTestUser("reset-supersede@example.com");
 
@@ -213,8 +254,14 @@ describe("POST /api/v1/auth/request-password-reset", () => {
     const firstStored = await User.findOne({
       "personalDetails.email": "reset-supersede@example.com",
     })
-      .select("resetPasswordToken resetPasswordExpires")
+      .select("resetPasswordToken")
       .lean();
+    const firstToken = firstStored!.resetPasswordToken!;
+
+    await User.updateOne(
+      { "personalDetails.email": "reset-supersede@example.com" },
+      { $set: { resetPasswordRequestedAt: new Date(Date.now() - 2 * 60_000) } },
+    );
 
     const second = await app.inject({
       method: "POST",
@@ -225,17 +272,28 @@ describe("POST /api/v1/auth/request-password-reset", () => {
     const secondStored = await User.findOne({
       "personalDetails.email": "reset-supersede@example.com",
     })
-      .select("resetPasswordToken resetPasswordExpires")
+      .select("resetPasswordToken")
       .lean();
+    const secondToken = secondStored!.resetPasswordToken!;
 
-    expect(secondStored?.resetPasswordToken).toBeTruthy();
-    expect(secondStored?.resetPasswordToken).not.toBe(
-      firstStored?.resetPasswordToken,
-    );
-    expect(secondStored?.resetPasswordExpires?.getTime()).toBeGreaterThanOrEqual(
-      firstStored!.resetPasswordExpires!.getTime(),
-    );
+    expect(secondToken).not.toBe(firstToken);
     expect(sendEmailMock).toHaveBeenCalledTimes(2);
+
+    const oldLink = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/reset-password",
+      payload: { token: firstToken, newPassword: "NewPassword456!" },
+    });
+    expect(oldLink.statusCode).toBe(400);
+    expect(oldLink.json().detail).toBe(CONFIRM_EMAIL_CONSUMPTION_ERROR_MESSAGE);
+
+    const newLink = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/reset-password",
+      payload: { token: secondToken, newPassword: "NewPassword456!" },
+    });
+    expect(newLink.statusCode).toBe(200);
+    expect(newLink.json().message).toBe(RESET_PASSWORD_SUCCESS_MESSAGE);
   });
 
   it("clears reset token and returns 500 when send fails", async () => {
@@ -257,10 +315,13 @@ describe("POST /api/v1/auth/request-password-reset", () => {
     const updated = await User.findOne({
       "personalDetails.email": "fail-reset@example.com",
     })
-      .select("resetPasswordToken resetPasswordExpires")
+      .select(
+        "resetPasswordToken resetPasswordExpires resetPasswordRequestedAt",
+      )
       .lean();
     expect(updated?.resetPasswordToken).toBeFalsy();
     expect(updated?.resetPasswordExpires).toBeFalsy();
+    expect(updated?.resetPasswordRequestedAt).toBeFalsy();
   });
 
 });

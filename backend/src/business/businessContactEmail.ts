@@ -16,9 +16,7 @@ import {
 } from "../auth/authEmailTokenFlow.ts";
 import { buildConfirmEmailLink } from "../auth/emailLinks.ts";
 import { buildBusinessContactVerificationContent } from "../auth/emailTemplates.ts";
-
-/** Repeats inside this window are no-ops and change no token state. */
-export const BUSINESS_CONTACT_VERIFICATION_COOLDOWN_MS = 60 * 1000;
+import { isRequestWithinCooldown } from "../auth/requestCooldown.ts";
 
 export const BUSINESS_CONTACT_VERIFICATION_SENT_MESSAGE =
   "Verification email sent.";
@@ -86,12 +84,7 @@ export async function requestBusinessContactEmailVerification(
   }
 
   const now = new Date();
-  const requestedAt = business.contactVerificationRequestedAt;
-  if (
-    requestedAt &&
-    now.getTime() - requestedAt.getTime() <
-      BUSINESS_CONTACT_VERIFICATION_COOLDOWN_MS
-  ) {
+  if (isRequestWithinCooldown(business.contactVerificationRequestedAt, now)) {
     return {
       kind: "cooldown",
       message: BUSINESS_CONTACT_VERIFICATION_COOLDOWN_MESSAGE,

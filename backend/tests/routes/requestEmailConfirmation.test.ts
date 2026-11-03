@@ -34,6 +34,10 @@ import { getTestApp, resetTestApp } from "../setup.ts";
 import User from "../../src/models/user.ts";
 import { GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE } from "../../src/auth/requestEmailConfirmation.ts";
 import { VERIFICATION_TOKEN_TTL_MS } from "../../src/auth/authEmailTokenFlow.ts";
+import {
+  CONFIRM_EMAIL_CONSUMPTION_ERROR_MESSAGE,
+  CONFIRM_EMAIL_SUCCESS_MESSAGE,
+} from "../../src/auth/confirmEmail.ts";
 
 const testPassword = "TestPassword123!";
 
@@ -198,7 +202,43 @@ describe("POST /api/v1/auth/request-email-confirmation", () => {
     });
   });
 
-  it("supersedes the previous verification link on a new request", async () => {
+  it("is a 200 no-op inside the one-minute cooldown and changes nothing", async () => {
+    const app = await getTestApp();
+    await createTestUser("cooldown@example.com", { emailVerified: false });
+
+    const first = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/request-email-confirmation",
+      payload: { email: "cooldown@example.com" },
+    });
+    expect(first.statusCode).toBe(200);
+    const firstStored = await User.findOne({
+      "personalDetails.email": "cooldown@example.com",
+    })
+      .select("verificationToken")
+      .lean();
+
+    const second = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/request-email-confirmation",
+      payload: { email: "cooldown@example.com" },
+    });
+    expect(second.statusCode).toBe(200);
+    expect(JSON.parse(second.body).message).toBe(
+      GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE,
+    );
+    expect(sendEmailMock).toHaveBeenCalledTimes(1);
+
+    const liveLink = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/confirm-email",
+      payload: { token: firstStored!.verificationToken },
+    });
+    expect(liveLink.statusCode).toBe(200);
+    expect(liveLink.json().message).toBe(CONFIRM_EMAIL_SUCCESS_MESSAGE);
+  });
+
+  it("supersedes the previous link after the cooldown so only the newest works", async () => {
     const app = await getTestApp();
     await createTestUser("supersede@example.com", { emailVerified: false });
 
@@ -211,8 +251,14 @@ describe("POST /api/v1/auth/request-email-confirmation", () => {
     const firstStored = await User.findOne({
       "personalDetails.email": "supersede@example.com",
     })
-      .select("verificationToken verificationTokenExpires")
+      .select("verificationToken")
       .lean();
+    const firstToken = firstStored!.verificationToken!;
+
+    await User.updateOne(
+      { "personalDetails.email": "supersede@example.com" },
+      { $set: { verificationRequestedAt: new Date(Date.now() - 2 * 60_000) } },
+    );
 
     const second = await app.inject({
       method: "POST",
@@ -223,17 +269,28 @@ describe("POST /api/v1/auth/request-email-confirmation", () => {
     const secondStored = await User.findOne({
       "personalDetails.email": "supersede@example.com",
     })
-      .select("verificationToken verificationTokenExpires")
+      .select("verificationToken")
       .lean();
+    const secondToken = secondStored!.verificationToken!;
 
-    expect(secondStored?.verificationToken).toBeTruthy();
-    expect(secondStored?.verificationToken).not.toBe(
-      firstStored?.verificationToken,
-    );
-    expect(secondStored?.verificationTokenExpires?.getTime()).toBeGreaterThanOrEqual(
-      firstStored!.verificationTokenExpires!.getTime(),
-    );
+    expect(secondToken).not.toBe(firstToken);
     expect(sendEmailMock).toHaveBeenCalledTimes(2);
+
+    const oldLink = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/confirm-email",
+      payload: { token: firstToken },
+    });
+    expect(oldLink.statusCode).toBe(400);
+    expect(oldLink.json().detail).toBe(CONFIRM_EMAIL_CONSUMPTION_ERROR_MESSAGE);
+
+    const newLink = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/confirm-email",
+      payload: { token: secondToken },
+    });
+    expect(newLink.statusCode).toBe(200);
+    expect(newLink.json().message).toBe(CONFIRM_EMAIL_SUCCESS_MESSAGE);
   });
 
   it("clears token and returns 500 when send fails", async () => {
@@ -255,10 +312,13 @@ describe("POST /api/v1/auth/request-email-confirmation", () => {
     const updated = await User.findOne({
       "personalDetails.email": "failsend@example.com",
     })
-      .select("verificationToken verificationTokenExpires")
+      .select(
+        "verificationToken verificationTokenExpires verificationRequestedAt",
+      )
       .lean();
     expect(updated?.verificationToken).toBeFalsy();
     expect(updated?.verificationTokenExpires).toBeFalsy();
+    expect(updated?.verificationRequestedAt).toBeFalsy();
   });
 
 });
