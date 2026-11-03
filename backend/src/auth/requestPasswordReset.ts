@@ -7,7 +7,7 @@ import {
 import { buildResetPasswordLink } from "./emailLinks.ts";
 import { buildPasswordResetEmailContent } from "./emailTemplates.ts";
 import { GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE } from "./requestEmailConfirmation.ts";
-import { isRequestWithinCooldown } from "./requestCooldown.ts";
+import { claimRequestCooldown } from "./requestCooldown.ts";
 
 export type RequestPasswordResetHandlerResult =
   | { kind: "success_200"; message: string }
@@ -23,21 +23,12 @@ export async function handleRequestPasswordReset(
     withSoftDeleteFilter({ "personalDetails.email": normalizedEmail }),
   )
     .select(
-      "_id languagePreference personalDetails.username personalDetails.firstName resetPasswordRequestedAt",
+      "_id languagePreference personalDetails.username personalDetails.firstName",
     )
     .lean();
 
   if (!user) {
     return { kind: "success_200", message: GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE };
-  }
-
-  // A recent link was already sent: answer generically, send nothing, and leave
-  // the still-valid link untouched.
-  if (isRequestWithinCooldown(user.resetPasswordRequestedAt)) {
-    return {
-      kind: "success_200",
-      message: GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE,
-    };
   }
 
   const pd = user.personalDetails as
@@ -50,8 +41,10 @@ export async function handleRequestPasswordReset(
   const sent = await sendAuthTokenEmailOrRollback({
     to: normalizedEmail,
     persist: (token) =>
-      User.updateOne(
-        { _id: user._id },
+      claimRequestCooldown(
+        User,
+        withSoftDeleteFilter({ _id: user._id }),
+        "resetPasswordRequestedAt",
         {
           $set: {
             resetPasswordToken: token,
@@ -61,6 +54,7 @@ export async function handleRequestPasswordReset(
             resetPasswordRequestedAt: now,
           },
         },
+        now,
       ),
     buildLink: buildResetPasswordLink,
     buildContent: (link) =>
@@ -82,7 +76,7 @@ export async function handleRequestPasswordReset(
       ),
   });
 
-  if (!sent) {
+  if (sent === "failed") {
     return {
       kind: "server_error_500",
       message: "Failed to send password reset email. Please try again later.",

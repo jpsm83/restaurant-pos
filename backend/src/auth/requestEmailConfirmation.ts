@@ -6,7 +6,7 @@ import {
 } from "./authEmailTokenFlow.ts";
 import { buildConfirmEmailLink } from "./emailLinks.ts";
 import { buildEmailConfirmationContent } from "./emailTemplates.ts";
-import { isRequestWithinCooldown } from "./requestCooldown.ts";
+import { claimRequestCooldown } from "./requestCooldown.ts";
 
 export const GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE =
   "If an account exists for this email, you will receive instructions shortly.";
@@ -29,7 +29,6 @@ type ConfirmationUser = {
   _id: unknown;
   languagePreference?: string | null;
   personalDetails?: { username?: string; firstName?: string } | null;
-  verificationRequestedAt?: Date | null;
 };
 
 /**
@@ -41,13 +40,6 @@ export async function sendUserVerificationEmail(
   user: ConfirmationUser,
   normalizedEmail: string,
 ): Promise<RequestEmailConfirmationHandlerResult> {
-  if (isRequestWithinCooldown(user.verificationRequestedAt)) {
-    return {
-      kind: "success_200",
-      message: GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE,
-    };
-  }
-
   const pd = user.personalDetails ?? undefined;
   const greetingName =
     pd?.username?.trim() || pd?.firstName?.trim() || undefined;
@@ -56,8 +48,10 @@ export async function sendUserVerificationEmail(
   const sent = await sendAuthTokenEmailOrRollback({
     to: normalizedEmail,
     persist: (token) =>
-      User.updateOne(
+      claimRequestCooldown(
+        User,
         withSoftDeleteFilter({ _id: user._id }, true),
+        "verificationRequestedAt",
         {
           $set: {
             verificationToken: token,
@@ -67,6 +61,7 @@ export async function sendUserVerificationEmail(
             verificationRequestedAt: now,
           },
         },
+        now,
       ),
     buildLink: buildConfirmEmailLink,
     buildContent: (link) =>
@@ -88,7 +83,7 @@ export async function sendUserVerificationEmail(
       ),
   });
 
-  if (!sent) {
+  if (sent === "failed") {
     return {
       kind: "server_error_500",
       message: "Failed to send confirmation email. Please try again later.",
@@ -116,7 +111,7 @@ export async function handleRequestEmailConfirmation(
     ),
   )
     .select(
-      "_id languagePreference personalDetails.username personalDetails.firstName personalDetails.emailVerified deleted verificationRequestedAt",
+      "_id languagePreference personalDetails.username personalDetails.firstName personalDetails.emailVerified deleted",
     )
     .lean();
 

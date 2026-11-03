@@ -16,7 +16,7 @@ import {
 } from "../auth/authEmailTokenFlow.ts";
 import { buildConfirmEmailLink } from "../auth/emailLinks.ts";
 import { buildBusinessContactVerificationContent } from "../auth/emailTemplates.ts";
-import { isRequestWithinCooldown } from "../auth/requestCooldown.ts";
+import { claimRequestCooldown } from "../auth/requestCooldown.ts";
 
 export const BUSINESS_CONTACT_VERIFICATION_SENT_MESSAGE =
   "Verification email sent.";
@@ -84,12 +84,6 @@ export async function requestBusinessContactEmailVerification(
   }
 
   const now = new Date();
-  if (isRequestWithinCooldown(business.contactVerificationRequestedAt, now)) {
-    return {
-      kind: "cooldown",
-      message: BUSINESS_CONTACT_VERIFICATION_COOLDOWN_MESSAGE,
-    };
-  }
 
   const actor = await User.findById(actorUserId)
     .select("languagePreference")
@@ -103,15 +97,21 @@ export async function requestBusinessContactEmailVerification(
   const sent = await sendAuthTokenEmailOrRollback({
     to: email,
     persist: (token) =>
-      Business.updateOne(withSoftDeleteFilter({ _id: businessId }), {
-        $set: {
-          contactVerificationToken: token,
-          contactVerificationTokenExpires: new Date(
-            now.getTime() + VERIFICATION_TOKEN_TTL_MS,
-          ),
-          contactVerificationRequestedAt: now,
+      claimRequestCooldown(
+        Business,
+        withSoftDeleteFilter({ _id: businessId }),
+        "contactVerificationRequestedAt",
+        {
+          $set: {
+            contactVerificationToken: token,
+            contactVerificationTokenExpires: new Date(
+              now.getTime() + VERIFICATION_TOKEN_TTL_MS,
+            ),
+            contactVerificationRequestedAt: now,
+          },
         },
-      }),
+        now,
+      ),
     buildLink: buildConfirmEmailLink,
     buildContent: (link) =>
       buildBusinessContactVerificationContent({
@@ -149,7 +149,14 @@ export async function requestBusinessContactEmailVerification(
     },
   });
 
-  if (!sent) {
+  if (sent === "skipped") {
+    return {
+      kind: "cooldown",
+      message: BUSINESS_CONTACT_VERIFICATION_COOLDOWN_MESSAGE,
+    };
+  }
+
+  if (sent === "failed") {
     return {
       kind: "server_error_500",
       message: BUSINESS_CONTACT_VERIFICATION_SEND_FAILED_MESSAGE,

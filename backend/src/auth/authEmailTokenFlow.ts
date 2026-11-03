@@ -8,22 +8,26 @@ export const VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 /** How long a password reset link stays valid. */
 export const PASSWORD_RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
 
+export type AuthTokenEmailOutcome = "sent" | "failed" | "skipped";
+
 /**
  * One-time-link mail on the delivery rail. Persists the token, sends that one
  * address the template's plain and rich parts, and clears the pending link when
- * the rail reports failure. Returns `false` so the caller can map it to the
- * server error it already returns. The operational-email switch does not apply:
- * this calls the rail directly.
+ * the rail reports failure. `persist` returns `false` when another request owns
+ * the send slot, so nothing is sent or rolled back. The operational-email
+ * switch does not apply: this calls the rail directly.
  */
 export async function sendAuthTokenEmailOrRollback(options: {
   to: string;
-  persist: (token: string) => Promise<unknown>;
+  persist: (token: string) => Promise<boolean>;
   buildLink: (token: string) => string;
   buildContent: (link: string) => AuthEmailTemplateContent;
   rollback: () => Promise<unknown>;
-}): Promise<boolean> {
+}): Promise<AuthTokenEmailOutcome> {
   const token = crypto.randomBytes(32).toString("hex");
-  await options.persist(token);
+  if (!(await options.persist(token))) {
+    return "skipped";
+  }
 
   try {
     const link = options.buildLink(token);
@@ -36,11 +40,11 @@ export async function sendAuthTokenEmailOrRollback(options: {
     });
     if (!result.success) {
       await options.rollback();
-      return false;
+      return "failed";
     }
-    return true;
+    return "sent";
   } catch {
     await options.rollback();
-    return false;
+    return "failed";
   }
 }

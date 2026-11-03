@@ -106,7 +106,7 @@ export async function handleGoogleAuth(
     deleted: true,
   })
     .select(
-      "_id languagePreference personalDetails.username personalDetails.firstName verificationRequestedAt",
+      "_id languagePreference personalDetails.username personalDetails.firstName",
     )
     .lean()) as {
     _id: unknown;
@@ -115,7 +115,6 @@ export async function handleGoogleAuth(
       username?: string;
       firstName?: string;
     } | null;
-    verificationRequestedAt?: Date | null;
   } | null;
 
   if (deletedUser) {

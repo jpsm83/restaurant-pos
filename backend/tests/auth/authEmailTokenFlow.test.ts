@@ -32,7 +32,7 @@ describe("sendAuthTokenEmailOrRollback", () => {
   });
 
   it("persists a token and sends that one address the template plain and rich parts", async () => {
-    const persist = vi.fn().mockResolvedValue(undefined);
+    const persist = vi.fn().mockResolvedValue(true);
     const rollback = vi.fn().mockResolvedValue(undefined);
     const buildLink = vi.fn((token: string) => `https://app.test/go?token=${token}`);
 
@@ -44,7 +44,7 @@ describe("sendAuthTokenEmailOrRollback", () => {
       rollback,
     });
 
-    expect(sent).toBe(true);
+    expect(sent).toBe("sent");
     expect(persist).toHaveBeenCalledTimes(1);
     const token = persist.mock.calls[0][0] as string;
     expect(token).toMatch(/^[0-9a-f]{64}$/);
@@ -60,19 +60,35 @@ describe("sendAuthTokenEmailOrRollback", () => {
     expect(rollback).not.toHaveBeenCalled();
   });
 
-  it("clears the pending link and returns false when the rail reports failure", async () => {
+  it("clears the pending link and reports failure when the rail reports failure", async () => {
     sendEmailMock.mockResolvedValue(emailRailFailure);
     const rollback = vi.fn().mockResolvedValue(undefined);
 
     const sent = await sendAuthTokenEmailOrRollback({
       to: "new@example.com",
-      persist: vi.fn().mockResolvedValue(undefined),
+      persist: vi.fn().mockResolvedValue(true),
       buildLink: (token) => `https://app.test/go?token=${token}`,
       buildContent: () => content,
       rollback,
     });
 
-    expect(sent).toBe(false);
+    expect(sent).toBe("failed");
     expect(rollback).toHaveBeenCalledTimes(1);
+  });
+
+  it("sends nothing and rolls back nothing when another request owns the slot", async () => {
+    const rollback = vi.fn().mockResolvedValue(undefined);
+
+    const sent = await sendAuthTokenEmailOrRollback({
+      to: "new@example.com",
+      persist: vi.fn().mockResolvedValue(false),
+      buildLink: (token) => `https://app.test/go?token=${token}`,
+      buildContent: () => content,
+      rollback,
+    });
+
+    expect(sent).toBe("skipped");
+    expect(sendEmailMock).not.toHaveBeenCalled();
+    expect(rollback).not.toHaveBeenCalled();
   });
 });

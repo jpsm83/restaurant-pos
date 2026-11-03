@@ -175,8 +175,8 @@ export async function handleRequestEmailChange(
 
   const sent = await sendAuthTokenEmailOrRollback({
     to: normalizedNewEmail,
-    persist: (token) =>
-      User.updateOne(
+    persist: async (token) => {
+      await User.updateOne(
         withSoftDeleteFilter({ _id: user._id }, true),
         {
           $set: {
@@ -188,7 +188,9 @@ export async function handleRequestEmailChange(
             pendingEmailRequestedAt: new Date(),
           },
         },
-      ),
+      );
+      return true;
+    },
     buildLink: buildConfirmEmailChangeLink,
     buildContent: (link) =>
       buildEmailChangeConfirmationContent({
@@ -203,7 +205,7 @@ export async function handleRequestEmailChange(
       ),
   });
 
-  if (!sent) {
+  if (sent === "failed") {
     fail("send_failed");
     return {
       kind: "server_error_500",

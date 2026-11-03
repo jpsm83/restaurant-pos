@@ -145,7 +145,7 @@ export const authRoutes: FastifyPluginAsync<AuthRoutesOptions> = async (
           deleted: true,
         })
           .select(
-            "_id languagePreference personalDetails.username personalDetails.firstName verificationRequestedAt",
+            "_id languagePreference personalDetails.username personalDetails.firstName",
           )
           .lean(),
       ]);
