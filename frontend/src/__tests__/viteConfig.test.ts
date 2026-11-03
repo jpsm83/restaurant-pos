@@ -1,21 +1,52 @@
 /// <reference types="node" />
 // @vitest-environment node
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createServer, preview } from "vite";
+import { createServer, preview, resolveConfig } from "vite";
 
 const COOP_HEADER = "Cross-Origin-Opener-Policy";
 const COOP_VALUE = "same-origin-allow-popups";
 const projectRoot = process.cwd();
 const configFile = join(projectRoot, "vite.config.ts");
+const committedHeadersFile = join(projectRoot, "public", "_headers");
 
 async function servedCoopHeader(url: string | undefined): Promise<string | null> {
   expect(url).toBeDefined();
   const response = await fetch(url!);
   return response.headers.get(COOP_HEADER);
 }
+
+/**
+ * Vite's dev and preview servers are not the production host. The committed
+ * `public/_headers` artifact is what travels into `dist`, so assert it still
+ * carries the COOP value instead of relying on prose alone.
+ */
+describe("committed production COOP header artifact", () => {
+  it("commits the COOP header for production static hosts", () => {
+    const contents = readFileSync(committedHeadersFile, "utf8");
+
+    expect(contents).toMatch(
+      new RegExp(`^\\s*${COOP_HEADER}:\\s*${COOP_VALUE}\\s*$`, "m"),
+    );
+  });
+
+  it("copies the committed artifact into the build via Vite's public dir", async () => {
+    const config = await resolveConfig(
+      { configFile, root: projectRoot },
+      "build",
+    );
+
+    expect(config.publicDir).toBe(join(projectRoot, "public"));
+  });
+});
 
 /**
  * Google Identity Services keeps its popup tied to the opener through

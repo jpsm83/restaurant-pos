@@ -114,8 +114,15 @@ Only `VITE_`-prefixed variables are exposed to client code.
   not an application setting.
 - Google Identity Services needs `Cross-Origin-Opener-Policy:
   same-origin-allow-popups` so its popup can keep the opener for `postMessage`.
-  Vite sets it for `dev` and `preview`; any production static host must send the
-  same header on the HTML response.
+  Vite sets it for `dev` and `preview`, and the committed
+  `frontend/public/_headers` artifact carries it into `dist/_headers` on every
+  build. The production static host must honor that committed file (or an
+  equivalent host rule) and send the same header on the HTML response.
+- **Operational owner:** the deployment operator who owns the frontend hosting
+  account. When the host is external and does not read `_headers` files, that
+  operator must add the equivalent `Cross-Origin-Opener-Policy:
+  same-origin-allow-popups` response header in the host's configuration before
+  release; the committed artifact alone is not enough.
 - The Google button is driven by `GET /api/v1/auth/config`. When the backend has
   no Google verifier (no client id configured) the endpoint reports
   `googleSignInEnabled: false` and the button stays hidden, so both auth methods
