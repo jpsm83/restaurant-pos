@@ -610,7 +610,7 @@ describe("POST /api/v1/business/:businessId/request-email-verification", () => {
 
     const profile = await app.inject({
       method: "GET",
-      url: `/api/v1/business/${business._id}`,
+      url: `/api/v1/business/${business._id}/profile`,
       headers: { authorization: auth },
     });
     expect(profile.statusCode).toBe(200);
@@ -634,7 +634,8 @@ describe("POST /api/v1/business/:businessId/request-email-verification", () => {
       (item: { _id: string }) => item._id === String(business._id),
     );
     expect(discovered).toBeDefined();
-    expect(discovered.email).toBe("venue-contact@example.com");
+    expect(discovered.email).toBeUndefined();
+    expect(discovered.emailVerified).toBeUndefined();
     for (const field of [
       "contactVerificationToken",
       "contactVerificationTokenExpires",

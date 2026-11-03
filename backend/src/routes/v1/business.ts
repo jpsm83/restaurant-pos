@@ -51,9 +51,7 @@ import {
   businessIdParamsSchema,
   createBusinessBodySchema,
   discoverBusinessesQuerySchema,
-  businessIncludeDeletedQuerySchema,
   updateBusinessBodySchema,
-  type BusinessIncludeDeletedQuery,
   type BusinessIdParams,
   type CreateBusinessBody,
   type DiscoverBusinessesQuery,
@@ -70,11 +68,20 @@ import {
 } from "restaurant-pos-packages/utils/timezoneFromAddress";
 
 /**
- * Legacy rows may still carry credential columns removed from the schema, and
- * `.lean()` returns stored fields even when the model no longer declares them.
- * Never expose those columns from this public venue surface.
+ * The public discovery projection. A public venue read returns only these
+ * published fields, never the venue's contact email, Company link, metrics,
+ * reporting configuration, or delivery configuration.
  */
-const BUSINESS_PUBLIC_LEAN_SELECT =
+const BUSINESS_DISCOVERY_SELECT =
+  "tradeName imageUrl cuisineType categories phoneNumber address averageRating ratingCount";
+
+/**
+ * The authenticated venue-profile projection. Legacy rows may still carry
+ * credential columns removed from the schema, and `.lean()` returns stored
+ * fields even when the model no longer declares them, so exclude those
+ * columns explicitly.
+ */
+const BUSINESS_PROFILE_LEAN_SELECT =
   "-password -verificationToken -verificationTokenExpires -verificationRequestedAt -resetPasswordToken -resetPasswordExpires -resetPasswordRequestedAt -pendingEmail -pendingEmailToken -pendingEmailExpires -pendingEmailRequestedAt -refreshSessionVersion -contactVerificationToken -contactVerificationTokenExpires -contactVerificationRequestedAt";
 
 const DEFAULT_DISCOVERY_LIMIT = 50;
@@ -287,7 +294,7 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
         businesses = await Business.find(
           withSoftDeleteFilter({}, false),
         )
-          .select(BUSINESS_PUBLIC_LEAN_SELECT)
+          .select(BUSINESS_DISCOVERY_SELECT)
           .lean();
       } else {
         const filter: Record<string, unknown> = {};
@@ -319,7 +326,7 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
         businesses = await Business.find(
           withSoftDeleteFilter(filter as Record<string, unknown>, false),
         )
-          .select(BUSINESS_PUBLIC_LEAN_SELECT)
+          .select(BUSINESS_DISCOVERY_SELECT)
           .limit(limit)
           .lean();
       }
@@ -363,26 +370,46 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
     },
   );
 
-  // Public venue profile read: published discovery fields only.
-  app.get<{
-    Params: BusinessIdParams;
-    Querystring: BusinessIncludeDeletedQuery;
-  }>(
+  // Public venue profile read: published discovery fields only. The signed-in
+  // venue shell reads the full profile from `/:businessId/profile` below so a
+  // public read never exposes contact, Company, metrics, or delivery config.
+  app.get<{ Params: BusinessIdParams }>(
     "/:businessId",
+    { schema: { params: businessIdParamsSchema } },
+    async (req, reply) => {
+      const business = await Business.findOne(
+        withSoftDeleteFilter({ _id: req.params.businessId }, false),
+      )
+        .select(BUSINESS_DISCOVERY_SELECT)
+        .lean();
+
+      if (!business) {
+        throw notFound("No business found!");
+      }
+
+      return reply.code(200).send({
+        ...business,
+        cuisineType: normalizeCuisineTypeForResponse(
+          (business as Record<string, unknown>).cuisineType,
+        ),
+      });
+    },
+  );
+
+  // Authenticated venue profile read used by the Business shell's settings and
+  // dashboard. Membership is required; soft-deleted venues are never returned.
+  app.get<{ Params: BusinessIdParams }>(
+    "/:businessId/profile",
     {
-      schema: {
-        params: businessIdParamsSchema,
-        querystring: businessIncludeDeletedQuerySchema,
-      },
+      preValidation: [createAuthHook(app)],
+      preHandler: [requireBusinessAccessHook()],
+      schema: { params: businessIdParamsSchema },
     },
     async (req, reply) => {
-      const { businessId } = req.params;
-
-      // Public reads never expose a soft-deleted venue.
       const business = await Business.findOne(
-        withSoftDeleteFilter({ _id: businessId }, false),
+        withSoftDeleteFilter({ _id: req.params.businessId }, false),
       )
-        .select(BUSINESS_PUBLIC_LEAN_SELECT)
+        .select(BUSINESS_PROFILE_LEAN_SELECT)
         .lean();
 
       if (!business) {
@@ -391,16 +418,14 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
 
       const storedTimezone = (business as Record<string, unknown>).timezone;
       const timezoneIsDefault = !isSupportedTimezone(storedTimezone);
-      const payload = {
+      return reply.code(200).send({
         ...business,
         cuisineType: normalizeCuisineTypeForResponse(
           (business as Record<string, unknown>).cuisineType,
         ),
         timezone: timezoneIsDefault ? "UTC" : storedTimezone,
         timezoneIsDefault,
-      };
-
-      return reply.code(200).send(payload);
+      });
     },
   );
 

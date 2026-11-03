@@ -744,7 +744,7 @@ describe("Business Routes", () => {
 
       const response = await app.inject({
         method: "GET",
-        url: `/api/v1/business/${business._id}`,
+        url: `/api/v1/business/${business._id}/profile`,
         headers: { authorization: auth },
       });
 
@@ -776,7 +776,7 @@ describe("Business Routes", () => {
 
       const response = await app.inject({
         method: "GET",
-        url: `/api/v1/business/${business._id}`,
+        url: `/api/v1/business/${business._id}/profile`,
         headers: { authorization: auth },
       });
 
@@ -807,8 +807,23 @@ describe("Business Routes", () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.tradeName).toBe("No Auth Get");
-      expect(body.password).toBeUndefined();
-      expect(body.verificationToken).toBeUndefined();
+      expect(body.phoneNumber).toBe("1234567890");
+      for (const field of [
+        "email",
+        "emailVerified",
+        "legalName",
+        "taxNumber",
+        "companyId",
+        "metrics",
+        "reportingConfig",
+        "businessOpeningHours",
+        "deliveryOpeningWindows",
+        "acceptsDelivery",
+        "password",
+        "verificationToken",
+      ]) {
+        expect(body[field], field).toBeUndefined();
+      }
     });
 
     it("returns the public profile to a signed-in User without venue access", async () => {
@@ -837,7 +852,38 @@ describe("Business Routes", () => {
       });
 
       expect(response.statusCode).toBe(200);
-      expect(JSON.parse(response.body).tradeName).toBe("Employee Get");
+      const body = JSON.parse(response.body);
+      expect(body.tradeName).toBe("Employee Get");
+      expect(body.email).toBeUndefined();
+    });
+
+    it("refuses the full profile to a signed-in User without venue access", async () => {
+      const app = await getTestApp();
+
+      const business = await createTestBusiness({
+        tradeName: "Employee Profile",
+        email: "employee-profile@business.com",
+        phoneNumber: "1234567890",
+        currencyTrade: "USD",
+        address: validAddress,
+      });
+      const auth = await generateTestToken({
+        id: new Types.ObjectId().toString(),
+        email: "employee-profile@business.com",
+        type: "user",
+        role: "Manager",
+      });
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/business/${business._id}/profile`,
+        headers: { authorization: auth },
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
     });
 
     it("returns 400 for invalid ID format", async () => {

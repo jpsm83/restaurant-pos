@@ -94,7 +94,7 @@ export async function getBusinessById(
   const startedAtMs = nowMs();
   try {
     const { data } = await http.get<BusinessProfileDto>(
-      `/api/v1/business/${businessId}`,
+      `/api/v1/business/${businessId}/profile`,
       { signal },
     );
     logProfileDiagnostics({

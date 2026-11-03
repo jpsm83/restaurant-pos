@@ -38,6 +38,7 @@ const AUTHENTICATED_ROUTES: readonly string[] = [
   "GET /api/v1/auth/mode",
   "GET /api/v1/auth/venues",
   "GET /api/v1/business/:businessId/access",
+  "GET /api/v1/business/:businessId/profile",
   "GET /api/v1/businessGoods",
   "GET /api/v1/businessGoods/:businessGoodId",
   "GET /api/v1/businessGoods/business/:businessId",
