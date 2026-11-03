@@ -19,7 +19,7 @@ export function normalizeRequestEmail(email: string): string {
 }
 
 export type RequestEmailConfirmationHandlerResult =
-  | { kind: "success_200"; message: string }
+  | { kind: "success_200"; message: string; emailSent: boolean }
   | {
       kind: "server_error_500";
       message: string;
@@ -93,6 +93,7 @@ export async function sendUserVerificationEmail(
   return {
     kind: "success_200",
     message: GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE,
+    emailSent: sent === "sent",
   };
 }
 
@@ -121,6 +122,7 @@ export async function handleRequestEmailConfirmation(
     return {
       kind: "success_200",
       message: GENERIC_REQUEST_EMAIL_CONFIRMATION_MESSAGE,
+      emailSent: false,
     };
   }
 

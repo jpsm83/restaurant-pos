@@ -54,6 +54,8 @@ export interface AuthLoginSnapshot {
   reactivationRequired?: boolean;
   /** Google would create a User, so the client must collect acceptance first. */
   consentRequired?: boolean;
+  /** Signup only: `false` when the account exists but the verification email failed. */
+  verificationEmailSent?: boolean;
 }
 
 export interface LoginCredentials {

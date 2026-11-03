@@ -145,6 +145,27 @@ describe("auth api — email / password-reset endpoints", () => {
     expect(publishAuthSignIn).toHaveBeenCalledTimes(1);
   });
 
+  it("signup surfaces whether the verification email was sent", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        accessToken: "signup-access",
+        user: { id: "u2", email: "new@example.com", type: "user" },
+        verificationEmailSent: false,
+      }),
+    );
+
+    const result = await signup({
+      email: "new@example.com",
+      password: "secret",
+      privacyAccepted: true,
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      data: { verificationEmailSent: false },
+    });
+  });
+
   it("logout publishes sign-out after clearing local access", async () => {
     setAccessToken("old-access");
     let tokenAtPublish: string | null | undefined;

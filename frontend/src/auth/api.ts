@@ -75,6 +75,8 @@ interface AuthTokenResponseBody {
   message?: string;
   reactivationRequired?: boolean;
   consentRequired?: boolean;
+  /** Signup only: `false` when the account exists but the verification email failed. */
+  verificationEmailSent?: boolean;
 }
 
 /** Many unauthenticated auth routes return `{ message }` (success, generic, or error copy). */
@@ -274,6 +276,7 @@ export async function signup(credentials: SignupCredentials) {
         accessToken: result.data?.accessToken,
         user: result.data?.user ?? null,
         reactivationRequired: result.data?.reactivationRequired === true,
+        verificationEmailSent: result.data?.verificationEmailSent,
       } satisfies AuthLoginSnapshot,
     };
   }

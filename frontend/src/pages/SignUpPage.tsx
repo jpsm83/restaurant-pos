@@ -16,6 +16,7 @@ import {
   getReturnToParam,
 } from "@/auth/postLoginRedirect";
 import { useAuth } from "@/auth/store/AuthContext";
+import { useResendEmailConfirmation } from "@/hooks/useResendEmailConfirmation";
 import { FieldError } from "@/components/FieldError";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -84,6 +85,9 @@ export default function SignUpPage() {
     : undefined;
   const [submitFailure, setSubmitFailure] = useState<ErrorFailure | null>(null);
   const resolveError = useErrorMessage();
+  const { resend } = useResendEmailConfirmation({
+    successMessage: t("signup.resendConfirmationSuccess"),
+  });
   const isSubmitting = state.status === "loading";
 
   const schema = useMemo(
@@ -143,7 +147,15 @@ export default function SignUpPage() {
     markPriorSession();
     const sessionUser = result.data.user;
     dispatch({ type: "AUTH_SUCCESS", payload: sessionUser });
-    if (sessionUser.emailVerified === false) {
+    if (result.data.verificationEmailSent === false) {
+      toast.warning(t("signup.verificationEmailSendFailed"), {
+        duration: 10000,
+        action: {
+          label: t("signup.resendConfirmationAction"),
+          onClick: () => void resend(),
+        },
+      });
+    } else if (sessionUser.emailVerified === false) {
       toast.info(t("signup.verifyEmailToast"));
     }
     navigate(getPostLoginDestination(returnTo), { replace: true });

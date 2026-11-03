@@ -106,6 +106,7 @@ describe("POST /api/v1/auth/signup (confirmation email)", () => {
     expect(body.user?.email).toBe(email);
     expect(body.user.sessionId).toBeUndefined();
     expect(body.refreshToken).toBeUndefined();
+    expect(body.verificationEmailSent).toBe(true);
 
     const refreshCookie = res.cookies.find(
       (cookie) => cookie.name === "refresh_token",
@@ -340,7 +341,7 @@ describe("POST /api/v1/auth/signup (confirmation email)", () => {
     expect(String(payload.text)).toContain("/forgot-password");
   });
 
-  it("still returns 201 when confirmation send fails (token cleared)", async () => {
+  it("keeps the account and session, reports the failed send and allows a resend", async () => {
     const app = await getTestApp();
     const email = `rollback-${Date.now()}@example.com`;
 
@@ -357,10 +358,33 @@ describe("POST /api/v1/auth/signup (confirmation email)", () => {
     });
 
     expect(res.statusCode).toBe(201);
+    const body = JSON.parse(res.body);
+    expect(body.verificationEmailSent).toBe(false);
+    expect(body.accessToken).toBeTruthy();
+    expect(body.user?.email).toBe(email);
+
+    const refreshCookie = res.cookies.find(
+      (cookie) => cookie.name === "refresh_token",
+    );
+    expect(refreshCookie?.value).toBeTruthy();
+    expect(await User.countDocuments({ "personalDetails.email": email })).toBe(
+      1,
+    );
+
     await waitForSendMockCalls(1);
     expect(sendEmailMock).toHaveBeenCalledTimes(1);
-
     await waitForUserVerificationToken(email, { expectPresent: false });
+
+    sendEmailMock.mockResolvedValue(emailRailSuccess);
+    const resend = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/resend-email-confirmation",
+      headers: { authorization: `Bearer ${body.accessToken}` },
+    });
+
+    expect(resend.statusCode).toBe(200);
+    await waitForUserVerificationToken(email);
+    expect(sendEmailMock).toHaveBeenCalledTimes(2);
   });
 
   it("returns a reactivation gate response when signup email belongs to a soft-deleted user", async () => {

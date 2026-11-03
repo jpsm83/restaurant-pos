@@ -10,6 +10,7 @@ const mockDispatch = vi.fn();
 const mockSignup = vi.fn();
 const mockGoogleAuth = vi.fn();
 const mockUseAuthConfigQuery = vi.fn();
+const mockResendEmailConfirmation = vi.fn();
 
 vi.mock("@react-oauth/google", () => ({
   GoogleLogin: ({
@@ -53,12 +54,19 @@ vi.mock("@/auth/store/AuthContext", () => ({
 }));
 
 vi.mock("sonner", () => ({
-  toast: { info: vi.fn(), success: vi.fn(), error: vi.fn() },
+  toast: {
+    info: vi.fn(),
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+  },
 }));
 
 vi.mock("@/auth/api", () => ({
   signup: (...args: unknown[]) => mockSignup(...args),
   googleAuth: (...args: unknown[]) => mockGoogleAuth(...args),
+  resendEmailConfirmation: (...args: unknown[]) =>
+    mockResendEmailConfirmation(...args),
   useAuthConfigQuery: (...args: unknown[]) =>
     mockUseAuthConfigQuery(...args),
 }));
@@ -98,7 +106,10 @@ describe("SignUpPage", () => {
     mockSignup.mockReset();
     mockGoogleAuth.mockReset();
     mockUseAuthConfigQuery.mockReset();
+    mockResendEmailConfirmation.mockReset();
     vi.mocked(toast.info).mockClear();
+    vi.mocked(toast.success).mockClear();
+    vi.mocked(toast.warning).mockClear();
     mockUseAuthConfigQuery.mockReturnValue({
       data: { googleSignInEnabled: true },
     });
@@ -260,6 +271,59 @@ describe("SignUpPage", () => {
       ),
     ).toBeInTheDocument();
     });
+  });
+
+  it("warns locally and offers a resend when the verification email fails", async () => {
+    const user = userEvent.setup();
+    mockSignup.mockResolvedValue({
+      ok: true,
+      data: { user: emailSignupUser, verificationEmailSent: false },
+    });
+    mockResendEmailConfirmation.mockResolvedValue({
+      ok: true,
+      data: { message: "" },
+    });
+
+    await renderWithI18n(
+      <MemoryRouter initialEntries={["/signup"]}>
+        <Routes>
+          <Route path="/signup" element={<SignUpPage />} />
+          <Route path="/dashboard" element={<div>Customer dashboard</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await user.type(screen.getByLabelText(/^email$/i), "new@example.com");
+    await user.type(screen.getByLabelText(/^password$/i), "ValidPass1!");
+    await user.type(screen.getByLabelText(/confirm password/i), "ValidPass1!");
+    await user.click(
+      screen.getByLabelText(/privacy notice and account terms/i),
+    );
+    await user.click(screen.getByRole("button", { name: /create account$/i }));
+
+    await waitFor(() => {
+      expect(toast.warning).toHaveBeenCalledTimes(1);
+    });
+
+    const [message, options] = vi.mocked(toast.warning).mock.calls[0] as [
+      string,
+      { action: { label: string; onClick: () => void } },
+    ];
+    expect(message).toBe(
+      "Your account was created, but we couldn't send the confirmation email.",
+    );
+    expect(options.action.label).toBe("Resend email");
+    expect(toast.info).not.toHaveBeenCalled();
+    expect(screen.getByText("Customer dashboard")).toBeInTheDocument();
+
+    options.action.onClick();
+
+    await waitFor(() => {
+      expect(mockResendEmailConfirmation).toHaveBeenCalledTimes(1);
+    });
+    expect(toast.success).toHaveBeenCalledWith(
+      "Confirmation email sent. Check your inbox.",
+    );
   });
 
   it("shows reactivation guidance when signup targets a soft-deleted account", async () => {

@@ -216,23 +216,30 @@ export const authRoutes: FastifyPluginAsync<AuthRoutesOptions> = async (
         },
       );
 
-      // Phase 4.1: issue confirmation email without blocking signup (session unchanged).
-      handleRequestEmailConfirmation(email)
-        .then((result) => {
-          if (result.kind === "server_error_500") {
-            req.log.error(
-              { errHint: "signup_confirmation_send" },
-              result.message,
-            );
-          }
-        })
-        .catch((err) => {
-          req.log.error({ err }, "Signup confirmation email failed");
-        });
+      // The account and session are already committed, so no send failure may
+      // become a 500. A failed send rolls the pending token back on its own.
+      let verificationEmailSent = false;
+      try {
+        const confirmation = await sendUserVerificationEmail(
+          createdUser,
+          email,
+        );
+        verificationEmailSent =
+          confirmation.kind === "success_200" && confirmation.emailSent;
+        if (confirmation.kind === "server_error_500") {
+          req.log.error(
+            { errHint: "signup_confirmation_send" },
+            confirmation.message,
+          );
+        }
+      } catch (err) {
+        req.log.error({ err }, "Signup confirmation email failed");
+      }
 
       return reply.code(201).send({
         accessToken,
         user,
+        verificationEmailSent,
       });
     },
   );
