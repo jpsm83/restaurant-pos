@@ -14,7 +14,12 @@ import { AppError, forbidden, unauthorized } from "../errors/appError.ts";
 import RefreshSession from "../models/refreshSession.ts";
 import User from "../models/user.ts";
 import { canAccessBusiness } from "./businessAccess.ts";
-import type { AuthMode, AuthSession, AuthUser } from "./types.ts";
+import type {
+  AuthMode,
+  AuthSession,
+  AuthUser,
+  RefreshSessionIdentity,
+} from "./types.ts";
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -93,7 +98,7 @@ export function createAuthHook(app: FastifyInstance): preValidationHookHandler {
  * deleted-account check; callers that already do keep doing so.
  */
 export async function assertAccessTokenRefreshSessionLive(
-  session: AuthSession & { sessionId?: string },
+  session: RefreshSessionIdentity,
 ): Promise<AuthMode> {
   const sessionId = session.sessionId;
   if (

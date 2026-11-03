@@ -33,6 +33,17 @@ export interface AuthUser {
 
 export type AuthSession = AuthUser;
 
+/**
+ * The account and refresh-session facts a credential must carry before it is
+ * rebuilt into an `AuthUser` session. A live ticket satisfies this contract
+ * without inventing the profile fields a ticket does not hold.
+ */
+export interface RefreshSessionIdentity {
+  id: string;
+  type: AuthUser["type"];
+  sessionId?: string;
+}
+
 export interface JwtPayload {
   id: string;
   email: string;

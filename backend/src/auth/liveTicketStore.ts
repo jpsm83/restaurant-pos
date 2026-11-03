@@ -12,10 +12,17 @@
  */
 import crypto from "node:crypto";
 
+import type { RefreshSessionIdentity } from "./types.ts";
+
 export interface LiveTicketRecord {
   sessionId: string;
   accountId: string;
   accountType: "user";
+}
+
+/** The access-session identity a consumed ticket stands for. */
+export interface LiveTicketSession extends RefreshSessionIdentity {
+  sessionId: string;
 }
 
 interface StoredLiveTicket extends LiveTicketRecord {
@@ -33,6 +40,17 @@ export interface IssuedLiveTicket {
 export interface LiveTicketStore {
   issueLiveTicket(input: LiveTicketRecord): IssuedLiveTicket;
   consumeLiveTicket(ticket: string | null | undefined): LiveTicketRecord | null;
+}
+
+/** Project a consumed ticket into the credential the live route verifies. */
+export function toLiveTicketSession(
+  record: LiveTicketRecord,
+): LiveTicketSession {
+  return {
+    id: record.accountId,
+    type: record.accountType,
+    sessionId: record.sessionId,
+  };
 }
 
 export function createLiveTicketStore(): LiveTicketStore {

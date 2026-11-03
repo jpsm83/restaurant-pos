@@ -10,16 +10,28 @@ import type { IEmployee } from "restaurant-pos-packages/interfaces/IEmployee";
 
 import { isBlockedMembership } from "./membershipStatus.ts";
 
+/** The non-sensitive fields an ordinary member may read about themselves. */
+export type MembershipSelfView = Pick<
+  IEmployee,
+  | "_id"
+  | "businessId"
+  | "allEmployeeRoles"
+  | "joinDate"
+  | "contractHoursWeek"
+  | "vacationDaysPerYear"
+  | "vacationDaysLeft"
+  | "documentsUrl"
+  | "employmentStatus"
+>;
+
 /** True when the membership may not expose even its own self-view. */
 export function isBlockedForSelfView(employee: IEmployee): boolean {
   return Boolean(employee.deleted) || isBlockedMembership(employee);
 }
 
 /** Project one membership into the ordinary member's safe self-view. */
-export function toMembershipSelfView(
-  employee: IEmployee,
-): Record<string, unknown> {
-  const view: Record<string, unknown> = {
+export function toMembershipSelfView(employee: IEmployee): MembershipSelfView {
+  const view: MembershipSelfView = {
     _id: employee._id,
     businessId: employee.businessId,
     allEmployeeRoles: employee.allEmployeeRoles,

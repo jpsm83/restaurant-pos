@@ -5,6 +5,8 @@
  * the verified identity belongs to, links a verified email, creates a new
  * verified User, or hands a soft-deleted account back to email reactivation.
  */
+import type { Types } from "mongoose";
+
 import User from "../models/user.ts";
 import { withSoftDeleteFilter } from "../models/softDelete.ts";
 import {
@@ -17,6 +19,25 @@ import {
   type GoogleIdentity,
   type GoogleVerifier,
 } from "./google.ts";
+
+/** The User fields the Google account-resolution lookups read. */
+interface GoogleLinkedUserLookup {
+  _id: Types.ObjectId;
+  refreshSessionVersion?: number;
+}
+
+interface GoogleEmailUserLookup extends GoogleLinkedUserLookup {
+  googleId?: string;
+}
+
+interface GoogleDeletedUserLookup {
+  _id: Types.ObjectId;
+  languagePreference?: string | null;
+  personalDetails?: {
+    username?: string;
+    firstName?: string;
+  } | null;
+}
 
 export type GoogleAuthInput = {
   credential: string;
@@ -53,14 +74,11 @@ export async function handleGoogleAuth(
 
   const email = normalizeRequestEmail(identity.email);
 
-  const linkedUser = (await User.findOne(
+  const linkedUser = await User.findOne(
     withSoftDeleteFilter({ googleId: identity.subject }),
   )
     .select("_id refreshSessionVersion")
-    .lean()) as {
-    _id: unknown;
-    refreshSessionVersion?: number;
-  } | null;
+    .lean<GoogleLinkedUserLookup>();
 
   if (linkedUser) {
     return {
@@ -71,15 +89,11 @@ export async function handleGoogleAuth(
     };
   }
 
-  const userByEmail = (await User.findOne(
+  const userByEmail = await User.findOne(
     withSoftDeleteFilter({ "personalDetails.email": email }),
   )
     .select("_id googleId refreshSessionVersion")
-    .lean()) as {
-    _id: unknown;
-    googleId?: string;
-    refreshSessionVersion?: number;
-  } | null;
+    .lean<GoogleEmailUserLookup>();
 
   if (userByEmail) {
     if (userByEmail.googleId && userByEmail.googleId !== identity.subject) {
@@ -101,21 +115,14 @@ export async function handleGoogleAuth(
     };
   }
 
-  const deletedUser = (await User.findOne({
+  const deletedUser = await User.findOne({
     "personalDetails.email": email,
     deleted: true,
   })
     .select(
       "_id languagePreference personalDetails.username personalDetails.firstName",
     )
-    .lean()) as {
-    _id: unknown;
-    languagePreference?: string | null;
-    personalDetails?: {
-      username?: string;
-      firstName?: string;
-    } | null;
-  } | null;
+    .lean<GoogleDeletedUserLookup>();
 
   if (deletedUser) {
     const sent = await sendUserVerificationEmail(deletedUser, email);

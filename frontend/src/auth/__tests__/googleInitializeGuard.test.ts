@@ -1,11 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createGoogleInitializeGuard } from "../google";
+import {
+  createGoogleInitializeGuard,
+  type GoogleIdConfiguration,
+} from "../google";
 
-type Initialize = (config: {
-  client_id?: string;
-  callback?: (response: { credential?: string }) => void;
-  [key: string]: unknown;
-}) => void;
+type Initialize = (config: GoogleIdConfiguration) => void;
 
 function buildFakeGoogle() {
   const initialize = vi.fn<Initialize>();

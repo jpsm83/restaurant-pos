@@ -3,7 +3,10 @@ import { Types } from "mongoose";
 
 import liveConnectionRegistry from "../../communications/live/connectionRegistry.ts";
 import { toLiveConnectedMessage } from "../../communications/live/contracts.ts";
-import type { LiveTicketStore } from "../../auth/liveTicketStore.ts";
+import {
+  toLiveTicketSession,
+  type LiveTicketStore,
+} from "../../auth/liveTicketStore.ts";
 import {
   assertAccessTokenRefreshSessionLive,
   assertAccountCanUseSession,
@@ -30,11 +33,7 @@ async function sessionForTicket(
     throw unauthorized("Invalid or expired live ticket");
   }
 
-  await assertAccessTokenRefreshSessionLive({
-    id: record.accountId,
-    type: record.accountType,
-    sessionId: record.sessionId,
-  } as AuthSession & { sessionId: string });
+  await assertAccessTokenRefreshSessionLive(toLiveTicketSession(record));
 
   const session = await buildAuthUserSessionFromUserId(record.accountId);
   if (!session) {

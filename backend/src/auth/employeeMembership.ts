@@ -5,6 +5,7 @@ import Employee from "../models/employee.ts";
 import { withSoftDeleteFilter } from "../models/softDelete.ts";
 import { usableMembershipFilter } from "../employees/membershipStatus.ts";
 
+/** The membership fields the access and session seams consume. */
 export interface EmployeeMembership {
   _id: Types.ObjectId;
   businessId: Types.ObjectId;
@@ -42,8 +43,8 @@ export default async function findActiveEmployeeMembership(params: {
   )
     .select("businessId allEmployeeRoles employmentStatus onDuty")
     .sort({ _id: 1 })
-    .lean();
+    .lean<EmployeeMembership>();
   if (session) query = query.session(session);
 
-  return (await query) as EmployeeMembership | null;
+  return await query;
 }

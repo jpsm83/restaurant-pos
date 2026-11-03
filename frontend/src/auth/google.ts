@@ -3,19 +3,19 @@
  * Without a client id the provider is not mounted and the button is hidden.
  */
 
-interface GoogleCredentialResponse {
+export interface GoogleCredentialResponse {
   credential?: string;
 }
 
-interface GoogleIdConfiguration {
+export interface GoogleIdConfiguration {
   client_id?: string;
   callback?: (response: GoogleCredentialResponse) => void;
-  [key: string]: unknown;
+  /** Google Identity Services accepts additional provider options. */
+  [option: string]: unknown;
 }
 
 interface GoogleIdApi {
   initialize: (config: GoogleIdConfiguration) => void;
-  [key: string]: unknown;
 }
 
 interface GoogleAccountsApi {
