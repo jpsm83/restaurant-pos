@@ -153,7 +153,9 @@ export function renderNotificationContent(
       const actorLabel =
         actor.source === "system"
           ? (t("notifications.templates.businessProfileUpdatedActorSystem") as string)
-          : [actorRole, actorEmail].filter(Boolean).join(" · ") ||
+          : listFormat(formatting).format(
+              [actorRole, actorEmail].filter(Boolean),
+            ) ||
             (t("notifications.templates.businessProfileUpdatedActorMember") as string);
       const fields = Array.isArray(params.fields)
         ? params.fields.filter(
@@ -171,23 +173,23 @@ export function renderNotificationContent(
               actor: actorLabel,
               fields: listFormat(formatting).format(shownFields),
             }) as string);
-      const more =
-        fields.length > MAX_PROFILE_FIELDS
-          ? ` ${t("notifications.templates.businessProfileUpdatedMore", {
-              count: fields.length - MAX_PROFILE_FIELDS,
-            })}`
-          : "";
+      const lines = [main];
+      if (fields.length > MAX_PROFILE_FIELDS) {
+        lines.push(
+          t("notifications.templates.businessProfileUpdatedMore", {
+            count: fields.length - MAX_PROFILE_FIELDS,
+          }) as string,
+        );
+      }
       const sensitiveCount = readNumber(params.sensitiveFieldCount) ?? 0;
-      const sensitive =
-        sensitiveCount > 0
-          ? ` ${t(
-              `notifications.templates.businessProfileUpdatedSensitive_${
-                sensitiveCount === 1 ? "one" : "other"
-              }`,
-              { count: sensitiveCount },
-            )}`
-          : "";
-      return `${main}${more}${sensitive}`;
+      if (sensitiveCount > 0) {
+        lines.push(
+          t("notifications.templates.businessProfileUpdatedSensitive", {
+            count: sensitiveCount,
+          }) as string,
+        );
+      }
+      return lines.join("\n");
     }
   }
 }
