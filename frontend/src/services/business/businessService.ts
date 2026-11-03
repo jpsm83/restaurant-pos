@@ -43,7 +43,6 @@ export type BusinessMetricsFormValue = {
 };
 
 export type BusinessProfileFormValues = {
-  subscription: string;
   imageUrl: string;
   imageFile: File | null;
   tradeName: string;

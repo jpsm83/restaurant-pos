@@ -16,7 +16,6 @@ import {
   currenctyEnums,
   cuisineTypeEnums,
   foodSubCategoryEnums,
-  subscriptionEnums,
 } from "../enums.ts";
 import { addressSchema } from "./address.ts";
 import {
@@ -211,15 +210,13 @@ export const createBusinessBodySchema = buildCreateBusinessBodySchema();
  * an omitted field stays unchanged and a present field is validated. Legal
  * name and tax number belong to the owning Company, so they are not accepted
  * here. `email` is the venue contact email, never a sign-in credential; saving
- * a new value clears its verification flag in the route.
+ * a new value clears its verification flag in the route. A Business carries no
+ * subscription of its own; the plan lives on its Owner.
  */
 export const updateBusinessBodySchema = z.strictObject({
   tradeName: sanitizedString("Trade name is required!").optional(),
   email: emailSchema.optional(),
   phoneNumber: sanitizedString("Phone number is required!").optional(),
-  subscription: z
-    .enum(subscriptionEnums as EnumValues, "Invalid subscription!")
-    .optional(),
   currencyTrade: z
     .enum(currenctyEnums as EnumValues, "Invalid currencyTrade!")
     .optional(),

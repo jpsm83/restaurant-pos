@@ -82,7 +82,6 @@ describe("Notifications Live Route", () => {
       phoneNumber: "1234567890",
       taxNumber: `WS-TAX-${Date.now()}`,
       currencyTrade: "USD",
-      subscription: "Free",
       address: validAddress,
     });
   };

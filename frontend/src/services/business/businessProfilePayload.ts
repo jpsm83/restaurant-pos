@@ -39,7 +39,6 @@ export function formValuesToUpdatePayload(
   appendIfPresent("tradeName", values.tradeName);
   appendIfPresent("phoneNumber", values.phoneNumber);
   appendIfPresent("currencyTrade", values.currencyTrade);
-  appendIfPresent("subscription", values.subscription);
 
   // Address is mergeable: send only the fields the venue has filled so far.
   const addressPayload: Record<string, string> = {};

@@ -37,7 +37,6 @@ vi.mock("@/components/BusinessProfileSettingsFormShell", () => ({
             veryHightBudgetImpact: 0,
           },
         },
-        subscription: "Free",
       },
     });
     return <main>{children({ register, control, setValue })}</main>;

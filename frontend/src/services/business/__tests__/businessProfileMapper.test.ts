@@ -16,7 +16,6 @@ function dto(overrides?: Partial<BusinessProfileDto>): BusinessProfileDto {
     phoneNumber: " +1 ",
     taxNumber: " TAX ",
     currencyTrade: "usd",
-    subscription: "Free",
     address: {
       country: " US ",
       state: " CA ",

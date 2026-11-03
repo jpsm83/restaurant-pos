@@ -79,10 +79,6 @@ export function canonicalBusinessSettingsMetricsPath(businessId: string): string
   return `${canonicalBusinessDashboardPath(businessId)}/settings/metrics`;
 }
 
-export function canonicalBusinessSettingsSubscriptionsPath(businessId: string): string {
-  return `${canonicalBusinessDashboardPath(businessId)}/settings/subscriptions`;
-}
-
 export function canonicalBusinessSettingsAddressPath(businessId: string): string {
   return `${canonicalBusinessDashboardPath(businessId)}/settings/address`;
 }

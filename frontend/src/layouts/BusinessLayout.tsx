@@ -7,7 +7,7 @@
  * **`SidebarProvider`** wraps routed content in **`main.tsx`**. This layout adds **Sidebar** +
  * **main column** (same flex role as shadcn `SidebarInset`, but a **`div`** so child pages may use `<main>`); **`<Outlet />`** (in **`Suspense`**) renders tenant pages in the main
  * column (`dashboard`, `people`, `company`, `notifications`,
- * `settings/profile`, `settings/subscriptions`, `settings/address`, `settings/open-hours`,
+ * `settings/profile`, `settings/address`, `settings/open-hours`,
  * `settings/delivery`, `settings/metrics`). The Me group holds self-only destinations and
  * currently ships Notifications only.
  * When the accessible-venue list has more than one enterable venue the layout renders

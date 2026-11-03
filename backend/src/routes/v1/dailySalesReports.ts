@@ -34,6 +34,7 @@ import { createAuthHook } from "../../auth/middleware.ts";
 import { isAggregateMismatchCheckEnabled } from "../../dailySalesReports/rolloutControls.ts";
 import { recordAggregateMismatchCheck } from "../../dailySalesReports/rolloutTelemetry.ts";
 import { buildReconciledDailyPayload } from "../../dailySalesReports/reconciliationCore.ts";
+import { resolveBusinessOwnerSubscription } from "../../owners/businessOwnerSubscription.ts";
 import { resolveBaseCommissionPercent } from "restaurant-pos-packages/utils/subscriptionCatalogue";
 import {
   badRequest,
@@ -123,7 +124,7 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
     dailyReferenceNumber: number,
     businessId: Types.ObjectId,
   ) => {
-    const [orders, businessDoc] = await Promise.all([
+    const [orders, subscription] = await Promise.all([
       Order.find({
         businessId,
         dailyReferenceNumber,
@@ -143,12 +144,12 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
           },
         })
         .lean(),
-      Business.findById(businessId).select("subscription").lean(),
+      resolveBusinessOwnerSubscription(businessId),
     ]);
 
     return buildReconciledDailyPayload({
       orders: orders as any,
-      subscription: (businessDoc as { subscription?: string } | null)?.subscription,
+      subscription,
     });
   };
 
@@ -404,7 +405,7 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
         )
         .populate({
           path: "businessId",
-          select: "subscription reportingConfig.weeklyReportStartDay",
+          select: "reportingConfig.weeklyReportStartDay",
           model: Business,
         })
         .lean()) as {
@@ -413,7 +414,6 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
         businessId:
           | {
               _id: Types.ObjectId;
-              subscription?: string;
               reportingConfig?: { weeklyReportStartDay?: number };
             }
           | Types.ObjectId;
@@ -555,14 +555,9 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
           0,
         );
 
-      const businessIdPayload = dailyReportWithUsers.businessId;
-      const subscription =
-        typeof businessIdPayload === "object" &&
-        businessIdPayload !== null &&
-        "subscription" in businessIdPayload
-          ? (businessIdPayload as { subscription?: string }).subscription
-          : undefined;
-
+      const subscription = await resolveBusinessOwnerSubscription(
+        managerBusinessId,
+      );
       const comissionPercentage = resolveBaseCommissionPercent(subscription);
 
       dailySalesReportObj.dailyPosSystemCommission =
@@ -722,7 +717,7 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
         )
         .populate({
           path: "businessId",
-          select: "subscription reportingConfig.weeklyReportStartDay",
+          select: "reportingConfig.weeklyReportStartDay",
           model: Business,
         })
         .lean()) as {
@@ -731,7 +726,6 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
         businessId:
           | {
               _id: Types.ObjectId;
-              subscription?: string;
               reportingConfig?: { weeklyReportStartDay?: number };
             }
           | Types.ObjectId;
@@ -865,14 +859,11 @@ export const dailySalesReportsRoutes: FastifyPluginAsync = async (app) => {
           0,
         );
 
-      const businessIdPayload = dailyReportWithUsers.businessId;
-      const subscription =
-        typeof businessIdPayload === "object" &&
-        businessIdPayload !== null &&
-        "subscription" in businessIdPayload
-          ? (businessIdPayload as { subscription?: string }).subscription
-          : undefined;
+      const subscription = await resolveBusinessOwnerSubscription(
+        managerBusinessId,
+      );
       const comissionPercentage = resolveBaseCommissionPercent(subscription);
+
       dailySalesReportObj.dailyPosSystemCommission =
         dailySalesReportObj.dailyTotalSalesBeforeAdjustments *
         comissionPercentage;

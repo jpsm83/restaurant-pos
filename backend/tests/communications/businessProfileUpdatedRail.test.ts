@@ -89,7 +89,6 @@ const createVenue = async (tradeName: string) => {
     phoneNumber: "1234567890",
     taxNumber: `TAX-${suffix}`,
     currencyTrade: "USD",
-    subscription: "Free",
     address: validAddress,
   });
 };
@@ -278,15 +277,7 @@ describe("Business profile updated on the rail (#166)", () => {
       const boundary = "----formdata";
       const payload = [
         `--${boundary}`,
-        'Content-Disposition: form-data; name="tradeName"\r\n\r\nSaved Despite Notify Fail',
-        `--${boundary}`,
-        `Content-Disposition: form-data; name="phoneNumber"\r\n\r\n${business.phoneNumber}`,
-        `--${boundary}`,
-        'Content-Disposition: form-data; name="subscription"\r\n\r\nFree',
-        `--${boundary}`,
-        'Content-Disposition: form-data; name="currencyTrade"\r\n\r\nUSD',
-        `--${boundary}`,
-        `Content-Disposition: form-data; name="address"\r\n\r\n${JSON.stringify(validAddress)}`,
+        'Content-Disposition: form-data; name="acceptsDelivery"\r\n\r\ntrue',
         `--${boundary}--`,
       ].join("\r\n");
 
@@ -314,7 +305,8 @@ describe("Business profile updated on the rail (#166)", () => {
 
       const persisted = await Business.findById(business._id).lean();
       expect(persisted).not.toBeNull();
-      expect(persisted?.tradeName).toBe("Saved Despite Notify Fail");
+      expect(persisted?.acceptsDelivery).toBe(true);
+      expect(persisted?.tradeName).toBe("Saved Profile");
       expect(persisted?.legalName).toBe("Saved Profile LLC");
     });
   });

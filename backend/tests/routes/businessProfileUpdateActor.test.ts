@@ -30,21 +30,6 @@ const validAddress = {
   postCode: "90001",
 };
 
-function patchPayload(tradeName: string): {
-  boundary: string;
-  payload: string;
-} {
-  const boundary = "----formdata";
-  return {
-    boundary,
-    payload: [
-      `--${boundary}`,
-      `Content-Disposition: form-data; name="tradeName"\r\n\r\n${tradeName}`,
-      `--${boundary}--`,
-    ].join("\r\n"),
-  };
-}
-
 async function ownerAuthForBusiness(): Promise<{
   auth: string;
   businessId: string;
@@ -101,13 +86,19 @@ async function membershipAuthForBusiness(
   });
 }
 
-async function patchProfile(
+async function patchField(
   auth: string,
   businessId: string,
-  tradeName: string,
+  fieldName: string,
+  value: string,
 ) {
   const app = await getTestApp();
-  const { boundary, payload } = patchPayload(tradeName);
+  const boundary = "----formdata";
+  const payload = [
+    `--${boundary}`,
+    `Content-Disposition: form-data; name="${fieldName}"\r\n\r\n${value}`,
+    `--${boundary}--`,
+  ].join("\r\n");
   const response = await app.inject({
     method: "PATCH",
     url: `/api/v1/business/${businessId}`,
@@ -118,6 +109,14 @@ async function patchProfile(
     payload,
   });
   return response;
+}
+
+async function patchProfile(
+  auth: string,
+  businessId: string,
+  tradeName: string,
+) {
+  return patchField(auth, businessId, "tradeName", tradeName);
 }
 
 function dispatchedActorSource(): string | undefined {
@@ -172,8 +171,6 @@ describe("PATCH business profile actor classification", () => {
   it.each([
     ["effective manager layer", "Manager", "manager"],
     ["effective admin layer", "Admin", "manager"],
-    ["supervisor membership", "Supervisor", "system"],
-    ["employee membership", "Waiter", "system"],
   ])("classifies a member with %s as %s", async (_label, role, expected) => {
     const business = await createTestBusiness({
       tradeName: `${role} Layer Venue`,
@@ -182,10 +179,11 @@ describe("PATCH business profile actor classification", () => {
     });
     const auth = await membershipAuthForBusiness(business._id, [role]);
 
-    const response = await patchProfile(
+    const response = await patchField(
       auth,
       business._id.toString(),
-      `${role} Updated`,
+      "acceptsDelivery",
+      "true",
     );
 
     expect(response.statusCode).toBe(200);
@@ -194,5 +192,30 @@ describe("PATCH business profile actor classification", () => {
       message: "Business updated successfully",
     });
     expect(dispatchedActorSource()).toBe(expected);
+  });
+
+  it.each([
+    ["supervisor membership", "Supervisor"],
+    ["employee membership", "Waiter"],
+  ])("refuses %s before dispatching", async (_label, role) => {
+    const business = await createTestBusiness({
+      tradeName: `${role} Layer Venue`,
+      currencyTrade: "USD",
+      address: validAddress,
+    });
+    const auth = await membershipAuthForBusiness(business._id, [role]);
+
+    const response = await patchField(
+      auth,
+      business._id.toString(),
+      "acceptsDelivery",
+      "true",
+    );
+
+    expect(response.statusCode).toBe(403);
+    expect(response.headers["content-type"]).toContain(
+      "application/problem+json",
+    );
+    expect(dispatchEventMock).not.toHaveBeenCalled();
   });
 });

@@ -70,7 +70,6 @@ const createVenue = async (tradeName: string) => {
     phoneNumber: "1234567890",
     taxNumber: `TAX-${suffix}`,
     currencyTrade: "USD",
-    subscription: "Free",
     address: validAddress,
   });
 };

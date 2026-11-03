@@ -14,7 +14,6 @@ import {
   canonicalBusinessSettingsDeliveryPath,
   canonicalBusinessSettingsMetricsPath,
   canonicalBusinessSettingsOpenHoursPath,
-  canonicalBusinessSettingsSubscriptionsPath,
   canonicalCustomerDashboardPath,
   canonicalCustomerFavoritesPath,
   canonicalDefaultDashboardPath,
@@ -51,9 +50,6 @@ describe("canonicalPaths", () => {
     );
     expect(canonicalBusinessSettingsMetricsPath("b1")).toBe(
       "/business/b1/settings/metrics",
-    );
-    expect(canonicalBusinessSettingsSubscriptionsPath("b1")).toBe(
-      "/business/b1/settings/subscriptions",
     );
     expect(canonicalBusinessSettingsAddressPath("b1")).toBe(
       "/business/b1/settings/address",

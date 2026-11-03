@@ -45,7 +45,7 @@ export class OwnerCompanyCreationError extends Error {
  */
 export type BusinessCreationInput = Omit<
   IBusiness,
-  "_id" | "companyId" | "subscription" | "deleted" | "deletedAt" | "deletedBy"
+  "_id" | "companyId" | "deleted" | "deletedAt" | "deletedBy"
 > & {
   _id: Types.ObjectId | string;
 };

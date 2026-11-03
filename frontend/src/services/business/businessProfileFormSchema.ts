@@ -3,13 +3,11 @@ import {
   currenctyEnums,
   cuisineTypeEnums,
   foodSubCategoryEnums,
-  subscriptionEnums,
 } from "restaurant-pos-packages/enums";
 
 const HHMM_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
 type BusinessProfileSchemaMessages = {
-  invalidSubscription: string;
   invalidCurrency: string;
   invalidTime: string;
   invalidDayOfWeek: string;
@@ -20,7 +18,6 @@ type BusinessProfileSchemaMessages = {
   deliveryRange: string;
 };
 
-const subscriptionTuple = subscriptionEnums as [string, ...string[]];
 const currencyTuple = currenctyEnums as [string, ...string[]];
 const foodSubCategoryTuple = foodSubCategoryEnums as [string, ...string[]];
 const cuisineTypeTuple = cuisineTypeEnums as [string, ...string[]];
@@ -49,10 +46,6 @@ export function buildBusinessProfileSchema(
 
   return z
     .object({
-      subscription: optionalEnum(
-        subscriptionTuple,
-        messages.invalidSubscription,
-      ),
       imageUrl: z.string(),
       imageFile: z.custom<File | null>(
         (value) => value === null || value instanceof File,

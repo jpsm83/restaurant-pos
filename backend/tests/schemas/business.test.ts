@@ -11,6 +11,7 @@ import {
   discoverBusinessesQuerySchema,
   updateBusinessBodySchema,
 } from "restaurant-pos-packages/schemas/business";
+import { BUSINESS_PROFILE_FIELD_MINIMUM_LAYER } from "../../src/access/businessProfileFields.ts";
 
 const VALID_ID = "507f1f77bcf86cd799439011";
 
@@ -157,7 +158,6 @@ describe("updateBusinessBodySchema", () => {
   const validUpdate = {
     tradeName: "Cafe Demo",
     phoneNumber: "1234567890",
-    subscription: "Free",
     currencyTrade: "USD",
     address: JSON.stringify(validAddress),
   };
@@ -174,6 +174,13 @@ describe("updateBusinessBodySchema", () => {
     expect(parsedFull.reportingConfig).toBeUndefined();
   });
 
+  it("classifies every updatable field for field-level authorization", () => {
+    for (const field of Object.keys(updateBusinessBodySchema.shape)) {
+      expect(BUSINESS_PROFILE_FIELD_MINIMUM_LAYER, field).toHaveProperty(field);
+    }
+    expect(BUSINESS_PROFILE_FIELD_MINIMUM_LAYER).toHaveProperty("imageUrl");
+  });
+
   it("accepts a partial address so a draft can be completed across visits", () => {
     const parsed = updateBusinessBodySchema.parse({
       ...validUpdate,
@@ -183,7 +190,7 @@ describe("updateBusinessBodySchema", () => {
     expect(parsed.address).toEqual({ country: "USA", city: "Austin" });
   });
 
-  it("no longer accepts legal name or tax number", () => {
+  it("no longer accepts legal name, tax number, or subscription", () => {
     expect(
       updateBusinessBodySchema.safeParse({
         ...validUpdate,
@@ -194,6 +201,12 @@ describe("updateBusinessBodySchema", () => {
       updateBusinessBodySchema.safeParse({
         ...validUpdate,
         taxNumber: "TAX-001",
+      }).success,
+    ).toBe(false);
+    expect(
+      updateBusinessBodySchema.safeParse({
+        ...validUpdate,
+        subscription: "Free",
       }).success,
     ).toBe(false);
   });

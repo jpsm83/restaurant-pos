@@ -7,7 +7,6 @@ import {
 import { buildBusinessProfileSchema } from "../businessProfileFormSchema";
 
 const schemaMessages = {
-  invalidSubscription: "Invalid subscription.",
   invalidCurrency: "Invalid currency.",
   invalidTime: "Invalid time.",
   invalidDayOfWeek: "Invalid day of week.",
@@ -28,7 +27,6 @@ function makeBusinessDto(overrides?: Partial<BusinessProfileDto>): BusinessProfi
     phoneNumber: " +351999999999 ",
     taxNumber: " TAX-123 ",
     currencyTrade: "USD",
-    subscription: "Free",
     address: {
       country: " PT ",
       state: " LX ",
@@ -92,7 +90,6 @@ describe("Business profile schema + mappers", () => {
     expect(payload.get("tradeName")).toBe("Imperium Kitchen");
     expect(payload.get("legalName")).toBeNull();
     expect(payload.get("taxNumber")).toBeNull();
-    expect(payload.get("subscription")).toBe("Free");
 
     const address = JSON.parse(String(payload.get("address"))) as Record<string, string>;
     expect(address.country).toBe("PT");
@@ -135,7 +132,6 @@ describe("Business profile schema + mappers", () => {
       _id: "64b000000000000000000001",
       tradeName: "Draft Venue",
       currencyTrade: "USD",
-      subscription: "Free",
       address: { country: "US" },
     });
 
@@ -146,14 +142,12 @@ describe("Business profile schema + mappers", () => {
     const schema = buildBusinessProfileSchema(schemaMessages);
     const values = businessDtoToFormValues(makeBusinessDto());
     values.currencyTrade = "BTC";
-    values.subscription = "Platinum";
 
     const parsed = schema.safeParse(values);
     expect(parsed.success).toBe(false);
     if (!parsed.success) {
       const messages = parsed.error.issues.map((issue) => issue.message);
       expect(messages).toContain(schemaMessages.invalidCurrency);
-      expect(messages).toContain(schemaMessages.invalidSubscription);
     }
   });
 
@@ -162,7 +156,6 @@ describe("Business profile schema + mappers", () => {
       _id: "64b000000000000000000001",
       tradeName: "Draft Venue",
       currencyTrade: "",
-      subscription: "",
       address: { country: "US" },
     });
     const payload = formValuesToUpdatePayload(values);
@@ -170,7 +163,6 @@ describe("Business profile schema + mappers", () => {
     expect(payload.get("tradeName")).toBe("Draft Venue");
     expect(payload.get("phoneNumber")).toBeNull();
     expect(payload.get("currencyTrade")).toBeNull();
-    expect(payload.get("subscription")).toBeNull();
     expect(JSON.parse(String(payload.get("address")))).toEqual({
       country: "US",
     });

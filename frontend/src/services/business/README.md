@@ -67,7 +67,7 @@ flowchart LR
 This file is intentionally **mostly types and re-exports**:
 
 - Aligns the form model with **`IBusinessProfileDto`** / **`IBusinessProfileAddress`** from `restaurant-pos-packages/interfaces/IBusiness` via aliases (`BusinessProfileDto`, etc.).
-- Defines **`BusinessProfileFormValues`**, the canonical client-side shape for venue profile forms (subscription, address, cuisine/categories, delivery flags, metrics, opening hours, delivery windows, reporting).
+- Defines **`BusinessProfileFormValues`**, the canonical client-side shape for venue profile forms (address, cuisine/categories, delivery flags, metrics, opening hours, delivery windows, reporting).
 - Re-exports implementation from `businessProfileApi`, `businessProfileMapper`, and `businessProfilePayload`.
 
 **Dependency note:** `businessProfileApi.ts` imports **types only** from `./businessService` to avoid runtime circular imports; the barrel then re-exports the API module. TypeScript erases those imports at compile time, so the cycle is safe.
@@ -137,7 +137,7 @@ These normalizers are **exported** so `businessProfilePayload` can reuse them wh
 
 Builds the **multipart PATCH** body expected by the backend:
 
-- **Scalar fields**: `tradeName`, `phoneNumber`, `currencyTrade`, `subscription`, `contactPerson`, `acceptsDelivery` (boolean as string). Blank text and enum fields are omitted so a draft save leaves them unchanged.
+- **Scalar fields**: `tradeName`, `phoneNumber`, `currencyTrade`, `contactPerson`, `acceptsDelivery` (boolean as string). Blank text and enum fields are omitted so a draft save leaves them unchanged.
 - **Nested JSON as strings**: `address`, `metrics`, `cuisineType`, `categories`, `businessOpeningHours`, `deliveryOpeningWindows`, `reportingConfig` (only if `weeklyReportStartDay` is a finite number).
 - **Partial address**: only non-empty address keys are sent, so a draft can be completed across visits; an entirely blank address is omitted.
 - **No credentials or contact email**: this payload never carries `email` / `confirmEmail` / `password` / `currentPassword` — the backend rejects them as unknown keys on the profile PATCH.
@@ -174,7 +174,7 @@ Exported types: `BusinessProfileSchema`, `BusinessProfileSchemaValues`.
 | Dependency | Usage |
 |------------|--------|
 | `restaurant-pos-packages/interfaces/IBusiness` | DTO/metrics shapes. |
-| `restaurant-pos-packages/enums` | Cuisine, food categories, subscription, currency (schema + mapper + payload). |
+| `restaurant-pos-packages/enums` | Cuisine, food categories, currency (schema + mapper + payload). |
 | `../http` | Axios instance. |
 | `../queryKeys` | Stable React Query keys for business detail. |
 | `../serviceErrors.ts` | `ServiceRequestError`, `toServiceRequestError`. |

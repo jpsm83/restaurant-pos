@@ -8,6 +8,9 @@ import Order from "../../src/models/order.ts";
 import SalesPoint from "../../src/models/salesPoint.ts";
 import SalesInstance from "../../src/models/salesInstance.ts";
 import BusinessGood from "../../src/models/businessGood.ts";
+import Business from "../../src/models/business.ts";
+import Company from "../../src/models/company.ts";
+import Owner from "../../src/models/owner.ts";
 import WeeklyBusinessReport from "../../src/models/weeklyBusinessReport.ts";
 import MonthlyBusinessReport from "../../src/models/monthlyBusinessReport.ts";
 import Schedule from "../../src/models/schedule.ts";
@@ -64,7 +67,6 @@ describe("DailySalesReports routes - Task T2 integration", () => {
       phoneNumber: "1234567890",
       taxNumber: `TAX-${Date.now()}`,
       currencyTrade: "USD",
-      subscription: "Free",
       address: addr,
       ...overrides,
     });
@@ -343,6 +345,42 @@ describe("DailySalesReports routes - Task T2 integration", () => {
     expect(refreshed?.dailyNetPaidAmount).toBe(140);
     expect(refreshed?.dailyCostOfGoodsSold).toBe(60);
     expect(refreshed?.dailyTipsReceived).toBe(10);
+  });
+
+  it("uses the Owner's plan, not the Business, for the commission estimate", async () => {
+    const app = await getTestApp();
+    const ownerUser = await User.create({
+      personalDetails: {
+        email: `premium-owner-${Date.now()}@test.com`,
+        firstName: "Premium",
+        lastName: "Owner",
+      },
+    });
+    const owner = await Owner.create({
+      userId: ownerUser._id,
+      country: "USA",
+      subscription: "Premium",
+    });
+    const company = await Company.create({ ownerId: owner._id, country: "USA" });
+    const business = await Business.create({
+      tradeName: "Premium Restaurant",
+      currencyTrade: "USD",
+      address: addr,
+      companyId: company._id,
+    });
+    const token = await createManagerToken(business._id as Types.ObjectId);
+    const report = await createActorSeededReport(business._id as Types.ObjectId);
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/dailySalesReports/${report._id}/calculateBusinessReport`,
+      headers: { authorization: token },
+    });
+
+    expect(response.statusCode, response.body).toBe(200);
+    const refreshed = await DailySalesReport.findById(report._id).lean();
+    expect(refreshed?.dailyTotalSalesBeforeAdjustments).toBe(150);
+    expect(refreshed?.dailyPosSystemCommission).toBeCloseTo(150 * 0.004);
   });
 
   it("calculateBusinessReport keeps soft-deleted dailies and schedules in both rollups", async () => {

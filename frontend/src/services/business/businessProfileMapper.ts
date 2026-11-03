@@ -142,7 +142,6 @@ export function businessDtoToFormValues(
     {}) as Record<string, unknown>;
 
   return {
-    subscription: asTrimmedString(dto.subscription),
     imageUrl: asTrimmedString(dto.imageUrl),
     imageFile: null,
     tradeName: asTrimmedString(dto.tradeName),

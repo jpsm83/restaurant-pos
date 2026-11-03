@@ -118,7 +118,6 @@
   },
   "profileForm": {
     "validation": {
-      "invalidSubscription": "Suscripción no válida.",
       "invalidCurrency": "Moneda no válida.",
       "invalidTime": "La hora debe tener formato HH:MM.",
       "invalidDayOfWeek": "El día de la semana debe ser un entero de 0 a 6.",
@@ -315,12 +314,6 @@
       "complement": "Complemento",
       "complementPlaceholder": "Piso, ala, unidad…"
     }
-  },
-  "subscriptionSettings": {
-    "sectionTitle": "Suscripción",
-    "planGroupAriaLabel": "Plan de suscripción",
-    "selectPlanAriaLabel": "Seleccionar plan {{plan}}",
-    "selectedPlanDescription": "Plan seleccionado para este negocio."
   },
   "weekdays": {
     "sunday": "Domingo",

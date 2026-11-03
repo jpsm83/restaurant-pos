@@ -56,7 +56,6 @@ export interface IBusiness {
   currencyTrade: string;
   /** Owning Company; the path from this Business to its Owner. */
   companyId?: Types.ObjectId;
-  subscription: string;
   /**
    * Authoritative IANA timezone for the business (e.g. `America/Bogota`).
    * `undefined` on legacy businesses; reads resolve a missing value to UTC.

@@ -4,7 +4,6 @@ import type { BusinessProfileFormValues } from "../businessService";
 
 function values(overrides?: Partial<BusinessProfileFormValues>): BusinessProfileFormValues {
   return {
-    subscription: "Free",
     imageUrl: "",
     imageFile: null,
     tradeName: " Demo ",
@@ -76,7 +75,6 @@ describe("businessProfilePayload", () => {
         tradeName: " ",
         phoneNumber: "",
         currencyTrade: "",
-        subscription: "",
         address: {
           country: "US",
           state: "",
@@ -94,7 +92,6 @@ describe("businessProfilePayload", () => {
     expect(payload.get("tradeName")).toBeNull();
     expect(payload.get("phoneNumber")).toBeNull();
     expect(payload.get("currencyTrade")).toBeNull();
-    expect(payload.get("subscription")).toBeNull();
     expect(JSON.parse(String(payload.get("address")))).toEqual({
       country: "US",
       city: "Austin",

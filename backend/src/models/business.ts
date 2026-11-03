@@ -3,8 +3,6 @@ import { draftAddressSchema } from "./address.ts";
 import * as enums from "restaurant-pos-packages/enums";
 import { applyActiveOnlySoftDelete, softDeleteSchemaFields } from "./softDelete.ts";
 
-const { subscriptionEnums } = enums;
-
 const metricsSchema = new Schema({
   foodCostPercentage: { type: Number, default: 30 }, // Food cost percentage acceptable - 28-35% of sales average
   beverageCostPercentage: { type: Number, default: 20 }, // Beverage cost percentage acceptable - 18-24% of sales average
@@ -85,11 +83,6 @@ const businessSchema = new Schema(
       required: [true, "Company id is required!"],
       index: true,
     }, // owning tax entity; the path from this Business to its Owner
-    subscription: {
-      type: String,
-      enum: subscriptionEnums,
-      default: "Free",
-    }, // Subscription plan for the company
     timezone: { type: String }, // Authoritative IANA zone (e.g. America/Bogota); legacy businesses may have none
     address: { type: draftAddressSchema }, // Address of the company; country only while a draft
     metrics: { type: metricsSchema }, // Metrics of the company

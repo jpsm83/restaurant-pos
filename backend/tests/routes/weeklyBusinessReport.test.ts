@@ -50,7 +50,6 @@ describe("WeeklyBusinessReport Routes", () => {
       phoneNumber: "1234567890",
       taxNumber: `TAX-${Date.now()}`,
       currencyTrade: "USD",
-      subscription: "Free",
       address: {
         country: "USA",
         state: "CA",

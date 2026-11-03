@@ -27,8 +27,10 @@ import {
   createAuthHook,
   requireBusinessAccessHook,
 } from "../../auth/middleware.ts";
+import { findProfileFieldsAboveLayer } from "../../access/businessProfileFields.ts";
 import { resolveEffectiveAccess } from "../../access/resolveEffectiveAccess.ts";
 import { requireBusinessLayer } from "../../access/requireBusinessLayer.ts";
+import { assertBusinessCurrencyChangeAllowed } from "../../business/businessCurrencyChangeGuard.ts";
 import { requestBusinessContactEmailVerification } from "../../business/businessContactEmail.ts";
 import { profileUpdateActorSource } from "../../communications/businessProfileUpdateActor.ts";
 import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
@@ -474,10 +476,39 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
     async (req, reply) => {
       const businessId = req.params.businessId;
 
+      // The membership/ownership hook has already refused non-members. Resolve
+      // the effective layer once and refuse the whole request when any raw
+      // submitted field sits above it; never silently drop a field. Running
+      // before DTO validation means an above-layer field is refused with 403
+      // even when its value would also fail validation.
+      let access: Awaited<ReturnType<typeof resolveEffectiveAccess>> = null;
       const { fields, files } = await parseMultipart(
         req,
         updateBusinessBodySchema,
+        {
+          beforeValidate: async (submittedFields) => {
+            access = await resolveEffectiveAccess({
+              userId: req.authSession!.id,
+              businessId,
+            });
+            if (!access || access.source === "none") {
+              throw forbidden("Forbidden");
+            }
+            const refusedFields = findProfileFieldsAboveLayer({
+              fields: submittedFields,
+              actorLayer: access.effectiveLayer,
+            });
+            if (refusedFields.length > 0) {
+              throw forbidden(
+                `You cannot edit the following fields: ${refusedFields.join(", ")}`,
+              );
+            }
+          },
+        },
       );
+      if (!access) {
+        throw forbidden("Forbidden");
+      }
 
       const business = await Business.findOne(
         withSoftDeleteFilter({ _id: businessId }),
@@ -488,14 +519,19 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
 
       const businessRecord = business as Record<string, unknown>;
 
+      await assertBusinessCurrencyChangeAllowed({
+        businessId,
+        currentCurrency:
+          typeof businessRecord.currencyTrade === "string"
+            ? businessRecord.currencyTrade
+            : undefined,
+        nextCurrency: fields.currencyTrade,
+      });
+
       const updateBusinessObj: Record<string, unknown> = {};
       let clearContactVerification = false;
 
-      type UpdatableBusinessField =
-        | "tradeName"
-        | "phoneNumber"
-        | "currencyTrade"
-        | "subscription";
+      type UpdatableBusinessField = "tradeName" | "phoneNumber" | "currencyTrade";
 
       if (
         fields.email !== undefined &&
@@ -518,7 +554,6 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
       setIfChanged("tradeName", fields.tradeName);
       setIfChanged("phoneNumber", fields.phoneNumber);
       setIfChanged("currencyTrade", fields.currencyTrade);
-      setIfChanged("subscription", fields.subscription);
 
       if (fields.contactPerson !== undefined) {
         const next = fields.contactPerson.length > 0 ? fields.contactPerson : null;
@@ -690,12 +725,6 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
       const changedFields = flattenChangedFieldPaths(updateBusinessObj);
       if (changedFields.length > 0) {
         const authSession = req.authSession;
-        const access = authSession
-          ? await resolveEffectiveAccess({
-              userId: authSession.id,
-              businessId,
-            })
-          : null;
         const actorSource = profileUpdateActorSource(access);
         const correlationIdHeader = req.headers["x-correlation-id"];
         const operationIdHeader = req.headers["x-idempotency-key"];

@@ -63,9 +63,6 @@ const BusinessDeliverySettingsPage = lazy(
 const BusinessMetricsSettingsPage = lazy(
   () => import("@/pages/business/BusinessMetricsSettingsPage"),
 );
-const BusinessSubscriptionsSettingsPage = lazy(
-  () => import("@/pages/business/BusinessSubscriptionsSettingsPage"),
-);
 const BusinessAddressSettingsPage = lazy(
   () => import("@/pages/business/BusinessAddressSettingsPage"),
 );
@@ -287,10 +284,6 @@ export function AppRoutes() {
             <Route
               path="settings/metrics"
               element={<BusinessMetricsSettingsPage />}
-            />
-            <Route
-              path="settings/subscriptions"
-              element={<BusinessSubscriptionsSettingsPage />}
             />
             <Route path="settings/address" element={<BusinessAddressSettingsPage />} />
             <Route

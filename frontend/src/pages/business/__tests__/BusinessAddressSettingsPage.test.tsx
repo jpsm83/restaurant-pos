@@ -74,7 +74,6 @@ function makeBusinessProfileDto(): BusinessProfileDto {
     email: "owner@demo.test",
     phoneNumber: "+10000000000",
     taxNumber: "TAX-001",
-    subscription: "Free",
     currencyTrade: "USD",
     address: {
       country: "US",

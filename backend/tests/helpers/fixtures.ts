@@ -111,7 +111,6 @@ export function fakeBusinessRecord(
     phoneNumber: faker.phone.number(),
     taxNumber: `TAX-${faker.string.alphanumeric(10)}`,
     currencyTrade: "EUR",
-    subscription: "Free",
     address: {
       ...fakeAddress(),
       country: overrides.country ?? faker.location.country(),

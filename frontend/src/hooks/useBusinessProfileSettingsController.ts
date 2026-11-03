@@ -35,7 +35,6 @@ import { buildBusinessProfileSchema } from "@/services/business/businessProfileF
 
 /** RHF defaults for business profile PATCH; must stay aligned with `businessDtoToFormValues` shape. */
 const EMPTY_PROFILE_FORM_VALUES: BusinessProfileFormValues = {
-  subscription: "",
   imageUrl: "",
   imageFile: null,
   tradeName: "",
@@ -226,7 +225,6 @@ export function useBusinessProfileSettingsController(): BusinessProfileSettingsC
   const profileSchema = useMemo(
     () =>
       buildBusinessProfileSchema({
-        invalidSubscription: t("profileForm.validation.invalidSubscription"),
         invalidCurrency: t("profileForm.validation.invalidCurrency"),
         invalidTime: t("profileForm.validation.invalidTime"),
         invalidDayOfWeek: t("profileForm.validation.invalidDayOfWeek"),

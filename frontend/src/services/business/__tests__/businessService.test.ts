@@ -19,7 +19,6 @@ function minimalFormData() {
   fd.append("tradeName", "Café Demo");
   fd.append("email", "owner@demo.test");
   fd.append("phoneNumber", "+1000000000");
-  fd.append("subscription", "Free");
   fd.append("currencyTrade", "USD");
   fd.append(
     "address",

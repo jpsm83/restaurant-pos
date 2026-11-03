@@ -30,11 +30,22 @@ export interface MultipartResult<T> {
   fields: T;
   /** Every uploaded file, in the order received. */
   files: MultipartFile[];
+  /** Every field name present in the request, before validation transforms. */
+  submittedFields: string[];
 }
 
 export interface ParseMultipartOptions {
   /** Field names whose string value must be JSON-parsed before validation. */
   jsonFields?: readonly string[];
+  /**
+   * Inspect the raw submitted field and file names before DTO validation.
+   * Authorization hooks use this so a field above the actor's layer is refused
+   * with `403` even when its value is malformed.
+   */
+  beforeValidate?: (
+    submittedFields: string[],
+    files: MultipartFile[],
+  ) => void | Promise<void>;
 }
 
 const appendField = (
@@ -112,8 +123,10 @@ export async function parseMultipart<T>(
   const jsonFields = new Set(options.jsonFields ?? []);
   const raw: Record<string, unknown> = {};
   const files: MultipartFile[] = [];
+  const submittedFields: string[] = [];
 
   for await (const part of req.parts()) {
+    submittedFields.push(part.fieldname);
     if (part.type === "file") {
       files.push({
         fieldname: part.fieldname,
@@ -134,5 +147,7 @@ export async function parseMultipart<T>(
     );
   }
 
-  return { fields: validateFields(raw, schema), files };
+  await options.beforeValidate?.(submittedFields, files);
+
+  return { fields: validateFields(raw, schema), files, submittedFields };
 }
