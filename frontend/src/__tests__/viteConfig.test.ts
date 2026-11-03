@@ -1,6 +1,7 @@
 /// <reference types="node" />
 // @vitest-environment node
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -25,9 +26,8 @@ async function servedCoopHeader(url: string | undefined): Promise<string | null>
 }
 
 /**
- * Vite's dev and preview servers are not the production host. The committed
- * `public/_headers` artifact is what travels into `dist`, so assert it still
- * carries the COOP value instead of relying on prose alone.
+ * Vite's dev and preview servers are not the production host; assert the
+ * committed artifact that ships in `dist` still carries the COOP value.
  */
 describe("committed production COOP header artifact", () => {
   it("commits the COOP header for production static hosts", () => {
@@ -38,13 +38,15 @@ describe("committed production COOP header artifact", () => {
     );
   });
 
-  it("copies the committed artifact into the build via Vite's public dir", async () => {
+  it("keeps the artifact in the public dir that the build copies into dist", async () => {
     const config = await resolveConfig(
       { configFile, root: projectRoot },
       "build",
     );
 
     expect(config.publicDir).toBe(join(projectRoot, "public"));
+    expect(config.build.copyPublicDir).not.toBe(false);
+    expect(existsSync(join(config.publicDir, "_headers"))).toBe(true);
   });
 });
 
